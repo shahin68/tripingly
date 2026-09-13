@@ -1,0 +1,7 @@
+package com.falcon.tripingly.feature.map.presentation.di
+
+import androidx.compose.runtime.Composable
+import com.falcon.tripingly.feature.map.presentation.viewmodel.MapViewModel
+
+@Composable
+expect fun rememberMapViewModel(): MapViewModel
