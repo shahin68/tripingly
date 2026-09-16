@@ -8,78 +8,71 @@ description: >-
 
 # MVI Presentation Layer in Compose Multiplatform
 
-This guide defines the Presentation layer architecture for `tripingly`.
+This guide defines the engineering design system, state, and interaction patterns for the Presentation layer of `tripingly`.
 
 ---
 
-## 1. Core Pattern Overview
+## 1. MVI Flow Mechanics
+
+The application layer strictly employs unidirectional data stream structures:
 
 ```
-[ Composable UI ] ────( Action Interface )────> [ ViewModel ]
-       ▲                                               │
-       ├──────────────( Immutable StateFlow )──────────┤
-       └──────────────( One-time UiEvent Flow )────────┘
+[ Composable UI ] ──────( Dispatches UiAction )──────> [ ViewModel ]
+       ▲                                                     │
+       ├──────────────( Observes Immutable UiState )─────────┤
+       └──────────────( Safely Collects One-shot UiEvent )───┘
 ```
 
-1. **State**: Immutable snapshot of the UI, exposed as `StateFlow<UiState>` owned exclusively by the `ViewModel`.
-2. **Action**: High-level user intentions sent to the ViewModel via a sealed interface (`UiAction`).
-3. **Event**: One-shot side-effects (navigation, snackbar, haptic feedback) emitted via an unbuffered or buffered `Channel` and exposed as a `Flow<UiEvent>`.
+1. **State**: An absolute, immutable representation of the visible UI layout, exposed solely as a read-only `StateFlow<UiState>`.
+2. **Action**: Sealed interactions representing explicit user intentions dispatched to the ViewModel.
+3. **Event**: Individual, non-persistent side-effects (e.g., specific camera movements, alerts, platform notifications) pushed over buffered `Channels` and safely consumed as a lifecycle-aware `Flow`.
 
 ---
 
-## 2. Defining State, Action, and Event
+## 2. Structural Definition Contracts
 
 ```kotlin
-package com.falcon.tripingly.feature.trips.presentation
+package com.falcon.tripingly.feature.map.presentation.screen
 
 import androidx.compose.runtime.Immutable
-import com.falcon.tripingly.domain.model.Trip
+import com.falcon.tripingly.feature.map.domain.model.Coordinates
 
-// 1. Immutable UI State
+// 1. Fully Immutable State Envelope
 @Immutable
-data class TripsUiState(
-    val isLoading: Boolean = false,
-    val trips: List<TripUiModel> = emptyList(),
+data class MapUiState(
+    val currentLocation: Coordinates? = null,
+    val cameraTarget: Coordinates = Coordinates.Paris,
+    val isLoadingLocation: Boolean = false,
     val errorMessage: String? = null
 )
 
-@Immutable
-data class TripUiModel(
-    val id: String,
-    val title: String,
-    val destination: String,
-    val formattedDates: String
-)
-
-// 2. High-level User Actions (Intents)
-sealed interface TripsAction {
-    data object Refresh : TripsAction
-    data class OnTripClicked(val tripId: String) : TripsAction
-    data class OnDeleteTrip(val tripId: String) : TripsAction
-    data object OnCreateTripClicked : TripsAction
-    data object DismissError : TripsAction
+// 2. Focused Intent Actions
+sealed interface MapAction {
+    data object CenterOnUserLocation : MapAction
+    data class OnPermissionResult(val isGranted: Boolean) : MapAction
+    data object DismissError : MapAction
 }
 
-// 3. One-Time Side Effects
-sealed interface TripsEvent {
-    data class NavigateToDetails(val tripId: String) : TripsEvent
-    data object NavigateToCreate : TripsEvent
-    data class ShowToast(val message: String) : TripsEvent
+// 3. One-Shot Side-Effect Channels
+sealed interface MapEvent {
+    data class AnimateCamera(val coordinates: Coordinates, val zoom: Float) : MapEvent
+    data class ShowSnackbar(val message: String) : MapEvent
 }
 ```
 
 ---
 
-## 3. ViewModel State Ownership & Action Handling
+## 3. ViewModel State Control Guidelines
+
+ViewModels accept abstractions using constructor injection, manage underlying streams, and expose clean, high-level hooks for incoming actions:
 
 ```kotlin
-package com.falcon.tripingly.feature.trips.presentation
+package com.falcon.tripingly.feature.map.presentation.screen
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.falcon.tripingly.domain.usecase.GetTripsStreamUseCase
-import com.falcon.tripingly.domain.usecase.SyncTripsUseCase
-import com.falcon.tripingly.core.domain.result.AppResult
+import com.falcon.tripingly.core.coroutines.CoroutineDispatchers
+import com.falcon.tripingly.feature.map.domain.usecase.GetCurrentLocationUseCase
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -88,119 +81,69 @@ import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
-class TripsViewModel(
-    private val getTripsStreamUseCase: GetTripsStreamUseCase,
-    private val syncTripsUseCase: SyncTripsUseCase
+class MapViewModel(
+    private val getCurrentLocationUseCase: GetCurrentLocationUseCase,
+    private val dispatchers: CoroutineDispatchers
 ) : ViewModel() {
 
-    // ViewModel owns and protects the mutable state
-    private val _uiState = MutableStateFlow(TripsUiState(isLoading = true))
-    val uiState: StateFlow<TripsUiState> = _uiState.asStateFlow()
+    private val _uiState = MutableStateFlow(MapUiState())
+    val uiState: StateFlow<MapUiState> = _uiState.asStateFlow()
 
-    // Dedicated Channel for one-off side effects (not lost on recomposition)
-    private val _events = Channel<TripsEvent>(capacity = Channel.BUFFERED)
+    private val _events = Channel<MapEvent>(capacity = Channel.BUFFERED)
     val events = _events.receiveAsFlow()
 
-    init {
-        observeTrips()
-        onAction(TripsAction.Refresh)
-    }
-
-    // High-level MVI dispatch function
-    fun onAction(action: TripsAction) {
+    fun onAction(action: MapAction) {
         when (action) {
-            is TripsAction.Refresh -> refreshTrips()
-            is TripsAction.OnTripClicked -> navigateToDetails(action.tripId)
-            is TripsAction.OnDeleteTrip -> deleteTrip(action.tripId)
-            is TripsAction.OnCreateTripClicked -> sendEvent(TripsEvent.NavigateToCreate)
-            is TripsAction.DismissError -> _uiState.update { it.copy(errorMessage = null) }
+            is MapAction.CenterOnUserLocation -> fetchUserLocation()
+            is MapAction.OnPermissionResult -> handlePermission(action.isGranted)
+            is MapAction.DismissError -> _uiState.update { it.copy(errorMessage = null) }
         }
     }
 
-    private fun observeTrips() {
-        viewModelScope.launch {
-            getTripsStreamUseCase().collect { trips ->
-                _uiState.update { currentState ->
-                    currentState.copy(
-                        isLoading = false,
-                        trips = trips.map { it.toUiModel() }
-                    )
-                }
-            }
+    private fun fetchUserLocation() {
+        viewModelScope.launch(dispatchers.main) {
+            _uiState.update { it.copy(isLoadingLocation = true) }
+            // Fetch logic execution here...
         }
     }
 
-    private fun refreshTrips() {
-        viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true) }
-            when (val result = syncTripsUseCase()) {
-                is AppResult.Success -> {
-                    _uiState.update { it.copy(isLoading = false) }
-                }
-                is AppResult.Error -> {
-                    _uiState.update {
-                        it.copy(
-                            isLoading = false,
-                            errorMessage = result.error.asUiText()
-                        )
-                    }
-                }
-            }
-        }
-    }
-
-    private fun navigateToDetails(tripId: String) {
-        sendEvent(TripsEvent.NavigateToDetails(tripId))
-    }
-
-    private fun deleteTrip(tripId: String) {
-        // execute delete
-    }
-
-    private fun sendEvent(event: TripsEvent) {
-        viewModelScope.launch {
-            _events.send(event)
-        }
+    private fun handlePermission(isGranted: Boolean) {
+        // Handle changes in state mapping...
     }
 }
 ```
 
 ---
 
-## 4. Composable Stability & Side-Effect Rules
+## 4. Modern Compose Stability & Composition Lifecycles
 
-### Rule 1: Separation of Stateful and Stateless Composables
-Split each screen into a **Route (Stateful)** and **Content (Stateless)** Composable:
-- **Route**: Injects ViewModel, collects state with lifecycle awareness, handles side-effect events, and delegates rendering to Content.
-- **Content**: Pure function receiving state and lambda callbacks `(action: (TripsAction) -> Unit)`. Extremely previewable and testable.
+### Rule 1: Clean Separation of Stateful and Stateless Composables
+Always separate screen declarations into a **Route (Stateful)** and a **Screen Content (Stateless)** Composable:
+- **Route**: Manages framework bindings, resolves the ViewModel using modern multiplatform dependency tools (`koinViewModel()`), handles event lifecycle collections, and forwards state parameters downwards.
+- **Content**: A stateless, declarative function that accepts the state layout object and lambda action callbacks `(action: MapAction) -> Unit`. This design makes it highly testable and previewable.
 
-### Rule 2: Proper Side-Effect Consumption
-Consume ViewModel events using `LaunchedEffect` keyed to the event flow:
+### Rule 2: Lifecycle-Aware Side-Effect Flow Consumption
+Observe one-off event flows safely using standard Jetpack Compose multiplatform lifecycle-aware tools:
 
 ```kotlin
 @Composable
-fun TripsRoute(
-    viewModel: TripsViewModel,
-    onNavigateToDetails: (String) -> Unit,
-    onNavigateToCreate: () -> Unit,
-    modifier: Modifier = Modifier
+fun MapRoute(
+    modifier: Modifier = Modifier,
+    viewModel: MapViewModel = koinViewModel()
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
 
-    // Observe side effects safely
+    // Process short-lived lifecycle events cleanly
     LaunchedEffect(viewModel.events) {
         viewModel.events.collect { event ->
             when (event) {
-                is TripsEvent.NavigateToDetails -> onNavigateToDetails(event.tripId)
-                is TripsEvent.NavigateToCreate -> onNavigateToCreate()
-                is TripsEvent.ShowToast -> {
-                    // Trigger snackbar / toast
-                }
+                is MapEvent.AnimateCamera -> { /* Trigger Camera Animation */ }
+                is MapEvent.ShowSnackbar -> { /* Display temporary snackbar */ }
             }
         }
     }
 
-    TripsScreen(
+    MapScreen(
         state = state,
         onAction = viewModel::onAction,
         modifier = modifier
@@ -208,8 +151,8 @@ fun TripsRoute(
 }
 ```
 
-### Rule 3: Composable Parameter Stability
-- Mark data classes holding state with `@Immutable` or `@Stable`.
-- Avoid passing raw unstable collections or lambdas that capture changing variables without `remember`.
-- Pass high-level action dispatcher: `onAction: (TripsAction) -> Unit`.
-- Always provide a `Modifier` parameter that defaults to `Modifier` as the first optional parameter.
+### Rule 3: Parameter Stability & Modifier Compliance
+- Annotate state data structures with `@Immutable` or `@Stable`.
+- Avoid passing raw, un-remembered lambdas or mutable structures directly inside the Composable hierarchy to prevent performance regression.
+- Pass the raw method references where possible: `onAction = viewModel::onAction`.
+- **First Optional Parameter Rule**: Every Composable view configuration signature **must** accept a `modifier: Modifier = Modifier` as its very first optional parameter.

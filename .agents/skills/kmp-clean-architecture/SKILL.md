@@ -6,189 +6,125 @@ description: >-
   SOLID principles in a Kotlin Multiplatform (KMP) project.
 ---
 
-# KMP Clean Architecture & Single Source of Truth (SSOT)
+# KMP Clean Architecture, SOLID, & Feature-Based Modularization
 
-This guide governs how the `tripingly` project structures its code across architectural boundaries.
+This guide governs how the `tripingly` project structures its code across architectural boundaries, enforces SOLID principles, and implements feature-based self-containment.
 
 ---
 
-## 1. Architectural Layers & Boundaries
+## 1. Feature Self-Containment & Architecture Layers
 
-The application is strictly decoupled into three layers:
+Every feature module or package should completely **own its own features** and layers. Features should not spread implementation details leaking across unrelated modules. Cross-feature communication must happen strictly via public domain interfaces and models.
 
 ```
-feature/
+feature/map/
 ├── data/
 │   ├── datasource/
-│   │   ├── local/              # Room / SQLDelight / DataStore
-│   │   └── remote/             # Ktor HTTP Client / WebSocket
-│   ├── dto/                    # Data Transfer Objects / Database Entities
-│   ├── mapper/                 # DTO <-> Domain entity mappers
-│   └── repository/             # Repository Implementations (SSOT)
+│   │   ├── local/              # Local data storage (e.g. Room, DataStore)
+│   │   └── remote/             # Remote API communication (e.g. Ktor Client)
+│   ├── dto/                    # Data Transfer Objects & Database Entities
+│   ├── mapper/                 # Two-way mappers between DTOs and Domain models
+│   └── repository/             # Repository Implementations (SSOT coordination)
 ├── domain/
 │   ├── model/                  # Pure Kotlin Business Models
-│   ├── repository/             # Repository Interfaces
+│   ├── repository/             # Repository Interfaces (Abstractions)
 │   └── usecase/                # Single-responsibility Use Cases / Interactors
 └── presentation/
-    ├── component/              # Reusable Composables
-    ├── mvi/                    # UiState, UiAction, UiEvent
-    ├── screen/                 # Main Screen Composables
-    └── viewmodel/              # ViewModel implementations
+    ├── component/              # Feature-specific, reusable Composable UI
+    ├── screen/                 # MVI State-driven Screen Composables
+    └── viewmodel/              # Architecture-guided Presentation ViewModels
 ```
 
-### Layer Dependency Direction
-- **Presentation** depends on **Domain** (Calls Use Cases, consumes Domain models).
-- **Data** depends on **Domain** (Implements Domain repository interfaces, maps DTOs to Domain models).
-- **Domain** depends on **NO OTHER LAYER** (Pure Kotlin, zero platform or framework dependencies).
+### Strict Layer Dependency Direction
+- **Presentation Layer** depends on **Domain Layer** (Invokes Use Cases, renders Domain models).
+- **Data Layer** depends on **Domain Layer** (Implements Domain repository interfaces, maps DTOs/Entities to Domain models).
+- **Domain Layer** depends on **NO OTHER LAYER**. It must remain a pure Kotlin module, entirely decoupled from UI frameworks, database engines, or network clients.
 
 ---
 
-## 2. Single Source of Truth (SSOT) Pattern
+## 2. Enforcing SOLID Principles
 
-To provide a consistent, offline-first experience, the **Data Layer** coordinates between a local repository/data source and a remote repository/data source.
+1. **Single Responsibility Principle (SRP)**: Each class must have exactly one reason to change. ViewModels manage UI state transitions; Use Cases execute a single business workflow; Repositories orchestrate data synchronization.
+2. **Open/Closed Principle (OCP)**: Software artifacts must be open for extension but closed for modification. Implement behavior modifications by creating new Use Cases or extending Domain contracts rather than altering core repository flows.
+3. **Liskov Substitution Principle (LSP)**: Derived types must be completely substitutable for their base types. Production code and mock/fake Data Sources or Repositories must act identically under the contract of their shared interface.
+4. **Interface Segregation Principle (ISP)**: Clients should not be forced to depend on interfaces they do not use. Break large, bloated repository interfaces into small, focused sub-contracts if consumers require a specialized subsection.
+5. **Dependency Inversion Principle (DIP)**: High-level policy components (Domain, Presentation) must never depend on low-level detailed components (SQL databases, HTTP client implementations). Both must rely upon pure abstractions.
 
-### Architecture Contract
-- The UI / Use Case observes data from the local store (via `Flow`).
-- The repository fetches fresh data from remote, updates local storage, and emits or lets the local stream push the updated state.
+---
+
+## 3. Single Source of Truth (SSOT) Pattern
+
+To guarantee a reliable, offline-first experience, the **Data Layer** orchestrates updates across data sources, ensuring local storage acts as the single source of truth for the presentation layer.
 
 ### Repository Interface (Domain Layer)
 ```kotlin
-package com.falcon.tripingly.domain.repository
+package com.falcon.tripingly.feature.map.domain.repository
 
 import com.falcon.tripingly.core.domain.result.AppResult
 import com.falcon.tripingly.core.domain.error.DataError
-import com.falcon.tripingly.domain.model.Trip
+import com.falcon.tripingly.feature.map.domain.model.Coordinates
 import kotlinx.coroutines.flow.Flow
 
-interface TripRepository {
-    fun getTripsStream(): Flow<List<Trip>>
-    suspend fun getTripById(id: String): AppResult<Trip, DataError>
-    suspend fun syncTrips(): AppResult<Unit, DataError>
-    suspend fun saveTrip(trip: Trip): AppResult<Unit, DataError>
+interface LocationRepository {
+    fun getSavedLocationsStream(): Flow<List<Coordinates>>
+    suspend fun getCurrentLocation(): AppResult<Coordinates, DataError.Location>
+    suspend fun syncSavedLocations(): AppResult<Unit, DataError>
 }
 ```
 
-### Local & Remote Data Sources (Data Layer)
+### General Repository Implementation (Data Layer SSOT Coordination)
 ```kotlin
-package com.falcon.tripingly.data.datasource.local
-
-import com.falcon.tripingly.data.dto.TripEntity
-import kotlinx.coroutines.flow.Flow
-
-interface TripLocalDataSource {
-    fun observeAllTrips(): Flow<List<TripEntity>>
-    suspend fun getTripById(id: String): TripEntity?
-    suspend fun insertOrUpdateTrips(trips: List<TripEntity>)
-    suspend fun insertTrip(trip: TripEntity)
-    suspend fun deleteTrip(id: String)
-}
-```
-
-```kotlin
-package com.falcon.tripingly.data.datasource.remote
-
-import com.falcon.tripingly.core.domain.result.AppResult
-import com.falcon.tripingly.core.domain.error.DataError.Network
-import com.falcon.tripingly.data.dto.TripDto
-
-interface TripRemoteDataSource {
-    suspend fun fetchTrips(): AppResult<List<TripDto>, Network>
-    suspend fun fetchTripDetails(id: String): AppResult<TripDto, Network>
-    suspend fun createTrip(trip: TripDto): AppResult<TripDto, Network>
-}
-```
-
-### General Repository Implementation (Data Layer SSOT)
-```kotlin
-package com.falcon.tripingly.data.repository
+package com.falcon.tripingly.feature.map.data.repository
 
 import com.falcon.tripingly.core.domain.result.AppResult
 import com.falcon.tripingly.core.domain.result.asSuccess
-import com.falcon.tripingly.core.domain.result.asError
 import com.falcon.tripingly.core.domain.error.DataError
-import com.falcon.tripingly.data.datasource.local.TripLocalDataSource
-import com.falcon.tripingly.data.datasource.remote.TripRemoteDataSource
-import com.falcon.tripingly.data.mapper.toDomain
-import com.falcon.tripingly.data.mapper.toEntity
-import com.falcon.tripingly.data.mapper.toDto
-import com.falcon.tripingly.domain.model.Trip
-import com.falcon.tripingly.domain.repository.TripRepository
+import com.falcon.tripingly.feature.map.data.datasource.LocationDataSource
+import com.falcon.tripingly.feature.map.domain.model.Coordinates
+import com.falcon.tripingly.feature.map.domain.repository.LocationRepository
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.map
 
-class TripRepositoryImpl(
-    private val localDataSource: TripLocalDataSource,
-    private val remoteDataSource: TripRemoteDataSource
-) : TripRepository {
-
-    override fun getTripsStream(): Flow<List<Trip>> {
-        return localDataSource.observeAllTrips().map { entities ->
-            entities.map { it.toDomain() }
-        }
+class LocationRepositoryImpl(
+    private val locationDataSource: LocationDataSource
+) : LocationRepository {
+    
+    override fun getSavedLocationsStream(): Flow<List<Coordinates>> {
+        // Observes local cache database stream as the sole source of truth
+        return locationDataSource.observeCachedCoordinates()
     }
 
-    override suspend fun getTripById(id: String): AppResult<Trip, DataError> {
-        val cached = localDataSource.getTripById(id)?.toDomain()
-        if (cached != null) {
-            return cached.asSuccess()
-        }
-        return when (val remoteResult = remoteDataSource.fetchTripDetails(id)) {
-            is AppResult.Success -> {
-                localDataSource.insertTrip(remoteResult.data.toEntity())
-                remoteResult.data.toDomain().asSuccess()
-            }
-            is AppResult.Error -> remoteResult.asError()
-        }
+    override suspend fun getCurrentLocation(): AppResult<Coordinates, DataError.Location> {
+        return locationDataSource.getLastKnownOrCurrentLocation()
     }
 
-    override suspend fun syncTrips(): AppResult<Unit, DataError> {
-        return when (val remoteResult = remoteDataSource.fetchTrips()) {
-            is AppResult.Success -> {
-                val entities = remoteResult.data.map { it.toEntity() }
-                localDataSource.insertOrUpdateTrips(entities)
-                Unit.asSuccess()
-            }
-            is AppResult.Error -> remoteResult.asError()
-        }
-    }
-
-    override suspend fun saveTrip(trip: Trip): AppResult<Unit, DataError> {
-        localDataSource.insertTrip(trip.toEntity())
-        return when (val remoteResult = remoteDataSource.createTrip(trip.toDto())) {
-            is AppResult.Success -> Unit.asSuccess()
-            is AppResult.Error -> remoteResult.asError()
-        }
+    override suspend fun syncSavedLocations(): AppResult<Unit, DataError> {
+        // Fetches from remote data source, updates local source, completes
+        return Unit.asSuccess()
     }
 }
 ```
 
 ---
 
-## 3. Domain Layer: Use Cases / Interactors
+## 4. Single-Responsibility Use Cases / Interactors
 
-- Each Use Case must have **one single responsibility**.
-- Name Use Cases with verb + noun (e.g. `GetTripsStreamUseCase`, `SyncTripsUseCase`, `CreateTripUseCase`).
-- Provide an `operator fun invoke` for idiomatic invocation:
+- Every use case must encompass exactly **one single domain responsibility**.
+- Name use cases using a precise verb + noun structure (e.g., `GetCurrentLocationUseCase`, `SaveDestinationUseCase`).
+- Provide an `operator fun invoke` for declarative, clear invocation:
 
 ```kotlin
-package com.falcon.tripingly.domain.usecase
+package com.falcon.tripingly.feature.map.domain.usecase
 
-import com.falcon.tripingly.domain.model.Trip
-import com.falcon.tripingly.domain.repository.TripRepository
-import kotlinx.coroutines.flow.Flow
+import com.falcon.tripingly.core.domain.error.DataError
+import com.falcon.tripingly.core.domain.result.AppResult
+import com.falcon.tripingly.feature.map.domain.model.Coordinates
+import com.falcon.tripingly.feature.map.domain.repository.LocationRepository
 
-class GetTripsStreamUseCase(
-    private val repository: TripRepository
+class GetCurrentLocationUseCase(
+    private val locationRepository: LocationRepository
 ) {
-    operator fun invoke(): Flow<List<Trip>> = repository.getTripsStream()
+    suspend operator fun invoke(): AppResult<Coordinates, DataError.Location> {
+        return locationRepository.getCurrentLocation()
+    }
 }
 ```
-
----
-
-## 4. SOLID Rules Checklist
-1. **Single Responsibility**: Each class has one reason to change. Use cases only contain single domain operations.
-2. **Open/Closed**: Features are extensible through abstractions (interfaces) without modifying core business logic.
-3. **Liskov Substitution**: Repository and DataSource implementations can be substituted with test fakes without altering program correctness.
-4. **Interface Segregation**: Keep interfaces focused. Split read and write operations if clients only need one.
-5. **Dependency Inversion**: High-level modules (Domain, Presentation) do not depend on low-level modules (SQL, Ktor). Both depend on abstractions.

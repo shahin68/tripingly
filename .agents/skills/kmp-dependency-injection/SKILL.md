@@ -8,122 +8,115 @@ description: >-
 
 # Dependency Injection in Kotlin Multiplatform (Koin)
 
-This guide defines the Dependency Injection architecture for `tripingly`.
+This guide defines the standards for Dependency Injection (DI) using Koin within the `tripingly` mobile codebase.
 
 ---
 
-## 1. Core DI Architecture & Strategy
+## 1. Modular DI & Architectural Separation
 
-Dependency Injection is used to achieve Inversion of Control (IoC) and enforce SOLID principles:
-- High-level modules depend on abstractions (interfaces in `domain`).
-- Low-level implementations (in `data`) are bound in DI modules.
-- ViewModels and Use Cases receive their dependencies via constructor injection.
+Dependency Injection is deployed to enforce SOLID principles and cleanly implement feature self-containment:
+- High-level modules interact purely with abstractions (Domain Interfaces).
+- Low-level modules (Data implementations) are encapsulated and bound within their respective feature DI files.
+- Feature components are self-contained. Every feature completely **owns its own feature configuration**, layers, and dependency registration.
+- Platform-specific instances (e.g., specific native data source configurations) are defined using `expect`/`actual` module mechanisms.
 
 ---
 
-## 2. Module Organization
+## 2. Dependency Injection Architecture Organization
 
-Organize DI modules strictly by layer and domain scope:
+Organize DI declarations strictly according to their feature, layer, and semantic architectural boundaries:
 
 ```
 di/
-├── CoreModule.kt            # Dispatchers, JSON serializers, Logger, App Settings
-├── NetworkModule.kt         # Ktor HttpClient, Auth interceptors, Base URL
-├── DatabaseModule.kt        # Room / SQLDelight database driver & DAOs
-├── FeatureTripsModule.kt    # DataSources, Repositories, UseCases, ViewModels for Trips
-└── InitKoin.kt              # Multiplatform initialization helper
+├── KoinModules.kt           # Expect declaration for platformModule() & common modules
+├── KoinModules.android.kt   # Actual declaration providing Android components (e.g., Context)
+├── KoinModules.ios.kt       # Actual declaration providing iOS component definitions
+└── InitKoin.kt              # Common multiplatform initialization entry helper
 ```
 
 ---
 
-## 3. Module Definitions Example
+## 3. Module Definitions & Conversions
 
-### Core & Network Modules
+### Common Feature Module Definitions
+Use constructor injection DSL (`singleOf`, `factoryOf`, `viewModelOf`) along with explicit interface binding (`bind`) to map your implementations to core domain contracts cleanly:
+
 ```kotlin
-package com.falcon.tripingly.core.di
+package com.falcon.tripingly.di
 
 import com.falcon.tripingly.core.coroutines.CoroutineDispatchers
 import com.falcon.tripingly.core.coroutines.DefaultCoroutineDispatchers
-import io.ktor.client.HttpClient
-import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
-import io.ktor.client.plugins.logging.LogLevel
-import io.ktor.client.plugins.logging.Logging
-import io.ktor.serialization.kotlinx.json.json
-import kotlinx.serialization.json.Json
-import org.koin.dsl.module
-
-val coreModule = module {
-    single<CoroutineDispatchers> { DefaultCoroutineDispatchers() }
-    single {
-        Json {
-            ignoreUnknownKeys = true
-            prettyPrint = false
-            isLenient = true
-        }
-    }
-}
-
-val networkModule = module {
-    single {
-        HttpClient {
-            install(ContentNegotiation) {
-                json(get())
-            }
-            install(Logging) {
-                level = LogLevel.INFO
-            }
-        }
-    }
-}
-```
-
-### Feature Module (Data + Domain + Presentation)
-```kotlin
-package com.falcon.tripingly.feature.trips.di
-
-import com.falcon.tripingly.data.datasource.local.TripLocalDataSource
-import com.falcon.tripingly.data.datasource.local.TripRoomDataSource
-import com.falcon.tripingly.data.datasource.remote.TripKtorDataSource
-import com.falcon.tripingly.data.datasource.remote.TripRemoteDataSource
-import com.falcon.tripingly.data.repository.TripRepositoryImpl
-import com.falcon.tripingly.domain.repository.TripRepository
-import com.falcon.tripingly.domain.usecase.GetTripsStreamUseCase
-import com.falcon.tripingly.domain.usecase.SyncTripsUseCase
-import com.falcon.tripingly.feature.trips.presentation.TripsViewModel
+import com.falcon.tripingly.feature.map.data.repository.LocationRepository
+import com.falcon.tripingly.feature.map.data.repository.LocationRepositoryImpl
+import com.falcon.tripingly.feature.map.domain.usecase.GetCurrentLocationUseCase
+import com.falcon.tripingly.feature.map.presentation.screen.MapViewModel
+import org.koin.core.module.Module
 import org.koin.core.module.dsl.factoryOf
 import org.koin.core.module.dsl.singleOf
 import org.koin.core.module.dsl.viewModelOf
 import org.koin.dsl.bind
 import org.koin.dsl.module
 
-val featureTripsModule = module {
-    // Data Sources
-    singleOf(::TripRoomDataSource) bind TripLocalDataSource::class
-    singleOf(::TripKtorDataSource) bind TripRemoteDataSource::class
+expect fun platformModule(): Module
 
-    // Repositories (Bind interface to implementation)
-    singleOf(::TripRepositoryImpl) bind TripRepository::class
+val coreModule = module {
+    single<CoroutineDispatchers> { DefaultCoroutineDispatchers() }
+}
 
-    // Use Cases (factory = new instance each injection)
-    factoryOf(::GetTripsStreamUseCase)
-    factoryOf(::SyncTripsUseCase)
+val mapModule = module {
+    // Repositories bound strictly to their domain contracts
+    singleOf(::LocationRepositoryImpl) bind LocationRepository::class
+    
+    // Factories for Use Cases
+    factoryOf(::GetCurrentLocationUseCase)
+    
+    // ViewModels using standard Lifecycle ViewModel DSL in KMP
+    viewModelOf(::MapViewModel)
+}
+```
 
-    // ViewModel (using androidx.lifecycle viewmodel DSL in KMP)
-    viewModelOf(::TripsViewModel)
+### Platform Module Initializations
+
+#### Android Setup (`androidMain`)
+```kotlin
+package com.falcon.tripingly.di
+
+import com.falcon.tripingly.feature.map.data.datasource.AndroidLocationDataSource
+import com.falcon.tripingly.feature.map.data.datasource.LocationDataSource
+import org.koin.core.module.Module
+import org.koin.dsl.bind
+import org.koin.dsl.module
+
+actual fun platformModule(): Module = module {
+    // Injects Android Application Context automatically via get()
+    single { AndroidLocationDataSource(get()) } bind LocationDataSource::class
+}
+```
+
+#### iOS Setup (`iosMain`)
+```kotlin
+package com.falcon.tripingly.di
+
+import com.falcon.tripingly.feature.map.data.datasource.IosLocationDataSource
+import com.falcon.tripingly.feature.map.data.datasource.LocationDataSource
+import org.koin.core.module.Module
+import org.koin.core.module.dsl.singleOf
+import org.koin.dsl.bind
+import org.koin.dsl.module
+
+actual fun platformModule(): Module = module {
+    singleOf(::IosLocationDataSource) bind LocationDataSource::class
 }
 ```
 
 ---
 
-## 4. Multiplatform Initialization
+## 4. Multiplatform Bootstrapping Workflow
 
-### Common Entry Point (`commonMain`)
+### Common Init Helper (`commonMain`)
 ```kotlin
 package com.falcon.tripingly.di
 
-import com.falcon.tripingly.core.di.coreModule
-import com.falcon.tripingly.core.di.networkModule
-import com.falcon.tripingly.feature.trips.di.featureTripsModule
 import org.koin.core.context.startKoin
 import org.koin.dsl.KoinAppDeclaration
 
@@ -132,16 +125,22 @@ fun initKoin(appDeclaration: KoinAppDeclaration = {}) {
         appDeclaration()
         modules(
             coreModule,
-            networkModule,
-            featureTripsModule
+            platformModule(),
+            mapModule
         )
     }
 }
 ```
 
-### Android Integration (`androidMain`)
+### Android Native Application Binding
 ```kotlin
-// In Android Application class:
+package com.falcon.tripingly
+
+import android.app.Application
+import com.falcon.tripingly.di.initKoin
+import org.koin.android.ext.koin.androidContext
+import org.koin.android.ext.koin.androidLogger
+
 class TripinglyApplication : Application() {
     override fun onCreate() {
         super.onCreate()
@@ -153,15 +152,9 @@ class TripinglyApplication : Application() {
 }
 ```
 
-### iOS Integration (`iosMain`)
-```kotlin
-// In iOS entry or Swift Main App:
-fun initKoinIos() = initKoin()
-```
-
 ---
 
-## 5. DI Best Practices
-1. **Never pass the DI container**: Avoid `get()` or service locator calls inside ViewModels or Use Cases. Always use constructor injection.
-2. **Bind to interfaces**: Repositories must be bound to their domain interfaces (`bind TripRepository::class`).
-3. **Keep `commonMain` pure**: Platform-specific dependencies (e.g. database drivers or Android Context) should be provided via platform modules and injected into common interfaces.
+## 5. Idiomatic DI Practices
+1. **No Service Locating**: Never invoke `get()` or pass the Koin container instance directly inside ViewModels, Use Cases, or Screen components. Stick purely to clean constructor injection.
+2. **Bind to Domain Abstractions**: Always map data layer implementations to domain layer interfaces (e.g., `bind LocationRepository::class`).
+3. **Pure Presentation Architecture**: In Compose Multiplatform screens, leverage the idiomatic `koinViewModel<T>()` utility function to resolve ViewModels directly inside your composable hierarchy.

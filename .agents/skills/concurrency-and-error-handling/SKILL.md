@@ -7,22 +7,27 @@ description: >-
 
 # Structured Concurrency & Error Handling in KMP
 
-This guide sets the rules for Kotlin coroutines, concurrency lifecycles, and exception handling in `tripingly`.
+This guide outlines the rules for Kotlin Coroutines, asynchronous lifecycles, structured concurrency, and exception safety in `tripingly`.
 
 ---
 
-## 1. Structured Concurrency Rules
+## 1. Rules of Structured Concurrency
 
-### Rule 1: Always Anchor to a Lifecycle Scope
-- **ViewModels**: Always use `viewModelScope`.
-- **Composables**: Use `rememberCoroutineScope()` for user-triggered gestures or `LaunchedEffect` for state-driven side effects.
-- **Never use `GlobalScope`** or orphan `CoroutineScope()` without a bound `Job`.
-- Repository & DataSource methods must be `suspend` functions or return `Flow<T>`, running on the caller's context or explicitly switching dispatchers.
+### Rule 1: Anchor Scopes to Proper lifecycles
+- **ViewModels**: Always utilize `viewModelScope` for execution.
+- **UI Layer / Composables**: Always rely on `rememberCoroutineScope()` for user-triggered micro-tasks or `LaunchedEffect` for state-driven lifecycle effects.
+- **Anti-Pattern**: Never use `GlobalScope` or instantiate a raw, unbound `CoroutineScope()` without a managed lifecycle parent `Job`.
 
-### Rule 2: Coroutine Dispatcher Injection
-Never hardcode `Dispatchers.IO` or `Dispatchers.Default` directly inside business logic or repositories. Always inject dispatchers via an interface or abstraction for deterministic unit testing:
+### Rule 2: Explicit Coroutine Dispatcher Injection
+Do not hardcode `Dispatchers.IO` or `Dispatchers.Default` within repositories, data sources, or use cases. Always inject a `CoroutineDispatchers` abstraction. This preserves structured concurrency boundary constraints and enables deterministic synchronous verification during unit testing:
 
 ```kotlin
+package com.falcon.tripingly.core.coroutines
+
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.IO
+
 interface CoroutineDispatchers {
     val main: CoroutineDispatcher
     val io: CoroutineDispatcher
@@ -38,123 +43,77 @@ class DefaultCoroutineDispatchers : CoroutineDispatchers {
 }
 ```
 
-### Rule 3: Use `supervisorScope` for Independent Operations
-When launching parallel tasks where failure of one child should not cancel other sibling tasks, use `supervisorScope`:
+### Rule 3: Use `supervisorScope` to Isolate Failures
+When launching independent concurrent sub-tasks where a fault in one child should not cancel neighboring sibling routines, wrap execution using `supervisorScope`:
 
 ```kotlin
-suspend fun syncAllData() = supervisorScope {
-    val tripsDeferred = async { syncTrips() }
-    val userProfileDeferred = async { syncProfile() }
-
-    // Individual await handling
+suspend fun syncModuleData() = supervisorScope {
+    val mapCacheJob = launch { syncMapMetadata() }
+    val userProfileJob = launch { syncUserProfile() }
 }
 ```
 
 ---
 
-## 2. Exception & Error Handling Rules
+## 2. Robust Exception Management (Never Swallow Cancellation)
 
-### Rule 1: NEVER Swallow `CancellationException`
-In Kotlin coroutines, cooperative cancellation relies on `CancellationException`. Catching `Throwable` or `Exception` without re-throwing `CancellationException` breaks structured concurrency, prevents jobs from being cancelled, and leads to memory leaks:
+### Rule 1: Always Re-throw `CancellationException`
+Kotlin coroutines rely on cooperative cancellation via `CancellationException`. Catching generic `Throwable` or broad `Exception` instances without explicitly re-throwing `CancellationException` breaks structured concurrency mechanics, leaves orphan routines processing indefinitely, and results in severe memory leaks:
 
 ```kotlin
-// ❌ DANGEROUS: SWALLOWS CANCELLATION
+// ❌ ANTI-PATTERN: DESTROYS STRUCTURED CONCURRENCY
 try {
-    apiClient.fetchData()
+    locationDataSource.getLastKnownOrCurrentLocation()
 } catch (e: Exception) {
-    logger.e(e) { "Error fetching data" }
+    logger.e(e) { "Failed getting location" }
 }
 
-// ✅ CORRECT: RE-THROWS CANCELLATION
+// ✅ MANDATORY RE-THROW PATTERN
 import kotlin.coroutines.cancellation.CancellationException
 
 try {
-    apiClient.fetchData()
+    return locationDataSource.getLastKnownOrCurrentLocation()
 } catch (e: CancellationException) {
-    throw e // Must rethrow to allow coroutine cancellation to propagate!
+    throw e // Must explicitly re-throw to allow structured teardown!
 } catch (e: Exception) {
-    // Safely handle domain/network errors
-    return AppResult.Error(DataError.Network.fromException(e))
-}
-```
-
-Alternatively, use a helper extension:
-```kotlin
-inline fun <T, R> T.runCatchingNonCancellation(block: T.() -> R): Result<R> {
-    return try {
-        Result.success(block())
-    } catch (e: CancellationException) {
-        throw e
-    } catch (e: Throwable) {
-        Result.failure(e)
-    }
+    return AppResult.Error(DataError.Location.Unknown(e.message))
 }
 ```
 
 ---
 
-## 3. Typed Error Modeling (`AppResult`)
+## 3. Pure Domain Modeling via `AppResult`
 
-Never throw exceptions for normal control flow or leak raw network/HTTP exceptions into Domain or UI layers. Use typed sealed results:
+Never lean on standard exception throws to govern ordinary control logic flows or propagate low-level network/database crashes directly into domain or presentation code. Always utilize a strongly typed result envelope:
 
 ```kotlin
 package com.falcon.tripingly.core.domain.result
+
+import com.falcon.tripingly.core.domain.error.RootError
 
 sealed interface AppResult<out D, out E : RootError> {
     data class Success<out D>(val data: D) : AppResult<D, Nothing>
     data class Error<out E : RootError>(val error: E) : AppResult<Nothing, E>
 }
 
-inline fun <T, E : RootError> AppResult<T, E>.onSuccess(action: (T) -> Unit): AppResult<T, E> {
-    if (this is AppResult.Success) action(data)
-    return this
-}
-
-inline fun <T, E : RootError> AppResult<T, E>.onError(action: (E) -> Unit): AppResult<T, E> {
-    if (this is AppResult.Error) action(error)
-    return this
-}
-
 fun <D> D.asSuccess(): AppResult.Success<D> = AppResult.Success(this)
 fun <E : RootError> E.asError(): AppResult.Error<E> = AppResult.Error(this)
 ```
 
-### Typed Error Hierarchy
-```kotlin
-package com.falcon.tripingly.core.domain.error
-
-sealed interface RootError
-
-sealed interface DataError : RootError {
-    sealed interface Network : DataError {
-        data object RequestTimeout : Network
-        data object Unauthorized : Network
-        data object ServerError : Network
-        data object NoInternet : Network
-        data class Unknown(val message: String?) : Network
-    }
-
-    sealed interface Local : DataError {
-        data object DiskFull : Local
-        data object NotFound : Local
-        data class Unknown(val message: String?) : Local
-    }
-}
-```
-
 ---
 
-## 4. Error Mapping at Layer Boundaries
+## 4. Architectural Error Mapping Flow
+Low-level frameworks or platform execution wrappers are transformed instantly at data layer boundaries, isolating upper layers from concrete package frameworks:
 
 ```
-[ Remote Data Source ] (Throws Ktor / Socket Exceptions)
-         │
-         ▼ (Catches non-cancellation exceptions & maps to DataError.Network)
-[ Repository Implementation ] (Returns AppResult<DomainModel, DataError>)
-         │
-         ▼ (Evaluates business logic)
-[ Domain Use Case ] (Returns AppResult<DomainModel, DomainError>)
-         │
-         ▼ (Translates DomainError to localized UI Text / Snackbar message)
-[ Presentation ViewModel ] (Exposes UiState.errorMessage to Composable)
+[ Concrete SDK / HttpClient ] ── Throws raw platform exceptions
+              │
+              ▼ (Data Boundary: Catch non-cancellation errors & map to DataError)
+[ Repository Implementation ] ── Returns AppResult<DomainModel, DataError>
+              │
+              ▼ (Domain Layer: Pure business evaluation)
+[ Domain Use Case / Interactor ]
+              │
+              ▼ (Presentation Layer: Maps Error type to localized UI message strings)
+[ Presentation ViewModel ] ── Updates UI State with readable text strings
 ```
