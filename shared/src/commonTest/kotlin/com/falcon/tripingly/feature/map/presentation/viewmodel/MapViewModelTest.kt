@@ -9,9 +9,9 @@ import com.falcon.tripingly.core.domain.result.asSuccess
 import com.falcon.tripingly.feature.map.domain.model.Coordinates
 import com.falcon.tripingly.feature.map.data.repository.LocationRepository
 import com.falcon.tripingly.feature.map.domain.usecase.GetCurrentLocationUseCase
-import com.falcon.tripingly.feature.map.presentation.mvi.MapUiAction
-import com.falcon.tripingly.feature.map.presentation.mvi.MapUiEvent
 import com.falcon.tripingly.feature.map.presentation.screen.MapViewModel
+import com.falcon.tripingly.feature.map.presentation.screen.MapViewModel.Action
+import com.falcon.tripingly.feature.map.presentation.screen.MapViewModel.Event
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
@@ -75,7 +75,7 @@ class MapViewModelTest {
         val userCoords = Coordinates(52.5200, 13.4050) // Berlin
         fakeLocationRepository.locationResult = userCoords.asSuccess()
 
-        viewModel.onAction(MapUiAction.OnPermissionResult(isGranted = true))
+        viewModel.onAction(Action.OnPermissionResult(isGranted = true))
         testScheduler.advanceUntilIdle()
 
         val state = viewModel.uiState.value
@@ -88,11 +88,11 @@ class MapViewModelTest {
     @Test
     fun `navigating to location updates camera target and emits AnimateCamera event`() = runTest(testDispatcher) {
         viewModel.events.test {
-            viewModel.onAction(MapUiAction.NavigateToLocation(Coordinates.Tokyo, 14f))
+            viewModel.onAction(Action.NavigateToLocation(Coordinates.Tokyo, 14f))
             testScheduler.advanceUntilIdle()
 
             val event = awaitItem()
-            assertTrue(event is MapUiEvent.AnimateCamera)
+            assertTrue(event is Event.AnimateCamera)
             assertEquals(Coordinates.Tokyo, event.coordinates)
             assertEquals(14f, event.zoom)
 
@@ -106,15 +106,15 @@ class MapViewModelTest {
     fun `map click adds numbered markers sequentially for trip planning`() = runTest(testDispatcher) {
         viewModel.events.test {
             // Add Stop #1
-            viewModel.onAction(MapUiAction.OnMapClick(Coordinates.Paris))
+            viewModel.onAction(Action.OnMapClick(Coordinates.Paris))
             val event1 = awaitItem()
-            assertTrue(event1 is MapUiEvent.ShowSnackbar)
+            assertTrue(event1 is Event.ShowSnackbar)
             assertTrue(event1.message.contains("Stop #1"))
 
             // Add Stop #2
-            viewModel.onAction(MapUiAction.OnMapClick(Coordinates.London))
+            viewModel.onAction(Action.OnMapClick(Coordinates.London))
             val event2 = awaitItem()
-            assertTrue(event2 is MapUiEvent.ShowSnackbar)
+            assertTrue(event2 is Event.ShowSnackbar)
             assertTrue(event2.message.contains("Stop #2"))
 
             val state = viewModel.uiState.value
@@ -132,16 +132,16 @@ class MapViewModelTest {
     @Test
     fun `removing a marker re-numbers remaining markers to preserve trip sequence`() = runTest(testDispatcher) {
         // Add 3 stops
-        viewModel.onAction(MapUiAction.OnMapClick(Coordinates.Paris))
-        viewModel.onAction(MapUiAction.OnMapClick(Coordinates.London))
-        viewModel.onAction(MapUiAction.OnMapClick(Coordinates.Rome))
+        viewModel.onAction(Action.OnMapClick(Coordinates.Paris))
+        viewModel.onAction(Action.OnMapClick(Coordinates.London))
+        viewModel.onAction(Action.OnMapClick(Coordinates.Rome))
 
         val markers = viewModel.uiState.value.markers
         assertEquals(3, markers.size)
         val stop1Id = markers[0].id
 
         // Remove Stop #1
-        viewModel.onAction(MapUiAction.OnRemoveMarker(stop1Id))
+        viewModel.onAction(Action.OnRemoveMarker(stop1Id))
 
         val remaining = viewModel.uiState.value.markers
         assertEquals(2, remaining.size)
@@ -158,11 +158,11 @@ class MapViewModelTest {
 
     @Test
     fun `clear all markers empties trip stops`() = runTest(testDispatcher) {
-        viewModel.onAction(MapUiAction.OnMapClick(Coordinates.Paris))
-        viewModel.onAction(MapUiAction.OnMapClick(Coordinates.Rome))
+        viewModel.onAction(Action.OnMapClick(Coordinates.Paris))
+        viewModel.onAction(Action.OnMapClick(Coordinates.Rome))
         assertEquals(2, viewModel.uiState.value.markers.size)
 
-        viewModel.onAction(MapUiAction.ClearAllMarkers)
+        viewModel.onAction(Action.ClearAllMarkers)
         assertEquals(0, viewModel.uiState.value.markers.size)
         assertNull(viewModel.uiState.value.selectedMarker)
     }
@@ -171,7 +171,7 @@ class MapViewModelTest {
     fun `location failure sets appropriate error message without crashing`() = runTest(testDispatcher) {
         fakeLocationRepository.locationResult = DataError.Location.PermissionDenied.asError()
 
-        viewModel.onAction(MapUiAction.OnPermissionResult(isGranted = true))
+        viewModel.onAction(Action.OnPermissionResult(isGranted = true))
         testScheduler.advanceUntilIdle()
 
         val state = viewModel.uiState.value
