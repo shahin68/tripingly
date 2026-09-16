@@ -7,10 +7,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.falcon.tripingly.feature.map.presentation.mvi.MapUiAction
-import com.falcon.tripingly.feature.map.presentation.mvi.MapUiEvent
 import com.falcon.tripingly.feature.map.presentation.permission.rememberLocationPermissionLauncher
-import com.falcon.tripingly.feature.map.presentation.viewmodel.MapViewModel
+import com.falcon.tripingly.feature.map.presentation.screen.MapViewModel.Action
+import com.falcon.tripingly.feature.map.presentation.screen.MapViewModel.Event
 
 @Composable
 fun MapRoute(
@@ -21,20 +20,20 @@ fun MapRoute(
     val snackbarHostState = remember { SnackbarHostState() }
 
     val requestPermission = rememberLocationPermissionLauncher { isGranted ->
-        viewModel.onAction(MapUiAction.OnPermissionResult(isGranted))
+        viewModel.onAction(Action.OnPermissionResult(isGranted))
     }
 
     // Handle single-time ViewModel events
     LaunchedEffect(viewModel.events) {
         viewModel.events.collect { event ->
             when (event) {
-                is MapUiEvent.RequestPermission -> {
+                is Event.RequestPermission -> {
                     requestPermission()
                 }
-                is MapUiEvent.ShowSnackbar -> {
+                is Event.ShowSnackbar -> {
                     snackbarHostState.showSnackbar(event.message)
                 }
-                is MapUiEvent.AnimateCamera -> {
+                is Event.AnimateCamera -> {
                     // Handled reactively through state.cameraTarget and state.zoomLevel in MapView
                 }
             }
@@ -43,7 +42,7 @@ fun MapRoute(
 
     // On first composition, trigger location request to load user location as default
     LaunchedEffect(Unit) {
-        viewModel.onAction(MapUiAction.RequestLocationPermission)
+        viewModel.onAction(Action.RequestLocationPermission)
     }
 
     MapScreen(

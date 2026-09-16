@@ -1,4 +1,4 @@
-package com.falcon.tripingly.feature.map.domain.repository
+package com.falcon.tripingly.feature.map.data.repository
 
 import com.falcon.tripingly.core.domain.error.DataError
 import com.falcon.tripingly.core.domain.result.AppResult

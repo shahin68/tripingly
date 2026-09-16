@@ -35,10 +35,8 @@ import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.FloatingActionButton
-import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -55,13 +53,13 @@ import com.falcon.tripingly.core.presentation.theme.spacing
 import com.falcon.tripingly.feature.map.domain.model.Coordinates
 import com.falcon.tripingly.feature.map.domain.model.MapMarker
 import com.falcon.tripingly.feature.map.presentation.component.GoogleMapView
-import com.falcon.tripingly.feature.map.presentation.mvi.MapUiAction
-import com.falcon.tripingly.feature.map.presentation.mvi.MapUiState
+import com.falcon.tripingly.feature.map.presentation.screen.MapViewModel.Action
+import com.falcon.tripingly.feature.map.presentation.screen.MapViewModel.State
 
 @Composable
 fun MapScreen(
-    state: MapUiState,
-    onAction: (MapUiAction) -> Unit,
+    state: State,
+    onAction: (Action) -> Unit,
     snackbarHostState: SnackbarHostState,
     modifier: Modifier = Modifier
 ) {
@@ -80,10 +78,10 @@ fun MapScreen(
                 zoomLevel = state.zoomLevel,
                 markers = state.markers,
                 onMapClick = { coords ->
-                    onAction(MapUiAction.OnMapClick(coords))
+                    onAction(Action.OnMapClick(coords))
                 },
                 onMarkerClick = { marker ->
-                    onAction(MapUiAction.OnMarkerClick(marker))
+                    onAction(Action.OnMarkerClick(marker))
                 }
             )
 
@@ -129,7 +127,7 @@ fun MapScreen(
                                 modifier = Modifier.weight(1f)
                             )
                             TextButton(
-                                onClick = { onAction(MapUiAction.DismissError) }
+                                onClick = { onAction(Action.DismissError) }
                             ) {
                                 Text("Dismiss", color = MaterialTheme.colorScheme.onErrorContainer)
                             }
@@ -140,7 +138,7 @@ fun MapScreen(
 
             // 4. Center-on-Location FAB
             FloatingActionButton(
-                onClick = { onAction(MapUiAction.CenterOnUserLocation) },
+                onClick = { onAction(Action.CenterOnUserLocation) },
                 shape = CircleShape,
                 containerColor = MaterialTheme.colorScheme.primaryContainer,
                 contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
@@ -180,9 +178,9 @@ fun MapScreen(
                 TripItineraryCard(
                     markers = state.markers,
                     selectedMarker = state.selectedMarker,
-                    onMarkerClick = { onAction(MapUiAction.OnMarkerClick(it)) },
-                    onRemoveMarker = { onAction(MapUiAction.OnRemoveMarker(it)) },
-                    onClearAll = { onAction(MapUiAction.ClearAllMarkers) }
+                    onMarkerClick = { onAction(Action.OnMarkerClick(it)) },
+                    onRemoveMarker = { onAction(Action.OnRemoveMarker(it)) },
+                    onClearAll = { onAction(Action.ClearAllMarkers) }
                 )
             }
         }
@@ -191,8 +189,8 @@ fun MapScreen(
 
 @Composable
 private fun TopSurfingBar(
-    state: MapUiState,
-    onAction: (MapUiAction) -> Unit,
+    state: State,
+    onAction: (Action) -> Unit,
     modifier: Modifier = Modifier
 ) {
     ElevatedCard(
@@ -237,27 +235,27 @@ private fun TopSurfingBar(
                 SurfChip(
                     title = "Paris 🇫🇷",
                     coordinates = Coordinates.Paris,
-                    onSelect = { onAction(MapUiAction.NavigateToLocation(it, 13f)) }
+                    onSelect = { onAction(Action.NavigateToLocation(it, 13f)) }
                 )
                 SurfChip(
                     title = "Tokyo 🇯🇵",
                     coordinates = Coordinates.Tokyo,
-                    onSelect = { onAction(MapUiAction.NavigateToLocation(it, 13f)) }
+                    onSelect = { onAction(Action.NavigateToLocation(it, 13f)) }
                 )
                 SurfChip(
                     title = "New York 🇺🇸",
                     coordinates = Coordinates.NewYork,
-                    onSelect = { onAction(MapUiAction.NavigateToLocation(it, 13f)) }
+                    onSelect = { onAction(Action.NavigateToLocation(it, 13f)) }
                 )
                 SurfChip(
                     title = "London 🇬🇧",
                     coordinates = Coordinates.London,
-                    onSelect = { onAction(MapUiAction.NavigateToLocation(it, 13f)) }
+                    onSelect = { onAction(Action.NavigateToLocation(it, 13f)) }
                 )
                 SurfChip(
                     title = "Rome 🇮🇹",
                     coordinates = Coordinates.Rome,
-                    onSelect = { onAction(MapUiAction.NavigateToLocation(it, 13f)) }
+                    onSelect = { onAction(Action.NavigateToLocation(it, 13f)) }
                 )
             }
         }

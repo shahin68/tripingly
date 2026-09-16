@@ -7,10 +7,11 @@ import com.falcon.tripingly.core.domain.result.AppResult
 import com.falcon.tripingly.core.domain.result.asError
 import com.falcon.tripingly.core.domain.result.asSuccess
 import com.falcon.tripingly.feature.map.domain.model.Coordinates
-import com.falcon.tripingly.feature.map.domain.repository.LocationRepository
+import com.falcon.tripingly.feature.map.data.repository.LocationRepository
 import com.falcon.tripingly.feature.map.domain.usecase.GetCurrentLocationUseCase
 import com.falcon.tripingly.feature.map.presentation.mvi.MapUiAction
 import com.falcon.tripingly.feature.map.presentation.mvi.MapUiEvent
+import com.falcon.tripingly.feature.map.presentation.screen.MapViewModel
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher

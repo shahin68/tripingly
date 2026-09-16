@@ -6,7 +6,7 @@ import com.falcon.tripingly.core.coroutines.DefaultCoroutineDispatchers
 import com.falcon.tripingly.feature.map.data.datasource.IosLocationDataSource
 import com.falcon.tripingly.feature.map.data.repository.LocationRepositoryImpl
 import com.falcon.tripingly.feature.map.domain.usecase.GetCurrentLocationUseCase
-import com.falcon.tripingly.feature.map.presentation.viewmodel.MapViewModel
+import com.falcon.tripingly.feature.map.presentation.screen.MapViewModel
 
 @Composable
 actual fun rememberMapViewModel(): MapViewModel {

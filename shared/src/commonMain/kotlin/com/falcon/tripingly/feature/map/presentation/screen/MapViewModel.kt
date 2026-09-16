@@ -1,5 +1,6 @@
-package com.falcon.tripingly.feature.map.presentation.viewmodel
+package com.falcon.tripingly.feature.map.presentation.screen
 
+import androidx.compose.runtime.Immutable
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.falcon.tripingly.core.coroutines.CoroutineDispatchers
@@ -9,9 +10,6 @@ import com.falcon.tripingly.core.domain.result.AppResult
 import com.falcon.tripingly.feature.map.domain.model.Coordinates
 import com.falcon.tripingly.feature.map.domain.model.MapMarker
 import com.falcon.tripingly.feature.map.domain.usecase.GetCurrentLocationUseCase
-import com.falcon.tripingly.feature.map.presentation.mvi.MapUiAction
-import com.falcon.tripingly.feature.map.presentation.mvi.MapUiEvent
-import com.falcon.tripingly.feature.map.presentation.mvi.MapUiState
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -20,46 +18,47 @@ import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlin.coroutines.cancellation.CancellationException
+import kotlin.math.round
 
 class MapViewModel(
     private val getCurrentLocationUseCase: GetCurrentLocationUseCase,
     private val dispatchers: CoroutineDispatchers = DefaultCoroutineDispatchers()
 ) : ViewModel() {
 
-    private val _uiState = MutableStateFlow(MapUiState())
-    val uiState: StateFlow<MapUiState> = _uiState.asStateFlow()
+    private val _uiState = MutableStateFlow(State())
+    val uiState: StateFlow<State> = _uiState.asStateFlow()
 
-    private val _events = Channel<MapUiEvent>(capacity = Channel.BUFFERED)
+    private val _events = Channel<Event>(capacity = Channel.BUFFERED)
     val events = _events.receiveAsFlow()
 
-    fun onAction(action: MapUiAction) {
+    fun onAction(action: Action) {
         when (action) {
-            is MapUiAction.RequestLocationPermission -> {
-                sendEvent(MapUiEvent.RequestPermission)
+            is Action.RequestLocationPermission -> {
+                sendEvent(Event.RequestPermission)
             }
-            is MapUiAction.OnPermissionResult -> {
+            is Action.OnPermissionResult -> {
                 handlePermissionResult(action.isGranted)
             }
-            is MapUiAction.CenterOnUserLocation -> {
+            is Action.CenterOnUserLocation -> {
                 centerOnUserLocation()
             }
-            is MapUiAction.NavigateToLocation -> {
+            is Action.NavigateToLocation -> {
                 navigateTo(action.coordinates, action.zoom)
             }
-            is MapUiAction.OnMapClick -> {
+            is Action.OnMapClick -> {
                 addTripMarker(action.coordinates)
             }
-            is MapUiAction.OnMarkerClick -> {
+            is Action.OnMarkerClick -> {
                 _uiState.update { it.copy(selectedMarker = action.marker) }
             }
-            is MapUiAction.OnRemoveMarker -> {
+            is Action.OnRemoveMarker -> {
                 removeTripMarker(action.markerId)
             }
-            is MapUiAction.ClearAllMarkers -> {
+            is Action.ClearAllMarkers -> {
                 _uiState.update { it.copy(markers = emptyList(), selectedMarker = null) }
-                sendEvent(MapUiEvent.ShowSnackbar("Cleared all trip stops"))
+                sendEvent(Event.ShowSnackbar("Cleared all trip stops"))
             }
-            is MapUiAction.DismissError -> {
+            is Action.DismissError -> {
                 _uiState.update { it.copy(errorMessage = null) }
             }
         }
@@ -103,7 +102,7 @@ class MapViewModel(
                             )
                         }
                         if (centerOnTarget) {
-                            sendEvent(MapUiEvent.AnimateCamera(coords, 15f))
+                            sendEvent(Event.AnimateCamera(coords, 15f))
                         }
                     }
                     is AppResult.Error -> {
@@ -135,7 +134,7 @@ class MapViewModel(
         _uiState.update {
             it.copy(cameraTarget = coordinates, zoomLevel = zoom)
         }
-        sendEvent(MapUiEvent.AnimateCamera(coordinates, zoom))
+        sendEvent(Event.AnimateCamera(coordinates, zoom))
     }
 
     private fun addTripMarker(coordinates: Coordinates) {
@@ -147,7 +146,11 @@ class MapViewModel(
             position = coordinates,
             title = "Stop #$nextOrder",
             orderNumber = nextOrder,
-            snippet = "Lat: ${formatCoordinate(coordinates.latitude)}, Lng: ${formatCoordinate(coordinates.longitude)}"
+            snippet = "Lat: ${formatCoordinate(coordinates.latitude)}, Lng: ${
+                formatCoordinate(
+                    coordinates.longitude
+                )
+            }"
         )
 
         _uiState.update { state ->
@@ -156,7 +159,7 @@ class MapViewModel(
                 selectedMarker = newMarker
             )
         }
-        sendEvent(MapUiEvent.ShowSnackbar("Added Stop #$nextOrder to trip itinerary"))
+        sendEvent(Event.ShowSnackbar("Added Stop #$nextOrder to trip itinerary"))
     }
 
     private fun removeTripMarker(markerId: String) {
@@ -175,17 +178,47 @@ class MapViewModel(
                 selectedMarker = if (state.selectedMarker?.id == markerId) null else state.selectedMarker
             )
         }
-        sendEvent(MapUiEvent.ShowSnackbar("Removed stop from trip"))
+        sendEvent(Event.ShowSnackbar("Removed stop from trip"))
     }
 
     private fun formatCoordinate(value: Double): String {
-        val rounded = kotlin.math.round(value * 10000) / 10000.0
+        val rounded = round(value * 10000) / 10000.0
         return rounded.toString()
     }
 
-    private fun sendEvent(event: MapUiEvent) {
+    private fun sendEvent(event: Event) {
         viewModelScope.launch(dispatchers.main) {
             _events.send(event)
         }
+    }
+
+    @Immutable
+    data class State(
+        val currentLocation: Coordinates? = null,
+        val cameraTarget: Coordinates = Coordinates.Paris,
+        val zoomLevel: Float = 13f,
+        val markers: List<MapMarker> = emptyList(),
+        val isPermissionGranted: Boolean = false,
+        val isLoadingLocation: Boolean = false,
+        val selectedMarker: MapMarker? = null,
+        val errorMessage: String? = null
+    )
+
+    sealed interface Event {
+        data class AnimateCamera(val coordinates: Coordinates, val zoom: Float) : Event
+        data object RequestPermission : Event
+        data class ShowSnackbar(val message: String) : Event
+    }
+
+    sealed interface Action {
+        data object RequestLocationPermission : Action
+        data class OnPermissionResult(val isGranted: Boolean) : Action
+        data class NavigateToLocation(val coordinates: Coordinates, val zoom: Float = 13f) : Action
+        data object CenterOnUserLocation : Action
+        data class OnMapClick(val coordinates: Coordinates) : Action
+        data class OnMarkerClick(val marker: MapMarker) : Action
+        data class OnRemoveMarker(val markerId: String) : Action
+        data object ClearAllMarkers : Action
+        data object DismissError : Action
     }
 }
