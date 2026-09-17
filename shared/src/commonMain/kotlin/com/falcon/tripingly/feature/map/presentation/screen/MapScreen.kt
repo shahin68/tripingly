@@ -6,7 +6,6 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -25,15 +24,12 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ElevatedCard
-import androidx.compose.material3.FilterChip
-import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -44,10 +40,12 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.falcon.tripingly.core.presentation.theme.spacing
 import com.falcon.tripingly.feature.map.domain.model.Coordinates
@@ -85,17 +83,6 @@ fun MapScreen(
                 }
             )
 
-            // 2. Top Exploration & World Surfing Bar (respects status bar)
-            TopSurfingBar(
-                state = state,
-                onAction = onAction,
-                modifier = Modifier
-                    .align(Alignment.TopCenter)
-                    .windowInsetsPadding(WindowInsets.statusBars)
-                    .fillMaxWidth()
-                    .padding(MaterialTheme.spacing.medium)
-            )
-
             // 3. Error Banner (if error present)
             AnimatedVisibility(
                 visible = state.errorMessage != null,
@@ -104,7 +91,7 @@ fun MapScreen(
                 modifier = Modifier
                     .align(Alignment.TopCenter)
                     .windowInsetsPadding(WindowInsets.statusBars)
-                    .padding(top = 90.dp, start = 16.dp, end = 16.dp)
+                    .padding(top = 16.dp, start = 16.dp, end = 16.dp)
             ) {
                 state.errorMessage?.let { error ->
                     Card(
@@ -185,98 +172,6 @@ fun MapScreen(
             }
         }
     }
-}
-
-@Composable
-private fun TopSurfingBar(
-    state: State,
-    onAction: (Action) -> Unit,
-    modifier: Modifier = Modifier
-) {
-    ElevatedCard(
-        modifier = modifier,
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.elevatedCardColors(
-            containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f)
-        )
-    ) {
-        Column(
-            modifier = Modifier.padding(12.dp)
-        ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Column {
-                    Text(
-                        text = "Tripingly Maps",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                    Text(
-                        text = "Tap map to add numbered stops",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            // Quick destination surf chips
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .horizontalScroll(rememberScrollState()),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                SurfChip(
-                    title = "Paris 🇫🇷",
-                    coordinates = Coordinates.Paris,
-                    onSelect = { onAction(Action.NavigateToLocation(it, 13f)) }
-                )
-                SurfChip(
-                    title = "Tokyo 🇯🇵",
-                    coordinates = Coordinates.Tokyo,
-                    onSelect = { onAction(Action.NavigateToLocation(it, 13f)) }
-                )
-                SurfChip(
-                    title = "New York 🇺🇸",
-                    coordinates = Coordinates.NewYork,
-                    onSelect = { onAction(Action.NavigateToLocation(it, 13f)) }
-                )
-                SurfChip(
-                    title = "London 🇬🇧",
-                    coordinates = Coordinates.London,
-                    onSelect = { onAction(Action.NavigateToLocation(it, 13f)) }
-                )
-                SurfChip(
-                    title = "Rome 🇮🇹",
-                    coordinates = Coordinates.Rome,
-                    onSelect = { onAction(Action.NavigateToLocation(it, 13f)) }
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun SurfChip(
-    title: String,
-    coordinates: Coordinates,
-    onSelect: (Coordinates) -> Unit
-) {
-    FilterChip(
-        selected = false,
-        onClick = { onSelect(coordinates) },
-        label = { Text(title, style = MaterialTheme.typography.labelLarge) },
-        colors = FilterChipDefaults.filterChipColors(
-            containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.6f),
-            labelColor = MaterialTheme.colorScheme.onSecondaryContainer
-        )
-    )
 }
 
 @Composable
@@ -367,4 +262,38 @@ private fun TripItineraryCard(
             }
         }
     }
+}
+
+@Preview
+@Composable
+private fun Preview() {
+    val mockMarkers = listOf(
+        MapMarker(
+            id = "1",
+            position = Coordinates.Paris,
+            title = "Eiffel Tower",
+            orderNumber = 1
+        ),
+        MapMarker(
+            id = "2",
+            position = Coordinates.London,
+            title = "Big Ben",
+            orderNumber = 2
+        ),
+        MapMarker(
+            id = "3",
+            position = Coordinates.Rome,
+            title = "Colosseum",
+            orderNumber = 3
+        )
+    )
+    val state = State(
+        markers = mockMarkers,
+        selectedMarker = mockMarkers[0]
+    )
+    MapScreen(
+        state = state,
+        onAction = {},
+        snackbarHostState = remember { SnackbarHostState() }
+    )
 }
