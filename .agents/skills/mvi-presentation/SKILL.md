@@ -155,4 +155,6 @@ fun MapRoute(
 - Annotate state data structures with `@Immutable` or `@Stable`.
 - Avoid passing raw, un-remembered lambdas or mutable structures directly inside the Composable hierarchy to prevent performance regression.
 - Pass the raw method references where possible: `onAction = viewModel::onAction`.
-- **First Optional Parameter Rule**: Every Composable view configuration signature **must** accept a `modifier: Modifier = Modifier` as its very first optional parameter.
+- **First Optional Parameter Rule**: Every Composable view configuration signature **must** accept a `modifier: Modifier = Modifier` as its very first optional parameter. External structural constraints such as custom paddings or offsets must be specified via this incoming parent `modifier` rather than hardcoding double inner padding within the child view.
+- **Deconstruct for Reusability**: Avoid bloating a single Screen file with multiple disparate layouts. Extract standalone reusable elements (like custom error components, headers, buttons) into independent modular files within appropriate package modules (e.g. `core/presentation/component/`) to keep views clean and single-purpose.
+- **Minimize Parameter & Property Drilling**: Keep component function signatures simple and clear. Instead of individual deeply nested variable parameters, prefer passing clean high-level state blocks and a single uniform action handler callback to manage intents cleanly.

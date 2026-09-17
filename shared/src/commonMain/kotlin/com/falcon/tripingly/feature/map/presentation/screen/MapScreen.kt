@@ -26,7 +26,6 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ElevatedCard
@@ -47,6 +46,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.falcon.tripingly.core.presentation.component.ErrorBanner
 import com.falcon.tripingly.core.presentation.theme.spacing
 import com.falcon.tripingly.feature.map.domain.model.Coordinates
 import com.falcon.tripingly.feature.map.domain.model.MapMarker
@@ -64,10 +64,34 @@ fun MapScreen(
     Scaffold(
         modifier = modifier.fillMaxSize(),
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
-        snackbarHost = { SnackbarHost(snackbarHostState) }
-    ) { _ ->
+        snackbarHost = { SnackbarHost(snackbarHostState) },
+        floatingActionButton = {
+            LocationFab(
+                state = state,
+                onAction = onAction
+            )
+        },
+        bottomBar = {
+            AnimatedVisibility(
+                visible = state.markers.isNotEmpty(),
+                enter = fadeIn() + slideInVertically(initialOffsetY = { it }),
+                exit = fadeOut() + slideOutVertically(targetOffsetY = { it }),
+                modifier = Modifier
+                    .windowInsetsPadding(WindowInsets.navigationBars)
+                    .fillMaxWidth()
+                    .padding(MaterialTheme.spacing.medium)
+            ) {
+                TripItineraryCard(
+                    state = state,
+                    onAction = onAction
+                )
+            }
+        }
+    ) { paddingValues ->
         Box(
-            modifier = Modifier.fillMaxSize()
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues)
         ) {
             // 1. Google Map View spans full edge-to-edge screen
             GoogleMapView(
@@ -75,15 +99,11 @@ fun MapScreen(
                 cameraTarget = state.cameraTarget,
                 zoomLevel = state.zoomLevel,
                 markers = state.markers,
-                onMapClick = { coords ->
-                    onAction(Action.OnMapClick(coords))
-                },
-                onMarkerClick = { marker ->
-                    onAction(Action.OnMarkerClick(marker))
-                }
+                onMapClick = { coords -> onAction(Action.OnMapClick(coords)) },
+                onMarkerClick = { marker -> onAction(Action.OnMarkerClick(marker)) }
             )
 
-            // 3. Error Banner (if error present)
+            // 2. Reusable Error Banner Component
             AnimatedVisibility(
                 visible = state.errorMessage != null,
                 enter = fadeIn() + slideInVertically(),
@@ -94,93 +114,48 @@ fun MapScreen(
                     .padding(top = 16.dp, start = 16.dp, end = 16.dp)
             ) {
                 state.errorMessage?.let { error ->
-                    Card(
-                        colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.errorContainer
-                        ),
-                        shape = RoundedCornerShape(12.dp)
-                    ) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(12.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.SpaceBetween
-                        ) {
-                            Text(
-                                text = error,
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onErrorContainer,
-                                modifier = Modifier.weight(1f)
-                            )
-                            TextButton(
-                                onClick = { onAction(Action.DismissError) }
-                            ) {
-                                Text("Dismiss", color = MaterialTheme.colorScheme.onErrorContainer)
-                            }
-                        }
-                    }
-                }
-            }
-
-            // 4. Center-on-Location FAB
-            FloatingActionButton(
-                onClick = { onAction(Action.CenterOnUserLocation) },
-                shape = CircleShape,
-                containerColor = MaterialTheme.colorScheme.primaryContainer,
-                contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                modifier = Modifier
-                    .align(Alignment.BottomEnd)
-                    .windowInsetsPadding(WindowInsets.navigationBars)
-                    .padding(
-                        end = MaterialTheme.spacing.medium,
-                        bottom = if (state.markers.isNotEmpty()) 160.dp else 24.dp
-                    )
-            ) {
-                if (state.isLoadingLocation) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(24.dp),
-                        strokeWidth = 2.dp,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-                } else {
-                    Text(
-                        text = "📍",
-                        style = MaterialTheme.typography.titleMedium
+                    ErrorBanner(
+                        errorMessage = error,
+                        onDismiss = { onAction(Action.DismissError) }
                     )
                 }
-            }
-
-            // 5. Bottom Trip Itinerary Planner (shows numbered markers)
-            AnimatedVisibility(
-                visible = state.markers.isNotEmpty(),
-                enter = fadeIn() + slideInVertically(initialOffsetY = { it }),
-                exit = fadeOut() + slideOutVertically(targetOffsetY = { it }),
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .windowInsetsPadding(WindowInsets.navigationBars)
-                    .fillMaxWidth()
-                    .padding(MaterialTheme.spacing.medium)
-            ) {
-                TripItineraryCard(
-                    markers = state.markers,
-                    selectedMarker = state.selectedMarker,
-                    onMarkerClick = { onAction(Action.OnMarkerClick(it)) },
-                    onRemoveMarker = { onAction(Action.OnRemoveMarker(it)) },
-                    onClearAll = { onAction(Action.ClearAllMarkers) }
-                )
             }
         }
     }
 }
 
 @Composable
+private fun LocationFab(
+    state: State,
+    onAction: (Action) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    FloatingActionButton(
+        onClick = { onAction(Action.CenterOnUserLocation) },
+        shape = CircleShape,
+        containerColor = MaterialTheme.colorScheme.primaryContainer,
+        contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+        modifier = modifier
+    ) {
+        if (state.isLoadingLocation) {
+            CircularProgressIndicator(
+                modifier = Modifier.size(24.dp),
+                strokeWidth = 2.dp,
+                color = MaterialTheme.colorScheme.primary
+            )
+        } else {
+            Text(
+                text = "📍",
+                style = MaterialTheme.typography.titleMedium
+            )
+        }
+    }
+}
+
+@Composable
 private fun TripItineraryCard(
-    markers: List<MapMarker>,
-    selectedMarker: MapMarker?,
-    onMarkerClick: (MapMarker) -> Unit,
-    onRemoveMarker: (String) -> Unit,
-    onClearAll: () -> Unit,
+    state: State,
+    onAction: (Action) -> Unit,
     modifier: Modifier = Modifier
 ) {
     ElevatedCard(
@@ -199,11 +174,11 @@ private fun TripItineraryCard(
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Text(
-                    text = "Trip Plan (${markers.size} stops)",
+                    text = "Trip Plan (${state.markers.size} stops)",
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.Bold
                 )
-                TextButton(onClick = onClearAll) {
+                TextButton(onClick = { onAction(Action.ClearAllMarkers) }) {
                     Text("Clear All", style = MaterialTheme.typography.labelSmall)
                 }
             }
@@ -214,8 +189,8 @@ private fun TripItineraryCard(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 contentPadding = PaddingValues(horizontal = 4.dp)
             ) {
-                items(markers, key = { it.id }) { marker ->
-                    val isSelected = marker.id == selectedMarker?.id
+                items(state.markers, key = { it.id }) { marker ->
+                    val isSelected = marker.id == state.selectedMarker?.id
                     Surface(
                         shape = RoundedCornerShape(10.dp),
                         color = if (isSelected) {
@@ -224,7 +199,7 @@ private fun TripItineraryCard(
                             MaterialTheme.colorScheme.surfaceVariant
                         },
                         modifier = Modifier.clip(RoundedCornerShape(10.dp)),
-                        onClick = { onMarkerClick(marker) }
+                        onClick = { onAction(Action.OnMarkerClick(marker)) }
                     ) {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
@@ -251,7 +226,7 @@ private fun TripItineraryCard(
                             )
                             Spacer(modifier = Modifier.width(6.dp))
                             IconButton(
-                                onClick = { onRemoveMarker(marker.id) },
+                                onClick = { onAction(Action.OnRemoveMarker(marker.id)) },
                                 modifier = Modifier.size(16.dp)
                             ) {
                                 Text("✕", style = MaterialTheme.typography.labelSmall)
