@@ -4,6 +4,8 @@ import com.falcon.tripingly.core.domain.error.DataError
 import com.falcon.tripingly.core.domain.result.AppResult
 import com.falcon.tripingly.feature.map.domain.model.Coordinates
 
+import kotlinx.coroutines.flow.Flow
+
 interface LocationRepository {
-    suspend fun getCurrentLocation(): AppResult<Coordinates, DataError.Location>
+    fun getLocationStream(): Flow<AppResult<Coordinates, DataError.Location>>
 }

@@ -14,6 +14,8 @@ import com.falcon.tripingly.feature.map.presentation.screen.MapViewModel.Action
 import com.falcon.tripingly.feature.map.presentation.screen.MapViewModel.Event
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestDispatcher
 import kotlinx.coroutines.test.runTest
@@ -44,8 +46,8 @@ class MapViewModelTest {
         var locationResult: AppResult<Coordinates, DataError.Location> =
             Coordinates(48.8566, 2.3522).asSuccess()
 
-        override suspend fun getCurrentLocation(): AppResult<Coordinates, DataError.Location> {
-            return locationResult
+        override fun getLocationStream(): Flow<AppResult<Coordinates, DataError.Location>> {
+            return flowOf(locationResult)
         }
     }
 

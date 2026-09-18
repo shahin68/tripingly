@@ -7,12 +7,14 @@ import com.falcon.tripingly.core.domain.result.AppResult
 import com.falcon.tripingly.core.domain.result.asError
 import com.falcon.tripingly.core.domain.result.asSuccess
 import com.falcon.tripingly.feature.map.domain.model.Coordinates
+import com.google.android.gms.location.LocationCallback
+import com.google.android.gms.location.LocationRequest
+import com.google.android.gms.location.LocationResult
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.location.Priority
-import com.google.android.gms.tasks.CancellationTokenSource
-import kotlinx.coroutines.suspendCancellableCoroutine
-import kotlin.coroutines.cancellation.CancellationException
-import kotlin.coroutines.resume
+import kotlinx.coroutines.channels.awaitClose
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.callbackFlow
 
 class AndroidLocationDataSource(
     private val context: Context
@@ -23,58 +25,35 @@ class AndroidLocationDataSource(
     }
 
     @SuppressLint("MissingPermission")
-    override suspend fun getLastKnownOrCurrentLocation(): AppResult<Coordinates, DataError.Location> {
-        return try {
-            val lastLocation = getLastKnownLocation()
-            if (lastLocation != null) {
-                return Coordinates(lastLocation.latitude, lastLocation.longitude).asSuccess()
-            }
+    override fun getLocationUpdatesStream(): Flow<AppResult<Coordinates, DataError.Location>> = callbackFlow {
+        val locationRequest = LocationRequest.Builder(Priority.PRIORITY_HIGH_ACCURACY, 3000L)
+            .setMinUpdateIntervalMillis(2000L)
+            .build()
 
-            val freshLocation = requestFreshLocation()
-            if (freshLocation != null) {
-                Coordinates(freshLocation.latitude, freshLocation.longitude).asSuccess()
-            } else {
-                AppResult.Error(DataError.Location.Unavailable)
+        val callback = object : LocationCallback() {
+            override fun onLocationResult(result: LocationResult) {
+                result.lastLocation?.let { location ->
+                    trySend(Coordinates(location.latitude, location.longitude).asSuccess())
+                }
             }
-        } catch (e: CancellationException) {
-            throw e
+        }
+
+        try {
+            fusedLocationClient.requestLocationUpdates(
+                locationRequest,
+                callback,
+                context.mainLooper
+            ).addOnFailureListener { e ->
+                trySend(AppResult.Error(DataError.Location.Unknown(e.message)))
+            }
         } catch (e: SecurityException) {
-            DataError.Location.PermissionDenied.asError()
+            trySend(DataError.Location.PermissionDenied.asError())
         } catch (e: Exception) {
-            AppResult.Error(DataError.Location.Unknown(e.message))
+            trySend(AppResult.Error(DataError.Location.Unknown(e.message)))
+        }
+
+        awaitClose {
+            fusedLocationClient.removeLocationUpdates(callback)
         }
     }
-
-    @SuppressLint("MissingPermission")
-    private suspend fun getLastKnownLocation(): android.location.Location? =
-        suspendCancellableCoroutine { continuation ->
-            fusedLocationClient.lastLocation
-                .addOnSuccessListener { location ->
-                    continuation.resume(location)
-                }
-                .addOnFailureListener {
-                    continuation.resume(null)
-                }
-                .addOnCanceledListener {
-                    continuation.cancel()
-                }
-        }
-
-    @SuppressLint("MissingPermission")
-    private suspend fun requestFreshLocation(): android.location.Location? =
-        suspendCancellableCoroutine { continuation ->
-            val cts = CancellationTokenSource()
-            continuation.invokeOnCancellation { cts.cancel() }
-
-            fusedLocationClient.getCurrentLocation(
-                Priority.PRIORITY_HIGH_ACCURACY,
-                cts.token
-            ).addOnSuccessListener { location ->
-                continuation.resume(location)
-            }.addOnFailureListener {
-                continuation.resume(null)
-            }.addOnCanceledListener {
-                continuation.cancel()
-            }
-        }
 }

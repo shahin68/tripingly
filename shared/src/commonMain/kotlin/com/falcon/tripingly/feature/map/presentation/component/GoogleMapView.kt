@@ -11,6 +11,7 @@ expect fun GoogleMapView(
     cameraTarget: Coordinates,
     zoomLevel: Float,
     markers: List<MapMarker>,
+    isMyLocationEnabled: Boolean,
     onMapClick: (Coordinates) -> Unit,
     onMarkerClick: (MapMarker) -> Unit
 )

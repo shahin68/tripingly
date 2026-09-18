@@ -23,6 +23,7 @@ actual fun GoogleMapView(
     cameraTarget: Coordinates,
     zoomLevel: Float,
     markers: List<MapMarker>,
+    isMyLocationEnabled: Boolean,
     onMapClick: (Coordinates) -> Unit,
     onMarkerClick: (MapMarker) -> Unit
 ) {
@@ -40,9 +41,9 @@ actual fun GoogleMapView(
         )
     }
 
-    val mapProperties = remember {
+    val mapProperties = remember(isMyLocationEnabled) {
         MapProperties(
-            isMyLocationEnabled = false
+            isMyLocationEnabled = isMyLocationEnabled
         )
     }
 

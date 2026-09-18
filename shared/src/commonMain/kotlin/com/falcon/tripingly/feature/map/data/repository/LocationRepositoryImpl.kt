@@ -5,23 +5,16 @@ import com.falcon.tripingly.core.domain.error.DataError
 import com.falcon.tripingly.core.domain.result.AppResult
 import com.falcon.tripingly.feature.map.data.datasource.LocationDataSource
 import com.falcon.tripingly.feature.map.domain.model.Coordinates
-import kotlinx.coroutines.withContext
-import kotlin.coroutines.cancellation.CancellationException
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flowOn
 
 class LocationRepositoryImpl(
     private val locationDataSource: LocationDataSource,
     private val dispatchers: CoroutineDispatchers
 ) : LocationRepository {
 
-    override suspend fun getCurrentLocation(): AppResult<Coordinates, DataError.Location> {
-        return withContext(dispatchers.io) {
-            try {
-                locationDataSource.getLastKnownOrCurrentLocation()
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                AppResult.Error(DataError.Location.Unknown(e.message))
-            }
-        }
+    override fun getLocationStream(): Flow<AppResult<Coordinates, DataError.Location>> {
+        return locationDataSource.getLocationUpdatesStream()
+            .flowOn(dispatchers.io)
     }
 }

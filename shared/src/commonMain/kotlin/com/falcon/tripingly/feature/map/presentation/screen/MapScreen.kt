@@ -94,17 +94,18 @@ fun MapScreen(
                 .fillMaxSize()
                 .padding(paddingValues)
         ) {
-            // 1. Google Map View spans full edge-to-edge screen
+
             GoogleMapView(
                 modifier = Modifier.fillMaxSize(),
                 cameraTarget = state.cameraTarget,
                 zoomLevel = state.zoomLevel,
                 markers = state.markers,
+                isMyLocationEnabled = state.isPermissionGranted,
                 onMapClick = { coords -> onAction(Action.OnMapClick(coords)) },
                 onMarkerClick = { marker -> onAction(Action.OnMarkerClick(marker)) }
             )
 
-            // 2. Reusable Error Banner Component
+
             AnimatedVisibility(
                 visible = state.errorMessage != null,
                 enter = fadeIn() + slideInVertically(),

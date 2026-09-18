@@ -67,7 +67,7 @@ class MapViewModel(
     private fun handlePermissionResult(isGranted: Boolean) {
         _uiState.update { it.copy(isPermissionGranted = isGranted) }
         if (isGranted) {
-            fetchCurrentLocation(centerOnTarget = true)
+            startLocationUpdates()
         } else {
             _uiState.update {
                 it.copy(
@@ -81,39 +81,37 @@ class MapViewModel(
         val current = _uiState.value.currentLocation
         if (current != null) {
             navigateTo(current, 15f)
-        } else {
-            fetchCurrentLocation(centerOnTarget = true)
         }
     }
 
-    private fun fetchCurrentLocation(centerOnTarget: Boolean) {
+    private fun startLocationUpdates() {
         viewModelScope.launch(dispatchers.main) {
             _uiState.update { it.copy(isLoadingLocation = true, errorMessage = null) }
             try {
-                when (val result = getCurrentLocationUseCase()) {
-                    is AppResult.Success -> {
-                        val coords = result.data
-                        _uiState.update { state ->
-                            state.copy(
-                                currentLocation = coords,
-                                cameraTarget = if (centerOnTarget) coords else state.cameraTarget,
-                                zoomLevel = if (centerOnTarget) 15f else state.zoomLevel,
-                                isLoadingLocation = false
-                            )
+                getCurrentLocationUseCase().collect { result ->
+                    when (result) {
+                        is AppResult.Success -> {
+                            val coords = result.data
+                            _uiState.update { state ->
+                                val isFirstLocation = state.currentLocation == null
+                                state.copy(
+                                    currentLocation = coords,
+                                    cameraTarget = if (isFirstLocation) coords else state.cameraTarget,
+                                    zoomLevel = if (isFirstLocation) 15f else state.zoomLevel,
+                                    isLoadingLocation = false
+                                )
+                            }
                         }
-                        if (centerOnTarget) {
-                            sendEvent(Event.AnimateCamera(coords, 15f))
-                        }
-                    }
-                    is AppResult.Error -> {
-                        val errorText = when (val error = result.error) {
-                            is DataError.Location.PermissionDenied -> "Location permission required to detect your location."
-                            is DataError.Location.ServiceDisabled -> "Location services are disabled on your device."
-                            is DataError.Location.Unavailable -> "Unable to determine current location. Showing default view."
-                            is DataError.Location.Unknown -> error.message ?: "Failed to acquire location."
-                        }
-                        _uiState.update {
-                            it.copy(isLoadingLocation = false, errorMessage = errorText)
+                        is AppResult.Error -> {
+                            val errorText = when (val error = result.error) {
+                                is DataError.Location.PermissionDenied -> "Location permission required to detect your location."
+                                is DataError.Location.ServiceDisabled -> "Location services are disabled on your device."
+                                is DataError.Location.Unavailable -> "Unable to determine current location. Showing default view."
+                                is DataError.Location.Unknown -> error.message ?: "Failed to acquire location."
+                            }
+                            _uiState.update {
+                                it.copy(isLoadingLocation = false, errorMessage = errorText)
+                            }
                         }
                     }
                 }

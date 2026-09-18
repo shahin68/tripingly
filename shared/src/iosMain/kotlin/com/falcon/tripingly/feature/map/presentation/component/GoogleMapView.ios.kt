@@ -20,17 +20,18 @@ actual fun GoogleMapView(
     cameraTarget: Coordinates,
     zoomLevel: Float,
     markers: List<MapMarker>,
+    isMyLocationEnabled: Boolean,
     onMapClick: (Coordinates) -> Unit,
     onMarkerClick: (MapMarker) -> Unit
 ) {
     UIKitView(
         factory = {
-            MKMapView().apply {
-                showsUserLocation = true
-            }
+            MKMapView()
         },
         modifier = modifier.fillMaxSize(),
         update = { mapView ->
+            mapView.showsUserLocation = isMyLocationEnabled
+
             val center = CLLocationCoordinate2DMake(cameraTarget.latitude, cameraTarget.longitude)
             val distance = (40_000_000.0 / 2.0.pow(zoomLevel.toDouble()))
             val region = MKCoordinateRegionMakeWithDistance(center, distance, distance)

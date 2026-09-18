@@ -5,10 +5,12 @@ import com.falcon.tripingly.core.domain.result.AppResult
 import com.falcon.tripingly.feature.map.domain.model.Coordinates
 import com.falcon.tripingly.feature.map.data.repository.LocationRepository
 
+import kotlinx.coroutines.flow.Flow
+
 class GetCurrentLocationUseCase(
     private val locationRepository: LocationRepository
 ) {
-    suspend operator fun invoke(): AppResult<Coordinates, DataError.Location> {
-        return locationRepository.getCurrentLocation()
+    operator fun invoke(): Flow<AppResult<Coordinates, DataError.Location>> {
+        return locationRepository.getLocationStream()
     }
 }
