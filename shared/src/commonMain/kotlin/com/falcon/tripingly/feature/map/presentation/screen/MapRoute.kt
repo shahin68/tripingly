@@ -10,10 +10,7 @@ import com.falcon.tripingly.feature.map.presentation.screen.MapViewModel.Action
 import com.falcon.tripingly.feature.map.presentation.screen.MapViewModel.Event
 
 @Composable
-fun MapRoute(
-    viewModel: MapViewModel,
-    modifier: Modifier = Modifier
-) {
+fun MapRoute(viewModel: MapViewModel) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
 
     val requestPermission = rememberLocationPermissionLauncher { isGranted ->
@@ -26,6 +23,7 @@ fun MapRoute(
                 is Event.RequestPermission -> {
                     requestPermission()
                 }
+
                 is Event.AnimateCamera -> {
                 }
             }
@@ -38,7 +36,6 @@ fun MapRoute(
 
     MapScreen(
         state = state,
-        onAction = viewModel::onAction,
-        modifier = modifier
+        onAction = viewModel::onAction
     )
 }

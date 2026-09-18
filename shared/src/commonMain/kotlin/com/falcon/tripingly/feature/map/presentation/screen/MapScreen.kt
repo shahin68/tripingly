@@ -18,9 +18,12 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -55,10 +58,9 @@ import com.falcon.tripingly.feature.map.presentation.screen.MapViewModel.State
 fun MapScreen(
     state: State,
     onAction: (Action) -> Unit,
-    modifier: Modifier = Modifier
 ) {
     Box(
-        modifier = modifier.fillMaxSize()
+        modifier = Modifier.fillMaxSize()
     ) {
         GoogleMapView(
             modifier = Modifier.fillMaxSize(),
@@ -76,7 +78,7 @@ fun MapScreen(
             exit = fadeOut() + slideOutVertically(),
             modifier = Modifier
                 .align(Alignment.TopCenter)
-                .windowInsetsPadding(WindowInsets.statusBars)
+                .statusBarsPadding()
                 .padding(MaterialTheme.spacing.medium)
         ) {
             state.errorMessage?.let { error ->
@@ -90,27 +92,25 @@ fun MapScreen(
         Column(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
-                .windowInsetsPadding(WindowInsets.navigationBars)
                 .fillMaxWidth()
-                .padding(MaterialTheme.spacing.medium)
-                .animateContentSize(),
-            horizontalAlignment = Alignment.End,
-            verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium)
+                .animateContentSize()
+                .navigationBarsPadding(),
+            horizontalAlignment = Alignment.End
         ) {
             LocationFab(
                 state = state,
-                onAction = onAction
+                onAction = onAction,
+                modifier = Modifier
+                    .padding(MaterialTheme.spacing.medium)
             )
 
-            AnimatedVisibility(
-                visible = state.markers.isNotEmpty(),
-                enter = fadeIn() + slideInVertically(initialOffsetY = { it }),
-                exit = fadeOut() + slideOutVertically(targetOffsetY = { it }),
-                modifier = Modifier.fillMaxWidth()
-            ) {
+            if (state.markers.isNotEmpty()) {
                 TripItineraryCard(
                     state = state,
-                    onAction = onAction
+                    onAction = onAction,
+                    modifier = Modifier
+                        .padding(horizontal = MaterialTheme.spacing.medium)
+                        .padding(bottom = MaterialTheme.spacing.medium)
                 )
             }
         }
@@ -121,7 +121,7 @@ fun MapScreen(
 private fun LocationFab(
     state: State,
     onAction: (Action) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
 ) {
     FloatingActionButton(
         onClick = { onAction(Action.CenterOnUserLocation) },
@@ -149,7 +149,7 @@ private fun LocationFab(
 private fun TripItineraryCard(
     state: State,
     onAction: (Action) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
 ) {
     ElevatedCard(
         modifier = modifier.fillMaxWidth(),
@@ -186,7 +186,7 @@ private fun ItineraryMarkerChip(
     marker: MapMarker,
     state: State,
     onAction: (Action) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
 ) {
     val isSelected = marker.id == state.selectedMarker?.id
     InputChip(

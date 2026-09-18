@@ -12,9 +12,6 @@ import org.koin.compose.viewmodel.koinViewModel
 fun App() {
     TripinglyTheme {
         val mapViewModel = koinViewModel<MapViewModel>()
-        MapRoute(
-            viewModel = mapViewModel,
-            modifier = Modifier.fillMaxSize()
-        )
+        MapRoute(viewModel = mapViewModel)
     }
 }
