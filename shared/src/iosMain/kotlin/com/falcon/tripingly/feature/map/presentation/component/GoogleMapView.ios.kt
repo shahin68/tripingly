@@ -7,10 +7,13 @@ import androidx.compose.ui.interop.UIKitView
 import com.falcon.tripingly.feature.map.domain.model.Coordinates
 import com.falcon.tripingly.feature.map.domain.model.MapMarker
 import kotlinx.cinterop.ExperimentalForeignApi
+import kotlinx.cinterop.useContents
 import platform.CoreLocation.CLLocationCoordinate2DMake
 import platform.MapKit.MKCoordinateRegionMakeWithDistance
 import platform.MapKit.MKMapView
+import platform.MapKit.MKMapViewDelegateProtocol
 import platform.MapKit.MKPointAnnotation
+import platform.darwin.NSObject
 import kotlin.math.pow
 
 @OptIn(ExperimentalForeignApi::class)
@@ -21,12 +24,24 @@ actual fun GoogleMapView(
     zoomLevel: Float,
     markers: List<MapMarker>,
     isMyLocationEnabled: Boolean,
+    onCameraMove: (Coordinates, Float) -> Unit,
     onMapClick: (Coordinates) -> Unit,
     onMarkerClick: (MapMarker) -> Unit
 ) {
     UIKitView(
         factory = {
-            MKMapView()
+            MKMapView().apply {
+                val delegate = object : NSObject(), MKMapViewDelegateProtocol {
+                    override fun mapViewDidChangeVisibleRegion(mapView: MKMapView) {
+                        val coordinate = mapView.centerCoordinate
+                        val center = coordinate.useContents {
+                            Coordinates(latitude, longitude)
+                        }
+                        onCameraMove(center, 13f) 
+                    }
+                }
+                this.delegate = delegate
+            }
         },
         modifier = modifier.fillMaxSize(),
         update = { mapView ->

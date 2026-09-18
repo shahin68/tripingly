@@ -62,6 +62,7 @@ fun MapScreen(
             zoomLevel = state.zoomLevel,
             markers = state.markers,
             isMyLocationEnabled = state.isPermissionGranted,
+            onCameraMove = { coords, zoom -> onAction(Action.OnCameraMove(coords, zoom)) },
             onMapClick = { coords -> onAction(Action.OnMapClick(coords)) },
             onMarkerClick = { marker -> onAction(Action.OnMarkerClick(marker)) }
         )

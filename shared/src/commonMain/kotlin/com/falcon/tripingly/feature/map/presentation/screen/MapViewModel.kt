@@ -60,6 +60,9 @@ class MapViewModel(
             is Action.DismissError -> {
                 _uiState.update { it.copy(errorMessage = null) }
             }
+            is Action.OnCameraMove -> {
+                _uiState.update { it.copy(cameraTarget = action.coordinates, zoomLevel = action.zoom) }
+            }
         }
     }
 
@@ -80,6 +83,8 @@ class MapViewModel(
         val current = _uiState.value.currentLocation
         if (current != null) {
             navigateTo(current, 15f)
+        } else {
+            _uiState.update { it.copy(isWaitingForFirstLocation = true) }
         }
     }
 
@@ -92,12 +97,16 @@ class MapViewModel(
                         is AppResult.Success -> {
                             val coords = result.data
                             _uiState.update { state ->
-                                val isFirstLocation = state.currentLocation == null
+                                val shouldZoom = (state.currentLocation == null) || state.isWaitingForFirstLocation
+                                if (shouldZoom) {
+                                    sendEvent(Event.AnimateCamera(coords, 15f))
+                                }
                                 state.copy(
                                     currentLocation = coords,
-                                    cameraTarget = if (isFirstLocation) coords else state.cameraTarget,
-                                    zoomLevel = if (isFirstLocation) 15f else state.zoomLevel,
-                                    isLoadingLocation = false
+                                    cameraTarget = if (shouldZoom) coords else state.cameraTarget,
+                                    zoomLevel = if (shouldZoom) 15f else state.zoomLevel,
+                                    isLoadingLocation = false,
+                                    isWaitingForFirstLocation = false
                                 )
                             }
                         }
@@ -195,7 +204,8 @@ class MapViewModel(
         val isPermissionGranted: Boolean = false,
         val isLoadingLocation: Boolean = false,
         val selectedMarker: MapMarker? = null,
-        val errorMessage: String? = null
+        val errorMessage: String? = null,
+        val isWaitingForFirstLocation: Boolean = false
     )
 
     sealed interface Event {
@@ -213,5 +223,6 @@ class MapViewModel(
         data class OnRemoveMarker(val markerId: String) : Action
         data object ClearAllMarkers : Action
         data object DismissError : Action
+        data class OnCameraMove(val coordinates: Coordinates, val zoom: Float) : Action
     }
 }

@@ -24,12 +24,24 @@ actual fun GoogleMapView(
     zoomLevel: Float,
     markers: List<MapMarker>,
     isMyLocationEnabled: Boolean,
+    onCameraMove: (Coordinates, Float) -> Unit,
     onMapClick: (Coordinates) -> Unit,
     onMarkerClick: (MapMarker) -> Unit
 ) {
     val initialLatLng = remember { LatLng(cameraTarget.latitude, cameraTarget.longitude) }
     val cameraPositionState = rememberCameraPositionState {
         position = CameraPosition.fromLatLngZoom(initialLatLng, zoomLevel)
+    }
+
+    // Sync camera position back to ViewModel when it stops moving
+    LaunchedEffect(cameraPositionState.isMoving) {
+        if (!cameraPositionState.isMoving) {
+            val position = cameraPositionState.position
+            onCameraMove(
+                Coordinates(position.target.latitude, position.target.longitude),
+                position.zoom
+            )
+        }
     }
 
     val uiSettings = remember {
@@ -50,10 +62,19 @@ actual fun GoogleMapView(
     // Animate camera when cameraTarget or zoomLevel changes externally
     LaunchedEffect(cameraTarget, zoomLevel) {
         val targetLatLng = LatLng(cameraTarget.latitude, cameraTarget.longitude)
-        cameraPositionState.animate(
-            CameraUpdateFactory.newLatLngZoom(targetLatLng, zoomLevel),
-            durationMs = 800
-        )
+        // Only animate if the target is significantly different from current camera state
+        // to avoid jitter when syncing back and forth.
+        val current = cameraPositionState.position
+        val latDiff = Math.abs(current.target.latitude - targetLatLng.latitude)
+        val lngDiff = Math.abs(current.target.longitude - targetLatLng.longitude)
+        val zoomDiff = Math.abs(current.zoom - zoomLevel)
+        
+        if (latDiff > 0.00001 || lngDiff > 0.00001 || zoomDiff > 0.01) {
+            cameraPositionState.animate(
+                CameraUpdateFactory.newLatLngZoom(targetLatLng, zoomLevel),
+                durationMs = 800
+            )
+        }
     }
 
     GoogleMap(
