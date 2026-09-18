@@ -31,11 +31,12 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.InputChip
+import androidx.compose.material3.InputChipDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -168,20 +169,7 @@ private fun TripItineraryCard(
         Column(
             modifier = Modifier.padding(12.dp)
         ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Text(
-                    text = "Trip Plan (${state.markers.size} stops)",
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.Bold
-                )
-                TextButton(onClick = { onAction(Action.ClearAllMarkers) }) {
-                    Text("Clear All", style = MaterialTheme.typography.labelSmall)
-                }
-            }
+            ItineraryTitle(state, onAction)
 
             Spacer(modifier = Modifier.height(6.dp))
 
@@ -190,51 +178,83 @@ private fun TripItineraryCard(
                 contentPadding = PaddingValues(horizontal = 4.dp)
             ) {
                 items(state.markers, key = { it.id }) { marker ->
-                    val isSelected = marker.id == state.selectedMarker?.id
-                    Surface(
-                        shape = RoundedCornerShape(10.dp),
-                        color = if (isSelected) {
-                            MaterialTheme.colorScheme.primaryContainer
-                        } else {
-                            MaterialTheme.colorScheme.surfaceVariant
-                        },
-                        modifier = Modifier.clip(RoundedCornerShape(10.dp)),
-                        onClick = { onAction(Action.OnMarkerClick(marker)) }
-                    ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .size(20.dp)
-                                    .background(MaterialTheme.colorScheme.primary, CircleShape),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Text(
-                                    text = marker.orderNumber.toString(),
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.onPrimary,
-                                    fontWeight = FontWeight.Bold
-                                )
-                            }
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text(
-                                text = marker.title,
-                                style = MaterialTheme.typography.bodySmall,
-                                fontWeight = FontWeight.Medium
-                            )
-                            Spacer(modifier = Modifier.width(6.dp))
-                            IconButton(
-                                onClick = { onAction(Action.OnRemoveMarker(marker.id)) },
-                                modifier = Modifier.size(16.dp)
-                            ) {
-                                Text("✕", style = MaterialTheme.typography.labelSmall)
-                            }
-                        }
-                    }
+                    ItineraryMarkerChip(
+                        marker = marker,
+                        state = state,
+                        onAction = onAction
+                    )
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun ItineraryMarkerChip(
+    marker: MapMarker,
+    state: State,
+    onAction: (Action) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val isSelected = marker.id == state.selectedMarker?.id
+    InputChip(
+        selected = isSelected,
+        onClick = { onAction(Action.OnMarkerClick(marker)) },
+        label = {
+            Text(
+                text = marker.title,
+                style = MaterialTheme.typography.bodySmall,
+                fontWeight = FontWeight.Medium
+            )
+        },
+        leadingIcon = {
+            Box(
+                modifier = Modifier
+                    .size(20.dp)
+                    .background(MaterialTheme.colorScheme.primary, CircleShape),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = marker.orderNumber.toString(),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onPrimary,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+        },
+        trailingIcon = {
+            IconButton(
+                onClick = { onAction(Action.OnRemoveMarker(marker.id)) },
+                modifier = Modifier.size(16.dp)
+            ) {
+                Text("✕", style = MaterialTheme.typography.labelSmall)
+            }
+        },
+        colors = InputChipDefaults.inputChipColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant,
+            selectedContainerColor = MaterialTheme.colorScheme.primaryContainer
+        ),
+        modifier = modifier
+    )
+}
+
+@Composable
+private fun ItineraryTitle(
+    state: State,
+    onAction: (Action) -> Unit,
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Text(
+            text = "Trip Plan (${state.markers.size} stops)",
+            style = MaterialTheme.typography.titleSmall,
+            fontWeight = FontWeight.Bold
+        )
+        TextButton(onClick = { onAction(Action.ClearAllMarkers) }) {
+            Text("Clear All", style = MaterialTheme.typography.labelSmall)
         }
     }
 }
