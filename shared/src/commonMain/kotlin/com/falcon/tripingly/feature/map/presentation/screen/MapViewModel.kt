@@ -56,7 +56,6 @@ class MapViewModel(
             }
             is Action.ClearAllMarkers -> {
                 _uiState.update { it.copy(markers = emptyList(), selectedMarker = null) }
-                sendEvent(Event.ShowSnackbar("Cleared all trip stops"))
             }
             is Action.DismissError -> {
                 _uiState.update { it.copy(errorMessage = null) }
@@ -157,7 +156,6 @@ class MapViewModel(
                 selectedMarker = newMarker
             )
         }
-        sendEvent(Event.ShowSnackbar("Added Stop #$nextOrder to trip itinerary"))
     }
 
     private fun removeTripMarker(markerId: String) {
@@ -175,7 +173,6 @@ class MapViewModel(
                 selectedMarker = if (state.selectedMarker?.id == markerId) null else state.selectedMarker
             )
         }
-        sendEvent(Event.ShowSnackbar("Removed stop from trip"))
     }
 
     private fun formatCoordinate(value: Double): String {
@@ -204,7 +201,6 @@ class MapViewModel(
     sealed interface Event {
         data class AnimateCamera(val coordinates: Coordinates, val zoom: Float) : Event
         data object RequestPermission : Event
-        data class ShowSnackbar(val message: String) : Event
     }
 
     sealed interface Action {

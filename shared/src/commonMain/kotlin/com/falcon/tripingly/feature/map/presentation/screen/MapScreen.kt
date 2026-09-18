@@ -1,6 +1,7 @@
 package com.falcon.tripingly.feature.map.presentation.screen
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
@@ -33,8 +34,6 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.InputChip
 import androidx.compose.material3.InputChipDefaults
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.SnackbarHost
-import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -56,7 +55,6 @@ import com.falcon.tripingly.feature.map.presentation.screen.MapViewModel.State
 fun MapScreen(
     state: State,
     onAction: (Action) -> Unit,
-    snackbarHostState: SnackbarHostState,
     modifier: Modifier = Modifier
 ) {
     Box(
@@ -94,7 +92,8 @@ fun MapScreen(
                 .align(Alignment.BottomCenter)
                 .windowInsetsPadding(WindowInsets.navigationBars)
                 .fillMaxWidth()
-                .padding(MaterialTheme.spacing.medium),
+                .padding(MaterialTheme.spacing.medium)
+                .animateContentSize(),
             horizontalAlignment = Alignment.End,
             verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium)
         ) {
@@ -115,13 +114,6 @@ fun MapScreen(
                 )
             }
         }
-
-        SnackbarHost(
-            hostState = snackbarHostState,
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .padding(bottom = 120.dp) // Offset upwards to avoid covering the itinerary card if possible
-        )
     }
 }
 
@@ -289,6 +281,5 @@ private fun Preview() {
     MapScreen(
         state = state,
         onAction = {},
-        snackbarHostState = remember { SnackbarHostState() }
     )
 }

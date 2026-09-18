@@ -1,10 +1,8 @@
 package com.falcon.tripingly.feature.map.presentation.screen
 
-import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.falcon.tripingly.feature.map.presentation.permission.rememberLocationPermissionLauncher
@@ -17,7 +15,6 @@ fun MapRoute(
     modifier: Modifier = Modifier
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
-    val snackbarHostState = remember { SnackbarHostState() }
 
     val requestPermission = rememberLocationPermissionLauncher { isGranted ->
         viewModel.onAction(Action.OnPermissionResult(isGranted))
@@ -28,9 +25,6 @@ fun MapRoute(
             when (event) {
                 is Event.RequestPermission -> {
                     requestPermission()
-                }
-                is Event.ShowSnackbar -> {
-                    snackbarHostState.showSnackbar(event.message)
                 }
                 is Event.AnimateCamera -> {
                 }
@@ -45,7 +39,6 @@ fun MapRoute(
     MapScreen(
         state = state,
         onAction = viewModel::onAction,
-        snackbarHostState = snackbarHostState,
         modifier = modifier
     )
 }
