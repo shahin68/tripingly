@@ -8,7 +8,17 @@ description: >-
 
 # KMP Clean Architecture, SOLID, & Feature-Based Modularization
 
-This guide governs how the `tripingly` project structures its code across architectural boundaries, enforces SOLID principles, and implements feature-based self-containment.
+This guide governs how the `tripingly` project structures its code across architectural boundaries, enforces SOLID principles, implements feature-based self-containment, and maintains code hygiene.
+
+---
+
+## 0. Development Workflow & Code Hygiene
+
+**CRITICAL**: After completing all technical tasks and modifications, always perform a final pass to optimize code hygiene:
+1. **Optimize Imports**: Organize all imports according to standard Kotlin conventions.
+2. **Remove Unused Imports**: Scan all modified files and remove any unused import directives to keep the codebase clean.
+3. **Avoid Useless Comments**: Do not add comments that state the obvious or merely label common components (e.g., `// 1. Google Map View`, `// 2. Error Banner`). Code should be self-documenting. Use comments only to explain "why" something non-obvious is being done, not "what" a standard view is.
+4. **Verify Build**: Ensure that hygiene changes do not break compilation.
 
 ---
 

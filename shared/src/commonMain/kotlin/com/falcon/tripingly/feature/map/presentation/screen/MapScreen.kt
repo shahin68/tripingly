@@ -20,7 +20,6 @@ import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -34,7 +33,6 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.InputChip
 import androidx.compose.material3.InputChipDefaults
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
@@ -43,7 +41,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -62,25 +59,55 @@ fun MapScreen(
     snackbarHostState: SnackbarHostState,
     modifier: Modifier = Modifier
 ) {
-    Scaffold(
-        modifier = modifier.fillMaxSize(),
-        contentWindowInsets = WindowInsets(0, 0, 0, 0),
-        snackbarHost = { SnackbarHost(snackbarHostState) },
-        floatingActionButton = {
+    Box(
+        modifier = modifier.fillMaxSize()
+    ) {
+        GoogleMapView(
+            modifier = Modifier.fillMaxSize(),
+            cameraTarget = state.cameraTarget,
+            zoomLevel = state.zoomLevel,
+            markers = state.markers,
+            isMyLocationEnabled = state.isPermissionGranted,
+            onMapClick = { coords -> onAction(Action.OnMapClick(coords)) },
+            onMarkerClick = { marker -> onAction(Action.OnMarkerClick(marker)) }
+        )
+
+        AnimatedVisibility(
+            visible = state.errorMessage != null,
+            enter = fadeIn() + slideInVertically(),
+            exit = fadeOut() + slideOutVertically(),
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .windowInsetsPadding(WindowInsets.statusBars)
+                .padding(MaterialTheme.spacing.medium)
+        ) {
+            state.errorMessage?.let { error ->
+                ErrorBanner(
+                    errorMessage = error,
+                    onDismiss = { onAction(Action.DismissError) }
+                )
+            }
+        }
+
+        Column(
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .windowInsetsPadding(WindowInsets.navigationBars)
+                .fillMaxWidth()
+                .padding(MaterialTheme.spacing.medium),
+            horizontalAlignment = Alignment.End,
+            verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium)
+        ) {
             LocationFab(
                 state = state,
                 onAction = onAction
             )
-        },
-        bottomBar = {
+
             AnimatedVisibility(
                 visible = state.markers.isNotEmpty(),
                 enter = fadeIn() + slideInVertically(initialOffsetY = { it }),
                 exit = fadeOut() + slideOutVertically(targetOffsetY = { it }),
-                modifier = Modifier
-                    .windowInsetsPadding(WindowInsets.navigationBars)
-                    .fillMaxWidth()
-                    .padding(MaterialTheme.spacing.medium)
+                modifier = Modifier.fillMaxWidth()
             ) {
                 TripItineraryCard(
                     state = state,
@@ -88,41 +115,13 @@ fun MapScreen(
                 )
             }
         }
-    ) { paddingValues ->
-        Box(
+
+        SnackbarHost(
+            hostState = snackbarHostState,
             modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues)
-        ) {
-
-            GoogleMapView(
-                modifier = Modifier.fillMaxSize(),
-                cameraTarget = state.cameraTarget,
-                zoomLevel = state.zoomLevel,
-                markers = state.markers,
-                isMyLocationEnabled = state.isPermissionGranted,
-                onMapClick = { coords -> onAction(Action.OnMapClick(coords)) },
-                onMarkerClick = { marker -> onAction(Action.OnMarkerClick(marker)) }
-            )
-
-
-            AnimatedVisibility(
-                visible = state.errorMessage != null,
-                enter = fadeIn() + slideInVertically(),
-                exit = fadeOut() + slideOutVertically(),
-                modifier = Modifier
-                    .align(Alignment.TopCenter)
-                    .windowInsetsPadding(WindowInsets.statusBars)
-                    .padding(top = 16.dp, start = 16.dp, end = 16.dp)
-            ) {
-                state.errorMessage?.let { error ->
-                    ErrorBanner(
-                        errorMessage = error,
-                        onDismiss = { onAction(Action.DismissError) }
-                    )
-                }
-            }
-        }
+                .align(Alignment.BottomCenter)
+                .padding(bottom = 120.dp) // Offset upwards to avoid covering the itinerary card if possible
+        )
     }
 }
 

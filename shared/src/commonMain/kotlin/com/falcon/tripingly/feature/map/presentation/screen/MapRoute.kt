@@ -23,7 +23,6 @@ fun MapRoute(
         viewModel.onAction(Action.OnPermissionResult(isGranted))
     }
 
-    // Handle single-time ViewModel events
     LaunchedEffect(viewModel.events) {
         viewModel.events.collect { event ->
             when (event) {
@@ -34,13 +33,11 @@ fun MapRoute(
                     snackbarHostState.showSnackbar(event.message)
                 }
                 is Event.AnimateCamera -> {
-                    // Handled reactively through state.cameraTarget and state.zoomLevel in MapView
                 }
             }
         }
     }
 
-    // On first composition, trigger location request to load user location as default
     LaunchedEffect(Unit) {
         viewModel.onAction(Action.RequestLocationPermission)
     }

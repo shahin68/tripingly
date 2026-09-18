@@ -163,7 +163,6 @@ class MapViewModel(
     private fun removeTripMarker(markerId: String) {
         _uiState.update { state ->
             val remaining = state.markers.filterNot { it.id == markerId }
-            // Re-number sequentially to maintain trip order integrity
             val reordered = remaining.mapIndexed { index, marker ->
                 val newOrder = index + 1
                 marker.copy(
