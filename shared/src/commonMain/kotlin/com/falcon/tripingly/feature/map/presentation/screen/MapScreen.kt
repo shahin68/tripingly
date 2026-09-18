@@ -104,7 +104,12 @@ fun MapScreen(
                     .padding(MaterialTheme.spacing.medium)
             )
 
-            if (state.markers.isNotEmpty()) {
+            AnimatedVisibility(
+                visible = state.markers.isNotEmpty(),
+                enter = fadeIn() + slideInVertically(initialOffsetY = { it }),
+                exit = fadeOut() + slideOutVertically(targetOffsetY = { it }),
+                modifier = Modifier.fillMaxWidth()
+            ) {
                 TripItineraryCard(
                     state = state,
                     onAction = onAction,
