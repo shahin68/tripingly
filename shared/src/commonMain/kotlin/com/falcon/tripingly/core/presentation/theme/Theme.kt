@@ -21,7 +21,7 @@ private val LightColorScheme = lightColorScheme(
     surfaceVariant = SurfaceVariantLight,
     onSurfaceVariant = OnSurfaceVariantLight,
     error = ErrorLight,
-    onError = OnErrorLight
+    onError = OnErrorLight,
 )
 
 private val DarkColorScheme = darkColorScheme(
@@ -38,23 +38,24 @@ private val DarkColorScheme = darkColorScheme(
     surfaceVariant = SurfaceVariantDark,
     onSurfaceVariant = OnSurfaceVariantDark,
     error = ErrorDark,
-    onError = OnErrorDark
+    onError = OnErrorDark,
 )
 
 @Composable
 fun TripinglyTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
-    content: @Composable () -> Unit
+    content: @Composable () -> Unit,
 ) {
     val colorScheme = if (darkTheme) DarkColorScheme else LightColorScheme
 
     CompositionLocalProvider(
-        LocalSpacing provides Spacing()
+        LocalSpacing provides Spacing(),
     ) {
         MaterialTheme(
             colorScheme = colorScheme,
             typography = AppTypography,
-            content = content
+            shapes = AppShapes,
+            content = content,
         )
     }
 }
