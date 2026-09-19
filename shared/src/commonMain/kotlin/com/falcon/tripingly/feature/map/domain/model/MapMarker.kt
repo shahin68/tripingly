@@ -8,5 +8,6 @@ data class MapMarker(
     val position: Coordinates,
     val title: String,
     val orderNumber: Int,
-    val snippet: String? = null
+    val snippet: String? = null,
+    val color: Long = 0xFF2196F3 // Default Material Blue
 )

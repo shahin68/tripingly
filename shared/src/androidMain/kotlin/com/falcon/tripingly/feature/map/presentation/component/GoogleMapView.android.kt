@@ -13,9 +13,11 @@ import com.google.android.gms.maps.model.LatLng
 import com.google.maps.android.compose.GoogleMap
 import com.google.maps.android.compose.MapProperties
 import com.google.maps.android.compose.MapUiSettings
-import com.google.maps.android.compose.Marker
+import com.google.maps.android.compose.MarkerComposable
 import com.google.maps.android.compose.rememberCameraPositionState
 import com.google.maps.android.compose.rememberUpdatedMarkerState
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color
 
 @Composable
 actual fun GoogleMapView(
@@ -90,15 +92,20 @@ actual fun GoogleMapView(
             val position = LatLng(marker.position.latitude, marker.position.longitude)
             val markerState = rememberUpdatedMarkerState(position = position)
 
-            Marker(
+            MarkerComposable(
                 state = markerState,
                 title = marker.title,
-                snippet = marker.snippet ?: "Stop #${marker.orderNumber}",
+                anchor = Offset(0.5f, 1f),
                 onClick = {
                     onMarkerClick(marker)
                     false // Return false to show standard info window as well
                 }
-            )
+            ) {
+                TripMarkerIcon(
+                    orderNumber = marker.orderNumber,
+                    color = Color(marker.color)
+                )
+            }
         }
     }
 }
