@@ -18,6 +18,12 @@ interface TripDao {
     @Query("SELECT * FROM trips WHERE id = :tripId")
     suspend fun getTripById(tripId: String): TripEntity?
 
+    @Query("UPDATE trips SET name = :name WHERE id = :tripId")
+    suspend fun updateTripName(tripId: String, name: String)
+
+    @Query("UPDATE trips SET startDate = :startDate, endDate = :endDate WHERE id = :tripId")
+    suspend fun updateTripDates(tripId: String, startDate: Long, endDate: Long)
+
     @Query("DELETE FROM trips WHERE id = :tripId")
     suspend fun deleteTripById(tripId: String)
 }

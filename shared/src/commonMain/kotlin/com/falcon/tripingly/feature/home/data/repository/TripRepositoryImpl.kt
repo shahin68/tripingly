@@ -31,6 +31,18 @@ class TripRepositoryImpl(
         tripDao.insertTrip(trip.toEntity())
     }
 
+    override suspend fun updateTripName(id: String, name: String) {
+        tripDao.updateTripName(id, name)
+    }
+
+    override suspend fun updateTripDates(id: String, startDate: LocalDate, endDate: LocalDate) {
+        tripDao.updateTripDates(
+            tripId = id,
+            startDate = startDate.atStartOfDayIn(TimeZone.UTC).toEpochMilliseconds(),
+            endDate = endDate.atStartOfDayIn(TimeZone.UTC).toEpochMilliseconds()
+        )
+    }
+
     override suspend fun deleteTrip(id: String) {
         tripDao.deleteTripById(id)
     }

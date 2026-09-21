@@ -3,6 +3,8 @@ package com.falcon.tripingly.di
 import androidx.room.Room
 import androidx.sqlite.driver.bundled.BundledSQLiteDriver
 import com.falcon.tripingly.core.data.local.TripinglyDatabase
+import com.falcon.tripingly.core.util.IosShareManager
+import com.falcon.tripingly.core.util.ShareManager
 import com.falcon.tripingly.feature.map.data.datasource.IosLocationDataSource
 import com.falcon.tripingly.feature.map.data.datasource.LocationDataSource
 import kotlinx.cinterop.ExperimentalForeignApi
@@ -17,6 +19,7 @@ import platform.Foundation.NSUserDomainMask
 @OptIn(ExperimentalForeignApi::class)
 actual fun platformModule(): Module = module {
     singleOf(::IosLocationDataSource) bind LocationDataSource::class
+    single<ShareManager> { IosShareManager() }
     single {
         val documentDirectory = NSFileManager.defaultManager.URLForDirectory(
             directory = NSDocumentDirectory,

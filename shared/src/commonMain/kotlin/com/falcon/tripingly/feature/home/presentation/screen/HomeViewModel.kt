@@ -3,10 +3,14 @@ package com.falcon.tripingly.feature.home.presentation.screen
 import androidx.compose.runtime.Immutable
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.falcon.tripingly.core.util.DateUtils
+import com.falcon.tripingly.core.util.ShareManager
 import com.falcon.tripingly.feature.home.domain.model.Trip
 import com.falcon.tripingly.feature.home.domain.usecase.CreateTripUseCase
 import com.falcon.tripingly.feature.home.domain.usecase.DeleteTripUseCase
 import com.falcon.tripingly.feature.home.domain.usecase.GetAllTripsUseCase
+import com.falcon.tripingly.feature.home.domain.usecase.UpdateTripDatesUseCase
+import com.falcon.tripingly.feature.home.domain.usecase.UpdateTripNameUseCase
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -22,6 +26,9 @@ class HomeViewModel(
     private val getAllTripsUseCase: GetAllTripsUseCase,
     private val createTripUseCase: CreateTripUseCase,
     private val deleteTripUseCase: DeleteTripUseCase,
+    private val updateTripNameUseCase: UpdateTripNameUseCase,
+    private val updateTripDatesUseCase: UpdateTripDatesUseCase,
+    private val shareManager: ShareManager
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(State())
@@ -43,6 +50,27 @@ class HomeViewModel(
             is Action.OnConfirmCreateTrip -> createTrip(action.name, action.startDate, action.endDate)
             is Action.OnTripClick -> sendEvent(Event.NavigateToMap(action.tripId))
             is Action.OnDeleteTrip -> deleteTrip(action.tripId)
+            is Action.OnRenameTrip -> {
+                val trip = _uiState.value.trips.find { it.id == action.tripId }
+                _uiState.update { it.copy(renamingTrip = trip) }
+            }
+            is Action.OnDismissRenameDialog -> _uiState.update { it.copy(renamingTrip = null) }
+            is Action.OnConfirmRenameTrip -> renameTrip(action.tripId, action.newName)
+            
+            is Action.OnRescheduleTrip -> {
+                val trip = _uiState.value.trips.find { it.id == action.tripId }
+                _uiState.update { it.copy(reschedulingTrip = trip) }
+            }
+            is Action.OnDismissRescheduleDialog -> _uiState.update { it.copy(reschedulingTrip = null) }
+            is Action.OnConfirmRescheduleTrip -> rescheduleTrip(action.tripId, action.startDate, action.endDate)
+            
+            is Action.OnShareTrip -> {
+                val trip = _uiState.value.trips.find { it.id == action.tripId }
+                trip?.let {
+                    val dates = "${DateUtils.formatFormal(it.startDate)} - ${DateUtils.formatFormal(it.endDate)}"
+                    shareManager.shareTrip(it.name, dates)
+                }
+            }
         }
     }
 
@@ -58,6 +86,20 @@ class HomeViewModel(
         viewModelScope.launch {
             createTripUseCase(name, startDate, endDate)
             _uiState.update { it.copy(isCreateDialogVisible = false) }
+        }
+    }
+
+    private fun renameTrip(tripId: String, newName: String) {
+        viewModelScope.launch {
+            updateTripNameUseCase(tripId, newName)
+            _uiState.update { it.copy(renamingTrip = null) }
+        }
+    }
+
+    private fun rescheduleTrip(tripId: String, startDate: LocalDate, endDate: LocalDate) {
+        viewModelScope.launch {
+            updateTripDatesUseCase(tripId, startDate, endDate)
+            _uiState.update { it.copy(reschedulingTrip = null) }
         }
     }
 
@@ -78,7 +120,9 @@ class HomeViewModel(
         val selectedTab: Tab = Tab.MyTrips,
         val searchQuery: String = "",
         val trips: List<Trip> = emptyList(),
-        val isCreateDialogVisible: Boolean = false
+        val isCreateDialogVisible: Boolean = false,
+        val renamingTrip: Trip? = null,
+        val reschedulingTrip: Trip? = null
     )
 
     enum class Tab { MyTrips, Social }
@@ -95,5 +139,14 @@ class HomeViewModel(
         data class OnConfirmCreateTrip(val name: String, val startDate: LocalDate, val endDate: LocalDate) : Action
         data class OnTripClick(val tripId: String) : Action
         data class OnDeleteTrip(val tripId: String) : Action
+        data class OnRenameTrip(val tripId: String) : Action
+        data object OnDismissRenameDialog : Action
+        data class OnConfirmRenameTrip(val tripId: String, val newName: String) : Action
+        
+        data class OnRescheduleTrip(val tripId: String) : Action
+        data object OnDismissRescheduleDialog : Action
+        data class OnConfirmRescheduleTrip(val tripId: String, val startDate: LocalDate, val endDate: LocalDate) : Action
+        
+        data class OnShareTrip(val tripId: String) : Action
     }
 }

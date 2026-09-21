@@ -1,6 +1,8 @@
 package com.falcon.tripingly.feature.home.presentation.screen
 
-import androidx.compose.foundation.background
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -12,7 +14,6 @@ import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.People
 import androidx.compose.material3.Card
@@ -22,24 +23,25 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SwipeToDismissBox
-import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Text
-import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import com.falcon.tripingly.core.presentation.component.AppDropdownMenu
+import com.falcon.tripingly.core.presentation.component.DropdownAction
 import com.falcon.tripingly.core.presentation.component.FloatingSearchBar
 import com.falcon.tripingly.core.util.DateUtils
 import com.falcon.tripingly.feature.home.domain.model.Trip
 import com.falcon.tripingly.feature.home.presentation.screen.HomeViewModel.Action
 import com.falcon.tripingly.feature.home.presentation.screen.HomeViewModel.State
 import com.falcon.tripingly.feature.home.presentation.screen.HomeViewModel.Tab
-import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
 
 @Composable
@@ -56,7 +58,6 @@ fun HomeScreen(
 
     val currentTab = Tab.entries[pagerState.currentPage]
 
-    // Sync Pager -> ViewModel (update selected tab in VM when user swipes)
     LaunchedEffect(pagerState.currentPage) {
         onAction(Action.OnTabSelected(currentTab))
     }
@@ -101,8 +102,7 @@ fun HomeScreen(
                 when (Tab.entries[page]) {
                     Tab.MyTrips -> MyTripsContent(
                         trips = state.trips,
-                        onTripClick = { onAction(Action.OnTripClick(it)) },
-                        onDeleteTrip = { onAction(Action.OnDeleteTrip(it)) }
+                        onAction = onAction
                     )
                     Tab.Social -> SocialContent()
                 }
@@ -114,9 +114,10 @@ fun HomeScreen(
 @Composable
 private fun MyTripsContent(
     trips: List<Trip>,
-    onTripClick: (String) -> Unit,
-    onDeleteTrip: (String) -> Unit
+    onAction: (Action) -> Unit
 ) {
+    var selectedTripId by remember { mutableStateOf<String?>(null) }
+
     if (trips.isEmpty()) {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             Text("No trips yet. Tap + to create one!")
@@ -126,40 +127,44 @@ private fun MyTripsContent(
             modifier = Modifier.fillMaxSize()
         ) {
             items(trips, key = { it.id }) { trip ->
-                val dismissState = rememberSwipeToDismissBoxState()
-
-                SwipeToDismissBox(
-                    state = dismissState,
-                    enableDismissFromStartToEnd = false,
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                    onDismiss = {
-                        if (it == SwipeToDismissBoxValue.EndToStart) {
-                            onDeleteTrip(trip.id)
-                        }
-                    },
-                    backgroundContent = {
-                        val color = when (dismissState.targetValue) {
-                            SwipeToDismissBoxValue.EndToStart -> Color.Red.copy(alpha = 0.8f)
-                            else -> Color.Transparent
-                        }
-                        Box(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .background(color, MaterialTheme.shapes.medium),
-                            contentAlignment = Alignment.CenterEnd
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Delete,
-                                contentDescription = "Delete",
-                                tint = Color.White,
-                                modifier = Modifier.padding(end = 16.dp)
-                            )
-                        }
-                    }
+                val isSelected = selectedTripId == trip.id
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 8.dp)
                 ) {
                     TripItem(
                         trip = trip,
-                        onClick = { onTripClick(trip.id) }
+                        onClick = { onAction(Action.OnTripClick(trip.id)) },
+                        onLongClick = { selectedTripId = trip.id },
+                        isSelected = isSelected
+                    )
+
+                    AppDropdownMenu(
+                        expanded = isSelected,
+                        onDismissRequest = { selectedTripId = null },
+                        actions = listOf(
+                            DropdownAction(
+                                label = "Rename Trip",
+                                onClick = { onAction(Action.OnRenameTrip(trip.id)) }
+                            ),
+                            DropdownAction(
+                                label = "Reschedule Trip",
+                                onClick = { onAction(Action.OnRescheduleTrip(trip.id)) }
+                            ),
+                            DropdownAction(
+                                label = "Share Trip",
+                                onClick = { onAction(Action.OnShareTrip(trip.id)) }
+                            ),
+                            DropdownAction(
+                                label = "Delete Trip",
+                                isDestructive = true,
+                                onClick = { onAction(Action.OnDeleteTrip(trip.id)) }
+                            )
+                        ),
+                        modifier = Modifier
+                            .align(Alignment.BottomStart)
+                            .padding(start = 8.dp)
                     )
                 }
             }
@@ -174,15 +179,23 @@ private fun SocialContent() {
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun TripItem(
     trip: Trip,
     onClick: () -> Unit,
+    onLongClick: () -> Unit,
+    isSelected: Boolean,
     modifier: Modifier = Modifier
 ) {
     Card(
-        modifier = modifier.fillMaxWidth(),
-        onClick = onClick
+        modifier = modifier
+            .fillMaxWidth()
+            .combinedClickable(
+                onClick = onClick,
+                onLongClick = onLongClick
+            ),
+        border = if (isSelected) BorderStroke(3.dp, MaterialTheme.colorScheme.primary) else null
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text(text = trip.name, style = MaterialTheme.typography.titleLarge)
