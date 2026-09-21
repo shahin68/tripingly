@@ -8,6 +8,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
@@ -25,6 +27,8 @@ import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -35,6 +39,8 @@ import com.falcon.tripingly.feature.home.domain.model.Trip
 import com.falcon.tripingly.feature.home.presentation.screen.HomeViewModel.Action
 import com.falcon.tripingly.feature.home.presentation.screen.HomeViewModel.State
 import com.falcon.tripingly.feature.home.presentation.screen.HomeViewModel.Tab
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.launch
 
 @Composable
 fun HomeScreen(
@@ -42,16 +48,33 @@ fun HomeScreen(
     onAction: (Action) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val scope = rememberCoroutineScope()
+    val pagerState = rememberPagerState(
+        initialPage = state.selectedTab.ordinal,
+        pageCount = { Tab.entries.size }
+    )
+
+    val currentTab = Tab.entries[pagerState.currentPage]
+
+    // Sync Pager -> ViewModel (update selected tab in VM when user swipes)
+    LaunchedEffect(pagerState.currentPage) {
+        onAction(Action.OnTabSelected(currentTab))
+    }
+
     Scaffold(
         modifier = modifier.fillMaxSize(),
         bottomBar = {
             HomeNavigationBar(
-                selectedTab = state.selectedTab,
-                onTabSelected = { onAction(Action.OnTabSelected(it)) }
+                selectedTab = currentTab,
+                onTabSelected = { tab ->
+                    scope.launch {
+                        pagerState.animateScrollToPage(tab.ordinal)
+                    }
+                }
             )
         },
         floatingActionButton = {
-            if (state.selectedTab == Tab.MyTrips) {
+            if (currentTab == Tab.MyTrips) {
                 FloatingActionButton(onClick = { onAction(Action.OnAddTripClick) }) {
                     Icon(Icons.Default.Add, contentDescription = "Add Trip")
                 }
@@ -66,16 +89,23 @@ fun HomeScreen(
             FloatingSearchBar(
                 query = state.searchQuery,
                 onQueryChange = { onAction(Action.OnSearchQueryChanged(it)) },
-                placeholder = if (state.selectedTab == Tab.MyTrips) "Search trips..." else "Search social..."
+                placeholder = if (currentTab == Tab.MyTrips) "Search trips..." else "Search social..."
             )
 
-            when (state.selectedTab) {
-                Tab.MyTrips -> MyTripsContent(
-                    trips = state.trips,
-                    onTripClick = { onAction(Action.OnTripClick(it)) },
-                    onDeleteTrip = { onAction(Action.OnDeleteTrip(it)) }
-                )
-                Tab.Social -> SocialContent()
+            HorizontalPager(
+                state = pagerState,
+                modifier = Modifier.weight(1f),
+                userScrollEnabled = true,
+                beyondViewportPageCount = 1
+            ) { page ->
+                when (Tab.entries[page]) {
+                    Tab.MyTrips -> MyTripsContent(
+                        trips = state.trips,
+                        onTripClick = { onAction(Action.OnTripClick(it)) },
+                        onDeleteTrip = { onAction(Action.OnDeleteTrip(it)) }
+                    )
+                    Tab.Social -> SocialContent()
+                }
             }
         }
     }
