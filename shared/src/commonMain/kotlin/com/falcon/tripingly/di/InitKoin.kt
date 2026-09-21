@@ -9,6 +9,7 @@ fun initKoin(appDeclaration: KoinAppDeclaration = {}) {
         modules(
             coreModule,
             platformModule(),
+            homeModule,
             mapModule
         )
     }

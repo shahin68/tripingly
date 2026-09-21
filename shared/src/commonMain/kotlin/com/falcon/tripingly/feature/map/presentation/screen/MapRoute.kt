@@ -3,17 +3,21 @@ package com.falcon.tripingly.feature.map.presentation.screen
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.falcon.tripingly.feature.map.presentation.permission.rememberLocationPermissionLauncher
 import com.falcon.tripingly.feature.map.presentation.screen.MapViewModel.Action
 import com.falcon.tripingly.feature.map.presentation.screen.MapViewModel.Event
+import org.koin.compose.viewmodel.koinViewModel
+import org.koin.core.parameter.parametersOf
 
 @Composable
-fun MapRoute(viewModel: MapViewModel) {
+fun MapRoute(
+    tripId: String,
+    viewModel: MapViewModel = koinViewModel { parametersOf(tripId) }
+) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
 
-    val requestPermission = rememberLocationPermissionLauncher { isGranted ->
+    val requestPermission = rememberLocationPermissionLauncher { isGranted: Boolean ->
         viewModel.onAction(Action.OnPermissionResult(isGranted))
     }
 
@@ -23,8 +27,8 @@ fun MapRoute(viewModel: MapViewModel) {
                 is Event.RequestPermission -> {
                     requestPermission()
                 }
-
                 is Event.AnimateCamera -> {
+                    // Reactive
                 }
             }
         }
