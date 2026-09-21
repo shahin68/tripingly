@@ -19,6 +19,7 @@ actual fun platformModule(): Module = module {
             name = dbFile.absolutePath
         )
             .setDriver(BundledSQLiteDriver())
+            .fallbackToDestructiveMigration(true)
             .build()
     }
 }

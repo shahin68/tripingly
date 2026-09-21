@@ -9,7 +9,7 @@ import com.falcon.tripingly.feature.home.data.local.entity.TripEntity
 import com.falcon.tripingly.feature.map.data.local.dao.MarkerDao
 import com.falcon.tripingly.feature.map.data.local.entity.MarkerEntity
 
-@Database(entities = [TripEntity::class, MarkerEntity::class], version = 1)
+@Database(entities = [TripEntity::class, MarkerEntity::class], version = 2)
 @ConstructedBy(TripinglyDatabaseConstructor::class)
 abstract class TripinglyDatabase : RoomDatabase() {
     abstract fun tripDao(): TripDao

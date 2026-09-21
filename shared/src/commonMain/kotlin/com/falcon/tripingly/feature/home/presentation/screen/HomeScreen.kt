@@ -1,5 +1,6 @@
 package com.falcon.tripingly.feature.home.presentation.screen
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -9,6 +10,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.People
 import androidx.compose.material3.Card
@@ -18,10 +20,14 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SwipeToDismissBox
+import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Text
+import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.falcon.tripingly.core.presentation.component.FloatingSearchBar
 import com.falcon.tripingly.core.util.DateUtils
@@ -66,7 +72,8 @@ fun HomeScreen(
             when (state.selectedTab) {
                 Tab.MyTrips -> MyTripsContent(
                     trips = state.trips,
-                    onTripClick = { onAction(Action.OnTripClick(it)) }
+                    onTripClick = { onAction(Action.OnTripClick(it)) },
+                    onDeleteTrip = { onAction(Action.OnDeleteTrip(it)) }
                 )
                 Tab.Social -> SocialContent()
             }
@@ -77,7 +84,8 @@ fun HomeScreen(
 @Composable
 private fun MyTripsContent(
     trips: List<Trip>,
-    onTripClick: (String) -> Unit
+    onTripClick: (String) -> Unit,
+    onDeleteTrip: (String) -> Unit
 ) {
     if (trips.isEmpty()) {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -88,7 +96,42 @@ private fun MyTripsContent(
             modifier = Modifier.fillMaxSize()
         ) {
             items(trips, key = { it.id }) { trip ->
-                TripItem(trip = trip, onClick = { onTripClick(trip.id) })
+                val dismissState = rememberSwipeToDismissBoxState()
+
+                SwipeToDismissBox(
+                    state = dismissState,
+                    enableDismissFromStartToEnd = false,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                    onDismiss = {
+                        if (it == SwipeToDismissBoxValue.EndToStart) {
+                            onDeleteTrip(trip.id)
+                        }
+                    },
+                    backgroundContent = {
+                        val color = when (dismissState.targetValue) {
+                            SwipeToDismissBoxValue.EndToStart -> Color.Red.copy(alpha = 0.8f)
+                            else -> Color.Transparent
+                        }
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(color, MaterialTheme.shapes.medium),
+                            contentAlignment = Alignment.CenterEnd
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Delete,
+                                contentDescription = "Delete",
+                                tint = Color.White,
+                                modifier = Modifier.padding(end = 16.dp)
+                            )
+                        }
+                    }
+                ) {
+                    TripItem(
+                        trip = trip,
+                        onClick = { onTripClick(trip.id) }
+                    )
+                }
             }
         }
     }
@@ -104,12 +147,11 @@ private fun SocialContent() {
 @Composable
 private fun TripItem(
     trip: Trip,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
     Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp),
+        modifier = modifier.fillMaxWidth(),
         onClick = onClick
     ) {
         Column(modifier = Modifier.padding(16.dp)) {

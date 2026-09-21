@@ -6,6 +6,7 @@ import com.falcon.tripingly.feature.map.domain.usecase.DeleteMarkerUseCase
 import com.falcon.tripingly.feature.map.domain.usecase.DeleteMarkersForDayUseCase
 import com.falcon.tripingly.feature.home.domain.usecase.GetTripByIdUseCase
 import com.falcon.tripingly.feature.home.domain.usecase.CreateTripUseCase
+import com.falcon.tripingly.feature.home.domain.usecase.DeleteTripUseCase
 import com.falcon.tripingly.feature.home.domain.usecase.GetAllTripsUseCase
 import com.falcon.tripingly.feature.home.data.repository.TripRepositoryImpl
 import com.falcon.tripingly.feature.home.domain.repository.TripRepository
@@ -37,6 +38,7 @@ val homeModule = module {
     singleOf(::TripRepositoryImpl) bind TripRepository::class
     factoryOf(::GetAllTripsUseCase)
     factoryOf(::CreateTripUseCase)
+    factoryOf(::DeleteTripUseCase)
     factoryOf(::GetTripByIdUseCase)
     viewModelOf(::HomeViewModel)
 }

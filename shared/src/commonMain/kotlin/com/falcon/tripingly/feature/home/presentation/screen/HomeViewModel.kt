@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.falcon.tripingly.feature.home.domain.model.Trip
 import com.falcon.tripingly.feature.home.domain.usecase.CreateTripUseCase
+import com.falcon.tripingly.feature.home.domain.usecase.DeleteTripUseCase
 import com.falcon.tripingly.feature.home.domain.usecase.GetAllTripsUseCase
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -20,6 +21,7 @@ import kotlinx.datetime.todayIn
 class HomeViewModel(
     private val getAllTripsUseCase: GetAllTripsUseCase,
     private val createTripUseCase: CreateTripUseCase,
+    private val deleteTripUseCase: DeleteTripUseCase,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(State())
@@ -40,6 +42,7 @@ class HomeViewModel(
             is Action.OnDismissCreateDialog -> _uiState.update { it.copy(isCreateDialogVisible = false) }
             is Action.OnConfirmCreateTrip -> createTrip(action.name, action.startDate, action.endDate)
             is Action.OnTripClick -> sendEvent(Event.NavigateToMap(action.tripId))
+            is Action.OnDeleteTrip -> deleteTrip(action.tripId)
         }
     }
 
@@ -55,6 +58,12 @@ class HomeViewModel(
         viewModelScope.launch {
             createTripUseCase(name, startDate, endDate)
             _uiState.update { it.copy(isCreateDialogVisible = false) }
+        }
+    }
+
+    private fun deleteTrip(tripId: String) {
+        viewModelScope.launch {
+            deleteTripUseCase(tripId)
         }
     }
 
@@ -85,5 +94,6 @@ class HomeViewModel(
         data object OnDismissCreateDialog : Action
         data class OnConfirmCreateTrip(val name: String, val startDate: LocalDate, val endDate: LocalDate) : Action
         data class OnTripClick(val tripId: String) : Action
+        data class OnDeleteTrip(val tripId: String) : Action
     }
 }

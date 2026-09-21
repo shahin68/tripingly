@@ -1,9 +1,23 @@
 package com.falcon.tripingly.feature.map.data.local.entity
 
 import androidx.room.Entity
+import androidx.room.ForeignKey
+import androidx.room.Index
 import androidx.room.PrimaryKey
+import com.falcon.tripingly.feature.home.data.local.entity.TripEntity
 
-@Entity(tableName = "markers")
+@Entity(
+    tableName = "markers",
+    foreignKeys = [
+        ForeignKey(
+            entity = TripEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["tripId"],
+            onDelete = ForeignKey.CASCADE
+        )
+    ],
+    indices = [Index(value = ["tripId"])]
+)
 data class MarkerEntity(
     @PrimaryKey val id: String,
     val tripId: String,
