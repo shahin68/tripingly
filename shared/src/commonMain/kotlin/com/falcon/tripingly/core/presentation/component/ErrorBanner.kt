@@ -14,6 +14,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import org.jetbrains.compose.resources.stringResource
+import tripingly.shared.generated.resources.Res
+import tripingly.shared.generated.resources.*
 
 @Composable
 fun ErrorBanner(
@@ -45,7 +48,7 @@ fun ErrorBanner(
                 onClick = onDismiss
             ) {
                 Text(
-                    text = "Dismiss",
+                    text = stringResource(Res.string.common_dismiss),
                     color = MaterialTheme.colorScheme.onErrorContainer
                 )
             }

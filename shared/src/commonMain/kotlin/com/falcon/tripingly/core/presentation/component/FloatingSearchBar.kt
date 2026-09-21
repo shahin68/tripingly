@@ -15,13 +15,16 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.falcon.tripingly.core.presentation.theme.spacing
+import org.jetbrains.compose.resources.stringResource
+import tripingly.shared.generated.resources.Res
+import tripingly.shared.generated.resources.*
 
 @Composable
 fun FloatingSearchBar(
     query: String,
     onQueryChange: (String) -> Unit,
     modifier: Modifier = Modifier,
-    placeholder: String = "Search..."
+    placeholder: String = stringResource(Res.string.common_search_placeholder)
 ) {
     TextField(
         value = query,

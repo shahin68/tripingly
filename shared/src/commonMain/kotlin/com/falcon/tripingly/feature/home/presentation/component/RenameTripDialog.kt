@@ -11,6 +11,9 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import org.jetbrains.compose.resources.stringResource
+import tripingly.shared.generated.resources.Res
+import tripingly.shared.generated.resources.*
 
 @Composable
 fun RenameTripDialog(
@@ -22,12 +25,12 @@ fun RenameTripDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Rename Trip") },
+        title = { Text(stringResource(Res.string.rename_trip_title)) },
         text = {
             OutlinedTextField(
                 value = name,
                 onValueChange = { name = it },
-                label = { Text("Trip Name") },
+                label = { Text(stringResource(Res.string.create_trip_name_label)) },
                 modifier = Modifier.fillMaxWidth()
             )
         },
@@ -36,12 +39,12 @@ fun RenameTripDialog(
                 onClick = { onConfirm(name) },
                 enabled = name.isNotBlank() && name != initialName
             ) {
-                Text("Rename")
+                Text(stringResource(Res.string.rename_trip_button_rename))
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("Cancel")
+                Text(stringResource(Res.string.common_cancel))
             }
         }
     )

@@ -37,6 +37,9 @@ import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.atStartOfDayIn
 import kotlinx.datetime.toLocalDateTime
+import org.jetbrains.compose.resources.stringResource
+import tripingly.shared.generated.resources.Res
+import tripingly.shared.generated.resources.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -85,14 +88,14 @@ fun RescheduleTripDialog(
                         modifier = Modifier.weight(1f),
                         title = {
                             Text(
-                                text = "Reschedule Trip",
+                                text = stringResource(Res.string.reschedule_trip_title),
                                 modifier = Modifier.padding(16.dp),
                                 style = MaterialTheme.typography.titleMedium,
                             )
                         },
                         headline = {
                              Text(
-                                text = "Choose new dates",
+                                text = stringResource(Res.string.reschedule_trip_picker_headline),
                                 modifier = Modifier.padding(horizontal = 16.dp),
                                 style = MaterialTheme.typography.bodySmall,
                             )
@@ -107,10 +110,10 @@ fun RescheduleTripDialog(
                         horizontalArrangement = Arrangement.End,
                     ) {
                         TextButton(onClick = { showDatePicker = false }) {
-                            Text("Cancel")
+                            Text(stringResource(Res.string.common_cancel))
                         }
                         TextButton(onClick = { showDatePicker = false }) {
-                            Text("OK")
+                            Text(stringResource(Res.string.common_ok))
                         }
                     }
                 }
@@ -120,7 +123,7 @@ fun RescheduleTripDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Reschedule Trip") },
+        title = { Text(stringResource(Res.string.reschedule_trip_title)) },
         text = {
             val dateRangeText = if (selectedStartDate != null && selectedEndDate != null) {
                 "${DateUtils.formatFormal(selectedStartDate)} - ${DateUtils.formatFormal(selectedEndDate)}"
@@ -129,7 +132,7 @@ fun RescheduleTripDialog(
             OutlinedTextField(
                 value = dateRangeText,
                 onValueChange = {},
-                label = { Text("New Dates") },
+                label = { Text(stringResource(Res.string.reschedule_trip_dates_label)) },
                 modifier = Modifier.fillMaxWidth(),
                 readOnly = true,
                 trailingIcon = {
@@ -148,12 +151,12 @@ fun RescheduleTripDialog(
                 },
                 enabled = selectedStartDate != null && selectedEndDate != null && (selectedStartDate != initialStartDate || selectedEndDate != initialEndDate)
             ) {
-                Text("Reschedule")
+                Text(stringResource(Res.string.reschedule_trip_button_reschedule))
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("Cancel")
+                Text(stringResource(Res.string.common_cancel))
             }
         }
     )

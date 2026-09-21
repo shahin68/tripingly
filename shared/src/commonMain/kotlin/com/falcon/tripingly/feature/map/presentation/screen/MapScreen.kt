@@ -52,6 +52,9 @@ import com.falcon.tripingly.feature.map.presentation.screen.MapViewModel.State
 import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.plus
 import kotlinx.datetime.until
+import org.jetbrains.compose.resources.stringResource
+import tripingly.shared.generated.resources.Res
+import tripingly.shared.generated.resources.*
 
 @Composable
 fun MapScreen(
@@ -168,13 +171,14 @@ private fun DaySelectionTabs(
         divider = {},
     ) {
         repeat(totalDays) { index ->
-            val tabDate = state.startDate?.plus(index, DateTimeUnit.DAY)
-            val dateLabel = tabDate?.let { " (${DateUtils.formatAbbreviated(it)})" } ?: ""
-            
             Tab(
                 selected = state.activeDayIndex == index,
                 onClick = { onDaySelected(index) },
-                text = { Text("Day ${index + 1}$dateLabel") },
+                text = {
+                    val tabDate = state.startDate?.plus(index, DateTimeUnit.DAY)
+                    val dateStr = tabDate?.let { DateUtils.formatAbbreviated(it) } ?: ""
+                    Text(stringResource(Res.string.map_day_label, index + 1, dateStr))
+                },
             )
         }
     }
@@ -304,12 +308,12 @@ private fun ItineraryTitle(
         horizontalArrangement = Arrangement.SpaceBetween,
     ) {
         Text(
-            text = "Trip Plan (${state.markers.size} stops)",
+            text = stringResource(Res.string.map_itinerary_title, state.markers.size),
             style = MaterialTheme.typography.titleSmall,
             fontWeight = FontWeight.Bold,
         )
         TextButton(onClick = { onAction(Action.ClearAllMarkers) }) {
-            Text("Clear All", style = MaterialTheme.typography.labelSmall)
+            Text(stringResource(Res.string.map_itinerary_clear_all), style = MaterialTheme.typography.labelSmall)
         }
     }
 }

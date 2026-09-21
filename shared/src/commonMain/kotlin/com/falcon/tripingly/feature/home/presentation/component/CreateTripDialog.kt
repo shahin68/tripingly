@@ -32,7 +32,13 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.falcon.tripingly.core.util.DateUtils
-import kotlinx.datetime.*
+import kotlinx.datetime.Instant
+import kotlinx.datetime.LocalDate
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toLocalDateTime
+import org.jetbrains.compose.resources.stringResource
+import tripingly.shared.generated.resources.Res
+import tripingly.shared.generated.resources.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -78,14 +84,14 @@ fun CreateTripDialog(
                         modifier = Modifier.weight(1f),
                         title = {
                             Text(
-                                text = "Select Trip Dates",
+                                text = stringResource(Res.string.create_trip_picker_title),
                                 modifier = Modifier.padding(16.dp),
                                 style = MaterialTheme.typography.titleMedium,
                             )
                         },
                         headline = {
                              Text(
-                                text = "Choose the range",
+                                text = stringResource(Res.string.create_trip_picker_headline),
                                 modifier = Modifier.padding(horizontal = 16.dp),
                                 style = MaterialTheme.typography.bodySmall,
                             )
@@ -100,10 +106,10 @@ fun CreateTripDialog(
                         horizontalArrangement = Arrangement.End,
                     ) {
                         TextButton(onClick = { showDatePicker = false }) {
-                            Text("Cancel")
+                            Text(stringResource(Res.string.common_cancel))
                         }
                         TextButton(onClick = { showDatePicker = false }) {
-                            Text("OK")
+                            Text(stringResource(Res.string.common_ok))
                         }
                     }
                 }
@@ -113,13 +119,13 @@ fun CreateTripDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Create New Trip") },
+        title = { Text(stringResource(Res.string.create_trip_title)) },
         text = {
             Column {
                 OutlinedTextField(
                     value = name,
                     onValueChange = { name = it },
-                    label = { Text("Trip Name") },
+                    label = { Text(stringResource(Res.string.create_trip_name_label)) },
                     modifier = Modifier.fillMaxWidth(),
                 )
                 Spacer(modifier = Modifier.height(16.dp))
@@ -131,7 +137,7 @@ fun CreateTripDialog(
                 OutlinedTextField(
                     value = dateRangeText,
                     onValueChange = {},
-                    label = { Text("Dates") },
+                    label = { Text(stringResource(Res.string.create_trip_dates_label)) },
                     modifier = Modifier.fillMaxWidth(),
                     readOnly = true,
                     trailingIcon = {
@@ -151,12 +157,12 @@ fun CreateTripDialog(
                 },
                 enabled = (name.isNotBlank() && selectedStartDate != null && selectedEndDate != null),
             ) {
-                Text("Create")
+                Text(stringResource(Res.string.create_trip_button_create))
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("Cancel")
+                Text(stringResource(Res.string.common_cancel))
             }
         },
     )

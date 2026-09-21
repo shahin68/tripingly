@@ -24,8 +24,10 @@ import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.datetime.LocalDate
+import org.jetbrains.compose.resources.getString
+import tripingly.shared.generated.resources.Res
+import tripingly.shared.generated.resources.*
 import kotlin.coroutines.cancellation.CancellationException
-import kotlin.math.round
 
 class MapViewModel(
     private val tripId: String,
@@ -95,10 +97,9 @@ class MapViewModel(
         if (isGranted) {
             startLocationUpdates()
         } else {
-            _uiState.update {
-                it.copy(
-                    errorMessage = "Location permission was denied. You can still explore destinations manually."
-                )
+            viewModelScope.launch {
+                val error = getString(Res.string.error_location_denied_manual)
+                _uiState.update { it.copy(errorMessage = error) }
             }
         }
     }
@@ -135,11 +136,12 @@ class MapViewModel(
                             }
                         }
                         is AppResult.Error -> {
-                            val errorText = when (val error = result.error) {
-                                is DataError.Location.PermissionDenied -> "Location permission required to detect your location."
-                                is DataError.Location.ServiceDisabled -> "Location services are disabled on your device."
-                                is DataError.Location.Unavailable -> "Unable to determine current location. Showing default view."
-                                is DataError.Location.Unknown -> error.message ?: "Failed to acquire location."
+                            val errorText = when (result.error) {
+                                is DataError.Location.PermissionDenied -> getString(Res.string.error_location_permission_required)
+                                is DataError.Location.ServiceDisabled -> getString(Res.string.error_location_services_disabled)
+                                is DataError.Location.Unavailable -> getString(Res.string.error_location_unavailable)
+                                is DataError.Location.Unknown -> result.error.message 
+                                    ?: getString(Res.string.error_location_unknown)
                             }
                             _uiState.update {
                                 it.copy(isLoadingLocation = false, errorMessage = errorText)
@@ -153,7 +155,7 @@ class MapViewModel(
                 _uiState.update {
                     it.copy(
                         isLoadingLocation = false,
-                        errorMessage = e.message ?: "An unexpected error occurred while fetching location."
+                        errorMessage = e.message ?: getString(Res.string.error_location_unexpected)
                     )
                 }
             }
@@ -172,12 +174,16 @@ class MapViewModel(
             val currentMarkers = _uiState.value.markers
             val nextOrder = currentMarkers.size + 1
             val markerId = "stop_${nextOrder}_${coordinates.latitude.hashCode()}_${coordinates.longitude.hashCode()}"
+            
+            val title = getString(Res.string.map_stop_title_format, nextOrder)
+            val snippet = getString(Res.string.map_stop_snippet_format, coordinates.latitude, coordinates.longitude)
+            
             val newMarker = MapMarker(
                 id = markerId,
                 position = coordinates,
-                title = "Stop #$nextOrder",
+                title = title,
                 orderNumber = nextOrder,
-                snippet = "Lat: ${formatCoordinate(coordinates.latitude)}, Lng: ${formatCoordinate(coordinates.longitude)}",
+                snippet = snippet,
                 color = 0xFF2196F3
             )
             saveMarkerUseCase(tripId, _uiState.value.activeDayIndex, newMarker)
@@ -194,11 +200,6 @@ class MapViewModel(
         viewModelScope.launch {
             deleteMarkersForDayUseCase(tripId, _uiState.value.activeDayIndex)
         }
-    }
-
-    private fun formatCoordinate(value: Double): String {
-        val rounded = round(value * 10000) / 10000.0
-        return rounded.toString()
     }
 
     private fun sendEvent(event: Event) {

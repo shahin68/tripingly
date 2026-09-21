@@ -43,6 +43,9 @@ import com.falcon.tripingly.feature.home.presentation.screen.HomeViewModel.Actio
 import com.falcon.tripingly.feature.home.presentation.screen.HomeViewModel.State
 import com.falcon.tripingly.feature.home.presentation.screen.HomeViewModel.Tab
 import kotlinx.coroutines.launch
+import org.jetbrains.compose.resources.stringResource
+import tripingly.shared.generated.resources.Res
+import tripingly.shared.generated.resources.*
 
 @Composable
 fun HomeScreen(
@@ -77,7 +80,7 @@ fun HomeScreen(
         floatingActionButton = {
             if (currentTab == Tab.MyTrips) {
                 FloatingActionButton(onClick = { onAction(Action.OnAddTripClick) }) {
-                    Icon(Icons.Default.Add, contentDescription = "Add Trip")
+                    Icon(Icons.Default.Add, contentDescription = stringResource(Res.string.home_fab_add_trip))
                 }
             }
         }
@@ -90,7 +93,11 @@ fun HomeScreen(
             FloatingSearchBar(
                 query = state.searchQuery,
                 onQueryChange = { onAction(Action.OnSearchQueryChanged(it)) },
-                placeholder = if (currentTab == Tab.MyTrips) "Search trips..." else "Search social..."
+                placeholder = if (currentTab == Tab.MyTrips) {
+                    stringResource(Res.string.home_search_placeholder_trips)
+                } else {
+                    stringResource(Res.string.home_search_placeholder_social)
+                }
             )
 
             HorizontalPager(
@@ -120,7 +127,7 @@ private fun MyTripsContent(
 
     if (trips.isEmpty()) {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            Text("No trips yet. Tap + to create one!")
+            Text(stringResource(Res.string.home_list_empty))
         }
     } else {
         LazyColumn(
@@ -145,19 +152,19 @@ private fun MyTripsContent(
                         onDismissRequest = { selectedTripId = null },
                         actions = listOf(
                             DropdownAction(
-                                label = "Rename Trip",
+                                label = stringResource(Res.string.trip_action_rename),
                                 onClick = { onAction(Action.OnRenameTrip(trip.id)) }
                             ),
                             DropdownAction(
-                                label = "Reschedule Trip",
+                                label = stringResource(Res.string.trip_action_reschedule),
                                 onClick = { onAction(Action.OnRescheduleTrip(trip.id)) }
                             ),
                             DropdownAction(
-                                label = "Share Trip",
+                                label = stringResource(Res.string.trip_action_share),
                                 onClick = { onAction(Action.OnShareTrip(trip.id)) }
                             ),
                             DropdownAction(
-                                label = "Delete Trip",
+                                label = stringResource(Res.string.trip_action_delete),
                                 isDestructive = true,
                                 onClick = { onAction(Action.OnDeleteTrip(trip.id)) }
                             )
@@ -175,7 +182,7 @@ private fun MyTripsContent(
 @Composable
 private fun SocialContent() {
     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        Text("Social feature coming soon!")
+        Text(stringResource(Res.string.home_social_coming_soon))
     }
 }
 
@@ -218,13 +225,13 @@ private fun HomeNavigationBar(
             selected = selectedTab == Tab.MyTrips,
             onClick = { onTabSelected(Tab.MyTrips) },
             icon = { Icon(Icons.Default.Home, contentDescription = null) },
-            label = { Text("My Trips") }
+            label = { Text(stringResource(Res.string.home_tab_my_trips)) }
         )
         NavigationBarItem(
             selected = selectedTab == Tab.Social,
             onClick = { onTabSelected(Tab.Social) },
             icon = { Icon(Icons.Default.People, contentDescription = null) },
-            label = { Text("Social") }
+            label = { Text(stringResource(Res.string.home_tab_social)) }
         )
     }
 }
