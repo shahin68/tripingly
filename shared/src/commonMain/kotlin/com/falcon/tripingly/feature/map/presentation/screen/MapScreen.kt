@@ -41,8 +41,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.falcon.tripingly.core.presentation.component.ErrorBanner
+import com.falcon.tripingly.core.presentation.theme.TripinglyTheme
 import com.falcon.tripingly.core.presentation.theme.spacing
 import com.falcon.tripingly.core.util.DateUtils
 import com.falcon.tripingly.feature.map.domain.model.MapMarker
@@ -317,3 +319,15 @@ private fun ItineraryTitle(
         }
     }
 }
+
+@Preview
+@Composable
+private fun MapScreenPreview() {
+    TripinglyTheme {
+        MapScreen(
+            state = mapScreenStatePreviewData,
+            onAction = {}
+        )
+    }
+}
+

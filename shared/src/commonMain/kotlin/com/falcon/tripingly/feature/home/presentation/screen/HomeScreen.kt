@@ -37,13 +37,16 @@ import androidx.compose.ui.unit.dp
 import com.falcon.tripingly.core.presentation.component.AppDropdownMenu
 import com.falcon.tripingly.core.presentation.component.DropdownAction
 import com.falcon.tripingly.core.presentation.component.FloatingSearchBar
+import com.falcon.tripingly.core.presentation.theme.TripinglyTheme
 import com.falcon.tripingly.core.util.DateUtils
 import com.falcon.tripingly.feature.home.domain.model.Trip
 import com.falcon.tripingly.feature.home.presentation.screen.HomeViewModel.Action
 import com.falcon.tripingly.feature.home.presentation.screen.HomeViewModel.State
 import com.falcon.tripingly.feature.home.presentation.screen.HomeViewModel.Tab
 import kotlinx.coroutines.launch
+import kotlinx.datetime.LocalDate
 import org.jetbrains.compose.resources.stringResource
+import androidx.compose.ui.tooling.preview.Preview
 import tripingly.shared.generated.resources.Res
 import tripingly.shared.generated.resources.*
 
@@ -186,7 +189,6 @@ private fun SocialContent() {
     }
 }
 
-@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun TripItem(
     trip: Trip,
@@ -235,3 +237,19 @@ private fun HomeNavigationBar(
         )
     }
 }
+
+@Preview
+@Composable
+private fun HomeScreenPreview() {
+    TripinglyTheme {
+        HomeScreen(
+            state = State(
+                trips = tripsPreviewData
+            ),
+            onAction = {}
+        )
+    }
+}
+
+
+

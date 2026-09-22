@@ -158,3 +158,63 @@ fun MapRoute(
 - **First Optional Parameter Rule**: Every Composable view configuration signature **must** accept a `modifier: Modifier = Modifier` as its very first optional parameter. External structural constraints such as custom paddings or offsets must be specified via this incoming parent `modifier` rather than hardcoding double inner padding within the child view.
 - **Deconstruct for Reusability**: Avoid bloating a single Screen file with multiple disparate layouts. Extract standalone reusable elements (like custom error components, headers, buttons) into independent modular files within appropriate package modules (e.g. `core/presentation/component/`) to keep views clean and single-purpose.
 - **Minimize Parameter & Property Drilling**: Keep component function signatures simple and clear. Instead of individual deeply nested variable parameters, prefer passing clean high-level state blocks and a single uniform action handler callback to manage intents cleanly.
+
+---
+
+## 5. Compose Preview & Sample Data Standards
+
+### Rule 1: Preview Placement & Theme Wrapper
+- Always place `@Preview` Composable functions at the bottom of the file, beneath all screen and component implementations.
+- Always wrap `@Preview` Composables with `TripinglyTheme`.
+
+### Rule 2: Package-Internal Preview Data (`<Component>PreviewData.kt`)
+- Store preview sample data in a dedicated `internal` file within the same package named `<ScreenOrComponent>PreviewData.kt` (e.g., `HomeScreenPreviewData.kt`).
+- Expose sample data variables with `internal` visibility (e.g., `internal val tripsPreviewData = ...`).
+- Reference these `internal` preview data properties inside the `@Preview` Composable function.
+
+#### Example File Structure
+```
+feature/home/presentation/screen/
+├── HomeScreen.kt
+└── HomeScreenPreviewData.kt
+```
+
+#### Example `HomeScreenPreviewData.kt`
+```kotlin
+package com.falcon.tripingly.feature.home.presentation.screen
+
+import com.falcon.tripingly.feature.home.domain.model.Trip
+import kotlinx.datetime.LocalDate
+
+internal val tripsPreviewData = listOf(
+    Trip(
+        id = "1",
+        name = "Summer Vacation in Paris",
+        startDate = LocalDate(2025, 6, 1),
+        endDate = LocalDate(2025, 6, 15)
+    ),
+    Trip(
+        id = "2",
+        name = "Tokyo Adventure",
+        startDate = LocalDate(2025, 10, 10),
+        endDate = LocalDate(2025, 10, 20)
+    )
+)
+```
+
+#### Example `HomeScreen.kt` (at the bottom of the file)
+```kotlin
+@Preview
+@Composable
+private fun HomeScreenPreview() {
+    TripinglyTheme {
+        HomeScreen(
+            state = State(
+                trips = tripsPreviewData
+            ),
+            onAction = {}
+        )
+    }
+}
+```
+

@@ -11,6 +11,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.tooling.preview.Preview
+import com.falcon.tripingly.core.presentation.theme.TripinglyTheme
 import org.jetbrains.compose.resources.stringResource
 import tripingly.shared.generated.resources.Res
 import tripingly.shared.generated.resources.*
@@ -49,3 +51,16 @@ fun RenameTripDialog(
         }
     )
 }
+
+@Preview
+@Composable
+private fun RenameTripDialogPreview() {
+    TripinglyTheme {
+        RenameTripDialog(
+            initialName = renameTripInitialNamePreviewData,
+            onDismiss = {},
+            onConfirm = {}
+        )
+    }
+}
+

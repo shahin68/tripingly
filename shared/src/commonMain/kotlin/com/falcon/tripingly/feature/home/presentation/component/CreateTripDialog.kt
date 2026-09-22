@@ -28,9 +28,11 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import com.falcon.tripingly.core.presentation.theme.TripinglyTheme
 import com.falcon.tripingly.core.util.DateUtils
 import kotlinx.datetime.Instant
 import kotlinx.datetime.LocalDate
@@ -167,3 +169,15 @@ fun CreateTripDialog(
         },
     )
 }
+
+@Preview
+@Composable
+private fun CreateTripDialogPreview() {
+    TripinglyTheme {
+        CreateTripDialog(
+            onDismiss = {},
+            onConfirm = { _, _, _ -> }
+        )
+    }
+}
+

@@ -204,4 +204,4 @@ fun TripinglyTheme(
 1. **Never hardcode hex values directly in screens**: Always use `MaterialTheme.colorScheme.*`.
 2. **Never hardcode raw margin/padding numbers**: Use `MaterialTheme.spacing.medium` (or equivalent standard dp values).
 3. **Use TextStyles from `MaterialTheme.typography`**: Ensure proper scaling with system font accessibility settings.
-4. **Previews**: Always wrap `@Preview` composables with `TripinglyTheme`.
+4. **Previews**: Always wrap `@Preview` composables with `TripinglyTheme` and place preview sample data in a package-internal `<Component>PreviewData.kt` file.
