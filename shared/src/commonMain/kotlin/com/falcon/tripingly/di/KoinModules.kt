@@ -16,8 +16,8 @@ import com.falcon.tripingly.feature.home.presentation.screen.HomeViewModel
 import com.falcon.tripingly.core.data.local.TripinglyDatabase
 import com.falcon.tripingly.core.coroutines.CoroutineDispatchers
 import com.falcon.tripingly.core.coroutines.DefaultCoroutineDispatchers
-import com.falcon.tripingly.feature.map.data.repository.LocationRepository
 import com.falcon.tripingly.feature.map.data.repository.LocationRepositoryImpl
+import com.falcon.tripingly.feature.map.domain.repository.LocationRepository
 import com.falcon.tripingly.feature.map.domain.usecase.GetCurrentLocationUseCase
 import com.falcon.tripingly.feature.map.presentation.screen.MapViewModel
 import org.koin.core.module.Module
