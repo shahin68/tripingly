@@ -1,5 +1,7 @@
 package com.falcon.tripingly.feature.home.presentation.screen
 
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
@@ -33,6 +35,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.unit.dp
 import com.falcon.tripingly.core.presentation.component.AppDropdownMenu
 import com.falcon.tripingly.core.presentation.component.DropdownAction
@@ -81,9 +84,22 @@ fun HomeScreen(
             )
         },
         floatingActionButton = {
-            if (currentTab == Tab.MyTrips) {
-                FloatingActionButton(onClick = { onAction(Action.OnAddTripClick) }) {
-                    Icon(Icons.Default.Add, contentDescription = stringResource(Res.string.home_fab_add_trip))
+            val isFabVisible = currentTab == Tab.MyTrips
+            val fabScale by animateFloatAsState(
+                targetValue = if (isFabVisible) 1f else 0f,
+                animationSpec = tween(durationMillis = 200),
+                label = "fabScale"
+            )
+
+            if (fabScale > 0f) {
+                FloatingActionButton(
+                    onClick = { onAction(Action.OnAddTripClick) },
+                    modifier = Modifier.scale(fabScale)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Add,
+                        contentDescription = stringResource(Res.string.home_fab_add_trip)
+                    )
                 }
             }
         }
