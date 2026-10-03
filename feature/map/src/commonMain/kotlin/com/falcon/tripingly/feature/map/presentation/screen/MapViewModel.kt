@@ -136,11 +136,11 @@ class MapViewModel(
                             }
                         }
                         is AppResult.Error -> {
-                            val errorText = when (result.error) {
+                            val errorText = when (val error = result.error) {
                                 is DataError.Location.PermissionDenied -> getString(Res.string.error_location_permission_required)
                                 is DataError.Location.ServiceDisabled -> getString(Res.string.error_location_services_disabled)
                                 is DataError.Location.Unavailable -> getString(Res.string.error_location_unavailable)
-                                is DataError.Location.Unknown -> result.error.message 
+                                is DataError.Location.Unknown -> error.message
                                     ?: getString(Res.string.error_location_unknown)
                             }
                             _uiState.update {
