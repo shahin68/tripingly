@@ -1,6 +1,10 @@
 package com.falcon.tripingly.core.network.di
 
 import com.falcon.tripingly.core.network.ApiConfig
+import com.falcon.tripingly.core.network.account.AccountApi
+import com.falcon.tripingly.core.network.account.createAccountApi
+import com.falcon.tripingly.core.network.auth.AuthApi
+import com.falcon.tripingly.core.network.auth.createAuthApi
 import com.falcon.tripingly.core.network.auth.InMemoryTokenStore
 import com.falcon.tripingly.core.network.auth.SessionEvents
 import com.falcon.tripingly.core.network.auth.TokenStore
@@ -39,6 +43,8 @@ val networkModule = module {
         )
     }
     single<Ktorfit> { createKtorfit(get(), get()) }
+    single<AuthApi> { get<Ktorfit>().createAuthApi() }
+    single<AccountApi> { get<Ktorfit>().createAccountApi() }
 }
 
 internal expect val networkPlatformModule: Module

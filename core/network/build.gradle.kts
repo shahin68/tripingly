@@ -90,6 +90,10 @@ buildkonfig {
         // -Ptripinly.useFakeApi=true: repositories use their fakes (demo before an endpoint exists).
         buildConfigField(BOOLEAN, "USE_FAKE_API", providers.gradleProperty("tripinly.useFakeApi").getOrElse("false"))
         buildConfigField(STRING, "APP_VERSION", providers.gradleProperty("tripinly.appVersion").getOrElse("1.0"))
+        // POST /auth/dev for testing before the Google/Apple keys exist. Staging needs its secret:
+        // put tripinly.devAuthSecret in ~/.gradle/gradle.properties, never in the repo.
+        buildConfigField(BOOLEAN, "DEVELOPER_SIGN_IN", "true")
+        buildConfigField(STRING, "DEV_AUTH_SECRET", providers.gradleProperty("tripinly.devAuthSecret").getOrElse(""))
     }
     defaultConfigs("local") {
         buildConfigField(STRING, "ENVIRONMENT", "local")
@@ -105,5 +109,7 @@ buildkonfig {
         buildConfigField(STRING, "BASE_URL", "")
         buildConfigField(BOOLEAN, "LOG_REQUESTS", "false")
         buildConfigField(BOOLEAN, "USE_FAKE_API", "false")
+        buildConfigField(BOOLEAN, "DEVELOPER_SIGN_IN", "false")
+        buildConfigField(STRING, "DEV_AUTH_SECRET", "")
     }
 }
