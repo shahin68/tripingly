@@ -22,6 +22,7 @@ class KmpFeatureConventionPlugin : Plugin<Project> {
 
                 implementation(libs.library("kotlinx-coroutines-core"))
                 implementation(libs.library("kotlinx-datetime"))
+                implementation(libs.library("kotlinx-collections-immutable"))
                 implementation(libs.library("koin-core"))
                 implementation(libs.library("koin-compose"))
                 implementation(libs.library("koin-compose-viewmodel"))

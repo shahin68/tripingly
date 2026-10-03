@@ -17,13 +17,14 @@ core/database          Room database (TripinglyDatabase v2), TripDao, MarkerDao,
 core/data              TripRepository (+ Room-backed TripRepositoryImpl)
 core/designsystem      TripinglyTheme (colors, typography, shapes, spacing), AppDropdownMenu, ErrorBanner, FloatingSearchBar
 core/navigation        Route keys (Home, TripMap) and the saved-state serializers config
+core/network           Ktor HttpClient (auth, refresh, headers), Ktorfit with an AppResult converter (error mapping), AuthApi, TokenStore (in memory), SessionEvents, CursorPaginator, idempotency keys, API models generated from openapi.json, environments via BuildKonfig
 feature/trips          Home screen (My Trips + Social tab), create/rename/reschedule dialogs, trip use cases
 feature/map            Trip map: day tabs, markers, location, Google Maps (Android) / MapKit (iOS)
 ```
 
-Dependency direction: `androidApp`/`iosApp` → `shared` → `feature:*` → `core:*`. Features never depend on each other (the `tripinly.kmp.feature` plugin fails the build if they do). Each module has one Koin module (`commonModule`, `databaseModule`, `dataModule`, `tripsModule`, `mapModule`); `shared/di/InitKoin.kt` lists them.
+Dependency direction: `androidApp`/`iosApp` → `shared` → `feature:*` → `core:*`. Features never depend on each other (the `tripinly.kmp.feature` plugin fails the build if they do). Each module has one Koin module (`commonModule`, `databaseModule`, `networkModule`, `dataModule`, `tripsModule`, `mapModule`); `shared/di/InitKoin.kt` lists them.
 
-Every module has `commonMain`, plus `androidMain`/`iosMain` only where platform code is needed: ShareManager and Koin bindings in `core:common`, DB builders in `core:database`, location, permission and map view in `feature:map`.
+Every module has `commonMain`, plus `androidMain`/`iosMain` only where platform code is needed: ShareManager and Koin bindings in `core:common`, DB builders in `core:database`, the HTTP engine and locale in `core:network`, location, permission and map view in `feature:map`.
 
 ## Tech stack in use
 
@@ -39,9 +40,13 @@ Every module has `commonMain`, plus `androidMain`/`iosMain` only where platform 
 | Coroutines / datetime / serialization | kotlinx | 1.10.1 / 0.8.0 / 1.11.0 |
 | Maps (Android) | play-services-maps, maps-compose, play-services-location | 19.1.0, 6.5.1, 21.3.0 |
 | Maps (iOS) | MapKit via `UIKitView` (not Google Maps) | system |
-| Tests | kotlin-test, coroutines-test, Turbine, JUnit 4, Robolectric | 1.2.0 Turbine, 4.17 Robolectric |
+| Networking | Ktor client (OkHttp on Android, Darwin on iOS), content negotiation, auth | 3.6.0 |
+| API models | OpenAPI Generator (`kotlin`, `multiplatform`), build time only | 7.14.0 |
+| Build config | BuildKonfig (base URL per environment) | 0.23.0 |
+| State collections | kotlinx-collections-immutable (in feature modules) | 0.5.2 |
+| Tests | kotlin-test, coroutines-test, Turbine, JUnit 4, Robolectric, Ktor MockEngine | 1.2.0 Turbine, 4.17 Robolectric |
 
-Not present yet: Ktor or any networking, image loading (Coil), secure storage, Firebase, Socket.IO, sign-in SDKs, kotlinx-collections-immutable, detekt/ktlint.
+Not present yet: image loading (Coil), secure storage, Firebase, Socket.IO, sign-in SDKs, detekt/ktlint.
 
 ## Architecture pattern
 
@@ -93,7 +98,7 @@ Not present yet: Ktor or any networking, image loading (Coil), secure storage, F
 
 ## Gaps and risks
 
-1. **No networking layer**: no Ktor, auth, token storage or error mapping by `error.code`. Everything is local Room data with client-generated IDs.
+1. **Networking is in place but unused**: `core:network` (stage 2) has the client, refresh and error mapping, but no screen calls the API yet and tokens live in memory until stage 3. Everything is still local Room data with client-generated IDs.
 2. **Room is the source of truth**: moving to "server is truth, Room caches own trips" changes repositories, IDs and the schema (stage 4).
 3. **iOS map is MapKit and the iOS app target likely does not compile** (GoogleMaps import without the SDK linked). Decide on the Google Maps iOS SDK via SPM in the map stage.
 4. **Google POIs visible on Android**; no OSM attribution.
