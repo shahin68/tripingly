@@ -34,7 +34,7 @@ kotlin {
         androidMain.dependencies {
             implementation(libs.ktor.client.okhttp)
             // Held at the version in the catalog until the project moves to compileSdk 37.
-            implementation(libs.okhttp) { version { strictly(libs.versions.okhttp.get()) } }
+            implementation("com.squareup.okhttp3:okhttp") { version { strictly(libs.versions.okhttp.get()) } }
         }
         iosMain.dependencies {
             implementation(libs.ktor.client.darwin)
