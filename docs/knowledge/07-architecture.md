@@ -57,17 +57,17 @@ iosApp ─────┴─> shared ──> feature:trips, feature:map, (auth, 
 - One Koin module per Gradle module, `viewModelOf(::XViewModel)` with constructor injection, platform bindings through `expect/actual` modules.
 - Navigation 3 with typed, serializable keys in `core:navigation`; ViewModels read arguments from their key; deep links map to keys in one place.
 
-## Networking (stage 2)
+## Networking (`core:network`, built in stage 2)
 
-- Ktor client (OkHttp engine on Android, Darwin on iOS) with ContentNegotiation, Auth (bearer + refresh), Logging (headers redacted, debug only). kotlinx.serialization with `ignoreUnknownKeys = true`, `explicitNulls = false`.
+- Ktor client (OkHttp engine on Android, Darwin on iOS) with ContentNegotiation and Auth (bearer + refresh). Request logging logs method, path and status only (no query strings, headers or bodies), and is off in production. kotlinx.serialization with `ignoreUnknownKeys = true`, `explicitNulls = false`.
 - **API models are generated from the backend's `openapi.json`** (decided 2026-10-03) into `core:network`; repositories map them to domain models.
-- Base URL per environment (local, staging, production) from build config; never production in debug. Staging is `https://api-staging-4ade.up.railway.app/v1`.
+- Base URL per environment from BuildKonfig flavors (`-Pbuildkonfig.flavor=local|staging|production`, staging by default). Staging is `https://api-staging-4ade.up.railway.app/v1`; local is `http://10.0.2.2:3000/v1` on the Android emulator and `http://localhost:3000/v1` on the iOS simulator; production waits for the domain.
 - Headers: `Authorization: Bearer`, `Accept-Language` (app language), `X-Client` (`android|ios`/app version).
 - Token refresh: on `401` with `TOKEN_EXPIRED`, refresh once (single-flight: concurrent requests wait for the same refresh), retry; if refresh fails (`REFRESH_TOKEN_REUSED`, `ACCOUNT_SUSPENDED`, 401) sign out.
 - Timeouts: 15 s default; uploads go directly to the pre-signed URL with longer timeouts.
-- Pagination: cursor-based `{ items, nextCursor }` behind a shared paging helper.
-- Idempotency: send an `Idempotency-Key` (UUID) on content-creating POSTs once the backend supports it (it is in the spec but not implemented yet).
-- Error mapping: parse `{ error: { code, message, details } }` into a domain error; map known codes to specific UI (see `03-api-contract.md`).
+- Pagination: cursor-based `{ items, nextCursor }` through `CursorPaginator`.
+- Idempotency: content-creating POSTs (trips, trip copy, days, markers, add-to-trip, marker copy, comments, invites) send `Idempotency-Key`, one UUID per user action reused on its retries.
+- Error mapping: `apiCall { }` turns `{ error: { code, message, details } }` into `DataError.Network.Api` (code as a string, details flattened) and any 401 into `Unauthorized`; repositories map known codes to specific UI (see `03-api-contract.md`).
 
 ## Libraries
 

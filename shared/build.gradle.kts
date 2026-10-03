@@ -21,6 +21,7 @@ kotlin {
             implementation(projects.core.data)
             implementation(projects.core.designsystem)
             implementation(projects.core.navigation)
+            implementation(projects.core.network)
             implementation(projects.feature.trips)
             implementation(projects.feature.map)
 

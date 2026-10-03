@@ -9,4 +9,6 @@ plugins {
     alias(libs.plugins.kotlinxSerialization) apply false
     alias(libs.plugins.ksp) apply false
     alias(libs.plugins.androidxRoom) apply false
+    alias(libs.plugins.buildkonfig) apply false
+    alias(libs.plugins.openapiGenerator) apply false
 }

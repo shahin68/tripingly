@@ -1,0 +1,5968 @@
+{
+  "openapi": "3.0.0",
+  "paths": {
+    "/v1/health": {
+      "get": {
+        "operationId": "Health_liveness",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LivenessDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Liveness: the process is up",
+        "tags": [
+          "ops"
+        ]
+      }
+    },
+    "/v1/health/ready": {
+      "get": {
+        "operationId": "Health_readiness",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReadinessDto"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "SERVICE_UNAVAILABLE with `details.checks`",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Readiness: Postgres and Redis are reachable and all migrations are applied",
+        "tags": [
+          "ops"
+        ]
+      }
+    },
+    "/v1/auth/google": {
+      "post": {
+        "operationId": "Auth_google_",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GoogleSignInDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthTokensDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Sign in with Google; creates the account on first use",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/v1/auth/apple": {
+      "post": {
+        "operationId": "Auth_apple_",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AppleSignInDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthTokensDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Sign in with Apple; creates the account on first use",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/v1/auth/dev": {
+      "post": {
+        "description": "Only when DEV_AUTH_ENABLED=true (local and staging, never production); 404 otherwise. Where DEV_AUTH_SECRET is set (staging), the X-Dev-Auth-Secret header must match.",
+        "operationId": "Auth_dev",
+        "parameters": [
+          {
+            "name": "x-dev-auth-secret",
+            "required": true,
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Dev-Auth-Secret",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DevSignInDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthTokensDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Development sign-in without a provider",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/v1/auth/refresh": {
+      "post": {
+        "description": "Refresh tokens are single use. Presenting one twice revokes the whole session (REFRESH_TOKEN_REUSED).",
+        "operationId": "Auth_refresh",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RefreshDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthTokensDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Exchange a refresh token for new tokens",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/v1/auth/logout": {
+      "post": {
+        "operationId": "Auth_logout",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LogoutDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "summary": "End this session and unregister the device from push",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/v1/legal/documents": {
+      "get": {
+        "operationId": "Legal_documents",
+        "parameters": [
+          {
+            "name": "locale",
+            "required": false,
+            "in": "query",
+            "description": "Defaults to Accept-Language, then en",
+            "schema": {
+              "example": "de-AT",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LegalDocumentsDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Current Terms, Privacy Policy and marketing documents",
+        "tags": [
+          "legal"
+        ]
+      }
+    },
+    "/v1/me": {
+      "get": {
+        "operationId": "Me_getMe",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MeDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Own profile, onboarding state and entitlements",
+        "tags": [
+          "me"
+        ]
+      },
+      "patch": {
+        "description": "Onboarding sets username, displayName and birthDate. Under-16 birth dates delete the account (AGE_REQUIREMENT_NOT_MET).",
+        "operationId": "Me_updateMe",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateMeDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MeDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Update profile",
+        "tags": [
+          "me"
+        ]
+      },
+      "delete": {
+        "description": "Needs a Google/Apple sign-in in the last 10 minutes (403 REAUTH_REQUIRED otherwise; sign in again, then retry). Signs out everywhere at once; everything is deleted in the background and a confirmation email follows.",
+        "operationId": "Account_delete",
+        "parameters": [],
+        "responses": {
+          "202": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AccountDeletionDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Delete my account",
+        "tags": [
+          "me"
+        ]
+      }
+    },
+    "/v1/me/consents": {
+      "get": {
+        "operationId": "Me_listConsents",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConsentsDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Latest consent per document and what is still required",
+        "tags": [
+          "me"
+        ]
+      },
+      "post": {
+        "operationId": "Me_recordConsent",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RecordConsentDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConsentsDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Grant or withdraw consent to a document version",
+        "tags": [
+          "me"
+        ]
+      }
+    },
+    "/v1/me/devices/{fcmToken}": {
+      "put": {
+        "operationId": "Me_registerDevice",
+        "parameters": [
+          {
+            "name": "fcmToken",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegisterDeviceDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Register or refresh a push device",
+        "tags": [
+          "me"
+        ]
+      },
+      "delete": {
+        "operationId": "Me_removeDevice",
+        "parameters": [
+          {
+            "name": "fcmToken",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Unregister a push device",
+        "tags": [
+          "me"
+        ]
+      }
+    },
+    "/v1/users/check-username": {
+      "get": {
+        "operationId": "Users_checkUsername",
+        "parameters": [
+          {
+            "name": "username",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "example": "jonas.k",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UsernameAvailabilityDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Whether a username is valid and free",
+        "tags": [
+          "users"
+        ]
+      }
+    },
+    "/v1/users/search": {
+      "get": {
+        "operationId": "Users_search",
+        "parameters": [
+          {
+            "name": "q",
+            "required": true,
+            "in": "query",
+            "description": "Prefix of a username or display name",
+            "schema": {
+              "minLength": 2,
+              "maxLength": 50,
+              "example": "jon",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserSearchResultDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Find people by username or display name prefix",
+        "tags": [
+          "users"
+        ]
+      }
+    },
+    "/v1/users/{username}": {
+      "get": {
+        "description": "Trips are paginated with cursor and limit. Unknown users and users with a block either way: 404.",
+        "operationId": "Users_profile",
+        "parameters": [
+          {
+            "name": "username",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "example": "jonas.k",
+              "type": "string"
+            }
+          },
+          {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "description": "nextCursor from the previous page",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 50,
+              "default": 20,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProfileDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "A public profile with public trips",
+        "tags": [
+          "users"
+        ]
+      }
+    },
+    "/v1/users/{id}/block": {
+      "post": {
+        "description": "Mutual in effect. Also removes each user from the other’s trips as an editor. Idempotent.",
+        "operationId": "Blocks_block",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Block a user",
+        "tags": [
+          "blocks"
+        ]
+      },
+      "delete": {
+        "operationId": "Blocks_unblock",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Unblock a user. Idempotent.",
+        "tags": [
+          "blocks"
+        ]
+      }
+    },
+    "/v1/me/blocks": {
+      "get": {
+        "operationId": "Blocks_list",
+        "parameters": [
+          {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "description": "nextCursor from the previous page",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 50,
+              "default": 20,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BlockedUsersDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Users I have blocked",
+        "tags": [
+          "blocks"
+        ]
+      }
+    },
+    "/v1/trips": {
+      "post": {
+        "description": "One day per date, or one \"Day 1\" without dates.",
+        "operationId": "Trips_create",
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "description": "A client-generated UUID, new per action and reused on its retries. For 24 hours a retry with the same key and body returns the first response (header `Idempotent-Replayed: true`); the same key with a different request answers 422 IDEMPOTENCY_KEY_REUSED, and while the first is still running 409 IDEMPOTENCY_KEY_IN_PROGRESS.",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 255
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateTripDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TripDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Create a trip",
+        "tags": [
+          "trips"
+        ]
+      }
+    },
+    "/v1/trips/{id}": {
+      "get": {
+        "operationId": "Trips_get",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TripDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Trip with members, days and markers",
+        "tags": [
+          "trips"
+        ]
+      },
+      "patch": {
+        "operationId": "Trips_update",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateTripDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TripDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Owner: title, dates, visibility",
+        "tags": [
+          "trips"
+        ]
+      },
+      "delete": {
+        "operationId": "Trips_delete",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Owner: delete the trip with everything in it",
+        "tags": [
+          "trips"
+        ]
+      }
+    },
+    "/v1/trips/{id}/copy": {
+      "post": {
+        "description": "Copies title, dates, days and markers into a new trip I own (my default visibility). No photos, comments, likes or members. Own and private trips: 403 TRIP_NOT_COPYABLE.",
+        "operationId": "Trips_copy",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "description": "A client-generated UUID, new per action and reused on its retries. For 24 hours a retry with the same key and body returns the first response (header `Idempotent-Replayed: true`); the same key with a different request answers 422 IDEMPOTENCY_KEY_REUSED, and while the first is still running 409 IDEMPOTENCY_KEY_IN_PROGRESS.",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 255
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TripDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Add a public trip to my trips",
+        "tags": [
+          "trips"
+        ]
+      }
+    },
+    "/v1/trips/{id}/days": {
+      "post": {
+        "description": "Extends endDate by one day for dated trips.",
+        "operationId": "Trips_addDay",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "description": "A client-generated UUID, new per action and reused on its retries. For 24 hours a retry with the same key and body returns the first response (header `Idempotent-Replayed: true`); the same key with a different request answers 422 IDEMPOTENCY_KEY_REUSED, and while the first is still running 409 IDEMPOTENCY_KEY_IN_PROGRESS.",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 255
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TripDayDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Append a day",
+        "tags": [
+          "trips"
+        ]
+      }
+    },
+    "/v1/days/{id}": {
+      "delete": {
+        "description": "Later days move up. The last remaining day can’t be deleted (fields.id = [\"lastDay\"]).",
+        "operationId": "Trips_deleteDay",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Delete a day and its markers",
+        "tags": [
+          "trips"
+        ]
+      }
+    },
+    "/v1/trips/{id}/members": {
+      "post": {
+        "operationId": "Trips_addMember",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AddMemberDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TripMemberDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Owner adds an editor by username. Idempotent.",
+        "tags": [
+          "trips"
+        ]
+      }
+    },
+    "/v1/trips/{id}/members/{userId}": {
+      "delete": {
+        "operationId": "Trips_removeMember",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "userId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Owner removes an editor, or an editor leaves (own userId)",
+        "tags": [
+          "trips"
+        ]
+      }
+    },
+    "/v1/me/trips": {
+      "get": {
+        "operationId": "Trips_myTrips",
+        "parameters": [
+          {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "description": "nextCursor from the previous page",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 50,
+              "default": 20,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TripSummaryPageDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Trips I own or collaborate on, most recently changed first",
+        "tags": [
+          "trips"
+        ]
+      }
+    },
+    "/v1/me/stats": {
+      "get": {
+        "operationId": "Trips_stats",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MeStatsDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "My trip, marker and photo counts",
+        "tags": [
+          "trips"
+        ]
+      }
+    },
+    "/v1/places/in-view": {
+      "get": {
+        "description": "Tripinly places first; from zoom 14 also OSM places spread over the view; below zoom 14 Tripinly places only, clustered when there are more than `limit`. A bbox too large for the zoom returns BBOX_TOO_LARGE.",
+        "operationId": "Places_inView",
+        "parameters": [
+          {
+            "name": "bbox",
+            "required": true,
+            "in": "query",
+            "description": "minLng,minLat,maxLng,maxLat of the visible map area",
+            "schema": {
+              "example": "16.35,48.19,16.39,48.22",
+              "type": "string"
+            }
+          },
+          {
+            "name": "zoom",
+            "required": true,
+            "in": "query",
+            "description": "Map zoom level (fractions allowed)",
+            "schema": {
+              "minimum": 0,
+              "maximum": 22,
+              "example": 15,
+              "type": "number"
+            }
+          },
+          {
+            "name": "categories",
+            "required": false,
+            "in": "query",
+            "description": "Comma-separated: cafe, restaurant, bar, attraction, museum, historic, park, nature, landmark, other",
+            "schema": {
+              "example": "cafe,attraction",
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 10,
+              "maximum": 200,
+              "default": 100,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InViewResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Places for the visible map area",
+        "tags": [
+          "places"
+        ]
+      }
+    },
+    "/v1/places/search": {
+      "get": {
+        "description": "Our places (by name, in every language OSM has) merged with Photon results. Debounce on the client (at least 300 ms and 2 characters). lat/lng only rank results and are not stored.",
+        "operationId": "Places_search",
+        "parameters": [
+          {
+            "name": "q",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "minLength": 2,
+              "maxLength": 100,
+              "example": "stephansdom",
+              "type": "string"
+            }
+          },
+          {
+            "name": "lat",
+            "required": false,
+            "in": "query",
+            "description": "With lng: ranks results near this point. Not stored.",
+            "schema": {
+              "example": 48.2082,
+              "type": "number"
+            }
+          },
+          {
+            "name": "lng",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "example": 16.3738,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SearchResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Search places, addresses and cities",
+        "tags": [
+          "places"
+        ]
+      }
+    },
+    "/v1/places/nearby": {
+      "get": {
+        "description": "Ranked by popularity and distance; topped up with OSM sights when fewer than 10 are in range. The location is used for this query only.",
+        "operationId": "Places_nearby",
+        "parameters": [
+          {
+            "name": "lat",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "example": 48.2082,
+              "type": "number"
+            }
+          },
+          {
+            "name": "lng",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "example": 16.3738,
+              "type": "number"
+            }
+          },
+          {
+            "name": "radiusKm",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 0.1,
+              "maximum": 50,
+              "default": 5,
+              "type": "number"
+            }
+          },
+          {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "description": "nextCursor from the previous page",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 50,
+              "default": 20,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NearbyPageDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Popular places around a point",
+        "tags": [
+          "places"
+        ]
+      }
+    },
+    "/v1/places/popular": {
+      "get": {
+        "description": "Tripinly places only, by popularity. excludeTripId leaves out places already in that trip.",
+        "operationId": "Places_popular",
+        "parameters": [
+          {
+            "name": "bbox",
+            "required": true,
+            "in": "query",
+            "description": "minLng,minLat,maxLng,maxLat of the visible map area",
+            "schema": {
+              "example": "16.35,48.19,16.39,48.22",
+              "type": "string"
+            }
+          },
+          {
+            "name": "excludeTripId",
+            "required": false,
+            "in": "query",
+            "description": "Leave out places already in this trip (you must be able to view it)",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 50,
+              "default": 20,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PopularResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Popular spots in the visible area",
+        "tags": [
+          "places"
+        ]
+      }
+    },
+    "/v1/places/{id}": {
+      "get": {
+        "operationId": "Places_get",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlaceDetailDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "A place",
+        "tags": [
+          "places"
+        ]
+      }
+    },
+    "/v1/days/{id}/markers": {
+      "post": {
+        "description": "Send placeId (a place from our results) or name + location (custom pin, or a Photon result with osmType/osmId). Google place IDs are rejected.",
+        "operationId": "Markers_create",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "description": "A client-generated UUID, new per action and reused on its retries. For 24 hours a retry with the same key and body returns the first response (header `Idempotent-Replayed: true`); the same key with a different request answers 422 IDEMPOTENCY_KEY_REUSED, and while the first is still running 409 IDEMPOTENCY_KEY_IN_PROGRESS.",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 255
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateMarkerDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MarkerDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Add a marker to a day",
+        "tags": [
+          "markers"
+        ]
+      }
+    },
+    "/v1/places/{id}/add-to-trip": {
+      "post": {
+        "description": "Same as adding a marker with placeId (editor or owner of the trip).",
+        "operationId": "Markers_addPlace",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "description": "A client-generated UUID, new per action and reused on its retries. For 24 hours a retry with the same key and body returns the first response (header `Idempotent-Replayed: true`); the same key with a different request answers 422 IDEMPOTENCY_KEY_REUSED, and while the first is still running 409 IDEMPOTENCY_KEY_IN_PROGRESS.",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 255
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AddToTripDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MarkerDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Add a place to a trip day",
+        "tags": [
+          "markers",
+          "places"
+        ]
+      }
+    },
+    "/v1/markers/{id}/copy": {
+      "post": {
+        "description": "Markers of public trips that are not mine. Same name, location, time and place; no photos, comments or likes. Own and private trips: 403 TRIP_NOT_COPYABLE.",
+        "operationId": "Markers_copy",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "description": "A client-generated UUID, new per action and reused on its retries. For 24 hours a retry with the same key and body returns the first response (header `Idempotent-Replayed: true`); the same key with a different request answers 422 IDEMPOTENCY_KEY_REUSED, and while the first is still running 409 IDEMPOTENCY_KEY_IN_PROGRESS.",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 255
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CopyMarkerDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MarkerDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Copy a marker to one of my trips",
+        "tags": [
+          "markers"
+        ]
+      }
+    },
+    "/v1/markers/{id}": {
+      "get": {
+        "operationId": "Markers_get",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MarkerDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "A marker",
+        "tags": [
+          "markers"
+        ]
+      },
+      "patch": {
+        "description": "Name, time, place or location, or move it to another day of the same trip / another position.",
+        "operationId": "Markers_update",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateMarkerDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MarkerDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Edit a marker",
+        "tags": [
+          "markers"
+        ]
+      },
+      "delete": {
+        "operationId": "Markers_delete",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Delete a marker",
+        "tags": [
+          "markers"
+        ]
+      }
+    },
+    "/v1/days/{id}/marker-order": {
+      "put": {
+        "operationId": "Markers_reorder",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MarkerOrderDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MarkerOrderResultDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Set the order of a day's markers",
+        "tags": [
+          "markers"
+        ]
+      }
+    },
+    "/v1/trips/{id}/invites": {
+      "post": {
+        "operationId": "Invites_create",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "description": "A client-generated UUID, new per action and reused on its retries. For 24 hours a retry with the same key and body returns the first response (header `Idempotent-Replayed: true`); the same key with a different request answers 422 IDEMPOTENCY_KEY_REUSED, and while the first is still running 409 IDEMPOTENCY_KEY_IN_PROGRESS.",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 255
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InviteDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Owner creates an invite link (valid 7 days, reusable)",
+        "tags": [
+          "invites"
+        ]
+      },
+      "get": {
+        "operationId": "Invites_list",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvitesDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Owner lists the trip's active invite links",
+        "tags": [
+          "invites"
+        ]
+      }
+    },
+    "/v1/trips/{id}/invites/{inviteId}": {
+      "delete": {
+        "operationId": "Invites_revoke",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "inviteId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Owner revokes an invite link. Idempotent.",
+        "tags": [
+          "invites"
+        ]
+      }
+    },
+    "/v1/invites/{token}": {
+      "get": {
+        "description": "410 INVITE_EXPIRED when expired or revoked.",
+        "operationId": "Invites_preview",
+        "parameters": [
+          {
+            "name": "token",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvitePreviewDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Preview an invite (trip title, owner)",
+        "tags": [
+          "invites"
+        ]
+      }
+    },
+    "/v1/invites/{token}/accept": {
+      "post": {
+        "operationId": "Invites_accept",
+        "parameters": [
+          {
+            "name": "token",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TripDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Join the trip as an editor. Idempotent for members.",
+        "tags": [
+          "invites"
+        ]
+      }
+    },
+    "/v1/markers/{id}/photos/upload-url": {
+      "post": {
+        "description": "Creates the photo (pending_upload) and returns a pre-signed PUT URL valid 10 minutes. PUT the file with the given headers, then call POST /photos/{id}/complete. JPEG, PNG or WebP (convert HEIC to JPEG first), at most 15 MB, 30 photos per marker. 503 while storage is not configured.",
+        "operationId": "Photos_uploadUrl",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UploadUrlRequestDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UploadUrlResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Start a photo upload",
+        "tags": [
+          "photos"
+        ]
+      }
+    },
+    "/v1/photos/{id}/complete": {
+      "post": {
+        "description": "The uploader confirms the file is uploaded; processing starts (photo.ready follows). Calling it again returns the photo as it is.",
+        "operationId": "Photos_complete",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PhotoDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Confirm an upload",
+        "tags": [
+          "photos"
+        ]
+      }
+    },
+    "/v1/markers/{id}/photos": {
+      "get": {
+        "operationId": "Photos_gallery",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/PhotoDto"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "A marker's photos in gallery order",
+        "tags": [
+          "photos"
+        ]
+      }
+    },
+    "/v1/markers/{id}/photo-order": {
+      "put": {
+        "operationId": "Photos_reorder",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PhotoOrderDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/PhotoDto"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Reorder the gallery",
+        "tags": [
+          "photos"
+        ]
+      }
+    },
+    "/v1/markers/{id}/cover": {
+      "put": {
+        "operationId": "Photos_cover",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CoverDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MarkerDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Choose the marker's cover photo (its map pin thumbnail)",
+        "tags": [
+          "photos"
+        ]
+      }
+    },
+    "/v1/photos/{id}": {
+      "delete": {
+        "description": "The uploader, the trip owner or an editor. A deleted cover passes to the next photo.",
+        "operationId": "Photos_delete",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Delete a photo",
+        "tags": [
+          "photos"
+        ]
+      }
+    },
+    "/v1/markers/{id}/comments": {
+      "get": {
+        "operationId": "Social_listComments",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "description": "nextCursor from the previous page",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 50,
+              "default": 20,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CommentPageDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "A marker's comments, oldest first",
+        "tags": [
+          "social"
+        ]
+      },
+      "post": {
+        "description": "Plain text, 1–1000 characters. Members, or anyone for a public trip. Not on markers of someone I have a block with (403). 30 per minute.",
+        "operationId": "Social_createComment",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "description": "A client-generated UUID, new per action and reused on its retries. For 24 hours a retry with the same key and body returns the first response (header `Idempotent-Replayed: true`); the same key with a different request answers 422 IDEMPOTENCY_KEY_REUSED, and while the first is still running 409 IDEMPOTENCY_KEY_IN_PROGRESS.",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 255
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateCommentDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CommentDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Comment on a marker",
+        "tags": [
+          "social"
+        ]
+      }
+    },
+    "/v1/comments/{id}": {
+      "delete": {
+        "description": "The author or the trip owner. Idempotent.",
+        "operationId": "Social_deleteComment",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Delete a comment",
+        "tags": [
+          "social"
+        ]
+      }
+    },
+    "/v1/likes/{targetType}/{targetId}": {
+      "put": {
+        "description": "Idempotent. Returns the new like state and count.",
+        "operationId": "Social_like",
+        "parameters": [
+          {
+            "name": "targetType",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "trip",
+                "marker",
+                "photo",
+                "comment",
+                "place"
+              ]
+            }
+          },
+          {
+            "name": "targetId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LikeStateDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Like a trip, marker, photo, comment or place",
+        "tags": [
+          "social"
+        ]
+      },
+      "delete": {
+        "description": "Idempotent.",
+        "operationId": "Social_unlike",
+        "parameters": [
+          {
+            "name": "targetType",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "trip",
+                "marker",
+                "photo",
+                "comment",
+                "place"
+              ]
+            }
+          },
+          {
+            "name": "targetId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LikeStateDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Remove my like",
+        "tags": [
+          "social"
+        ]
+      }
+    },
+    "/v1/explore/trips": {
+      "get": {
+        "description": "Ranked by likes and copies with recency decay. Only trips with at least one marker. Pass nextCursor to continue the same ranking.",
+        "operationId": "Explore_trips",
+        "parameters": [
+          {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "description": "nextCursor from the previous page",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 50,
+              "default": 20,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TripSummaryPageDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Public trips from other people, ranked",
+        "tags": [
+          "discovery"
+        ]
+      }
+    },
+    "/v1/routes": {
+      "get": {
+        "description": "Free for everyone. 503 ROUTING_UNAVAILABLE when openrouteservice fails; straight lines with degraded=true when it is not available (quota used up).",
+        "operationId": "Routing_route",
+        "parameters": [
+          {
+            "name": "mode",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "default": "walking",
+              "type": "string",
+              "enum": [
+                "walking",
+                "cycling",
+                "driving"
+              ]
+            }
+          },
+          {
+            "name": "categories",
+            "required": false,
+            "in": "query",
+            "description": "Places along the way, comma-separated: cafe, restaurant, bar, attraction, museum, historic, park, nature, landmark, other. All when omitted",
+            "schema": {
+              "example": "cafe,attraction",
+              "type": "string"
+            }
+          },
+          {
+            "name": "from",
+            "required": true,
+            "in": "query",
+            "description": "lat,lng",
+            "schema": {
+              "example": "48.2082,16.3738",
+              "type": "string"
+            }
+          },
+          {
+            "name": "to",
+            "required": true,
+            "in": "query",
+            "description": "lat,lng",
+            "schema": {
+              "example": "48.1986,16.3417",
+              "type": "string"
+            }
+          },
+          {
+            "name": "excludeTripId",
+            "required": false,
+            "in": "query",
+            "description": "Leave this trip's places out of alongTheWay",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RouteResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Route from A to B with places along the way",
+        "tags": [
+          "routing"
+        ]
+      }
+    },
+    "/v1/days/{id}/route": {
+      "get": {
+        "description": "With places along the way (not the trip's own). route is null for fewer than two markers.",
+        "operationId": "Routing_dayRoute",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "mode",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "default": "walking",
+              "type": "string",
+              "enum": [
+                "walking",
+                "cycling",
+                "driving"
+              ]
+            }
+          },
+          {
+            "name": "categories",
+            "required": false,
+            "in": "query",
+            "description": "Places along the way, comma-separated: cafe, restaurant, bar, attraction, museum, historic, park, nature, landmark, other. All when omitted",
+            "schema": {
+              "example": "cafe,attraction",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RouteResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Route through a day's markers in order",
+        "tags": [
+          "routing"
+        ]
+      }
+    },
+    "/v1/days/{id}/optimize": {
+      "post": {
+        "description": "The first marker stays first. Tripinly Pro: by real travel times, with savedMinutes. Otherwise by straight-line distance. Up to 25 markers. apply=true saves the order (owner or editor) and emits markers.reordered.",
+        "operationId": "Routing_optimize",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "mode",
+            "required": false,
+            "in": "query",
+            "description": "Travel mode for premium travel times",
+            "schema": {
+              "default": "walking",
+              "type": "string",
+              "enum": [
+                "walking",
+                "cycling",
+                "driving"
+              ]
+            }
+          },
+          {
+            "name": "apply",
+            "required": false,
+            "in": "query",
+            "description": "Save the proposed order (owner or editor)",
+            "schema": {
+              "default": false,
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OptimizeResultDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Best order for a day",
+        "tags": [
+          "routing"
+        ]
+      }
+    },
+    "/v1/notifications": {
+      "get": {
+        "description": "Title and body are localized by Accept-Language (else my saved locale). Live updates arrive as notification.created on the user room.",
+        "operationId": "Notifications_list",
+        "parameters": [
+          {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "description": "nextCursor from the previous page",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 50,
+              "default": 20,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotificationPageDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "My in-app notifications, newest first",
+        "tags": [
+          "notifications"
+        ]
+      }
+    },
+    "/v1/notifications/read": {
+      "post": {
+        "description": "Body `{ \"ids\": [...] }` (up to 100) or `{ \"all\": true }`. Unknown or foreign ids are ignored.",
+        "operationId": "Notifications_markRead",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MarkReadDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Mark notifications as read",
+        "tags": [
+          "notifications"
+        ]
+      }
+    },
+    "/v1/me/notification-settings": {
+      "get": {
+        "description": "All on by default. Off stops the push only; the in-app notification is still created.",
+        "operationId": "Notifications_settings",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotificationSettingsDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "My push switches per notification type",
+        "tags": [
+          "notifications"
+        ]
+      },
+      "patch": {
+        "operationId": "Notifications_updateSettings",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateNotificationSettingsDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotificationSettingsDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Change push switches (send only what changes)",
+        "tags": [
+          "notifications"
+        ]
+      }
+    },
+    "/v1/me/export": {
+      "post": {
+        "description": "Starts a ZIP export and emails a download link valid 7 days when ready. One at a time (a pending export is returned again) and one per 24 hours (429 RATE_LIMITED with details.retryAfterSeconds).",
+        "operationId": "Account_requestExport",
+        "parameters": [],
+        "responses": {
+          "202": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DataExportDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Export my data",
+        "tags": [
+          "me"
+        ]
+      },
+      "get": {
+        "description": "With a download link while ready. 404 when there is none.",
+        "operationId": "Account_latestExport",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DataExportDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "My latest export",
+        "tags": [
+          "me"
+        ]
+      }
+    },
+    "/v1/reports": {
+      "post": {
+        "description": "You must be able to see the target (404 otherwise). One open report per target: repeating it answers 200 with the existing report. Up to 20 reports a day.",
+        "operationId": "Reports_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateReportDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Already reported",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReportDto"
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReportDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Report a user, trip, marker, photo or comment",
+        "tags": [
+          "moderation"
+        ]
+      }
+    },
+    "/v1/admin/reports": {
+      "get": {
+        "description": "Oldest first, with a snapshot of the target and how many open reports it has.",
+        "operationId": "Reports_list",
+        "parameters": [
+          {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "description": "nextCursor from the previous page",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 50,
+              "default": 20,
+              "type": "number"
+            }
+          },
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "default": "open",
+              "type": "string",
+              "enum": [
+                "open",
+                "actioned",
+                "dismissed"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminReportsDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not an admin (FORBIDDEN)"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Reports to review (admins)",
+        "tags": [
+          "moderation"
+        ]
+      }
+    },
+    "/v1/admin/reports/{id}": {
+      "patch": {
+        "description": "Resolves every open report on the same target and writes the audit log.",
+        "operationId": "Reports_review",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReviewReportDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminReportDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not an admin (FORBIDDEN)"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Act on a report (admins)",
+        "tags": [
+          "moderation"
+        ]
+      }
+    }
+  },
+  "info": {
+    "title": "Tripinly API",
+    "description": "REST API for the Tripinly apps. Errors use `{ error: { code, message, details } }`; switch on `code`.",
+    "version": "1",
+    "contact": {}
+  },
+  "tags": [],
+  "servers": [],
+  "components": {
+    "securitySchemes": {
+      "bearer": {
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "type": "http"
+      }
+    },
+    "schemas": {
+      "LivenessDto": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "example": "ok"
+          }
+        },
+        "required": [
+          "status"
+        ]
+      },
+      "ReadinessChecksDto": {
+        "type": "object",
+        "properties": {
+          "database": {
+            "type": "string",
+            "enum": [
+              "up",
+              "down"
+            ]
+          },
+          "redis": {
+            "type": "string",
+            "enum": [
+              "up",
+              "down"
+            ]
+          },
+          "migrations": {
+            "type": "string",
+            "enum": [
+              "up",
+              "down"
+            ],
+            "description": "down while a migration this build ships with is not applied, or one failed"
+          }
+        },
+        "required": [
+          "database",
+          "redis",
+          "migrations"
+        ]
+      },
+      "ReadinessDto": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "example": "ok"
+          },
+          "checks": {
+            "$ref": "#/components/schemas/ReadinessChecksDto"
+          }
+        },
+        "required": [
+          "status",
+          "checks"
+        ]
+      },
+      "ErrorBodyDto": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "enum": [
+              "UNAUTHENTICATED",
+              "TOKEN_EXPIRED",
+              "REFRESH_TOKEN_REUSED",
+              "ONBOARDING_INCOMPLETE",
+              "CONSENT_REQUIRED",
+              "AGE_REQUIREMENT_NOT_MET",
+              "USERNAME_TAKEN",
+              "USERNAME_INVALID",
+              "USERNAME_CHANGE_TOO_SOON",
+              "VALIDATION_FAILED",
+              "NOT_FOUND",
+              "FORBIDDEN",
+              "TRIP_NOT_COPYABLE",
+              "USER_BLOCKED",
+              "INVITE_EXPIRED",
+              "PHOTO_LIMIT_REACHED",
+              "LIMIT_REACHED",
+              "UPLOAD_TOO_LARGE",
+              "UNSUPPORTED_MEDIA_TYPE",
+              "PREMIUM_REQUIRED",
+              "RATE_LIMITED",
+              "ACCOUNT_SUSPENDED",
+              "REAUTH_REQUIRED",
+              "ROUTING_UNAVAILABLE",
+              "BBOX_TOO_LARGE",
+              "IDEMPOTENCY_KEY_REUSED",
+              "IDEMPOTENCY_KEY_IN_PROGRESS",
+              "SERVICE_UNAVAILABLE",
+              "INTERNAL_ERROR"
+            ],
+            "example": "NOT_FOUND"
+          },
+          "message": {
+            "type": "string",
+            "description": "Localized, human-readable text. Never switch on it."
+          },
+          "details": {
+            "type": "object",
+            "additionalProperties": true,
+            "description": "Extra data for the code. VALIDATION_FAILED carries `fields`: { \"<path>\": [\"<constraint>\"] }."
+          }
+        },
+        "required": [
+          "code",
+          "message",
+          "details"
+        ]
+      },
+      "ErrorResponseDto": {
+        "type": "object",
+        "properties": {
+          "error": {
+            "$ref": "#/components/schemas/ErrorBodyDto"
+          }
+        },
+        "required": [
+          "error"
+        ]
+      },
+      "GoogleSignInDto": {
+        "type": "object",
+        "properties": {
+          "idToken": {
+            "type": "string",
+            "description": "Google ID token from the Credential Manager / Google Sign-In SDK"
+          }
+        },
+        "required": [
+          "idToken"
+        ]
+      },
+      "AuthTokensDto": {
+        "type": "object",
+        "properties": {
+          "accessToken": {
+            "type": "string",
+            "description": "Bearer token for API calls"
+          },
+          "accessTokenExpiresAt": {
+            "type": "string",
+            "example": "2026-09-28T12:15:00.000Z"
+          },
+          "refreshToken": {
+            "type": "string",
+            "description": "Single use: each refresh returns a new one"
+          },
+          "refreshTokenExpiresAt": {
+            "type": "string",
+            "example": "2026-11-27T12:00:00.000Z"
+          },
+          "onboardingRequired": {
+            "type": "boolean",
+            "description": "Profile or consents still missing: show onboarding"
+          }
+        },
+        "required": [
+          "accessToken",
+          "accessTokenExpiresAt",
+          "refreshToken",
+          "refreshTokenExpiresAt",
+          "onboardingRequired"
+        ]
+      },
+      "AppleSignInDto": {
+        "type": "object",
+        "properties": {
+          "identityToken": {
+            "type": "string",
+            "description": "Identity token (JWT) from Sign in with Apple"
+          },
+          "authorizationCode": {
+            "type": "string",
+            "description": "Authorization code; exchanged for a token used to revoke the Apple session on account deletion"
+          },
+          "givenName": {
+            "type": "string",
+            "description": "Apple sends the name only on the first sign-in"
+          },
+          "familyName": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "identityToken",
+          "authorizationCode"
+        ]
+      },
+      "DevSignInDto": {
+        "type": "object",
+        "properties": {
+          "subject": {
+            "type": "string",
+            "example": "alice",
+            "description": "Any stable test identifier; the same subject signs in to the same account"
+          },
+          "name": {
+            "type": "string",
+            "example": "Alice"
+          }
+        },
+        "required": [
+          "subject"
+        ]
+      },
+      "RefreshDto": {
+        "type": "object",
+        "properties": {
+          "refreshToken": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "refreshToken"
+        ]
+      },
+      "LogoutDto": {
+        "type": "object",
+        "properties": {
+          "refreshToken": {
+            "type": "string"
+          },
+          "fcmToken": {
+            "type": "string",
+            "description": "This device's FCM token, unregistered from push"
+          }
+        },
+        "required": [
+          "refreshToken"
+        ]
+      },
+      "LegalDocumentDto": {
+        "type": "object",
+        "properties": {
+          "documentType": {
+            "type": "string",
+            "enum": [
+              "terms",
+              "privacy",
+              "marketing"
+            ]
+          },
+          "version": {
+            "type": "string",
+            "example": "2026-09-01"
+          },
+          "locale": {
+            "type": "string",
+            "example": "en"
+          },
+          "url": {
+            "type": "string",
+            "example": "https://tripinly.example/legal/terms"
+          },
+          "publishedAt": {
+            "type": "string"
+          },
+          "required": {
+            "type": "boolean",
+            "description": "Must be accepted before using the app"
+          }
+        },
+        "required": [
+          "documentType",
+          "version",
+          "locale",
+          "url",
+          "publishedAt",
+          "required"
+        ]
+      },
+      "LegalDocumentsDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LegalDocumentDto"
+            }
+          }
+        },
+        "required": [
+          "items"
+        ]
+      },
+      "OnboardingStateDto": {
+        "type": "object",
+        "properties": {
+          "completed": {
+            "type": "boolean",
+            "description": "Profile complete and all required consents given"
+          },
+          "missingProfileFields": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "username",
+                "displayName",
+                "birthDate"
+              ]
+            }
+          },
+          "missingConsents": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "terms",
+                "privacy",
+                "marketing"
+              ]
+            }
+          }
+        },
+        "required": [
+          "completed",
+          "missingProfileFields",
+          "missingConsents"
+        ]
+      },
+      "MeDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "username": {
+            "type": "string",
+            "nullable": true,
+            "example": "jonas.k"
+          },
+          "displayName": {
+            "type": "string",
+            "nullable": true,
+            "example": "Jonas"
+          },
+          "birthDate": {
+            "type": "string",
+            "nullable": true,
+            "example": "1995-04-12",
+            "description": "Only ever returned to its owner"
+          },
+          "locale": {
+            "type": "string",
+            "example": "de-AT"
+          },
+          "defaultTripVisibility": {
+            "type": "string",
+            "enum": [
+              "public",
+              "private"
+            ]
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "user",
+              "admin"
+            ]
+          },
+          "onboarding": {
+            "$ref": "#/components/schemas/OnboardingStateDto"
+          },
+          "entitlements": {
+            "example": [
+              "best_route_realtime"
+            ],
+            "description": "Active premium features. Show paid UI from this, never from a local flag.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "id",
+          "username",
+          "displayName",
+          "birthDate",
+          "locale",
+          "defaultTripVisibility",
+          "role",
+          "onboarding",
+          "entitlements"
+        ]
+      },
+      "UpdateMeDto": {
+        "type": "object",
+        "properties": {
+          "displayName": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 50
+          },
+          "username": {
+            "type": "string",
+            "example": "jonas.k",
+            "description": "Set during onboarding; afterwards changeable once every 30 days"
+          },
+          "birthDate": {
+            "type": "string",
+            "example": "1995-04-12",
+            "description": "Onboarding only. Users must be 16 or older."
+          },
+          "locale": {
+            "type": "string",
+            "example": "de-AT"
+          },
+          "defaultTripVisibility": {
+            "type": "string",
+            "enum": [
+              "public",
+              "private"
+            ]
+          }
+        }
+      },
+      "ConsentDto": {
+        "type": "object",
+        "properties": {
+          "documentType": {
+            "type": "string",
+            "enum": [
+              "terms",
+              "privacy",
+              "marketing"
+            ]
+          },
+          "version": {
+            "type": "string"
+          },
+          "locale": {
+            "type": "string"
+          },
+          "granted": {
+            "type": "boolean",
+            "description": "Currently granted (latest record is a grant)"
+          },
+          "grantedAt": {
+            "type": "string",
+            "nullable": true
+          },
+          "withdrawnAt": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "documentType",
+          "version",
+          "locale",
+          "granted",
+          "grantedAt",
+          "withdrawnAt"
+        ]
+      },
+      "ConsentsDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ConsentDto"
+            }
+          },
+          "missingRequired": {
+            "type": "array",
+            "description": "Required documents still to accept (current versions)",
+            "items": {
+              "type": "string",
+              "enum": [
+                "terms",
+                "privacy",
+                "marketing"
+              ]
+            }
+          }
+        },
+        "required": [
+          "items",
+          "missingRequired"
+        ]
+      },
+      "RecordConsentDto": {
+        "type": "object",
+        "properties": {
+          "documentType": {
+            "type": "string",
+            "enum": [
+              "terms",
+              "privacy",
+              "marketing"
+            ]
+          },
+          "version": {
+            "type": "string",
+            "description": "The version shown to the user; must be current when granting"
+          },
+          "locale": {
+            "type": "string",
+            "example": "en",
+            "description": "Locale of the document shown"
+          },
+          "granted": {
+            "type": "boolean",
+            "description": "true to grant, false to withdraw"
+          }
+        },
+        "required": [
+          "documentType",
+          "version",
+          "locale",
+          "granted"
+        ]
+      },
+      "RegisterDeviceDto": {
+        "type": "object",
+        "properties": {
+          "platform": {
+            "type": "string",
+            "enum": [
+              "ios",
+              "android"
+            ]
+          },
+          "locale": {
+            "type": "string",
+            "example": "hu-HU",
+            "description": "Device language, used to localize push"
+          }
+        },
+        "required": [
+          "platform",
+          "locale"
+        ]
+      },
+      "UsernameAvailabilityDto": {
+        "type": "object",
+        "properties": {
+          "username": {
+            "type": "string",
+            "description": "Normalized (trimmed, lowercase)"
+          },
+          "available": {
+            "type": "boolean"
+          },
+          "reason": {
+            "type": "string",
+            "enum": [
+              "invalid",
+              "taken"
+            ]
+          }
+        },
+        "required": [
+          "username",
+          "available"
+        ]
+      },
+      "UserSummaryDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "username": {
+            "type": "string",
+            "example": "jonas.k"
+          },
+          "displayName": {
+            "type": "string",
+            "example": "Jonas"
+          }
+        },
+        "required": [
+          "id",
+          "username",
+          "displayName"
+        ]
+      },
+      "UserSearchResultDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "description": "Up to 20 matches",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/UserSummaryDto"
+            }
+          }
+        },
+        "required": [
+          "items"
+        ]
+      },
+      "TripSummaryDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string"
+          },
+          "startDate": {
+            "type": "string",
+            "nullable": true
+          },
+          "endDate": {
+            "type": "string",
+            "nullable": true
+          },
+          "visibility": {
+            "type": "string",
+            "enum": [
+              "public",
+              "private"
+            ]
+          },
+          "owner": {
+            "$ref": "#/components/schemas/UserSummaryDto"
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "owner",
+              "editor",
+              "viewer"
+            ]
+          },
+          "coverThumbUrl": {
+            "type": "string",
+            "nullable": true,
+            "description": "First cover photo in the trip (from stage 5)"
+          },
+          "dayCount": {
+            "type": "number"
+          },
+          "markerCount": {
+            "type": "number"
+          },
+          "likeCount": {
+            "type": "number"
+          },
+          "likedByMe": {
+            "type": "boolean"
+          },
+          "copyCount": {
+            "type": "number"
+          },
+          "updatedAt": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "startDate",
+          "endDate",
+          "visibility",
+          "owner",
+          "role",
+          "coverThumbUrl",
+          "dayCount",
+          "markerCount",
+          "likeCount",
+          "likedByMe",
+          "copyCount",
+          "updatedAt"
+        ]
+      },
+      "ProfileDto": {
+        "type": "object",
+        "properties": {
+          "user": {
+            "$ref": "#/components/schemas/UserSummaryDto"
+          },
+          "publicTripCount": {
+            "type": "number",
+            "description": "Public trips they own"
+          },
+          "trips": {
+            "description": "Their public trips, most recently changed first",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TripSummaryDto"
+            }
+          },
+          "nextCursor": {
+            "type": "string",
+            "nullable": true,
+            "description": "Pass as cursor for more trips"
+          }
+        },
+        "required": [
+          "user",
+          "publicTripCount",
+          "trips",
+          "nextCursor"
+        ]
+      },
+      "BlockedUsersDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/UserSummaryDto"
+            }
+          },
+          "nextCursor": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "items"
+        ]
+      },
+      "CreateTripDto": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100,
+            "example": "Vienna weekend"
+          },
+          "startDate": {
+            "type": "string",
+            "example": "2026-10-09",
+            "description": "Without dates the trip has one \"Day 1\""
+          },
+          "endDate": {
+            "type": "string",
+            "example": "2026-10-11",
+            "description": "Needs startDate; one day is created per date (max 20)"
+          },
+          "visibility": {
+            "type": "string",
+            "enum": [
+              "public",
+              "private"
+            ],
+            "description": "Defaults to the user's defaultTripVisibility"
+          },
+          "memberUsernames": {
+            "maxItems": 20,
+            "description": "Added as editors",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "title"
+        ]
+      },
+      "TripMemberDto": {
+        "type": "object",
+        "properties": {
+          "user": {
+            "$ref": "#/components/schemas/UserSummaryDto"
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "owner",
+              "editor"
+            ]
+          }
+        },
+        "required": [
+          "user",
+          "role"
+        ]
+      },
+      "CopiedFromDto": {
+        "type": "object",
+        "properties": {
+          "tripId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "owner": {
+            "$ref": "#/components/schemas/UserSummaryDto"
+          }
+        },
+        "required": [
+          "tripId",
+          "owner"
+        ]
+      },
+      "LocationDto": {
+        "type": "object",
+        "properties": {
+          "lat": {
+            "type": "number",
+            "example": 48.2082,
+            "minimum": -90,
+            "maximum": 90
+          },
+          "lng": {
+            "type": "number",
+            "example": 16.3738,
+            "minimum": -180,
+            "maximum": 180
+          }
+        },
+        "required": [
+          "lat",
+          "lng"
+        ]
+      },
+      "MarkerDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "tripId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "dayId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "placeId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "location": {
+            "$ref": "#/components/schemas/LocationDto"
+          },
+          "time": {
+            "type": "string",
+            "nullable": true,
+            "example": "14:30"
+          },
+          "position": {
+            "type": "number"
+          },
+          "coverPhotoId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "coverThumbUrl": {
+            "type": "string",
+            "nullable": true,
+            "description": "Signed URL, expires after ~1 h"
+          },
+          "photoCount": {
+            "type": "number"
+          },
+          "likeCount": {
+            "type": "number"
+          },
+          "likedByMe": {
+            "type": "boolean"
+          },
+          "commentCount": {
+            "type": "number"
+          },
+          "createdBy": {
+            "nullable": true,
+            "description": "Null after the creator deleted their account",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/UserSummaryDto"
+              }
+            ]
+          },
+          "createdAt": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "tripId",
+          "dayId",
+          "placeId",
+          "name",
+          "location",
+          "time",
+          "position",
+          "coverPhotoId",
+          "coverThumbUrl",
+          "photoCount",
+          "likeCount",
+          "likedByMe",
+          "commentCount",
+          "createdBy",
+          "createdAt",
+          "updatedAt"
+        ]
+      },
+      "TripDayDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "position": {
+            "type": "number",
+            "description": "0-based; the client shows \"Day n\" as position + 1"
+          },
+          "date": {
+            "type": "string",
+            "nullable": true,
+            "example": "2026-10-09",
+            "description": "startDate + position, or null"
+          },
+          "markers": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MarkerDto"
+            }
+          }
+        },
+        "required": [
+          "id",
+          "position",
+          "date",
+          "markers"
+        ]
+      },
+      "TripDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string"
+          },
+          "startDate": {
+            "type": "string",
+            "nullable": true,
+            "example": "2026-10-09"
+          },
+          "endDate": {
+            "type": "string",
+            "nullable": true,
+            "example": "2026-10-11"
+          },
+          "visibility": {
+            "type": "string",
+            "enum": [
+              "public",
+              "private"
+            ]
+          },
+          "owner": {
+            "$ref": "#/components/schemas/UserSummaryDto"
+          },
+          "myRole": {
+            "type": "string",
+            "enum": [
+              "owner",
+              "editor",
+              "viewer"
+            ]
+          },
+          "members": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TripMemberDto"
+            }
+          },
+          "likeCount": {
+            "type": "number"
+          },
+          "likedByMe": {
+            "type": "boolean"
+          },
+          "copyCount": {
+            "type": "number"
+          },
+          "copiedFrom": {
+            "nullable": true,
+            "description": "Shown as \"Copied from @handle\" while the source exists",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/CopiedFromDto"
+              }
+            ]
+          },
+          "days": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TripDayDto"
+            }
+          },
+          "createdAt": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "startDate",
+          "endDate",
+          "visibility",
+          "owner",
+          "myRole",
+          "members",
+          "likeCount",
+          "likedByMe",
+          "copyCount",
+          "copiedFrom",
+          "days",
+          "createdAt",
+          "updatedAt"
+        ]
+      },
+      "UpdateTripDto": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100
+          },
+          "startDate": {
+            "type": "string",
+            "nullable": true,
+            "example": "2026-10-09",
+            "description": "null removes the dates (days stay, shown as \"Day n\")"
+          },
+          "endDate": {
+            "type": "string",
+            "example": "2026-10-11",
+            "description": "Resizes the trip: adds empty days, or removes trailing days if they have no markers (else 400 fields.endDate = [\"daysNotEmpty\"])"
+          },
+          "visibility": {
+            "type": "string",
+            "enum": [
+              "public",
+              "private"
+            ]
+          }
+        }
+      },
+      "AddMemberDto": {
+        "type": "object",
+        "properties": {
+          "username": {
+            "type": "string",
+            "example": "anna.n"
+          }
+        },
+        "required": [
+          "username"
+        ]
+      },
+      "TripSummaryPageDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TripSummaryDto"
+            }
+          },
+          "nextCursor": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "items",
+          "nextCursor"
+        ]
+      },
+      "MeStatsDto": {
+        "type": "object",
+        "properties": {
+          "tripCount": {
+            "type": "number",
+            "description": "Trips I own or collaborate on"
+          },
+          "markerCount": {
+            "type": "number",
+            "description": "Markers I created"
+          },
+          "photoCount": {
+            "type": "number",
+            "description": "Photos I uploaded (from stage 5)"
+          }
+        },
+        "required": [
+          "tripCount",
+          "markerCount",
+          "photoCount"
+        ]
+      },
+      "PlaceItemDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string",
+            "description": "Localized from OSM name:<lang> when available"
+          },
+          "category": {
+            "type": "string",
+            "enum": [
+              "cafe",
+              "restaurant",
+              "bar",
+              "attraction",
+              "museum",
+              "historic",
+              "park",
+              "nature",
+              "landmark",
+              "other"
+            ]
+          },
+          "location": {
+            "$ref": "#/components/schemas/LocationDto"
+          },
+          "isTripinly": {
+            "type": "boolean",
+            "description": "Liked on Tripinly (popularity > 0); show the Tripinly pin style"
+          },
+          "likeCount": {
+            "type": "number",
+            "description": "Popularity: likes on public markers here + place likes"
+          },
+          "coverThumbUrl": {
+            "type": "string",
+            "nullable": true,
+            "description": "Cover photo of the most liked marker here in a public trip; signed, valid ≥ 1 h"
+          },
+          "likedByMe": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "category",
+          "location",
+          "isTripinly",
+          "likeCount",
+          "coverThumbUrl",
+          "likedByMe"
+        ]
+      },
+      "PlaceClusterDto": {
+        "type": "object",
+        "properties": {
+          "count": {
+            "type": "number",
+            "description": "Tripinly places in this cluster"
+          },
+          "location": {
+            "description": "Centre of the clustered places",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/LocationDto"
+              }
+            ]
+          }
+        },
+        "required": [
+          "count",
+          "location"
+        ]
+      },
+      "InViewResponseDto": {
+        "type": "object",
+        "properties": {
+          "places": {
+            "description": "Tripinly places first (by popularity), then OSM places from zoom 14",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PlaceItemDto"
+            }
+          },
+          "clusters": {
+            "description": "Below zoom 14, when there are more Tripinly places than `limit`; else empty",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PlaceClusterDto"
+            }
+          },
+          "attribution": {
+            "type": "string",
+            "example": "© OpenStreetMap contributors"
+          }
+        },
+        "required": [
+          "places",
+          "clusters",
+          "attribution"
+        ]
+      },
+      "SearchResultDto": {
+        "type": "object",
+        "properties": {
+          "source": {
+            "type": "string",
+            "enum": [
+              "place",
+              "photon"
+            ],
+            "description": "place: one of our places (send placeId). photon: an address, street or city (send name + location + osmType/osmId)."
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true,
+            "description": "Our place id; null for photon"
+          },
+          "name": {
+            "type": "string"
+          },
+          "category": {
+            "type": "string",
+            "enum": [
+              "cafe",
+              "restaurant",
+              "bar",
+              "attraction",
+              "museum",
+              "historic",
+              "park",
+              "nature",
+              "landmark",
+              "other"
+            ],
+            "nullable": true,
+            "description": "null for photon"
+          },
+          "location": {
+            "$ref": "#/components/schemas/LocationDto"
+          },
+          "isTripinly": {
+            "type": "boolean"
+          },
+          "likeCount": {
+            "type": "number"
+          },
+          "type": {
+            "type": "string",
+            "nullable": true,
+            "example": "city",
+            "description": "Photon type: house, street, locality, district, city, county, state, country, other"
+          },
+          "address": {
+            "type": "string",
+            "nullable": true,
+            "example": "Stephansplatz 1, Wien, Austria",
+            "description": "Photon: street, city and country for telling results apart"
+          },
+          "osmType": {
+            "type": "string",
+            "enum": [
+              "node",
+              "way",
+              "relation"
+            ],
+            "nullable": true
+          },
+          "osmId": {
+            "type": "string",
+            "nullable": true,
+            "example": "240109189"
+          }
+        },
+        "required": [
+          "source",
+          "id",
+          "name",
+          "category",
+          "location",
+          "isTripinly",
+          "likeCount",
+          "type",
+          "address",
+          "osmType",
+          "osmId"
+        ]
+      },
+      "SearchResponseDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "description": "Our places first, then Photon results we do not already have",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SearchResultDto"
+            }
+          },
+          "attribution": {
+            "type": "string",
+            "example": "© OpenStreetMap contributors"
+          }
+        },
+        "required": [
+          "items",
+          "attribution"
+        ]
+      },
+      "NearbyPlaceDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string",
+            "description": "Localized from OSM name:<lang> when available"
+          },
+          "category": {
+            "type": "string",
+            "enum": [
+              "cafe",
+              "restaurant",
+              "bar",
+              "attraction",
+              "museum",
+              "historic",
+              "park",
+              "nature",
+              "landmark",
+              "other"
+            ]
+          },
+          "location": {
+            "$ref": "#/components/schemas/LocationDto"
+          },
+          "isTripinly": {
+            "type": "boolean",
+            "description": "Liked on Tripinly (popularity > 0); show the Tripinly pin style"
+          },
+          "likeCount": {
+            "type": "number",
+            "description": "Popularity: likes on public markers here + place likes"
+          },
+          "coverThumbUrl": {
+            "type": "string",
+            "nullable": true,
+            "description": "Cover photo of the most liked marker here in a public trip; signed, valid ≥ 1 h"
+          },
+          "likedByMe": {
+            "type": "boolean"
+          },
+          "distanceMeters": {
+            "type": "number",
+            "description": "From the query point, in metres"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "category",
+          "location",
+          "isTripinly",
+          "likeCount",
+          "coverThumbUrl",
+          "likedByMe",
+          "distanceMeters"
+        ]
+      },
+      "NearbyPageDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "description": "Tripinly places by popularity and distance. When fewer than 10 are in range, the first page is topped up with OSM sights by distance.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/NearbyPlaceDto"
+            }
+          },
+          "nextCursor": {
+            "type": "string",
+            "nullable": true
+          },
+          "attribution": {
+            "type": "string",
+            "example": "© OpenStreetMap contributors"
+          }
+        },
+        "required": [
+          "items",
+          "nextCursor",
+          "attribution"
+        ]
+      },
+      "PopularResponseDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PlaceItemDto"
+            }
+          },
+          "attribution": {
+            "type": "string",
+            "example": "© OpenStreetMap contributors"
+          }
+        },
+        "required": [
+          "items",
+          "attribution"
+        ]
+      },
+      "PlaceTagsDto": {
+        "type": "object",
+        "properties": {
+          "website": {
+            "type": "string",
+            "nullable": true
+          },
+          "openingHours": {
+            "type": "string",
+            "nullable": true,
+            "example": "Mo-Su 08:00-21:00",
+            "description": "OSM opening_hours syntax"
+          },
+          "cuisine": {
+            "type": "string",
+            "nullable": true,
+            "example": "austrian"
+          },
+          "wikidata": {
+            "type": "string",
+            "nullable": true,
+            "example": "Q167679"
+          }
+        },
+        "required": [
+          "website",
+          "openingHours",
+          "cuisine",
+          "wikidata"
+        ]
+      },
+      "PlaceDetailDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string",
+            "description": "Localized from OSM name:<lang> when available"
+          },
+          "category": {
+            "type": "string",
+            "enum": [
+              "cafe",
+              "restaurant",
+              "bar",
+              "attraction",
+              "museum",
+              "historic",
+              "park",
+              "nature",
+              "landmark",
+              "other"
+            ]
+          },
+          "location": {
+            "$ref": "#/components/schemas/LocationDto"
+          },
+          "isTripinly": {
+            "type": "boolean",
+            "description": "Liked on Tripinly (popularity > 0); show the Tripinly pin style"
+          },
+          "likeCount": {
+            "type": "number",
+            "description": "Popularity: likes on public markers here + place likes"
+          },
+          "coverThumbUrl": {
+            "type": "string",
+            "nullable": true,
+            "description": "Cover photo of the most liked marker here in a public trip; signed, valid ≥ 1 h"
+          },
+          "likedByMe": {
+            "type": "boolean"
+          },
+          "source": {
+            "type": "string",
+            "enum": [
+              "osm",
+              "user"
+            ]
+          },
+          "isActive": {
+            "type": "boolean",
+            "description": "false when OSM no longer has it; existing markers keep it"
+          },
+          "osmType": {
+            "type": "string",
+            "enum": [
+              "node",
+              "way",
+              "relation"
+            ],
+            "nullable": true
+          },
+          "osmId": {
+            "type": "string",
+            "nullable": true
+          },
+          "tags": {
+            "$ref": "#/components/schemas/PlaceTagsDto"
+          },
+          "photoThumbUrls": {
+            "description": "Up to 10 photo thumbnails from public trips, most liked first",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "attribution": {
+            "type": "string",
+            "nullable": true,
+            "example": "© OpenStreetMap contributors",
+            "description": "Set for OSM-derived places"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "category",
+          "location",
+          "isTripinly",
+          "likeCount",
+          "coverThumbUrl",
+          "likedByMe",
+          "source",
+          "isActive",
+          "osmType",
+          "osmId",
+          "tags",
+          "photoThumbUrls",
+          "attribution"
+        ]
+      },
+      "CreateMarkerDto": {
+        "type": "object",
+        "properties": {
+          "placeId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "A place from our in-view, search or along-the-way results. Omit when sending location."
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 120,
+            "description": "Required with location (custom pin or Photon result). With placeId, overrides the place name."
+          },
+          "location": {
+            "description": "Custom pin or Photon result. Omit when sending placeId.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/LocationDto"
+              }
+            ]
+          },
+          "osmType": {
+            "type": "string",
+            "enum": [
+              "node",
+              "way",
+              "relation"
+            ],
+            "description": "From a Photon result, with osmId"
+          },
+          "osmId": {
+            "type": "string",
+            "example": "240109189",
+            "description": "From a Photon result, with osmType"
+          },
+          "category": {
+            "type": "string",
+            "enum": [
+              "cafe",
+              "restaurant",
+              "bar",
+              "attraction",
+              "museum",
+              "historic",
+              "park",
+              "nature",
+              "landmark",
+              "other"
+            ],
+            "description": "Category for a new place; defaults to other"
+          },
+          "time": {
+            "type": "string",
+            "example": "14:30",
+            "description": "Local time HH:mm"
+          },
+          "position": {
+            "type": "number",
+            "minimum": 0,
+            "description": "Insert position in the day; appended when omitted"
+          }
+        }
+      },
+      "AddToTripDto": {
+        "type": "object",
+        "properties": {
+          "dayId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "time": {
+            "type": "string",
+            "example": "14:30",
+            "description": "Local time HH:mm"
+          },
+          "position": {
+            "type": "number",
+            "minimum": 0,
+            "description": "Insert position; appended when omitted"
+          }
+        },
+        "required": [
+          "dayId"
+        ]
+      },
+      "CopyMarkerDto": {
+        "type": "object",
+        "properties": {
+          "dayId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "A day of a trip I own or edit"
+          },
+          "position": {
+            "type": "number",
+            "minimum": 0,
+            "description": "Insert position in the day; appended when omitted"
+          }
+        },
+        "required": [
+          "dayId"
+        ]
+      },
+      "UpdateMarkerDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 120
+          },
+          "time": {
+            "type": "string",
+            "nullable": true,
+            "example": "09:15"
+          },
+          "placeId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Link to another existing place"
+          },
+          "location": {
+            "description": "Move the pin; the place is matched again",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/LocationDto"
+              }
+            ]
+          },
+          "dayId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Move to another day of the same trip"
+          },
+          "position": {
+            "type": "number",
+            "minimum": 0,
+            "description": "Position in the (target) day"
+          }
+        }
+      },
+      "MarkerOrderDto": {
+        "type": "object",
+        "properties": {
+          "markerIds": {
+            "description": "All of the day's marker IDs in the new order",
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        },
+        "required": [
+          "markerIds"
+        ]
+      },
+      "MarkerOrderResultDto": {
+        "type": "object",
+        "properties": {
+          "dayId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "markerIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        },
+        "required": [
+          "dayId",
+          "markerIds"
+        ]
+      },
+      "InviteDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "url": {
+            "type": "string",
+            "example": "tripinly://app/invites/3q2…",
+            "description": "Only returned when the invite is created"
+          },
+          "token": {
+            "type": "string",
+            "description": "Only returned when the invite is created"
+          },
+          "expiresAt": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "url",
+          "expiresAt",
+          "createdAt"
+        ]
+      },
+      "InvitesDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "description": "Active (not expired, not revoked) invites",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/InviteDto"
+            }
+          }
+        },
+        "required": [
+          "items"
+        ]
+      },
+      "InvitePreviewDto": {
+        "type": "object",
+        "properties": {
+          "tripId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string"
+          },
+          "owner": {
+            "$ref": "#/components/schemas/UserSummaryDto"
+          },
+          "startDate": {
+            "type": "string",
+            "nullable": true
+          },
+          "endDate": {
+            "type": "string",
+            "nullable": true
+          },
+          "expiresAt": {
+            "type": "string"
+          },
+          "alreadyMember": {
+            "type": "boolean",
+            "description": "The caller is already a member"
+          }
+        },
+        "required": [
+          "tripId",
+          "title",
+          "owner",
+          "startDate",
+          "endDate",
+          "expiresAt",
+          "alreadyMember"
+        ]
+      },
+      "UploadUrlRequestDto": {
+        "type": "object",
+        "properties": {
+          "mimeType": {
+            "type": "string",
+            "enum": [
+              "image/jpeg",
+              "image/png",
+              "image/webp"
+            ],
+            "description": "Other types → 415 UNSUPPORTED_MEDIA_TYPE"
+          },
+          "bytes": {
+            "type": "number",
+            "example": 2400000,
+            "description": "Size of the file to upload. Over 15728640 bytes → 413 UPLOAD_TOO_LARGE"
+          }
+        },
+        "required": [
+          "mimeType",
+          "bytes"
+        ]
+      },
+      "PhotoDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "markerId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending_upload",
+              "processing",
+              "ready",
+              "failed"
+            ],
+            "description": "Only ready photos are shown to viewers; editors also see processing and failed ones"
+          },
+          "thumbUrl": {
+            "type": "string",
+            "nullable": true,
+            "description": "256 px square, signed, valid ≥ 1 h; null until ready"
+          },
+          "displayUrl": {
+            "type": "string",
+            "nullable": true,
+            "description": "≤ 1600 px long edge, signed, valid ≥ 1 h; null until ready"
+          },
+          "width": {
+            "type": "number",
+            "nullable": true
+          },
+          "height": {
+            "type": "number",
+            "nullable": true
+          },
+          "position": {
+            "type": "number",
+            "description": "Gallery order, 0-based"
+          },
+          "likeCount": {
+            "type": "number"
+          },
+          "likedByMe": {
+            "type": "boolean"
+          },
+          "uploader": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/UserSummaryDto"
+              }
+            ]
+          },
+          "createdAt": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "markerId",
+          "status",
+          "thumbUrl",
+          "displayUrl",
+          "width",
+          "height",
+          "position",
+          "likeCount",
+          "likedByMe",
+          "uploader",
+          "createdAt"
+        ]
+      },
+      "UploadUrlResponseDto": {
+        "type": "object",
+        "properties": {
+          "photo": {
+            "description": "The new photo, status pending_upload",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PhotoDto"
+              }
+            ]
+          },
+          "uploadUrl": {
+            "type": "string",
+            "description": "PUT the file here with exactly the headers below"
+          },
+          "uploadHeaders": {
+            "type": "object",
+            "example": {
+              "Content-Type": "image/jpeg",
+              "Content-Length": "2400000"
+            },
+            "description": "Send these headers with the PUT"
+          },
+          "expiresAt": {
+            "type": "string",
+            "description": "The upload URL stops working after this (10 minutes)"
+          }
+        },
+        "required": [
+          "photo",
+          "uploadUrl",
+          "uploadHeaders",
+          "expiresAt"
+        ]
+      },
+      "PhotoOrderDto": {
+        "type": "object",
+        "properties": {
+          "photoIds": {
+            "description": "Exactly the marker's processing and ready photos, in the new order",
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        },
+        "required": [
+          "photoIds"
+        ]
+      },
+      "CoverDto": {
+        "type": "object",
+        "properties": {
+          "photoId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "A ready photo of this marker"
+          }
+        },
+        "required": [
+          "photoId"
+        ]
+      },
+      "CommentDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "markerId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "body": {
+            "type": "string"
+          },
+          "author": {
+            "$ref": "#/components/schemas/UserSummaryDto"
+          },
+          "likeCount": {
+            "type": "number"
+          },
+          "likedByMe": {
+            "type": "boolean"
+          },
+          "canDelete": {
+            "type": "boolean",
+            "description": "I wrote it, or I own the trip"
+          },
+          "createdAt": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "markerId",
+          "body",
+          "author",
+          "likeCount",
+          "likedByMe",
+          "canDelete",
+          "createdAt"
+        ]
+      },
+      "CommentPageDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CommentDto"
+            }
+          },
+          "nextCursor": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "items",
+          "nextCursor"
+        ]
+      },
+      "CreateCommentDto": {
+        "type": "object",
+        "properties": {
+          "body": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1000
+          }
+        },
+        "required": [
+          "body"
+        ]
+      },
+      "LikeStateDto": {
+        "type": "object",
+        "properties": {
+          "targetType": {
+            "type": "string",
+            "enum": [
+              "trip",
+              "marker",
+              "photo",
+              "comment",
+              "place"
+            ]
+          },
+          "targetId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "liked": {
+            "type": "boolean"
+          },
+          "likeCount": {
+            "type": "number",
+            "description": "The target's like count after the change (a place's popularity for places)"
+          }
+        },
+        "required": [
+          "targetType",
+          "targetId",
+          "liked",
+          "likeCount"
+        ]
+      },
+      "RouteLegDto": {
+        "type": "object",
+        "properties": {
+          "fromMarkerId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true,
+            "description": "Null for A→B routes"
+          },
+          "toMarkerId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "distanceMeters": {
+            "type": "number"
+          },
+          "durationSeconds": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "fromMarkerId",
+          "toMarkerId",
+          "distanceMeters",
+          "durationSeconds"
+        ]
+      },
+      "RouteDto": {
+        "type": "object",
+        "properties": {
+          "polyline": {
+            "type": "string",
+            "description": "Encoded polyline, precision 5"
+          },
+          "distanceMeters": {
+            "type": "number"
+          },
+          "durationSeconds": {
+            "type": "number"
+          },
+          "legs": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RouteLegDto"
+            }
+          }
+        },
+        "required": [
+          "polyline",
+          "distanceMeters",
+          "durationSeconds",
+          "legs"
+        ]
+      },
+      "AlongTheWayDto": {
+        "type": "object",
+        "properties": {
+          "place": {
+            "$ref": "#/components/schemas/PlaceItemDto"
+          },
+          "distanceFromRouteMeters": {
+            "type": "number"
+          },
+          "positionAlongRoute": {
+            "type": "number",
+            "description": "0 at the start, 1 at the end"
+          },
+          "etaFromStartSeconds": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "place",
+          "distanceFromRouteMeters",
+          "positionAlongRoute",
+          "etaFromStartSeconds"
+        ]
+      },
+      "RouteResponseDto": {
+        "type": "object",
+        "properties": {
+          "route": {
+            "nullable": true,
+            "description": "Null for a day with fewer than two markers",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/RouteDto"
+              }
+            ]
+          },
+          "alongTheWay": {
+            "description": "Ordered along the route",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AlongTheWayDto"
+            }
+          },
+          "degraded": {
+            "type": "boolean",
+            "description": "True when routing is unavailable (quota used up, not configured): the route is straight lines with estimated times"
+          },
+          "attribution": {
+            "type": "string",
+            "example": "© openrouteservice.org | © OpenStreetMap contributors"
+          }
+        },
+        "required": [
+          "route",
+          "alongTheWay",
+          "degraded",
+          "attribution"
+        ]
+      },
+      "OptimizeResultDto": {
+        "type": "object",
+        "properties": {
+          "dayId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "markerIds": {
+            "description": "Proposed order; the first marker stays first",
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "mode": {
+            "type": "string",
+            "enum": [
+              "straight_line",
+              "travel_time"
+            ],
+            "description": "travel_time with Tripinly Pro, otherwise straight_line"
+          },
+          "savedMinutes": {
+            "type": "number",
+            "nullable": true,
+            "description": "Minutes saved against the current order (travel_time only)"
+          },
+          "degraded": {
+            "type": "boolean",
+            "description": "Pro user, but travel times were unavailable: straight_line was used"
+          },
+          "applied": {
+            "type": "boolean",
+            "description": "The order was saved (apply=true)"
+          }
+        },
+        "required": [
+          "dayId",
+          "markerIds",
+          "mode",
+          "savedMinutes",
+          "degraded",
+          "applied"
+        ]
+      },
+      "NotificationTripDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title"
+        ]
+      },
+      "NotificationDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "comment_on_marker",
+              "added_to_trip",
+              "trip_changed_by_collaborator",
+              "likes_grouped"
+            ]
+          },
+          "actor": {
+            "nullable": true,
+            "description": "Who caused it (the latest person for grouped types)",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/UserSummaryDto"
+              }
+            ]
+          },
+          "trip": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/NotificationTripDto"
+              }
+            ]
+          },
+          "markerId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "count": {
+            "type": "number",
+            "description": "trip_changed_by_collaborator: number of changes; likes_grouped: number of people; else 1"
+          },
+          "title": {
+            "type": "string",
+            "description": "Localized, same text as the push"
+          },
+          "body": {
+            "type": "string"
+          },
+          "deepLink": {
+            "type": "string",
+            "example": "tripinly://trips/0b7c…"
+          },
+          "read": {
+            "type": "boolean"
+          },
+          "createdAt": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "type": "string",
+            "description": "Grouped types keep collecting until their push goes out; the same id may arrive again with a higher count"
+          }
+        },
+        "required": [
+          "id",
+          "type",
+          "actor",
+          "trip",
+          "markerId",
+          "count",
+          "title",
+          "body",
+          "deepLink",
+          "read",
+          "createdAt",
+          "updatedAt"
+        ]
+      },
+      "NotificationPageDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/NotificationDto"
+            }
+          },
+          "nextCursor": {
+            "type": "string",
+            "nullable": true
+          },
+          "unreadCount": {
+            "type": "number",
+            "description": "Unread notifications in total"
+          }
+        },
+        "required": [
+          "items",
+          "nextCursor",
+          "unreadCount"
+        ]
+      },
+      "MarkReadDto": {
+        "type": "object",
+        "properties": {
+          "ids": {
+            "maxItems": 100,
+            "description": "Mark these as read. Send either ids or all.",
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "all": {
+            "type": "boolean",
+            "enum": [
+              true
+            ],
+            "description": "Mark everything as read"
+          }
+        }
+      },
+      "NotificationSettingsDto": {
+        "type": "object",
+        "properties": {
+          "commentOnMarker": {
+            "type": "boolean",
+            "description": "Push for comments on my places"
+          },
+          "addedToTrip": {
+            "type": "boolean",
+            "description": "Push when someone adds me to a trip"
+          },
+          "tripChangedByCollaborator": {
+            "type": "boolean",
+            "description": "Push for collaborator changes (batched per 10 minutes)"
+          },
+          "likesGrouped": {
+            "type": "boolean",
+            "description": "Push for likes (at most one per hour)"
+          }
+        },
+        "required": [
+          "commentOnMarker",
+          "addedToTrip",
+          "tripChangedByCollaborator",
+          "likesGrouped"
+        ]
+      },
+      "UpdateNotificationSettingsDto": {
+        "type": "object",
+        "properties": {
+          "commentOnMarker": {
+            "type": "boolean"
+          },
+          "addedToTrip": {
+            "type": "boolean"
+          },
+          "tripChangedByCollaborator": {
+            "type": "boolean"
+          },
+          "likesGrouped": {
+            "type": "boolean"
+          }
+        }
+      },
+      "AccountDeletionDto": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "deleting"
+            ],
+            "example": "deleting"
+          }
+        },
+        "required": [
+          "status"
+        ]
+      },
+      "DataExportDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "ready",
+              "failed",
+              "expired"
+            ]
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "readyAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true,
+            "description": "The file and its link are deleted at this time."
+          },
+          "bytes": {
+            "type": "number",
+            "nullable": true,
+            "description": "ZIP size."
+          },
+          "downloadUrl": {
+            "type": "string",
+            "nullable": true,
+            "description": "Signed ZIP download link while ready, valid until expiresAt. Never log it."
+          }
+        },
+        "required": [
+          "id",
+          "status",
+          "createdAt",
+          "readyAt",
+          "expiresAt",
+          "bytes",
+          "downloadUrl"
+        ]
+      },
+      "CreateReportDto": {
+        "type": "object",
+        "properties": {
+          "targetType": {
+            "type": "string",
+            "enum": [
+              "user",
+              "trip",
+              "marker",
+              "photo",
+              "comment"
+            ]
+          },
+          "targetId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "reason": {
+            "type": "string",
+            "enum": [
+              "spam",
+              "harassment",
+              "nudity",
+              "violence",
+              "hate",
+              "other"
+            ]
+          },
+          "details": {
+            "type": "string",
+            "maxLength": 1000
+          }
+        },
+        "required": [
+          "targetType",
+          "targetId",
+          "reason"
+        ]
+      },
+      "ReportDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "targetType": {
+            "type": "string",
+            "enum": [
+              "user",
+              "trip",
+              "marker",
+              "photo",
+              "comment"
+            ]
+          },
+          "targetId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "reason": {
+            "type": "string",
+            "enum": [
+              "spam",
+              "harassment",
+              "nudity",
+              "violence",
+              "hate",
+              "other"
+            ]
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "open",
+              "actioned",
+              "dismissed"
+            ]
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "targetType",
+          "targetId",
+          "reason",
+          "status",
+          "createdAt"
+        ]
+      },
+      "ReportUserDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "username": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "id",
+          "username"
+        ]
+      },
+      "ReportTargetDto": {
+        "type": "object",
+        "properties": {
+          "exists": {
+            "type": "boolean",
+            "description": "False once the target was deleted."
+          },
+          "owner": {
+            "nullable": true,
+            "description": "The reported user, or the owner/author of the content.",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ReportUserDto"
+              }
+            ]
+          },
+          "text": {
+            "type": "string",
+            "nullable": true,
+            "description": "Trip title, marker name, comment body or display name. Photos: null."
+          },
+          "thumbUrl": {
+            "type": "string",
+            "nullable": true,
+            "description": "Photo thumbnail URL."
+          },
+          "tripId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "hidden": {
+            "type": "boolean",
+            "description": "Hidden by moderation, or the user is suspended."
+          }
+        },
+        "required": [
+          "exists",
+          "owner",
+          "text",
+          "thumbUrl",
+          "tripId",
+          "hidden"
+        ]
+      },
+      "AdminReportDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "targetType": {
+            "type": "string",
+            "enum": [
+              "user",
+              "trip",
+              "marker",
+              "photo",
+              "comment"
+            ]
+          },
+          "targetId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "reason": {
+            "type": "string",
+            "enum": [
+              "spam",
+              "harassment",
+              "nudity",
+              "violence",
+              "hate",
+              "other"
+            ]
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "open",
+              "actioned",
+              "dismissed"
+            ]
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "details": {
+            "type": "string",
+            "nullable": true
+          },
+          "action": {
+            "type": "string",
+            "enum": [
+              "dismiss",
+              "hide_content",
+              "suspend_user",
+              "delete_content",
+              "target_deleted"
+            ],
+            "nullable": true
+          },
+          "reviewedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "reporter": {
+            "nullable": true,
+            "description": "Null once the reporter deleted their account.",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ReportUserDto"
+              }
+            ]
+          },
+          "openReportCount": {
+            "type": "number",
+            "description": "Open reports on the same target, this one included."
+          },
+          "target": {
+            "$ref": "#/components/schemas/ReportTargetDto"
+          }
+        },
+        "required": [
+          "id",
+          "targetType",
+          "targetId",
+          "reason",
+          "status",
+          "createdAt",
+          "details",
+          "action",
+          "reviewedAt",
+          "reporter",
+          "openReportCount",
+          "target"
+        ]
+      },
+      "AdminReportsDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AdminReportDto"
+            }
+          },
+          "nextCursor": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "items",
+          "nextCursor"
+        ]
+      },
+      "ReviewReportDto": {
+        "type": "object",
+        "properties": {
+          "action": {
+            "type": "string",
+            "enum": [
+              "dismiss",
+              "hide_content",
+              "suspend_user",
+              "delete_content"
+            ],
+            "description": "hide_content and delete_content need a trip, marker, photo or comment; suspend_user suspends the reported user or the author of the reported content."
+          },
+          "note": {
+            "type": "string",
+            "maxLength": 1000,
+            "description": "Kept in the audit log."
+          }
+        },
+        "required": [
+          "action"
+        ]
+      }
+    }
+  }
+}

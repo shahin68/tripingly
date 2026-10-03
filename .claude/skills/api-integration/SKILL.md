@@ -13,17 +13,24 @@ Contract: the backend's `/v1/openapi.json` (staging: `https://api-staging-4ade.u
 2. API models are **generated from `openapi.json`** into `core:network` (regenerate after every backend contract change; never hand-edit generated files). They stay in the data layer.
 3. Remote data source function (suspend) using the shared `HttpClient`.
 4. Repository method mapping DTO → domain model and errors → the shared result type.
-5. Fake implementation returning realistic data (same shapes), used when the build flag `USE_FAKE_API` is on, and reused as the test fake.
+5. Fake implementation returning realistic data (same shapes), bound when `ApiConfig.useFakeApi` is on (`-Ptripinly.useFakeApi=true`), and reused as the test fake.
 6. State holder uses the repository only.
 7. `commonTest` with Ktor `MockEngine` serving JSON copied from a real staging response (`src/commonTest/resources/`): success, a mapped error code, network failure.
 
-## Foundation (build once)
+## Foundation (in `core:network`)
 
-- Shared `HttpClient` factory: JSON (`ignoreUnknownKeys`), bearer auth from `SecureStore`, `Accept-Language`, base URL per environment, logging in debug with the `Authorization` header redacted.
-- **Refresh:** on 401 + `TOKEN_EXPIRED`, a single-flight `POST /auth/refresh`; store both new tokens; retry once. Refresh failure → emit a global "signed out" event → navigate to sign-in and clear local data.
-- Global handling: `ONBOARDING_INCOMPLETE` → onboarding, `CONSENT_REQUIRED` → consent screen, `ACCOUNT_SUSPENDED` → message + sign-out, `RATE_LIMITED` → "try again shortly".
-- Paging helper for `{ items, nextCursor }`.
-- `Idempotency-Key` header on POSTs that create content, once the backend implements it (in the spec, not built yet; add it to the backend first).
+- `HttpClient` from Koin (`networkModule`); paths are relative to the base URL: `client.get("trips")`. It sends the bearer token (not on `/auth/*`), `Accept-Language` and `X-Client`, uses 15 s timeouts, and logs only method, path and status (never query strings, headers or bodies).
+- `apiCall<T> { client.get(...) }` returns `AppResult<T, DataError.Network>`: `Api(status, code, message, details)` for the server's envelope (switch on `code`, flattened `details` like `fields.title`, `retryAfterSeconds`), `Unauthorized` for 401, `NoInternet`, `RequestTimeout`, `ServerError`, `Serialization`. `204` → `Unit`. Never catch exceptions around it.
+- **Refresh** is automatic: on 401 `TOKEN_EXPIRED` one `POST /auth/refresh` (concurrent requests share it), both tokens saved, request retried. A refused refresh clears the tokens and emits `SessionEvents.sessionEnded` (with `ACCOUNT_SUSPENDED` when that's why); the app listens and goes to sign-in.
+- `TokenStore` is in memory until stage 3 adds Keychain / Keystore storage.
+- `CursorPaginator` + `CursorPage` for `{ items, nextCursor }`.
+- Content-creating POSTs (trips, trip copy, days, markers, add-to-trip, marker copy, comments, invites) send `idempotencyKey(key)` with a key from `newIdempotencyKey()` made once per user action and reused for its retries.
+- Environment: `-Pbuildkonfig.flavor=local|staging|production` (staging by default); fakes with `-Ptripinly.useFakeApi=true` (`ApiConfig.useFakeApi`).
+- Global handling still to wire in the app (stage 3): `ONBOARDING_INCOMPLETE` → onboarding, `CONSENT_REQUIRED` → consent screen, `ACCOUNT_SUSPENDED` → message + sign-out, `RATE_LIMITED` → "try again shortly".
+
+### Regenerating the API models
+
+Copy the backend's `openapi.json` to `core/network/openapi.json` (from the merged backend repo or `https://<api>/v1/openapi.json`). The build regenerates `com.falcon.tripingly.core.network.model.*` into `core/network/build/generated/openapi`; never edit generated code. A field that doesn't fit the generator (a new free-form type, a date format) gets a type mapping in `core/network/build.gradle.kts`.
 
 ## Error codes to handle specifically
 
