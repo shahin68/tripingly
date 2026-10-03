@@ -4,11 +4,11 @@ import androidx.compose.runtime.Composable
 import androidx.navigation3.ui.NavDisplay
 import androidx.navigation3.runtime.rememberNavBackStack
 import androidx.navigation3.runtime.NavEntry
-import com.falcon.tripingly.core.presentation.navigation.NavConfig
-import com.falcon.tripingly.core.presentation.navigation.Home
-import com.falcon.tripingly.core.presentation.navigation.TripMap
-import com.falcon.tripingly.core.presentation.theme.TripinglyTheme
-import com.falcon.tripingly.feature.home.presentation.screen.HomeRoute
+import com.falcon.tripingly.core.navigation.NavConfig
+import com.falcon.tripingly.core.navigation.Home
+import com.falcon.tripingly.core.navigation.TripMap
+import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
+import com.falcon.tripingly.feature.trips.presentation.screen.HomeRoute
 import com.falcon.tripingly.feature.map.presentation.screen.MapRoute
 
 @Composable

@@ -1,6 +1,5 @@
-rootProject.name = "Tripingly"
-
 pluginManagement {
+    includeBuild("build-logic")
     repositories {
         google {
             mavenContent {
@@ -27,5 +26,18 @@ dependencyResolutionManagement {
     }
 }
 
+rootProject.name = "Tripingly"
+enableFeaturePreview("TYPESAFE_PROJECT_ACCESSORS")
+
 include(":androidApp")
 include(":shared")
+
+include(":core:common")
+include(":core:model")
+include(":core:database")
+include(":core:data")
+include(":core:designsystem")
+include(":core:navigation")
+
+include(":feature:trips")
+include(":feature:map")

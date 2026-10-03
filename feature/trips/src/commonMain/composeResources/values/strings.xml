@@ -1,0 +1,38 @@
+<resources>
+    <!-- Common -->
+    <string name="common_ok">OK</string>
+    <string name="common_cancel">Cancel</string>
+
+    <!-- Home -->
+    <string name="home_tab_my_trips">My Trips</string>
+    <string name="home_tab_social">Social</string>
+    <string name="home_search_placeholder_trips">Search trips...</string>
+    <string name="home_search_placeholder_social">Search social...</string>
+    <string name="home_fab_add_trip">Add Trip</string>
+    <string name="home_list_empty">No trips yet. Tap + to create one!</string>
+    <string name="home_social_coming_soon">Social feature coming soon!</string>
+
+    <!-- Trip actions -->
+    <string name="trip_action_rename">Rename Trip</string>
+    <string name="trip_action_reschedule">Reschedule Trip</string>
+    <string name="trip_action_share">Share Trip</string>
+    <string name="trip_action_delete">Delete Trip</string>
+
+    <!-- Create trip dialog -->
+    <string name="create_trip_title">Create New Trip</string>
+    <string name="create_trip_name_label">Trip Name</string>
+    <string name="create_trip_dates_label">Dates</string>
+    <string name="create_trip_button_create">Create</string>
+    <string name="create_trip_picker_title">Select Trip Dates</string>
+    <string name="create_trip_picker_headline">Choose the range</string>
+
+    <!-- Rename trip dialog -->
+    <string name="rename_trip_title">Rename Trip</string>
+    <string name="rename_trip_button_rename">Rename</string>
+
+    <!-- Reschedule trip dialog -->
+    <string name="reschedule_trip_title">Reschedule Trip</string>
+    <string name="reschedule_trip_dates_label">New Dates</string>
+    <string name="reschedule_trip_button_reschedule">Reschedule</string>
+    <string name="reschedule_trip_picker_headline">Choose new dates</string>
+</resources>

@@ -1,0 +1,16 @@
+<resources>
+    <!-- Map -->
+    <string name="map_day_label">Day %1$d (%2$s)</string>
+    <string name="map_itinerary_title">Trip Plan (%1$d stops)</string>
+    <string name="map_itinerary_clear_all">Clear All</string>
+    <string name="map_stop_title_format">Stop #%1$d</string>
+    <string name="map_stop_snippet_format">Lat: %1$.4f, Lng: %2$.4f</string>
+
+    <!-- Location errors -->
+    <string name="error_location_permission_required">Location permission required to detect your location.</string>
+    <string name="error_location_services_disabled">Location services are disabled on your device.</string>
+    <string name="error_location_unavailable">Unable to determine current location. Showing default view.</string>
+    <string name="error_location_unknown">Failed to acquire location.</string>
+    <string name="error_location_unexpected">An unexpected error occurred while fetching location.</string>
+    <string name="error_location_denied_manual">Location permission was denied. You can still explore destinations manually.</string>
+</resources>

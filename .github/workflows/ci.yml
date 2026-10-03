@@ -1,0 +1,71 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [develop, master]
+  push:
+    branches: [develop]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  android:
+    name: Android build and tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: zulu
+          java-version: 21
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Assemble debug app
+        run: ./gradlew :androidApp:assembleDebug
+
+      - name: Unit tests (common + Android host)
+        run: ./gradlew allTests
+
+      - name: Upload test reports
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-test-reports
+          path: '**/build/reports/tests/'
+
+  ios:
+    name: iOS framework and tests
+    # macOS minutes count 10x on private repos, so this job only runs once Android is green.
+    needs: android
+    runs-on: macos-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: zulu
+          java-version: 21
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Link the shared framework for the simulator
+        run: ./gradlew :shared:linkDebugFrameworkIosSimulatorArm64
+
+      - name: Unit tests on the iOS simulator
+        run: ./gradlew iosSimulatorArm64Test
+
+      - name: Upload test reports
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-test-reports
+          path: '**/build/reports/tests/'
