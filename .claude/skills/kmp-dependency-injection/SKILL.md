@@ -22,115 +22,77 @@ Dependency Injection is deployed to enforce SOLID principles and cleanly impleme
 
 ---
 
-## 2. Dependency Injection Architecture Organization
+## 2. One Koin Module per Gradle Module
 
-Organize DI declarations strictly according to their feature, layer, and semantic architectural boundaries:
+Each Gradle module owns exactly one public Koin module in its `di` package, named after the module. Platform bindings sit in an `internal expect val` that the common module `includes(...)`:
 
 ```
-di/
-├── KoinModules.kt           # Expect declaration for platformModule() & common modules
-├── KoinModules.android.kt   # Actual declaration providing Android components (e.g., Context)
-├── KoinModules.ios.kt       # Actual declaration providing iOS component definitions
-└── InitKoin.kt              # Common multiplatform initialization entry helper
+core/common/src/commonMain/.../core/common/di/CommonModule.kt          val commonModule (+ internal expect val commonPlatformModule)
+core/common/src/androidMain/.../core/common/di/CommonModule.android.kt internal actual val commonPlatformModule
+core/common/src/iosMain/.../core/common/di/CommonModule.ios.kt         internal actual val commonPlatformModule
+core/database/.../di/DatabaseModule.kt                                 val databaseModule (Room builder per platform)
+core/data/.../di/DataModule.kt                                         val dataModule
+feature/trips/.../di/TripsModule.kt                                    val tripsModule
+feature/map/.../di/MapModule.kt                                        val mapModule (+ platform location source)
+shared/src/commonMain/.../di/InitKoin.kt                               initKoin() lists every module once
 ```
 
 ---
 
-## 3. Module Definitions & Conversions
+## 3. Module Definitions
 
-### Common Feature Module Definitions
-Use constructor injection DSL (`singleOf`, `factoryOf`, `viewModelOf`) along with explicit interface binding (`bind`) to map your implementations to core domain contracts cleanly:
+Constructor injection DSL (`singleOf`, `factoryOf`, `viewModelOf`) with explicit interface binding:
 
 ```kotlin
-package com.falcon.tripingly.di
-
-import com.falcon.tripingly.core.coroutines.CoroutineDispatchers
-import com.falcon.tripingly.core.coroutines.DefaultCoroutineDispatchers
-import com.falcon.tripingly.feature.map.data.repository.LocationRepository
-import com.falcon.tripingly.feature.map.data.repository.LocationRepositoryImpl
-import com.falcon.tripingly.feature.map.domain.usecase.GetCurrentLocationUseCase
-import com.falcon.tripingly.feature.map.presentation.screen.MapViewModel
-import org.koin.core.module.Module
-import org.koin.core.module.dsl.factoryOf
-import org.koin.core.module.dsl.singleOf
-import org.koin.core.module.dsl.viewModelOf
-import org.koin.dsl.bind
-import org.koin.dsl.module
-
-expect fun platformModule(): Module
-
-val coreModule = module {
-    single<CoroutineDispatchers> { DefaultCoroutineDispatchers() }
-}
+package com.falcon.tripingly.feature.map.di
 
 val mapModule = module {
-    // Repositories bound strictly to their domain contracts
+    includes(mapPlatformModule)
     singleOf(::LocationRepositoryImpl) bind LocationRepository::class
-    
-    // Factories for Use Cases
-    factoryOf(::GetCurrentLocationUseCase)
-    
-    // ViewModels using standard Lifecycle ViewModel DSL in KMP
     viewModelOf(::MapViewModel)
 }
+
+internal expect val mapPlatformModule: Module
 ```
 
-### Platform Module Initializations
-
-#### Android Setup (`androidMain`)
 ```kotlin
-package com.falcon.tripingly.di
-
-import com.falcon.tripingly.feature.map.data.datasource.AndroidLocationDataSource
-import com.falcon.tripingly.feature.map.data.datasource.LocationDataSource
-import org.koin.core.module.Module
-import org.koin.dsl.bind
-import org.koin.dsl.module
-
-actual fun platformModule(): Module = module {
-    // Injects Android Application Context automatically via get()
-    single { AndroidLocationDataSource(get()) } bind LocationDataSource::class
+// androidMain
+internal actual val mapPlatformModule: Module = module {
+    single { AndroidLocationDataSource(get()) } bind LocationDataSource::class   // get() resolves the Android Context
 }
-```
 
-#### iOS Setup (`iosMain`)
-```kotlin
-package com.falcon.tripingly.di
-
-import com.falcon.tripingly.feature.map.data.datasource.IosLocationDataSource
-import com.falcon.tripingly.feature.map.data.datasource.LocationDataSource
-import org.koin.core.module.Module
-import org.koin.core.module.dsl.singleOf
-import org.koin.dsl.bind
-import org.koin.dsl.module
-
-actual fun platformModule(): Module = module {
+// iosMain
+internal actual val mapPlatformModule: Module = module {
     singleOf(::IosLocationDataSource) bind LocationDataSource::class
 }
 ```
 
+- Implementations stay `internal` to their module; only the Koin module value and the interfaces are public.
+- A ViewModel that needs navigation arguments takes its typed key: `viewModel { params -> TripDetailViewModel(key = params.get(), ...) }` and `koinViewModel { parametersOf(key) }` in the Route.
+
 ---
 
-## 4. Multiplatform Bootstrapping Workflow
+## 4. Bootstrapping
 
-### Common Init Helper (`commonMain`)
 ```kotlin
 package com.falcon.tripingly.di
-
-import org.koin.core.context.startKoin
-import org.koin.dsl.KoinAppDeclaration
 
 fun initKoin(appDeclaration: KoinAppDeclaration = {}) {
     startKoin {
         appDeclaration()
-        modules(
-            coreModule,
-            platformModule(),
-            mapModule
-        )
+        modules(commonModule, databaseModule, dataModule, tripsModule, mapModule)
     }
 }
 ```
+
+- Android calls `initKoin { androidContext(this@TripinglyApplication) }` in `TripinglyApplication`.
+- iOS calls `initKoin()` once from `MainViewController()` in `shared/src/iosMain`.
+- Adding a module means adding its Koin module to this list in the same PR.
+
+### Tests
+
+- ViewModel and repository tests construct classes directly with fakes; they don't start Koin.
+- One `checkModules`-style test in `shared` (once `core:testing` exists) verifies the whole graph resolves, with platform pieces replaced by fakes.
 
 ### Android Native Application Binding
 ```kotlin

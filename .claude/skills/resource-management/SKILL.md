@@ -10,7 +10,7 @@ This skill defines the standard procedure for extracting, naming, and using stri
 ## Core Rules
 
 1.  **NO HARD-CODED STRINGS**: Every user-facing string MUST be extracted to a string resource file.
-2.  **Location**: The primary string resource file is located at `shared/src/commonMain/composeResources/values/strings.xml`.
+2.  **Location**: Each module owns its strings in `<module>/src/commonMain/composeResources/values/strings.xml` (e.g. `feature/trips/...`, `core/designsystem/...`), with `values-de/` and `values-hu/` next to it for the other launch languages. A module never uses another module's `Res`; a string two modules need either lives in `core:designsystem` behind a component, or is duplicated.
 3.  **Naming Convention**: Use `snake_case` with semantic prefixing to group related strings.
     - Format: `<feature>_<component>_<description>`
     - Examples: `home_trip_list_empty`, `map_header_title`, `common_dialog_cancel`.
@@ -23,7 +23,7 @@ This skill defines the standard procedure for extracting, naming, and using stri
 Scan Composable files and ViewModels for string literals used in the UI.
 
 ### 2. Define in `strings.xml`
-Add the string to `shared/src/commonMain/composeResources/values/strings.xml` following the naming convention.
+Add the string to the owning module's `composeResources/values/strings.xml` (and the `de`/`hu` files) following the naming convention.
 
 ```xml
 <resources>
@@ -33,8 +33,12 @@ Add the string to `shared/src/commonMain/composeResources/values/strings.xml` fo
 
 ### 3. Replace in Code
 Replace the literal with the generated resource accessor. Ensure the necessary imports are present:
-`import tripingly.shared.generated.resources.Res`
-`import tripingly.shared.generated.resources.*`
+`import com.falcon.tripingly.feature.trips.generated.resources.Res`
+`import com.falcon.tripingly.feature.trips.generated.resources.*`
+
+The `Res` package is `<module namespace>.generated.resources`, set by the `tripinly.kmp.compose` convention plugin, and the class is internal to the module.
+
+ViewModels don't resolve strings with `getString`; they put a `UiText` (resource + args, or the server's localized message) in state and the composable resolves it.
 
 ## Formatting & Plurals
 - Use `%s`, `%d` for placeholders.

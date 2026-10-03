@@ -22,7 +22,7 @@ This guide outlines the rules for Kotlin Coroutines, asynchronous lifecycles, st
 Do not hardcode `Dispatchers.IO` or `Dispatchers.Default` within repositories, data sources, or use cases. Always inject a `CoroutineDispatchers` abstraction. This preserves structured concurrency boundary constraints and enables deterministic synchronous verification during unit testing:
 
 ```kotlin
-package com.falcon.tripingly.core.coroutines
+package com.falcon.tripingly.core.common.coroutines
 
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
@@ -87,9 +87,9 @@ try {
 Never lean on standard exception throws to govern ordinary control logic flows or propagate low-level network/database crashes directly into domain or presentation code. Always utilize a strongly typed result envelope:
 
 ```kotlin
-package com.falcon.tripingly.core.domain.result
+package com.falcon.tripingly.core.common.result
 
-import com.falcon.tripingly.core.domain.error.RootError
+import com.falcon.tripingly.core.common.error.RootError
 
 sealed interface AppResult<out D, out E : RootError> {
     data class Success<out D>(val data: D) : AppResult<D, Nothing>
@@ -117,3 +117,12 @@ Low-level frameworks or platform execution wrappers are transformed instantly at
               ▼ (Presentation Layer: Maps Error type to localized UI message strings)
 [ Presentation ViewModel ] ── Updates UI State with readable text strings
 ```
+
+---
+
+## Tripinly specifics
+
+- **One error taxonomy.** `AppResult<T, E : RootError>` and `DataError` in `core:common` are the only result and error types across layers. Network errors carry the server's stable `error.code` mapped to a typed `DataError.Network` case (see the `api-integration` skill); nothing above the data layer sees exceptions or HTTP status codes.
+- **Application scope.** Work that must outlive a screen (token refresh, cache sync, upload queue) runs in one injected `CoroutineScope(SupervisorJob() + Dispatchers.Default)` registered in `commonModule`, never `GlobalScope`.
+- **Dispatchers belong to the data layer.** Repositories and data sources switch with injected `CoroutineDispatchers`; ViewModels use `viewModelScope` as is.
+- **Retries and timeouts** live in repositories (Ktor timeouts, bounded retry with backoff for idempotent calls only).
