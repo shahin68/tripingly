@@ -14,15 +14,17 @@ build-logic/           Convention plugins: tripinly.kmp.library, tripinly.kmp.co
 core/common            AppResult, RootError/DataError, CoroutineDispatchers, DateUtils, ShareManager (expect/actual via Koin)
 core/model             Domain models shared across features (Trip). No Compose dependency
 core/database          Room database (TripinglyDatabase v2), TripDao, MarkerDao, entities, platform builders
-core/data              TripRepository (+ Room-backed TripRepositoryImpl)
+core/data              TripRepository (+ Room-backed TripRepositoryImpl); SessionRepository (session state, sign-in/out) and AccountRepository (onboarding) over the API, FakeAccountBackend for useFakeApi
+core/storage           SecureStore: iOS Keychain (cleared on a fresh install), Android Keystore AES-GCM key + encrypted SharedPreferences
 core/designsystem      TripinglyTheme (colors, typography, shapes, spacing), AppDropdownMenu, ErrorBanner, FloatingSearchBar
 core/navigation        Route keys (Home, TripMap) and the saved-state serializers config
-core/network           Ktor HttpClient (auth, refresh, headers), Ktorfit with an AppResult converter (error mapping), AuthApi, TokenStore (in memory), SessionEvents, CursorPaginator, idempotency keys, API models generated from openapi.json, environments via BuildKonfig
+core/network           Ktor HttpClient (auth, refresh, headers), Ktorfit with an AppResult converter (error mapping), AuthApi, AccountApi, TokenStore (in memory), SessionEvents, CursorPaginator, idempotency keys, API models generated from openapi.json, environments via BuildKonfig
+feature/auth           AuthGate (launch / sign-in / onboarding until signed in), SignIn, Onboarding (profile, consents), SocialSignIn: Credential Manager on Android; on iOS the Swift NativeSignIn (iosApp/NativeSignIn.swift) handed to MainViewController
 feature/trips          Home screen (My Trips + Social tab), create/rename/reschedule dialogs, trip use cases
 feature/map            Trip map: day tabs, markers, location, Google Maps (Android) / MapKit (iOS)
 ```
 
-Dependency direction: `androidApp`/`iosApp` → `shared` → `feature:*` → `core:*`. Features never depend on each other (the `tripinly.kmp.feature` plugin fails the build if they do). Each module has one Koin module (`commonModule`, `databaseModule`, `networkModule`, `dataModule`, `tripsModule`, `mapModule`); `shared/di/InitKoin.kt` lists them.
+Dependency direction: `androidApp`/`iosApp` → `shared` → `feature:*` → `core:*`. Features never depend on each other (the `tripinly.kmp.feature` plugin fails the build if they do). Each module has one Koin module (`commonModule`, `databaseModule`, `storageModule`, `networkModule`, `dataModule`, `authModule`, `tripsModule`, `mapModule`); `shared/di/InitKoin.kt` lists them.
 
 Every module has `commonMain`, plus `androidMain`/`iosMain` only where platform code is needed: ShareManager and Koin bindings in `core:common`, DB builders in `core:database`, the HTTP engine and locale in `core:network`, location, permission and map view in `feature:map`.
 
@@ -46,7 +48,9 @@ Every module has `commonMain`, plus `androidMain`/`iosMain` only where platform 
 | State collections | kotlinx-collections-immutable (in feature modules) | 0.5.2 |
 | Tests | kotlin-test, coroutines-test, Turbine, JUnit 4, Robolectric, Ktor MockEngine | 1.2.0 Turbine, 4.17 Robolectric |
 
-Not present yet: image loading (Coil), secure storage, Firebase, Socket.IO, sign-in SDKs, detekt/ktlint.
+| Sign-in | androidx.credentials + googleid (Android); AuthenticationServices and GoogleSignIn-iOS via SPM (iOS, package not added yet) | 1.5.0, 1.1.1 |
+
+Not present yet: image loading (Coil), Firebase, Socket.IO, detekt/ktlint.
 
 ## Architecture pattern
 
@@ -59,6 +63,7 @@ Not present yet: image loading (Coil), secure storage, Firebase, Socket.IO, sign
 
 | Screen / feature | Location in code | Data source today | Status | Needed backend endpoints |
 |---|---|---|---|---|
+| Launch / sign-in / onboarding (`AuthGate` wraps the app in `App.kt`) | `feature/auth/.../presentation/` | API (`/auth/*`, `/me`, `/users/check-username`, `/legal/documents`, `/me/consents`) | Works with developer sign-in on local/staging; Google reports "not set up" until the client IDs exist, Apple until the Apple Developer account and capability exist; tokens in Keychain / Keystore | (in use) |
 | Home: My Trips list, search box, long-press menu (rename, reschedule, share, delete), FAB | `feature/trips/.../presentation/screen/HomeScreen.kt`, `HomeViewModel.kt` | Room `trips` table | Works locally; search field is not wired to filtering | `GET /me/trips`, `PATCH /trips/{id}`, `DELETE /trips/{id}` |
 | Create trip dialog (name + date range) | `feature/trips/.../component/CreateTripDialog.kt` | Room | Works locally; ID is `trip_<random int>` | `POST /trips` |
 | Rename / reschedule dialogs | `feature/trips/.../component/` | Room | Works locally | `PATCH /trips/{id}` |
@@ -86,6 +91,7 @@ Not present yet: image loading (Coil), secure storage, Firebase, Socket.IO, sign
 ## Build and run
 
 - Android: `./gradlew :androidApp:assembleDebug`. Needs `MAPS_API_KEY=...` in `local.properties` (empty key builds, map tiles don't load).
+- Sign-in config (Gradle properties, e.g. `~/.gradle/gradle.properties`): `tripinly.devAuthSecret` (staging's developer sign-in secret, never committed) and `tripinly.googleWebClientId` (the backend's Google Web client ID; not secret). iOS Google sign-in also needs the GoogleSignIn-iOS package (SPM) and `GIDClientID` + the reversed client ID URL scheme in Info.plist; Sign in with Apple needs the capability on the app ID.
 - Unit tests: `./gradlew allTests` (Android host tests + common) on any OS; `./gradlew iosSimulatorArm64Test` on macOS.
 - iOS framework: `./gradlew :shared:linkDebugFrameworkIosSimulatorArm64`; Xcode runs `:shared:embedAndSignAppleFrameworkForXcode`. iOS deployment target 18.2. `Config.plist` with `MAPS_API_KEY` is read at startup but not committed.
 - CI (`.github/workflows/ci.yml`): Android assemble + `allTests` on Ubuntu, then iOS framework link + simulator tests on macOS, for PRs into `develop`/`master` and pushes to `develop`.
@@ -98,7 +104,7 @@ Not present yet: image loading (Coil), secure storage, Firebase, Socket.IO, sign
 
 ## Gaps and risks
 
-1. **Networking is in place but unused**: `core:network` (stage 2) has the client, refresh and error mapping, but no screen calls the API yet and tokens live in memory until stage 3. Everything is still local Room data with client-generated IDs.
+1. **Only sign-in and onboarding use the API** (stage 3); trips are still local. Tokens are in Keychain / Keystore, so the session survives restarts. Everything is still local Room data with client-generated IDs.
 2. **Room is the source of truth**: moving to "server is truth, Room caches own trips" changes repositories, IDs and the schema (stage 4).
 3. **iOS map is MapKit and the iOS app target likely does not compile** (GoogleMaps import without the SDK linked). Decide on the Google Maps iOS SDK via SPM in the map stage.
 4. **Google POIs visible on Android**; no OSM attribution.

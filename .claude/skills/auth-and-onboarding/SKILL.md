@@ -7,6 +7,13 @@ description: Use for Tripinly sign-in (Google on Android/iOS, Apple on iOS), tok
 
 Rules: `docs/knowledge/02-client-rules.md` → Sign-in and onboarding.
 
+## Where it lives
+
+- `core:data` `SessionRepository` (session state, restore, sign-in/out) and `AccountRepository` (onboarding calls); `FakeAccountBackend` for `-Ptripinly.useFakeApi=true` and tests.
+- `feature:auth`: `AuthGate` wraps the app in `App.kt`; `SignIn` and `Onboarding` screens; `SocialSignIn` is the platform seam (`CredentialManagerSignIn` on Android, `NativeSocialSignIn` over the Swift `AppNativeSignIn` on iOS).
+- `core:storage` `SecureStore` + `core:network` `SecureTokenStore` hold the tokens.
+- Developer sign-in (`POST /auth/dev`) shows in local/staging builds; staging's secret is the Gradle property `tripinly.devAuthSecret`, never committed.
+
 ## Sign-in
 
 - **Android Google:** Credential Manager with Google ID option (`GetGoogleIdOption`, server client ID = the web/backend client ID) → ID token → `POST /auth/google`.

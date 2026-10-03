@@ -70,7 +70,8 @@ class FakeAccountBackend(private val today: () -> LocalDate) : SessionRepository
 
     override suspend fun updateProfile(update: ProfileUpdate): AppResult<Account, DataError.Network> {
         val current = account ?: return AppResult.Error(DataError.Network.Unauthorized)
-        if (update.birthDate != null && !update.birthDate.isAtLeast(MINIMUM_AGE, today())) {
+        val birthDate = update.birthDate
+        if (birthDate != null && !birthDate.isAtLeast(MINIMUM_AGE, today())) {
             signOut(SignOutReason.UNDER_AGE)
             return AppResult.Error(
                 DataError.Network.Api(422, "AGE_REQUIREMENT_NOT_MET", "You must be at least 16 to use Tripinly."),

@@ -5,7 +5,7 @@ import com.falcon.tripingly.core.network.account.AccountApi
 import com.falcon.tripingly.core.network.account.createAccountApi
 import com.falcon.tripingly.core.network.auth.AuthApi
 import com.falcon.tripingly.core.network.auth.createAuthApi
-import com.falcon.tripingly.core.network.auth.InMemoryTokenStore
+import com.falcon.tripingly.core.network.auth.SecureTokenStore
 import com.falcon.tripingly.core.network.auth.SessionEvents
 import com.falcon.tripingly.core.network.auth.TokenStore
 import com.falcon.tripingly.core.network.createHttpClient
@@ -30,7 +30,7 @@ internal interface NetworkPlatform {
 val networkModule = module {
     includes(networkPlatformModule)
     single { ApiConfig.fromBuildConfig(get<NetworkPlatform>().name) }
-    single<TokenStore> { InMemoryTokenStore() }
+    single<TokenStore> { SecureTokenStore(get()) }
     single { SessionEvents() }
     single<HttpClient> {
         val platform = get<NetworkPlatform>()

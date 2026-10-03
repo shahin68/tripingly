@@ -6,8 +6,8 @@ import kotlinx.coroutines.sync.withLock
 data class AuthTokens(val accessToken: String, val refreshToken: String)
 
 /**
- * Holds the signed-in user's tokens. Stage 3 replaces [InMemoryTokenStore] with
- * Keychain / Keystore-backed storage; tokens are never logged.
+ * Holds the signed-in user's tokens: [SecureTokenStore] in the app,
+ * [InMemoryTokenStore] in tests. Tokens are never logged.
  */
 interface TokenStore {
     suspend fun get(): AuthTokens?

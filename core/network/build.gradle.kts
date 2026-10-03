@@ -25,6 +25,7 @@ kotlin {
             kotlin.srcDir(generatedApiDir.map { it.dir("src/commonMain/kotlin") })
             dependencies {
                 api(projects.core.common)
+                implementation(projects.core.storage)
                 api(libs.ktor.client.core)
                 api(libs.ktorfit.lib.light)
                 implementation(libs.ktor.client.content.negotiation)
@@ -94,6 +95,9 @@ buildkonfig {
         // put tripinly.devAuthSecret in ~/.gradle/gradle.properties, never in the repo.
         buildConfigField(BOOLEAN, "DEVELOPER_SIGN_IN", "true")
         buildConfigField(STRING, "DEV_AUTH_SECRET", providers.gradleProperty("tripinly.devAuthSecret").getOrElse(""))
+        // The backend's Google Web client ID (Android asks Google for a token with this audience).
+        // Not a secret; set tripinly.googleWebClientId in gradle.properties once it exists.
+        buildConfigField(STRING, "GOOGLE_WEB_CLIENT_ID", providers.gradleProperty("tripinly.googleWebClientId").getOrElse(""))
     }
     defaultConfigs("local") {
         buildConfigField(STRING, "ENVIRONMENT", "local")

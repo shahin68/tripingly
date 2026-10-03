@@ -34,8 +34,3 @@ sealed interface SocialSignInResult {
     data object Failed : SocialSignInResult
 }
 
-/** Until the provider keys and SDKs are added: every provider reports [SocialSignInResult.NotConfigured]. */
-internal class UnconfiguredSocialSignIn(override val appleAvailable: Boolean) : SocialSignIn {
-    override suspend fun google(): SocialSignInResult = SocialSignInResult.NotConfigured
-    override suspend fun apple(): SocialSignInResult = SocialSignInResult.NotConfigured
-}

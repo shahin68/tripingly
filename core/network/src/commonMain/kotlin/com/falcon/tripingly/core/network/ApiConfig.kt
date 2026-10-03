@@ -15,6 +15,8 @@ data class ApiConfig(
     val developerSignIn: Boolean = false,
     /** Staging's `X-Dev-Auth-Secret`, from a local Gradle property; never committed. */
     val devAuthSecret: String? = null,
+    /** The backend's Google Web client ID, the audience of Google ID tokens; null until it exists. */
+    val googleWebClientId: String? = null,
 ) {
     init {
         require(baseUrl.isNotBlank()) {
@@ -31,6 +33,7 @@ data class ApiConfig(
             useFakeApi = NetworkBuildConfig.USE_FAKE_API,
             developerSignIn = NetworkBuildConfig.DEVELOPER_SIGN_IN,
             devAuthSecret = NetworkBuildConfig.DEV_AUTH_SECRET.ifBlank { null },
+            googleWebClientId = NetworkBuildConfig.GOOGLE_WEB_CLIENT_ID.ifBlank { null },
         )
     }
 }

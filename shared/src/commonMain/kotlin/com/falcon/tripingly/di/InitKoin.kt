@@ -4,6 +4,7 @@ import com.falcon.tripingly.core.common.di.commonModule
 import com.falcon.tripingly.core.data.di.dataModule
 import com.falcon.tripingly.core.database.di.databaseModule
 import com.falcon.tripingly.core.network.di.networkModule
+import com.falcon.tripingly.core.storage.di.storageModule
 import com.falcon.tripingly.feature.auth.di.authModule
 import com.falcon.tripingly.feature.map.di.mapModule
 import com.falcon.tripingly.feature.trips.di.tripsModule
@@ -16,6 +17,7 @@ fun initKoin(appDeclaration: KoinAppDeclaration = {}) {
         modules(
             commonModule,
             databaseModule,
+            storageModule,
             networkModule,
             dataModule,
             authModule,
