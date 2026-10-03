@@ -6,10 +6,10 @@ As the Senior Multiplatform Kotlin Developer on this project, you work alongside
 
 ---
 
-## ⛔ Absolute Constraint: Git Operations
-- **NEVER** run any `git` command (`git status`, `git commit`, `git add`, `git push`, `git checkout`, etc.).
-- **NEVER** modify, create, or touch `.git` folder or git-related configuration files.
-- The user retains 100% control over version control and repository management.
+## Git workflow
+- Every change goes on its own feature branch and is merged into `develop` through a pull request. Never push to `master`.
+- One PR per build-order stage (see `CLAUDE.md`); CI must be green before review.
+- `CLAUDE.md` and `docs/knowledge/` are the source of truth; this file summarizes the engineering principles.
 
 ---
 
@@ -48,11 +48,10 @@ The codebase strictly adheres to Clean Architecture separated into 3 decoupled l
 └─────────────────────────────────────────────────────────┘
 ```
 
-### 2. Single Source of Truth (SSOT)
-- The Data Layer coordinates between local storage and remote APIs.
-- A general repository coordinates both a `LocalDataSource` / `LocalRepository` and a `RemoteDataSource` / `RemoteRepository`.
-- The Domain layer interacts only with the repository interface.
-- UI observes cached/local state through streams (`Flow`) exposed by the repository, while refresh operations trigger remote calls and update the local source.
+### 2. Source of truth
+- The server is the source of truth. Room caches what the user needs offline (their own trips, read-only); writes go to the API, with optimistic updates that roll back on failure.
+- A repository coordinates the remote data source (Ktor) and the local cache, and exposes `Flow`s that read from the cache.
+- The Domain layer interacts only with repository interfaces. Use cases exist only when they combine repositories or hold a rule; no pass-through use cases.
 
 ### 3. MVVM + MVI Presentation Architecture
 - **State Management**: Owned strictly by `ViewModel` via private `MutableStateFlow<UiState>` exposed as public read-only `StateFlow<UiState>`.
@@ -82,7 +81,11 @@ The codebase strictly adheres to Clean Architecture separated into 3 decoupled l
 ### 6. Dependency Injection
 - Strong, explicit dependency injection across `commonMain`, `androidMain`, and `iosMain` using modern KMP DI (e.g. Koin).
 - Program to interfaces (domain interfaces in `domain`, implementations in `data`).
-- Modules partitioned by feature and layer: `coreModule`, `networkModule`, `databaseModule`, `<feature>DataModule`, `<feature>DomainModule`, `<feature>PresentationModule`.
+- One Koin module per Gradle module (`commonModule`, `databaseModule`, `dataModule`, `tripsModule`, `mapModule`, …), with platform bindings in `expect/actual` modules. `shared/di/InitKoin.kt` aggregates them.
+
+### 6b. Gradle modules
+- `androidApp`/`iosApp` → `shared` (umbrella) → `feature:*` → `core:*`. Features never depend on each other; shared pieces move down into `core`.
+- Modules apply the convention plugins in `build-logic` (`tripinly.kmp.library`, `tripinly.kmp.compose`, `tripinly.kmp.feature`). See `docs/knowledge/07-architecture.md`.
 
 ### 7. Modern Compose Multiplatform Styling & Theming
 - Centralized Material 3 Design System (`ColorSchemes`, `Typography`, `Shapes`, `Spacing`).
@@ -98,7 +101,7 @@ The codebase strictly adheres to Clean Architecture separated into 3 decoupled l
 ---
 
 ## 📂 Specialized Skills Reference
-Detailed guidelines and templates are available in `.agents/skills/`:
+Detailed guidelines and templates are in `.claude/skills/` (mirrored in `.agents/skills/` for the general engineering skills):
 - `kmp-clean-architecture`: Clean Architecture, Layering, and SSOT guidelines.
 - `mvi-presentation`: MVVM + MVI, Actions, StateFlow, Composable stability, Side Effects.
 - `concurrency-and-error-handling`: Structured concurrency, CancellationException handling, Result patterns.
@@ -106,3 +109,5 @@ Detailed guidelines and templates are available in `.agents/skills/`:
 - `styling-and-theming`: Material 3 Compose Multiplatform theme, typography, spacing, component foundations.
 - `android-edge-to-edge`: Edge-to-edge display, WindowInsets, status/navigation bars, and IME padding.
 - `kmp-testing-framework`: Multiplatform unit and UI testing, Turbine, test dispatchers, fake repositories.
+- `feature-module`: Scaffold a new feature or core module end to end.
+- `ui-component`: Add a design-system component.

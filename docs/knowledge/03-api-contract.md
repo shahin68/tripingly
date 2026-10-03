@@ -1,8 +1,8 @@
 # Tripinly — API Contract (client copy)
 
-This is a copy of the backend's API spec. The backend is built by a separate agent. **The source of truth, once the backend is running, is its OpenAPI document at `/v1/openapi.json`.** If this file and the OpenAPI document disagree, the OpenAPI document wins; tell the user about the difference.
+This is a copy of the backend's API spec (`docs/knowledge/04-api-spec.md` in `shahin68/tripinly-backend`). **The source of truth is the backend's OpenAPI document at `/v1/openapi.json`** (staging: `https://api-staging-4ade.up.railway.app/v1/openapi.json`). If this file and the OpenAPI document disagree, the OpenAPI document wins; fix this file.
 
-You don't change this contract yourself. If the client needs a new endpoint or field, write it down as a **contract request** (see the `api-integration` skill) and give it to the user, who passes it to the backend agent.
+The same agent builds both sides. When the client needs a new endpoint or field, change the backend first (its own PR and its spec), then update this file, and list the change in the stage report.
 
 REST over HTTPS, JSON, base path `/v1`.
 
@@ -19,7 +19,7 @@ REST over HTTPS, JSON, base path `/v1`.
   ```
   `code` is stable and documented; clients switch on `code`, never on `message`. Validation errors use `VALIDATION_FAILED` with per-field `details`.
 - **Status codes:** 200/201/204 success, 400 validation, 401 unauthenticated, 403 forbidden, 404 not found (also used for private resources the caller can't see — never reveal existence), 409 conflict (e.g. username taken), 422 domain rule violated, 429 rate limited.
-- **Idempotency:** likes and unlikes are idempotent. `POST` creating content accepts an optional `Idempotency-Key` header.
+- **Idempotency:** likes and unlikes are idempotent. `POST` creating content will accept an optional `Idempotency-Key` header (in the spec, not implemented on the backend yet).
 - **Rate limits:** per user and per IP on auth, search, comment and upload endpoints.
 
 ## Endpoints

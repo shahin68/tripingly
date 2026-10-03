@@ -16,3 +16,10 @@ Append-only. Newest at the bottom.
 | 2026-09-27 | Map browsing shows Tripinly places prominently and OSM places as dots when zoomed in | Map never empty | Product owner |
 | 2026-09-27 | Routes show places along the way (attractions, cafés, restaurants) | Product requirement | Product owner |
 | 2026-09-27 | Route lines and along-the-way are free; best route by real travel time is premium, straight-line best route is free | Product requirement | Product owner |
+| 2026-09-28 | One agent builds both the backend and this client; contract requests are replaced by changing the backend first (own PR) and listing contract changes in each report | Simpler coordination | Product owner |
+| 2026-09-28 | Premium purchases via **RevenueCat**: entitlement `tripinly_pro`, products `lifetime`, `yearly`, `monthly`; the client calls `Purchases.logIn(<backend user id>)`; premium state still comes from `GET /me` | Cross-platform billing with a KMP SDK | Product owner |
+| 2026-09-28 | Working defaults accepted: Google only on Android, Google + Apple on iOS; launch languages en, de, hu; design follows the existing app, brief wins on behaviour; default map categories as listed in `05`; Activity = notification history; share links are deep links only | Not contested when asked | Product owner |
+| 2026-10-03 | Split `:shared` into `core:*` and `feature:*` modules with convention plugins in `build-logic`; `shared` stays the umbrella and iOS framework | Gradle enforces boundaries; small, uniform build files | Product owner + agent |
+| 2026-10-03 | Offline: read-only cache of the user's own trips; edits need a connection, with optimistic updates where listed in `07` | Full offline editing needs a sync queue and conflict handling | Product owner + agent |
+| 2026-10-03 | API models are generated from the backend's `openapi.json` | The contract can't drift silently | Product owner + agent |
+| 2026-10-03 | One PR per build-order stage, reviewed and merged before the next stage; CI on GitHub Actions (Android build + tests, iOS framework + simulator tests) must be green | Reviewable steps | Product owner + agent |
