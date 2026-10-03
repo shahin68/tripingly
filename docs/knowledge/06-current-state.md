@@ -91,7 +91,7 @@ Not present yet: image loading (Coil), Firebase, Socket.IO, detekt/ktlint.
 ## Build and run
 
 - Android: `./gradlew :androidApp:assembleDebug`. Needs `MAPS_API_KEY=...` in `local.properties` (empty key builds, map tiles don't load).
-- Sign-in config (Gradle properties, e.g. `~/.gradle/gradle.properties`): `tripinly.devAuthSecret` (staging's developer sign-in secret, never committed) and `tripinly.googleWebClientId` (the backend's Google Web client ID; not secret). iOS Google sign-in also needs the GoogleSignIn-iOS package (SPM) and `GIDClientID` + the reversed client ID URL scheme in Info.plist; Sign in with Apple needs the capability on the app ID.
+- Local config lives in the untracked root `local.properties` (a Gradle property with the same name is the fallback, e.g. `-P` in CI): `MAPS_API_KEY`, `tripinly.useFakeApi`, `tripinly.devAuthSecret` (staging's developer sign-in secret, never committed) and `tripinly.googleWebClientId` (the backend's Google Web client ID; not secret). iOS Google sign-in also needs the GoogleSignIn-iOS package (SPM) and `GIDClientID` + the reversed client ID URL scheme in Info.plist; Sign in with Apple needs the capability on the app ID.
 - Unit tests: `./gradlew allTests` (Android host tests + common) on any OS; `./gradlew iosSimulatorArm64Test` on macOS.
 - iOS framework: `./gradlew :shared:linkDebugFrameworkIosSimulatorArm64`; Xcode runs `:shared:embedAndSignAppleFrameworkForXcode`. iOS deployment target 18.2. `Config.plist` with `MAPS_API_KEY` is read at startup but not committed.
 - CI (`.github/workflows/ci.yml`): Android assemble + `allTests` on Ubuntu, then iOS framework link + simulator tests on macOS, for PRs into `develop`/`master` and pushes to `develop`.

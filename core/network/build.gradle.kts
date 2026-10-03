@@ -2,6 +2,7 @@ import com.codingfeline.buildkonfig.compiler.FieldSpec.Type.BOOLEAN
 import com.codingfeline.buildkonfig.compiler.FieldSpec.Type.STRING
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompilationTask
 import org.openapitools.generator.gradle.plugin.tasks.GenerateTask
+import java.util.Properties
 
 plugins {
     id("tripinly.kmp.library")
@@ -14,6 +15,15 @@ plugins {
 }
 
 val generatedApiDir = layout.buildDirectory.dir("generated/openapi")
+
+// Local config (secrets, client IDs, switches) lives in the untracked local.properties at the repo root.
+// A -P flag or Gradle property with the same name is the fallback, e.g. for CI.
+val localProperties = Properties().apply {
+    val file = rootProject.file("local.properties")
+    if (file.exists()) file.inputStream().use { load(it) }
+}
+fun localConfig(name: String, default: String = ""): String =
+    localProperties.getProperty(name) ?: providers.gradleProperty(name).orNull ?: default
 
 kotlin {
     sourceSets {
@@ -88,16 +98,16 @@ buildkonfig {
         buildConfigField(STRING, "ENVIRONMENT", "staging")
         buildConfigField(STRING, "BASE_URL", "https://api-staging-4ade.up.railway.app/v1")
         buildConfigField(BOOLEAN, "LOG_REQUESTS", "true")
-        // -Ptripinly.useFakeApi=true: repositories use their fakes (demo before an endpoint exists).
-        buildConfigField(BOOLEAN, "USE_FAKE_API", providers.gradleProperty("tripinly.useFakeApi").getOrElse("false"))
+        // tripinly.useFakeApi=true: repositories use their fakes (demo before an endpoint exists).
+        buildConfigField(BOOLEAN, "USE_FAKE_API", localConfig("tripinly.useFakeApi", "false"))
         buildConfigField(STRING, "APP_VERSION", providers.gradleProperty("tripinly.appVersion").getOrElse("1.0"))
         // POST /auth/dev for testing before the Google/Apple keys exist. Staging needs its secret:
-        // put tripinly.devAuthSecret in ~/.gradle/gradle.properties, never in the repo.
+        // put tripinly.devAuthSecret in local.properties, never in a tracked file.
         buildConfigField(BOOLEAN, "DEVELOPER_SIGN_IN", "true")
-        buildConfigField(STRING, "DEV_AUTH_SECRET", providers.gradleProperty("tripinly.devAuthSecret").getOrElse(""))
+        buildConfigField(STRING, "DEV_AUTH_SECRET", localConfig("tripinly.devAuthSecret"))
         // The backend's Google Web client ID (Android asks Google for a token with this audience).
-        // Not a secret; set tripinly.googleWebClientId in gradle.properties once it exists.
-        buildConfigField(STRING, "GOOGLE_WEB_CLIENT_ID", providers.gradleProperty("tripinly.googleWebClientId").getOrElse(""))
+        // Not a secret; set tripinly.googleWebClientId in local.properties once it exists.
+        buildConfigField(STRING, "GOOGLE_WEB_CLIENT_ID", localConfig("tripinly.googleWebClientId"))
     }
     defaultConfigs("local") {
         buildConfigField(STRING, "ENVIRONMENT", "local")

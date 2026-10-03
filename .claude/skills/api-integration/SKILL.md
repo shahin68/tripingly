@@ -13,7 +13,7 @@ Contract: the backend's `/v1/openapi.json` (staging: `https://api-staging-4ade.u
 2. API models are **generated from `openapi.json`** into `core:network` (regenerate after every backend contract change; never hand-edit generated files). They stay in the data layer.
 3. Remote data source function (suspend) using the shared `HttpClient`.
 4. Repository method mapping DTO → domain model and errors → the shared result type.
-5. Fake implementation returning realistic data (same shapes), bound when `ApiConfig.useFakeApi` is on (`-Ptripinly.useFakeApi=true`), and reused as the test fake.
+5. Fake implementation returning realistic data (same shapes), bound when `ApiConfig.useFakeApi` is on (`tripinly.useFakeApi=true` in `local.properties`, or `-P` on the command line), and reused as the test fake.
 6. State holder uses the repository only.
 7. `commonTest` with Ktor `MockEngine` serving JSON copied from a real staging response (`src/commonTest/resources/`): success, a mapped error code, network failure.
 
@@ -39,7 +39,7 @@ Contract: the backend's `/v1/openapi.json` (staging: `https://api-staging-4ade.u
 - `TokenStore` is in memory until stage 3 adds Keychain / Keystore storage.
 - `CursorPaginator` + `CursorPage` for `{ items, nextCursor }`.
 - Content-creating POSTs (trips, trip copy, days, markers, add-to-trip, marker copy, comments, invites) declare `@Header(IDEMPOTENCY_KEY_HEADER) idempotencyKey: String` and pass a key from `newIdempotencyKey()` made once per user action and reused for its retries.
-- Environment: `-Pbuildkonfig.flavor=local|staging|production` (staging by default); fakes with `-Ptripinly.useFakeApi=true` (`ApiConfig.useFakeApi`).
+- Environment: `-Pbuildkonfig.flavor=local|staging|production` (staging by default); fakes with `tripinly.useFakeApi=true` (`ApiConfig.useFakeApi`). Local config values (keys, client IDs, switches) go in the untracked root `local.properties`, read through `localConfig()` in `core/network/build.gradle.kts`, with a Gradle property as fallback; never in a tracked file.
 - Global handling still to wire in the app (stage 3): `ONBOARDING_INCOMPLETE` → onboarding, `CONSENT_REQUIRED` → consent screen, `ACCOUNT_SUSPENDED` → message + sign-out, `RATE_LIMITED` → "try again shortly".
 
 ### Regenerating the API models
