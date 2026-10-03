@@ -11,6 +11,8 @@ import io.ktor.client.request.HttpResponseData
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.headersOf
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 
 internal val testConfig = ApiConfig(
     baseUrl = "https://api.test/v1",
@@ -24,10 +26,12 @@ internal class TestApi(
 ) {
     val tokenStore = InMemoryTokenStore()
     val sessionEvents = SessionEvents()
-    val requests = mutableListOf<HttpRequestData>()
+    private val lock = Mutex()
+    private val recorded = mutableListOf<HttpRequestData>()
+    val requests: List<HttpRequestData> get() = recorded.toList()
     val client: HttpClient = createHttpClient(
         engine = MockEngine { request ->
-            requests += request
+            lock.withLock { recorded += request }
             handler(request)
         },
         config = testConfig,

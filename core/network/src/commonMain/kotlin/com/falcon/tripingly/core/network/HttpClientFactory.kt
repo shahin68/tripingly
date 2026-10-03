@@ -21,7 +21,7 @@ private const val TIMEOUT_MILLIS = 15_000L
 /**
  * The app's one HTTP client for the Tripinly API. Paths are relative to
  * [ApiConfig.baseUrl] (`client.get("trips")`). Adds the bearer token (except on
- * `/auth/*`), `Accept-Language` and `X-Client`, refreshes expired tokens once,
+ * the auth routes), `Accept-Language` and `X-Client`, refreshes expired tokens once,
  * and logs only method, path and status.
  */
 fun createHttpClient(
