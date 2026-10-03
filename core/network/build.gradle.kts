@@ -8,6 +8,9 @@ plugins {
     alias(libs.plugins.kotlinxSerialization)
     alias(libs.plugins.buildkonfig)
     alias(libs.plugins.openapiGenerator)
+    // KSP must come before Ktorfit: the Ktorfit plugin wires its processor only when KSP is applied.
+    alias(libs.plugins.ksp)
+    alias(libs.plugins.ktorfit)
 }
 
 val generatedApiDir = layout.buildDirectory.dir("generated/openapi")
@@ -23,6 +26,7 @@ kotlin {
             dependencies {
                 api(projects.core.common)
                 api(libs.ktor.client.core)
+                api(libs.ktorfit.lib.light)
                 implementation(libs.ktor.client.content.negotiation)
                 implementation(libs.ktor.client.auth)
                 implementation(libs.ktor.serialization.kotlinx.json)
@@ -68,7 +72,8 @@ val generateApiModels = tasks.named<GenerateTask>("openApiGenerate") {
 }
 
 tasks.withType<KotlinCompilationTask<*>>().configureEach { dependsOn(generateApiModels) }
-tasks.matching { it.name.endsWith("SourcesJar", ignoreCase = true) }.configureEach {
+// KSP (Ktorfit) reads the API interfaces, which use the generated models.
+tasks.matching { it.name.startsWith("ksp") || it.name.endsWith("SourcesJar", ignoreCase = true) }.configureEach {
     dependsOn(generateApiModels)
 }
 

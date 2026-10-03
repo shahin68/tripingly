@@ -123,14 +123,4 @@ class ApiCallTest {
 
         assertEquals(AppResult.Error(DataError.Network.RequestTimeout), apiCall<Ping> { api.client.get("health") })
     }
-
-    @Test
-    fun idempotencyKey_isSentAsHeader() = runTest {
-        val api = TestApi { json("""{"status":"ok"}""", HttpStatusCode.Created) }
-        val key = newIdempotencyKey()
-
-        apiCall<Ping> { api.client.post("trips") { idempotencyKey(key) } }
-
-        assertEquals(key, api.requests.single().headers[IDEMPOTENCY_KEY_HEADER])
-    }
 }

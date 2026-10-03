@@ -6,6 +6,7 @@ import com.falcon.tripingly.core.network.auth.AuthTokens
 import com.falcon.tripingly.core.network.auth.SessionEndReason
 import io.ktor.client.request.get
 import io.ktor.http.HttpStatusCode
+import io.ktor.http.content.TextContent
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.flow.first
@@ -53,6 +54,7 @@ class TokenRefreshTest {
         assertEquals(AuthTokens("access-2", "refresh-2"), api.tokenStore.get())
         val refresh = api.requests.first { it.path == "/v1/auth/refresh" }
         assertNull(refresh.bearer)
+        assertEquals("""{"refreshToken":"refresh-1"}""", (refresh.body as TextContent).text)
     }
 
     @Test

@@ -5,6 +5,8 @@ import com.falcon.tripingly.core.network.auth.InMemoryTokenStore
 import com.falcon.tripingly.core.network.auth.SessionEvents
 import com.falcon.tripingly.core.network.auth.TokenStore
 import com.falcon.tripingly.core.network.createHttpClient
+import com.falcon.tripingly.core.network.createKtorfit
+import de.jensklingenberg.ktorfit.Ktorfit
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.HttpClientEngine
 import org.koin.core.module.Module
@@ -36,6 +38,7 @@ val networkModule = module {
             languageTag = platform::languageTag,
         )
     }
+    single<Ktorfit> { createKtorfit(get(), get()) }
 }
 
 internal expect val networkPlatformModule: Module

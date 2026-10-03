@@ -26,15 +26,12 @@ import kotlin.coroutines.cancellation.CancellationException
 
 /**
  * Runs one API request and maps the outcome; nothing throws across the call,
- * except cancellation. A `204` maps to `Unit`. `401` (no session, or the
- * refresh was refused) maps to [DataError.Network.Unauthorized]; any other error
- * with the API's envelope maps to [DataError.Network.Api].
- *
- * ```
- * suspend fun trip(id: String) = apiCall<TripDto> { client.get("trips/$id") }
- * ```
+ * except cancellation. A `204` maps to `Unit`. `401` (no session, or the refresh
+ * was refused) maps to [DataError.Network.Unauthorized]; any other error with the
+ * API's envelope maps to [DataError.Network.Api]. Endpoints are Ktorfit functions
+ * returning [AppResult] (see [createKtorfit]), which map through the same code.
  */
-suspend inline fun <reified T> apiCall(
+internal suspend inline fun <reified T> apiCall(
     crossinline request: suspend () -> HttpResponse,
 ): AppResult<T, DataError.Network> = executeApiCall(typeInfo<T>()) { request() }
 

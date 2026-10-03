@@ -11,4 +11,5 @@ plugins {
     alias(libs.plugins.androidxRoom) apply false
     alias(libs.plugins.buildkonfig) apply false
     alias(libs.plugins.openapiGenerator) apply false
+    alias(libs.plugins.ktorfit) apply false
 }

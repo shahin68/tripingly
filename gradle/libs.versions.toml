@@ -27,6 +27,7 @@ navigation3 = "1.1.1"
 kotlinx-serialization = "1.11.0"
 kotlinx-datetime = "0.8.0"
 ktor = "3.6.0"
+ktorfit = "2.7.5"
 # OkHttp 5.5+ needs compileSdk 37, which AGP 9.0 doesn't support yet; Ktor 3.6 brings 5.5.
 okhttp = "5.4.0"
 kotlinx-collections-immutable = "0.5.2"
@@ -78,6 +79,7 @@ ktor-client-content-negotiation = { module = "io.ktor:ktor-client-content-negoti
 ktor-client-auth = { module = "io.ktor:ktor-client-auth", version.ref = "ktor" }
 ktor-client-mock = { module = "io.ktor:ktor-client-mock", version.ref = "ktor" }
 ktor-serialization-kotlinx-json = { module = "io.ktor:ktor-serialization-kotlinx-json", version.ref = "ktor" }
+ktorfit-lib-light = { module = "de.jensklingenberg.ktorfit:ktorfit-lib-light", version.ref = "ktorfit" }
 
 # Build logic (convention plugins compile against these)
 android-gradlePlugin = { module = "com.android.tools.build:gradle", version.ref = "agp" }
@@ -86,6 +88,7 @@ compose-gradlePlugin = { module = "org.jetbrains.compose:compose-gradle-plugin",
 composeCompiler-gradlePlugin = { module = "org.jetbrains.kotlin:compose-compiler-gradle-plugin", version.ref = "kotlin" }
 
 [plugins]
+ktorfit = { id = "de.jensklingenberg.ktorfit", version.ref = "ktorfit" }
 androidApplication = { id = "com.android.application", version.ref = "agp" }
 androidMultiplatformLibrary = { id = "com.android.kotlin.multiplatform.library", version.ref = "agp" }
 composeMultiplatform = { id = "org.jetbrains.compose", version.ref = "composeMultiplatform" }

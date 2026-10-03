@@ -33,7 +33,7 @@ fun createHttpClient(
     languageTag: () -> String,
     log: (String) -> Unit = ::println,
 ): HttpClient {
-    val refresher = TokenRefresher(tokenStore, sessionEvents)
+    val refresher = TokenRefresher(config, tokenStore, sessionEvents)
     return HttpClient(engine) {
         expectSuccess = false
         install(ContentNegotiation) { json(NetworkJson) }

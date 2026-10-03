@@ -17,7 +17,7 @@ core/database          Room database (TripinglyDatabase v2), TripDao, MarkerDao,
 core/data              TripRepository (+ Room-backed TripRepositoryImpl)
 core/designsystem      TripinglyTheme (colors, typography, shapes, spacing), AppDropdownMenu, ErrorBanner, FloatingSearchBar
 core/navigation        Route keys (Home, TripMap) and the saved-state serializers config
-core/network           Ktor HttpClient (auth, refresh, headers), apiCall error mapping, TokenStore (in memory), SessionEvents, CursorPaginator, idempotency keys, API models generated from openapi.json, environments via BuildKonfig
+core/network           Ktor HttpClient (auth, refresh, headers), Ktorfit with an AppResult converter (error mapping), AuthApi, TokenStore (in memory), SessionEvents, CursorPaginator, idempotency keys, API models generated from openapi.json, environments via BuildKonfig
 feature/trips          Home screen (My Trips + Social tab), create/rename/reschedule dialogs, trip use cases
 feature/map            Trip map: day tabs, markers, location, Google Maps (Android) / MapKit (iOS)
 ```
