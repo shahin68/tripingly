@@ -13,6 +13,7 @@ import io.ktor.client.plugins.auth.providers.bearer
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.plugins.defaultRequest
 import io.ktor.client.request.header
+import io.ktor.client.statement.request
 import io.ktor.http.HttpHeaders
 import io.ktor.serialization.kotlinx.json.json
 
