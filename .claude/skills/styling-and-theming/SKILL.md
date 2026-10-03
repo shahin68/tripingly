@@ -14,10 +14,10 @@ This guide establishes the UI styling and theming system for `tripingly`.
 
 ## 1. Design System Structure
 
-Organize theming under `core/presentation/theme/`:
+Organize theming under `core/designsystem/.../theme/`:
 
 ```
-core/presentation/theme/
+core/designsystem/.../theme/
 ├── Color.kt             # Raw color palette & brand colors
 ├── Spacing.kt           # Centralized spacing & padding tokens
 ├── Typography.kt        # Material 3 typography definitions
@@ -32,7 +32,7 @@ core/presentation/theme/
 Avoid hardcoded dp values in screens. Define standard spacing tokens:
 
 ```kotlin
-package com.falcon.tripingly.core.presentation.theme
+package com.falcon.tripingly.core.designsystem.theme
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.ReadOnlyComposable
@@ -63,7 +63,7 @@ val MaterialTheme.spacing: Spacing
 ## 3. Brand Colors & Palette (`Color.kt`)
 
 ```kotlin
-package com.falcon.tripingly.core.presentation.theme
+package com.falcon.tripingly.core.designsystem.theme
 
 import androidx.compose.ui.graphics.Color
 
@@ -97,7 +97,7 @@ val OnErrorDark = Color(0xFF690005)
 Use Material 3 typography hierarchy:
 
 ```kotlin
-package com.falcon.tripingly.core.presentation.theme
+package com.falcon.tripingly.core.designsystem.theme
 
 import androidx.compose.material3.Typography
 import androidx.compose.ui.text.TextStyle
@@ -147,7 +147,7 @@ val AppTypography = Typography(
 ## 5. Main Theme Provider (`Theme.kt`)
 
 ```kotlin
-package com.falcon.tripingly.core.presentation.theme
+package com.falcon.tripingly.core.designsystem.theme
 
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme

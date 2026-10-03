@@ -17,8 +17,9 @@ Goal: understand the existing app well enough to extend it without breaking its 
 6. **Maps:** how Google Maps is shown on Android **and** on iOS (iOS may be missing or a placeholder), how markers are drawn, whether there's a shared map abstraction, whether a map style is used.
 7. **Models:** compare existing domain models with `03-api-contract.md` (IDs, names, dates, coordinates, nested days/markers). Note needed mappings.
 8. **Config and secrets:** where API keys live (`local.properties`, `Info.plist`, `google-services.json`, `GoogleService-Info.plist`), what's committed, what's missing.
-9. **Build and run** Android (`./gradlew :<app>:assembleDebug`) and, if possible, the iOS framework/app. Record commands and failures.
+9. **Build and run** (CI runs these on every PR; the Claude cloud sandbox can't reach Google Maven) Android (`./gradlew :<app>:assembleDebug`) and, if possible, the iOS framework/app. Record commands and failures.
 10. **Tests:** existing tests and how to run them.
+11. **Boundaries:** check the module graph against `07-architecture.md` (no feature → feature dependency, domain packages free of Room/Ktor/Compose imports, DTOs and entities not leaking above the data layer, `internal` by default). Note every violation in Gaps and risks.
 
 ## Output
 

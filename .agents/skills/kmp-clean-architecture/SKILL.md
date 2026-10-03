@@ -22,33 +22,43 @@ This guide governs how the `tripingly` project structures its code across archit
 
 ---
 
-## 1. Feature Self-Containment & Architecture Layers
+## 1. Gradle Modules, Feature Self-Containment & Layers
 
-Every feature module or package should completely **own its own features** and layers. Features should not spread implementation details leaking across unrelated modules. Cross-feature communication must happen strictly via public domain interfaces and models.
+Boundaries are Gradle modules, not just packages (see `docs/knowledge/07-architecture.md`):
 
 ```
-feature/map/
+androidApp / iosApp  ->  shared (umbrella: App(), initKoin(), iOS framework)
+                          ->  feature:<name>   (one per product area; never depends on another feature)
+                                ->  core:*      (common, model, data, database, designsystem, navigation, network, ...)
+```
+
+- New modules apply a convention plugin from `build-logic`: `tripinly.kmp.library` (plain shared code), `+ tripinly.kmp.compose` (UI), or `tripinly.kmp.feature` (feature = library + compose + core modules + Koin + lifecycle). Use the `feature-module` skill.
+- Something two features need moves **down** into a core module; a feature never imports another feature. Cross-feature navigation uses keys in `core:navigation`, wired in `shared/App.kt`.
+- Classes are `internal` by default; a module's public surface is its contract (Koin module, routes, repository interfaces, public composables).
+
+Inside a feature module, package by layer:
+
+```
+feature/map/src/commonMain/kotlin/com/falcon/tripingly/feature/map/
 ├── data/
-│   ├── datasource/
-│   │   ├── local/              # Local data storage (e.g. Room, DataStore)
-│   │   └── remote/             # Remote API communication (e.g. Ktor Client)
-│   ├── dto/                    # Data Transfer Objects & Database Entities
-│   ├── mapper/                 # Two-way mappers between DTOs and Domain models
-│   └── repository/             # Repository Implementations (SSOT coordination)
+│   ├── remote/                 # Ktor calls via core:network (generated API models stay here)
+│   ├── local/                  # Feature-only cache access, if any
+│   ├── mapper/                 # API model / entity  <->  domain model
+│   └── repository/             # DefaultXRepository / OfflineFirstXRepository
 ├── domain/
-│   ├── model/                  # Pure Kotlin Business Models
-│   ├── repository/             # Repository Interfaces (Abstractions)
-│   └── usecase/                # Single-responsibility Use Cases / Interactors
-└── presentation/
-    ├── component/              # Feature-specific, reusable Composable UI
-    ├── screen/                 # MVI State-driven Screen Composables
-    └── viewmodel/              # Architecture-guided Presentation ViewModels
+│   ├── model/                  # Feature-only domain models (shared ones live in core:model)
+│   ├── repository/             # Repository interfaces
+│   └── usecase/                # Only when combining repositories or holding a rule
+├── presentation/
+│   ├── component/              # Feature-specific composables
+│   └── <screen>/               # XRoute, XScreen, XViewModel, XUiState, XAction, XEffect
+└── di/                         # The module's single Koin module
 ```
 
 ### Strict Layer Dependency Direction
-- **Presentation Layer** depends on **Domain Layer** (Invokes Use Cases, renders Domain models).
-- **Data Layer** depends on **Domain Layer** (Implements Domain repository interfaces, maps DTOs/Entities to Domain models).
-- **Domain Layer** depends on **NO OTHER LAYER**. It must remain a pure Kotlin module, entirely decoupled from UI frameworks, database engines, or network clients.
+- **Presentation Layer** depends on **Domain Layer** (renders domain models, calls repositories or use cases).
+- **Data Layer** depends on **Domain Layer** (implements repository interfaces, maps API models and entities to domain models).
+- **Domain Layer** depends on **NO OTHER LAYER**: no Compose, Room, Ktor or platform types. Domain models in `core:model` carry no Compose annotations; `compose-stability.conf` marks them stable.
 
 ---
 
@@ -62,79 +72,71 @@ feature/map/
 
 ---
 
-## 3. Single Source of Truth (SSOT) Pattern
+## 3. Source of Truth: the Server, with Room as a Cache
 
-To guarantee a reliable, offline-first experience, the **Data Layer** orchestrates updates across data sources, ensuring local storage acts as the single source of truth for the presentation layer.
+The server is the source of truth. Room caches what the user needs offline (their own trips, **read-only offline**, decided 2026-10-03). Writes go to the API; the cache is updated from the response.
+
+- Repositories expose `Flow`s that read from the cache and a `refresh()` (or refresh on subscription) that fetches from the API and writes into the cache.
+- Writes call the API first. Optimistic updates (likes, comment posting, marker reorder, cover changes) update the cache immediately and roll back on error.
+- While offline, reads come from the cache and the UI shows an offline banner; edits are blocked.
+- API models and Room entities never leave the data layer.
 
 ### Repository Interface (Domain Layer)
 ```kotlin
-package com.falcon.tripingly.feature.map.domain.repository
+package com.falcon.tripingly.feature.trips.domain.repository
 
-import com.falcon.tripingly.core.domain.result.AppResult
-import com.falcon.tripingly.core.domain.error.DataError
-import com.falcon.tripingly.feature.map.domain.model.Coordinates
+import com.falcon.tripingly.core.common.error.DataError
+import com.falcon.tripingly.core.common.result.AppResult
+import com.falcon.tripingly.core.model.Trip
 import kotlinx.coroutines.flow.Flow
 
-interface LocationRepository {
-    fun getSavedLocationsStream(): Flow<List<Coordinates>>
-    suspend fun getCurrentLocation(): AppResult<Coordinates, DataError.Location>
-    suspend fun syncSavedLocations(): AppResult<Unit, DataError>
+interface TripRepository {
+    fun observeMyTrips(): Flow<List<Trip>>
+    suspend fun refreshMyTrips(): AppResult<Unit, DataError.Network>
+    suspend fun renameTrip(id: String, title: String): AppResult<Trip, DataError.Network>
 }
 ```
 
-### General Repository Implementation (Data Layer SSOT Coordination)
+### Implementation (Data Layer)
 ```kotlin
-package com.falcon.tripingly.feature.map.data.repository
+internal class OfflineFirstTripRepository(
+    private val api: TripsApi,
+    private val tripDao: TripDao,
+) : TripRepository {
 
-import com.falcon.tripingly.core.domain.result.AppResult
-import com.falcon.tripingly.core.domain.result.asSuccess
-import com.falcon.tripingly.core.domain.error.DataError
-import com.falcon.tripingly.feature.map.data.datasource.LocationDataSource
-import com.falcon.tripingly.feature.map.domain.model.Coordinates
-import com.falcon.tripingly.feature.map.domain.repository.LocationRepository
-import kotlinx.coroutines.flow.Flow
+    override fun observeMyTrips(): Flow<List<Trip>> =
+        tripDao.observeOwnTrips().map { entities -> entities.map { it.toDomain() } }
 
-class LocationRepositoryImpl(
-    private val locationDataSource: LocationDataSource
-) : LocationRepository {
-    
-    override fun getSavedLocationsStream(): Flow<List<Coordinates>> {
-        // Observes local cache database stream as the sole source of truth
-        return locationDataSource.observeCachedCoordinates()
-    }
+    override suspend fun refreshMyTrips(): AppResult<Unit, DataError.Network> =
+        api.getMyTrips().map { page -> tripDao.replaceOwnTrips(page.items.map { it.toEntity() }) }
 
-    override suspend fun getCurrentLocation(): AppResult<Coordinates, DataError.Location> {
-        return locationDataSource.getLastKnownOrCurrentLocation()
-    }
-
-    override suspend fun syncSavedLocations(): AppResult<Unit, DataError> {
-        // Fetches from remote data source, updates local source, completes
-        return Unit.asSuccess()
-    }
+    override suspend fun renameTrip(id: String, title: String): AppResult<Trip, DataError.Network> =
+        api.updateTrip(id, title = title).map { dto ->
+            tripDao.upsert(dto.toEntity())
+            dto.toDomain()
+        }
 }
 ```
 
 ---
 
-## 4. Single-Responsibility Use Cases / Interactors
+## 4. Use Cases Only When They Earn Their Place
 
-- Every use case must encompass exactly **one single domain responsibility**.
-- Name use cases using a precise verb + noun structure (e.g., `GetCurrentLocationUseCase`, `SaveDestinationUseCase`).
-- Provide an `operator fun invoke` for declarative, clear invocation:
+- Write a use case when it **combines several repositories** or **holds a business rule** (trip date math, "can this user edit", premium gating on the client side of a flow). Name it verb + noun with `operator fun invoke`.
+- **No pass-through use cases** that only forward one repository call; the ViewModel calls the repository interface directly.
+- Use cases are pure Kotlin and unit-tested in `commonTest`.
 
 ```kotlin
-package com.falcon.tripingly.feature.map.domain.usecase
+package com.falcon.tripingly.feature.trips.domain.usecase
 
-import com.falcon.tripingly.core.domain.error.DataError
-import com.falcon.tripingly.core.domain.result.AppResult
-import com.falcon.tripingly.feature.map.domain.model.Coordinates
-import com.falcon.tripingly.feature.map.domain.repository.LocationRepository
+import com.falcon.tripingly.core.model.Trip
+import kotlinx.datetime.LocalDate
 
-class GetCurrentLocationUseCase(
-    private val locationRepository: LocationRepository
-) {
-    suspend operator fun invoke(): AppResult<Coordinates, DataError.Location> {
-        return locationRepository.getCurrentLocation()
+class ValidateTripDatesUseCase {
+    operator fun invoke(start: LocalDate, end: LocalDate): TripDatesError? = when {
+        end < start -> TripDatesError.EndBeforeStart
+        start.daysUntil(end) > Trip.MAX_DAYS -> TripDatesError.TooLong
+        else -> null
     }
 }
 ```

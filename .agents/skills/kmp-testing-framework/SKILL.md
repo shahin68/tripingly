@@ -17,7 +17,10 @@ This guide sets the testing standards and practices for `tripingly`.
 - **Core Assertions**: `kotlin.test` (`assertEquals`, `assertTrue`, `assertIs`, etc.)
 - **Flow & State Testing**: `app.cash.turbine:turbine`
 - **Coroutines Testing**: `org.jetbrains.kotlinx:kotlinx-coroutines-test` (`runTest`, `StandardTestDispatcher`)
-- **Test Doubles**: High-fidelity Fakes (preferred over brittle reflection-based mocks for KMP)
+- **HTTP**: Ktor `MockEngine` serving JSON copied from real staging responses
+- **Android-only tests**: JUnit 4 + Robolectric in `androidHostTest`, only when Android resources or framework classes are unavoidable
+- **Test Doubles**: hand-written fakes, no mocking library. Mocking libraries don't run on Kotlin/Native, and fakes keep every `commonTest` running on iOS too. Shared fakes live in `core:testing` once a second module needs them.
+- **Planned** (confirm before adding): Roborazzi screenshot tests for design-system components and key screens; Konsist architecture tests for layer rules
 
 ---
 
@@ -25,7 +28,9 @@ This guide sets the testing standards and practices for `tripingly`.
 
 Follow the **Given - When - Then** / Arrange - Act - Assert pattern:
 - Test classes: `<SubjectUnderTest>Test` (e.g. `TripsViewModelTest`, `TripRepositoryImplTest`).
-- Test method names: Describe the condition and expected outcome (e.g. `given_successful_sync_when_refresh_action_then_ui_state_updates_to_success`).
+- Test method names read as behaviour: `action_condition_expectedResult`, e.g. `saveClicked_withBlankTitle_showsTitleError`, `refresh_onNetworkError_keepsCachedTrips`.
+- Location: `src/commonTest` of the module under test (runs on Android host and iOS simulator); `src/androidHostTest` only for Robolectric cases.
+- Coverage expectation: every ViewModel action and every error code a screen handles; every mapper, reducer and domain rule; every repository success, mapped error and network failure.
 
 ---
 
@@ -35,7 +40,7 @@ Follow the **Given - When - Then** / Arrange - Act - Assert pattern:
 package com.falcon.tripingly.feature.trips.presentation
 
 import app.cash.turbine.test
-import com.falcon.tripingly.core.domain.result.asSuccess
+import com.falcon.tripingly.core.common.result.asSuccess
 import com.falcon.tripingly.domain.model.Trip
 import com.falcon.tripingly.domain.usecase.GetTripsStreamUseCase
 import com.falcon.tripingly.domain.usecase.SyncTripsUseCase
@@ -123,9 +128,9 @@ Prefer in-memory test fakes over mocks for KMP repositories and data sources. Fa
 ```kotlin
 package com.falcon.tripingly.test.fake
 
-import com.falcon.tripingly.core.domain.error.DataError
-import com.falcon.tripingly.core.domain.result.AppResult
-import com.falcon.tripingly.core.domain.result.asSuccess
+import com.falcon.tripingly.core.common.error.DataError
+import com.falcon.tripingly.core.common.result.AppResult
+import com.falcon.tripingly.core.common.result.asSuccess
 import com.falcon.tripingly.domain.model.Trip
 import com.falcon.tripingly.domain.repository.TripRepository
 import kotlinx.coroutines.flow.Flow
@@ -168,23 +173,34 @@ class FakeTripRepository : TripRepository {
 
 ---
 
-## 5. Repository Testing (Verifying SSOT)
+## 5. Repository Testing with MockEngine
 
-Test that the repository coordinates between local and remote sources correctly:
+Repositories are tested against Ktor `MockEngine` with JSON copied from a real staging response, so a contract drift breaks the test:
 
 ```kotlin
 @Test
-fun `getTripById returns cached entity when present in local data source`() = runTest {
-    val localDataSource = FakeTripLocalDataSource()
-    val remoteDataSource = FakeTripRemoteDataSource()
-    val repository = TripRepositoryImpl(localDataSource, remoteDataSource)
+fun refreshMyTrips_onSuccess_writesTripsToCache() = runTest {
+    val engine = MockEngine { request ->
+        assertEquals("/v1/me/trips", request.url.encodedPath)
+        respond(readResource("me-trips.json"), HttpStatusCode.OK, jsonHeaders)
+    }
+    val tripDao = FakeTripDao()
+    val repository = OfflineFirstTripRepository(TripsApi(testHttpClient(engine)), tripDao)
 
-    localDataSource.insertTrip(TripEntity(id = "1", title = "Cached Trip"))
+    val result = repository.refreshMyTrips()
 
-    val result = repository.getTripById("1")
-    assertIs<AppResult.Success<Trip>>(result)
-    assertEquals("Cached Trip", result.data.title)
-    assertEquals(0, remoteDataSource.fetchCallCount) // Verifies remote was NOT called
+    assertIs<AppResult.Success<Unit>>(result)
+    assertEquals(listOf("Vienna weekend"), tripDao.trips.map { it.title })
+}
+
+@Test
+fun renameTrip_onTripNotFound_returnsNotFoundError() = runTest {
+    val engine = MockEngine { respond(readResource("error-trip-not-found.json"), HttpStatusCode.NotFound, jsonHeaders) }
+    val repository = OfflineFirstTripRepository(TripsApi(testHttpClient(engine)), FakeTripDao())
+
+    val result = repository.renameTrip("missing", "New title")
+
+    assertEquals(DataError.Network.NotFound, (result as AppResult.Error).error)
 }
 ```
 
@@ -195,3 +211,4 @@ fun `getTripById returns cached entity when present in local data source`() = ru
 2. **Reset Dispatchers**: Always reset `Dispatchers.resetMain()` in `@AfterTest`.
 3. **Verify cancellation resilience**: Write tests verifying that cancelling a parent job does not cause unhandled exceptions.
 4. **Test both success and failure branches**: Ensure all `AppResult.Error` paths are covered.
+5. **Run locally before pushing**: `./gradlew allTests` (Android host + common on any OS) and `./gradlew iosSimulatorArm64Test` on macOS. CI runs both.
