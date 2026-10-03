@@ -42,3 +42,4 @@ include(":core:network")
 
 include(":feature:trips")
 include(":feature:map")
+include(":feature:auth")
