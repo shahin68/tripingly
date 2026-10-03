@@ -27,6 +27,8 @@ navigation3 = "1.1.1"
 kotlinx-serialization = "1.11.0"
 kotlinx-datetime = "0.8.0"
 ktor = "3.6.0"
+# OkHttp 5.5+ needs compileSdk 37, which AGP 9.0 doesn't support yet; Ktor 3.6 brings 5.5.
+okhttp = "5.4.0"
 kotlinx-collections-immutable = "0.5.2"
 buildkonfig = "0.23.0"
 openapi-generator = "7.14.0"
@@ -70,6 +72,7 @@ kotlinx-datetime = { module = "org.jetbrains.kotlinx:kotlinx-datetime", version.
 kotlinx-collections-immutable = { module = "org.jetbrains.kotlinx:kotlinx-collections-immutable", version.ref = "kotlinx-collections-immutable" }
 ktor-client-core = { module = "io.ktor:ktor-client-core", version.ref = "ktor" }
 ktor-client-okhttp = { module = "io.ktor:ktor-client-okhttp", version.ref = "ktor" }
+okhttp = { module = "com.squareup.okhttp3:okhttp", version.ref = "okhttp" }
 ktor-client-darwin = { module = "io.ktor:ktor-client-darwin", version.ref = "ktor" }
 ktor-client-content-negotiation = { module = "io.ktor:ktor-client-content-negotiation", version.ref = "ktor" }
 ktor-client-auth = { module = "io.ktor:ktor-client-auth", version.ref = "ktor" }
