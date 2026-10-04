@@ -3,6 +3,8 @@ package com.falcon.tripingly
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.platform.LocalUriHandler
+import androidx.lifecycle.viewmodel.navigation3.rememberViewModelStoreNavEntryDecorator
+import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
 import androidx.navigation3.ui.NavDisplay
 import androidx.navigation3.runtime.rememberNavBackStack
 import androidx.navigation3.runtime.NavEntry
@@ -31,6 +33,11 @@ private fun MainNavigation() {
 
     NavDisplay(
         backStack = backStack,
+        // Each screen gets its own view models, cleared when it is popped (one MapViewModel per trip).
+        entryDecorators = listOf(
+            rememberSaveableStateHolderNavEntryDecorator(),
+            rememberViewModelStoreNavEntryDecorator(),
+        ),
         onBack = { if (backStack.size > 1) backStack.removeAt(backStack.size - 1) },
     ) { route ->
         NavEntry(route) { key ->
