@@ -118,4 +118,19 @@ class TokenRefreshTest {
         assertEquals(AppResult.Error(DataError.Network.Unauthorized), result)
         assertEquals(0, api.refreshCalls)
     }
+
+    @Test
+    fun anotherAccountsTokens_areSentRightAway() = runTest {
+        val api = TestApi { json("""{"id":"t1"}""") }
+        api.tokenStore.save(AuthTokens("access-a", "refresh-a"))
+        apiCall<Trip> { api.client.get("trips/t1") }
+
+        // Sign-out, then sign-in with another account.
+        api.tokenStore.clear()
+        apiCall<Trip> { api.client.get("trips/t1") }
+        api.tokenStore.save(AuthTokens("access-b", "refresh-b"))
+        apiCall<Trip> { api.client.get("trips/t1") }
+
+        assertEquals(listOf("access-a", null, "access-b"), api.requests.map { it.bearer })
+    }
 }
