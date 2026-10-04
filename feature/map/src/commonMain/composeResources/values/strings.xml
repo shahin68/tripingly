@@ -1,10 +1,20 @@
 <resources>
     <!-- Map -->
     <string name="map_day_label">Day %1$d (%2$s)</string>
+    <string name="map_day_label_no_date">Day %1$d</string>
     <string name="map_itinerary_title">Trip Plan (%1$d stops)</string>
     <string name="map_itinerary_clear_all">Clear All</string>
     <string name="map_stop_title_format">Stop #%1$d</string>
-    <string name="map_stop_snippet_format">Lat: %1$.4f, Lng: %2$.4f</string>
+    <string name="map_remove_stop">Remove stop</string>
+    <string name="map_day_menu">Day options</string>
+    <string name="map_add_day">Add a day</string>
+    <string name="map_delete_day">Delete this day</string>
+    <string name="map_clear_day_title">Clear day %1$d?</string>
+    <string name="map_clear_day_message">All %1$d stops of this day will be deleted for everyone in the trip.</string>
+    <string name="map_delete_day_title">Delete day %1$d?</string>
+    <string name="map_delete_day_message">The day and its %1$d stops will be deleted for everyone in the trip; later days move up.</string>
+    <string name="map_confirm_delete">Delete</string>
+    <string name="map_cancel">Cancel</string>
 
     <!-- Location errors -->
     <string name="error_location_permission_required">Location permission required to detect your location.</string>

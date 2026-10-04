@@ -7,7 +7,6 @@ import org.koin.dsl.module
 val databaseModule = module {
     includes(databasePlatformModule)
     single { get<TripinglyDatabase>().tripDao() }
-    single { get<TripinglyDatabase>().markerDao() }
 }
 
 internal expect val databasePlatformModule: Module

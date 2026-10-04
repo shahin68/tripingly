@@ -1,0 +1,26 @@
+<resources>
+    <!-- Map -->
+    <string name="map_day_label">Tag %1$d (%2$s)</string>
+    <string name="map_day_label_no_date">Tag %1$d</string>
+    <string name="map_itinerary_title">Reiseplan (%1$d Stopps)</string>
+    <string name="map_itinerary_clear_all">Alle löschen</string>
+    <string name="map_stop_title_format">Stopp %1$d</string>
+    <string name="map_remove_stop">Stopp entfernen</string>
+    <string name="map_day_menu">Tagesoptionen</string>
+    <string name="map_add_day">Tag hinzufügen</string>
+    <string name="map_delete_day">Diesen Tag löschen</string>
+    <string name="map_clear_day_title">Tag %1$d leeren?</string>
+    <string name="map_clear_day_message">Alle %1$d Stopps dieses Tages werden für alle Mitglieder der Reise gelöscht.</string>
+    <string name="map_delete_day_title">Tag %1$d löschen?</string>
+    <string name="map_delete_day_message">Der Tag und seine %1$d Stopps werden für alle Mitglieder gelöscht; spätere Tage rücken nach.</string>
+    <string name="map_confirm_delete">Löschen</string>
+    <string name="map_cancel">Abbrechen</string>
+
+    <!-- Location errors -->
+    <string name="error_location_permission_required">Für deinen Standort wird die Standortberechtigung benötigt.</string>
+    <string name="error_location_services_disabled">Die Ortungsdienste sind auf deinem Gerät deaktiviert.</string>
+    <string name="error_location_unavailable">Dein Standort konnte nicht ermittelt werden. Die Standardansicht wird angezeigt.</string>
+    <string name="error_location_unknown">Standort konnte nicht ermittelt werden.</string>
+    <string name="error_location_unexpected">Beim Abrufen des Standorts ist ein unerwarteter Fehler aufgetreten.</string>
+    <string name="error_location_denied_manual">Die Standortberechtigung wurde abgelehnt. Du kannst Ziele trotzdem manuell erkunden.</string>
+</resources>

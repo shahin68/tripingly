@@ -46,17 +46,19 @@ import com.falcon.tripingly.feature.trips.generated.resources.*
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RescheduleTripDialog(
-    initialStartDate: LocalDate,
-    initialEndDate: LocalDate,
+    initialStartDate: LocalDate?,
+    initialEndDate: LocalDate?,
     onDismiss: () -> Unit,
-    onConfirm: (LocalDate, LocalDate) -> Unit
+    onConfirm: (LocalDate, LocalDate) -> Unit,
+    isSaving: Boolean = false,
+    error: String? = null,
 ) {
     var showDatePicker by remember { mutableStateOf(false) }
     
     val today = DateUtils.today()
     val dateRangePickerState = rememberDateRangePickerState(
-        initialSelectedStartDateMillis = initialStartDate.atStartOfDayIn(TimeZone.UTC).toEpochMilliseconds(),
-        initialSelectedEndDateMillis = initialEndDate.atStartOfDayIn(TimeZone.UTC).toEpochMilliseconds(),
+        initialSelectedStartDateMillis = initialStartDate?.atStartOfDayIn(TimeZone.UTC)?.toEpochMilliseconds(),
+        initialSelectedEndDateMillis = initialEndDate?.atStartOfDayIn(TimeZone.UTC)?.toEpochMilliseconds(),
         selectableDates = object : SelectableDates {
             override fun isSelectableDate(utcTimeMillis: Long): Boolean {
                 val selectableDate = Instant.fromEpochMilliseconds(utcTimeMillis).toLocalDateTime(TimeZone.UTC).date
@@ -127,22 +129,21 @@ fun RescheduleTripDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(Res.string.reschedule_trip_title)) },
         text = {
-            val dateRangeText = if (selectedStartDate != null && selectedEndDate != null) {
-                "${DateUtils.formatFormal(selectedStartDate)} - ${DateUtils.formatFormal(selectedEndDate)}"
-            } else ""
-
-            OutlinedTextField(
-                value = dateRangeText,
-                onValueChange = {},
-                label = { Text(stringResource(Res.string.reschedule_trip_dates_label)) },
-                modifier = Modifier.fillMaxWidth(),
-                readOnly = true,
-                trailingIcon = {
-                    TextButton(onClick = { showDatePicker = true }) {
-                        Icon(Icons.Default.DateRange, contentDescription = null)
-                    }
-                },
-            )
+            Column {
+                OutlinedTextField(
+                    value = formatDateRange(selectedStartDate, selectedEndDate).orEmpty(),
+                    onValueChange = {},
+                    label = { Text(stringResource(Res.string.reschedule_trip_dates_label)) },
+                    modifier = Modifier.fillMaxWidth(),
+                    readOnly = true,
+                    trailingIcon = {
+                        TextButton(onClick = { showDatePicker = true }, enabled = !isSaving) {
+                            Icon(Icons.Default.DateRange, contentDescription = null)
+                        }
+                    },
+                )
+                DialogError(error)
+            }
         },
         confirmButton = {
             TextButton(
@@ -151,13 +152,14 @@ fun RescheduleTripDialog(
                         onConfirm(selectedStartDate, selectedEndDate)
                     }
                 },
-                enabled = selectedStartDate != null && selectedEndDate != null && (selectedStartDate != initialStartDate || selectedEndDate != initialEndDate)
+                enabled = !isSaving && selectedStartDate != null && selectedEndDate != null &&
+                    (selectedStartDate != initialStartDate || selectedEndDate != initialEndDate)
             ) {
-                Text(stringResource(Res.string.reschedule_trip_button_reschedule))
+                SavingLabel(isSaving, stringResource(Res.string.reschedule_trip_button_reschedule))
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) {
+            TextButton(onClick = onDismiss, enabled = !isSaving) {
                 Text(stringResource(Res.string.common_cancel))
             }
         }

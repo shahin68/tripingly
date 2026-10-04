@@ -4,8 +4,7 @@ import platform.UIKit.UIActivityViewController
 import platform.UIKit.UIApplication
 
 class IosShareManager : ShareManager {
-    override fun shareTrip(name: String, dates: String) {
-        val text = "Check out my trip: $name ($dates)!"
+    override fun share(text: String) {
         val activityViewController = UIActivityViewController(
             activityItems = listOf(text),
             applicationActivities = null

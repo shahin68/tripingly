@@ -4,10 +4,10 @@ import android.content.Context
 import android.content.Intent
 
 class AndroidShareManager(private val context: Context) : ShareManager {
-    override fun shareTrip(name: String, dates: String) {
+    override fun share(text: String) {
         val sendIntent: Intent = Intent().apply {
             action = Intent.ACTION_SEND
-            putExtra(Intent.EXTRA_TEXT, "Check out my trip: $name ($dates)!")
+            putExtra(Intent.EXTRA_TEXT, text)
             type = "text/plain"
         }
 

@@ -7,50 +7,69 @@ import com.falcon.tripingly.core.common.coroutines.CoroutineDispatchers
 import com.falcon.tripingly.core.common.coroutines.DefaultCoroutineDispatchers
 import com.falcon.tripingly.core.common.error.DataError
 import com.falcon.tripingly.core.common.result.AppResult
-import com.falcon.tripingly.feature.map.domain.usecase.GetTripByIdUseCase
+import com.falcon.tripingly.core.data.trips.MarkerRepository
+import com.falcon.tripingly.core.data.trips.TripRepository
+import com.falcon.tripingly.core.model.trip.GeoPoint
+import com.falcon.tripingly.core.model.trip.NewMarker
+import com.falcon.tripingly.core.model.trip.TripDay
+import com.falcon.tripingly.core.model.trip.TripDetails
+import com.falcon.tripingly.core.model.trip.TripMarker
+import com.falcon.tripingly.core.ui.UiText
+import com.falcon.tripingly.core.ui.toUiText
 import com.falcon.tripingly.feature.map.domain.model.Coordinates
 import com.falcon.tripingly.feature.map.domain.model.MapMarker
 import com.falcon.tripingly.feature.map.domain.usecase.GetCurrentLocationUseCase
-import com.falcon.tripingly.feature.map.domain.usecase.GetMarkersForDayUseCase
-import com.falcon.tripingly.feature.map.domain.usecase.SaveMarkerUseCase
-import com.falcon.tripingly.feature.map.domain.usecase.DeleteMarkerUseCase
-import com.falcon.tripingly.feature.map.domain.usecase.DeleteMarkersForDayUseCase
-import kotlinx.coroutines.Job
+import com.falcon.tripingly.feature.map.generated.resources.Res
+import com.falcon.tripingly.feature.map.generated.resources.error_location_denied_manual
+import com.falcon.tripingly.feature.map.generated.resources.error_location_permission_required
+import com.falcon.tripingly.feature.map.generated.resources.error_location_services_disabled
+import com.falcon.tripingly.feature.map.generated.resources.error_location_unavailable
+import com.falcon.tripingly.feature.map.generated.resources.error_location_unexpected
+import com.falcon.tripingly.feature.map.generated.resources.error_location_unknown
+import com.falcon.tripingly.feature.map.generated.resources.map_stop_title_format
+import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.persistentListOf
+import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.receiveAsFlow
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.datetime.LocalDate
 import org.jetbrains.compose.resources.getString
-import com.falcon.tripingly.feature.map.generated.resources.Res
-import com.falcon.tripingly.feature.map.generated.resources.*
 import kotlin.coroutines.cancellation.CancellationException
 
+/**
+ * One trip on the map. Days and markers come from the cached trip, reloaded from
+ * the server on open; owners and editors add and remove stops and days, and each
+ * change shows once the server has accepted it.
+ */
 class MapViewModel(
     private val tripId: String,
+    private val tripRepository: TripRepository,
+    private val markerRepository: MarkerRepository,
     private val getCurrentLocationUseCase: GetCurrentLocationUseCase,
-    private val getMarkersForDayUseCase: GetMarkersForDayUseCase,
-    private val saveMarkerUseCase: SaveMarkerUseCase,
-    private val deleteMarkerUseCase: DeleteMarkerUseCase,
-    private val deleteMarkersForDayUseCase: DeleteMarkersForDayUseCase,
-    private val getTripByIdUseCase: GetTripByIdUseCase,
     private val dispatchers: CoroutineDispatchers = DefaultCoroutineDispatchers(),
 ) : ViewModel() {
 
-    private val _uiState = MutableStateFlow(State())
-    val uiState: StateFlow<State> = _uiState.asStateFlow()
+    private val ui = MutableStateFlow(UiState())
+
+    private val trip: StateFlow<TripDetails?> =
+        tripRepository.observeTrip(tripId).stateIn(viewModelScope, SharingStarted.Eagerly, null)
+
+    val uiState: StateFlow<State> = combine(trip, ui, ::toState)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), toState(null, ui.value))
 
     private val _events = Channel<Event>(capacity = Channel.BUFFERED)
     val events = _events.receiveAsFlow()
 
-    private var markersJob: Job? = null
-
     init {
-        loadTripDetails()
-        observeMarkers()
+        loadTrip()
     }
 
     fun onAction(action: Action) {
@@ -59,70 +78,166 @@ class MapViewModel(
             is Action.OnPermissionResult -> handlePermissionResult(action.isGranted)
             is Action.CenterOnUserLocation -> centerOnUserLocation()
             is Action.NavigateToLocation -> navigateTo(action.coordinates, action.zoom)
-            is Action.OnMapClick -> addTripMarker(action.coordinates)
-            is Action.OnMarkerClick -> _uiState.update { it.copy(selectedMarker = action.marker) }
-            is Action.OnRemoveMarker -> removeTripMarker(action.markerId)
-            is Action.ClearAllMarkers -> clearMarkers()
-            is Action.DismissError -> _uiState.update { it.copy(errorMessage = null) }
-            is Action.OnCameraMove -> _uiState.update { it.copy(cameraTarget = action.coordinates, zoomLevel = action.zoom) }
-            is Action.OnDaySelected -> {
-                _uiState.update { it.copy(activeDayIndex = action.dayIndex) }
-                observeMarkers()
+            is Action.OnMapClick -> addMarker(action.coordinates)
+            is Action.OnMarkerClick -> ui.update { it.copy(selectedMarkerId = action.marker.id) }
+            is Action.OnRemoveMarker -> removeMarker(action.markerId)
+            is Action.ClearAllMarkers -> ui.update { it.copy(confirm = Confirm.ClearDay) }
+            is Action.DeleteDay -> ui.update { it.copy(confirm = Confirm.DeleteDay) }
+            is Action.OnConfirm -> confirm()
+            is Action.OnDismissConfirm -> ui.update { it.copy(confirm = null) }
+            is Action.AddDay -> addDay()
+            is Action.DismissError -> ui.update { it.copy(message = null) }
+            is Action.OnCameraMove -> ui.update { it.copy(cameraTarget = action.coordinates, zoomLevel = action.zoom) }
+            is Action.OnDaySelected -> selectDay(action.dayIndex)
+        }
+    }
+
+    private fun toState(details: TripDetails?, ui: UiState): State {
+        val days = details?.days.orEmpty()
+        val activeIndex = ui.activeDayIndex.coerceIn(0, (days.size - 1).coerceAtLeast(0))
+        val markers = days.getOrNull(activeIndex)?.markers.orEmpty().map { it.toMapMarker() }
+        return State(
+            tripName = details?.trip?.name.orEmpty(),
+            days = days.map { DayTab(it.id, it.position + 1, it.date) }.toImmutableList(),
+            activeDayIndex = activeIndex,
+            markers = markers.toImmutableList(),
+            canEdit = details?.trip?.role?.canEdit == true,
+            isLoading = days.isEmpty() && ui.isLoadingTrip,
+            isSaving = ui.isSaving,
+            currentLocation = ui.currentLocation,
+            cameraTarget = ui.cameraTarget,
+            zoomLevel = ui.zoomLevel,
+            isPermissionGranted = ui.isPermissionGranted,
+            isLoadingLocation = ui.isLoadingLocation,
+            selectedMarker = markers.firstOrNull { it.id == ui.selectedMarkerId },
+            message = ui.message,
+            isWaitingForFirstLocation = ui.isWaitingForFirstLocation,
+            confirm = ui.confirm,
+        )
+    }
+
+    private fun loadTrip() {
+        viewModelScope.launch {
+            val result = tripRepository.refreshTrip(tripId)
+            ui.update { it.copy(isLoadingTrip = false, message = (result as? AppResult.Error)?.error?.toUiText()) }
+        }
+        // Show the first day's stops when the trip opens.
+        viewModelScope.launch {
+            val details = trip.first { it != null && it.days.isNotEmpty() }
+            details?.days?.firstOrNull()?.let(::centerOnDay)
+        }
+    }
+
+    private fun currentDays(): List<TripDay> = trip.value?.days.orEmpty()
+
+    private fun activeDay(): TripDay? {
+        val days = currentDays()
+        return days.getOrNull(ui.value.activeDayIndex.coerceIn(0, (days.size - 1).coerceAtLeast(0)))
+    }
+
+    private fun canEdit(): Boolean = trip.value?.trip?.role?.canEdit == true
+
+    private fun selectDay(index: Int) {
+        ui.update { it.copy(activeDayIndex = index, selectedMarkerId = null) }
+        currentDays().getOrNull(index)?.let(::centerOnDay)
+    }
+
+    private fun centerOnDay(day: TripDay) {
+        val first = day.markers.firstOrNull() ?: return
+        ui.update { it.copy(hasCenteredOnTrip = true) }
+        navigateTo(Coordinates(first.location.lat, first.location.lng), ui.value.zoomLevel.coerceAtLeast(13f))
+    }
+
+    private fun addMarker(coordinates: Coordinates) {
+        val day = activeDay() ?: return
+        if (!canEdit() || ui.value.isSaving) return
+        save {
+            val name = getString(Res.string.map_stop_title_format, day.markers.size + 1)
+            markerRepository.addMarker(day.id, NewMarker(name, GeoPoint(coordinates.latitude, coordinates.longitude)))
+        }
+    }
+
+    private fun removeMarker(markerId: String) {
+        if (!canEdit()) return
+        save { markerRepository.deleteMarker(markerId) }
+    }
+
+    private fun addDay() {
+        if (!canEdit()) return
+        save {
+            tripRepository.addDay(tripId).also { result ->
+                if (result is AppResult.Success) {
+                    ui.update { it.copy(activeDayIndex = result.data.days.lastIndex, selectedMarkerId = null) }
+                }
             }
         }
     }
 
-    private fun loadTripDetails() {
-        viewModelScope.launch {
-            val trip = getTripByIdUseCase(tripId)
-            _uiState.update { it.copy(
-                tripName = trip?.name ?: "Unknown Trip",
-                startDate = trip?.startDate,
-                endDate = trip?.endDate
-            ) }
+    private fun confirm() {
+        val confirm = ui.value.confirm ?: return
+        val day = activeDay()
+        ui.update { it.copy(confirm = null) }
+        if (day == null || !canEdit()) return
+        when (confirm) {
+            Confirm.ClearDay -> save {
+                var result: AppResult<Unit, DataError.Network> = AppResult.Success(Unit)
+                for (marker in day.markers) {
+                    result = markerRepository.deleteMarker(marker.id)
+                    if (result is AppResult.Error) break
+                }
+                result
+            }
+            Confirm.DeleteDay -> save {
+                tripRepository.deleteDay(tripId, day.id).also { result ->
+                    if (result is AppResult.Success) {
+                        ui.update { it.copy(activeDayIndex = (it.activeDayIndex - 1).coerceAtLeast(0), selectedMarkerId = null) }
+                    }
+                }
+            }
         }
     }
 
-    private fun observeMarkers() {
-        markersJob?.cancel()
-        markersJob = viewModelScope.launch {
-            getMarkersForDayUseCase(tripId, _uiState.value.activeDayIndex).collect { markers ->
-                _uiState.update { it.copy(markers = markers) }
+    /** Runs one change at a time; a refusal shows the server's message. */
+    private fun save(change: suspend () -> AppResult<*, DataError.Network>) {
+        if (ui.value.isSaving) return
+        ui.update { it.copy(isSaving = true) }
+        viewModelScope.launch {
+            val result = change()
+            ui.update {
+                it.copy(isSaving = false, message = (result as? AppResult.Error)?.error?.toUiText() ?: it.message)
             }
         }
     }
 
     private fun handlePermissionResult(isGranted: Boolean) {
-        _uiState.update { it.copy(isPermissionGranted = isGranted) }
+        ui.update { it.copy(isPermissionGranted = isGranted) }
         if (isGranted) {
             startLocationUpdates()
         } else {
-            viewModelScope.launch {
-                val error = getString(Res.string.error_location_denied_manual)
-                _uiState.update { it.copy(errorMessage = error) }
-            }
+            ui.update { it.copy(message = UiText.Resource(Res.string.error_location_denied_manual)) }
         }
     }
 
     private fun centerOnUserLocation() {
-        val current = _uiState.value.currentLocation
+        val current = ui.value.currentLocation
         if (current != null) {
             navigateTo(current, 15f)
         } else {
-            _uiState.update { it.copy(isWaitingForFirstLocation = true) }
+            ui.update { it.copy(isWaitingForFirstLocation = true) }
         }
     }
 
     private fun startLocationUpdates() {
         viewModelScope.launch(dispatchers.main) {
-            _uiState.update { it.copy(isLoadingLocation = true, errorMessage = null) }
+            ui.update { it.copy(isLoadingLocation = true, message = null) }
             try {
                 getCurrentLocationUseCase().collect { result ->
                     when (result) {
                         is AppResult.Success -> {
                             val coords = result.data
-                            _uiState.update { state ->
-                                val shouldZoom = (state.currentLocation == null) || state.isWaitingForFirstLocation
+                            ui.update { state ->
+                                val shouldZoom = (state.currentLocation == null && !state.hasCenteredOnTrip) ||
+                                    state.isWaitingForFirstLocation
                                 if (shouldZoom) {
                                     sendEvent(Event.AnimateCamera(coords, 15f))
                                 }
@@ -136,70 +251,29 @@ class MapViewModel(
                             }
                         }
                         is AppResult.Error -> {
-                            val errorText = when (val error = result.error) {
-                                is DataError.Location.PermissionDenied -> getString(Res.string.error_location_permission_required)
-                                is DataError.Location.ServiceDisabled -> getString(Res.string.error_location_services_disabled)
-                                is DataError.Location.Unavailable -> getString(Res.string.error_location_unavailable)
-                                is DataError.Location.Unknown -> error.message
-                                    ?: getString(Res.string.error_location_unknown)
+                            val resource = when (result.error) {
+                                is DataError.Location.PermissionDenied -> Res.string.error_location_permission_required
+                                is DataError.Location.ServiceDisabled -> Res.string.error_location_services_disabled
+                                is DataError.Location.Unavailable -> Res.string.error_location_unavailable
+                                is DataError.Location.Unknown -> Res.string.error_location_unknown
                             }
-                            _uiState.update {
-                                it.copy(isLoadingLocation = false, errorMessage = errorText)
-                            }
+                            ui.update { it.copy(isLoadingLocation = false, message = UiText.Resource(resource)) }
                         }
                     }
                 }
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                _uiState.update {
-                    it.copy(
-                        isLoadingLocation = false,
-                        errorMessage = e.message ?: getString(Res.string.error_location_unexpected)
-                    )
+                ui.update {
+                    it.copy(isLoadingLocation = false, message = UiText.Resource(Res.string.error_location_unexpected))
                 }
             }
         }
     }
 
     private fun navigateTo(coordinates: Coordinates, zoom: Float) {
-        _uiState.update {
-            it.copy(cameraTarget = coordinates, zoomLevel = zoom)
-        }
+        ui.update { it.copy(cameraTarget = coordinates, zoomLevel = zoom) }
         sendEvent(Event.AnimateCamera(coordinates, zoom))
-    }
-
-    private fun addTripMarker(coordinates: Coordinates) {
-        viewModelScope.launch {
-            val currentMarkers = _uiState.value.markers
-            val nextOrder = currentMarkers.size + 1
-            val markerId = "stop_${nextOrder}_${coordinates.latitude.hashCode()}_${coordinates.longitude.hashCode()}"
-            
-            val title = getString(Res.string.map_stop_title_format, nextOrder)
-            val snippet = getString(Res.string.map_stop_snippet_format, coordinates.latitude, coordinates.longitude)
-            
-            val newMarker = MapMarker(
-                id = markerId,
-                position = coordinates,
-                title = title,
-                orderNumber = nextOrder,
-                snippet = snippet,
-                color = 0xFF2196F3
-            )
-            saveMarkerUseCase(tripId, _uiState.value.activeDayIndex, newMarker)
-        }
-    }
-
-    private fun removeTripMarker(markerId: String) {
-        viewModelScope.launch {
-            deleteMarkerUseCase(markerId)
-        }
-    }
-
-    private fun clearMarkers() {
-        viewModelScope.launch {
-            deleteMarkersForDayUseCase(tripId, _uiState.value.activeDayIndex)
-        }
     }
 
     private fun sendEvent(event: Event) {
@@ -208,21 +282,58 @@ class MapViewModel(
         }
     }
 
-    @Immutable
-    data class State(
-        val tripName: String = "",
-        val startDate: LocalDate? = null,
-        val endDate: LocalDate? = null,
+    private fun TripMarker.toMapMarker() = MapMarker(
+        id = id,
+        position = Coordinates(location.lat, location.lng),
+        title = name,
+        orderNumber = position + 1,
+        snippet = time,
+    )
+
+    private data class UiState(
         val activeDayIndex: Int = 0,
+        val isLoadingTrip: Boolean = true,
+        val isSaving: Boolean = false,
         val currentLocation: Coordinates? = null,
         val cameraTarget: Coordinates = Coordinates.Paris,
         val zoomLevel: Float = 13f,
-        val markers: List<MapMarker> = emptyList(),
+        val isPermissionGranted: Boolean = false,
+        val isLoadingLocation: Boolean = false,
+        val selectedMarkerId: String? = null,
+        val message: UiText? = null,
+        val isWaitingForFirstLocation: Boolean = false,
+        val hasCenteredOnTrip: Boolean = false,
+        val confirm: Confirm? = null,
+    )
+
+    /** A day tab: [number] counts from 1; [date] is null when the trip has no dates. */
+    @Immutable
+    data class DayTab(val id: String, val number: Int, val date: LocalDate?)
+
+    enum class Confirm { ClearDay, DeleteDay }
+
+    @Immutable
+    data class State(
+        val tripName: String = "",
+        val days: ImmutableList<DayTab> = persistentListOf(),
+        val activeDayIndex: Int = 0,
+        /** The active day's stops in order. */
+        val markers: ImmutableList<MapMarker> = persistentListOf(),
+        /** Owners and editors add and remove stops and days. */
+        val canEdit: Boolean = false,
+        /** The trip hasn't loaded yet (nothing cached). */
+        val isLoading: Boolean = false,
+        /** A change is waiting for the server. */
+        val isSaving: Boolean = false,
+        val currentLocation: Coordinates? = null,
+        val cameraTarget: Coordinates = Coordinates.Paris,
+        val zoomLevel: Float = 13f,
         val isPermissionGranted: Boolean = false,
         val isLoadingLocation: Boolean = false,
         val selectedMarker: MapMarker? = null,
-        val errorMessage: String? = null,
-        val isWaitingForFirstLocation: Boolean = false
+        val message: UiText? = null,
+        val isWaitingForFirstLocation: Boolean = false,
+        val confirm: Confirm? = null,
     )
 
     sealed interface Event {
@@ -239,6 +350,10 @@ class MapViewModel(
         data class OnMarkerClick(val marker: MapMarker) : Action
         data class OnRemoveMarker(val markerId: String) : Action
         data object ClearAllMarkers : Action
+        data object AddDay : Action
+        data object DeleteDay : Action
+        data object OnConfirm : Action
+        data object OnDismissConfirm : Action
         data object DismissError : Action
         data class OnCameraMove(val coordinates: Coordinates, val zoom: Float) : Action
         data class OnDaySelected(val dayIndex: Int) : Action

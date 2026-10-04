@@ -1,0 +1,8 @@
+<resources>
+    <string name="error_no_internet">No internet connection. Check your connection and try again.</string>
+    <string name="error_timeout">Tripinly is taking too long to respond. Try again.</string>
+    <string name="error_server">Tripinly is having trouble right now. Try again shortly.</string>
+    <string name="error_unknown">Something went wrong. Try again.</string>
+    <string name="error_not_available">This trip isn't available.</string>
+    <string name="error_forbidden">You can't change this trip.</string>
+</resources>

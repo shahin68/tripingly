@@ -1,0 +1,8 @@
+<resources>
+    <string name="error_no_internet">Keine Internetverbindung. Prüfe deine Verbindung und versuche es erneut.</string>
+    <string name="error_timeout">Tripinly antwortet nicht rechtzeitig. Versuche es erneut.</string>
+    <string name="error_server">Tripinly hat gerade Probleme. Versuche es gleich noch einmal.</string>
+    <string name="error_unknown">Etwas ist schiefgelaufen. Versuche es erneut.</string>
+    <string name="error_not_available">Diese Reise ist nicht verfügbar.</string>
+    <string name="error_forbidden">Du kannst diese Reise nicht ändern.</string>
+</resources>
