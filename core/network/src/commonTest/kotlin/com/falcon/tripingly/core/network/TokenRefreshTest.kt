@@ -7,6 +7,7 @@ import com.falcon.tripingly.core.network.auth.SessionEndReason
 import io.ktor.client.request.get
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.content.TextContent
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.flow.first
@@ -72,7 +73,8 @@ class TokenRefreshTest {
     fun refusedRefresh_clearsTokensAndEndsTheSession() = runTest {
         val api = api { apiError(HttpStatusCode.Unauthorized, "REFRESH_TOKEN_REUSED") }
         api.tokenStore.save(AuthTokens("access-1", "refresh-1"))
-        val ended = async { api.sessionEvents.sessionEnded.first() }
+        // Subscribe before the call: the events have no replay.
+        val ended = async(start = CoroutineStart.UNDISPATCHED) { api.sessionEvents.sessionEnded.first() }
 
         val result = apiCall<Trip> { api.client.get("trips/t1") }
 
@@ -85,7 +87,8 @@ class TokenRefreshTest {
     fun suspendedAccount_endsTheSessionWithItsReason() = runTest {
         val api = api { apiError(HttpStatusCode.Forbidden, "ACCOUNT_SUSPENDED") }
         api.tokenStore.save(AuthTokens("access-1", "refresh-1"))
-        val ended = async { api.sessionEvents.sessionEnded.first() }
+        // Subscribe before the call: the events have no replay.
+        val ended = async(start = CoroutineStart.UNDISPATCHED) { api.sessionEvents.sessionEnded.first() }
 
         apiCall<Trip> { api.client.get("trips/t1") }
 
