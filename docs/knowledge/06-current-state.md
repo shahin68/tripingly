@@ -48,7 +48,7 @@ Every module has `commonMain`, plus `androidMain`/`iosMain` only where platform 
 | State collections | kotlinx-collections-immutable (in feature modules) | 0.5.2 |
 | Tests | kotlin-test, coroutines-test, Turbine, JUnit 4, Robolectric, Ktor MockEngine | 1.2.0 Turbine, 4.17 Robolectric |
 
-| Sign-in | androidx.credentials + googleid (Android); AuthenticationServices and GoogleSignIn-iOS via SPM (iOS, package not added yet) | 1.5.0, 1.1.1 |
+| Sign-in | androidx.credentials + googleid (Android); AuthenticationServices and GoogleSignIn-iOS via SPM (iOS) | 1.5.0, 1.1.1, GoogleSignIn-iOS 10.x |
 
 Not present yet: image loading (Coil), Firebase, Socket.IO, detekt/ktlint.
 
@@ -75,7 +75,7 @@ Not present yet: image loading (Coil), Firebase, Socket.IO, detekt/ktlint.
 
 - Common `expect fun GoogleMapView(...)` in `feature/map`.
 - **Android:** `maps-compose` `GoogleMap`, `MarkerComposable` with the numbered `TripMarkerIcon`, my-location layer. No map style, so **Google POIs are visible** (must be hidden per rule 4).
-- **iOS:** the "GoogleMapView" actual is **Apple MapKit** (`MKMapView` with `MKMarkerAnnotationView`), not the Google Maps SDK. `iOSApp.swift` imports `GoogleMaps` and calls `GMSServices.provideAPIKey`, but the Xcode project links no GoogleMaps package, so the iOS app target will not compile until the SDK is added via SPM or the import is removed.
+- **iOS:** the "GoogleMapView" actual is **Apple MapKit** (`MKMapView` with `MKMarkerAnnotationView`), not the Google Maps SDK. The unlinked `GoogleMaps` import and `GMSServices` setup were removed from `iOSApp.swift` (stage 3) so the app target compiles; the Google Maps iOS SDK comes with the map stage.
 - Location: `LocationDataSource` with fused location (Android) and `CLLocationManager` (iOS); permission launcher is `expect/actual`.
 - No OSM attribution yet; no places from the backend.
 
@@ -91,9 +91,9 @@ Not present yet: image loading (Coil), Firebase, Socket.IO, detekt/ktlint.
 ## Build and run
 
 - Android: `./gradlew :androidApp:assembleDebug`. Needs `MAPS_API_KEY=...` in `local.properties` (empty key builds, map tiles don't load).
-- Local config lives in the untracked root `local.properties` (a Gradle property with the same name is the fallback, e.g. `-P` in CI): `MAPS_API_KEY`, `tripinly.useFakeApi`, `tripinly.devAuthSecret` (staging's developer sign-in secret, never committed) and `tripinly.googleWebClientId` (the backend's Google Web client ID; not secret). iOS Google sign-in also needs the GoogleSignIn-iOS package (SPM) and `GIDClientID` + the reversed client ID URL scheme in Info.plist; Sign in with Apple needs the capability on the app ID.
+- Local config lives in the untracked root `local.properties` (a Gradle property with the same name is the fallback, e.g. `-P` in CI): `MAPS_API_KEY`, `tripinly.useFakeApi`, `tripinly.devAuthSecret` (staging's developer sign-in secret, never committed) and `tripinly.googleWebClientId` (the backend's Google Web client ID; not secret). iOS Google sign-in uses the GoogleSignIn-iOS package (SPM) with the iOS client ID as `GIDClientID` and its reversed form as a URL scheme in `iosApp/iosApp/Info.plist` (client IDs are not secret, so they are committed). The iOS bundle ID is `com.falcon.tripingly`, matching the Android package; Sign in with Apple needs the capability on the app ID.
 - Unit tests: `./gradlew allTests` (Android host tests + common) on any OS; `./gradlew iosSimulatorArm64Test` on macOS.
-- iOS framework: `./gradlew :shared:linkDebugFrameworkIosSimulatorArm64`; Xcode runs `:shared:embedAndSignAppleFrameworkForXcode`. iOS deployment target 18.2. `Config.plist` with `MAPS_API_KEY` is read at startup but not committed.
+- iOS framework: `./gradlew :shared:linkDebugFrameworkIosSimulatorArm64`; Xcode runs `:shared:embedAndSignAppleFrameworkForXcode`. iOS deployment target 18.2. There is no iOS Maps key yet (the map is MapKit until the map stage).
 - CI (`.github/workflows/ci.yml`): Android assemble + `allTests` on Ubuntu, then iOS framework link + simulator tests on macOS, for PRs into `develop`/`master` and pushes to `develop`.
 - The Claude cloud sandbox cannot download from Google Maven (`dl.google.com` is blocked), so Gradle builds run in CI, not in the sandbox.
 
@@ -106,7 +106,7 @@ Not present yet: image loading (Coil), Firebase, Socket.IO, detekt/ktlint.
 
 1. **Only sign-in and onboarding use the API** (stage 3); trips are still local. Tokens are in Keychain / Keystore, so the session survives restarts. Everything is still local Room data with client-generated IDs.
 2. **Room is the source of truth**: moving to "server is truth, Room caches own trips" changes repositories, IDs and the schema (stage 4).
-3. **iOS map is MapKit and the iOS app target likely does not compile** (GoogleMaps import without the SDK linked). Decide on the Google Maps iOS SDK via SPM in the map stage.
+3. **iOS map is MapKit.** Decide on the Google Maps iOS SDK via SPM in the map stage.
 4. **Google POIs visible on Android**; no OSM attribution.
 5. **Hardcoded user-facing text in code**: share message ("Check out my trip…"), "Unknown Trip" fallback in `MapViewModel`, English-only month names in `DateUtils`. Only English `strings.xml` exists (de and hu are missing).
 6. **Layer leaks**: map use cases call `MarkerDao` directly (domain → data), and ViewModels hold `errorMessage: String` resolved from resources instead of a `UiText`. Fixed when each feature moves to the API.
