@@ -20,6 +20,7 @@
     <string name="signin_error_not_configured">Diese Anmeldeoption ist in dieser Version noch nicht eingerichtet.</string>
     <string name="signin_error_failed">Die Anmeldung hat nicht funktioniert. Versuche es erneut.</string>
     <string name="signin_error_account_suspended">Dieses Konto wurde gesperrt.</string>
+    <string name="signin_error_developer_refused">Der Server hat die Entwickler-Anmeldung abgelehnt. Prüfe, ob tripinly.devAuthSecret in local.properties zu Staging passt, und baue die App neu.</string>
     <string name="onboarding_profile_title">Dein Profil</string>
     <string name="onboarding_consent_title">Bedingungen und Datenschutz</string>
     <string name="onboarding_sign_out">Abmelden</string>

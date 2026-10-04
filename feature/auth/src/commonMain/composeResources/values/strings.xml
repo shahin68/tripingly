@@ -20,6 +20,7 @@
     <string name="signin_error_not_configured">This sign-in option is not set up in this build yet.</string>
     <string name="signin_error_failed">Sign-in did not work. Try again.</string>
     <string name="signin_error_account_suspended">This account has been suspended.</string>
+    <string name="signin_error_developer_refused">The server refused developer sign-in. Check tripinly.devAuthSecret in local.properties matches staging, then rebuild the app.</string>
     <string name="onboarding_profile_title">Your profile</string>
     <string name="onboarding_consent_title">Terms and privacy</string>
     <string name="onboarding_sign_out">Sign out</string>

@@ -20,6 +20,7 @@
     <string name="signin_error_not_configured">Ez a bejelentkezési mód ebben a verzióban még nincs beállítva.</string>
     <string name="signin_error_failed">A bejelentkezés nem sikerült. Próbáld újra.</string>
     <string name="signin_error_account_suspended">Ezt a fiókot felfüggesztettük.</string>
+    <string name="signin_error_developer_refused">A szerver elutasította a fejlesztői bejelentkezést. Ellenőrizd, hogy a local.properties fájlban a tripinly.devAuthSecret egyezik-e a stagingével, majd építsd újra az appot.</string>
     <string name="onboarding_profile_title">A profilod</string>
     <string name="onboarding_consent_title">Feltételek és adatvédelem</string>
     <string name="onboarding_sign_out">Kijelentkezés</string>

@@ -9,6 +9,7 @@ import com.falcon.tripingly.feature.auth.domain.SocialSignIn
 import com.falcon.tripingly.feature.auth.domain.SocialSignInResult
 import com.falcon.tripingly.feature.auth.generated.resources.Res
 import com.falcon.tripingly.feature.auth.generated.resources.signin_error_account_suspended
+import com.falcon.tripingly.feature.auth.generated.resources.signin_error_developer_refused
 import com.falcon.tripingly.feature.auth.generated.resources.signin_error_failed
 import com.falcon.tripingly.feature.auth.generated.resources.signin_error_not_configured
 import com.falcon.tripingly.feature.auth.presentation.common.UiMessage
@@ -57,7 +58,7 @@ internal class SignInViewModel(
             Action.OnDeveloperSignInClick -> {
                 val subject = _uiState.value.developerSubject.trim()
                 if (subject.isNotEmpty()) {
-                    signIn { sessionRepository.signInForDevelopment(subject, name = null).toOutcome() }
+                    signIn { sessionRepository.signInForDevelopment(subject, name = null).toDeveloperOutcome() }
                 }
             }
             Action.OnDismissError -> _uiState.update { it.copy(error = null) }
@@ -100,6 +101,14 @@ internal class SignInViewModel(
             }
         }
     }
+
+    // The backend answers 404 when developer sign-in is off or the secret doesn't match.
+    private fun AppResult<Unit, DataError.Network>.toDeveloperOutcome(): UiMessage? =
+        if (this is AppResult.Error && error.let { it is DataError.Network.Api && it.status == 404 }) {
+            UiMessage.Resource(Res.string.signin_error_developer_refused)
+        } else {
+            toOutcome()
+        }
 
     private companion object {
         const val ACCOUNT_SUSPENDED = "ACCOUNT_SUSPENDED"
