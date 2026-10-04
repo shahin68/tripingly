@@ -30,6 +30,8 @@ internal class SessionRepositoryImpl(
     sessionEvents: SessionEvents,
     /** Null when this build has no developer sign-in (production). */
     private val developerSignIn: DeveloperSignIn?,
+    /** Everything else the app stores for the user; resolved lazily because platform modules bind some. */
+    private val cleaners: () -> List<LocalDataCleaner>,
     scope: CoroutineScope,
 ) : SessionRepository {
 
@@ -40,9 +42,9 @@ internal class SessionRepositoryImpl(
 
     init {
         scope.launch {
-            // The refresh already cleared the tokens; only the screen has to follow.
+            // The refresh already cleared the tokens; the rest of the local data and the screen follow.
             sessionEvents.sessionEnded.collect { reason ->
-                state.value = SessionState.SignedOut(
+                endSession(
                     when (reason) {
                         SessionEndReason.REFRESH_REFUSED -> SignOutReason.SESSION_EXPIRED
                         SessionEndReason.ACCOUNT_SUSPENDED -> SignOutReason.ACCOUNT_SUSPENDED
@@ -54,7 +56,8 @@ internal class SessionRepositoryImpl(
 
     override suspend fun restore(): AppResult<Unit, DataError.Network> {
         if (tokenStore.get() == null) {
-            state.value = SessionState.SignedOut()
+            // No session, so nothing local may be left over (e.g. the app died mid sign-out).
+            endSession(reason = null)
             return AppResult.Success(Unit)
         }
         state.value = SessionState.Restoring
@@ -62,8 +65,8 @@ internal class SessionRepositoryImpl(
             is AppResult.Success -> AppResult.Success(Unit)
             is AppResult.Error -> {
                 if (result.error is DataError.Network.Unauthorized) {
-                    tokenStore.clear()
-                    if (state.value !is SessionState.SignedOut) state.value = SessionState.SignedOut()
+                    val current = state.value
+                    endSession((current as? SessionState.SignedOut)?.reason)
                 }
                 result
             }
@@ -106,8 +109,7 @@ internal class SessionRepositoryImpl(
             // Best effort: the server revokes the session; offline, it simply expires.
             authApi.logout(LogoutDto(refreshToken = tokens.refreshToken))
         }
-        tokenStore.clear()
-        state.value = SessionState.SignedOut(reason)
+        endSession(reason)
     }
 
     internal fun onAccountChanged(account: Account) {
@@ -115,7 +117,13 @@ internal class SessionRepositoryImpl(
     }
 
     internal suspend fun forget(reason: SignOutReason) {
+        endSession(reason)
+    }
+
+    /** The one way out of a session: tokens, every other local trace of the user, then the screen. */
+    private suspend fun endSession(reason: SignOutReason?) {
         tokenStore.clear()
+        cleaners().clearAll()
         state.value = SessionState.SignedOut(reason)
     }
 
@@ -131,8 +139,7 @@ internal class SessionRepositoryImpl(
             is AppResult.Success -> AppResult.Success(Unit)
             is AppResult.Error -> {
                 // Without the profile the app can't route; start over on the next attempt.
-                tokenStore.clear()
-                state.value = SessionState.SignedOut()
+                endSession(reason = null)
                 account
             }
         }

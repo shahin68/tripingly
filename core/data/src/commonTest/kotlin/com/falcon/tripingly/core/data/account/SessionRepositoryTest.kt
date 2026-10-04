@@ -68,6 +68,7 @@ class SessionRepositoryTest {
         private val handler: suspend MockRequestHandleScope.(HttpRequestData) -> HttpResponseData,
     ) {
         val tokenStore = InMemoryTokenStore()
+        var cleared = 0
         private val lock = Mutex()
         private val recorded = mutableListOf<HttpRequestData>()
         val requests: List<HttpRequestData> get() = recorded.toList()
@@ -91,6 +92,12 @@ class SessionRepositoryTest {
             tokenStore = tokenStore,
             sessionEvents = sessionEvents,
             developerSignIn = DeveloperSignIn(config.devAuthSecret),
+            cleaners = {
+                listOf(
+                    LocalDataCleaner { error("a failing cleaner must not stop the others") },
+                    LocalDataCleaner { cleared++ },
+                )
+            },
             scope = scope.backgroundScope,
         )
         val account = AccountRepositoryImpl(ktorfit.createAccountApi(), session)
@@ -203,6 +210,7 @@ class SessionRepositoryTest {
 
         assertEquals(SessionState.SignedOut(SignOutReason.SESSION_EXPIRED), harness.session.session.value)
         assertNull(harness.tokenStore.get())
+        assertTrue(harness.cleared > 0)
     }
 
     @Test
@@ -225,6 +233,7 @@ class SessionRepositoryTest {
         assertEquals("AGE_REQUIREMENT_NOT_MET", ((result as AppResult.Error).error as DataError.Network.Api).code)
         assertEquals(SessionState.SignedOut(SignOutReason.UNDER_AGE), harness.session.session.value)
         assertNull(harness.tokenStore.get())
+        assertEquals(1, harness.cleared)
     }
 
     @Test
@@ -263,6 +272,30 @@ class SessionRepositoryTest {
 
         assertEquals(listOf("/v1/auth/logout"), harness.paths(HttpMethod.Post))
         assertNull(harness.tokenStore.get())
+        assertEquals(1, harness.cleared)
         assertEquals(SessionState.SignedOut(), harness.session.session.value)
+    }
+
+    @Test
+    fun signInWithProfile_keepsLocalData() = runTest {
+        val harness = Harness(this) { request ->
+            when (request.url.encodedPath) {
+                "/v1/auth/google" -> json(tokensJson)
+                else -> json(meJson(completed = true))
+            }
+        }
+
+        harness.session.signInWithGoogle("google-id-token")
+
+        assertEquals(0, harness.cleared)
+    }
+
+    @Test
+    fun restore_withoutTokens_clearsLeftovers() = runTest {
+        val harness = Harness(this) { error("no request expected") }
+
+        harness.session.restore()
+
+        assertEquals(1, harness.cleared)
     }
 }

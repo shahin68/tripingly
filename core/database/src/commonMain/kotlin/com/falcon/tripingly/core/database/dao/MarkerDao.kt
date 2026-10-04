@@ -23,4 +23,7 @@ interface MarkerDao {
 
     @Query("DELETE FROM markers WHERE tripId = :tripId AND dayIndex = :dayIndex")
     suspend fun deleteMarkersForDay(tripId: String, dayIndex: Int)
+
+    @Query("DELETE FROM markers")
+    suspend fun deleteAll()
 }

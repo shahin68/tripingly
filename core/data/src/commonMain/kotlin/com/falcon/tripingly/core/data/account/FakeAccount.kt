@@ -25,7 +25,10 @@ import kotlinx.datetime.LocalDate
  * tests: any sign-in starts a new account that needs onboarding; the username
  * `taken` is taken.
  */
-class FakeAccountBackend(private val today: () -> LocalDate) : SessionRepository, AccountRepository {
+class FakeAccountBackend(
+    private val today: () -> LocalDate,
+    private val cleaners: () -> List<LocalDataCleaner> = { emptyList() },
+) : SessionRepository, AccountRepository {
 
     private val state = MutableStateFlow<SessionState>(SessionState.Restoring)
     override val session: StateFlow<SessionState> = state.asStateFlow()
@@ -57,6 +60,7 @@ class FakeAccountBackend(private val today: () -> LocalDate) : SessionRepository
     override suspend fun signOut(reason: SignOutReason?) {
         account = null
         accepted.clear()
+        cleaners().clearAll()
         state.value = SessionState.SignedOut(reason)
     }
 

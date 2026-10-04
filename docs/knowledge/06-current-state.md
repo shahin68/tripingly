@@ -14,7 +14,7 @@ build-logic/           Convention plugins: tripinly.kmp.library, tripinly.kmp.co
 core/common            AppResult, RootError/DataError, CoroutineDispatchers, DateUtils, ShareManager (expect/actual via Koin)
 core/model             Domain models shared across features (Trip). No Compose dependency
 core/database          Room database (TripinglyDatabase v2), TripDao, MarkerDao, entities, platform builders
-core/data              TripRepository (+ Room-backed TripRepositoryImpl); SessionRepository (session state, sign-in/out) and AccountRepository (onboarding) over the API, FakeAccountBackend for useFakeApi
+core/data              TripRepository (+ Room-backed TripRepositoryImpl); SessionRepository (session state, sign-in/out; every session end runs all Koin-bound `LocalDataCleaner`s) and AccountRepository (onboarding) over the API, FakeAccountBackend for useFakeApi
 core/storage           SecureStore: iOS Keychain (cleared on a fresh install), Android Keystore AES-GCM key + encrypted SharedPreferences
 core/designsystem      TripinglyTheme (colors, typography, shapes, spacing), AppDropdownMenu, ErrorBanner, FloatingSearchBar
 core/navigation        Route keys (Home, TripMap) and the saved-state serializers config

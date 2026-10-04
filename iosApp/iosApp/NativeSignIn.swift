@@ -40,6 +40,12 @@ final class AppNativeSignIn: NSObject, NativeSignIn {
         #endif
     }
 
+    func signOut() {
+        #if canImport(GoogleSignIn)
+        GIDSignIn.sharedInstance.signOut()
+        #endif
+    }
+
     private var appleCompletion: ((String?, String?, String?, String?, KotlinBoolean) -> Void)?
 
     func apple(completion: @escaping (String?, String?, String?, String?, KotlinBoolean) -> Void) {

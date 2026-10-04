@@ -22,6 +22,9 @@ interface NativeSignIn {
     fun apple(
         completion: (identityToken: String?, authorizationCode: String?, givenName: String?, familyName: String?, failed: Boolean) -> Unit,
     )
+
+    /** Forgets the signed-in Google user kept by the SDK (Keychain). Apple keeps no app-side state. */
+    fun signOut()
 }
 
 internal class NativeSocialSignIn(private val native: NativeSignIn) : SocialSignIn {
