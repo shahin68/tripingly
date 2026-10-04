@@ -111,4 +111,19 @@ class OnboardingViewModelTest {
 
         assertIs<SessionState.SignedIn>(backend.session.value)
     }
+
+    @Test
+    fun anotherAccount_startsFromAnEmptyForm() = runTest(dispatcher) {
+        val viewModel = signedInViewModel()
+        viewModel.onAction(Action.OnUsernameChange("jonas.k"))
+        advanceUntilIdle()
+
+        backend.signOut(reason = null)
+        backend.signInForDevelopment("tester-2", name = null)
+        advanceUntilIdle()
+
+        assertEquals("", viewModel.uiState.value.username)
+        assertEquals("", viewModel.uiState.value.displayName)
+        assertEquals(UsernameStatus.IDLE, viewModel.uiState.value.usernameStatus)
+    }
 }

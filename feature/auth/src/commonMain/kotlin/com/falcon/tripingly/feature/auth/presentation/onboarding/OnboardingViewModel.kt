@@ -124,21 +124,21 @@ internal class OnboardingViewModel(
     }
 
     private fun onAccount(account: Account) {
-        val first = this.account == null
+        // This view model outlives sign-out, so another account starts from a clean form.
+        val isNewAccount = this.account?.id != account.id
         this.account = account
         val step = if (account.onboarding.missingProfileFields.isEmpty()) Step.CONSENT else Step.PROFILE
-        _uiState.update { state ->
-            if (!first) {
-                state.copy(step = step)
-            } else {
-                state.copy(
-                    step = step,
-                    displayName = account.displayName.orEmpty(),
-                    username = account.username.orEmpty(),
-                    usernameStatus = if (account.username != null) UsernameStatus.AVAILABLE else UsernameStatus.IDLE,
-                    birthDate = account.birthDate,
-                )
-            }
+        if (isNewAccount) {
+            usernameCheck?.cancel()
+            _uiState.value = State(
+                step = step,
+                displayName = account.displayName.orEmpty(),
+                username = account.username.orEmpty(),
+                usernameStatus = if (account.username != null) UsernameStatus.AVAILABLE else UsernameStatus.IDLE,
+                birthDate = account.birthDate,
+            )
+        } else {
+            _uiState.update { it.copy(step = step) }
         }
         if (step == Step.CONSENT && _uiState.value.documents.isEmpty()) loadDocuments()
     }

@@ -32,6 +32,7 @@ class FakeAccountBackend(private val today: () -> LocalDate) : SessionRepository
     override val developerSignInAvailable = true
 
     private var account: Account? = null
+    private var signIns = 0
     private val accepted = mutableSetOf<LegalDocumentType>()
 
     override suspend fun restore(): AppResult<Unit, DataError.Network> {
@@ -103,9 +104,10 @@ class FakeAccountBackend(private val today: () -> LocalDate) : SessionRepository
     }
 
     private fun signIn(name: String?): AppResult<Unit, DataError.Network> {
+        signIns++
         publish(
             Account(
-                id = "00000000-0000-4000-8000-000000000001",
+                id = "00000000-0000-4000-8000-" + signIns.toString().padStart(12, '0'),
                 username = null,
                 displayName = name,
                 birthDate = null,
