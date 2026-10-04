@@ -1,42 +1,19 @@
 package com.falcon.tripingly.core.common.util
 
-import kotlinx.datetime.Instant
 import kotlinx.datetime.LocalDate
-import kotlinx.datetime.format
-import kotlinx.datetime.format.MonthNames
-import kotlinx.datetime.format.char
 import kotlinx.datetime.TimeZone
-import kotlinx.datetime.toLocalDateTime
+import kotlinx.datetime.todayIn
 import kotlin.time.Clock
 
 object DateUtils {
-    fun today(): LocalDate {
-        val now = Clock.System.now()
-        // If Instant is the same, this might work
-        return Instant.fromEpochSeconds(now.epochSeconds, now.nanosecondsOfSecond)
-            .toLocalDateTime(TimeZone.currentSystemDefault()).date
-    }
+    fun today(): LocalDate = Clock.System.todayIn(TimeZone.currentSystemDefault())
 
-    private val formalDateFormat = LocalDate.Format {
-        monthName(MonthNames.ENGLISH_ABBREVIATED)
-        char(' ')
-        day()
-        char(',')
-        char(' ')
-        year()
-    }
+    /** Day, month name and year in the device's locale, e.g. "Oct 4, 2026", "4. Okt. 2026", "2026. okt. 4.". */
+    fun formatFormal(date: LocalDate): String = formatLocalized(date, "yMMMd")
 
-    fun formatFormal(date: LocalDate): String {
-        return date.format(formalDateFormat)
-    }
-
-    private val abbreviatedDateFormat = LocalDate.Format {
-        monthName(MonthNames.ENGLISH_ABBREVIATED)
-        char(' ')
-        day()
-    }
-
-    fun formatAbbreviated(date: LocalDate): String {
-        return date.format(abbreviatedDateFormat)
-    }
+    /** Day and month name in the device's locale, e.g. "Oct 4", "4. Okt.", "okt. 4.". */
+    fun formatAbbreviated(date: LocalDate): String = formatLocalized(date, "MMMd")
 }
+
+/** Formats [date] with the platform's best pattern for the CLDR [skeleton] in the device's locale. */
+internal expect fun formatLocalized(date: LocalDate, skeleton: String): String

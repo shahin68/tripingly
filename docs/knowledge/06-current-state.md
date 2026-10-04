@@ -11,7 +11,7 @@ androidApp/            Android shell: MainActivity, TripinglyApplication (starts
 iosApp/                Xcode project; calls MainViewController() from the Shared framework
 shared/                Umbrella: App() with Navigation 3, initKoin(), iOS framework "Shared" (static)
 build-logic/           Convention plugins: tripinly.kmp.library, tripinly.kmp.compose, tripinly.kmp.feature
-core/common            AppResult, RootError/DataError, CoroutineDispatchers, DateUtils, ShareManager (expect/actual via Koin)
+core/common            AppResult, RootError/DataError, CoroutineDispatchers, DateUtils (dates in the device's locale via platform skeleton formats), ShareManager (expect/actual via Koin)
 core/model             Domain models shared across features (account, trip: Trip, TripDetails, TripDay, TripMarker, TripMember, TripInvite, changes). No Compose dependency
 core/database          Room database (TripinglyDatabase v3, destructive migration): read-only cache of trips, days, markers and members behind one TripDao; platform builders
 core/data              trips/: TripRepository, MarkerRepository, TripInviteRepository over the API with Room as cache (OfflineFirstTripRepository, DefaultMarkerRepository, DefaultTripInviteRepository), FakeTripBackend for useFakeApi; SessionRepository (session state, sign-in/out; every session end runs all Koin-bound `LocalDataCleaner`s) and AccountRepository (onboarding) over the API, FakeAccountBackend for useFakeApi
@@ -106,7 +106,6 @@ Domain models in `core/model/.../trip/` follow the API (UUIDs, `LocalDate` dates
 1. **No proactive offline detection.** Offline is noticed when a call fails; writes need a connection (no outbox).
 2. **iOS map is MapKit.** Decide on the Google Maps iOS SDK via SPM in the map stage.
 3. **Google POIs visible on Android**; no OSM attribution.
-4. **English-only month names in `DateUtils`**; trip and map screens otherwise use resources in en, de and hu.
-5. **Two message types:** `feature:auth` still has its own `UiMessage`; move it to `core:ui`'s `UiText` when auth is next touched.
-6. **No marker rename/reorder UI yet** (repository supports both); invite accept and copy have no UI yet.
-7. **No architecture or lint checks** beyond module boundaries (no Konsist, detekt or ktlint yet).
+4. **Two message types:** `feature:auth` still has its own `UiMessage`; move it to `core:ui`'s `UiText` when auth is next touched.
+5. **No marker rename/reorder UI yet** (repository supports both); invite accept and copy have no UI yet.
+6. **No architecture or lint checks** beyond module boundaries (no Konsist, detekt or ktlint yet).
