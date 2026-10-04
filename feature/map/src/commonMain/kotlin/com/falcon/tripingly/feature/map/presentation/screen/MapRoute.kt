@@ -13,7 +13,9 @@ import org.koin.core.parameter.parametersOf
 @Composable
 fun MapRoute(
     tripId: String,
-    viewModel: MapViewModel = koinViewModel { parametersOf(tripId) }
+    // Keyed by trip: the view model store is shared across screens, and the class alone would
+    // hand every trip the first trip's view model.
+    viewModel: MapViewModel = koinViewModel(key = "map:$tripId") { parametersOf(tripId) }
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
 
