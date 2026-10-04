@@ -77,6 +77,7 @@ internal class OnboardingViewModel(
         data class OnBirthDatePicked(val date: LocalDate?) : Action
         data object OnSaveProfileClick : Action
         data class OnDocumentAcceptedChange(val document: LegalDocument, val accepted: Boolean) : Action
+        data class OnRequiredDocumentsAcceptedChange(val accepted: Boolean) : Action
         data object OnAcceptClick : Action
         data object OnRetryDocumentsClick : Action
         data object OnDismissError : Action
@@ -113,6 +114,13 @@ internal class OnboardingViewModel(
                 state.copy(
                     documents = state.documents.map {
                         if (it.document == action.document) it.copy(accepted = action.accepted) else it
+                    }.toImmutableList(),
+                )
+            }
+            is Action.OnRequiredDocumentsAcceptedChange -> _uiState.update { state ->
+                state.copy(
+                    documents = state.documents.map {
+                        if (it.document.required) it.copy(accepted = action.accepted) else it
                     }.toImmutableList(),
                 )
             }

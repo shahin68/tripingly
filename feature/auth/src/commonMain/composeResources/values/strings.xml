@@ -36,6 +36,10 @@
     <string name="onboarding_consent_terms">I accept the Terms of Service</string>
     <string name="onboarding_consent_privacy">I accept the Privacy Policy</string>
     <string name="onboarding_consent_marketing">I agree to receive news and offers</string>
+    <string name="onboarding_consent_terms_and_privacy">I agree to the Terms of Service and have read the Privacy Policy</string>
+    <string name="onboarding_document_terms">Terms of Service</string>
+    <string name="onboarding_document_privacy">Privacy Policy</string>
+    <string name="onboarding_document_marketing">News and offers</string>
     <string name="onboarding_consent_read">Read</string>
     <string name="onboarding_consent_accept">Accept and continue</string>
 </resources>

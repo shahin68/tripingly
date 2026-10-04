@@ -105,7 +105,9 @@ class OnboardingViewModelTest {
         assertEquals(2, consent.documents.size)
         assertFalse(consent.canAccept)
 
-        consent.documents.forEach { viewModel.onAction(Action.OnDocumentAcceptedChange(it.document, true)) }
+        // One tick accepts Terms and Privacy together.
+        viewModel.onAction(Action.OnRequiredDocumentsAcceptedChange(true))
+        assertTrue(viewModel.uiState.value.canAccept)
         viewModel.onAction(Action.OnAcceptClick)
         advanceUntilIdle()
 

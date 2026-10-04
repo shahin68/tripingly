@@ -36,6 +36,10 @@
     <string name="onboarding_consent_terms">Ich akzeptiere die Nutzungsbedingungen</string>
     <string name="onboarding_consent_privacy">Ich akzeptiere die Datenschutzerklärung</string>
     <string name="onboarding_consent_marketing">Ich möchte Neuigkeiten und Angebote erhalten</string>
+    <string name="onboarding_consent_terms_and_privacy">Ich stimme den Nutzungsbedingungen zu und habe die Datenschutzerklärung gelesen</string>
+    <string name="onboarding_document_terms">Nutzungsbedingungen</string>
+    <string name="onboarding_document_privacy">Datenschutzerklärung</string>
+    <string name="onboarding_document_marketing">Neuigkeiten und Angebote</string>
     <string name="onboarding_consent_read">Lesen</string>
     <string name="onboarding_consent_accept">Akzeptieren und weiter</string>
 </resources>

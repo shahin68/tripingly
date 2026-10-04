@@ -52,6 +52,10 @@ import com.falcon.tripingly.feature.auth.generated.resources.onboarding_consent_
 import com.falcon.tripingly.feature.auth.generated.resources.onboarding_consent_privacy
 import com.falcon.tripingly.feature.auth.generated.resources.onboarding_consent_read
 import com.falcon.tripingly.feature.auth.generated.resources.onboarding_consent_terms
+import com.falcon.tripingly.feature.auth.generated.resources.onboarding_consent_terms_and_privacy
+import com.falcon.tripingly.feature.auth.generated.resources.onboarding_document_marketing
+import com.falcon.tripingly.feature.auth.generated.resources.onboarding_document_privacy
+import com.falcon.tripingly.feature.auth.generated.resources.onboarding_document_terms
 import com.falcon.tripingly.feature.auth.generated.resources.onboarding_consent_title
 import com.falcon.tripingly.feature.auth.generated.resources.onboarding_display_name
 import com.falcon.tripingly.feature.auth.generated.resources.onboarding_profile_title
@@ -220,25 +224,28 @@ private fun ColumnScope.ConsentStep(state: OnboardingViewModel.State, onAction: 
         TextButton(onClick = { onAction(Action.OnRetryDocumentsClick) }) { Text(stringResource(Res.string.common_retry)) }
         return
     }
-    state.documents.forEach { item ->
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier
-                .fillMaxWidth()
-                .clickable { onAction(Action.OnDocumentAcceptedChange(item.document, !item.accepted)) },
-        ) {
-            Checkbox(
-                checked = item.accepted,
-                onCheckedChange = { onAction(Action.OnDocumentAcceptedChange(item.document, it)) },
-            )
-            Text(
-                text = stringResource(item.document.type.acceptLabel()),
-                style = MaterialTheme.typography.bodyLarge,
-                modifier = Modifier.weight(1f),
-            )
+    val (required, optional) = state.documents.partition { it.document.required }
+    if (required.isNotEmpty()) {
+        // One tick accepts every required document (Terms and Privacy); each is still recorded on its own.
+        ConsentRow(
+            label = stringResource(requiredLabel(required.map { it.document.type })),
+            checked = required.all { it.accepted },
+            onCheckedChange = { onAction(Action.OnRequiredDocumentsAcceptedChange(it)) },
+        )
+        required.forEach { item ->
             TextButton(onClick = { uriHandler.openUri(item.document.url) }) {
-                Text(stringResource(Res.string.onboarding_consent_read))
+                Text(stringResource(item.document.type.title()))
             }
+        }
+    }
+    optional.forEach { item ->
+        ConsentRow(
+            label = stringResource(item.document.type.acceptLabel()),
+            checked = item.accepted,
+            onCheckedChange = { onAction(Action.OnDocumentAcceptedChange(item.document, it)) },
+        )
+        TextButton(onClick = { uriHandler.openUri(item.document.url) }) {
+            Text(stringResource(Res.string.onboarding_consent_read))
         }
     }
     Button(
@@ -256,6 +263,31 @@ private fun usernameHint(status: UsernameStatus) = when (status) {
     UsernameStatus.AVAILABLE -> Res.string.onboarding_username_available
     UsernameStatus.TAKEN -> Res.string.onboarding_username_taken
     UsernameStatus.INVALID -> Res.string.onboarding_username_invalid
+}
+
+@Composable
+private fun ConsentRow(label: String, checked: Boolean, onCheckedChange: (Boolean) -> Unit) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onCheckedChange(!checked) },
+    ) {
+        Checkbox(checked = checked, onCheckedChange = onCheckedChange)
+        Text(text = label, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
+    }
+}
+
+private fun requiredLabel(types: List<LegalDocumentType>) = when {
+    LegalDocumentType.TERMS in types && LegalDocumentType.PRIVACY in types -> Res.string.onboarding_consent_terms_and_privacy
+    LegalDocumentType.PRIVACY in types -> Res.string.onboarding_consent_privacy
+    else -> Res.string.onboarding_consent_terms
+}
+
+private fun LegalDocumentType.title() = when (this) {
+    LegalDocumentType.TERMS -> Res.string.onboarding_document_terms
+    LegalDocumentType.PRIVACY -> Res.string.onboarding_document_privacy
+    LegalDocumentType.MARKETING -> Res.string.onboarding_document_marketing
 }
 
 private fun LegalDocumentType.acceptLabel() = when (this) {

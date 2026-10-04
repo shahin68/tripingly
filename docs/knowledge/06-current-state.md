@@ -48,6 +48,7 @@ Every module has `commonMain`, plus `androidMain`/`iosMain` only where platform 
 | State collections | kotlinx-collections-immutable (in feature modules) | 0.5.2 |
 | Tests | kotlin-test, coroutines-test, Turbine, JUnit 4, Robolectric, Ktor MockEngine | 1.2.0 Turbine, 4.17 Robolectric |
 
+| In-app browser | androidx.browser Custom Tabs (Android), SFSafariViewController (iOS); `rememberInAppUriHandler()` in core:designsystem, provided as `LocalUriHandler` in `App.kt` | 1.8.0 |
 | Sign-in | androidx.credentials + googleid (Android); AuthenticationServices and GoogleSignIn-iOS via SPM (iOS) | 1.5.0, 1.1.1, GoogleSignIn-iOS 10.x |
 
 Not present yet: image loading (Coil), Firebase, Socket.IO, detekt/ktlint.

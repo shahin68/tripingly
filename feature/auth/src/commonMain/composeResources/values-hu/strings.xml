@@ -36,6 +36,10 @@
     <string name="onboarding_consent_terms">Elfogadom a Felhasználási feltételeket</string>
     <string name="onboarding_consent_privacy">Elfogadom az Adatvédelmi szabályzatot</string>
     <string name="onboarding_consent_marketing">Szeretnék híreket és ajánlatokat kapni</string>
+    <string name="onboarding_consent_terms_and_privacy">Elfogadom a Felhasználási feltételeket, és elolvastam az Adatvédelmi tájékoztatót</string>
+    <string name="onboarding_document_terms">Felhasználási feltételek</string>
+    <string name="onboarding_document_privacy">Adatvédelmi tájékoztató</string>
+    <string name="onboarding_document_marketing">Hírek és ajánlatok</string>
     <string name="onboarding_consent_read">Elolvasom</string>
     <string name="onboarding_consent_accept">Elfogadás és tovább</string>
 </resources>
