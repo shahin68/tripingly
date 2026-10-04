@@ -31,31 +31,19 @@ import org.koin.compose.viewmodel.koinViewModel
 
 /**
  * Shows sign-in or onboarding until the user is signed in and onboarded, then
- * [content]. Every view model below the gate lives in a store of the current
- * session phase and account ([SessionViewModelScope]); a sign-out or another
- * account clears them, so screens start fresh for the next user.
+ * [content]. After a sign-out [content] leaves the composition, so screens
+ * start fresh for the next user.
  */
 @Composable
 fun AuthGate(content: @Composable () -> Unit) {
     val viewModel: AuthGateViewModel = koinViewModel()
     val state by viewModel.uiState.collectAsStateWithLifecycle()
-    val session = state.session
-    SessionViewModelScope(key = session.scopeKey()) {
-        when (session) {
-            SessionState.Restoring -> LaunchScreen(state = state, onAction = viewModel::onAction)
-            is SessionState.SignedOut -> SignInRoute(reason = session.reason)
-            is SessionState.Onboarding -> OnboardingRoute()
-            is SessionState.SignedIn -> content()
-        }
+    when (val session = state.session) {
+        SessionState.Restoring -> LaunchScreen(state = state, onAction = viewModel::onAction)
+        is SessionState.SignedOut -> SignInRoute(reason = session.reason)
+        is SessionState.Onboarding -> OnboardingRoute()
+        is SessionState.SignedIn -> content()
     }
-}
-
-/** Screens below the gate keep their view models only while this stays the same. */
-internal fun SessionState.scopeKey(): String = when (this) {
-    SessionState.Restoring -> "restoring"
-    is SessionState.SignedOut -> "signed-out"
-    is SessionState.Onboarding -> "onboarding:${account.id}"
-    is SessionState.SignedIn -> "signed-in:${account.id}"
 }
 
 @Composable

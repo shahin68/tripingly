@@ -19,7 +19,7 @@ core/storage           SecureStore: iOS Keychain (cleared on a fresh install), A
 core/designsystem      TripinglyTheme (colors, typography, shapes, spacing), AppDropdownMenu, ErrorBanner, FloatingSearchBar
 core/navigation        Route keys (Home, TripMap) and the saved-state serializers config
 core/network           Ktor HttpClient (auth, refresh, headers), Ktorfit with an AppResult converter (error mapping), AuthApi, AccountApi, TokenStore (in memory), SessionEvents, CursorPaginator, idempotency keys, API models generated from openapi.json, environments via BuildKonfig
-feature/auth           AuthGate (launch / sign-in / onboarding until signed in; per-session ViewModelStore), SignIn, Onboarding (profile, consents), SocialSignIn: Credential Manager on Android; on iOS the Swift NativeSignIn (iosApp/NativeSignIn.swift) handed to MainViewController
+feature/auth           AuthGate (launch / sign-in / onboarding until signed in), SignIn, Onboarding (profile, consents), SocialSignIn: Credential Manager on Android; on iOS the Swift NativeSignIn (iosApp/NativeSignIn.swift) handed to MainViewController
 feature/trips          Home screen (My Trips + Social tab), create/rename/reschedule dialogs, trip use cases
 feature/map            Trip map: day tabs, markers, location, Google Maps (Android) / MapKit (iOS)
 ```
