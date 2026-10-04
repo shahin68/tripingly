@@ -39,6 +39,8 @@ include(":core:data")
 include(":core:designsystem")
 include(":core:navigation")
 include(":core:network")
+include(":core:storage")
 
 include(":feature:trips")
 include(":feature:map")
+include(":feature:auth")

@@ -8,5 +8,8 @@ kotlin {
         commonMain.dependencies {
             implementation(libs.compose.material.icons.extended)
         }
+        androidMain.dependencies {
+            implementation(libs.androidx.browser)
+        }
     }
 }

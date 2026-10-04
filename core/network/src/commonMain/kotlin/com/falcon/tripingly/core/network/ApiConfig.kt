@@ -11,6 +11,12 @@ data class ApiConfig(
     val logRequests: Boolean,
     /** Repositories bind their fakes instead of the API (never in production). */
     val useFakeApi: Boolean = false,
+    /** The backend's developer sign-in (`POST /auth/dev`); never in production. */
+    val developerSignIn: Boolean = false,
+    /** Staging's `X-Dev-Auth-Secret`, from a local Gradle property; never committed. */
+    val devAuthSecret: String? = null,
+    /** The backend's Google Web client ID, the audience of Google ID tokens; null until it exists. */
+    val googleWebClientId: String? = null,
 ) {
     init {
         require(baseUrl.isNotBlank()) {
@@ -25,6 +31,9 @@ data class ApiConfig(
             client = "$platform/${NetworkBuildConfig.APP_VERSION}",
             logRequests = NetworkBuildConfig.LOG_REQUESTS,
             useFakeApi = NetworkBuildConfig.USE_FAKE_API,
+            developerSignIn = NetworkBuildConfig.DEVELOPER_SIGN_IN,
+            devAuthSecret = NetworkBuildConfig.DEV_AUTH_SECRET.ifBlank { null },
+            googleWebClientId = NetworkBuildConfig.GOOGLE_WEB_CLIENT_ID.ifBlank { null },
         )
     }
 }

@@ -1,5 +1,6 @@
 package com.falcon.tripingly.core.network.di
 
+import com.falcon.tripingly.core.network.baseLanguageTag
 import io.ktor.client.engine.HttpClientEngine
 import io.ktor.client.engine.okhttp.OkHttp
 import java.util.Locale
@@ -12,6 +13,6 @@ internal actual val networkPlatformModule: Module = module {
 
 private object AndroidNetworkPlatform : NetworkPlatform {
     override val name = "android"
-    override fun languageTag(): String = Locale.getDefault().toLanguageTag()
+    override fun languageTag(): String = Locale.getDefault().toLanguageTag().baseLanguageTag()
     override fun engine(): HttpClientEngine = OkHttp.create()
 }

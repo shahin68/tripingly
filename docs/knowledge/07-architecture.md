@@ -79,11 +79,11 @@ Prefer what the project already has. New ones are confirmed with the user when t
 | Immutable state collections | kotlinx-collections-immutable |
 | OpenAPI models | an OpenAPI generator with a Kotlin multiplatform target |
 | Images | Coil 3 |
-| Secure storage | Keychain (iOS) and Keystore-backed encryption (Android) behind an `expect/actual` `SecureStore`, or a KMP library |
+| Secure storage | Our own `SecureStore` in `core:storage`: Keychain (iOS), Keystore AES-GCM key (Android); no library (decided 2026-10-03) |
 | Settings | multiplatform-settings or DataStore |
 | Socket.IO | a maintained client per platform behind a shared interface |
 | Push | Firebase Messaging per platform behind a shared `PushService` |
-| Sign-in | Android Credential Manager; iOS GoogleSignIn and AuthenticationServices |
+| Sign-in | Android Credential Manager + googleid; iOS GoogleSignIn (SPM) and AuthenticationServices, in Swift behind `NativeSignIn` (decided 2026-10-03) |
 | Quality | detekt with Compose rules, ktlint, Konsist architecture tests, Roborazzi screenshots |
 
 ## Testing

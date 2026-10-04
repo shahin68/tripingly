@@ -49,6 +49,9 @@ fun createHttpClient(
         }
         install(Auth) {
             bearer {
+                // The TokenStore is the only cache. Ktor's own would keep sending the previous
+                // account's access token after a sign-out and a sign-in with another account.
+                cacheTokens = false
                 loadTokens { tokenStore.get()?.toBearer() }
                 refreshTokens {
                     refresher.refresh(client, response) { markAsRefreshTokenRequest() }

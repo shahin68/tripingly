@@ -7,6 +7,7 @@ import com.falcon.tripingly.core.network.auth.SessionEndReason
 import io.ktor.client.request.get
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.content.TextContent
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.flow.first
@@ -72,7 +73,8 @@ class TokenRefreshTest {
     fun refusedRefresh_clearsTokensAndEndsTheSession() = runTest {
         val api = api { apiError(HttpStatusCode.Unauthorized, "REFRESH_TOKEN_REUSED") }
         api.tokenStore.save(AuthTokens("access-1", "refresh-1"))
-        val ended = async { api.sessionEvents.sessionEnded.first() }
+        // Subscribe before the call: the events have no replay.
+        val ended = async(start = CoroutineStart.UNDISPATCHED) { api.sessionEvents.sessionEnded.first() }
 
         val result = apiCall<Trip> { api.client.get("trips/t1") }
 
@@ -85,7 +87,8 @@ class TokenRefreshTest {
     fun suspendedAccount_endsTheSessionWithItsReason() = runTest {
         val api = api { apiError(HttpStatusCode.Forbidden, "ACCOUNT_SUSPENDED") }
         api.tokenStore.save(AuthTokens("access-1", "refresh-1"))
-        val ended = async { api.sessionEvents.sessionEnded.first() }
+        // Subscribe before the call: the events have no replay.
+        val ended = async(start = CoroutineStart.UNDISPATCHED) { api.sessionEvents.sessionEnded.first() }
 
         apiCall<Trip> { api.client.get("trips/t1") }
 
@@ -114,5 +117,20 @@ class TokenRefreshTest {
 
         assertEquals(AppResult.Error(DataError.Network.Unauthorized), result)
         assertEquals(0, api.refreshCalls)
+    }
+
+    @Test
+    fun anotherAccountsTokens_areSentRightAway() = runTest {
+        val api = TestApi { json("""{"id":"t1"}""") }
+        api.tokenStore.save(AuthTokens("access-a", "refresh-a"))
+        apiCall<Trip> { api.client.get("trips/t1") }
+
+        // Sign-out, then sign-in with another account.
+        api.tokenStore.clear()
+        apiCall<Trip> { api.client.get("trips/t1") }
+        api.tokenStore.save(AuthTokens("access-b", "refresh-b"))
+        apiCall<Trip> { api.client.get("trips/t1") }
+
+        assertEquals(listOf("access-a", null, "access-b"), api.requests.map { it.bearer })
     }
 }
