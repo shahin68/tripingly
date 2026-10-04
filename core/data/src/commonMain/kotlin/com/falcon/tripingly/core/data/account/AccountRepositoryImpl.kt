@@ -9,6 +9,7 @@ import com.falcon.tripingly.core.model.account.ProfileUpdate
 import com.falcon.tripingly.core.model.account.SignOutReason
 import com.falcon.tripingly.core.model.account.UsernameAvailability
 import com.falcon.tripingly.core.network.account.AccountApi
+import com.falcon.tripingly.core.network.baseLanguageTag
 import com.falcon.tripingly.core.network.model.RecordConsentDto
 import com.falcon.tripingly.core.network.model.UpdateMeDto
 
@@ -42,7 +43,8 @@ internal class AccountRepositoryImpl(
     }
 
     override suspend fun legalDocuments(locale: String): AppResult<List<LegalDocument>, DataError.Network> =
-        api.legalDocuments(locale).map { dto -> dto.items.map { it.toLegalDocument() } }
+        // Compose and platform locales can carry extensions (en-US-u-mu-celsius) the API rejects.
+        api.legalDocuments(locale.baseLanguageTag()).map { dto -> dto.items.map { it.toLegalDocument() } }
 
     override suspend fun accept(documents: List<LegalDocument>): AppResult<Account, DataError.Network> {
         for (document in documents) {
