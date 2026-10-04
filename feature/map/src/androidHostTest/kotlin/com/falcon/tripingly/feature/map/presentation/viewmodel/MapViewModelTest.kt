@@ -98,6 +98,10 @@ class MapViewModelTest {
         override suspend fun deleteMarkersForDay(tripId: String, dayIndex: Int) {
             markers.update { current -> current.filterNot { it.tripId == tripId && it.dayIndex == dayIndex } }
         }
+
+        override suspend fun deleteAll() {
+            markers.value = emptyList()
+        }
     }
 
     private class FakeTripRepository : TripRepository {
