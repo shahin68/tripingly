@@ -12,6 +12,13 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.ListItem
+import androidx.compose.material3.OutlinedCard
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
@@ -50,7 +57,6 @@ import com.falcon.tripingly.feature.auth.generated.resources.onboarding_birth_da
 import com.falcon.tripingly.feature.auth.generated.resources.onboarding_consent_accept
 import com.falcon.tripingly.feature.auth.generated.resources.onboarding_consent_marketing
 import com.falcon.tripingly.feature.auth.generated.resources.onboarding_consent_privacy
-import com.falcon.tripingly.feature.auth.generated.resources.onboarding_consent_read
 import com.falcon.tripingly.feature.auth.generated.resources.onboarding_consent_terms
 import com.falcon.tripingly.feature.auth.generated.resources.onboarding_consent_terms_and_privacy
 import com.falcon.tripingly.feature.auth.generated.resources.onboarding_document_marketing
@@ -108,6 +114,12 @@ internal fun OnboardingScreen(
                     }
                 },
             )
+        },
+        bottomBar = {
+            // The consent choice and its button stay anchored at the bottom; the documents scroll above.
+            if (state.step == Step.CONSENT && !state.isLoadingDocuments && state.documents.isNotEmpty()) {
+                ConsentFooter(state, onAction)
+            }
         },
     ) { padding ->
         Column(
@@ -224,36 +236,50 @@ private fun ColumnScope.ConsentStep(state: OnboardingViewModel.State, onAction: 
         TextButton(onClick = { onAction(Action.OnRetryDocumentsClick) }) { Text(stringResource(Res.string.common_retry)) }
         return
     }
+    OutlinedCard(modifier = Modifier.fillMaxWidth()) {
+        state.documents.forEachIndexed { index, item ->
+            if (index > 0) HorizontalDivider()
+            ListItem(
+                headlineContent = { Text(stringResource(item.document.type.title())) },
+                trailingContent = { Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null) },
+                modifier = Modifier.clickable { uriHandler.openUri(item.document.url) },
+            )
+        }
+    }
+}
+
+@Composable
+private fun ConsentFooter(state: OnboardingViewModel.State, onAction: (Action) -> Unit) {
     val (required, optional) = state.documents.partition { it.document.required }
-    if (required.isNotEmpty()) {
-        // One tick accepts every required document (Terms and Privacy); each is still recorded on its own.
-        ConsentRow(
-            label = stringResource(requiredLabel(required.map { it.document.type })),
-            checked = required.all { it.accepted },
-            onCheckedChange = { onAction(Action.OnRequiredDocumentsAcceptedChange(it)) },
-        )
-        required.forEach { item ->
-            TextButton(onClick = { uriHandler.openUri(item.document.url) }) {
-                Text(stringResource(item.document.type.title()))
-            }
-        }
-    }
-    optional.forEach { item ->
-        ConsentRow(
-            label = stringResource(item.document.type.acceptLabel()),
-            checked = item.accepted,
-            onCheckedChange = { onAction(Action.OnDocumentAcceptedChange(item.document, it)) },
-        )
-        TextButton(onClick = { uriHandler.openUri(item.document.url) }) {
-            Text(stringResource(Res.string.onboarding_consent_read))
-        }
-    }
-    Button(
-        onClick = { onAction(Action.OnAcceptClick) },
-        enabled = state.canAccept,
-        modifier = Modifier.fillMaxWidth(),
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .navigationBarsPadding()
+            .padding(MaterialTheme.spacing.large),
+        verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium),
     ) {
-        if (state.isSaving) CircularProgressIndicator() else Text(stringResource(Res.string.onboarding_consent_accept))
+        if (required.isNotEmpty()) {
+            // One tick accepts every required document (Terms and Privacy); each is still recorded on its own.
+            ConsentRow(
+                label = stringResource(requiredLabel(required.map { it.document.type })),
+                checked = required.all { it.accepted },
+                onCheckedChange = { onAction(Action.OnRequiredDocumentsAcceptedChange(it)) },
+            )
+        }
+        optional.forEach { item ->
+            ConsentRow(
+                label = stringResource(item.document.type.acceptLabel()),
+                checked = item.accepted,
+                onCheckedChange = { onAction(Action.OnDocumentAcceptedChange(item.document, it)) },
+            )
+        }
+        Button(
+            onClick = { onAction(Action.OnAcceptClick) },
+            enabled = state.canAccept,
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            if (state.isSaving) CircularProgressIndicator() else Text(stringResource(Res.string.onboarding_consent_accept))
+        }
     }
 }
 

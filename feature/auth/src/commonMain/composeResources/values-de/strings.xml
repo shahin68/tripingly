@@ -40,6 +40,5 @@
     <string name="onboarding_document_terms">Nutzungsbedingungen</string>
     <string name="onboarding_document_privacy">Datenschutzerklärung</string>
     <string name="onboarding_document_marketing">Neuigkeiten und Angebote</string>
-    <string name="onboarding_consent_read">Lesen</string>
     <string name="onboarding_consent_accept">Akzeptieren und weiter</string>
 </resources>

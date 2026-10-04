@@ -40,6 +40,5 @@
     <string name="onboarding_document_terms">Felhasználási feltételek</string>
     <string name="onboarding_document_privacy">Adatvédelmi tájékoztató</string>
     <string name="onboarding_document_marketing">Hírek és ajánlatok</string>
-    <string name="onboarding_consent_read">Elolvasom</string>
     <string name="onboarding_consent_accept">Elfogadás és tovább</string>
 </resources>
