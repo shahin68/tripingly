@@ -1,5 +1,6 @@
 package com.falcon.tripingly.core.network.di
 
+import com.falcon.tripingly.core.network.baseLanguageTag
 import io.ktor.client.engine.HttpClientEngine
 import io.ktor.client.engine.darwin.Darwin
 import org.koin.core.module.Module
@@ -14,6 +15,6 @@ internal actual val networkPlatformModule: Module = module {
 private object IosNetworkPlatform : NetworkPlatform {
     override val name = "ios"
     override fun languageTag(): String =
-        NSLocale.preferredLanguages.firstOrNull() as? String ?: "en"
+        (NSLocale.preferredLanguages.firstOrNull() as? String ?: "en").baseLanguageTag()
     override fun engine(): HttpClientEngine = Darwin.create()
 }
