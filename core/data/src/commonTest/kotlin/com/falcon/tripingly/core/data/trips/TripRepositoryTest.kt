@@ -10,6 +10,7 @@ import com.falcon.tripingly.core.model.trip.TripDates
 import com.falcon.tripingly.core.model.trip.TripRole
 import com.falcon.tripingly.core.model.trip.TripUpdate
 import com.falcon.tripingly.core.network.ApiConfig
+import com.falcon.tripingly.core.network.HttpLogLevel
 import com.falcon.tripingly.core.network.IDEMPOTENCY_KEY_HEADER
 import com.falcon.tripingly.core.network.NetworkJson
 import com.falcon.tripingly.core.network.model.TripDto
@@ -56,7 +57,7 @@ import kotlin.test.assertTrue
 
 class TripRepositoryTest {
 
-    private val config = ApiConfig(baseUrl = "https://api.test/v1", environment = "test", client = "android/1.0", logRequests = false)
+    private val config = ApiConfig(baseUrl = "https://api.test/v1", environment = "test", client = "android/1.0", httpLogLevel = HttpLogLevel.NONE)
 
     /** The API over a mock engine plus an in-memory cache; [handler] answers each request. */
     private inner class Harness(

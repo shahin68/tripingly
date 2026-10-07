@@ -8,6 +8,7 @@ import com.falcon.tripingly.core.model.account.ProfileUpdate
 import com.falcon.tripingly.core.model.account.SessionState
 import com.falcon.tripingly.core.model.account.SignOutReason
 import com.falcon.tripingly.core.network.ApiConfig
+import com.falcon.tripingly.core.network.HttpLogLevel
 import com.falcon.tripingly.core.network.account.createAccountApi
 import com.falcon.tripingly.core.network.auth.AuthTokens
 import com.falcon.tripingly.core.network.auth.InMemoryTokenStore
@@ -44,7 +45,7 @@ class SessionRepositoryTest {
         baseUrl = "https://api.test/v1",
         environment = "test",
         client = "android/1.0",
-        logRequests = false,
+        httpLogLevel = HttpLogLevel.NONE,
         developerSignIn = true,
         devAuthSecret = "s3cret",
     )

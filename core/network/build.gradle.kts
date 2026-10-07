@@ -25,6 +25,14 @@ val localProperties = Properties().apply {
 fun localConfig(name: String, default: String = ""): String =
     localProperties.getProperty(name) ?: providers.gradleProperty(name).orNull ?: default
 
+fun httpLogLevel(): String {
+    val level = localConfig("tripinly.httpLogLevel", "BASIC").trim().uppercase()
+    require(level in setOf("NONE", "BASIC", "HEADERS", "BODY")) {
+        "tripinly.httpLogLevel must be NONE, BASIC, HEADERS or BODY, not '$level'"
+    }
+    return level
+}
+
 kotlin {
     sourceSets {
         all {
@@ -40,6 +48,7 @@ kotlin {
                 api(libs.ktorfit.lib.light)
                 implementation(libs.ktor.client.content.negotiation)
                 implementation(libs.ktor.client.auth)
+                implementation(libs.ktor.client.logging)
                 implementation(libs.ktor.serialization.kotlinx.json)
                 api(libs.kotlinx.serialization.json)
                 implementation(libs.kotlinx.coroutines.core)
@@ -97,7 +106,8 @@ buildkonfig {
     defaultConfigs {
         buildConfigField(STRING, "ENVIRONMENT", "staging")
         buildConfigField(STRING, "BASE_URL", "https://api-staging-4ade.up.railway.app/v1")
-        buildConfigField(BOOLEAN, "LOG_REQUESTS", "true")
+        // tripinly.httpLogLevel=NONE|BASIC|HEADERS|BODY (BASIC by default). Secrets and personal data are hidden.
+        buildConfigField(STRING, "HTTP_LOG_LEVEL", httpLogLevel())
         // tripinly.useFakeApi=true: repositories use their fakes (demo before an endpoint exists).
         buildConfigField(BOOLEAN, "USE_FAKE_API", localConfig("tripinly.useFakeApi", "false"))
         buildConfigField(STRING, "APP_VERSION", providers.gradleProperty("tripinly.appVersion").getOrElse("1.0"))
@@ -121,7 +131,7 @@ buildkonfig {
     defaultConfigs("production") {
         buildConfigField(STRING, "ENVIRONMENT", "production")
         buildConfigField(STRING, "BASE_URL", "")
-        buildConfigField(BOOLEAN, "LOG_REQUESTS", "false")
+        buildConfigField(STRING, "HTTP_LOG_LEVEL", "NONE")
         buildConfigField(BOOLEAN, "USE_FAKE_API", "false")
         buildConfigField(BOOLEAN, "DEVELOPER_SIGN_IN", "false")
         buildConfigField(STRING, "DEV_AUTH_SECRET", "")

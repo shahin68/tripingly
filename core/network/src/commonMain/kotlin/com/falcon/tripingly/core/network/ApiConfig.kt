@@ -7,8 +7,8 @@ data class ApiConfig(
     val environment: String,
     /** Sent as `X-Client`, e.g. `android/1.0`. */
     val client: String,
-    /** Logs method, path and status (never query strings, headers or bodies). */
-    val logRequests: Boolean,
+    /** How much of each call is logged; secrets and personal data are always hidden. */
+    val httpLogLevel: HttpLogLevel,
     /** Repositories bind their fakes instead of the API (never in production). */
     val useFakeApi: Boolean = false,
     /** The backend's developer sign-in (`POST /auth/dev`); never in production. */
@@ -29,7 +29,7 @@ data class ApiConfig(
             baseUrl = NetworkBuildConfig.BASE_URL.trimEnd('/'),
             environment = NetworkBuildConfig.ENVIRONMENT,
             client = "$platform/${NetworkBuildConfig.APP_VERSION}",
-            logRequests = NetworkBuildConfig.LOG_REQUESTS,
+            httpLogLevel = HttpLogLevel.valueOf(NetworkBuildConfig.HTTP_LOG_LEVEL),
             useFakeApi = NetworkBuildConfig.USE_FAKE_API,
             developerSignIn = NetworkBuildConfig.DEVELOPER_SIGN_IN,
             devAuthSecret = NetworkBuildConfig.DEV_AUTH_SECRET.ifBlank { null },

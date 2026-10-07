@@ -39,7 +39,7 @@ Contract: the backend's `/v1/openapi.json` (staging: `https://api-staging-4ade.u
 - `TokenStore` is in memory until stage 3 adds Keychain / Keystore storage.
 - `CursorPaginator` + `CursorPage` for `{ items, nextCursor }`.
 - Content-creating POSTs (trips, trip copy, days, markers, add-to-trip, marker copy, comments, invites) declare `@Header(IDEMPOTENCY_KEY_HEADER) idempotencyKey: String` and pass a key from `newIdempotencyKey()` made once per user action and reused for its retries.
-- Environment: `-Pbuildkonfig.flavor=local|staging|production` (staging by default); fakes with `tripinly.useFakeApi=true` (`ApiConfig.useFakeApi`). Local config values (keys, client IDs, switches) go in the untracked root `local.properties`, read through `localConfig()` in `core/network/build.gradle.kts`, with a Gradle property as fallback; never in a tracked file.
+- Environment: `-Pbuildkonfig.flavor=local|staging|production` (staging by default); fakes with `tripinly.useFakeApi=true` (`ApiConfig.useFakeApi`); HTTP logging with `tripinly.httpLogLevel=NONE|BASIC|HEADERS|BODY` (`ApiConfig.httpLogLevel`), masked by `redactForLog` — add any new secret or personal field to it. Local config values (keys, client IDs, switches) go in the untracked root `local.properties`, read through `localConfig()` in `core/network/build.gradle.kts`, with a Gradle property as fallback; never in a tracked file.
 - Global handling still to wire in the app (stage 3): `ONBOARDING_INCOMPLETE` → onboarding, `CONSENT_REQUIRED` → consent screen, `ACCOUNT_SUSPENDED` → message + sign-out, `RATE_LIMITED` → "try again shortly".
 
 ### Regenerating the API models
