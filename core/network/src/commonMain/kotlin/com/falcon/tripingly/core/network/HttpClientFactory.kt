@@ -11,6 +11,11 @@ import io.ktor.client.plugins.auth.Auth
 import io.ktor.client.plugins.auth.providers.bearer
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.plugins.defaultRequest
+import io.ktor.client.plugins.logging.LogLevel
+import io.ktor.client.plugins.logging.Logger
+import io.ktor.client.plugins.logging.Logging
+import io.ktor.client.plugins.logging.LoggingFormat
+import io.ktor.client.plugins.logging.SIMPLE
 import io.ktor.client.request.header
 import io.ktor.http.HttpHeaders
 import io.ktor.serialization.kotlinx.json.json
@@ -30,7 +35,6 @@ fun createHttpClient(
     sessionEvents: SessionEvents,
     languageTag: () -> String,
     logHttp: Boolean = false,
-    log: (String) -> Unit = ::println,
 ): HttpClient {
     val refresher = TokenRefresher(config, tokenStore, sessionEvents)
     return HttpClient(engine) {
@@ -58,7 +62,14 @@ fun createHttpClient(
                 sendWithoutRequest { request -> "auth" !in request.url.pathSegments }
             }
         }
-        if (logHttp) installDebugLogging(log)
+        if (logHttp) {
+            // Everything, tokens included: debug builds only.
+            install(Logging) {
+                format = LoggingFormat.OkHttp
+                level = LogLevel.ALL
+                logger = Logger.SIMPLE
+            }
+        }
     }
 }
 
