@@ -2,6 +2,8 @@
 
 How the app is put together and the rules new code follows. `06-current-state.md` says what exists; this file says how to extend it. Where existing code still breaks a rule here, fix it when that code is next touched for a feature, not in unrelated PRs.
 
+**Consistency over novelty.** New code follows how the codebase already does the same thing. A new style (helper extensions, wrappers, config switches, test hooks in production classes) needs a reason and is applied everywhere at once, decided with the owner; otherwise it is tech debt and doesn't go in.
+
 ## Modules
 
 ```
