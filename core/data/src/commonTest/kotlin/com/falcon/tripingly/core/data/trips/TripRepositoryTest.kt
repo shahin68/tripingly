@@ -10,7 +10,6 @@ import com.falcon.tripingly.core.model.trip.TripDates
 import com.falcon.tripingly.core.model.trip.TripRole
 import com.falcon.tripingly.core.model.trip.TripUpdate
 import com.falcon.tripingly.core.network.ApiConfig
-import com.falcon.tripingly.core.network.HttpLogLevel
 import com.falcon.tripingly.core.network.IDEMPOTENCY_KEY_HEADER
 import com.falcon.tripingly.core.network.NetworkJson
 import com.falcon.tripingly.core.network.model.TripDto
@@ -57,7 +56,7 @@ import kotlin.test.assertTrue
 
 class TripRepositoryTest {
 
-    private val config = ApiConfig(baseUrl = "https://api.test/v1", environment = "test", client = "android/1.0", httpLogLevel = HttpLogLevel.NONE)
+    private val config = ApiConfig(baseUrl = "https://api.test/v1", environment = "test", client = "android/1.0")
 
     /** The API over a mock engine plus an in-memory cache; [handler] answers each request. */
     private inner class Harness(
@@ -81,10 +80,8 @@ class TripRepositoryTest {
         val pending = PendingTripWrites()
         val trips = OfflineFirstTripRepository(ktorfit.createTripsApi(), local, pending, currentUserId = { ME })
 
-        /** Sends on a real dispatcher, like the app; retries a dropped connection once, quickly. */
-        fun markers() = DefaultMarkerRepository(
-            ktorfit.createMarkersApi(), trips, local, pending, failureScope, retryDelays = listOf(10.milliseconds),
-        )
+        /** Sends on a real dispatcher, like the app. */
+        fun markers() = DefaultMarkerRepository(ktorfit.createMarkersApi(), trips, local, pending, failureScope)
 
         suspend fun awaitTrip(condition: (TripDetails) -> Boolean) {
             realTime { local.trips.first { all -> all["t1"]?.let(condition) == true } }
@@ -312,10 +309,11 @@ class TripRepositoryTest {
         val failure = failures.next()
 
         assertTrue(failure.isConnectionProblem)
-        assertEquals(2, harness.requests.count { it.method == HttpMethod.Post })
+        // The first try and two quiet retries.
+        assertEquals(3, harness.requests.count { it.method == HttpMethod.Post })
         assertTrue(harness.local.trip("t1")!!.days[0].markers.isEmpty())
         // The reload after the queue emptied, which fails too.
-        harness.awaitRequests(3)
+        harness.awaitRequests(4)
 
         online = true
         markers.retry(failure)
@@ -439,4 +437,4 @@ class TripRepositoryTest {
 
 /** Waits on the real clock: the marker queue runs outside the test's virtual time. */
 private suspend fun <T> realTime(block: suspend () -> T): T =
-    withContext(Dispatchers.Default) { withTimeout(5.seconds) { block() } }
+    withContext(Dispatchers.Default) { withTimeout(10.seconds) { block() } }

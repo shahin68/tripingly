@@ -31,6 +31,9 @@ internal interface NetworkPlatform {
     fun languageTag(): String
 
     fun engine(): HttpClientEngine
+
+    /** A debug build (Android debuggable, iOS debug binary); only these log HTTP calls. */
+    val isDebugBuild: Boolean
 }
 
 val networkModule = module {
@@ -46,6 +49,7 @@ val networkModule = module {
             tokenStore = get(),
             sessionEvents = get(),
             languageTag = platform::languageTag,
+            logHttp = platform.isDebugBuild,
         )
     }
     single<Ktorfit> { createKtorfit(get(), get()) }

@@ -25,14 +25,6 @@ val localProperties = Properties().apply {
 fun localConfig(name: String, default: String = ""): String =
     localProperties.getProperty(name) ?: providers.gradleProperty(name).orNull ?: default
 
-fun httpLogLevel(): String {
-    val level = localConfig("tripinly.httpLogLevel", "BASIC").trim().uppercase()
-    require(level in setOf("NONE", "BASIC", "HEADERS", "BODY")) {
-        "tripinly.httpLogLevel must be NONE, BASIC, HEADERS or BODY, not '$level'"
-    }
-    return level
-}
-
 kotlin {
     sourceSets {
         all {
@@ -106,8 +98,6 @@ buildkonfig {
     defaultConfigs {
         buildConfigField(STRING, "ENVIRONMENT", "staging")
         buildConfigField(STRING, "BASE_URL", "https://api-staging-4ade.up.railway.app/v1")
-        // tripinly.httpLogLevel=NONE|BASIC|HEADERS|BODY (BASIC by default). Secrets and personal data are hidden.
-        buildConfigField(STRING, "HTTP_LOG_LEVEL", httpLogLevel())
         // tripinly.useFakeApi=true: repositories use their fakes (demo before an endpoint exists).
         buildConfigField(BOOLEAN, "USE_FAKE_API", localConfig("tripinly.useFakeApi", "false"))
         buildConfigField(STRING, "APP_VERSION", providers.gradleProperty("tripinly.appVersion").getOrElse("1.0"))
@@ -131,7 +121,6 @@ buildkonfig {
     defaultConfigs("production") {
         buildConfigField(STRING, "ENVIRONMENT", "production")
         buildConfigField(STRING, "BASE_URL", "")
-        buildConfigField(STRING, "HTTP_LOG_LEVEL", "NONE")
         buildConfigField(BOOLEAN, "USE_FAKE_API", "false")
         buildConfigField(BOOLEAN, "DEVELOPER_SIGN_IN", "false")
         buildConfigField(STRING, "DEV_AUTH_SECRET", "")

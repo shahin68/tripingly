@@ -28,7 +28,7 @@ A modular KMP app: `androidApp` and `iosApp` shells, `shared` as the umbrella, `
 2. **Shared first.** Business logic, networking, models, repositories, view models/state holders live in shared Kotlin code. Platform code only for what must be native (map views, sign-in SDKs, push, photo picker, secure storage).
 3. **The API contract changes on both sides together.** Build against the backend's OpenAPI (`/v1/openapi.json`) and `03-api-contract.md`. When the client needs a new endpoint or field, change the backend first (its own PR, its `04-api-spec.md`), then update `03-api-contract.md` here, and list every contract change in the report.
 4. **Google Maps is for drawing only.** Hide Google's own POI icons with a map style. Never send Google place IDs, names or coordinates of Google POIs to the backend, and don't use Google Places, Geocoding or Directions APIs. All places, search results and routes come from the Tripinly backend. Show "© OpenStreetMap contributors" on map screens that show our places or routes.
-5. **Tokens are secrets.** Store them only in secure storage (iOS Keychain; Android Keystore-backed encryption). Never log tokens, emails, birth dates, precise locations or signed photo URLs.
+5. **Tokens are secrets.** Store them only in secure storage (iOS Keychain; Android Keystore-backed encryption). Release builds never log tokens, emails, birth dates, precise locations or signed photo URLs. Debug builds may log HTTP calls in full, tokens included (the owner's call, 2026-10-07).
 6. **Errors by code.** Handle API errors by `error.code`, never by message text. Show the server's localized `message` when there's no specific handling.
 7. **No hardcoded user-facing strings.** All text goes through the project's localization resources, for every supported language.
 8. **Premium is decided by the server.** Show paid UI based on `GET /me` entitlements; never unlock by a local flag.
@@ -49,6 +49,7 @@ A modular KMP app: `androidApp` and `iosApp` shells, `shared` as the umbrella, `
 ## How to work
 
 1. **Clarify first when it matters.** If a request conflicts with the knowledge files, touches `09-open-questions.md`, or is a product/design decision, ask. Small engineering choices you make yourself and mention.
+   **Build exactly what was asked, the way an experienced Android/KMP developer would expect it.** No extra switches, levels, Gradle properties or abstractions nobody asked for. If a rule seems to force extra machinery, ask first with the simple option.
 2. **Plan non-trivial changes** in a few lines (screens, shared modules, API calls, platform code) before editing.
 3. **Use the matching skill** from `.claude/skills/`.
 4. **Backend not ready?** Put a repository interface in front of every API use, with a fake implementation behind a build flag, so features can be built and demoed before the endpoint exists. Remove fakes from release builds.

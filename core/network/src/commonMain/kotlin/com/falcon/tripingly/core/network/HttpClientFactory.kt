@@ -21,7 +21,7 @@ private const val TIMEOUT_MILLIS = 15_000L
  * The app's one HTTP client for the Tripinly API. Paths are relative to
  * [ApiConfig.baseUrl] (`client.get("trips")`). Adds the bearer token (except on
  * the auth routes), `Accept-Language` and `X-Client`, refreshes expired tokens once,
- * and logs at [ApiConfig.httpLogLevel] with secrets and personal data hidden.
+ * and, when [logHttp] is on (debug builds), logs every call in full.
  */
 fun createHttpClient(
     engine: HttpClientEngine,
@@ -29,6 +29,7 @@ fun createHttpClient(
     tokenStore: TokenStore,
     sessionEvents: SessionEvents,
     languageTag: () -> String,
+    logHttp: Boolean = false,
     log: (String) -> Unit = ::println,
 ): HttpClient {
     val refresher = TokenRefresher(config, tokenStore, sessionEvents)
@@ -57,7 +58,7 @@ fun createHttpClient(
                 sendWithoutRequest { request -> "auth" !in request.url.pathSegments }
             }
         }
-        installLogging(config.httpLogLevel, log)
+        if (logHttp) installDebugLogging(log)
     }
 }
 

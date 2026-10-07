@@ -11,7 +11,6 @@ import com.falcon.tripingly.core.network.model.MarkerOrderDto
 import com.falcon.tripingly.core.network.model.UpdateMarkerDto
 import com.falcon.tripingly.core.network.newIdempotencyKey
 import com.falcon.tripingly.core.network.trips.MarkersApi
-import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
 import kotlin.uuid.Uuid
 import kotlinx.coroutines.CoroutineScope
@@ -29,7 +28,7 @@ import kotlinx.coroutines.sync.withLock
  * Applies marker changes to the cache at once and sends them to the server one
  * at a time per trip, from [scope] so leaving the map doesn't cancel them.
  *
- * A dropped connection is retried after each of [retryDelays]; if it still
+ * A dropped connection is retried after 1 s and again after 2 s; if it still
  * fails, the trip counts as offline and its remaining queued changes fail at
  * once instead of each waiting. Every failed change is undone and reported.
  * When a trip's queue is empty the trip is reloaded, so positions, place links
@@ -41,7 +40,6 @@ internal class DefaultMarkerRepository(
     private val local: TripLocalDataSource,
     private val pending: PendingTripWrites,
     private val scope: CoroutineScope,
-    private val retryDelays: List<Duration> = listOf(1.seconds, 2.seconds),
 ) : MarkerRepository {
 
     private val queuesLock = Mutex()
@@ -159,8 +157,8 @@ internal class DefaultMarkerRepository(
         var attempt = 0
         while (true) {
             val error = send(change, state) ?: return null
-            if (!error.isConnectionProblem() || attempt == retryDelays.size) return error
-            delay(retryDelays[attempt++])
+            if (!error.isConnectionProblem() || attempt == RETRY_DELAYS.size) return error
+            delay(RETRY_DELAYS[attempt++])
         }
     }
 
@@ -200,5 +198,10 @@ internal class DefaultMarkerRepository(
             change is MarkerChange.Delete && error.hasCode(TripErrorCodes.NOT_FOUND) -> null
             else -> error
         }
+    }
+
+    private companion object {
+        /** Waits before each quiet retry of a dropped connection. */
+        val RETRY_DELAYS = listOf(1.seconds, 2.seconds)
     }
 }

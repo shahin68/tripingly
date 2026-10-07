@@ -33,13 +33,13 @@ Contract: the backend's `/v1/openapi.json` (staging: `https://api-staging-4ade.u
       ): AppResult<TripResponse, DataError.Network>
   }
   ```
-- The `HttpClient` under it comes from Koin (`networkModule`). It sends the bearer token (not on `/auth/*`), `Accept-Language` and `X-Client`, uses 15 s timeouts, and logs only method, path and status (never query strings, headers or bodies).
+- The `HttpClient` under it comes from Koin (`networkModule`). It sends the bearer token (not on `/auth/*`), `Accept-Language` and `X-Client`, uses 15 s timeouts, and in debug builds logs every call in full (Ktor `Logging`, OkHttp format; `NetworkPlatform.isDebugBuild`). Release builds never log. Don't add log levels, switches or masking unless asked.
 - The `AppResult` result carries `Api(status, code, message, details)` for the server's envelope (switch on `code`, flattened `details` like `fields.title`, `retryAfterSeconds`), `Unauthorized` for 401, `NoInternet`, `RequestTimeout`, `ServerError`, `Serialization`. `204` → `Unit`. Never catch exceptions around a call. Tests call the real interface through `createKtorfit` over a `MockEngine` client (Ktorfit generates code for main sources only, not for test interfaces).
 - **Refresh** is automatic: on 401 `TOKEN_EXPIRED` one `POST /auth/refresh` (concurrent requests share it), both tokens saved, request retried. A refused refresh clears the tokens and emits `SessionEvents.sessionEnded` (with `ACCOUNT_SUSPENDED` when that's why); the app listens and goes to sign-in.
 - `TokenStore` is in memory until stage 3 adds Keychain / Keystore storage.
 - `CursorPaginator` + `CursorPage` for `{ items, nextCursor }`.
 - Content-creating POSTs (trips, trip copy, days, markers, add-to-trip, marker copy, comments, invites) declare `@Header(IDEMPOTENCY_KEY_HEADER) idempotencyKey: String` and pass a key from `newIdempotencyKey()` made once per user action and reused for its retries.
-- Environment: `-Pbuildkonfig.flavor=local|staging|production` (staging by default); fakes with `tripinly.useFakeApi=true` (`ApiConfig.useFakeApi`); HTTP logging with `tripinly.httpLogLevel=NONE|BASIC|HEADERS|BODY` (`ApiConfig.httpLogLevel`), masked by `redactForLog` — add any new secret or personal field to it. Local config values (keys, client IDs, switches) go in the untracked root `local.properties`, read through `localConfig()` in `core/network/build.gradle.kts`, with a Gradle property as fallback; never in a tracked file.
+- Environment: `-Pbuildkonfig.flavor=local|staging|production` (staging by default); fakes with `tripinly.useFakeApi=true` (`ApiConfig.useFakeApi`) Local config values (keys, client IDs, switches) go in the untracked root `local.properties`, read through `localConfig()` in `core/network/build.gradle.kts`, with a Gradle property as fallback; never in a tracked file.
 - Global handling still to wire in the app (stage 3): `ONBOARDING_INCOMPLETE` → onboarding, `CONSENT_REQUIRED` → consent screen, `ACCOUNT_SUSPENDED` → message + sign-out, `RATE_LIMITED` → "try again shortly".
 
 ### Regenerating the API models
