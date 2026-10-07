@@ -92,7 +92,7 @@ REST over HTTPS, JSON, base path `/v1`.
 ### Markers
 | Method | Path | Notes |
 |---|---|---|
-| POST | `/days/{id}/markers` | Either `placeId`, or `name` + `location` (+ optional `osmType`/`osmId` from a Photon result). Optional `time`. Google IDs not accepted |
+| POST | `/days/{id}/markers` | Either `placeId`, or `name` + `location` (+ optional `osmType`/`osmId` from a Photon result). Optional `time`. Optional `id`: a UUID the app chose so the marker shows before the server answers; `409 ID_CONFLICT` if that ID is taken (the app treats it as "already saved"). Google IDs not accepted |
 | GET | `/markers/{id}` | Marker with photos, like state, comment count |
 | PATCH | `/markers/{id}` | Name, time, location, move to another day of the same trip |
 | DELETE | `/markers/{id}` | |
@@ -175,6 +175,6 @@ Field names the client relies on (full schemas in OpenAPI):
 
 ## Stable error codes (starter set)
 
-`UNAUTHENTICATED`, `TOKEN_EXPIRED`, `REFRESH_TOKEN_REUSED`, `ONBOARDING_INCOMPLETE`, `CONSENT_REQUIRED`, `AGE_REQUIREMENT_NOT_MET`, `USERNAME_TAKEN`, `USERNAME_INVALID`, `VALIDATION_FAILED`, `NOT_FOUND`, `FORBIDDEN`, `TRIP_NOT_COPYABLE`, `USER_BLOCKED`, `INVITE_EXPIRED`, `PHOTO_LIMIT_REACHED`, `UPLOAD_TOO_LARGE`, `UNSUPPORTED_MEDIA_TYPE`, `PREMIUM_REQUIRED`, `RATE_LIMITED`, `ACCOUNT_SUSPENDED`, `REAUTH_REQUIRED`, `ROUTING_UNAVAILABLE`, `BBOX_TOO_LARGE`.
+`UNAUTHENTICATED`, `TOKEN_EXPIRED`, `REFRESH_TOKEN_REUSED`, `ONBOARDING_INCOMPLETE`, `CONSENT_REQUIRED`, `AGE_REQUIREMENT_NOT_MET`, `USERNAME_TAKEN`, `USERNAME_INVALID`, `VALIDATION_FAILED`, `ID_CONFLICT`, `NOT_FOUND`, `FORBIDDEN`, `TRIP_NOT_COPYABLE`, `USER_BLOCKED`, `INVITE_EXPIRED`, `PHOTO_LIMIT_REACHED`, `UPLOAD_TOO_LARGE`, `UNSUPPORTED_MEDIA_TYPE`, `PREMIUM_REQUIRED`, `RATE_LIMITED`, `ACCOUNT_SUSPENDED`, `REAUTH_REQUIRED`, `ROUTING_UNAVAILABLE`, `BBOX_TOO_LARGE`.
 
 Add new codes here when you introduce them.

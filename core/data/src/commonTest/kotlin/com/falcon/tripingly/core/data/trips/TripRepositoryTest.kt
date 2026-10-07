@@ -33,7 +33,21 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import kotlinx.datetime.LocalDate
 import kotlinx.io.IOException
+import com.falcon.tripingly.core.model.trip.TripDetails
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeout
+import kotlin.test.AfterTest
 import kotlin.test.Test
+import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.Duration.Companion.seconds
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
 import kotlin.test.assertNotNull
@@ -63,9 +77,28 @@ class TripRepositoryTest {
             ),
             config,
         )
-        val trips = OfflineFirstTripRepository(ktorfit.createTripsApi(), local, currentUserId = { ME })
-        val markers = DefaultMarkerRepository(ktorfit.createMarkersApi(), trips, local)
+        val pending = PendingTripWrites()
+        val trips = OfflineFirstTripRepository(ktorfit.createTripsApi(), local, pending, currentUserId = { ME })
+
+        /** Sends on a real dispatcher, like the app; retries a dropped connection once, quickly. */
+        fun markers() = DefaultMarkerRepository(
+            ktorfit.createMarkersApi(), trips, local, pending, failureScope, retryDelays = listOf(10.milliseconds),
+        )
+
+        suspend fun awaitTrip(condition: (TripDetails) -> Boolean) {
+            realTime { local.trips.first { all -> all["t1"]?.let(condition) == true } }
+        }
+
+        suspend fun awaitRequests(count: Int) {
+            realTime { while (requests.size < count) delay(5.milliseconds) }
+        }
     }
+
+    /** Where marker queues run; cancelled after each test. */
+    private val failureScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+
+    @AfterTest
+    fun cancelQueues() = failureScope.cancel()
 
     private fun MockRequestHandleScope.json(body: String, status: HttpStatusCode = HttpStatusCode.OK) =
         respond(body, status, headersOf(HttpHeaders.ContentType, "application/json"))
@@ -212,25 +245,127 @@ class TripRepositoryTest {
     }
 
     @Test
-    fun addMarker_showsTheServersMarker_andReloadsTheTrip() = runTest {
-        val withMarker = TripJson.trip("t1", days = listOf(TripJson.day("d0", 0, "2026-06-01", TripJson.marker("m0", "t1", "d0", 0))))
+    fun addMarker_showsAtOnce_sendsItsId_andReloadsOnceSent() = runTest {
+        var sentId = ""
         val harness = Harness { request ->
             when (request.method) {
-                HttpMethod.Post -> json(TripJson.marker("m0", "t1", "d0", 0), HttpStatusCode.Created)
-                else -> json(withMarker)
+                HttpMethod.Post -> json(TripJson.marker(request.sentId().also { sentId = it }, "t1", "d0", 0), HttpStatusCode.Created)
+                else -> json(tripWithMarker(sentId))
             }
         }
         harness.local.saveTrip(details(TripJson.trip("t1")))
+        val markers = harness.markers()
 
-        val result = harness.markers.addMarker("d0", NewMarker("Stop #1", GeoPoint(48.8584, 2.2945)))
+        val created = markers.addMarker("t1", "d0", NewMarker("Stop #1", GeoPoint(48.8584, 2.2945)))
 
-        assertEquals("m0", (result as AppResult.Success).data.id)
+        // On the map before the server has answered.
+        assertEquals(listOf(created.id), harness.local.trip("t1")!!.days[0].markers.map { it.id })
+        assertEquals("", created.placeId)
+        harness.awaitTrip { it.days[0].markers.singleOrNull()?.placeId?.isNotEmpty() == true }
         assertEquals("/v1/days/d0/markers", harness.requests[0].url.encodedPath)
         assertEquals(
-            """{"name":"Stop #1","location":{"lat":48.8584,"lng":2.2945}}""",
+            """{"id":"${created.id}","name":"Stop #1","location":{"lat":48.8584,"lng":2.2945}}""",
             harness.requests[0].bodyText(),
         )
-        assertEquals(listOf("m0"), harness.trips.observeTrip("t1").first()!!.days[0].markers.map { it.id })
+        assertEquals(created.id, harness.requests[0].headers[IDEMPOTENCY_KEY_HEADER])
+        assertEquals("/v1/trips/t1", harness.requests[1].url.encodedPath)
+    }
+
+    @Test
+    fun addMarker_refused_takesItBackOff_andReportsIt() = runTest {
+        val harness = Harness { request ->
+            when (request.method) {
+                HttpMethod.Post -> json(TripJson.error("FORBIDDEN", "Only editors can add stops."), HttpStatusCode.Forbidden)
+                else -> json(TripJson.trip("t1"))
+            }
+        }
+        harness.local.saveTrip(details(TripJson.trip("t1")))
+        val markers = harness.markers()
+        val failures = markers.collectFailures()
+
+        markers.addMarker("t1", "d0", NewMarker("Stop #1", GeoPoint(48.8584, 2.2945)))
+        val failure = failures.next()
+
+        assertTrue(harness.local.trip("t1")!!.days[0].markers.isEmpty())
+        assertEquals("Stop #1", failure.markerName)
+        assertTrue(failure.error.hasCode(TripErrorCodes.FORBIDDEN))
+        assertEquals(false, failure.isConnectionProblem)
+    }
+
+    @Test
+    fun addMarker_offline_retriesQuietly_thenUndoes_andRetrySendsItAgain() = runTest {
+        var online = false
+        var sentId = ""
+        val harness = Harness { request ->
+            if (!online) throw IOException("offline")
+            when (request.method) {
+                HttpMethod.Post -> json(TripJson.marker(request.sentId().also { sentId = it }, "t1", "d0", 0), HttpStatusCode.Created)
+                else -> json(tripWithMarker(sentId))
+            }
+        }
+        harness.local.saveTrip(details(TripJson.trip("t1")))
+        val markers = harness.markers()
+        val failures = markers.collectFailures()
+
+        val created = markers.addMarker("t1", "d0", NewMarker("Stop #1", GeoPoint(48.8584, 2.2945)))
+        val failure = failures.next()
+
+        assertTrue(failure.isConnectionProblem)
+        assertEquals(2, harness.requests.count { it.method == HttpMethod.Post })
+        assertTrue(harness.local.trip("t1")!!.days[0].markers.isEmpty())
+        // The reload after the queue emptied, which fails too.
+        harness.awaitRequests(3)
+
+        online = true
+        markers.retry(failure)
+
+        assertEquals(listOf(created.id), harness.local.trip("t1")!!.days[0].markers.map { it.id })
+        harness.awaitTrip { it.days[0].markers.singleOrNull()?.placeId?.isNotEmpty() == true }
+        assertEquals(created.id, sentId)
+    }
+
+    @Test
+    fun addMarker_idConflict_meansAnEarlierAttemptGotThrough() = runTest {
+        var sentId = ""
+        val harness = Harness { request ->
+            when (request.method) {
+                HttpMethod.Post -> {
+                    sentId = request.sentId()
+                    json(TripJson.error("ID_CONFLICT", "Taken."), HttpStatusCode.Conflict)
+                }
+                else -> json(tripWithMarker(sentId))
+            }
+        }
+        harness.local.saveTrip(details(TripJson.trip("t1")))
+        val markers = harness.markers()
+        val failures = markers.collectFailures()
+
+        val created = markers.addMarker("t1", "d0", NewMarker("Stop #1", GeoPoint(48.8584, 2.2945)))
+
+        harness.awaitTrip { it.days[0].markers.singleOrNull()?.placeId?.isNotEmpty() == true }
+        assertEquals(created.id, harness.local.trip("t1")!!.days[0].markers.single().id)
+        assertTrue(failures.isEmpty())
+    }
+
+    @Test
+    fun deleteMarker_alreadyGone_staysDeleted() = runTest {
+        val harness = Harness { request ->
+            when (request.method) {
+                HttpMethod.Delete -> json(TripJson.error("NOT_FOUND", "Not found."), HttpStatusCode.NotFound)
+                else -> json(TripJson.trip("t1"))
+            }
+        }
+        harness.local.saveTrip(details(TripJson.trip("t1", days = listOf(TripJson.day("d0", 0, null, TripJson.marker("m0", "t1", "d0", 0))))))
+        val markers = harness.markers()
+        val failures = markers.collectFailures()
+
+        markers.deleteMarker("m0")
+
+        assertTrue(harness.local.trip("t1")!!.days[0].markers.isEmpty())
+        harness.awaitRequests(2)
+        assertEquals("/v1/markers/m0", harness.requests[0].url.encodedPath)
+        assertTrue(failures.isEmpty())
+        assertTrue(harness.local.trip("t1")!!.days[0].markers.isEmpty())
     }
 
     @Test
@@ -244,11 +379,53 @@ class TripRepositoryTest {
                 ),
             ),
         )
+        val markers = harness.markers()
+        val failures = markers.collectFailures()
 
-        val result = harness.markers.reorderMarkers("t1", "d0", listOf("m1", "m0"))
+        markers.reorderMarkers("t1", "d0", listOf("m1", "m0"))
 
-        assertIs<AppResult.Error<*>>(result)
-        assertEquals(listOf("m0", "m1"), harness.trips.observeTrip("t1").first()!!.days[0].markers.map { it.id })
+        assertEquals(listOf("m1", "m0"), harness.local.trip("t1")!!.days[0].markers.map { it.id })
+        failures.next()
+        assertEquals(listOf("m0", "m1"), harness.local.trip("t1")!!.days[0].markers.map { it.id })
+    }
+
+    @Test
+    fun refreshTrip_withAMarkerChangeUnsent_keepsTheDevicesVersion() = runTest {
+        val harness = Harness { json(TripJson.trip("t1", title = "From the server")) }
+        harness.local.saveTrip(details(TripJson.trip("t1")))
+        harness.pending.begin("t1") {}
+
+        val result = harness.trips.refreshTrip("t1")
+
+        assertEquals("From the server", (result as AppResult.Success).data.trip.name)
+        assertEquals("Paris", harness.local.trip("t1")!!.trip.name)
+
+        harness.pending.end("t1")
+        harness.trips.refreshTrip("t1")
+
+        assertEquals("From the server", harness.local.trip("t1")!!.trip.name)
+    }
+
+    private fun tripWithMarker(markerId: String) =
+        TripJson.trip("t1", days = listOf(TripJson.day("d0", 0, "2026-06-01", TripJson.marker(markerId, "t1", "d0", 0))))
+
+    /** The marker ID the app chose, from a create request's body. */
+    private fun HttpRequestData.sentId(): String =
+        Regex(""""id":"([^"]+)"""").find(bodyText())!!.groupValues[1]
+
+    private fun MarkerRepository.collectFailures(): FailureLog {
+        val log = FailureLog()
+        // Undispatched, so it is listening before the first change is made.
+        failureScope.launch(start = CoroutineStart.UNDISPATCHED) { failures.collect { log.channel.send(it) } }
+        return log
+    }
+
+    private class FailureLog {
+        val channel = Channel<MarkerChangeFailure>(Channel.UNLIMITED)
+
+        suspend fun next(): MarkerChangeFailure = realTime { channel.receive() }
+
+        fun isEmpty(): Boolean = channel.tryReceive().isFailure
     }
 
     private fun details(json: String) =
@@ -258,3 +435,7 @@ class TripRepositoryTest {
         const val ME = "22222222-2222-4222-8222-222222222222"
     }
 }
+
+/** Waits on the real clock: the marker queue runs outside the test's virtual time. */
+private suspend fun <T> realTime(block: suspend () -> T): T =
+    withContext(Dispatchers.Default) { withTimeout(5.seconds) { block() } }

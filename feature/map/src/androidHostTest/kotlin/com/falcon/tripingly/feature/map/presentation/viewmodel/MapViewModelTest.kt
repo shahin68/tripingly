@@ -18,6 +18,7 @@ import com.falcon.tripingly.feature.map.domain.repository.LocationRepository
 import com.falcon.tripingly.feature.map.domain.usecase.GetCurrentLocationUseCase
 import com.falcon.tripingly.feature.map.generated.resources.Res
 import com.falcon.tripingly.feature.map.generated.resources.error_location_permission_required
+import com.falcon.tripingly.feature.map.generated.resources.map_change_not_saved
 import com.falcon.tripingly.feature.map.presentation.screen.MapViewModel
 import com.falcon.tripingly.feature.map.presentation.screen.MapViewModel.Action
 import com.falcon.tripingly.feature.map.presentation.screen.MapViewModel.Confirm
@@ -189,7 +190,7 @@ class MapViewModelTest {
     fun `removing a marker renumbers the remaining stops`() = runTest(testDispatcher) {
         val day = trip.days[0].id
         listOf(Coordinates.Paris, Coordinates.London, Coordinates.Rome).forEachIndexed { i, c ->
-            backend.addMarker(day, NewMarker("Stop #${i + 1}", GeoPoint(c.latitude, c.longitude)))
+            backend.addMarker(trip.trip.id, day, NewMarker("Stop #${i + 1}", GeoPoint(c.latitude, c.longitude)))
         }
         val viewModel = viewModel()
         testScheduler.advanceUntilIdle()
@@ -204,8 +205,8 @@ class MapViewModelTest {
 
     @Test
     fun `clear all asks first, then empties the day`() = runTest(testDispatcher) {
-        backend.addMarker(trip.days[0].id, NewMarker("Stop #1", GeoPoint(48.85, 2.35)))
-        backend.addMarker(trip.days[0].id, NewMarker("Stop #2", GeoPoint(41.9, 12.49)))
+        backend.addMarker(trip.trip.id, trip.days[0].id, NewMarker("Stop #1", GeoPoint(48.85, 2.35)))
+        backend.addMarker(trip.trip.id, trip.days[0].id, NewMarker("Stop #2", GeoPoint(41.9, 12.49)))
         val viewModel = viewModel()
         testScheduler.advanceUntilIdle()
 
@@ -250,7 +251,34 @@ class MapViewModelTest {
 
         assertTrue(viewModel.uiState.value.markers.isEmpty())
         assertIs<UiText.Resource>(viewModel.uiState.value.message)
+        assertFalse(viewModel.uiState.value.canRetry)
+    }
+
+    @Test
+    fun `a stop shows at once, and one that couldn't be sent comes back with Retry`() = runTest(testDispatcher) {
+        val viewModel = viewModel()
+        testScheduler.advanceUntilIdle()
+
+        viewModel.onAction(Action.OnMapClick(Coordinates.Paris))
+        testScheduler.advanceUntilIdle()
+        assertEquals(listOf("Stop #1"), viewModel.uiState.value.markers.map { it.title })
         assertFalse(viewModel.uiState.value.isSaving)
+
+        backend.nextError = DataError.Network.NoInternet
+        viewModel.onAction(Action.OnMapClick(Coordinates.London))
+        testScheduler.advanceUntilIdle()
+
+        assertEquals(1, viewModel.uiState.value.markers.size)
+        val message = assertIs<UiText.Resource>(viewModel.uiState.value.message)
+        assertEquals(Res.string.map_change_not_saved, message.resource)
+        assertTrue(viewModel.uiState.value.canRetry)
+
+        viewModel.onAction(Action.RetryFailedChanges)
+        testScheduler.advanceUntilIdle()
+
+        assertEquals(listOf("Stop #1", "Stop #2"), viewModel.uiState.value.markers.map { it.title })
+        assertNull(viewModel.uiState.value.message)
+        assertFalse(viewModel.uiState.value.canRetry)
     }
 
     @Test

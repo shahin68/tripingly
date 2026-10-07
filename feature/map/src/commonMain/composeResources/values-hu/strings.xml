@@ -23,4 +23,6 @@
     <string name="error_location_unknown">Nem sikerült meghatározni a helyzetet.</string>
     <string name="error_location_unexpected">Váratlan hiba történt a helyzet lekérése közben.</string>
     <string name="error_location_denied_manual">A helymeghatározási engedélyt elutasítottad. Az úti célokat így is felfedezheted kézzel.</string>
+    <string name="map_change_not_saved">A megállók módosítása nem lett mentve. Ellenőrizd a kapcsolatot, és próbáld újra.</string>
+    <string name="map_retry">Újra</string>
 </resources>

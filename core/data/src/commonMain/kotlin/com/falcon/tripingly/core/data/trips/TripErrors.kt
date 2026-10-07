@@ -12,6 +12,9 @@ object TripErrorCodes {
     const val INVITE_EXPIRED = "INVITE_EXPIRED"
     const val TRIP_NOT_COPYABLE = "TRIP_NOT_COPYABLE"
 
+    /** A marker with the app-chosen ID exists already. */
+    const val ID_CONFLICT = "ID_CONFLICT"
+
     /** `fields.endDate` when new dates would remove days that still have markers. */
     const val DAYS_NOT_EMPTY = "daysNotEmpty"
 

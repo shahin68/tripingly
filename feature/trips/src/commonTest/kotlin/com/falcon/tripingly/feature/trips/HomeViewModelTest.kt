@@ -125,7 +125,7 @@ class HomeViewModelTest {
     @Test
     fun reschedule_thatWouldDropDaysWithStops_explainsWhy() = runTest {
         val trip = seedTrip("Paris")
-        backend.addMarker(trip.days.last().id, NewMarker("Louvre", GeoPoint(48.86, 2.33)))
+        backend.addMarker(trip.trip.id, trip.days.last().id, NewMarker("Louvre", GeoPoint(48.86, 2.33)))
         val viewModel = viewModel()
         advanceUntilIdle()
 

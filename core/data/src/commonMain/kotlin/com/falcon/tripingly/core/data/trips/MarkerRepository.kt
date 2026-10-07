@@ -5,23 +5,33 @@ import com.falcon.tripingly.core.common.result.AppResult
 import com.falcon.tripingly.core.model.trip.MarkerUpdate
 import com.falcon.tripingly.core.model.trip.NewMarker
 import com.falcon.tripingly.core.model.trip.TripMarker
+import kotlinx.coroutines.flow.Flow
 
 /**
- * Markers on a trip's days (owners and editors). Changes show up in
- * [TripRepository.observeTrip] once the server has accepted them; a reorder
- * shows at once and rolls back if the server refuses it.
+ * Markers on a trip's days (owners and editors).
+ *
+ * Adding, changing, deleting and reordering show in [TripRepository.observeTrip]
+ * at once and are sent to the server in the background, in order. A change the
+ * server refuses, or that can't reach it, is undone on the device and reported
+ * on [failures].
  */
 interface MarkerRepository {
-    /** Adds the marker at the end of the day. */
-    suspend fun addMarker(dayId: String, marker: NewMarker): AppResult<TripMarker, DataError.Network>
+    /** Changes that were undone. Nothing is replayed to late collectors. */
+    val failures: Flow<MarkerChangeFailure>
 
-    suspend fun updateMarker(markerId: String, update: MarkerUpdate): AppResult<TripMarker, DataError.Network>
+    /** Adds the marker at the end of the day with an ID chosen here, and returns it. */
+    suspend fun addMarker(tripId: String, dayId: String, marker: NewMarker): TripMarker
 
-    suspend fun deleteMarker(markerId: String): AppResult<Unit, DataError.Network>
+    suspend fun updateMarker(markerId: String, update: MarkerUpdate)
+
+    suspend fun deleteMarker(markerId: String)
 
     /** [markerIds] is the day's complete marker list in the new order. */
-    suspend fun reorderMarkers(tripId: String, dayId: String, markerIds: List<String>): AppResult<Unit, DataError.Network>
+    suspend fun reorderMarkers(tripId: String, dayId: String, markerIds: List<String>)
 
-    /** Copies someone's marker into a day of one of my trips. */
+    /** Shows a failed change again and sends it once more. */
+    suspend fun retry(failure: MarkerChangeFailure)
+
+    /** Copies someone's marker into a day of one of my trips; waits for the server. */
     suspend fun copyMarker(markerId: String, targetDayId: String): AppResult<TripMarker, DataError.Network>
 }

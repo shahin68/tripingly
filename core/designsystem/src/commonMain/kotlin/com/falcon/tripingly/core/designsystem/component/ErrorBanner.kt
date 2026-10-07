@@ -18,11 +18,14 @@ import org.jetbrains.compose.resources.stringResource
 import com.falcon.tripingly.core.designsystem.generated.resources.Res
 import com.falcon.tripingly.core.designsystem.generated.resources.*
 
+/** An error with Dismiss and, when [actionLabel] and [onAction] are given, an action such as Retry. */
 @Composable
 fun ErrorBanner(
     errorMessage: String,
     onDismiss: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    actionLabel: String? = null,
+    onAction: (() -> Unit)? = null,
 ) {
     Card(
         modifier = modifier.fillMaxWidth(),
@@ -51,6 +54,14 @@ fun ErrorBanner(
                     text = stringResource(Res.string.common_dismiss),
                     color = MaterialTheme.colorScheme.onErrorContainer
                 )
+            }
+            if (actionLabel != null && onAction != null) {
+                TextButton(onClick = onAction) {
+                    Text(
+                        text = actionLabel,
+                        color = MaterialTheme.colorScheme.onErrorContainer
+                    )
+                }
             }
         }
     }

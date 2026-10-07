@@ -23,4 +23,6 @@
     <string name="error_location_unknown">Failed to acquire location.</string>
     <string name="error_location_unexpected">An unexpected error occurred while fetching location.</string>
     <string name="error_location_denied_manual">Location permission was denied. You can still explore destinations manually.</string>
+    <string name="map_change_not_saved">Your change to the stops was not saved. Check your connection and try again.</string>
+    <string name="map_retry">Retry</string>
 </resources>

@@ -31,8 +31,8 @@ iosApp ─────┴─> shared ──> feature:trips, feature:map, (auth, 
 
 ## Source of truth and offline
 
-- The server is the source of truth. Room caches what the user needs offline: their own trips, **read-only** (decided 2026-10-03). Show an offline banner and block edits while offline.
-- Writes go to the API. Optimistic updates for likes, comment posting, marker reorder and cover changes, rolled back on error; everything else waits for the server.
+- The server is the source of truth. Room caches what the user needs offline: their own trips, **read-only** (decided 2026-10-03). Show an offline banner and block edits while offline; marker actions on the map are the exception (tried at once and undone if they can't be sent, see below).
+- Writes go to the API. Map marker actions (add, move, rename, delete, reorder) are optimistic and must feel instant (decided 2026-10-07): the app chooses the marker UUID, writes Room at once, sends the change in the background through a per-trip queue in the application scope, undoes it if the server refuses or the connection stays down, and shows a banner (Retry for connection problems). A trip reload never overwrites marker changes still in that queue. Trip create/edit, days, members, comments and likes wait for the server with a small loading indicator. The app is online-first, not offline-first: nothing is queued across app restarts.
 
 ## MVI contract
 
@@ -66,7 +66,7 @@ iosApp ─────┴─> shared ──> feature:trips, feature:map, (auth, 
 - Token refresh: on `401` with `TOKEN_EXPIRED`, refresh once (single-flight: concurrent requests wait for the same refresh), retry; if refresh fails (`REFRESH_TOKEN_REUSED`, `ACCOUNT_SUSPENDED`, 401) sign out.
 - Timeouts: 15 s default; uploads go directly to the pre-signed URL with longer timeouts.
 - Pagination: cursor-based `{ items, nextCursor }` through `CursorPaginator`.
-- Idempotency: content-creating POSTs (trips, trip copy, days, markers, add-to-trip, marker copy, comments, invites) send `Idempotency-Key`, one UUID per user action reused on its retries.
+- Idempotency: content-creating POSTs (trips, trip copy, days, markers, add-to-trip, marker copy, comments, invites) send `Idempotency-Key`, one UUID per user action reused on its retries. A marker create uses the marker's own app-chosen ID as its key.
 - Error mapping: the Ktorfit `AppResult` converter turns `{ error: { code, message, details } }` into `DataError.Network.Api` (code as a string, details flattened) and any 401 into `Unauthorized`; repositories map known codes to specific UI (see `03-api-contract.md`).
 
 ## Libraries

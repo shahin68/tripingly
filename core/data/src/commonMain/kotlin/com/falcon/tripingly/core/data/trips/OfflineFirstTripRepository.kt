@@ -18,6 +18,8 @@ import kotlinx.coroutines.flow.Flow
 internal class OfflineFirstTripRepository(
     private val api: TripsApi,
     private val local: TripLocalDataSource,
+    /** Marker changes still on their way, which a reload must not overwrite. */
+    private val pending: PendingTripWrites,
     /** The signed-in user's id, for leaving a trip. */
     private val currentUserId: () -> String?,
 ) : TripRepository {
@@ -42,11 +44,20 @@ internal class OfflineFirstTripRepository(
     override fun observeTrip(tripId: String): Flow<TripDetails?> = local.observeTrip(tripId)
 
     override suspend fun refreshTrip(tripId: String): AppResult<TripDetails, DataError.Network> {
-        val result = api.trip(tripId)
-        if (result is AppResult.Error && result.error.hasCode(TripErrorCodes.NOT_FOUND)) {
-            local.deleteTrip(tripId)
+        val since = pending.version(tripId)
+        return when (val result = api.trip(tripId)) {
+            is AppResult.Success -> {
+                val details = result.data.toDetails()
+                // With a marker change still unsent, the server's copy is older than the device's;
+                // the marker queue reloads the trip once it has sent everything.
+                pending.saveIfQuiet(tripId, since) { local.saveTrip(details) }
+                AppResult.Success(details)
+            }
+            is AppResult.Error -> {
+                if (result.error.hasCode(TripErrorCodes.NOT_FOUND)) local.deleteTrip(tripId)
+                result
+            }
         }
-        return result.saved()
     }
 
     override suspend fun createTrip(trip: NewTrip): AppResult<TripDetails, DataError.Network> =

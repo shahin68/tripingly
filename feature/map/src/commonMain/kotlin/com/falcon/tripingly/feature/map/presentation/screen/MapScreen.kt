@@ -101,7 +101,9 @@ fun MapScreen(
                 state.message?.let { message ->
                     ErrorBanner(
                         errorMessage = message.asString(),
-                        onDismiss = { onAction(Action.DismissError) }
+                        onDismiss = { onAction(Action.DismissError) },
+                        actionLabel = if (state.canRetry) stringResource(Res.string.map_retry) else null,
+                        onAction = if (state.canRetry) ({ onAction(Action.RetryFailedChanges) }) else null,
                     )
                 }
             }

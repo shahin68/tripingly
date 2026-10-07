@@ -7,6 +7,7 @@ import com.falcon.tripingly.core.common.coroutines.CoroutineDispatchers
 import com.falcon.tripingly.core.common.coroutines.DefaultCoroutineDispatchers
 import com.falcon.tripingly.core.common.error.DataError
 import com.falcon.tripingly.core.common.result.AppResult
+import com.falcon.tripingly.core.data.trips.MarkerChangeFailure
 import com.falcon.tripingly.core.data.trips.MarkerRepository
 import com.falcon.tripingly.core.data.trips.TripRepository
 import com.falcon.tripingly.core.model.trip.GeoPoint
@@ -26,6 +27,7 @@ import com.falcon.tripingly.feature.map.generated.resources.error_location_servi
 import com.falcon.tripingly.feature.map.generated.resources.error_location_unavailable
 import com.falcon.tripingly.feature.map.generated.resources.error_location_unexpected
 import com.falcon.tripingly.feature.map.generated.resources.error_location_unknown
+import com.falcon.tripingly.feature.map.generated.resources.map_change_not_saved
 import com.falcon.tripingly.feature.map.generated.resources.map_stop_title_format
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
@@ -46,8 +48,10 @@ import kotlin.coroutines.cancellation.CancellationException
 
 /**
  * One trip on the map. Days and markers come from the cached trip, reloaded from
- * the server on open; owners and editors add and remove stops and days, and each
- * change shows once the server has accepted it.
+ * the server on open; owners and editors add and remove stops and days. Stop
+ * changes show at once and are saved in the background; one that fails is
+ * undone and explained, with Retry when the connection was the problem. Day
+ * changes wait for the server.
  */
 class MapViewModel(
     private val tripId: String,
@@ -70,6 +74,7 @@ class MapViewModel(
 
     init {
         loadTrip()
+        watchFailedChanges()
     }
 
     fun onAction(action: Action) {
@@ -86,7 +91,8 @@ class MapViewModel(
             is Action.OnConfirm -> confirm()
             is Action.OnDismissConfirm -> ui.update { it.copy(confirm = null) }
             is Action.AddDay -> addDay()
-            is Action.DismissError -> ui.update { it.copy(message = null) }
+            is Action.DismissError -> ui.update { it.copy(message = null, failedChanges = emptyList()) }
+            is Action.RetryFailedChanges -> retryFailedChanges()
             is Action.OnCameraMove -> ui.update { it.copy(cameraTarget = action.coordinates, zoomLevel = action.zoom) }
             is Action.OnDaySelected -> selectDay(action.dayIndex)
         }
@@ -95,7 +101,7 @@ class MapViewModel(
     private fun toState(details: TripDetails?, ui: UiState): State {
         val days = details?.days.orEmpty()
         val activeIndex = ui.activeDayIndex.coerceIn(0, (days.size - 1).coerceAtLeast(0))
-        val markers = days.getOrNull(activeIndex)?.markers.orEmpty().map { it.toMapMarker() }
+        val markers = days.getOrNull(activeIndex)?.markers.orEmpty().mapIndexed { index, it -> it.toMapMarker(index + 1) }
         return State(
             tripName = details?.trip?.name.orEmpty(),
             days = days.map { DayTab(it.id, it.position + 1, it.date) }.toImmutableList(),
@@ -111,6 +117,7 @@ class MapViewModel(
             isLoadingLocation = ui.isLoadingLocation,
             selectedMarker = markers.firstOrNull { it.id == ui.selectedMarkerId },
             message = ui.message,
+            canRetry = ui.message != null && ui.failedChanges.isNotEmpty(),
             isWaitingForFirstLocation = ui.isWaitingForFirstLocation,
             confirm = ui.confirm,
         )
@@ -148,18 +155,45 @@ class MapViewModel(
         navigateTo(Coordinates(first.location.lat, first.location.lng), ui.value.zoomLevel.coerceAtLeast(13f))
     }
 
+    private fun watchFailedChanges() {
+        viewModelScope.launch {
+            markerRepository.failures.collect { failure ->
+                if (failure.tripId != tripId) return@collect
+                ui.update {
+                    if (failure.isConnectionProblem) {
+                        it.copy(
+                            message = UiText.Resource(Res.string.map_change_not_saved),
+                            failedChanges = it.failedChanges + failure,
+                        )
+                    } else {
+                        // Trying again won't change the server's mind.
+                        it.copy(message = failure.error.toUiText(), failedChanges = emptyList())
+                    }
+                }
+            }
+        }
+    }
+
+    private fun retryFailedChanges() {
+        val failed = ui.value.failedChanges
+        ui.update { it.copy(message = null, failedChanges = emptyList()) }
+        viewModelScope.launch { failed.forEach { markerRepository.retry(it) } }
+    }
+
+    /** Shows at once; see [MarkerRepository]. */
     private fun addMarker(coordinates: Coordinates) {
         val day = activeDay() ?: return
-        if (!canEdit() || ui.value.isSaving) return
-        save {
+        if (!canEdit()) return
+        viewModelScope.launch {
             val name = getString(Res.string.map_stop_title_format, day.markers.size + 1)
-            markerRepository.addMarker(day.id, NewMarker(name, GeoPoint(coordinates.latitude, coordinates.longitude)))
+            markerRepository.addMarker(tripId, day.id, NewMarker(name, GeoPoint(coordinates.latitude, coordinates.longitude)))
         }
     }
 
     private fun removeMarker(markerId: String) {
         if (!canEdit()) return
-        save { markerRepository.deleteMarker(markerId) }
+        ui.update { if (it.selectedMarkerId == markerId) it.copy(selectedMarkerId = null) else it }
+        viewModelScope.launch { markerRepository.deleteMarker(markerId) }
     }
 
     private fun addDay() {
@@ -179,13 +213,9 @@ class MapViewModel(
         ui.update { it.copy(confirm = null) }
         if (day == null || !canEdit()) return
         when (confirm) {
-            Confirm.ClearDay -> save {
-                var result: AppResult<Unit, DataError.Network> = AppResult.Success(Unit)
-                for (marker in day.markers) {
-                    result = markerRepository.deleteMarker(marker.id)
-                    if (result is AppResult.Error) break
-                }
-                result
+            Confirm.ClearDay -> {
+                ui.update { it.copy(selectedMarkerId = null) }
+                viewModelScope.launch { day.markers.forEach { markerRepository.deleteMarker(it.id) } }
             }
             Confirm.DeleteDay -> save {
                 tripRepository.deleteDay(tripId, day.id).also { result ->
@@ -197,7 +227,7 @@ class MapViewModel(
         }
     }
 
-    /** Runs one change at a time; a refusal shows the server's message. */
+    /** Runs one day change at a time; a refusal shows the server's message. */
     private fun save(change: suspend () -> AppResult<*, DataError.Network>) {
         if (ui.value.isSaving) return
         ui.update { it.copy(isSaving = true) }
@@ -282,11 +312,12 @@ class MapViewModel(
         }
     }
 
-    private fun TripMarker.toMapMarker() = MapMarker(
+    /** [orderNumber] is the place in the day's list, which stays 1, 2, 3 while a delete waits for the reload. */
+    private fun TripMarker.toMapMarker(orderNumber: Int) = MapMarker(
         id = id,
         position = Coordinates(location.lat, location.lng),
         title = name,
-        orderNumber = position + 1,
+        orderNumber = orderNumber,
         snippet = time,
     )
 
@@ -301,6 +332,8 @@ class MapViewModel(
         val isLoadingLocation: Boolean = false,
         val selectedMarkerId: String? = null,
         val message: UiText? = null,
+        /** Stop changes undone because the connection failed; Retry sends them again. */
+        val failedChanges: List<MarkerChangeFailure> = emptyList(),
         val isWaitingForFirstLocation: Boolean = false,
         val hasCenteredOnTrip: Boolean = false,
         val confirm: Confirm? = null,
@@ -323,7 +356,7 @@ class MapViewModel(
         val canEdit: Boolean = false,
         /** The trip hasn't loaded yet (nothing cached). */
         val isLoading: Boolean = false,
-        /** A change is waiting for the server. */
+        /** A day change is waiting for the server. Stop changes don't wait. */
         val isSaving: Boolean = false,
         val currentLocation: Coordinates? = null,
         val cameraTarget: Coordinates = Coordinates.Paris,
@@ -332,6 +365,8 @@ class MapViewModel(
         val isLoadingLocation: Boolean = false,
         val selectedMarker: MapMarker? = null,
         val message: UiText? = null,
+        /** [message] is about stop changes that didn't save; Retry sends them again. */
+        val canRetry: Boolean = false,
         val isWaitingForFirstLocation: Boolean = false,
         val confirm: Confirm? = null,
     )
@@ -355,6 +390,7 @@ class MapViewModel(
         data object OnConfirm : Action
         data object OnDismissConfirm : Action
         data object DismissError : Action
+        data object RetryFailedChanges : Action
         data class OnCameraMove(val coordinates: Coordinates, val zoom: Float) : Action
         data class OnDaySelected(val dayIndex: Int) : Action
     }

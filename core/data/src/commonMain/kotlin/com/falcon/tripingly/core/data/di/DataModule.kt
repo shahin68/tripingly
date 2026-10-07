@@ -13,6 +13,7 @@ import com.falcon.tripingly.core.data.trips.DefaultTripInviteRepository
 import com.falcon.tripingly.core.data.trips.FakeTripBackend
 import com.falcon.tripingly.core.data.trips.MarkerRepository
 import com.falcon.tripingly.core.data.trips.OfflineFirstTripRepository
+import com.falcon.tripingly.core.data.trips.PendingTripWrites
 import com.falcon.tripingly.core.data.trips.RoomTripLocalDataSource
 import com.falcon.tripingly.core.data.trips.TripInviteRepository
 import com.falcon.tripingly.core.data.trips.TripLocalDataSource
@@ -28,6 +29,7 @@ import org.koin.dsl.module
 val dataModule = module {
     single<TripLocalDataSource> { RoomTripLocalDataSource(get()) }
     single { FakeTripBackend() }
+    single { PendingTripWrites() }
     single<TripRepository> {
         if (get<ApiConfig>().useFakeApi) {
             get<FakeTripBackend>()
@@ -35,6 +37,7 @@ val dataModule = module {
             OfflineFirstTripRepository(
                 api = get(),
                 local = get(),
+                pending = get(),
                 currentUserId = {
                     when (val session = get<SessionRepository>().session.value) {
                         is SessionState.SignedIn -> session.account.id
@@ -46,7 +49,11 @@ val dataModule = module {
         }
     }
     single<MarkerRepository> {
-        if (get<ApiConfig>().useFakeApi) get<FakeTripBackend>() else DefaultMarkerRepository(get(), get(), get())
+        if (get<ApiConfig>().useFakeApi) {
+            get<FakeTripBackend>()
+        } else {
+            DefaultMarkerRepository(api = get(), trips = get(), local = get(), pending = get(), scope = get(ApplicationScope))
+        }
     }
     single<TripInviteRepository> {
         if (get<ApiConfig>().useFakeApi) get<FakeTripBackend>() else DefaultTripInviteRepository(get(), get())

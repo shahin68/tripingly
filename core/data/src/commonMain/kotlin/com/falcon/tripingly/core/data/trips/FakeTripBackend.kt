@@ -18,7 +18,9 @@ import com.falcon.tripingly.core.model.trip.TripRole
 import com.falcon.tripingly.core.model.trip.TripUpdate
 import com.falcon.tripingly.core.model.trip.UserSummary
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.datetime.DatePeriod
@@ -43,6 +45,7 @@ class FakeTripBackend(
     private val trips = MutableStateFlow<Map<String, TripDetails>>(emptyMap())
     private val invites = mutableMapOf<String, MutableList<TripInvite>>()
     private var ids = 0
+    private val _failures = MutableSharedFlow<MarkerChangeFailure>(extraBufferCapacity = 64)
 
     /** Fails the next call with this error, then clears itself. */
     var nextError: DataError.Network? = null
@@ -194,24 +197,60 @@ class FakeTripBackend(
         trips.update { it - tripId }
     }
 
-    override suspend fun addMarker(dayId: String, marker: NewMarker): AppResult<TripMarker, DataError.Network> = call {
-        val (details, day) = dayOf(dayId) ?: return notFound()
-        if (!details.trip.role.canEdit) return forbidden()
+    override val failures: Flow<MarkerChangeFailure> get() = _failures.asSharedFlow()
+
+    /** Changes apply at once here; a [nextError] undoes the change and reports it on [failures]. */
+    override suspend fun addMarker(tripId: String, dayId: String, marker: NewMarker): TripMarker {
         val created = TripMarker(
             id = nextId(),
-            tripId = details.trip.id,
-            dayId = day.id,
-            placeId = nextId(),
+            tripId = tripId,
+            dayId = dayId,
+            placeId = "",
             name = marker.name.trim(),
             location = marker.location,
             time = marker.time,
-            position = day.markers.size,
+            position = trips.value[tripId]?.days?.firstOrNull { it.id == dayId }?.markers?.size ?: 0,
         )
-        save(details.withDay(day.copy(markers = day.markers + created)))
-        created
+        run(MarkerChange.Add(created))
+        return created
     }
 
-    override suspend fun updateMarker(markerId: String, update: MarkerUpdate): AppResult<TripMarker, DataError.Network> = call {
+    override suspend fun updateMarker(markerId: String, update: MarkerUpdate) {
+        val (_, marker) = markerOf(markerId) ?: return
+        run(MarkerChange.Update(marker, marker, update))
+    }
+
+    override suspend fun deleteMarker(markerId: String) {
+        val (_, marker) = markerOf(markerId) ?: return
+        run(MarkerChange.Delete(marker))
+    }
+
+    override suspend fun reorderMarkers(tripId: String, dayId: String, markerIds: List<String>) {
+        val before = dayOf(dayId)?.second?.markers?.map { it.id } ?: return
+        run(MarkerChange.Reorder(tripId, dayId, before, markerIds))
+    }
+
+    override suspend fun retry(failure: MarkerChangeFailure) = run(failure.change)
+
+    private suspend fun run(change: MarkerChange) {
+        val result = when (change) {
+            is MarkerChange.Add -> createMarker(change.marker)
+            is MarkerChange.Update -> changeMarker(change.markerId, change.update)
+            is MarkerChange.Delete -> removeMarker(change.markerId)
+            is MarkerChange.Reorder -> orderMarkers(change.dayId, change.after)
+        }
+        if (result is AppResult.Error) _failures.emit(MarkerChangeFailure(change.tripId, change.markerName, result.error, change))
+    }
+
+    private fun createMarker(created: TripMarker): AppResult<TripMarker, DataError.Network> = call {
+        val (details, day) = dayOf(created.dayId) ?: return notFound()
+        if (!details.trip.role.canEdit) return forbidden()
+        val placed = created.copy(placeId = nextId(), position = day.markers.size)
+        save(details.withDay(day.copy(markers = day.markers + placed)))
+        placed
+    }
+
+    private fun changeMarker(markerId: String, update: MarkerUpdate): AppResult<TripMarker, DataError.Network> = call {
         val (details, marker) = markerOf(markerId) ?: return notFound()
         if (!details.trip.role.canEdit) return forbidden()
         val targetDayId = update.dayId ?: marker.dayId
@@ -239,7 +278,7 @@ class FakeTripBackend(
         updated
     }
 
-    override suspend fun deleteMarker(markerId: String): AppResult<Unit, DataError.Network> = call {
+    private fun removeMarker(markerId: String): AppResult<Unit, DataError.Network> = call {
         val (details, marker) = markerOf(markerId) ?: return notFound()
         if (!details.trip.role.canEdit) return forbidden()
         val day = details.days.first { it.id == marker.dayId }
@@ -250,7 +289,7 @@ class FakeTripBackend(
         )
     }
 
-    override suspend fun reorderMarkers(tripId: String, dayId: String, markerIds: List<String>): AppResult<Unit, DataError.Network> = call {
+    private fun orderMarkers(dayId: String, markerIds: List<String>): AppResult<Unit, DataError.Network> = call {
         val (details, day) = dayOf(dayId) ?: return notFound()
         if (!details.trip.role.canEdit) return forbidden()
         if (markerIds.toSet() != day.markers.map { it.id }.toSet()) {
@@ -264,7 +303,10 @@ class FakeTripBackend(
 
     override suspend fun copyMarker(markerId: String, targetDayId: String): AppResult<TripMarker, DataError.Network> {
         val (_, marker) = markerOf(markerId) ?: return notFound()
-        return addMarker(targetDayId, NewMarker(marker.name, marker.location, marker.time))
+        val (target, day) = dayOf(targetDayId) ?: return notFound()
+        return createMarker(
+            marker.copy(id = nextId(), tripId = target.trip.id, dayId = day.id, coverThumbUrl = null, photoCount = 0),
+        )
     }
 
     override suspend fun invites(tripId: String): AppResult<List<TripInvite>, DataError.Network> = call {

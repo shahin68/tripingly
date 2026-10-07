@@ -59,7 +59,7 @@ Not present yet: image loading (Coil), Firebase, Socket.IO, detekt/ktlint.
 - Clean layers inside each feature: `data` / `domain` / `presentation` packages.
 - MVVM + MVI: each screen has `XRoute` (gets the ViewModel from Koin, collects `uiState` with `collectAsStateWithLifecycle`, handles events) and a stateless `XScreen(state, onAction)`. ViewModels expose `StateFlow<State>`, take a sealed `Action` via `onAction`, and send one-shot `Event`s through a `Channel`. `State`, `Action` and `Event` are nested inside the ViewModel class.
 - ViewModels call repositories directly; use cases only where they hold a rule (`GetCurrentLocationUseCase`).
-- The server is the source of truth. Trips are read from Room (`observe…`) and refreshed from the API; writes go to the API first and the response is saved to Room. Only marker reorder is optimistic (rolled back on error).
+- The server is the source of truth. Trips are read from Room (`observe…`) and refreshed from the API; trip, day, member and invite writes go to the API first and the response is saved to Room. Marker add, change, delete and reorder are optimistic (decided 2026-10-07): `DefaultMarkerRepository` writes them to Room at once with an app-chosen marker UUID, sends them one at a time per trip from the app scope, retries a dropped connection twice, undoes a change that fails and reports it on `MarkerRepository.failures`, and reloads the trip when the queue is empty. `PendingTripWrites` stops a trip reload from overwriting changes still on their way.
 
 ## Screens and features
 
@@ -72,7 +72,7 @@ Not present yet: image loading (Coil), Firebase, Socket.IO, detekt/ktlint.
 | Share trip | `core/common/.../util/ShareManager*` (`share(text)`), text from trips strings | Text only | Works | — |
 | Copy trip / marker | `TripRepository.copyTrip`, `MarkerRepository.copyMarker` | `POST /trips/{id}/copy`, `POST /markers/{id}/copy` | Repository only; UI comes with Explore (stage 7) | (ready) |
 | Social tab | Inside `HomeScreen.kt` | none | "Coming soon" placeholder | `GET /explore/trips`, `/places/nearby`, users |
-| Trip map: day tabs from server days, add/delete day, tap map to add numbered stop, marker list, clear day (with confirmation), my-location; read-only for viewers | `feature/map/.../MapScreen.kt`, `MapViewModel.kt` | `GET /trips/{id}` cached in Room; markers and days endpoints | Works | `/places/in-view` (stage 5) |
+| Trip map: day tabs from server days, add/delete day (waits for the server), tap map to add a numbered stop, remove and clear day (with confirmation) shown at once, failed stop changes undone with a banner (Retry when the connection failed), my-location; read-only for viewers | `feature/map/.../MapScreen.kt`, `MapViewModel.kt` | `GET /trips/{id}` cached in Room; markers and days endpoints | Works | `/places/in-view` (stage 5) |
 
 ## Map integration
 
@@ -97,7 +97,7 @@ Domain models in `core/model/.../trip/` follow the API (UUIDs, `LocalDate` dates
 
 ## Tests
 
-- `core/data` commonTest: `TripRepositoryTest` (MockEngine + in-memory cache: paging, caching, error codes, optimistic reorder rollback).
+- `core/data` commonTest: `TripRepositoryTest` (MockEngine + in-memory cache: paging, caching, error codes, optimistic marker add/delete/reorder with undo, retry after a dropped connection, `ID_CONFLICT` and `NOT_FOUND` treated as done, reload kept off unsent changes).
 - `feature/trips` commonTest: `HomeViewModelTest`, `TripMembersViewModelTest` over `FakeTripBackend`.
 - `feature/map/src/androidHostTest/.../MapViewModelTest.kt`: Robolectric, with a fake location source and `FakeTripBackend`.
 

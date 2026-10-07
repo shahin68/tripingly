@@ -23,4 +23,6 @@
     <string name="error_location_unknown">Standort konnte nicht ermittelt werden.</string>
     <string name="error_location_unexpected">Beim Abrufen des Standorts ist ein unerwarteter Fehler aufgetreten.</string>
     <string name="error_location_denied_manual">Die Standortberechtigung wurde abgelehnt. Du kannst Ziele trotzdem manuell erkunden.</string>
+    <string name="map_change_not_saved">Deine Änderung an den Stopps wurde nicht gespeichert. Prüfe deine Verbindung und versuche es erneut.</string>
+    <string name="map_retry">Erneut versuchen</string>
 </resources>
