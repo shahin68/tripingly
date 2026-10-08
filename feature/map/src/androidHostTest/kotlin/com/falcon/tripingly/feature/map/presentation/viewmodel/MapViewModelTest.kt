@@ -17,12 +17,15 @@ import com.falcon.tripingly.feature.map.domain.model.Coordinates
 import com.falcon.tripingly.feature.map.domain.repository.LocationRepository
 import com.falcon.tripingly.feature.map.domain.usecase.GetCurrentLocationUseCase
 import com.falcon.tripingly.feature.map.generated.resources.Res
+import com.falcon.tripingly.feature.map.generated.resources.error_location_denied_manual
 import com.falcon.tripingly.feature.map.generated.resources.error_location_permission_required
 import com.falcon.tripingly.feature.map.generated.resources.map_change_not_saved
+import com.falcon.tripingly.feature.map.presentation.permission.LocationPermission
 import com.falcon.tripingly.feature.map.presentation.screen.MapViewModel
 import com.falcon.tripingly.feature.map.presentation.screen.MapViewModel.Action
 import com.falcon.tripingly.feature.map.presentation.screen.MapViewModel.Confirm
 import com.falcon.tripingly.feature.map.presentation.screen.MapViewModel.Event
+import com.falcon.tripingly.feature.map.presentation.screen.MapViewModel.LocationPrompt
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -125,7 +128,7 @@ class MapViewModelTest {
         fakeLocationRepository.locationResult = userCoords.asSuccess()
         val viewModel = viewModel()
 
-        viewModel.onAction(Action.OnPermissionResult(isGranted = true))
+        viewModel.onAction(Action.OnPermissionResult(LocationPermission.Granted))
         testScheduler.advanceUntilIdle()
 
         val state = viewModel.uiState.value
@@ -314,10 +317,127 @@ class MapViewModelTest {
         fakeLocationRepository.locationResult = DataError.Location.PermissionDenied.asError()
         val viewModel = viewModel()
 
-        viewModel.onAction(Action.OnPermissionResult(isGranted = true))
+        viewModel.onAction(Action.OnPermissionResult(LocationPermission.Granted))
         testScheduler.advanceUntilIdle()
 
         val message = assertIs<UiText.Resource>(viewModel.uiState.value.message)
         assertEquals(Res.string.error_location_permission_required, message.resource)
+    }
+    @Test
+    fun `the map asks for the location once when it first opens`() = runTest(testDispatcher) {
+        val viewModel = viewModel()
+        testScheduler.advanceUntilIdle()
+        viewModel.events.test {
+            viewModel.onAction(Action.OnPermissionChecked(LocationPermission.NotAsked))
+            testScheduler.advanceUntilIdle()
+            assertEquals(Event.RequestPermission, awaitItem())
+
+            // Coming back to the screen doesn't ask again.
+            viewModel.onAction(Action.OnPermissionChecked(LocationPermission.NotAsked))
+            testScheduler.advanceUntilIdle()
+            expectNoEvents()
+        }
+    }
+
+    @Test
+    fun `a denied answer says how to turn the location on`() = runTest(testDispatcher) {
+        val viewModel = viewModel()
+        testScheduler.advanceUntilIdle()
+
+        viewModel.onAction(Action.OnPermissionResult(LocationPermission.ShouldExplain))
+        testScheduler.advanceUntilIdle()
+
+        val message = assertIs<UiText.Resource>(viewModel.uiState.value.message)
+        assertEquals(Res.string.error_location_denied_manual, message.resource)
+        assertFalse(viewModel.uiState.value.isPermissionGranted)
+        assertFalse(viewModel.uiState.value.isWaitingForFirstLocation)
+    }
+
+    @Test
+    fun `the location button asks again after a denial`() = runTest(testDispatcher) {
+        val viewModel = viewModel()
+        testScheduler.advanceUntilIdle()
+        viewModel.onAction(Action.OnPermissionChecked(LocationPermission.NotAsked))
+        testScheduler.advanceUntilIdle()
+        viewModel.events.test {
+            skipItems(1) // the request when the map opened
+
+            viewModel.onAction(Action.CenterOnUserLocation)
+            testScheduler.advanceUntilIdle()
+
+            assertEquals(Event.RequestPermission, awaitItem())
+            assertTrue(viewModel.uiState.value.isWaitingForFirstLocation)
+        }
+    }
+
+    @Test
+    fun `the location button explains first when the system says so`() = runTest(testDispatcher) {
+        val viewModel = viewModel()
+        testScheduler.advanceUntilIdle()
+        viewModel.onAction(Action.OnPermissionChecked(LocationPermission.ShouldExplain))
+        testScheduler.advanceUntilIdle()
+
+        viewModel.events.test {
+            viewModel.onAction(Action.CenterOnUserLocation)
+            testScheduler.advanceUntilIdle()
+            assertEquals(LocationPrompt.Explain, viewModel.uiState.value.locationPrompt)
+            expectNoEvents()
+
+            viewModel.onAction(Action.OnConfirmLocationPrompt)
+            testScheduler.advanceUntilIdle()
+            assertEquals(Event.RequestPermission, awaitItem())
+            assertNull(viewModel.uiState.value.locationPrompt)
+        }
+    }
+
+    @Test
+    fun `the location button sends the user to Settings when it can't ask anymore`() = runTest(testDispatcher) {
+        val viewModel = viewModel()
+        testScheduler.advanceUntilIdle()
+        viewModel.onAction(Action.OnPermissionChecked(LocationPermission.Blocked))
+        testScheduler.advanceUntilIdle()
+
+        viewModel.events.test {
+            viewModel.onAction(Action.CenterOnUserLocation)
+            testScheduler.advanceUntilIdle()
+            assertEquals(LocationPrompt.OpenSettings, viewModel.uiState.value.locationPrompt)
+
+            viewModel.onAction(Action.OnConfirmLocationPrompt)
+            testScheduler.advanceUntilIdle()
+            assertEquals(Event.OpenAppSettings, awaitItem())
+        }
+    }
+
+    @Test
+    fun `allowing it in Settings moves to the user on return`() = runTest(testDispatcher) {
+        val userCoords = Coordinates(52.5200, 13.4050)
+        fakeLocationRepository.locationResult = userCoords.asSuccess()
+        val viewModel = viewModel()
+        testScheduler.advanceUntilIdle()
+        viewModel.onAction(Action.OnPermissionChecked(LocationPermission.Blocked))
+        viewModel.onAction(Action.CenterOnUserLocation)
+        viewModel.onAction(Action.OnConfirmLocationPrompt)
+        testScheduler.advanceUntilIdle()
+
+        viewModel.onAction(Action.OnPermissionChecked(LocationPermission.Granted))
+        testScheduler.advanceUntilIdle()
+
+        assertTrue(viewModel.uiState.value.isPermissionGranted)
+        assertEquals(userCoords, viewModel.uiState.value.cameraTarget)
+    }
+
+    @Test
+    fun `dismissing the prompt stops waiting for the location`() = runTest(testDispatcher) {
+        val viewModel = viewModel()
+        testScheduler.advanceUntilIdle()
+        viewModel.onAction(Action.OnPermissionChecked(LocationPermission.Blocked))
+        viewModel.onAction(Action.CenterOnUserLocation)
+        testScheduler.advanceUntilIdle()
+
+        viewModel.onAction(Action.OnDismissLocationPrompt)
+        testScheduler.advanceUntilIdle()
+
+        assertNull(viewModel.uiState.value.locationPrompt)
+        assertFalse(viewModel.uiState.value.isWaitingForFirstLocation)
     }
 }

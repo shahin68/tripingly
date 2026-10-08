@@ -20,6 +20,7 @@ import com.falcon.tripingly.core.ui.toUiText
 import com.falcon.tripingly.feature.map.domain.model.Coordinates
 import com.falcon.tripingly.feature.map.domain.model.MapMarker
 import com.falcon.tripingly.feature.map.domain.usecase.GetCurrentLocationUseCase
+import com.falcon.tripingly.feature.map.presentation.permission.LocationPermission
 import com.falcon.tripingly.feature.map.generated.resources.Res
 import com.falcon.tripingly.feature.map.generated.resources.error_location_denied_manual
 import com.falcon.tripingly.feature.map.generated.resources.error_location_permission_required
@@ -79,8 +80,10 @@ class MapViewModel(
 
     fun onAction(action: Action) {
         when (action) {
-            is Action.RequestLocationPermission -> sendEvent(Event.RequestPermission)
-            is Action.OnPermissionResult -> handlePermissionResult(action.isGranted)
+            is Action.OnPermissionChecked -> onPermissionChecked(action.permission)
+            is Action.OnPermissionResult -> onPermissionResult(action.permission)
+            is Action.OnConfirmLocationPrompt -> confirmLocationPrompt()
+            is Action.OnDismissLocationPrompt -> ui.update { it.copy(locationPrompt = null, isWaitingForFirstLocation = false) }
             is Action.CenterOnUserLocation -> centerOnUserLocation()
             is Action.NavigateToLocation -> navigateTo(action.coordinates, action.zoom)
             is Action.OnMapClick -> addMarker(action.coordinates)
@@ -113,13 +116,14 @@ class MapViewModel(
             currentLocation = ui.currentLocation,
             cameraTarget = ui.cameraTarget,
             zoomLevel = ui.zoomLevel,
-            isPermissionGranted = ui.isPermissionGranted,
+            isPermissionGranted = ui.permission == LocationPermission.Granted,
             isLoadingLocation = ui.isLoadingLocation,
             selectedMarker = markers.firstOrNull { it.id == ui.selectedMarkerId },
             message = ui.message,
             canRetry = ui.message != null && ui.failedChanges.isNotEmpty(),
             isWaitingForFirstLocation = ui.isWaitingForFirstLocation,
             confirm = ui.confirm,
+            locationPrompt = ui.locationPrompt,
         )
     }
 
@@ -245,21 +249,63 @@ class MapViewModel(
         }
     }
 
-    private fun handlePermissionResult(isGranted: Boolean) {
-        ui.update { it.copy(isPermissionGranted = isGranted) }
-        if (isGranted) {
-            startLocationUpdates()
-        } else {
-            ui.update { it.copy(message = UiText.Resource(Res.string.error_location_denied_manual)) }
+    /** The permission as read when the map opens or comes back to the front (e.g. from Settings). */
+    private fun onPermissionChecked(permission: LocationPermission) {
+        val before = ui.value
+        ui.update { it.copy(permission = permission, hasCheckedPermission = true) }
+        when {
+            permission == LocationPermission.Granted && before.permission != LocationPermission.Granted ->
+                startLocationUpdates()
+            // Ask once when the map first opens; after that only the location button asks.
+            permission == LocationPermission.NotAsked && !before.hasCheckedPermission ->
+                sendEvent(Event.RequestPermission)
         }
     }
 
-    private fun centerOnUserLocation() {
-        val current = ui.value.currentLocation
-        if (current != null) {
-            navigateTo(current, 15f)
+    /** The user answered the system prompt. */
+    private fun onPermissionResult(permission: LocationPermission) {
+        val before = ui.value
+        ui.update { it.copy(permission = permission) }
+        if (permission == LocationPermission.Granted) {
+            if (before.permission != LocationPermission.Granted) startLocationUpdates()
         } else {
-            ui.update { it.copy(isWaitingForFirstLocation = true) }
+            ui.update {
+                it.copy(
+                    isWaitingForFirstLocation = false,
+                    message = UiText.Resource(Res.string.error_location_denied_manual),
+                )
+            }
+        }
+    }
+
+    /** The location button: moves to the user, asking for the permission first when it can. */
+    private fun centerOnUserLocation() {
+        when (ui.value.permission) {
+            LocationPermission.Granted -> {
+                val current = ui.value.currentLocation
+                if (current != null) {
+                    navigateTo(current, 15f)
+                } else {
+                    ui.update { it.copy(isWaitingForFirstLocation = true) }
+                }
+            }
+            LocationPermission.NotAsked, null -> {
+                ui.update { it.copy(isWaitingForFirstLocation = true) }
+                sendEvent(Event.RequestPermission)
+            }
+            LocationPermission.ShouldExplain ->
+                ui.update { it.copy(isWaitingForFirstLocation = true, locationPrompt = LocationPrompt.Explain) }
+            LocationPermission.Blocked ->
+                ui.update { it.copy(isWaitingForFirstLocation = true, locationPrompt = LocationPrompt.OpenSettings) }
+        }
+    }
+
+    private fun confirmLocationPrompt() {
+        val prompt = ui.value.locationPrompt ?: return
+        ui.update { it.copy(locationPrompt = null) }
+        when (prompt) {
+            LocationPrompt.Explain -> sendEvent(Event.RequestPermission)
+            LocationPrompt.OpenSettings -> sendEvent(Event.OpenAppSettings)
         }
     }
 
@@ -334,7 +380,10 @@ class MapViewModel(
         val currentLocation: Coordinates? = null,
         val cameraTarget: Coordinates = Coordinates.Paris,
         val zoomLevel: Float = 13f,
-        val isPermissionGranted: Boolean = false,
+        /** Null until the screen has read it. */
+        val permission: LocationPermission? = null,
+        val hasCheckedPermission: Boolean = false,
+        val locationPrompt: LocationPrompt? = null,
         val isLoadingLocation: Boolean = false,
         val selectedMarkerId: String? = null,
         val message: UiText? = null,
@@ -350,6 +399,9 @@ class MapViewModel(
     data class DayTab(val id: String, val number: Int, val date: LocalDate?)
 
     enum class Confirm { ClearDay, DeleteDay }
+
+    /** Shown when the location button can't simply ask: explain first (Android), or send the user to Settings. */
+    enum class LocationPrompt { Explain, OpenSettings }
 
     @Immutable
     data class State(
@@ -375,16 +427,20 @@ class MapViewModel(
         val canRetry: Boolean = false,
         val isWaitingForFirstLocation: Boolean = false,
         val confirm: Confirm? = null,
+        val locationPrompt: LocationPrompt? = null,
     )
 
     sealed interface Event {
         data class AnimateCamera(val coordinates: Coordinates, val zoom: Float) : Event
         data object RequestPermission : Event
+        data object OpenAppSettings : Event
     }
 
     sealed interface Action {
-        data object RequestLocationPermission : Action
-        data class OnPermissionResult(val isGranted: Boolean) : Action
+        data class OnPermissionChecked(val permission: LocationPermission) : Action
+        data class OnPermissionResult(val permission: LocationPermission) : Action
+        data object OnConfirmLocationPrompt : Action
+        data object OnDismissLocationPrompt : Action
         data class NavigateToLocation(val coordinates: Coordinates, val zoom: Float = 13f) : Action
         data object CenterOnUserLocation : Action
         data class OnMapClick(val coordinates: Coordinates) : Action

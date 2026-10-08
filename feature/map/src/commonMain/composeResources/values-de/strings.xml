@@ -25,4 +25,10 @@
     <string name="error_location_denied_manual">Die Standortberechtigung wurde abgelehnt. Du kannst Ziele trotzdem manuell erkunden.</string>
     <string name="map_change_not_saved">Deine Änderung an den Stopps wurde nicht gespeichert. Prüfe deine Verbindung und versuche es erneut.</string>
     <string name="map_retry">Erneut versuchen</string>
+    <string name="map_location_explain_title">Deinen Standort zeigen</string>
+    <string name="map_location_explain_message">Tripinly nutzt deinen Standort, um dir auf der Karte zu zeigen, wo du bist.</string>
+    <string name="map_location_continue">Weiter</string>
+    <string name="map_location_settings_title">Standort für Tripinly ist aus</string>
+    <string name="map_location_settings_message">Damit die Karte zeigt, wo du bist, erlaube Tripinly den Standortzugriff in den Einstellungen.</string>
+    <string name="map_location_open_settings">Einstellungen öffnen</string>
 </resources>

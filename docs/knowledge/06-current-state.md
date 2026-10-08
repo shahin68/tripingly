@@ -72,14 +72,14 @@ Not present yet: image loading (Coil), Firebase, Socket.IO, detekt/ktlint.
 | Share trip | `core/common/.../util/ShareManager*` (`share(text)`), text from trips strings | Text only | Works | — |
 | Copy trip / marker | `TripRepository.copyTrip`, `MarkerRepository.copyMarker` | `POST /trips/{id}/copy`, `POST /markers/{id}/copy` | Repository only; UI comes with Explore (stage 7) | (ready) |
 | Social tab | Inside `HomeScreen.kt` | none | "Coming soon" placeholder | `GET /explore/trips`, `/places/nearby`, users |
-| Trip map: day tabs from server days, add/delete day (waits for the server), tap map to add a numbered stop, remove and clear day (with confirmation) shown at once, failed stop changes undone with a banner (Retry when the connection failed), tapping a stop chip selects its pin, centers the map and opens its info window, chips and pins say "Stop #N" by position, my-location; read-only for viewers | `feature/map/.../MapScreen.kt`, `MapViewModel.kt` | `GET /trips/{id}` cached in Room; markers and days endpoints | Works | `/places/in-view` (stage 5) |
+| Trip map: day tabs from server days, add/delete day (waits for the server), tap map to add a numbered stop, remove and clear day (with confirmation) shown at once, failed stop changes undone with a banner (Retry when the connection failed), tapping a stop chip selects its pin, centers the map and opens its info window, chips and pins say "Stop #N" by position, my-location button that asks again after a denial (an explanation first when Android wants one, an Open settings dialog when the system won't ask anymore) and moves to the user once allowed; read-only for viewers | `feature/map/.../MapScreen.kt`, `MapViewModel.kt` | `GET /trips/{id}` cached in Room; markers and days endpoints | Works | `/places/in-view` (stage 5) |
 
 ## Map integration
 
 - Common `expect fun GoogleMapView(...)` in `feature/map`.
 - **Android:** `maps-compose` `GoogleMap`, `MarkerComposable` with the numbered `TripMarkerIcon`, my-location layer. No map style, so **Google POIs are visible** (must be hidden per rule 4).
 - **iOS:** the "GoogleMapView" actual is **Apple MapKit** (`MKMapView` with `MKMarkerAnnotationView`), not the Google Maps SDK. The unlinked `GoogleMaps` import and `GMSServices` setup were removed from `iOSApp.swift` (stage 3) so the app target compiles; the Google Maps iOS SDK comes with the map stage.
-- Location: `LocationDataSource` with fused location (Android) and `CLLocationManager` (iOS); permission launcher is `expect/actual`.
+- Location: `LocationDataSource` with fused location (Android) and `CLLocationManager` (iOS); the location permission is an `expect/actual` `LocationPermissionController` (`status()`, `request()`, `openSettings()`), re-read whenever the map resumes; the view model decides when to ask, explain or send the user to Settings.
 - No OSM attribution yet; no places from the backend.
 
 ## Local models vs API contract

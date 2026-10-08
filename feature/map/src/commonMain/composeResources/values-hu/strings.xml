@@ -25,4 +25,10 @@
     <string name="error_location_denied_manual">A helymeghatározási engedélyt elutasítottad. Az úti célokat így is felfedezheted kézzel.</string>
     <string name="map_change_not_saved">A megállók módosítása nem lett mentve. Ellenőrizd a kapcsolatot, és próbáld újra.</string>
     <string name="map_retry">Újra</string>
+    <string name="map_location_explain_title">A helyzeted megjelenítése</string>
+    <string name="map_location_explain_message">A Tripinly a helyzetedet arra használja, hogy megmutassa a térképen, hol vagy.</string>
+    <string name="map_location_continue">Tovább</string>
+    <string name="map_location_settings_title">A Tripinly nem éri el a helyzetedet</string>
+    <string name="map_location_settings_message">Ahhoz, hogy a térkép megmutassa, hol vagy, engedélyezd a helymeghatározást a Tripinly számára a Beállításokban.</string>
+    <string name="map_location_open_settings">Beállítások megnyitása</string>
 </resources>
