@@ -93,7 +93,7 @@ Prefer what the project already has. New ones are confirmed with the user when t
 - **ViewModels:** fakes (no mocking library, which also keeps tests running on iOS), Turbine, a test dispatcher set as Main. Every action and every error code the screen handles has a test.
 - **Repositories:** Ktor `MockEngine` serving JSON copied from real staging responses, so tests break when the contract drifts.
 - **Pure logic:** mappers, reducers and domain rules get plain unit tests in `commonTest`.
-- **UI:** screenshot tests for design-system components and key screens on Android, plus a few end-to-end flows; no exhaustive UI tests.
+- **UI:** screenshot tests for design-system components and key screens on Android, plus a few end-to-end flows; no exhaustive UI tests. Flows are Compose UI tests in the feature's `androidHostTest` on Robolectric (`runComposeUiTest`, see `MapFlowTest`): the real route and view model against the `Fake*Backend`, driven by visible text and content descriptions.
 - **Architecture:** module boundaries are enforced by Gradle; layer rules by Konsist once added.
 - Test names read as behaviour: `save_withEmptyTitle_showsFieldError`.
 - Platform UI is checked on both platforms for every UI change; the report says what was checked.

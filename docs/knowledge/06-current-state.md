@@ -47,7 +47,7 @@ Every module has `commonMain`, plus `androidMain`/`iosMain` only where platform 
 | API models | OpenAPI Generator (`kotlin`, `multiplatform`), build time only | 7.14.0 |
 | Build config | BuildKonfig (base URL per environment) | 0.23.0 |
 | State collections | kotlinx-collections-immutable (in feature modules) | 0.5.2 |
-| Tests | kotlin-test, coroutines-test, Turbine, JUnit 4, Robolectric, Ktor MockEngine | 1.2.0 Turbine, 4.17 Robolectric |
+| Tests | kotlin-test, coroutines-test, Turbine, JUnit 4, Robolectric, Ktor MockEngine, Compose `ui-test` (+ androidx `ui-test-manifest` 1.11.2) | 1.2.0 Turbine, 4.17 Robolectric |
 
 | In-app browser | androidx.browser Custom Tabs (Android), SFSafariViewController (iOS); `rememberInAppUriHandler()` in core:designsystem, provided as `LocalUriHandler` in `App.kt` | 1.8.0 |
 | Sign-in | androidx.credentials + googleid (Android); AuthenticationServices and GoogleSignIn-iOS via SPM (iOS) | 1.5.0, 1.1.1, GoogleSignIn-iOS 10.x |
@@ -100,6 +100,7 @@ Domain models in `core/model/.../trip/` follow the API (UUIDs, `LocalDate` dates
 - `core/data` commonTest: `TripRepositoryTest` (MockEngine + in-memory cache: paging, caching, error codes, optimistic marker add/delete/clear day/reorder with undo, no reload after sending, retry after a dropped connection, `ID_CONFLICT` and `NOT_FOUND` treated as done, reload kept off unsent changes).
 - `feature/trips` commonTest: `HomeViewModelTest`, `TripMembersViewModelTest` over `FakeTripBackend`.
 - `feature/map/src/androidHostTest/.../MapViewModelTest.kt`: Robolectric, with a fake location source and `FakeTripBackend`.
+- `feature/map/src/androidHostTest/.../MapFlowTest.kt`: UI flow tests on Robolectric (`runComposeUiTest`). They render `MapRoute` with the real `MapViewModel` and `FakeTripBackend`, tap chips, Clear All and the dialogs, and check both the screen and the backend. The Google map itself can't be driven there, so map taps and pins are checked on the emulator.
 
 ## Gaps and risks
 
