@@ -1,13 +1,20 @@
 name: CI
 
+# Runs on pull requests only: a merge into develop builds the same code the PR already checked.
+# The iOS job runs on macOS, whose minutes count 10x on private repos, so it runs only when the
+# PR gets the `ios-ci` label (once, before review). Remove and re-add the label to run it again.
 on:
   pull_request:
     branches: [develop, master]
-  push:
-    branches: [develop]
+    types: [opened, synchronize, reopened, labeled]
+    paths-ignore:
+      - 'docs/**'
+      - '**/*.md'
+      - '.claude/**'
+      - '.agents/**'
 
 concurrency:
-  group: ci-${{ github.ref }}
+  group: ci-${{ github.ref }}-${{ github.event.action == 'labeled' && 'ios' || 'android' }}
   cancel-in-progress: true
 
 permissions:
@@ -16,6 +23,7 @@ permissions:
 jobs:
   android:
     name: Android build and tests
+    if: github.event.action != 'labeled'
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
@@ -43,8 +51,7 @@ jobs:
 
   ios:
     name: iOS framework and tests
-    # macOS minutes count 10x on private repos, so this job only runs once Android is green.
-    needs: android
+    if: github.event.action == 'labeled' && github.event.label.name == 'ios-ci'
     runs-on: macos-latest
     timeout-minutes: 60
     steps:

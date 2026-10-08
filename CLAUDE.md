@@ -39,7 +39,7 @@ A modular KMP app: `androidApp` and `iosApp` shells, `shared` as the umbrella, `
 
 - Every change goes on its own feature branch and is merged into **`develop`** through a pull request. **Never push to `master`.**
 - One PR per build-order stage; the user reviews and merges it before the next stage starts.
-- CI (`.github/workflows/ci.yml`) builds Android, runs `allTests`, links the iOS framework and runs the iOS simulator tests. A PR is ready only when CI is green.
+- CI (`.github/workflows/ci.yml`) runs on pull requests only. The Android job (build + `allTests`) runs on every push. The iOS job (framework link + simulator tests) runs on macOS, whose minutes count 10x, so it runs only when the PR gets the `ios-ci` label: add it once the PR is otherwise done (Android green, review fixes in), and remove and re-add it to run again. Docs-only changes skip CI. Before every push, compile Android and iOS Kotlin and run `allTests` locally. A PR is ready only when both jobs are green on its last code change.
 
 ## Modules and conventions
 

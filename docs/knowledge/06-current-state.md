@@ -92,8 +92,8 @@ Domain models in `core/model/.../trip/` follow the API (UUIDs, `LocalDate` dates
 - Local config lives in the untracked root `local.properties` (a Gradle property with the same name is the fallback, e.g. `-P` in CI): `MAPS_API_KEY`, `tripinly.useFakeApi`, `tripinly.devAuthSecret` (staging's developer sign-in secret, never committed) and `tripinly.googleWebClientId` (the backend's Google Web client ID; not secret). Debug builds (Android debuggable, iOS debug binary) log every HTTP call in full, OkHttp-style, through Ktor's `Logging` plugin; release builds don't log. iOS Google sign-in uses the GoogleSignIn-iOS package (SPM) with the iOS client ID as `GIDClientID` and its reversed form as a URL scheme in `iosApp/iosApp/Info.plist` (client IDs are not secret, so they are committed). The iOS bundle ID is `com.falcon.tripingly`, matching the Android package; Sign in with Apple needs the capability on the app ID.
 - Unit tests: `./gradlew allTests` (Android host tests + common) on any OS; `./gradlew iosSimulatorArm64Test` on macOS.
 - iOS framework: `./gradlew :shared:linkDebugFrameworkIosSimulatorArm64`; Xcode runs `:shared:embedAndSignAppleFrameworkForXcode`. iOS deployment target 18.2. There is no iOS Maps key yet (the map is MapKit until the map stage).
-- CI (`.github/workflows/ci.yml`): Android assemble + `allTests` on Ubuntu, then iOS framework link + simulator tests on macOS, for PRs into `develop`/`master` and pushes to `develop`.
-- The Claude cloud sandbox cannot download from Google Maven (`dl.google.com` is blocked), so Gradle builds run in CI, not in the sandbox.
+- CI (`.github/workflows/ci.yml`), pull requests into `develop`/`master` only, docs-only changes skipped: Android assemble + `allTests` on Ubuntu on every push; iOS framework link + simulator tests on macOS only when the PR gets the `ios-ci` label (2026-10-08, to save Actions minutes).
+- The Claude cloud sandbox builds Android and compiles the iOS Kotlin targets and runs `allTests`, but it can't link the iOS framework, run iOS simulator tests or start an Android emulator; those need CI or a device.
 
 ## Tests
 

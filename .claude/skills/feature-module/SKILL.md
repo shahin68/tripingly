@@ -74,7 +74,7 @@ Follow `api-integration`: generated API models stay in `data`, a repository maps
 
 - `XViewModelTest`: every action, every handled error code, effects.
 - Mapper tests; repository tests with `MockEngine` and recorded staging JSON.
-- `./gradlew allTests` green; iOS simulator tests run in CI.
+- `./gradlew allTests` green; iOS simulator tests run in CI once the PR has the `ios-ci` label.
 
 ## 8. Docs
 
