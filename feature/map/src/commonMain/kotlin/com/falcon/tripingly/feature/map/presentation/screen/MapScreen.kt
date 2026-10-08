@@ -51,6 +51,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.toImmutableList
 import com.falcon.tripingly.core.designsystem.component.AppDropdownMenu
 import com.falcon.tripingly.core.designsystem.component.DropdownAction
 import com.falcon.tripingly.core.designsystem.component.ErrorBanner
@@ -71,7 +73,12 @@ fun MapScreen(
     onAction: (Action) -> Unit,
 ) {
     // Stops are named by their place in the day, so the numbers follow deletes and reorders.
-    val markers = state.markers.map { it.copy(title = stringResource(Res.string.map_stop_title_format, it.orderNumber)) }
+    // Kept as the same list while the stops don't change, so the map and the chips skip
+    // recomposing on unrelated updates such as the user's location.
+    val stopTitles = state.markers.map { stringResource(Res.string.map_stop_title_format, it.orderNumber) }
+    val markers = remember(state.markers, stopTitles) {
+        state.markers.mapIndexed { index, marker -> marker.copy(title = stopTitles[index]) }.toImmutableList()
+    }
     Box(
         modifier = Modifier.fillMaxSize()
     ) {
@@ -138,8 +145,9 @@ fun MapScreen(
                 modifier = Modifier.fillMaxWidth()
             ) {
                 TripItineraryCard(
-                    state = state,
                     markers = markers,
+                    selectedMarkerId = state.selectedMarker?.id,
+                    canEdit = state.canEdit,
                     onAction = onAction,
                     modifier = Modifier
                         .padding(horizontal = MaterialTheme.spacing.medium)
@@ -260,8 +268,9 @@ private fun LocationFab(
 
 @Composable
 private fun TripItineraryCard(
-    state: State,
-    markers: List<MapMarker>,
+    markers: ImmutableList<MapMarker>,
+    selectedMarkerId: String?,
+    canEdit: Boolean,
     onAction: (Action) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -275,7 +284,7 @@ private fun TripItineraryCard(
         Column(
             modifier = Modifier.padding(12.dp),
         ) {
-            ItineraryTitle(state, onAction)
+            ItineraryTitle(stopCount = markers.size, canEdit = canEdit, onAction = onAction)
 
             Spacer(modifier = Modifier.height(6.dp))
 
@@ -286,8 +295,8 @@ private fun TripItineraryCard(
                 items(markers, key = { it.id }) { marker ->
                     ItineraryMarkerChip(
                         marker = marker,
-                        isSelected = marker.id == state.selectedMarker?.id,
-                        canEdit = state.canEdit,
+                        isSelected = marker.id == selectedMarkerId,
+                        canEdit = canEdit,
                         onAction = onAction,
                     )
                 }
@@ -355,7 +364,8 @@ private fun ItineraryMarkerChip(
 
 @Composable
 private fun ItineraryTitle(
-    state: State,
+    stopCount: Int,
+    canEdit: Boolean,
     onAction: (Action) -> Unit,
 ) {
     Row(
@@ -364,11 +374,11 @@ private fun ItineraryTitle(
         horizontalArrangement = Arrangement.SpaceBetween,
     ) {
         Text(
-            text = stringResource(Res.string.map_itinerary_title, state.markers.size),
+            text = stringResource(Res.string.map_itinerary_title, stopCount),
             style = MaterialTheme.typography.titleSmall,
             fontWeight = FontWeight.Bold,
         )
-        if (state.canEdit) {
+        if (canEdit) {
             TextButton(onClick = { onAction(Action.ClearAllMarkers) }) {
                 Text(stringResource(Res.string.map_itinerary_clear_all), style = MaterialTheme.typography.labelSmall)
             }

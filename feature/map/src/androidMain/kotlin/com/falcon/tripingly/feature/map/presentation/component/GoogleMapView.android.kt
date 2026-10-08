@@ -3,6 +3,7 @@ package com.falcon.tripingly.feature.map.presentation.component
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.key
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import com.falcon.tripingly.feature.map.domain.model.Coordinates
@@ -90,26 +91,31 @@ actual fun GoogleMapView(
         }
     ) {
         markers.forEach { marker ->
-            val position = LatLng(marker.position.latitude, marker.position.longitude)
-            val markerState = rememberUpdatedMarkerState(position = position)
-            val isSelected = marker.id == selectedMarkerId
-            LaunchedEffect(isSelected, marker.title) {
-                if (isSelected) markerState.showInfoWindow()
-            }
-
-            MarkerComposable(
-                state = markerState,
-                title = marker.title,
-                anchor = Offset(0.5f, 1f),
-                onClick = {
-                    onMarkerClick(marker)
-                    false // Return false to show standard info window as well
+            key(marker.id) {
+                val position = LatLng(marker.position.latitude, marker.position.longitude)
+                val markerState = rememberUpdatedMarkerState(position = position)
+                val isSelected = marker.id == selectedMarkerId
+                LaunchedEffect(isSelected, marker.title) {
+                    if (isSelected) markerState.showInfoWindow()
                 }
-            ) {
-                TripMarkerIcon(
-                    orderNumber = marker.orderNumber,
-                    color = Color(marker.color)
-                )
+
+                // The icon is drawn once and redrawn only when its number or color changes.
+                MarkerComposable(
+                    marker.orderNumber,
+                    marker.color,
+                    state = markerState,
+                    title = marker.title,
+                    anchor = Offset(0.5f, 1f),
+                    onClick = {
+                        onMarkerClick(marker)
+                        false // Return false to show standard info window as well
+                    }
+                ) {
+                    TripMarkerIcon(
+                        orderNumber = marker.orderNumber,
+                        color = Color(marker.color)
+                    )
+                }
             }
         }
     }

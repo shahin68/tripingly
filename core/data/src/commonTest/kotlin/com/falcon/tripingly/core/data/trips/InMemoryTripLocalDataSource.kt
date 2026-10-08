@@ -39,7 +39,21 @@ internal class InMemoryTripLocalDataSource : TripLocalDataSource {
         trips.update { it - tripId }
     }
 
-    override suspend fun saveMarker(marker: TripMarker) {
+    override suspend fun saveMarkers(markers: List<TripMarker>) = markers.forEach { saveMarker(it) }
+
+    override suspend fun savePlaceOfMarker(markerId: String, placeId: String) {
+        trips.update { all ->
+            all.mapValues { (_, details) ->
+                details.copy(
+                    days = details.days.map { day ->
+                        day.copy(markers = day.markers.map { if (it.id == markerId) it.copy(placeId = placeId) else it })
+                    },
+                )
+            }
+        }
+    }
+
+    private suspend fun saveMarker(marker: TripMarker) {
         val details = trips.value[marker.tripId] ?: return
         saveTrip(
             details.copy(
@@ -54,10 +68,10 @@ internal class InMemoryTripLocalDataSource : TripLocalDataSource {
     override suspend fun tripIdOfMarker(markerId: String): String? =
         trips.value.values.firstOrNull { details -> details.days.any { day -> day.markers.any { it.id == markerId } } }?.trip?.id
 
-    override suspend fun deleteMarker(markerId: String) {
+    override suspend fun deleteMarkers(markerIds: List<String>) {
         trips.update { all ->
             all.mapValues { (_, details) ->
-                details.copy(days = details.days.map { day -> day.copy(markers = day.markers.filterNot { it.id == markerId }) })
+                details.copy(days = details.days.map { day -> day.copy(markers = day.markers.filterNot { it.id in markerIds }) })
             }
         }
     }

@@ -21,13 +21,16 @@ internal interface TripLocalDataSource {
 
     suspend fun deleteTrip(tripId: String)
 
-    /** Inserts or updates one marker, e.g. the server's answer to a change, until the trip is next reloaded. */
-    suspend fun saveMarker(marker: TripMarker)
+    /** Inserts or updates markers. */
+    suspend fun saveMarkers(markers: List<TripMarker>)
+
+    /** Sets the place the server matched to a marker, if the marker is still cached. */
+    suspend fun savePlaceOfMarker(markerId: String, placeId: String)
 
     /** The marker's trip, or null when it isn't cached. */
     suspend fun tripIdOfMarker(markerId: String): String?
 
-    suspend fun deleteMarker(markerId: String)
+    suspend fun deleteMarkers(markerIds: List<String>)
 
     /** Applies a day's marker order ([markerIds] in the new order). */
     suspend fun reorderMarkers(markerIds: List<String>)

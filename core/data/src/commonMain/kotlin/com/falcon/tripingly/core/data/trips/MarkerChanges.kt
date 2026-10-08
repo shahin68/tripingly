@@ -28,6 +28,12 @@ internal sealed interface MarkerChange {
         override val markerName get() = marker.name
     }
 
+    /** Deletes all of a day's [markers]. */
+    data class ClearDay(override val tripId: String, val dayId: String, val markers: List<TripMarker>) : MarkerChange {
+        override val markerId get() = dayId
+        override val markerName get() = ""
+    }
+
     data class Reorder(
         override val tripId: String,
         val dayId: String,
@@ -45,7 +51,7 @@ internal sealed interface MarkerChange {
  */
 class MarkerChangeFailure internal constructor(
     val tripId: String,
-    /** The stop's name, empty for a reorder. */
+    /** The stop's name, empty for a reorder or a cleared day. */
     val markerName: String,
     val error: DataError.Network,
     internal val change: MarkerChange,
@@ -62,9 +68,10 @@ internal fun DataError.Network.isConnectionProblem(): Boolean =
 /** Shows [change] in the cache. */
 internal suspend fun TripLocalDataSource.apply(change: MarkerChange) {
     when (change) {
-        is MarkerChange.Add -> saveMarker(change.marker)
-        is MarkerChange.Update -> saveMarker(change.after)
-        is MarkerChange.Delete -> deleteMarker(change.markerId)
+        is MarkerChange.Add -> saveMarkers(listOf(change.marker))
+        is MarkerChange.Update -> saveMarkers(listOf(change.after))
+        is MarkerChange.Delete -> deleteMarkers(listOf(change.markerId))
+        is MarkerChange.ClearDay -> deleteMarkers(change.markers.map { it.id })
         is MarkerChange.Reorder -> reorderMarkers(change.after)
     }
 }
@@ -72,9 +79,10 @@ internal suspend fun TripLocalDataSource.apply(change: MarkerChange) {
 /** Takes [change] back out of the cache. */
 internal suspend fun TripLocalDataSource.undo(change: MarkerChange) {
     when (change) {
-        is MarkerChange.Add -> deleteMarker(change.markerId)
-        is MarkerChange.Update -> saveMarker(change.before)
-        is MarkerChange.Delete -> saveMarker(change.marker)
+        is MarkerChange.Add -> deleteMarkers(listOf(change.markerId))
+        is MarkerChange.Update -> saveMarkers(listOf(change.before))
+        is MarkerChange.Delete -> saveMarkers(listOf(change.marker))
+        is MarkerChange.ClearDay -> saveMarkers(change.markers)
         is MarkerChange.Reorder -> reorderMarkers(change.before)
     }
 }

@@ -10,7 +10,7 @@ import kotlinx.coroutines.flow.Flow
 /**
  * Markers on a trip's days (owners and editors).
  *
- * Adding, changing, deleting and reordering show in [TripRepository.observeTrip]
+ * Adding, changing, deleting, clearing a day and reordering show in [TripRepository.observeTrip]
  * at once and are sent to the server in the background, in order. A change the
  * server refuses, or that can't reach it, is undone on the device and reported
  * on [failures].
@@ -25,6 +25,9 @@ interface MarkerRepository {
     suspend fun updateMarker(markerId: String, update: MarkerUpdate)
 
     suspend fun deleteMarker(markerId: String)
+
+    /** Deletes all of the day's markers, sent as one request. */
+    suspend fun clearDay(tripId: String, dayId: String)
 
     /** [markerIds] is the day's complete marker list in the new order. */
     suspend fun reorderMarkers(tripId: String, dayId: String, markerIds: List<String>)

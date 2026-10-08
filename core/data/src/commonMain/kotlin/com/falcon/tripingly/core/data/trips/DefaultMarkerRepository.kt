@@ -7,6 +7,7 @@ import com.falcon.tripingly.core.model.trip.NewMarker
 import com.falcon.tripingly.core.model.trip.TripMarker
 import com.falcon.tripingly.core.network.model.CopyMarkerDto
 import com.falcon.tripingly.core.network.model.CreateMarkerDto
+import com.falcon.tripingly.core.network.model.MarkerDto
 import com.falcon.tripingly.core.network.model.MarkerOrderDto
 import com.falcon.tripingly.core.network.model.UpdateMarkerDto
 import com.falcon.tripingly.core.network.newIdempotencyKey
@@ -31,8 +32,10 @@ import kotlinx.coroutines.sync.withLock
  * A dropped connection is retried after 1 s and again after 2 s; if it still
  * fails, the trip counts as offline and its remaining queued changes fail at
  * once instead of each waiting. Every failed change is undone and reported.
- * When a trip's queue is empty the trip is reloaded, so positions, place links
- * and counts the server worked out replace the guesses made here.
+ * The trip isn't reloaded afterwards: the device already shows the result, and
+ * the place the server matched to a new or moved stop is taken from its answer.
+ * Positions here only keep the order (a delete leaves a gap); the next reload
+ * of the trip brings the server's.
  */
 internal class DefaultMarkerRepository(
     private val api: MarkersApi,
@@ -61,7 +64,7 @@ internal class DefaultMarkerRepository(
             name = marker.name.trim(),
             location = marker.location,
             time = marker.time,
-            position = day?.markers?.size ?: 0,
+            position = day?.markers?.nextPosition() ?: 0,
         )
         submit(MarkerChange.Add(created))
         return created
@@ -75,7 +78,7 @@ internal class DefaultMarkerRepository(
             name = update.name?.trim() ?: before.name,
             location = update.location ?: before.location,
             dayId = targetDay,
-            position = if (moved) local.trip(before.tripId)?.days?.firstOrNull { it.id == targetDay }?.markers?.size ?: 0 else before.position,
+            position = if (moved) local.trip(before.tripId)?.days?.firstOrNull { it.id == targetDay }?.markers?.nextPosition() ?: 0 else before.position,
         )
         submit(MarkerChange.Update(before, after, update))
     }
@@ -83,6 +86,12 @@ internal class DefaultMarkerRepository(
     override suspend fun deleteMarker(markerId: String) {
         val marker = cachedMarker(markerId) ?: return
         submit(MarkerChange.Delete(marker))
+    }
+
+    override suspend fun clearDay(tripId: String, dayId: String) {
+        val markers = local.trip(tripId)?.days?.firstOrNull { it.id == dayId }?.markers.orEmpty()
+        if (markers.isEmpty()) return
+        submit(MarkerChange.ClearDay(tripId, dayId, markers))
     }
 
     override suspend fun reorderMarkers(tripId: String, dayId: String, markerIds: List<String>) {
@@ -102,6 +111,8 @@ internal class DefaultMarkerRepository(
             }
             is AppResult.Error -> result
         }
+
+    private fun List<TripMarker>.nextPosition(): Int = (maxOfOrNull { it.position } ?: -1) + 1
 
     private suspend fun cachedMarker(markerId: String): TripMarker? {
         val tripId = local.tripIdOfMarker(markerId) ?: return null
@@ -148,7 +159,6 @@ internal class DefaultMarkerRepository(
             if (pending.end(change.tripId)) {
                 state.offline = null
                 state.failedAdds.clear()
-                trips.refreshTrip(change.tripId)
             }
         }
     }
@@ -185,17 +195,23 @@ internal class DefaultMarkerRepository(
                 ),
             )
             is MarkerChange.Delete -> api.delete(change.markerId)
+            is MarkerChange.ClearDay -> api.clearDay(change.dayId)
             is MarkerChange.Reorder -> api.reorder(
                 change.dayId,
                 MarkerOrderDto(markerIds = change.after.filterNot { it in state.failedAdds }),
             )
         }
-        val error = (result as? AppResult.Error)?.error ?: return null
+        if (result is AppResult.Success) {
+            // The place the server matched; the rest is already on the device.
+            (result.data as? MarkerDto)?.let { local.savePlaceOfMarker(it.id, it.placeId) }
+            return null
+        }
+        val error = (result as AppResult.Error).error
         return when {
             // The marker is there already: an earlier attempt got through.
             change is MarkerChange.Add && error.hasCode(TripErrorCodes.ID_CONFLICT) -> null
             // Gone already, which is what was asked.
-            change is MarkerChange.Delete && error.hasCode(TripErrorCodes.NOT_FOUND) -> null
+            (change is MarkerChange.Delete || change is MarkerChange.ClearDay) && error.hasCode(TripErrorCodes.NOT_FOUND) -> null
             else -> error
         }
     }

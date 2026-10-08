@@ -56,8 +56,11 @@ abstract class TripDao {
     @Query("DELETE FROM trip_members WHERE tripId = :tripId")
     abstract suspend fun deleteMembers(tripId: String)
 
-    @Query("DELETE FROM markers WHERE id = :markerId")
-    abstract suspend fun deleteMarker(markerId: String)
+    @Query("DELETE FROM markers WHERE id IN (:markerIds)")
+    abstract suspend fun deleteMarkers(markerIds: List<String>)
+
+    @Query("UPDATE markers SET placeId = :placeId WHERE id = :markerId")
+    abstract suspend fun updateMarkerPlace(markerId: String, placeId: String)
 
     @Query("UPDATE markers SET position = :position WHERE id = :markerId")
     abstract suspend fun updateMarkerPosition(markerId: String, position: Int)

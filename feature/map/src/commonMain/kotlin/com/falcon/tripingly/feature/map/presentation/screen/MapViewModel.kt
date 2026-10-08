@@ -225,7 +225,7 @@ class MapViewModel(
         when (confirm) {
             Confirm.ClearDay -> {
                 ui.update { it.copy(selectedMarkerId = null) }
-                viewModelScope.launch { day.markers.forEach { markerRepository.deleteMarker(it.id) } }
+                viewModelScope.launch { markerRepository.clearDay(tripId, day.id) }
             }
             Confirm.DeleteDay -> save {
                 tripRepository.deleteDay(tripId, day.id).also { result ->

@@ -76,6 +76,7 @@ REST over HTTPS, JSON, base path `/v1`.
 |---|---|---|
 | POST | `/trips/{id}/days` | Append a day |
 | DELETE | `/days/{id}` | Deletes its markers |
+| DELETE | `/days/{id}/markers` | Clears the day: deletes all its markers in one request → 204 (backend#17) |
 | PUT | `/days/{id}/marker-order` | Body: ordered marker IDs |
 | POST | `/days/{id}/optimize` | Best route. Free: straight-line. Premium: travel times. Returns proposed order + `mode` + optional `savedMinutes`; `?apply=true` persists |
 

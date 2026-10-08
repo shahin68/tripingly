@@ -225,6 +225,11 @@ class FakeTripBackend(
         run(MarkerChange.Delete(marker))
     }
 
+    override suspend fun clearDay(tripId: String, dayId: String) {
+        val markers = dayOf(dayId)?.second?.markers ?: return
+        if (markers.isNotEmpty()) run(MarkerChange.ClearDay(tripId, dayId, markers))
+    }
+
     override suspend fun reorderMarkers(tripId: String, dayId: String, markerIds: List<String>) {
         val before = dayOf(dayId)?.second?.markers?.map { it.id } ?: return
         run(MarkerChange.Reorder(tripId, dayId, before, markerIds))
@@ -237,6 +242,7 @@ class FakeTripBackend(
             is MarkerChange.Add -> createMarker(change.marker)
             is MarkerChange.Update -> changeMarker(change.markerId, change.update)
             is MarkerChange.Delete -> removeMarker(change.markerId)
+            is MarkerChange.ClearDay -> clearMarkers(change.dayId)
             is MarkerChange.Reorder -> orderMarkers(change.dayId, change.after)
         }
         if (result is AppResult.Error) _failures.emit(MarkerChangeFailure(change.tripId, change.markerName, result.error, change))
@@ -287,6 +293,12 @@ class FakeTripBackend(
                 day.copy(markers = day.markers.filterNot { it.id == markerId }.mapIndexed { i, it -> it.copy(position = i) }),
             ),
         )
+    }
+
+    private fun clearMarkers(dayId: String): AppResult<Unit, DataError.Network> = call {
+        val (details, day) = dayOf(dayId) ?: return notFound()
+        if (!details.trip.role.canEdit) return forbidden()
+        save(details.withDay(day.copy(markers = emptyList())))
     }
 
     private fun orderMarkers(dayId: String, markerIds: List<String>): AppResult<Unit, DataError.Network> = call {

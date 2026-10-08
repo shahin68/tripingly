@@ -35,6 +35,10 @@ interface MarkersApi {
     @DELETE("markers/{id}")
     suspend fun delete(@Path("id") id: String): AppResult<Unit, DataError.Network>
 
+    /** Deletes all of the day's markers. */
+    @DELETE("days/{id}/markers")
+    suspend fun clearDay(@Path("id") dayId: String): AppResult<Unit, DataError.Network>
+
     /** The day's complete marker list in the new order. */
     @PUT("days/{id}/marker-order")
     @Headers("Content-Type: application/json")

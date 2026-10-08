@@ -90,6 +90,11 @@ class TripRepositoryTest {
         suspend fun awaitRequests(count: Int) {
             realTime { while (requests.size < count) delay(5.milliseconds) }
         }
+
+        /** Until every queued marker change has been sent (or undone). */
+        suspend fun awaitQueueEmpty() {
+            realTime { while (!pending.saveIfQuiet("t1", pending.version("t1")) {}) delay(5.milliseconds) }
+        }
     }
 
     /** Where marker queues run; cancelled after each test. */
@@ -243,14 +248,8 @@ class TripRepositoryTest {
     }
 
     @Test
-    fun addMarker_showsAtOnce_sendsItsId_andReloadsOnceSent() = runTest {
-        var sentId = ""
-        val harness = Harness { request ->
-            when (request.method) {
-                HttpMethod.Post -> json(TripJson.marker(request.sentId().also { sentId = it }, "t1", "d0", 0), HttpStatusCode.Created)
-                else -> json(tripWithMarker(sentId))
-            }
-        }
+    fun addMarker_showsAtOnce_sendsItsId_andKeepsTheMatchedPlace_withoutAReload() = runTest {
+        val harness = Harness { request -> json(TripJson.marker(request.sentId(), "t1", "d0", 0), HttpStatusCode.Created) }
         harness.local.saveTrip(details(TripJson.trip("t1")))
         val markers = harness.markers()
 
@@ -266,7 +265,8 @@ class TripRepositoryTest {
             harness.requests[0].bodyText(),
         )
         assertEquals(created.id, harness.requests[0].headers[IDEMPOTENCY_KEY_HEADER])
-        assertEquals("/v1/trips/t1", harness.requests[1].url.encodedPath)
+        harness.awaitQueueEmpty()
+        assertEquals(1, harness.requests.size)
     }
 
     @Test
@@ -312,8 +312,6 @@ class TripRepositoryTest {
         // The first try and two quiet retries.
         assertEquals(3, harness.requests.count { it.method == HttpMethod.Post })
         assertTrue(harness.local.trip("t1")!!.days[0].markers.isEmpty())
-        // The reload after the queue emptied, which fails too.
-        harness.awaitRequests(4)
 
         online = true
         markers.retry(failure)
@@ -341,8 +339,9 @@ class TripRepositoryTest {
 
         val created = markers.addMarker("t1", "d0", NewMarker("Stop #1", GeoPoint(48.8584, 2.2945)))
 
-        harness.awaitTrip { it.days[0].markers.singleOrNull()?.placeId?.isNotEmpty() == true }
+        harness.awaitQueueEmpty()
         assertEquals(created.id, harness.local.trip("t1")!!.days[0].markers.single().id)
+        assertEquals(created.id, sentId)
         assertTrue(failures.isEmpty())
     }
 
@@ -361,10 +360,53 @@ class TripRepositoryTest {
         markers.deleteMarker("m0")
 
         assertTrue(harness.local.trip("t1")!!.days[0].markers.isEmpty())
-        harness.awaitRequests(2)
-        assertEquals("/v1/markers/m0", harness.requests[0].url.encodedPath)
+        harness.awaitQueueEmpty()
+        assertEquals("/v1/markers/m0", harness.requests.single().url.encodedPath)
         assertTrue(failures.isEmpty())
         assertTrue(harness.local.trip("t1")!!.days[0].markers.isEmpty())
+    }
+
+    @Test
+    fun clearDay_removesTheDaysStopsAtOnce_withOneRequest() = runTest {
+        val harness = Harness { respond("", HttpStatusCode.NoContent) }
+        harness.local.saveTrip(details(twoStops()))
+        val markers = harness.markers()
+
+        markers.clearDay("t1", "d0")
+
+        assertTrue(harness.local.trip("t1")!!.days[0].markers.isEmpty())
+        harness.awaitQueueEmpty()
+        val request = harness.requests.single()
+        assertEquals(HttpMethod.Delete, request.method)
+        assertEquals("/v1/days/d0/markers", request.url.encodedPath)
+    }
+
+    @Test
+    fun clearDay_refused_putsTheStopsBack() = runTest {
+        val harness = Harness { json(TripJson.error("FORBIDDEN", "Forbidden"), HttpStatusCode.Forbidden) }
+        harness.local.saveTrip(details(twoStops()))
+        val markers = harness.markers()
+        val failures = markers.collectFailures()
+
+        markers.clearDay("t1", "d0")
+        failures.next()
+
+        assertEquals(listOf("m0", "m1"), harness.local.trip("t1")!!.days[0].markers.map { it.id })
+    }
+
+    @Test
+    fun addMarker_afterADelete_goesLast() = runTest {
+        val harness = Harness { request ->
+            if (request.method == HttpMethod.Post) json(TripJson.marker(request.sentId(), "t1", "d0", 1), HttpStatusCode.Created)
+            else respond("", HttpStatusCode.NoContent)
+        }
+        harness.local.saveTrip(details(twoStops()))
+        val markers = harness.markers()
+
+        markers.deleteMarker("m0")
+        val created = markers.addMarker("t1", "d0", NewMarker("Stop #2", GeoPoint(48.8584, 2.2945)))
+
+        assertEquals(listOf("m1", created.id), harness.local.trip("t1")!!.days[0].markers.map { it.id })
     }
 
     @Test
@@ -404,6 +446,11 @@ class TripRepositoryTest {
 
         assertEquals("From the server", harness.local.trip("t1")!!.trip.name)
     }
+
+    private fun twoStops() = TripJson.trip(
+        "t1",
+        days = listOf(TripJson.day("d0", 0, null, TripJson.marker("m0", "t1", "d0", 0), TripJson.marker("m1", "t1", "d0", 1))),
+    )
 
     private fun tripWithMarker(markerId: String) =
         TripJson.trip("t1", days = listOf(TripJson.day("d0", 0, "2026-06-01", TripJson.marker(markerId, "t1", "d0", 0))))
