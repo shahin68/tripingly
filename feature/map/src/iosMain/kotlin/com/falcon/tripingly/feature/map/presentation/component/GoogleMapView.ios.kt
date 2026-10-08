@@ -28,6 +28,7 @@ actual fun GoogleMapView(
     cameraTarget: Coordinates,
     zoomLevel: Float,
     markers: List<MapMarker>,
+    selectedMarkerId: String?,
     isMyLocationEnabled: Boolean,
     onCameraMove: (Coordinates, Float) -> Unit,
     onMapClick: (Coordinates) -> Unit,
@@ -109,6 +110,7 @@ actual fun GoogleMapView(
                     setSubtitle(marker.snippet)
                 }
                 mapView.addAnnotation(annotation)
+                if (marker.id == selectedMarkerId) mapView.selectAnnotation(annotation, animated = true)
             }
         }
     )

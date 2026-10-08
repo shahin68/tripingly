@@ -25,6 +25,7 @@ actual fun GoogleMapView(
     cameraTarget: Coordinates,
     zoomLevel: Float,
     markers: List<MapMarker>,
+    selectedMarkerId: String?,
     isMyLocationEnabled: Boolean,
     onCameraMove: (Coordinates, Float) -> Unit,
     onMapClick: (Coordinates) -> Unit,
@@ -91,6 +92,10 @@ actual fun GoogleMapView(
         markers.forEach { marker ->
             val position = LatLng(marker.position.latitude, marker.position.longitude)
             val markerState = rememberUpdatedMarkerState(position = position)
+            val isSelected = marker.id == selectedMarkerId
+            LaunchedEffect(isSelected, marker.title) {
+                if (isSelected) markerState.showInfoWindow()
+            }
 
             MarkerComposable(
                 state = markerState,

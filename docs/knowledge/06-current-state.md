@@ -72,7 +72,7 @@ Not present yet: image loading (Coil), Firebase, Socket.IO, detekt/ktlint.
 | Share trip | `core/common/.../util/ShareManager*` (`share(text)`), text from trips strings | Text only | Works | — |
 | Copy trip / marker | `TripRepository.copyTrip`, `MarkerRepository.copyMarker` | `POST /trips/{id}/copy`, `POST /markers/{id}/copy` | Repository only; UI comes with Explore (stage 7) | (ready) |
 | Social tab | Inside `HomeScreen.kt` | none | "Coming soon" placeholder | `GET /explore/trips`, `/places/nearby`, users |
-| Trip map: day tabs from server days, add/delete day (waits for the server), tap map to add a numbered stop, remove and clear day (with confirmation) shown at once, failed stop changes undone with a banner (Retry when the connection failed), my-location; read-only for viewers | `feature/map/.../MapScreen.kt`, `MapViewModel.kt` | `GET /trips/{id}` cached in Room; markers and days endpoints | Works | `/places/in-view` (stage 5) |
+| Trip map: day tabs from server days, add/delete day (waits for the server), tap map to add a numbered stop, remove and clear day (with confirmation) shown at once, failed stop changes undone with a banner (Retry when the connection failed), tapping a stop chip selects its pin, centers the map and opens its info window, chips and pins say "Stop #N" by position, my-location; read-only for viewers | `feature/map/.../MapScreen.kt`, `MapViewModel.kt` | `GET /trips/{id}` cached in Room; markers and days endpoints | Works | `/places/in-view` (stage 5) |
 
 ## Map integration
 

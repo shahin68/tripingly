@@ -84,7 +84,7 @@ class MapViewModel(
             is Action.CenterOnUserLocation -> centerOnUserLocation()
             is Action.NavigateToLocation -> navigateTo(action.coordinates, action.zoom)
             is Action.OnMapClick -> addMarker(action.coordinates)
-            is Action.OnMarkerClick -> ui.update { it.copy(selectedMarkerId = action.marker.id) }
+            is Action.OnMarkerClick -> selectMarker(action.marker)
             is Action.OnRemoveMarker -> removeMarker(action.markerId)
             is Action.ClearAllMarkers -> ui.update { it.copy(confirm = Confirm.ClearDay) }
             is Action.DeleteDay -> ui.update { it.copy(confirm = Confirm.DeleteDay) }
@@ -147,6 +147,12 @@ class MapViewModel(
     private fun selectDay(index: Int) {
         ui.update { it.copy(activeDayIndex = index, selectedMarkerId = null) }
         currentDays().getOrNull(index)?.let(::centerOnDay)
+    }
+
+    /** From the map or a chip: highlight the stop and bring it to the middle. */
+    private fun selectMarker(marker: MapMarker) {
+        ui.update { it.copy(selectedMarkerId = marker.id) }
+        navigateTo(marker.position, ui.value.zoomLevel)
     }
 
     private fun centerOnDay(day: TripDay) {

@@ -70,6 +70,8 @@ fun MapScreen(
     state: State,
     onAction: (Action) -> Unit,
 ) {
+    // Stops are named by their place in the day, so the numbers follow deletes and reorders.
+    val markers = state.markers.map { it.copy(title = stringResource(Res.string.map_stop_title_format, it.orderNumber)) }
     Box(
         modifier = Modifier.fillMaxSize()
     ) {
@@ -77,7 +79,8 @@ fun MapScreen(
             modifier = Modifier.fillMaxSize(),
             cameraTarget = state.cameraTarget,
             zoomLevel = state.zoomLevel,
-            markers = state.markers,
+            markers = markers,
+            selectedMarkerId = state.selectedMarker?.id,
             isMyLocationEnabled = state.isPermissionGranted,
             onCameraMove = { coords, zoom -> onAction(Action.OnCameraMove(coords, zoom)) },
             onMapClick = { coords -> onAction(Action.OnMapClick(coords)) },
@@ -136,6 +139,7 @@ fun MapScreen(
             ) {
                 TripItineraryCard(
                     state = state,
+                    markers = markers,
                     onAction = onAction,
                     modifier = Modifier
                         .padding(horizontal = MaterialTheme.spacing.medium)
@@ -257,6 +261,7 @@ private fun LocationFab(
 @Composable
 private fun TripItineraryCard(
     state: State,
+    markers: List<MapMarker>,
     onAction: (Action) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -278,7 +283,7 @@ private fun TripItineraryCard(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 contentPadding = PaddingValues(horizontal = 4.dp),
             ) {
-                items(state.markers, key = { it.id }) { marker ->
+                items(markers, key = { it.id }) { marker ->
                     ItineraryMarkerChip(
                         marker = marker,
                         isSelected = marker.id == state.selectedMarker?.id,

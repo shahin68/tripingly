@@ -204,6 +204,21 @@ class MapViewModelTest {
     }
 
     @Test
+    fun `selecting a stop highlights it and centers the map on it`() = runTest(testDispatcher) {
+        backend.addMarker(trip.trip.id, trip.days[0].id, NewMarker("Stop #1", GeoPoint(48.85, 2.35)))
+        backend.addMarker(trip.trip.id, trip.days[0].id, NewMarker("Stop #2", GeoPoint(41.9, 12.49)))
+        val viewModel = viewModel()
+        testScheduler.advanceUntilIdle()
+
+        val second = viewModel.uiState.value.markers[1]
+        viewModel.onAction(Action.OnMarkerClick(second))
+        testScheduler.advanceUntilIdle()
+
+        assertEquals(second.id, viewModel.uiState.value.selectedMarker?.id)
+        assertEquals(second.position, viewModel.uiState.value.cameraTarget)
+    }
+
+    @Test
     fun `clear all asks first, then empties the day`() = runTest(testDispatcher) {
         backend.addMarker(trip.trip.id, trip.days[0].id, NewMarker("Stop #1", GeoPoint(48.85, 2.35)))
         backend.addMarker(trip.trip.id, trip.days[0].id, NewMarker("Stop #2", GeoPoint(41.9, 12.49)))
