@@ -1,5 +1,6 @@
 package com.falcon.tripingly.feature.trips.presentation.component
 
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.OutlinedTextField
@@ -21,7 +22,9 @@ import com.falcon.tripingly.feature.trips.generated.resources.*
 fun RenameTripDialog(
     initialName: String,
     onDismiss: () -> Unit,
-    onConfirm: (String) -> Unit
+    onConfirm: (String) -> Unit,
+    isSaving: Boolean = false,
+    error: String? = null,
 ) {
     var name by remember { mutableStateOf(initialName) }
 
@@ -29,23 +32,28 @@ fun RenameTripDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(Res.string.rename_trip_title)) },
         text = {
-            OutlinedTextField(
-                value = name,
-                onValueChange = { name = it },
-                label = { Text(stringResource(Res.string.create_trip_name_label)) },
-                modifier = Modifier.fillMaxWidth()
-            )
+            Column {
+                OutlinedTextField(
+                    value = name,
+                    onValueChange = { name = it },
+                    label = { Text(stringResource(Res.string.create_trip_name_label)) },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                    enabled = !isSaving,
+                )
+                DialogError(error)
+            }
         },
         confirmButton = {
             TextButton(
                 onClick = { onConfirm(name) },
-                enabled = name.isNotBlank() && name != initialName
+                enabled = !isSaving && name.isNotBlank() && name.trim() != initialName
             ) {
-                Text(stringResource(Res.string.rename_trip_button_rename))
+                SavingLabel(isSaving, stringResource(Res.string.rename_trip_button_rename))
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) {
+            TextButton(onClick = onDismiss, enabled = !isSaving) {
                 Text(stringResource(Res.string.common_cancel))
             }
         }

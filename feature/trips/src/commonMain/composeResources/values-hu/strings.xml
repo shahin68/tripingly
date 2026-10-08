@@ -1,0 +1,78 @@
+<resources>
+    <!-- Common -->
+    <string name="common_ok">OK</string>
+    <string name="common_cancel">Mégse</string>
+
+    <!-- Home -->
+    <string name="home_tab_my_trips">Utazásaim</string>
+    <string name="home_tab_social">Közösség</string>
+    <string name="home_search_placeholder_trips">Utazások keresése...</string>
+    <string name="home_search_placeholder_social">Keresés a közösségben...</string>
+    <string name="home_fab_add_trip">Utazás hozzáadása</string>
+    <string name="home_list_empty">Még nincs utazásod. Koppints a + gombra, és hozz létre egyet!</string>
+    <string name="home_list_no_matches">Egy utazás sem felel meg a keresésnek.</string>
+    <string name="home_social_coming_soon">A közösségi funkciók hamarosan érkeznek!</string>
+    <string name="home_offline_cached">Nincs internetkapcsolat. Ezek a mentett utazásaid; a módosításokhoz kapcsolat kell.</string>
+
+    <!-- Trip list item -->
+    <string name="trip_no_dates">Még nincs dátum</string>
+    <string name="trip_private">Privát</string>
+    <string name="trip_shared_by">Megosztotta: @%1$s</string>
+
+    <!-- Trip actions -->
+    <string name="trip_action_rename">Utazás átnevezése</string>
+    <string name="trip_action_reschedule">Dátumok módosítása</string>
+    <string name="trip_action_make_private">Legyen privát</string>
+    <string name="trip_action_make_public">Legyen nyilvános</string>
+    <string name="trip_action_members">Tagok</string>
+    <string name="trip_action_share">Utazás megosztása</string>
+    <string name="trip_action_delete">Utazás törlése</string>
+    <string name="trip_action_leave">Kilépés az utazásból</string>
+
+    <!-- Share -->
+    <string name="share_trip_text">Nézd meg az utazásomat: %1$s (%2$s)!</string>
+    <string name="share_trip_text_no_dates">Nézd meg az utazásomat: %1$s!</string>
+
+    <!-- Create trip dialog -->
+    <string name="create_trip_title">Új utazás</string>
+    <string name="create_trip_name_label">Az utazás neve</string>
+    <string name="create_trip_dates_label">Dátumok</string>
+    <string name="create_trip_button_create">Létrehozás</string>
+    <string name="create_trip_picker_title">Az utazás dátumai</string>
+    <string name="create_trip_picker_headline">Válaszd ki az időszakot</string>
+
+    <!-- Rename trip dialog -->
+    <string name="rename_trip_title">Utazás átnevezése</string>
+    <string name="rename_trip_button_rename">Átnevezés</string>
+
+    <!-- Reschedule trip dialog -->
+    <string name="reschedule_trip_title">Dátumok módosítása</string>
+    <string name="reschedule_trip_dates_label">Új dátumok</string>
+    <string name="reschedule_trip_button_reschedule">Módosítás</string>
+    <string name="reschedule_trip_picker_headline">Válaszd ki az új dátumokat</string>
+    <string name="reschedule_error_days_not_empty">Az elhagyandó napok közül néhányon még vannak megállók. Előbb töröld vagy helyezd át őket.</string>
+
+    <!-- Delete and leave -->
+    <string name="delete_trip_title">Törlöd az utazást?</string>
+    <string name="delete_trip_message">A(z) „%1$s” utazás az összes napjával és megállójával együtt mindenki számára törlődik. Ez nem vonható vissza.</string>
+    <string name="delete_trip_button">Törlés</string>
+    <string name="leave_trip_title">Kilépsz az utazásból?</string>
+    <string name="leave_trip_message">Ezután nem látod és nem szerkesztheted a(z) „%1$s” utazást. A tulajdonos újra hozzáadhat.</string>
+    <string name="leave_trip_button">Kilépés</string>
+
+    <!-- Members -->
+    <string name="members_title">Tagok</string>
+    <string name="members_role_owner">Tulajdonos</string>
+    <string name="members_role_editor">Szerkesztő</string>
+    <string name="members_remove">Eltávolítás</string>
+    <string name="members_add_label">Hozzáadás felhasználónévvel</string>
+    <string name="members_add_button">Hozzáadás</string>
+    <string name="members_error_user_not_found">Nincs ilyen felhasználónév.</string>
+    <string name="members_invites_title">Meghívó linkek</string>
+    <string name="members_invite_hint">Aki megkapja a linket, a lejáratig szerkesztőként csatlakozhat.</string>
+    <string name="members_invite_create">Meghívó link létrehozása</string>
+    <string name="members_invite_expires">Lejár: %1$s</string>
+    <string name="members_invite_share">Megosztás</string>
+    <string name="members_invite_revoke">Visszavonás</string>
+    <string name="members_invite_share_text">Csatlakozz a(z) „%1$s” utazásomhoz a Tripinlyn: %2$s</string>
+</resources>

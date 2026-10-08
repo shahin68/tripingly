@@ -9,7 +9,7 @@ Go through every item; report which pass, which fail, and what the user must do 
 
 ## Configuration
 
-- [ ] Production base URL, no fake API (`USE_FAKE_API` off), debug menus and HTTP logging removed.
+- [ ] Production base URL, no fake API (`USE_FAKE_API` off), debug menus off, and no HTTP logging (it only runs in debuggable builds; check the release build is not debuggable).
 - [ ] Google Maps API keys restricted to the app (Android package + SHA-1; iOS bundle ID) and not the same as the debug keys.
 - [ ] Firebase production config files; APNs key uploaded (user).
 - [ ] Version name/code and build number bumped.

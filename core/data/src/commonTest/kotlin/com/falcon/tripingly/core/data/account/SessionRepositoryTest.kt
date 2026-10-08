@@ -44,8 +44,7 @@ class SessionRepositoryTest {
         baseUrl = "https://api.test/v1",
         environment = "test",
         client = "android/1.0",
-        logRequests = false,
-        developerSignIn = true,
+            developerSignIn = true,
         devAuthSecret = "s3cret",
     )
 

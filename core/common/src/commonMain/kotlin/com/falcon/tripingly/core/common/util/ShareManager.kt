@@ -1,5 +1,6 @@
 package com.falcon.tripingly.core.common.util
 
+/** Opens the system share sheet. Callers pass text that is already localized. */
 interface ShareManager {
-    fun shareTrip(name: String, dates: String)
+    fun share(text: String)
 }

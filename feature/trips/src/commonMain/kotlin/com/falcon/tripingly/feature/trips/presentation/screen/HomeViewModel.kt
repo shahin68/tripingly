@@ -3,150 +3,241 @@ package com.falcon.tripingly.feature.trips.presentation.screen
 import androidx.compose.runtime.Immutable
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.falcon.tripingly.core.common.util.DateUtils
-import com.falcon.tripingly.core.common.util.ShareManager
-import com.falcon.tripingly.core.model.Trip
-import com.falcon.tripingly.feature.trips.domain.usecase.CreateTripUseCase
-import com.falcon.tripingly.feature.trips.domain.usecase.DeleteTripUseCase
-import com.falcon.tripingly.feature.trips.domain.usecase.GetAllTripsUseCase
-import com.falcon.tripingly.feature.trips.domain.usecase.UpdateTripDatesUseCase
-import com.falcon.tripingly.feature.trips.domain.usecase.UpdateTripNameUseCase
+import com.falcon.tripingly.core.common.error.DataError
+import com.falcon.tripingly.core.common.result.AppResult
+import com.falcon.tripingly.core.data.trips.TripErrorCodes
+import com.falcon.tripingly.core.data.trips.TripRepository
+import com.falcon.tripingly.core.data.trips.hasFieldError
+import com.falcon.tripingly.core.model.account.TripVisibility
+import com.falcon.tripingly.core.model.trip.NewTrip
+import com.falcon.tripingly.core.model.trip.Trip
+import com.falcon.tripingly.core.model.trip.TripDates
+import com.falcon.tripingly.core.model.trip.TripUpdate
+import com.falcon.tripingly.core.ui.UiText
+import com.falcon.tripingly.core.ui.toUiText
+import com.falcon.tripingly.feature.trips.generated.resources.Res
+import com.falcon.tripingly.feature.trips.generated.resources.home_offline_cached
+import com.falcon.tripingly.feature.trips.generated.resources.reschedule_error_days_not_empty
+import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.persistentListOf
+import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.receiveAsFlow
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.datetime.LocalDate
-import kotlinx.datetime.TimeZone
-import kotlinx.datetime.todayIn
 
+/**
+ * My Trips. The list comes from the cache and is reloaded from the server on
+ * start and on pull-to-refresh; changes wait for the server's answer.
+ */
 class HomeViewModel(
-    private val getAllTripsUseCase: GetAllTripsUseCase,
-    private val createTripUseCase: CreateTripUseCase,
-    private val deleteTripUseCase: DeleteTripUseCase,
-    private val updateTripNameUseCase: UpdateTripNameUseCase,
-    private val updateTripDatesUseCase: UpdateTripDatesUseCase,
-    private val shareManager: ShareManager
+    private val tripRepository: TripRepository,
 ) : ViewModel() {
 
-    private val _uiState = MutableStateFlow(State())
-    val uiState: StateFlow<State> = _uiState.asStateFlow()
+    private val ui = MutableStateFlow(UiState())
+
+    val uiState: StateFlow<State> = combine(tripRepository.observeMyTrips(), ui) { trips, ui ->
+        State(
+            selectedTab = ui.selectedTab,
+            searchQuery = ui.searchQuery,
+            trips = trips.filter { it.matches(ui.searchQuery) }.toImmutableList(),
+            hasTrips = trips.isNotEmpty(),
+            isRefreshing = ui.isRefreshing,
+            hasLoaded = ui.hasLoaded || trips.isNotEmpty(),
+            message = ui.message,
+            dialog = ui.dialog?.let { dialog -> dialog.withTrip(trips) },
+            isSaving = ui.isSaving,
+            dialogError = ui.dialogError,
+            membersTripId = ui.membersTripId,
+        )
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), State())
 
     private val _events = Channel<Event>(capacity = Channel.BUFFERED)
     val events = _events.receiveAsFlow()
 
     init {
-        observeTrips()
+        refresh()
     }
 
     fun onAction(action: Action) {
         when (action) {
-            is Action.OnTabSelected -> _uiState.update { it.copy(selectedTab = action.tab) }
-            is Action.OnSearchQueryChanged -> _uiState.update { it.copy(searchQuery = action.query) }
-            is Action.OnAddTripClick -> _uiState.update { it.copy(isCreateDialogVisible = true) }
-            is Action.OnDismissCreateDialog -> _uiState.update { it.copy(isCreateDialogVisible = false) }
-            is Action.OnConfirmCreateTrip -> createTrip(action.name, action.startDate, action.endDate)
+            is Action.OnTabSelected -> ui.update { it.copy(selectedTab = action.tab) }
+            is Action.OnSearchQueryChanged -> ui.update { it.copy(searchQuery = action.query) }
+            Action.OnRefresh -> refresh()
+            Action.OnDismissMessage -> ui.update { it.copy(message = null) }
             is Action.OnTripClick -> sendEvent(Event.NavigateToMap(action.tripId))
-            is Action.OnDeleteTrip -> deleteTrip(action.tripId)
-            is Action.OnRenameTrip -> {
-                val trip = _uiState.value.trips.find { it.id == action.tripId }
-                _uiState.update { it.copy(renamingTrip = trip) }
+            Action.OnAddTripClick -> openDialog(Dialog.Create)
+            is Action.OnRenameTrip -> withTrip(action.tripId) { openDialog(Dialog.Rename(it)) }
+            is Action.OnRescheduleTrip -> withTrip(action.tripId) { openDialog(Dialog.Reschedule(it)) }
+            is Action.OnDeleteTrip -> withTrip(action.tripId) { openDialog(Dialog.ConfirmDelete(it)) }
+            is Action.OnLeaveTrip -> withTrip(action.tripId) { openDialog(Dialog.ConfirmLeave(it)) }
+            Action.OnDismissDialog -> if (!ui.value.isSaving) ui.update { it.copy(dialog = null, dialogError = null) }
+            is Action.OnConfirmCreateTrip -> save {
+                tripRepository.createTrip(NewTrip(action.name, action.startDate, action.endDate))
             }
-            is Action.OnDismissRenameDialog -> _uiState.update { it.copy(renamingTrip = null) }
-            is Action.OnConfirmRenameTrip -> renameTrip(action.tripId, action.newName)
-            
-            is Action.OnRescheduleTrip -> {
-                val trip = _uiState.value.trips.find { it.id == action.tripId }
-                _uiState.update { it.copy(reschedulingTrip = trip) }
+            is Action.OnConfirmRenameTrip -> save {
+                tripRepository.updateTrip(action.tripId, TripUpdate(name = action.newName))
             }
-            is Action.OnDismissRescheduleDialog -> _uiState.update { it.copy(reschedulingTrip = null) }
-            is Action.OnConfirmRescheduleTrip -> rescheduleTrip(action.tripId, action.startDate, action.endDate)
-            
-            is Action.OnShareTrip -> {
-                val trip = _uiState.value.trips.find { it.id == action.tripId }
-                trip?.let {
-                    val dates = "${DateUtils.formatFormal(it.startDate)} - ${DateUtils.formatFormal(it.endDate)}"
-                    shareManager.shareTrip(it.name, dates)
+            is Action.OnConfirmRescheduleTrip -> save {
+                tripRepository.updateTrip(action.tripId, TripUpdate(dates = TripDates(action.startDate, action.endDate)))
+            }
+            is Action.OnConfirmDeleteTrip -> save { tripRepository.deleteTrip(action.tripId) }
+            is Action.OnConfirmLeaveTrip -> save { tripRepository.leaveTrip(action.tripId) }
+            is Action.OnToggleVisibility -> withTrip(action.tripId) { toggleVisibility(it) }
+            is Action.OnShareTrip -> withTrip(action.tripId) { sendEvent(Event.ShareTrip(it)) }
+            is Action.OnManageMembers -> ui.update { it.copy(membersTripId = action.tripId) }
+            Action.OnDismissMembers -> ui.update { it.copy(membersTripId = null) }
+        }
+    }
+
+    private fun refresh() {
+        if (ui.value.isRefreshing) return
+        ui.update { it.copy(isRefreshing = true) }
+        viewModelScope.launch {
+            val result = tripRepository.refreshMyTrips()
+            ui.update {
+                it.copy(
+                    isRefreshing = false,
+                    hasLoaded = true,
+                    message = (result as? AppResult.Error)?.error?.let(::refreshMessage),
+                )
+            }
+        }
+    }
+
+    private fun refreshMessage(error: DataError.Network): UiText =
+        if (error == DataError.Network.NoInternet) UiText.Resource(Res.string.home_offline_cached) else error.toUiText()
+
+    private fun openDialog(dialog: Dialog) {
+        ui.update { it.copy(dialog = dialog, dialogError = null) }
+    }
+
+    /** Runs a dialog's change; the dialog stays open with the error if the server refuses it. */
+    private fun save(change: suspend () -> AppResult<*, DataError.Network>) {
+        if (ui.value.isSaving) return
+        ui.update { it.copy(isSaving = true, dialogError = null) }
+        viewModelScope.launch {
+            val result = change()
+            ui.update {
+                when (result) {
+                    is AppResult.Success -> it.copy(isSaving = false, dialog = null)
+                    is AppResult.Error -> it.copy(isSaving = false, dialogError = dialogError(result.error))
                 }
             }
         }
     }
 
-    private fun observeTrips() {
+    private fun dialogError(error: DataError.Network): UiText =
+        if (error.hasFieldError("endDate", TripErrorCodes.DAYS_NOT_EMPTY)) {
+            UiText.Resource(Res.string.reschedule_error_days_not_empty)
+        } else {
+            error.toUiText()
+        }
+
+    private fun toggleVisibility(trip: Trip) {
+        val visibility = if (trip.visibility == TripVisibility.PUBLIC) TripVisibility.PRIVATE else TripVisibility.PUBLIC
         viewModelScope.launch {
-            getAllTripsUseCase().collect { trips ->
-                _uiState.update { it.copy(trips = trips) }
-            }
+            val result = tripRepository.updateTrip(trip.id, TripUpdate(visibility = visibility))
+            if (result is AppResult.Error) ui.update { it.copy(message = result.error.toUiText()) }
         }
     }
 
-    private fun createTrip(name: String, startDate: LocalDate, endDate: LocalDate) {
-        viewModelScope.launch {
-            createTripUseCase(name, startDate, endDate)
-            _uiState.update { it.copy(isCreateDialogVisible = false) }
-        }
-    }
-
-    private fun renameTrip(tripId: String, newName: String) {
-        viewModelScope.launch {
-            updateTripNameUseCase(tripId, newName)
-            _uiState.update { it.copy(renamingTrip = null) }
-        }
-    }
-
-    private fun rescheduleTrip(tripId: String, startDate: LocalDate, endDate: LocalDate) {
-        viewModelScope.launch {
-            updateTripDatesUseCase(tripId, startDate, endDate)
-            _uiState.update { it.copy(reschedulingTrip = null) }
-        }
-    }
-
-    private fun deleteTrip(tripId: String) {
-        viewModelScope.launch {
-            deleteTripUseCase(tripId)
-        }
+    private fun withTrip(tripId: String, block: (Trip) -> Unit) {
+        uiState.value.trips.firstOrNull { it.id == tripId }?.let(block)
     }
 
     private fun sendEvent(event: Event) {
-        viewModelScope.launch {
-            _events.send(event)
-        }
+        viewModelScope.launch { _events.send(event) }
     }
+
+    private data class UiState(
+        val selectedTab: Tab = Tab.MyTrips,
+        val searchQuery: String = "",
+        val isRefreshing: Boolean = false,
+        val hasLoaded: Boolean = false,
+        val message: UiText? = null,
+        val dialog: Dialog? = null,
+        val isSaving: Boolean = false,
+        val dialogError: UiText? = null,
+        val membersTripId: String? = null,
+    )
 
     @Immutable
     data class State(
         val selectedTab: Tab = Tab.MyTrips,
         val searchQuery: String = "",
-        val trips: List<Trip> = emptyList(),
-        val isCreateDialogVisible: Boolean = false,
-        val renamingTrip: Trip? = null,
-        val reschedulingTrip: Trip? = null
+        /** My Trips matching [searchQuery]. */
+        val trips: ImmutableList<Trip> = persistentListOf(),
+        /** False only when the user has no trips at all (not just none matching the search). */
+        val hasTrips: Boolean = false,
+        val isRefreshing: Boolean = false,
+        /** False until the first load answered or cached trips exist; shows a spinner instead of "no trips". */
+        val hasLoaded: Boolean = false,
+        /** A banner, e.g. offline or an error the user should see. */
+        val message: UiText? = null,
+        val dialog: Dialog? = null,
+        val isSaving: Boolean = false,
+        val dialogError: UiText? = null,
+        /** The trip whose members sheet is open. */
+        val membersTripId: String? = null,
     )
 
     enum class Tab { MyTrips, Social }
 
+    @Immutable
+    sealed interface Dialog {
+        data object Create : Dialog
+        data class Rename(val trip: Trip) : Dialog
+        data class Reschedule(val trip: Trip) : Dialog
+        data class ConfirmDelete(val trip: Trip) : Dialog
+        data class ConfirmLeave(val trip: Trip) : Dialog
+    }
+
     sealed interface Event {
         data class NavigateToMap(val tripId: String) : Event
+        data class ShareTrip(val trip: Trip) : Event
     }
 
     sealed interface Action {
         data class OnTabSelected(val tab: Tab) : Action
         data class OnSearchQueryChanged(val query: String) : Action
-        data object OnAddTripClick : Action
-        data object OnDismissCreateDialog : Action
-        data class OnConfirmCreateTrip(val name: String, val startDate: LocalDate, val endDate: LocalDate) : Action
+        data object OnRefresh : Action
+        data object OnDismissMessage : Action
         data class OnTripClick(val tripId: String) : Action
-        data class OnDeleteTrip(val tripId: String) : Action
+        data object OnAddTripClick : Action
+        data object OnDismissDialog : Action
+        data class OnConfirmCreateTrip(val name: String, val startDate: LocalDate, val endDate: LocalDate) : Action
         data class OnRenameTrip(val tripId: String) : Action
-        data object OnDismissRenameDialog : Action
         data class OnConfirmRenameTrip(val tripId: String, val newName: String) : Action
-        
         data class OnRescheduleTrip(val tripId: String) : Action
-        data object OnDismissRescheduleDialog : Action
         data class OnConfirmRescheduleTrip(val tripId: String, val startDate: LocalDate, val endDate: LocalDate) : Action
-        
+        data class OnDeleteTrip(val tripId: String) : Action
+        data class OnConfirmDeleteTrip(val tripId: String) : Action
+        data class OnLeaveTrip(val tripId: String) : Action
+        data class OnConfirmLeaveTrip(val tripId: String) : Action
+        data class OnToggleVisibility(val tripId: String) : Action
         data class OnShareTrip(val tripId: String) : Action
+        data class OnManageMembers(val tripId: String) : Action
+        data object OnDismissMembers : Action
+    }
+}
+
+private fun Trip.matches(query: String): Boolean = query.isBlank() || name.contains(query.trim(), ignoreCase = true)
+
+/** Keeps a dialog's trip current (e.g. renamed elsewhere); closes it when the trip is gone. */
+private fun HomeViewModel.Dialog.withTrip(trips: List<Trip>): HomeViewModel.Dialog? {
+    fun current(trip: Trip) = trips.firstOrNull { it.id == trip.id }
+    return when (this) {
+        HomeViewModel.Dialog.Create -> this
+        is HomeViewModel.Dialog.Rename -> current(trip)?.let { copy(trip = it) }
+        is HomeViewModel.Dialog.Reschedule -> current(trip)?.let { copy(trip = it) }
+        is HomeViewModel.Dialog.ConfirmDelete -> current(trip)?.let { copy(trip = it) }
+        is HomeViewModel.Dialog.ConfirmLeave -> current(trip)?.let { copy(trip = it) }
     }
 }

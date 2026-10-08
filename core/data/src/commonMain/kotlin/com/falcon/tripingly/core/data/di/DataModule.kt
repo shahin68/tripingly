@@ -8,21 +8,56 @@ import com.falcon.tripingly.core.data.account.FakeAccountBackend
 import com.falcon.tripingly.core.data.account.LocalDataCleaner
 import com.falcon.tripingly.core.data.account.SessionRepository
 import com.falcon.tripingly.core.data.account.SessionRepositoryImpl
-import com.falcon.tripingly.core.data.repository.TripRepository
-import com.falcon.tripingly.core.data.repository.TripRepositoryImpl
-import com.falcon.tripingly.core.database.dao.MarkerDao
-import com.falcon.tripingly.core.database.dao.TripDao
+import com.falcon.tripingly.core.data.trips.DefaultMarkerRepository
+import com.falcon.tripingly.core.data.trips.DefaultTripInviteRepository
+import com.falcon.tripingly.core.data.trips.FakeTripBackend
+import com.falcon.tripingly.core.data.trips.MarkerRepository
+import com.falcon.tripingly.core.data.trips.OfflineFirstTripRepository
+import com.falcon.tripingly.core.data.trips.PendingTripWrites
+import com.falcon.tripingly.core.data.trips.RoomTripLocalDataSource
+import com.falcon.tripingly.core.data.trips.TripInviteRepository
+import com.falcon.tripingly.core.data.trips.TripLocalDataSource
+import com.falcon.tripingly.core.data.trips.TripRepository
+import com.falcon.tripingly.core.model.account.SessionState
 import com.falcon.tripingly.core.network.ApiConfig
 import kotlin.time.Clock
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.todayIn
-import org.koin.core.module.dsl.singleOf
 import org.koin.core.qualifier.named
-import org.koin.dsl.bind
 import org.koin.dsl.module
 
 val dataModule = module {
-    singleOf(::TripRepositoryImpl) bind TripRepository::class
+    single<TripLocalDataSource> { RoomTripLocalDataSource(get()) }
+    single { FakeTripBackend() }
+    single { PendingTripWrites() }
+    single<TripRepository> {
+        if (get<ApiConfig>().useFakeApi) {
+            get<FakeTripBackend>()
+        } else {
+            OfflineFirstTripRepository(
+                api = get(),
+                local = get(),
+                pending = get(),
+                currentUserId = {
+                    when (val session = get<SessionRepository>().session.value) {
+                        is SessionState.SignedIn -> session.account.id
+                        is SessionState.Onboarding -> session.account.id
+                        else -> null
+                    }
+                },
+            )
+        }
+    }
+    single<MarkerRepository> {
+        if (get<ApiConfig>().useFakeApi) {
+            get<FakeTripBackend>()
+        } else {
+            DefaultMarkerRepository(api = get(), trips = get(), local = get(), pending = get(), scope = get(ApplicationScope))
+        }
+    }
+    single<TripInviteRepository> {
+        if (get<ApiConfig>().useFakeApi) get<FakeTripBackend>() else DefaultTripInviteRepository(get(), get())
+    }
 
     single<SessionRepository> {
         if (get<ApiConfig>().useFakeApi) {
@@ -57,13 +92,9 @@ val dataModule = module {
         )
     }
 
-    // The local trips and markers belong to whoever was signed in.
+    // The cached trips belong to whoever was signed in.
     single(named("tripsCache")) {
-        val trips = get<TripDao>()
-        val markers = get<MarkerDao>()
-        LocalDataCleaner {
-            markers.deleteAll()
-            trips.deleteAll()
-        }
+        val trips = get<TripLocalDataSource>()
+        LocalDataCleaner { trips.clear() }
     }
 }

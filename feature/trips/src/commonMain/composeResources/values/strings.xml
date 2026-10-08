@@ -10,13 +10,28 @@
     <string name="home_search_placeholder_social">Search social...</string>
     <string name="home_fab_add_trip">Add Trip</string>
     <string name="home_list_empty">No trips yet. Tap + to create one!</string>
+    <string name="home_list_no_matches">No trips match your search.</string>
     <string name="home_social_coming_soon">Social feature coming soon!</string>
+    <string name="home_offline_cached">You’re offline. These are your saved trips; changes need a connection.</string>
+
+    <!-- Trip list item -->
+    <string name="trip_no_dates">No dates yet</string>
+    <string name="trip_private">Private</string>
+    <string name="trip_shared_by">Shared by @%1$s</string>
 
     <!-- Trip actions -->
     <string name="trip_action_rename">Rename Trip</string>
     <string name="trip_action_reschedule">Reschedule Trip</string>
+    <string name="trip_action_make_private">Make Private</string>
+    <string name="trip_action_make_public">Make Public</string>
+    <string name="trip_action_members">Members</string>
     <string name="trip_action_share">Share Trip</string>
     <string name="trip_action_delete">Delete Trip</string>
+    <string name="trip_action_leave">Leave Trip</string>
+
+    <!-- Share -->
+    <string name="share_trip_text">Check out my trip: %1$s (%2$s)!</string>
+    <string name="share_trip_text_no_dates">Check out my trip: %1$s!</string>
 
     <!-- Create trip dialog -->
     <string name="create_trip_title">Create New Trip</string>
@@ -35,4 +50,29 @@
     <string name="reschedule_trip_dates_label">New Dates</string>
     <string name="reschedule_trip_button_reschedule">Reschedule</string>
     <string name="reschedule_trip_picker_headline">Choose new dates</string>
+    <string name="reschedule_error_days_not_empty">Some of the days you’d remove still have stops. Delete or move those stops first.</string>
+
+    <!-- Delete and leave -->
+    <string name="delete_trip_title">Delete trip?</string>
+    <string name="delete_trip_message">“%1$s” and all its days and stops will be deleted for everyone in it. This can’t be undone.</string>
+    <string name="delete_trip_button">Delete</string>
+    <string name="leave_trip_title">Leave trip?</string>
+    <string name="leave_trip_message">You won’t see or edit “%1$s” anymore. The owner can add you again.</string>
+    <string name="leave_trip_button">Leave</string>
+
+    <!-- Members -->
+    <string name="members_title">Members</string>
+    <string name="members_role_owner">Owner</string>
+    <string name="members_role_editor">Editor</string>
+    <string name="members_remove">Remove</string>
+    <string name="members_add_label">Add by username</string>
+    <string name="members_add_button">Add</string>
+    <string name="members_error_user_not_found">No one has that username.</string>
+    <string name="members_invites_title">Invite links</string>
+    <string name="members_invite_hint">Anyone with a link can join as an editor until it expires.</string>
+    <string name="members_invite_create">Create invite link</string>
+    <string name="members_invite_expires">Expires %1$s</string>
+    <string name="members_invite_share">Share</string>
+    <string name="members_invite_revoke">Revoke</string>
+    <string name="members_invite_share_text">Join my trip “%1$s” on Tripinly: %2$s</string>
 </resources>

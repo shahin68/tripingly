@@ -20,6 +20,7 @@ This guide sets the testing standards and practices for `tripingly`.
 - **HTTP**: Ktor `MockEngine` serving JSON copied from real staging responses
 - **Android-only tests**: JUnit 4 + Robolectric in `androidHostTest`, only when Android resources or framework classes are unavoidable
 - **Test Doubles**: hand-written fakes, no mocking library. Mocking libraries don't run on Kotlin/Native, and fakes keep every `commonTest` running on iOS too. Shared fakes live in `core:testing` once a second module needs them.
+- **No test hooks in production classes**: don't add constructor parameters (with defaults) only so tests can change timings or rules. A class owns its business constants (`private companion object`); tests control time with `runTest`/virtual time or wait on the real result.
 - **Planned** (confirm before adding): Roborazzi screenshot tests for design-system components and key screens; Konsist architecture tests for layer rules
 
 ---

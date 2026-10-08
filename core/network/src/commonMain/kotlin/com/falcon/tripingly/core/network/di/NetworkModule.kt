@@ -10,6 +10,12 @@ import com.falcon.tripingly.core.network.auth.SessionEvents
 import com.falcon.tripingly.core.network.auth.TokenStore
 import com.falcon.tripingly.core.network.createHttpClient
 import com.falcon.tripingly.core.network.createKtorfit
+import com.falcon.tripingly.core.network.trips.InvitesApi
+import com.falcon.tripingly.core.network.trips.MarkersApi
+import com.falcon.tripingly.core.network.trips.TripsApi
+import com.falcon.tripingly.core.network.trips.createInvitesApi
+import com.falcon.tripingly.core.network.trips.createMarkersApi
+import com.falcon.tripingly.core.network.trips.createTripsApi
 import de.jensklingenberg.ktorfit.Ktorfit
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.HttpClientEngine
@@ -25,6 +31,9 @@ internal interface NetworkPlatform {
     fun languageTag(): String
 
     fun engine(): HttpClientEngine
+
+    /** A debug build (Android debuggable, iOS debug binary); only these log HTTP calls. */
+    val isDebugBuild: Boolean
 }
 
 val networkModule = module {
@@ -40,11 +49,15 @@ val networkModule = module {
             tokenStore = get(),
             sessionEvents = get(),
             languageTag = platform::languageTag,
+            logHttp = platform.isDebugBuild,
         )
     }
     single<Ktorfit> { createKtorfit(get(), get()) }
     single<AuthApi> { get<Ktorfit>().createAuthApi() }
     single<AccountApi> { get<Ktorfit>().createAccountApi() }
+    single<TripsApi> { get<Ktorfit>().createTripsApi() }
+    single<MarkersApi> { get<Ktorfit>().createMarkersApi() }
+    single<InvitesApi> { get<Ktorfit>().createInvitesApi() }
 }
 
 internal expect val networkPlatformModule: Module

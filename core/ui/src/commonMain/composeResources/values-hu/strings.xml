@@ -1,0 +1,8 @@
+<resources>
+    <string name="error_no_internet">Nincs internetkapcsolat. Ellenőrizd a kapcsolatot, és próbáld újra.</string>
+    <string name="error_timeout">A Tripinly túl lassan válaszol. Próbáld újra.</string>
+    <string name="error_server">A Tripinly most nem érhető el. Próbáld újra kicsit később.</string>
+    <string name="error_unknown">Valami hiba történt. Próbáld újra.</string>
+    <string name="error_not_available">Ez az utazás nem érhető el.</string>
+    <string name="error_forbidden">Ezt az utazást nem módosíthatod.</string>
+</resources>

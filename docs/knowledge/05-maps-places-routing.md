@@ -57,6 +57,14 @@ data class MapState(
 - Render thumbnails to bitmaps off the main thread (download with the app's image loader, crop circle, cache per URL + size). Android: `BitmapDescriptor`; iOS: `UIImage` icon (prefer icon images over `iconView` for performance).
 - Use the Google Maps utility libraries for **client-side clustering** of trip markers only if needed. Place clusters come from the server.
 
+## Stop names (planned for stage 5)
+
+Shahin wants every stop to show its place name, not only "Stop #N" (asked 2026-10-08).
+
+- Chips and pin titles already show **"Stop #N" from the stop's position** in the day, so numbers follow deletes and reorders. The marker's stored `name` is a placeholder ("Stop #N" at creation) until this lands.
+- Stage 5: a stop added from a place (in-view pin, search result with `id`) is created with `placeId`, and the server fills `name` with the place name. A stop added by tapping empty map gets a name from a backend lookup of the nearest OSM place or a Photon reverse lookup (a backend endpoint; never Google, never public Nominatim), and falls back to "Stop #N" when nothing is near.
+- Display: "Stop #N" plus the place name (chip second line or "Stop #N · Name", pin info window title "Name", snippet "Stop #N"). The design is Shahin's call when stage 5 starts.
+
 ## Loading places while browsing
 
 1. On **camera idle**, wait 300 ms (debounce), cancel the previous request, then call `GET /places/in-view?bbox=…&zoom=…&categories=…`.

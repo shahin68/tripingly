@@ -6,8 +6,7 @@ kotlin {
     sourceSets {
         commonMain.dependencies {
             implementation(projects.core.data)
-            // Marker use cases still talk to MarkerDao directly; a MarkerRepository in :core:data replaces this in the trips-on-API stage.
-            implementation(projects.core.database)
+            implementation(projects.core.ui)
         }
         androidMain.dependencies {
             implementation(libs.playServices.maps)

@@ -18,7 +18,6 @@ internal val testConfig = ApiConfig(
     baseUrl = "https://api.test/v1",
     environment = "test",
     client = "android/1.0",
-    logRequests = false,
 )
 
 internal class TestApi(

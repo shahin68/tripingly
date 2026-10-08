@@ -47,6 +47,8 @@ import com.falcon.tripingly.feature.trips.generated.resources.*
 fun CreateTripDialog(
     onDismiss: () -> Unit,
     onConfirm: (String, LocalDate, LocalDate) -> Unit,
+    isSaving: Boolean = false,
+    error: String? = null,
 ) {
     var name by remember { mutableStateOf("") }
     var showDatePicker by remember { mutableStateOf(false) }
@@ -129,12 +131,12 @@ fun CreateTripDialog(
                     onValueChange = { name = it },
                     label = { Text(stringResource(Res.string.create_trip_name_label)) },
                     modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                    enabled = !isSaving,
                 )
                 Spacer(modifier = Modifier.height(16.dp))
                 
-                val dateRangeText = if (selectedStartDate != null && selectedEndDate != null) {
-                    "${DateUtils.formatFormal(selectedStartDate)} - ${DateUtils.formatFormal(selectedEndDate)}"
-                } else ""
+                val dateRangeText = formatDateRange(selectedStartDate, selectedEndDate).orEmpty()
 
                 OutlinedTextField(
                     value = dateRangeText,
@@ -143,11 +145,12 @@ fun CreateTripDialog(
                     modifier = Modifier.fillMaxWidth(),
                     readOnly = true,
                     trailingIcon = {
-                        TextButton(onClick = { showDatePicker = true }) {
+                        TextButton(onClick = { showDatePicker = true }, enabled = !isSaving) {
                             Icon(Icons.Default.DateRange, contentDescription = null)
                         }
                     },
                 )
+                DialogError(error)
             }
         },
         confirmButton = {
@@ -157,13 +160,13 @@ fun CreateTripDialog(
                         onConfirm(name, selectedStartDate, selectedEndDate)
                     }
                 },
-                enabled = (name.isNotBlank() && selectedStartDate != null && selectedEndDate != null),
+                enabled = !isSaving && name.isNotBlank() && selectedStartDate != null && selectedEndDate != null,
             ) {
-                Text(stringResource(Res.string.create_trip_button_create))
+                SavingLabel(isSaving, stringResource(Res.string.create_trip_button_create))
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) {
+            TextButton(onClick = onDismiss, enabled = !isSaving) {
                 Text(stringResource(Res.string.common_cancel))
             }
         },

@@ -37,12 +37,24 @@ import androidx.compose.material3.SecondaryScrollableTabRow
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.toImmutableList
+import com.falcon.tripingly.core.designsystem.component.AppDropdownMenu
+import com.falcon.tripingly.core.designsystem.component.DropdownAction
 import com.falcon.tripingly.core.designsystem.component.ErrorBanner
 import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
 import com.falcon.tripingly.core.designsystem.theme.spacing
@@ -51,9 +63,6 @@ import com.falcon.tripingly.feature.map.domain.model.MapMarker
 import com.falcon.tripingly.feature.map.presentation.component.GoogleMapView
 import com.falcon.tripingly.feature.map.presentation.screen.MapViewModel.Action
 import com.falcon.tripingly.feature.map.presentation.screen.MapViewModel.State
-import kotlinx.datetime.DateTimeUnit
-import kotlinx.datetime.plus
-import kotlinx.datetime.until
 import org.jetbrains.compose.resources.stringResource
 import com.falcon.tripingly.feature.map.generated.resources.Res
 import com.falcon.tripingly.feature.map.generated.resources.*
@@ -63,6 +72,13 @@ fun MapScreen(
     state: State,
     onAction: (Action) -> Unit,
 ) {
+    // Stops are named by their place in the day, so the numbers follow deletes and reorders.
+    // Kept as the same list while the stops don't change, so the map and the chips skip
+    // recomposing on unrelated updates such as the user's location.
+    val stopTitles = state.markers.map { stringResource(Res.string.map_stop_title_format, it.orderNumber) }
+    val markers = remember(state.markers, stopTitles) {
+        state.markers.mapIndexed { index, marker -> marker.copy(title = stopTitles[index]) }.toImmutableList()
+    }
     Box(
         modifier = Modifier.fillMaxSize()
     ) {
@@ -70,7 +86,8 @@ fun MapScreen(
             modifier = Modifier.fillMaxSize(),
             cameraTarget = state.cameraTarget,
             zoomLevel = state.zoomLevel,
-            markers = state.markers,
+            markers = markers,
+            selectedMarkerId = state.selectedMarker?.id,
             isMyLocationEnabled = state.isPermissionGranted,
             onCameraMove = { coords, zoom -> onAction(Action.OnCameraMove(coords, zoom)) },
             onMapClick = { coords -> onAction(Action.OnMapClick(coords)) },
@@ -83,18 +100,20 @@ fun MapScreen(
                 .statusBarsPadding()
                 .fillMaxWidth()
         ) {
-            TripHeader(state.tripName)
-            
+            TripHeader(state, onAction)
+
             AnimatedVisibility(
-                visible = state.errorMessage != null,
+                visible = state.message != null,
                 enter = fadeIn() + slideInVertically(),
                 exit = fadeOut() + slideOutVertically(),
                 modifier = Modifier.padding(MaterialTheme.spacing.medium)
             ) {
-                state.errorMessage?.let { error ->
+                state.message?.let { message ->
                     ErrorBanner(
-                        errorMessage = error,
-                        onDismiss = { onAction(Action.DismissError) }
+                        errorMessage = message.asString(),
+                        onDismiss = { onAction(Action.DismissError) },
+                        actionLabel = if (state.canRetry) stringResource(Res.string.map_retry) else null,
+                        onAction = if (state.canRetry) ({ onAction(Action.RetryFailedChanges) }) else null,
                     )
                 }
             }
@@ -126,7 +145,9 @@ fun MapScreen(
                 modifier = Modifier.fillMaxWidth()
             ) {
                 TripItineraryCard(
-                    state = state,
+                    markers = markers,
+                    selectedMarkerId = state.selectedMarker?.id,
+                    canEdit = state.canEdit,
                     onAction = onAction,
                     modifier = Modifier
                         .padding(horizontal = MaterialTheme.spacing.medium)
@@ -138,7 +159,11 @@ fun MapScreen(
 }
 
 @Composable
-private fun TripHeader(title: String) {
+private fun TripHeader(
+    state: State,
+    onAction: (Action) -> Unit,
+) {
+    var menuExpanded by remember { mutableStateOf(false) }
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -148,12 +173,38 @@ private fun TripHeader(title: String) {
         ),
         shape = RoundedCornerShape(16.dp),
     ) {
-        Text(
-            text = title,
-            modifier = Modifier.padding(16.dp),
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold,
-        )
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                text = state.tripName,
+                modifier = Modifier.weight(1f).padding(16.dp),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+            )
+            if (state.isSaving || state.isLoading) {
+                CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+            }
+            if (state.canEdit) {
+                Box {
+                    IconButton(onClick = { menuExpanded = true }) {
+                        Icon(Icons.Default.MoreVert, contentDescription = stringResource(Res.string.map_day_menu))
+                    }
+                    AppDropdownMenu(
+                        expanded = menuExpanded,
+                        onDismissRequest = { menuExpanded = false },
+                        actions = buildList {
+                            add(DropdownAction(stringResource(Res.string.map_add_day)) { onAction(Action.AddDay) })
+                            if (state.days.size > 1) {
+                                add(
+                                    DropdownAction(stringResource(Res.string.map_delete_day), isDestructive = true) {
+                                        onAction(Action.DeleteDay)
+                                    },
+                                )
+                            }
+                        },
+                    )
+                }
+            }
+        }
     }
 }
 
@@ -162,24 +213,25 @@ private fun DaySelectionTabs(
     state: State,
     onDaySelected: (Int) -> Unit,
 ) {
-    val totalDays = if (state.startDate != null && state.endDate != null) {
-        (state.startDate.until(state.endDate, DateTimeUnit.DAY) + 1).toInt()
-    } else 1
-
+    if (state.days.isEmpty()) return
     SecondaryScrollableTabRow(
         selectedTabIndex = state.activeDayIndex,
         containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.8f),
         edgePadding = 16.dp,
         divider = {},
     ) {
-        repeat(totalDays) { index ->
+        state.days.forEachIndexed { index, day ->
             Tab(
                 selected = state.activeDayIndex == index,
                 onClick = { onDaySelected(index) },
                 text = {
-                    val tabDate = state.startDate?.plus(index, DateTimeUnit.DAY)
-                    val dateStr = tabDate?.let { DateUtils.formatAbbreviated(it) } ?: ""
-                    Text(stringResource(Res.string.map_day_label, index + 1, dateStr))
+                    Text(
+                        if (day.date != null) {
+                            stringResource(Res.string.map_day_label, day.number, DateUtils.formatAbbreviated(day.date))
+                        } else {
+                            stringResource(Res.string.map_day_label_no_date, day.number)
+                        },
+                    )
                 },
             )
         }
@@ -216,7 +268,9 @@ private fun LocationFab(
 
 @Composable
 private fun TripItineraryCard(
-    state: State,
+    markers: ImmutableList<MapMarker>,
+    selectedMarkerId: String?,
+    canEdit: Boolean,
     onAction: (Action) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -230,7 +284,7 @@ private fun TripItineraryCard(
         Column(
             modifier = Modifier.padding(12.dp),
         ) {
-            ItineraryTitle(state, onAction)
+            ItineraryTitle(stopCount = markers.size, canEdit = canEdit, onAction = onAction)
 
             Spacer(modifier = Modifier.height(6.dp))
 
@@ -238,10 +292,11 @@ private fun TripItineraryCard(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 contentPadding = PaddingValues(horizontal = 4.dp),
             ) {
-                items(state.markers, key = { it.id }) { marker ->
+                items(markers, key = { it.id }) { marker ->
                     ItineraryMarkerChip(
                         marker = marker,
-                        state = state,
+                        isSelected = marker.id == selectedMarkerId,
+                        canEdit = canEdit,
                         onAction = onAction,
                     )
                 }
@@ -253,11 +308,11 @@ private fun TripItineraryCard(
 @Composable
 private fun ItineraryMarkerChip(
     marker: MapMarker,
-    state: State,
+    isSelected: Boolean,
+    canEdit: Boolean,
     onAction: (Action) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val isSelected = marker.id == state.selectedMarker?.id
     InputChip(
         selected = isSelected,
         onClick = { onAction(Action.OnMarkerClick(marker)) },
@@ -283,13 +338,21 @@ private fun ItineraryMarkerChip(
                 )
             }
         },
-        trailingIcon = {
-            IconButton(
-                onClick = { onAction(Action.OnRemoveMarker(marker.id)) },
-                modifier = Modifier.size(16.dp),
-            ) {
-                Text("✕", style = MaterialTheme.typography.labelSmall)
+        trailingIcon = if (canEdit) {
+            {
+                IconButton(
+                    onClick = { onAction(Action.OnRemoveMarker(marker.id)) },
+                    modifier = Modifier.size(16.dp),
+                ) {
+                    Icon(
+                        Icons.Default.Close,
+                        contentDescription = stringResource(Res.string.map_remove_stop),
+                        modifier = Modifier.size(14.dp),
+                    )
+                }
             }
+        } else {
+            null
         },
         colors = InputChipDefaults.inputChipColors(
             containerColor = MaterialTheme.colorScheme.surfaceVariant,
@@ -301,7 +364,8 @@ private fun ItineraryMarkerChip(
 
 @Composable
 private fun ItineraryTitle(
-    state: State,
+    stopCount: Int,
+    canEdit: Boolean,
     onAction: (Action) -> Unit,
 ) {
     Row(
@@ -310,12 +374,14 @@ private fun ItineraryTitle(
         horizontalArrangement = Arrangement.SpaceBetween,
     ) {
         Text(
-            text = stringResource(Res.string.map_itinerary_title, state.markers.size),
+            text = stringResource(Res.string.map_itinerary_title, stopCount),
             style = MaterialTheme.typography.titleSmall,
             fontWeight = FontWeight.Bold,
         )
-        TextButton(onClick = { onAction(Action.ClearAllMarkers) }) {
-            Text(stringResource(Res.string.map_itinerary_clear_all), style = MaterialTheme.typography.labelSmall)
+        if (canEdit) {
+            TextButton(onClick = { onAction(Action.ClearAllMarkers) }) {
+                Text(stringResource(Res.string.map_itinerary_clear_all), style = MaterialTheme.typography.labelSmall)
+            }
         }
     }
 }

@@ -1,0 +1,78 @@
+<resources>
+    <!-- Common -->
+    <string name="common_ok">OK</string>
+    <string name="common_cancel">Abbrechen</string>
+
+    <!-- Home -->
+    <string name="home_tab_my_trips">Meine Reisen</string>
+    <string name="home_tab_social">Social</string>
+    <string name="home_search_placeholder_trips">Reisen suchen...</string>
+    <string name="home_search_placeholder_social">Social durchsuchen...</string>
+    <string name="home_fab_add_trip">Reise hinzufügen</string>
+    <string name="home_list_empty">Noch keine Reisen. Tippe auf +, um eine zu erstellen!</string>
+    <string name="home_list_no_matches">Keine Reise passt zu deiner Suche.</string>
+    <string name="home_social_coming_soon">Social kommt bald!</string>
+    <string name="home_offline_cached">Du bist offline. Das sind deine gespeicherten Reisen; Änderungen brauchen eine Verbindung.</string>
+
+    <!-- Trip list item -->
+    <string name="trip_no_dates">Noch keine Daten</string>
+    <string name="trip_private">Privat</string>
+    <string name="trip_shared_by">Geteilt von @%1$s</string>
+
+    <!-- Trip actions -->
+    <string name="trip_action_rename">Reise umbenennen</string>
+    <string name="trip_action_reschedule">Reisedaten ändern</string>
+    <string name="trip_action_make_private">Privat machen</string>
+    <string name="trip_action_make_public">Öffentlich machen</string>
+    <string name="trip_action_members">Mitglieder</string>
+    <string name="trip_action_share">Reise teilen</string>
+    <string name="trip_action_delete">Reise löschen</string>
+    <string name="trip_action_leave">Reise verlassen</string>
+
+    <!-- Share -->
+    <string name="share_trip_text">Schau dir meine Reise an: %1$s (%2$s)!</string>
+    <string name="share_trip_text_no_dates">Schau dir meine Reise an: %1$s!</string>
+
+    <!-- Create trip dialog -->
+    <string name="create_trip_title">Neue Reise erstellen</string>
+    <string name="create_trip_name_label">Name der Reise</string>
+    <string name="create_trip_dates_label">Daten</string>
+    <string name="create_trip_button_create">Erstellen</string>
+    <string name="create_trip_picker_title">Reisedaten wählen</string>
+    <string name="create_trip_picker_headline">Zeitraum wählen</string>
+
+    <!-- Rename trip dialog -->
+    <string name="rename_trip_title">Reise umbenennen</string>
+    <string name="rename_trip_button_rename">Umbenennen</string>
+
+    <!-- Reschedule trip dialog -->
+    <string name="reschedule_trip_title">Reisedaten ändern</string>
+    <string name="reschedule_trip_dates_label">Neue Daten</string>
+    <string name="reschedule_trip_button_reschedule">Ändern</string>
+    <string name="reschedule_trip_picker_headline">Neue Daten wählen</string>
+    <string name="reschedule_error_days_not_empty">Einige der Tage, die wegfallen würden, haben noch Stopps. Lösche oder verschiebe diese Stopps zuerst.</string>
+
+    <!-- Delete and leave -->
+    <string name="delete_trip_title">Reise löschen?</string>
+    <string name="delete_trip_message">„%1$s“ wird mit allen Tagen und Stopps für alle Mitglieder gelöscht. Das kann nicht rückgängig gemacht werden.</string>
+    <string name="delete_trip_button">Löschen</string>
+    <string name="leave_trip_title">Reise verlassen?</string>
+    <string name="leave_trip_message">Du kannst „%1$s“ dann nicht mehr sehen oder bearbeiten. Die Besitzerin oder der Besitzer kann dich wieder hinzufügen.</string>
+    <string name="leave_trip_button">Verlassen</string>
+
+    <!-- Members -->
+    <string name="members_title">Mitglieder</string>
+    <string name="members_role_owner">Besitzer</string>
+    <string name="members_role_editor">Bearbeiter</string>
+    <string name="members_remove">Entfernen</string>
+    <string name="members_add_label">Per Benutzername hinzufügen</string>
+    <string name="members_add_button">Hinzufügen</string>
+    <string name="members_error_user_not_found">Niemand hat diesen Benutzernamen.</string>
+    <string name="members_invites_title">Einladungslinks</string>
+    <string name="members_invite_hint">Wer einen Link hat, kann bis zum Ablauf als Bearbeiter beitreten.</string>
+    <string name="members_invite_create">Einladungslink erstellen</string>
+    <string name="members_invite_expires">Läuft ab am %1$s</string>
+    <string name="members_invite_share">Teilen</string>
+    <string name="members_invite_revoke">Widerrufen</string>
+    <string name="members_invite_share_text">Mach mit bei meiner Reise „%1$s“ auf Tripinly: %2$s</string>
+</resources>

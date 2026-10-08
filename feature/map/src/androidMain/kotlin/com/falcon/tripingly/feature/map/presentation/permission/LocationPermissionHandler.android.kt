@@ -1,51 +1,68 @@
 package com.falcon.tripingly.feature.map.presentation.permission
 
 import android.Manifest
+import android.app.Activity
+import android.content.Context
+import android.content.ContextWrapper
+import android.content.Intent
 import android.content.pm.PackageManager
+import android.net.Uri
+import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.platform.LocalContext
+import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 
 @Composable
-actual fun rememberLocationPermissionLauncher(
-    onResult: (Boolean) -> Unit
-): () -> Unit {
-    val context = LocalContext.current
+actual fun rememberLocationPermissionController(
+    onResult: (LocationPermission) -> Unit
+): LocationPermissionController {
+    val activity = LocalContext.current.findActivity()
     val currentOnResult = rememberUpdatedState(onResult)
-
-    val launcher = rememberLauncherForActivityResult(
+    val controller = remember(activity) { AndroidLocationPermissionController(activity) }
+    controller.launcher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestMultiplePermissions()
-    ) { permissions: Map<String, Boolean> ->
-        val isGranted = permissions[Manifest.permission.ACCESS_FINE_LOCATION] == true ||
-                permissions[Manifest.permission.ACCESS_COARSE_LOCATION] == true
-        currentOnResult.value(isGranted)
+    ) {
+        // Still denied without a reason to explain: Android didn't show its prompt, or the user said no for good.
+        val status = controller.status()
+        currentOnResult.value(if (status == LocationPermission.NotAsked) LocationPermission.Blocked else status)
+    }
+    return controller
+}
+
+private class AndroidLocationPermissionController(private val activity: Activity) : LocationPermissionController {
+    lateinit var launcher: ActivityResultLauncher<Array<String>>
+
+    override fun status(): LocationPermission = when {
+        PERMISSIONS.any { ContextCompat.checkSelfPermission(activity, it) == PackageManager.PERMISSION_GRANTED } ->
+            LocationPermission.Granted
+        PERMISSIONS.any { ActivityCompat.shouldShowRequestPermissionRationale(activity, it) } ->
+            LocationPermission.ShouldExplain
+        else -> LocationPermission.NotAsked
     }
 
-    LaunchedEffect(Unit) {
-        val fineGranted = ContextCompat.checkSelfPermission(
-            context,
-            Manifest.permission.ACCESS_FINE_LOCATION
-        ) == PackageManager.PERMISSION_GRANTED
-        val coarseGranted = ContextCompat.checkSelfPermission(
-            context,
-            Manifest.permission.ACCESS_COARSE_LOCATION
-        ) == PackageManager.PERMISSION_GRANTED
-
-        if (fineGranted || coarseGranted) {
-            currentOnResult.value(true)
-        }
+    override fun request() {
+        launcher.launch(PERMISSIONS)
     }
 
-    return {
-        launcher.launch(
-            arrayOf(
-                Manifest.permission.ACCESS_FINE_LOCATION,
-                Manifest.permission.ACCESS_COARSE_LOCATION
-            )
+    override fun openSettings() {
+        activity.startActivity(
+            Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.fromParts("package", activity.packageName, null)),
         )
     }
+
+    private companion object {
+        val PERMISSIONS = arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION)
+    }
+}
+
+private tailrec fun Context.findActivity(): Activity = when (this) {
+    is Activity -> this
+    is ContextWrapper -> baseContext.findActivity()
+    else -> error("The map needs an Activity to ask for location")
 }
