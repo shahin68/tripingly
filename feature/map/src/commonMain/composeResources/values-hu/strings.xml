@@ -6,6 +6,7 @@
     <string name="map_itinerary_clear_all">Összes törlése</string>
     <string name="map_stop_title_format">%1$d. megálló</string>
     <string name="map_remove_stop">Megálló eltávolítása</string>
+    <string name="map_back">Vissza</string>
     <string name="map_day_menu">Nap beállításai</string>
     <string name="map_add_day">Nap hozzáadása</string>
     <string name="map_delete_day">Nap törlése</string>

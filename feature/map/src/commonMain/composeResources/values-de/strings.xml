@@ -6,6 +6,7 @@
     <string name="map_itinerary_clear_all">Alle löschen</string>
     <string name="map_stop_title_format">Stopp %1$d</string>
     <string name="map_remove_stop">Stopp entfernen</string>
+    <string name="map_back">Zurück</string>
     <string name="map_day_menu">Tagesoptionen</string>
     <string name="map_add_day">Tag hinzufügen</string>
     <string name="map_delete_day">Diesen Tag löschen</string>

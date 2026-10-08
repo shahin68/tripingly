@@ -11,6 +11,7 @@ import com.falcon.tripingly.feature.map.domain.model.MapMarker
 import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.LatLng
+import com.google.maps.android.compose.ComposeMapColorScheme
 import com.google.maps.android.compose.GoogleMap
 import com.google.maps.android.compose.MapProperties
 import com.google.maps.android.compose.MapUiSettings
@@ -86,6 +87,8 @@ actual fun GoogleMapView(
         cameraPositionState = cameraPositionState,
         properties = mapProperties,
         uiSettings = uiSettings,
+        // Dark map in dark mode, so the light status bar icons stay readable.
+        mapColorScheme = ComposeMapColorScheme.FOLLOW_SYSTEM,
         onMapClick = { latLng ->
             onMapClick(Coordinates(latitude = latLng.latitude, longitude = latLng.longitude))
         }

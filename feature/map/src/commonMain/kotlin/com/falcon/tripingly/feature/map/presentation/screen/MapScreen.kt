@@ -38,6 +38,7 @@ import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.Icon
@@ -168,15 +169,20 @@ private fun TripHeader(
         modifier = Modifier
             .fillMaxWidth()
             .padding(MaterialTheme.spacing.medium),
+        // A see-through surface doesn't get a content color of its own, so it's set here.
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f)
+            containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f),
+            contentColor = MaterialTheme.colorScheme.onSurface,
         ),
         shape = RoundedCornerShape(16.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
+            IconButton(onClick = { onAction(Action.OnBackClick) }) {
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(Res.string.map_back))
+            }
             Text(
                 text = state.tripName,
-                modifier = Modifier.weight(1f).padding(16.dp),
+                modifier = Modifier.weight(1f).padding(vertical = 16.dp),
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
             )
@@ -217,6 +223,7 @@ private fun DaySelectionTabs(
     SecondaryScrollableTabRow(
         selectedTabIndex = state.activeDayIndex,
         containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.8f),
+        contentColor = MaterialTheme.colorScheme.onSurface,
         edgePadding = 16.dp,
         divider = {},
     ) {
@@ -279,6 +286,7 @@ private fun TripItineraryCard(
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.elevatedCardColors(
             containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f),
+            contentColor = MaterialTheme.colorScheme.onSurface,
         ),
     ) {
         Column(

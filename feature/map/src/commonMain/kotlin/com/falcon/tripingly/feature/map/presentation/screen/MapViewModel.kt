@@ -98,6 +98,7 @@ class MapViewModel(
             is Action.RetryFailedChanges -> retryFailedChanges()
             is Action.OnCameraMove -> ui.update { it.copy(cameraTarget = action.coordinates, zoomLevel = action.zoom) }
             is Action.OnDaySelected -> selectDay(action.dayIndex)
+            is Action.OnBackClick -> sendEvent(Event.NavigateBack)
         }
     }
 
@@ -437,6 +438,7 @@ class MapViewModel(
         data class AnimateCamera(val coordinates: Coordinates, val zoom: Float) : Event
         data object RequestPermission : Event
         data object OpenAppSettings : Event
+        data object NavigateBack : Event
     }
 
     sealed interface Action {
@@ -458,5 +460,6 @@ class MapViewModel(
         data object RetryFailedChanges : Action
         data class OnCameraMove(val coordinates: Coordinates, val zoom: Float) : Action
         data class OnDaySelected(val dayIndex: Int) : Action
+        data object OnBackClick : Action
     }
 }

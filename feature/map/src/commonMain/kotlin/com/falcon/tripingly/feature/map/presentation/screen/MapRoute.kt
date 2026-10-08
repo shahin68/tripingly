@@ -34,6 +34,7 @@ import org.koin.core.parameter.parametersOf
 @Composable
 fun MapRoute(
     tripId: String,
+    onNavigateBack: () -> Unit,
     // Keyed by trip: the view model store is shared across screens, and the class alone would
     // hand every trip the first trip's view model.
     viewModel: MapViewModel = koinViewModel(key = "map:$tripId") { parametersOf(tripId) }
@@ -54,6 +55,7 @@ fun MapRoute(
             when (event) {
                 is Event.RequestPermission -> locationPermission.request()
                 is Event.OpenAppSettings -> locationPermission.openSettings()
+                is Event.NavigateBack -> onNavigateBack()
                 is Event.AnimateCamera -> {
                     // Reactive
                 }
