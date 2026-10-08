@@ -440,4 +440,34 @@ class MapViewModelTest {
         assertNull(viewModel.uiState.value.locationPrompt)
         assertFalse(viewModel.uiState.value.isWaitingForFirstLocation)
     }
+    @Test
+    fun `the location button offers Settings when the system prompt can't show`() = runTest(testDispatcher) {
+        val viewModel = viewModel()
+        testScheduler.advanceUntilIdle()
+        viewModel.onAction(Action.OnPermissionChecked(LocationPermission.NotAsked))
+        viewModel.onAction(Action.CenterOnUserLocation)
+        testScheduler.advanceUntilIdle()
+
+        // Android came straight back: the user said no for good.
+        viewModel.onAction(Action.OnPermissionResult(LocationPermission.Blocked))
+        testScheduler.advanceUntilIdle()
+
+        assertEquals(LocationPrompt.OpenSettings, viewModel.uiState.value.locationPrompt)
+        assertNull(viewModel.uiState.value.message)
+    }
+
+    @Test
+    fun `a blocked answer when the map opens only shows the message`() = runTest(testDispatcher) {
+        val viewModel = viewModel()
+        testScheduler.advanceUntilIdle()
+        viewModel.onAction(Action.OnPermissionChecked(LocationPermission.NotAsked))
+        testScheduler.advanceUntilIdle()
+
+        viewModel.onAction(Action.OnPermissionResult(LocationPermission.Blocked))
+        testScheduler.advanceUntilIdle()
+
+        assertNull(viewModel.uiState.value.locationPrompt)
+        val message = assertIs<UiText.Resource>(viewModel.uiState.value.message)
+        assertEquals(Res.string.error_location_denied_manual, message.resource)
+    }
 }

@@ -268,6 +268,9 @@ class MapViewModel(
         ui.update { it.copy(permission = permission) }
         if (permission == LocationPermission.Granted) {
             if (before.permission != LocationPermission.Granted) startLocationUpdates()
+        } else if (permission == LocationPermission.Blocked && before.isWaitingForFirstLocation) {
+            // The location button asked, but the system can't show its prompt any more.
+            ui.update { it.copy(locationPrompt = LocationPrompt.OpenSettings) }
         } else {
             ui.update {
                 it.copy(

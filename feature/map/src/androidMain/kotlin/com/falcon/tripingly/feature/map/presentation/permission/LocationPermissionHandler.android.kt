@@ -28,7 +28,9 @@ actual fun rememberLocationPermissionController(
     controller.launcher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestMultiplePermissions()
     ) {
-        currentOnResult.value(controller.status())
+        // Still denied without a reason to explain: Android didn't show its prompt, or the user said no for good.
+        val status = controller.status()
+        currentOnResult.value(if (status == LocationPermission.NotAsked) LocationPermission.Blocked else status)
     }
     return controller
 }
@@ -36,21 +38,15 @@ actual fun rememberLocationPermissionController(
 private class AndroidLocationPermissionController(private val activity: Activity) : LocationPermissionController {
     lateinit var launcher: ActivityResultLauncher<Array<String>>
 
-    // Android can't tell "never asked" from "denied for good" (both don't want an explanation),
-    // so remember that we asked.
-    private val prefs = activity.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-
     override fun status(): LocationPermission = when {
         PERMISSIONS.any { ContextCompat.checkSelfPermission(activity, it) == PackageManager.PERMISSION_GRANTED } ->
             LocationPermission.Granted
         PERMISSIONS.any { ActivityCompat.shouldShowRequestPermissionRationale(activity, it) } ->
             LocationPermission.ShouldExplain
-        prefs.getBoolean(KEY_ASKED, false) -> LocationPermission.Blocked
         else -> LocationPermission.NotAsked
     }
 
     override fun request() {
-        prefs.edit().putBoolean(KEY_ASKED, true).apply()
         launcher.launch(PERMISSIONS)
     }
 
@@ -62,8 +58,6 @@ private class AndroidLocationPermissionController(private val activity: Activity
 
     private companion object {
         val PERMISSIONS = arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION)
-        const val PREFS_NAME = "location_permission"
-        const val KEY_ASKED = "asked"
     }
 }
 

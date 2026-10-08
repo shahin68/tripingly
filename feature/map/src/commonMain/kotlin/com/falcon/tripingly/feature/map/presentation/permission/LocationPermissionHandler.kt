@@ -6,13 +6,16 @@ import androidx.compose.runtime.Composable
 enum class LocationPermission {
     Granted,
 
-    /** Never asked: the system prompt can be shown. */
+    /**
+     * Not allowed and nothing to explain: try the system prompt. On Android this is also how a
+     * permanent denial looks, so a request that comes straight back reports [Blocked].
+     */
     NotAsked,
 
     /** Android, after a denial: explain why first, then the system prompt can be shown again. */
     ShouldExplain,
 
-    /** The system won't show its prompt any more; only the app's settings can change it. */
+    /** The system won't show its prompt (iOS after a denial; Android when a request came back denied for good). */
     Blocked,
 }
 
