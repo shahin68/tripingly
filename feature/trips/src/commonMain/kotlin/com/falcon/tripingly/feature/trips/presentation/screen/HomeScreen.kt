@@ -190,6 +190,7 @@ private fun MyTripsContent(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(horizontal = 16.dp, vertical = 8.dp)
+                            .animateItem()
                     ) {
                         TripItem(
                             trip = trip,
