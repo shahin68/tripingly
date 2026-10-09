@@ -24,6 +24,11 @@ iosApp ─────┴─> shared ──> feature:trips, feature:map, (auth, 
 - Classes are `internal` by default; only a module's contract (Koin module, routes, repository interfaces, public composables) is public.
 - Split further only when a boundary or build time asks for it.
 
+### Shared UI components (Shahin, 2026-10-09)
+
+- **Ripples follow the shape.** Every clickable surface (cards, chips, rows with rounded backgrounds) clips its touch ripple to its own shape. With a modifier click, clip first: `.clip(shape).combinedClickable(…)`. Material components that take `onClick` (`Card(onClick)`, `Surface(onClick)`) already do this. A square ripple over rounded corners is a bug.
+- **One shared card.** Cards that look alike on several screens come from one component in `core:designsystem` (planned: a clickable card with click, optional long click and a clipped ripple, built with the `ui-component` skill). Features use it instead of styling their own `Card`, so the look and touch behaviour are fixed in one place. When a new screen needs a card, extend the shared one or add a variant there; don't copy a card into a feature.
+
 ## Where logic belongs
 
 - **Domain:** models, repository interfaces, and rules (trip date math, "can this user edit", route mode limits). Use cases only when they combine repositories or hold a rule; no pass-through use cases.
