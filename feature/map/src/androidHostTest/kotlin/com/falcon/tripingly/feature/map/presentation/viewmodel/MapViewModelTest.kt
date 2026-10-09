@@ -222,6 +222,44 @@ class MapViewModelTest {
     }
 
     @Test
+    fun `opening a trip frames the open day's stops`() = runTest(testDispatcher) {
+        backend.addMarker(trip.trip.id, trip.days[0].id, NewMarker("Stop #1", GeoPoint(48.85, 2.35)))
+        backend.addMarker(trip.trip.id, trip.days[0].id, NewMarker("Stop #2", GeoPoint(48.86, 2.29)))
+        backend.addMarker(trip.trip.id, trip.days[1].id, NewMarker("Stop #1", GeoPoint(41.9, 12.49)))
+        val viewModel = viewModel()
+        testScheduler.advanceUntilIdle()
+
+        assertEquals(listOf(Coordinates(48.85, 2.35), Coordinates(48.86, 2.29)), viewModel.uiState.value.frame?.points)
+
+        viewModel.onAction(Action.OnDaySelected(1))
+        testScheduler.advanceUntilIdle()
+        assertEquals(listOf(Coordinates(41.9, 12.49)), viewModel.uiState.value.frame?.points)
+    }
+
+    @Test
+    fun `a trip whose first day is empty frames the whole trip`() = runTest(testDispatcher) {
+        backend.addMarker(trip.trip.id, trip.days[2].id, NewMarker("Stop #1", GeoPoint(41.9, 12.49)))
+        val viewModel = viewModel()
+        testScheduler.advanceUntilIdle()
+
+        assertEquals(listOf(Coordinates(41.9, 12.49)), viewModel.uiState.value.frame?.points)
+    }
+
+    @Test
+    fun `choosing the same day again frames it again`() = runTest(testDispatcher) {
+        backend.addMarker(trip.trip.id, trip.days[0].id, NewMarker("Stop #1", GeoPoint(48.85, 2.35)))
+        val viewModel = viewModel()
+        testScheduler.advanceUntilIdle()
+        val first = viewModel.uiState.value.frame
+
+        viewModel.onAction(Action.OnDaySelected(0))
+        testScheduler.advanceUntilIdle()
+
+        assertEquals(first?.points, viewModel.uiState.value.frame?.points)
+        assertTrue(viewModel.uiState.value.frame!!.id > first!!.id)
+    }
+
+    @Test
     fun `clear all asks first, then empties the day`() = runTest(testDispatcher) {
         backend.addMarker(trip.trip.id, trip.days[0].id, NewMarker("Stop #1", GeoPoint(48.85, 2.35)))
         backend.addMarker(trip.trip.id, trip.days[0].id, NewMarker("Stop #2", GeoPoint(41.9, 12.49)))

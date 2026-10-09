@@ -75,10 +75,15 @@ actual fun GoogleMapView(
         val zoomDiff = Math.abs(current.zoom - zoomLevel)
         
         if (latDiff > 0.00001 || lngDiff > 0.00001 || zoomDiff > 0.01) {
-            cameraPositionState.animate(
-                CameraUpdateFactory.newLatLngZoom(targetLatLng, zoomLevel),
-                durationMs = 800
-            )
+            if (cameraPositionState.projection == null) {
+                // The map isn't drawn yet: start it there instead of animating.
+                cameraPositionState.position = CameraPosition.fromLatLngZoom(targetLatLng, zoomLevel)
+            } else {
+                cameraPositionState.animate(
+                    CameraUpdateFactory.newLatLngZoom(targetLatLng, zoomLevel),
+                    durationMs = 800
+                )
+            }
         }
     }
 

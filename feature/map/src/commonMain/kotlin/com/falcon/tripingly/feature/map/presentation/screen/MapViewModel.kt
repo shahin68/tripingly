@@ -17,6 +17,7 @@ import com.falcon.tripingly.core.model.trip.TripDetails
 import com.falcon.tripingly.core.model.trip.TripMarker
 import com.falcon.tripingly.core.ui.UiText
 import com.falcon.tripingly.core.ui.toUiText
+import com.falcon.tripingly.feature.map.domain.model.CameraFrame
 import com.falcon.tripingly.feature.map.domain.model.Coordinates
 import com.falcon.tripingly.feature.map.domain.model.MapMarker
 import com.falcon.tripingly.feature.map.domain.usecase.GetCurrentLocationUseCase
@@ -117,6 +118,7 @@ class MapViewModel(
             currentLocation = ui.currentLocation,
             cameraTarget = ui.cameraTarget,
             zoomLevel = ui.zoomLevel,
+            frame = ui.frame,
             isPermissionGranted = ui.permission == LocationPermission.Granted,
             isLoadingLocation = ui.isLoadingLocation,
             selectedMarker = markers.firstOrNull { it.id == ui.selectedMarkerId },
@@ -133,10 +135,10 @@ class MapViewModel(
             val result = tripRepository.refreshTrip(tripId)
             ui.update { it.copy(isLoadingTrip = false, message = (result as? AppResult.Error)?.error?.toUiText()) }
         }
-        // Show the first day's stops when the trip opens.
+        // Show the open day's stops when the trip opens, or the whole trip's while that day has none.
         viewModelScope.launch {
-            val details = trip.first { it != null && it.days.isNotEmpty() }
-            details?.days?.firstOrNull()?.let(::centerOnDay)
+            val details = trip.first { it != null && it.days.isNotEmpty() } ?: return@launch
+            frameStops(activeDay()?.markers.orEmpty().ifEmpty { details.days.flatMap { it.markers } })
         }
     }
 
@@ -151,7 +153,7 @@ class MapViewModel(
 
     private fun selectDay(index: Int) {
         ui.update { it.copy(activeDayIndex = index, selectedMarkerId = null) }
-        currentDays().getOrNull(index)?.let(::centerOnDay)
+        currentDays().getOrNull(index)?.let { frameStops(it.markers) }
     }
 
     /** From the map or a chip: highlight the stop and bring it to the middle. */
@@ -160,10 +162,11 @@ class MapViewModel(
         navigateTo(marker.position, ui.value.zoomLevel)
     }
 
-    private fun centerOnDay(day: TripDay) {
-        val first = day.markers.firstOrNull() ?: return
-        ui.update { it.copy(hasCenteredOnTrip = true) }
-        navigateTo(Coordinates(first.location.lat, first.location.lng), ui.value.zoomLevel.coerceAtLeast(13f))
+    /** The screen fits the camera to these stops; without stops the camera stays where it is. */
+    private fun frameStops(markers: List<TripMarker>) {
+        if (markers.isEmpty()) return
+        val points = markers.map { Coordinates(it.location.lat, it.location.lng) }
+        ui.update { it.copy(hasCenteredOnTrip = true, frame = CameraFrame(points, (it.frame?.id ?: 0) + 1)) }
     }
 
     private fun watchFailedChanges() {
@@ -395,6 +398,7 @@ class MapViewModel(
         val failedChanges: List<MarkerChangeFailure> = emptyList(),
         val isWaitingForFirstLocation: Boolean = false,
         val hasCenteredOnTrip: Boolean = false,
+        val frame: CameraFrame? = null,
         val confirm: Confirm? = null,
     )
 
@@ -423,6 +427,8 @@ class MapViewModel(
         val currentLocation: Coordinates? = null,
         val cameraTarget: Coordinates = Coordinates.Paris,
         val zoomLevel: Float = 13f,
+        /** The stops to fit on screen: the open day's, framed on open, on a day change and on every return. */
+        val frame: CameraFrame? = null,
         val isPermissionGranted: Boolean = false,
         val isLoadingLocation: Boolean = false,
         val selectedMarker: MapMarker? = null,
