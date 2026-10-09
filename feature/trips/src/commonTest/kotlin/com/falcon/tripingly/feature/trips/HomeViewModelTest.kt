@@ -2,8 +2,12 @@ package com.falcon.tripingly.feature.trips
 
 import com.falcon.tripingly.core.common.error.DataError
 import com.falcon.tripingly.core.common.result.AppResult
+import com.falcon.tripingly.core.data.places.FakePlaceRepository
+import com.falcon.tripingly.core.data.places.PlaceRepository
 import com.falcon.tripingly.core.data.trips.FakeTripBackend
 import com.falcon.tripingly.core.model.account.TripVisibility
+import com.falcon.tripingly.core.model.place.PlaceSearchResult
+import com.falcon.tripingly.core.model.trip.Destination
 import com.falcon.tripingly.core.model.trip.GeoPoint
 import com.falcon.tripingly.core.model.trip.NewMarker
 import com.falcon.tripingly.core.model.trip.NewTrip
@@ -25,6 +29,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
+import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
@@ -44,6 +49,16 @@ class HomeViewModelTest {
 
     private val backend = FakeTripBackend()
 
+    /** Counts what reaches the server. */
+    private val places = object : PlaceRepository {
+        val queries = mutableListOf<String>()
+        private val fake = FakePlaceRepository()
+        override suspend fun search(query: String): AppResult<List<PlaceSearchResult>, DataError.Network> {
+            queries += query
+            return fake.search(query)
+        }
+    }
+
     @BeforeTest
     fun setUp() = Dispatchers.setMain(StandardTestDispatcher())
 
@@ -51,7 +66,7 @@ class HomeViewModelTest {
     fun tearDown() = Dispatchers.resetMain()
 
     /** A view model whose state is collected, as the screen does. */
-    private fun TestScope.viewModel(): HomeViewModel = HomeViewModel(backend).also { viewModel ->
+    private fun TestScope.viewModel(): HomeViewModel = HomeViewModel(backend, places).also { viewModel ->
         backgroundScope.launch { viewModel.uiState.collect {} }
     }
 
@@ -232,5 +247,54 @@ class HomeViewModelTest {
         viewModel.onAction(Action.OnTripClick(trip.trip.id))
 
         assertEquals(Event.NavigateToMap(trip.trip.id), viewModel.events.first())
+    }
+
+    @Test
+    fun destinationSearch_waitsForTypingToPause_andAsksOnceForTheLastText() = runTest {
+        val viewModel = viewModel()
+        advanceUntilIdle()
+        viewModel.onAction(Action.OnAddTripClick)
+
+        listOf("P", "Pa", "Par", "Pari").forEach {
+            viewModel.onAction(Action.OnDestinationQueryChanged(it))
+            advanceTimeBy(100)
+        }
+        assertTrue(places.queries.isEmpty())
+
+        advanceTimeBy(250)
+        assertEquals(listOf("Pari"), places.queries)
+        assertEquals(listOf("Paris"), viewModel.uiState.value.destinationResults.map { it.name })
+        assertFalse(viewModel.uiState.value.isSearchingDestination)
+    }
+
+    @Test
+    fun destinationSearch_clearedField_dropsResultsAtOnceWithoutAsking() = runTest {
+        val viewModel = viewModel()
+        advanceUntilIdle()
+        viewModel.onAction(Action.OnAddTripClick)
+        viewModel.onAction(Action.OnDestinationQueryChanged("Vie"))
+        advanceUntilIdle()
+        assertEquals(1, viewModel.uiState.value.destinationResults.size)
+
+        viewModel.onAction(Action.OnDestinationQueryChanged("Vien"))
+        viewModel.onAction(Action.OnDestinationQueryChanged(""))
+        advanceUntilIdle()
+
+        assertTrue(viewModel.uiState.value.destinationResults.isEmpty())
+        assertEquals(listOf("Vie"), places.queries)
+    }
+
+    @Test
+    fun createTrip_withDestination_savesIt() = runTest {
+        val viewModel = viewModel()
+        advanceUntilIdle()
+        val paris = Destination("Paris", GeoPoint(48.8566, 2.3522))
+
+        viewModel.onAction(Action.OnAddTripClick)
+        viewModel.onAction(Action.OnConfirmCreateTrip("Spring", LocalDate(2026, 4, 1), LocalDate(2026, 4, 3), paris))
+        advanceUntilIdle()
+
+        val tripId = viewModel.uiState.value.trips.single().id
+        assertEquals(paris, (backend.refreshTrip(tripId) as AppResult.Success).data.destination)
     }
 }

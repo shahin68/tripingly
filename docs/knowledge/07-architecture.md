@@ -56,6 +56,7 @@ iosApp ─────┴─> shared ──> feature:trips, feature:map, (auth, 
 
 - `AppResult<T, E>` across layer boundaries; nothing throws across them, and `CancellationException` is always rethrown.
 - Structured concurrency only: no `GlobalScope`; app-wide work runs in one injected application scope.
+- Search as you type (Shahin, 2026-10-09): a search that calls the server is debounced 300 ms with coroutines in the ViewModel (each keystroke cancels the pending `Job`, then `delay` and call), so fast typing sends one request and never runs into rate limits; a cleared field clears results at once. Searching local data (e.g. filtering My Trips) is cheap and runs on every keystroke.
 - One Koin module per Gradle module, `viewModelOf(::XViewModel)` with constructor injection, platform bindings through `expect/actual` modules.
 - Navigation 3 with typed, serializable keys in `core:navigation`; ViewModels read arguments from their key; deep links map to keys in one place.
 

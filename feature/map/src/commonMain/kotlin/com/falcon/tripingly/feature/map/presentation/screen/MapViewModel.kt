@@ -135,10 +135,18 @@ class MapViewModel(
             val result = tripRepository.refreshTrip(tripId)
             ui.update { it.copy(isLoadingTrip = false, message = (result as? AppResult.Error)?.error?.toUiText()) }
         }
-        // Show the open day's stops when the trip opens, or the whole trip's while that day has none.
+        // Show the open day's stops when the trip opens, or the whole trip's while that day has none,
+        // or the trip's destination while it has no stops at all.
         viewModelScope.launch {
             val details = trip.first { it != null && it.days.isNotEmpty() } ?: return@launch
-            frameStops(activeDay()?.markers.orEmpty().ifEmpty { details.days.flatMap { it.markers } })
+            val stops = activeDay()?.markers.orEmpty().ifEmpty { details.days.flatMap { it.markers } }
+            val destination = details.destination
+            if (stops.isEmpty() && destination != null) {
+                ui.update { it.copy(hasCenteredOnTrip = true) }
+                navigateTo(Coordinates(destination.location.lat, destination.location.lng), DESTINATION_ZOOM)
+            } else {
+                frameStops(stops)
+            }
         }
     }
 
@@ -467,5 +475,10 @@ class MapViewModel(
         data class OnCameraMove(val coordinates: Coordinates, val zoom: Float) : Action
         data class OnDaySelected(val dayIndex: Int) : Action
         data object OnBackClick : Action
+    }
+
+    private companion object {
+        /** A city fills the screen. */
+        const val DESTINATION_ZOOM = 12f
     }
 }

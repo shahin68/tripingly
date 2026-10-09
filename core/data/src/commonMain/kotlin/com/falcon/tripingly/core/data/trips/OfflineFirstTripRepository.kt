@@ -69,6 +69,7 @@ internal class OfflineFirstTripRepository(
                 visibility = trip.visibility?.let {
                     if (it == TripVisibility.PRIVATE) CreateTripDto.Visibility.PRIVATE else CreateTripDto.Visibility.PUBLIC
                 },
+                destination = trip.destination?.toDto(),
             ),
             newIdempotencyKey(),
         ).saved()

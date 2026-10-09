@@ -7,6 +7,7 @@ import com.falcon.tripingly.core.common.result.AppResult
 import com.falcon.tripingly.core.common.result.asError
 import com.falcon.tripingly.core.common.result.asSuccess
 import com.falcon.tripingly.core.data.trips.FakeTripBackend
+import com.falcon.tripingly.core.model.trip.Destination
 import com.falcon.tripingly.core.model.trip.GeoPoint
 import com.falcon.tripingly.core.model.trip.NewMarker
 import com.falcon.tripingly.core.model.trip.NewTrip
@@ -243,6 +244,24 @@ class MapViewModelTest {
         testScheduler.advanceUntilIdle()
 
         assertEquals(listOf(Coordinates(41.9, 12.49)), viewModel.uiState.value.frame?.points)
+    }
+
+    @Test
+    fun `a trip without stops opens at its destination, not at the device location`() = runTest(testDispatcher) {
+        val rome = (
+            backend.createTrip(
+                NewTrip("Rome", null, null, destination = Destination("Rome", GeoPoint(41.9028, 12.4964))),
+            ) as AppResult.Success
+        ).data
+        val viewModel = viewModel(rome.trip.id)
+        testScheduler.advanceUntilIdle()
+        viewModel.onAction(Action.OnPermissionResult(LocationPermission.Granted))
+        testScheduler.advanceUntilIdle()
+
+        val state = viewModel.uiState.value
+        assertEquals(Coordinates(41.9028, 12.4964), state.cameraTarget)
+        assertEquals(12f, state.zoomLevel)
+        assertEquals(null, state.frame)
     }
 
     @Test

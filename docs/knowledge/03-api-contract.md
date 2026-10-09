@@ -64,9 +64,9 @@ REST over HTTPS, JSON, base path `/v1`.
 ### Trips
 | Method | Path | Notes |
 |---|---|---|
-| POST | `/trips` | Title, dates, visibility, optional initial `memberUsernames` |
+| POST | `/trips` | Title, dates, visibility, optional `destination` `{ name, location }`, optional initial `memberUsernames` |
 | GET | `/trips/{id}` | Trip with days, markers (cover thumbnail URLs), members, `copiedFrom` summary |
-| PATCH | `/trips/{id}` | Owner: title, dates, visibility |
+| PATCH | `/trips/{id}` | Owner: title, dates, visibility, `destination` (null removes it) |
 | DELETE | `/trips/{id}` | Owner |
 | POST | `/trips/{id}/copy` | "Add to my trips". Public, not own. Returns the new trip |
 | GET | `/explore/trips` | Public trips from others, ranked |
@@ -167,7 +167,7 @@ Response shapes and behaviour: see `05-maps-places-routing.md`.
 
 Field names the client relies on (full schemas in OpenAPI):
 
-- **Trip** (`GET /trips/{id}`): `id`, `title`, `startDate`, `endDate`, `visibility`, `owner` (user summary), `myRole` (`owner`\|`editor`\|`viewer`), `members[]`, `likeCount`, `likedByMe`, `copyCount`, `copiedFrom` (`{ tripId, owner: { username } }` or null), `days[]` → `{ id, position, date, markers[] }`.
+- **Trip** (`GET /trips/{id}`): `id`, `title`, `startDate`, `endDate`, `destination` (`{ name, location }` or null), `visibility`, `owner` (user summary), `myRole` (`owner`\|`editor`\|`viewer`), `members[]`, `likeCount`, `likedByMe`, `copyCount`, `copiedFrom` (`{ tripId, owner: { username } }` or null), `days[]` → `{ id, position, date, markers[] }`.
 - **Marker**: `id`, `dayId`, `placeId`, `name`, `location`, `time` (`HH:mm` or null), `position`, `coverPhotoId`, `coverThumbUrl`, `photoCount`, `likeCount`, `likedByMe`, `commentCount`, `createdBy` (user summary or null).
 - **Photo**: `id`, `markerId`, `status` (`processing`\|`ready`\|`failed`), `thumbUrl`, `displayUrl` (signed, expire after ~1 h), `width`, `height`, `position`, `likeCount`, `likedByMe`, `uploader`.
 - **User summary**: `id`, `username`, `displayName`.

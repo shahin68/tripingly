@@ -9,6 +9,7 @@ import com.falcon.tripingly.core.database.entity.TripMemberEntity
 import com.falcon.tripingly.core.database.entity.TripWithDetails
 import com.falcon.tripingly.core.model.account.TripVisibility
 import com.falcon.tripingly.core.model.trip.CopiedFrom
+import com.falcon.tripingly.core.model.trip.Destination
 import com.falcon.tripingly.core.model.trip.GeoPoint
 import com.falcon.tripingly.core.model.trip.Trip
 import com.falcon.tripingly.core.model.trip.TripDay
@@ -36,13 +37,13 @@ internal class RoomTripLocalDataSource(
     override suspend fun trip(tripId: String): TripDetails? = observeTrip(tripId).first()
 
     override suspend fun replaceMyTrips(trips: List<Trip>) {
-        dao.replaceMyTrips(trips.map { it.toEntity(copiedFrom = null) })
+        dao.replaceMyTrips(trips.map { it.toEntity(copiedFrom = null, destination = null) })
     }
 
     override suspend fun saveTrip(details: TripDetails) {
         val trip = details.trip
         dao.replaceTrip(
-            trip = trip.toEntity(details.copiedFrom),
+            trip = trip.toEntity(details.copiedFrom, details.destination),
             days = details.days.map { TripDayEntity(it.id, trip.id, it.position, it.date?.toString()) },
             markers = details.days.flatMap { day -> day.markers.map { it.toEntity() } },
             members = details.members.mapIndexed { index, member ->
@@ -72,7 +73,7 @@ internal class RoomTripLocalDataSource(
 
     override suspend fun clear() = dao.deleteAll()
 
-    private fun Trip.toEntity(copiedFrom: CopiedFrom?) = TripEntity(
+    private fun Trip.toEntity(copiedFrom: CopiedFrom?, destination: Destination?) = TripEntity(
         id = id,
         name = name,
         startDate = startDate?.toString(),
@@ -90,6 +91,9 @@ internal class RoomTripLocalDataSource(
         copiedFromOwnerId = copiedFrom?.owner?.id,
         copiedFromOwnerUsername = copiedFrom?.owner?.username,
         copiedFromOwnerDisplayName = copiedFrom?.owner?.displayName,
+        destinationName = destination?.name,
+        destinationLat = destination?.location?.lat,
+        destinationLng = destination?.location?.lng,
     )
 }
 
@@ -122,6 +126,9 @@ private fun TripWithDetails.toDetails() = TripDetails(
                 displayName = trip.copiedFromOwnerDisplayName.orEmpty(),
             ),
         )
+    },
+    destination = trip.destinationName?.let { name ->
+        Destination(name, GeoPoint(trip.destinationLat ?: 0.0, trip.destinationLng ?: 0.0))
     },
 )
 

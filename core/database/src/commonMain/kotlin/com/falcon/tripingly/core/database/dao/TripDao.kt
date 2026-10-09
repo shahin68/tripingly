@@ -72,7 +72,7 @@ abstract class TripDao {
     @Transaction
     open suspend fun replaceMyTrips(trips: List<TripEntity>) {
         deleteMyTripsExcept(trips.map { it.id })
-        // The list doesn't say where a trip was copied from; keep what the trip itself said.
+        // The list doesn't say where a trip was copied from or where it goes; keep what the trip itself said.
         upsertTrips(
             trips.map { summary ->
                 val cached = trip(summary.id) ?: return@map summary
@@ -81,6 +81,9 @@ abstract class TripDao {
                     copiedFromOwnerId = cached.copiedFromOwnerId,
                     copiedFromOwnerUsername = cached.copiedFromOwnerUsername,
                     copiedFromOwnerDisplayName = cached.copiedFromOwnerDisplayName,
+                    destinationName = cached.destinationName,
+                    destinationLat = cached.destinationLat,
+                    destinationLng = cached.destinationLng,
                 )
             },
         )

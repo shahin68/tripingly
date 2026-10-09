@@ -16,6 +16,7 @@ The backend enforces these rules. The client must show them correctly and never 
 ## Trips
 
 - Owner, editors (collaborators), title, dates, ordered days, visibility `public`/`private`. New trips default to the user's `defaultTripVisibility`.
+- An optional destination (e.g. "Paris"), picked from our place search when creating the trip; never required. The map opens there while the trip has no stops, and never jumps to the device location then.
 - **Owner only:** rename, change dates, change visibility, delete trip, add/remove members, create/revoke invite links.
 - **Owner and editors:** add/edit/delete/reorder markers and days, upload/delete photos, set cover.
 - **Everyone else** sees public trips read-only and can like, comment and copy.
