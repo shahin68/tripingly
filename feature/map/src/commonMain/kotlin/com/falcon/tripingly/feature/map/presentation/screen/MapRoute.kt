@@ -2,11 +2,15 @@ package com.falcon.tripingly.feature.map.presentation.screen
 
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import com.falcon.tripingly.feature.map.presentation.permission.rememberLocationPermissionController
@@ -23,6 +27,9 @@ import com.falcon.tripingly.feature.map.generated.resources.map_location_explain
 import com.falcon.tripingly.feature.map.generated.resources.map_location_open_settings
 import com.falcon.tripingly.feature.map.generated.resources.map_location_settings_message
 import com.falcon.tripingly.feature.map.generated.resources.map_location_settings_title
+import com.falcon.tripingly.feature.map.generated.resources.map_pin_add
+import com.falcon.tripingly.feature.map.generated.resources.map_pin_name_label
+import com.falcon.tripingly.feature.map.generated.resources.map_pin_name_title
 import com.falcon.tripingly.feature.map.presentation.screen.MapViewModel.Action
 import com.falcon.tripingly.feature.map.presentation.screen.MapViewModel.Confirm
 import com.falcon.tripingly.feature.map.presentation.screen.MapViewModel.Event
@@ -137,4 +144,36 @@ fun MapRoute(
             },
         )
     }
+
+    if (state.isNamingPin) {
+        var name by remember { mutableStateOf("") }
+        AlertDialog(
+            onDismissRequest = { viewModel.onAction(Action.OnDismissPinName) },
+            title = { Text(stringResource(Res.string.map_pin_name_title)) },
+            text = {
+                OutlinedTextField(
+                    value = name,
+                    onValueChange = { name = it.take(MAX_PIN_NAME_LENGTH) },
+                    label = { Text(stringResource(Res.string.map_pin_name_label)) },
+                    singleLine = true,
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = { viewModel.onAction(Action.OnConfirmPinName(name)) },
+                    enabled = name.isNotBlank(),
+                ) {
+                    Text(stringResource(Res.string.map_pin_add))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { viewModel.onAction(Action.OnDismissPinName) }) {
+                    Text(stringResource(Res.string.map_cancel))
+                }
+            },
+        )
+    }
 }
+
+/** The server's limit for a stop's name. */
+private const val MAX_PIN_NAME_LENGTH = 120

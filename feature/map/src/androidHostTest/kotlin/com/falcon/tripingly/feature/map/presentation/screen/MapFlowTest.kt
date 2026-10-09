@@ -10,6 +10,7 @@ import androidx.compose.ui.test.runComposeUiTest
 import com.falcon.tripingly.core.common.coroutines.CoroutineDispatchers
 import com.falcon.tripingly.core.common.result.AppResult
 import com.falcon.tripingly.core.common.result.asSuccess
+import com.falcon.tripingly.core.data.places.FakePlaceRepository
 import com.falcon.tripingly.core.data.trips.FakeTripBackend
 import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
 import com.falcon.tripingly.core.model.trip.GeoPoint
@@ -56,6 +57,7 @@ class MapFlowTest {
         tripId = trip.trip.id,
         tripRepository = backend,
         markerRepository = backend,
+        placeRepository = FakePlaceRepository(),
         getCurrentLocationUseCase = GetCurrentLocationUseCase(
             object : LocationRepository {
                 override fun getLocationStream() = flowOf(Coordinates.Paris.asSuccess())

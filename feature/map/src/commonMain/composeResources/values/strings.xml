@@ -32,4 +32,24 @@
     <string name="map_location_settings_title">Location is off for Tripinly</string>
     <string name="map_location_settings_message">To show where you are on the map, allow location for Tripinly in Settings.</string>
     <string name="map_location_open_settings">Open settings</string>
+    <string name="map_place_add_to_day">Add to day %1$d</string>
+    <string name="map_place_opening_hours">Opening hours</string>
+    <string name="map_place_website">Website</string>
+    <string name="map_place_likes">Likes on Tripinly</string>
+    <string name="map_place_category_cafe">Café</string>
+    <string name="map_place_category_restaurant">Restaurant</string>
+    <string name="map_place_category_bar">Bar</string>
+    <string name="map_place_category_attraction">Attraction</string>
+    <string name="map_place_category_museum">Museum</string>
+    <string name="map_place_category_historic">Historic site</string>
+    <string name="map_place_category_park">Park</string>
+    <string name="map_place_category_nature">Nature</string>
+    <string name="map_place_category_landmark">Landmark</string>
+    <string name="map_place_category_other">Place</string>
+    <string name="map_search">Search places</string>
+    <string name="map_search_placeholder">Places, addresses, cities</string>
+    <string name="map_search_clear">Clear search</string>
+    <string name="map_pin_name_title">Name this place</string>
+    <string name="map_pin_name_label">Name</string>
+    <string name="map_pin_add">Add</string>
 </resources>

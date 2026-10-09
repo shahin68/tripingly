@@ -59,8 +59,8 @@ internal class DefaultMarkerRepository(
             id = Uuid.random().toString(),
             tripId = tripId,
             dayId = dayId,
-            // Known once the server has matched the place; the reload fills it in.
-            placeId = "",
+            // Without a place, known once the server has matched one; the reload fills it in.
+            placeId = marker.placeId.orEmpty(),
             name = marker.name.trim(),
             location = marker.location,
             time = marker.time,
@@ -183,7 +183,9 @@ internal class DefaultMarkerRepository(
                 CreateMarkerDto(
                     id = change.marker.id,
                     name = change.marker.name,
-                    location = change.marker.location.toDto(),
+                    placeId = change.marker.placeId.ifEmpty { null },
+                    // The server takes a place's location from the place.
+                    location = if (change.marker.placeId.isEmpty()) change.marker.location.toDto() else null,
                     time = change.marker.time,
                 ),
                 // A retry after a lost answer gets the first answer back instead of a duplicate.

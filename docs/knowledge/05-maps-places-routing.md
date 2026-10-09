@@ -67,19 +67,19 @@ Shahin wants every stop to show its place name, not only "Stop #N" (asked 2026-1
 
 ## Loading places while browsing
 
-1. On **camera idle**, wait 300 ms (debounce), cancel the previous request, then call `GET /places/in-view?bbox=…&zoom=…&categories=…`.
-2. Cache responses per rounded bbox + zoom + categories for a few minutes, so panning back is instant.
+1. On **camera idle**, wait 300 ms (debounce), cancel the previous request, then call `GET /places/in-view?bbox=…&zoom=…&categories=…`. The bbox is sent as plain decimals (the server rejects exponents). *(Built: `MapViewModel.loadPlaces`.)*
+2. The repository keeps the last answer with the area the server answered for (it widens the box to quarter tiles at the zoom level), so a small pan or zoom inside it asks nothing. No longer cache (decided 2026-10-09).
 3. Zoomed out (< 14): only Tripinly places and server clusters. Zoomed in (≥ 14): OSM dots too.
 4. Category filter chips (cafés, restaurants, attractions, museums, parks…) change the `categories` parameter.
-5. Tapping a place → place sheet (`GET /places/{id}`): name, category, likes, public photos, "Add to trip" (choose trip and day) → `POST /places/{id}/add-to-trip`.
+5. Tapping a place → place sheet (`PlaceSheet`): name, category and likes from the pin at once, opening hours and website from `GET /places/{id}`, "Add to day N" for owners and editors. Adding goes through the optimistic marker queue as `POST /days/{id}/markers` with `placeId` (instant, like a tap), not `POST /places/{id}/add-to-trip`. Photos come with stage 6. Tapping a cluster zooms in two levels on it.
 6. Handle `BBOX_TOO_LARGE` by showing nothing new (the user zoomed out too far).
 
 ## Search
 
 - Debounce 300 ms, from the first letter (one letter returns Photon prefix matches only), cancel in-flight requests. Send the map center as `lat/lng` for ranking.
 - Results: our places (have `id`) first, then addresses/cities (`source: "photon"`, no `id`).
-- Picking a place with `id` → move the camera, open the place sheet. Picking an address/city → move the camera; "Add to trip" sends `name` + `location` (+ `osmType`/`osmId`) to `POST /days/{id}/markers`.
-- A **long press** on the map creates a custom pin: user names it → `POST /days/{id}/markers` with name + location.
+- *(Built: search icon in the map header; picking a result moves the camera at a zoom by its type, country 5 … street or place 17.)* Planned with stop names: picking a place with `id` → move the camera, open the place sheet. Picking an address/city → move the camera; "Add to trip" sends `name` + `location` (+ `osmType`/`osmId`) to `POST /days/{id}/markers`.
+- A **long press** on the map creates a custom pin: user names it → `POST /days/{id}/markers` with name + location. *(Built on Android; iOS has no map gestures yet.)*
 
 ## Routes and places along the way
 

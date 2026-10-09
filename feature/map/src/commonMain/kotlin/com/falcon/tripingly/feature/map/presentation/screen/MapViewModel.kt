@@ -7,9 +7,17 @@ import com.falcon.tripingly.core.common.coroutines.CoroutineDispatchers
 import com.falcon.tripingly.core.common.coroutines.DefaultCoroutineDispatchers
 import com.falcon.tripingly.core.common.error.DataError
 import com.falcon.tripingly.core.common.result.AppResult
+import com.falcon.tripingly.core.common.result.onSuccess
+import com.falcon.tripingly.core.data.places.PlaceRepository
 import com.falcon.tripingly.core.data.trips.MarkerChangeFailure
 import com.falcon.tripingly.core.data.trips.MarkerRepository
 import com.falcon.tripingly.core.data.trips.TripRepository
+import com.falcon.tripingly.core.model.place.GeoBounds
+import com.falcon.tripingly.core.model.place.MapPlace
+import com.falcon.tripingly.core.model.place.PlaceCluster
+import com.falcon.tripingly.core.model.place.PlaceDetails
+import com.falcon.tripingly.core.model.place.PlaceSearchResult
+import com.falcon.tripingly.core.model.place.SearchResultType
 import com.falcon.tripingly.core.model.trip.GeoPoint
 import com.falcon.tripingly.core.model.trip.NewMarker
 import com.falcon.tripingly.core.model.trip.TripDay
@@ -34,7 +42,9 @@ import com.falcon.tripingly.feature.map.generated.resources.map_stop_title_forma
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.toImmutableList
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -53,12 +63,14 @@ import kotlin.coroutines.cancellation.CancellationException
  * the server on open; owners and editors add and remove stops and days. Stop
  * changes show at once and are saved in the background; one that fails is
  * undone and explained, with Retry when the connection was the problem. Day
- * changes wait for the server.
+ * changes wait for the server. Places in view load when the camera rests; a place
+ * opens a sheet that adds it to the open day.
  */
 class MapViewModel(
     private val tripId: String,
     private val tripRepository: TripRepository,
     private val markerRepository: MarkerRepository,
+    private val placeRepository: PlaceRepository,
     private val getCurrentLocationUseCase: GetCurrentLocationUseCase,
     private val dispatchers: CoroutineDispatchers = DefaultCoroutineDispatchers(),
 ) : ViewModel() {
@@ -70,6 +82,10 @@ class MapViewModel(
 
     val uiState: StateFlow<State> = combine(trip, ui, ::toState)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), toState(null, ui.value))
+
+    private var placesJob: Job? = null
+    private var placeDetailsJob: Job? = null
+    private var searchJob: Job? = null
 
     private val _events = Channel<Event>(capacity = Channel.BUFFERED)
     val events = _events.receiveAsFlow()
@@ -88,6 +104,9 @@ class MapViewModel(
             is Action.CenterOnUserLocation -> centerOnUserLocation()
             is Action.NavigateToLocation -> navigateTo(action.coordinates, action.zoom)
             is Action.OnMapClick -> addMarker(action.coordinates)
+            is Action.OnMapLongClick -> if (canEdit() && activeDay() != null) ui.update { it.copy(pinToName = action.coordinates) }
+            is Action.OnConfirmPinName -> addNamedPin(action.name)
+            is Action.OnDismissPinName -> ui.update { it.copy(pinToName = null) }
             is Action.OnMarkerClick -> selectMarker(action.marker)
             is Action.OnRemoveMarker -> removeMarker(action.markerId)
             is Action.ClearAllMarkers -> ui.update { it.copy(confirm = Confirm.ClearDay) }
@@ -97,7 +116,18 @@ class MapViewModel(
             is Action.AddDay -> addDay()
             is Action.DismissError -> ui.update { it.copy(message = null, failedChanges = emptyList()) }
             is Action.RetryFailedChanges -> retryFailedChanges()
-            is Action.OnCameraMove -> ui.update { it.copy(cameraTarget = action.coordinates, zoomLevel = action.zoom) }
+            is Action.OnCameraMove -> onCameraMove(action.coordinates, action.zoom, action.bounds)
+            is Action.OnPlaceClick -> openPlace(action.place)
+            is Action.OnClusterClick -> navigateTo(
+                Coordinates(action.cluster.location.lat, action.cluster.location.lng),
+                ui.value.zoomLevel + CLUSTER_ZOOM_STEP,
+            )
+            is Action.OnDismissPlace -> closePlace()
+            is Action.OnAddPlaceToDay -> addPlace()
+            is Action.OnOpenSearch -> ui.update { it.copy(isSearchOpen = true, selectedMarkerId = null) }
+            is Action.OnSearchQueryChanged -> search(action.query)
+            is Action.OnSearchResultClick -> showSearchResult(action.result)
+            is Action.OnCloseSearch -> closeSearch()
             is Action.OnDaySelected -> selectDay(action.dayIndex)
             is Action.OnBackClick -> sendEvent(Event.NavigateBack)
         }
@@ -107,6 +137,8 @@ class MapViewModel(
         val days = details?.days.orEmpty()
         val activeIndex = ui.activeDayIndex.coerceIn(0, (days.size - 1).coerceAtLeast(0))
         val markers = days.getOrNull(activeIndex)?.markers.orEmpty().mapIndexed { index, it -> it.toMapMarker(index + 1) }
+        // A place that is already a stop shows as the stop only.
+        val stopPlaceIds = days.flatMap { day -> day.markers.map { it.placeId } }.toSet()
         return State(
             tripName = details?.trip?.name.orEmpty(),
             days = days.map { DayTab(it.id, it.position + 1, it.date) }.toImmutableList(),
@@ -122,6 +154,15 @@ class MapViewModel(
             isPermissionGranted = ui.permission == LocationPermission.Granted,
             isLoadingLocation = ui.isLoadingLocation,
             selectedMarker = markers.firstOrNull { it.id == ui.selectedMarkerId },
+            places = ui.places.filter { it.id !in stopPlaceIds }.toImmutableList(),
+            clusters = ui.clusters.toImmutableList(),
+            selectedPlace = ui.selectedPlace,
+            selectedPlaceDetails = ui.selectedPlaceDetails?.takeIf { it.id == ui.selectedPlace?.id },
+            isSearchOpen = ui.isSearchOpen,
+            searchQuery = ui.searchQuery,
+            searchResults = ui.searchResults.toImmutableList(),
+            isSearching = ui.isSearching,
+            isNamingPin = ui.pinToName != null,
             message = ui.message,
             canRetry = ui.message != null && ui.failedChanges.isNotEmpty(),
             isWaitingForFirstLocation = ui.isWaitingForFirstLocation,
@@ -209,6 +250,101 @@ class MapViewModel(
         viewModelScope.launch {
             val name = getString(Res.string.map_stop_title_format, day.markers.size + 1)
             markerRepository.addMarker(tripId, day.id, NewMarker(name, GeoPoint(coordinates.latitude, coordinates.longitude)))
+        }
+    }
+
+    private fun onCameraMove(coordinates: Coordinates, zoom: Float, bounds: GeoBounds?) {
+        ui.update { it.copy(cameraTarget = coordinates, zoomLevel = zoom) }
+        if (bounds != null) loadPlaces(bounds, zoom)
+    }
+
+    /**
+     * Waits until the camera has rested a moment, so a pan or a fling asks once. The pins on the map
+     * stay until the new ones arrive, and stay as they are when the request fails.
+     */
+    private fun loadPlaces(bounds: GeoBounds, zoom: Float) {
+        placesJob?.cancel()
+        placesJob = viewModelScope.launch {
+            delay(PLACES_DEBOUNCE_MILLIS)
+            placeRepository.placesInView(bounds, zoom).onSuccess { inView ->
+                ui.update { it.copy(places = inView.places, clusters = inView.clusters) }
+            }
+        }
+    }
+
+    /** Shows the sheet at once with what the pin knows, then adds the place's details. */
+    private fun openPlace(place: MapPlace) {
+        ui.update { it.copy(selectedPlace = place, selectedMarkerId = null) }
+        placeDetailsJob?.cancel()
+        placeDetailsJob = viewModelScope.launch {
+            placeRepository.place(place.id).onSuccess { details -> ui.update { it.copy(selectedPlaceDetails = details) } }
+        }
+    }
+
+    private fun closePlace() {
+        placeDetailsJob?.cancel()
+        ui.update { it.copy(selectedPlace = null, selectedPlaceDetails = null) }
+    }
+
+    /** A stop at the place, named after it; shows at once like a tap on the map. */
+    private fun addPlace() {
+        val place = ui.value.selectedPlace ?: return
+        val day = activeDay() ?: return
+        closePlace()
+        if (!canEdit()) return
+        viewModelScope.launch {
+            markerRepository.addMarker(tripId, day.id, NewMarker(place.name, place.location, placeId = place.id))
+        }
+    }
+
+    /**
+     * Like the destination search: asks the server once typing pauses, ranked near the map's center.
+     * A cleared field clears the results at once.
+     */
+    private fun search(query: String) {
+        ui.update { it.copy(searchQuery = query) }
+        searchJob?.cancel()
+        if (query.isBlank()) {
+            ui.update { it.copy(searchResults = emptyList(), isSearching = false) }
+            return
+        }
+        searchJob = viewModelScope.launch {
+            delay(SEARCH_DEBOUNCE_MILLIS)
+            ui.update { it.copy(isSearching = true) }
+            val center = ui.value.cameraTarget
+            val results = (placeRepository.search(query, GeoPoint(center.latitude, center.longitude)) as? AppResult.Success)?.data
+            ui.update { it.copy(searchResults = results ?: it.searchResults, isSearching = false) }
+        }
+    }
+
+    private fun showSearchResult(result: PlaceSearchResult) {
+        closeSearch()
+        navigateTo(Coordinates(result.location.lat, result.location.lng), result.type.zoom())
+    }
+
+    private fun closeSearch() {
+        searchJob?.cancel()
+        ui.update { it.copy(isSearchOpen = false, searchQuery = "", searchResults = emptyList(), isSearching = false) }
+    }
+
+    /** Close enough to see what was picked: a country whole, a café with its street. */
+    private fun SearchResultType.zoom(): Float = when (this) {
+        SearchResultType.Country -> 5f
+        SearchResultType.State -> 7f
+        SearchResultType.County -> 9f
+        SearchResultType.City -> 12f
+        SearchResultType.District, SearchResultType.Locality -> 14f
+        SearchResultType.Place, SearchResultType.House, SearchResultType.Street, SearchResultType.Other -> 17f
+    }
+
+    /** A long press drops a pin the user names; it shows at once like a tap. */
+    private fun addNamedPin(name: String) {
+        val location = ui.value.pinToName ?: return
+        val day = activeDay() ?: return
+        ui.update { it.copy(pinToName = null) }
+        if (name.isBlank() || !canEdit()) return
+        viewModelScope.launch {
+            markerRepository.addMarker(tripId, day.id, NewMarker(name, GeoPoint(location.latitude, location.longitude)))
         }
     }
 
@@ -408,6 +544,16 @@ class MapViewModel(
         val hasCenteredOnTrip: Boolean = false,
         val frame: CameraFrame? = null,
         val confirm: Confirm? = null,
+        val places: List<MapPlace> = emptyList(),
+        val clusters: List<PlaceCluster> = emptyList(),
+        val selectedPlace: MapPlace? = null,
+        val selectedPlaceDetails: PlaceDetails? = null,
+        val isSearchOpen: Boolean = false,
+        val searchQuery: String = "",
+        val searchResults: List<PlaceSearchResult> = emptyList(),
+        val isSearching: Boolean = false,
+        /** Where a long press dropped a pin that waits for its name. */
+        val pinToName: Coordinates? = null,
     )
 
     /** A day tab: [number] counts from 1; [date] is null when the trip has no dates. */
@@ -446,6 +592,22 @@ class MapViewModel(
         val isWaitingForFirstLocation: Boolean = false,
         val confirm: Confirm? = null,
         val locationPrompt: LocationPrompt? = null,
+        /** Places in view, without those already stops of this trip. */
+        val places: ImmutableList<MapPlace> = persistentListOf(),
+        /** Bubbles of Tripinly places while zoomed out. */
+        val clusters: ImmutableList<PlaceCluster> = persistentListOf(),
+        /** The place whose sheet is open. */
+        val selectedPlace: MapPlace? = null,
+        /** Opening hours and website, once loaded. */
+        val selectedPlaceDetails: PlaceDetails? = null,
+        /** The header shows the search field instead of the trip name. */
+        val isSearchOpen: Boolean = false,
+        val searchQuery: String = "",
+        val searchResults: ImmutableList<PlaceSearchResult> = persistentListOf(),
+        /** A search is waiting for the server. */
+        val isSearching: Boolean = false,
+        /** A long press dropped a pin; the name dialog is open. */
+        val isNamingPin: Boolean = false,
     )
 
     sealed interface Event {
@@ -463,6 +625,9 @@ class MapViewModel(
         data class NavigateToLocation(val coordinates: Coordinates, val zoom: Float = 13f) : Action
         data object CenterOnUserLocation : Action
         data class OnMapClick(val coordinates: Coordinates) : Action
+        data class OnMapLongClick(val coordinates: Coordinates) : Action
+        data class OnConfirmPinName(val name: String) : Action
+        data object OnDismissPinName : Action
         data class OnMarkerClick(val marker: MapMarker) : Action
         data class OnRemoveMarker(val markerId: String) : Action
         data object ClearAllMarkers : Action
@@ -472,7 +637,15 @@ class MapViewModel(
         data object OnDismissConfirm : Action
         data object DismissError : Action
         data object RetryFailedChanges : Action
-        data class OnCameraMove(val coordinates: Coordinates, val zoom: Float) : Action
+        data class OnCameraMove(val coordinates: Coordinates, val zoom: Float, val bounds: GeoBounds? = null) : Action
+        data class OnPlaceClick(val place: MapPlace) : Action
+        data class OnClusterClick(val cluster: PlaceCluster) : Action
+        data object OnDismissPlace : Action
+        data object OnAddPlaceToDay : Action
+        data object OnOpenSearch : Action
+        data class OnSearchQueryChanged(val query: String) : Action
+        data class OnSearchResultClick(val result: PlaceSearchResult) : Action
+        data object OnCloseSearch : Action
         data class OnDaySelected(val dayIndex: Int) : Action
         data object OnBackClick : Action
     }
@@ -480,5 +653,11 @@ class MapViewModel(
     private companion object {
         /** A city fills the screen. */
         const val DESTINATION_ZOOM = 12f
+        /** Same wait as for search: the camera has rested. */
+        const val PLACES_DEBOUNCE_MILLIS = 300L
+        /** Typing has paused; see the search rule in 07-architecture. */
+        const val SEARCH_DEBOUNCE_MILLIS = 300L
+        /** A tapped cluster opens up into its places. */
+        const val CLUSTER_ZOOM_STEP = 2f
     }
 }

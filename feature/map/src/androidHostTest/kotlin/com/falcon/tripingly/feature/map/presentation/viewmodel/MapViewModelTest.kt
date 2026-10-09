@@ -6,7 +6,11 @@ import com.falcon.tripingly.core.common.error.DataError
 import com.falcon.tripingly.core.common.result.AppResult
 import com.falcon.tripingly.core.common.result.asError
 import com.falcon.tripingly.core.common.result.asSuccess
+import com.falcon.tripingly.core.data.places.FakePlaceRepository
+import com.falcon.tripingly.core.data.places.PlaceRepository
 import com.falcon.tripingly.core.data.trips.FakeTripBackend
+import com.falcon.tripingly.core.model.place.GeoBounds
+import com.falcon.tripingly.core.model.place.PlacesInView
 import com.falcon.tripingly.core.model.trip.Destination
 import com.falcon.tripingly.core.model.trip.GeoPoint
 import com.falcon.tripingly.core.model.trip.NewMarker
@@ -59,6 +63,19 @@ class MapViewModelTest {
     private lateinit var fakeLocationRepository: FakeLocationRepository
     private lateinit var backend: FakeTripBackend
     private lateinit var trip: TripDetails
+    private lateinit var places: CountingPlaceRepository
+
+    /** The fake's sights (Eiffel Tower, Louvre …), counting the in-view requests. */
+    private class CountingPlaceRepository(
+        private val fake: FakePlaceRepository = FakePlaceRepository(),
+    ) : PlaceRepository by fake {
+        val inViewRequests = mutableListOf<GeoBounds>()
+
+        override suspend fun placesInView(bounds: GeoBounds, zoom: Float): AppResult<PlacesInView, DataError.Network> {
+            inViewRequests += bounds
+            return fake.placesInView(bounds, zoom)
+        }
+    }
 
     private class TestCoroutineDispatchers(private val dispatcher: CoroutineDispatcher) : CoroutineDispatchers {
         override val main: CoroutineDispatcher = dispatcher
@@ -82,6 +99,7 @@ class MapViewModelTest {
         Dispatchers.setMain(testDispatcher)
         fakeLocationRepository = FakeLocationRepository()
         backend = FakeTripBackend()
+        places = CountingPlaceRepository()
         trip = (backend.createTrip(NewTrip("Test Trip", LocalDate(2024, 1, 1), LocalDate(2024, 1, 3))) as AppResult.Success).data
     }
 
@@ -94,6 +112,7 @@ class MapViewModelTest {
         tripId = tripId,
         tripRepository = backend,
         markerRepository = backend,
+        placeRepository = places,
         getCurrentLocationUseCase = GetCurrentLocationUseCase(fakeLocationRepository),
         dispatchers = TestCoroutineDispatchers(testDispatcher),
     ).also { viewModel -> backgroundScope.launch { viewModel.uiState.collect {} } }
@@ -526,5 +545,107 @@ class MapViewModelTest {
         assertNull(viewModel.uiState.value.locationPrompt)
         val message = assertIs<UiText.Resource>(viewModel.uiState.value.message)
         assertEquals(Res.string.error_location_denied_manual, message.resource)
+    }
+
+    @Test
+    fun `places load once the camera has rested`() = runTest(testDispatcher) {
+        val viewModel = viewModel()
+        testScheduler.advanceUntilIdle()
+
+        // A fling reports several positions in a row; only the last one asks.
+        viewModel.onAction(Action.OnCameraMove(Coordinates(48.0, 2.0), 15f, GeoBounds(47.9, 1.9, 48.1, 2.1)))
+        testScheduler.advanceTimeBy(100)
+        viewModel.onAction(Action.OnCameraMove(Coordinates(48.86, 2.32), 15f, PARIS_CENTER))
+        testScheduler.advanceTimeBy(299)
+        assertTrue(places.inViewRequests.isEmpty())
+
+        testScheduler.advanceUntilIdle()
+        assertEquals(listOf(PARIS_CENTER), places.inViewRequests)
+        assertEquals(setOf("Eiffel Tower", "Louvre"), viewModel.uiState.value.places.map { it.name }.toSet())
+    }
+
+    @Test
+    fun `adding a place makes it a stop named after it`() = runTest(testDispatcher) {
+        val viewModel = viewModel()
+        testScheduler.advanceUntilIdle()
+        viewModel.onAction(Action.OnCameraMove(Coordinates(48.86, 2.32), 15f, PARIS_CENTER))
+        testScheduler.advanceUntilIdle()
+        val louvre = viewModel.uiState.value.places.first { it.name == "Louvre" }
+
+        viewModel.onAction(Action.OnPlaceClick(louvre))
+        testScheduler.advanceUntilIdle()
+        assertEquals(louvre, viewModel.uiState.value.selectedPlace)
+        assertEquals("Mo-Su 09:00-18:00", viewModel.uiState.value.selectedPlaceDetails?.openingHours)
+
+        viewModel.onAction(Action.OnAddPlaceToDay)
+        testScheduler.advanceUntilIdle()
+
+        val state = viewModel.uiState.value
+        assertNull(state.selectedPlace)
+        val stop = (backend.refreshTrip(trip.trip.id) as AppResult.Success).data.days[0].markers.single()
+        assertEquals("Louvre", stop.name)
+        assertEquals(louvre.id, stop.placeId)
+        // It shows as the stop only.
+        assertEquals(listOf("Eiffel Tower"), state.places.map { it.name })
+    }
+
+    @Test
+    fun `a viewer can't add a place`() = runTest(testDispatcher) {
+        backend.seed(trip.copy(trip = trip.trip.copy(role = TripRole.VIEWER)))
+        val viewModel = viewModel()
+        testScheduler.advanceUntilIdle()
+        viewModel.onAction(Action.OnCameraMove(Coordinates(48.86, 2.32), 15f, PARIS_CENTER))
+        testScheduler.advanceUntilIdle()
+
+        viewModel.onAction(Action.OnPlaceClick(viewModel.uiState.value.places.first()))
+        viewModel.onAction(Action.OnAddPlaceToDay)
+        testScheduler.advanceUntilIdle()
+
+        assertTrue((backend.refreshTrip(trip.trip.id) as AppResult.Success).data.days[0].markers.isEmpty())
+    }
+
+    @Test
+    fun `search asks once typing pauses and moves the camera to the pick`() = runTest(testDispatcher) {
+        val viewModel = viewModel()
+        testScheduler.advanceUntilIdle()
+        viewModel.onAction(Action.OnOpenSearch)
+
+        viewModel.onAction(Action.OnSearchQueryChanged("V"))
+        testScheduler.advanceTimeBy(100)
+        viewModel.onAction(Action.OnSearchQueryChanged("Vi"))
+        testScheduler.advanceUntilIdle()
+
+        val vienna = viewModel.uiState.value.searchResults.single()
+        assertEquals("Vienna", vienna.name)
+        viewModel.onAction(Action.OnSearchResultClick(vienna))
+        testScheduler.advanceUntilIdle()
+
+        val state = viewModel.uiState.value
+        assertFalse(state.isSearchOpen)
+        assertEquals("", state.searchQuery)
+        assertEquals(Coordinates(48.2082, 16.3738), state.cameraTarget)
+        // A city fills the screen.
+        assertEquals(12f, state.zoomLevel)
+    }
+
+    @Test
+    fun `a long press drops a pin with the name the user gives`() = runTest(testDispatcher) {
+        val viewModel = viewModel()
+        testScheduler.advanceUntilIdle()
+
+        viewModel.onAction(Action.OnMapLongClick(Coordinates(48.85, 2.35)))
+        testScheduler.runCurrent()
+        assertTrue(viewModel.uiState.value.isNamingPin)
+        viewModel.onAction(Action.OnConfirmPinName("Our hotel"))
+        testScheduler.advanceUntilIdle()
+
+        assertFalse(viewModel.uiState.value.isNamingPin)
+        val stop = (backend.refreshTrip(trip.trip.id) as AppResult.Success).data.days[0].markers.single()
+        assertEquals("Our hotel", stop.name)
+        assertEquals(GeoPoint(48.85, 2.35), stop.location)
+    }
+
+    private companion object {
+        val PARIS_CENTER = GeoBounds(48.84, 2.28, 48.87, 2.35)
     }
 }

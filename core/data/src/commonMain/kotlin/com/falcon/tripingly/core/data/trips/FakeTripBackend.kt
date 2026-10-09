@@ -206,7 +206,7 @@ class FakeTripBackend(
             id = nextId(),
             tripId = tripId,
             dayId = dayId,
-            placeId = "",
+            placeId = marker.placeId.orEmpty(),
             name = marker.name.trim(),
             location = marker.location,
             time = marker.time,
@@ -252,7 +252,8 @@ class FakeTripBackend(
     private fun createMarker(created: TripMarker): AppResult<TripMarker, DataError.Network> = call {
         val (details, day) = dayOf(created.dayId) ?: return notFound()
         if (!details.trip.role.canEdit) return forbidden()
-        val placed = created.copy(placeId = nextId(), position = day.markers.size)
+        // Like the server: a stop without a place gets a place matched or made for it.
+        val placed = created.copy(placeId = created.placeId.ifEmpty { nextId() }, position = day.markers.size)
         save(details.withDay(day.copy(markers = day.markers + placed)))
         placed
     }

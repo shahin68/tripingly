@@ -1,0 +1,6 @@
+<resources>
+    <!-- Common -->
+    <string name="common_dismiss">Schließen</string>
+    <string name="common_search_placeholder">Suchen …</string>
+    <string name="osm_attribution">© OpenStreetMap-Mitwirkende</string>
+</resources>

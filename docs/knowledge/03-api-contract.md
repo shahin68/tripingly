@@ -126,7 +126,7 @@ REST over HTTPS, JSON, base path `/v1`.
 | GET | `/places/nearby?lat=&lng=&radiusKm=` | Popular places around the user; location not stored |
 | GET | `/places/popular?bbox=…&excludeTripId=` | Tripinly places only in the visible area, excluding places already in the trip |
 | GET | `/places/{id}` | Place with popularity and a few public photos |
-| POST | `/places/{id}/add-to-trip` | Body: `dayId` → new marker |
+| POST | `/places/{id}/add-to-trip` | Body: `dayId` → new marker (not used by the app: it sends `POST /days/{id}/markers` with `id` + `placeId` so the stop shows at once) |
 
 ### Routing
 | Method | Path | Notes |

@@ -32,4 +32,24 @@
     <string name="map_location_settings_title">A Tripinly nem éri el a helyzetedet</string>
     <string name="map_location_settings_message">Ahhoz, hogy a térkép megmutassa, hol vagy, engedélyezd a helymeghatározást a Tripinly számára a Beállításokban.</string>
     <string name="map_location_open_settings">Beállítások megnyitása</string>
+    <string name="map_place_add_to_day">Hozzáadás a(z) %1$d. naphoz</string>
+    <string name="map_place_opening_hours">Nyitvatartás</string>
+    <string name="map_place_website">Weboldal</string>
+    <string name="map_place_likes">Kedvelések a Tripinlyn</string>
+    <string name="map_place_category_cafe">Kávézó</string>
+    <string name="map_place_category_restaurant">Étterem</string>
+    <string name="map_place_category_bar">Bár</string>
+    <string name="map_place_category_attraction">Látnivaló</string>
+    <string name="map_place_category_museum">Múzeum</string>
+    <string name="map_place_category_historic">Történelmi hely</string>
+    <string name="map_place_category_park">Park</string>
+    <string name="map_place_category_nature">Természet</string>
+    <string name="map_place_category_landmark">Nevezetesség</string>
+    <string name="map_place_category_other">Hely</string>
+    <string name="map_search">Helyek keresése</string>
+    <string name="map_search_placeholder">Helyek, címek, városok</string>
+    <string name="map_search_clear">Keresés törlése</string>
+    <string name="map_pin_name_title">Hely elnevezése</string>
+    <string name="map_pin_name_label">Név</string>
+    <string name="map_pin_add">Hozzáadás</string>
 </resources>
