@@ -20,6 +20,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.People
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
@@ -39,6 +40,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.unit.dp
 import com.falcon.tripingly.core.designsystem.component.AppDropdownMenu
@@ -190,6 +192,7 @@ private fun MyTripsContent(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(horizontal = 16.dp, vertical = 8.dp)
+                            .animateItem()
                     ) {
                         TripItem(
                             trip = trip,
@@ -253,6 +256,8 @@ private fun TripItem(
     Card(
         modifier = modifier
             .fillMaxWidth()
+            // Keeps the ripple inside the card's rounded corners.
+            .clip(CardDefaults.shape)
             .combinedClickable(
                 onClick = onClick,
                 onLongClick = onLongClick

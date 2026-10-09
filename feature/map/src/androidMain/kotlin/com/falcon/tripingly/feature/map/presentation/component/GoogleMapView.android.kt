@@ -11,6 +11,7 @@ import com.falcon.tripingly.feature.map.domain.model.MapMarker
 import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.LatLng
+import com.google.maps.android.compose.ComposeMapColorScheme
 import com.google.maps.android.compose.GoogleMap
 import com.google.maps.android.compose.MapProperties
 import com.google.maps.android.compose.MapUiSettings
@@ -74,10 +75,15 @@ actual fun GoogleMapView(
         val zoomDiff = Math.abs(current.zoom - zoomLevel)
         
         if (latDiff > 0.00001 || lngDiff > 0.00001 || zoomDiff > 0.01) {
-            cameraPositionState.animate(
-                CameraUpdateFactory.newLatLngZoom(targetLatLng, zoomLevel),
-                durationMs = 800
-            )
+            if (cameraPositionState.projection == null) {
+                // The map isn't drawn yet: start it there instead of animating.
+                cameraPositionState.position = CameraPosition.fromLatLngZoom(targetLatLng, zoomLevel)
+            } else {
+                cameraPositionState.animate(
+                    CameraUpdateFactory.newLatLngZoom(targetLatLng, zoomLevel),
+                    durationMs = 800
+                )
+            }
         }
     }
 
@@ -86,6 +92,8 @@ actual fun GoogleMapView(
         cameraPositionState = cameraPositionState,
         properties = mapProperties,
         uiSettings = uiSettings,
+        // Dark map in dark mode, so the light status bar icons stay readable.
+        mapColorScheme = ComposeMapColorScheme.FOLLOW_SYSTEM,
         onMapClick = { latLng ->
             onMapClick(Coordinates(latitude = latLng.latitude, longitude = latLng.longitude))
         }

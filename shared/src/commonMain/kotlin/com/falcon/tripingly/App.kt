@@ -28,10 +28,11 @@ fun App() {
 @Composable
 private fun MainNavigation() {
     val backStack = rememberNavBackStack(NavConfig, Home)
+    val goBack = { if (backStack.size > 1) backStack.removeAt(backStack.size - 1) }
 
     NavDisplay(
         backStack = backStack,
-        onBack = { if (backStack.size > 1) backStack.removeAt(backStack.size - 1) },
+        onBack = { goBack() },
     ) { route ->
         NavEntry(route) { key ->
             when (key) {
@@ -43,7 +44,10 @@ private fun MainNavigation() {
                     )
                 }
                 is TripMap -> {
-                    MapRoute(tripId = key.tripId)
+                    MapRoute(
+                        tripId = key.tripId,
+                        onNavigateBack = { goBack() },
+                    )
                 }
             }
         }

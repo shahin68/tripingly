@@ -76,7 +76,7 @@ Shahin wants every stop to show its place name, not only "Stop #N" (asked 2026-1
 
 ## Search
 
-- Debounce 300 ms, minimum 2 characters, cancel in-flight requests. Send the map center as `lat/lng` for ranking.
+- Debounce 300 ms, from the first letter (one letter returns Photon prefix matches only), cancel in-flight requests. Send the map center as `lat/lng` for ranking.
 - Results: our places (have `id`) first, then addresses/cities (`source: "photon"`, no `id`).
 - Picking a place with `id` → move the camera, open the place sheet. Picking an address/city → move the camera; "Add to trip" sends `name` + `location` (+ `osmType`/`osmId`) to `POST /days/{id}/markers`.
 - A **long press** on the map creates a custom pin: user names it → `POST /days/{id}/markers` with name + location.

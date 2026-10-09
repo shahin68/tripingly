@@ -9,6 +9,7 @@ data class NewTrip(
     val startDate: LocalDate?,
     val endDate: LocalDate?,
     val visibility: TripVisibility? = null,
+    val destination: Destination? = null,
 )
 
 /** Owner changes to a trip; null fields stay unchanged. */

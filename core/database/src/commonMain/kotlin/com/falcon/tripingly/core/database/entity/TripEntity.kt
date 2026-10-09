@@ -30,4 +30,7 @@ data class TripEntity(
     val copiedFromOwnerId: String? = null,
     val copiedFromOwnerUsername: String? = null,
     val copiedFromOwnerDisplayName: String? = null,
+    val destinationName: String? = null,
+    val destinationLat: Double? = null,
+    val destinationLng: Double? = null,
 )

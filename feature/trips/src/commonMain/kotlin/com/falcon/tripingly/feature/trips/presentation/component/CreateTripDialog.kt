@@ -1,5 +1,6 @@
 package com.falcon.tripingly.feature.trips.presentation.component
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -8,14 +9,21 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.DateRange
+import androidx.compose.material.icons.filled.Place
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DateRangePicker
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.ListItem
+import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.SelectableDates
@@ -28,12 +36,18 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
 import com.falcon.tripingly.core.common.util.DateUtils
+import com.falcon.tripingly.core.model.place.PlaceSearchResult
+import com.falcon.tripingly.core.model.trip.Destination
+import com.falcon.tripingly.core.model.trip.GeoPoint
+import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.persistentListOf
 import kotlinx.datetime.Instant
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
@@ -46,11 +60,16 @@ import com.falcon.tripingly.feature.trips.generated.resources.*
 @Composable
 fun CreateTripDialog(
     onDismiss: () -> Unit,
-    onConfirm: (String, LocalDate, LocalDate) -> Unit,
+    onConfirm: (String, LocalDate, LocalDate, Destination?) -> Unit,
+    onDestinationQueryChange: (String) -> Unit,
+    destinationResults: ImmutableList<PlaceSearchResult>,
+    isSearchingDestination: Boolean,
     isSaving: Boolean = false,
     error: String? = null,
 ) {
     var name by remember { mutableStateOf("") }
+    var destinationText by remember { mutableStateOf("") }
+    var destination by remember { mutableStateOf<Destination?>(null) }
     var showDatePicker by remember { mutableStateOf(false) }
     
     val today = DateUtils.today()
@@ -150,6 +169,55 @@ fun CreateTripDialog(
                         }
                     },
                 )
+                Spacer(modifier = Modifier.height(16.dp))
+
+                OutlinedTextField(
+                    value = destinationText,
+                    onValueChange = {
+                        destinationText = it
+                        destination = null
+                        onDestinationQueryChange(it)
+                    },
+                    label = { Text(stringResource(Res.string.create_trip_destination_label)) },
+                    leadingIcon = { Icon(Icons.Default.Place, contentDescription = null) },
+                    trailingIcon = {
+                        when {
+                            isSearchingDestination -> CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+                            destinationText.isNotEmpty() -> IconButton(
+                                onClick = {
+                                    destinationText = ""
+                                    destination = null
+                                    onDestinationQueryChange("")
+                                },
+                                enabled = !isSaving,
+                            ) {
+                                Icon(Icons.Default.Close, contentDescription = stringResource(Res.string.create_trip_destination_clear))
+                            }
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                    enabled = !isSaving,
+                )
+                if (destination == null && destinationResults.isNotEmpty()) {
+                    destinationResults.take(MAX_DESTINATION_RESULTS).forEach { result ->
+                        ListItem(
+                            headlineContent = { Text(result.name) },
+                            supportingContent = result.address?.let { { Text(it) } },
+                            colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+                            modifier = Modifier.clickable {
+                                destination = Destination(result.name, result.location)
+                                destinationText = result.name
+                                onDestinationQueryChange("")
+                            },
+                        )
+                    }
+                    Text(
+                        text = stringResource(Res.string.create_trip_destination_attribution),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
                 DialogError(error)
             }
         },
@@ -157,7 +225,7 @@ fun CreateTripDialog(
             TextButton(
                 onClick = { 
                     if (selectedStartDate != null && selectedEndDate != null) {
-                        onConfirm(name, selectedStartDate, selectedEndDate)
+                        onConfirm(name, selectedStartDate, selectedEndDate, destination)
                     }
                 },
                 enabled = !isSaving && name.isNotBlank() && selectedStartDate != null && selectedEndDate != null,
@@ -179,8 +247,16 @@ private fun CreateTripDialogPreview() {
     TripinglyTheme {
         CreateTripDialog(
             onDismiss = {},
-            onConfirm = { _, _, _ -> }
+            onConfirm = { _, _, _, _ -> },
+            onDestinationQueryChange = {},
+            destinationResults = persistentListOf(
+                PlaceSearchResult("Paris", "Île-de-France, France", GeoPoint(48.8566, 2.3522)),
+                PlaceSearchResult("Paris", "Texas, United States", GeoPoint(33.6609, -95.5555)),
+            ),
+            isSearchingDestination = false,
         )
     }
 }
+
+private const val MAX_DESTINATION_RESULTS = 5
 

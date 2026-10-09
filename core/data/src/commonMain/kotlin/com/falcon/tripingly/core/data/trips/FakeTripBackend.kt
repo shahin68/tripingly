@@ -86,6 +86,7 @@ class FakeTripBackend(
                 ),
                 days = List(dayCount) { position -> TripDay(nextId(), position, trip.startDate?.plusDays(position), emptyList()) },
                 members = listOf(TripMember(me, TripRole.OWNER)),
+                destination = trip.destination,
             ),
         )
     }

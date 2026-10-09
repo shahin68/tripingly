@@ -7,6 +7,7 @@ import com.falcon.tripingly.core.common.result.AppResult
 import com.falcon.tripingly.core.common.result.asError
 import com.falcon.tripingly.core.common.result.asSuccess
 import com.falcon.tripingly.core.data.trips.FakeTripBackend
+import com.falcon.tripingly.core.model.trip.Destination
 import com.falcon.tripingly.core.model.trip.GeoPoint
 import com.falcon.tripingly.core.model.trip.NewMarker
 import com.falcon.tripingly.core.model.trip.NewTrip
@@ -219,6 +220,62 @@ class MapViewModelTest {
 
         assertEquals(second.id, viewModel.uiState.value.selectedMarker?.id)
         assertEquals(second.position, viewModel.uiState.value.cameraTarget)
+    }
+
+    @Test
+    fun `opening a trip frames the open day's stops`() = runTest(testDispatcher) {
+        backend.addMarker(trip.trip.id, trip.days[0].id, NewMarker("Stop #1", GeoPoint(48.85, 2.35)))
+        backend.addMarker(trip.trip.id, trip.days[0].id, NewMarker("Stop #2", GeoPoint(48.86, 2.29)))
+        backend.addMarker(trip.trip.id, trip.days[1].id, NewMarker("Stop #1", GeoPoint(41.9, 12.49)))
+        val viewModel = viewModel()
+        testScheduler.advanceUntilIdle()
+
+        assertEquals(listOf(Coordinates(48.85, 2.35), Coordinates(48.86, 2.29)), viewModel.uiState.value.frame?.points)
+
+        viewModel.onAction(Action.OnDaySelected(1))
+        testScheduler.advanceUntilIdle()
+        assertEquals(listOf(Coordinates(41.9, 12.49)), viewModel.uiState.value.frame?.points)
+    }
+
+    @Test
+    fun `a trip whose first day is empty frames the whole trip`() = runTest(testDispatcher) {
+        backend.addMarker(trip.trip.id, trip.days[2].id, NewMarker("Stop #1", GeoPoint(41.9, 12.49)))
+        val viewModel = viewModel()
+        testScheduler.advanceUntilIdle()
+
+        assertEquals(listOf(Coordinates(41.9, 12.49)), viewModel.uiState.value.frame?.points)
+    }
+
+    @Test
+    fun `a trip without stops opens at its destination, not at the device location`() = runTest(testDispatcher) {
+        val rome = (
+            backend.createTrip(
+                NewTrip("Rome", null, null, destination = Destination("Rome", GeoPoint(41.9028, 12.4964))),
+            ) as AppResult.Success
+        ).data
+        val viewModel = viewModel(rome.trip.id)
+        testScheduler.advanceUntilIdle()
+        viewModel.onAction(Action.OnPermissionResult(LocationPermission.Granted))
+        testScheduler.advanceUntilIdle()
+
+        val state = viewModel.uiState.value
+        assertEquals(Coordinates(41.9028, 12.4964), state.cameraTarget)
+        assertEquals(12f, state.zoomLevel)
+        assertEquals(null, state.frame)
+    }
+
+    @Test
+    fun `choosing the same day again frames it again`() = runTest(testDispatcher) {
+        backend.addMarker(trip.trip.id, trip.days[0].id, NewMarker("Stop #1", GeoPoint(48.85, 2.35)))
+        val viewModel = viewModel()
+        testScheduler.advanceUntilIdle()
+        val first = viewModel.uiState.value.frame
+
+        viewModel.onAction(Action.OnDaySelected(0))
+        testScheduler.advanceUntilIdle()
+
+        assertEquals(first?.points, viewModel.uiState.value.frame?.points)
+        assertTrue(viewModel.uiState.value.frame!!.id > first!!.id)
     }
 
     @Test

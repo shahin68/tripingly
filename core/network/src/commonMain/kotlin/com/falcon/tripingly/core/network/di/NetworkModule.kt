@@ -10,6 +10,8 @@ import com.falcon.tripingly.core.network.auth.SessionEvents
 import com.falcon.tripingly.core.network.auth.TokenStore
 import com.falcon.tripingly.core.network.createHttpClient
 import com.falcon.tripingly.core.network.createKtorfit
+import com.falcon.tripingly.core.network.places.PlacesApi
+import com.falcon.tripingly.core.network.places.createPlacesApi
 import com.falcon.tripingly.core.network.trips.InvitesApi
 import com.falcon.tripingly.core.network.trips.MarkersApi
 import com.falcon.tripingly.core.network.trips.TripsApi
@@ -58,6 +60,7 @@ val networkModule = module {
     single<TripsApi> { get<Ktorfit>().createTripsApi() }
     single<MarkersApi> { get<Ktorfit>().createMarkersApi() }
     single<InvitesApi> { get<Ktorfit>().createInvitesApi() }
+    single<PlacesApi> { get<Ktorfit>().createPlacesApi() }
 }
 
 internal expect val networkPlatformModule: Module

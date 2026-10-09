@@ -31,11 +31,12 @@ internal object TripJson {
         days: List<String> = listOf(day("d0", 0, "2026-06-01")),
         startDate: String? = "2026-06-01",
         endDate: String? = "2026-06-01",
+        destination: String = "null",
     ) = """
         {"id":"$id","title":"$title","startDate":${startDate?.let { "\"$it\"" } ?: "null"},
          "endDate":${endDate?.let { "\"$it\"" } ?: "null"},"visibility":"private","owner":$OWNER,"myRole":"$myRole",
          "members":[{"user":$OWNER,"role":"owner"},{"user":$EDITOR,"role":"editor"}],
-         "likeCount":0,"likedByMe":false,"copyCount":0,"copiedFrom":null,"days":[${days.joinToString(",")}],
+         "likeCount":0,"likedByMe":false,"copyCount":0,"copiedFrom":null,"destination":$destination,"days":[${days.joinToString(",")}],
          "createdAt":"2026-10-04T09:00:00.000Z","updatedAt":"2026-10-04T10:00:00.000Z"}
     """.trimIndent()
 

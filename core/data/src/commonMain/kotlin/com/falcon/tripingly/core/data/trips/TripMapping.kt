@@ -2,6 +2,7 @@ package com.falcon.tripingly.core.data.trips
 
 import com.falcon.tripingly.core.model.account.TripVisibility
 import com.falcon.tripingly.core.model.trip.CopiedFrom
+import com.falcon.tripingly.core.model.trip.Destination
 import com.falcon.tripingly.core.model.trip.GeoPoint
 import com.falcon.tripingly.core.model.trip.InvitePreview
 import com.falcon.tripingly.core.model.trip.Trip
@@ -13,6 +14,7 @@ import com.falcon.tripingly.core.model.trip.TripMember
 import com.falcon.tripingly.core.model.trip.TripRole
 import com.falcon.tripingly.core.model.trip.UserSummary
 import com.falcon.tripingly.core.network.model.CopiedFromDto
+import com.falcon.tripingly.core.network.model.DestinationDto
 import com.falcon.tripingly.core.network.model.InviteDto
 import com.falcon.tripingly.core.network.model.InvitePreviewDto
 import com.falcon.tripingly.core.network.model.LocationDto
@@ -76,6 +78,7 @@ internal fun TripDto.toDetails(): TripDetails {
         days = days,
         members = members.map { it.toMember() },
         copiedFrom = copiedFrom?.toCopiedFrom(),
+        destination = destination?.toDestination(),
     )
 }
 
@@ -98,6 +101,10 @@ internal fun MarkerDto.toMarker() = TripMarker(
     coverThumbUrl = coverThumbUrl,
     photoCount = photoCount.toInt(),
 )
+
+internal fun DestinationDto.toDestination() = Destination(name = name, location = location.toGeoPoint())
+
+internal fun Destination.toDto() = DestinationDto(name = name, location = location.toDto())
 
 internal fun LocationDto.toGeoPoint() = GeoPoint(lat = lat, lng = lng)
 

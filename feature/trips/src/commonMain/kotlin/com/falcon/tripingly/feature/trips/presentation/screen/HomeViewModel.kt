@@ -5,10 +5,13 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.falcon.tripingly.core.common.error.DataError
 import com.falcon.tripingly.core.common.result.AppResult
+import com.falcon.tripingly.core.data.places.PlaceRepository
 import com.falcon.tripingly.core.data.trips.TripErrorCodes
 import com.falcon.tripingly.core.data.trips.TripRepository
 import com.falcon.tripingly.core.data.trips.hasFieldError
 import com.falcon.tripingly.core.model.account.TripVisibility
+import com.falcon.tripingly.core.model.place.PlaceSearchResult
+import com.falcon.tripingly.core.model.trip.Destination
 import com.falcon.tripingly.core.model.trip.NewTrip
 import com.falcon.tripingly.core.model.trip.Trip
 import com.falcon.tripingly.core.model.trip.TripDates
@@ -21,7 +24,9 @@ import com.falcon.tripingly.feature.trips.generated.resources.reschedule_error_d
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.toImmutableList
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -38,9 +43,11 @@ import kotlinx.datetime.LocalDate
  */
 class HomeViewModel(
     private val tripRepository: TripRepository,
+    private val placeRepository: PlaceRepository,
 ) : ViewModel() {
 
     private val ui = MutableStateFlow(UiState())
+    private var destinationSearch: Job? = null
 
     val uiState: StateFlow<State> = combine(tripRepository.observeMyTrips(), ui) { trips, ui ->
         State(
@@ -55,6 +62,8 @@ class HomeViewModel(
             isSaving = ui.isSaving,
             dialogError = ui.dialogError,
             membersTripId = ui.membersTripId,
+            destinationResults = ui.destinationResults,
+            isSearchingDestination = ui.isSearchingDestination,
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), State())
 
@@ -77,9 +86,13 @@ class HomeViewModel(
             is Action.OnRescheduleTrip -> withTrip(action.tripId) { openDialog(Dialog.Reschedule(it)) }
             is Action.OnDeleteTrip -> withTrip(action.tripId) { openDialog(Dialog.ConfirmDelete(it)) }
             is Action.OnLeaveTrip -> withTrip(action.tripId) { openDialog(Dialog.ConfirmLeave(it)) }
-            Action.OnDismissDialog -> if (!ui.value.isSaving) ui.update { it.copy(dialog = null, dialogError = null) }
+            Action.OnDismissDialog -> if (!ui.value.isSaving) {
+                clearDestinationSearch()
+                ui.update { it.copy(dialog = null, dialogError = null) }
+            }
+            is Action.OnDestinationQueryChanged -> searchDestination(action.query)
             is Action.OnConfirmCreateTrip -> save {
-                tripRepository.createTrip(NewTrip(action.name, action.startDate, action.endDate))
+                tripRepository.createTrip(NewTrip(action.name, action.startDate, action.endDate, destination = action.destination))
             }
             is Action.OnConfirmRenameTrip -> save {
                 tripRepository.updateTrip(action.tripId, TripUpdate(name = action.newName))
@@ -115,7 +128,31 @@ class HomeViewModel(
         if (error == DataError.Network.NoInternet) UiText.Resource(Res.string.home_offline_cached) else error.toUiText()
 
     private fun openDialog(dialog: Dialog) {
+        clearDestinationSearch()
         ui.update { it.copy(dialog = dialog, dialogError = null) }
+    }
+
+    /**
+     * Asks the server only once typing pauses for [SEARCH_DEBOUNCE_MILLIS]; every keystroke
+     * before that cancels the pending search. A cleared field clears the results at once.
+     */
+    private fun searchDestination(query: String) {
+        destinationSearch?.cancel()
+        if (query.isBlank()) {
+            ui.update { it.copy(destinationResults = persistentListOf(), isSearchingDestination = false) }
+            return
+        }
+        destinationSearch = viewModelScope.launch {
+            delay(SEARCH_DEBOUNCE_MILLIS)
+            ui.update { it.copy(isSearchingDestination = true) }
+            val results = (placeRepository.search(query) as? AppResult.Success)?.data.orEmpty()
+            ui.update { it.copy(destinationResults = results.toImmutableList(), isSearchingDestination = false) }
+        }
+    }
+
+    private fun clearDestinationSearch() {
+        destinationSearch?.cancel()
+        ui.update { it.copy(destinationResults = persistentListOf(), isSearchingDestination = false) }
     }
 
     /** Runs a dialog's change; the dialog stays open with the error if the server refuses it. */
@@ -166,6 +203,8 @@ class HomeViewModel(
         val isSaving: Boolean = false,
         val dialogError: UiText? = null,
         val membersTripId: String? = null,
+        val destinationResults: ImmutableList<PlaceSearchResult> = persistentListOf(),
+        val isSearchingDestination: Boolean = false,
     )
 
     @Immutable
@@ -186,6 +225,9 @@ class HomeViewModel(
         val dialogError: UiText? = null,
         /** The trip whose members sheet is open. */
         val membersTripId: String? = null,
+        /** Places matching what was typed into the new trip's destination field. */
+        val destinationResults: ImmutableList<PlaceSearchResult> = persistentListOf(),
+        val isSearchingDestination: Boolean = false,
     )
 
     enum class Tab { MyTrips, Social }
@@ -212,7 +254,13 @@ class HomeViewModel(
         data class OnTripClick(val tripId: String) : Action
         data object OnAddTripClick : Action
         data object OnDismissDialog : Action
-        data class OnConfirmCreateTrip(val name: String, val startDate: LocalDate, val endDate: LocalDate) : Action
+        data class OnDestinationQueryChanged(val query: String) : Action
+        data class OnConfirmCreateTrip(
+            val name: String,
+            val startDate: LocalDate,
+            val endDate: LocalDate,
+            val destination: Destination? = null,
+        ) : Action
         data class OnRenameTrip(val tripId: String) : Action
         data class OnConfirmRenameTrip(val tripId: String, val newName: String) : Action
         data class OnRescheduleTrip(val tripId: String) : Action
@@ -225,6 +273,10 @@ class HomeViewModel(
         data class OnShareTrip(val tripId: String) : Action
         data class OnManageMembers(val tripId: String) : Action
         data object OnDismissMembers : Action
+    }
+
+    private companion object {
+        const val SEARCH_DEBOUNCE_MILLIS = 300L
     }
 }
 

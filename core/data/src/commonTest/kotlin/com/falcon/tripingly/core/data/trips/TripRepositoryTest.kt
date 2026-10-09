@@ -5,6 +5,7 @@ import com.falcon.tripingly.core.common.result.AppResult
 import com.falcon.tripingly.core.model.account.TripVisibility
 import com.falcon.tripingly.core.model.trip.GeoPoint
 import com.falcon.tripingly.core.model.trip.NewMarker
+import com.falcon.tripingly.core.model.trip.Destination
 import com.falcon.tripingly.core.model.trip.NewTrip
 import com.falcon.tripingly.core.model.trip.TripDates
 import com.falcon.tripingly.core.model.trip.TripRole
@@ -200,6 +201,22 @@ class TripRepositoryTest {
         assertEquals("""{"title":"Vienna","startDate":"2026-06-01","endDate":"2026-06-01"}""", request.bodyText())
         assertNotNull(request.headers[IDEMPOTENCY_KEY_HEADER])
         assertEquals("Vienna", harness.trips.observeMyTrips().first().single().name)
+    }
+
+    @Test
+    fun createTrip_withADestination_sendsIt_andKeepsItInTheCache() = runTest {
+        val paris = """{"name":"Paris","location":{"lat":48.8566,"lng":2.3522}}"""
+        val harness = Harness { json(TripJson.trip("t9", destination = paris), HttpStatusCode.Created) }
+
+        harness.trips.createTrip(
+            NewTrip("Paris", LocalDate(2026, 6, 1), LocalDate(2026, 6, 1), destination = Destination("Paris", GeoPoint(48.8566, 2.3522))),
+        )
+
+        assertEquals(
+            """{"title":"Paris","startDate":"2026-06-01","endDate":"2026-06-01","destination":$paris}""",
+            harness.requests.single().bodyText(),
+        )
+        assertEquals(Destination("Paris", GeoPoint(48.8566, 2.3522)), harness.trips.observeTrip("t9").first()?.destination)
     }
 
     @Test

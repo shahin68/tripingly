@@ -24,6 +24,11 @@ iosApp ─────┴─> shared ──> feature:trips, feature:map, (auth, 
 - Classes are `internal` by default; only a module's contract (Koin module, routes, repository interfaces, public composables) is public.
 - Split further only when a boundary or build time asks for it.
 
+### Shared UI components (Shahin, 2026-10-09)
+
+- **Ripples follow the shape.** Every clickable surface (cards, chips, rows with rounded backgrounds) clips its touch ripple to its own shape. With a modifier click, clip first: `.clip(shape).combinedClickable(…)`. Material components that take `onClick` (`Card(onClick)`, `Surface(onClick)`) already do this. A square ripple over rounded corners is a bug.
+- **Shared building blocks.** Any UI element that looks the same on several screens comes from one component in `core:designsystem`, built with the `ui-component` skill: cards (a clickable card with click, optional long click and a clipped ripple), buttons (primary CTA, secondary, text), FABs, loading spinners, icons, text styles (e.g. title, body and caption texts that already apply the theme's typography and colors): anything reusable, following common design-system practice. Features use these instead of styling Material components themselves, so look and behaviour are fixed in one place. When a screen needs something new, add a variant to the shared component; don't copy styling into a feature. Planned: built as each stage first needs one, moving existing screens over as they're touched.
+
 ## Where logic belongs
 
 - **Domain:** models, repository interfaces, and rules (trip date math, "can this user edit", route mode limits). Use cases only when they combine repositories or hold a rule; no pass-through use cases.
@@ -56,6 +61,7 @@ iosApp ─────┴─> shared ──> feature:trips, feature:map, (auth, 
 
 - `AppResult<T, E>` across layer boundaries; nothing throws across them, and `CancellationException` is always rethrown.
 - Structured concurrency only: no `GlobalScope`; app-wide work runs in one injected application scope.
+- Search as you type (Shahin, 2026-10-09): a search that calls the server is debounced 300 ms with coroutines in the ViewModel (each keystroke cancels the pending `Job`, then `delay` and call), so fast typing sends one request and never runs into rate limits; a cleared field clears results at once. Searching local data (e.g. filtering My Trips) is cheap and runs on every keystroke.
 - One Koin module per Gradle module, `viewModelOf(::XViewModel)` with constructor injection, platform bindings through `expect/actual` modules.
 - Navigation 3 with typed, serializable keys in `core:navigation`; ViewModels read arguments from their key; deep links map to keys in one place.
 

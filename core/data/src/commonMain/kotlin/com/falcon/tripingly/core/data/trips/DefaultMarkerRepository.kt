@@ -145,6 +145,7 @@ internal class DefaultMarkerRepository(
     }
 
     private suspend fun process(change: MarkerChange, state: QueueState) {
+        var failure: MarkerChangeFailure? = null
         try {
             // Undoing the failed add already removed this marker.
             if (change !is MarkerChange.Reorder && change.markerId in state.failedAdds) return
@@ -153,7 +154,7 @@ internal class DefaultMarkerRepository(
                 if (error.isConnectionProblem()) state.offline = error
                 if (change is MarkerChange.Add) state.failedAdds += change.markerId
                 local.undo(change)
-                _failures.emit(MarkerChangeFailure(change.tripId, change.markerName, error, change))
+                failure = MarkerChangeFailure(change.tripId, change.markerName, error, change)
             }
         } finally {
             if (pending.end(change.tripId)) {
@@ -161,6 +162,8 @@ internal class DefaultMarkerRepository(
                 state.failedAdds.clear()
             }
         }
+        // Reported only once the queue has settled, so a retry right away isn't taken for part of the failed run.
+        failure?.let { _failures.emit(it) }
     }
 
     private suspend fun sendWithRetries(change: MarkerChange, state: QueueState): DataError.Network? {

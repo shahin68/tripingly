@@ -38,16 +38,23 @@ import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.layout.positionInRoot
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -61,6 +68,7 @@ import com.falcon.tripingly.core.designsystem.theme.spacing
 import com.falcon.tripingly.core.common.util.DateUtils
 import com.falcon.tripingly.feature.map.domain.model.MapMarker
 import com.falcon.tripingly.feature.map.presentation.component.GoogleMapView
+import com.falcon.tripingly.feature.map.presentation.component.fitCamera
 import com.falcon.tripingly.feature.map.presentation.screen.MapViewModel.Action
 import com.falcon.tripingly.feature.map.presentation.screen.MapViewModel.State
 import org.jetbrains.compose.resources.stringResource
@@ -79,8 +87,33 @@ fun MapScreen(
     val markers = remember(state.markers, stopTitles) {
         state.markers.mapIndexed { index, marker -> marker.copy(title = stopTitles[index]) }.toImmutableList()
     }
+
+    // Fits the framed stops into the part of the map the cards leave free; again on every return to the screen.
+    val density = LocalDensity.current
+    var mapSize by remember { mutableStateOf(IntSize.Zero) }
+    var headerBottom by remember { mutableStateOf(0f) }
+    var tabsTop by remember { mutableStateOf(0f) }
+    val isLaidOut = mapSize != IntSize.Zero
+    LaunchedEffect(state.frame, isLaidOut) {
+        val frame = state.frame ?: return@LaunchedEffect
+        if (!isLaidOut) return@LaunchedEffect
+        val fit = with(density) {
+            fitCamera(
+                points = frame.points,
+                mapWidth = mapSize.width.toDp().value,
+                mapHeight = mapSize.height.toDp().value,
+                top = headerBottom.toDp().value,
+                bottom = if (tabsTop > 0f) (mapSize.height - tabsTop).toDp().value else 0f,
+                margin = 48f,
+            )
+        }
+        fit?.let { onAction(Action.NavigateToLocation(it.center, it.zoom)) }
+    }
+
     Box(
-        modifier = Modifier.fillMaxSize()
+        modifier = Modifier
+            .fillMaxSize()
+            .onSizeChanged { mapSize = it }
     ) {
         GoogleMapView(
             modifier = Modifier.fillMaxSize(),
@@ -100,7 +133,11 @@ fun MapScreen(
                 .statusBarsPadding()
                 .fillMaxWidth()
         ) {
-            TripHeader(state, onAction)
+            TripHeader(
+                state = state,
+                onAction = onAction,
+                modifier = Modifier.onGloballyPositioned { headerBottom = it.positionInRoot().y + it.size.height },
+            )
 
             AnimatedVisibility(
                 visible = state.message != null,
@@ -135,7 +172,8 @@ fun MapScreen(
 
             DaySelectionTabs(
                 state = state,
-                onDaySelected = { onAction(Action.OnDaySelected(it)) }
+                onDaySelected = { onAction(Action.OnDaySelected(it)) },
+                modifier = Modifier.onGloballyPositioned { tabsTop = it.positionInRoot().y },
             )
 
             AnimatedVisibility(
@@ -162,21 +200,27 @@ fun MapScreen(
 private fun TripHeader(
     state: State,
     onAction: (Action) -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     var menuExpanded by remember { mutableStateOf(false) }
     Card(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .padding(MaterialTheme.spacing.medium),
+        // A see-through surface doesn't get a content color of its own, so it's set here.
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f)
+            containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f),
+            contentColor = MaterialTheme.colorScheme.onSurface,
         ),
         shape = RoundedCornerShape(16.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
+            IconButton(onClick = { onAction(Action.OnBackClick) }) {
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(Res.string.map_back))
+            }
             Text(
                 text = state.tripName,
-                modifier = Modifier.weight(1f).padding(16.dp),
+                modifier = Modifier.weight(1f).padding(vertical = 16.dp),
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
             )
@@ -212,11 +256,14 @@ private fun TripHeader(
 private fun DaySelectionTabs(
     state: State,
     onDaySelected: (Int) -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     if (state.days.isEmpty()) return
     SecondaryScrollableTabRow(
         selectedTabIndex = state.activeDayIndex,
+        modifier = modifier,
         containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.8f),
+        contentColor = MaterialTheme.colorScheme.onSurface,
         edgePadding = 16.dp,
         divider = {},
     ) {
@@ -279,6 +326,7 @@ private fun TripItineraryCard(
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.elevatedCardColors(
             containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f),
+            contentColor = MaterialTheme.colorScheme.onSurface,
         ),
     ) {
         Column(

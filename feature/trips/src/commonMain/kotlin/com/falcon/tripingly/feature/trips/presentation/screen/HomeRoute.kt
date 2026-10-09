@@ -60,7 +60,12 @@ fun HomeRoute(
             isSaving = state.isSaving,
             error = error,
             onDismiss = onDismiss,
-            onConfirm = { name, start, end -> viewModel.onAction(Action.OnConfirmCreateTrip(name, start, end)) },
+            onConfirm = { name, start, end, destination ->
+                viewModel.onAction(Action.OnConfirmCreateTrip(name, start, end, destination))
+            },
+            onDestinationQueryChange = { viewModel.onAction(Action.OnDestinationQueryChanged(it)) },
+            destinationResults = state.destinationResults,
+            isSearchingDestination = state.isSearchingDestination,
         )
         is Dialog.Rename -> RenameTripDialog(
             initialName = dialog.trip.name,

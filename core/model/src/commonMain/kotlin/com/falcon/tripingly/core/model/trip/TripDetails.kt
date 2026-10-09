@@ -10,6 +10,8 @@ data class TripDetails(
     val members: List<TripMember>,
     /** Set when this trip was copied from another user's trip that still exists. */
     val copiedFrom: CopiedFrom? = null,
+    /** Where the trip goes, if the owner picked a place; the map opens there while the trip has no stops. */
+    val destination: Destination? = null,
 )
 
 data class TripDay(
@@ -38,6 +40,9 @@ data class TripMarker(
 )
 
 data class GeoPoint(val lat: Double, val lng: Double)
+
+/** A trip's destination, e.g. "Paris", picked from a place search. */
+data class Destination(val name: String, val location: GeoPoint)
 
 data class TripMember(val user: UserSummary, val role: TripRole)
 

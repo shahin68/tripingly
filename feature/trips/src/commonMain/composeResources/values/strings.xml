@@ -40,6 +40,9 @@
     <string name="create_trip_button_create">Create</string>
     <string name="create_trip_picker_title">Select Trip Dates</string>
     <string name="create_trip_picker_headline">Choose the range</string>
+    <string name="create_trip_destination_label">Destination (optional)</string>
+    <string name="create_trip_destination_clear">Remove destination</string>
+    <string name="create_trip_destination_attribution">© OpenStreetMap contributors</string>
 
     <!-- Rename trip dialog -->
     <string name="rename_trip_title">Rename Trip</string>

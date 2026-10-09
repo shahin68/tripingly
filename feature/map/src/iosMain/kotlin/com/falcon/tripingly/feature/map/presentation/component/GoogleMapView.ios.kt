@@ -19,6 +19,7 @@ import platform.MapKit.MKMapViewDelegateProtocol
 import platform.MapKit.MKPointAnnotation
 import platform.UIKit.UIColor
 import platform.darwin.NSObject
+import kotlin.math.log2
 import kotlin.math.pow
 
 @OptIn(ExperimentalForeignApi::class)
@@ -43,7 +44,9 @@ actual fun GoogleMapView(
                 val center = coordinate.useContents {
                     Coordinates(latitude, longitude)
                 }
-                onCameraMove(center, 13f) 
+                // The inverse of the region set below, so a zoom the camera was sent to stays.
+                val latitudeMeters = mapView.region.useContents { span.latitudeDelta } * 111_320.0
+                onCameraMove(center, log2(40_000_000.0 / latitudeMeters).toFloat())
             }
 
             override fun mapView(mapView: MKMapView, viewForAnnotation: MKAnnotationProtocol): MKAnnotationView? {
