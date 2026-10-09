@@ -13,15 +13,14 @@ internal class DefaultPlaceRepository(
 
     override suspend fun search(query: String): AppResult<List<PlaceSearchResult>, DataError.Network> {
         val trimmed = query.trim().take(MAX_QUERY_LENGTH)
-        if (trimmed.length < MIN_QUERY_LENGTH) return AppResult.Success(emptyList())
+        if (trimmed.isEmpty()) return AppResult.Success(emptyList())
         return api.search(trimmed).map { response ->
             response.items.map { PlaceSearchResult(it.name, it.address, GeoPoint(it.location.lat, it.location.lng)) }
         }
     }
 
     private companion object {
-        // The server's limits for `q`.
-        const val MIN_QUERY_LENGTH = 2
+        // The server's limit for `q`.
         const val MAX_QUERY_LENGTH = 100
     }
 }

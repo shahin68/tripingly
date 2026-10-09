@@ -17,7 +17,7 @@ class FakePlaceRepository : PlaceRepository {
 
     override suspend fun search(query: String): AppResult<List<PlaceSearchResult>, DataError.Network> {
         val trimmed = query.trim()
-        if (trimmed.length < 2) return AppResult.Success(emptyList())
-        return AppResult.Success(places.filter { it.name.contains(trimmed, ignoreCase = true) })
+        if (trimmed.isEmpty()) return AppResult.Success(emptyList())
+        return AppResult.Success(places.filter { it.name.startsWith(trimmed, ignoreCase = true) })
     }
 }

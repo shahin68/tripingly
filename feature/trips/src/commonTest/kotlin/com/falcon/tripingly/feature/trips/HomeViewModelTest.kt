@@ -268,6 +268,19 @@ class HomeViewModelTest {
     }
 
     @Test
+    fun destinationSearch_startsFromTheFirstLetter() = runTest {
+        val viewModel = viewModel()
+        advanceUntilIdle()
+        viewModel.onAction(Action.OnAddTripClick)
+
+        viewModel.onAction(Action.OnDestinationQueryChanged("B"))
+        advanceUntilIdle()
+
+        assertEquals(listOf("B"), places.queries)
+        assertEquals(listOf("Budapest", "Berlin"), viewModel.uiState.value.destinationResults.map { it.name })
+    }
+
+    @Test
     fun destinationSearch_clearedField_dropsResultsAtOnceWithoutAsking() = runTest {
         val viewModel = viewModel()
         advanceUntilIdle()
