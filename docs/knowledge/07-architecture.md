@@ -27,7 +27,7 @@ iosApp ─────┴─> shared ──> feature:trips, feature:map, (auth, 
 ### Shared UI components (Shahin, 2026-10-09)
 
 - **Ripples follow the shape.** Every clickable surface (cards, chips, rows with rounded backgrounds) clips its touch ripple to its own shape. With a modifier click, clip first: `.clip(shape).combinedClickable(…)`. Material components that take `onClick` (`Card(onClick)`, `Surface(onClick)`) already do this. A square ripple over rounded corners is a bug.
-- **One shared card.** Cards that look alike on several screens come from one component in `core:designsystem` (planned: a clickable card with click, optional long click and a clipped ripple, built with the `ui-component` skill). Features use it instead of styling their own `Card`, so the look and touch behaviour are fixed in one place. When a new screen needs a card, extend the shared one or add a variant there; don't copy a card into a feature.
+- **Shared building blocks.** Any UI element that looks the same on several screens comes from one component in `core:designsystem`, built with the `ui-component` skill: cards (a clickable card with click, optional long click and a clipped ripple), buttons (primary CTA, secondary, text), text styles (e.g. title, body and caption texts that already apply the theme's typography and colors), and so on. Features use these instead of styling Material components themselves, so look and behaviour are fixed in one place. When a screen needs something new, add a variant to the shared component; don't copy styling into a feature. Planned: built as each stage first needs one, moving existing screens over as they're touched.
 
 ## Where logic belongs
 
