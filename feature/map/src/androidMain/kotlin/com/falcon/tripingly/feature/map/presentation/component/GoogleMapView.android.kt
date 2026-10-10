@@ -136,7 +136,7 @@ actual fun GoogleMapView(
             } else {
                 cameraPositionState.animate(
                     CameraUpdateFactory.newLatLngZoom(targetLatLng, zoomLevel),
-                    durationMs = 800
+                    durationMs = CAMERA_MOVE_MILLIS
                 )
             }
         }
@@ -274,3 +274,6 @@ private const val REDRAW_AFTER_MILLIS = 300L
 
 /** Long enough for the new overlay's tiles to be drawn from the kept squares and faded in. */
 private const val KEEP_REPLACED_OVERLAY_MILLIS = 1_500L
+
+/** How long the camera takes to fly to a pin, a search result or the user's location. */
+private const val CAMERA_MOVE_MILLIS = 400
