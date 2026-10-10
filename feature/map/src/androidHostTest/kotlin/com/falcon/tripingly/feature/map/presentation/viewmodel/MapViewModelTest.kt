@@ -9,6 +9,10 @@ import com.falcon.tripingly.core.common.result.asSuccess
 import com.falcon.tripingly.core.data.places.FakePlaceRepository
 import com.falcon.tripingly.core.data.places.PlaceRepository
 import com.falcon.tripingly.core.data.trips.FakeTripBackend
+import com.falcon.tripingly.core.model.place.SearchResultType
+import com.falcon.tripingly.core.model.place.PlaceSearchResult
+import com.falcon.tripingly.core.model.place.OsmType
+import com.falcon.tripingly.core.model.place.OsmRef
 import com.falcon.tripingly.core.model.place.GeoBounds
 import com.falcon.tripingly.core.model.place.MapPlace
 import com.falcon.tripingly.core.model.place.PlaceCategory
@@ -200,8 +204,9 @@ class MapViewModelTest {
         viewModel.onAction(Action.OnMapClick(Coordinates.London))
         testScheduler.advanceUntilIdle()
 
+        // A tap sends no name: the server names the stop after what's there (the fake uses the coordinates).
         val markers = viewModel.uiState.value.markers
-        assertEquals(listOf("Stop #1", "Stop #2"), markers.map { it.title })
+        assertEquals(listOf("48.8566, 2.3522", "51.5074, -0.1278"), markers.map { it.title })
         assertEquals(listOf(1, 2), markers.map { it.orderNumber })
         assertEquals(Coordinates.London, markers[1].position)
         assertEquals(2, backend.refreshTrip(trip.trip.id).let { (it as AppResult.Success).data.days[0].markers.size })
@@ -368,7 +373,7 @@ class MapViewModelTest {
 
         viewModel.onAction(Action.OnMapClick(Coordinates.Paris))
         testScheduler.advanceUntilIdle()
-        assertEquals(listOf("Stop #1"), viewModel.uiState.value.markers.map { it.title })
+        assertEquals(listOf("48.8566, 2.3522"), viewModel.uiState.value.markers.map { it.title })
         assertFalse(viewModel.uiState.value.isSaving)
 
         backend.nextError = DataError.Network.NoInternet
@@ -383,7 +388,7 @@ class MapViewModelTest {
         viewModel.onAction(Action.RetryFailedChanges)
         testScheduler.advanceUntilIdle()
 
-        assertEquals(listOf("Stop #1", "Stop #2"), viewModel.uiState.value.markers.map { it.title })
+        assertEquals(listOf("48.8566, 2.3522", "51.5074, -0.1278"), viewModel.uiState.value.markers.map { it.title })
         assertNull(viewModel.uiState.value.message)
         assertFalse(viewModel.uiState.value.canRetry)
     }
@@ -679,6 +684,36 @@ class MapViewModelTest {
         assertEquals(Coordinates(48.2082, 16.3738), state.cameraTarget)
         // A city fills the screen.
         assertEquals(12f, state.zoomLevel)
+    }
+
+    @Test
+    fun `an address picked in search opens its card, and adding it makes a stop named after it`() = runTest(testDispatcher) {
+        val viewModel = viewModel()
+        testScheduler.advanceUntilIdle()
+        val address = PlaceSearchResult(
+            name = "Kärntner Straße 38",
+            address = "Wien, Österreich",
+            location = GeoPoint(48.2052, 16.3696),
+            type = SearchResultType.House,
+            osm = OsmRef(OsmType.Node, "42"),
+        )
+
+        viewModel.onAction(Action.OnSearchResultClick(address))
+        testScheduler.advanceUntilIdle()
+
+        val state = viewModel.uiState.value
+        assertEquals("Kärntner Straße 38", state.selectedPlace?.name)
+        assertEquals("Wien, Österreich", state.selectedPlaceAddress)
+        assertEquals(Coordinates(48.2052, 16.3696), state.cameraTarget)
+        assertEquals(17f, state.zoomLevel)
+
+        viewModel.onAction(Action.OnAddPlaceToDay)
+        testScheduler.advanceUntilIdle()
+
+        assertNull(viewModel.uiState.value.selectedPlace)
+        val stop = (backend.refreshTrip(trip.trip.id) as AppResult.Success).data.days[0].markers.single()
+        assertEquals("Kärntner Straße 38", stop.name)
+        assertEquals(GeoPoint(48.2052, 16.3696), stop.location)
     }
 
     @Test

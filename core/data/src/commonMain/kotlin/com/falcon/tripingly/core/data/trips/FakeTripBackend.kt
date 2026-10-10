@@ -207,7 +207,8 @@ class FakeTripBackend(
             tripId = tripId,
             dayId = dayId,
             placeId = marker.placeId.orEmpty(),
-            name = marker.name.trim(),
+            // Like the server: a tap on the map is named after where it is.
+            name = marker.name.trim().ifEmpty { "${marker.location.lat}, ${marker.location.lng}" },
             location = marker.location,
             time = marker.time,
             position = trips.value[tripId]?.days?.firstOrNull { it.id == dayId }?.markers?.size ?: 0,

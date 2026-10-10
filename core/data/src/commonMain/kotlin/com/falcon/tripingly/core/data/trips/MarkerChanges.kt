@@ -1,6 +1,7 @@
 package com.falcon.tripingly.core.data.trips
 
 import com.falcon.tripingly.core.common.error.DataError
+import com.falcon.tripingly.core.model.place.OsmRef
 import com.falcon.tripingly.core.model.trip.MarkerUpdate
 import com.falcon.tripingly.core.model.trip.TripMarker
 
@@ -10,7 +11,8 @@ internal sealed interface MarkerChange {
     val markerId: String
     val markerName: String
 
-    data class Add(val marker: TripMarker) : MarkerChange {
+    /** [osm]: the address's OpenStreetMap feature, sent with a stop added from search. */
+    data class Add(val marker: TripMarker, val osm: OsmRef? = null) : MarkerChange {
         override val tripId get() = marker.tripId
         override val markerId get() = marker.id
         override val markerName get() = marker.name

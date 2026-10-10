@@ -98,12 +98,14 @@ fun MapScreen(
     state: State,
     onAction: (Action) -> Unit,
 ) {
-    // Stops are named by their place in the day, so the numbers follow deletes and reorders.
-    // Kept as the same list while the stops don't change, so the map and the chips skip
-    // recomposing on unrelated updates such as the user's location.
+    // Stops show their name next to their number in the day, so the numbers follow deletes and
+    // reorders. A stop just tapped on the map has no name until the server answers; it shows
+    // "Stop N" until then. Kept as the same list while the stops don't change, so the map and
+    // the chips skip recomposing on unrelated updates such as the user's location.
     val stopTitles = state.markers.map { stringResource(Res.string.map_stop_title_format, it.orderNumber) }
     val markers = remember(state.markers, stopTitles) {
-        state.markers.mapIndexed { index, marker -> marker.copy(title = stopTitles[index]) }.toImmutableList()
+        state.markers.mapIndexed { index, marker -> marker.copy(title = marker.title.ifBlank { stopTitles[index] }) }
+            .toImmutableList()
     }
 
     // Fits the framed stops into the part of the map the cards leave free; again on every return to the screen.
@@ -248,6 +250,7 @@ fun MapScreen(
             PlaceCard(
                 place = place,
                 details = state.selectedPlaceDetails,
+                address = state.selectedPlaceAddress,
                 dayNumber = state.days.getOrNull(state.activeDayIndex)?.number?.takeIf { state.canEdit },
                 onAdd = { onAction(Action.OnAddPlaceToDay) },
                 modifier = Modifier

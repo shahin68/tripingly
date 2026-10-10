@@ -57,13 +57,15 @@ data class MapState(
 - Render thumbnails to bitmaps off the main thread (download with the app's image loader, crop circle, cache per URL + size). Android: `BitmapDescriptor`; iOS: `UIImage` icon (prefer icon images over `iconView` for performance).
 - Use the Google Maps utility libraries for **client-side clustering** of trip markers only if needed. Place clusters come from the server.
 
-## Stop names (planned for stage 5)
+## Stop names
 
-Shahin wants every stop to show its place name, not only "Stop #N" (asked 2026-10-08).
+Built 2026-10-10 (Shahin asked 2026-10-08, chose "Number + name"):
 
-- Chips and pin titles already show **"Stop #N" from the stop's position** in the day, so numbers follow deletes and reorders. The marker's stored `name` is a placeholder ("Stop #N" at creation) until this lands.
-- Stage 5: a stop added from a place (in-view pin, search result with `id`) is created with `placeId`, and the server fills `name` with the place name. A stop added by tapping empty map gets a name from a backend lookup of the nearest OSM place or a Photon reverse lookup (a backend endpoint; never Google, never public Nominatim), and falls back to "Stop #N" when nothing is near.
-- Display: "Stop #N" plus the place name (chip second line or "Stop #N · Name", pin info window title "Name", snippet "Stop #N"). The design is Shahin's call when stage 5 starts.
+- A chip shows the stop's number badge and its name; the pin's title is the name. Numbers come from the stop's position in the day, so they follow deletes and reorders.
+- A stop added from a place (pin card, search result of ours) is created with `placeId` and named after the place.
+- A tap on the map sends only `location`. The server names it (our public place within 25 m, else the Photon address, else the coordinates, backend#28) and the app takes the name from the create answer. Until it answers, the chip shows "Stop N". A name the user already gave (long press, or a rename while it was sending) is never replaced.
+- An address picked in search (house, street, Photon place) opens a card with its address and "Add to day N", which sends its name, location and OSM ids. Cities and larger areas only move the map.
+- Stops saved before this keep their old "Stop #N" name until renamed.
 
 ## Loading places while browsing
 
@@ -87,7 +89,7 @@ Decided 2026-10-10 (Shahin, "Tiles + prefetch"): places load and draw like Googl
 
 - Debounce 300 ms, from the first letter (one letter returns Photon prefix matches only), cancel in-flight requests. Send the map center as `lat/lng` for ranking.
 - Results: our places (have `id`) first, then addresses/cities (`source: "photon"`, no `id`).
-- *(Built: search icon in the map header; picking a result moves the camera at a zoom by its type, country 5 … street or place 17.)* Planned with stop names: picking a place with `id` → move the camera, open the place card. Picking an address/city → move the camera; "Add to trip" sends `name` + `location` (+ `osmType`/`osmId`) to `POST /days/{id}/markers`.
+- *(Built: search icon in the map header; picking a result moves the camera at a zoom by its type, country 5 … street or place 17.)* Picking one of our places opens its card; picking an address opens a card with "Add to day N" (`name` + `location` + `osmType`/`osmId`); a city or larger area only moves the camera.
 - A **long press** on the map creates a custom pin: user names it → `POST /days/{id}/markers` with name + location. *(Built on Android; iOS has no map gestures yet.)*
 
 ## Routes and places along the way
