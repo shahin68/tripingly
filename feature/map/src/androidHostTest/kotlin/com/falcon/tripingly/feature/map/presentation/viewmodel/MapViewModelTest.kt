@@ -10,6 +10,8 @@ import com.falcon.tripingly.core.data.places.FakePlaceRepository
 import com.falcon.tripingly.core.data.places.PlaceRepository
 import com.falcon.tripingly.core.data.trips.FakeTripBackend
 import com.falcon.tripingly.core.model.place.GeoBounds
+import com.falcon.tripingly.core.model.place.MapPlace
+import com.falcon.tripingly.core.model.place.PlaceCategory
 import com.falcon.tripingly.core.model.place.PlacesInView
 import com.falcon.tripingly.core.model.trip.Destination
 import com.falcon.tripingly.core.model.trip.GeoPoint
@@ -70,10 +72,13 @@ class MapViewModelTest {
         private val fake: FakePlaceRepository = FakePlaceRepository(),
     ) : PlaceRepository by fake {
         val inViewRequests = mutableListOf<GeoBounds>()
+        /** Answers given instead of the fake's, in order. */
+        val answers = ArrayDeque<List<MapPlace>>()
 
         override suspend fun placesInView(bounds: GeoBounds, zoom: Float): AppResult<PlacesInView, DataError.Network> {
             inViewRequests += bounds
-            return fake.placesInView(bounds, zoom)
+            val answer = answers.removeFirstOrNull() ?: return fake.placesInView(bounds, zoom)
+            return PlacesInView(answer, emptyList()).asSuccess()
         }
     }
 
@@ -562,6 +567,28 @@ class MapViewModelTest {
         testScheduler.advanceUntilIdle()
         assertEquals(listOf(PARIS_CENTER), places.inViewRequests)
         assertEquals(setOf("Eiffel Tower", "Louvre"), viewModel.uiState.value.places.map { it.name }.toSet())
+    }
+
+    @Test
+    fun `places still in view stay when the next answer leaves them out, unless zoomed out`() = runTest(testDispatcher) {
+        fun place(name: String, lat: Double, lng: Double) =
+            MapPlace(name, name, PlaceCategory.Cafe, GeoPoint(lat, lng), isTripinly = false, likeCount = 0)
+        val viewModel = viewModel()
+        testScheduler.advanceUntilIdle()
+        places.answers += listOf(place("West", 48.20, 16.30), place("East", 48.20, 16.40))
+        places.answers += listOf(place("New", 48.21, 16.33))
+        places.answers += listOf(place("Far", 48.20, 16.35))
+
+        viewModel.onAction(Action.OnCameraMove(Coordinates(48.2, 16.35), 15f, GeoBounds(48.1, 16.25, 48.3, 16.45)))
+        testScheduler.advanceUntilIdle()
+        // Panned west: East left the view, West is still in it.
+        viewModel.onAction(Action.OnCameraMove(Coordinates(48.2, 16.3), 15f, GeoBounds(48.1, 16.2, 48.3, 16.38)))
+        testScheduler.advanceUntilIdle()
+        assertEquals(listOf("New", "West"), viewModel.uiState.value.places.map { it.name })
+
+        viewModel.onAction(Action.OnCameraMove(Coordinates(48.2, 16.3), 12f, GeoBounds(47.9, 15.9, 48.5, 16.7)))
+        testScheduler.advanceUntilIdle()
+        assertEquals(listOf("Far"), viewModel.uiState.value.places.map { it.name })
     }
 
     @Test

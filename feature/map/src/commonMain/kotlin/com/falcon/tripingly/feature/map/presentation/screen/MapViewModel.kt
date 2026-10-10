@@ -57,6 +57,7 @@ import kotlinx.coroutines.launch
 import kotlinx.datetime.LocalDate
 import org.jetbrains.compose.resources.getString
 import kotlin.coroutines.cancellation.CancellationException
+import kotlin.math.floor
 
 /**
  * One trip on the map. Days and markers come from the cached trip, reloaded from
@@ -260,14 +261,24 @@ class MapViewModel(
 
     /**
      * Waits until the camera has rested a moment, so a pan or a fling asks once. The pins on the map
-     * stay until the new ones arrive, and stay as they are when the request fails.
+     * stay until the new ones arrive, and stay as they are when the request fails. Pins still in view
+     * stay on the map when the new answer leaves them out, unless the map zoomed out, where they'd crowd it.
      */
     private fun loadPlaces(bounds: GeoBounds, zoom: Float) {
         placesJob?.cancel()
         placesJob = viewModelScope.launch {
             delay(PLACES_DEBOUNCE_MILLIS)
+            val zoomLevel = floor(zoom).toInt()
             placeRepository.placesInView(bounds, zoom).onSuccess { inView ->
-                ui.update { it.copy(places = inView.places, clusters = inView.clusters) }
+                ui.update { state ->
+                    val ids = inView.places.mapTo(HashSet()) { it.id }
+                    val kept = if (zoomLevel >= state.placesZoomLevel) {
+                        state.places.filter { it.id !in ids && it.location in bounds }
+                    } else {
+                        emptyList()
+                    }
+                    state.copy(places = inView.places + kept, placesZoomLevel = zoomLevel, clusters = inView.clusters)
+                }
             }
         }
     }
@@ -545,6 +556,8 @@ class MapViewModel(
         val frame: CameraFrame? = null,
         val confirm: Confirm? = null,
         val places: List<MapPlace> = emptyList(),
+        /** The zoom level [places] were last loaded at. */
+        val placesZoomLevel: Int = 0,
         val clusters: List<PlaceCluster> = emptyList(),
         val selectedPlace: MapPlace? = null,
         val selectedPlaceDetails: PlaceDetails? = null,

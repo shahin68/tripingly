@@ -17,18 +17,20 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 
 /**
- * A place on the map: a place liked on Tripinly gets a heart pin, an OpenStreetMap place a small dot.
- * Drawn into a bitmap by the map, so it takes no clicks itself.
+ * A place on the map: a place liked on Tripinly gets a heart pin that grows with its likes, an
+ * OpenStreetMap place a small dot. Drawn into a bitmap by the map, so it takes no clicks itself.
  */
 @Composable
-fun PlacePin(isTripinly: Boolean, modifier: Modifier = Modifier) {
+fun PlacePin(isTripinly: Boolean, likeCount: Int, modifier: Modifier = Modifier) {
     if (isTripinly) {
+        val size = hotSpotSize(likeCount)
         Box(
             modifier = modifier
-                .size(24.dp)
+                .size(size)
                 .background(MaterialTheme.colorScheme.tertiary, CircleShape)
                 .border(2.dp, Color.White, CircleShape),
             contentAlignment = Alignment.Center,
@@ -37,7 +39,7 @@ fun PlacePin(isTripinly: Boolean, modifier: Modifier = Modifier) {
                 Icons.Default.Favorite,
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.onTertiary,
-                modifier = Modifier.size(12.dp),
+                modifier = Modifier.size(size / 2),
             )
         }
     } else {
@@ -48,6 +50,13 @@ fun PlacePin(isTripinly: Boolean, modifier: Modifier = Modifier) {
                 .border(2.dp, Color.White, CircleShape),
         )
     }
+}
+
+/** Hot spots in three sizes, so the most liked places stand out. */
+fun hotSpotSize(likeCount: Int): Dp = when {
+    likeCount >= 20 -> 36.dp
+    likeCount >= 5 -> 30.dp
+    else -> 24.dp
 }
 
 /** Several Tripinly places while zoomed out, with how many. */

@@ -69,7 +69,10 @@ Shahin wants every stop to show its place name, not only "Stop #N" (asked 2026-1
 
 1. On **camera idle**, wait 300 ms (debounce), cancel the previous request, then call `GET /places/in-view?bbox=…&zoom=…&categories=…`. The bbox is sent as plain decimals (the server rejects exponents). *(Built: `MapViewModel.loadPlaces`.)*
 2. The repository keeps the last answer with the area the server answered for (it widens the box to quarter tiles at the zoom level), so a small pan or zoom inside it asks nothing for 60 s (the server's cache time). No longer cache (decided 2026-10-09).
-3. Zoomed out (< 14): only Tripinly places and server clusters. Zoomed in (≥ 14): OSM dots too.
+3. Zoomed out (< 14): Tripinly places and server clusters, plus OSM places with a Wikidata entry from zoom 10 while hot spots are few. Zoomed in (≥ 14): OSM dots too. The server's picks are fixed on the map, so panning keeps the same dots (backend #25).
+   - Dots still in view stay when the next answer leaves them out, unless the map zoomed out (`MapViewModel.loadPlaces`). On Android, new dots fade in and leaving ones fade out (250 ms). iOS doesn't fade yet; that waits for the iOS map decision.
+   - Hot spots (liked on public trips) grow with their likes: 24 dp, 30 dp from 5 likes, 36 dp from 20 (`hotSpotSize`).
+   - Planned as its own stage after stage 5 (Shahin, 2026-10-10): an importance score so famous places show when zoomed out, one marker per city when zoomed far out, illustrated markers.
 4. Category filter chips (cafés, restaurants, attractions, museums, parks…) change the `categories` parameter.
 5. Tapping a place → place sheet (`PlaceSheet`): name, category and likes from the pin at once, opening hours and website from `GET /places/{id}`, "Add to day N" for owners and editors. Adding goes through the optimistic marker queue as `POST /days/{id}/markers` with `placeId` (instant, like a tap), not `POST /places/{id}/add-to-trip`. Photos come with stage 6. Tapping a cluster zooms in two levels on it.
 6. Handle `BBOX_TOO_LARGE` by showing nothing new (the user zoomed out too far).

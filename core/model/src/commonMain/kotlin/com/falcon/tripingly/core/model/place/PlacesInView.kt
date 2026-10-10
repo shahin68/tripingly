@@ -11,6 +11,9 @@ data class GeoBounds(
 ) {
     operator fun contains(other: GeoBounds): Boolean =
         other.south >= south && other.north <= north && other.west >= west && other.east <= east
+
+    operator fun contains(point: GeoPoint): Boolean =
+        point.lat in south..north && point.lng in west..east
 }
 
 enum class PlaceCategory { Cafe, Restaurant, Bar, Attraction, Museum, Historic, Park, Nature, Landmark, Other }

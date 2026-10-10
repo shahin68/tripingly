@@ -1,10 +1,13 @@
 package com.falcon.tripingly.feature.map.presentation.component
 
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import com.falcon.tripingly.core.model.place.GeoBounds
@@ -103,6 +106,11 @@ actual fun GoogleMapView(
         }
     }
 
+    // The places drawn: the current ones, and removed ones until they have faded out.
+    val shownPlaces = remember { mutableStateMapOf<String, MapPlace>() }
+    val currentPlaceIds = remember(places) { places.mapTo(HashSet()) { it.id } }
+    LaunchedEffect(places) { places.forEach { shownPlaces[it.id] = it } }
+
     GoogleMap(
         modifier = modifier.fillMaxSize(),
         cameraPositionState = cameraPositionState,
@@ -117,19 +125,28 @@ actual fun GoogleMapView(
             onMapLongClick(Coordinates(latitude = latLng.latitude, longitude = latLng.longitude))
         },
     ) {
-        places.forEach { place ->
+        // Places fade in, and fade out before they leave the map, as in Google Maps.
+        shownPlaces.values.forEach { place ->
             key(place.id) {
+                val isCurrent = place.id in currentPlaceIds
+                val alpha = remember { Animatable(0f) }
+                LaunchedEffect(isCurrent) {
+                    alpha.animateTo(if (isCurrent) 1f else 0f, tween(PLACE_FADE_MILLIS))
+                    if (!isCurrent) shownPlaces.remove(place.id)
+                }
                 MarkerComposable(
                     place.isTripinly,
+                    hotSpotSize(place.likeCount),
                     state = rememberUpdatedMarkerState(position = LatLng(place.location.lat, place.location.lng)),
                     title = place.name,
+                    alpha = alpha.value,
                     anchor = Offset(0.5f, 0.5f),
                     onClick = {
-                        onPlaceClick(place)
+                        if (isCurrent) onPlaceClick(place)
                         true
                     },
                 ) {
-                    PlacePin(isTripinly = place.isTripinly)
+                    PlacePin(isTripinly = place.isTripinly, likeCount = place.likeCount)
                 }
             }
         }
@@ -180,3 +197,5 @@ actual fun GoogleMapView(
         }
     }
 }
+
+private const val PLACE_FADE_MILLIS = 250
