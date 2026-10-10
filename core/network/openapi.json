@@ -55,6 +55,29 @@
         ]
       }
     },
+    "/v1/app-config": {
+      "get": {
+        "description": "Values that steer app behaviour (cache times, limits), set per environment, so they change without an app update. Public: the app reads it at start, before sign-in.",
+        "operationId": "AppConfig_get",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AppConfigDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Settings for the apps",
+        "tags": [
+          "app-config"
+        ]
+      }
+    },
     "/v1/auth/google": {
       "post": {
         "operationId": "Auth_google_",
@@ -1236,6 +1259,78 @@
           }
         ],
         "summary": "Places for the visible map area",
+        "tags": [
+          "places"
+        ]
+      }
+    },
+    "/v1/places/tiles": {
+      "get": {
+        "description": "What in-view returns, for each map square asked for (at most 16), in one request. Lets the app load the map by square, keep squares and fetch the ones around the view ahead.",
+        "operationId": "Places_tiles",
+        "parameters": [
+          {
+            "name": "zoom",
+            "required": true,
+            "in": "query",
+            "description": "Map zoom level (fractions allowed)",
+            "schema": {
+              "minimum": 0,
+              "maximum": 22,
+              "example": 15,
+              "type": "number"
+            }
+          },
+          {
+            "name": "categories",
+            "required": false,
+            "in": "query",
+            "description": "Comma-separated: cafe, restaurant, bar, attraction, museum, historic, park, nature, landmark, other",
+            "schema": {
+              "example": "cafe,attraction",
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 10,
+              "maximum": 200,
+              "default": 100,
+              "type": "number"
+            }
+          },
+          {
+            "name": "tiles",
+            "required": true,
+            "in": "query",
+            "description": "Comma-separated map squares `z/x/y`, at most 16. A square is `360 / 2^z` degrees a side on a plain longitude/latitude grid: x covers longitudes `[x·side, (x+1)·side]`, y latitudes `[y·side, (y+1)·side]` (both may be negative). A square too large for the zoom returns BBOX_TOO_LARGE.",
+            "schema": {
+              "example": "13/4469/2840,13/4470/2840",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TilesResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Places for several map squares at once",
         "tags": [
           "places"
         ]
@@ -3362,6 +3457,19 @@
           "error"
         ]
       },
+      "AppConfigDto": {
+        "type": "object",
+        "properties": {
+          "placesRefreshSeconds": {
+            "type": "number",
+            "example": 300,
+            "description": "Seconds a map square's places stay fresh. The app keeps showing older ones and reloads them in the background when they come into view."
+          }
+        },
+        "required": [
+          "placesRefreshSeconds"
+        ]
+      },
       "GoogleSignInDto": {
         "type": "object",
         "properties": {
@@ -4508,6 +4616,53 @@
         "required": [
           "places",
           "clusters",
+          "attribution"
+        ]
+      },
+      "PlaceTileDto": {
+        "type": "object",
+        "properties": {
+          "tile": {
+            "type": "string",
+            "example": "13/4469/2840",
+            "description": "The square, as asked"
+          },
+          "places": {
+            "description": "What in-view returns for the square",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PlaceItemDto"
+            }
+          },
+          "clusters": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PlaceClusterDto"
+            }
+          }
+        },
+        "required": [
+          "tile",
+          "places",
+          "clusters"
+        ]
+      },
+      "TilesResponseDto": {
+        "type": "object",
+        "properties": {
+          "tiles": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PlaceTileDto"
+            }
+          },
+          "attribution": {
+            "type": "string",
+            "example": "© OpenStreetMap contributors"
+          }
+        },
+        "required": [
+          "tiles",
           "attribution"
         ]
       },

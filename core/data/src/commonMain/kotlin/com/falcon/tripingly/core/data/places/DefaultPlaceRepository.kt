@@ -3,35 +3,52 @@ package com.falcon.tripingly.core.data.places
 import com.falcon.tripingly.core.common.error.DataError
 import com.falcon.tripingly.core.common.result.AppResult
 import com.falcon.tripingly.core.common.result.map
-import com.falcon.tripingly.core.common.result.onSuccess
-import com.falcon.tripingly.core.model.place.GeoBounds
+import com.falcon.tripingly.core.data.config.AppConfigRepository
 import com.falcon.tripingly.core.model.place.MapPlace
 import com.falcon.tripingly.core.model.place.PlaceCategory
 import com.falcon.tripingly.core.model.place.PlaceCluster
 import com.falcon.tripingly.core.model.place.PlaceDetails
 import com.falcon.tripingly.core.model.place.PlaceSearchResult
+import com.falcon.tripingly.core.model.place.PlaceSquare
 import com.falcon.tripingly.core.model.place.PlacesInView
 import com.falcon.tripingly.core.model.place.SearchResultType
 import com.falcon.tripingly.core.model.trip.GeoPoint
-import com.falcon.tripingly.core.network.model.InViewResponseDto
+import com.falcon.tripingly.core.network.model.PlaceClusterDto
 import com.falcon.tripingly.core.network.model.PlaceDetailDto
 import com.falcon.tripingly.core.network.model.PlaceItemDto
 import com.falcon.tripingly.core.network.model.SearchResultDto
 import com.falcon.tripingly.core.network.places.PlacesApi
-import kotlin.math.abs
-import kotlin.math.ceil
-import kotlin.math.floor
-import kotlin.math.pow
-import kotlin.math.roundToLong
-import kotlin.time.Duration.Companion.seconds
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.TimeSource
 
 internal class DefaultPlaceRepository(
     private val api: PlacesApi,
+    private val appConfig: AppConfigRepository,
+    /** Requests outlive the caller that started them, so an answer nobody waits for anymore is still kept. */
+    private val scope: CoroutineScope,
 ) : PlaceRepository {
 
-    /** The last answer and the area it covers, kept as long as the server keeps its own copy. */
-    private var lastInView: InViewAnswer? = null
+    private val lock = Mutex()
+
+    /** Squares loaded or being loaded, least recently used first. */
+    private val squares = LinkedHashMap<PlaceSquare, LoadedSquare>()
+
+    /** Squares to load or reload; they leave together once callers stop adding. */
+    private val waiting = mutableListOf<Pair<PlaceSquare, LoadedSquare>>()
+    private var sending: Job? = null
+
+    private val _changedSquares = MutableSharedFlow<PlaceSquare>(extraBufferCapacity = MAX_SQUARES)
+    override val changedSquares: Flow<PlaceSquare> = _changedSquares.asSharedFlow()
 
     override suspend fun search(query: String, near: GeoPoint?): AppResult<List<PlaceSearchResult>, DataError.Network> {
         val trimmed = query.trim().take(MAX_QUERY_LENGTH)
@@ -41,53 +58,85 @@ internal class DefaultPlaceRepository(
         }
     }
 
-    override suspend fun placesInView(bounds: GeoBounds, zoom: Float): AppResult<PlacesInView, DataError.Network> {
-        // Across the antimeridian the server can't take one box; nothing is drawn there.
-        if (bounds.west >= bounds.east || bounds.south >= bounds.north) {
-            return AppResult.Success(PlacesInView(emptyList(), emptyList()))
+    override suspend fun placesIn(squares: Collection<PlaceSquare>): AppResult<Map<PlaceSquare, PlacesInView>, DataError.Network> {
+        val refreshAfter = appConfig.config.value.placesRefresh
+        val answers = lock.withLock {
+            squares.distinct().associateWith { square ->
+                val loaded = this.squares.remove(square)
+                    ?: LoadedSquare().also { waiting += square to it }
+                // Back in as the most recently used.
+                this.squares[square] = loaded
+                val loadedAt = loaded.loadedAt
+                if (loadedAt != null && loadedAt.elapsedNow() >= refreshAfter && !loaded.isRefreshing) {
+                    // Shown as it is; reloaded in the background.
+                    loaded.isRefreshing = true
+                    waiting += square to loaded
+                }
+                loaded.first
+            }.also {
+                while (this.squares.size > MAX_SQUARES) this.squares.remove(this.squares.keys.first())
+                if (waiting.isNotEmpty() && sending == null) sending = scope.launch { send() }
+            }
         }
-        val zoomLevel = floor(zoom).toInt().coerceIn(0, MAX_ZOOM)
-        lastInView?.let {
-            val isFresh = it.receivedAt.elapsedNow() < IN_VIEW_KEEP_FOR
-            if (isFresh && it.zoomLevel == zoomLevel && bounds in it.covered) return AppResult.Success(it.places)
-        }
+        return answers.mapValues { (square, first) ->
+            when (val result = first.await()) {
+                // The latest answer: a background reload may have replaced the first one.
+                is AppResult.Success -> lock.withLock { this.squares[square]?.places } ?: result.data
+                is AppResult.Error -> return result
+            }
+        }.let { AppResult.Success(it) }
+    }
 
-        val bbox = listOf(bounds.west, bounds.south, bounds.east, bounds.north)
-            .joinToString(",") { coordinate(it.coerceIn(-180.0, 180.0)) }
-        return api.inView(bbox, zoom.toDouble().coerceIn(0.0, MAX_ZOOM.toDouble())).map { it.toPlacesInView() }
-            .onSuccess { lastInView = InViewAnswer(snap(bounds, zoomLevel), zoomLevel, it, TimeSource.Monotonic.markNow()) }
+    override suspend fun loadedPlacesIn(squares: Collection<PlaceSquare>): Map<PlaceSquare, PlacesInView> = lock.withLock {
+        squares.mapNotNull { square ->
+            this.squares[square]?.places?.let { square to it }
+        }.toMap()
+    }
+
+    /** Sends the waiting squares, one request per zoom and per 16 squares, once callers stop adding for a moment. */
+    private suspend fun send() {
+        delay(GATHER_FOR)
+        val batch = lock.withLock {
+            sending = null
+            waiting.toList().also { waiting.clear() }
+        }
+        batch.groupBy { (square, _) -> square.zoom }.forEach { (zoom, group) ->
+            group.chunked(MAX_SQUARES_PER_REQUEST).forEach { chunk ->
+                scope.launch {
+                    val result = api.tiles(chunk.joinToString(",") { (square, _) -> square.id }, zoom, PLACES_PER_SQUARE)
+                        .map { response -> response.tiles.associate { it.tile to PlacesInView(it.places.map { place -> place.toMapPlace() }, it.clusters.map { cluster -> cluster.toPlaceCluster() }) } }
+                    val changed = lock.withLock {
+                        chunk.mapNotNull { (square, loaded) ->
+                            loaded.isRefreshing = false
+                            when (result) {
+                                is AppResult.Success -> {
+                                    val places = result.data[square.id] ?: EMPTY
+                                    val previous = loaded.places
+                                    loaded.places = places
+                                    loaded.loadedAt = TimeSource.Monotonic.markNow()
+                                    loaded.first.complete(AppResult.Success(places))
+                                    square.takeIf { previous != null && previous != places }
+                                }
+                                is AppResult.Error -> {
+                                    // A square never loaded isn't kept, so the next caller asks again; a
+                                    // loaded one keeps its places and is reloaded the next time it's asked for.
+                                    if (loaded.places == null && squares[square] === loaded) squares.remove(square)
+                                    loaded.first.complete(result)
+                                    null
+                                }
+                            }
+                        }
+                    }
+                    changed.forEach { _changedSquares.tryEmit(it) }
+                }
+            }
+        }
     }
 
     override suspend fun place(id: String): AppResult<PlaceDetails, DataError.Network> =
         api.place(id).map { it.toPlaceDetails() }
 
-    /**
-     * The area the server answers for: it widens the asked box to a grid of quarter map tiles. Same
-     * arithmetic as the server's, so a box inside it gets the same answer.
-     */
-    private fun snap(bounds: GeoBounds, zoomLevel: Int): GeoBounds {
-        val step = 360.0 / 2.0.pow(zoomLevel + 2)
-        return GeoBounds(
-            south = maxOf(-90.0, floor(bounds.south / step) * step),
-            west = maxOf(-180.0, floor(bounds.west / step) * step),
-            north = minOf(90.0, ceil(bounds.north / step) * step),
-            east = minOf(180.0, ceil(bounds.east / step) * step),
-        )
-    }
-
-    /** Six decimals (about 10 cm) without an exponent: the server reads plain decimals only. */
-    private fun coordinate(value: Double): String {
-        val micros = (value * 1_000_000).roundToLong()
-        val sign = if (micros < 0) "-" else ""
-        val whole = abs(micros) / 1_000_000
-        val fraction = (abs(micros) % 1_000_000).toString().padStart(6, '0')
-        return "$sign$whole.$fraction"
-    }
-
-    private fun InViewResponseDto.toPlacesInView() = PlacesInView(
-        places = places.map { it.toMapPlace() },
-        clusters = clusters.map { PlaceCluster(it.count.toInt(), GeoPoint(it.location.lat, it.location.lng)) },
-    )
+    private fun PlaceClusterDto.toPlaceCluster() = PlaceCluster(count.toInt(), GeoPoint(location.lat, location.lng))
 
     private fun PlaceItemDto.toMapPlace() = MapPlace(
         id = id,
@@ -135,19 +184,27 @@ internal class DefaultPlaceRepository(
         PlaceItemDto.Category.OTHER -> PlaceCategory.Other
     }
 
-    private class InViewAnswer(
-        val covered: GeoBounds,
-        val zoomLevel: Int,
-        val places: PlacesInView,
-        val receivedAt: TimeSource.Monotonic.ValueTimeMark,
-    )
+    private class LoadedSquare {
+        /** Completes with the first answer; later answers only replace [places]. */
+        val first = CompletableDeferred<AppResult<PlacesInView, DataError.Network>>()
+        var places: PlacesInView? = null
+        var loadedAt: TimeSource.Monotonic.ValueTimeMark? = null
+        var isRefreshing = false
+    }
 
     private companion object {
         // The server's limit for `q`.
         const val MAX_QUERY_LENGTH = 100
-        // The server's highest zoom.
-        const val MAX_ZOOM = 22
-        // The server caches an area for 60 s, so newly liked or imported places show after that.
-        val IN_VIEW_KEEP_FOR = 60.seconds
+        // The server's limit of squares per request.
+        const val MAX_SQUARES_PER_REQUEST = 16
+        // A square is about four map tiles a side; 200 (the server's most) draws them about as densely as
+        // a screenful of 100 did.
+        const val PLACES_PER_SQUARE = 200
+        // Squares kept, however old (older ones are reloaded in the background when asked for): a few
+        // hundred places each, a few screens of moving around at a few zooms.
+        const val MAX_SQUARES = 200
+        // The map asks for the tiles of a screen within a few milliseconds of each other.
+        val GATHER_FOR = 30.milliseconds
+        val EMPTY = PlacesInView(emptyList(), emptyList())
     }
 }

@@ -46,6 +46,10 @@ The backend enforces these rules. The client must show them correctly and never 
 - The map shows Tripinly places (liked by users) prominently and OpenStreetMap places as smaller dots when zoomed in. See `05-maps-places-routing.md`.
 - Route lines and places along the way are free. **Best route**: free = straight-line reordering; premium = real travel times with "N min shorter".
 
+## Server-controlled settings
+
+- Behaviour tuning values (cache and refresh times, limits) come from the server (`GET /app-config`), never hardcoded, so they can change without a release. Feature flags come the same way after v1 (Shahin, 2026-10-10).
+
 ## Privacy
 
 - Location permission only for Nearby, "center on me" and routes from current location. Ask in context, work without it.

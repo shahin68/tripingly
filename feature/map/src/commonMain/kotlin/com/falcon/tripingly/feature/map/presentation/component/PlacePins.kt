@@ -1,11 +1,5 @@
 package com.falcon.tripingly.feature.map.presentation.component
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.sizeIn
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountBalance
 import androidx.compose.material.icons.filled.Attractions
@@ -17,11 +11,6 @@ import androidx.compose.material.icons.filled.Museum
 import androidx.compose.material.icons.filled.Park
 import androidx.compose.material.icons.filled.Place
 import androidx.compose.material.icons.filled.Restaurant
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Canvas
 import androidx.compose.ui.graphics.Color
@@ -31,7 +20,6 @@ import androidx.compose.ui.graphics.drawscope.CanvasDrawScope
 import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.LayoutDirection
@@ -58,15 +46,19 @@ val PlaceCategory.icon: ImageVector
 fun placePinSize(place: MapPlace, isSelected: Boolean): Dp = when {
     isSelected -> 44.dp
     place.isTripinly -> hotSpotSize(place.likeCount)
-    else -> 22.dp
+    else -> PlainPinSize
 }
 
-/** Hot spots in three sizes, so the most liked places stand out. */
+/** Hot spots in three sizes ([HotSpotSizes]), so the most liked places stand out. */
 fun hotSpotSize(likeCount: Int): Dp = when {
-    likeCount >= 20 -> 36.dp
-    likeCount >= 5 -> 30.dp
-    else -> 24.dp
+    likeCount >= 20 -> HotSpotSizes[2]
+    likeCount >= 5 -> HotSpotSizes[1]
+    else -> HotSpotSizes[0]
 }
+
+/** Every size a pin comes in on the map, besides the tapped one. */
+val PlainPinSize: Dp = 22.dp
+val HotSpotSizes: List<Dp> = listOf(24.dp, 30.dp, 36.dp)
 
 /**
  * Draws a place pin into a bitmap: a round badge with the place's category icon. The map reuses one
@@ -92,24 +84,4 @@ fun drawPlacePin(
         }
     }
     return bitmap
-}
-
-/** Several Tripinly places while zoomed out, with how many. */
-@Composable
-fun PlaceClusterPin(count: Int, modifier: Modifier = Modifier) {
-    Box(
-        modifier = modifier
-            .sizeIn(minWidth = 36.dp, minHeight = 36.dp)
-            .background(MaterialTheme.colorScheme.tertiary, CircleShape)
-            .border(2.dp, Color.White, CircleShape)
-            .padding(horizontal = 8.dp),
-        contentAlignment = Alignment.Center,
-    ) {
-        Text(
-            text = count.toString(),
-            color = MaterialTheme.colorScheme.onTertiary,
-            style = MaterialTheme.typography.labelLarge,
-            fontWeight = FontWeight.Bold,
-        )
-    }
 }

@@ -2,14 +2,16 @@ package com.falcon.tripingly.core.data.places
 
 import com.falcon.tripingly.core.common.error.DataError
 import com.falcon.tripingly.core.common.result.AppResult
-import com.falcon.tripingly.core.model.place.GeoBounds
 import com.falcon.tripingly.core.model.place.MapPlace
 import com.falcon.tripingly.core.model.place.PlaceCategory
 import com.falcon.tripingly.core.model.place.PlaceDetails
 import com.falcon.tripingly.core.model.place.PlaceSearchResult
+import com.falcon.tripingly.core.model.place.PlaceSquare
 import com.falcon.tripingly.core.model.place.PlacesInView
 import com.falcon.tripingly.core.model.place.SearchResultType
 import com.falcon.tripingly.core.model.trip.GeoPoint
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.emptyFlow
 
 /** A few cities and sights, for building and demoing without the server. */
 class FakePlaceRepository : PlaceRepository {
@@ -34,10 +36,16 @@ class FakePlaceRepository : PlaceRepository {
         return AppResult.Success(places.filter { it.name.startsWith(trimmed, ignoreCase = true) })
     }
 
-    override suspend fun placesInView(bounds: GeoBounds, zoom: Float): AppResult<PlacesInView, DataError.Network> {
-        val inView = sights.filter { it.location.lat in bounds.south..bounds.north && it.location.lng in bounds.west..bounds.east }
-        return AppResult.Success(PlacesInView(inView, emptyList()))
-    }
+    override suspend fun placesIn(squares: Collection<PlaceSquare>): AppResult<Map<PlaceSquare, PlacesInView>, DataError.Network> =
+        AppResult.Success(loadedPlacesIn(squares))
+
+    override val changedSquares: Flow<PlaceSquare> = emptyFlow()
+
+    override suspend fun loadedPlacesIn(squares: Collection<PlaceSquare>): Map<PlaceSquare, PlacesInView> =
+        squares.associateWith { square ->
+            val bounds = square.bounds
+            PlacesInView(sights.filter { it.location.lat >= bounds.south && it.location.lat < bounds.north && it.location.lng >= bounds.west && it.location.lng < bounds.east }, emptyList())
+        }
 
     override suspend fun place(id: String): AppResult<PlaceDetails, DataError.Network> {
         val place = sights.firstOrNull { it.id == id } ?: return AppResult.Error(DataError.Network.Api(404, "NOT_FOUND", "This place isn't available."))

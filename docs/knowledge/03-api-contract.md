@@ -122,6 +122,7 @@ REST over HTTPS, JSON, base path `/v1`.
 | Method | Path | Notes |
 |---|---|---|
 | GET | `/places/in-view?bbox=minLng,minLat,maxLng,maxLat&zoom=&categories=&limit=` | Places for the visible map area: Tripinly places first, OSM places when zoomed in, clusters when zoomed out |
+| GET | `/places/tiles?tiles=level/x/y,…&zoom=&categories=&limit=` | The same places for up to 16 fixed map squares (side `360 / 2^level` degrees) in one request: `{ tiles: [{ tile, places[], clusters[] }], attribution }`. The app loads places this way (backend #26) |
 | GET | `/places/search?q=&lat=&lng=` | Our places + Photon addresses/cities merged |
 | GET | `/places/nearby?lat=&lng=&radiusKm=` | Popular places around the user; location not stored |
 | GET | `/places/popular?bbox=…&excludeTripId=` | Tripinly places only in the visible area, excluding places already in the trip |
@@ -159,6 +160,7 @@ Response shapes and behaviour: see `05-maps-places-routing.md`.
 ### Ops
 | Method | Path | Notes |
 |---|---|---|
+| GET | `/app-config` | Settings that tune the app, no auth, read once per launch: `{ placesRefreshSeconds }` (how old a kept map square may get before it's reloaded in the background, default 300). Values change on the server's env vars without an app update; feature flags come here after v1 (backend #27) |
 | GET | `/health` | Liveness (no auth) |
 | GET | `/health/ready` | DB + Redis reachable |
 | GET | `/.well-known/assetlinks.json`, `/.well-known/apple-app-site-association` | Android App Links / iOS Universal Links for invite and share URLs (served on the app-link domain) |
