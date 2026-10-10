@@ -52,6 +52,10 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.layout.layout
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -80,7 +84,8 @@ import com.falcon.tripingly.core.designsystem.theme.spacing
 import com.falcon.tripingly.core.common.util.DateUtils
 import com.falcon.tripingly.feature.map.domain.model.MapMarker
 import com.falcon.tripingly.feature.map.presentation.component.GoogleMapView
-import com.falcon.tripingly.feature.map.presentation.component.PlaceSheet
+import com.falcon.tripingly.feature.map.presentation.component.PlaceCard
+import com.falcon.tripingly.feature.map.presentation.component.placePinSize
 import com.falcon.tripingly.feature.map.presentation.component.fitCamera
 import com.falcon.tripingly.feature.map.presentation.screen.MapViewModel.Action
 import com.falcon.tripingly.feature.map.presentation.screen.MapViewModel.State
@@ -135,6 +140,7 @@ fun MapScreen(
             markers = markers,
             selectedMarkerId = state.selectedMarker?.id,
             places = state.places,
+            selectedPlaceId = state.selectedPlace?.id,
             clusters = state.clusters,
             isMyLocationEnabled = state.isPermissionGranted,
             onCameraMove = { coords, zoom, bounds -> onAction(Action.OnCameraMove(coords, zoom, bounds)) },
@@ -227,16 +233,37 @@ fun MapScreen(
                 )
             }
         }
-    }
 
-    state.selectedPlace?.let { place ->
-        PlaceSheet(
-            place = place,
-            details = state.selectedPlaceDetails,
-            dayNumber = state.days.getOrNull(state.activeDayIndex)?.number?.takeIf { state.canEdit },
-            onAdd = { onAction(Action.OnAddPlaceToDay) },
-            onDismiss = { onAction(Action.OnDismissPlace) },
-        )
+        state.selectedPlace?.let { place ->
+            // The camera centers the tapped pin, so the card floats just above the middle of the map.
+            // A touch anywhere else only closes the card: it doesn't reach the map or the cards.
+            Box(
+                modifier = Modifier
+                    .matchParentSize()
+                    .pointerInput(Unit) {
+                        awaitEachGesture {
+                            awaitFirstDown()
+                            onAction(Action.OnDismissPlace)
+                        }
+                    },
+            )
+            val pinClearance = placePinSize(place, isSelected = true) / 2 + MaterialTheme.spacing.small
+            PlaceCard(
+                place = place,
+                details = state.selectedPlaceDetails,
+                dayNumber = state.days.getOrNull(state.activeDayIndex)?.number?.takeIf { state.canEdit },
+                onAdd = { onAction(Action.OnAddPlaceToDay) },
+                modifier = Modifier
+                    .align(Alignment.Center)
+                    .padding(horizontal = MaterialTheme.spacing.large)
+                    .layout { measurable, constraints ->
+                        val card = measurable.measure(constraints)
+                        layout(card.width, card.height) {
+                            card.place(0, -card.height / 2 - pinClearance.roundToPx())
+                        }
+                    },
+            )
+        }
     }
 }
 

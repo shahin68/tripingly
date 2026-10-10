@@ -4,14 +4,25 @@ import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
-import androidx.compose.runtime.mutableStateMapOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asAndroidBitmap
+import androidx.compose.ui.graphics.vector.rememberVectorPainter
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.unit.Dp
 import com.falcon.tripingly.core.model.place.GeoBounds
 import com.falcon.tripingly.core.model.place.MapPlace
+import com.falcon.tripingly.core.model.place.PlaceCategory
 import com.falcon.tripingly.core.model.place.PlaceCluster
 import com.falcon.tripingly.feature.map.domain.model.Coordinates
 import com.falcon.tripingly.feature.map.domain.model.MapMarker
@@ -29,9 +40,8 @@ import com.google.maps.android.compose.Marker
 import com.google.maps.android.compose.MarkerComposable
 import com.google.maps.android.compose.rememberCameraPositionState
 import com.google.maps.android.compose.rememberUpdatedMarkerState
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.asAndroidBitmap
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.launch
 
 @Composable
 actual fun GoogleMapView(
@@ -41,6 +51,7 @@ actual fun GoogleMapView(
     markers: List<MapMarker>,
     selectedMarkerId: String?,
     places: List<MapPlace>,
+    selectedPlaceId: String?,
     clusters: List<PlaceCluster>,
     isMyLocationEnabled: Boolean,
     onCameraMove: (Coordinates, Float, GeoBounds?) -> Unit,
@@ -112,11 +123,26 @@ actual fun GoogleMapView(
         }
     }
 
-    // The places drawn: the current ones, and removed ones until they have faded out.
-    val shownPlaces = remember { mutableStateMapOf<String, MapPlace>() }
-    val currentPlaceIds = remember(places) { places.mapTo(HashSet()) { it.id } }
-    LaunchedEffect(places) { places.forEach { shownPlaces[it.id] = it } }
-
+    // Places fade in and out together: one fade per answer, however many places it brings or drops.
+    var shownPlaces by remember { mutableStateOf(emptyList<MapPlace>()) }
+    var arrivingIds by remember { mutableStateOf(emptySet<String>()) }
+    var leavingPlaces by remember { mutableStateOf(emptyList<MapPlace>()) }
+    val fadeIn = remember { Animatable(1f) }
+    val fadeOut = remember { Animatable(0f) }
+    LaunchedEffect(places) {
+        val ids = places.mapTo(HashSet()) { it.id }
+        val shownIds = shownPlaces.mapTo(HashSet()) { it.id }
+        arrivingIds = ids - shownIds
+        leavingPlaces = shownPlaces.filter { it.id !in ids }
+        shownPlaces = places
+        fadeIn.snapTo(0f)
+        fadeOut.snapTo(1f)
+        coroutineScope {
+            launch { fadeIn.animateTo(1f, tween(PLACE_FADE_MILLIS)) }
+            launch { fadeOut.animateTo(0f, tween(PLACE_FADE_MILLIS)) }
+        }
+        leavingPlaces = emptyList()
+    }
 
     GoogleMap(
         modifier = modifier.fillMaxSize(),
@@ -134,32 +160,45 @@ actual fun GoogleMapView(
         // The first camera report comes before the map can tell its bounds, so places load from here.
         onMapLoaded = ::reportCamera,
     ) {
-        // Every place pin is one of four icons: each is drawn once, not once per place. Built here,
-        // once the map is ready to take icons.
-        val osmPlaceIcon = rememberPlaceIcon(isTripinly = false, likeCount = 0)
-        val hotSpotIcons = HOT_SPOT_LIKES.associate { likes ->
-            hotSpotSize(likes) to rememberPlaceIcon(isTripinly = true, likeCount = likes)
-        }
-        // Places fade in, and fade out before they leave the map, as in Google Maps.
-        shownPlaces.values.forEach { place ->
-            key(place.id) {
-                val isCurrent = place.id in currentPlaceIds
-                val alpha = remember { Animatable(0f) }
-                LaunchedEffect(isCurrent) {
-                    alpha.animateTo(if (isCurrent) 1f else 0f, tween(PLACE_FADE_MILLIS))
-                    if (!isCurrent) shownPlaces.remove(place.id)
-                }
-                Marker(
-                    state = rememberUpdatedMarkerState(position = LatLng(place.location.lat, place.location.lng)),
-                    icon = if (place.isTripinly) hotSpotIcons.getValue(hotSpotSize(place.likeCount)) else osmPlaceIcon,
-                    title = place.name,
-                    alpha = alpha.value,
-                    anchor = Offset(0.5f, 0.5f),
-                    onClick = {
-                        if (isCurrent) onPlaceClick(place)
-                        true
-                    },
+        // Pins that look the same share one bitmap, drawn the first time that look is needed. Built
+        // here, once the map is ready to take icons.
+        val categoryIcons = PlaceCategory.entries.associateWith { rememberVectorPainter(it.icon) }
+        val placeColor = MaterialTheme.colorScheme.secondary
+        val onPlaceColor = MaterialTheme.colorScheme.onSecondary
+        val hotSpotColor = MaterialTheme.colorScheme.tertiary
+        val onHotSpotColor = MaterialTheme.colorScheme.onTertiary
+        val density = LocalDensity.current
+        val layoutDirection = LocalLayoutDirection.current
+        val pinIcons = remember(placeColor, hotSpotColor, density) { mutableMapOf<PlacePinLook, BitmapDescriptor>() }
+        fun pinIcon(place: MapPlace): BitmapDescriptor {
+            val look = PlacePinLook(place.category, place.isTripinly, placePinSize(place, place.id == selectedPlaceId))
+            return pinIcons.getOrPut(look) {
+                val bitmap = drawPlacePin(
+                    icon = categoryIcons.getValue(look.category),
+                    size = look.size,
+                    fill = if (look.isTripinly) hotSpotColor else placeColor,
+                    iconColor = if (look.isTripinly) onHotSpotColor else onPlaceColor,
+                    density = density,
+                    layoutDirection = layoutDirection,
                 )
+                BitmapDescriptorFactory.fromBitmap(bitmap.asAndroidBitmap())
+            }
+        }
+
+        shownPlaces.forEach { place ->
+            key(place.id) {
+                PlaceMarker(
+                    place = place,
+                    icon = pinIcon(place),
+                    isSelected = place.id == selectedPlaceId,
+                    alpha = if (place.id in arrivingIds) ({ fadeIn.value }) else ({ 1f }),
+                    onClick = { onPlaceClick(place) },
+                )
+            }
+        }
+        leavingPlaces.forEach { place ->
+            key("leaving", place.id) {
+                PlaceMarker(place = place, icon = pinIcon(place), isSelected = false, alpha = { fadeOut.value }, onClick = {})
             }
         }
         clusters.forEach { cluster ->
@@ -210,13 +249,26 @@ actual fun GoogleMapView(
     }
 }
 
+/** A place pin; reads its [alpha] here, so a fade redraws only the pins that fade. */
 @Composable
-private fun rememberPlaceIcon(isTripinly: Boolean, likeCount: Int): BitmapDescriptor {
-    val bitmap = rememberPlacePinBitmap(isTripinly, likeCount)
-    return remember(bitmap) { BitmapDescriptorFactory.fromBitmap(bitmap.asAndroidBitmap()) }
+private fun PlaceMarker(place: MapPlace, icon: BitmapDescriptor, isSelected: Boolean, alpha: () -> Float, onClick: () -> Unit) {
+    Marker(
+        state = rememberUpdatedMarkerState(position = LatLng(place.location.lat, place.location.lng)),
+        icon = icon,
+        title = place.name,
+        alpha = alpha(),
+        anchor = Offset(0.5f, 0.5f),
+        // The tapped place above everything else.
+        zIndex = if (isSelected) 2f else 0f,
+        onClick = {
+            onClick()
+            // No info window and no camera move of the map's own: the card and the camera are ours.
+            true
+        },
+    )
 }
+
+private data class PlacePinLook(val category: PlaceCategory, val isTripinly: Boolean, val size: Dp)
 
 private const val PLACE_FADE_MILLIS = 250
 
-// One like count per hot spot size (see hotSpotSize).
-private val HOT_SPOT_LIKES = listOf(0, 5, 20)

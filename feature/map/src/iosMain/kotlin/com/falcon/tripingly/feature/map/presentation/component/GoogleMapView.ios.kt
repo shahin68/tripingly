@@ -36,6 +36,7 @@ actual fun GoogleMapView(
     markers: List<MapMarker>,
     selectedMarkerId: String?,
     places: List<MapPlace>,
+    selectedPlaceId: String?,
     clusters: List<PlaceCluster>,
     isMyLocationEnabled: Boolean,
     onCameraMove: (Coordinates, Float, GeoBounds?) -> Unit,

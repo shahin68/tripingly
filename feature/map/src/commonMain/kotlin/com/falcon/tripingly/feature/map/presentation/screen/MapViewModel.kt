@@ -283,9 +283,10 @@ class MapViewModel(
         }
     }
 
-    /** Shows the sheet at once with what the pin knows, then adds the place's details. */
+    /** Centers the place and shows its card at once with what the pin knows, then adds the place's details. */
     private fun openPlace(place: MapPlace) {
         ui.update { it.copy(selectedPlace = place, selectedMarkerId = null) }
+        navigateTo(Coordinates(place.location.lat, place.location.lng), ui.value.zoomLevel)
         placeDetailsJob?.cancel()
         placeDetailsJob = viewModelScope.launch {
             placeRepository.place(place.id).onSuccess { details -> ui.update { it.copy(selectedPlaceDetails = details) } }

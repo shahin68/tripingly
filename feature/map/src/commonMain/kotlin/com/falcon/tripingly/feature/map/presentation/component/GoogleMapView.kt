@@ -18,6 +18,8 @@ expect fun GoogleMapView(
     selectedMarkerId: String?,
     /** Our places and OpenStreetMap places in view, drawn under the stops. */
     places: List<MapPlace>,
+    /** The tapped place, drawn bigger. */
+    selectedPlaceId: String?,
     clusters: List<PlaceCluster>,
     isMyLocationEnabled: Boolean,
     /** The camera's center, zoom and visible area (null while the map can't tell yet). */

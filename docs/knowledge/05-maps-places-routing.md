@@ -70,24 +70,25 @@ Shahin wants every stop to show its place name, not only "Stop #N" (asked 2026-1
 1. On **camera idle**, wait 300 ms (debounce), cancel the previous request, then call `GET /places/in-view?bbox=…&zoom=…&categories=…`. The bbox is sent as plain decimals (the server rejects exponents). *(Built: `MapViewModel.loadPlaces`.)*
 2. The repository keeps the last answer with the area the server answered for (it widens the box to quarter tiles at the zoom level), so a small pan or zoom inside it asks nothing for 60 s (the server's cache time). No longer cache (decided 2026-10-09).
 3. Zoomed out (< 14): Tripinly places and server clusters, plus OSM places with a Wikidata entry from zoom 10 while hot spots are few. Zoomed in (≥ 14): OSM dots too. The server's picks are fixed on the map, so panning keeps the same dots (backend #25).
-   - Dots still in view stay when the next answer leaves them out, unless the map zoomed out (`MapViewModel.loadPlaces`). On Android, new dots fade in and leaving ones fade out (250 ms). iOS doesn't fade yet; that waits for the iOS map decision.
-   - Hot spots (liked on public trips) grow with their likes: 24 dp, 30 dp from 5 likes, 36 dp from 20 (`hotSpotSize`).
+   - Pins still in view stay when the next answer leaves them out, unless the map zoomed out (`MapViewModel.loadPlaces`). On Android, new pins fade in and leaving ones fade out (250 ms) with one shared fade per answer, however many pins it brings. iOS doesn't fade yet; that waits for the iOS map decision.
+   - Pins are Google Maps markers (decided 2026-10-10) showing our own category icon (Material icons for now, Shahin's designs later): café, restaurant, bar, attraction, museum, historic, park, nature, landmark. Pins that look the same share one bitmap, drawn the first time it's needed (`drawPlacePin`), so a new pin costs no drawing.
+   - Hot spots (liked on public trips) use the Tripinly color and grow with their likes: 24 dp, 30 dp from 5 likes, 36 dp from 20 (`hotSpotSize`). OSM pins are 22 dp, the tapped place 44 dp.
    - Planned as its own stage after stage 5 (Shahin, 2026-10-10): an importance score so famous places show when zoomed out, one marker per city when zoomed far out, illustrated markers.
 4. Category filter chips (cafés, restaurants, attractions, museums, parks…) change the `categories` parameter.
-5. Tapping a place → place sheet (`PlaceSheet`): name, category and likes from the pin at once, opening hours and website from `GET /places/{id}`, "Add to day N" for owners and editors. Adding goes through the optimistic marker queue as `POST /days/{id}/markers` with `placeId` (instant, like a tap), not `POST /places/{id}/add-to-trip`. Photos come with stage 6. Tapping a cluster zooms in two levels on it.
+5. Tapping a place → its pin grows, the camera glides to center it at the same zoom, and a card (`PlaceCard`) floats just above it, with nothing dimmed. A touch anywhere outside the card only closes it; it doesn't reach the map. The card shows name, category and likes from the pin at once, opening hours and website from `GET /places/{id}`, "Add to day N" for owners and editors. Adding goes through the optimistic marker queue as `POST /days/{id}/markers` with `placeId` (instant, like a tap), not `POST /places/{id}/add-to-trip`. Photos come with stage 6. Tapping a cluster zooms in two levels on it.
 6. Handle `BBOX_TOO_LARGE` by showing nothing new (the user zoomed out too far).
 
 ## Search
 
 - Debounce 300 ms, from the first letter (one letter returns Photon prefix matches only), cancel in-flight requests. Send the map center as `lat/lng` for ranking.
 - Results: our places (have `id`) first, then addresses/cities (`source: "photon"`, no `id`).
-- *(Built: search icon in the map header; picking a result moves the camera at a zoom by its type, country 5 … street or place 17.)* Planned with stop names: picking a place with `id` → move the camera, open the place sheet. Picking an address/city → move the camera; "Add to trip" sends `name` + `location` (+ `osmType`/`osmId`) to `POST /days/{id}/markers`.
+- *(Built: search icon in the map header; picking a result moves the camera at a zoom by its type, country 5 … street or place 17.)* Planned with stop names: picking a place with `id` → move the camera, open the place card. Picking an address/city → move the camera; "Add to trip" sends `name` + `location` (+ `osmType`/`osmId`) to `POST /days/{id}/markers`.
 - A **long press** on the map creates a custom pin: user names it → `POST /days/{id}/markers` with name + location. *(Built on Android; iOS has no map gestures yet.)*
 
 ## Routes and places along the way
 
 - Trip screen: toggle "Show route" for the selected day → `GET /days/{id}/route?mode=walking&categories=…`. Draw the decoded polyline (encoded polyline, precision 5; decode in shared code). Show total time/distance and per-leg times between pins.
-- A→B: from the place sheet or search, "Route from here / to here" → `GET /routes?from=…&to=…&mode=…`.
+- A→B: from the place card or search, "Route from here / to here" → `GET /routes?from=…&to=…&mode=…`.
 - Mode selector: walking (default), cycling, driving. No public transport.
 - **Along the way**: show `alongTheWay` pins and a horizontal list under the map ("in 12 min · 80 m off route"), ordered along the route. Each item has "Add to trip".
 - Refetch the day route after marker add/move/delete/reorder (including realtime events).

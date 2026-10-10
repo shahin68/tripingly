@@ -602,6 +602,9 @@ class MapViewModelTest {
         viewModel.onAction(Action.OnPlaceClick(louvre))
         testScheduler.advanceUntilIdle()
         assertEquals(louvre, viewModel.uiState.value.selectedPlace)
+        // The camera centers the place, at the same zoom.
+        assertEquals(Coordinates(louvre.location.lat, louvre.location.lng), viewModel.uiState.value.cameraTarget)
+        assertEquals(15f, viewModel.uiState.value.zoomLevel)
         assertEquals("Mo-Su 09:00-18:00", viewModel.uiState.value.selectedPlaceDetails?.openingHours)
 
         viewModel.onAction(Action.OnAddPlaceToDay)
