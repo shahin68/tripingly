@@ -113,6 +113,7 @@ fun MapScreen(
     var mapSize by remember { mutableStateOf(IntSize.Zero) }
     var headerBottom by remember { mutableStateOf(0f) }
     var tabsTop by remember { mutableStateOf(0f) }
+    var bottomCardsTop by remember { mutableStateOf(0f) }
     val isLaidOut = mapSize != IntSize.Zero
     LaunchedEffect(state.frame, isLaidOut) {
         val frame = state.frame ?: return@LaunchedEffect
@@ -144,6 +145,7 @@ fun MapScreen(
             placeSource = state.placeSource,
             selectedPlace = state.selectedPlace,
             isMyLocationEnabled = state.isPermissionGranted,
+            coveredBottom = with(density) { if (bottomCardsTop > 0f) (mapSize.height - bottomCardsTop).toDp() else 0.dp },
             onCameraMove = { coords, zoom, bounds -> onAction(Action.OnCameraMove(coords, zoom, bounds)) },
             onMapClick = { coords -> onAction(Action.OnMapClick(coords)) },
             onMapLongClick = { coords -> onAction(Action.OnMapLongClick(coords)) },
@@ -192,6 +194,7 @@ fun MapScreen(
                 .align(Alignment.BottomCenter)
                 .fillMaxWidth()
                 .animateContentSize()
+                .onGloballyPositioned { bottomCardsTop = it.positionInRoot().y }
                 .navigationBarsPadding(),
             horizontalAlignment = Alignment.End
         ) {

@@ -2,6 +2,7 @@ package com.falcon.tripingly.feature.map.presentation.component
 
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.Dp
 import com.falcon.tripingly.core.model.place.GeoBounds
 import com.falcon.tripingly.core.model.place.MapPlace
 import com.falcon.tripingly.feature.map.domain.model.Coordinates
@@ -20,6 +21,8 @@ expect fun GoogleMapView(
     /** The tapped place, drawn bigger on top. */
     selectedPlace: MapPlace?,
     isMyLocationEnabled: Boolean,
+    /** How much of the map's bottom the screen's cards cover: Google's logo stays above it. */
+    coveredBottom: Dp,
     /** The camera's center, zoom and visible area (null while the map can't tell yet). */
     onCameraMove: (Coordinates, Float, GeoBounds?) -> Unit,
     /** Also a tap on a place pin: the pins are part of the map's tiles, see [MapPlaceSource]. */

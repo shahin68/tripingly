@@ -63,6 +63,13 @@ jobs:
       - name: Unit tests on the iOS simulator
         run: ./gradlew iosSimulatorArm64Test
 
+      # Compiles the app's Swift code (sign-in, Google Maps) against the shared framework.
+      - name: Build the iOS app for the simulator
+        run: >
+          xcodebuild build -project iosApp/iosApp.xcodeproj -scheme iosApp -configuration Debug
+          -sdk iphonesimulator -destination 'generic/platform=iOS Simulator'
+          ARCHS=arm64 CODE_SIGNING_ALLOWED=NO
+
       - name: Upload test reports
         if: failure()
         uses: actions/upload-artifact@v4

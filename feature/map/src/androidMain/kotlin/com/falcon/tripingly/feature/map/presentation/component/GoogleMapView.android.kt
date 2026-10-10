@@ -1,6 +1,8 @@
 package com.falcon.tripingly.feature.map.presentation.component
 
 import androidx.compose.foundation.isSystemInDarkTheme
+import android.graphics.Point
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
@@ -11,6 +13,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asAndroidBitmap
@@ -18,6 +21,8 @@ import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.IntSize
 import com.falcon.tripingly.core.model.place.GeoBounds
 import com.falcon.tripingly.core.model.place.PlaceSquare
 import com.falcon.tripingly.core.model.place.MapPlace
@@ -52,6 +57,7 @@ actual fun GoogleMapView(
     placeSource: MapPlaceSource?,
     selectedPlace: MapPlace?,
     isMyLocationEnabled: Boolean,
+    coveredBottom: Dp,
     onCameraMove: (Coordinates, Float, GeoBounds?) -> Unit,
     onMapClick: (Coordinates) -> Unit,
     onMapLongClick: (Coordinates) -> Unit,
@@ -62,24 +68,33 @@ actual fun GoogleMapView(
         position = CameraPosition.fromLatLngZoom(initialLatLng, zoomLevel)
     }
 
+    // The area the whole view shows. The map's visible region leaves out its padding (see coveredBottom).
+    var mapSize by remember { mutableStateOf(IntSize.Zero) }
+    fun viewBounds(): GeoBounds? {
+        val projection = cameraPositionState.projection ?: return null
+        if (mapSize == IntSize.Zero) return null
+        val corners = listOf(Point(0, 0), Point(mapSize.width, 0), Point(0, mapSize.height), Point(mapSize.width, mapSize.height))
+            .map(projection::fromScreenLocation)
+        return GeoBounds(
+            south = corners.minOf { it.latitude },
+            west = corners.minOf { it.longitude },
+            north = corners.maxOf { it.latitude },
+            east = corners.maxOf { it.longitude },
+        )
+    }
+
     fun reportCamera() {
         val position = cameraPositionState.position
-        val bounds = cameraPositionState.projection?.visibleRegion?.latLngBounds?.let {
-            GeoBounds(it.southwest.latitude, it.southwest.longitude, it.northeast.latitude, it.northeast.longitude)
-        }
         onCameraMove(
             Coordinates(position.target.latitude, position.target.longitude),
             position.zoom,
-            bounds,
+            viewBounds(),
         )
     }
 
     fun visibleSquares(): List<PlaceSquare> {
-        val bounds = cameraPositionState.projection?.visibleRegion?.latLngBounds ?: return emptyList()
-        return PlaceSquare.covering(
-            GeoBounds(bounds.southwest.latitude, bounds.southwest.longitude, bounds.northeast.latitude, bounds.northeast.longitude),
-            cameraPositionState.position.zoom.toInt(),
-        )
+        val bounds = viewBounds() ?: return emptyList()
+        return PlaceSquare.covering(bounds, cameraPositionState.position.zoom.toInt())
     }
 
     // Sync camera position back to ViewModel when it stops moving
@@ -128,10 +143,13 @@ actual fun GoogleMapView(
     }
 
     GoogleMap(
-        modifier = modifier.fillMaxSize(),
+        modifier = modifier.fillMaxSize().onSizeChanged { mapSize = it },
         cameraPositionState = cameraPositionState,
         properties = mapProperties,
         uiSettings = uiSettings,
+        // Keeps Google's logo above the cards. As much room at the top as at the bottom keeps the
+        // camera's center in the middle of the view.
+        contentPadding = PaddingValues(vertical = coveredBottom),
         // Dark map in dark mode, so the light status bar icons stay readable.
         mapColorScheme = ComposeMapColorScheme.FOLLOW_SYSTEM,
         onMapClick = { latLng ->

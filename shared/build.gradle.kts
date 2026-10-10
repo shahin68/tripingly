@@ -1,6 +1,15 @@
+import com.codingfeline.buildkonfig.compiler.FieldSpec.Type.STRING
+import java.util.Properties
+
 plugins {
     id("tripinly.kmp.library")
     id("tripinly.kmp.compose")
+    alias(libs.plugins.buildkonfig)
+}
+
+val localProperties = Properties().apply {
+    val file = rootProject.file("local.properties")
+    if (file.exists()) file.inputStream().use { load(it) }
 }
 
 kotlin {
@@ -31,5 +40,16 @@ kotlin {
             implementation(libs.kotlinx.coroutines.core)
             implementation(libs.koin.compose)
         }
+    }
+}
+
+buildkonfig {
+    packageName = "com.falcon.tripingly"
+    objectName = "AppBuildConfig"
+
+    defaultConfigs {
+        // The iOS app's Google Maps key, like MAPS_API_KEY for Android (androidApp). Without it the
+        // iOS app shows Apple's map.
+        buildConfigField(STRING, "MAPS_API_KEY_IOS", localProperties.getProperty("MAPS_API_KEY_IOS") ?: "")
     }
 }
