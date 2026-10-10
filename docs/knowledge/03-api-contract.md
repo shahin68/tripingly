@@ -160,6 +160,7 @@ Response shapes and behaviour: see `05-maps-places-routing.md`.
 ### Ops
 | Method | Path | Notes |
 |---|---|---|
+| GET | `/app-config` | Settings that tune the app, no auth, read once per launch: `{ placesRefreshSeconds }` (how old a kept map square may get before it's reloaded in the background, default 300). Values change on the server's env vars without an app update; feature flags come here after v1 (backend #27) |
 | GET | `/health` | Liveness (no auth) |
 | GET | `/health/ready` | DB + Redis reachable |
 | GET | `/.well-known/assetlinks.json`, `/.well-known/apple-app-site-association` | Android App Links / iOS Universal Links for invite and share URLs (served on the app-link domain) |

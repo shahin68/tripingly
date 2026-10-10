@@ -13,6 +13,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -92,8 +93,11 @@ class TokenRefreshTest {
         answerRefresh.complete(Unit)
 
         // The server rotated the token, so the new one is kept.
-        withTimeout(5_000) {
-            while (api.tokenStore.get() != AuthTokens("access-2", "refresh-2")) delay(10)
+        // The refresh runs on the network's threads, so wait in real time.
+        withContext(Dispatchers.Default) {
+            withTimeout(5_000) {
+                while (api.tokenStore.get() != AuthTokens("access-2", "refresh-2")) delay(10)
+            }
         }
         // The next request uses it without another refresh.
         assertEquals(AppResult.Success(Trip("t1")), apiCall<Trip> { api.client.get("trips/t1") })

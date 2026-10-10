@@ -30,6 +30,7 @@ import platform.MapKit.MKPointOfInterestFilter
 import platform.UIKit.UIColor
 import platform.darwin.NSObject
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.filter
 import kotlin.math.floor
 import kotlin.math.log2
 import kotlin.math.pow
@@ -55,8 +56,12 @@ actual fun GoogleMapView(
     var shown by remember { mutableStateOf(emptyList<PlacesInView>()) }
     LaunchedEffect(placeSource, view) {
         val (bounds, zoom) = view ?: return@LaunchedEffect
+        val source = placeSource ?: return@LaunchedEffect
         delay(REGION_REST_MILLIS)
-        placeSource?.placesIn(PlaceSquare.covering(bounds, zoom))?.let { shown = it }
+        val squares = PlaceSquare.covering(bounds, zoom)
+        source.placesIn(squares)?.let { shown = it }
+        // A square in view reloaded with new places is drawn again.
+        source.changes.filter { it in squares }.collect { source.placesIn(squares)?.let { shown = it } }
     }
 
     val delegate = remember {

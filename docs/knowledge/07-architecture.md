@@ -41,6 +41,10 @@ iosApp ─────┴─> shared ──> feature:trips, feature:map, (auth, 
 - The server is the source of truth. Room caches what the user needs offline: their own trips, **read-only** (decided 2026-10-03). Show an offline banner and block edits while offline; marker actions on the map are the exception (tried at once and undone if they can't be sent, see below).
 - Writes go to the API. Map marker actions (add, move, rename, delete, clear day, reorder) are optimistic and must feel instant (decided 2026-10-07): the app chooses the marker UUID, writes Room at once, sends the change in the background through a per-trip queue in the application scope, undoes it if the server refuses or the connection stays down, and shows a banner (Retry for connection problems). A trip reload never overwrites marker changes still in that queue. Every request is made only as often as it's needed: no reload after a change the device already shows, one request for a bulk action (2026-10-08). Trip create/edit, days, members, comments and likes wait for the server with a small loading indicator. The app is online-first, not offline-first: nothing is queued across app restarts.
 
+## Values the server controls (Shahin, 2026-10-10)
+
+Values that tune app behaviour (cache and refresh times, limits, intervals) come from `GET /app-config` through `AppConfigRepository` (`core:data`), so they change on the server without an app update. The app reads the settings once per launch and uses its built-in defaults until they arrive or if the call fails. Feature flags will come the same way after v1. See the `api-integration` skill.
+
 ## MVI contract
 
 - **State:** one immutable `XUiState` per screen with defaults; `ImmutableList` for lists; derived values computed before they reach the UI; user-facing text as `UiText`, never raw exception messages.

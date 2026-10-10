@@ -10,6 +10,8 @@ import com.falcon.tripingly.core.model.place.PlaceSquare
 import com.falcon.tripingly.core.model.place.PlacesInView
 import com.falcon.tripingly.core.model.place.SearchResultType
 import com.falcon.tripingly.core.model.trip.GeoPoint
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.emptyFlow
 
 /** A few cities and sights, for building and demoing without the server. */
 class FakePlaceRepository : PlaceRepository {
@@ -36,6 +38,8 @@ class FakePlaceRepository : PlaceRepository {
 
     override suspend fun placesIn(squares: Collection<PlaceSquare>): AppResult<Map<PlaceSquare, PlacesInView>, DataError.Network> =
         AppResult.Success(loadedPlacesIn(squares))
+
+    override val changedSquares: Flow<PlaceSquare> = emptyFlow()
 
     override suspend fun loadedPlacesIn(squares: Collection<PlaceSquare>): Map<PlaceSquare, PlacesInView> =
         squares.associateWith { square ->

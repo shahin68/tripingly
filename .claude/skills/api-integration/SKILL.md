@@ -46,6 +46,16 @@ Contract: the backend's `/v1/openapi.json` (staging: `https://api-staging-4ade.u
 
 Copy the backend's `openapi.json` to `core/network/openapi.json` (from the merged backend repo or `https://<api>/v1/openapi.json`). The build regenerates `com.falcon.tripingly.core.network.model.*` into `core/network/build/generated/openapi`; never edit generated code. A field that doesn't fit the generator (a new free-form type, a date format) gets a type mapping in `core/network/build.gradle.kts`.
 
+## Values the server controls
+
+Any value that tunes how the app behaves (cache and refresh times, limits, intervals, thresholds) comes from the server, so it can change without an app release (Shahin, 2026-10-10). Never hardcode one in a repository or ViewModel:
+
+1. Add the field to the backend's `GET /v1/app-config` (public, read once per launch), backed by an `APP_*` env var with a sensible default (backend `add-endpoint` skill, step 9).
+2. Add it with the same default to `AppConfig` (`core:model`) and map it in `DefaultAppConfigRepository`.
+3. Read it from `AppConfigRepository.config` (a `StateFlow`: defaults until the answer arrives, and if the call fails) at the moment it's used, never once at construction, so a late answer still applies.
+
+Feature flags will be served the same way once v1 is in production. Constants that aren't behaviour tuning (UI timings like the 300 ms search debounce, layout sizes, protocol limits fixed by the API such as 16 squares per request) stay in code.
+
 ## Error codes to handle specifically
 
 `USERNAME_TAKEN`, `USERNAME_INVALID`, `AGE_REQUIREMENT_NOT_MET`, `TRIP_NOT_COPYABLE`, `USER_BLOCKED`, `INVITE_EXPIRED`, `PHOTO_LIMIT_REACHED`, `UPLOAD_TOO_LARGE`, `UNSUPPORTED_MEDIA_TYPE`, `PREMIUM_REQUIRED`, `REAUTH_REQUIRED`, `ROUTING_UNAVAILABLE`, `BBOX_TOO_LARGE`, `NOT_FOUND` (show "not available"), `VALIDATION_FAILED` (map `details` to form fields). Anything else: show the server's `message`.

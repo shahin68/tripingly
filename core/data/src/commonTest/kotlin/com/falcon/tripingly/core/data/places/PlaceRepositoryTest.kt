@@ -1,6 +1,8 @@
 package com.falcon.tripingly.core.data.places
 
 import com.falcon.tripingly.core.common.result.AppResult
+import com.falcon.tripingly.core.data.config.AppConfigRepository
+import com.falcon.tripingly.core.model.config.AppConfig
 import com.falcon.tripingly.core.model.place.GeoBounds
 import com.falcon.tripingly.core.model.place.PlaceCategory
 import com.falcon.tripingly.core.model.place.PlaceSquare
@@ -19,9 +21,18 @@ import io.ktor.http.HttpStatusCode
 import io.ktor.http.headersOf
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeout
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.runTest
+import kotlin.time.Duration
+import kotlin.time.Duration.Companion.seconds
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
@@ -34,25 +45,35 @@ class PlaceRepositoryTest {
     private val requestsLock = Mutex()
     private var status = HttpStatusCode.OK
 
-    private val repository = DefaultPlaceRepository(
-        createKtorfit(
-            createHttpClient(
-                engine = MockEngine { request ->
-                    // Requests of one batch arrive together.
-                    requestsLock.withLock { requests += request }
-                    respond(tilesAnswer(request.url.parameters["tiles"].orEmpty()), status, headersOf(HttpHeaders.ContentType, "application/json"))
-                },
-                config = config,
-                tokenStore = InMemoryTokenStore(),
-                sessionEvents = SessionEvents(),
-                languageTag = { "en" },
-            ),
-            config,
-        ).createPlacesApi(),
+    /** The name the server gives every place. */
+    private var placeName = "Stephansdom"
+
+    private val placesApi = createKtorfit(
+        createHttpClient(
+            engine = MockEngine { request ->
+                // Requests of one batch arrive together.
+                requestsLock.withLock { requests += request }
+                respond(tilesAnswer(request.url.parameters["tiles"].orEmpty(), placeName), status, headersOf(HttpHeaders.ContentType, "application/json"))
+            },
+            config = config,
+            tokenStore = InMemoryTokenStore(),
+            sessionEvents = SessionEvents(),
+            languageTag = { "en" },
+        ),
+        config,
+    ).createPlacesApi()
+
+    private fun TestScope.repository(placesRefresh: Duration = AppConfig().placesRefresh) = DefaultPlaceRepository(
+        api = placesApi,
+        appConfig = object : AppConfigRepository {
+            override val config = MutableStateFlow(AppConfig(placesRefresh = placesRefresh))
+        },
+        scope = backgroundScope,
     )
 
     @Test
     fun `squares asked for together go in one request`() = runTest {
+        val repository = repository()
         val square = PlaceSquare(15, 372, 1096)
         val (first, second) = listOf(
             async { repository.placesIn(listOf(square)) },
@@ -71,6 +92,7 @@ class PlaceRepositoryTest {
 
     @Test
     fun `a loaded square isn't asked for again`() = runTest {
+        val repository = repository()
         repository.placesIn(listOf(PlaceSquare(15, 372, 1096)))
         repository.placesIn(listOf(PlaceSquare(15, 372, 1096)))
         assertEquals(1, requests.size)
@@ -83,6 +105,7 @@ class PlaceRepositoryTest {
 
     @Test
     fun `at most 16 squares go in one request`() = runTest {
+        val repository = repository()
         repository.placesIn((0 until 20).map { PlaceSquare(15, it, 1096) })
 
         assertEquals(listOf(4, 16), requests.map { it.url.parameters["tiles"]!!.split(",").size }.sorted())
@@ -90,6 +113,7 @@ class PlaceRepositoryTest {
 
     @Test
     fun `a failed square is asked for again`() = runTest {
+        val repository = repository()
         status = HttpStatusCode.ServiceUnavailable
         assertIs<AppResult.Error<*>>(repository.placesIn(listOf(PlaceSquare(15, 372, 1096))))
         assertTrue(repository.loadedPlacesIn(listOf(PlaceSquare(15, 372, 1096))).isEmpty())
@@ -97,6 +121,50 @@ class PlaceRepositoryTest {
         assertIs<AppResult.Success<*>>(repository.placesIn(listOf(PlaceSquare(15, 372, 1096))))
 
         assertEquals(2, requests.size)
+    }
+
+    @Test
+    fun `an old square is answered at once and reloaded in the background`() = runTest {
+        val repository = repository(placesRefresh = Duration.ZERO)
+        val square = PlaceSquare(15, 372, 1096)
+        val changed = mutableListOf<PlaceSquare>()
+        backgroundScope.launch { repository.changedSquares.collect { changed += it } }
+        repository.placesIn(listOf(square))
+
+        // Answered from what's kept, then reloaded; nothing new, so nothing to redraw.
+        val again = assertIs<AppResult.Success<Map<PlaceSquare, PlacesInView>>>(repository.placesIn(listOf(square)))
+        assertEquals("Stephansdom", again.data.getValue(square).places.single().name)
+        eventually { requests.size == 2 }
+
+        // Something new: the square is redrawn once the reload brings it.
+        placeName = "Stephansdom (renamed)"
+        eventually {
+            repository.placesIn(listOf(square))
+            changed.isNotEmpty()
+        }
+        assertEquals(listOf(square), changed)
+        assertEquals("Stephansdom (renamed)", repository.loadedPlacesIn(listOf(square)).getValue(square).places.single().name)
+    }
+
+    @Test
+    fun `a failed reload keeps the places shown and is tried again next time`() = runTest {
+        val repository = repository(placesRefresh = Duration.ZERO)
+        val square = PlaceSquare(15, 372, 1096)
+        repository.placesIn(listOf(square))
+
+        status = HttpStatusCode.ServiceUnavailable
+        assertIs<AppResult.Success<*>>(repository.placesIn(listOf(square)))
+        eventually {
+            repository.placesIn(listOf(square))
+            requests.size >= 3
+        }
+
+        assertEquals("Stephansdom", repository.loadedPlacesIn(listOf(square)).getValue(square).places.single().name)
+    }
+
+    /** Waits in real time: the requests run on the network's own threads. */
+    private suspend fun eventually(check: suspend () -> Boolean) = withContext(Dispatchers.Default) {
+        withTimeout(5.seconds) { while (!check()) delay(10) }
     }
 
     @Test
@@ -112,7 +180,7 @@ class PlaceRepositoryTest {
     }
 
     private companion object {
-        fun tilesAnswer(tiles: String) = tiles.split(",").joinToString(
+        fun tilesAnswer(tiles: String, placeName: String) = tiles.split(",").joinToString(
             prefix = "{\"tiles\": [",
             postfix = "], \"attribution\": \"© OpenStreetMap contributors\"}",
         ) { tile ->
@@ -120,7 +188,7 @@ class PlaceRepositoryTest {
                 {
                   "tile": "$tile",
                   "places": [{
-                    "id": "p-$tile", "name": "Stephansdom", "category": "attraction",
+                    "id": "p-$tile", "name": "$placeName", "category": "attraction",
                     "location": {"lat": 48.2085, "lng": 16.3731},
                     "isTripinly": true, "likeCount": 3, "coverThumbUrl": null, "likedByMe": false
                   }],

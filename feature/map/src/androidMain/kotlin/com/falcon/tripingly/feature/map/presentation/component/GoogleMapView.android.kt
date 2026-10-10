@@ -35,6 +35,8 @@ import com.google.maps.android.compose.TileOverlay
 import com.google.maps.android.compose.rememberCameraPositionState
 import com.google.maps.android.compose.rememberTileOverlayState
 import com.google.maps.android.compose.rememberUpdatedMarkerState
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.collectLatest
 
 @Composable
 actual fun GoogleMapView(
@@ -165,6 +167,12 @@ actual fun GoogleMapView(
                 tileProvider.source = placeSource
                 tileOverlayState.clearTileCache()
             }
+            // A square reloaded with new places: Google can only drop every tile, so the squares
+            // reloaded together are redrawn at once, from what the repository keeps.
+            placeSource?.changes?.collectLatest {
+                delay(REDRAW_AFTER_MILLIS)
+                tileOverlayState.clearTileCache()
+            }
         }
         TileOverlay(tileProvider = tileProvider, state = tileOverlayState, fadeIn = true)
 
@@ -216,3 +224,6 @@ actual fun GoogleMapView(
         }
     }
 }
+
+/** Lets the squares of one background reload arrive before the tiles are drawn again. */
+private const val REDRAW_AFTER_MILLIS = 300L

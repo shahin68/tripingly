@@ -8,6 +8,9 @@ import com.falcon.tripingly.core.data.account.FakeAccountBackend
 import com.falcon.tripingly.core.data.account.LocalDataCleaner
 import com.falcon.tripingly.core.data.account.SessionRepository
 import com.falcon.tripingly.core.data.account.SessionRepositoryImpl
+import com.falcon.tripingly.core.data.config.AppConfigRepository
+import com.falcon.tripingly.core.data.config.DefaultAppConfigRepository
+import com.falcon.tripingly.core.data.config.FakeAppConfigRepository
 import com.falcon.tripingly.core.data.places.DefaultPlaceRepository
 import com.falcon.tripingly.core.data.places.FakePlaceRepository
 import com.falcon.tripingly.core.data.places.PlaceRepository
@@ -61,8 +64,11 @@ val dataModule = module {
     single<TripInviteRepository> {
         if (get<ApiConfig>().useFakeApi) get<FakeTripBackend>() else DefaultTripInviteRepository(get(), get())
     }
+    single<AppConfigRepository> {
+        if (get<ApiConfig>().useFakeApi) FakeAppConfigRepository() else DefaultAppConfigRepository(get(), get(ApplicationScope))
+    }
     single<PlaceRepository> {
-        if (get<ApiConfig>().useFakeApi) FakePlaceRepository() else DefaultPlaceRepository(get())
+        if (get<ApiConfig>().useFakeApi) FakePlaceRepository() else DefaultPlaceRepository(get(), get(), get(ApplicationScope))
     }
 
     single<SessionRepository> {
