@@ -7,7 +7,13 @@ import com.falcon.tripingly.core.network.auth.SessionEndReason
 import io.ktor.client.request.get
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.content.TextContent
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.cancelAndJoin
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeout
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.flow.first
@@ -66,6 +72,31 @@ class TokenRefreshTest {
         val results = List(5) { async { apiCall<Trip> { api.client.get("trips/t1") } } }.awaitAll()
 
         results.forEach { assertEquals(AppResult.Success(Trip("t1")), it) }
+        assertEquals(1, api.refreshCalls)
+    }
+
+    @Test
+    fun refreshFinishesAndIsSaved_whenTheRequestThatStartedItIsCancelled() = runTest {
+        val refreshStarted = CompletableDeferred<Unit>()
+        val answerRefresh = CompletableDeferred<Unit>()
+        val api = api {
+            refreshStarted.complete(Unit)
+            answerRefresh.await()
+            json(newTokensJson)
+        }
+        api.tokenStore.save(AuthTokens("access-1", "refresh-1"))
+
+        val request = launch(Dispatchers.Default) { apiCall<Trip> { api.client.get("trips/t1") } }
+        refreshStarted.await()
+        request.cancelAndJoin()
+        answerRefresh.complete(Unit)
+
+        // The server rotated the token, so the new one is kept.
+        withTimeout(5_000) {
+            while (api.tokenStore.get() != AuthTokens("access-2", "refresh-2")) delay(10)
+        }
+        // The next request uses it without another refresh.
+        assertEquals(AppResult.Success(Trip("t1")), apiCall<Trip> { api.client.get("trips/t1") })
         assertEquals(1, api.refreshCalls)
     }
 
