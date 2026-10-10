@@ -1,6 +1,7 @@
 package com.falcon.tripingly.core.model.trip
 
 import com.falcon.tripingly.core.model.account.TripVisibility
+import com.falcon.tripingly.core.model.place.OsmRef
 import kotlinx.datetime.LocalDate
 
 /** A new trip. Without [visibility] the server uses the user's default. */
@@ -27,11 +28,14 @@ data class TripDates(val startDate: LocalDate, val endDate: LocalDate)
 
 /** A marker the user drops on the map or picks from a search result or a place on the map. */
 data class NewMarker(
+    /** Empty for a tap on the map: the server names the stop after the place or address there. */
     val name: String,
     val location: GeoPoint,
     val time: String? = null,
     /** One of our places; the server then takes its location from the place. */
     val placeId: String? = null,
+    /** An address from search, so stops at the same address share a place. */
+    val osm: OsmRef? = null,
 )
 
 /** Changes to a marker; null fields stay unchanged. [dayId] moves it to another day of the same trip. */
