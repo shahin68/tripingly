@@ -23,12 +23,14 @@ import kotlin.math.ceil
 import kotlin.math.floor
 import kotlin.math.pow
 import kotlin.math.roundToLong
+import kotlin.time.Duration.Companion.seconds
+import kotlin.time.TimeSource
 
 internal class DefaultPlaceRepository(
     private val api: PlacesApi,
 ) : PlaceRepository {
 
-    /** The last answer and the area it covers. */
+    /** The last answer and the area it covers, kept as long as the server keeps its own copy. */
     private var lastInView: InViewAnswer? = null
 
     override suspend fun search(query: String, near: GeoPoint?): AppResult<List<PlaceSearchResult>, DataError.Network> {
@@ -45,12 +47,15 @@ internal class DefaultPlaceRepository(
             return AppResult.Success(PlacesInView(emptyList(), emptyList()))
         }
         val zoomLevel = floor(zoom).toInt().coerceIn(0, MAX_ZOOM)
-        lastInView?.let { if (it.zoomLevel == zoomLevel && bounds in it.covered) return AppResult.Success(it.places) }
+        lastInView?.let {
+            val isFresh = it.receivedAt.elapsedNow() < IN_VIEW_KEEP_FOR
+            if (isFresh && it.zoomLevel == zoomLevel && bounds in it.covered) return AppResult.Success(it.places)
+        }
 
         val bbox = listOf(bounds.west, bounds.south, bounds.east, bounds.north)
             .joinToString(",") { coordinate(it.coerceIn(-180.0, 180.0)) }
         return api.inView(bbox, zoom.toDouble().coerceIn(0.0, MAX_ZOOM.toDouble())).map { it.toPlacesInView() }
-            .onSuccess { lastInView = InViewAnswer(snap(bounds, zoomLevel), zoomLevel, it) }
+            .onSuccess { lastInView = InViewAnswer(snap(bounds, zoomLevel), zoomLevel, it, TimeSource.Monotonic.markNow()) }
     }
 
     override suspend fun place(id: String): AppResult<PlaceDetails, DataError.Network> =
@@ -130,12 +135,19 @@ internal class DefaultPlaceRepository(
         PlaceItemDto.Category.OTHER -> PlaceCategory.Other
     }
 
-    private class InViewAnswer(val covered: GeoBounds, val zoomLevel: Int, val places: PlacesInView)
+    private class InViewAnswer(
+        val covered: GeoBounds,
+        val zoomLevel: Int,
+        val places: PlacesInView,
+        val receivedAt: TimeSource.Monotonic.ValueTimeMark,
+    )
 
     private companion object {
         // The server's limit for `q`.
         const val MAX_QUERY_LENGTH = 100
         // The server's highest zoom.
         const val MAX_ZOOM = 22
+        // The server caches an area for 60 s, so newly liked or imported places show after that.
+        val IN_VIEW_KEEP_FOR = 60.seconds
     }
 }
