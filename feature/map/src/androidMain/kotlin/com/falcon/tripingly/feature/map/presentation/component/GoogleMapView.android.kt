@@ -11,6 +11,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -124,6 +125,8 @@ actual fun GoogleMapView(
     }
 
     // Places fade in and out together: one fade per answer, however many places it brings or drops.
+    // The map adds and removes markers on the main thread, so a big answer goes onto the map a few
+    // markers per frame and the map keeps moving.
     var shownPlaces by remember { mutableStateOf(emptyList<MapPlace>()) }
     var arrivingIds by remember { mutableStateOf(emptySet<String>()) }
     var leavingPlaces by remember { mutableStateOf(emptyList<MapPlace>()) }
@@ -132,16 +135,26 @@ actual fun GoogleMapView(
     LaunchedEffect(places) {
         val ids = places.mapTo(HashSet()) { it.id }
         val shownIds = shownPlaces.mapTo(HashSet()) { it.id }
-        arrivingIds = ids - shownIds
+        val arriving = places.filter { it.id !in shownIds }
+        arrivingIds = arriving.mapTo(HashSet()) { it.id }
         leavingPlaces = shownPlaces.filter { it.id !in ids }
-        shownPlaces = places
+        shownPlaces = places.filter { it.id in shownIds }
         fadeIn.snapTo(0f)
         fadeOut.snapTo(1f)
         coroutineScope {
-            launch { fadeIn.animateTo(1f, tween(PLACE_FADE_MILLIS)) }
-            launch { fadeOut.animateTo(0f, tween(PLACE_FADE_MILLIS)) }
+            launch {
+                fadeOut.animateTo(0f, tween(PLACE_FADE_MILLIS))
+                while (leavingPlaces.isNotEmpty()) {
+                    leavingPlaces = leavingPlaces.drop(MARKERS_PER_FRAME)
+                    withFrameNanos {}
+                }
+            }
+            arriving.chunked(MARKERS_PER_FRAME).forEach { chunk ->
+                shownPlaces = shownPlaces + chunk
+                withFrameNanos {}
+            }
+            fadeIn.animateTo(1f, tween(PLACE_FADE_MILLIS))
         }
-        leavingPlaces = emptyList()
     }
 
     GoogleMap(
@@ -271,4 +284,7 @@ private fun PlaceMarker(place: MapPlace, icon: BitmapDescriptor, isSelected: Boo
 private data class PlacePinLook(val category: PlaceCategory, val isTripinly: Boolean, val size: Dp)
 
 private const val PLACE_FADE_MILLIS = 250
+
+// Markers added or removed in one frame.
+private const val MARKERS_PER_FRAME = 15
 
