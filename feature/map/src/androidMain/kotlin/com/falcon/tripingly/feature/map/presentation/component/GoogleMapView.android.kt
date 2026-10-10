@@ -16,6 +16,7 @@ import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
 import com.falcon.tripingly.core.model.place.GeoBounds
+import com.falcon.tripingly.core.model.place.PlaceSquare
 import com.falcon.tripingly.core.model.place.MapPlace
 import com.falcon.tripingly.core.model.place.PlaceCategory
 import com.falcon.tripingly.feature.map.domain.model.Coordinates
@@ -37,6 +38,7 @@ import com.google.maps.android.compose.rememberTileOverlayState
 import com.google.maps.android.compose.rememberUpdatedMarkerState
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.filter
 
 @Composable
 actual fun GoogleMapView(
@@ -67,6 +69,14 @@ actual fun GoogleMapView(
             Coordinates(position.target.latitude, position.target.longitude),
             position.zoom,
             bounds,
+        )
+    }
+
+    fun visibleSquares(): List<PlaceSquare> {
+        val bounds = cameraPositionState.projection?.visibleRegion?.latLngBounds ?: return emptyList()
+        return PlaceSquare.covering(
+            GeoBounds(bounds.southwest.latitude, bounds.southwest.longitude, bounds.northeast.latitude, bounds.northeast.longitude),
+            cameraPositionState.position.zoom.toInt(),
         )
     }
 
@@ -167,9 +177,9 @@ actual fun GoogleMapView(
                 tileProvider.source = placeSource
                 tileOverlayState.clearTileCache()
             }
-            // A square reloaded with new places: Google can only drop every tile, so the squares
-            // reloaded together are redrawn at once, from what the repository keeps.
-            placeSource?.changes?.collectLatest {
+            // A square in view reloaded with new places: Google can only drop every tile, so the
+            // squares reloaded together are redrawn at once, from what the repository keeps.
+            placeSource?.changes?.filter { it in visibleSquares() }?.collectLatest {
                 delay(REDRAW_AFTER_MILLIS)
                 tileOverlayState.clearTileCache()
             }
