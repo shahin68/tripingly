@@ -41,8 +41,21 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material3.TextField
+import androidx.compose.material3.TextFieldDefaults
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.graphics.Color
 import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.layout.layout
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -63,11 +76,16 @@ import kotlinx.collections.immutable.toImmutableList
 import com.falcon.tripingly.core.designsystem.component.AppDropdownMenu
 import com.falcon.tripingly.core.designsystem.component.DropdownAction
 import com.falcon.tripingly.core.designsystem.component.ErrorBanner
+import com.falcon.tripingly.core.designsystem.component.OsmAttribution
+import com.falcon.tripingly.core.designsystem.component.SuggestionItem
+import com.falcon.tripingly.core.model.place.PlaceSearchResult
 import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
 import com.falcon.tripingly.core.designsystem.theme.spacing
 import com.falcon.tripingly.core.common.util.DateUtils
 import com.falcon.tripingly.feature.map.domain.model.MapMarker
 import com.falcon.tripingly.feature.map.presentation.component.GoogleMapView
+import com.falcon.tripingly.feature.map.presentation.component.PlaceCard
+import com.falcon.tripingly.feature.map.presentation.component.placePinSize
 import com.falcon.tripingly.feature.map.presentation.component.fitCamera
 import com.falcon.tripingly.feature.map.presentation.screen.MapViewModel.Action
 import com.falcon.tripingly.feature.map.presentation.screen.MapViewModel.State
@@ -121,10 +139,16 @@ fun MapScreen(
             zoomLevel = state.zoomLevel,
             markers = markers,
             selectedMarkerId = state.selectedMarker?.id,
+            places = state.places,
+            selectedPlaceId = state.selectedPlace?.id,
+            clusters = state.clusters,
             isMyLocationEnabled = state.isPermissionGranted,
-            onCameraMove = { coords, zoom -> onAction(Action.OnCameraMove(coords, zoom)) },
+            onCameraMove = { coords, zoom, bounds -> onAction(Action.OnCameraMove(coords, zoom, bounds)) },
             onMapClick = { coords -> onAction(Action.OnMapClick(coords)) },
-            onMarkerClick = { marker -> onAction(Action.OnMarkerClick(marker)) }
+            onMapLongClick = { coords -> onAction(Action.OnMapLongClick(coords)) },
+            onMarkerClick = { marker -> onAction(Action.OnMarkerClick(marker)) },
+            onPlaceClick = { place -> onAction(Action.OnPlaceClick(place)) },
+            onClusterClick = { cluster -> onAction(Action.OnClusterClick(cluster)) },
         )
 
         Column(
@@ -138,6 +162,14 @@ fun MapScreen(
                 onAction = onAction,
                 modifier = Modifier.onGloballyPositioned { headerBottom = it.positionInRoot().y + it.size.height },
             )
+
+            if (state.isSearchOpen && state.searchResults.isNotEmpty()) {
+                SearchResults(
+                    results = state.searchResults,
+                    onAction = onAction,
+                    modifier = Modifier.padding(horizontal = MaterialTheme.spacing.medium),
+                )
+            }
 
             AnimatedVisibility(
                 visible = state.message != null,
@@ -164,11 +196,19 @@ fun MapScreen(
                 .navigationBarsPadding(),
             horizontalAlignment = Alignment.End
         ) {
-            LocationFab(
-                state = state,
-                onAction = onAction,
-                modifier = Modifier.padding(MaterialTheme.spacing.medium)
-            )
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(MaterialTheme.spacing.medium),
+                verticalAlignment = Alignment.Bottom,
+            ) {
+                // Our places come from OpenStreetMap.
+                OsmAttribution(
+                    modifier = Modifier.background(MaterialTheme.colorScheme.surface.copy(alpha = 0.8f), RoundedCornerShape(4.dp)),
+                )
+                Spacer(modifier = Modifier.weight(1f))
+                LocationFab(state = state, onAction = onAction)
+            }
 
             DaySelectionTabs(
                 state = state,
@@ -193,6 +233,37 @@ fun MapScreen(
                 )
             }
         }
+
+        state.selectedPlace?.let { place ->
+            // The camera centers the tapped pin, so the card floats just above the middle of the map.
+            // A touch anywhere else only closes the card: it doesn't reach the map or the cards.
+            Box(
+                modifier = Modifier
+                    .matchParentSize()
+                    .pointerInput(Unit) {
+                        awaitEachGesture {
+                            awaitFirstDown()
+                            onAction(Action.OnDismissPlace)
+                        }
+                    },
+            )
+            val pinClearance = placePinSize(place, isSelected = true) / 2 + MaterialTheme.spacing.small
+            PlaceCard(
+                place = place,
+                details = state.selectedPlaceDetails,
+                dayNumber = state.days.getOrNull(state.activeDayIndex)?.number?.takeIf { state.canEdit },
+                onAdd = { onAction(Action.OnAddPlaceToDay) },
+                modifier = Modifier
+                    .align(Alignment.Center)
+                    .padding(horizontal = MaterialTheme.spacing.large)
+                    .layout { measurable, constraints ->
+                        val card = measurable.measure(constraints)
+                        layout(card.width, card.height) {
+                            card.place(0, -card.height / 2 - pinClearance.roundToPx())
+                        }
+                    },
+            )
+        }
     }
 }
 
@@ -214,6 +285,10 @@ private fun TripHeader(
         ),
         shape = RoundedCornerShape(16.dp),
     ) {
+        if (state.isSearchOpen) {
+            SearchField(state = state, onAction = onAction)
+            return@Card
+        }
         Row(verticalAlignment = Alignment.CenterVertically) {
             IconButton(onClick = { onAction(Action.OnBackClick) }) {
                 Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(Res.string.map_back))
@@ -226,6 +301,9 @@ private fun TripHeader(
             )
             if (state.isSaving || state.isLoading) {
                 CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+            }
+            IconButton(onClick = { onAction(Action.OnOpenSearch) }) {
+                Icon(Icons.Default.Search, contentDescription = stringResource(Res.string.map_search))
             }
             if (state.canEdit) {
                 Box {
@@ -248,6 +326,70 @@ private fun TripHeader(
                     )
                 }
             }
+        }
+    }
+}
+
+/** Replaces the trip name while searching; back closes the search. */
+@Composable
+private fun SearchField(
+    state: State,
+    onAction: (Action) -> Unit,
+) {
+    val focusRequester = remember { FocusRequester() }
+    LaunchedEffect(Unit) { focusRequester.requestFocus() }
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        IconButton(onClick = { onAction(Action.OnCloseSearch) }) {
+            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(Res.string.map_back))
+        }
+        TextField(
+            value = state.searchQuery,
+            onValueChange = { onAction(Action.OnSearchQueryChanged(it)) },
+            placeholder = { Text(stringResource(Res.string.map_search_placeholder)) },
+            singleLine = true,
+            colors = TextFieldDefaults.colors(
+                focusedContainerColor = Color.Transparent,
+                unfocusedContainerColor = Color.Transparent,
+                focusedIndicatorColor = Color.Transparent,
+                unfocusedIndicatorColor = Color.Transparent,
+            ),
+            modifier = Modifier.weight(1f).focusRequester(focusRequester),
+        )
+        when {
+            state.isSearching -> CircularProgressIndicator(
+                modifier = Modifier.padding(horizontal = 14.dp).size(20.dp),
+                strokeWidth = 2.dp,
+            )
+            state.searchQuery.isNotEmpty() -> IconButton(onClick = { onAction(Action.OnSearchQueryChanged("")) }) {
+                Icon(Icons.Default.Close, contentDescription = stringResource(Res.string.map_search_clear))
+            }
+        }
+    }
+}
+
+@Composable
+private fun SearchResults(
+    results: ImmutableList<PlaceSearchResult>,
+    onAction: (Action) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Card(
+        modifier = modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface,
+            contentColor = MaterialTheme.colorScheme.onSurface,
+        ),
+        shape = RoundedCornerShape(16.dp),
+    ) {
+        Column(modifier = Modifier.heightIn(max = 360.dp).verticalScroll(rememberScrollState())) {
+            results.forEach { result ->
+                SuggestionItem(
+                    title = result.name,
+                    subtitle = result.address,
+                    onClick = { onAction(Action.OnSearchResultClick(result)) },
+                )
+            }
+            OsmAttribution(modifier = Modifier.padding(MaterialTheme.spacing.medium))
         }
     }
 }

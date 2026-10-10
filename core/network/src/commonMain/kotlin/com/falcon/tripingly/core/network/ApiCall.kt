@@ -22,6 +22,8 @@ import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import kotlin.coroutines.cancellation.CancellationException
 
 /**
@@ -30,6 +32,7 @@ import kotlin.coroutines.cancellation.CancellationException
  * was refused) maps to [DataError.Network.Unauthorized]; any other error with the
  * API's envelope maps to [DataError.Network.Api]. Endpoints are Ktorfit functions
  * returning [AppResult] (see [createKtorfit]), which map through the same code.
+ * Main-safe: the answer is read and parsed off the main thread, so a big one never stalls the UI.
  */
 internal suspend inline fun <reified T> apiCall(
     crossinline request: suspend () -> HttpResponse,
@@ -40,17 +43,17 @@ internal suspend inline fun <reified T> apiCall(
 internal suspend fun <T> executeApiCall(
     type: TypeInfo,
     request: suspend () -> HttpResponse,
-): AppResult<T, DataError.Network> {
+): AppResult<T, DataError.Network> = withContext(Dispatchers.Default) {
     val response = try {
         request()
     } catch (e: CancellationException) {
         throw e
     } catch (e: Exception) {
-        return AppResult.Error(e.toNetworkError())
+        return@withContext AppResult.Error(e.toNetworkError())
     }
-    if (!response.status.isSuccess()) return AppResult.Error(response.toNetworkError())
-    if (type.type == Unit::class) return AppResult.Success(Unit as T)
-    return try {
+    if (!response.status.isSuccess()) return@withContext AppResult.Error(response.toNetworkError())
+    if (type.type == Unit::class) return@withContext AppResult.Success(Unit as T)
+    try {
         AppResult.Success(response.body<T>(type))
     } catch (e: CancellationException) {
         throw e

@@ -1,6 +1,5 @@
 package com.falcon.tripingly.feature.trips.presentation.component
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -22,8 +21,6 @@ import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.ListItem
-import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.SelectableDates
@@ -36,11 +33,12 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import com.falcon.tripingly.core.designsystem.component.OsmAttribution
+import com.falcon.tripingly.core.designsystem.component.SuggestionItem
 import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
 import com.falcon.tripingly.core.common.util.DateUtils
 import com.falcon.tripingly.core.model.place.PlaceSearchResult
@@ -201,22 +199,17 @@ fun CreateTripDialog(
                 )
                 if (destination == null && destinationResults.isNotEmpty()) {
                     destinationResults.take(MAX_DESTINATION_RESULTS).forEach { result ->
-                        ListItem(
-                            headlineContent = { Text(result.name) },
-                            supportingContent = result.address?.let { { Text(it) } },
-                            colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-                            modifier = Modifier.clickable {
+                        SuggestionItem(
+                            title = result.name,
+                            subtitle = result.address,
+                            onClick = {
                                 destination = Destination(result.name, result.location)
                                 destinationText = result.name
                                 onDestinationQueryChange("")
                             },
                         )
                     }
-                    Text(
-                        text = stringResource(Res.string.create_trip_destination_attribution),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
+                    OsmAttribution()
                 }
                 DialogError(error)
             }

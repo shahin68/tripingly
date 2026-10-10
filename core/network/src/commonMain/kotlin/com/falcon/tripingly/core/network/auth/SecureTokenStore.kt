@@ -6,7 +6,9 @@ import kotlinx.coroutines.sync.withLock
 
 /**
  * Tokens in the [SecureStore] (Keychain / Keystore), kept in memory after the
- * first read because every request asks for them.
+ * first read because every request asks for them. Both tokens are one value, so
+ * a process killed mid-save can't keep a new access token next to a refresh token
+ * the server already rotated (sending that one again signs the user out).
  */
 class SecureTokenStore(private val secureStore: SecureStore) : TokenStore {
     private val mutex = Mutex()
@@ -15,30 +17,30 @@ class SecureTokenStore(private val secureStore: SecureStore) : TokenStore {
 
     override suspend fun get(): AuthTokens? = mutex.withLock {
         if (!loaded) {
-            val access = secureStore.get(ACCESS_TOKEN)
-            val refresh = secureStore.get(REFRESH_TOKEN)
-            tokens = if (access != null && refresh != null) AuthTokens(access, refresh) else null
+            tokens = secureStore.get(TOKENS)?.split(SEPARATOR)?.let { parts ->
+                if (parts.size == 2) AuthTokens(parts[0], parts[1]) else null
+            }
             loaded = true
         }
         tokens
     }
 
     override suspend fun save(tokens: AuthTokens) = mutex.withLock {
-        secureStore.put(ACCESS_TOKEN, tokens.accessToken)
-        secureStore.put(REFRESH_TOKEN, tokens.refreshToken)
+        secureStore.put(TOKENS, tokens.accessToken + SEPARATOR + tokens.refreshToken)
         this.tokens = tokens
         loaded = true
     }
 
     override suspend fun clear() = mutex.withLock {
-        secureStore.remove(ACCESS_TOKEN)
-        secureStore.remove(REFRESH_TOKEN)
+        secureStore.remove(TOKENS)
         tokens = null
         loaded = true
     }
 
     private companion object {
-        const val ACCESS_TOKEN = "auth.accessToken"
-        const val REFRESH_TOKEN = "auth.refreshToken"
+        const val TOKENS = "auth.tokens"
+
+        // Neither a JWT nor a base64url refresh token contains a space.
+        const val SEPARATOR = " "
     }
 }

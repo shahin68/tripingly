@@ -72,15 +72,15 @@ Not present yet: image loading (Coil), Firebase, Socket.IO, detekt/ktlint.
 | Share trip | `core/common/.../util/ShareManager*` (`share(text)`), text from trips strings | Text only | Works | — |
 | Copy trip / marker | `TripRepository.copyTrip`, `MarkerRepository.copyMarker` | `POST /trips/{id}/copy`, `POST /markers/{id}/copy` | Repository only; UI comes with Explore (stage 7) | (ready) |
 | Social tab | Inside `HomeScreen.kt` | none | "Coming soon" placeholder | `GET /explore/trips`, `/places/nearby`, users |
-| Trip map: day tabs from server days, add/delete day (waits for the server), tap map to add a numbered stop, remove and clear day (with confirmation) shown at once, failed stop changes undone with a banner (Retry when the connection failed), tapping a stop chip selects its pin, centers the map and opens its info window, chips and pins say "Stop #N" by position, my-location button that asks again after a denial (an explanation first when Android wants one, an Open settings dialog when the system won't show its prompt) and moves to the user once allowed; read-only for viewers | `feature/map/.../MapScreen.kt`, `MapViewModel.kt` | `GET /trips/{id}` cached in Room; markers and days endpoints | Works | `/places/in-view` (stage 5) |
+| Trip map: places in view (category pins, hot spots bigger by likes, clusters), tap a place to grow its pin, center it and open a card above it with Add to day, search in the header, long press to add a named pin, day tabs from server days, add/delete day (waits for the server), tap map to add a numbered stop, remove and clear day (with confirmation) shown at once, failed stop changes undone with a banner (Retry when the connection failed), tapping a stop chip selects its pin, centers the map and opens its info window, chips and pins say "Stop #N" by position, my-location button that asks again after a denial (an explanation first when Android wants one, an Open settings dialog when the system won't show its prompt) and moves to the user once allowed; read-only for viewers | `feature/map/.../MapScreen.kt`, `MapViewModel.kt` | `GET /trips/{id}` cached in Room; markers and days endpoints | Works | (in use) |
 
 ## Map integration
 
 - Common `expect fun GoogleMapView(...)` in `feature/map`.
-- **Android:** `maps-compose` `GoogleMap`, `MarkerComposable` with the numbered `TripMarkerIcon`, my-location layer. No map style, so **Google POIs are visible** (must be hidden per rule 4).
-- **iOS:** the "GoogleMapView" actual is **Apple MapKit** (`MKMapView` with `MKMarkerAnnotationView`), not the Google Maps SDK. The unlinked `GoogleMaps` import and `GMSServices` setup were removed from `iOSApp.swift` (stage 3) so the app target compiles; the Google Maps iOS SDK comes with the map stage.
+- **Android:** `maps-compose` `GoogleMap`, `MarkerComposable` with the numbered `TripMarkerIcon` (above), `PlacePin` and `PlaceClusterPin` for places in view, my-location layer, long press. Google POIs are hidden by a JSON map style (`MapStyle.kt`, light and night).
+- **iOS:** the "GoogleMapView" actual is **Apple MapKit** (`MKMapView` with `MKMarkerAnnotationView`; places as grey markers, clusters with their count; Apple's POIs filtered out), not the Google Maps SDK. It takes no taps yet (no adding stops, places or long press on iOS). The unlinked `GoogleMaps` import and `GMSServices` setup were removed from `iOSApp.swift` (stage 3) so the app target compiles; the Google Maps iOS SDK comes with the map stage.
 - Location: `LocationDataSource` with fused location (Android) and `CLLocationManager` (iOS); the location permission is an `expect/actual` `LocationPermissionController` (`status()`, `request()`, `openSettings()`), re-read whenever the map resumes; the view model decides when to ask, explain or send the user to Settings.
-- No OSM attribution yet; no places from the backend.
+- Places: `PlaceRepository` (`core:data`) for search, places in view and place details; `MapViewModel` loads places in view 300 ms after the camera rests, opens `PlaceCard`, and runs the header search. `OsmAttribution` sits bottom left over the map.
 
 ## Local models vs API contract
 
@@ -97,7 +97,7 @@ Domain models in `core/model/.../trip/` follow the API (UUIDs, `LocalDate` dates
 
 ## Tests
 
-- `core/data` commonTest: `TripRepositoryTest` (MockEngine + in-memory cache: paging, caching, error codes, optimistic marker add/delete/clear day/reorder with undo, no reload after sending, retry after a dropped connection, `ID_CONFLICT` and `NOT_FOUND` treated as done, reload kept off unsent changes).
+- `core/data` commonTest: `PlaceRepositoryTest` (in-view bbox format, no repeat request inside the answered area); `TripRepositoryTest` (MockEngine + in-memory cache: paging, caching, error codes, optimistic marker add/delete/clear day/reorder with undo, no reload after sending, retry after a dropped connection, `ID_CONFLICT` and `NOT_FOUND` treated as done, reload kept off unsent changes).
 - `feature/trips` commonTest: `HomeViewModelTest`, `TripMembersViewModelTest` over `FakeTripBackend`.
 - `feature/map/src/androidHostTest/.../MapViewModelTest.kt`: Robolectric, with a fake location source and `FakeTripBackend`.
 - `feature/map/src/androidHostTest/.../MapFlowTest.kt`: UI flow tests on Robolectric (`runComposeUiTest`). They render `MapRoute` with the real `MapViewModel` and `FakeTripBackend`, tap chips, Clear All and the dialogs, and check both the screen and the backend. The Google map itself can't be driven there, so map taps and pins are checked on the emulator.
@@ -106,7 +106,7 @@ Domain models in `core/model/.../trip/` follow the API (UUIDs, `LocalDate` dates
 
 1. **No proactive offline detection.** Offline is noticed when a call fails; writes need a connection (no outbox).
 2. **iOS map is MapKit.** Decide on the Google Maps iOS SDK via SPM in the map stage.
-3. **Google POIs visible on Android**; no OSM attribution.
+3. **The Google logo is covered** by the day tabs and itinerary card on Android (legal rule 3 wants it visible; needs map padding that the camera framing accounts for).
 4. **Two message types:** `feature:auth` still has its own `UiMessage`; move it to `core:ui`'s `UiText` when auth is next touched.
 5. **No marker rename/reorder UI yet** (repository supports both); invite accept and copy have no UI yet.
 6. **No architecture or lint checks** beyond module boundaries (no Konsist, detekt or ktlint yet).

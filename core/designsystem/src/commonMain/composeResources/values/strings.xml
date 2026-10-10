@@ -2,4 +2,5 @@
     <!-- Common -->
     <string name="common_dismiss">Dismiss</string>
     <string name="common_search_placeholder">Search...</string>
+    <string name="osm_attribution">© OpenStreetMap contributors</string>
 </resources>

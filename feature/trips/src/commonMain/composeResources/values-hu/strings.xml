@@ -42,7 +42,6 @@
     <string name="create_trip_picker_headline">Válaszd ki az időszakot</string>
     <string name="create_trip_destination_label">Úti cél (nem kötelező)</string>
     <string name="create_trip_destination_clear">Úti cél törlése</string>
-    <string name="create_trip_destination_attribution">© OpenStreetMap közreműködők</string>
 
     <!-- Rename trip dialog -->
     <string name="rename_trip_title">Utazás átnevezése</string>

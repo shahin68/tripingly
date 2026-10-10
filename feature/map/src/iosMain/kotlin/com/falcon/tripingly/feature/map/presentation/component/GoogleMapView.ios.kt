@@ -5,6 +5,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.interop.UIKitView
+import com.falcon.tripingly.core.model.place.GeoBounds
+import com.falcon.tripingly.core.model.place.MapPlace
+import com.falcon.tripingly.core.model.place.PlaceCluster
 import com.falcon.tripingly.feature.map.domain.model.Coordinates
 import com.falcon.tripingly.feature.map.domain.model.MapMarker
 import kotlinx.cinterop.ExperimentalForeignApi
@@ -13,10 +16,12 @@ import platform.CoreLocation.CLLocationCoordinate2DMake
 import platform.MapKit.MKCoordinateRegionMakeWithDistance
 import platform.MapKit.MKAnnotationProtocol
 import platform.MapKit.MKAnnotationView
+import platform.MapKit.MKFeatureDisplayPriorityDefaultLow
 import platform.MapKit.MKMarkerAnnotationView
 import platform.MapKit.MKMapView
 import platform.MapKit.MKMapViewDelegateProtocol
 import platform.MapKit.MKPointAnnotation
+import platform.MapKit.MKPointOfInterestFilter
 import platform.UIKit.UIColor
 import platform.darwin.NSObject
 import kotlin.math.log2
@@ -30,14 +35,22 @@ actual fun GoogleMapView(
     zoomLevel: Float,
     markers: List<MapMarker>,
     selectedMarkerId: String?,
+    places: List<MapPlace>,
+    selectedPlaceId: String?,
+    clusters: List<PlaceCluster>,
     isMyLocationEnabled: Boolean,
-    onCameraMove: (Coordinates, Float) -> Unit,
+    onCameraMove: (Coordinates, Float, GeoBounds?) -> Unit,
     onMapClick: (Coordinates) -> Unit,
-    onMarkerClick: (MapMarker) -> Unit
+    onMapLongClick: (Coordinates) -> Unit,
+    onMarkerClick: (MapMarker) -> Unit,
+    onPlaceClick: (MapPlace) -> Unit,
+    onClusterClick: (PlaceCluster) -> Unit,
 ) {
     val delegate = remember {
         object : NSObject(), MKMapViewDelegateProtocol {
             var currentMarkers: List<MapMarker> = emptyList()
+            /** Annotations of places and clusters, drawn smaller and grey under the stops. */
+            var placeAnnotations: Set<MKPointAnnotation> = emptySet()
 
             override fun mapViewDidChangeVisibleRegion(mapView: MKMapView) {
                 val coordinate = mapView.centerCoordinate
@@ -46,10 +59,29 @@ actual fun GoogleMapView(
                 }
                 // The inverse of the region set below, so a zoom the camera was sent to stays.
                 val latitudeMeters = mapView.region.useContents { span.latitudeDelta } * 111_320.0
-                onCameraMove(center, log2(40_000_000.0 / latitudeMeters).toFloat())
+                val bounds = mapView.region.useContents {
+                    GeoBounds(
+                        south = center.latitude - span.latitudeDelta / 2,
+                        west = center.longitude - span.longitudeDelta / 2,
+                        north = center.latitude + span.latitudeDelta / 2,
+                        east = center.longitude + span.longitudeDelta / 2,
+                    )
+                }
+                onCameraMove(center, log2(40_000_000.0 / latitudeMeters).toFloat(), bounds)
             }
 
             override fun mapView(mapView: MKMapView, viewForAnnotation: MKAnnotationProtocol): MKAnnotationView? {
+                if (viewForAnnotation is MKPointAnnotation && viewForAnnotation in placeAnnotations) {
+                    val identifier = "Place"
+                    val annotationView = mapView.dequeueReusableAnnotationViewWithIdentifier(identifier) as? MKMarkerAnnotationView
+                        ?: MKMarkerAnnotationView(viewForAnnotation, identifier)
+                    annotationView.annotation = viewForAnnotation
+                    annotationView.canShowCallout = true
+                    annotationView.markerTintColor = UIColor.grayColor
+                    annotationView.glyphText = viewForAnnotation.subtitle
+                    annotationView.displayPriority = MKFeatureDisplayPriorityDefaultLow
+                    return annotationView
+                }
                 if (viewForAnnotation is MKPointAnnotation) {
                     val identifier = "TripMarker"
                     var annotationView = mapView.dequeueReusableAnnotationViewWithIdentifier(identifier) as? MKMarkerAnnotationView
@@ -87,6 +119,8 @@ actual fun GoogleMapView(
         factory = {
             MKMapView().apply {
                 this.delegate = delegate
+                // Places on our map come from our server only.
+                pointOfInterestFilter = MKPointOfInterestFilter(includingCategories = emptyList<Any>())
             }
         },
         modifier = modifier.fillMaxSize(),
@@ -115,6 +149,20 @@ actual fun GoogleMapView(
                 mapView.addAnnotation(annotation)
                 if (marker.id == selectedMarkerId) mapView.selectAnnotation(annotation, animated = true)
             }
+            val placeAnnotations = places.map { place ->
+                MKPointAnnotation().apply {
+                    setCoordinate(CLLocationCoordinate2DMake(place.location.lat, place.location.lng))
+                    setTitle(place.name)
+                }
+            } + clusters.map { cluster ->
+                MKPointAnnotation().apply {
+                    setCoordinate(CLLocationCoordinate2DMake(cluster.location.lat, cluster.location.lng))
+                    // Shown as the glyph.
+                    setSubtitle(cluster.count.toString())
+                }
+            }
+            delegate.placeAnnotations = placeAnnotations.toSet()
+            mapView.addAnnotations(placeAnnotations)
         }
     )
 }

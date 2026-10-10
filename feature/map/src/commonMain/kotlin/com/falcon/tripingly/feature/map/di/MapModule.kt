@@ -20,6 +20,7 @@ val mapModule = module {
             tripId = params.get(),
             tripRepository = get(),
             markerRepository = get(),
+            placeRepository = get(),
             getCurrentLocationUseCase = get(),
             dispatchers = get(),
         )

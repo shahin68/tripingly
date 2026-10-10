@@ -7,6 +7,7 @@ kotlin {
         commonMain.dependencies {
             implementation(projects.core.data)
             implementation(projects.core.ui)
+            implementation(libs.compose.material.icons.extended)
         }
         androidMain.dependencies {
             implementation(libs.playServices.maps)
