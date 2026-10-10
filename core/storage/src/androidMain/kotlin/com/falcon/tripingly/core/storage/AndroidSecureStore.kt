@@ -41,13 +41,15 @@ internal class AndroidSecureStore(context: Context) : SecureStore {
         }
     }
 
-    override suspend fun put(key: String, value: String) = locked {
+    override suspend fun put(key: String, value: String) = locked<Unit> {
         val cipher = Cipher.getInstance(TRANSFORMATION)
         cipher.init(Cipher.ENCRYPT_MODE, secretKey())
         val ciphertext = cipher.doFinal(value.encodeToByteArray())
         val encoded = Base64.encodeToString(cipher.iv, Base64.NO_WRAP) + SEPARATOR +
             Base64.encodeToString(ciphertext, Base64.NO_WRAP)
-        prefs.edit().putString(key, encoded).apply()
+        // commit, not apply: the value is on disk before the caller goes on, so a
+        // process killed right after a token refresh can't lose the new token.
+        prefs.edit().putString(key, encoded).commit()
     }
 
     override suspend fun remove(key: String) = locked {

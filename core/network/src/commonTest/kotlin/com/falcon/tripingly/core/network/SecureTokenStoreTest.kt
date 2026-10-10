@@ -14,8 +14,12 @@ class SecureTokenStoreTest {
     private class MapSecureStore : SecureStore {
         val values = mutableMapOf<String, String>()
         var reads = 0
+        var writes = 0
         override suspend fun get(key: String) = values[key].also { reads++ }
-        override suspend fun put(key: String, value: String) { values[key] = value }
+        override suspend fun put(key: String, value: String) {
+            values[key] = value
+            writes++
+        }
         override suspend fun remove(key: String) { values.remove(key) }
     }
 
@@ -34,7 +38,17 @@ class SecureTokenStoreTest {
 
         repeat(3) { store.get() }
 
-        assertEquals(2, storage.reads)
+        assertEquals(1, storage.reads)
+    }
+
+    @Test
+    fun save_writesBothTokensAtOnce() = runTest {
+        val storage = MapSecureStore()
+
+        SecureTokenStore(storage).save(AuthTokens("access-1", "refresh-1"))
+
+        // Two writes could leave a new access token with a refresh token that's already used.
+        assertEquals(1, storage.writes)
     }
 
     @Test
