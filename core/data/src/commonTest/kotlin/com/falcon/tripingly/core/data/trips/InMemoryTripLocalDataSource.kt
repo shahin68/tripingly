@@ -41,12 +41,12 @@ internal class InMemoryTripLocalDataSource : TripLocalDataSource {
 
     override suspend fun saveMarkers(markers: List<TripMarker>) = markers.forEach { saveMarker(it) }
 
-    override suspend fun savePlaceOfMarker(markerId: String, placeId: String) {
+    override suspend fun savePlaceOfMarker(markerId: String, placeId: String, name: String) {
         trips.update { all ->
             all.mapValues { (_, details) ->
                 details.copy(
                     days = details.days.map { day ->
-                        day.copy(markers = day.markers.map { if (it.id == markerId) it.copy(placeId = placeId) else it })
+                        day.copy(markers = day.markers.map { if (it.id == markerId) it.copy(placeId = placeId, name = it.name.ifEmpty { name }) else it })
                     },
                 )
             }

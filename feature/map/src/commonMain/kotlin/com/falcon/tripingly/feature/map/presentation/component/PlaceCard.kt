@@ -42,6 +42,8 @@ import org.jetbrains.compose.resources.stringResource
 fun PlaceCard(
     place: MapPlace,
     details: PlaceDetails?,
+    /** For an address from search: shown instead of the category. */
+    address: String?,
     dayNumber: Int?,
     onAdd: () -> Unit,
     modifier: Modifier = Modifier,
@@ -75,7 +77,7 @@ fun PlaceCard(
             }
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
-                    text = stringResource(place.category.label()),
+                    text = address ?: stringResource(place.category.label()),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.weight(1f),

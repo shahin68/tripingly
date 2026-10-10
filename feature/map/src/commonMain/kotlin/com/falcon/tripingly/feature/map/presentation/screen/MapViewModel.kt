@@ -14,6 +14,7 @@ import com.falcon.tripingly.core.data.trips.MarkerRepository
 import com.falcon.tripingly.core.data.trips.TripRepository
 import com.falcon.tripingly.core.model.place.GeoBounds
 import com.falcon.tripingly.core.model.place.MapPlace
+import com.falcon.tripingly.core.model.place.PlaceCategory
 import com.falcon.tripingly.core.model.place.PlaceCluster
 import com.falcon.tripingly.core.model.place.PlaceDetails
 import com.falcon.tripingly.core.model.place.PlaceSearchResult
@@ -40,7 +41,6 @@ import com.falcon.tripingly.feature.map.generated.resources.error_location_unava
 import com.falcon.tripingly.feature.map.generated.resources.error_location_unexpected
 import com.falcon.tripingly.feature.map.generated.resources.error_location_unknown
 import com.falcon.tripingly.feature.map.generated.resources.map_change_not_saved
-import com.falcon.tripingly.feature.map.generated.resources.map_stop_title_format
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.toImmutableList
@@ -57,7 +57,6 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.datetime.LocalDate
-import org.jetbrains.compose.resources.getString
 import kotlin.coroutines.cancellation.CancellationException
 import kotlin.math.PI
 import kotlin.math.cos
@@ -157,6 +156,7 @@ class MapViewModel(
             placeSource = MapPlaceSource(placeRepository, stopPlaceIds(details)),
             selectedPlace = ui.selectedPlace,
             selectedPlaceDetails = ui.selectedPlaceDetails?.takeIf { it.id == ui.selectedPlace?.id },
+            selectedPlaceAddress = ui.selectedAddress?.address,
             isSearchOpen = ui.isSearchOpen,
             searchQuery = ui.searchQuery,
             searchResults = ui.searchResults.toImmutableList(),
@@ -246,9 +246,9 @@ class MapViewModel(
     private fun addMarker(coordinates: Coordinates) {
         val day = activeDay() ?: return
         if (!canEdit()) return
+        // No name: the server names the stop after the place or address there.
         viewModelScope.launch {
-            val name = getString(Res.string.map_stop_title_format, day.markers.size + 1)
-            markerRepository.addMarker(tripId, day.id, NewMarker(name, GeoPoint(coordinates.latitude, coordinates.longitude)))
+            markerRepository.addMarker(tripId, day.id, NewMarker("", GeoPoint(coordinates.latitude, coordinates.longitude)))
         }
     }
 
@@ -311,29 +311,48 @@ class MapViewModel(
     }
 
     /** Centers the place and shows its card at once with what the pin knows, then adds the place's details. */
-    private fun openPlace(place: MapPlace) {
-        ui.update { it.copy(selectedPlace = place, selectedMarkerId = null) }
-        navigateTo(Coordinates(place.location.lat, place.location.lng), ui.value.zoomLevel)
+    private fun openPlace(place: MapPlace, zoom: Float = ui.value.zoomLevel) {
+        ui.update { it.copy(selectedPlace = place, selectedAddress = null, selectedMarkerId = null) }
+        navigateTo(Coordinates(place.location.lat, place.location.lng), zoom)
         placeDetailsJob?.cancel()
         placeDetailsJob = viewModelScope.launch {
             placeRepository.place(place.id).onSuccess { details -> ui.update { it.copy(selectedPlaceDetails = details) } }
         }
     }
 
-    private fun closePlace() {
+    /** An address from search has no place of ours yet: its card shows the address and adds it by name. */
+    private fun openAddress(result: PlaceSearchResult) {
         placeDetailsJob?.cancel()
-        ui.update { it.copy(selectedPlace = null, selectedPlaceDetails = null) }
+        val place = MapPlace(
+            id = "",
+            name = result.name,
+            category = PlaceCategory.Other,
+            location = result.location,
+            isTripinly = false,
+            likeCount = 0,
+        )
+        ui.update { it.copy(selectedPlace = place, selectedAddress = result, selectedPlaceDetails = null, selectedMarkerId = null) }
+        navigateTo(Coordinates(result.location.lat, result.location.lng), result.type.zoom())
     }
 
-    /** A stop at the place, named after it; shows at once like a tap on the map. */
+    private fun closePlace() {
+        placeDetailsJob?.cancel()
+        ui.update { it.copy(selectedPlace = null, selectedAddress = null, selectedPlaceDetails = null) }
+    }
+
+    /** A stop at the place or address, named after it; shows at once like a tap on the map. */
     private fun addPlace() {
         val place = ui.value.selectedPlace ?: return
+        val address = ui.value.selectedAddress
         val day = activeDay() ?: return
         closePlace()
         if (!canEdit()) return
-        viewModelScope.launch {
-            markerRepository.addMarker(tripId, day.id, NewMarker(place.name, place.location, placeId = place.id))
+        val marker = if (address != null) {
+            NewMarker(address.name, address.location, osm = address.osm)
+        } else {
+            NewMarker(place.name, place.location, placeId = place.id)
         }
+        viewModelScope.launch { markerRepository.addMarker(tripId, day.id, marker) }
     }
 
     /**
@@ -356,9 +375,14 @@ class MapViewModel(
         }
     }
 
+    /** One of our places or an address opens its card; a city or larger area only moves the map there. */
     private fun showSearchResult(result: PlaceSearchResult) {
         closeSearch()
-        navigateTo(Coordinates(result.location.lat, result.location.lng), result.type.zoom())
+        when {
+            result.place != null -> openPlace(result.place!!, result.type.zoom())
+            result.type in ADDRESS_TYPES -> openAddress(result)
+            else -> navigateTo(Coordinates(result.location.lat, result.location.lng), result.type.zoom())
+        }
     }
 
     private fun closeSearch() {
@@ -585,6 +609,8 @@ class MapViewModel(
         val confirm: Confirm? = null,
         val selectedPlace: MapPlace? = null,
         val selectedPlaceDetails: PlaceDetails? = null,
+        /** The address picked from search whose card is open; [selectedPlace] is drawn from it. */
+        val selectedAddress: PlaceSearchResult? = null,
         val isSearchOpen: Boolean = false,
         val searchQuery: String = "",
         val searchResults: List<PlaceSearchResult> = emptyList(),
@@ -635,6 +661,8 @@ class MapViewModel(
         val selectedPlace: MapPlace? = null,
         /** Opening hours and website, once loaded. */
         val selectedPlaceDetails: PlaceDetails? = null,
+        /** Street, city and country when the card is for an address from search. */
+        val selectedPlaceAddress: String? = null,
         /** The header shows the search field instead of the trip name. */
         val isSearchOpen: Boolean = false,
         val searchQuery: String = "",
@@ -692,6 +720,8 @@ class MapViewModel(
         const val TAP_REACH_POINTS = 24.0
         /** Typing has paused; see the search rule in 07-architecture. */
         const val SEARCH_DEBOUNCE_MILLIS = 300L
+        /** Search results small enough to add as a stop. */
+        val ADDRESS_TYPES = setOf(SearchResultType.Place, SearchResultType.House, SearchResultType.Street, SearchResultType.Other)
         /** A tapped cluster opens up into its places. */
         const val CLUSTER_ZOOM_STEP = 2f
     }

@@ -2,6 +2,7 @@ package com.falcon.tripingly.core.data.trips
 
 import com.falcon.tripingly.core.common.error.DataError
 import com.falcon.tripingly.core.common.result.AppResult
+import com.falcon.tripingly.core.model.place.OsmType
 import com.falcon.tripingly.core.model.trip.MarkerUpdate
 import com.falcon.tripingly.core.model.trip.NewMarker
 import com.falcon.tripingly.core.model.trip.TripMarker
@@ -66,7 +67,7 @@ internal class DefaultMarkerRepository(
             time = marker.time,
             position = day?.markers?.nextPosition() ?: 0,
         )
-        submit(MarkerChange.Add(created))
+        submit(MarkerChange.Add(created, marker.osm))
         return created
     }
 
@@ -182,11 +183,19 @@ internal class DefaultMarkerRepository(
                 change.marker.dayId,
                 CreateMarkerDto(
                     id = change.marker.id,
-                    name = change.marker.name,
+                    // Without a name, the server names the stop after what's at its location.
+                    name = change.marker.name.ifEmpty { null },
                     placeId = change.marker.placeId.ifEmpty { null },
                     // The server takes a place's location from the place.
                     location = if (change.marker.placeId.isEmpty()) change.marker.location.toDto() else null,
                     time = change.marker.time,
+                    osmType = when (change.osm?.type) {
+                        OsmType.Node -> CreateMarkerDto.OsmType.NODE
+                        OsmType.Way -> CreateMarkerDto.OsmType.WAY
+                        OsmType.Relation -> CreateMarkerDto.OsmType.RELATION
+                        null -> null
+                    },
+                    osmId = change.osm?.id,
                 ),
                 // A retry after a lost answer gets the first answer back instead of a duplicate.
                 change.marker.id,
@@ -207,8 +216,9 @@ internal class DefaultMarkerRepository(
             )
         }
         if (result is AppResult.Success) {
-            // The place the server matched; the rest is already on the device.
-            (result.data as? MarkerDto)?.let { local.savePlaceOfMarker(it.id, it.placeId) }
+            // The place the server matched (and the name it gave a stop added without one);
+            // the rest is already on the device.
+            (result.data as? MarkerDto)?.let { local.savePlaceOfMarker(it.id, it.placeId, it.name) }
             return null
         }
         val error = (result as AppResult.Error).error

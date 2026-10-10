@@ -24,8 +24,11 @@ internal interface TripLocalDataSource {
     /** Inserts or updates markers. */
     suspend fun saveMarkers(markers: List<TripMarker>)
 
-    /** Sets the place the server matched to a marker, if the marker is still cached. */
-    suspend fun savePlaceOfMarker(markerId: String, placeId: String)
+    /**
+     * Sets the place the server matched to a marker, if the marker is still cached, and the name the
+     * server gave it when the app added it without one.
+     */
+    suspend fun savePlaceOfMarker(markerId: String, placeId: String, name: String)
 
     /** The marker's trip, or null when it isn't cached. */
     suspend fun tripIdOfMarker(markerId: String): String?

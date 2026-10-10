@@ -5,8 +5,11 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
@@ -34,7 +37,6 @@ import com.google.maps.android.compose.Marker
 import com.google.maps.android.compose.MarkerComposable
 import com.google.maps.android.compose.TileOverlay
 import com.google.maps.android.compose.rememberCameraPositionState
-import com.google.maps.android.compose.rememberTileOverlayState
 import com.google.maps.android.compose.rememberUpdatedMarkerState
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
@@ -170,21 +172,35 @@ actual fun GoogleMapView(
                 fontScale = density.fontScale,
             ).also { it.source = placeSource }
         }
+        // Google can only drop every tile of an overlay, and its pins would blink while they are
+        // drawn again. So a redraw is a new overlay over the old one: its tiles fade in over the
+        // same pins, and the old overlay goes once they are there.
+        var overlays by remember { mutableStateOf(listOf(0)) }
+        fun redraw() {
+            overlays = listOf(overlays.last(), overlays.last() + 1)
+        }
+        LaunchedEffect(overlays) {
+            if (overlays.size > 1) {
+                delay(KEEP_REPLACED_OVERLAY_MILLIS)
+                overlays = overlays.takeLast(1)
+            }
+        }
         // New stops hide their places: the tiles are drawn again without them.
-        val tileOverlayState = rememberTileOverlayState()
         LaunchedEffect(tileProvider, placeSource) {
             if (tileProvider.source != placeSource) {
                 tileProvider.source = placeSource
-                tileOverlayState.clearTileCache()
+                redraw()
             }
-            // A square in view reloaded with new places: Google can only drop every tile, so the
-            // squares reloaded together are redrawn at once, from what the repository keeps.
+            // A square in view reloaded with new places: the squares reloaded together are drawn
+            // again at once, from what the repository keeps.
             placeSource?.changes?.filter { it in visibleSquares() }?.collectLatest {
                 delay(REDRAW_AFTER_MILLIS)
-                tileOverlayState.clearTileCache()
+                redraw()
             }
         }
-        TileOverlay(tileProvider = tileProvider, state = tileOverlayState, fadeIn = true)
+        overlays.forEachIndexed { index, overlay ->
+            key(overlay) { TileOverlay(tileProvider = tileProvider, fadeIn = true, zIndex = index.toFloat()) }
+        }
 
         // The tapped place is a real marker, bigger and on top of its pin in the tiles.
         selectedPlace?.let { place ->
@@ -237,3 +253,6 @@ actual fun GoogleMapView(
 
 /** Lets the squares of one background reload arrive before the tiles are drawn again. */
 private const val REDRAW_AFTER_MILLIS = 300L
+
+/** Long enough for the new overlay's tiles to be drawn from the kept squares and faded in. */
+private const val KEEP_REPLACED_OVERLAY_MILLIS = 1_500L

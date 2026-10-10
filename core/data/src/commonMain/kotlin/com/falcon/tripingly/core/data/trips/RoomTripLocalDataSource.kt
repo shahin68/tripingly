@@ -63,7 +63,8 @@ internal class RoomTripLocalDataSource(
 
     override suspend fun saveMarkers(markers: List<TripMarker>) = dao.upsertMarkers(markers.map { it.toEntity() })
 
-    override suspend fun savePlaceOfMarker(markerId: String, placeId: String) = dao.updateMarkerPlace(markerId, placeId)
+    override suspend fun savePlaceOfMarker(markerId: String, placeId: String, name: String) =
+        dao.updateMarkerPlace(markerId, placeId, name)
 
     override suspend fun tripIdOfMarker(markerId: String): String? = dao.marker(markerId)?.tripId
 

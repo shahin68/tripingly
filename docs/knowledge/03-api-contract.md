@@ -93,7 +93,7 @@ REST over HTTPS, JSON, base path `/v1`.
 ### Markers
 | Method | Path | Notes |
 |---|---|---|
-| POST | `/days/{id}/markers` | Either `placeId`, or `name` + `location` (+ optional `osmType`/`osmId` from a Photon result). Optional `time`. Optional `id`: a UUID the app chose so the marker shows before the server answers; `409 ID_CONFLICT` if that ID is taken (the app treats it as "already saved"). Google IDs not accepted |
+| POST | `/days/{id}/markers` | Either `placeId`, or `name` + `location` (+ optional `osmType`/`osmId` from a Photon result), or `location` alone for a tap on the map: the server names the stop (our place within 25 m, else the address, else the coordinates) and the app takes that name from the answer (backend#28). Optional `time`. Optional `id`: a UUID the app chose so the marker shows before the server answers; `409 ID_CONFLICT` if that ID is taken (the app treats it as "already saved"). Google IDs not accepted |
 | GET | `/markers/{id}` | Marker with photos, like state, comment count |
 | PATCH | `/markers/{id}` | Name, time, location, move to another day of the same trip |
 | DELETE | `/markers/{id}` | |

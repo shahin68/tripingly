@@ -47,8 +47,12 @@ class MapFlowTest {
     private val backend = FakeTripBackend()
     private val trip: TripDetails = runBlocking {
         val created = (backend.createTrip(NewTrip("Vienna weekend", LocalDate(2026, 11, 6), LocalDate(2026, 11, 7))) as AppResult.Success).data
-        listOf(GeoPoint(48.2085, 16.3721), GeoPoint(48.2066, 16.3655), GeoPoint(48.2038, 16.3696)).forEach {
-            backend.addMarker(created.trip.id, created.days[0].id, NewMarker("Stop", it))
+        listOf(
+            "Stephansdom" to GeoPoint(48.2085, 16.3721),
+            "Hofburg" to GeoPoint(48.2066, 16.3655),
+            "Hotel Sacher" to GeoPoint(48.2038, 16.3696),
+        ).forEach { (name, location) ->
+            backend.addMarker(created.trip.id, created.days[0].id, NewMarker(name, location))
         }
         created
     }
@@ -76,7 +80,9 @@ class MapFlowTest {
 
         onNodeWithText("Vienna weekend").assertExists()
         onNodeWithText("Trip Plan (3 stops)").assertExists()
-        listOf("Stop #1", "Stop #2", "Stop #3").forEach { onNodeWithText(it).assertExists() }
+        // Each chip shows the stop's number next to its name.
+        listOf("1", "2", "3").forEach { onNodeWithText(it).assertExists() }
+        listOf("Stephansdom", "Hofburg", "Hotel Sacher").forEach { onNodeWithText(it).assertExists() }
     }
 
     @Test
@@ -86,7 +92,8 @@ class MapFlowTest {
         onAllNodesWithContentDescription("Remove stop")[1].performClick()
 
         onNodeWithText("Trip Plan (2 stops)").assertExists()
-        onNodeWithText("Stop #3").assertDoesNotExist()
+        onNodeWithText("Hofburg").assertDoesNotExist()
+        onNodeWithText("3").assertDoesNotExist()
         assertEquals(2, dayOneStops())
     }
 
@@ -111,7 +118,7 @@ class MapFlowTest {
         onNodeWithText("Delete").performClick()
 
         waitUntil { dayOneStops() == 0 }
-        onNodeWithText("Stop #1").assertDoesNotExist()
+        onNodeWithText("Stephansdom").assertDoesNotExist()
     }
 
     @Test
@@ -120,7 +127,7 @@ class MapFlowTest {
         backend.seed(current.copy(trip = current.trip.copy(role = TripRole.VIEWER)))
         setContent { TripinglyTheme { MapRoute(trip.trip.id, onNavigateBack = {}, viewModel = viewModel()) } }
 
-        onNodeWithText("Stop #1").assertExists()
+        onNodeWithText("Stephansdom").assertExists()
         onNodeWithText("Clear All").assertDoesNotExist()
         onAllNodesWithContentDescription("Remove stop").assertCountEquals(0)
         assertEquals(3, dayOneStops())

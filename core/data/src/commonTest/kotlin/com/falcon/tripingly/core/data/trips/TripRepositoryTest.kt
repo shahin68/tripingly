@@ -2,6 +2,8 @@ package com.falcon.tripingly.core.data.trips
 
 import com.falcon.tripingly.core.common.error.DataError
 import com.falcon.tripingly.core.common.result.AppResult
+import com.falcon.tripingly.core.model.place.OsmRef
+import com.falcon.tripingly.core.model.place.OsmType
 import com.falcon.tripingly.core.model.account.TripVisibility
 import com.falcon.tripingly.core.model.trip.GeoPoint
 import com.falcon.tripingly.core.model.trip.NewMarker
@@ -284,6 +286,44 @@ class TripRepositoryTest {
         assertEquals(created.id, harness.requests[0].headers[IDEMPOTENCY_KEY_HEADER])
         harness.awaitQueueEmpty()
         assertEquals(1, harness.requests.size)
+    }
+
+    @Test
+    fun addMarker_tappedOnTheMap_sendsNoName_andTakesTheServersName() = runTest {
+        val harness = Harness { request ->
+            json(TripJson.marker(request.sentId(), "t1", "d0", 0, name = "Hotel Sacher"), HttpStatusCode.Created)
+        }
+        harness.local.saveTrip(details(TripJson.trip("t1")))
+
+        val created = harness.markers().addMarker("t1", "d0", NewMarker("", GeoPoint(48.8584, 2.2945)))
+
+        harness.awaitTrip { it.days[0].markers.singleOrNull()?.name == "Hotel Sacher" }
+        assertEquals(
+            """{"id":"${created.id}","location":{"lat":48.8584,"lng":2.2945}}""",
+            harness.requests[0].bodyText(),
+        )
+    }
+
+    @Test
+    fun addMarker_fromAnAddress_sendsItsOsmFeature_andKeepsItsOwnName() = runTest {
+        val harness = Harness { request ->
+            json(TripJson.marker(request.sentId(), "t1", "d0", 0, name = "Server name"), HttpStatusCode.Created)
+        }
+        harness.local.saveTrip(details(TripJson.trip("t1")))
+
+        val created = harness.markers().addMarker(
+            "t1",
+            "d0",
+            NewMarker("Kärntner Straße 38", GeoPoint(48.2052, 16.3696), osm = OsmRef(OsmType.Node, "42")),
+        )
+
+        harness.awaitQueueEmpty()
+        assertEquals(
+            """{"id":"${created.id}","name":"Kärntner Straße 38","location":{"lat":48.2052,"lng":16.3696},"osmType":"node","osmId":"42"}""",
+            harness.requests[0].bodyText(),
+        )
+        // The name the app already shows stays.
+        assertEquals("Kärntner Straße 38", harness.local.trip("t1")!!.days[0].markers.single().name)
     }
 
     @Test

@@ -5,6 +5,8 @@ import com.falcon.tripingly.core.common.result.AppResult
 import com.falcon.tripingly.core.common.result.map
 import com.falcon.tripingly.core.data.config.AppConfigRepository
 import com.falcon.tripingly.core.model.place.MapPlace
+import com.falcon.tripingly.core.model.place.OsmRef
+import com.falcon.tripingly.core.model.place.OsmType
 import com.falcon.tripingly.core.model.place.PlaceCategory
 import com.falcon.tripingly.core.model.place.PlaceCluster
 import com.falcon.tripingly.core.model.place.PlaceDetails
@@ -54,7 +56,26 @@ internal class DefaultPlaceRepository(
         val trimmed = query.trim().take(MAX_QUERY_LENGTH)
         if (trimmed.isEmpty()) return AppResult.Success(emptyList())
         return api.search(trimmed, near?.lat, near?.lng).map { response ->
-            response.items.map { PlaceSearchResult(it.name, it.address, GeoPoint(it.location.lat, it.location.lng), it.toType()) }
+            response.items.map { item ->
+                val location = GeoPoint(item.location.lat, item.location.lng)
+                PlaceSearchResult(
+                    name = item.name,
+                    address = item.address,
+                    location = location,
+                    type = item.toType(),
+                    place = item.id?.let { id ->
+                        MapPlace(
+                            id = id,
+                            name = item.name,
+                            category = item.category?.let { PlaceItemDto.Category.valueOf(it.name).toCategory() } ?: PlaceCategory.Other,
+                            location = location,
+                            isTripinly = item.isTripinly,
+                            likeCount = item.likeCount.toInt(),
+                        )
+                    },
+                    osm = item.osmId?.let { osmId -> item.osmType?.let { OsmRef(it.toOsmType(), osmId) } },
+                )
+            }
         }
     }
 
@@ -146,6 +167,12 @@ internal class DefaultPlaceRepository(
         isTripinly = isTripinly,
         likeCount = likeCount.toInt(),
     )
+
+    private fun SearchResultDto.OsmType.toOsmType() = when (this) {
+        SearchResultDto.OsmType.NODE -> OsmType.Node
+        SearchResultDto.OsmType.WAY -> OsmType.Way
+        SearchResultDto.OsmType.RELATION -> OsmType.Relation
+    }
 
     private fun SearchResultDto.toType() = when {
         source == SearchResultDto.Source.PLACE -> SearchResultType.Place
