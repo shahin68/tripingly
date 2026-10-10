@@ -16,6 +16,8 @@ import com.falcon.tripingly.core.model.place.PlaceCluster
 import com.falcon.tripingly.feature.map.domain.model.Coordinates
 import com.falcon.tripingly.feature.map.domain.model.MapMarker
 import com.google.android.gms.maps.CameraUpdateFactory
+import com.google.android.gms.maps.model.BitmapDescriptor
+import com.google.android.gms.maps.model.BitmapDescriptorFactory
 import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.LatLng
 import com.google.android.gms.maps.model.MapStyleOptions
@@ -23,11 +25,13 @@ import com.google.maps.android.compose.ComposeMapColorScheme
 import com.google.maps.android.compose.GoogleMap
 import com.google.maps.android.compose.MapProperties
 import com.google.maps.android.compose.MapUiSettings
+import com.google.maps.android.compose.Marker
 import com.google.maps.android.compose.MarkerComposable
 import com.google.maps.android.compose.rememberCameraPositionState
 import com.google.maps.android.compose.rememberUpdatedMarkerState
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asAndroidBitmap
 
 @Composable
 actual fun GoogleMapView(
@@ -51,19 +55,21 @@ actual fun GoogleMapView(
         position = CameraPosition.fromLatLngZoom(initialLatLng, zoomLevel)
     }
 
+    fun reportCamera() {
+        val position = cameraPositionState.position
+        val bounds = cameraPositionState.projection?.visibleRegion?.latLngBounds?.let {
+            GeoBounds(it.southwest.latitude, it.southwest.longitude, it.northeast.latitude, it.northeast.longitude)
+        }
+        onCameraMove(
+            Coordinates(position.target.latitude, position.target.longitude),
+            position.zoom,
+            bounds,
+        )
+    }
+
     // Sync camera position back to ViewModel when it stops moving
     LaunchedEffect(cameraPositionState.isMoving) {
-        if (!cameraPositionState.isMoving) {
-            val position = cameraPositionState.position
-            val bounds = cameraPositionState.projection?.visibleRegion?.latLngBounds?.let {
-                GeoBounds(it.southwest.latitude, it.southwest.longitude, it.northeast.latitude, it.northeast.longitude)
-            }
-            onCameraMove(
-                Coordinates(position.target.latitude, position.target.longitude),
-                position.zoom,
-                bounds,
-            )
-        }
+        if (!cameraPositionState.isMoving) reportCamera()
     }
 
     val uiSettings = remember {
@@ -111,6 +117,7 @@ actual fun GoogleMapView(
     val currentPlaceIds = remember(places) { places.mapTo(HashSet()) { it.id } }
     LaunchedEffect(places) { places.forEach { shownPlaces[it.id] = it } }
 
+
     GoogleMap(
         modifier = modifier.fillMaxSize(),
         cameraPositionState = cameraPositionState,
@@ -124,7 +131,15 @@ actual fun GoogleMapView(
         onMapLongClick = { latLng ->
             onMapLongClick(Coordinates(latitude = latLng.latitude, longitude = latLng.longitude))
         },
+        // The first camera report comes before the map can tell its bounds, so places load from here.
+        onMapLoaded = ::reportCamera,
     ) {
+        // Every place pin is one of four icons: each is drawn once, not once per place. Built here,
+        // once the map is ready to take icons.
+        val osmPlaceIcon = rememberPlaceIcon(isTripinly = false, likeCount = 0)
+        val hotSpotIcons = HOT_SPOT_LIKES.associate { likes ->
+            hotSpotSize(likes) to rememberPlaceIcon(isTripinly = true, likeCount = likes)
+        }
         // Places fade in, and fade out before they leave the map, as in Google Maps.
         shownPlaces.values.forEach { place ->
             key(place.id) {
@@ -134,10 +149,9 @@ actual fun GoogleMapView(
                     alpha.animateTo(if (isCurrent) 1f else 0f, tween(PLACE_FADE_MILLIS))
                     if (!isCurrent) shownPlaces.remove(place.id)
                 }
-                MarkerComposable(
-                    place.isTripinly,
-                    hotSpotSize(place.likeCount),
+                Marker(
                     state = rememberUpdatedMarkerState(position = LatLng(place.location.lat, place.location.lng)),
+                    icon = if (place.isTripinly) hotSpotIcons.getValue(hotSpotSize(place.likeCount)) else osmPlaceIcon,
                     title = place.name,
                     alpha = alpha.value,
                     anchor = Offset(0.5f, 0.5f),
@@ -145,9 +159,7 @@ actual fun GoogleMapView(
                         if (isCurrent) onPlaceClick(place)
                         true
                     },
-                ) {
-                    PlacePin(isTripinly = place.isTripinly, likeCount = place.likeCount)
-                }
+                )
             }
         }
         clusters.forEach { cluster ->
@@ -198,4 +210,13 @@ actual fun GoogleMapView(
     }
 }
 
+@Composable
+private fun rememberPlaceIcon(isTripinly: Boolean, likeCount: Int): BitmapDescriptor {
+    val bitmap = rememberPlacePinBitmap(isTripinly, likeCount)
+    return remember(bitmap) { BitmapDescriptorFactory.fromBitmap(bitmap.asAndroidBitmap()) }
+}
+
 private const val PLACE_FADE_MILLIS = 250
+
+// One like count per hot spot size (see hotSpotSize).
+private val HOT_SPOT_LIKES = listOf(0, 5, 20)
