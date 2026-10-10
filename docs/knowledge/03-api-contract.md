@@ -122,6 +122,7 @@ REST over HTTPS, JSON, base path `/v1`.
 | Method | Path | Notes |
 |---|---|---|
 | GET | `/places/in-view?bbox=minLng,minLat,maxLng,maxLat&zoom=&categories=&limit=` | Places for the visible map area: Tripinly places first, OSM places when zoomed in, clusters when zoomed out |
+| GET | `/places/tiles?tiles=level/x/y,…&zoom=&categories=&limit=` | The same places for up to 16 fixed map squares (side `360 / 2^level` degrees) in one request: `{ tiles: [{ tile, places[], clusters[] }], attribution }`. The app loads places this way (backend #26) |
 | GET | `/places/search?q=&lat=&lng=` | Our places + Photon addresses/cities merged |
 | GET | `/places/nearby?lat=&lng=&radiusKm=` | Popular places around the user; location not stored |
 | GET | `/places/popular?bbox=…&excludeTripId=` | Tripinly places only in the visible area, excluding places already in the trip |

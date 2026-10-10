@@ -139,16 +139,13 @@ fun MapScreen(
             zoomLevel = state.zoomLevel,
             markers = markers,
             selectedMarkerId = state.selectedMarker?.id,
-            places = state.places,
-            selectedPlaceId = state.selectedPlace?.id,
-            clusters = state.clusters,
+            placeSource = state.placeSource,
+            selectedPlace = state.selectedPlace,
             isMyLocationEnabled = state.isPermissionGranted,
             onCameraMove = { coords, zoom, bounds -> onAction(Action.OnCameraMove(coords, zoom, bounds)) },
             onMapClick = { coords -> onAction(Action.OnMapClick(coords)) },
             onMapLongClick = { coords -> onAction(Action.OnMapLongClick(coords)) },
             onMarkerClick = { marker -> onAction(Action.OnMarkerClick(marker)) },
-            onPlaceClick = { place -> onAction(Action.OnPlaceClick(place)) },
-            onClusterClick = { cluster -> onAction(Action.OnClusterClick(cluster)) },
         )
 
         Column(

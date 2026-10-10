@@ -17,6 +17,7 @@ import com.falcon.tripingly.core.model.place.MapPlace
 import com.falcon.tripingly.core.model.place.PlaceCluster
 import com.falcon.tripingly.core.model.place.PlaceDetails
 import com.falcon.tripingly.core.model.place.PlaceSearchResult
+import com.falcon.tripingly.core.model.place.PlaceSquare
 import com.falcon.tripingly.core.model.place.SearchResultType
 import com.falcon.tripingly.core.model.trip.GeoPoint
 import com.falcon.tripingly.core.model.trip.NewMarker
@@ -29,6 +30,7 @@ import com.falcon.tripingly.feature.map.domain.model.CameraFrame
 import com.falcon.tripingly.feature.map.domain.model.Coordinates
 import com.falcon.tripingly.feature.map.domain.model.MapMarker
 import com.falcon.tripingly.feature.map.domain.usecase.GetCurrentLocationUseCase
+import com.falcon.tripingly.feature.map.presentation.component.MapPlaceSource
 import com.falcon.tripingly.feature.map.presentation.permission.LocationPermission
 import com.falcon.tripingly.feature.map.generated.resources.Res
 import com.falcon.tripingly.feature.map.generated.resources.error_location_denied_manual
@@ -57,15 +59,19 @@ import kotlinx.coroutines.launch
 import kotlinx.datetime.LocalDate
 import org.jetbrains.compose.resources.getString
 import kotlin.coroutines.cancellation.CancellationException
+import kotlin.math.PI
+import kotlin.math.cos
 import kotlin.math.floor
+import kotlin.math.pow
+import kotlin.math.sqrt
 
 /**
  * One trip on the map. Days and markers come from the cached trip, reloaded from
  * the server on open; owners and editors add and remove stops and days. Stop
  * changes show at once and are saved in the background; one that fails is
  * undone and explained, with Retry when the connection was the problem. Day
- * changes wait for the server. Places in view load when the camera rests; a place
- * opens a sheet that adds it to the open day.
+ * changes wait for the server. Place pins load by map square (see [MapPlaceSource]);
+ * a tapped place opens a card that adds it to the open day.
  */
 class MapViewModel(
     private val tripId: String,
@@ -84,7 +90,7 @@ class MapViewModel(
     val uiState: StateFlow<State> = combine(trip, ui, ::toState)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), toState(null, ui.value))
 
-    private var placesJob: Job? = null
+    private var prefetchJob: Job? = null
     private var placeDetailsJob: Job? = null
     private var searchJob: Job? = null
 
@@ -104,7 +110,7 @@ class MapViewModel(
             is Action.OnDismissLocationPrompt -> ui.update { it.copy(locationPrompt = null, isWaitingForFirstLocation = false) }
             is Action.CenterOnUserLocation -> centerOnUserLocation()
             is Action.NavigateToLocation -> navigateTo(action.coordinates, action.zoom)
-            is Action.OnMapClick -> addMarker(action.coordinates)
+            is Action.OnMapClick -> onMapClick(action.coordinates)
             is Action.OnMapLongClick -> if (canEdit() && activeDay() != null) ui.update { it.copy(pinToName = action.coordinates) }
             is Action.OnConfirmPinName -> addNamedPin(action.name)
             is Action.OnDismissPinName -> ui.update { it.copy(pinToName = null) }
@@ -118,11 +124,6 @@ class MapViewModel(
             is Action.DismissError -> ui.update { it.copy(message = null, failedChanges = emptyList()) }
             is Action.RetryFailedChanges -> retryFailedChanges()
             is Action.OnCameraMove -> onCameraMove(action.coordinates, action.zoom, action.bounds)
-            is Action.OnPlaceClick -> openPlace(action.place)
-            is Action.OnClusterClick -> navigateTo(
-                Coordinates(action.cluster.location.lat, action.cluster.location.lng),
-                ui.value.zoomLevel + CLUSTER_ZOOM_STEP,
-            )
             is Action.OnDismissPlace -> closePlace()
             is Action.OnAddPlaceToDay -> addPlace()
             is Action.OnOpenSearch -> ui.update { it.copy(isSearchOpen = true, selectedMarkerId = null) }
@@ -138,8 +139,6 @@ class MapViewModel(
         val days = details?.days.orEmpty()
         val activeIndex = ui.activeDayIndex.coerceIn(0, (days.size - 1).coerceAtLeast(0))
         val markers = days.getOrNull(activeIndex)?.markers.orEmpty().mapIndexed { index, it -> it.toMapMarker(index + 1) }
-        // A place that is already a stop shows as the stop only.
-        val stopPlaceIds = days.flatMap { day -> day.markers.map { it.placeId } }.toSet()
         return State(
             tripName = details?.trip?.name.orEmpty(),
             days = days.map { DayTab(it.id, it.position + 1, it.date) }.toImmutableList(),
@@ -155,8 +154,7 @@ class MapViewModel(
             isPermissionGranted = ui.permission == LocationPermission.Granted,
             isLoadingLocation = ui.isLoadingLocation,
             selectedMarker = markers.firstOrNull { it.id == ui.selectedMarkerId },
-            places = ui.places.filter { it.id !in stopPlaceIds }.toImmutableList(),
-            clusters = ui.clusters.toImmutableList(),
+            placeSource = MapPlaceSource(placeRepository, stopPlaceIds(details)),
             selectedPlace = ui.selectedPlace,
             selectedPlaceDetails = ui.selectedPlaceDetails?.takeIf { it.id == ui.selectedPlace?.id },
             isSearchOpen = ui.isSearchOpen,
@@ -254,33 +252,62 @@ class MapViewModel(
         }
     }
 
+    /**
+     * The map loads the squares it shows by itself. Once the camera has rested, the ring of squares around
+     * the view loads too (the ones not loaded yet, in one request), so a pan finds its places ready.
+     */
     private fun onCameraMove(coordinates: Coordinates, zoom: Float, bounds: GeoBounds?) {
         ui.update { it.copy(cameraTarget = coordinates, zoomLevel = zoom) }
-        if (bounds != null) loadPlaces(bounds, zoom)
+        if (bounds == null) return
+        prefetchJob?.cancel()
+        prefetchJob = viewModelScope.launch {
+            delay(PREFETCH_DELAY_MILLIS)
+            placeRepository.placesIn(PlaceSquare.covering(bounds, floor(zoom).toInt(), ring = 1))
+        }
     }
 
     /**
-     * Waits until the camera has rested a moment, so a pan or a fling asks once. The pins on the map
-     * stay until the new ones arrive, and stay as they are when the request fails. Pins still in view
-     * stay on the map when the new answer leaves them out, unless the map zoomed out, where they'd crowd it.
+     * Place pins are drawn into the map's tiles, so a tap is matched here against the places the map drew:
+     * the nearest pin or cluster within a finger's reach opens (a cluster zooms in), else the tap adds a stop.
      */
-    private fun loadPlaces(bounds: GeoBounds, zoom: Float) {
-        placesJob?.cancel()
-        placesJob = viewModelScope.launch {
-            delay(PLACES_DEBOUNCE_MILLIS)
-            val zoomLevel = floor(zoom).toInt()
-            placeRepository.placesInView(bounds, zoom).onSuccess { inView ->
-                ui.update { state ->
-                    val ids = inView.places.mapTo(HashSet()) { it.id }
-                    val kept = if (zoomLevel >= state.placesZoomLevel) {
-                        state.places.filter { it.id !in ids && it.location in bounds }
-                    } else {
-                        emptyList()
-                    }
-                    state.copy(places = inView.places + kept, placesZoomLevel = zoomLevel, clusters = inView.clusters)
-                }
+    private fun onMapClick(coordinates: Coordinates) {
+        viewModelScope.launch {
+            val zoom = ui.value.zoomLevel
+            when (val target = pinAt(GeoPoint(coordinates.latitude, coordinates.longitude), zoom)) {
+                is PinTarget.Place -> openPlace(target.place)
+                is PinTarget.Cluster -> navigateTo(
+                    Coordinates(target.cluster.location.lat, target.cluster.location.lng),
+                    zoom + CLUSTER_ZOOM_STEP,
+                )
+                null -> addMarker(coordinates)
             }
         }
+    }
+
+    private suspend fun pinAt(point: GeoPoint, zoom: Float): PinTarget? {
+        // Screen points per degree of longitude; a degree of latitude spans 1 / cos(latitude) times more.
+        val pointsPerDegree = 256 * 2.0.pow(zoom.toDouble()) / 360
+        val reach = TAP_REACH_POINTS / pointsPerDegree
+        val near = GeoBounds(point.lat - reach, point.lng - reach, point.lat + reach, point.lng + reach)
+        val drawn = placeRepository.loadedPlacesIn(PlaceSquare.covering(near, floor(zoom).toInt())).values
+        val stopPlaceIds = stopPlaceIds(trip.value)
+        fun distance(location: GeoPoint): Double {
+            val dx = (location.lng - point.lng) * pointsPerDegree
+            val dy = (location.lat - point.lat) * pointsPerDegree / cos(point.lat * PI / 180)
+            return sqrt(dx * dx + dy * dy)
+        }
+        val places = drawn.flatMap { it.places }.filter { it.id !in stopPlaceIds }.map { PinTarget.Place(it) to distance(it.location) }
+        val clusters = drawn.flatMap { it.clusters }.map { PinTarget.Cluster(it) to distance(it.location) }
+        return (places + clusters).filter { (_, distance) -> distance <= TAP_REACH_POINTS }.minByOrNull { (_, distance) -> distance }?.first
+    }
+
+    /** A place that is already a stop shows as the stop only. */
+    private fun stopPlaceIds(details: TripDetails?): Set<String> =
+        details?.days.orEmpty().flatMapTo(HashSet()) { day -> day.markers.map { it.placeId } }
+
+    private sealed interface PinTarget {
+        data class Place(val place: MapPlace) : PinTarget
+        data class Cluster(val cluster: PlaceCluster) : PinTarget
     }
 
     /** Centers the place and shows its card at once with what the pin knows, then adds the place's details. */
@@ -556,10 +583,6 @@ class MapViewModel(
         val hasCenteredOnTrip: Boolean = false,
         val frame: CameraFrame? = null,
         val confirm: Confirm? = null,
-        val places: List<MapPlace> = emptyList(),
-        /** The zoom level [places] were last loaded at. */
-        val placesZoomLevel: Int = 0,
-        val clusters: List<PlaceCluster> = emptyList(),
         val selectedPlace: MapPlace? = null,
         val selectedPlaceDetails: PlaceDetails? = null,
         val isSearchOpen: Boolean = false,
@@ -606,11 +629,9 @@ class MapViewModel(
         val isWaitingForFirstLocation: Boolean = false,
         val confirm: Confirm? = null,
         val locationPrompt: LocationPrompt? = null,
-        /** Places in view, without those already stops of this trip. */
-        val places: ImmutableList<MapPlace> = persistentListOf(),
-        /** Bubbles of Tripinly places while zoomed out. */
-        val clusters: ImmutableList<PlaceCluster> = persistentListOf(),
-        /** The place whose sheet is open. */
+        /** Where the map gets its place pins; null in previews. */
+        val placeSource: MapPlaceSource? = null,
+        /** The place whose card is open. */
         val selectedPlace: MapPlace? = null,
         /** Opening hours and website, once loaded. */
         val selectedPlaceDetails: PlaceDetails? = null,
@@ -652,8 +673,6 @@ class MapViewModel(
         data object DismissError : Action
         data object RetryFailedChanges : Action
         data class OnCameraMove(val coordinates: Coordinates, val zoom: Float, val bounds: GeoBounds? = null) : Action
-        data class OnPlaceClick(val place: MapPlace) : Action
-        data class OnClusterClick(val cluster: PlaceCluster) : Action
         data object OnDismissPlace : Action
         data object OnAddPlaceToDay : Action
         data object OnOpenSearch : Action
@@ -668,7 +687,9 @@ class MapViewModel(
         /** A city fills the screen. */
         const val DESTINATION_ZOOM = 12f
         /** Same wait as for search: the camera has rested. */
-        const val PLACES_DEBOUNCE_MILLIS = 300L
+        const val PREFETCH_DELAY_MILLIS = 300L
+        /** Half of a 48-point touch target around the tap. */
+        const val TAP_REACH_POINTS = 24.0
         /** Typing has paused; see the search rule in 07-architecture. */
         const val SEARCH_DEBOUNCE_MILLIS = 300L
         /** A tapped cluster opens up into its places. */

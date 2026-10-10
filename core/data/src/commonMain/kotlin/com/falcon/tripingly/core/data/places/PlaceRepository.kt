@@ -2,9 +2,9 @@ package com.falcon.tripingly.core.data.places
 
 import com.falcon.tripingly.core.common.error.DataError
 import com.falcon.tripingly.core.common.result.AppResult
-import com.falcon.tripingly.core.model.place.GeoBounds
 import com.falcon.tripingly.core.model.place.PlaceDetails
 import com.falcon.tripingly.core.model.place.PlaceSearchResult
+import com.falcon.tripingly.core.model.place.PlaceSquare
 import com.falcon.tripingly.core.model.place.PlacesInView
 import com.falcon.tripingly.core.model.trip.GeoPoint
 
@@ -17,10 +17,15 @@ interface PlaceRepository {
     suspend fun search(query: String, near: GeoPoint? = null): AppResult<List<PlaceSearchResult>, DataError.Network>
 
     /**
-     * The places to draw for the visible map. The server answers for a slightly larger area, so a small
-     * pan or zoom inside that area is answered again without asking it.
+     * The places of map [squares]. Squares asked for at about the same time, by any caller, go to the server
+     * together (up to 16 a request), and answers are kept a while and shared, so a square is asked for once.
+     * A caller that stops waiting doesn't stop the request: its answer is kept for the next one. Fails when
+     * any of the squares can't be loaded.
      */
-    suspend fun placesInView(bounds: GeoBounds, zoom: Float): AppResult<PlacesInView, DataError.Network>
+    suspend fun placesIn(squares: Collection<PlaceSquare>): AppResult<Map<PlaceSquare, PlacesInView>, DataError.Network>
+
+    /** The [squares] already loaded, without asking the server. */
+    suspend fun loadedPlacesIn(squares: Collection<PlaceSquare>): Map<PlaceSquare, PlacesInView>
 
     suspend fun place(id: String): AppResult<PlaceDetails, DataError.Network>
 }

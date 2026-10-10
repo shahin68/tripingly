@@ -12,6 +12,8 @@ import com.falcon.tripingly.core.data.trips.FakeTripBackend
 import com.falcon.tripingly.core.model.place.GeoBounds
 import com.falcon.tripingly.core.model.place.MapPlace
 import com.falcon.tripingly.core.model.place.PlaceCategory
+import com.falcon.tripingly.core.model.place.PlaceCluster
+import com.falcon.tripingly.core.model.place.PlaceSquare
 import com.falcon.tripingly.core.model.place.PlacesInView
 import com.falcon.tripingly.core.model.trip.Destination
 import com.falcon.tripingly.core.model.trip.GeoPoint
@@ -54,6 +56,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertIs
+import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
@@ -67,19 +70,24 @@ class MapViewModelTest {
     private lateinit var trip: TripDetails
     private lateinit var places: CountingPlaceRepository
 
-    /** The fake's sights (Eiffel Tower, Louvre …), counting the in-view requests. */
+    /** The fake's sights (Eiffel Tower, Louvre …), counting the squares asked for. */
     private class CountingPlaceRepository(
         private val fake: FakePlaceRepository = FakePlaceRepository(),
     ) : PlaceRepository by fake {
-        val inViewRequests = mutableListOf<GeoBounds>()
-        /** Answers given instead of the fake's, in order. */
-        val answers = ArrayDeque<List<MapPlace>>()
+        val requests = mutableListOf<List<PlaceSquare>>()
+        /** A cluster drawn besides the sights. */
+        var cluster: PlaceCluster? = null
 
-        override suspend fun placesInView(bounds: GeoBounds, zoom: Float): AppResult<PlacesInView, DataError.Network> {
-            inViewRequests += bounds
-            val answer = answers.removeFirstOrNull() ?: return fake.placesInView(bounds, zoom)
-            return PlacesInView(answer, emptyList()).asSuccess()
+        override suspend fun placesIn(squares: Collection<PlaceSquare>): AppResult<Map<PlaceSquare, PlacesInView>, DataError.Network> {
+            requests += squares.toList()
+            return fake.placesIn(squares)
         }
+
+        override suspend fun loadedPlacesIn(squares: Collection<PlaceSquare>): Map<PlaceSquare, PlacesInView> =
+            fake.loadedPlacesIn(squares).mapValues { (square, places) ->
+                val cluster = cluster?.takeIf { it.location in square.bounds } ?: return@mapValues places
+                places.copy(clusters = listOf(cluster))
+            }
     }
 
     private class TestCoroutineDispatchers(private val dispatcher: CoroutineDispatcher) : CoroutineDispatchers {
@@ -553,59 +561,38 @@ class MapViewModelTest {
     }
 
     @Test
-    fun `places load once the camera has rested`() = runTest(testDispatcher) {
+    fun `the squares around the view load once the camera has rested`() = runTest(testDispatcher) {
         val viewModel = viewModel()
         testScheduler.advanceUntilIdle()
 
         // A fling reports several positions in a row; only the last one asks.
         viewModel.onAction(Action.OnCameraMove(Coordinates(48.0, 2.0), 15f, GeoBounds(47.9, 1.9, 48.1, 2.1)))
         testScheduler.advanceTimeBy(100)
-        viewModel.onAction(Action.OnCameraMove(Coordinates(48.86, 2.32), 15f, PARIS_CENTER))
+        viewModel.onAction(Action.OnCameraMove(Coordinates(48.86, 2.32), 15.6f, PARIS_CENTER))
         testScheduler.advanceTimeBy(299)
-        assertTrue(places.inViewRequests.isEmpty())
+        assertTrue(places.requests.isEmpty())
 
         testScheduler.advanceUntilIdle()
-        assertEquals(listOf(PARIS_CENTER), places.inViewRequests)
-        assertEquals(setOf("Eiffel Tower", "Louvre"), viewModel.uiState.value.places.map { it.name }.toSet())
+        assertEquals(listOf(PlaceSquare.covering(PARIS_CENTER, 15, ring = 1)), places.requests)
     }
 
     @Test
-    fun `places still in view stay when the next answer leaves them out, unless zoomed out`() = runTest(testDispatcher) {
-        fun place(name: String, lat: Double, lng: Double) =
-            MapPlace(name, name, PlaceCategory.Cafe, GeoPoint(lat, lng), isTripinly = false, likeCount = 0)
-        val viewModel = viewModel()
-        testScheduler.advanceUntilIdle()
-        places.answers += listOf(place("West", 48.20, 16.30), place("East", 48.20, 16.40))
-        places.answers += listOf(place("New", 48.21, 16.33))
-        places.answers += listOf(place("Far", 48.20, 16.35))
-
-        viewModel.onAction(Action.OnCameraMove(Coordinates(48.2, 16.35), 15f, GeoBounds(48.1, 16.25, 48.3, 16.45)))
-        testScheduler.advanceUntilIdle()
-        // Panned west: East left the view, West is still in it.
-        viewModel.onAction(Action.OnCameraMove(Coordinates(48.2, 16.3), 15f, GeoBounds(48.1, 16.2, 48.3, 16.38)))
-        testScheduler.advanceUntilIdle()
-        assertEquals(listOf("New", "West"), viewModel.uiState.value.places.map { it.name })
-
-        viewModel.onAction(Action.OnCameraMove(Coordinates(48.2, 16.3), 12f, GeoBounds(47.9, 15.9, 48.5, 16.7)))
-        testScheduler.advanceUntilIdle()
-        assertEquals(listOf("Far"), viewModel.uiState.value.places.map { it.name })
-    }
-
-    @Test
-    fun `adding a place makes it a stop named after it`() = runTest(testDispatcher) {
+    fun `a tap on a pin opens its place, and adding it makes a stop named after it`() = runTest(testDispatcher) {
         val viewModel = viewModel()
         testScheduler.advanceUntilIdle()
         viewModel.onAction(Action.OnCameraMove(Coordinates(48.86, 2.32), 15f, PARIS_CENTER))
         testScheduler.advanceUntilIdle()
-        val louvre = viewModel.uiState.value.places.first { it.name == "Louvre" }
 
-        viewModel.onAction(Action.OnPlaceClick(louvre))
+        // A few points beside the Louvre's pin (about 0.00005° is one point at zoom 15).
+        viewModel.onAction(Action.OnMapClick(Coordinates(LOUVRE.lat + 0.0003, LOUVRE.lng - 0.0003)))
         testScheduler.advanceUntilIdle()
-        assertEquals(louvre, viewModel.uiState.value.selectedPlace)
+        val louvre = assertNotNull(viewModel.uiState.value.selectedPlace)
+        assertEquals("Louvre", louvre.name)
         // The camera centers the place, at the same zoom.
-        assertEquals(Coordinates(louvre.location.lat, louvre.location.lng), viewModel.uiState.value.cameraTarget)
+        assertEquals(Coordinates(LOUVRE.lat, LOUVRE.lng), viewModel.uiState.value.cameraTarget)
         assertEquals(15f, viewModel.uiState.value.zoomLevel)
         assertEquals("Mo-Su 09:00-18:00", viewModel.uiState.value.selectedPlaceDetails?.openingHours)
+        assertTrue((backend.refreshTrip(trip.trip.id) as AppResult.Success).data.days[0].markers.isEmpty())
 
         viewModel.onAction(Action.OnAddPlaceToDay)
         testScheduler.advanceUntilIdle()
@@ -615,8 +602,43 @@ class MapViewModelTest {
         val stop = (backend.refreshTrip(trip.trip.id) as AppResult.Success).data.days[0].markers.single()
         assertEquals("Louvre", stop.name)
         assertEquals(louvre.id, stop.placeId)
-        // It shows as the stop only.
-        assertEquals(listOf("Eiffel Tower"), state.places.map { it.name })
+        // It shows as the stop only: its pin leaves the map, and a tap there is a tap on the map.
+        assertEquals(setOf(louvre.id), state.placeSource?.hiddenPlaceIds)
+        viewModel.onAction(Action.OnMapClick(Coordinates(LOUVRE.lat, LOUVRE.lng)))
+        testScheduler.advanceUntilIdle()
+        assertNull(viewModel.uiState.value.selectedPlace)
+        assertEquals(2, (backend.refreshTrip(trip.trip.id) as AppResult.Success).data.days[0].markers.size)
+    }
+
+    @Test
+    fun `a tap out of a pin's reach adds a stop`() = runTest(testDispatcher) {
+        val viewModel = viewModel()
+        testScheduler.advanceUntilIdle()
+        viewModel.onAction(Action.OnCameraMove(Coordinates(48.86, 2.32), 15f, PARIS_CENTER))
+        testScheduler.advanceUntilIdle()
+
+        // About 50 points east of the Louvre.
+        viewModel.onAction(Action.OnMapClick(Coordinates(LOUVRE.lat, LOUVRE.lng + 0.0021)))
+        testScheduler.advanceUntilIdle()
+
+        assertNull(viewModel.uiState.value.selectedPlace)
+        assertEquals(1, (backend.refreshTrip(trip.trip.id) as AppResult.Success).data.days[0].markers.size)
+    }
+
+    @Test
+    fun `a tap on a cluster zooms in on it`() = runTest(testDispatcher) {
+        places.cluster = PlaceCluster(12, GeoPoint(48.80, 2.20))
+        val viewModel = viewModel()
+        testScheduler.advanceUntilIdle()
+        viewModel.onAction(Action.OnCameraMove(Coordinates(48.8, 2.2), 11f, GeoBounds(48.6, 2.0, 49.0, 2.4)))
+        testScheduler.advanceUntilIdle()
+
+        viewModel.onAction(Action.OnMapClick(Coordinates(48.801, 2.201)))
+        testScheduler.advanceUntilIdle()
+
+        assertEquals(Coordinates(48.80, 2.20), viewModel.uiState.value.cameraTarget)
+        assertEquals(13f, viewModel.uiState.value.zoomLevel)
+        assertTrue((backend.refreshTrip(trip.trip.id) as AppResult.Success).data.days[0].markers.isEmpty())
     }
 
     @Test
@@ -627,7 +649,8 @@ class MapViewModelTest {
         viewModel.onAction(Action.OnCameraMove(Coordinates(48.86, 2.32), 15f, PARIS_CENTER))
         testScheduler.advanceUntilIdle()
 
-        viewModel.onAction(Action.OnPlaceClick(viewModel.uiState.value.places.first()))
+        viewModel.onAction(Action.OnMapClick(Coordinates(LOUVRE.lat, LOUVRE.lng)))
+        testScheduler.advanceUntilIdle()
         viewModel.onAction(Action.OnAddPlaceToDay)
         testScheduler.advanceUntilIdle()
 
@@ -677,5 +700,7 @@ class MapViewModelTest {
 
     private companion object {
         val PARIS_CENTER = GeoBounds(48.84, 2.28, 48.87, 2.35)
+        /** Where the fake's Louvre is. */
+        val LOUVRE = GeoPoint(48.8606, 2.3376)
     }
 }

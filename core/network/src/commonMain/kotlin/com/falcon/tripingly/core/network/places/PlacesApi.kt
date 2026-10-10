@@ -2,9 +2,9 @@ package com.falcon.tripingly.core.network.places
 
 import com.falcon.tripingly.core.common.error.DataError
 import com.falcon.tripingly.core.common.result.AppResult
-import com.falcon.tripingly.core.network.model.InViewResponseDto
 import com.falcon.tripingly.core.network.model.PlaceDetailDto
 import com.falcon.tripingly.core.network.model.SearchResponseDto
+import com.falcon.tripingly.core.network.model.TilesResponseDto
 import de.jensklingenberg.ktorfit.http.GET
 import de.jensklingenberg.ktorfit.http.Path
 import de.jensklingenberg.ktorfit.http.Query
@@ -23,14 +23,17 @@ interface PlacesApi {
     ): AppResult<SearchResponseDto, DataError.Network>
 
     /**
-     * Places to draw for the visible map area. [bbox] is `minLng,minLat,maxLng,maxLat`. Below zoom 14 only
-     * Tripinly places (clustered when there are many); from 14 OpenStreetMap places too.
+     * Places to draw for up to 16 map squares at once, each answered on its own. [tiles] is a comma-separated
+     * list of `level/x/y` squares (side `360 / 2^level` degrees); [limit] (10–200) caps each square. Below
+     * zoom 14 only Tripinly places (clustered when there are many) and notable OpenStreetMap places; from 14
+     * OpenStreetMap places too.
      */
-    @GET("places/in-view")
-    suspend fun inView(
-        @Query("bbox") bbox: String,
-        @Query("zoom") zoom: Double,
-    ): AppResult<InViewResponseDto, DataError.Network>
+    @GET("places/tiles")
+    suspend fun tiles(
+        @Query("tiles") tiles: String,
+        @Query("zoom") zoom: Int,
+        @Query("limit") limit: Int,
+    ): AppResult<TilesResponseDto, DataError.Network>
 
     /** One place, with its OpenStreetMap details. */
     @GET("places/{id}")

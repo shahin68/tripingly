@@ -5,7 +5,7 @@
 | Part | What the client uses |
 |---|---|
 | Drawing the map | **Google Maps SDK**: Android via the existing integration (maps-compose if already used), iOS via Google Maps SDK for iOS wrapped in `UIKitView` behind a shared interface |
-| Places on the map | Tripinly backend `GET /places/in-view` (our places + OpenStreetMap POIs) |
+| Places on the map | Tripinly backend `GET /places/tiles` (our places + OpenStreetMap POIs, by map square) |
 | Search box | Backend `GET /places/search` |
 | Routes and travel times | Backend `GET /days/{id}/route`, `GET /routes` |
 | Best route | Backend `POST /days/{id}/optimize` |
@@ -67,16 +67,21 @@ Shahin wants every stop to show its place name, not only "Stop #N" (asked 2026-1
 
 ## Loading places while browsing
 
-1. On **camera idle**, wait 300 ms (debounce), cancel the previous request, then call `GET /places/in-view?bbox=…&zoom=…&categories=…`. The bbox is sent as plain decimals (the server rejects exponents). *(Built: `MapViewModel.loadPlaces`.)*
-2. The repository keeps the last answer with the area the server answered for (it widens the box to quarter tiles at the zoom level), so a small pan or zoom inside it asks nothing for 60 s (the server's cache time). No longer cache (decided 2026-10-09).
-3. Zoomed out (< 14): Tripinly places and server clusters, plus OSM places with a Wikidata entry from zoom 10 while hot spots are few. Zoomed in (≥ 14): OSM dots too. The server's picks are fixed on the map, so panning keeps the same dots (backend #25).
-   - Pins still in view stay when the next answer leaves them out, unless the map zoomed out (`MapViewModel.loadPlaces`). On Android, new pins fade in and leaving ones fade out (250 ms) with one shared fade per answer, however many pins it brings. iOS doesn't fade yet; that waits for the iOS map decision.
-   - Pins are Google Maps markers (decided 2026-10-10) showing our own category icon (Material icons for now, Shahin's designs later): café, restaurant, bar, attraction, museum, historic, park, nature, landmark. Pins that look the same share one bitmap, drawn the first time it's needed (`drawPlacePin`), so a new pin costs no drawing.
+Decided 2026-10-10 (Shahin, "Tiles + prefetch"): places load and draw like Google Maps' own, without a request after the map stops or a hitch when pins appear.
+
+1. Places load by **map square**, not by view: square `level/x/y` is `360 / 2^level` degrees a side on a grid fixed on the map (`PlaceSquare`), at `level = zoom − 2` (about four map tiles a side). `GET /places/tiles?tiles=…&zoom=&limit=200` answers up to 16 squares at once, each like in-view for its area. *(Built: `PlaceRepository.placesIn`.)*
+2. The repository gathers the squares asked for within 30 ms (the map asks for a screen's tiles together) into one request per 16, keeps answers for 5 minutes (at most 200 squares) and shares a square that is still loading. A caller that stops waiting doesn't cancel the request; a failed square isn't kept. No other caching (decided 2026-10-09).
+3. Once the camera has rested 300 ms, the ring of squares around the view loads too (only the ones not loaded yet), so a pan finds its places ready (`MapViewModel.onCameraMove`).
+4. Zoomed out (< 14): Tripinly places and server clusters, plus OSM places with a Wikidata entry from zoom 10 while hot spots are few. Zoomed in (≥ 14): OSM pins too. The server's picks are fixed on the map, so panning keeps the same pins (backend #25).
+   - **Android:** pins are painted into map tiles (`PlaceTileProvider`, a Google Maps `TileOverlay`) on the map's own background threads. Each tile draws the squares under it at the tile's zoom, plus pins reaching in from the next squares, and the map keeps the tiles and fades them in. However many pins there are, none costs the main thread a frame. Stops hide their place's pin: when the stops' places change, the tiles are drawn again.
+   - A tap is matched in `MapViewModel` against the places of the loaded squares at the camera's zoom (`floor(zoom)`): the nearest pin or cluster within 24 points opens; else the tap adds a stop as before. The tapped place is a real marker (44 dp) on top of its tile pin.
+   - **iOS** (MapKit, until the iOS map decision): annotations for the squares in view, loaded 300 ms after the region rests.
+   - Pins show our own category icon (Material icons for now, Shahin's designs later): café, restaurant, bar, attraction, museum, historic, park, nature, landmark. Every pin look is drawn once (`drawPlacePin`); tiles copy them.
    - Hot spots (liked on public trips) use the Tripinly color and grow with their likes: 24 dp, 30 dp from 5 likes, 36 dp from 20 (`hotSpotSize`). OSM pins are 22 dp, the tapped place 44 dp.
    - Planned as its own stage after stage 5 (Shahin, 2026-10-10): an importance score so famous places show when zoomed out, one marker per city when zoomed far out, illustrated markers.
-4. Category filter chips (cafés, restaurants, attractions, museums, parks…) change the `categories` parameter.
-5. Tapping a place → its pin grows, the camera glides to center it at the same zoom, and a card (`PlaceCard`) floats just above it, with nothing dimmed. A touch anywhere outside the card only closes it; it doesn't reach the map. The card shows name, category and likes from the pin at once, opening hours and website from `GET /places/{id}`, "Add to day N" for owners and editors. Adding goes through the optimistic marker queue as `POST /days/{id}/markers` with `placeId` (instant, like a tap), not `POST /places/{id}/add-to-trip`. Photos come with stage 6. Tapping a cluster zooms in two levels on it.
-6. Handle `BBOX_TOO_LARGE` by showing nothing new (the user zoomed out too far).
+5. Category filter chips (cafés, restaurants, attractions, museums, parks…) change the `categories` parameter.
+6. Tapping a place → its pin grows, the camera glides to center it at the same zoom, and a card (`PlaceCard`) floats just above it, with nothing dimmed. A touch anywhere outside the card only closes it; it doesn't reach the map. The card shows name, category and likes from the pin at once, opening hours and website from `GET /places/{id}`, "Add to day N" for owners and editors. Adding goes through the optimistic marker queue as `POST /days/{id}/markers` with `placeId` (instant, like a tap), not `POST /places/{id}/add-to-trip`. Photos come with stage 6. Tapping a cluster zooms in two levels on it.
+7. A square that fails to load is asked for again later (the map retries a tile it got no answer for).
 
 ## Search
 
