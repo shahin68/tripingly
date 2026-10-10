@@ -71,6 +71,8 @@ import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.geometry.Offset
+import kotlin.math.roundToInt
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.toImmutableList
 import com.falcon.tripingly.core.designsystem.component.AppDropdownMenu
@@ -114,6 +116,8 @@ fun MapScreen(
     var headerBottom by remember { mutableStateOf(0f) }
     var tabsTop by remember { mutableStateOf(0f) }
     var bottomCardsTop by remember { mutableStateOf(0f) }
+    // Where the tapped place's pin is on the map, with the place it belongs to.
+    var placePin by remember { mutableStateOf<Pair<String, Offset>?>(null) }
     val isLaidOut = mapSize != IntSize.Zero
     LaunchedEffect(state.frame, isLaidOut) {
         val frame = state.frame ?: return@LaunchedEffect
@@ -150,6 +154,7 @@ fun MapScreen(
             onMapClick = { coords -> onAction(Action.OnMapClick(coords)) },
             onMapLongClick = { coords -> onAction(Action.OnMapLongClick(coords)) },
             onMarkerClick = { marker -> onAction(Action.OnMarkerClick(marker)) },
+            onSelectedPlaceMoved = { offset -> state.selectedPlace?.let { placePin = it.id to offset } },
         )
 
         Column(
@@ -237,7 +242,7 @@ fun MapScreen(
         }
 
         state.selectedPlace?.let { place ->
-            // The camera centers the tapped pin, so the card floats just above the middle of the map.
+            // The card opens right above the tapped pin and follows it while the camera centers it.
             // A touch anywhere else only closes the card: it doesn't reach the map or the cards.
             Box(
                 modifier = Modifier
@@ -250,21 +255,26 @@ fun MapScreen(
                     },
             )
             val pinClearance = placePinSize(place, isSelected = true) / 2 + MaterialTheme.spacing.small
+            val edgeMargin = MaterialTheme.spacing.large
             PlaceCard(
                 place = place,
                 details = state.selectedPlaceDetails,
                 address = state.selectedPlaceAddress,
                 dayNumber = state.days.getOrNull(state.activeDayIndex)?.number?.takeIf { state.canEdit },
                 onAdd = { onAction(Action.OnAddPlaceToDay) },
-                modifier = Modifier
-                    .align(Alignment.Center)
-                    .padding(horizontal = MaterialTheme.spacing.large)
-                    .layout { measurable, constraints ->
-                        val card = measurable.measure(constraints)
-                        layout(card.width, card.height) {
-                            card.place(0, -card.height / 2 - pinClearance.roundToPx())
-                        }
-                    },
+                modifier = Modifier.layout { measurable, constraints ->
+                    val maxWidth = (constraints.maxWidth - 2 * edgeMargin.roundToPx()).coerceAtLeast(0)
+                    val card = measurable.measure(constraints.copy(minWidth = 0, minHeight = 0, maxWidth = maxWidth))
+                    layout(constraints.maxWidth, constraints.maxHeight) {
+                        // Read while placing, so following the pin only moves the card. Until the map
+                        // reports the pin (Apple's map never does), the card sits above the middle.
+                        val pin = placePin?.takeIf { it.first == place.id }?.second
+                            ?: Offset(constraints.maxWidth / 2f, constraints.maxHeight / 2f)
+                        val x = (pin.x - card.width / 2f).roundToInt()
+                            .coerceIn(edgeMargin.roundToPx(), constraints.maxWidth - edgeMargin.roundToPx() - card.width)
+                        card.place(x, (pin.y - card.height).roundToInt() - pinClearance.roundToPx())
+                    }
+                },
             )
         }
     }

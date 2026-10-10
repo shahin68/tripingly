@@ -11,6 +11,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.onSizeChanged
@@ -62,6 +64,7 @@ actual fun GoogleMapView(
     onMapClick: (Coordinates) -> Unit,
     onMapLongClick: (Coordinates) -> Unit,
     onMarkerClick: (MapMarker) -> Unit,
+    onSelectedPlaceMoved: (Offset) -> Unit,
 ) {
     val initialLatLng = remember { LatLng(cameraTarget.latitude, cameraTarget.longitude) }
     val cameraPositionState = rememberCameraPositionState {
@@ -100,6 +103,18 @@ actual fun GoogleMapView(
     // Sync camera position back to ViewModel when it stops moving
     LaunchedEffect(cameraPositionState.isMoving) {
         if (!cameraPositionState.isMoving) reportCamera()
+    }
+
+    // The place card follows the tapped pin while the camera flies to it.
+    val currentOnSelectedPlaceMoved by rememberUpdatedState(onSelectedPlaceMoved)
+    LaunchedEffect(selectedPlace?.id) {
+        val place = selectedPlace ?: return@LaunchedEffect
+        val pin = LatLng(place.location.lat, place.location.lng)
+        snapshotFlow { cameraPositionState.position }.collect {
+            cameraPositionState.projection?.toScreenLocation(pin)?.let { point ->
+                currentOnSelectedPlaceMoved(Offset(point.x.toFloat(), point.y.toFloat()))
+            }
+        }
     }
 
     val uiSettings = remember {
