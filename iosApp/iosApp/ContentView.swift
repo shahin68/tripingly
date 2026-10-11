@@ -4,7 +4,7 @@ import Shared
 
 struct ComposeView: UIViewControllerRepresentable {
     func makeUIViewController(context: Self.Context) -> UIViewController {
-        MainViewControllerKt.MainViewController(nativeSignIn: AppNativeSignIn.shared)
+        MainViewControllerKt.MainViewController(nativeSignIn: AppNativeSignIn.shared, googleMaps: AppGoogleMapsSdk.shared)
     }
 
     func updateUIViewController(_ uiViewController: UIViewController, context: Self.Context) {}

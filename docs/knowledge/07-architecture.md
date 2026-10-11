@@ -29,6 +29,12 @@ iosApp ─────┴─> shared ──> feature:trips, feature:map, (auth, 
 - **Ripples follow the shape.** Every clickable surface (cards, chips, rows with rounded backgrounds) clips its touch ripple to its own shape. With a modifier click, clip first: `.clip(shape).combinedClickable(…)`. Material components that take `onClick` (`Card(onClick)`, `Surface(onClick)`) already do this. A square ripple over rounded corners is a bug.
 - **Shared building blocks.** Any UI element that looks the same on several screens comes from one component in `core:designsystem`, built with the `ui-component` skill: cards (a clickable card with click, optional long click and a clipped ripple), buttons (primary CTA, secondary, text), FABs, loading spinners, icons, text styles (e.g. title, body and caption texts that already apply the theme's typography and colors): anything reusable, following common design-system practice. Features use these instead of styling Material components themselves, so look and behaviour are fixed in one place. When a screen needs something new, add a variant to the shared component; don't copy styling into a feature. Planned: built as each stage first needs one, moving existing screens over as they're touched. So far: `ErrorBanner`, `AppDropdownMenu`, `FloatingSearchBar`, `OsmAttribution`, `SuggestionItem`.
 
+### Landscape (Shahin, 2026-10-11)
+
+- **Every screen works in landscape too.** Layouts fit the short height (scroll or rearrange instead of clipping), cards and overlays over the map stay reachable, and nothing is sized for portrait only.
+- **A rotation changes nothing the user sees except the layout.** Android recreates the activity, so state that must survive it lives in the view model or in `rememberSaveable`, never only in `remember`: the map keeps its camera and selection, one-off effects (framing the stops, opening a card) don't rerun, and scroll positions stay.
+- Check portrait → landscape → portrait on every UI change, on both platforms, and say in the report what was checked.
+
 ## Where logic belongs
 
 - **Domain:** models, repository interfaces, and rules (trip date math, "can this user edit", route mode limits). Use cases only when they combine repositories or hold a rule; no pass-through use cases.

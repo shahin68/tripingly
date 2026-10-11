@@ -4,6 +4,7 @@ import androidx.compose.ui.window.ComposeUIViewController
 import com.falcon.tripingly.core.data.account.LocalDataCleaner
 import com.falcon.tripingly.di.initKoin
 import com.falcon.tripingly.feature.auth.domain.SocialSignIn
+import com.falcon.tripingly.feature.map.presentation.component.GoogleMapsSdk
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.koin.core.qualifier.named
@@ -12,8 +13,10 @@ import platform.UIKit.UIViewController
 
 private var isKoinStarted = false
 
-fun MainViewController(nativeSignIn: NativeSignIn): UIViewController {
+fun MainViewController(nativeSignIn: NativeSignIn, googleMaps: GoogleMapsSdk): UIViewController {
     if (!isKoinStarted) {
+        // Without the key the map is Apple's.
+        val hasGoogleMaps = googleMaps.start(AppBuildConfig.MAPS_API_KEY_IOS)
         initKoin {
             modules(
                 module {
@@ -21,6 +24,7 @@ fun MainViewController(nativeSignIn: NativeSignIn): UIViewController {
                     single(named("googleSignInState")) {
                         LocalDataCleaner { withContext(Dispatchers.Main) { nativeSignIn.signOut() } }
                     }
+                    if (hasGoogleMaps) single { googleMaps }
                 },
             )
         }

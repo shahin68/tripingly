@@ -22,7 +22,7 @@ core/navigation        Route keys (Home, TripMap) and the saved-state serializer
 core/network           Ktor HttpClient (auth, refresh, headers), Ktorfit with an AppResult converter (error mapping), AuthApi, AccountApi, TripsApi, MarkersApi, InvitesApi, TokenStore (in memory), SessionEvents, CursorPaginator, idempotency keys, API models generated from openapi.json, environments via BuildKonfig
 feature/auth           AuthGate (launch / sign-in / onboarding until signed in), SignIn, Onboarding (profile, consents), SocialSignIn: Credential Manager on Android; on iOS the Swift NativeSignIn (iosApp/NativeSignIn.swift) handed to MainViewController
 feature/trips          Home screen (My Trips + Social tab), create/rename/reschedule/delete/leave dialogs, members sheet (members, invites)
-feature/map            Trip map: day tabs (add/delete day), markers, location, Google Maps (Android) / MapKit (iOS)
+feature/map            Trip map: day tabs (add/delete day), markers, location, Google Maps (Android, and iOS when `MAPS_API_KEY_IOS` is set; else MapKit)
 ```
 
 Dependency direction: `androidApp`/`iosApp` → `shared` → `feature:*` → `core:*`. Features never depend on each other (the `tripinly.kmp.feature` plugin fails the build if they do). Each module has one Koin module (`commonModule`, `databaseModule`, `storageModule`, `networkModule`, `dataModule`, `authModule`, `tripsModule`, `mapModule`); `shared/di/InitKoin.kt` lists them.
@@ -42,7 +42,7 @@ Every module has `commonMain`, plus `androidMain`/`iosMain` only where platform 
 | Lifecycle | JetBrains lifecycle viewmodel/runtime compose | 2.11.0-beta01 |
 | Coroutines / datetime / serialization | kotlinx | 1.10.1 / 0.8.0 / 1.11.0 |
 | Maps (Android) | play-services-maps, maps-compose, play-services-location | 19.1.0, 6.5.1, 21.3.0 |
-| Maps (iOS) | MapKit via `UIKitView` (not Google Maps) | system |
+| Maps (iOS) | Google Maps SDK for iOS via SPM (`ios-maps-sdk`), driven from Swift (`iosApp/GoogleMapsSdk.swift`); MapKit when there's no key | 11.x |
 | Networking | Ktor client (OkHttp on Android, Darwin on iOS), content negotiation, auth | 3.6.0 |
 | API models | OpenAPI Generator (`kotlin`, `multiplatform`), build time only | 7.14.0 |
 | Build config | BuildKonfig (base URL per environment) | 0.23.0 |
@@ -78,7 +78,7 @@ Not present yet: image loading (Coil), Firebase, Socket.IO, detekt/ktlint.
 
 - Common `expect fun GoogleMapView(...)` in `feature/map`.
 - **Android:** `maps-compose` `GoogleMap`, `MarkerComposable` with the numbered `TripMarkerIcon` (above), place pins and clusters painted into a `TileOverlay` by `PlaceTileProvider` (the tapped place as a `Marker`), my-location layer, long press. Google POIs are hidden by a JSON map style (`MapStyle.kt`, light and night).
-- **iOS:** the "GoogleMapView" actual is **Apple MapKit** (`MKMapView` with `MKMarkerAnnotationView`; places of the squares in view as grey markers, clusters with their count; Apple's POIs filtered out), not the Google Maps SDK. It takes no taps yet (no adding stops, places or long press on iOS). The unlinked `GoogleMaps` import and `GMSServices` setup were removed from `iOSApp.swift` (stage 3) so the app target compiles; the Google Maps iOS SDK comes with the map stage.
+- **iOS:** the "GoogleMapView" actual is the **Google Maps SDK** (`GoogleSdkMapView`) when the app started it with a key: Swift (`AppGoogleMapsSdk`, handed to `MainViewController` like `NativeSignIn`) hosts `GMSMapView` behind the `GoogleMapsSdk`/`GoogleMap`/`GoogleMapListener` interfaces (exported with exact ObjC names); place pins are tiles painted with Skia (`PlaceTilePainter`), stops are numbered `GMSMarker`s (`drawTripPin`), and it takes taps, long presses and pin taps. Without `MAPS_API_KEY_IOS` it falls back to **Apple MapKit** (`AppleMapView`, no taps).
 - Location: `LocationDataSource` with fused location (Android) and `CLLocationManager` (iOS); the location permission is an `expect/actual` `LocationPermissionController` (`status()`, `request()`, `openSettings()`), re-read whenever the map resumes; the view model decides when to ask, explain or send the user to Settings.
 - Places: `PlaceRepository` (`core:data`) for search, places by map square (`PlaceSquare`) and place details; the map gets its places from `MapPlaceSource` in the state, `MapViewModel` loads the ring of squares around the view 300 ms after the camera rests, matches map taps against loaded pins, opens `PlaceCard`, and runs the header search. `OsmAttribution` sits bottom left over the map.
 
@@ -89,10 +89,10 @@ Domain models in `core/model/.../trip/` follow the API (UUIDs, `LocalDate` dates
 ## Build and run
 
 - Android: `./gradlew :androidApp:assembleDebug`. Needs `MAPS_API_KEY=...` in `local.properties` (empty key builds, map tiles don't load).
-- Local config lives in the untracked root `local.properties` (a Gradle property with the same name is the fallback, e.g. `-P` in CI): `MAPS_API_KEY`, `tripinly.useFakeApi`, `tripinly.devAuthSecret` (staging's developer sign-in secret, never committed) and `tripinly.googleWebClientId` (the backend's Google Web client ID; not secret). Debug builds (Android debuggable, iOS debug binary) log every HTTP call in full, OkHttp-style, through Ktor's `Logging` plugin; release builds don't log. iOS Google sign-in uses the GoogleSignIn-iOS package (SPM) with the iOS client ID as `GIDClientID` and its reversed form as a URL scheme in `iosApp/iosApp/Info.plist` (client IDs are not secret, so they are committed). The iOS bundle ID is `com.falcon.tripingly`, matching the Android package; Sign in with Apple needs the capability on the app ID.
+- Local config lives in the untracked root `local.properties` (a Gradle property with the same name is the fallback, e.g. `-P` in CI): `MAPS_API_KEY`, `MAPS_API_KEY_IOS` (read into `AppBuildConfig` in `shared`), `tripinly.useFakeApi`, `tripinly.devAuthSecret` (staging's developer sign-in secret, never committed) and `tripinly.googleWebClientId` (the backend's Google Web client ID; not secret). Debug builds (Android debuggable, iOS debug binary) log every HTTP call in full, OkHttp-style, through Ktor's `Logging` plugin; release builds don't log. iOS Google sign-in uses the GoogleSignIn-iOS package (SPM) with the iOS client ID as `GIDClientID` and its reversed form as a URL scheme in `iosApp/iosApp/Info.plist` (client IDs are not secret, so they are committed). The iOS bundle ID is `com.falcon.tripingly`, matching the Android package; Sign in with Apple needs the capability on the app ID.
 - Unit tests: `./gradlew allTests` (Android host tests + common) on any OS; `./gradlew iosSimulatorArm64Test` on macOS.
-- iOS framework: `./gradlew :shared:linkDebugFrameworkIosSimulatorArm64`; Xcode runs `:shared:embedAndSignAppleFrameworkForXcode`. iOS deployment target 18.2. There is no iOS Maps key yet (the map is MapKit until the map stage).
-- CI (`.github/workflows/ci.yml`): Android assemble + `allTests` on Ubuntu, then iOS framework link + simulator tests on macOS, for PRs into `develop`/`master` and pushes to `develop`.
+- iOS framework: `./gradlew :shared:linkDebugFrameworkIosSimulatorArm64`; Xcode runs `:shared:embedAndSignAppleFrameworkForXcode`. iOS deployment target 18.2. The iOS Maps key is `MAPS_API_KEY_IOS` in `local.properties`.
+- CI (`.github/workflows/ci.yml`): Android assemble + `allTests` on Ubuntu, then iOS framework link, simulator tests and an `xcodebuild` of the app (Swift code) on macOS, for PRs into `develop`/`master` and pushes to `develop`.
 - The Claude cloud sandbox cannot download from Google Maven (`dl.google.com` is blocked), so Gradle builds run in CI, not in the sandbox.
 
 ## Tests
@@ -105,7 +105,7 @@ Domain models in `core/model/.../trip/` follow the API (UUIDs, `LocalDate` dates
 ## Gaps and risks
 
 1. **No proactive offline detection.** Offline is noticed when a call fails; writes need a connection (no outbox).
-2. **iOS map is MapKit.** Decide on the Google Maps iOS SDK via SPM in the map stage.
+2. **iOS map** is the Google Maps SDK since 2026-10-10; it hasn't been run on a device or simulator yet (no Mac).
 3. **The Google logo is covered** by the day tabs and itinerary card on Android (legal rule 3 wants it visible; needs map padding that the camera framing accounts for).
 4. **Two message types:** `feature:auth` still has its own `UiMessage`; move it to `core:ui`'s `UiText` when auth is next touched.
 5. **No marker rename/reorder UI yet** (repository supports both); invite accept and copy have no UI yet.

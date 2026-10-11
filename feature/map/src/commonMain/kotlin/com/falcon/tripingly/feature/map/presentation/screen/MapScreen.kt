@@ -1,6 +1,14 @@
 package com.falcon.tripingly.feature.map.presentation.screen
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.ui.layout.boundsInParent
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.animation.scaleOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -108,15 +116,19 @@ fun MapScreen(
             .toImmutableList()
     }
 
-    // Fits the framed stops into the part of the map the cards leave free; again on every return to the screen.
+    // Fits the framed stops into the part of the map the cards leave free; again on every return to the
+    // screen, but not after a rotation: the camera keeps its center and zoom then.
     val density = LocalDensity.current
     var mapSize by remember { mutableStateOf(IntSize.Zero) }
     var headerBottom by remember { mutableStateOf(0f) }
     var tabsTop by remember { mutableStateOf(0f) }
+    var bottomCardsTop by remember { mutableStateOf(0f) }
+    var fittedFrameId by rememberSaveable { mutableStateOf<Int?>(null) }
     val isLaidOut = mapSize != IntSize.Zero
     LaunchedEffect(state.frame, isLaidOut) {
         val frame = state.frame ?: return@LaunchedEffect
-        if (!isLaidOut) return@LaunchedEffect
+        if (!isLaidOut || frame.id == fittedFrameId) return@LaunchedEffect
+        fittedFrameId = frame.id
         val fit = with(density) {
             fitCamera(
                 points = frame.points,
@@ -130,10 +142,23 @@ fun MapScreen(
         fit?.let { onAction(Action.NavigateToLocation(it.center, it.zoom)) }
     }
 
+    val isPlaceCardShown = state.selectedPlace != null && state.isPlaceCardShown
+    // The card keeps showing its last place while it scales out.
+    val card = remember { mutableStateOf(state) }.apply { if (isPlaceCardShown) value = state }.value
+    var cardBounds by remember { mutableStateOf(Rect.Zero) }
+    val isCardOpen by rememberUpdatedState(isPlaceCardShown)
+
     Box(
         modifier = Modifier
             .fillMaxSize()
             .onSizeChanged { mapSize = it }
+            // Any touch outside the place card closes it, and still reaches the map and the controls.
+            .pointerInput(Unit) {
+                awaitEachGesture {
+                    val down = awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
+                    if (!(isCardOpen && cardBounds.contains(down.position))) onAction(Action.OnScreenTouch)
+                }
+            }
     ) {
         GoogleMapView(
             modifier = Modifier.fillMaxSize(),
@@ -144,7 +169,9 @@ fun MapScreen(
             placeSource = state.placeSource,
             selectedPlace = state.selectedPlace,
             isMyLocationEnabled = state.isPermissionGranted,
+            coveredBottom = with(density) { if (bottomCardsTop > 0f) (mapSize.height - bottomCardsTop).toDp() else 0.dp },
             onCameraMove = { coords, zoom, bounds -> onAction(Action.OnCameraMove(coords, zoom, bounds)) },
+            onMapTouch = { onAction(Action.OnScreenTouch) },
             onMapClick = { coords -> onAction(Action.OnMapClick(coords)) },
             onMapLongClick = { coords -> onAction(Action.OnMapLongClick(coords)) },
             onMarkerClick = { marker -> onAction(Action.OnMarkerClick(marker)) },
@@ -192,6 +219,7 @@ fun MapScreen(
                 .align(Alignment.BottomCenter)
                 .fillMaxWidth()
                 .animateContentSize()
+                .onGloballyPositioned { bottomCardsTop = it.positionInRoot().y }
                 .navigationBarsPadding(),
             horizontalAlignment = Alignment.End
         ) {
@@ -233,36 +261,34 @@ fun MapScreen(
             }
         }
 
-        state.selectedPlace?.let { place ->
-            // The camera centers the tapped pin, so the card floats just above the middle of the map.
-            // A touch anywhere else only closes the card: it doesn't reach the map or the cards.
-            Box(
-                modifier = Modifier
-                    .matchParentSize()
-                    .pointerInput(Unit) {
-                        awaitEachGesture {
-                            awaitFirstDown()
-                            onAction(Action.OnDismissPlace)
-                        }
-                    },
-            )
-            val pinClearance = placePinSize(place, isSelected = true) / 2 + MaterialTheme.spacing.small
-            PlaceCard(
-                place = place,
-                details = state.selectedPlaceDetails,
-                address = state.selectedPlaceAddress,
-                dayNumber = state.days.getOrNull(state.activeDayIndex)?.number?.takeIf { state.canEdit },
-                onAdd = { onAction(Action.OnAddPlaceToDay) },
-                modifier = Modifier
-                    .align(Alignment.Center)
-                    .padding(horizontal = MaterialTheme.spacing.large)
-                    .layout { measurable, constraints ->
-                        val card = measurable.measure(constraints)
-                        layout(card.width, card.height) {
-                            card.place(0, -card.height / 2 - pinClearance.roundToPx())
-                        }
-                    },
-            )
+        // The camera has centered the tapped pin, so the card opens just above the middle of the map,
+        // growing out of the pin, and shrinks back into it when it closes.
+        val place = card.selectedPlace
+        val pinClearance = place?.let { placePinSize(it, isSelected = true) / 2 + MaterialTheme.spacing.small } ?: 0.dp
+        AnimatedVisibility(
+            visible = isPlaceCardShown,
+            enter = scaleIn(transformOrigin = TransformOrigin(0.5f, 1f)) + fadeIn(),
+            exit = scaleOut(transformOrigin = TransformOrigin(0.5f, 1f)) + fadeOut(),
+            modifier = Modifier
+                .align(Alignment.Center)
+                .padding(horizontal = MaterialTheme.spacing.large)
+                .layout { measurable, constraints ->
+                    val measured = measurable.measure(constraints)
+                    layout(measured.width, measured.height) {
+                        measured.place(0, -measured.height / 2 - pinClearance.roundToPx())
+                    }
+                }
+                .onGloballyPositioned { cardBounds = it.boundsInParent() },
+        ) {
+            if (place != null) {
+                PlaceCard(
+                    place = place,
+                    details = card.selectedPlaceDetails,
+                    address = card.selectedPlaceAddress,
+                    dayNumber = card.days.getOrNull(card.activeDayIndex)?.number?.takeIf { card.canEdit },
+                    onAdd = { onAction(Action.OnAddPlaceToDay) },
+                )
+            }
         }
     }
 }

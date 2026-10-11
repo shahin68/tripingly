@@ -85,3 +85,6 @@ fun drawPlacePin(
     }
     return bitmap
 }
+
+/** What a pin looks like. */
+internal data class PlacePinLook(val category: PlaceCategory, val isTripinly: Boolean, val size: Dp)
