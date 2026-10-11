@@ -13,7 +13,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.compose.LifecycleResumeEffect
-import com.falcon.tripingly.feature.map.presentation.permission.rememberLocationPermissionController
+import com.falcon.tripingly.core.location.permission.rememberLocationPermissionController
 import com.falcon.tripingly.feature.map.presentation.photos.PhotoCameraDialog
 import com.falcon.tripingly.feature.map.presentation.photos.StopPhotosRoute
 import com.falcon.tripingly.feature.map.generated.resources.Res

@@ -41,6 +41,7 @@ include(":core:navigation")
 include(":core:network")
 include(":core:storage")
 include(":core:ui")
+include(":core:location")
 
 include(":feature:trips")
 include(":feature:map")

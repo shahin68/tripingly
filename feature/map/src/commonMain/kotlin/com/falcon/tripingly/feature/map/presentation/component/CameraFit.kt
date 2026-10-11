@@ -1,6 +1,6 @@
 package com.falcon.tripingly.feature.map.presentation.component
 
-import com.falcon.tripingly.feature.map.domain.model.Coordinates
+import com.falcon.tripingly.core.location.model.Coordinates
 import kotlin.math.PI
 import kotlin.math.atan
 import kotlin.math.exp

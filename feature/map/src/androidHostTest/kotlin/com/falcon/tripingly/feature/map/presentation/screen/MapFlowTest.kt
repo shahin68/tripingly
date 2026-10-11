@@ -19,9 +19,9 @@ import com.falcon.tripingly.core.model.trip.NewMarker
 import com.falcon.tripingly.core.model.trip.NewTrip
 import com.falcon.tripingly.core.model.trip.TripDetails
 import com.falcon.tripingly.core.model.trip.TripRole
-import com.falcon.tripingly.feature.map.domain.model.Coordinates
-import com.falcon.tripingly.feature.map.domain.repository.LocationRepository
-import com.falcon.tripingly.feature.map.domain.usecase.GetCurrentLocationUseCase
+import com.falcon.tripingly.core.location.model.Coordinates
+import com.falcon.tripingly.core.location.LocationRepository
+import com.falcon.tripingly.core.location.GetCurrentLocationUseCase
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.flowOf

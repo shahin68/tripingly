@@ -1,6 +1,6 @@
 package com.falcon.tripingly.feature.map.presentation.screen
 
-import com.falcon.tripingly.feature.map.domain.model.Coordinates
+import com.falcon.tripingly.core.location.model.Coordinates
 import com.falcon.tripingly.feature.map.domain.model.MapMarker
 import com.falcon.tripingly.feature.map.presentation.screen.MapViewModel.DayTab
 import com.falcon.tripingly.feature.map.presentation.screen.MapViewModel.State

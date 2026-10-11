@@ -30,11 +30,11 @@ import com.falcon.tripingly.core.model.trip.TripMarker
 import com.falcon.tripingly.core.ui.UiText
 import com.falcon.tripingly.core.ui.toUiText
 import com.falcon.tripingly.feature.map.domain.model.CameraFrame
-import com.falcon.tripingly.feature.map.domain.model.Coordinates
+import com.falcon.tripingly.core.location.model.Coordinates
 import com.falcon.tripingly.feature.map.domain.model.MapMarker
-import com.falcon.tripingly.feature.map.domain.usecase.GetCurrentLocationUseCase
+import com.falcon.tripingly.core.location.GetCurrentLocationUseCase
 import com.falcon.tripingly.feature.map.presentation.component.MapPlaceSource
-import com.falcon.tripingly.feature.map.presentation.permission.LocationPermission
+import com.falcon.tripingly.core.location.permission.LocationPermission
 import com.falcon.tripingly.feature.map.generated.resources.Res
 import com.falcon.tripingly.feature.map.generated.resources.error_location_denied_manual
 import com.falcon.tripingly.feature.map.generated.resources.error_location_permission_required

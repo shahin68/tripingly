@@ -15,6 +15,7 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import com.falcon.tripingly.core.location.permission.findActivity
 
 @Composable
 actual fun rememberCameraPermissionController(onResult: (CameraPermission) -> Unit): CameraPermissionController {
