@@ -1,0 +1,41 @@
+package com.falcon.tripingly.feature.map.presentation.component
+
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.graphics.ImageBitmap
+import coil3.Image
+import coil3.SingletonImageLoader
+import coil3.compose.LocalPlatformContext
+import com.falcon.tripingly.core.designsystem.component.PhotoSize
+import com.falcon.tripingly.core.designsystem.component.photoRequest
+import com.falcon.tripingly.feature.map.domain.model.MapMarker
+
+/**
+ * The cover thumbnails of [markers] by photo ID, for drawing into their pins. Loaded through the app's
+ * image loader, so a cover already seen comes from its cache, whatever its signed URL is now.
+ */
+@Composable
+internal fun rememberCoverThumbs(markers: List<MapMarker>): Map<String, ImageBitmap> {
+    val context = LocalPlatformContext.current
+    var thumbs by remember { mutableStateOf(emptyMap<String, ImageBitmap>()) }
+    val covers = markers.mapNotNull { marker ->
+        val id = marker.coverPhotoId ?: return@mapNotNull null
+        marker.coverThumbUrl?.let { id to it }
+    }.toMap()
+    LaunchedEffect(covers.keys) {
+        val loader = SingletonImageLoader.get(context)
+        for ((id, url) in covers) {
+            if (id in thumbs) continue
+            val image = loader.execute(photoRequest(context, id, url, PhotoSize.Thumb)).image ?: continue
+            thumbs = thumbs + (id to image.toPinBitmap())
+        }
+    }
+    return thumbs
+}
+
+/** A bitmap that can be drawn into a pin's own (software) canvas. */
+internal expect fun Image.toPinBitmap(): ImageBitmap

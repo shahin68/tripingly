@@ -31,7 +31,11 @@ class AppConfigRepositoryTest {
         createHttpClient(
             engine = MockEngine {
                 requests++
-                respond("""{"placesRefreshSeconds": 60}""", status, headersOf(HttpHeaders.ContentType, "application/json"))
+                respond(
+                    """{"placesRefreshSeconds": 60, "photoMaxEdgePx": 2048, "photoJpegQuality": 80, "photoParallelUploads": 3}""",
+                    status,
+                    headersOf(HttpHeaders.ContentType, "application/json"),
+                )
             },
             config = config,
             tokenStore = InMemoryTokenStore(),
@@ -49,7 +53,7 @@ class AppConfigRepositoryTest {
         val loaded = withContext(Dispatchers.Default) {
             withTimeout(5.seconds) { repository.config.first { it != AppConfig() } }
         }
-        assertEquals(60.seconds, loaded.placesRefresh)
+        assertEquals(AppConfig(placesRefresh = 60.seconds, photoMaxEdgePx = 2048, photoJpegQuality = 80, photoParallelUploads = 3), loaded)
     }
 
     @Test

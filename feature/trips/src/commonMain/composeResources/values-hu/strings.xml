@@ -18,6 +18,18 @@
     <string name="trip_no_dates">Még nincs dátum</string>
     <string name="trip_private">Privát</string>
     <string name="trip_shared_by">Megosztotta: @%1$s</string>
+    <plurals name="trip_shared_with">
+        <item quantity="one">Megosztva %1$d személlyel</item>
+        <item quantity="other">Megosztva %1$d személlyel</item>
+    </plurals>
+    <plurals name="trip_day_count">
+        <item quantity="one">%1$d nap</item>
+        <item quantity="other">%1$d nap</item>
+    </plurals>
+    <plurals name="trip_stop_count">
+        <item quantity="one">%1$d megálló</item>
+        <item quantity="other">%1$d megálló</item>
+    </plurals>
 
     <!-- Trip actions -->
     <string name="trip_action_rename">Utazás átnevezése</string>

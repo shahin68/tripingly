@@ -61,14 +61,14 @@ internal class RoomTripLocalDataSource(
 
     override suspend fun deleteTrip(tripId: String) = dao.deleteTrip(tripId)
 
-    override suspend fun saveMarkers(markers: List<TripMarker>) = dao.upsertMarkers(markers.map { it.toEntity() })
+    override suspend fun saveMarkers(markers: List<TripMarker>) = dao.saveMarkers(markers.map { it.toEntity() })
 
     override suspend fun savePlaceOfMarker(markerId: String, placeId: String, name: String) =
         dao.updateMarkerPlace(markerId, placeId, name)
 
     override suspend fun tripIdOfMarker(markerId: String): String? = dao.marker(markerId)?.tripId
 
-    override suspend fun deleteMarkers(markerIds: List<String>) = dao.deleteMarkers(markerIds)
+    override suspend fun deleteMarkers(markerIds: List<String>) = dao.removeMarkers(markerIds)
 
     override suspend fun reorderMarkers(markerIds: List<String>) = dao.reorderMarkers(markerIds)
 
@@ -87,6 +87,7 @@ internal class RoomTripLocalDataSource(
         coverThumbUrl = coverThumbUrl,
         dayCount = dayCount,
         markerCount = markerCount,
+        editorCount = editorCount,
         updatedAt = updatedAt.toEpochMilliseconds(),
         copiedFromTripId = copiedFrom?.tripId,
         copiedFromOwnerId = copiedFrom?.owner?.id,
@@ -109,6 +110,7 @@ internal fun TripEntity.toTrip() = Trip(
     coverThumbUrl = coverThumbUrl,
     dayCount = dayCount,
     markerCount = markerCount,
+    editorCount = editorCount,
     updatedAt = Instant.fromEpochMilliseconds(updatedAt),
 )
 
@@ -149,6 +151,7 @@ private fun MarkerEntity.toMarker() = TripMarker(
     location = GeoPoint(lat, lng),
     time = time,
     position = position,
+    coverPhotoId = coverPhotoId,
     coverThumbUrl = coverThumbUrl,
     photoCount = photoCount,
 )
@@ -163,6 +166,7 @@ private fun TripMarker.toEntity() = MarkerEntity(
     lng = location.lng,
     time = time,
     position = position,
+    coverPhotoId = coverPhotoId,
     coverThumbUrl = coverThumbUrl,
     photoCount = photoCount,
 )

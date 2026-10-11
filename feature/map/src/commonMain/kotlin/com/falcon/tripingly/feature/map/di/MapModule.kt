@@ -3,6 +3,7 @@ package com.falcon.tripingly.feature.map.di
 import com.falcon.tripingly.feature.map.data.repository.LocationRepositoryImpl
 import com.falcon.tripingly.feature.map.domain.repository.LocationRepository
 import com.falcon.tripingly.feature.map.domain.usecase.GetCurrentLocationUseCase
+import com.falcon.tripingly.feature.map.presentation.photos.StopPhotosViewModel
 import com.falcon.tripingly.feature.map.presentation.screen.MapViewModel
 import org.koin.core.module.Module
 import org.koin.core.module.dsl.factoryOf
@@ -21,10 +22,12 @@ val mapModule = module {
             tripRepository = get(),
             markerRepository = get(),
             placeRepository = get(),
+            photoRepository = get(),
             getCurrentLocationUseCase = get(),
             dispatchers = get(),
         )
     }
+    viewModel { params -> StopPhotosViewModel(markerId = params.get(), photoRepository = get()) }
 }
 
 internal expect val mapPlatformModule: Module

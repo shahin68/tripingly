@@ -46,9 +46,6 @@ interface GoogleMap {
 
     /** Replaces the markers; a marker with the same key is moved or updated. */
     fun setMarkers(markers: List<GoogleMapMarker>)
-
-    /** Shows this marker's info window; null hides it. */
-    fun selectMarker(key: String?)
 }
 
 @ObjCName("GoogleMapTiles", exact = true)

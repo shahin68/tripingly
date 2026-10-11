@@ -53,7 +53,6 @@ actual fun GoogleMapView(
     cameraTarget: Coordinates,
     zoomLevel: Float,
     markers: List<MapMarker>,
-    selectedMarkerId: String?,
     placeSource: MapPlaceSource?,
     selectedPlace: MapPlace?,
     isMyLocationEnabled: Boolean,
@@ -237,19 +236,18 @@ actual fun GoogleMapView(
                 )
             }
         }
+        val coverThumbs = rememberCoverThumbs(markers)
         markers.forEach { marker ->
             key(marker.id) {
                 val position = LatLng(marker.position.latitude, marker.position.longitude)
                 val markerState = rememberUpdatedMarkerState(position = position)
-                val isSelected = marker.id == selectedMarkerId
-                LaunchedEffect(isSelected, marker.title) {
-                    if (isSelected) markerState.showInfoWindow()
-                }
-
-                // The icon is drawn once and redrawn only when its number or color changes.
+                // The icon is drawn once and redrawn only when its number, color or cover changes.
+                val cover = marker.coverPhotoId?.let { coverThumbs[it] }
                 MarkerComposable(
                     marker.orderNumber,
                     marker.color,
+                    // Empty until the cover's thumbnail has loaded.
+                    marker.coverPhotoId.takeIf { cover != null }.orEmpty(),
                     state = markerState,
                     title = marker.title,
                     anchor = Offset(0.5f, 1f),
@@ -257,12 +255,14 @@ actual fun GoogleMapView(
                     zIndex = 1f,
                     onClick = {
                         onMarkerClick(marker)
-                        false // Return false to show standard info window as well
+                        // No info window and no camera move of the map's own: the card and the camera are ours.
+                        true
                     }
                 ) {
                     TripMarkerIcon(
                         orderNumber = marker.orderNumber,
-                        color = Color(marker.color)
+                        color = Color(marker.color),
+                        cover = cover,
                     )
                 }
             }

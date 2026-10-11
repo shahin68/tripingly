@@ -18,6 +18,18 @@
     <string name="trip_no_dates">Noch keine Daten</string>
     <string name="trip_private">Privat</string>
     <string name="trip_shared_by">Geteilt von @%1$s</string>
+    <plurals name="trip_shared_with">
+        <item quantity="one">Mit %1$d Person geteilt</item>
+        <item quantity="other">Mit %1$d Personen geteilt</item>
+    </plurals>
+    <plurals name="trip_day_count">
+        <item quantity="one">%1$d Tag</item>
+        <item quantity="other">%1$d Tage</item>
+    </plurals>
+    <plurals name="trip_stop_count">
+        <item quantity="one">%1$d Stopp</item>
+        <item quantity="other">%1$d Stopps</item>
+    </plurals>
 
     <!-- Trip actions -->
     <string name="trip_action_rename">Reise umbenennen</string>

@@ -52,4 +52,29 @@
     <string name="map_pin_name_title">Hely elnevezése</string>
     <string name="map_pin_name_label">Név</string>
     <string name="map_pin_add">Hozzáadás</string>
+    <plurals name="map_stop_photo_count">
+        <item quantity="one">%1$d fotó</item>
+        <item quantity="other">%1$d fotó</item>
+    </plurals>
+    <string name="map_stop_no_photos">Még nincs fotó</string>
+    <string name="map_stop_add_photos">Fotók hozzáadása</string>
+    <string name="map_stop_photos">Fotók</string>
+    <string name="map_photo_make_cover">Legyen borítókép</string>
+    <string name="map_photo_cover">Borítókép</string>
+    <string name="map_photo_delete">Fotó törlése</string>
+    <string name="map_photo_delete_title">Törlöd ezt a fotót?</string>
+    <string name="map_photo_delete_message">A fotó mindenki számára törlődik az utazásban.</string>
+    <string name="map_photo_processing">Feldolgozás…</string>
+    <string name="map_photo_failed">Ezt a fotót nem sikerült feldolgozni</string>
+    <string name="map_photo_not_uploaded">Nincs feltöltve</string>
+    <string name="map_photo_unreadable">Ez a fotó nem olvasható</string>
+    <string name="map_photo_remove">Eltávolítás</string>
+    <string name="map_close">Bezárás</string>
+    <string name="map_camera_take_photo">Fotó készítése</string>
+    <string name="map_camera_permission_message">Engedélyezd a Tripinly számára a kamerát, hogy fotókat készíthess a megállóidhoz.</string>
+    <string name="map_camera_allow">Kamera engedélyezése</string>
+    <string name="map_camera_settings_message">A Tripinly nem éri el a kamerát. Engedélyezd a Beállításokban, hogy fotókat készíthess a megállóidhoz.</string>
+    <string name="map_camera_open_settings">Beállítások megnyitása</string>
+    <string name="map_camera_unavailable">Ezen az eszközön nincs kamera.</string>
+    <string name="map_camera_failed">Nem sikerült elkészíteni a fotót. Próbáld újra.</string>
 </resources>

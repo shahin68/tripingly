@@ -370,6 +370,7 @@ class FakeTripBackend(
             trip = details.trip.copy(
                 dayCount = details.days.size,
                 markerCount = markers.size,
+                editorCount = details.members.count { it.role == TripRole.EDITOR },
                 coverThumbUrl = markers.firstNotNullOfOrNull { it.coverThumbUrl },
                 updatedAt = now(),
             ),

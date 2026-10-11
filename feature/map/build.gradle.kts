@@ -13,6 +13,9 @@ kotlin {
             implementation(libs.playServices.maps)
             implementation(libs.playServices.location)
             implementation(libs.maps.compose)
+            implementation(libs.androidx.camera.camera2)
+            implementation(libs.androidx.camera.lifecycle)
+            implementation(libs.androidx.camera.compose)
         }
         getByName("androidHostTest").dependencies {
             implementation(libs.junit)

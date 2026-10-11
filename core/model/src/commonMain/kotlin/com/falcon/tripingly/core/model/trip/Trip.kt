@@ -18,6 +18,8 @@ data class Trip(
     val coverThumbUrl: String? = null,
     val dayCount: Int,
     val markerCount: Int,
+    /** People the trip is shared with as editors; the owner isn't counted. */
+    val editorCount: Int = 0,
     /** My Trips lists the most recently updated first. */
     val updatedAt: Instant,
 )

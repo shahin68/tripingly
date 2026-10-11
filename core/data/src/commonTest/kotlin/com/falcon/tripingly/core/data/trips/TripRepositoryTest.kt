@@ -115,7 +115,7 @@ class TripRepositoryTest {
     fun refreshMyTrips_walksEveryPage_andReplacesTheCachedList() = runTest {
         val harness = Harness { request ->
             when (request.url.parameters["cursor"]) {
-                null -> json(TripJson.page("c2", TripJson.summary("t1", "Paris", "2026-10-04T12:00:00.000Z")))
+                null -> json(TripJson.page("c2", TripJson.summary("t1", "Paris", "2026-10-04T12:00:00.000Z", editorCount = 2)))
                 "c2" -> json(TripJson.page(null, TripJson.summary("t2", "Rome", "2026-10-03T12:00:00.000Z", role = "editor")))
                 else -> error("unexpected cursor")
             }
@@ -127,6 +127,8 @@ class TripRepositoryTest {
         assertIs<AppResult.Success<Unit>>(result)
         assertEquals(listOf("t1", "t2"), harness.trips.observeMyTrips().first().map { it.id })
         assertEquals(TripRole.EDITOR, harness.trips.observeMyTrips().first()[1].role)
+        // The owner sees who the trip is shared with.
+        assertEquals(2, harness.trips.observeMyTrips().first()[0].editorCount)
         assertEquals(listOf("50", "50"), harness.requests.map { it.url.parameters["limit"] })
     }
 
@@ -176,6 +178,7 @@ class TripRepositoryTest {
         assertEquals(2, details.trip.markerCount)
         assertEquals(TripVisibility.PRIVATE, details.trip.visibility)
         assertEquals(listOf(TripRole.OWNER, TripRole.EDITOR), details.members.map { it.role })
+        assertEquals(1, details.trip.editorCount)
         assertEquals(details, harness.trips.observeTrip("t1").first())
     }
 

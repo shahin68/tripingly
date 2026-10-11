@@ -1,6 +1,12 @@
 package com.falcon.tripingly
 
 import androidx.compose.runtime.Composable
+import coil3.ImageLoader
+import coil3.compose.setSingletonImageLoaderFactory
+import coil3.network.ktor3.KtorNetworkFetcherFactory
+import coil3.request.crossfade
+import com.falcon.tripingly.core.network.photos.StorageClient
+import org.koin.compose.koinInject
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.navigation3.ui.NavDisplay
@@ -17,6 +23,15 @@ import com.falcon.tripingly.feature.map.presentation.screen.MapRoute
 
 @Composable
 fun App() {
+    val storage = koinInject<StorageClient>()
+    // Photos come from storage through signed URLs, so they're fetched without the API's token and headers.
+    // They're cached by photo ID, not URL (see PhotoImage), in Coil's default memory and disk caches.
+    setSingletonImageLoaderFactory { context ->
+        ImageLoader.Builder(context)
+            .components { add(KtorNetworkFetcherFactory(httpClient = { storage.httpClient })) }
+            .crossfade(true)
+            .build()
+    }
     TripinglyTheme {
         // Links (legal documents and others) open in an in-app browser, not the external one.
         CompositionLocalProvider(LocalUriHandler provides rememberInAppUriHandler()) {

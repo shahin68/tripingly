@@ -106,6 +106,28 @@ abstract class TripDao {
         insertMembers(members)
     }
 
+    /** Keeps My Trips' stop count in step with the stops cached for these trips. */
+    @Query("UPDATE trips SET markerCount = (SELECT COUNT(*) FROM markers WHERE markers.tripId = trips.id) WHERE id IN (:tripIds)")
+    abstract suspend fun recountMarkers(tripIds: List<String>)
+
+    @Query("SELECT DISTINCT tripId FROM markers WHERE id IN (:markerIds)")
+    abstract suspend fun tripIdsOfMarkers(markerIds: List<String>): List<String>
+
+    /** Adds or changes markers of cached trips, counting them in their trip. */
+    @Transaction
+    open suspend fun saveMarkers(markers: List<MarkerEntity>) {
+        upsertMarkers(markers)
+        recountMarkers(markers.map { it.tripId }.distinct())
+    }
+
+    /** Removes markers, counting them out of their trip. */
+    @Transaction
+    open suspend fun removeMarkers(markerIds: List<String>) {
+        val tripIds = tripIdsOfMarkers(markerIds)
+        deleteMarkers(markerIds)
+        recountMarkers(tripIds)
+    }
+
     /** Applies a day's new marker order. */
     @Transaction
     open suspend fun reorderMarkers(markerIds: List<String>) {

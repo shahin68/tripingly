@@ -56,6 +56,7 @@ import com.falcon.tripingly.feature.trips.presentation.screen.HomeViewModel.Acti
 import com.falcon.tripingly.feature.trips.presentation.screen.HomeViewModel.State
 import com.falcon.tripingly.feature.trips.presentation.screen.HomeViewModel.Tab
 import kotlinx.coroutines.launch
+import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import com.falcon.tripingly.feature.trips.generated.resources.Res
@@ -270,8 +271,19 @@ private fun TripItem(
                 text = formatDateRange(trip.startDate, trip.endDate) ?: stringResource(Res.string.trip_no_dates),
                 style = MaterialTheme.typography.bodyMedium
             )
+            Text(
+                text = listOf(
+                    pluralStringResource(Res.plurals.trip_day_count, trip.dayCount, trip.dayCount),
+                    pluralStringResource(Res.plurals.trip_stop_count, trip.markerCount, trip.markerCount),
+                ).joinToString(" · "),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
             val details = buildList {
                 if (trip.role == TripRole.EDITOR) add(stringResource(Res.string.trip_shared_by, trip.owner.username))
+                if (trip.role == TripRole.OWNER && trip.editorCount > 0) {
+                    add(pluralStringResource(Res.plurals.trip_shared_with, trip.editorCount, trip.editorCount))
+                }
                 if (trip.visibility == TripVisibility.PRIVATE) add(stringResource(Res.string.trip_private))
             }
             if (details.isNotEmpty()) {

@@ -54,8 +54,17 @@ data class MapState(
 | Along the way | Like OSM or Tripinly pins, with a subtle highlight | `alongTheWay` |
 | Cluster | Circle with count | `in-view` cluster items |
 
-- Render thumbnails to bitmaps off the main thread (download with the app's image loader, crop circle, cache per URL + size). Android: `BitmapDescriptor`; iOS: `UIImage` icon (prefer icon images over `iconView` for performance).
+- Render thumbnails to bitmaps off the main thread (download with the app's image loader, crop circle). Android: `BitmapDescriptor`; iOS: `UIImage` icon (prefer icon images over `iconView` for performance).
+- Built (stage 6): `rememberCoverThumbs` loads each cover through Coil's singleton loader, cached by **photo ID + size**, not by the signed URL (it changes about every hour). Android draws the pin with `MarkerComposable` + `TripMarkerIcon(cover)`, iOS paints it with Skia (`drawCoverPin`). A pin is redrawn only when its number, color or cover changes.
 - Use the Google Maps utility libraries for **client-side clustering** of trip markers only if needed. Place clusters come from the server.
+
+## Stop card and photos
+
+- Tapping a stop (pin or chip) centers the camera on it, then opens the **stop card** above the pin, with the same scale-in from its bottom center and the same close-on-any-other-touch as the place card. Info windows are off for stops on both platforms.
+- The card shows the cover thumbnail, the stop's name and its photo count; owners and editors get **Add photos** (system picker: Android Photo Picker, iOS PHPicker, several at once, no storage permission). Picking opens the photo sheet so the uploads are visible. Next to it, the **camera** button opens the in-app camera full screen (live picture, shutter; it asks for the camera permission the first time). A photo uploads the moment it's taken, with no review step, and the sheet opens to show it going up. The sheet's header has the same camera button.
+- The camera shows the whole picture (fit, not cropped) so the photo shows what the user saw. The shutter sits under the picture in portrait and beside it in landscape; photos come out upright however the phone is held (Android follows the phone's sensor, iOS uses `AVCaptureDeviceRotationCoordinator`). No zoom or tap-to-focus yet (continuous autofocus). The iOS simulator has no camera and says so.
+- Tapping the card opens the **photo sheet** (`StopPhotosRoute`, a bottom sheet with its own view model per stop): the gallery grid (processing and failed photos too for members), uploads with progress, Retry and Remove, and a full-screen viewer (swipe, Make cover, Delete with confirmation for owners and editors). Comments will go into this sheet in stage 7.
+- Uploads run from the app scope (`PhotoRepository`): each image is shrunk to `photoMaxEdgePx` and re-encoded as JPEG at `photoJpegQuality` on the phone (this drops EXIF, location included), sent straight to storage through the signed URL with `photoParallelUploads` at a time, then confirmed. Until real time arrives (stage 9) the app asks for the gallery every 3 s, up to 20 times, while photos are processing, then reloads the stop for its cover and count.
 
 ## Stop names
 

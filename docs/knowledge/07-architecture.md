@@ -40,7 +40,7 @@ iosApp ─────┴─> shared ──> feature:trips, feature:map, (auth, 
 - **Domain:** models, repository interfaces, and rules (trip date math, "can this user edit", route mode limits). Use cases only when they combine repositories or hold a rule; no pass-through use cases.
 - **Data:** DTOs and Room entities never leave the data layer. Repositories map them to domain models, map HTTP errors to typed domain errors by `error.code`, and own caching, retries and timeouts.
 - **Presentation:** the ViewModel turns domain data into one screen state. Formatting (dates, distances, plurals) lives in presentation mappers that return `UiText`, never inside composables and never as hardcoded strings.
-- **Platform code** only for what must be native (map view, sign-in SDKs, photo picker, push, secure storage), behind interfaces in `commonMain`, bound through `expect/actual` Koin modules.
+- **Platform code** only for what must be native (map view, sign-in SDKs, photo picker, camera, push, secure storage), behind interfaces in `commonMain`, bound through `expect/actual` Koin modules.
 
 ## Source of truth and offline
 
@@ -96,7 +96,8 @@ Prefer what the project already has. New ones are confirmed with the user when t
 | HTTP | Ktor client, endpoints declared with Ktorfit |
 | Immutable state collections | kotlinx-collections-immutable |
 | OpenAPI models | an OpenAPI generator with a Kotlin multiplatform target |
-| Images | Coil 3 |
+| Images | Coil 3; our photos are cached by photo ID + size (`PhotoImage`, `photoRequest`), never by their signed URL |
+| Camera | CameraX with its Compose viewfinder (`camera-compose`) on Android, not `camera-view` (it pulls in CameraX video, Guava and AppCompat); AVFoundation on iOS |
 | Secure storage | Our own `SecureStore` in `core:storage`: Keychain (iOS), Keystore AES-GCM key (Android); no library (decided 2026-10-03) |
 | Settings | multiplatform-settings or DataStore |
 | Socket.IO | a maintained client per platform behind a shared interface |

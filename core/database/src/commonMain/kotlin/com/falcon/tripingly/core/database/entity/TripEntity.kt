@@ -25,6 +25,7 @@ data class TripEntity(
     val coverThumbUrl: String?,
     val dayCount: Int,
     val markerCount: Int,
+    val editorCount: Int = 0,
     val updatedAt: Long,
     val copiedFromTripId: String? = null,
     val copiedFromOwnerId: String? = null,

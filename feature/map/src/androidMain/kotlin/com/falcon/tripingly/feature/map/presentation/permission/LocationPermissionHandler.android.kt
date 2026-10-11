@@ -61,8 +61,8 @@ private class AndroidLocationPermissionController(private val activity: Activity
     }
 }
 
-private tailrec fun Context.findActivity(): Activity = when (this) {
+internal tailrec fun Context.findActivity(): Activity = when (this) {
     is Activity -> this
     is ContextWrapper -> baseContext.findActivity()
-    else -> error("The map needs an Activity to ask for location")
+    else -> error("The map needs an Activity to ask for permissions")
 }

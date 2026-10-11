@@ -14,8 +14,6 @@ expect fun GoogleMapView(
     cameraTarget: Coordinates,
     zoomLevel: Float,
     markers: List<MapMarker>,
-    /** Shows this marker's info window (Android) or callout (iOS). */
-    selectedMarkerId: String?,
     /** Our places and OpenStreetMap places, drawn under the stops by map square; null draws none. */
     placeSource: MapPlaceSource?,
     /** The tapped place, drawn bigger on top. */
