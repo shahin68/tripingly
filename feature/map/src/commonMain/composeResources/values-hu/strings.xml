@@ -70,4 +70,11 @@
     <string name="map_photo_unreadable">Ez a fotó nem olvasható</string>
     <string name="map_photo_remove">Eltávolítás</string>
     <string name="map_close">Bezárás</string>
+    <string name="map_camera_take_photo">Fotó készítése</string>
+    <string name="map_camera_permission_message">Engedélyezd a Tripinly számára a kamerát, hogy fotókat készíthess a megállóidhoz.</string>
+    <string name="map_camera_allow">Kamera engedélyezése</string>
+    <string name="map_camera_settings_message">A Tripinly nem éri el a kamerát. Engedélyezd a Beállításokban, hogy fotókat készíthess a megállóidhoz.</string>
+    <string name="map_camera_open_settings">Beállítások megnyitása</string>
+    <string name="map_camera_unavailable">Ezen az eszközön nincs kamera.</string>
+    <string name="map_camera_failed">Nem sikerült elkészíteni a fotót. Próbáld újra.</string>
 </resources>

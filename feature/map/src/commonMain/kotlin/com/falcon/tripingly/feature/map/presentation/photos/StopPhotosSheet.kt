@@ -24,16 +24,18 @@ import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AddAPhoto
+import androidx.compose.material.icons.filled.AddPhotoAlternate
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.ErrorOutline
+import androidx.compose.material.icons.filled.PhotoCamera
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -100,6 +102,13 @@ fun StopPhotosRoute(
         )
     }
 
+    if (state.isCameraOpen) {
+        PhotoCameraDialog(
+            onPhoto = { viewModel.onAction(Action.OnAddPhotos(listOf(it))) },
+            onDismiss = { viewModel.onAction(Action.OnCloseCamera) },
+        )
+    }
+
     state.photoToDelete?.let {
         AlertDialog(
             onDismissRequest = { viewModel.onAction(Action.OnDismissDelete) },
@@ -156,8 +165,14 @@ fun StopPhotosScreen(
                 }
                 if (canEdit) {
                     FilledTonalButton(onClick = onAddPhotos) {
-                        Icon(Icons.Default.AddAPhoto, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Icon(Icons.Default.AddPhotoAlternate, contentDescription = null, modifier = Modifier.size(18.dp))
                         Text(stringResource(Res.string.map_stop_add_photos), modifier = Modifier.padding(start = MaterialTheme.spacing.small))
+                    }
+                    FilledTonalIconButton(
+                        onClick = { onAction(Action.OnOpenCamera) },
+                        modifier = Modifier.padding(start = MaterialTheme.spacing.small),
+                    ) {
+                        Icon(Icons.Default.PhotoCamera, contentDescription = stringResource(Res.string.map_camera_take_photo))
                     }
                 }
             }

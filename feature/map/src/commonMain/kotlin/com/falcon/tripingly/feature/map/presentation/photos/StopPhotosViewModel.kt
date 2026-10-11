@@ -25,7 +25,7 @@ import kotlinx.coroutines.launch
 /**
  * One stop's photos in the sheet: the gallery, the photos picked on this device still going up, and the
  * full-screen viewer. The gallery loads when the sheet first opens for the stop. Owners and editors add
- * photos, pick the cover and delete; the server checks that too.
+ * photos (picked or taken with the in-app camera), pick the cover and delete; the server checks that too.
  */
 class StopPhotosViewModel(
     private val markerId: String,
@@ -47,7 +47,9 @@ class StopPhotosViewModel(
 
     fun onAction(action: Action) {
         when (action) {
-            is Action.OnAddPhotos -> if (action.images.isNotEmpty()) photoRepository.upload(markerId, action.images)
+            is Action.OnAddPhotos -> addPhotos(action.images)
+            is Action.OnOpenCamera -> ui.update { it.copy(isCameraOpen = true) }
+            is Action.OnCloseCamera -> ui.update { it.copy(isCameraOpen = false) }
             is Action.OnRetryUpload -> photoRepository.retryUpload(action.key)
             is Action.OnRemoveUpload -> photoRepository.dismissUpload(action.key)
             is Action.OnOpenPhoto -> ui.update { it.copy(openPhotoId = action.photoId) }
@@ -73,8 +75,14 @@ class StopPhotosViewModel(
             openPhotoIndex = viewable.indexOfFirst { it.id == ui.openPhotoId }.takeIf { it >= 0 },
             photoToDelete = ui.photoToDelete,
             isSaving = ui.isSaving,
+            isCameraOpen = ui.isCameraOpen,
             message = ui.message,
         )
+    }
+
+    private fun addPhotos(images: List<PickedImage>) {
+        ui.update { it.copy(isCameraOpen = false) }
+        if (images.isNotEmpty()) photoRepository.upload(markerId, images)
     }
 
     private fun load() {
@@ -119,6 +127,7 @@ class StopPhotosViewModel(
         val openPhotoId: String? = null,
         val photoToDelete: Photo? = null,
         val isSaving: Boolean = false,
+        val isCameraOpen: Boolean = false,
         val message: UiText? = null,
     )
 
@@ -138,11 +147,16 @@ class StopPhotosViewModel(
         val photoToDelete: Photo? = null,
         /** A cover change or delete is waiting for the server. */
         val isSaving: Boolean = false,
+        /** The in-app camera is open; its photo comes back as [Action.OnAddPhotos]. */
+        val isCameraOpen: Boolean = false,
         val message: UiText? = null,
     )
 
     sealed interface Action {
+        /** Picked, or taken with the camera (which then closes). */
         data class OnAddPhotos(val images: List<PickedImage>) : Action
+        data object OnOpenCamera : Action
+        data object OnCloseCamera : Action
         data class OnRetryUpload(val key: String) : Action
         data class OnRemoveUpload(val key: String) : Action
         data class OnOpenPhoto(val photoId: String) : Action

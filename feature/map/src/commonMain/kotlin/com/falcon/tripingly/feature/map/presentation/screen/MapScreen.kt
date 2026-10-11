@@ -324,6 +324,7 @@ fun MapScreen(
                     canEdit = state.canEdit,
                     onOpen = { onAction(Action.OnOpenStopPhotos) },
                     onAddPhotos = pickPhotos,
+                    onTakePhoto = { onAction(Action.OnOpenPhotoCamera) },
                 )
             }
         }

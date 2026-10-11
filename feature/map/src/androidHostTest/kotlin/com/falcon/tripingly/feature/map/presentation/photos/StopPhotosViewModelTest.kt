@@ -72,6 +72,21 @@ class StopPhotosViewModelTest {
     }
 
     @Test
+    fun `a photo taken with the camera goes up and the camera closes`() = runTest(testDispatcher) {
+        val viewModel = viewModel()
+        testScheduler.advanceUntilIdle()
+
+        viewModel.onAction(Action.OnOpenCamera)
+        testScheduler.advanceUntilIdle()
+        assertTrue(viewModel.uiState.value.isCameraOpen)
+
+        viewModel.onAction(Action.OnAddPhotos(images(1)))
+        testScheduler.advanceUntilIdle()
+        assertFalse(viewModel.uiState.value.isCameraOpen)
+        assertEquals(1, viewModel.uiState.value.photos.size)
+    }
+
+    @Test
     fun `deleting asks first, and the viewer moves on to the next photo`() = runTest(testDispatcher) {
         val viewModel = viewModel()
         testScheduler.advanceUntilIdle()

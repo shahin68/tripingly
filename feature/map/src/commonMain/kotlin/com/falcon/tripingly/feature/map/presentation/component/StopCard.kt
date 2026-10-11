@@ -9,10 +9,12 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AddAPhoto
+import androidx.compose.material.icons.filled.AddPhotoAlternate
+import androidx.compose.material.icons.filled.PhotoCamera
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -34,7 +36,7 @@ import org.jetbrains.compose.resources.stringResource
 
 /**
  * A stop tapped on the map, in a card that floats above its pin like the place card: its cover, name and
- * photo count. Tapping it opens the stop's photos; owners and editors also get Add photos.
+ * photo count. Tapping it opens the stop's photos; owners and editors also get Add photos and the camera.
  */
 @Composable
 fun StopCard(
@@ -42,6 +44,7 @@ fun StopCard(
     canEdit: Boolean,
     onOpen: () -> Unit,
     onAddPhotos: () -> Unit,
+    onTakePhoto: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Card(
@@ -91,9 +94,18 @@ fun StopCard(
                 }
             }
             if (canEdit) {
-                Button(onClick = onAddPhotos, modifier = Modifier.fillMaxWidth()) {
-                    Icon(Icons.Default.AddAPhoto, contentDescription = null, modifier = Modifier.size(18.dp))
-                    Text(stringResource(Res.string.map_stop_add_photos), modifier = Modifier.padding(start = MaterialTheme.spacing.small))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Button(onClick = onAddPhotos, modifier = Modifier.weight(1f)) {
+                        Icon(Icons.Default.AddPhotoAlternate, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Text(stringResource(Res.string.map_stop_add_photos), modifier = Modifier.padding(start = MaterialTheme.spacing.small))
+                    }
+                    FilledTonalIconButton(onClick = onTakePhoto) {
+                        Icon(Icons.Default.PhotoCamera, contentDescription = stringResource(Res.string.map_camera_take_photo))
+                    }
                 }
             }
         }

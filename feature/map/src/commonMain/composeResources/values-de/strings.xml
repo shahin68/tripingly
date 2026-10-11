@@ -70,4 +70,11 @@
     <string name="map_photo_unreadable">Dieses Foto kann nicht gelesen werden</string>
     <string name="map_photo_remove">Entfernen</string>
     <string name="map_close">Schließen</string>
+    <string name="map_camera_take_photo">Foto aufnehmen</string>
+    <string name="map_camera_permission_message">Erlaube Tripinly die Kamera, um Fotos für deine Stopps aufzunehmen.</string>
+    <string name="map_camera_allow">Kamera erlauben</string>
+    <string name="map_camera_settings_message">Die Kamera ist für Tripinly aus. Erlaube sie in den Einstellungen, um Fotos für deine Stopps aufzunehmen.</string>
+    <string name="map_camera_open_settings">Einstellungen öffnen</string>
+    <string name="map_camera_unavailable">Dieses Gerät hat keine Kamera.</string>
+    <string name="map_camera_failed">Das Foto konnte nicht aufgenommen werden. Versuche es erneut.</string>
 </resources>

@@ -59,7 +59,7 @@ private suspend fun NSItemProvider.imageData(): ByteArray? = suspendCancellableC
 }
 
 @OptIn(ExperimentalForeignApi::class)
-private fun NSData.toByteArray(): ByteArray {
+internal fun NSData.toByteArray(): ByteArray {
     val size = length.toInt()
     if (size == 0) return ByteArray(0)
     return ByteArray(size).apply { usePinned { memcpy(it.addressOf(0), bytes, length) } }

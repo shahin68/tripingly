@@ -22,7 +22,7 @@ core/navigation        Route keys (Home, TripMap) and the saved-state serializer
 core/network           Ktor HttpClient (auth, refresh, headers), Ktorfit with an AppResult converter (error mapping), AuthApi, AccountApi, TripsApi, MarkersApi, InvitesApi, PhotosApi, StorageClient (plain client for signed storage URLs), TokenStore (in memory), SessionEvents, CursorPaginator, idempotency keys, API models generated from openapi.json, environments via BuildKonfig
 feature/auth           AuthGate (launch / sign-in / onboarding until signed in), SignIn, Onboarding (profile, consents), SocialSignIn: Credential Manager on Android; on iOS the Swift NativeSignIn (iosApp/NativeSignIn.swift) handed to MainViewController
 feature/trips          Home screen (My Trips + Social tab), create/rename/reschedule/delete/leave dialogs, members sheet (members, invites)
-feature/map            Trip map: day tabs (add/delete day), markers, location, Google Maps (Android, and iOS when `MAPS_API_KEY_IOS` is set; else MapKit); stop card, photo sheet and viewer, photo picker (expect/actual)
+feature/map            Trip map: day tabs (add/delete day), markers, location, Google Maps (Android, and iOS when `MAPS_API_KEY_IOS` is set; else MapKit); stop card, photo sheet and viewer, photo picker and in-app camera (expect/actual)
 ```
 
 Dependency direction: `androidApp`/`iosApp` → `shared` → `feature:*` → `core:*`. Features never depend on each other (the `tripinly.kmp.feature` plugin fails the build if they do). Each module has one Koin module (`commonModule`, `databaseModule`, `storageModule`, `networkModule`, `dataModule`, `authModule`, `tripsModule`, `mapModule`); `shared/di/InitKoin.kt` lists them.
@@ -48,6 +48,7 @@ Every module has `commonMain`, plus `androidMain`/`iosMain` only where platform 
 | Build config | BuildKonfig (base URL per environment) | 0.23.0 |
 | State collections | kotlinx-collections-immutable (in feature modules) | 0.5.2 |
 | Images | Coil 3 (`coil-compose`, `coil-network-ktor3` on the app's Ktor engine); singleton loader set in `App.kt` | 3.5.0 (3.6 needs compileSdk 37 and Compose 1.12) |
+| Camera (Android) | CameraX (`camera-camera2`, `camera-lifecycle`, `camera-compose` viewfinder) in `feature:map`; iOS uses AVFoundation directly | 1.6.2 |
 | Tests | kotlin-test, coroutines-test, Turbine, JUnit 4, Robolectric, Ktor MockEngine, Compose `ui-test` (+ androidx `ui-test-manifest` 1.11.2) | 1.2.0 Turbine, 4.17 Robolectric |
 
 | In-app browser | androidx.browser Custom Tabs (Android), SFSafariViewController (iOS); `rememberInAppUriHandler()` in core:designsystem, provided as `LocalUriHandler` in `App.kt` | 1.8.0 |

@@ -133,6 +133,8 @@ class MapViewModel(
             is Action.OnOpenStopPhotos -> ui.update { it.copy(photosMarkerId = it.selectedMarkerId) }
             is Action.OnCloseStopPhotos -> ui.update { it.copy(photosMarkerId = null) }
             is Action.OnAddStopPhotos -> addStopPhotos(action.images)
+            is Action.OnOpenPhotoCamera -> if (canEdit()) ui.update { it.copy(isPhotoCameraOpen = it.selectedMarkerId != null) }
+            is Action.OnClosePhotoCamera -> ui.update { it.copy(isPhotoCameraOpen = false) }
             is Action.OnAddPlaceToDay -> addPlace()
             is Action.OnOpenSearch -> ui.update { it.copy(isSearchOpen = true, selectedMarkerId = null, isStopCardShown = false) }
             is Action.OnSearchQueryChanged -> search(action.query)
@@ -164,6 +166,7 @@ class MapViewModel(
             selectedMarker = markers.firstOrNull { it.id == ui.selectedMarkerId },
             isStopCardShown = ui.isStopCardShown && markers.any { it.id == ui.selectedMarkerId },
             photosMarker = markers.firstOrNull { it.id == ui.photosMarkerId },
+            isPhotoCameraOpen = ui.isPhotoCameraOpen && markers.any { it.id == ui.selectedMarkerId },
             placeSource = MapPlaceSource(placeRepository, stopPlaceIds(details)),
             selectedPlace = ui.selectedPlace,
             selectedPlaceDetails = ui.selectedPlaceDetails?.takeIf { it.id == ui.selectedPlace?.id },
@@ -225,8 +228,12 @@ class MapViewModel(
         navigateTo(marker.position, zoom)
     }
 
-    /** Photos picked on the stop card: they upload in the background, and the sheet opens to show them going up. */
+    /**
+     * Photos picked or taken on the stop card: they upload in the background, and the sheet opens to show them
+     * going up.
+     */
     private fun addStopPhotos(images: List<PickedImage>) {
+        ui.update { it.copy(isPhotoCameraOpen = false) }
         val markerId = ui.value.selectedMarkerId ?: return
         if (images.isEmpty() || !canEdit()) return
         photoRepository.upload(markerId, images)
@@ -681,6 +688,8 @@ class MapViewModel(
         val isStopCardShown: Boolean = false,
         /** The stop whose photos are open. */
         val photosMarkerId: String? = null,
+        /** The in-app camera is open for the selected stop. */
+        val isPhotoCameraOpen: Boolean = false,
         val message: UiText? = null,
         /** Stop changes undone because the connection failed; Retry sends them again. */
         val failedChanges: List<MarkerChangeFailure> = emptyList(),
@@ -736,6 +745,8 @@ class MapViewModel(
         val isStopCardShown: Boolean = false,
         /** The stop whose photos are open in the sheet. */
         val photosMarker: MapMarker? = null,
+        /** The in-app camera is open; its photo goes to [selectedMarker]. */
+        val isPhotoCameraOpen: Boolean = false,
         val message: UiText? = null,
         /** [message] is about stop changes that didn't save; Retry sends them again. */
         val canRetry: Boolean = false,
@@ -796,8 +807,11 @@ class MapViewModel(
         /** The selected stop's photos open in a sheet. */
         data object OnOpenStopPhotos : Action
         data object OnCloseStopPhotos : Action
-        /** Photos picked from the stop card for the selected stop. */
+        /** Photos picked or taken from the stop card for the selected stop. */
         data class OnAddStopPhotos(val images: List<PickedImage>) : Action
+        /** The in-app camera opens for the selected stop; its photo comes back as [OnAddStopPhotos]. */
+        data object OnOpenPhotoCamera : Action
+        data object OnClosePhotoCamera : Action
         data object OnOpenSearch : Action
         data class OnSearchQueryChanged(val query: String) : Action
         data class OnSearchResultClick(val result: PlaceSearchResult) : Action

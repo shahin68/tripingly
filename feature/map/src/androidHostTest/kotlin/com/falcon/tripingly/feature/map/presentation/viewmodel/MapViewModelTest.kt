@@ -309,6 +309,28 @@ class MapViewModelTest {
     }
 
     @Test
+    fun `a photo taken on a stop's card uploads to it, closes the camera and opens its photos`() = runTest(testDispatcher) {
+        backend.addMarker(trip.trip.id, trip.days[0].id, NewMarker("Stephansdom", GeoPoint(48.2085, 16.3721)))
+        val viewModel = viewModel()
+        testScheduler.advanceUntilIdle()
+        val stop = viewModel.uiState.value.markers.single()
+        viewModel.onAction(Action.OnMarkerClick(stop))
+        testScheduler.advanceUntilIdle()
+
+        viewModel.onAction(Action.OnOpenPhotoCamera)
+        testScheduler.advanceUntilIdle()
+        assertTrue(viewModel.uiState.value.isPhotoCameraOpen)
+
+        viewModel.onAction(Action.OnAddStopPhotos(listOf(PickedImage { byteArrayOf(1) })))
+        testScheduler.advanceUntilIdle()
+
+        val state = viewModel.uiState.value
+        assertFalse(state.isPhotoCameraOpen)
+        assertEquals(stop.id, state.photosMarker?.id)
+        assertEquals(1, photos.photos(stop.id).first()?.size)
+    }
+
+    @Test
     fun `a viewer can't add photos`() = runTest(testDispatcher) {
         backend.addMarker(trip.trip.id, trip.days[0].id, NewMarker("Stephansdom", GeoPoint(48.2085, 16.3721)))
         val withStop = (backend.refreshTrip(trip.trip.id) as AppResult.Success).data
@@ -318,11 +340,13 @@ class MapViewModelTest {
         val stop = viewModel.uiState.value.markers.single()
         viewModel.onAction(Action.OnMarkerClick(stop))
 
+        viewModel.onAction(Action.OnOpenPhotoCamera)
         viewModel.onAction(Action.OnAddStopPhotos(listOf(PickedImage { byteArrayOf(1) })))
         testScheduler.advanceUntilIdle()
 
         assertNull(photos.photos(stop.id).first())
         assertNull(viewModel.uiState.value.photosMarker)
+        assertFalse(viewModel.uiState.value.isPhotoCameraOpen)
     }
 
     @Test
