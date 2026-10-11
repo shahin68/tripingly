@@ -228,6 +228,33 @@ class TripRepositoryTest {
     }
 
     @Test
+    fun createTrip_withMembers_sendsVisibilityAndUsernames() = runTest {
+        val harness = Harness { json(TripJson.trip("t9"), HttpStatusCode.Created) }
+
+        harness.trips.createTrip(NewTrip("Rome", null, null, TripVisibility.PRIVATE, memberUsernames = listOf("anna", "jonas.k")))
+
+        assertEquals(
+            """{"title":"Rome","visibility":"private","memberUsernames":["anna","jonas.k"]}""",
+            harness.requests.single().bodyText(),
+        )
+    }
+
+    @Test
+    fun createTrip_withAnUnknownMember_reportsTheFieldErrorByIndex() = runTest {
+        val harness = Harness {
+            json(
+                TripJson.error("VALIDATION_FAILED", "Validation failed", """{"fields":{"memberUsernames.1":["notFound"]}}"""),
+                HttpStatusCode.BadRequest,
+            )
+        }
+
+        val error = (harness.trips.createTrip(NewTrip("Rome", null, null, memberUsernames = listOf("anna", "nobody"))) as AppResult.Error).error
+
+        assertTrue(error.hasFieldError("memberUsernames.1", TripErrorCodes.MEMBER_NOT_FOUND))
+        assertTrue(harness.trips.observeMyTrips().first().isEmpty())
+    }
+
+    @Test
     fun updateTrip_withDaysThatStillHaveStops_reportsTheFieldError() = runTest {
         val harness = Harness {
             json(

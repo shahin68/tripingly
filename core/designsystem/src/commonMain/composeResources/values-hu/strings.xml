@@ -3,4 +3,5 @@
     <string name="common_dismiss">Bezárás</string>
     <string name="common_search_placeholder">Keresés…</string>
     <string name="osm_attribution">© OpenStreetMap közreműködők</string>
+    <string name="chip_remove">%1$s eltávolítása</string>
 </resources>

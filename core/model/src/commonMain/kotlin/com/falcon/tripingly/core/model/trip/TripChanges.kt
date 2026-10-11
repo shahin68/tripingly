@@ -4,13 +4,18 @@ import com.falcon.tripingly.core.model.account.TripVisibility
 import com.falcon.tripingly.core.model.place.OsmRef
 import kotlinx.datetime.LocalDate
 
-/** A new trip. Without [visibility] the server uses the user's default. */
+/**
+ * A new trip. Without [visibility] the server uses the user's default. [memberUsernames] (up to 20)
+ * join as editors right away; unknown or blocked ones fail with `VALIDATION_FAILED` on
+ * `fields.memberUsernames.<index>` (`notFound`, `blocked`).
+ */
 data class NewTrip(
     val name: String,
     val startDate: LocalDate?,
     val endDate: LocalDate?,
     val visibility: TripVisibility? = null,
     val destination: Destination? = null,
+    val memberUsernames: List<String> = emptyList(),
 )
 
 /** Owner changes to a trip; null fields stay unchanged. */

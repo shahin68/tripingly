@@ -3,4 +3,5 @@
     <string name="common_dismiss">Dismiss</string>
     <string name="common_search_placeholder">Search...</string>
     <string name="osm_attribution">© OpenStreetMap contributors</string>
+    <string name="chip_remove">Remove %1$s</string>
 </resources>
