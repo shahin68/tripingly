@@ -52,10 +52,16 @@ internal class DefaultPlaceRepository(
     private val _changedSquares = MutableSharedFlow<PlaceSquare>(extraBufferCapacity = MAX_SQUARES)
     override val changedSquares: Flow<PlaceSquare> = _changedSquares.asSharedFlow()
 
-    override suspend fun search(query: String, near: GeoPoint?): AppResult<List<PlaceSearchResult>, DataError.Network> {
+    override suspend fun search(query: String, near: GeoPoint?): AppResult<List<PlaceSearchResult>, DataError.Network> =
+        search(query, near, scope = null)
+
+    override suspend fun searchDestinations(query: String): AppResult<List<PlaceSearchResult>, DataError.Network> =
+        search(query, near = null, scope = DESTINATION_SCOPE)
+
+    private suspend fun search(query: String, near: GeoPoint?, scope: String?): AppResult<List<PlaceSearchResult>, DataError.Network> {
         val trimmed = query.trim().take(MAX_QUERY_LENGTH)
         if (trimmed.isEmpty()) return AppResult.Success(emptyList())
-        return api.search(trimmed, near?.lat, near?.lng).map { response ->
+        return api.search(trimmed, near?.lat, near?.lng, scope).map { response ->
             response.items.map { item ->
                 val location = GeoPoint(item.location.lat, item.location.lng)
                 PlaceSearchResult(
@@ -222,6 +228,7 @@ internal class DefaultPlaceRepository(
     private companion object {
         // The server's limit for `q`.
         const val MAX_QUERY_LENGTH = 100
+        const val DESTINATION_SCOPE = "destination"
         // The server's limit of squares per request.
         const val MAX_SQUARES_PER_REQUEST = 16
         // A square is about four map tiles a side; 200 (the server's most) draws them about as densely as

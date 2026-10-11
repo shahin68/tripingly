@@ -93,8 +93,6 @@ class HomeViewModel(
             is Action.OnDestinationQueryChanged -> searchDestination(action.query)
             is Action.OnConfirmCreateTrip -> save {
                 tripRepository.createTrip(NewTrip(action.name, action.startDate, action.endDate, destination = action.destination))
-                    // Notifications matter once there's a trip others can change: ask now, in context.
-                    .also { if (it is AppResult.Success) sendEvent(Event.AskForNotifications) }
             }
             is Action.OnConfirmRenameTrip -> save {
                 tripRepository.updateTrip(action.tripId, TripUpdate(name = action.newName))
@@ -147,7 +145,7 @@ class HomeViewModel(
         destinationSearch = viewModelScope.launch {
             delay(SEARCH_DEBOUNCE_MILLIS)
             ui.update { it.copy(isSearchingDestination = true) }
-            val results = (placeRepository.search(query) as? AppResult.Success)?.data.orEmpty()
+            val results = (placeRepository.searchDestinations(query) as? AppResult.Success)?.data.orEmpty()
             ui.update { it.copy(destinationResults = results.toImmutableList(), isSearchingDestination = false) }
         }
     }
@@ -246,7 +244,6 @@ class HomeViewModel(
     sealed interface Event {
         data class NavigateToMap(val tripId: String) : Event
         data class ShareTrip(val trip: Trip) : Event
-        data object AskForNotifications : Event
     }
 
     sealed interface Action {

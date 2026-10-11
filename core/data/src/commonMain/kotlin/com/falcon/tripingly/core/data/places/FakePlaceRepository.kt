@@ -36,6 +36,9 @@ class FakePlaceRepository : PlaceRepository {
         return AppResult.Success(places.filter { it.name.startsWith(trimmed, ignoreCase = true) })
     }
 
+    override suspend fun searchDestinations(query: String): AppResult<List<PlaceSearchResult>, DataError.Network> =
+        search(query, near = null)
+
     override suspend fun placesIn(squares: Collection<PlaceSquare>): AppResult<Map<PlaceSquare, PlacesInView>, DataError.Network> =
         AppResult.Success(loadedPlacesIn(squares))
 

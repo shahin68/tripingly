@@ -46,7 +46,7 @@
 
 - Android: FCM directly. iOS: Firebase Messaging with APNs (APNs key uploaded to Firebase by the user).
 - Register the device after sign-in and whenever the token changes: `PUT /me/devices/{fcmToken}` with platform and app language. On sign-out: `DELETE /me/devices/{fcmToken}` then `POST /auth/logout`.
-- Ask for notification permission in context (for example after creating the first trip or being added to one), not on first launch.
+- Ask for notification permission as Home first opens (after sign-in and onboarding), before the user taps anything; once per visit to Home, rotation included (Shahin, 2026-10-11).
 - Push arrives already localized from the server. Data payload: `{ type, notificationId, deepLink }`.
 - Tapping a push opens the `deepLink`. Mark it read via `POST /notifications/read`.
 

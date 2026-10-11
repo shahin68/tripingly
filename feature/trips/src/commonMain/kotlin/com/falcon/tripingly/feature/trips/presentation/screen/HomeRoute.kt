@@ -1,7 +1,11 @@
 package com.falcon.tripingly.feature.trips.presentation.screen
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.falcon.tripingly.core.common.util.ShareManager
 import com.falcon.tripingly.core.ui.ObserveAsEvents
@@ -31,11 +35,18 @@ fun HomeRoute(
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val askForNotifications = rememberNotificationPermissionRequest()
+    // Asked as Home opens, before anything is tapped; once per visit, rotation included.
+    var askedForNotifications by rememberSaveable { mutableStateOf(false) }
+    LaunchedEffect(Unit) {
+        if (!askedForNotifications) {
+            askedForNotifications = true
+            askForNotifications()
+        }
+    }
 
     ObserveAsEvents(viewModel.events) { event ->
         when (event) {
             is Event.NavigateToMap -> onNavigateToMap(event.tripId)
-            Event.AskForNotifications -> askForNotifications()
             is Event.ShareTrip -> {
                 val trip = event.trip
                 val dates = formatDateRange(trip.startDate, trip.endDate)
