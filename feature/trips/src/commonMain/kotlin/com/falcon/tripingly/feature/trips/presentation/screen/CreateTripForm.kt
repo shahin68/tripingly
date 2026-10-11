@@ -39,12 +39,5 @@ data class CreateTripForm(
 ) {
     val canCreate: Boolean get() = name.isNotBlank() && startDate != null
 
-    val canAddMembers: Boolean get() = members.size < MAX_MEMBERS
-
     fun isMember(user: UserSummary): Boolean = members.any { it.username == user.username }
-
-    companion object {
-        /** The most people `POST /trips` takes in `memberUsernames`. */
-        const val MAX_MEMBERS = 20
-    }
 }

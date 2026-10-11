@@ -85,6 +85,7 @@ REST over HTTPS, JSON, base path `/v1`.
 | Method | Path | Notes |
 |---|---|---|
 | POST | `/trips/{id}/members` | Owner adds by username |
+| POST | `/trips/{id}/members/batch` | Owner adds several people at once (`{ usernames }`, all or nothing; refused ones as `fields.usernames.<i>` = `notFound`/`blocked`). The Members sheet uses it for the friends picked in its avatar row. Backend: tripinly-backend#33 |
 | DELETE | `/trips/{id}/members/{userId}` | Owner removes, or editor removes self (leave) |
 | POST | `/trips/{id}/invites` | Owner creates invite link → `{ url, expiresAt }` |
 | DELETE | `/trips/{id}/invites/{inviteId}` | Revoke |

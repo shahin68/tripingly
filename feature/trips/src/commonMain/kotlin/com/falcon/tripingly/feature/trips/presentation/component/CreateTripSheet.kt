@@ -3,10 +3,14 @@ package com.falcon.tripingly.feature.trips.presentation.component
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
@@ -31,6 +35,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
@@ -40,7 +45,6 @@ import com.falcon.tripingly.core.designsystem.component.OsmAttribution
 import com.falcon.tripingly.core.designsystem.component.PillChip
 import com.falcon.tripingly.core.designsystem.component.PrimaryButton
 import com.falcon.tripingly.core.designsystem.component.RoundedTextField
-import com.falcon.tripingly.core.designsystem.component.SectionLabel
 import com.falcon.tripingly.core.designsystem.component.SegmentedToggle
 import com.falcon.tripingly.core.designsystem.component.SegmentedToggleOption
 import com.falcon.tripingly.core.designsystem.component.SuggestionItem
@@ -54,13 +58,9 @@ import com.falcon.tripingly.feature.trips.generated.resources.create_trip_dates_
 import com.falcon.tripingly.feature.trips.generated.resources.create_trip_destination_clear
 import com.falcon.tripingly.feature.trips.generated.resources.create_trip_destination_placeholder
 import com.falcon.tripingly.feature.trips.generated.resources.create_trip_name_label
-import com.falcon.tripingly.feature.trips.generated.resources.create_trip_section_length
-import com.falcon.tripingly.feature.trips.generated.resources.create_trip_section_visibility
 import com.falcon.tripingly.feature.trips.generated.resources.create_trip_title
 import com.falcon.tripingly.feature.trips.generated.resources.create_trip_visibility_private
-import com.falcon.tripingly.feature.trips.generated.resources.create_trip_visibility_private_hint
 import com.falcon.tripingly.feature.trips.generated.resources.create_trip_visibility_public
-import com.falcon.tripingly.feature.trips.generated.resources.create_trip_visibility_public_hint
 import com.falcon.tripingly.feature.trips.presentation.screen.CreateTripForm
 import com.falcon.tripingly.feature.trips.presentation.screen.HomeViewModel.Action
 import org.jetbrains.compose.resources.stringResource
@@ -91,6 +91,7 @@ internal fun CreateTripSheet(
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 internal fun CreateTripSheetContent(
     form: CreateTripForm,
@@ -121,7 +122,7 @@ internal fun CreateTripSheetContent(
                 .padding(horizontal = MaterialTheme.spacing.large),
             verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium),
         ) {
-            Text(text = stringResource(Res.string.create_trip_title), style = MaterialTheme.typography.headlineMedium)
+            Text(text = stringResource(Res.string.create_trip_title), style = MaterialTheme.typography.titleLarge)
             RoundedTextField(
                 value = form.name,
                 onValueChange = { onAction(Action.OnCreateNameChanged(it)) },
@@ -133,43 +134,37 @@ internal fun CreateTripSheetContent(
             )
             DestinationField(form = form, isSaving = isSaving, onAction = onAction)
 
-            SectionLabel(stringResource(Res.string.create_trip_section_length))
-            val dates = formatDateRange(form.startDate, form.endDate ?: form.startDate)
-            PillChip(
-                label = dates ?: stringResource(Res.string.create_trip_dates_add),
-                onClick = { showDatePicker = true },
-                leading = { Icon(Icons.Default.DateRange, contentDescription = null, modifier = Modifier.padding(start = MaterialTheme.spacing.small)) },
-                enabled = !isSaving,
-            )
-
-            SectionLabel(stringResource(Res.string.create_trip_section_visibility))
-            SegmentedToggle(Modifier.fillMaxWidth()) {
-                SegmentedToggleOption(
-                    label = stringResource(Res.string.create_trip_visibility_public),
-                    selected = form.visibility == TripVisibility.PUBLIC,
-                    onClick = { onAction(Action.OnCreateVisibilityChanged(TripVisibility.PUBLIC)) },
-                    icon = Icons.Default.Public,
+            // Dates and visibility share one row to keep the sheet short; on a narrow phone with a
+            // long date range the toggle wraps below.
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
+                verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
+                itemVerticalAlignment = Alignment.CenterVertically,
+            ) {
+                val dates = formatDateRange(form.startDate, form.endDate ?: form.startDate)
+                PillChip(
+                    label = dates ?: stringResource(Res.string.create_trip_dates_add),
+                    onClick = { showDatePicker = true },
+                    leading = { Icon(Icons.Default.DateRange, contentDescription = null, modifier = Modifier.padding(start = MaterialTheme.spacing.small)) },
                     enabled = !isSaving,
                 )
-                SegmentedToggleOption(
-                    label = stringResource(Res.string.create_trip_visibility_private),
-                    selected = form.visibility == TripVisibility.PRIVATE,
-                    onClick = { onAction(Action.OnCreateVisibilityChanged(TripVisibility.PRIVATE)) },
-                    icon = Icons.Default.Lock,
-                    enabled = !isSaving,
-                )
+                SegmentedToggle(Modifier.width(IntrinsicSize.Max)) {
+                    SegmentedToggleOption(
+                        label = stringResource(Res.string.create_trip_visibility_public),
+                        selected = form.visibility == TripVisibility.PUBLIC,
+                        onClick = { onAction(Action.OnCreateVisibilityChanged(TripVisibility.PUBLIC)) },
+                        icon = Icons.Default.Public,
+                        enabled = !isSaving,
+                    )
+                    SegmentedToggleOption(
+                        label = stringResource(Res.string.create_trip_visibility_private),
+                        selected = form.visibility == TripVisibility.PRIVATE,
+                        onClick = { onAction(Action.OnCreateVisibilityChanged(TripVisibility.PRIVATE)) },
+                        icon = Icons.Default.Lock,
+                        enabled = !isSaving,
+                    )
+                }
             }
-            Text(
-                text = stringResource(
-                    if (form.visibility == TripVisibility.PUBLIC) {
-                        Res.string.create_trip_visibility_public_hint
-                    } else {
-                        Res.string.create_trip_visibility_private_hint
-                    },
-                ),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
 
             CreateTripMembers(form = form, isSaving = isSaving, onAction = onAction)
             DialogError(error?.asString())

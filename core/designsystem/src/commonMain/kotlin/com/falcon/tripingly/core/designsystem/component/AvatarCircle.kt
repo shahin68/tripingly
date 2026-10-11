@@ -58,12 +58,13 @@ fun AvatarCircle(
 }
 
 /**
- * An avatar with the name below that the user taps to pick or unpick the person, e.g. in a row of friends.
- * A picked person gets a ring and a check mark.
+ * An avatar with the name and `@handle` below that the user taps to pick or unpick the person,
+ * e.g. in a row of friends. A picked person gets a ring and a check mark.
  */
 @Composable
 fun AvatarChoice(
     name: String,
+    handle: String,
     key: String,
     selected: Boolean,
     onToggle: () -> Unit,
@@ -102,14 +103,24 @@ fun AvatarChoice(
                 )
             }
         }
-        Text(
-            text = name,
-            style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.onSurface,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            textAlign = TextAlign.Center,
-        )
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Text(
+                text = name,
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurface,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                textAlign = TextAlign.Center,
+            )
+            Text(
+                text = "@$handle",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                textAlign = TextAlign.Center,
+            )
+        }
     }
 }
 
@@ -131,9 +142,9 @@ private fun avatarColor(key: String) =
 private fun AvatarChoicePreview() {
     TripinglyTheme {
         Row {
-            AvatarChoice(name = "Anna", key = "anna", selected = true, onToggle = {})
-            AvatarChoice(name = "Jonas", key = "jonas.k", selected = false, onToggle = {})
-            AvatarChoice(name = "Maximilian-Alexander", key = "max", selected = false, onToggle = {})
+            AvatarChoice(name = "Anna", handle = "anna", key = "anna", selected = true, onToggle = {})
+            AvatarChoice(name = "Jonas", handle = "jonas.k", key = "jonas.k", selected = false, onToggle = {})
+            AvatarChoice(name = "Maximilian-Alexander", handle = "max", key = "max", selected = false, onToggle = {})
         }
     }
 }
@@ -143,7 +154,7 @@ private fun AvatarChoicePreview() {
 private fun AvatarChoiceDarkPreview() {
     TripinglyTheme(darkTheme = true) {
         Row(Modifier.background(MaterialTheme.colorScheme.surface)) {
-            AvatarChoice(name = "Anna", key = "anna", selected = true, onToggle = {})
+            AvatarChoice(name = "Anna", handle = "anna", key = "anna", selected = true, onToggle = {})
             AvatarCircle(name = "Lena", key = "lena", size = AvatarSize.Small)
         }
     }

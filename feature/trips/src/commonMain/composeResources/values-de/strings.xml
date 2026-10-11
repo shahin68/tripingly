@@ -52,16 +52,11 @@
     <string name="create_trip_picker_title">Reisedaten wählen</string>
     <string name="create_trip_picker_headline">Zeitraum wählen</string>
     <string name="create_trip_destination_placeholder">Wohin geht es?</string>
-    <string name="create_trip_section_length">Dauer</string>
     <string name="create_trip_dates_add">Daten hinzufügen</string>
-    <string name="create_trip_section_visibility">Wer sie sehen kann</string>
     <string name="create_trip_visibility_public">Öffentlich</string>
     <string name="create_trip_visibility_private">Privat</string>
-    <string name="create_trip_visibility_public_hint">Alle können diese Reise sehen und zu ihren Reisen hinzufügen.</string>
-    <string name="create_trip_visibility_private_hint">Nur du und die Personen, die du einlädst, können sie sehen.</string>
-    <string name="create_trip_section_members">Freunde einladen</string>
-    <string name="create_trip_member_placeholder">Per Benutzername hinzufügen</string>
-    <string name="create_trip_members_limit">Du kannst jetzt bis zu %1$d Personen hinzufügen. Weitere später unter Mitglieder einladen.</string>
+    <string name="create_trip_member_placeholder">Benutzername eingeben</string>
+    <string name="create_trip_add_by_username">Per Benutzername hinzufügen</string>
     <string name="create_trip_member_not_found">Niemand hat diesen Benutzernamen.</string>
     <string name="create_trip_member_blocked">Diese Person kannst du nicht hinzufügen.</string>
     <string name="create_trip_error_members">Einige Personen können nicht hinzugefügt werden. Entferne sie und versuche es erneut.</string>
@@ -94,6 +89,8 @@
     <string name="members_add_label">Per Benutzername hinzufügen</string>
     <string name="members_add_button">Hinzufügen</string>
     <string name="members_error_user_not_found">Niemand hat diesen Benutzernamen.</string>
+    <string name="members_error_some_not_added">Einige dieser Personen können nicht hinzugefügt werden. Wähle sie ab und versuche es erneut.</string>
+    <string name="members_add_friends">%1$d hinzufügen</string>
     <string name="members_invites_title">Einladungslinks</string>
     <string name="members_invite_hint">Wer einen Link hat, kann bis zum Ablauf als Bearbeiter beitreten.</string>
     <string name="members_invite_create">Einladungslink erstellen</string>

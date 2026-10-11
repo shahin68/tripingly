@@ -18,10 +18,10 @@ object TripErrorCodes {
     /** `fields.endDate` when new dates would remove days that still have markers. */
     const val DAYS_NOT_EMPTY = "daysNotEmpty"
 
-    /** `fields.memberUsernames.<index>` when a new trip's member doesn't exist. */
+    /** `fields.memberUsernames.<index>` (new trip) or `fields.usernames.<index>` (adding members) when the user doesn't exist. */
     const val MEMBER_NOT_FOUND = "notFound"
 
-    /** `fields.memberUsernames.<index>` when a new trip's member blocked the user or was blocked by them. */
+    /** Like [MEMBER_NOT_FOUND], when the user blocked that person. */
     const val MEMBER_BLOCKED = "blocked"
 
     /** `fields.id` when deleting a trip's only day. */

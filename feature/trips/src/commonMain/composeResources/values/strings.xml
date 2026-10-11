@@ -52,16 +52,11 @@
     <string name="create_trip_picker_title">Select Trip Dates</string>
     <string name="create_trip_picker_headline">Choose the range</string>
     <string name="create_trip_destination_placeholder">Where are you going?</string>
-    <string name="create_trip_section_length">Length</string>
     <string name="create_trip_dates_add">Add dates</string>
-    <string name="create_trip_section_visibility">Who can see it</string>
     <string name="create_trip_visibility_public">Public</string>
     <string name="create_trip_visibility_private">Private</string>
-    <string name="create_trip_visibility_public_hint">Anyone can see this trip and add it to their trips.</string>
-    <string name="create_trip_visibility_private_hint">Only you and the people you invite can see it.</string>
-    <string name="create_trip_section_members">Invite friends</string>
-    <string name="create_trip_member_placeholder">Add by username</string>
-    <string name="create_trip_members_limit">You can add up to %1$d people now. Invite more later from Members.</string>
+    <string name="create_trip_member_placeholder">Type a username</string>
+    <string name="create_trip_add_by_username">Add by username</string>
     <string name="create_trip_member_not_found">No one has this username.</string>
     <string name="create_trip_member_blocked">You can’t add this person.</string>
     <string name="create_trip_error_members">Some people can’t be added. Remove them and try again.</string>
@@ -94,6 +89,8 @@
     <string name="members_add_label">Add by username</string>
     <string name="members_add_button">Add</string>
     <string name="members_error_user_not_found">No one has that username.</string>
+    <string name="members_error_some_not_added">Some of these people can’t be added. Unpick them and try again.</string>
+    <string name="members_add_friends">Add %1$d</string>
     <string name="members_invites_title">Invite links</string>
     <string name="members_invite_hint">Anyone with a link can join as an editor until it expires.</string>
     <string name="members_invite_create">Create invite link</string>

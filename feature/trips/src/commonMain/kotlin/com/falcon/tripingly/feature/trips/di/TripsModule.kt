@@ -13,6 +13,7 @@ val tripsModule = module {
             tripId = params.get(),
             tripRepository = get(),
             inviteRepository = get(),
+            userRepository = get(),
         )
     }
 }

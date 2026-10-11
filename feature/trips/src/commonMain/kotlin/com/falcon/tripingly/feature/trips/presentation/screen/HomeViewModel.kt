@@ -226,7 +226,7 @@ class HomeViewModel(
     private fun addMember(user: UserSummary) {
         memberSearch?.cancel()
         updateForm { form ->
-            val members = if (form.isMember(user) || !form.canAddMembers) form.members else form.members + user
+            val members = if (form.isMember(user)) form.members else form.members + user
             form.copy(
                 members = members.toImmutableList(),
                 memberQuery = "",
