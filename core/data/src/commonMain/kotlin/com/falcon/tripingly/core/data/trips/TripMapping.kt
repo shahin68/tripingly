@@ -42,6 +42,7 @@ internal fun TripSummaryDto.toTrip() = Trip(
     coverThumbUrl = coverThumbUrl,
     dayCount = dayCount.toInt(),
     markerCount = markerCount.toInt(),
+    editorCount = editorCount.toInt(),
     updatedAt = updatedAt.toInstant(),
 )
 
@@ -73,6 +74,7 @@ internal fun TripDto.toDetails(): TripDetails {
             coverThumbUrl = markers.firstNotNullOfOrNull { it.coverThumbUrl },
             dayCount = days.size,
             markerCount = markers.size,
+            editorCount = members.count { it.role == TripMemberDto.Role.EDITOR },
             updatedAt = updatedAt.toInstant(),
         ),
         days = days,

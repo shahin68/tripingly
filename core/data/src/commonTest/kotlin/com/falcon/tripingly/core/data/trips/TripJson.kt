@@ -5,9 +5,15 @@ internal object TripJson {
     const val OWNER = """{"id":"11111111-1111-4111-8111-111111111111","username":"shahin","displayName":"Shahin"}"""
     const val EDITOR = """{"id":"22222222-2222-4222-8222-222222222222","username":"anna","displayName":"Anna"}"""
 
-    fun summary(id: String, title: String, updatedAt: String = "2026-10-04T10:00:00.000Z", role: String = "owner") = """
+    fun summary(
+        id: String,
+        title: String,
+        updatedAt: String = "2026-10-04T10:00:00.000Z",
+        role: String = "owner",
+        editorCount: Int = 0,
+    ) = """
         {"id":"$id","title":"$title","startDate":"2026-06-01","endDate":"2026-06-03","visibility":"public",
-         "owner":$OWNER,"role":"$role","coverThumbUrl":null,"dayCount":3,"markerCount":0,
+         "owner":$OWNER,"role":"$role","coverThumbUrl":null,"dayCount":3,"markerCount":0,"editorCount":$editorCount,
          "likeCount":0,"likedByMe":false,"copyCount":0,"updatedAt":"$updatedAt"}
     """.trimIndent()
 

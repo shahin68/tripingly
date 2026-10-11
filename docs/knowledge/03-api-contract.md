@@ -45,7 +45,7 @@ REST over HTTPS, JSON, base path `/v1`.
 | GET | `/me` | Profile, settings, onboarding state, entitlements |
 | PATCH | `/me` | Display name, username (onboarding), birth date (onboarding only), locale, `defaultTripVisibility` |
 | GET | `/me/stats` | Trips, markers, photos counts |
-| GET | `/me/trips` | Owned + collaborating, cursor paginated; each item has `role`, `coverThumbUrl` (first cover photo in the trip, or null), `dayCount`, `markerCount` |
+| GET | `/me/trips` | Owned + collaborating, cursor paginated; each item has `role`, `coverThumbUrl` (first cover photo in the trip, or null), `dayCount`, `markerCount`, `editorCount` (people it's shared with, owner not counted; backend#30) |
 | PUT | `/me/devices/{fcmToken}` | Register/refresh push device. Body: `platform` (`android`\|`ios`), `locale` |
 | DELETE | `/me/devices/{fcmToken}` | |
 | POST | `/me/export` | Starts GDPR export job; email when ready |

@@ -39,7 +39,10 @@ internal class InMemoryTripLocalDataSource : TripLocalDataSource {
         trips.update { it - tripId }
     }
 
-    override suspend fun saveMarkers(markers: List<TripMarker>) = markers.forEach { saveMarker(it) }
+    override suspend fun saveMarkers(markers: List<TripMarker>) {
+        markers.forEach { saveMarker(it) }
+        recountMarkers()
+    }
 
     override suspend fun savePlaceOfMarker(markerId: String, placeId: String, name: String) {
         trips.update { all ->
@@ -72,6 +75,17 @@ internal class InMemoryTripLocalDataSource : TripLocalDataSource {
         trips.update { all ->
             all.mapValues { (_, details) ->
                 details.copy(days = details.days.map { day -> day.copy(markers = day.markers.filterNot { it.id in markerIds }) })
+            }
+        }
+        recountMarkers()
+    }
+
+    /** Like Room: My Trips' stop count follows the cached stops of trips opened before. */
+    private fun recountMarkers() {
+        trips.update { all ->
+            all.mapValues { (_, details) ->
+                if (details.days.isEmpty()) details
+                else details.copy(trip = details.trip.copy(markerCount = details.days.sumOf { it.markers.size }))
             }
         }
     }
