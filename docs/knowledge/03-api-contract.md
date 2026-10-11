@@ -45,7 +45,7 @@ REST over HTTPS, JSON, base path `/v1`.
 | GET | `/me` | Profile, settings, onboarding state, entitlements |
 | PATCH | `/me` | Display name, username (onboarding), birth date (onboarding only), locale, `defaultTripVisibility` |
 | GET | `/me/stats` | Trips, markers, photos counts |
-| GET | `/me/friends?cursor=&limit=` | The user's friends as user summaries, cursor paginated `{ items, nextCursor }`. The New trip sheet shows the first page (limit 50) as a row of avatars to add as members. Backend in progress; the client's `FriendPageDto` is hand-written until its openapi.json has it |
+| GET | `/me/friends?cursor=&limit=` | The user's friends as user summaries, cursor paginated `{ items, nextCursor }`. The New trip sheet shows the first page (limit 50) as a row of avatars to add as members. Backend: tripinly-backend#32 (generated `UserPageDto`) |
 | GET | `/me/trips` | Owned + collaborating, cursor paginated; each item has `role`, `coverThumbUrl` (first cover photo in the trip, or null), `dayCount`, `markerCount`, `editorCount` (people it's shared with, owner not counted; backend#30) |
 | PUT | `/me/devices/{fcmToken}` | Register/refresh push device. Body: `platform` (`android`\|`ios`), `locale` |
 | DELETE | `/me/devices/{fcmToken}` | |
