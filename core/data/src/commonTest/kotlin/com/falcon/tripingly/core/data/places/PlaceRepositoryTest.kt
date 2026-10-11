@@ -78,7 +78,7 @@ class PlaceRepositoryTest {
     )
 
     @Test
-    fun `a destination search asks for areas only, and the map search for everything`() = runTest {
+    fun `a destination search asks for areas only and the map search for everything`() = runTest {
         val repository = repository()
 
         repository.searchDestinations(" Vienn ")
