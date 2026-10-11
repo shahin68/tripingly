@@ -9,9 +9,11 @@ import com.falcon.tripingly.core.network.photos.StorageClient
 import org.koin.compose.koinInject
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.platform.LocalUriHandler
+import androidx.lifecycle.compose.LifecycleStartEffect
 import androidx.navigation3.ui.NavDisplay
 import androidx.navigation3.runtime.rememberNavBackStack
 import androidx.navigation3.runtime.NavEntry
+import com.falcon.tripingly.core.data.realtime.LiveUpdates
 import com.falcon.tripingly.core.navigation.NavConfig
 import com.falcon.tripingly.core.navigation.Home
 import com.falcon.tripingly.core.navigation.TripMap
@@ -42,6 +44,12 @@ fun App() {
 
 @Composable
 private fun MainNavigation() {
+    // Signed in from here on: live updates while the app is in the foreground.
+    val liveUpdates = koinInject<LiveUpdates>()
+    LifecycleStartEffect(liveUpdates) {
+        liveUpdates.start()
+        onStopOrDispose { liveUpdates.stop() }
+    }
     val backStack = rememberNavBackStack(NavConfig, Home)
     val goBack = { if (backStack.size > 1) backStack.removeAt(backStack.size - 1) }
 

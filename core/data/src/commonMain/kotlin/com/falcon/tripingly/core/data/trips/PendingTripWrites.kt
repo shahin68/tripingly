@@ -6,12 +6,15 @@ import kotlinx.coroutines.sync.withLock
 /**
  * Tracks local changes to a trip that the server hasn't confirmed yet, so a
  * reload from the server doesn't overwrite them. A reload saves only when no
- * change is pending and none started while it was loading.
+ * change is pending and none started while it was loading. A reload or a live
+ * change that couldn't be saved has the trip marked stale, and the marker queue
+ * reloads it once it has sent everything ([takeStale]).
  */
 internal class PendingTripWrites {
     private val mutex = Mutex()
     private val pending = mutableMapOf<String, Int>()
     private val versions = mutableMapOf<String, Long>()
+    private val stale = mutableSetOf<String>()
 
     /** Marks a change as started and applies [applyLocally] in the same step. */
     suspend fun begin(tripId: String, applyLocally: suspend () -> Unit) = mutex.withLock {
@@ -35,4 +38,17 @@ internal class PendingTripWrites {
         if (quiet) save()
         quiet
     }
+
+    /** Has the trip reloaded once every pending change is sent (see [takeStale]). */
+    suspend fun reloadWhenSent(tripId: String) = mutex.withLock { stale += tripId }
+
+    /** Runs [save] unless a change is pending (a change someone else made, from the live connection). */
+    suspend fun saveIfNothingPending(tripId: String, save: suspend () -> Unit): Boolean = mutex.withLock {
+        val quiet = (pending[tripId] ?: 0) == 0
+        if (quiet) save() else stale += tripId
+        quiet
+    }
+
+    /** True once after something from the server couldn't be saved; the trip needs a reload. */
+    suspend fun takeStale(tripId: String): Boolean = mutex.withLock { stale.remove(tripId) }
 }

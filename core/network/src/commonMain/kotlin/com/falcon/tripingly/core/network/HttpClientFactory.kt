@@ -1,5 +1,6 @@
 package com.falcon.tripingly.core.network
 
+import com.falcon.tripingly.core.network.auth.AuthTokens
 import com.falcon.tripingly.core.network.auth.SessionEvents
 import com.falcon.tripingly.core.network.auth.TokenRefresher
 import com.falcon.tripingly.core.network.auth.TokenStore
@@ -19,6 +20,7 @@ import io.ktor.client.plugins.logging.SIMPLE
 import io.ktor.client.request.header
 import io.ktor.http.HttpHeaders
 import io.ktor.serialization.kotlinx.json.json
+import io.ktor.util.AttributeKey
 
 private const val TIMEOUT_MILLIS = 15_000L
 
@@ -37,7 +39,7 @@ fun createHttpClient(
     logHttp: Boolean = false,
 ): HttpClient {
     val refresher = TokenRefresher(config, tokenStore, sessionEvents)
-    return HttpClient(engine) {
+    val client = HttpClient(engine) {
         expectSuccess = false
         install(ContentNegotiation) { json(NetworkJson) }
         install(HttpTimeout) {
@@ -71,6 +73,18 @@ fun createHttpClient(
             }
         }
     }
+    // The live connection refreshes through the same refresher (see refreshExpiredToken).
+    client.attributes.put(RefresherKey, refresher)
+    return client
 }
+
+private val RefresherKey = AttributeKey<TokenRefresher>("TokenRefresher")
+
+/**
+ * Refreshes after the live connection was refused or closed for [expiredAccessToken], one refresh at a
+ * time with the client's own requests. Null when it failed (offline, or the session ended).
+ */
+internal suspend fun HttpClient.refreshExpiredToken(expiredAccessToken: String): AuthTokens? =
+    attributes[RefresherKey].refreshExpired(this, expiredAccessToken)
 
 internal const val CLIENT_HEADER = "X-Client"

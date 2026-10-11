@@ -1,5 +1,6 @@
 package com.falcon.tripingly.core.network.di
 
+import com.falcon.tripingly.core.common.di.ApplicationScope
 import com.falcon.tripingly.core.network.ApiConfig
 import com.falcon.tripingly.core.network.account.AccountApi
 import com.falcon.tripingly.core.network.account.createAccountApi
@@ -17,6 +18,9 @@ import com.falcon.tripingly.core.network.photos.StorageClient
 import com.falcon.tripingly.core.network.photos.createPhotosApi
 import com.falcon.tripingly.core.network.places.PlacesApi
 import com.falcon.tripingly.core.network.places.createPlacesApi
+import com.falcon.tripingly.core.network.realtime.FakeRealtimeClient
+import com.falcon.tripingly.core.network.realtime.RealtimeClient
+import com.falcon.tripingly.core.network.realtime.SocketIoRealtimeClient
 import com.falcon.tripingly.core.network.trips.InvitesApi
 import com.falcon.tripingly.core.network.trips.MarkersApi
 import com.falcon.tripingly.core.network.trips.TripsApi
@@ -69,6 +73,21 @@ val networkModule = module {
     single<AppConfigApi> { get<Ktorfit>().createAppConfigApi() }
     single<PhotosApi> { get<Ktorfit>().createPhotosApi() }
     single { StorageClient(get<NetworkPlatform>().engine()) }
+    single<RealtimeClient> {
+        val config = get<ApiConfig>()
+        if (config.useFakeApi) {
+            FakeRealtimeClient()
+        } else {
+            SocketIoRealtimeClient(
+                engine = get<NetworkPlatform>().engine(),
+                config = config,
+                apiClient = get(),
+                tokenStore = get(),
+                sessionEvents = get(),
+                scope = get(ApplicationScope),
+            )
+        }
+    }
 }
 
 internal expect val networkPlatformModule: Module
