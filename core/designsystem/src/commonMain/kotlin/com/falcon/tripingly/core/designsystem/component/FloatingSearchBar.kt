@@ -33,6 +33,7 @@ fun FloatingSearchBar(
             .fillMaxWidth()
             .padding(MaterialTheme.spacing.medium),
         placeholder = { Text(placeholder) },
+        singleLine = true,
         leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
         shape = RoundedCornerShape(28.dp),
         colors = TextFieldDefaults.colors(
