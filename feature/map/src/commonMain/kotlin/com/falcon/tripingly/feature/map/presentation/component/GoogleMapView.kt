@@ -2,7 +2,6 @@ package com.falcon.tripingly.feature.map.presentation.component
 
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.unit.Dp
 import com.falcon.tripingly.core.model.place.GeoBounds
 import com.falcon.tripingly.core.model.place.MapPlace
@@ -30,6 +29,4 @@ expect fun GoogleMapView(
     onMapClick: (Coordinates) -> Unit,
     onMapLongClick: (Coordinates) -> Unit,
     onMarkerClick: (MapMarker) -> Unit,
-    /** Where [selectedPlace]'s pin is on the map, in pixels from its top left, on every frame the camera moves. */
-    onSelectedPlaceMoved: (Offset) -> Unit,
 )

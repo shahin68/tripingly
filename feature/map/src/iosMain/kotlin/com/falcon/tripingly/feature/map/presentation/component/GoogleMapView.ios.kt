@@ -3,7 +3,6 @@ package com.falcon.tripingly.feature.map.presentation.component
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.unit.Dp
 import com.falcon.tripingly.core.model.place.GeoBounds
 import com.falcon.tripingly.core.model.place.MapPlace
@@ -27,7 +26,6 @@ actual fun GoogleMapView(
     onMapClick: (Coordinates) -> Unit,
     onMapLongClick: (Coordinates) -> Unit,
     onMarkerClick: (MapMarker) -> Unit,
-    onSelectedPlaceMoved: (Offset) -> Unit,
 ) {
     val koin = getKoin()
     val googleMaps = remember(koin) { koin.getOrNull<GoogleMapsSdk>() }
@@ -47,7 +45,6 @@ actual fun GoogleMapView(
             onMapClick = onMapClick,
             onMapLongClick = onMapLongClick,
             onMarkerClick = onMarkerClick,
-            onSelectedPlaceMoved = onSelectedPlaceMoved,
         )
     } else {
         AppleMapView(

@@ -10,7 +10,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.ui.platform.LocalDensity
@@ -52,15 +51,12 @@ internal fun GoogleSdkMapView(
     onMapClick: (Coordinates) -> Unit,
     onMapLongClick: (Coordinates) -> Unit,
     onMarkerClick: (MapMarker) -> Unit,
-    onSelectedPlaceMoved: (Offset) -> Unit,
 ) {
     val currentMarkers by rememberUpdatedState(markers)
     val currentOnCameraMove by rememberUpdatedState(onCameraMove)
     val currentOnMapClick by rememberUpdatedState(onMapClick)
     val currentOnMapLongClick by rememberUpdatedState(onMapLongClick)
     val currentOnMarkerClick by rememberUpdatedState(onMarkerClick)
-    val currentOnSelectedPlaceMoved by rememberUpdatedState(onSelectedPlaceMoved)
-    val density = LocalDensity.current
 
     // Where the camera last rested, so a camera target that is already there isn't sent again.
     val camera = remember { CameraRest() }
@@ -91,9 +87,6 @@ internal fun GoogleSdkMapView(
                 override fun onMarkerTap(key: String) {
                     currentMarkers.find { it.id == key }?.let(currentOnMarkerClick)
                 }
-
-                override fun onTrackedPointMoved(x: Double, y: Double) =
-                    currentOnSelectedPlaceMoved(Offset(x.toFloat() * density.density, y.toFloat() * density.density))
             },
         )
     }
@@ -108,12 +101,6 @@ internal fun GoogleSdkMapView(
         if (moved) map.moveCamera(cameraTarget.latitude, cameraTarget.longitude, zoomLevel, animated = center != null)
     }
 
-    // The place card follows the tapped pin while the camera flies to it.
-    LaunchedEffect(selectedPlace?.id) {
-        val place = selectedPlace
-        if (place == null) map.stopTrackingPoint() else map.trackPoint(place.location.lat, place.location.lng)
-    }
-
     val isDark = isSystemInDarkTheme()
     LaunchedEffect(isDark) { map.setStyle(if (isDark) DARK_MAP_STYLE else LIGHT_MAP_STYLE) }
     LaunchedEffect(isMyLocationEnabled) { map.setMyLocationEnabled(isMyLocationEnabled) }
@@ -126,6 +113,7 @@ internal fun GoogleSdkMapView(
     val onPlaceColor = MaterialTheme.colorScheme.onSecondary
     val hotSpotColor = MaterialTheme.colorScheme.tertiary
     val onHotSpotColor = MaterialTheme.colorScheme.onTertiary
+    val density = LocalDensity.current
     val layoutDirection = LocalLayoutDirection.current
     fun drawPin(look: PlacePinLook) = drawPlacePin(
         icon = categoryIcons.getValue(look.category),
