@@ -8,8 +8,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.interop.UIKitView
 import com.falcon.tripingly.core.model.place.GeoBounds
 import com.falcon.tripingly.core.model.place.MapPlace
@@ -56,7 +54,6 @@ internal fun AppleMapView(
     onMapClick: (Coordinates) -> Unit,
     onMapLongClick: (Coordinates) -> Unit,
     onMarkerClick: (MapMarker) -> Unit,
-    onSelectedPlaceShown: (Offset) -> Unit,
 ) {
     // The squares in view, loaded once the region rests; see MapPlaceSource.
     var view by remember { mutableStateOf<Pair<GeoBounds, Int>?>(null) }
@@ -142,23 +139,14 @@ internal fun AppleMapView(
         }
     }
 
-    val map = remember {
-        MKMapView().apply {
-            this.delegate = delegate
-            // Places on our map come from our server only.
-            pointOfInterestFilter = MKPointOfInterestFilter(includingCategories = emptyList<Any>())
-        }
-    }
-    // Where the picked place is now: the place card flies from there with the camera.
-    val density = LocalDensity.current.density
-    LaunchedEffect(selectedPlace?.id) {
-        val place = selectedPlace ?: return@LaunchedEffect
-        map.convertCoordinate(CLLocationCoordinate2DMake(place.location.lat, place.location.lng), toPointToView = map)
-            .useContents { onSelectedPlaceShown(Offset(x.toFloat() * density, y.toFloat() * density)) }
-    }
-
     UIKitView(
-        factory = { map },
+        factory = {
+            MKMapView().apply {
+                this.delegate = delegate
+                // Places on our map come from our server only.
+                pointOfInterestFilter = MKPointOfInterestFilter(includingCategories = emptyList<Any>())
+            }
+        },
         modifier = modifier.fillMaxSize(),
         update = { mapView ->
             delegate.currentMarkers = markers

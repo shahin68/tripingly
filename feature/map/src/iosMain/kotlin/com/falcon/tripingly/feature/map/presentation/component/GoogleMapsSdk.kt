@@ -50,8 +50,10 @@ interface GoogleMap {
     /** Shows this marker's info window; null hides it. */
     fun selectMarker(key: String?)
 
-    /** Reports where this point is on the view now, to [GoogleMapListener.onPointReported]. */
-    fun reportPoint(latitude: Double, longitude: Double)
+    /** Reports where this point is on the view at once and on every frame the camera moves. */
+    fun trackPoint(latitude: Double, longitude: Double)
+
+    fun stopTrackingPoint()
 }
 
 @ObjCName("GoogleMapTiles", exact = true)
@@ -89,6 +91,6 @@ interface GoogleMapListener {
 
     fun onMarkerTap(key: String)
 
-    /** The point asked for with [GoogleMap.reportPoint], in points from the view's top left. */
-    fun onPointReported(x: Double, y: Double)
+    /** The tracked point, in points from the view's top left. */
+    fun onTrackedPointMoved(x: Double, y: Double)
 }

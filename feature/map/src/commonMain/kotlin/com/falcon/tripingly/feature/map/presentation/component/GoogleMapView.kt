@@ -30,12 +30,6 @@ expect fun GoogleMapView(
     onMapClick: (Coordinates) -> Unit,
     onMapLongClick: (Coordinates) -> Unit,
     onMarkerClick: (MapMarker) -> Unit,
-    /**
-     * Where [selectedPlace]'s pin is on the map when it's selected, before the camera moves to it, in
-     * pixels from the map's top left. The place card flies from there along with the camera.
-     */
-    onSelectedPlaceShown: (Offset) -> Unit,
+    /** Where [selectedPlace]'s pin is on the map, in pixels from its top left, on every frame the camera moves. */
+    onSelectedPlaceMoved: (Offset) -> Unit,
 )
-
-/** How long the camera takes to fly to a pin, a search result or the user's location (iOS: GoogleMapsSdk.swift). */
-internal const val CAMERA_MOVE_MILLIS = 400

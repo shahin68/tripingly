@@ -27,7 +27,7 @@ actual fun GoogleMapView(
     onMapClick: (Coordinates) -> Unit,
     onMapLongClick: (Coordinates) -> Unit,
     onMarkerClick: (MapMarker) -> Unit,
-    onSelectedPlaceShown: (Offset) -> Unit,
+    onSelectedPlaceMoved: (Offset) -> Unit,
 ) {
     val koin = getKoin()
     val googleMaps = remember(koin) { koin.getOrNull<GoogleMapsSdk>() }
@@ -47,7 +47,7 @@ actual fun GoogleMapView(
             onMapClick = onMapClick,
             onMapLongClick = onMapLongClick,
             onMarkerClick = onMarkerClick,
-            onSelectedPlaceShown = onSelectedPlaceShown,
+            onSelectedPlaceMoved = onSelectedPlaceMoved,
         )
     } else {
         AppleMapView(
@@ -63,7 +63,6 @@ actual fun GoogleMapView(
             onMapClick = onMapClick,
             onMapLongClick = onMapLongClick,
             onMarkerClick = onMarkerClick,
-            onSelectedPlaceShown = onSelectedPlaceShown,
         )
     }
 }
