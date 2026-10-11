@@ -2,6 +2,7 @@ package com.falcon.tripingly.core.data.users
 
 import com.falcon.tripingly.core.common.error.DataError
 import com.falcon.tripingly.core.common.result.AppResult
+import com.falcon.tripingly.core.model.social.PeopleList
 import com.falcon.tripingly.core.model.trip.UserSummary
 import com.falcon.tripingly.core.network.ApiConfig
 import com.falcon.tripingly.core.network.auth.InMemoryTokenStore
@@ -89,8 +90,59 @@ class UserRepositoryTest {
         assertEquals("RATE_LIMITED", error.code)
     }
 
+    @Test
+    fun profile_asksWithoutTheAt_andMapsCountsAndTrips() = runTest {
+        val repository = repository(
+            """{"user":$ANNA,"followerCount":3,"followingCount":2,"isFollowing":true,"followsMe":false,"isFriend":false,
+               "publicTripCount":1,"trips":[$TRIP],"nextCursor":null}""",
+        )
+
+        val profile = (repository.profile("@anna") as AppResult.Success).data
+
+        assertEquals("/v1/users/anna", requests.single().url.encodedPath)
+        assertEquals(3, profile.followerCount)
+        assertTrue(profile.isFollowing)
+        assertEquals("Vienna", profile.trips.single().trip.name)
+        assertEquals(4, profile.trips.single().likeCount)
+    }
+
+    @Test
+    fun followAndBlock_useTheMatchingMethods() = runTest {
+        val repository = repository("", HttpStatusCode.NoContent)
+
+        repository.setFollowing(ANNA_ID, following = true)
+        repository.setFollowing(ANNA_ID, following = false)
+        repository.setBlocked(ANNA_ID, blocked = true)
+        repository.setBlocked(ANNA_ID, blocked = false)
+
+        assertEquals(
+            listOf(
+                "PUT /v1/users/$ANNA_ID/follow",
+                "DELETE /v1/users/$ANNA_ID/follow",
+                "POST /v1/users/$ANNA_ID/block",
+                "DELETE /v1/users/$ANNA_ID/block",
+            ),
+            requests.map { "${it.method.value} ${it.url.encodedPath}" },
+        )
+    }
+
+    @Test
+    fun people_asksForTheList_withTheCursor() = runTest {
+        val repository = repository("""{"items":[$ANNA],"nextCursor":"c3"}""")
+
+        val page = (repository.people(PeopleList.Followers, cursor = "c2") as AppResult.Success).data
+
+        assertEquals("/v1/me/followers", requests.single().url.encodedPath)
+        assertEquals("c2", requests.single().url.parameters["cursor"])
+        assertEquals("c3", page.nextCursor)
+        assertEquals("anna", page.items.single().username)
+    }
+
     private companion object {
         const val ANNA_ID = "22222222-2222-4222-8222-222222222222"
         const val ANNA = """{"id":"$ANNA_ID","username":"anna","displayName":"Anna"}"""
+        const val TRIP = """{"id":"t1","title":"Vienna","startDate":null,"endDate":null,"visibility":"public","owner":$ANNA,
+            "role":"viewer","coverThumbUrl":null,"dayCount":1,"markerCount":2,"editorCount":0,"likeCount":4,"likedByMe":false,
+            "copyCount":1,"updatedAt":"2026-10-11T10:00:00Z"}"""
     }
 }

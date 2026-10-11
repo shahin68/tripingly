@@ -71,6 +71,23 @@ internal class InMemoryTripLocalDataSource : TripLocalDataSource {
     override suspend fun tripIdOfMarker(markerId: String): String? =
         trips.value.values.firstOrNull { details -> details.days.any { day -> day.markers.any { it.id == markerId } } }?.trip?.id
 
+    override suspend fun marker(markerId: String): TripMarker? =
+        trips.value.values.firstNotNullOfOrNull { details -> details.days.firstNotNullOfOrNull { day -> day.markers.firstOrNull { it.id == markerId } } }
+
+    override suspend fun saveMarkerLike(markerId: String, likeCount: Int, likedByMe: Boolean?) =
+        updateMarker(markerId) { it.copy(likeCount = likeCount, likedByMe = likedByMe ?: it.likedByMe) }
+
+    override suspend fun addToCommentCount(markerId: String, delta: Int) =
+        updateMarker(markerId) { it.copy(commentCount = maxOf(0, it.commentCount + delta)) }
+
+    private fun updateMarker(markerId: String, change: (TripMarker) -> TripMarker) {
+        trips.update { all ->
+            all.mapValues { (_, details) ->
+                details.copy(days = details.days.map { day -> day.copy(markers = day.markers.map { if (it.id == markerId) change(it) else it }) })
+            }
+        }
+    }
+
     override suspend fun deleteMarkers(markerIds: List<String>) {
         trips.update { all ->
             all.mapValues { (_, details) ->

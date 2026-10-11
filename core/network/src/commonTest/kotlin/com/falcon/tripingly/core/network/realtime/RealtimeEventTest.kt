@@ -46,6 +46,24 @@ class RealtimeEventTest {
     }
 
     @Test
+    fun commentAndLikeEvents() {
+        val comment = """
+            {"id":"c1","markerId":"m1","body":"Lovely","author":{"id":"u2","username":"anna","displayName":"Anna"},
+             "likeCount":0,"likedByMe":false,"canDelete":false,"createdAt":"2026-10-11T10:00:00Z"}
+        """.trimIndent()
+        val added = assertIs<RealtimeEvent.CommentAdded>(parse("comment.created", envelope("comment.created", """{"comment":$comment}""")))
+        assertEquals("Lovely", added.comment.body)
+        assertEquals(
+            RealtimeEvent.CommentDeleted("t1", "u2", "c1", "m1"),
+            parse("comment.deleted", envelope("comment.deleted", """{"commentId":"c1","markerId":"m1"}""")),
+        )
+        assertEquals(
+            RealtimeEvent.LikeCountChanged("t1", "u2", "marker", "m1", 3),
+            parse("like.count_changed", envelope("like.count_changed", """{"targetType":"marker","targetId":"m1","count":3,"liked":true}""")),
+        )
+    }
+
+    @Test
     fun photoEvents() {
         val ready = assertIs<RealtimeEvent.PhotoSaved>(parse("photo.ready", envelope("photo.ready", """{"photo":$photoJson}""")))
         assertEquals("ph1", ready.photo.id)

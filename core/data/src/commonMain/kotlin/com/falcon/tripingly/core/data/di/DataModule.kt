@@ -23,6 +23,9 @@ import com.falcon.tripingly.core.data.push.PushNotifications
 import com.falcon.tripingly.core.data.push.PushRegistration
 import com.falcon.tripingly.core.data.realtime.LiveUpdates
 import com.falcon.tripingly.core.data.realtime.RealtimeSync
+import com.falcon.tripingly.core.data.social.DefaultSocialRepository
+import com.falcon.tripingly.core.data.social.FakeSocialRepository
+import com.falcon.tripingly.core.data.social.SocialRepository
 import com.falcon.tripingly.core.data.trips.DefaultMarkerRepository
 import com.falcon.tripingly.core.data.trips.DefaultTripInviteRepository
 import com.falcon.tripingly.core.data.trips.FakeTripBackend
@@ -73,6 +76,18 @@ val dataModule = module {
     }
     single<UserRepository> {
         if (get<ApiConfig>().useFakeApi) FakeUserRepository() else DefaultUserRepository(get())
+    }
+    single<SocialRepository> {
+        if (get<ApiConfig>().useFakeApi) {
+            FakeSocialRepository()
+        } else {
+            DefaultSocialRepository(
+                api = get(),
+                local = get(),
+                realtime = get(),
+                currentUserId = { get<SessionRepository>().currentUserId() },
+            )
+        }
     }
     single<AppConfigRepository> {
         if (get<ApiConfig>().useFakeApi) FakeAppConfigRepository() else DefaultAppConfigRepository(get(), get(ApplicationScope))

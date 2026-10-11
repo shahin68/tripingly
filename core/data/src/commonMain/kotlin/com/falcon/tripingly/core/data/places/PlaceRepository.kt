@@ -2,6 +2,8 @@ package com.falcon.tripingly.core.data.places
 
 import com.falcon.tripingly.core.common.error.DataError
 import com.falcon.tripingly.core.common.result.AppResult
+import com.falcon.tripingly.core.model.Page
+import com.falcon.tripingly.core.model.social.NearbyPlace
 import com.falcon.tripingly.core.model.config.AppConfig
 import com.falcon.tripingly.core.model.place.PlaceDetails
 import com.falcon.tripingly.core.model.place.PlaceSearchResult
@@ -38,4 +40,10 @@ interface PlaceRepository {
     suspend fun loadedPlacesIn(squares: Collection<PlaceSquare>): Map<PlaceSquare, PlacesInView>
 
     suspend fun place(id: String): AppResult<PlaceDetails, DataError.Network>
+
+    /**
+     * Popular places around [point] (the user's location), nearest pages first; topped up with OpenStreetMap
+     * sights where Tripinly has few. The point is used for the request only.
+     */
+    suspend fun nearby(point: GeoPoint, cursor: String?): AppResult<Page<NearbyPlace>, DataError.Network>
 }

@@ -24,6 +24,8 @@ import com.falcon.tripingly.core.network.push.createPushApi
 import com.falcon.tripingly.core.network.realtime.FakeRealtimeClient
 import com.falcon.tripingly.core.network.realtime.RealtimeClient
 import com.falcon.tripingly.core.network.realtime.SocketIoRealtimeClient
+import com.falcon.tripingly.core.network.social.SocialApi
+import com.falcon.tripingly.core.network.social.createSocialApi
 import com.falcon.tripingly.core.network.trips.InvitesApi
 import com.falcon.tripingly.core.network.trips.MarkersApi
 import com.falcon.tripingly.core.network.trips.TripsApi
@@ -76,6 +78,7 @@ val networkModule = module {
     single<InvitesApi> { get<Ktorfit>().createInvitesApi() }
     single<UsersApi> { get<Ktorfit>().createUsersApi() }
     single<PlacesApi> { get<Ktorfit>().createPlacesApi() }
+    single<SocialApi> { get<Ktorfit>().createSocialApi() }
     single<AppConfigApi> { get<Ktorfit>().createAppConfigApi() }
     single<PhotosApi> { get<Ktorfit>().createPhotosApi() }
     single { StorageClient(get<NetworkPlatform>().engine()) }

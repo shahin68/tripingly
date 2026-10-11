@@ -2,6 +2,7 @@ package com.falcon.tripingly.core.network.places
 
 import com.falcon.tripingly.core.common.error.DataError
 import com.falcon.tripingly.core.common.result.AppResult
+import com.falcon.tripingly.core.network.model.NearbyPageDto
 import com.falcon.tripingly.core.network.model.PlaceDetailDto
 import com.falcon.tripingly.core.network.model.SearchResponseDto
 import com.falcon.tripingly.core.network.model.TilesResponseDto
@@ -40,4 +41,16 @@ interface PlacesApi {
     /** One place, with its OpenStreetMap details. */
     @GET("places/{id}")
     suspend fun place(@Path("id") id: String): AppResult<PlaceDetailDto, DataError.Network>
+
+    /**
+     * Popular places within 5 km of [lat], [lng], each with its distance; the
+     * first page is topped up with OpenStreetMap sights where Tripinly has few. The point isn't stored.
+     */
+    @GET("places/nearby")
+    suspend fun nearby(
+        @Query("lat") lat: Double,
+        @Query("lng") lng: Double,
+        @Query("cursor") cursor: String?,
+        @Query("limit") limit: Int,
+    ): AppResult<NearbyPageDto, DataError.Network>
 }

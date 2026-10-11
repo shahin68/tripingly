@@ -14,6 +14,7 @@ import com.falcon.tripingly.core.network.auth.InMemoryTokenStore
 import com.falcon.tripingly.core.network.auth.SessionEvents
 import com.falcon.tripingly.core.network.createHttpClient
 import com.falcon.tripingly.core.network.createKtorfit
+import com.falcon.tripingly.core.network.model.CommentDto
 import com.falcon.tripingly.core.network.model.MarkerDto
 import com.falcon.tripingly.core.network.model.TripDto
 import com.falcon.tripingly.core.network.photos.StorageClient
@@ -112,6 +113,30 @@ class RealtimeSyncTest {
         sync.apply(RealtimeEvent.MarkerSaved("t2", OTHER, marker("m3", "Elsewhere")))
         assertNull(local.trip("t2"))
         assertTrue(paths.isEmpty())
+    }
+
+    @Test
+    fun othersLikesAndComments_countOnTheStop_andKeepWhetherILikeIt() = runTest {
+        val sync = sync { error("no request expected") }
+        cacheTrip()
+        local.saveMarkerLike("m0", likeCount = 1, likedByMe = true)
+        val comment = NetworkJson.decodeFromString<CommentDto>(
+            """{"id":"c1","markerId":"m0","body":"Nice","author":{"id":"$OTHER","username":"anna","displayName":"Anna"},
+               "likeCount":0,"likedByMe":false,"canDelete":false,"createdAt":"2026-10-11T10:00:00Z"}""",
+        )
+
+        sync.apply(RealtimeEvent.MarkerSaved("t1", OTHER, NetworkJson.decodeFromString<MarkerDto>(TripJson.marker("m0", "t1", "d0", 0, name = "Renamed"))))
+        sync.apply(RealtimeEvent.LikeCountChanged("t1", OTHER, "marker", "m0", 2))
+        sync.apply(RealtimeEvent.CommentAdded("t1", OTHER, comment))
+        sync.apply(RealtimeEvent.CommentAdded("t1", ME, comment))
+
+        val stop = local.marker("m0")!!
+        assertEquals("Renamed", stop.name)
+        assertEquals(2, stop.likeCount)
+        assertTrue(stop.likedByMe)
+        assertEquals(1, stop.commentCount)
+        sync.apply(RealtimeEvent.CommentDeleted("t1", OTHER, "c1", "m0"))
+        assertEquals(0, local.marker("m0")!!.commentCount)
     }
 
     @Test

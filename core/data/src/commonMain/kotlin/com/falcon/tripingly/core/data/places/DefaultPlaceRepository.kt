@@ -3,6 +3,7 @@ package com.falcon.tripingly.core.data.places
 import com.falcon.tripingly.core.common.error.DataError
 import com.falcon.tripingly.core.common.result.AppResult
 import com.falcon.tripingly.core.common.result.map
+import com.falcon.tripingly.core.model.Page
 import com.falcon.tripingly.core.data.config.AppConfigRepository
 import com.falcon.tripingly.core.model.place.MapPlace
 import com.falcon.tripingly.core.model.place.OsmRef
@@ -14,6 +15,7 @@ import com.falcon.tripingly.core.model.place.PlaceSearchResult
 import com.falcon.tripingly.core.model.place.PlaceSquare
 import com.falcon.tripingly.core.model.place.PlacesInView
 import com.falcon.tripingly.core.model.place.SearchResultType
+import com.falcon.tripingly.core.model.social.NearbyPlace
 import com.falcon.tripingly.core.model.trip.GeoPoint
 import com.falcon.tripingly.core.network.model.PlaceClusterDto
 import com.falcon.tripingly.core.network.model.PlaceDetailDto
@@ -195,6 +197,27 @@ internal class DefaultPlaceRepository(
         }
     }
 
+    override suspend fun nearby(point: GeoPoint, cursor: String?): AppResult<Page<NearbyPlace>, DataError.Network> =
+        api.nearby(point.lat, point.lng, cursor, NEARBY_PAGE_SIZE).map { page ->
+            Page(
+                page.items.map { item ->
+                    NearbyPlace(
+                        id = item.id,
+                        name = item.name,
+                        category = PlaceItemDto.Category.valueOf(item.category.name).toCategory(),
+                        location = GeoPoint(item.location.lat, item.location.lng),
+                        isTripinly = item.isTripinly,
+                        likeCount = item.likeCount.toInt(),
+                        likedByMe = item.likedByMe,
+                        coverPhotoId = item.coverPhotoId,
+                        coverThumbUrl = item.coverThumbUrl,
+                        distanceMeters = item.distanceMeters.toInt(),
+                    )
+                },
+                page.nextCursor,
+            )
+        }
+
     private fun PlaceDetailDto.toPlaceDetails() = PlaceDetails(
         id = id,
         name = name,
@@ -229,6 +252,7 @@ internal class DefaultPlaceRepository(
         // The server's limit for `q`.
         const val MAX_QUERY_LENGTH = 100
         const val DESTINATION_SCOPE = "destination"
+        const val NEARBY_PAGE_SIZE = 20
         // The server's limit of squares per request.
         const val MAX_SQUARES_PER_REQUEST = 16
         // A square is about four map tiles a side; 200 (the server's most) draws them about as densely as
