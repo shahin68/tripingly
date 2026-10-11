@@ -524,7 +524,12 @@ class TripRepositoryTest {
 
     @Test
     fun reorderMarkers_refused_putsTheOldOrderBack() = runTest {
-        val harness = Harness { json(TripJson.error("FORBIDDEN", "Forbidden"), HttpStatusCode.Forbidden) }
+        // The refusal waits until the new order has been checked; otherwise the queue may undo it first.
+        val answer = CompletableDeferred<Unit>()
+        val harness = Harness {
+            answer.await()
+            json(TripJson.error("FORBIDDEN", "Forbidden"), HttpStatusCode.Forbidden)
+        }
         harness.local.saveTrip(
             details(
                 TripJson.trip(
@@ -539,6 +544,7 @@ class TripRepositoryTest {
         markers.reorderMarkers("t1", "d0", listOf("m1", "m0"))
 
         assertEquals(listOf("m1", "m0"), harness.local.trip("t1")!!.days[0].markers.map { it.id })
+        answer.complete(Unit)
         failures.next()
         assertEquals(listOf("m0", "m1"), harness.local.trip("t1")!!.days[0].markers.map { it.id })
     }
