@@ -80,6 +80,9 @@ interface GoogleMapListener {
     /** The camera stopped: its center, zoom and the area the whole view shows. */
     fun onCameraIdle(latitude: Double, longitude: Double, zoom: Float, south: Double, west: Double, north: Double, east: Double)
 
+    /** A finger started moving the camera. */
+    fun onGestureStart()
+
     fun onTap(latitude: Double, longitude: Double)
 
     fun onLongPress(latitude: Double, longitude: Double)

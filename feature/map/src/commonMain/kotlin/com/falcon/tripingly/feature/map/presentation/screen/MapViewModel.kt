@@ -93,6 +93,8 @@ class MapViewModel(
     private var prefetchJob: Job? = null
     private var placeDetailsJob: Job? = null
     private var searchJob: Job? = null
+    /** The latest touch closed a place, so its tap only closes it (see [onScreenTouch]). */
+    private var isClosingTouch = false
 
     private val _events = Channel<Event>(capacity = Channel.BUFFERED)
     val events = _events.receiveAsFlow()
@@ -124,7 +126,7 @@ class MapViewModel(
             is Action.DismissError -> ui.update { it.copy(message = null, failedChanges = emptyList()) }
             is Action.RetryFailedChanges -> retryFailedChanges()
             is Action.OnCameraMove -> onCameraMove(action.coordinates, action.zoom, action.bounds)
-            is Action.OnDismissPlace -> closePlace()
+            is Action.OnScreenTouch -> onScreenTouch()
             is Action.OnAddPlaceToDay -> addPlace()
             is Action.OnOpenSearch -> ui.update { it.copy(isSearchOpen = true, selectedMarkerId = null) }
             is Action.OnSearchQueryChanged -> search(action.query)
@@ -277,7 +279,17 @@ class MapViewModel(
      * Place pins are drawn into the map's tiles, so a tap is matched here against the places the map drew:
      * the nearest pin or cluster within a finger's reach opens (a cluster zooms in), else the tap adds a stop.
      */
+    /**
+     * A finger went down anywhere but on the place card: an open place closes. A tap that closes a place
+     * still opens another pin, but doesn't add a stop.
+     */
+    private fun onScreenTouch() {
+        isClosingTouch = ui.value.selectedPlace != null
+        if (isClosingTouch) closePlace()
+    }
+
     private fun onMapClick(coordinates: Coordinates) {
+        val isClosingTap = isClosingTouch
         viewModelScope.launch {
             val zoom = ui.value.zoomLevel
             when (val target = pinAt(GeoPoint(coordinates.latitude, coordinates.longitude), zoom)) {
@@ -286,7 +298,7 @@ class MapViewModel(
                     Coordinates(target.cluster.location.lat, target.cluster.location.lng),
                     zoom + CLUSTER_ZOOM_STEP,
                 )
-                null -> addMarker(coordinates)
+                null -> if (!isClosingTap) addMarker(coordinates)
             }
         }
     }
@@ -738,7 +750,8 @@ class MapViewModel(
         data object DismissError : Action
         data object RetryFailedChanges : Action
         data class OnCameraMove(val coordinates: Coordinates, val zoom: Float, val bounds: GeoBounds? = null) : Action
-        data object OnDismissPlace : Action
+        /** A touch began anywhere outside the place card, on the map or on the screen's other controls. */
+        data object OnScreenTouch : Action
         data object OnAddPlaceToDay : Action
         data object OnOpenSearch : Action
         data class OnSearchQueryChanged(val query: String) : Action

@@ -137,6 +137,10 @@ private final class AppGoogleMap: NSObject, GoogleMap, GMSMapViewDelegate {
         )
     }
 
+    func mapView(_ mapView: GMSMapView, willMove gesture: Bool) {
+        if gesture { listener.onGestureStart() }
+    }
+
     func mapView(_ mapView: GMSMapView, didTapAt coordinate: CLLocationCoordinate2D) {
         listener.onTap(latitude: coordinate.latitude, longitude: coordinate.longitude)
     }

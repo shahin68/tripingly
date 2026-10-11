@@ -48,12 +48,14 @@ internal fun GoogleSdkMapView(
     isMyLocationEnabled: Boolean,
     coveredBottom: Dp,
     onCameraMove: (Coordinates, Float, GeoBounds?) -> Unit,
+    onMapTouch: () -> Unit,
     onMapClick: (Coordinates) -> Unit,
     onMapLongClick: (Coordinates) -> Unit,
     onMarkerClick: (MapMarker) -> Unit,
 ) {
     val currentMarkers by rememberUpdatedState(markers)
     val currentOnCameraMove by rememberUpdatedState(onCameraMove)
+    val currentOnMapTouch by rememberUpdatedState(onMapTouch)
     val currentOnMapClick by rememberUpdatedState(onMapClick)
     val currentOnMapLongClick by rememberUpdatedState(onMapLongClick)
     val currentOnMarkerClick by rememberUpdatedState(onMarkerClick)
@@ -79,12 +81,20 @@ internal fun GoogleSdkMapView(
                     currentOnCameraMove(Coordinates(latitude, longitude), zoom, bounds)
                 }
 
-                override fun onTap(latitude: Double, longitude: Double) = currentOnMapClick(Coordinates(latitude, longitude))
+                override fun onGestureStart() = currentOnMapTouch()
 
-                override fun onLongPress(latitude: Double, longitude: Double) =
+                override fun onTap(latitude: Double, longitude: Double) {
+                    currentOnMapTouch()
+                    currentOnMapClick(Coordinates(latitude, longitude))
+                }
+
+                override fun onLongPress(latitude: Double, longitude: Double) {
+                    currentOnMapTouch()
                     currentOnMapLongClick(Coordinates(latitude, longitude))
+                }
 
                 override fun onMarkerTap(key: String) {
+                    currentOnMapTouch()
                     currentMarkers.find { it.id == key }?.let(currentOnMarkerClick)
                 }
             },
