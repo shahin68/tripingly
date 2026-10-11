@@ -73,6 +73,13 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.geometry.Offset
 import kotlin.math.roundToInt
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.VectorConverter
+import androidx.compose.animation.core.tween
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.launch
+import com.falcon.tripingly.feature.map.presentation.component.CAMERA_MOVE_MILLIS
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.toImmutableList
 import com.falcon.tripingly.core.designsystem.component.AppDropdownMenu
@@ -116,8 +123,11 @@ fun MapScreen(
     var headerBottom by remember { mutableStateOf(0f) }
     var tabsTop by remember { mutableStateOf(0f) }
     var bottomCardsTop by remember { mutableStateOf(0f) }
-    // Where the tapped place's pin is on the map, with the place it belongs to.
-    var placePin by remember { mutableStateOf<Pair<String, Offset>?>(null) }
+    // The place card flies from the tapped pin to the middle of the map in step with the camera,
+    // driven by Compose alone: one animation, read only while placing the card.
+    val cardPin = remember { Animatable(Offset.Zero, Offset.VectorConverter) }
+    var cardPlaceId by remember { mutableStateOf<String?>(null) }
+    val scope = rememberCoroutineScope()
     val isLaidOut = mapSize != IntSize.Zero
     LaunchedEffect(state.frame, isLaidOut) {
         val frame = state.frame ?: return@LaunchedEffect
@@ -154,7 +164,19 @@ fun MapScreen(
             onMapClick = { coords -> onAction(Action.OnMapClick(coords)) },
             onMapLongClick = { coords -> onAction(Action.OnMapLongClick(coords)) },
             onMarkerClick = { marker -> onAction(Action.OnMarkerClick(marker)) },
-            onSelectedPlaceMoved = { offset -> state.selectedPlace?.let { placePin = it.id to offset } },
+            onSelectedPlaceShown = { pin ->
+                state.selectedPlace?.let { place ->
+                    scope.launch {
+                        cardPin.snapTo(pin)
+                        cardPlaceId = place.id
+                        // The camera centers the pin in the same time; the map's padding is the same at the top and bottom.
+                        cardPin.animateTo(
+                            Offset(mapSize.width / 2f, mapSize.height / 2f),
+                            tween(CAMERA_MOVE_MILLIS, easing = FastOutSlowInEasing),
+                        )
+                    }
+                }
+            },
         )
 
         Column(
@@ -242,7 +264,7 @@ fun MapScreen(
         }
 
         state.selectedPlace?.let { place ->
-            // The card opens right above the tapped pin and follows it while the camera centers it.
+            // The card opens right above the tapped pin and flies with it while the camera centers it.
             // A touch anywhere else only closes the card: it doesn't reach the map or the cards.
             Box(
                 modifier = Modifier
@@ -266,10 +288,10 @@ fun MapScreen(
                     val maxWidth = (constraints.maxWidth - 2 * edgeMargin.roundToPx()).coerceAtLeast(0)
                     val card = measurable.measure(constraints.copy(minWidth = 0, minHeight = 0, maxWidth = maxWidth))
                     layout(constraints.maxWidth, constraints.maxHeight) {
-                        // Read while placing, so following the pin only moves the card. Until the map
-                        // reports the pin (Apple's map never does), the card sits above the middle.
-                        val pin = placePin?.takeIf { it.first == place.id }?.second
-                            ?: Offset(constraints.maxWidth / 2f, constraints.maxHeight / 2f)
+                        // Read while placing, so the flight only moves the card. Hidden until the map
+                        // has said where the pin is.
+                        if (cardPlaceId != place.id) return@layout
+                        val pin = cardPin.value
                         val x = (pin.x - card.width / 2f).roundToInt()
                             .coerceIn(edgeMargin.roundToPx(), constraints.maxWidth - edgeMargin.roundToPx() - card.width)
                         card.place(x, (pin.y - card.height).roundToInt() - pinClearance.roundToPx())

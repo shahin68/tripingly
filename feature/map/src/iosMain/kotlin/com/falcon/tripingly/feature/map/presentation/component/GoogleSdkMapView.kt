@@ -52,14 +52,14 @@ internal fun GoogleSdkMapView(
     onMapClick: (Coordinates) -> Unit,
     onMapLongClick: (Coordinates) -> Unit,
     onMarkerClick: (MapMarker) -> Unit,
-    onSelectedPlaceMoved: (Offset) -> Unit,
+    onSelectedPlaceShown: (Offset) -> Unit,
 ) {
     val currentMarkers by rememberUpdatedState(markers)
     val currentOnCameraMove by rememberUpdatedState(onCameraMove)
     val currentOnMapClick by rememberUpdatedState(onMapClick)
     val currentOnMapLongClick by rememberUpdatedState(onMapLongClick)
     val currentOnMarkerClick by rememberUpdatedState(onMarkerClick)
-    val currentOnSelectedPlaceMoved by rememberUpdatedState(onSelectedPlaceMoved)
+    val currentOnSelectedPlaceShown by rememberUpdatedState(onSelectedPlaceShown)
     val density = LocalDensity.current
 
     // Where the camera last rested, so a camera target that is already there isn't sent again.
@@ -92,10 +92,16 @@ internal fun GoogleSdkMapView(
                     currentMarkers.find { it.id == key }?.let(currentOnMarkerClick)
                 }
 
-                override fun onTrackedPointMoved(x: Double, y: Double) =
-                    currentOnSelectedPlaceMoved(Offset(x.toFloat() * density.density, y.toFloat() * density.density))
+                override fun onPointReported(x: Double, y: Double) =
+                    currentOnSelectedPlaceShown(Offset(x.toFloat() * density.density, y.toFloat() * density.density))
             },
         )
+    }
+
+    // Where the tapped pin is before the camera moves: the place card flies from there with the camera.
+    // Before the camera effect below, so the camera hasn't started moving yet.
+    LaunchedEffect(selectedPlace?.id) {
+        selectedPlace?.let { map.reportPoint(it.location.lat, it.location.lng) }
     }
 
     LaunchedEffect(cameraTarget, zoomLevel) {
@@ -106,12 +112,6 @@ internal fun GoogleSdkMapView(
             abs(camera.zoom - zoomLevel) > 0.01
         // Until the map has rested once, it starts there instead of flying there.
         if (moved) map.moveCamera(cameraTarget.latitude, cameraTarget.longitude, zoomLevel, animated = center != null)
-    }
-
-    // The place card follows the tapped pin while the camera flies to it.
-    LaunchedEffect(selectedPlace?.id) {
-        val place = selectedPlace
-        if (place == null) map.stopTrackingPoint() else map.trackPoint(place.location.lat, place.location.lng)
     }
 
     val isDark = isSystemInDarkTheme()

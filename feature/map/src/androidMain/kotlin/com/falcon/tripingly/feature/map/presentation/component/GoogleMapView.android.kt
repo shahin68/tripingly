@@ -11,8 +11,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberUpdatedState
-import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.onSizeChanged
@@ -64,7 +62,7 @@ actual fun GoogleMapView(
     onMapClick: (Coordinates) -> Unit,
     onMapLongClick: (Coordinates) -> Unit,
     onMarkerClick: (MapMarker) -> Unit,
-    onSelectedPlaceMoved: (Offset) -> Unit,
+    onSelectedPlaceShown: (Offset) -> Unit,
 ) {
     val initialLatLng = remember { LatLng(cameraTarget.latitude, cameraTarget.longitude) }
     val cameraPositionState = rememberCameraPositionState {
@@ -105,18 +103,6 @@ actual fun GoogleMapView(
         if (!cameraPositionState.isMoving) reportCamera()
     }
 
-    // The place card follows the tapped pin while the camera flies to it.
-    val currentOnSelectedPlaceMoved by rememberUpdatedState(onSelectedPlaceMoved)
-    LaunchedEffect(selectedPlace?.id) {
-        val place = selectedPlace ?: return@LaunchedEffect
-        val pin = LatLng(place.location.lat, place.location.lng)
-        snapshotFlow { cameraPositionState.position }.collect {
-            cameraPositionState.projection?.toScreenLocation(pin)?.let { point ->
-                currentOnSelectedPlaceMoved(Offset(point.x.toFloat(), point.y.toFloat()))
-            }
-        }
-    }
-
     val uiSettings = remember {
         MapUiSettings(
             zoomControlsEnabled = false,
@@ -132,6 +118,15 @@ actual fun GoogleMapView(
             isMyLocationEnabled = isMyLocationEnabled,
             mapStyleOptions = MapStyleOptions(if (isDark) DARK_MAP_STYLE else LIGHT_MAP_STYLE),
         )
+    }
+
+    // Where the tapped pin is before the camera moves: the place card flies from there with the camera.
+    // Before the camera effect below, so the camera hasn't started moving yet.
+    LaunchedEffect(selectedPlace?.id) {
+        val place = selectedPlace ?: return@LaunchedEffect
+        val pin = cameraPositionState.projection?.toScreenLocation(LatLng(place.location.lat, place.location.lng))
+        // Without a drawn map, the card starts where the camera takes the pin: the middle.
+        onSelectedPlaceShown(pin?.let { Offset(it.x.toFloat(), it.y.toFloat()) } ?: Offset(mapSize.width / 2f, mapSize.height / 2f))
     }
 
     // Animate camera when cameraTarget or zoomLevel changes externally
@@ -289,6 +284,3 @@ private const val REDRAW_AFTER_MILLIS = 300L
 
 /** Long enough for the new overlay's tiles to be drawn from the kept squares and faded in. */
 private const val KEEP_REPLACED_OVERLAY_MILLIS = 1_500L
-
-/** How long the camera takes to fly to a pin, a search result or the user's location. */
-private const val CAMERA_MOVE_MILLIS = 400

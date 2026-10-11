@@ -38,7 +38,6 @@ private final class AppGoogleMap: NSObject, GoogleMap, GMSMapViewDelegate {
     private var markers: [String: GMSMarker] = [:]
     private var tiles: (any GoogleMapTiles)?
     private var tileLayer: PlaceTileLayer?
-    private var trackedPoint: CLLocationCoordinate2D?
 
     var view: UIView { mapView }
 
@@ -66,7 +65,7 @@ private final class AppGoogleMap: NSObject, GoogleMap, GMSMapViewDelegate {
     func moveCamera(latitude: Double, longitude: Double, zoom: Float, animated: Bool) {
         let camera = GMSCameraPosition(latitude: latitude, longitude: longitude, zoom: zoom)
         if animated {
-            // As fast as on Android (400 ms).
+            // CAMERA_MOVE_MILLIS in the shared code; the place card flies along in the same time.
             CATransaction.begin()
             CATransaction.setAnimationDuration(0.4)
             mapView.animate(to: camera)
@@ -122,27 +121,12 @@ private final class AppGoogleMap: NSObject, GoogleMap, GMSMapViewDelegate {
         if mapView.selectedMarker !== marker { mapView.selectedMarker = marker }
     }
 
-    func trackPoint(latitude: Double, longitude: Double) {
-        trackedPoint = CLLocationCoordinate2D(latitude: latitude, longitude: longitude)
-        reportTrackedPoint()
-    }
-
-    func stopTrackingPoint() {
-        trackedPoint = nil
-    }
-
-    private func reportTrackedPoint() {
-        guard let trackedPoint else { return }
-        let point = mapView.projection.point(for: trackedPoint)
-        listener.onTrackedPointMoved(x: Double(point.x), y: Double(point.y))
-    }
-
-    func mapView(_ mapView: GMSMapView, didChange position: GMSCameraPosition) {
-        reportTrackedPoint()
+    func reportPoint(latitude: Double, longitude: Double) {
+        let point = mapView.projection.point(for: CLLocationCoordinate2D(latitude: latitude, longitude: longitude))
+        listener.onPointReported(x: Double(point.x), y: Double(point.y))
     }
 
     func mapView(_ mapView: GMSMapView, idleAt position: GMSCameraPosition) {
-        reportTrackedPoint()
         // The whole view, not only the part inside the padding.
         let size = mapView.bounds.size
         let corners = [CGPoint.zero, CGPoint(x: size.width, y: 0), CGPoint(x: 0, y: size.height), CGPoint(x: size.width, y: size.height)]
