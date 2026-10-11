@@ -115,6 +115,12 @@ internal class DefaultMarkerRepository(
             is AppResult.Error -> result
         }
 
+    override suspend fun tripIdOfMarker(markerId: String): AppResult<String, DataError.Network> =
+        local.tripIdOfMarker(markerId)?.let { AppResult.Success(it) } ?: when (val result = api.get(markerId)) {
+            is AppResult.Success -> AppResult.Success(result.data.tripId)
+            is AppResult.Error -> result
+        }
+
     private fun List<TripMarker>.nextPosition(): Int = (maxOfOrNull { it.position } ?: -1) + 1
 
     private suspend fun cachedMarker(markerId: String): TripMarker? {

@@ -119,6 +119,8 @@ class HomeViewModelTest {
         assertFalse(state.isSaving)
         assertEquals(listOf("Rome"), state.trips.map { it.name })
         assertEquals(2, state.trips.single().dayCount)
+        // The moment to ask for notifications.
+        assertEquals(Event.AskForNotifications, viewModel.events.first())
     }
 
     @Test

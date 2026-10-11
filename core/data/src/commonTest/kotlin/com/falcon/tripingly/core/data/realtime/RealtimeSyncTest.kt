@@ -138,6 +138,8 @@ class RealtimeSyncTest {
         repeat(5) { sync.apply(RealtimeEvent.TripChanged("t1", OTHER)) }
         realTime { sent.first { it.isNotEmpty() } }
         repeat(5) { sync.apply(RealtimeEvent.TripChanged("t1", OTHER)) }
+        // Every ask has arrived while the first reload is still running.
+        realTime { delay(100.milliseconds) }
         release.complete(Unit)
 
         realTime { local.trips.first { it["t1"]?.trip?.name == "Rome" } }

@@ -32,6 +32,8 @@ internal class SessionRepositoryImpl(
     private val developerSignIn: DeveloperSignIn?,
     /** Everything else the app stores for the user; resolved lazily because platform modules bind some. */
     private val cleaners: () -> List<LocalDataCleaner>,
+    /** Stops push to this device; runs on sign-out while the session still works. */
+    private val unregisterPush: suspend () -> Unit,
     scope: CoroutineScope,
 ) : SessionRepository {
 
@@ -106,6 +108,7 @@ internal class SessionRepositoryImpl(
 
     override suspend fun signOut(reason: SignOutReason?) {
         tokenStore.get()?.let { tokens ->
+            unregisterPush()
             // Best effort: the server revokes the session; offline, it simply expires.
             authApi.logout(LogoutDto(refreshToken = tokens.refreshToken))
         }

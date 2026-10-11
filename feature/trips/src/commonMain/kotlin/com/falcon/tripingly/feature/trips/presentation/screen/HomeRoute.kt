@@ -15,6 +15,7 @@ import com.falcon.tripingly.feature.trips.presentation.component.RescheduleTripD
 import com.falcon.tripingly.feature.trips.presentation.component.TripDialogKind
 import com.falcon.tripingly.feature.trips.presentation.component.formatDateRange
 import com.falcon.tripingly.feature.trips.presentation.members.TripMembersRoute
+import com.falcon.tripingly.feature.trips.presentation.permission.rememberNotificationPermissionRequest
 import com.falcon.tripingly.feature.trips.presentation.screen.HomeViewModel.Action
 import com.falcon.tripingly.feature.trips.presentation.screen.HomeViewModel.Dialog
 import com.falcon.tripingly.feature.trips.presentation.screen.HomeViewModel.Event
@@ -29,10 +30,12 @@ fun HomeRoute(
     shareManager: ShareManager = koinInject(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val askForNotifications = rememberNotificationPermissionRequest()
 
     ObserveAsEvents(viewModel.events) { event ->
         when (event) {
             is Event.NavigateToMap -> onNavigateToMap(event.tripId)
+            Event.AskForNotifications -> askForNotifications()
             is Event.ShareTrip -> {
                 val trip = event.trip
                 val dates = formatDateRange(trip.startDate, trip.endDate)

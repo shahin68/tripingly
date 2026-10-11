@@ -50,6 +50,13 @@
 - Push arrives already localized from the server. Data payload: `{ type, notificationId, deepLink }`.
 - Tapping a push opens the `deepLink`. Mark it read via `POST /notifications/read`.
 
+### In the app (Android; iOS waits for an Apple Developer account)
+
+- Firebase starts from four values in `local.properties` (`firebase.projectId`, `firebase.senderId`, `firebase.appId`, `firebase.apiKey`, copied from `google-services.json`, which stays out of the repo). Without them there's no push.
+- `PushRegistration` registers the device when the signed-in app starts and when FCM issues a new token, but asks the server only when the account, token or language changed since the last registration. Sign-out unregisters before `POST /auth/logout`.
+- The permission (Android 13+) is asked right after the user creates a trip. Pushes that arrive while the app is open are shown by the app in the same channel the system uses for the others.
+- A tap opens the `deepLink` (`tripinly://trips/{id}`, `tripinly://markers/{id}` opens the stop's trip; `tripinly://notifications` just opens the app until there's an Activity screen) and marks the notification read.
+
 ## Deep links
 
 | Link | Opens |

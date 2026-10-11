@@ -9,6 +9,7 @@ kotlin {
             api(projects.core.common)
             implementation(projects.core.database)
             implementation(projects.core.network)
+            implementation(projects.core.storage)
             implementation(libs.kotlinx.coroutines.core)
             implementation(libs.kotlinx.datetime)
             implementation(libs.koin.core)

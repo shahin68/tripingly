@@ -324,6 +324,11 @@ class FakeTripBackend(
         )
     }
 
+    override suspend fun tripIdOfMarker(markerId: String): AppResult<String, DataError.Network> = call {
+        val (details, _) = markerOf(markerId) ?: return notFound()
+        details.trip.id
+    }
+
     override suspend fun invites(tripId: String): AppResult<List<TripInvite>, DataError.Network> = call {
         val details = trips.value[tripId] ?: return notFound()
         if (!details.trip.role.canManage) return forbidden()

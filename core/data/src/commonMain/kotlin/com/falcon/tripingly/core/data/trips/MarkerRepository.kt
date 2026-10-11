@@ -37,4 +37,7 @@ interface MarkerRepository {
 
     /** Copies someone's marker into a day of one of my trips; waits for the server. */
     suspend fun copyMarker(markerId: String, targetDayId: String): AppResult<TripMarker, DataError.Network>
+
+    /** The trip a marker belongs to (a push about a stop opens its trip); asks the server when it isn't cached. */
+    suspend fun tripIdOfMarker(markerId: String): AppResult<String, DataError.Network>
 }

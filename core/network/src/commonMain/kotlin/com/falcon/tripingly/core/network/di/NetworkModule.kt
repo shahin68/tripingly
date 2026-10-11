@@ -2,6 +2,7 @@ package com.falcon.tripingly.core.network.di
 
 import com.falcon.tripingly.core.common.di.ApplicationScope
 import com.falcon.tripingly.core.network.ApiConfig
+import com.falcon.tripingly.core.network.AppLanguage
 import com.falcon.tripingly.core.network.account.AccountApi
 import com.falcon.tripingly.core.network.account.createAccountApi
 import com.falcon.tripingly.core.network.auth.AuthApi
@@ -18,6 +19,8 @@ import com.falcon.tripingly.core.network.photos.StorageClient
 import com.falcon.tripingly.core.network.photos.createPhotosApi
 import com.falcon.tripingly.core.network.places.PlacesApi
 import com.falcon.tripingly.core.network.places.createPlacesApi
+import com.falcon.tripingly.core.network.push.PushApi
+import com.falcon.tripingly.core.network.push.createPushApi
 import com.falcon.tripingly.core.network.realtime.FakeRealtimeClient
 import com.falcon.tripingly.core.network.realtime.RealtimeClient
 import com.falcon.tripingly.core.network.realtime.SocketIoRealtimeClient
@@ -73,6 +76,8 @@ val networkModule = module {
     single<AppConfigApi> { get<Ktorfit>().createAppConfigApi() }
     single<PhotosApi> { get<Ktorfit>().createPhotosApi() }
     single { StorageClient(get<NetworkPlatform>().engine()) }
+    single<PushApi> { get<Ktorfit>().createPushApi() }
+    single { AppLanguage(get<NetworkPlatform>()::languageTag) }
     single<RealtimeClient> {
         val config = get<ApiConfig>()
         if (config.useFakeApi) {
