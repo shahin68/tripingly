@@ -119,9 +119,10 @@ internal class DefaultPhotoRepository(
             when (val result = sendWithRetries(markerId, jpeg) { progress -> setState(key, PhotoUpload.State.Sending(progress)) }) {
                 is AppResult.Error -> setState(key, PhotoUpload.State.Failed(result.error))
                 is AppResult.Success -> {
-                    dismissUpload(key)
                     // Processing now; the live connection says when it's ready, and may have said so already.
+                    // In the gallery before the upload goes, so it never disappears in between.
                     savePhoto(result.data, replace = false)
+                    dismissUpload(key)
                 }
             }
         }
