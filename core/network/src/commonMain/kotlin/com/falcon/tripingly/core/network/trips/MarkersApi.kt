@@ -11,6 +11,7 @@ import com.falcon.tripingly.core.network.model.MarkerOrderResultDto
 import com.falcon.tripingly.core.network.model.UpdateMarkerDto
 import de.jensklingenberg.ktorfit.http.Body
 import de.jensklingenberg.ktorfit.http.DELETE
+import de.jensklingenberg.ktorfit.http.GET
 import de.jensklingenberg.ktorfit.http.Header
 import de.jensklingenberg.ktorfit.http.Headers
 import de.jensklingenberg.ktorfit.http.PATCH
@@ -27,6 +28,10 @@ interface MarkersApi {
         @Body body: CreateMarkerDto,
         @Header(IDEMPOTENCY_KEY_HEADER) idempotencyKey: String,
     ): AppResult<MarkerDto, DataError.Network>
+
+    /** One marker, with its cover, photo count and like and comment counts. */
+    @GET("markers/{id}")
+    suspend fun get(@Path("id") id: String): AppResult<MarkerDto, DataError.Network>
 
     @PATCH("markers/{id}")
     @Headers("Content-Type: application/json")

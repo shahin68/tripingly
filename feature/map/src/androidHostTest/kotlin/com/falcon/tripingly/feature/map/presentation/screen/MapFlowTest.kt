@@ -1,5 +1,6 @@
 package com.falcon.tripingly.feature.map.presentation.screen
 
+import com.falcon.tripingly.core.data.photos.FakePhotoRepository
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.onAllNodesWithContentDescription
@@ -62,6 +63,7 @@ class MapFlowTest {
         tripRepository = backend,
         markerRepository = backend,
         placeRepository = FakePlaceRepository(),
+        photoRepository = FakePhotoRepository(),
         getCurrentLocationUseCase = GetCurrentLocationUseCase(
             object : LocationRepository {
                 override fun getLocationStream() = flowOf(Coordinates.Paris.asSuccess())

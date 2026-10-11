@@ -16,7 +16,7 @@ import com.falcon.tripingly.core.database.entity.TripMemberEntity
  */
 @Database(
     entities = [TripEntity::class, TripDayEntity::class, MarkerEntity::class, TripMemberEntity::class],
-    version = 4,
+    version = 5,
 )
 @ConstructedBy(TripinglyDatabaseConstructor::class)
 abstract class TripinglyDatabase : RoomDatabase() {

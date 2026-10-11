@@ -1,0 +1,116 @@
+package com.falcon.tripingly.feature.map.presentation.photos
+
+import com.falcon.tripingly.core.data.photos.FakePhotoRepository
+import com.falcon.tripingly.core.model.photo.PickedImage
+import com.falcon.tripingly.feature.map.presentation.photos.StopPhotosViewModel.Action
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.TestScope
+import kotlinx.coroutines.test.resetMain
+import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.test.setMain
+import kotlin.test.AfterTest
+import kotlin.test.BeforeTest
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertFalse
+import kotlin.test.assertNull
+import kotlin.test.assertTrue
+
+@OptIn(ExperimentalCoroutinesApi::class)
+class StopPhotosViewModelTest {
+
+    private val testDispatcher = StandardTestDispatcher()
+    private lateinit var photos: FakePhotoRepository
+
+    @BeforeTest
+    fun setUp() {
+        Dispatchers.setMain(testDispatcher)
+        photos = FakePhotoRepository()
+    }
+
+    @AfterTest
+    fun tearDown() {
+        Dispatchers.resetMain()
+    }
+
+    private fun TestScope.viewModel() = StopPhotosViewModel(MARKER_ID, photos)
+        .also { viewModel -> backgroundScope.launch { viewModel.uiState.collect {} } }
+
+    private fun images(count: Int) = List(count) { i -> PickedImage { byteArrayOf(i.toByte()) } }
+
+    @Test
+    fun `opening a stop without photos loads its empty gallery`() = runTest(testDispatcher) {
+        val viewModel = viewModel()
+        assertTrue(viewModel.uiState.value.isLoading)
+
+        testScheduler.advanceUntilIdle()
+
+        assertFalse(viewModel.uiState.value.isLoading)
+        assertTrue(viewModel.uiState.value.photos.isEmpty())
+    }
+
+    @Test
+    fun `added photos show in the gallery and open in the viewer`() = runTest(testDispatcher) {
+        val viewModel = viewModel()
+        testScheduler.advanceUntilIdle()
+
+        viewModel.onAction(Action.OnAddPhotos(images(3)))
+        testScheduler.advanceUntilIdle()
+        val gallery = viewModel.uiState.value.photos
+        assertEquals(3, gallery.size)
+
+        viewModel.onAction(Action.OnOpenPhoto(gallery[1].id))
+        testScheduler.advanceUntilIdle()
+        assertEquals(1, viewModel.uiState.value.openPhotoIndex)
+
+        viewModel.onAction(Action.OnClosePhoto)
+        testScheduler.advanceUntilIdle()
+        assertNull(viewModel.uiState.value.openPhotoIndex)
+    }
+
+    @Test
+    fun `deleting asks first, and the viewer moves on to the next photo`() = runTest(testDispatcher) {
+        val viewModel = viewModel()
+        testScheduler.advanceUntilIdle()
+        viewModel.onAction(Action.OnAddPhotos(images(3)))
+        testScheduler.advanceUntilIdle()
+        val gallery = viewModel.uiState.value.photos
+        viewModel.onAction(Action.OnOpenPhoto(gallery[1].id))
+
+        viewModel.onAction(Action.OnDeletePhoto(gallery[1]))
+        testScheduler.advanceUntilIdle()
+        assertEquals(gallery[1], viewModel.uiState.value.photoToDelete)
+        assertEquals(3, viewModel.uiState.value.photos.size)
+
+        viewModel.onAction(Action.OnConfirmDelete)
+        testScheduler.advanceUntilIdle()
+        val state = viewModel.uiState.value
+        assertNull(state.photoToDelete)
+        assertEquals(listOf(gallery[0].id, gallery[2].id), state.photos.map { it.id })
+        assertEquals(gallery[2].id, state.viewable[state.openPhotoIndex!!].id)
+    }
+
+    @Test
+    fun `deleting the only photo closes the viewer`() = runTest(testDispatcher) {
+        val viewModel = viewModel()
+        testScheduler.advanceUntilIdle()
+        viewModel.onAction(Action.OnAddPhotos(images(1)))
+        testScheduler.advanceUntilIdle()
+        val photo = viewModel.uiState.value.photos.single()
+        viewModel.onAction(Action.OnOpenPhoto(photo.id))
+
+        viewModel.onAction(Action.OnDeletePhoto(photo))
+        viewModel.onAction(Action.OnConfirmDelete)
+        testScheduler.advanceUntilIdle()
+
+        assertTrue(viewModel.uiState.value.photos.isEmpty())
+        assertNull(viewModel.uiState.value.openPhotoIndex)
+    }
+
+    private companion object {
+        const val MARKER_ID = "marker-1"
+    }
+}

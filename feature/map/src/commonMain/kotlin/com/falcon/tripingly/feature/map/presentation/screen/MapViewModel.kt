@@ -8,10 +8,12 @@ import com.falcon.tripingly.core.common.coroutines.DefaultCoroutineDispatchers
 import com.falcon.tripingly.core.common.error.DataError
 import com.falcon.tripingly.core.common.result.AppResult
 import com.falcon.tripingly.core.common.result.onSuccess
+import com.falcon.tripingly.core.data.photos.PhotoRepository
 import com.falcon.tripingly.core.data.places.PlaceRepository
 import com.falcon.tripingly.core.data.trips.MarkerChangeFailure
 import com.falcon.tripingly.core.data.trips.MarkerRepository
 import com.falcon.tripingly.core.data.trips.TripRepository
+import com.falcon.tripingly.core.model.photo.PickedImage
 import com.falcon.tripingly.core.model.place.GeoBounds
 import com.falcon.tripingly.core.model.place.MapPlace
 import com.falcon.tripingly.core.model.place.PlaceCategory
@@ -78,6 +80,7 @@ class MapViewModel(
     private val tripRepository: TripRepository,
     private val markerRepository: MarkerRepository,
     private val placeRepository: PlaceRepository,
+    private val photoRepository: PhotoRepository,
     private val getCurrentLocationUseCase: GetCurrentLocationUseCase,
     private val dispatchers: CoroutineDispatchers = DefaultCoroutineDispatchers(),
 ) : ViewModel() {
@@ -93,7 +96,7 @@ class MapViewModel(
     private var prefetchJob: Job? = null
     private var placeDetailsJob: Job? = null
     private var searchJob: Job? = null
-    /** The latest touch closed a place, so its tap only closes it (see [onScreenTouch]). */
+    /** The latest touch closed a place or stop, so its tap only closes it (see [onScreenTouch]). */
     private var isClosingTouch = false
 
     private val _events = Channel<Event>(capacity = Channel.BUFFERED)
@@ -127,8 +130,11 @@ class MapViewModel(
             is Action.RetryFailedChanges -> retryFailedChanges()
             is Action.OnCameraMove -> onCameraMove(action.coordinates, action.zoom, action.bounds)
             is Action.OnScreenTouch -> onScreenTouch()
+            is Action.OnOpenStopPhotos -> ui.update { it.copy(photosMarkerId = it.selectedMarkerId) }
+            is Action.OnCloseStopPhotos -> ui.update { it.copy(photosMarkerId = null) }
+            is Action.OnAddStopPhotos -> addStopPhotos(action.images)
             is Action.OnAddPlaceToDay -> addPlace()
-            is Action.OnOpenSearch -> ui.update { it.copy(isSearchOpen = true, selectedMarkerId = null) }
+            is Action.OnOpenSearch -> ui.update { it.copy(isSearchOpen = true, selectedMarkerId = null, isStopCardShown = false) }
             is Action.OnSearchQueryChanged -> search(action.query)
             is Action.OnSearchResultClick -> showSearchResult(action.result)
             is Action.OnCloseSearch -> closeSearch()
@@ -156,6 +162,8 @@ class MapViewModel(
             isPermissionGranted = ui.permission == LocationPermission.Granted,
             isLoadingLocation = ui.isLoadingLocation,
             selectedMarker = markers.firstOrNull { it.id == ui.selectedMarkerId },
+            isStopCardShown = ui.isStopCardShown && markers.any { it.id == ui.selectedMarkerId },
+            photosMarker = markers.firstOrNull { it.id == ui.photosMarkerId },
             placeSource = MapPlaceSource(placeRepository, stopPlaceIds(details)),
             selectedPlace = ui.selectedPlace,
             selectedPlaceDetails = ui.selectedPlaceDetails?.takeIf { it.id == ui.selectedPlace?.id },
@@ -204,14 +212,29 @@ class MapViewModel(
     private fun canEdit(): Boolean = trip.value?.trip?.role?.canEdit == true
 
     private fun selectDay(index: Int) {
-        ui.update { it.copy(activeDayIndex = index, selectedMarkerId = null) }
+        ui.update { it.copy(activeDayIndex = index, selectedMarkerId = null, isStopCardShown = false) }
         currentDays().getOrNull(index)?.let { frameStops(it.markers) }
     }
 
-    /** From the map or a chip: highlight the stop and bring it to the middle. */
+    /** From the map or a chip: bring the stop to the middle, then show its card (at once when it's already there). */
     private fun selectMarker(marker: MapMarker) {
-        ui.update { it.copy(selectedMarkerId = marker.id) }
-        navigateTo(marker.position, ui.value.zoomLevel)
+        closePlace()
+        val zoom = ui.value.zoomLevel
+        val isThere = isCameraAt(GeoPoint(marker.position.latitude, marker.position.longitude), zoom)
+        ui.update { it.copy(selectedMarkerId = marker.id, isStopCardShown = isThere) }
+        navigateTo(marker.position, zoom)
+    }
+
+    /** Photos picked on the stop card: they upload in the background, and the sheet opens to show them going up. */
+    private fun addStopPhotos(images: List<PickedImage>) {
+        val markerId = ui.value.selectedMarkerId ?: return
+        if (images.isEmpty() || !canEdit()) return
+        photoRepository.upload(markerId, images)
+        ui.update { it.copy(photosMarkerId = markerId) }
+    }
+
+    private fun closeStop() {
+        ui.update { it.copy(selectedMarkerId = null, isStopCardShown = false) }
     }
 
     /** The screen fits the camera to these stops; without stops the camera stays where it is. */
@@ -262,10 +285,14 @@ class MapViewModel(
      */
     private fun onCameraMove(coordinates: Coordinates, zoom: Float, bounds: GeoBounds?) {
         ui.update { it.copy(cameraTarget = coordinates, zoomLevel = zoom) }
-        // The camera came to rest: on the tapped place, its card opens; anywhere else (the user moved
-        // the map while it flew), the place closes.
+        // The camera came to rest: on the tapped place or stop, its card opens; anywhere else (the user moved
+        // the map while it flew), the place or stop closes.
         ui.value.selectedPlace?.takeUnless { ui.value.isPlaceCardShown }?.let { place ->
             if (isCentered(place.location, coordinates, zoom)) ui.update { it.copy(isPlaceCardShown = true) } else closePlace()
+        }
+        ui.value.selectedMarkerId?.takeUnless { ui.value.isStopCardShown }?.let { id ->
+            val stop = activeDay()?.markers?.firstOrNull { it.id == id }
+            if (stop != null && isCentered(stop.location, coordinates, zoom)) ui.update { it.copy(isStopCardShown = true) } else closeStop()
         }
         if (bounds == null) return
         prefetchJob?.cancel()
@@ -276,18 +303,19 @@ class MapViewModel(
     }
 
     /**
-     * Place pins are drawn into the map's tiles, so a tap is matched here against the places the map drew:
-     * the nearest pin or cluster within a finger's reach opens (a cluster zooms in), else the tap adds a stop.
-     */
-    /**
-     * A finger went down anywhere but on the place card: an open place closes. A tap that closes a place
+     * A finger went down anywhere but on the open card: an open place or stop closes. A tap that closes one
      * still opens another pin, but doesn't add a stop.
      */
     private fun onScreenTouch() {
-        isClosingTouch = ui.value.selectedPlace != null
-        if (isClosingTouch) closePlace()
+        isClosingTouch = ui.value.selectedPlace != null || ui.value.selectedMarkerId != null
+        if (ui.value.selectedPlace != null) closePlace()
+        if (ui.value.selectedMarkerId != null) closeStop()
     }
 
+    /**
+     * Place pins are drawn into the map's tiles, so a tap is matched here against the places the map drew:
+     * the nearest pin or cluster within a finger's reach opens (a cluster zooms in), else the tap adds a stop.
+     */
     private fun onMapClick(coordinates: Coordinates) {
         val isClosingTap = isClosingTouch
         viewModelScope.launch {
@@ -335,7 +363,7 @@ class MapViewModel(
      */
     private fun openPlace(place: MapPlace, zoom: Float = ui.value.zoomLevel) {
         val isThere = isCameraAt(place.location, zoom)
-        ui.update { it.copy(selectedPlace = place, selectedAddress = null, selectedMarkerId = null, isPlaceCardShown = isThere) }
+        ui.update { it.copy(selectedPlace = place, selectedAddress = null, selectedMarkerId = null, isStopCardShown = false, isPlaceCardShown = isThere) }
         navigateTo(Coordinates(place.location.lat, place.location.lng), zoom)
         placeDetailsJob?.cancel()
         placeDetailsJob = viewModelScope.launch {
@@ -362,6 +390,7 @@ class MapViewModel(
                 selectedAddress = result,
                 selectedPlaceDetails = null,
                 selectedMarkerId = null,
+                isStopCardShown = false,
                 isPlaceCardShown = isThere,
             )
         }
@@ -458,7 +487,7 @@ class MapViewModel(
 
     private fun removeMarker(markerId: String) {
         if (!canEdit()) return
-        ui.update { if (it.selectedMarkerId == markerId) it.copy(selectedMarkerId = null) else it }
+        ui.update { if (it.selectedMarkerId == markerId) it.copy(selectedMarkerId = null, isStopCardShown = false) else it }
         viewModelScope.launch { markerRepository.deleteMarker(markerId) }
     }
 
@@ -467,7 +496,7 @@ class MapViewModel(
         save {
             tripRepository.addDay(tripId).also { result ->
                 if (result is AppResult.Success) {
-                    ui.update { it.copy(activeDayIndex = result.data.days.lastIndex, selectedMarkerId = null) }
+                    ui.update { it.copy(activeDayIndex = result.data.days.lastIndex, selectedMarkerId = null, isStopCardShown = false) }
                 }
             }
         }
@@ -480,13 +509,13 @@ class MapViewModel(
         if (day == null || !canEdit()) return
         when (confirm) {
             Confirm.ClearDay -> {
-                ui.update { it.copy(selectedMarkerId = null) }
+                ui.update { it.copy(selectedMarkerId = null, isStopCardShown = false) }
                 viewModelScope.launch { markerRepository.clearDay(tripId, day.id) }
             }
             Confirm.DeleteDay -> save {
                 tripRepository.deleteDay(tripId, day.id).also { result ->
                     if (result is AppResult.Success) {
-                        ui.update { it.copy(activeDayIndex = (it.activeDayIndex - 1).coerceAtLeast(0), selectedMarkerId = null) }
+                        ui.update { it.copy(activeDayIndex = (it.activeDayIndex - 1).coerceAtLeast(0), selectedMarkerId = null, isStopCardShown = false) }
                     }
                 }
             }
@@ -630,6 +659,9 @@ class MapViewModel(
         title = name,
         orderNumber = orderNumber,
         snippet = time,
+        coverPhotoId = coverPhotoId,
+        coverThumbUrl = coverThumbUrl,
+        photoCount = photoCount,
     )
 
     private data class UiState(
@@ -645,6 +677,10 @@ class MapViewModel(
         val locationPrompt: LocationPrompt? = null,
         val isLoadingLocation: Boolean = false,
         val selectedMarkerId: String? = null,
+        /** The camera has centered the selected stop, so its card shows. */
+        val isStopCardShown: Boolean = false,
+        /** The stop whose photos are open. */
+        val photosMarkerId: String? = null,
         val message: UiText? = null,
         /** Stop changes undone because the connection failed; Retry sends them again. */
         val failedChanges: List<MarkerChangeFailure> = emptyList(),
@@ -696,6 +732,10 @@ class MapViewModel(
         val isPermissionGranted: Boolean = false,
         val isLoadingLocation: Boolean = false,
         val selectedMarker: MapMarker? = null,
+        /** The card of [selectedMarker] opens once the camera has centered its pin. */
+        val isStopCardShown: Boolean = false,
+        /** The stop whose photos are open in the sheet. */
+        val photosMarker: MapMarker? = null,
         val message: UiText? = null,
         /** [message] is about stop changes that didn't save; Retry sends them again. */
         val canRetry: Boolean = false,
@@ -753,6 +793,11 @@ class MapViewModel(
         /** A touch began anywhere outside the place card, on the map or on the screen's other controls. */
         data object OnScreenTouch : Action
         data object OnAddPlaceToDay : Action
+        /** The selected stop's photos open in a sheet. */
+        data object OnOpenStopPhotos : Action
+        data object OnCloseStopPhotos : Action
+        /** Photos picked from the stop card for the selected stop. */
+        data class OnAddStopPhotos(val images: List<PickedImage>) : Action
         data object OnOpenSearch : Action
         data class OnSearchQueryChanged(val query: String) : Action
         data class OnSearchResultClick(val result: PlaceSearchResult) : Action

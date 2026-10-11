@@ -102,7 +102,7 @@ REST over HTTPS, JSON, base path `/v1`.
 ### Photos
 | Method | Path | Notes |
 |---|---|---|
-| POST | `/markers/{id}/photos/upload-url` | Body: mime type, size. Returns photo ID + pre-signed PUT URL |
+| POST | `/markers/{id}/photos/upload-url` | Body: mime type, size. Returns photo ID + pre-signed PUT URL + `uploadHeaders` (a string map the PUT must send; typed as a map since backend#29). The PUT goes to storage without our `Authorization` header |
 | POST | `/photos/{id}/complete` | Client confirms upload → processing job |
 | GET | `/markers/{id}/photos` | Ordered gallery |
 | PUT | `/markers/{id}/photo-order` | |
@@ -160,7 +160,7 @@ Response shapes and behaviour: see `05-maps-places-routing.md`.
 ### Ops
 | Method | Path | Notes |
 |---|---|---|
-| GET | `/app-config` | Settings that tune the app, no auth, read once per launch: `{ placesRefreshSeconds }` (how old a kept map square may get before it's reloaded in the background, default 300). Values change on the server's env vars without an app update; feature flags come here after v1 (backend #27) |
+| GET | `/app-config` | Settings that tune the app, no auth, read once per launch: `{ placesRefreshSeconds, photoMaxEdgePx, photoJpegQuality, photoParallelUploads }` (how old a kept map square may get before it's reloaded in the background, default 300; the long edge a photo is shrunk to before upload, default 2560; its JPEG quality, default 85; uploads at a time, default 2; backend#29). Values change on the server's env vars without an app update; feature flags come here after v1 (backend #27) |
 | GET | `/health` | Liveness (no auth) |
 | GET | `/health/ready` | DB + Redis reachable |
 | GET | `/.well-known/assetlinks.json`, `/.well-known/apple-app-site-association` | Android App Links / iOS Universal Links for invite and share URLs (served on the app-link domain) |

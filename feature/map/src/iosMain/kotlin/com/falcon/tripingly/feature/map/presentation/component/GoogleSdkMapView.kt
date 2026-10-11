@@ -42,7 +42,6 @@ internal fun GoogleSdkMapView(
     cameraTarget: Coordinates,
     zoomLevel: Float,
     markers: List<MapMarker>,
-    selectedMarkerId: String?,
     placeSource: MapPlaceSource?,
     selectedPlace: MapPlace?,
     isMyLocationEnabled: Boolean,
@@ -162,27 +161,36 @@ internal fun GoogleSdkMapView(
     }
 
     // A stop's pin is drawn once per number and color.
-    val stopIcons = remember(density) { mutableMapOf<Pair<Int, Long>, UIImage>() }
+    // By number, color and cover photo (once its thumbnail has loaded).
+    val stopIcons = remember(density) { mutableMapOf<Triple<Int, Long, String?>, UIImage>() }
+    val coverThumbs = rememberCoverThumbs(markers)
     val selectedPlaceIcon = remember(selectedPlace?.id, selectedPlace?.category, selectedPlace?.isTripinly, placeColor, hotSpotColor, density) {
         selectedPlace?.let { place ->
             drawPin(PlacePinLook(place.category, place.isTripinly, placePinSize(place, isSelected = true))).toUIImage(density.density)
         }
     }
-    LaunchedEffect(markers, selectedMarkerId, selectedPlace, selectedPlaceIcon) {
+    LaunchedEffect(markers, coverThumbs, selectedPlace, selectedPlaceIcon) {
         val stops = markers.map { marker ->
             GoogleMapMarker(
                 key = marker.id,
                 latitude = marker.position.latitude,
                 longitude = marker.position.longitude,
                 title = marker.title,
-                icon = stopIcons.getOrPut(marker.orderNumber to marker.color) {
-                    drawTripPin(marker.orderNumber, marker.color.toInt(), density.density, density.fontScale)
+                icon = marker.coverPhotoId?.let { coverThumbs[it] }.let { cover ->
+                    stopIcons.getOrPut(Triple(marker.orderNumber, marker.color, marker.coverPhotoId.takeIf { cover != null })) {
+                        if (cover == null) {
+                            drawTripPin(marker.orderNumber, marker.color.toInt(), density.density, density.fontScale)
+                        } else {
+                            drawCoverPin(marker.orderNumber, marker.color.toInt(), cover, density.density, density.fontScale)
+                        }
+                    }
                 },
                 anchorX = 0.5,
                 anchorY = 1.0,
                 // Above the places.
                 zIndex = 1,
-                showsInfoWindow = true,
+                // The stop's card shows instead.
+                showsInfoWindow = false,
             )
         }
         // The tapped place is a real marker, bigger and on top of its pin in the tiles. No info
@@ -203,7 +211,6 @@ internal fun GoogleSdkMapView(
             null
         }
         map.setMarkers(stops + listOfNotNull(place))
-        map.selectMarker(selectedMarkerId)
     }
 
     UIKitView(

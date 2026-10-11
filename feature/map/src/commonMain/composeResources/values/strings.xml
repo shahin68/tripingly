@@ -52,4 +52,22 @@
     <string name="map_pin_name_title">Name this place</string>
     <string name="map_pin_name_label">Name</string>
     <string name="map_pin_add">Add</string>
+    <plurals name="map_stop_photo_count">
+        <item quantity="one">%1$d photo</item>
+        <item quantity="other">%1$d photos</item>
+    </plurals>
+    <string name="map_stop_no_photos">No photos yet</string>
+    <string name="map_stop_add_photos">Add photos</string>
+    <string name="map_stop_photos">Photos</string>
+    <string name="map_photo_make_cover">Make cover</string>
+    <string name="map_photo_cover">Cover</string>
+    <string name="map_photo_delete">Delete photo</string>
+    <string name="map_photo_delete_title">Delete this photo?</string>
+    <string name="map_photo_delete_message">The photo will be deleted for everyone in the trip.</string>
+    <string name="map_photo_processing">Processing…</string>
+    <string name="map_photo_failed">This photo couldn't be processed</string>
+    <string name="map_photo_not_uploaded">Not uploaded</string>
+    <string name="map_photo_unreadable">This photo can't be read</string>
+    <string name="map_photo_remove">Remove</string>
+    <string name="map_close">Close</string>
 </resources>

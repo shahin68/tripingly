@@ -12,6 +12,9 @@ import com.falcon.tripingly.core.network.config.AppConfigApi
 import com.falcon.tripingly.core.network.config.createAppConfigApi
 import com.falcon.tripingly.core.network.createHttpClient
 import com.falcon.tripingly.core.network.createKtorfit
+import com.falcon.tripingly.core.network.photos.PhotosApi
+import com.falcon.tripingly.core.network.photos.StorageClient
+import com.falcon.tripingly.core.network.photos.createPhotosApi
 import com.falcon.tripingly.core.network.places.PlacesApi
 import com.falcon.tripingly.core.network.places.createPlacesApi
 import com.falcon.tripingly.core.network.trips.InvitesApi
@@ -64,6 +67,8 @@ val networkModule = module {
     single<InvitesApi> { get<Ktorfit>().createInvitesApi() }
     single<PlacesApi> { get<Ktorfit>().createPlacesApi() }
     single<AppConfigApi> { get<Ktorfit>().createAppConfigApi() }
+    single<PhotosApi> { get<Ktorfit>().createPhotosApi() }
+    single { StorageClient(get<NetworkPlatform>().engine()) }
 }
 
 internal expect val networkPlatformModule: Module

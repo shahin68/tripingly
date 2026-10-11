@@ -116,11 +116,6 @@ private final class AppGoogleMap: NSObject, GoogleMap, GMSMapViewDelegate {
         markers = kept
     }
 
-    func selectMarker(key: String?) {
-        let marker = key.flatMap { markers[$0] }
-        if mapView.selectedMarker !== marker { mapView.selectedMarker = marker }
-    }
-
     func mapView(_ mapView: GMSMapView, idleAt position: GMSCameraPosition) {
         // The whole view, not only the part inside the padding.
         let size = mapView.bounds.size

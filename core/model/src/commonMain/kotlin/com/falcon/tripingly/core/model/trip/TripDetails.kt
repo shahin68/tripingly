@@ -35,6 +35,8 @@ data class TripMarker(
     val time: String? = null,
     /** 0-based within its day. */
     val position: Int,
+    /** The cover photo's ID: images are cached by it, since its signed URL changes. */
+    val coverPhotoId: String? = null,
     val coverThumbUrl: String? = null,
     val photoCount: Int = 0,
 )

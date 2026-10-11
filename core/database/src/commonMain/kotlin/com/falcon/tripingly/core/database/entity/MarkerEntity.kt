@@ -24,6 +24,7 @@ data class MarkerEntity(
     /** `HH:mm`, or null. */
     val time: String?,
     val position: Int,
+    val coverPhotoId: String?,
     val coverThumbUrl: String?,
     val photoCount: Int,
 )

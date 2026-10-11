@@ -96,7 +96,7 @@ Prefer what the project already has. New ones are confirmed with the user when t
 | HTTP | Ktor client, endpoints declared with Ktorfit |
 | Immutable state collections | kotlinx-collections-immutable |
 | OpenAPI models | an OpenAPI generator with a Kotlin multiplatform target |
-| Images | Coil 3 |
+| Images | Coil 3; our photos are cached by photo ID + size (`PhotoImage`, `photoRequest`), never by their signed URL |
 | Secure storage | Our own `SecureStore` in `core:storage`: Keychain (iOS), Keystore AES-GCM key (Android); no library (decided 2026-10-03) |
 | Settings | multiplatform-settings or DataStore |
 | Socket.IO | a maintained client per platform behind a shared interface |

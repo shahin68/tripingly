@@ -149,6 +149,7 @@ private fun MarkerEntity.toMarker() = TripMarker(
     location = GeoPoint(lat, lng),
     time = time,
     position = position,
+    coverPhotoId = coverPhotoId,
     coverThumbUrl = coverThumbUrl,
     photoCount = photoCount,
 )
@@ -163,6 +164,7 @@ private fun TripMarker.toEntity() = MarkerEntity(
     lng = location.lng,
     time = time,
     position = position,
+    coverPhotoId = coverPhotoId,
     coverThumbUrl = coverThumbUrl,
     photoCount = photoCount,
 )

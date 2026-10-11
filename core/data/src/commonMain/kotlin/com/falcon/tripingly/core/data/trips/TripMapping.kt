@@ -98,6 +98,7 @@ internal fun MarkerDto.toMarker() = TripMarker(
     location = location.toGeoPoint(),
     time = time,
     position = position.toInt(),
+    coverPhotoId = coverPhotoId,
     coverThumbUrl = coverThumbUrl,
     photoCount = photoCount.toInt(),
 )

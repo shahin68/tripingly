@@ -46,7 +46,6 @@ internal fun AppleMapView(
     cameraTarget: Coordinates,
     zoomLevel: Float,
     markers: List<MapMarker>,
-    selectedMarkerId: String?,
     placeSource: MapPlaceSource?,
     selectedPlace: MapPlace?,
     isMyLocationEnabled: Boolean,
@@ -171,7 +170,6 @@ internal fun AppleMapView(
                     setSubtitle(marker.snippet)
                 }
                 mapView.addAnnotation(annotation)
-                if (marker.id == selectedMarkerId) mapView.selectAnnotation(annotation, animated = true)
             }
             val placeAnnotations = shown.flatMap { it.places }.map { place ->
                 MKPointAnnotation().apply {

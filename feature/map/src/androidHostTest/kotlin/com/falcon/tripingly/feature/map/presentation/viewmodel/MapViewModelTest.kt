@@ -1,5 +1,8 @@
 package com.falcon.tripingly.feature.map.presentation.viewmodel
 
+import kotlinx.coroutines.flow.first
+import com.falcon.tripingly.core.model.photo.PickedImage
+import com.falcon.tripingly.core.data.photos.FakePhotoRepository
 import app.cash.turbine.test
 import com.falcon.tripingly.core.common.coroutines.CoroutineDispatchers
 import com.falcon.tripingly.core.common.error.DataError
@@ -73,6 +76,7 @@ class MapViewModelTest {
     private lateinit var backend: FakeTripBackend
     private lateinit var trip: TripDetails
     private lateinit var places: CountingPlaceRepository
+    private lateinit var photos: FakePhotoRepository
 
     /** The fake's sights (Eiffel Tower, Louvre …), counting the squares asked for. */
     private class CountingPlaceRepository(
@@ -117,6 +121,7 @@ class MapViewModelTest {
         fakeLocationRepository = FakeLocationRepository()
         backend = FakeTripBackend()
         places = CountingPlaceRepository()
+        photos = FakePhotoRepository()
         trip = (backend.createTrip(NewTrip("Test Trip", LocalDate(2024, 1, 1), LocalDate(2024, 1, 3))) as AppResult.Success).data
     }
 
@@ -130,6 +135,7 @@ class MapViewModelTest {
         tripRepository = backend,
         markerRepository = backend,
         placeRepository = places,
+        photoRepository = photos,
         getCurrentLocationUseCase = GetCurrentLocationUseCase(fakeLocationRepository),
         dispatchers = TestCoroutineDispatchers(testDispatcher),
     ).also { viewModel -> backgroundScope.launch { viewModel.uiState.collect {} } }
@@ -257,6 +263,66 @@ class MapViewModelTest {
 
         assertEquals(second.id, viewModel.uiState.value.selectedMarker?.id)
         assertEquals(second.position, viewModel.uiState.value.cameraTarget)
+    }
+
+    @Test
+    fun `a stop's card opens once the camera has centered it, and a touch elsewhere closes it`() = runTest(testDispatcher) {
+        backend.addMarker(trip.trip.id, trip.days[0].id, NewMarker("Stephansdom", GeoPoint(48.2085, 16.3721)))
+        val viewModel = viewModel()
+        testScheduler.advanceUntilIdle()
+        viewModel.onAction(Action.OnCameraMove(Coordinates(48.86, 2.32), 15f, PARIS_CENTER))
+        testScheduler.advanceUntilIdle()
+
+        val stop = viewModel.uiState.value.markers.single()
+        viewModel.onAction(Action.OnMarkerClick(stop))
+        testScheduler.advanceUntilIdle()
+        assertFalse(viewModel.uiState.value.isStopCardShown)
+
+        viewModel.onAction(Action.OnCameraMove(stop.position, 15f, PARIS_CENTER))
+        testScheduler.advanceUntilIdle()
+        assertTrue(viewModel.uiState.value.isStopCardShown)
+
+        viewModel.onAction(Action.OnScreenTouch)
+        testScheduler.advanceUntilIdle()
+        assertNull(viewModel.uiState.value.selectedMarker)
+        assertFalse(viewModel.uiState.value.isStopCardShown)
+    }
+
+    @Test
+    fun `photos picked on a stop's card upload to it and open its photos`() = runTest(testDispatcher) {
+        backend.addMarker(trip.trip.id, trip.days[0].id, NewMarker("Stephansdom", GeoPoint(48.2085, 16.3721)))
+        val viewModel = viewModel()
+        testScheduler.advanceUntilIdle()
+        val stop = viewModel.uiState.value.markers.single()
+        viewModel.onAction(Action.OnMarkerClick(stop))
+        testScheduler.advanceUntilIdle()
+
+        viewModel.onAction(Action.OnAddStopPhotos(listOf(PickedImage { byteArrayOf(1) }, PickedImage { byteArrayOf(2) })))
+        testScheduler.advanceUntilIdle()
+
+        assertEquals(stop.id, viewModel.uiState.value.photosMarker?.id)
+        assertEquals(2, photos.photos(stop.id).first()?.size)
+
+        viewModel.onAction(Action.OnCloseStopPhotos)
+        testScheduler.advanceUntilIdle()
+        assertNull(viewModel.uiState.value.photosMarker)
+    }
+
+    @Test
+    fun `a viewer can't add photos`() = runTest(testDispatcher) {
+        backend.addMarker(trip.trip.id, trip.days[0].id, NewMarker("Stephansdom", GeoPoint(48.2085, 16.3721)))
+        val withStop = (backend.refreshTrip(trip.trip.id) as AppResult.Success).data
+        backend.seed(withStop.copy(trip = withStop.trip.copy(role = TripRole.VIEWER)))
+        val viewModel = viewModel()
+        testScheduler.advanceUntilIdle()
+        val stop = viewModel.uiState.value.markers.single()
+        viewModel.onAction(Action.OnMarkerClick(stop))
+
+        viewModel.onAction(Action.OnAddStopPhotos(listOf(PickedImage { byteArrayOf(1) })))
+        testScheduler.advanceUntilIdle()
+
+        assertNull(photos.photos(stop.id).first())
+        assertNull(viewModel.uiState.value.photosMarker)
     }
 
     @Test

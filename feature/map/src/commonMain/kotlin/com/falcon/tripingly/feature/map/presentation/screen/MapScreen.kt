@@ -93,6 +93,9 @@ import com.falcon.tripingly.core.common.util.DateUtils
 import com.falcon.tripingly.feature.map.domain.model.MapMarker
 import com.falcon.tripingly.feature.map.presentation.component.GoogleMapView
 import com.falcon.tripingly.feature.map.presentation.component.PlaceCard
+import com.falcon.tripingly.feature.map.presentation.component.StopCard
+import com.falcon.tripingly.feature.map.presentation.component.stopPinHeight
+import com.falcon.tripingly.feature.map.presentation.photos.rememberPhotoPicker
 import com.falcon.tripingly.feature.map.presentation.component.placePinSize
 import com.falcon.tripingly.feature.map.presentation.component.fitCamera
 import com.falcon.tripingly.feature.map.presentation.screen.MapViewModel.Action
@@ -143,20 +146,28 @@ fun MapScreen(
     }
 
     val isPlaceCardShown = state.selectedPlace != null && state.isPlaceCardShown
-    // The card keeps showing its last place while it scales out.
+    val isStopCardShown = state.selectedMarker != null && state.isStopCardShown
+    // Each card keeps showing its last place or stop while it scales out.
     val card = remember { mutableStateOf(state) }.apply { if (isPlaceCardShown) value = state }.value
+    val selectedStop = markers.firstOrNull { it.id == state.selectedMarker?.id }
+    val stopCard = remember { mutableStateOf(selectedStop) }.apply { if (isStopCardShown) value = selectedStop }.value
     var cardBounds by remember { mutableStateOf(Rect.Zero) }
+    var stopCardBounds by remember { mutableStateOf(Rect.Zero) }
     val isCardOpen by rememberUpdatedState(isPlaceCardShown)
+    val isStopCardOpen by rememberUpdatedState(isStopCardShown)
+    val pickPhotos = rememberPhotoPicker { images -> onAction(Action.OnAddStopPhotos(images)) }
 
     Box(
         modifier = Modifier
             .fillMaxSize()
             .onSizeChanged { mapSize = it }
-            // Any touch outside the place card closes it, and still reaches the map and the controls.
+            // Any touch outside the open card closes it, and still reaches the map and the controls.
             .pointerInput(Unit) {
                 awaitEachGesture {
                     val down = awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
-                    if (!(isCardOpen && cardBounds.contains(down.position))) onAction(Action.OnScreenTouch)
+                    val isOnCard = (isCardOpen && cardBounds.contains(down.position)) ||
+                        (isStopCardOpen && stopCardBounds.contains(down.position))
+                    if (!isOnCard) onAction(Action.OnScreenTouch)
                 }
             }
     ) {
@@ -165,7 +176,6 @@ fun MapScreen(
             cameraTarget = state.cameraTarget,
             zoomLevel = state.zoomLevel,
             markers = markers,
-            selectedMarkerId = state.selectedMarker?.id,
             placeSource = state.placeSource,
             selectedPlace = state.selectedPlace,
             isMyLocationEnabled = state.isPermissionGranted,
@@ -287,6 +297,33 @@ fun MapScreen(
                     address = card.selectedPlaceAddress,
                     dayNumber = card.days.getOrNull(card.activeDayIndex)?.number?.takeIf { card.canEdit },
                     onAdd = { onAction(Action.OnAddPlaceToDay) },
+                )
+            }
+        }
+
+        // The same for a stop, above its pin.
+        val stopClearance = stopCard?.let { stopPinHeight(hasCover = it.coverPhotoId != null) + MaterialTheme.spacing.small } ?: 0.dp
+        AnimatedVisibility(
+            visible = isStopCardShown,
+            enter = scaleIn(transformOrigin = TransformOrigin(0.5f, 1f)) + fadeIn(),
+            exit = scaleOut(transformOrigin = TransformOrigin(0.5f, 1f)) + fadeOut(),
+            modifier = Modifier
+                .align(Alignment.Center)
+                .padding(horizontal = MaterialTheme.spacing.large)
+                .layout { measurable, constraints ->
+                    val measured = measurable.measure(constraints)
+                    layout(measured.width, measured.height) {
+                        measured.place(0, -measured.height / 2 - stopClearance.roundToPx())
+                    }
+                }
+                .onGloballyPositioned { stopCardBounds = it.boundsInParent() },
+        ) {
+            if (stopCard != null) {
+                StopCard(
+                    marker = stopCard,
+                    canEdit = state.canEdit,
+                    onOpen = { onAction(Action.OnOpenStopPhotos) },
+                    onAddPhotos = pickPhotos,
                 )
             }
         }

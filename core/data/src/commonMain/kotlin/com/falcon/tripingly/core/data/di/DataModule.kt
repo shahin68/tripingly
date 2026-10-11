@@ -11,6 +11,10 @@ import com.falcon.tripingly.core.data.account.SessionRepositoryImpl
 import com.falcon.tripingly.core.data.config.AppConfigRepository
 import com.falcon.tripingly.core.data.config.DefaultAppConfigRepository
 import com.falcon.tripingly.core.data.config.FakeAppConfigRepository
+import com.falcon.tripingly.core.data.photos.DefaultPhotoRepository
+import com.falcon.tripingly.core.data.photos.FakePhotoRepository
+import com.falcon.tripingly.core.data.photos.PhotoRepository
+import com.falcon.tripingly.core.data.photos.PlatformPhotoPreparer
 import com.falcon.tripingly.core.data.places.DefaultPlaceRepository
 import com.falcon.tripingly.core.data.places.FakePlaceRepository
 import com.falcon.tripingly.core.data.places.PlaceRepository
@@ -67,6 +71,20 @@ val dataModule = module {
     single<AppConfigRepository> {
         if (get<ApiConfig>().useFakeApi) FakeAppConfigRepository() else DefaultAppConfigRepository(get(), get(ApplicationScope))
     }
+    single {
+        DefaultPhotoRepository(
+            api = get(),
+            markersApi = get(),
+            storage = get(),
+            local = get(),
+            config = get(),
+            preparer = PlatformPhotoPreparer,
+            scope = get(ApplicationScope),
+        )
+    }
+    single<PhotoRepository> {
+        if (get<ApiConfig>().useFakeApi) FakePhotoRepository() else get<DefaultPhotoRepository>()
+    }
     single<PlaceRepository> {
         if (get<ApiConfig>().useFakeApi) FakePlaceRepository() else DefaultPlaceRepository(get(), get(), get(ApplicationScope))
     }
@@ -102,6 +120,12 @@ val dataModule = module {
             today = { Clock.System.todayIn(TimeZone.currentSystemDefault()) },
             cleaners = { getAll<LocalDataCleaner>() },
         )
+    }
+
+    // Galleries and uploads in progress belong to whoever was signed in.
+    single(named("photos")) {
+        val photos = get<DefaultPhotoRepository>()
+        LocalDataCleaner { photos.clear() }
     }
 
     // The cached trips belong to whoever was signed in.

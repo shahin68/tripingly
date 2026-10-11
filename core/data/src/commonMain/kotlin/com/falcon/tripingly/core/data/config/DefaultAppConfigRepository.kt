@@ -20,7 +20,14 @@ internal class DefaultAppConfigRepository(
 
     init {
         scope.launch {
-            api.appConfig().onSuccess { _config.value = AppConfig(placesRefresh = it.placesRefreshSeconds.seconds) }
+            api.appConfig().onSuccess {
+                _config.value = AppConfig(
+                    placesRefresh = it.placesRefreshSeconds.seconds,
+                    photoMaxEdgePx = it.photoMaxEdgePx.toInt(),
+                    photoJpegQuality = it.photoJpegQuality.toInt(),
+                    photoParallelUploads = it.photoParallelUploads.toInt(),
+                )
+            }
         }
     }
 }

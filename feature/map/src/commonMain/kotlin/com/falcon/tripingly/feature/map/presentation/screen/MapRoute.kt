@@ -14,6 +14,7 @@ import androidx.compose.runtime.setValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import com.falcon.tripingly.feature.map.presentation.permission.rememberLocationPermissionController
+import com.falcon.tripingly.feature.map.presentation.photos.StopPhotosRoute
 import com.falcon.tripingly.feature.map.generated.resources.Res
 import com.falcon.tripingly.feature.map.generated.resources.map_cancel
 import com.falcon.tripingly.feature.map.generated.resources.map_clear_day_message
@@ -74,6 +75,14 @@ fun MapRoute(
         state = state,
         onAction = viewModel::onAction
     )
+
+    state.photosMarker?.let { marker ->
+        StopPhotosRoute(
+            marker = marker,
+            canEdit = state.canEdit,
+            onDismiss = { viewModel.onAction(Action.OnCloseStopPhotos) },
+        )
+    }
 
     state.locationPrompt?.let { prompt ->
         AlertDialog(
