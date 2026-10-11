@@ -45,6 +45,7 @@ REST over HTTPS, JSON, base path `/v1`.
 | GET | `/me` | Profile, settings, onboarding state, entitlements |
 | PATCH | `/me` | Display name, username (onboarding), birth date (onboarding only), locale, `defaultTripVisibility` |
 | GET | `/me/stats` | Trips, markers, photos counts |
+| GET | `/me/friends?cursor=&limit=` | The user's friends as user summaries, cursor paginated `{ items, nextCursor }`. The New trip sheet shows the first page (limit 50) as a row of avatars to add as members. Backend: tripinly-backend#32 (generated `UserPageDto`) |
 | GET | `/me/trips` | Owned + collaborating, cursor paginated; each item has `role`, `coverThumbUrl` (first cover photo in the trip, or null), `dayCount`, `markerCount`, `editorCount` (people it's shared with, owner not counted; backend#30) |
 | PUT | `/me/devices/{fcmToken}` | Register/refresh push device. Body: `platform` (`android`\|`ios`), `locale` |
 | DELETE | `/me/devices/{fcmToken}` | |
@@ -55,7 +56,7 @@ REST over HTTPS, JSON, base path `/v1`.
 | Method | Path | Notes |
 |---|---|---|
 | GET | `/users/check-username?username=` | Availability during onboarding |
-| GET | `/users/search?q=` | Prefix search on username and display name |
+| GET | `/users/search?q=` | Prefix search on username and display name; `q` 2–50 characters, up to 20 results `{ items: [UserSummary] }` |
 | GET | `/users/{username}` | Public profile + public trips |
 | POST | `/users/{id}/block` | |
 | DELETE | `/users/{id}/block` | |
@@ -64,7 +65,7 @@ REST over HTTPS, JSON, base path `/v1`.
 ### Trips
 | Method | Path | Notes |
 |---|---|---|
-| POST | `/trips` | Title, dates, visibility, optional `destination` `{ name, location }`, optional initial `memberUsernames` |
+| POST | `/trips` | Title, dates, visibility, optional `destination` `{ name, location }`, optional initial `memberUsernames` (≤ 20, joined as editors; unknown → `400 VALIDATION_FAILED` with `fields["memberUsernames.<i>"] = ["notFound"]`, blocked → `["blocked"]`) |
 | GET | `/trips/{id}` | Trip with days, markers (cover thumbnail URLs), members, `copiedFrom` summary |
 | PATCH | `/trips/{id}` | Owner: title, dates, visibility, `destination` (null removes it) |
 | DELETE | `/trips/{id}` | Owner |
@@ -84,6 +85,7 @@ REST over HTTPS, JSON, base path `/v1`.
 | Method | Path | Notes |
 |---|---|---|
 | POST | `/trips/{id}/members` | Owner adds by username |
+| POST | `/trips/{id}/members/batch` | Owner adds several people at once (`{ usernames }`, all or nothing; refused ones as `fields.usernames.<i>` = `notFound`/`blocked`). The Members sheet uses it for the friends picked in its avatar row. Backend: tripinly-backend#33 |
 | DELETE | `/trips/{id}/members/{userId}` | Owner removes, or editor removes self (leave) |
 | POST | `/trips/{id}/invites` | Owner creates invite link → `{ url, expiresAt }` |
 | DELETE | `/trips/{id}/invites/{inviteId}` | Revoke |

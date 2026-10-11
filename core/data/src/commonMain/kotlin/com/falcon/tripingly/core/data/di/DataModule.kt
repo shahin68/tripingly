@@ -33,6 +33,9 @@ import com.falcon.tripingly.core.data.trips.RoomTripLocalDataSource
 import com.falcon.tripingly.core.data.trips.TripInviteRepository
 import com.falcon.tripingly.core.data.trips.TripLocalDataSource
 import com.falcon.tripingly.core.data.trips.TripRepository
+import com.falcon.tripingly.core.data.users.DefaultUserRepository
+import com.falcon.tripingly.core.data.users.FakeUserRepository
+import com.falcon.tripingly.core.data.users.UserRepository
 import com.falcon.tripingly.core.model.account.SessionState
 import com.falcon.tripingly.core.network.ApiConfig
 import kotlin.time.Clock
@@ -67,6 +70,9 @@ val dataModule = module {
     }
     single<TripInviteRepository> {
         if (get<ApiConfig>().useFakeApi) get<FakeTripBackend>() else DefaultTripInviteRepository(get(), get())
+    }
+    single<UserRepository> {
+        if (get<ApiConfig>().useFakeApi) FakeUserRepository() else DefaultUserRepository(get())
     }
     single<AppConfigRepository> {
         if (get<ApiConfig>().useFakeApi) FakeAppConfigRepository() else DefaultAppConfigRepository(get(), get(ApplicationScope))

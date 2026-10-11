@@ -2,9 +2,16 @@ package com.falcon.tripingly.feature.trips
 
 import com.falcon.tripingly.core.common.error.DataError
 import com.falcon.tripingly.core.common.result.AppResult
+import com.falcon.tripingly.core.data.account.FakeAccountBackend
+import com.falcon.tripingly.core.data.account.SessionRepository
 import com.falcon.tripingly.core.data.places.FakePlaceRepository
 import com.falcon.tripingly.core.data.places.PlaceRepository
 import com.falcon.tripingly.core.data.trips.FakeTripBackend
+import com.falcon.tripingly.core.data.users.FakeUserRepository
+import com.falcon.tripingly.core.data.users.UserRepository
+import com.falcon.tripingly.core.model.account.Account
+import com.falcon.tripingly.core.model.account.OnboardingState
+import com.falcon.tripingly.core.model.account.SessionState
 import com.falcon.tripingly.core.model.account.TripVisibility
 import com.falcon.tripingly.core.model.place.PlaceSearchResult
 import com.falcon.tripingly.core.model.trip.Destination
@@ -17,6 +24,9 @@ import com.falcon.tripingly.core.model.trip.TripRole
 import com.falcon.tripingly.core.model.trip.UserSummary
 import com.falcon.tripingly.core.ui.UiText
 import com.falcon.tripingly.feature.trips.generated.resources.Res
+import com.falcon.tripingly.feature.trips.generated.resources.create_trip_error_members
+import com.falcon.tripingly.feature.trips.generated.resources.create_trip_member_blocked
+import com.falcon.tripingly.feature.trips.generated.resources.create_trip_member_not_found
 import com.falcon.tripingly.feature.trips.generated.resources.home_offline_cached
 import com.falcon.tripingly.feature.trips.generated.resources.reschedule_error_days_not_empty
 import com.falcon.tripingly.feature.trips.presentation.screen.HomeViewModel
@@ -25,6 +35,8 @@ import com.falcon.tripingly.feature.trips.presentation.screen.HomeViewModel.Dial
 import com.falcon.tripingly.feature.trips.presentation.screen.HomeViewModel.Event
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.StandardTestDispatcher
@@ -59,6 +71,40 @@ class HomeViewModelTest {
         }
     }
 
+    /** Counts what reaches the server. */
+    private val users = object : UserRepository by FakeUserRepository() {
+        val queries = mutableListOf<String>()
+        private val fake = FakeUserRepository()
+        override suspend fun search(query: String): AppResult<List<UserSummary>, DataError.Network> {
+            queries += query
+            return fake.search(query)
+        }
+    }
+
+    /** Signed in; [defaultVisibility] is the account's `defaultTripVisibility`. */
+    private var defaultVisibility = TripVisibility.PUBLIC
+    private val session = object : SessionRepository by FakeAccountBackend(today = { LocalDate(2026, 10, 11) }) {
+        override val session: StateFlow<SessionState>
+            get() = MutableStateFlow(
+                SessionState.SignedIn(
+                    Account(
+                        id = "me",
+                        username = "me",
+                        displayName = "Me",
+                        birthDate = null,
+                        locale = "en",
+                        defaultTripVisibility = defaultVisibility,
+                        isAdmin = false,
+                        onboarding = OnboardingState(completed = true, missingProfileFields = emptySet(), missingConsents = emptySet()),
+                        entitlements = emptySet(),
+                    ),
+                ),
+            )
+    }
+
+    private val anna = UserSummary("00000000-0000-4000-8000-000000000101", "anna", "Anna")
+    private val jonas = UserSummary("00000000-0000-4000-8000-000000000102", "jonas.k", "Jonas")
+
     @BeforeTest
     fun setUp() = Dispatchers.setMain(StandardTestDispatcher())
 
@@ -66,7 +112,7 @@ class HomeViewModelTest {
     fun tearDown() = Dispatchers.resetMain()
 
     /** A view model whose state is collected, as the screen does. */
-    private fun TestScope.viewModel(): HomeViewModel = HomeViewModel(backend, places).also { viewModel ->
+    private fun TestScope.viewModel(): HomeViewModel = HomeViewModel(backend, places, users, session).also { viewModel ->
         backgroundScope.launch { viewModel.uiState.collect {} }
     }
 
@@ -110,8 +156,7 @@ class HomeViewModelTest {
         val viewModel = viewModel()
         advanceUntilIdle()
 
-        viewModel.onAction(Action.OnAddTripClick)
-        viewModel.onAction(Action.OnConfirmCreateTrip("Rome", LocalDate(2026, 7, 1), LocalDate(2026, 7, 2)))
+        viewModel.createTrip("Rome", LocalDate(2026, 7, 1), LocalDate(2026, 7, 2))
         advanceUntilIdle()
 
         val state = viewModel.uiState.value
@@ -127,8 +172,7 @@ class HomeViewModelTest {
         advanceUntilIdle()
         backend.nextError = DataError.Network.Api(422, "LIMIT_REACHED", "You've reached the trip limit.")
 
-        viewModel.onAction(Action.OnAddTripClick)
-        viewModel.onAction(Action.OnConfirmCreateTrip("Rome", LocalDate(2026, 7, 1), LocalDate(2026, 7, 2)))
+        viewModel.createTrip("Rome", LocalDate(2026, 7, 1), LocalDate(2026, 7, 2))
         advanceUntilIdle()
 
         val state = viewModel.uiState.value
@@ -263,8 +307,8 @@ class HomeViewModelTest {
 
         advanceTimeBy(250)
         assertEquals(listOf("Pari"), places.queries)
-        assertEquals(listOf("Paris"), viewModel.uiState.value.destinationResults.map { it.name })
-        assertFalse(viewModel.uiState.value.isSearchingDestination)
+        assertEquals(listOf("Paris"), viewModel.uiState.value.createTrip.destinationResults.map { it.name })
+        assertFalse(viewModel.uiState.value.createTrip.isSearchingDestination)
     }
 
     @Test
@@ -277,7 +321,7 @@ class HomeViewModelTest {
         advanceUntilIdle()
 
         assertEquals(listOf("B"), places.queries)
-        assertEquals(listOf("Budapest", "Berlin"), viewModel.uiState.value.destinationResults.map { it.name })
+        assertEquals(listOf("Budapest", "Berlin"), viewModel.uiState.value.createTrip.destinationResults.map { it.name })
     }
 
     @Test
@@ -287,13 +331,13 @@ class HomeViewModelTest {
         viewModel.onAction(Action.OnAddTripClick)
         viewModel.onAction(Action.OnDestinationQueryChanged("Vie"))
         advanceUntilIdle()
-        assertEquals(1, viewModel.uiState.value.destinationResults.size)
+        assertEquals(1, viewModel.uiState.value.createTrip.destinationResults.size)
 
         viewModel.onAction(Action.OnDestinationQueryChanged("Vien"))
         viewModel.onAction(Action.OnDestinationQueryChanged(""))
         advanceUntilIdle()
 
-        assertTrue(viewModel.uiState.value.destinationResults.isEmpty())
+        assertTrue(viewModel.uiState.value.createTrip.destinationResults.isEmpty())
         assertEquals(listOf("Vie"), places.queries)
     }
 
@@ -304,10 +348,201 @@ class HomeViewModelTest {
         val paris = Destination("Paris", GeoPoint(48.8566, 2.3522))
 
         viewModel.onAction(Action.OnAddTripClick)
-        viewModel.onAction(Action.OnConfirmCreateTrip("Spring", LocalDate(2026, 4, 1), LocalDate(2026, 4, 3), paris))
+        viewModel.onAction(Action.OnCreateNameChanged("Spring"))
+        viewModel.onAction(Action.OnCreateDatesChanged(LocalDate(2026, 7, 1), LocalDate(2026, 7, 2)))
+        viewModel.onAction(Action.OnDestinationQueryChanged("Par"))
+        advanceUntilIdle()
+        viewModel.onAction(Action.OnDestinationSelected(viewModel.uiState.value.createTrip.destinationResults.single()))
+        viewModel.onAction(Action.OnConfirmCreateTrip)
         advanceUntilIdle()
 
         val tripId = viewModel.uiState.value.trips.single().id
         assertEquals(paris, (backend.refreshTrip(tripId) as AppResult.Success).data.destination)
+    }
+
+    @Test
+    fun createTrip_withoutDates_sendsNothing() = runTest {
+        val viewModel = viewModel()
+        advanceUntilIdle()
+
+        viewModel.createTrip("Someday", start = null, end = null)
+        advanceUntilIdle()
+
+        assertFalse(viewModel.uiState.value.createTrip.canCreate)
+        assertEquals(Dialog.Create, viewModel.uiState.value.dialog)
+        assertTrue(backend.observeMyTrips().first().isEmpty())
+    }
+
+    @Test
+    fun createTrip_withBlankName_sendsNothing() = runTest {
+        val viewModel = viewModel()
+        advanceUntilIdle()
+
+        viewModel.createTrip("  ", LocalDate(2026, 7, 1), LocalDate(2026, 7, 2))
+        advanceUntilIdle()
+
+        assertFalse(viewModel.uiState.value.createTrip.canCreate)
+        assertEquals(Dialog.Create, viewModel.uiState.value.dialog)
+        assertTrue(backend.observeMyTrips().first().isEmpty())
+    }
+
+    @Test
+    fun openingTheSheet_startsWithTheAccountsDefaultVisibility() = runTest {
+        defaultVisibility = TripVisibility.PRIVATE
+        val viewModel = viewModel()
+        advanceUntilIdle()
+
+        viewModel.onAction(Action.OnAddTripClick)
+        advanceUntilIdle()
+
+        assertEquals(TripVisibility.PRIVATE, viewModel.uiState.value.createTrip.visibility)
+    }
+
+    @Test
+    fun createTrip_withVisibilityAndMembers_sendsThem() = runTest {
+        val viewModel = viewModel()
+        advanceUntilIdle()
+
+        viewModel.onAction(Action.OnAddTripClick)
+        advanceUntilIdle()
+        viewModel.onAction(Action.OnCreateNameChanged("Rome"))
+        viewModel.onAction(Action.OnCreateDatesChanged(LocalDate(2026, 7, 1), LocalDate(2026, 7, 2)))
+        viewModel.onAction(Action.OnCreateVisibilityChanged(TripVisibility.PRIVATE))
+        viewModel.onAction(Action.OnFriendToggled(anna))
+        viewModel.onAction(Action.OnMemberQueryChanged("jon"))
+        advanceUntilIdle()
+        viewModel.onAction(Action.OnMemberAdded(viewModel.uiState.value.createTrip.memberResults.single()))
+        viewModel.onAction(Action.OnConfirmCreateTrip)
+        advanceUntilIdle()
+
+        val trip = viewModel.uiState.value.trips.single()
+        assertNull(viewModel.uiState.value.dialog)
+        assertEquals(TripVisibility.PRIVATE, trip.visibility)
+        val details = (backend.refreshTrip(trip.id) as AppResult.Success).data
+        assertEquals(listOf("me", "anna", "jonas.k"), details.members.map { it.user.username })
+        assertEquals(listOf(TripRole.OWNER, TripRole.EDITOR, TripRole.EDITOR), details.members.map { it.role })
+    }
+
+    @Test
+    fun friends_fillTheRow_andATapTogglesThemAsMembers() = runTest {
+        val viewModel = viewModel()
+        advanceUntilIdle()
+
+        viewModel.onAction(Action.OnAddTripClick)
+        advanceUntilIdle()
+        assertEquals(listOf("anna", "jonas.k", "lena"), viewModel.uiState.value.createTrip.friends.map { it.username })
+
+        viewModel.onAction(Action.OnFriendToggled(anna))
+        viewModel.onAction(Action.OnFriendToggled(jonas))
+        advanceUntilIdle()
+        assertEquals(listOf(anna, jonas), viewModel.uiState.value.createTrip.members)
+
+        viewModel.onAction(Action.OnFriendToggled(anna))
+        advanceUntilIdle()
+        assertEquals(listOf(jonas), viewModel.uiState.value.createTrip.members)
+    }
+
+    @Test
+    fun reopeningTheSheet_startsAFreshForm() = runTest {
+        val viewModel = viewModel()
+        advanceUntilIdle()
+        viewModel.onAction(Action.OnAddTripClick)
+        viewModel.onAction(Action.OnCreateNameChanged("Rome"))
+        viewModel.onAction(Action.OnCreateDatesChanged(LocalDate(2026, 7, 1), LocalDate(2026, 7, 2)))
+        viewModel.onAction(Action.OnFriendToggled(anna))
+
+        viewModel.onAction(Action.OnDismissDialog)
+        viewModel.onAction(Action.OnAddTripClick)
+        advanceUntilIdle()
+
+        val form = viewModel.uiState.value.createTrip
+        assertEquals("", form.name)
+        assertTrue(form.members.isEmpty())
+    }
+
+    @Test
+    fun createTrip_refusedMembers_showTheReasonOnTheirChips() = runTest {
+        val viewModel = viewModel()
+        advanceUntilIdle()
+        val unknown = UserSummary("u8", "unknown", "Unknown")
+        val blocked = UserSummary("u9", "blocked", "Blocked")
+
+        viewModel.onAction(Action.OnAddTripClick)
+        viewModel.onAction(Action.OnCreateNameChanged("Rome"))
+        viewModel.onAction(Action.OnCreateDatesChanged(LocalDate(2026, 7, 1), LocalDate(2026, 7, 2)))
+        listOf(anna, unknown, blocked).forEach { viewModel.onAction(Action.OnMemberAdded(it)) }
+        viewModel.onAction(Action.OnConfirmCreateTrip)
+        advanceUntilIdle()
+
+        val state = viewModel.uiState.value
+        assertEquals(Dialog.Create, state.dialog)
+        assertEquals(UiText.Resource(Res.string.create_trip_error_members), state.dialogError)
+        assertEquals(
+            mapOf<String, UiText>(
+                "unknown" to UiText.Resource(Res.string.create_trip_member_not_found),
+                "blocked" to UiText.Resource(Res.string.create_trip_member_blocked),
+            ),
+            state.createTrip.memberErrors.toMap(),
+        )
+        assertTrue(state.trips.isEmpty())
+
+        viewModel.onAction(Action.OnMemberRemoved("unknown"))
+        advanceUntilIdle()
+        assertEquals(setOf("blocked"), viewModel.uiState.value.createTrip.memberErrors.keys)
+        assertEquals(UiText.Resource(Res.string.create_trip_error_members), viewModel.uiState.value.dialogError)
+
+        viewModel.onAction(Action.OnMemberRemoved("blocked"))
+        advanceUntilIdle()
+        assertTrue(viewModel.uiState.value.createTrip.memberErrors.isEmpty())
+        assertNull(viewModel.uiState.value.dialogError)
+
+        viewModel.onAction(Action.OnConfirmCreateTrip)
+        advanceUntilIdle()
+        assertNull(viewModel.uiState.value.dialog)
+        assertEquals(listOf("Rome"), viewModel.uiState.value.trips.map { it.name })
+    }
+
+    @Test
+    fun usernameSearch_waitsForTypingToPause_andAsksOnceForTheLastText() = runTest {
+        val viewModel = viewModel()
+        advanceUntilIdle()
+        viewModel.onAction(Action.OnAddTripClick)
+        advanceUntilIdle()
+
+        listOf("j", "jo", "jon").forEach {
+            viewModel.onAction(Action.OnMemberQueryChanged(it))
+            advanceTimeBy(100)
+        }
+        assertTrue(users.queries.isEmpty())
+
+        advanceTimeBy(250)
+        assertEquals(listOf("jon"), users.queries)
+        assertEquals(listOf(jonas), viewModel.uiState.value.createTrip.memberResults)
+        assertFalse(viewModel.uiState.value.createTrip.isSearchingMembers)
+    }
+
+    @Test
+    fun usernameSearch_clearedField_dropsResultsAtOnceWithoutAsking() = runTest {
+        val viewModel = viewModel()
+        advanceUntilIdle()
+        viewModel.onAction(Action.OnAddTripClick)
+        viewModel.onAction(Action.OnMemberQueryChanged("an"))
+        advanceUntilIdle()
+        assertEquals(listOf(anna), viewModel.uiState.value.createTrip.memberResults)
+
+        viewModel.onAction(Action.OnMemberQueryChanged("ann"))
+        viewModel.onAction(Action.OnMemberQueryChanged(""))
+        advanceUntilIdle()
+
+        assertTrue(viewModel.uiState.value.createTrip.memberResults.isEmpty())
+        assertEquals(listOf("an"), users.queries)
+    }
+
+    /** Opens the sheet, fills in the name and dates and taps Create trip. */
+    private fun HomeViewModel.createTrip(name: String, start: LocalDate?, end: LocalDate?) {
+        onAction(Action.OnAddTripClick)
+        onAction(Action.OnCreateNameChanged(name))
+        onAction(Action.OnCreateDatesChanged(start, end))
+        onAction(Action.OnConfirmCreateTrip)
     }
 }

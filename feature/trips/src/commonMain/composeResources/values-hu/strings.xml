@@ -45,14 +45,21 @@
     <string name="share_trip_text">Nézd meg az utazásomat: %1$s (%2$s)!</string>
     <string name="share_trip_text_no_dates">Nézd meg az utazásomat: %1$s!</string>
 
-    <!-- Create trip dialog -->
+    <!-- Create trip sheet -->
     <string name="create_trip_title">Új utazás</string>
     <string name="create_trip_name_label">Az utazás neve</string>
-    <string name="create_trip_dates_label">Dátumok</string>
-    <string name="create_trip_button_create">Létrehozás</string>
+    <string name="create_trip_button_create">Utazás létrehozása</string>
     <string name="create_trip_picker_title">Az utazás dátumai</string>
     <string name="create_trip_picker_headline">Válaszd ki az időszakot</string>
-    <string name="create_trip_destination_label">Úti cél (nem kötelező)</string>
+    <string name="create_trip_destination_placeholder">Hová utazol?</string>
+    <string name="create_trip_dates_add">Dátumok megadása</string>
+    <string name="create_trip_visibility_public">Nyilvános</string>
+    <string name="create_trip_visibility_private">Privát</string>
+    <string name="create_trip_member_placeholder">Írj be egy felhasználónevet</string>
+    <string name="create_trip_add_by_username">Hozzáadás felhasználónévvel</string>
+    <string name="create_trip_member_not_found">Senkinek nincs ilyen felhasználóneve.</string>
+    <string name="create_trip_member_blocked">Ezt a személyt nem adhatod hozzá.</string>
+    <string name="create_trip_error_members">Néhány ember nem adható hozzá. Távolítsd el őket, és próbáld újra.</string>
     <string name="create_trip_destination_clear">Úti cél törlése</string>
 
     <!-- Rename trip dialog -->
@@ -82,6 +89,8 @@
     <string name="members_add_label">Hozzáadás felhasználónévvel</string>
     <string name="members_add_button">Hozzáadás</string>
     <string name="members_error_user_not_found">Nincs ilyen felhasználónév.</string>
+    <string name="members_error_some_not_added">Néhány embert nem lehet hozzáadni. Vedd ki őket, és próbáld újra.</string>
+    <string name="members_add_friends">%1$d hozzáadása</string>
     <string name="members_invites_title">Meghívó linkek</string>
     <string name="members_invite_hint">Aki megkapja a linket, a lejáratig szerkesztőként csatlakozhat.</string>
     <string name="members_invite_create">Meghívó link létrehozása</string>

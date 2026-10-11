@@ -40,3 +40,17 @@ val ErrorLight = Color(0xFFBA1A1A)
 val OnErrorLight = Color(0xFFFFFFFF)
 val ErrorDark = Color(0xFFFFB4AB)
 val OnErrorDark = Color(0xFF690005)
+
+// Avatars: pastel circles behind a person's initial, picked by a stable hash of their username.
+// The same in light and dark, with dark letters, so a person keeps their colour.
+val AvatarPastels = listOf(
+    Color(0xFFFFD6D1),
+    Color(0xFFFFE6C2),
+    Color(0xFFFFF4BF),
+    Color(0xFFD5F2D0),
+    Color(0xFFCDEDF2),
+    Color(0xFFD3E1FF),
+    Color(0xFFE6D7FF),
+    Color(0xFFF7D4EC),
+)
+val OnAvatarPastel = Color(0xFF2B2B33)

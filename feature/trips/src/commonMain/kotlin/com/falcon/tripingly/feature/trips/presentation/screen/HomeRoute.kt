@@ -13,7 +13,7 @@ import com.falcon.tripingly.feature.trips.generated.resources.Res
 import com.falcon.tripingly.feature.trips.generated.resources.share_trip_text
 import com.falcon.tripingly.feature.trips.generated.resources.share_trip_text_no_dates
 import com.falcon.tripingly.feature.trips.presentation.component.ConfirmTripDialog
-import com.falcon.tripingly.feature.trips.presentation.component.CreateTripDialog
+import com.falcon.tripingly.feature.trips.presentation.component.CreateTripSheet
 import com.falcon.tripingly.feature.trips.presentation.component.RenameTripDialog
 import com.falcon.tripingly.feature.trips.presentation.component.RescheduleTripDialog
 import com.falcon.tripingly.feature.trips.presentation.component.TripDialogKind
@@ -70,16 +70,11 @@ fun HomeRoute(
     val error = state.dialogError?.asString()
     when (val dialog = state.dialog) {
         null -> Unit
-        Dialog.Create -> CreateTripDialog(
+        Dialog.Create -> CreateTripSheet(
+            form = state.createTrip,
             isSaving = state.isSaving,
-            error = error,
-            onDismiss = onDismiss,
-            onConfirm = { name, start, end, destination ->
-                viewModel.onAction(Action.OnConfirmCreateTrip(name, start, end, destination))
-            },
-            onDestinationQueryChange = { viewModel.onAction(Action.OnDestinationQueryChanged(it)) },
-            destinationResults = state.destinationResults,
-            isSearchingDestination = state.isSearchingDestination,
+            error = state.dialogError,
+            onAction = viewModel::onAction,
         )
         is Dialog.Rename -> RenameTripDialog(
             initialName = dialog.trip.name,

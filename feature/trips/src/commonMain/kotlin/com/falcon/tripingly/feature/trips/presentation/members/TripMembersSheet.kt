@@ -32,6 +32,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.falcon.tripingly.core.designsystem.component.PrimaryButton
+import com.falcon.tripingly.feature.trips.generated.resources.members_add_friends
+import com.falcon.tripingly.feature.trips.presentation.component.FriendPickerRow
 import com.falcon.tripingly.core.common.util.DateUtils
 import com.falcon.tripingly.core.common.util.ShareManager
 import com.falcon.tripingly.core.designsystem.component.ErrorBanner
@@ -59,6 +62,7 @@ import com.falcon.tripingly.feature.trips.presentation.members.TripMembersViewMo
 import com.falcon.tripingly.feature.trips.presentation.members.TripMembersViewModel.Event
 import com.falcon.tripingly.feature.trips.presentation.members.TripMembersViewModel.State
 import kotlinx.collections.immutable.persistentListOf
+import kotlinx.collections.immutable.persistentSetOf
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 import org.jetbrains.compose.resources.getString
@@ -130,6 +134,27 @@ fun TripMembersScreen(
             )
         }
         if (state.canManage) {
+            if (state.friends.isNotEmpty()) {
+                item {
+                    FriendPickerRow(
+                        friends = state.friends,
+                        isPicked = { it.username in state.pickedFriends },
+                        onToggle = { onAction(Action.OnFriendToggled(it)) },
+                        enabled = !state.isAdding,
+                        modifier = Modifier.padding(horizontal = 16.dp),
+                    )
+                }
+            }
+            if (state.pickedFriends.isNotEmpty()) {
+                item {
+                    PrimaryButton(
+                        text = stringResource(Res.string.members_add_friends, state.pickedFriends.size),
+                        onClick = { onAction(Action.OnAddPickedFriends) },
+                        isLoading = state.isAdding,
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp),
+                    )
+                }
+            }
             item { AddMemberField(state, onAction) }
             item {
                 HorizontalDivider(Modifier.padding(vertical = 8.dp))
@@ -259,6 +284,11 @@ private fun TripMembersScreenPreview() {
                     TripMember(UserSummary("1", "shahin", "Shahin"), TripRole.OWNER),
                     TripMember(UserSummary("2", "anna", "Anna"), TripRole.EDITOR),
                 ),
+                friends = persistentListOf(
+                    UserSummary("3", "jonas.k", "Jonas"),
+                    UserSummary("4", "lena", "Lena"),
+                ),
+                pickedFriends = persistentSetOf("lena"),
                 invites = persistentListOf(
                     TripInvite("i1", "https://example.com/i/abc", Instant.parse("2025-06-08T10:00:00Z")),
                 ),

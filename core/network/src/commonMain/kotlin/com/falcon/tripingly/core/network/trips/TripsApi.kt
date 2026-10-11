@@ -4,10 +4,12 @@ import com.falcon.tripingly.core.common.error.DataError
 import com.falcon.tripingly.core.common.result.AppResult
 import com.falcon.tripingly.core.network.IDEMPOTENCY_KEY_HEADER
 import com.falcon.tripingly.core.network.model.AddMemberDto
+import com.falcon.tripingly.core.network.model.AddMembersDto
 import com.falcon.tripingly.core.network.model.CreateTripDto
 import com.falcon.tripingly.core.network.model.TripDayDto
 import com.falcon.tripingly.core.network.model.TripDto
 import com.falcon.tripingly.core.network.model.TripMemberDto
+import com.falcon.tripingly.core.network.model.TripMembersDto
 import com.falcon.tripingly.core.network.model.TripSummaryPageDto
 import com.falcon.tripingly.core.network.model.UpdateTripDto
 import de.jensklingenberg.ktorfit.http.Body
@@ -70,6 +72,14 @@ interface TripsApi {
         @Path("id") tripId: String,
         @Body body: AddMemberDto,
     ): AppResult<TripMemberDto, DataError.Network>
+
+    /** The owner adds several editors at once; all or nothing. */
+    @POST("trips/{id}/members/batch")
+    @Headers("Content-Type: application/json")
+    suspend fun addMembers(
+        @Path("id") tripId: String,
+        @Body body: AddMembersDto,
+    ): AppResult<TripMembersDto, DataError.Network>
 
     /** The owner removes an editor, or an editor removes themselves (leaves). */
     @DELETE("trips/{id}/members/{userId}")

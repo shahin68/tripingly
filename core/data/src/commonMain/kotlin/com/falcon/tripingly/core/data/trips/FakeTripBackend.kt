@@ -35,7 +35,7 @@ import kotlin.time.Instant
  * In-memory trips, markers and invites for `-Ptripinly.useFakeApi=true` builds
  * and tests, following the server's rules: days follow the dates, only the owner
  * manages the trip, the last day can't be deleted, the username `unknown` doesn't
- * exist. Set [nextError] to make the next call fail.
+ * exist and `blocked` is blocked. Set [nextError] to make the next call fail.
  */
 class FakeTripBackend(
     private val me: UserSummary = UserSummary("00000000-0000-4000-8000-000000000001", "me", "Me"),
@@ -66,6 +66,16 @@ class FakeTripBackend(
     override suspend fun refreshTrip(tripId: String): AppResult<TripDetails, DataError.Network> = call { trips.value[tripId] ?: return notFound() }
 
     override suspend fun createTrip(trip: NewTrip): AppResult<TripDetails, DataError.Network> = call {
+        val refused = trip.memberUsernames.withIndex().mapNotNull { (index, username) ->
+            when (username) {
+                "unknown" -> "fields.memberUsernames.$index" to TripErrorCodes.MEMBER_NOT_FOUND
+                "blocked" -> "fields.memberUsernames.$index" to TripErrorCodes.MEMBER_BLOCKED
+                else -> null
+            }
+        }
+        if (refused.isNotEmpty()) {
+            return AppResult.Error(DataError.Network.Api(400, TripErrorCodes.VALIDATION_FAILED, "Validation failed", refused.toMap()))
+        }
         val id = nextId()
         val start = trip.startDate
         val end = trip.endDate
@@ -85,7 +95,8 @@ class FakeTripBackend(
                     updatedAt = now(),
                 ),
                 days = List(dayCount) { position -> TripDay(nextId(), position, trip.startDate?.plusDays(position), emptyList()) },
-                members = listOf(TripMember(me, TripRole.OWNER)),
+                members = listOf(TripMember(me, TripRole.OWNER)) +
+                    trip.memberUsernames.map { TripMember(UserSummary(nextId(), it, it), TripRole.EDITOR) },
                 destination = trip.destination,
             ),
         )
@@ -184,6 +195,24 @@ class FakeTripBackend(
         if (name == "unknown") return notFound()
         if (details.members.any { it.user.username == name }) return AppResult.Success(details)
         save(details.copy(members = details.members + TripMember(UserSummary(nextId(), name, name), TripRole.EDITOR)))
+    }
+
+    override suspend fun addMembers(tripId: String, usernames: List<String>): AppResult<TripDetails, DataError.Network> = call {
+        val details = trips.value[tripId] ?: return notFound()
+        if (!details.trip.role.canManage) return forbidden()
+        val refused = usernames.withIndex().mapNotNull { (index, username) ->
+            when (username) {
+                "unknown" -> "fields.usernames.$index" to TripErrorCodes.MEMBER_NOT_FOUND
+                "blocked" -> "fields.usernames.$index" to TripErrorCodes.MEMBER_BLOCKED
+                else -> null
+            }
+        }
+        if (refused.isNotEmpty()) {
+            return AppResult.Error(DataError.Network.Api(400, TripErrorCodes.VALIDATION_FAILED, "Validation failed", refused.toMap()))
+        }
+        val added = usernames.filter { name -> details.members.none { it.user.username == name } }
+            .map { TripMember(UserSummary(nextId(), it, it), TripRole.EDITOR) }
+        save(details.copy(members = details.members + added))
     }
 
     override suspend fun removeMember(tripId: String, userId: String): AppResult<TripDetails, DataError.Network> = call {

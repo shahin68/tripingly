@@ -30,6 +30,8 @@ import com.falcon.tripingly.core.network.trips.TripsApi
 import com.falcon.tripingly.core.network.trips.createInvitesApi
 import com.falcon.tripingly.core.network.trips.createMarkersApi
 import com.falcon.tripingly.core.network.trips.createTripsApi
+import com.falcon.tripingly.core.network.users.UsersApi
+import com.falcon.tripingly.core.network.users.createUsersApi
 import de.jensklingenberg.ktorfit.Ktorfit
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.HttpClientEngine
@@ -72,6 +74,7 @@ val networkModule = module {
     single<TripsApi> { get<Ktorfit>().createTripsApi() }
     single<MarkersApi> { get<Ktorfit>().createMarkersApi() }
     single<InvitesApi> { get<Ktorfit>().createInvitesApi() }
+    single<UsersApi> { get<Ktorfit>().createUsersApi() }
     single<PlacesApi> { get<Ktorfit>().createPlacesApi() }
     single<AppConfigApi> { get<Ktorfit>().createAppConfigApi() }
     single<PhotosApi> { get<Ktorfit>().createPhotosApi() }

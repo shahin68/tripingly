@@ -2,6 +2,7 @@ package com.falcon.tripingly.feature.trips
 
 import com.falcon.tripingly.core.common.result.AppResult
 import com.falcon.tripingly.core.data.trips.FakeTripBackend
+import com.falcon.tripingly.core.data.users.FakeUserRepository
 import com.falcon.tripingly.core.model.trip.NewTrip
 import com.falcon.tripingly.core.model.trip.TripRole
 import com.falcon.tripingly.core.ui.UiText
@@ -40,9 +41,28 @@ class TripMembersViewModelTest {
 
     private suspend fun TestScope.viewModel(): TripMembersViewModel {
         val trip = (backend.createTrip(NewTrip("Paris", null, null)) as AppResult.Success).data
-        return TripMembersViewModel(trip.trip.id, backend, backend).also { viewModel ->
+        return TripMembersViewModel(trip.trip.id, backend, backend, FakeUserRepository()).also { viewModel ->
             backgroundScope.launch { viewModel.uiState.collect {} }
         }
+    }
+
+    @Test
+    fun pickedFriends_areAddedInOneRequest_andLeaveTheFriendsRow() = runTest {
+        val viewModel = viewModel()
+        advanceUntilIdle()
+        val (anna, jonas) = viewModel.uiState.value.friends
+
+        viewModel.onAction(Action.OnFriendToggled(anna))
+        viewModel.onAction(Action.OnFriendToggled(jonas))
+        viewModel.onAction(Action.OnFriendToggled(jonas))
+        viewModel.onAction(Action.OnFriendToggled(jonas))
+        viewModel.onAction(Action.OnAddPickedFriends)
+        advanceUntilIdle()
+
+        val state = viewModel.uiState.value
+        assertEquals(listOf("anna", "jonas.k"), state.members.drop(1).map { it.user.username })
+        assertTrue(state.pickedFriends.isEmpty())
+        assertEquals(listOf("lena"), state.friends.map { it.username })
     }
 
     @Test
