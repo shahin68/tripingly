@@ -9,11 +9,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.interop.UIKitView
+import com.falcon.tripingly.core.location.model.Coordinates
 import com.falcon.tripingly.core.model.place.GeoBounds
 import com.falcon.tripingly.core.model.place.MapPlace
 import com.falcon.tripingly.core.model.place.PlaceSquare
 import com.falcon.tripingly.core.model.place.PlacesInView
-import com.falcon.tripingly.core.location.model.Coordinates
 import com.falcon.tripingly.feature.map.domain.model.MapMarker
 import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.cinterop.useContents

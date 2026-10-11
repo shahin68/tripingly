@@ -3,8 +3,8 @@ package com.falcon.tripingly.core.data.places
 import com.falcon.tripingly.core.common.error.DataError
 import com.falcon.tripingly.core.common.result.AppResult
 import com.falcon.tripingly.core.common.result.map
-import com.falcon.tripingly.core.model.Page
 import com.falcon.tripingly.core.data.config.AppConfigRepository
+import com.falcon.tripingly.core.model.Page
 import com.falcon.tripingly.core.model.place.MapPlace
 import com.falcon.tripingly.core.model.place.OsmRef
 import com.falcon.tripingly.core.model.place.OsmType

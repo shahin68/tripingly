@@ -7,11 +7,11 @@
     <string name="home_tab_my_trips">Utazásaim</string>
     <string name="home_tab_social">Közösség</string>
     <string name="home_search_placeholder_trips">Utazások keresése...</string>
-    <string name="home_search_placeholder_social">Keresés a közösségben...</string>
+    <string name="home_search_placeholder_social">Emberek keresése…</string>
+    <string name="home_my_profile">Profilod</string>
     <string name="home_fab_add_trip">Utazás hozzáadása</string>
     <string name="home_list_empty">Még nincs utazásod. Koppints a + gombra, és hozz létre egyet!</string>
     <string name="home_list_no_matches">Egy utazás sem felel meg a keresésnek.</string>
-    <string name="home_social_coming_soon">A közösségi funkciók hamarosan érkeznek!</string>
     <string name="home_offline_cached">Nincs internetkapcsolat. Ezek a mentett utazásaid; a módosításokhoz kapcsolat kell.</string>
 
     <!-- Trip list item -->

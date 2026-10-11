@@ -41,11 +41,11 @@ import com.falcon.tripingly.core.data.users.FakeUserRepository
 import com.falcon.tripingly.core.data.users.UserRepository
 import com.falcon.tripingly.core.model.account.SessionState
 import com.falcon.tripingly.core.network.ApiConfig
-import kotlin.time.Clock
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.todayIn
 import org.koin.core.qualifier.named
 import org.koin.dsl.module
+import kotlin.time.Clock
 
 val dataModule = module {
     single<TripLocalDataSource> { RoomTripLocalDataSource(get()) }

@@ -77,4 +77,27 @@
     <string name="map_camera_open_settings">Einstellungen öffnen</string>
     <string name="map_camera_unavailable">Dieses Gerät hat keine Kamera.</string>
     <string name="map_camera_failed">Das Foto konnte nicht aufgenommen werden. Versuche es erneut.</string>
+
+    <!-- Social -->
+    <string name="map_reported">Danke. Wir sehen es uns an.</string>
+    <string name="map_error_not_copyable">Diese Reise kann nicht zu deinen Reisen hinzugefügt werden.</string>
+    <string name="map_trip_menu">Reiseoptionen</string>
+    <string name="map_copy_trip">Zu meinen Reisen hinzufügen</string>
+    <string name="map_owner_profile">Profil von @%1$s</string>
+    <string name="map_report_trip">Reise melden</string>
+    <string name="map_stop_comment">Kommentieren</string>
+    <string name="map_stop_report">Stopp melden</string>
+    <string name="map_comments_title">Kommentare zu %1$s</string>
+    <string name="map_comments_empty">Noch keine Kommentare. Schreib etwas!</string>
+    <string name="map_comment_placeholder">Kommentar schreiben …</string>
+    <string name="map_comment_send">Senden</string>
+    <string name="map_comment_menu">Kommentaroptionen</string>
+    <string name="map_comment_delete">Kommentar löschen</string>
+    <string name="map_comment_delete_title">Diesen Kommentar löschen?</string>
+    <string name="map_comment_delete_message">Der Kommentar wird für alle gelöscht.</string>
+    <string name="map_comment_report">Kommentar melden</string>
+    <plurals name="map_stop_comment_count">
+        <item quantity="one">%1$d Kommentar</item>
+        <item quantity="other">%1$d Kommentare</item>
+    </plurals>
 </resources>

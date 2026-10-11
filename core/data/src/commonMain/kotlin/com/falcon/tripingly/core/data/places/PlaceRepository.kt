@@ -3,12 +3,12 @@ package com.falcon.tripingly.core.data.places
 import com.falcon.tripingly.core.common.error.DataError
 import com.falcon.tripingly.core.common.result.AppResult
 import com.falcon.tripingly.core.model.Page
-import com.falcon.tripingly.core.model.social.NearbyPlace
 import com.falcon.tripingly.core.model.config.AppConfig
 import com.falcon.tripingly.core.model.place.PlaceDetails
 import com.falcon.tripingly.core.model.place.PlaceSearchResult
 import com.falcon.tripingly.core.model.place.PlaceSquare
 import com.falcon.tripingly.core.model.place.PlacesInView
+import com.falcon.tripingly.core.model.social.NearbyPlace
 import com.falcon.tripingly.core.model.trip.GeoPoint
 import kotlinx.coroutines.flow.Flow
 

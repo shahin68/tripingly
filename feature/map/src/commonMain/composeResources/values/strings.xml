@@ -77,4 +77,27 @@
     <string name="map_camera_open_settings">Open settings</string>
     <string name="map_camera_unavailable">This device has no camera.</string>
     <string name="map_camera_failed">The photo couldn't be taken. Try again.</string>
+
+    <!-- Social -->
+    <string name="map_reported">Thanks. We'll take a look.</string>
+    <string name="map_error_not_copyable">This trip can’t be added to your trips.</string>
+    <string name="map_trip_menu">Trip options</string>
+    <string name="map_copy_trip">Add to my trips</string>
+    <string name="map_owner_profile">@%1$s’s profile</string>
+    <string name="map_report_trip">Report trip</string>
+    <string name="map_stop_comment">Comment</string>
+    <string name="map_stop_report">Report stop</string>
+    <string name="map_comments_title">Comments on %1$s</string>
+    <string name="map_comments_empty">No comments yet. Say something!</string>
+    <string name="map_comment_placeholder">Add a comment…</string>
+    <string name="map_comment_send">Send</string>
+    <string name="map_comment_menu">Comment options</string>
+    <string name="map_comment_delete">Delete comment</string>
+    <string name="map_comment_delete_title">Delete this comment?</string>
+    <string name="map_comment_delete_message">The comment will be deleted for everyone.</string>
+    <string name="map_comment_report">Report comment</string>
+    <plurals name="map_stop_comment_count">
+        <item quantity="one">%1$d comment</item>
+        <item quantity="other">%1$d comments</item>
+    </plurals>
 </resources>

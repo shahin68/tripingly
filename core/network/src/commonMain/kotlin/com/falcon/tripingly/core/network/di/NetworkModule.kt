@@ -6,10 +6,10 @@ import com.falcon.tripingly.core.network.AppLanguage
 import com.falcon.tripingly.core.network.account.AccountApi
 import com.falcon.tripingly.core.network.account.createAccountApi
 import com.falcon.tripingly.core.network.auth.AuthApi
-import com.falcon.tripingly.core.network.auth.createAuthApi
 import com.falcon.tripingly.core.network.auth.SecureTokenStore
 import com.falcon.tripingly.core.network.auth.SessionEvents
 import com.falcon.tripingly.core.network.auth.TokenStore
+import com.falcon.tripingly.core.network.auth.createAuthApi
 import com.falcon.tripingly.core.network.config.AppConfigApi
 import com.falcon.tripingly.core.network.config.createAppConfigApi
 import com.falcon.tripingly.core.network.createHttpClient

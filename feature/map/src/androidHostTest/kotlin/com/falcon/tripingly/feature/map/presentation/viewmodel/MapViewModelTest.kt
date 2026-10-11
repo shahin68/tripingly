@@ -1,27 +1,31 @@
 package com.falcon.tripingly.feature.map.presentation.viewmodel
 
-import kotlinx.coroutines.flow.first
-import com.falcon.tripingly.core.model.photo.PickedImage
-import com.falcon.tripingly.core.data.photos.FakePhotoRepository
 import app.cash.turbine.test
 import com.falcon.tripingly.core.common.coroutines.CoroutineDispatchers
 import com.falcon.tripingly.core.common.error.DataError
 import com.falcon.tripingly.core.common.result.AppResult
 import com.falcon.tripingly.core.common.result.asError
 import com.falcon.tripingly.core.common.result.asSuccess
+import com.falcon.tripingly.core.data.photos.FakePhotoRepository
 import com.falcon.tripingly.core.data.places.FakePlaceRepository
 import com.falcon.tripingly.core.data.places.PlaceRepository
+import com.falcon.tripingly.core.data.social.FakeSocialRepository
 import com.falcon.tripingly.core.data.trips.FakeTripBackend
-import com.falcon.tripingly.core.model.place.SearchResultType
-import com.falcon.tripingly.core.model.place.PlaceSearchResult
-import com.falcon.tripingly.core.model.place.OsmType
-import com.falcon.tripingly.core.model.place.OsmRef
+import com.falcon.tripingly.core.location.GetCurrentLocationUseCase
+import com.falcon.tripingly.core.location.LocationRepository
+import com.falcon.tripingly.core.location.model.Coordinates
+import com.falcon.tripingly.core.location.permission.LocationPermission
+import com.falcon.tripingly.core.model.photo.PickedImage
 import com.falcon.tripingly.core.model.place.GeoBounds
 import com.falcon.tripingly.core.model.place.MapPlace
+import com.falcon.tripingly.core.model.place.OsmRef
+import com.falcon.tripingly.core.model.place.OsmType
 import com.falcon.tripingly.core.model.place.PlaceCategory
 import com.falcon.tripingly.core.model.place.PlaceCluster
+import com.falcon.tripingly.core.model.place.PlaceSearchResult
 import com.falcon.tripingly.core.model.place.PlaceSquare
 import com.falcon.tripingly.core.model.place.PlacesInView
+import com.falcon.tripingly.core.model.place.SearchResultType
 import com.falcon.tripingly.core.model.trip.Destination
 import com.falcon.tripingly.core.model.trip.GeoPoint
 import com.falcon.tripingly.core.model.trip.NewMarker
@@ -29,14 +33,10 @@ import com.falcon.tripingly.core.model.trip.NewTrip
 import com.falcon.tripingly.core.model.trip.TripDetails
 import com.falcon.tripingly.core.model.trip.TripRole
 import com.falcon.tripingly.core.ui.UiText
-import com.falcon.tripingly.core.location.model.Coordinates
-import com.falcon.tripingly.core.location.LocationRepository
-import com.falcon.tripingly.core.location.GetCurrentLocationUseCase
 import com.falcon.tripingly.feature.map.generated.resources.Res
 import com.falcon.tripingly.feature.map.generated.resources.error_location_denied_manual
 import com.falcon.tripingly.feature.map.generated.resources.error_location_permission_required
 import com.falcon.tripingly.feature.map.generated.resources.map_change_not_saved
-import com.falcon.tripingly.core.location.permission.LocationPermission
 import com.falcon.tripingly.feature.map.presentation.screen.MapViewModel
 import com.falcon.tripingly.feature.map.presentation.screen.MapViewModel.Action
 import com.falcon.tripingly.feature.map.presentation.screen.MapViewModel.Confirm
@@ -46,6 +46,7 @@ import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.StandardTestDispatcher
@@ -136,6 +137,7 @@ class MapViewModelTest {
         markerRepository = backend,
         placeRepository = places,
         photoRepository = photos,
+        socialRepository = FakeSocialRepository(),
         getCurrentLocationUseCase = GetCurrentLocationUseCase(fakeLocationRepository),
         dispatchers = TestCoroutineDispatchers(testDispatcher),
     ).also { viewModel -> backgroundScope.launch { viewModel.uiState.collect {} } }

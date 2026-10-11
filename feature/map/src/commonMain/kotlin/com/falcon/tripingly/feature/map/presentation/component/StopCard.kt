@@ -3,21 +3,26 @@ package com.falcon.tripingly.feature.map.presentation.component
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.Comment
 import androidx.compose.material.icons.filled.AddPhotoAlternate
 import androidx.compose.material.icons.filled.PhotoCamera
+import androidx.compose.material.icons.outlined.Flag
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -25,18 +30,20 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.falcon.tripingly.core.designsystem.component.LikeButton
 import com.falcon.tripingly.core.designsystem.component.PhotoImage
 import com.falcon.tripingly.core.designsystem.component.PhotoSize
 import com.falcon.tripingly.core.designsystem.theme.spacing
 import com.falcon.tripingly.feature.map.domain.model.MapMarker
-import com.falcon.tripingly.feature.map.generated.resources.Res
 import com.falcon.tripingly.feature.map.generated.resources.*
+import com.falcon.tripingly.feature.map.generated.resources.Res
 import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
 
 /**
  * A stop tapped on the map, in a card that floats above its pin like the place card: its cover, name and
- * photo count. Tapping it opens the stop's photos; owners and editors also get Add photos and the camera.
+ * photo count, with its likes and comments. Tapping it opens the stop's photos; owners and editors also get
+ * Add photos and the camera, and others ([canReport]) can report the stop.
  */
 @Composable
 fun StopCard(
@@ -45,6 +52,10 @@ fun StopCard(
     onOpen: () -> Unit,
     onAddPhotos: () -> Unit,
     onTakePhoto: () -> Unit,
+    onToggleLike: () -> Unit,
+    onOpenComments: () -> Unit,
+    canReport: Boolean,
+    onReport: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Card(
@@ -91,6 +102,26 @@ fun StopCard(
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
+                }
+            }
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                LikeButton(liked = marker.likedByMe, count = marker.likeCount, onToggle = onToggleLike)
+                TextButton(onClick = onOpenComments) {
+                    Icon(Icons.AutoMirrored.Outlined.Comment, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Text(
+                        text = if (marker.commentCount > 0) {
+                            pluralStringResource(Res.plurals.map_stop_comment_count, marker.commentCount, marker.commentCount)
+                        } else {
+                            stringResource(Res.string.map_stop_comment)
+                        },
+                        modifier = Modifier.padding(start = MaterialTheme.spacing.small),
+                    )
+                }
+                Spacer(Modifier.weight(1f))
+                if (canReport) {
+                    IconButton(onClick = onReport) {
+                        Icon(Icons.Outlined.Flag, contentDescription = stringResource(Res.string.map_stop_report))
+                    }
                 }
             }
             if (canEdit) {

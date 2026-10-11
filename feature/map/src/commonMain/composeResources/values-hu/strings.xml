@@ -77,4 +77,27 @@
     <string name="map_camera_open_settings">Beállítások megnyitása</string>
     <string name="map_camera_unavailable">Ezen az eszközön nincs kamera.</string>
     <string name="map_camera_failed">Nem sikerült elkészíteni a fotót. Próbáld újra.</string>
+
+    <!-- Social -->
+    <string name="map_reported">Köszönjük. Megnézzük.</string>
+    <string name="map_error_not_copyable">Ez az utazás nem adható hozzá az utazásaidhoz.</string>
+    <string name="map_trip_menu">Utazás beállításai</string>
+    <string name="map_copy_trip">Hozzáadás az utazásaimhoz</string>
+    <string name="map_owner_profile">@%1$s profilja</string>
+    <string name="map_report_trip">Utazás jelentése</string>
+    <string name="map_stop_comment">Hozzászólás</string>
+    <string name="map_stop_report">Megálló jelentése</string>
+    <string name="map_comments_title">Hozzászólások: %1$s</string>
+    <string name="map_comments_empty">Még nincs hozzászólás. Írj valamit!</string>
+    <string name="map_comment_placeholder">Írj hozzászólást…</string>
+    <string name="map_comment_send">Küldés</string>
+    <string name="map_comment_menu">Hozzászólás beállításai</string>
+    <string name="map_comment_delete">Hozzászólás törlése</string>
+    <string name="map_comment_delete_title">Törlöd ezt a hozzászólást?</string>
+    <string name="map_comment_delete_message">A hozzászólás mindenki számára törlődik.</string>
+    <string name="map_comment_report">Hozzászólás jelentése</string>
+    <plurals name="map_stop_comment_count">
+        <item quantity="one">%1$d hozzászólás</item>
+        <item quantity="other">%1$d hozzászólás</item>
+    </plurals>
 </resources>

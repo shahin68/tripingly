@@ -4,8 +4,8 @@ import com.falcon.tripingly.core.network.NetworkJson
 import com.falcon.tripingly.core.network.model.CommentDto
 import com.falcon.tripingly.core.network.model.MarkerDto
 import com.falcon.tripingly.core.network.model.PhotoDto
-import kotlinx.serialization.SerializationException
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.decodeFromJsonElement

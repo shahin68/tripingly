@@ -1,6 +1,5 @@
 package com.falcon.tripingly.feature.map.presentation.screen
 
-import com.falcon.tripingly.core.data.photos.FakePhotoRepository
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.onAllNodesWithContentDescription
@@ -11,17 +10,19 @@ import androidx.compose.ui.test.runComposeUiTest
 import com.falcon.tripingly.core.common.coroutines.CoroutineDispatchers
 import com.falcon.tripingly.core.common.result.AppResult
 import com.falcon.tripingly.core.common.result.asSuccess
+import com.falcon.tripingly.core.data.photos.FakePhotoRepository
 import com.falcon.tripingly.core.data.places.FakePlaceRepository
+import com.falcon.tripingly.core.data.social.FakeSocialRepository
 import com.falcon.tripingly.core.data.trips.FakeTripBackend
 import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
+import com.falcon.tripingly.core.location.GetCurrentLocationUseCase
+import com.falcon.tripingly.core.location.LocationRepository
+import com.falcon.tripingly.core.location.model.Coordinates
 import com.falcon.tripingly.core.model.trip.GeoPoint
 import com.falcon.tripingly.core.model.trip.NewMarker
 import com.falcon.tripingly.core.model.trip.NewTrip
 import com.falcon.tripingly.core.model.trip.TripDetails
 import com.falcon.tripingly.core.model.trip.TripRole
-import com.falcon.tripingly.core.location.model.Coordinates
-import com.falcon.tripingly.core.location.LocationRepository
-import com.falcon.tripingly.core.location.GetCurrentLocationUseCase
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.flowOf
@@ -64,6 +65,7 @@ class MapFlowTest {
         markerRepository = backend,
         placeRepository = FakePlaceRepository(),
         photoRepository = FakePhotoRepository(),
+        socialRepository = FakeSocialRepository(),
         getCurrentLocationUseCase = GetCurrentLocationUseCase(
             object : LocationRepository {
                 override fun getLocationStream() = flowOf(Coordinates.Paris.asSuccess())
@@ -78,7 +80,7 @@ class MapFlowTest {
 
     @Test
     fun `opening a trip shows the day's stops as chips`() = runComposeUiTest {
-        setContent { TripinglyTheme { MapRoute(trip.trip.id, onNavigateBack = {}, viewModel = viewModel()) } }
+        setContent { TripinglyTheme { MapRoute(trip.trip.id, onNavigateBack = {}, onOpenProfile = {}, onOpenTrip = {}, viewModel = viewModel()) } }
 
         onNodeWithText("Vienna weekend").assertExists()
         onNodeWithText("Trip Plan (3 stops)").assertExists()
@@ -89,7 +91,7 @@ class MapFlowTest {
 
     @Test
     fun `removing a chip deletes the stop and renumbers the rest`() = runComposeUiTest {
-        setContent { TripinglyTheme { MapRoute(trip.trip.id, onNavigateBack = {}, viewModel = viewModel()) } }
+        setContent { TripinglyTheme { MapRoute(trip.trip.id, onNavigateBack = {}, onOpenProfile = {}, onOpenTrip = {}, viewModel = viewModel()) } }
 
         onAllNodesWithContentDescription("Remove stop")[1].performClick()
 
@@ -101,7 +103,7 @@ class MapFlowTest {
 
     @Test
     fun `clear all asks first and cancel keeps the stops`() = runComposeUiTest {
-        setContent { TripinglyTheme { MapRoute(trip.trip.id, onNavigateBack = {}, viewModel = viewModel()) } }
+        setContent { TripinglyTheme { MapRoute(trip.trip.id, onNavigateBack = {}, onOpenProfile = {}, onOpenTrip = {}, viewModel = viewModel()) } }
 
         onNodeWithText("Clear All").performClick()
         onNodeWithText("Clear day 1?").assertExists()
@@ -114,7 +116,7 @@ class MapFlowTest {
 
     @Test
     fun `clear all empties the day once confirmed`() = runComposeUiTest {
-        setContent { TripinglyTheme { MapRoute(trip.trip.id, onNavigateBack = {}, viewModel = viewModel()) } }
+        setContent { TripinglyTheme { MapRoute(trip.trip.id, onNavigateBack = {}, onOpenProfile = {}, onOpenTrip = {}, viewModel = viewModel()) } }
 
         onNodeWithText("Clear All").performClick()
         onNodeWithText("Delete").performClick()
@@ -127,7 +129,7 @@ class MapFlowTest {
     fun `a viewer can't change the stops`() = runComposeUiTest {
         val current = runBlocking { (backend.refreshTrip(trip.trip.id) as AppResult.Success).data }
         backend.seed(current.copy(trip = current.trip.copy(role = TripRole.VIEWER)))
-        setContent { TripinglyTheme { MapRoute(trip.trip.id, onNavigateBack = {}, viewModel = viewModel()) } }
+        setContent { TripinglyTheme { MapRoute(trip.trip.id, onNavigateBack = {}, onOpenProfile = {}, onOpenTrip = {}, viewModel = viewModel()) } }
 
         onNodeWithText("Stephansdom").assertExists()
         onNodeWithText("Clear All").assertDoesNotExist()
@@ -138,7 +140,7 @@ class MapFlowTest {
     @Test
     fun `the back button leaves the map`() = runComposeUiTest {
         var wentBack = false
-        setContent { TripinglyTheme { MapRoute(trip.trip.id, onNavigateBack = { wentBack = true }, viewModel = viewModel()) } }
+        setContent { TripinglyTheme { MapRoute(trip.trip.id, onNavigateBack = { wentBack = true }, onOpenProfile = {}, onOpenTrip = {}, viewModel = viewModel()) } }
 
         onNodeWithContentDescription("Back").performClick()
 

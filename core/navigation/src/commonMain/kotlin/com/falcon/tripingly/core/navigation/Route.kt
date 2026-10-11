@@ -15,11 +15,21 @@ data object Home : Route
 @Serializable
 data class TripMap(val tripId: String) : Route
 
+/** A person's profile; null [username] is my own. */
+@Serializable
+data class Profile(val username: String?) : Route
+
+/** One of my people lists, by its `PeopleList` name. */
+@Serializable
+data class People(val list: String) : Route
+
 val NavConfig = SavedStateConfiguration {
     this.serializersModule = SerializersModule {
         polymorphic(NavKey::class) {
             subclass(Home::class, Home.serializer())
             subclass(TripMap::class, TripMap.serializer())
+            subclass(Profile::class, Profile.serializer())
+            subclass(People::class, People.serializer())
         }
     }
 }

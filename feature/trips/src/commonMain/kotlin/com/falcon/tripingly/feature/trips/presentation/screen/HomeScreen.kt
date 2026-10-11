@@ -16,6 +16,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.People
@@ -25,6 +26,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
@@ -42,31 +44,34 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.falcon.tripingly.core.common.util.DateUtils
 import com.falcon.tripingly.core.designsystem.component.AppDropdownMenu
-import com.falcon.tripingly.core.designsystem.component.ErrorBanner
 import com.falcon.tripingly.core.designsystem.component.DropdownAction
+import com.falcon.tripingly.core.designsystem.component.ErrorBanner
 import com.falcon.tripingly.core.designsystem.component.FloatingSearchBar
 import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
 import com.falcon.tripingly.core.model.account.TripVisibility
 import com.falcon.tripingly.core.model.trip.Trip
 import com.falcon.tripingly.core.model.trip.TripRole
-import com.falcon.tripingly.feature.trips.presentation.component.formatDateRange
+import com.falcon.tripingly.feature.trips.generated.resources.*
+import com.falcon.tripingly.feature.trips.generated.resources.Res
 import com.falcon.tripingly.feature.trips.presentation.screen.HomeViewModel.Action
 import com.falcon.tripingly.feature.trips.presentation.screen.HomeViewModel.State
 import com.falcon.tripingly.feature.trips.presentation.screen.HomeViewModel.Tab
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
-import androidx.compose.ui.tooling.preview.Preview
-import com.falcon.tripingly.feature.trips.generated.resources.Res
-import com.falcon.tripingly.feature.trips.generated.resources.*
 
 @Composable
 fun HomeScreen(
     state: State,
     onAction: (Action) -> Unit,
-    modifier: Modifier = Modifier
+    onOpenMyProfile: () -> Unit,
+    modifier: Modifier = Modifier,
+    /** The Social tab, from the social feature; it gets what's typed in the search bar there. */
+    socialContent: @Composable (query: String) -> Unit = {},
 ) {
     val scope = rememberCoroutineScope()
     val pagerState = rememberPagerState(
@@ -119,13 +124,20 @@ fun HomeScreen(
                 .padding(paddingValues)
         ) {
             FloatingSearchBar(
-                query = state.searchQuery,
-                onQueryChange = { onAction(Action.OnSearchQueryChanged(it)) },
+                query = if (currentTab == Tab.MyTrips) state.searchQuery else state.peopleQuery,
+                onQueryChange = {
+                    onAction(if (currentTab == Tab.MyTrips) Action.OnSearchQueryChanged(it) else Action.OnPeopleQueryChanged(it))
+                },
                 placeholder = if (currentTab == Tab.MyTrips) {
                     stringResource(Res.string.home_search_placeholder_trips)
                 } else {
                     stringResource(Res.string.home_search_placeholder_social)
-                }
+                },
+                trailingIcon = {
+                    IconButton(onClick = onOpenMyProfile) {
+                        Icon(Icons.Default.AccountCircle, contentDescription = stringResource(Res.string.home_my_profile))
+                    }
+                },
             )
 
             state.message?.let { message ->
@@ -147,7 +159,7 @@ fun HomeScreen(
                         state = state,
                         onAction = onAction
                     )
-                    Tab.Social -> SocialContent()
+                    Tab.Social -> socialContent(state.peopleQuery)
                 }
             }
         }
@@ -240,13 +252,6 @@ private fun tripActions(trip: Trip, onAction: (Action) -> Unit): List<DropdownAc
 }
 
 @Composable
-private fun SocialContent() {
-    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        Text(stringResource(Res.string.home_social_coming_soon))
-    }
-}
-
-@Composable
 private fun TripItem(
     trip: Trip,
     onClick: () -> Unit,
@@ -268,7 +273,7 @@ private fun TripItem(
         Column(modifier = Modifier.padding(16.dp)) {
             Text(text = trip.name, style = MaterialTheme.typography.titleLarge)
             Text(
-                text = formatDateRange(trip.startDate, trip.endDate) ?: stringResource(Res.string.trip_no_dates),
+                text = DateUtils.formatRange(trip.startDate, trip.endDate) ?: stringResource(Res.string.trip_no_dates),
                 style = MaterialTheme.typography.bodyMedium
             )
             Text(
@@ -328,7 +333,8 @@ private fun HomeScreenPreview() {
                 hasTrips = true,
                 hasLoaded = true,
             ),
-            onAction = {}
+            onAction = {},
+            onOpenMyProfile = {},
         )
     }
 }

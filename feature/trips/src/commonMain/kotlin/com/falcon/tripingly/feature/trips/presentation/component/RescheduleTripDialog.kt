@@ -32,16 +32,16 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
-import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
 import com.falcon.tripingly.core.common.util.DateUtils
+import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
+import com.falcon.tripingly.feature.trips.generated.resources.*
+import com.falcon.tripingly.feature.trips.generated.resources.Res
 import kotlinx.datetime.Instant
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.atStartOfDayIn
 import kotlinx.datetime.toLocalDateTime
 import org.jetbrains.compose.resources.stringResource
-import com.falcon.tripingly.feature.trips.generated.resources.Res
-import com.falcon.tripingly.feature.trips.generated.resources.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -131,7 +131,7 @@ fun RescheduleTripDialog(
         text = {
             Column {
                 OutlinedTextField(
-                    value = formatDateRange(selectedStartDate, selectedEndDate).orEmpty(),
+                    value = DateUtils.formatRange(selectedStartDate, selectedEndDate).orEmpty(),
                     onValueChange = {},
                     label = { Text(stringResource(Res.string.reschedule_trip_dates_label)) },
                     modifier = Modifier.fillMaxWidth(),

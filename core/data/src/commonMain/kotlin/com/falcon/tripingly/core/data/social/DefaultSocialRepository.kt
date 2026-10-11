@@ -3,6 +3,7 @@ package com.falcon.tripingly.core.data.social
 import com.falcon.tripingly.core.common.error.DataError
 import com.falcon.tripingly.core.common.result.AppResult
 import com.falcon.tripingly.core.common.result.map
+import com.falcon.tripingly.core.common.result.onError
 import com.falcon.tripingly.core.common.result.onSuccess
 import com.falcon.tripingly.core.data.trips.TripLocalDataSource
 import com.falcon.tripingly.core.model.Page
@@ -45,10 +46,15 @@ internal class DefaultSocialRepository(
         api.deleteComment(comment.id).onSuccess { local.addToCommentCount(comment.markerId, -1) }
 
     override suspend fun setLiked(target: LikeTarget, targetId: String, liked: Boolean): AppResult<LikeState, DataError.Network> {
-        val result = if (liked) api.like(target.wireName, targetId) else api.unlike(target.wireName, targetId)
-        return result.map { it.toLikeState() }.onSuccess {
-            if (target == LikeTarget.Marker) local.saveMarkerLike(targetId, it.likeCount, it.liked)
+        // A stop's heart changes at once in the cached trip; a refusal puts it back.
+        val before = if (target == LikeTarget.Marker) local.marker(targetId) else null
+        if (before != null && before.likedByMe != liked) {
+            local.saveMarkerLike(targetId, (before.likeCount + if (liked) 1 else -1).coerceAtLeast(0), liked)
         }
+        val result = if (liked) api.like(target.wireName, targetId) else api.unlike(target.wireName, targetId)
+        return result.map { it.toLikeState() }
+            .onSuccess { if (target == LikeTarget.Marker) local.saveMarkerLike(targetId, it.likeCount, it.liked) }
+            .onError { if (before != null) local.saveMarkerLike(targetId, before.likeCount, before.likedByMe) }
     }
 
     override suspend fun report(

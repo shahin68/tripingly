@@ -6,6 +6,9 @@ import com.falcon.tripingly.core.common.result.asSuccess
 import com.falcon.tripingly.core.location.model.Coordinates
 import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.cinterop.useContents
+import kotlinx.coroutines.channels.awaitClose
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.callbackFlow
 import platform.CoreLocation.CLLocation
 import platform.CoreLocation.CLLocationManager
 import platform.CoreLocation.CLLocationManagerDelegateProtocol
@@ -13,9 +16,6 @@ import platform.CoreLocation.kCLAuthorizationStatusDenied
 import platform.CoreLocation.kCLAuthorizationStatusRestricted
 import platform.Foundation.NSError
 import platform.darwin.NSObject
-import kotlinx.coroutines.channels.awaitClose
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.callbackFlow
 
 class IosLocationDataSource : LocationDataSource {
     private val locationManager = CLLocationManager()

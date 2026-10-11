@@ -4,8 +4,8 @@ import com.falcon.tripingly.core.common.coroutines.CoroutineDispatchers
 import com.falcon.tripingly.core.common.error.DataError
 import com.falcon.tripingly.core.common.result.AppResult
 import com.falcon.tripingly.core.location.LocationDataSource
-import com.falcon.tripingly.core.location.model.Coordinates
 import com.falcon.tripingly.core.location.LocationRepository
+import com.falcon.tripingly.core.location.model.Coordinates
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOn
 

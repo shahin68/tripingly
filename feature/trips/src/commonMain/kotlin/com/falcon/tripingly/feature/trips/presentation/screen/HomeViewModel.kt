@@ -67,6 +67,7 @@ class HomeViewModel(
         State(
             selectedTab = ui.selectedTab,
             searchQuery = ui.searchQuery,
+            peopleQuery = ui.peopleQuery,
             trips = trips.filter { it.matches(ui.searchQuery) }.toImmutableList(),
             hasTrips = trips.isNotEmpty(),
             isRefreshing = ui.isRefreshing,
@@ -91,6 +92,7 @@ class HomeViewModel(
         when (action) {
             is Action.OnTabSelected -> ui.update { it.copy(selectedTab = action.tab) }
             is Action.OnSearchQueryChanged -> ui.update { it.copy(searchQuery = action.query) }
+            is Action.OnPeopleQueryChanged -> ui.update { it.copy(peopleQuery = action.query) }
             Action.OnRefresh -> refresh()
             Action.OnDismissMessage -> ui.update { it.copy(message = null) }
             is Action.OnTripClick -> sendEvent(Event.NavigateToMap(action.tripId))
@@ -352,6 +354,7 @@ class HomeViewModel(
     private data class UiState(
         val selectedTab: Tab = Tab.MyTrips,
         val searchQuery: String = "",
+        val peopleQuery: String = "",
         val isRefreshing: Boolean = false,
         val hasLoaded: Boolean = false,
         val message: UiText? = null,
@@ -366,6 +369,8 @@ class HomeViewModel(
     data class State(
         val selectedTab: Tab = Tab.MyTrips,
         val searchQuery: String = "",
+        /** What's typed in the search bar on the Social tab: people by name. */
+        val peopleQuery: String = "",
         /** My Trips matching [searchQuery]. */
         val trips: ImmutableList<Trip> = persistentListOf(),
         /** False only when the user has no trips at all (not just none matching the search). */
@@ -403,6 +408,7 @@ class HomeViewModel(
     sealed interface Action {
         data class OnTabSelected(val tab: Tab) : Action
         data class OnSearchQueryChanged(val query: String) : Action
+        data class OnPeopleQueryChanged(val query: String) : Action
         data object OnRefresh : Action
         data object OnDismissMessage : Action
         data class OnTripClick(val tripId: String) : Action

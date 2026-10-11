@@ -1,35 +1,41 @@
 package com.falcon.tripingly
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.platform.LocalUriHandler
+import androidx.lifecycle.compose.LifecycleStartEffect
+import androidx.navigation3.runtime.NavEntry
+import androidx.navigation3.runtime.rememberNavBackStack
+import androidx.navigation3.ui.NavDisplay
 import coil3.ImageLoader
 import coil3.compose.setSingletonImageLoaderFactory
 import coil3.network.ktor3.KtorNetworkFetcherFactory
 import coil3.request.crossfade
-import com.falcon.tripingly.core.network.photos.StorageClient
-import org.koin.compose.koinInject
-import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.ui.platform.LocalUriHandler
-import androidx.compose.runtime.LaunchedEffect
-import androidx.lifecycle.compose.LifecycleStartEffect
 import com.falcon.tripingly.core.common.result.AppResult
 import com.falcon.tripingly.core.data.push.PushNotifications
-import com.falcon.tripingly.core.data.trips.MarkerRepository
-import com.falcon.tripingly.deeplink.DeepLink
-import com.falcon.tripingly.deeplink.DeepLinks
-import kotlinx.coroutines.flow.filterNotNull
-import kotlinx.coroutines.launch
-import androidx.navigation3.ui.NavDisplay
-import androidx.navigation3.runtime.rememberNavBackStack
-import androidx.navigation3.runtime.NavEntry
 import com.falcon.tripingly.core.data.realtime.LiveUpdates
-import com.falcon.tripingly.core.navigation.NavConfig
-import com.falcon.tripingly.core.navigation.Home
-import com.falcon.tripingly.core.navigation.TripMap
+import com.falcon.tripingly.core.data.trips.MarkerRepository
 import com.falcon.tripingly.core.designsystem.browser.rememberInAppUriHandler
 import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
+import com.falcon.tripingly.core.model.social.PeopleList
+import com.falcon.tripingly.core.navigation.Home
+import com.falcon.tripingly.core.navigation.NavConfig
+import com.falcon.tripingly.core.navigation.People
+import com.falcon.tripingly.core.navigation.Profile
+import com.falcon.tripingly.core.navigation.TripMap
+import com.falcon.tripingly.core.network.photos.StorageClient
+import com.falcon.tripingly.deeplink.DeepLink
+import com.falcon.tripingly.deeplink.DeepLinks
 import com.falcon.tripingly.feature.auth.presentation.gate.AuthGate
-import com.falcon.tripingly.feature.trips.presentation.screen.HomeRoute
 import com.falcon.tripingly.feature.map.presentation.screen.MapRoute
+import com.falcon.tripingly.feature.social.presentation.people.PeopleRoute
+import com.falcon.tripingly.feature.social.presentation.profile.ProfileRoute
+import com.falcon.tripingly.feature.social.presentation.social.SocialRoute
+import com.falcon.tripingly.feature.trips.presentation.screen.HomeRoute
+import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.launch
+import org.koin.compose.koinInject
 
 @Composable
 fun App() {
@@ -89,13 +95,38 @@ private fun MainNavigation() {
                     HomeRoute(
                         onNavigateToMap = { tripId ->
                             backStack.add(TripMap(tripId))
-                        }
+                        },
+                        onOpenMyProfile = { backStack.add(Profile(username = null)) },
+                        socialContent = { query ->
+                            SocialRoute(
+                                query = query,
+                                onOpenTrip = { backStack.add(TripMap(it)) },
+                                onOpenProfile = { backStack.add(Profile(it)) },
+                            )
+                        },
                     )
                 }
                 is TripMap -> {
                     MapRoute(
                         tripId = key.tripId,
                         onNavigateBack = { goBack() },
+                        onOpenProfile = { backStack.add(Profile(it)) },
+                        onOpenTrip = { backStack.add(TripMap(it)) },
+                    )
+                }
+                is Profile -> {
+                    ProfileRoute(
+                        username = key.username,
+                        onBack = { goBack() },
+                        onOpenTrip = { backStack.add(TripMap(it)) },
+                        onOpenList = { backStack.add(People(it.name)) },
+                    )
+                }
+                is People -> {
+                    PeopleRoute(
+                        list = PeopleList.valueOf(key.list),
+                        onBack = { goBack() },
+                        onOpenProfile = { backStack.add(Profile(it)) },
                     )
                 }
             }

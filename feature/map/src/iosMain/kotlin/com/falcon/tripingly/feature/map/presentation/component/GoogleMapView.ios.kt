@@ -4,9 +4,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.Dp
+import com.falcon.tripingly.core.location.model.Coordinates
 import com.falcon.tripingly.core.model.place.GeoBounds
 import com.falcon.tripingly.core.model.place.MapPlace
-import com.falcon.tripingly.core.location.model.Coordinates
 import com.falcon.tripingly.feature.map.domain.model.MapMarker
 import org.koin.compose.getKoin
 

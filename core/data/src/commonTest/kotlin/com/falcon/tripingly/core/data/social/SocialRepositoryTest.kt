@@ -31,6 +31,7 @@ import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 class SocialRepositoryTest {
@@ -78,6 +79,22 @@ class SocialRepositoryTest {
         val stop = local.marker("m0")!!
         assertEquals(3, stop.likeCount)
         assertTrue(stop.likedByMe)
+    }
+
+    @Test
+    fun likingAStop_refused_putsTheHeartBack() = runTest {
+        cacheTrip()
+        val repository = repository(
+            """{"error":{"code":"NOT_FOUND","message":"Gone","details":{}}}""",
+            HttpStatusCode.NotFound,
+        )
+
+        val result = repository.setLiked(LikeTarget.Marker, "m0", liked = true)
+
+        assertTrue(result is AppResult.Error)
+        val stop = local.marker("m0")!!
+        assertEquals(0, stop.likeCount)
+        assertFalse(stop.likedByMe)
     }
 
     @Test

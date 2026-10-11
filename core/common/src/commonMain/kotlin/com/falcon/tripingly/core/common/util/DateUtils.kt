@@ -13,6 +13,13 @@ object DateUtils {
 
     /** Day and month name in the device's locale, e.g. "Oct 4", "4. Okt.", "okt. 4.". */
     fun formatAbbreviated(date: LocalDate): String = formatLocalized(date, "MMMd")
+
+    /** "Jun 1, 2025 - Jun 15, 2025", or null for a trip without dates. */
+    fun formatRange(start: LocalDate?, end: LocalDate?): String? = when {
+        start == null -> null
+        end == null || end == start -> formatFormal(start)
+        else -> "${formatFormal(start)} - ${formatFormal(end)}"
+    }
 }
 
 /** Formats [date] with the platform's best pattern for the CLDR [skeleton] in the device's locale. */

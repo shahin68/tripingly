@@ -41,6 +41,7 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.falcon.tripingly.core.common.util.DateUtils
 import com.falcon.tripingly.core.designsystem.component.OsmAttribution
 import com.falcon.tripingly.core.designsystem.component.PillChip
 import com.falcon.tripingly.core.designsystem.component.PrimaryButton
@@ -141,7 +142,7 @@ internal fun CreateTripSheetContent(
                 verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
                 itemVerticalAlignment = Alignment.CenterVertically,
             ) {
-                val dates = formatDateRange(form.startDate, form.endDate ?: form.startDate)
+                val dates = DateUtils.formatRange(form.startDate, form.endDate ?: form.startDate)
                 PillChip(
                     label = dates ?: stringResource(Res.string.create_trip_dates_add),
                     onClick = { showDatePicker = true },
