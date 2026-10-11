@@ -16,7 +16,7 @@ import kotlinx.datetime.LocalDate
 @Immutable
 data class CreateTripForm(
     val name: String = "",
-    /** Optional; with only a start date the trip is one day long. */
+    /** Required to create the trip (Shahin, 2026-10-11); with only a start date the trip is one day long. */
     val startDate: LocalDate? = null,
     val endDate: LocalDate? = null,
     /** What is typed into the destination field; the picked place's name once [destination] is set. */
@@ -37,7 +37,7 @@ data class CreateTripForm(
     /** The user's friends, to pick with one tap; empty hides the row. */
     val friends: ImmutableList<UserSummary> = persistentListOf(),
 ) {
-    val canCreate: Boolean get() = name.isNotBlank()
+    val canCreate: Boolean get() = name.isNotBlank() && startDate != null
 
     val canAddMembers: Boolean get() = members.size < MAX_MEMBERS
 

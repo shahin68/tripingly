@@ -138,7 +138,6 @@ internal fun CreateTripSheetContent(
             PillChip(
                 label = dates ?: stringResource(Res.string.create_trip_dates_add),
                 onClick = { showDatePicker = true },
-                onRemove = dates?.let { { onAction(Action.OnCreateDatesChanged(null, null)) } },
                 leading = { Icon(Icons.Default.DateRange, contentDescription = null, modifier = Modifier.padding(start = MaterialTheme.spacing.small)) },
                 enabled = !isSaving,
             )

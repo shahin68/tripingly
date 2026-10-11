@@ -349,6 +349,7 @@ class HomeViewModelTest {
 
         viewModel.onAction(Action.OnAddTripClick)
         viewModel.onAction(Action.OnCreateNameChanged("Spring"))
+        viewModel.onAction(Action.OnCreateDatesChanged(LocalDate(2026, 7, 1), LocalDate(2026, 7, 2)))
         viewModel.onAction(Action.OnDestinationQueryChanged("Par"))
         advanceUntilIdle()
         viewModel.onAction(Action.OnDestinationSelected(viewModel.uiState.value.createTrip.destinationResults.single()))
@@ -360,16 +361,16 @@ class HomeViewModelTest {
     }
 
     @Test
-    fun createTrip_withoutDates_makesAOneDayTrip() = runTest {
+    fun createTrip_withoutDates_sendsNothing() = runTest {
         val viewModel = viewModel()
         advanceUntilIdle()
 
         viewModel.createTrip("Someday", start = null, end = null)
         advanceUntilIdle()
 
-        val trip = viewModel.uiState.value.trips.single()
-        assertNull(trip.startDate)
-        assertEquals(1, trip.dayCount)
+        assertFalse(viewModel.uiState.value.createTrip.canCreate)
+        assertEquals(Dialog.Create, viewModel.uiState.value.dialog)
+        assertTrue(backend.observeMyTrips().first().isEmpty())
     }
 
     @Test
@@ -405,6 +406,7 @@ class HomeViewModelTest {
         viewModel.onAction(Action.OnAddTripClick)
         advanceUntilIdle()
         viewModel.onAction(Action.OnCreateNameChanged("Rome"))
+        viewModel.onAction(Action.OnCreateDatesChanged(LocalDate(2026, 7, 1), LocalDate(2026, 7, 2)))
         viewModel.onAction(Action.OnCreateVisibilityChanged(TripVisibility.PRIVATE))
         viewModel.onAction(Action.OnFriendToggled(anna))
         viewModel.onAction(Action.OnMemberQueryChanged("jon"))
@@ -446,6 +448,7 @@ class HomeViewModelTest {
         advanceUntilIdle()
         viewModel.onAction(Action.OnAddTripClick)
         viewModel.onAction(Action.OnCreateNameChanged("Rome"))
+        viewModel.onAction(Action.OnCreateDatesChanged(LocalDate(2026, 7, 1), LocalDate(2026, 7, 2)))
         viewModel.onAction(Action.OnFriendToggled(anna))
 
         viewModel.onAction(Action.OnDismissDialog)
@@ -466,6 +469,7 @@ class HomeViewModelTest {
 
         viewModel.onAction(Action.OnAddTripClick)
         viewModel.onAction(Action.OnCreateNameChanged("Rome"))
+        viewModel.onAction(Action.OnCreateDatesChanged(LocalDate(2026, 7, 1), LocalDate(2026, 7, 2)))
         listOf(anna, unknown, blocked).forEach { viewModel.onAction(Action.OnMemberAdded(it)) }
         viewModel.onAction(Action.OnConfirmCreateTrip)
         advanceUntilIdle()
