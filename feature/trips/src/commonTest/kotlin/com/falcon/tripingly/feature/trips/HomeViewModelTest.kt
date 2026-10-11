@@ -53,9 +53,9 @@ class HomeViewModelTest {
     private val places = object : PlaceRepository by FakePlaceRepository() {
         val queries = mutableListOf<String>()
         private val fake = FakePlaceRepository()
-        override suspend fun search(query: String, near: GeoPoint?): AppResult<List<PlaceSearchResult>, DataError.Network> {
+        override suspend fun searchDestinations(query: String): AppResult<List<PlaceSearchResult>, DataError.Network> {
             queries += query
-            return fake.search(query, near)
+            return fake.searchDestinations(query)
         }
     }
 

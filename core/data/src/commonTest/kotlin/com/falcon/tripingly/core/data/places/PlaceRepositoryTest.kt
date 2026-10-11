@@ -35,6 +35,7 @@ import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNull
 import kotlin.test.assertIs
 import kotlin.test.assertTrue
 
@@ -53,7 +54,12 @@ class PlaceRepositoryTest {
             engine = MockEngine { request ->
                 // Requests of one batch arrive together.
                 requestsLock.withLock { requests += request }
-                respond(tilesAnswer(request.url.parameters["tiles"].orEmpty(), placeName), status, headersOf(HttpHeaders.ContentType, "application/json"))
+                val body = if (request.url.encodedPath.endsWith("places/search")) {
+                    """{"items":[],"attribution":"© OpenStreetMap contributors"}"""
+                } else {
+                    tilesAnswer(request.url.parameters["tiles"].orEmpty(), placeName)
+                }
+                respond(body, status, headersOf(HttpHeaders.ContentType, "application/json"))
             },
             config = config,
             tokenStore = InMemoryTokenStore(),
@@ -70,6 +76,19 @@ class PlaceRepositoryTest {
         },
         scope = backgroundScope,
     )
+
+    @Test
+    fun `a destination search asks for areas only and the map search for everything`() = runTest {
+        val repository = repository()
+
+        repository.searchDestinations(" Vienn ")
+        repository.search("Vienn")
+
+        val (destination, map) = requests.map { it.url.parameters }
+        assertEquals("Vienn", destination["q"])
+        assertEquals("destination", destination["scope"])
+        assertNull(map["scope"])
+    }
 
     @Test
     fun `squares asked for together go in one request`() = runTest {

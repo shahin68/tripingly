@@ -97,8 +97,10 @@ class SessionRepositoryTest {
                     LocalDataCleaner { cleared++ },
                 )
             },
+            unregisterPush = { pushUnregisteredAfterRequests = requests.size },
             scope = scope.backgroundScope,
         )
+        var pushUnregisteredAfterRequests: Int? = null
         val account = AccountRepositoryImpl(ktorfit.createAccountApi(), session)
 
         fun paths(method: HttpMethod) = requests.filter { it.method == method }.map { it.url.encodedPath }
@@ -270,6 +272,8 @@ class SessionRepositoryTest {
         harness.session.signOut()
 
         assertEquals(listOf("/v1/auth/logout"), harness.paths(HttpMethod.Post))
+        // Push stops before the session does.
+        assertEquals(0, harness.pushUnregisteredAfterRequests)
         assertNull(harness.tokenStore.get())
         assertEquals(1, harness.cleared)
         assertEquals(SessionState.SignedOut(), harness.session.session.value)

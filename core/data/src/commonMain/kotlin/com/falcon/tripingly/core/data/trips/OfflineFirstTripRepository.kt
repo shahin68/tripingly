@@ -12,14 +12,19 @@ import com.falcon.tripingly.core.network.model.CreateTripDto
 import com.falcon.tripingly.core.network.model.TripDto
 import com.falcon.tripingly.core.network.model.UpdateTripDto
 import com.falcon.tripingly.core.network.newIdempotencyKey
+import com.falcon.tripingly.core.network.realtime.RealtimeClient
 import com.falcon.tripingly.core.network.trips.TripsApi
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.onCompletion
+import kotlinx.coroutines.flow.onStart
 
 internal class OfflineFirstTripRepository(
     private val api: TripsApi,
     private val local: TripLocalDataSource,
     /** Marker changes still on their way, which a reload must not overwrite. */
     private val pending: PendingTripWrites,
+    /** Watches an observed trip, so changes from others come in live. */
+    private val realtime: RealtimeClient,
     /** The signed-in user's id, for leaving a trip. */
     private val currentUserId: () -> String?,
 ) : TripRepository {
@@ -42,6 +47,8 @@ internal class OfflineFirstTripRepository(
     }
 
     override fun observeTrip(tripId: String): Flow<TripDetails?> = local.observeTrip(tripId)
+        .onStart { realtime.watchTrip(tripId) }
+        .onCompletion { realtime.unwatchTrip(tripId) }
 
     override suspend fun refreshTrip(tripId: String): AppResult<TripDetails, DataError.Network> {
         val since = pending.version(tripId)
@@ -50,7 +57,7 @@ internal class OfflineFirstTripRepository(
                 val details = result.data.toDetails()
                 // With a marker change still unsent, the server's copy is older than the device's;
                 // the marker queue reloads the trip once it has sent everything.
-                pending.saveIfQuiet(tripId, since) { local.saveTrip(details) }
+                if (!pending.saveIfQuiet(tripId, since) { local.saveTrip(details) }) pending.reloadWhenSent(tripId)
                 AppResult.Success(details)
             }
             is AppResult.Error -> {

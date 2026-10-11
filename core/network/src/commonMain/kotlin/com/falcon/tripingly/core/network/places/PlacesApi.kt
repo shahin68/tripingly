@@ -13,13 +13,15 @@ import de.jensklingenberg.ktorfit.http.Query
 interface PlacesApi {
     /**
      * Our places first, then Photon results. `q` is 1–100 characters (one letter: Photon only); 60 requests
-     * a minute per user. With [lat] and [lng], results near that point rank first.
+     * a minute per user. With [lat] and [lng], results near that point rank first. [scope] `destination`
+     * returns only countries, regions, cities and districts (Photon), cities first.
      */
     @GET("places/search")
     suspend fun search(
         @Query("q") query: String,
         @Query("lat") lat: Double? = null,
         @Query("lng") lng: Double? = null,
+        @Query("scope") scope: String? = null,
     ): AppResult<SearchResponseDto, DataError.Network>
 
     /**

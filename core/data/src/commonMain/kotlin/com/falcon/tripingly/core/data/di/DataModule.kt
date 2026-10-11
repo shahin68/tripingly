@@ -18,6 +18,11 @@ import com.falcon.tripingly.core.data.photos.PlatformPhotoPreparer
 import com.falcon.tripingly.core.data.places.DefaultPlaceRepository
 import com.falcon.tripingly.core.data.places.FakePlaceRepository
 import com.falcon.tripingly.core.data.places.PlaceRepository
+import com.falcon.tripingly.core.data.push.PushMessaging
+import com.falcon.tripingly.core.data.push.PushNotifications
+import com.falcon.tripingly.core.data.push.PushRegistration
+import com.falcon.tripingly.core.data.realtime.LiveUpdates
+import com.falcon.tripingly.core.data.realtime.RealtimeSync
 import com.falcon.tripingly.core.data.trips.DefaultMarkerRepository
 import com.falcon.tripingly.core.data.trips.DefaultTripInviteRepository
 import com.falcon.tripingly.core.data.trips.FakeTripBackend
@@ -48,13 +53,8 @@ val dataModule = module {
                 api = get(),
                 local = get(),
                 pending = get(),
-                currentUserId = {
-                    when (val session = get<SessionRepository>().session.value) {
-                        is SessionState.SignedIn -> session.account.id
-                        is SessionState.Onboarding -> session.account.id
-                        else -> null
-                    }
-                },
+                realtime = get(),
+                currentUserId = { get<SessionRepository>().currentUserId() },
             )
         }
     }
@@ -89,6 +89,19 @@ val dataModule = module {
         if (get<ApiConfig>().useFakeApi) FakePlaceRepository() else DefaultPlaceRepository(get(), get(), get(ApplicationScope))
     }
 
+    single {
+        RealtimeSync(
+            realtime = get(),
+            trips = get(),
+            local = get(),
+            pending = get(),
+            photos = get(),
+            currentUserId = { get<SessionRepository>().currentUserId() },
+            scope = get(ApplicationScope),
+        )
+    }
+    single<LiveUpdates> { get<RealtimeSync>() }
+
     single<SessionRepository> {
         if (get<ApiConfig>().useFakeApi) {
             get<FakeAccountBackend>()
@@ -112,9 +125,24 @@ val dataModule = module {
             sessionEvents = get(),
             developerSignIn = if (config.developerSignIn) DeveloperSignIn(config.devAuthSecret) else null,
             cleaners = { getAll<LocalDataCleaner>() },
+            unregisterPush = { get<PushRegistration>().unregister() },
             scope = get(ApplicationScope),
         )
     }
+    single {
+        val config = get<ApiConfig>()
+        PushRegistration(
+            // The app binds the platform's push where it is set up; the fake API has none.
+            messaging = if (config.useFakeApi) null else getOrNull<PushMessaging>(),
+            api = get(),
+            store = get(),
+            config = config,
+            language = get(),
+            currentUserId = { get<SessionRepository>().currentUserId() },
+            scope = get(ApplicationScope),
+        )
+    }
+    single<PushNotifications> { get<PushRegistration>() }
     single {
         FakeAccountBackend(
             today = { Clock.System.todayIn(TimeZone.currentSystemDefault()) },
@@ -128,9 +156,27 @@ val dataModule = module {
         LocalDataCleaner { photos.clear() }
     }
 
+    // The next account registers this device for push again.
+    single(named("push")) {
+        val push = get<PushRegistration>()
+        LocalDataCleaner { push.clear() }
+    }
+
+    // The next account's first connection loads nothing extra.
+    single(named("realtime")) {
+        val sync = get<RealtimeSync>()
+        LocalDataCleaner { sync.clear() }
+    }
+
     // The cached trips belong to whoever was signed in.
     single(named("tripsCache")) {
         val trips = get<TripLocalDataSource>()
         LocalDataCleaner { trips.clear() }
     }
+}
+
+private fun SessionRepository.currentUserId(): String? = when (val session = session.value) {
+    is SessionState.SignedIn -> session.account.id
+    is SessionState.Onboarding -> session.account.id
+    else -> null
 }

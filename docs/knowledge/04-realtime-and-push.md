@@ -33,13 +33,29 @@
 | `trips.changed` | Refresh My Trips |
 | `account.suspended` | Sign out with a message |
 
+### In the app
+
+- `RealtimeClient` (`core:network`) is our own Socket.IO client over Ktor WebSockets (Engine.IO 4, Socket.IO 5). It connects while the user is signed in and the app is in the foreground (`MainNavigation`), reconnects after 1 s doubling up to 5 s (±50 %), and treats a silence longer than the server's ping interval plus timeout as a dead connection.
+- `TOKEN_EXPIRED` (at the handshake or as `error` before the server disconnects) refreshes through the same refresher as the REST client, so the refresh token is never sent twice, then reconnects at once. `ACCOUNT_SUSPENDED` (refusal or `account.suspended`) signs out. Other refusals stop until the app comes back to the foreground.
+- A trip is subscribed while `TripRepository.observeTrip` is collected (counted, so two screens on one trip share it), and every subscription is sent again after a reconnect.
+- `RealtimeSync` (`core:data`) applies events to the Room cache, never the screens: others' `marker.*` and `markers.reordered` are saved from the payload (if the trip has unsent changes of its own, the trip reloads once they're sent instead); `trip.updated`, `day.*` and `member.*` reload the trip, at most twice per burst; `trip.deleted` drops it; `trips.changed` reloads My Trips; photo events update open galleries, and a ready or deleted photo reloads its stop for the cover and count. Events this user caused are skipped where the app applied the change itself.
+- After every reconnect but the first since launch or sign-in: My Trips, the watched trips and galleries with processing photos are reloaded.
+- Not used yet: `comment.*`, `like.count_changed`, `notification.created` (stages 7 and 9 push).
+
 ## Push (Firebase Cloud Messaging)
 
 - Android: FCM directly. iOS: Firebase Messaging with APNs (APNs key uploaded to Firebase by the user).
 - Register the device after sign-in and whenever the token changes: `PUT /me/devices/{fcmToken}` with platform and app language. On sign-out: `DELETE /me/devices/{fcmToken}` then `POST /auth/logout`.
-- Ask for notification permission in context (for example after creating the first trip or being added to one), not on first launch.
+- Ask for notification permission as Home first opens (after sign-in and onboarding), before the user taps anything; once per visit to Home, rotation included (Shahin, 2026-10-11).
 - Push arrives already localized from the server. Data payload: `{ type, notificationId, deepLink }`.
 - Tapping a push opens the `deepLink`. Mark it read via `POST /notifications/read`.
+
+### In the app (Android; iOS waits for an Apple Developer account)
+
+- Firebase starts from four values in `local.properties` (`firebase.projectId`, `firebase.senderId`, `firebase.appId`, `firebase.apiKey`, copied from `google-services.json`, which stays out of the repo). Without them there's no push.
+- `PushRegistration` registers the device when the signed-in app starts and when FCM issues a new token, but asks the server only when the account, token or language changed since the last registration. Sign-out unregisters before `POST /auth/logout`.
+- The permission (Android 13+) is asked right after the user creates a trip. Pushes that arrive while the app is open are shown by the app in the same channel the system uses for the others.
+- A tap opens the `deepLink` (`tripinly://trips/{id}`, `tripinly://markers/{id}` opens the stop's trip; `tripinly://notifications` just opens the app until there's an Activity screen) and marks the notification read.
 
 ## Deep links
 

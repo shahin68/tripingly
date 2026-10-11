@@ -39,6 +39,7 @@ kotlin {
             implementation(libs.koin.core)
             implementation(libs.kotlinx.coroutines.core)
             implementation(libs.koin.compose)
+            implementation(libs.androidx.lifecycle.runtimeCompose)
             implementation(libs.coil.network.ktor3)
         }
     }

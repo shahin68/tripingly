@@ -145,7 +145,7 @@ class HomeViewModel(
         destinationSearch = viewModelScope.launch {
             delay(SEARCH_DEBOUNCE_MILLIS)
             ui.update { it.copy(isSearchingDestination = true) }
-            val results = (placeRepository.search(query) as? AppResult.Success)?.data.orEmpty()
+            val results = (placeRepository.searchDestinations(query) as? AppResult.Success)?.data.orEmpty()
             ui.update { it.copy(destinationResults = results.toImmutableList(), isSearchingDestination = false) }
         }
     }

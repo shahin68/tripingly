@@ -168,4 +168,33 @@ class TokenRefreshTest {
 
         assertEquals(listOf("access-a", null, "access-b"), api.requests.map { it.bearer })
     }
+
+    @Test
+    fun liveConnectionAndRequests_shareOneRefresh() = runTest {
+        val api = api { json(newTokensJson) }
+        api.tokenStore.save(AuthTokens("access-1", "refresh-1"))
+
+        val socket = async { api.client.refreshExpiredToken("access-1") }
+        val requests = List(3) { async { apiCall<Trip> { api.client.get("trips/t1") } } }
+
+        assertEquals(AuthTokens("access-2", "refresh-2"), socket.await())
+        requests.awaitAll().forEach { assertEquals(AppResult.Success(Trip("t1")), it) }
+        assertEquals(1, api.refreshCalls)
+        // Already refreshed: the stored tokens, without another refresh.
+        assertEquals(AuthTokens("access-2", "refresh-2"), api.client.refreshExpiredToken("access-1"))
+        assertEquals(1, api.refreshCalls)
+    }
+
+    @Test
+    fun liveConnectionRefresh_refused_endsTheSession() = runTest {
+        val api = api { apiError(HttpStatusCode.Unauthorized, "REFRESH_TOKEN_INVALID") }
+        api.tokenStore.save(AuthTokens("access-1", "refresh-1"))
+        val ended = async(start = CoroutineStart.UNDISPATCHED) { api.sessionEvents.sessionEnded.first() }
+
+        assertNull(api.client.refreshExpiredToken("access-1"))
+
+        assertNull(api.tokenStore.get())
+        assertEquals(SessionEndReason.REFRESH_REFUSED, ended.await())
+        assertEquals(1, api.refreshCalls)
+    }
 }

@@ -9,9 +9,9 @@ Event catalogue and deep links: `docs/knowledge/04-realtime-and-push.md`.
 
 ## Socket connection
 
-- One shared `RealtimeClient` interface (connect, disconnect, subscribe(tripId), unsubscribe, `events: Flow<RealtimeEvent>`), with platform implementations or an approved KMP library.
+- One shared `RealtimeClient` (`core:network/realtime`): `start`/`stop`, counted `watchTrip`/`unwatchTrip`, `events: Flow<RealtimeEvent>`, `connections`. The implementation is our own Socket.IO client over Ktor WebSockets in common code (`SocketIoRealtimeClient`, decided 2026-10-11); `FakeRealtimeClient` for useFakeApi and tests. A new event = a `RealtimeEvent` subclass + a case in `parseRealtimeEvent` + its handling in `RealtimeSync`, with tests.
 - Connect when the app is in the foreground and signed in; disconnect in the background (push covers background).
-- Handshake `auth.token` = current access token. On `TOKEN_EXPIRED` disconnect: refresh via the auth repository, reconnect, resubscribe open trips.
+- Handshake `auth.token` = current access token. On `TOKEN_EXPIRED`: refresh through the API client's own refresher (`HttpClient.refreshExpiredToken`, never a second refresh path), reconnect, resubscribe watched trips.
 - Reconnect with backoff; after reconnect, repositories refetch open trips (events may have been missed).
 - Parse events into a sealed class; unknown events are ignored (forward compatible).
 - Repositories apply events to their state; screens never talk to the socket directly.

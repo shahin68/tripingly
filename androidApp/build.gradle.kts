@@ -14,6 +14,10 @@ val localProperties = Properties().apply {
 }
 val mapsApiKey = localProperties.getProperty("MAPS_API_KEY") ?: ""
 
+// Firebase (push) from the values in google-services.json, which stays out of the repo. Without them
+// (CI, a fresh checkout) the app runs without push.
+fun firebaseValue(name: String) = "\"" + (localProperties.getProperty("firebase.$name") ?: "") + "\""
+
 kotlin {
     compilerOptions {
         jvmTarget = JvmTarget.JVM_11
@@ -21,9 +25,12 @@ kotlin {
 }
 dependencies {
     implementation(project(":shared"))
+    implementation(project(":core:data"))
 
     implementation(libs.androidx.activity.compose)
     implementation(libs.koin.android)
+    implementation(project.dependencies.platform(libs.firebase.bom))
+    implementation(libs.firebase.messaging)
 
     implementation(libs.compose.uiToolingPreview)
     debugImplementation(libs.compose.uiTooling)
@@ -40,6 +47,10 @@ android {
         versionCode = 1
         versionName = providers.gradleProperty("tripinly.appVersion").get()
         manifestPlaceholders["MAPS_API_KEY"] = mapsApiKey
+        buildConfigField("String", "FIREBASE_PROJECT_ID", firebaseValue("projectId"))
+        buildConfigField("String", "FIREBASE_SENDER_ID", firebaseValue("senderId"))
+        buildConfigField("String", "FIREBASE_APP_ID", firebaseValue("appId"))
+        buildConfigField("String", "FIREBASE_API_KEY", firebaseValue("apiKey"))
     }
     packaging {
         resources {
@@ -61,5 +72,6 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 }

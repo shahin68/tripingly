@@ -20,6 +20,7 @@ import com.falcon.tripingly.core.network.auth.InMemoryTokenStore
 import com.falcon.tripingly.core.network.auth.SessionEvents
 import com.falcon.tripingly.core.network.createHttpClient
 import com.falcon.tripingly.core.network.createKtorfit
+import com.falcon.tripingly.core.network.realtime.FakeRealtimeClient
 import com.falcon.tripingly.core.network.trips.createMarkersApi
 import com.falcon.tripingly.core.network.trips.createTripsApi
 import io.ktor.client.engine.mock.MockEngine
@@ -37,6 +38,7 @@ import kotlinx.coroutines.test.runTest
 import kotlinx.datetime.LocalDate
 import kotlinx.io.IOException
 import com.falcon.tripingly.core.model.trip.TripDetails
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
@@ -81,7 +83,8 @@ class TripRepositoryTest {
             config,
         )
         val pending = PendingTripWrites()
-        val trips = OfflineFirstTripRepository(ktorfit.createTripsApi(), local, pending, currentUserId = { ME })
+        val realtime = FakeRealtimeClient()
+        val trips = OfflineFirstTripRepository(ktorfit.createTripsApi(), local, pending, realtime, currentUserId = { ME })
 
         /** Sends on a real dispatcher, like the app. */
         fun markers() = DefaultMarkerRepository(ktorfit.createMarkersApi(), trips, local, pending, failureScope)
@@ -289,6 +292,29 @@ class TripRepositoryTest {
         assertEquals(created.id, harness.requests[0].headers[IDEMPOTENCY_KEY_HEADER])
         harness.awaitQueueEmpty()
         assertEquals(1, harness.requests.size)
+    }
+
+    @Test
+    fun someoneElsesChange_whileAStopIsOnItsWay_reloadsTheTripOnceItIsSent() = runTest {
+        val sent = CompletableDeferred<Unit>()
+        val harness = Harness { request ->
+            if (request.method == HttpMethod.Get) {
+                json(TripJson.trip("t1", title = "Rome"))
+            } else {
+                sent.await()
+                json(TripJson.marker(request.sentId(), "t1", "d0", 0), HttpStatusCode.Created)
+            }
+        }
+        harness.local.saveTrip(details(TripJson.trip("t1")))
+        harness.markers().addMarker("t1", "d0", NewMarker("Stop #1", GeoPoint(48.8584, 2.2945)))
+        harness.awaitRequests(1)
+
+        // A live change from someone else can't be saved over the unsent stop.
+        assertEquals(false, harness.pending.saveIfNothingPending("t1") {})
+        sent.complete(Unit)
+
+        harness.awaitTrip { it.trip.name == "Rome" }
+        assertEquals(listOf(HttpMethod.Post, HttpMethod.Get), harness.requests.map { it.method })
     }
 
     @Test

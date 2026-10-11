@@ -18,6 +18,9 @@ interface PlaceRepository {
      */
     suspend fun search(query: String, near: GeoPoint? = null): AppResult<List<PlaceSearchResult>, DataError.Network>
 
+    /** Where a trip can head: countries, regions, cities and districts, cities first; no addresses or places. */
+    suspend fun searchDestinations(query: String): AppResult<List<PlaceSearchResult>, DataError.Network>
+
     /**
      * The places of map [squares]. Squares asked for at about the same time, by any caller, go to the server
      * together (up to 16 a request). Answers are kept and shared, so a square waits for the server only the

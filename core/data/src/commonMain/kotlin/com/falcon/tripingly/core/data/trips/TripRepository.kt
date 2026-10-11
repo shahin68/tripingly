@@ -20,7 +20,10 @@ interface TripRepository {
     /** Reloads My Trips from the server and replaces the cached list. */
     suspend fun refreshMyTrips(): AppResult<Unit, DataError.Network>
 
-    /** One trip from the cache; it has no days until [refreshTrip] has loaded it once. Null when not cached. */
+    /**
+     * One trip from the cache; it has no days until [refreshTrip] has loaded it once. Null when not cached.
+     * While it's collected, changes others make come in over the live connection.
+     */
     fun observeTrip(tripId: String): Flow<TripDetails?>
 
     /** Reloads one trip. `NOT_FOUND` (deleted, or no longer visible) also drops it from the cache. */

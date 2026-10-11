@@ -13,9 +13,11 @@ import com.falcon.tripingly.core.network.auth.InMemoryTokenStore
 import com.falcon.tripingly.core.network.auth.SessionEvents
 import com.falcon.tripingly.core.network.createHttpClient
 import com.falcon.tripingly.core.network.createKtorfit
+import com.falcon.tripingly.core.network.model.PhotoDto
 import com.falcon.tripingly.core.network.model.TripDto
 import com.falcon.tripingly.core.network.photos.StorageClient
 import com.falcon.tripingly.core.network.photos.createPhotosApi
+import com.falcon.tripingly.core.network.realtime.RealtimeEvent
 import com.falcon.tripingly.core.network.trips.createMarkersApi
 import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.MockRequestHandleScope
@@ -84,7 +86,7 @@ class PhotoRepositoryTest {
         respond(body, status, headersOf(HttpHeaders.ContentType, "application/json"))
 
     @Test
-    fun uploadIsPrepared_stored_processed_andBecomesTheMarkersCover() = runTest {
+    fun uploadIsPrepared_stored_processed_andBecomesTheMarkersCoverWhenReady() = runTest {
         local.saveTrip(NetworkJson.decodeFromString<TripDto>(TripJson.trip("t1", days = listOf(TripJson.day("d0", 0, "2026-06-01", TripJson.marker("m1", "t1", "d0", 0))))).toDetails())
         val repository = repository { request ->
             when {
@@ -95,14 +97,21 @@ class PhotoRepositoryTest {
                 )
                 request.url.host == "storage.test" -> respond("", HttpStatusCode.OK)
                 request.url.encodedPath.endsWith("photos/p1/complete") -> json(photo("processing"), HttpStatusCode.Accepted)
-                request.url.encodedPath.endsWith("markers/m1/photos") -> json("[${photo("ready")}]")
+                request.url.encodedPath.endsWith("markers/m1/photos") -> json("[]")
                 request.url.encodedPath.endsWith("markers/m1") ->
                     json(TripJson.marker("m1", "t1", "d0", 0).replace("\"coverPhotoId\":null", "\"coverPhotoId\":\"p1\"").replace("\"photoCount\":0", "\"photoCount\":1"))
                 else -> error("unexpected ${request.method.value} ${request.url}")
             }
         }
 
+        repository.loadPhotos("m1")
         repository.upload("m1", listOf(PickedImage { byteArrayOf(9, 9, 9, 9) }))
+        realTime { repository.uploads("m1").first { it.isEmpty() } }
+        assertEquals(PhotoStatus.Processing, repository.photos("m1").first()?.single()?.status)
+        // Nothing asked until the live connection says it's ready.
+        assertTrue(requests.none { it.url.encodedPath.endsWith("markers/m1") })
+
+        repository.applyLive(RealtimeEvent.PhotoSaved("t1", "11111111-1111-4111-8111-111111111111", photoDto("ready")), byMe = true)
 
         val marker = realTime {
             local.trips.first { it["t1"]?.days?.single()?.markers?.single()?.coverPhotoId == "p1" }
@@ -160,6 +169,8 @@ class PhotoRepositoryTest {
         repository.retryUpload(failed.key)
         realTime { repository.uploads("m1").first { it.isEmpty() } }
     }
+
+    private fun photoDto(status: String) = NetworkJson.decodeFromString<PhotoDto>(photo(status))
 
     private fun photo(status: String) = """
         {"id":"p1","markerId":"m1","status":"$status","thumbUrl":${if (status == "ready") "\"https://storage.test/t\"" else "null"},

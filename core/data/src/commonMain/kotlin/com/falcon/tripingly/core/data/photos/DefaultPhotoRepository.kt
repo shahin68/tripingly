@@ -5,6 +5,7 @@ import com.falcon.tripingly.core.common.result.AppResult
 import com.falcon.tripingly.core.common.result.map
 import com.falcon.tripingly.core.common.result.onSuccess
 import com.falcon.tripingly.core.data.config.AppConfigRepository
+import com.falcon.tripingly.core.data.realtime.Coalescer
 import com.falcon.tripingly.core.data.trips.TripLocalDataSource
 import com.falcon.tripingly.core.data.trips.isConnectionProblem
 import com.falcon.tripingly.core.data.trips.toMarker
@@ -18,10 +19,10 @@ import com.falcon.tripingly.core.network.model.PhotoOrderDto
 import com.falcon.tripingly.core.network.model.UploadUrlRequestDto
 import com.falcon.tripingly.core.network.photos.PhotosApi
 import com.falcon.tripingly.core.network.photos.StorageClient
+import com.falcon.tripingly.core.network.realtime.RealtimeEvent
 import com.falcon.tripingly.core.network.trips.MarkersApi
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -29,9 +30,7 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.Semaphore
-import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
 import kotlin.time.Duration.Companion.seconds
@@ -57,9 +56,8 @@ internal class DefaultPhotoRepository(
     /** Created on the first upload, with the server's limit of parallel uploads. */
     private var sendPermits: Semaphore? = null
 
-    /** Per marker: reloads its gallery while photos are processing. */
-    private val watchers = mutableMapOf<String, Job>()
-    private val watchersLock = Mutex()
+    /** Reloads a marker for its cover and photo count, once per burst of changes. */
+    private val markerRefreshes = Coalescer(scope) { refreshMarker(it) }
 
     override fun photos(markerId: String): Flow<List<Photo>?> =
         galleries.map { it[markerId] }.distinctUntilChanged()
@@ -92,7 +90,7 @@ internal class DefaultPhotoRepository(
 
     override suspend fun deletePhoto(photo: Photo): AppResult<Unit, DataError.Network> =
         api.delete(photo.id).map {
-            galleries.update { all -> all[photo.markerId]?.let { all + (photo.markerId to it.filterNot { p -> p.id == photo.id }) } ?: all }
+            removePhoto(photo.markerId, photo.id)
             val marker = cachedMarker(photo.markerId)
             // The server picks a new cover when the cover goes, so only then is the marker asked for again.
             if (marker != null && marker.coverPhotoId != photo.id) {
@@ -121,12 +119,10 @@ internal class DefaultPhotoRepository(
             when (val result = sendWithRetries(markerId, jpeg) { progress -> setState(key, PhotoUpload.State.Sending(progress)) }) {
                 is AppResult.Error -> setState(key, PhotoUpload.State.Failed(result.error))
                 is AppResult.Success -> {
+                    // Processing now; the live connection says when it's ready, and may have said so already.
+                    // In the gallery before the upload goes, so it never disappears in between.
+                    savePhoto(result.data, replace = false)
                     dismissUpload(key)
-                    val photo = result.data
-                    galleries.update { all ->
-                        all[markerId]?.let { gallery -> all + (markerId to gallery.filterNot { it.id == photo.id } + photo) } ?: all
-                    }
-                    watch(markerId)
                 }
             }
         }
@@ -160,21 +156,65 @@ internal class DefaultPhotoRepository(
         return api.complete(ticket.photo.id).map { it.toPhoto() }
     }
 
-    /** Reloads the marker's gallery until no photo is processing, then the marker for its new cover and count. */
-    private suspend fun watch(markerId: String) = watchersLock.withLock {
-        if (watchers[markerId]?.isActive == true) return@withLock
-        watchers[markerId] = scope.launch {
-            // Until stage 9 tells the app over the live connection when a photo is ready.
-            for (check in 1..PROCESSING_CHECKS) {
-                delay(PROCESSING_CHECK_INTERVAL)
-                val gallery = (loadPhotos(markerId) as? AppResult.Success)?.data ?: continue
-                if (gallery.none { it.status == PhotoStatus.Processing }) break
+    /** A photo change from the live connection; [byMe] when this user made it (their own upload too). */
+    internal fun applyLive(event: RealtimeEvent.InTrip, byMe: Boolean) {
+        when (event) {
+            is RealtimeEvent.PhotoSaved -> {
+                val photo = event.photo.toPhoto()
+                savePhoto(photo, replace = true)
+                // A ready photo counts on the stop, and the first one becomes its cover.
+                if (photo.status == PhotoStatus.Ready) markerRefreshes.request(photo.markerId)
             }
-            refreshMarker(markerId)
+            is RealtimeEvent.PhotoFailed -> galleries.update { all ->
+                val gallery = all[event.markerId] ?: return@update all
+                all + (event.markerId to gallery.map { if (it.id == event.photoId) it.copy(status = PhotoStatus.Failed) else it })
+            }
+            is RealtimeEvent.PhotoDeleted -> {
+                removePhoto(event.markerId, event.photoId)
+                // deletePhoto has updated the stop already.
+                if (!byMe) markerRefreshes.request(event.markerId)
+            }
+            is RealtimeEvent.PhotosReordered -> galleries.update { all ->
+                val gallery = all[event.markerId] ?: return@update all
+                val order = event.photoIds.withIndex().associate { (index, id) -> id to index }
+                all + (event.markerId to gallery.map { it.copy(position = order[it.id] ?: it.position) }.sortedBy { it.position })
+            }
+            // setCover has saved the stop already; a cover set by processing comes with photo.ready.
+            is RealtimeEvent.MarkerCoverChanged -> if (!byMe) markerRefreshes.request(event.markerId)
+            else -> Unit
         }
     }
 
+    /** After the live connection was down: reloads galleries whose photos were processing, and their stops. */
+    internal fun catchUp() {
+        galleries.value.filterValues { gallery -> gallery.any { it.status == PhotoStatus.Processing } }.keys.forEach { markerId ->
+            scope.launch {
+                loadPhotos(markerId)
+                markerRefreshes.request(markerId)
+            }
+        }
+    }
+
+    /** Into a loaded gallery; [replace] an existing copy, or keep it (it may be newer). */
+    private fun savePhoto(photo: Photo, replace: Boolean) {
+        galleries.update { all ->
+            val gallery = all[photo.markerId] ?: return@update all
+            val known = gallery.any { it.id == photo.id }
+            when {
+                !known -> all + (photo.markerId to (gallery + photo).sortedBy { it.position })
+                replace -> all + (photo.markerId to gallery.map { if (it.id == photo.id) photo else it })
+                else -> all
+            }
+        }
+    }
+
+    private fun removePhoto(markerId: String, photoId: String) {
+        galleries.update { all -> all[markerId]?.let { all + (markerId to it.filterNot { p -> p.id == photoId }) } ?: all }
+    }
+
     private suspend fun refreshMarker(markerId: String) {
+        // Only stops of cached trips are kept.
+        if (local.tripIdOfMarker(markerId) == null) return
         markersApi.get(markerId).onSuccess { local.saveMarkers(listOf(it.toMarker())) }
     }
 
@@ -197,8 +237,6 @@ internal class DefaultPhotoRepository(
 
     private companion object {
         val RETRY_DELAYS = listOf(1.seconds, 2.seconds)
-        val PROCESSING_CHECK_INTERVAL = 3.seconds
-        const val PROCESSING_CHECKS = 20
     }
 }
 

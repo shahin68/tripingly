@@ -16,6 +16,9 @@ data class ApiConfig(
     /** The backend's Google Web client ID, the audience of Google ID tokens; null until it exists. */
     val googleWebClientId: String? = null,
 ) {
+    /** `android` or `ios`, the first part of [client]. */
+    val platform: String get() = client.substringBefore('/')
+
     init {
         require(baseUrl.isNotBlank()) {
             "No API base URL for the $environment environment (see core/network/build.gradle.kts)"

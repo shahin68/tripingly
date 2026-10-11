@@ -35,6 +35,8 @@ import kotlinx.coroutines.sync.withLock
  * once instead of each waiting. Every failed change is undone and reported.
  * The trip isn't reloaded afterwards: the device already shows the result, and
  * the place the server matched to a new or moved stop is taken from its answer.
+ * Only a change from the server that came in meanwhile (a reload, or someone
+ * else's change over the live connection) has it reloaded once the queue settles.
  * Positions here only keep the order (a delete leaves a gap); the next reload
  * of the trip brings the server's.
  */
@@ -113,6 +115,12 @@ internal class DefaultMarkerRepository(
             is AppResult.Error -> result
         }
 
+    override suspend fun tripIdOfMarker(markerId: String): AppResult<String, DataError.Network> =
+        local.tripIdOfMarker(markerId)?.let { AppResult.Success(it) } ?: when (val result = api.get(markerId)) {
+            is AppResult.Success -> AppResult.Success(result.data.tripId)
+            is AppResult.Error -> result
+        }
+
     private fun List<TripMarker>.nextPosition(): Int = (maxOfOrNull { it.position } ?: -1) + 1
 
     private suspend fun cachedMarker(markerId: String): TripMarker? {
@@ -147,6 +155,7 @@ internal class DefaultMarkerRepository(
 
     private suspend fun process(change: MarkerChange, state: QueueState) {
         var failure: MarkerChangeFailure? = null
+        var settled = false
         try {
             // Undoing the failed add already removed this marker.
             if (change !is MarkerChange.Reorder && change.markerId in state.failedAdds) return
@@ -159,10 +168,13 @@ internal class DefaultMarkerRepository(
             }
         } finally {
             if (pending.end(change.tripId)) {
+                settled = true
                 state.offline = null
                 state.failedAdds.clear()
             }
         }
+        // Someone else changed the trip while this device's changes were on their way.
+        if (settled && pending.takeStale(change.tripId)) trips.refreshTrip(change.tripId)
         // Reported only once the queue has settled, so a retry right away isn't taken for part of the failed run.
         failure?.let { _failures.emit(it) }
     }

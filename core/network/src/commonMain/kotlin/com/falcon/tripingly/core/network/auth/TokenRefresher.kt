@@ -7,6 +7,7 @@ import com.falcon.tripingly.core.network.apiErrorCode
 import com.falcon.tripingly.core.network.createKtorfit
 import com.falcon.tripingly.core.network.model.RefreshDto
 import io.ktor.client.HttpClient
+import io.ktor.client.plugins.auth.AuthCircuitBreaker
 import io.ktor.client.plugins.auth.providers.BearerTokens
 import io.ktor.client.request.HttpRequestBuilder
 import io.ktor.client.statement.HttpResponse
@@ -17,6 +18,8 @@ import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.async
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlin.concurrent.Volatile
 
 /**
@@ -24,6 +27,9 @@ import kotlin.concurrent.Volatile
  * runs one refresh at a time and makes concurrent requests wait for it; the check
  * against the stored token also covers a request that failed just after another
  * one refreshed, because sending a refresh token twice revokes the whole session.
+ *
+ * The live connection asks too when the server closes it for an expired token ([refreshExpired]),
+ * through the same lock, so a request and the connection never refresh at once.
  *
  * The refresh outlives the request that started it. Requests get cancelled all the time (the map
  * drops its places request when the camera moves on); once the server has rotated the token, the
@@ -40,9 +46,11 @@ internal class TokenRefresher(
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
-    // Read and written under the bearer provider's lock, which runs one refresh call at a time.
+    /** One refresh at a time, whether a request or the live connection asked for it. */
+    private val lock = Mutex()
+
     @Volatile
-    private var running: Deferred<BearerTokens?>? = null
+    private var running: Deferred<AuthTokens?>? = null
 
     suspend fun refresh(
         client: HttpClient,
@@ -50,17 +58,32 @@ internal class TokenRefresher(
         markAsRefreshRequest: HttpRequestBuilder.() -> Unit,
     ): BearerTokens? {
         if (failed.apiErrorCode() != TOKEN_EXPIRED) return null
-        running?.takeIf { it.isActive }?.let { return it.await() }
-        val stored = tokenStore.get() ?: return null
         val sentToken = failed.request.headers[HttpHeaders.Authorization]?.removePrefix("Bearer ")
-        if (sentToken != stored.accessToken) {
-            // Another request already refreshed; retry with the new token.
-            return stored.toBearer()
-        }
+        return refreshIfCurrent(client, sentToken, markAsRefreshRequest)?.toBearer()
+    }
 
-        val api = authApi ?: createKtorfit(client, config).createAuthApi().also { authApi = it }
-        val refresh = scope.async { refresh(api, stored, markAsRefreshRequest) }
-        running = refresh
+    /**
+     * The live connection was closed because [expiredAccessToken] expired. Returns the tokens to
+     * connect with, or null when the refresh failed (offline, or the session ended).
+     */
+    suspend fun refreshExpired(client: HttpClient, expiredAccessToken: String): AuthTokens? =
+        // Marked like Ktor's own refresh request, so a refused refresh isn't taken for an expired token.
+        refreshIfCurrent(client, expiredAccessToken) { attributes.put(AuthCircuitBreaker, Unit) }
+
+    private suspend fun refreshIfCurrent(
+        client: HttpClient,
+        sentToken: String?,
+        markAsRefreshRequest: HttpRequestBuilder.() -> Unit,
+    ): AuthTokens? {
+        val refresh = lock.withLock {
+            running?.takeIf { it.isActive } ?: run {
+                val stored = tokenStore.get() ?: return null
+                // Another call already refreshed; retry with the new token.
+                if (sentToken != stored.accessToken) return stored
+                val api = authApi ?: createKtorfit(client, config).createAuthApi().also { authApi = it }
+                scope.async { refresh(api, stored, markAsRefreshRequest) }.also { running = it }
+            }
+        }
         return refresh.await()
     }
 
@@ -68,12 +91,12 @@ internal class TokenRefresher(
         api: AuthApi,
         stored: AuthTokens,
         markAsRefreshRequest: HttpRequestBuilder.() -> Unit,
-    ): BearerTokens? {
+    ): AuthTokens? {
         return when (val result = api.refresh(RefreshDto(refreshToken = stored.refreshToken), markAsRefreshRequest)) {
             is AppResult.Success -> {
                 val tokens = AuthTokens(result.data.accessToken, result.data.refreshToken)
                 tokenStore.save(tokens)
-                tokens.toBearer()
+                tokens
             }
             is AppResult.Error -> {
                 val error = result.error
