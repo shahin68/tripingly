@@ -14,6 +14,7 @@ Read `docs/knowledge/05-maps-places-routing.md` first. Check `06-current-state.m
 - [ ] No Google Places/Geocoding/Directions calls; no `onPoiClick` usage; no Google data sent to the backend.
 - [ ] "© OpenStreetMap contributors" visible when our places/routes are shown; "© openrouteservice.org" when a route is shown; Google logo not covered (use map padding for bottom sheets).
 - [ ] State lives in shared code (`MapState`); platform code only renders and forwards events.
+- [ ] Works in **landscape** and survives a rotation: the camera (target and zoom) and selections stay as they were, nothing refits or reopens, and cards and overlays fit the short height (see `07-architecture.md`, Landscape).
 
 ## Implementation notes
 

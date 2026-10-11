@@ -616,6 +616,41 @@ class MapViewModelTest {
     }
 
     @Test
+    fun `a place's card opens once the camera has centered it, and moving the map away closes the place`() =
+        runTest(testDispatcher) {
+            val viewModel = viewModel()
+            testScheduler.advanceUntilIdle()
+            viewModel.onAction(Action.OnCameraMove(Coordinates(48.86, 2.32), 15f, PARIS_CENTER))
+            testScheduler.advanceUntilIdle()
+
+            viewModel.onAction(Action.OnMapClick(Coordinates(LOUVRE.lat, LOUVRE.lng)))
+            testScheduler.advanceUntilIdle()
+            assertNotNull(viewModel.uiState.value.selectedPlace)
+            assertFalse(viewModel.uiState.value.isPlaceCardShown)
+
+            // The camera rests on the place: the card opens.
+            viewModel.onAction(Action.OnCameraMove(Coordinates(LOUVRE.lat, LOUVRE.lng), 15f, PARIS_CENTER))
+            testScheduler.advanceUntilIdle()
+            assertTrue(viewModel.uiState.value.isPlaceCardShown)
+
+            // Tapped again while centered: the camera doesn't move, so the card shows at once.
+            viewModel.onAction(Action.OnDismissPlace)
+            viewModel.onAction(Action.OnMapClick(Coordinates(LOUVRE.lat, LOUVRE.lng)))
+            testScheduler.advanceUntilIdle()
+            assertTrue(viewModel.uiState.value.isPlaceCardShown)
+
+            // The user drags the map while the camera flies to another tap: the place closes.
+            viewModel.onAction(Action.OnDismissPlace)
+            viewModel.onAction(Action.OnCameraMove(Coordinates(48.86, 2.32), 15f, PARIS_CENTER))
+            viewModel.onAction(Action.OnMapClick(Coordinates(LOUVRE.lat, LOUVRE.lng)))
+            testScheduler.advanceUntilIdle()
+            viewModel.onAction(Action.OnCameraMove(Coordinates(48.85, 2.30), 15f, PARIS_CENTER))
+            testScheduler.advanceUntilIdle()
+            assertNull(viewModel.uiState.value.selectedPlace)
+            assertFalse(viewModel.uiState.value.isPlaceCardShown)
+        }
+
+    @Test
     fun `a tap out of a pin's reach adds a stop`() = runTest(testDispatcher) {
         val viewModel = viewModel()
         testScheduler.advanceUntilIdle()

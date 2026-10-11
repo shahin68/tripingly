@@ -34,5 +34,5 @@ Lives in `core/designsystem/src/commonMain/kotlin/com/falcon/tripingly/core/desi
 1. Tokens only, no literals.
 2. Stateless, slots where content varies, modifier first.
 3. Strings in `core/designsystem/.../composeResources` (+ de, hu).
-4. Previews for all states, light and dark.
+4. Previews for all states, light and dark, and a landscape preview for anything that takes height (cards, sheets, dialogs).
 5. Replace the duplicated feature-level versions in the same PR only if they are in scope; otherwise note them.

@@ -59,6 +59,7 @@ import kotlinx.coroutines.launch
 import kotlinx.datetime.LocalDate
 import kotlin.coroutines.cancellation.CancellationException
 import kotlin.math.PI
+import kotlin.math.abs
 import kotlin.math.cos
 import kotlin.math.floor
 import kotlin.math.pow
@@ -157,6 +158,7 @@ class MapViewModel(
             selectedPlace = ui.selectedPlace,
             selectedPlaceDetails = ui.selectedPlaceDetails?.takeIf { it.id == ui.selectedPlace?.id },
             selectedPlaceAddress = ui.selectedAddress?.address,
+            isPlaceCardShown = ui.selectedPlace != null && ui.isPlaceCardShown,
             isSearchOpen = ui.isSearchOpen,
             searchQuery = ui.searchQuery,
             searchResults = ui.searchResults.toImmutableList(),
@@ -258,6 +260,11 @@ class MapViewModel(
      */
     private fun onCameraMove(coordinates: Coordinates, zoom: Float, bounds: GeoBounds?) {
         ui.update { it.copy(cameraTarget = coordinates, zoomLevel = zoom) }
+        // The camera came to rest: on the tapped place, its card opens; anywhere else (the user moved
+        // the map while it flew), the place closes.
+        ui.value.selectedPlace?.takeUnless { ui.value.isPlaceCardShown }?.let { place ->
+            if (isCentered(place.location, coordinates, zoom)) ui.update { it.copy(isPlaceCardShown = true) } else closePlace()
+        }
         if (bounds == null) return
         prefetchJob?.cancel()
         prefetchJob = viewModelScope.launch {
@@ -310,9 +317,13 @@ class MapViewModel(
         data class Cluster(val cluster: PlaceCluster) : PinTarget
     }
 
-    /** Centers the place and shows its card at once with what the pin knows, then adds the place's details. */
+    /**
+     * Centers the place, then shows its card with what the pin knows (at once when the camera is already
+     * there) and adds the place's details.
+     */
     private fun openPlace(place: MapPlace, zoom: Float = ui.value.zoomLevel) {
-        ui.update { it.copy(selectedPlace = place, selectedAddress = null, selectedMarkerId = null) }
+        val isThere = isCameraAt(place.location, zoom)
+        ui.update { it.copy(selectedPlace = place, selectedAddress = null, selectedMarkerId = null, isPlaceCardShown = isThere) }
         navigateTo(Coordinates(place.location.lat, place.location.lng), zoom)
         placeDetailsJob?.cancel()
         placeDetailsJob = viewModelScope.launch {
@@ -331,13 +342,35 @@ class MapViewModel(
             isTripinly = false,
             likeCount = 0,
         )
-        ui.update { it.copy(selectedPlace = place, selectedAddress = result, selectedPlaceDetails = null, selectedMarkerId = null) }
-        navigateTo(Coordinates(result.location.lat, result.location.lng), result.type.zoom())
+        val zoom = result.type.zoom()
+        val isThere = isCameraAt(result.location, zoom)
+        ui.update {
+            it.copy(
+                selectedPlace = place,
+                selectedAddress = result,
+                selectedPlaceDetails = null,
+                selectedMarkerId = null,
+                isPlaceCardShown = isThere,
+            )
+        }
+        navigateTo(Coordinates(result.location.lat, result.location.lng), zoom)
     }
 
     private fun closePlace() {
         placeDetailsJob?.cancel()
-        ui.update { it.copy(selectedPlace = null, selectedAddress = null, selectedPlaceDetails = null) }
+        ui.update { it.copy(selectedPlace = null, selectedAddress = null, selectedPlaceDetails = null, isPlaceCardShown = false) }
+    }
+
+    /** The camera already rests on [location] at [zoom], so it won't move. */
+    private fun isCameraAt(location: GeoPoint, zoom: Float): Boolean =
+        abs(ui.value.zoomLevel - zoom) < 0.01f && isCentered(location, ui.value.cameraTarget, zoom)
+
+    /** [location] is within a couple of screen points of the camera's [center]. */
+    private fun isCentered(location: GeoPoint, center: Coordinates, zoom: Float): Boolean {
+        val pointsPerDegree = 256 * 2.0.pow(zoom.toDouble()) / 360
+        val dx = (location.lng - center.longitude) * pointsPerDegree
+        val dy = (location.lat - center.latitude) * pointsPerDegree / cos(center.latitude * PI / 180)
+        return sqrt(dx * dx + dy * dy) <= CENTERED_POINTS
     }
 
     /** A stop at the place or address, named after it; shows at once like a tap on the map. */
@@ -611,6 +644,8 @@ class MapViewModel(
         val selectedPlaceDetails: PlaceDetails? = null,
         /** The address picked from search whose card is open; [selectedPlace] is drawn from it. */
         val selectedAddress: PlaceSearchResult? = null,
+        /** The camera has centered [selectedPlace], so its card shows. */
+        val isPlaceCardShown: Boolean = false,
         val isSearchOpen: Boolean = false,
         val searchQuery: String = "",
         val searchResults: List<PlaceSearchResult> = emptyList(),
@@ -663,6 +698,8 @@ class MapViewModel(
         val selectedPlaceDetails: PlaceDetails? = null,
         /** Street, city and country when the card is for an address from search. */
         val selectedPlaceAddress: String? = null,
+        /** The card of [selectedPlace] opens once the camera has centered its pin. */
+        val isPlaceCardShown: Boolean = false,
         /** The header shows the search field instead of the trip name. */
         val isSearchOpen: Boolean = false,
         val searchQuery: String = "",
@@ -718,6 +755,8 @@ class MapViewModel(
         const val PREFETCH_DELAY_MILLIS = 300L
         /** Half of a 48-point touch target around the tap. */
         const val TAP_REACH_POINTS = 24.0
+        /** How far the camera may rest from a place it flew to and still count as on it (rounding). */
+        const val CENTERED_POINTS = 2.0
         /** Typing has paused; see the search rule in 07-architecture. */
         const val SEARCH_DEBOUNCE_MILLIS = 300L
         /** Search results small enough to add as a stop. */
