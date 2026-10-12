@@ -75,7 +75,7 @@ val dataModule = module {
         if (get<ApiConfig>().useFakeApi) get<FakeTripBackend>() else DefaultTripInviteRepository(get(), get())
     }
     single<UserRepository> {
-        if (get<ApiConfig>().useFakeApi) FakeUserRepository() else DefaultUserRepository(get())
+        if (get<ApiConfig>().useFakeApi) FakeUserRepository() else DefaultUserRepository(get(), get())
     }
     single<SocialRepository> {
         if (get<ApiConfig>().useFakeApi) {

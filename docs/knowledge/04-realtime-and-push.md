@@ -31,6 +31,7 @@
 |---|---|
 | `notification.created` | Update the badge and Activity list |
 | `trips.changed` | Refresh My Trips |
+| `follows.changed` | `{ followerId, followeeId, following }`, to both people (backend#34): an open profile it concerns reloads its header (counts, "Follows you", Follow button), skipping my own tap on that profile; open Friends/Following/Followers lists reload |
 | `account.suspended` | Sign out with a message |
 
 ### In the app

@@ -7,6 +7,8 @@ import com.falcon.tripingly.core.model.Page
 import com.falcon.tripingly.core.model.social.PeopleList
 import com.falcon.tripingly.core.model.social.Profile
 import com.falcon.tripingly.core.model.trip.UserSummary
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.emptyFlow
 
 /** A few people for `-Ptripinly.useFakeApi=true` builds and tests; the first three are friends. */
 class FakeUserRepository : UserRepository {
@@ -23,6 +25,8 @@ class FakeUserRepository : UserRepository {
     private val following = people.take(4).map { it.id }.toMutableSet()
     private val followers = (people.take(3) + people.last()).map { it.id }.toMutableSet()
     private val blocked = mutableSetOf<String>()
+
+    override val followChanges: Flow<FollowChange> = emptyFlow()
 
     private fun visible() = people.filterNot { it.id in blocked }
 

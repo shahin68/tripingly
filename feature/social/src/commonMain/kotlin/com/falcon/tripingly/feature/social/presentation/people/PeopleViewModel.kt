@@ -33,6 +33,8 @@ class PeopleViewModel(
 
     init {
         load(first = true)
+        // A follow made or ended anywhere can change the list, so it loads again.
+        viewModelScope.launch { userRepository.followChanges.collect { load(first = true) } }
     }
 
     fun onAction(action: Action) {

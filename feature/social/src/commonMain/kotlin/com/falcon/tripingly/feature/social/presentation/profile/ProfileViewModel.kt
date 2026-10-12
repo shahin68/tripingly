@@ -63,6 +63,7 @@ class ProfileViewModel(
 
     init {
         load()
+        watchFollows()
     }
 
     fun onAction(action: Action) {
@@ -105,6 +106,29 @@ class ProfileViewModel(
                 }
             }
         }
+    }
+
+    /**
+     * A follow that changes what this profile shows (its counts, "Follows you", my Follow button) reloads it,
+     * unless it's my own tap here, which already shows.
+     */
+    private fun watchFollows() {
+        viewModelScope.launch {
+            userRepository.followChanges.collect { change ->
+                val profile = _uiState.value.profile ?: return@collect
+                val shown = profile.user.id
+                if (shown != change.followerId && shown != change.followeeId) return@collect
+                if (change.followeeId == shown && change.following == profile.isFollowing && !_uiState.value.isMe) return@collect
+                refreshProfile()
+            }
+        }
+    }
+
+    /** The profile's counts and follow state again; the trips list stays as it is. */
+    private suspend fun refreshProfile() {
+        val username = username ?: return
+        val result = userRepository.profile(username)
+        if (result is AppResult.Success) _uiState.update { it.copy(profile = result.data) }
     }
 
     private fun loadMore() {

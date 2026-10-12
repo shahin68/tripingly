@@ -78,6 +78,9 @@ sealed interface RealtimeEvent {
 
     /** `trips.changed`, to the user: a trip was added to or removed from My Trips. */
     data class MyTripsChanged(val tripId: String) : RealtimeEvent
+
+    /** `follows.changed`, to both people: [followerId] started ([following]) or stopped following [followeeId]. */
+    data class FollowsChanged(val followerId: String, val followeeId: String, val following: Boolean) : RealtimeEvent
 }
 
 /** What every event carries on the wire. */
@@ -117,6 +120,9 @@ private data class LikeCountData(val targetType: String, val targetId: String, v
 
 @Serializable
 private data class TripIdData(val tripId: String)
+
+@Serializable
+private data class FollowData(val followerId: String, val followeeId: String, val following: Boolean)
 
 /** The event, or null when the app doesn't use it or it can't be read. */
 internal fun parseRealtimeEvent(name: String, payload: JsonElement): RealtimeEvent? = try {
@@ -162,6 +168,9 @@ internal fun parseRealtimeEvent(name: String, payload: JsonElement): RealtimeEve
             inTrip { RealtimeEvent.TripChanged(it, actorId) }
         "trip.deleted" -> inTrip { RealtimeEvent.TripDeleted(it, actorId) }
         "trips.changed" -> RealtimeEvent.MyTripsChanged(NetworkJson.decodeFromJsonElement<TripIdData>(data).tripId)
+        "follows.changed" -> NetworkJson.decodeFromJsonElement<FollowData>(data).let {
+            RealtimeEvent.FollowsChanged(it.followerId, it.followeeId, it.following)
+        }
         else -> null
     }
 } catch (_: SerializationException) {

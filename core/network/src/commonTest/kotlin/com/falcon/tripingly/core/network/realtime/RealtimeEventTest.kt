@@ -91,6 +91,13 @@ class RealtimeEventTest {
             RealtimeEvent.MyTripsChanged("t9"),
             parse("trips.changed", envelope("trips.changed", """{"tripId":"t9","change":"added"}""", tripId = null, actorId = null)),
         )
+        assertEquals(
+            RealtimeEvent.FollowsChanged("u1", "u2", following = true),
+            parse(
+                "follows.changed",
+                envelope("follows.changed", """{"followerId":"u1","followeeId":"u2","following":true}""", tripId = null, actorId = "u1"),
+            ),
+        )
     }
 
     @Test

@@ -6,14 +6,18 @@ import com.falcon.tripingly.core.data.account.FakeAccountBackend
 import com.falcon.tripingly.core.data.social.FakeSocialRepository
 import com.falcon.tripingly.core.data.trips.FakeTripBackend
 import com.falcon.tripingly.core.data.users.FakeUserRepository
+import com.falcon.tripingly.core.data.users.FollowChange
 import com.falcon.tripingly.core.data.users.UserRepository
 import com.falcon.tripingly.core.model.social.PeopleList
+import com.falcon.tripingly.core.model.social.Profile
 import com.falcon.tripingly.feature.social.presentation.people.PeopleViewModel
 import com.falcon.tripingly.feature.social.presentation.profile.ProfileViewModel
 import com.falcon.tripingly.feature.social.presentation.profile.ProfileViewModel.Action
 import com.falcon.tripingly.feature.social.presentation.profile.ProfileViewModel.Event
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
@@ -33,7 +37,17 @@ class ProfileViewModelTest {
 
     private var followRefused = false
 
+    private val liveFollows = MutableSharedFlow<FollowChange>()
+
     private val users = object : UserRepository by FakeUserRepository() {
+        val profileCalls = mutableListOf<String>()
+        private val fake = FakeUserRepository()
+        override val followChanges: Flow<FollowChange> = liveFollows
+        override suspend fun profile(username: String, cursor: String?): AppResult<Profile, DataError.Network> {
+            profileCalls += username
+            return fake.profile(username, cursor)
+        }
+
         override suspend fun setFollowing(userId: String, following: Boolean): AppResult<Unit, DataError.Network> =
             if (followRefused) AppResult.Error(DataError.Network.NoInternet) else AppResult.Success(Unit)
     }
@@ -93,6 +107,32 @@ class ProfileViewModelTest {
     }
 
     @Test
+    fun theirFollowChangingLive_reloadsTheProfile() = runTest {
+        val viewModel = viewModel("julia_t")
+        advanceUntilIdle()
+        val julia = viewModel.uiState.value.profile!!.user
+
+        liveFollows.emit(FollowChange(followerId = julia.id, followeeId = ME, following = false))
+        advanceUntilIdle()
+
+        assertEquals(listOf("julia_t", "julia_t"), users.profileCalls)
+    }
+
+    @Test
+    fun myOwnFollowTapHere_doesNotReload() = runTest {
+        val viewModel = viewModel("julia_t")
+        advanceUntilIdle()
+        val julia = viewModel.uiState.value.profile!!.user
+
+        viewModel.onAction(Action.OnToggleFollow)
+        advanceUntilIdle()
+        liveFollows.emit(FollowChange(followerId = ME, followeeId = julia.id, following = true))
+        advanceUntilIdle()
+
+        assertEquals(listOf("julia_t"), users.profileCalls)
+    }
+
+    @Test
     fun unknownUser_isNotFound() = runTest {
         val viewModel = viewModel("nobody")
         advanceUntilIdle()
@@ -106,5 +146,9 @@ class ProfileViewModelTest {
         advanceUntilIdle()
 
         assertEquals(listOf("anna", "jonas.k", "lena", "julia_t"), viewModel.uiState.value.people.map { it.username })
+    }
+
+    private companion object {
+        const val ME = "00000000-0000-4000-8000-000000000001"
     }
 }

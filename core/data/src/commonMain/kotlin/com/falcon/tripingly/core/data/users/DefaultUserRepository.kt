@@ -11,9 +11,17 @@ import com.falcon.tripingly.core.model.Page
 import com.falcon.tripingly.core.model.social.PeopleList
 import com.falcon.tripingly.core.model.social.Profile
 import com.falcon.tripingly.core.model.trip.UserSummary
+import com.falcon.tripingly.core.network.realtime.RealtimeClient
+import com.falcon.tripingly.core.network.realtime.RealtimeEvent
 import com.falcon.tripingly.core.network.users.UsersApi
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.mapNotNull
 
-class DefaultUserRepository(private val api: UsersApi) : UserRepository {
+class DefaultUserRepository(private val api: UsersApi, realtime: RealtimeClient) : UserRepository {
+
+    override val followChanges: Flow<FollowChange> = realtime.events.mapNotNull { event ->
+        (event as? RealtimeEvent.FollowsChanged)?.let { FollowChange(it.followerId, it.followeeId, it.following) }
+    }
 
     override suspend fun search(query: String): AppResult<List<UserSummary>, DataError.Network> {
         val trimmed = query.toUserQuery()

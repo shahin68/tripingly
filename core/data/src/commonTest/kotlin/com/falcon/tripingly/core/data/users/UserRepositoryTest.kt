@@ -9,6 +9,7 @@ import com.falcon.tripingly.core.network.auth.InMemoryTokenStore
 import com.falcon.tripingly.core.network.auth.SessionEvents
 import com.falcon.tripingly.core.network.createHttpClient
 import com.falcon.tripingly.core.network.createKtorfit
+import com.falcon.tripingly.core.network.realtime.FakeRealtimeClient
 import com.falcon.tripingly.core.network.users.createUsersApi
 import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.respond
@@ -41,6 +42,7 @@ class UserRepositoryTest {
             ),
             config,
         ).createUsersApi(),
+        FakeRealtimeClient(),
     )
 
     @Test
