@@ -68,6 +68,14 @@ internal class RoomTripLocalDataSource(
 
     override suspend fun tripIdOfMarker(markerId: String): String? = dao.marker(markerId)?.tripId
 
+    override suspend fun marker(markerId: String): TripMarker? = dao.marker(markerId)?.toMarker()
+
+    override suspend fun saveMarkerLike(markerId: String, likeCount: Int, likedByMe: Boolean?) {
+        if (likedByMe == null) dao.updateMarkerLikeCount(markerId, likeCount) else dao.updateMarkerLike(markerId, likeCount, likedByMe)
+    }
+
+    override suspend fun addToCommentCount(markerId: String, delta: Int) = dao.addToMarkerCommentCount(markerId, delta)
+
     override suspend fun deleteMarkers(markerIds: List<String>) = dao.removeMarkers(markerIds)
 
     override suspend fun reorderMarkers(markerIds: List<String>) = dao.reorderMarkers(markerIds)
@@ -154,6 +162,9 @@ private fun MarkerEntity.toMarker() = TripMarker(
     coverPhotoId = coverPhotoId,
     coverThumbUrl = coverThumbUrl,
     photoCount = photoCount,
+    likeCount = likeCount,
+    likedByMe = likedByMe,
+    commentCount = commentCount,
 )
 
 private fun TripMarker.toEntity() = MarkerEntity(
@@ -169,6 +180,9 @@ private fun TripMarker.toEntity() = MarkerEntity(
     coverPhotoId = coverPhotoId,
     coverThumbUrl = coverThumbUrl,
     photoCount = photoCount,
+    likeCount = likeCount,
+    likedByMe = likedByMe,
+    commentCount = commentCount,
 )
 
 internal val TripRole.wireName: String get() = name.lowercase()

@@ -31,6 +31,7 @@
 |---|---|
 | `notification.created` | Update the badge and Activity list |
 | `trips.changed` | Refresh My Trips |
+| `follows.changed` | `{ followerId, followeeId, following }`, to both people (backend#34): an open profile it concerns reloads its header (counts, "Follows you", Follow button), skipping my own tap on that profile; open Friends/Following/Followers lists reload |
 | `account.suspended` | Sign out with a message |
 
 ### In the app
@@ -40,7 +41,8 @@
 - A trip is subscribed while `TripRepository.observeTrip` is collected (counted, so two screens on one trip share it), and every subscription is sent again after a reconnect.
 - `RealtimeSync` (`core:data`) applies events to the Room cache, never the screens: others' `marker.*` and `markers.reordered` are saved from the payload (if the trip has unsent changes of its own, the trip reloads once they're sent instead); `trip.updated`, `day.*` and `member.*` reload the trip, at most twice per burst; `trip.deleted` drops it; `trips.changed` reloads My Trips; photo events update open galleries, and a ready or deleted photo reloads its stop for the cover and count. Events this user caused are skipped where the app applied the change itself.
 - After every reconnect but the first since launch or sign-in: My Trips, the watched trips and galleries with processing photos are reloaded.
-- Not used yet: `comment.*`, `like.count_changed`, `notification.created` (stages 7 and 9 push).
+- `comment.*` and `like.count_changed` from others change a stop's comment and like counts in Room (`RealtimeSync`), keeping my own `likedByMe`; an open comments sheet adds and drops comments and updates comment likes live (`SocialRepository.commentChanges`, `likeCounts`). My own comment echoes are skipped (the server's answer already counted them).
+- Not used yet: `notification.created` (stage 9 push).
 
 ## Push (Firebase Cloud Messaging)
 

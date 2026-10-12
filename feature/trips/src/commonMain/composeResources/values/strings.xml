@@ -7,11 +7,11 @@
     <string name="home_tab_my_trips">My Trips</string>
     <string name="home_tab_social">Social</string>
     <string name="home_search_placeholder_trips">Search trips...</string>
-    <string name="home_search_placeholder_social">Search social...</string>
+    <string name="home_search_placeholder_social">Search people…</string>
+    <string name="home_my_profile">Your profile</string>
     <string name="home_fab_add_trip">Add Trip</string>
     <string name="home_list_empty">No trips yet. Tap + to create one!</string>
     <string name="home_list_no_matches">No trips match your search.</string>
-    <string name="home_social_coming_soon">Social feature coming soon!</string>
     <string name="home_offline_cached">You’re offline. These are your saved trips; changes need a connection.</string>
 
     <!-- Trip list item -->

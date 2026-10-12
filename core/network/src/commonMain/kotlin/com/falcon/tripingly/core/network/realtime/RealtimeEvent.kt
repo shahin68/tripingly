@@ -1,10 +1,11 @@
 package com.falcon.tripingly.core.network.realtime
 
 import com.falcon.tripingly.core.network.NetworkJson
+import com.falcon.tripingly.core.network.model.CommentDto
 import com.falcon.tripingly.core.network.model.MarkerDto
 import com.falcon.tripingly.core.network.model.PhotoDto
-import kotlinx.serialization.SerializationException
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.decodeFromJsonElement
@@ -51,6 +52,25 @@ sealed interface RealtimeEvent {
         val photoIds: List<String>,
     ) : InTrip
 
+    /** `comment.created`; the comment is viewer-neutral (`likedByMe` and `canDelete` false). */
+    data class CommentAdded(override val tripId: String, override val actorId: String?, val comment: CommentDto) : InTrip
+
+    data class CommentDeleted(
+        override val tripId: String,
+        override val actorId: String?,
+        val commentId: String,
+        val markerId: String,
+    ) : InTrip
+
+    /** `like.count_changed` for a trip, marker, photo or comment: [targetType] as in `PUT /likes/{targetType}/…`. */
+    data class LikeCountChanged(
+        override val tripId: String,
+        override val actorId: String?,
+        val targetType: String,
+        val targetId: String,
+        val count: Int,
+    ) : InTrip
+
     /** The trip itself, its days or its members changed (`trip.updated`, `day.*`, `member.*`). */
     data class TripChanged(override val tripId: String, override val actorId: String?) : InTrip
 
@@ -58,6 +78,9 @@ sealed interface RealtimeEvent {
 
     /** `trips.changed`, to the user: a trip was added to or removed from My Trips. */
     data class MyTripsChanged(val tripId: String) : RealtimeEvent
+
+    /** `follows.changed`, to both people: [followerId] started ([following]) or stopped following [followeeId]. */
+    data class FollowsChanged(val followerId: String, val followeeId: String, val following: Boolean) : RealtimeEvent
 }
 
 /** What every event carries on the wire. */
@@ -87,7 +110,19 @@ private data class PhotoIdData(val photoId: String, val markerId: String)
 private data class PhotoOrderData(val markerId: String, val photoIds: List<String>)
 
 @Serializable
+private data class CommentData(val comment: CommentDto)
+
+@Serializable
+private data class CommentIdData(val commentId: String, val markerId: String)
+
+@Serializable
+private data class LikeCountData(val targetType: String, val targetId: String, val count: Int)
+
+@Serializable
 private data class TripIdData(val tripId: String)
+
+@Serializable
+private data class FollowData(val followerId: String, val followeeId: String, val following: Boolean)
 
 /** The event, or null when the app doesn't use it or it can't be read. */
 internal fun parseRealtimeEvent(name: String, payload: JsonElement): RealtimeEvent? = try {
@@ -119,10 +154,23 @@ internal fun parseRealtimeEvent(name: String, payload: JsonElement): RealtimeEve
             val order = NetworkJson.decodeFromJsonElement<PhotoOrderData>(data)
             RealtimeEvent.PhotosReordered(it, actorId, order.markerId, order.photoIds)
         }
+        "comment.created" ->
+            inTrip { RealtimeEvent.CommentAdded(it, actorId, NetworkJson.decodeFromJsonElement<CommentData>(data).comment) }
+        "comment.deleted" -> inTrip {
+            val ids = NetworkJson.decodeFromJsonElement<CommentIdData>(data)
+            RealtimeEvent.CommentDeleted(it, actorId, ids.commentId, ids.markerId)
+        }
+        "like.count_changed" -> inTrip {
+            val like = NetworkJson.decodeFromJsonElement<LikeCountData>(data)
+            RealtimeEvent.LikeCountChanged(it, actorId, like.targetType, like.targetId, like.count)
+        }
         "trip.updated", "day.created", "day.deleted", "member.added", "member.removed" ->
             inTrip { RealtimeEvent.TripChanged(it, actorId) }
         "trip.deleted" -> inTrip { RealtimeEvent.TripDeleted(it, actorId) }
         "trips.changed" -> RealtimeEvent.MyTripsChanged(NetworkJson.decodeFromJsonElement<TripIdData>(data).tripId)
+        "follows.changed" -> NetworkJson.decodeFromJsonElement<FollowData>(data).let {
+            RealtimeEvent.FollowsChanged(it.followerId, it.followeeId, it.following)
+        }
         else -> null
     }
 } catch (_: SerializationException) {

@@ -10,9 +10,15 @@ import com.falcon.tripingly.core.common.result.AppResult
 import com.falcon.tripingly.core.common.result.onSuccess
 import com.falcon.tripingly.core.data.photos.PhotoRepository
 import com.falcon.tripingly.core.data.places.PlaceRepository
+import com.falcon.tripingly.core.data.social.SocialRepository
 import com.falcon.tripingly.core.data.trips.MarkerChangeFailure
 import com.falcon.tripingly.core.data.trips.MarkerRepository
+import com.falcon.tripingly.core.data.trips.TripErrorCodes
 import com.falcon.tripingly.core.data.trips.TripRepository
+import com.falcon.tripingly.core.data.trips.hasCode
+import com.falcon.tripingly.core.location.GetCurrentLocationUseCase
+import com.falcon.tripingly.core.location.model.Coordinates
+import com.falcon.tripingly.core.location.permission.LocationPermission
 import com.falcon.tripingly.core.model.photo.PickedImage
 import com.falcon.tripingly.core.model.place.GeoBounds
 import com.falcon.tripingly.core.model.place.MapPlace
@@ -22,19 +28,19 @@ import com.falcon.tripingly.core.model.place.PlaceDetails
 import com.falcon.tripingly.core.model.place.PlaceSearchResult
 import com.falcon.tripingly.core.model.place.PlaceSquare
 import com.falcon.tripingly.core.model.place.SearchResultType
+import com.falcon.tripingly.core.model.social.LikeTarget
+import com.falcon.tripingly.core.model.social.ReportReason
+import com.falcon.tripingly.core.model.social.ReportTarget
 import com.falcon.tripingly.core.model.trip.GeoPoint
 import com.falcon.tripingly.core.model.trip.NewMarker
 import com.falcon.tripingly.core.model.trip.TripDay
 import com.falcon.tripingly.core.model.trip.TripDetails
 import com.falcon.tripingly.core.model.trip.TripMarker
+import com.falcon.tripingly.core.model.trip.TripRole
 import com.falcon.tripingly.core.ui.UiText
 import com.falcon.tripingly.core.ui.toUiText
 import com.falcon.tripingly.feature.map.domain.model.CameraFrame
-import com.falcon.tripingly.feature.map.domain.model.Coordinates
 import com.falcon.tripingly.feature.map.domain.model.MapMarker
-import com.falcon.tripingly.feature.map.domain.usecase.GetCurrentLocationUseCase
-import com.falcon.tripingly.feature.map.presentation.component.MapPlaceSource
-import com.falcon.tripingly.feature.map.presentation.permission.LocationPermission
 import com.falcon.tripingly.feature.map.generated.resources.Res
 import com.falcon.tripingly.feature.map.generated.resources.error_location_denied_manual
 import com.falcon.tripingly.feature.map.generated.resources.error_location_permission_required
@@ -43,6 +49,9 @@ import com.falcon.tripingly.feature.map.generated.resources.error_location_unava
 import com.falcon.tripingly.feature.map.generated.resources.error_location_unexpected
 import com.falcon.tripingly.feature.map.generated.resources.error_location_unknown
 import com.falcon.tripingly.feature.map.generated.resources.map_change_not_saved
+import com.falcon.tripingly.feature.map.generated.resources.map_error_not_copyable
+import com.falcon.tripingly.feature.map.generated.resources.map_reported
+import com.falcon.tripingly.feature.map.presentation.component.MapPlaceSource
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.toImmutableList
@@ -73,7 +82,9 @@ import kotlin.math.sqrt
  * changes show at once and are saved in the background; one that fails is
  * undone and explained, with Retry when the connection was the problem. Day
  * changes wait for the server. Place pins load by map square (see [MapPlaceSource]);
- * a tapped place opens a card that adds it to the open day.
+ * a tapped place opens a card that adds it to the open day. Everyone who sees the trip likes and comments
+ * on its stops; someone else's public trip can also be added to my trips, its owner's profile opened and
+ * the trip or a stop reported.
  */
 class MapViewModel(
     private val tripId: String,
@@ -81,6 +92,7 @@ class MapViewModel(
     private val markerRepository: MarkerRepository,
     private val placeRepository: PlaceRepository,
     private val photoRepository: PhotoRepository,
+    private val socialRepository: SocialRepository,
     private val getCurrentLocationUseCase: GetCurrentLocationUseCase,
     private val dispatchers: CoroutineDispatchers = DefaultCoroutineDispatchers(),
 ) : ViewModel() {
@@ -142,6 +154,17 @@ class MapViewModel(
             is Action.OnCloseSearch -> closeSearch()
             is Action.OnDaySelected -> selectDay(action.dayIndex)
             is Action.OnBackClick -> sendEvent(Event.NavigateBack)
+            is Action.OnToggleStopLike -> toggleStopLike(action.markerId)
+            is Action.OnOpenStopComments -> ui.update { it.copy(commentsMarkerId = it.selectedMarkerId) }
+            is Action.OnCloseStopComments -> ui.update { it.copy(commentsMarkerId = null) }
+            is Action.OnCopyTrip -> copyTrip()
+            is Action.OnOpenOwnerProfile -> trip.value?.trip?.owner?.let { sendEvent(Event.OpenProfile(it.username)) }
+            is Action.OnReportTrip -> ui.update { it.copy(reporting = ReportSubject(ReportTarget.Trip, tripId)) }
+            is Action.OnReportStop -> ui.value.selectedMarkerId?.let { id ->
+                ui.update { it.copy(reporting = ReportSubject(ReportTarget.Marker, id)) }
+            }
+            is Action.OnSendReport -> sendReport(action.reason, action.details)
+            is Action.OnDismissReport -> ui.update { it.copy(reporting = null) }
         }
     }
 
@@ -155,6 +178,8 @@ class MapViewModel(
             activeDayIndex = activeIndex,
             markers = markers.toImmutableList(),
             canEdit = details?.trip?.role?.canEdit == true,
+            isViewer = details?.trip?.role == TripRole.VIEWER,
+            ownerUsername = details?.trip?.owner?.username,
             isLoading = days.isEmpty() && ui.isLoadingTrip,
             isSaving = ui.isSaving,
             currentLocation = ui.currentLocation,
@@ -166,6 +191,10 @@ class MapViewModel(
             selectedMarker = markers.firstOrNull { it.id == ui.selectedMarkerId },
             isStopCardShown = ui.isStopCardShown && markers.any { it.id == ui.selectedMarkerId },
             photosMarker = markers.firstOrNull { it.id == ui.photosMarkerId },
+            commentsMarker = markers.firstOrNull { it.id == ui.commentsMarkerId },
+            isReportOpen = ui.reporting != null,
+            isReporting = ui.isReporting,
+            isCopying = ui.isCopying,
             isPhotoCameraOpen = ui.isPhotoCameraOpen && markers.any { it.id == ui.selectedMarkerId },
             placeSource = MapPlaceSource(placeRepository, stopPlaceIds(details)),
             selectedPlace = ui.selectedPlace,
@@ -197,7 +226,6 @@ class MapViewModel(
             val stops = activeDay()?.markers.orEmpty().ifEmpty { details.days.flatMap { it.markers } }
             val destination = details.destination
             if (stops.isEmpty() && destination != null) {
-                ui.update { it.copy(hasCenteredOnTrip = true) }
                 navigateTo(Coordinates(destination.location.lat, destination.location.lng), DESTINATION_ZOOM)
             } else {
                 frameStops(stops)
@@ -240,6 +268,52 @@ class MapViewModel(
         ui.update { it.copy(photosMarkerId = markerId) }
     }
 
+    /** Shows at once; see [SocialRepository.setLiked]. */
+    private fun toggleStopLike(markerId: String) {
+        val stop = currentDays().firstNotNullOfOrNull { day -> day.markers.firstOrNull { it.id == markerId } } ?: return
+        viewModelScope.launch {
+            val result = socialRepository.setLiked(LikeTarget.Marker, markerId, liked = !stop.likedByMe)
+            if (result is AppResult.Error) ui.update { it.copy(message = result.error.toUiText()) }
+        }
+    }
+
+    /** Someone else's trip becomes one of mine, which then opens. */
+    private fun copyTrip() {
+        if (ui.value.isCopying) return
+        ui.update { it.copy(isCopying = true) }
+        viewModelScope.launch {
+            val result = tripRepository.copyTrip(tripId)
+            ui.update { it.copy(isCopying = false) }
+            when (result) {
+                is AppResult.Success -> sendEvent(Event.OpenTrip(result.data.trip.id))
+                is AppResult.Error -> ui.update {
+                    it.copy(
+                        message = if (result.error.hasCode(TripErrorCodes.TRIP_NOT_COPYABLE)) {
+                            UiText.Resource(Res.string.map_error_not_copyable)
+                        } else {
+                            result.error.toUiText()
+                        },
+                    )
+                }
+            }
+        }
+    }
+
+    private fun sendReport(reason: ReportReason, details: String) {
+        val subject = ui.value.reporting ?: return
+        if (ui.value.isReporting) return
+        ui.update { it.copy(isReporting = true) }
+        viewModelScope.launch {
+            val result = socialRepository.report(subject.target, subject.id, reason, details)
+            ui.update {
+                when (result) {
+                    is AppResult.Success -> it.copy(isReporting = false, reporting = null, message = UiText.Resource(Res.string.map_reported))
+                    is AppResult.Error -> it.copy(isReporting = false, message = result.error.toUiText())
+                }
+            }
+        }
+    }
+
     private fun closeStop() {
         ui.update { it.copy(selectedMarkerId = null, isStopCardShown = false) }
     }
@@ -248,7 +322,7 @@ class MapViewModel(
     private fun frameStops(markers: List<TripMarker>) {
         if (markers.isEmpty()) return
         val points = markers.map { Coordinates(it.location.lat, it.location.lng) }
-        ui.update { it.copy(hasCenteredOnTrip = true, frame = CameraFrame(points, (it.frame?.id ?: 0) + 1)) }
+        ui.update { it.copy(frame = CameraFrame(points, (it.frame?.id ?: 0) + 1)) }
     }
 
     private fun watchFailedChanges() {
@@ -541,17 +615,14 @@ class MapViewModel(
         }
     }
 
-    /** The permission as read when the map opens or comes back to the front (e.g. from Settings). */
+    /**
+     * The permission as read when the map opens or comes back to the front (e.g. from Settings). Only the
+     * location button asks for it; once granted, the user's dot shows without moving the camera.
+     */
     private fun onPermissionChecked(permission: LocationPermission) {
         val before = ui.value
-        ui.update { it.copy(permission = permission, hasCheckedPermission = true) }
-        when {
-            permission == LocationPermission.Granted && before.permission != LocationPermission.Granted ->
-                startLocationUpdates()
-            // Ask once when the map first opens; after that only the location button asks.
-            permission == LocationPermission.NotAsked && !before.hasCheckedPermission ->
-                sendEvent(Event.RequestPermission)
-        }
+        ui.update { it.copy(permission = permission) }
+        if (permission == LocationPermission.Granted && before.permission != LocationPermission.Granted) startLocationUpdates()
     }
 
     /** The user answered the system prompt. */
@@ -613,8 +684,8 @@ class MapViewModel(
                         is AppResult.Success -> {
                             val coords = result.data
                             ui.update { state ->
-                                val shouldZoom = (state.currentLocation == null && !state.hasCenteredOnTrip) ||
-                                    state.isWaitingForFirstLocation
+                                // Only the location button moves the camera to the user.
+                                val shouldZoom = state.isWaitingForFirstLocation
                                 if (shouldZoom) {
                                     sendEvent(Event.AnimateCamera(coords, 15f))
                                 }
@@ -669,6 +740,9 @@ class MapViewModel(
         coverPhotoId = coverPhotoId,
         coverThumbUrl = coverThumbUrl,
         photoCount = photoCount,
+        likeCount = likeCount,
+        likedByMe = likedByMe,
+        commentCount = commentCount,
     )
 
     private data class UiState(
@@ -680,7 +754,6 @@ class MapViewModel(
         val zoomLevel: Float = 13f,
         /** Null until the screen has read it. */
         val permission: LocationPermission? = null,
-        val hasCheckedPermission: Boolean = false,
         val locationPrompt: LocationPrompt? = null,
         val isLoadingLocation: Boolean = false,
         val selectedMarkerId: String? = null,
@@ -690,11 +763,16 @@ class MapViewModel(
         val photosMarkerId: String? = null,
         /** The in-app camera is open for the selected stop. */
         val isPhotoCameraOpen: Boolean = false,
+        /** The stop whose comments are open. */
+        val commentsMarkerId: String? = null,
+        /** What the report dialog is about. */
+        val reporting: ReportSubject? = null,
+        val isReporting: Boolean = false,
+        val isCopying: Boolean = false,
         val message: UiText? = null,
         /** Stop changes undone because the connection failed; Retry sends them again. */
         val failedChanges: List<MarkerChangeFailure> = emptyList(),
         val isWaitingForFirstLocation: Boolean = false,
-        val hasCenteredOnTrip: Boolean = false,
         val frame: CameraFrame? = null,
         val confirm: Confirm? = null,
         val selectedPlace: MapPlace? = null,
@@ -717,6 +795,8 @@ class MapViewModel(
 
     enum class Confirm { ClearDay, DeleteDay }
 
+    private data class ReportSubject(val target: ReportTarget, val id: String)
+
     /** Shown when the location button can't simply ask: explain first (Android), or send the user to Settings. */
     enum class LocationPrompt { Explain, OpenSettings }
 
@@ -729,6 +809,9 @@ class MapViewModel(
         val markers: ImmutableList<MapMarker> = persistentListOf(),
         /** Owners and editors add and remove stops and days. */
         val canEdit: Boolean = false,
+        /** Someone else's public trip: it can be added to my trips and reported. */
+        val isViewer: Boolean = false,
+        val ownerUsername: String? = null,
         /** The trip hasn't loaded yet (nothing cached). */
         val isLoading: Boolean = false,
         /** A day change is waiting for the server. Stop changes don't wait. */
@@ -747,6 +830,14 @@ class MapViewModel(
         val photosMarker: MapMarker? = null,
         /** The in-app camera is open; its photo goes to [selectedMarker]. */
         val isPhotoCameraOpen: Boolean = false,
+        /** The stop whose comments are open in the sheet. */
+        val commentsMarker: MapMarker? = null,
+        /** The report dialog is open, for the trip or the selected stop. */
+        val isReportOpen: Boolean = false,
+        /** A report is waiting for the server. */
+        val isReporting: Boolean = false,
+        /** Adding the trip to mine is waiting for the server. */
+        val isCopying: Boolean = false,
         val message: UiText? = null,
         /** [message] is about stop changes that didn't save; Retry sends them again. */
         val canRetry: Boolean = false,
@@ -778,6 +869,9 @@ class MapViewModel(
         data object RequestPermission : Event
         data object OpenAppSettings : Event
         data object NavigateBack : Event
+        data class OpenProfile(val username: String) : Event
+        /** My copy of the trip. */
+        data class OpenTrip(val tripId: String) : Event
     }
 
     sealed interface Action {
@@ -818,6 +912,18 @@ class MapViewModel(
         data object OnCloseSearch : Action
         data class OnDaySelected(val dayIndex: Int) : Action
         data object OnBackClick : Action
+        data class OnToggleStopLike(val markerId: String) : Action
+        /** The selected stop's comments open in a sheet. */
+        data object OnOpenStopComments : Action
+        data object OnCloseStopComments : Action
+        /** Adds someone else's trip to mine. */
+        data object OnCopyTrip : Action
+        data object OnOpenOwnerProfile : Action
+        data object OnReportTrip : Action
+        /** Reports the selected stop. */
+        data object OnReportStop : Action
+        data class OnSendReport(val reason: ReportReason, val details: String) : Action
+        data object OnDismissReport : Action
     }
 
     private companion object {

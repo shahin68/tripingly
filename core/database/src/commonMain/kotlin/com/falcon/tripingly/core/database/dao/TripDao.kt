@@ -66,6 +66,15 @@ abstract class TripDao {
     @Query("UPDATE markers SET position = :position WHERE id = :markerId")
     abstract suspend fun updateMarkerPosition(markerId: String, position: Int)
 
+    @Query("UPDATE markers SET likeCount = :likeCount WHERE id = :markerId")
+    abstract suspend fun updateMarkerLikeCount(markerId: String, likeCount: Int)
+
+    @Query("UPDATE markers SET likeCount = :likeCount, likedByMe = :likedByMe WHERE id = :markerId")
+    abstract suspend fun updateMarkerLike(markerId: String, likeCount: Int, likedByMe: Boolean)
+
+    @Query("UPDATE markers SET commentCount = MAX(0, commentCount + :delta) WHERE id = :markerId")
+    abstract suspend fun addToMarkerCommentCount(markerId: String, delta: Int)
+
     @Query("DELETE FROM trips")
     abstract suspend fun deleteAll()
 

@@ -1,27 +1,31 @@
 package com.falcon.tripingly.feature.map.presentation.viewmodel
 
-import kotlinx.coroutines.flow.first
-import com.falcon.tripingly.core.model.photo.PickedImage
-import com.falcon.tripingly.core.data.photos.FakePhotoRepository
 import app.cash.turbine.test
 import com.falcon.tripingly.core.common.coroutines.CoroutineDispatchers
 import com.falcon.tripingly.core.common.error.DataError
 import com.falcon.tripingly.core.common.result.AppResult
 import com.falcon.tripingly.core.common.result.asError
 import com.falcon.tripingly.core.common.result.asSuccess
+import com.falcon.tripingly.core.data.photos.FakePhotoRepository
 import com.falcon.tripingly.core.data.places.FakePlaceRepository
 import com.falcon.tripingly.core.data.places.PlaceRepository
+import com.falcon.tripingly.core.data.social.FakeSocialRepository
 import com.falcon.tripingly.core.data.trips.FakeTripBackend
-import com.falcon.tripingly.core.model.place.SearchResultType
-import com.falcon.tripingly.core.model.place.PlaceSearchResult
-import com.falcon.tripingly.core.model.place.OsmType
-import com.falcon.tripingly.core.model.place.OsmRef
+import com.falcon.tripingly.core.location.GetCurrentLocationUseCase
+import com.falcon.tripingly.core.location.LocationRepository
+import com.falcon.tripingly.core.location.model.Coordinates
+import com.falcon.tripingly.core.location.permission.LocationPermission
+import com.falcon.tripingly.core.model.photo.PickedImage
 import com.falcon.tripingly.core.model.place.GeoBounds
 import com.falcon.tripingly.core.model.place.MapPlace
+import com.falcon.tripingly.core.model.place.OsmRef
+import com.falcon.tripingly.core.model.place.OsmType
 import com.falcon.tripingly.core.model.place.PlaceCategory
 import com.falcon.tripingly.core.model.place.PlaceCluster
+import com.falcon.tripingly.core.model.place.PlaceSearchResult
 import com.falcon.tripingly.core.model.place.PlaceSquare
 import com.falcon.tripingly.core.model.place.PlacesInView
+import com.falcon.tripingly.core.model.place.SearchResultType
 import com.falcon.tripingly.core.model.trip.Destination
 import com.falcon.tripingly.core.model.trip.GeoPoint
 import com.falcon.tripingly.core.model.trip.NewMarker
@@ -29,14 +33,10 @@ import com.falcon.tripingly.core.model.trip.NewTrip
 import com.falcon.tripingly.core.model.trip.TripDetails
 import com.falcon.tripingly.core.model.trip.TripRole
 import com.falcon.tripingly.core.ui.UiText
-import com.falcon.tripingly.feature.map.domain.model.Coordinates
-import com.falcon.tripingly.feature.map.domain.repository.LocationRepository
-import com.falcon.tripingly.feature.map.domain.usecase.GetCurrentLocationUseCase
 import com.falcon.tripingly.feature.map.generated.resources.Res
 import com.falcon.tripingly.feature.map.generated.resources.error_location_denied_manual
 import com.falcon.tripingly.feature.map.generated.resources.error_location_permission_required
 import com.falcon.tripingly.feature.map.generated.resources.map_change_not_saved
-import com.falcon.tripingly.feature.map.presentation.permission.LocationPermission
 import com.falcon.tripingly.feature.map.presentation.screen.MapViewModel
 import com.falcon.tripingly.feature.map.presentation.screen.MapViewModel.Action
 import com.falcon.tripingly.feature.map.presentation.screen.MapViewModel.Confirm
@@ -46,6 +46,7 @@ import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.StandardTestDispatcher
@@ -136,6 +137,7 @@ class MapViewModelTest {
         markerRepository = backend,
         placeRepository = places,
         photoRepository = photos,
+        socialRepository = FakeSocialRepository(),
         getCurrentLocationUseCase = GetCurrentLocationUseCase(fakeLocationRepository),
         dispatchers = TestCoroutineDispatchers(testDispatcher),
     ).also { viewModel -> backgroundScope.launch { viewModel.uiState.collect {} } }
@@ -166,10 +168,12 @@ class MapViewModelTest {
     }
 
     @Test
-    fun `permission granted triggers location fetch and updates current location`() = runTest(testDispatcher) {
+    fun `allowing the location from the location button moves the camera to the user`() = runTest(testDispatcher) {
         val userCoords = Coordinates(52.5200, 13.4050) // Berlin
         fakeLocationRepository.locationResult = userCoords.asSuccess()
         val viewModel = viewModel()
+        viewModel.onAction(Action.OnPermissionChecked(LocationPermission.NotAsked))
+        viewModel.onAction(Action.CenterOnUserLocation)
 
         viewModel.onAction(Action.OnPermissionResult(LocationPermission.Granted))
         testScheduler.advanceUntilIdle()
@@ -179,6 +183,22 @@ class MapViewModelTest {
         assertEquals(userCoords, state.currentLocation)
         assertEquals(userCoords, state.cameraTarget)
         assertFalse(state.isLoadingLocation)
+    }
+
+    @Test
+    fun `an allowed location shows the user but never moves the camera by itself`() = runTest(testDispatcher) {
+        val userCoords = Coordinates(52.5200, 13.4050) // Berlin
+        fakeLocationRepository.locationResult = userCoords.asSuccess()
+        val viewModel = viewModel()
+        testScheduler.advanceUntilIdle()
+        val before = viewModel.uiState.value.cameraTarget
+
+        viewModel.onAction(Action.OnPermissionChecked(LocationPermission.Granted))
+        testScheduler.advanceUntilIdle()
+
+        val state = viewModel.uiState.value
+        assertEquals(userCoords, state.currentLocation)
+        assertEquals(before, state.cameraTarget)
     }
 
     @Test
@@ -508,15 +528,10 @@ class MapViewModelTest {
         assertEquals(Res.string.error_location_permission_required, message.resource)
     }
     @Test
-    fun `the map asks for the location once when it first opens`() = runTest(testDispatcher) {
+    fun `opening the map doesn't ask for the location`() = runTest(testDispatcher) {
         val viewModel = viewModel()
         testScheduler.advanceUntilIdle()
         viewModel.events.test {
-            viewModel.onAction(Action.OnPermissionChecked(LocationPermission.NotAsked))
-            testScheduler.advanceUntilIdle()
-            assertEquals(Event.RequestPermission, awaitItem())
-
-            // Coming back to the screen doesn't ask again.
             viewModel.onAction(Action.OnPermissionChecked(LocationPermission.NotAsked))
             testScheduler.advanceUntilIdle()
             expectNoEvents()
@@ -544,8 +559,6 @@ class MapViewModelTest {
         viewModel.onAction(Action.OnPermissionChecked(LocationPermission.NotAsked))
         testScheduler.advanceUntilIdle()
         viewModel.events.test {
-            skipItems(1) // the request when the map opened
-
             viewModel.onAction(Action.CenterOnUserLocation)
             testScheduler.advanceUntilIdle()
 

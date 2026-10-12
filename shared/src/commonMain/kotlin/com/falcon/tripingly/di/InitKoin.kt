@@ -3,11 +3,13 @@ package com.falcon.tripingly.di
 import com.falcon.tripingly.core.common.di.commonModule
 import com.falcon.tripingly.core.data.di.dataModule
 import com.falcon.tripingly.core.database.di.databaseModule
+import com.falcon.tripingly.core.location.di.locationModule
 import com.falcon.tripingly.core.network.di.networkModule
 import com.falcon.tripingly.core.storage.di.storageModule
 import com.falcon.tripingly.deeplink.DeepLinks
 import com.falcon.tripingly.feature.auth.di.authModule
 import com.falcon.tripingly.feature.map.di.mapModule
+import com.falcon.tripingly.feature.social.di.socialModule
 import com.falcon.tripingly.feature.trips.di.tripsModule
 import org.koin.core.context.startKoin
 import org.koin.dsl.KoinAppDeclaration
@@ -22,9 +24,11 @@ fun initKoin(appDeclaration: KoinAppDeclaration = {}) {
             storageModule,
             networkModule,
             dataModule,
+            locationModule,
             authModule,
             tripsModule,
             mapModule,
+            socialModule,
             appModule,
         )
     }

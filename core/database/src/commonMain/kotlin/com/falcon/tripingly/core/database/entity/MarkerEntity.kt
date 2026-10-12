@@ -27,4 +27,7 @@ data class MarkerEntity(
     val coverPhotoId: String?,
     val coverThumbUrl: String?,
     val photoCount: Int,
+    val likeCount: Int,
+    val likedByMe: Boolean,
+    val commentCount: Int,
 )

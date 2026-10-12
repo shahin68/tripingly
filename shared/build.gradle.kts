@@ -27,6 +27,7 @@ kotlin {
         commonMain.dependencies {
             implementation(projects.core.common)
             implementation(projects.core.database)
+            implementation(projects.core.location)
             implementation(projects.core.data)
             implementation(projects.core.designsystem)
             implementation(projects.core.navigation)
@@ -35,6 +36,7 @@ kotlin {
             implementation(projects.feature.auth)
             implementation(projects.feature.trips)
             implementation(projects.feature.map)
+            implementation(projects.feature.social)
 
             implementation(libs.koin.core)
             implementation(libs.kotlinx.coroutines.core)

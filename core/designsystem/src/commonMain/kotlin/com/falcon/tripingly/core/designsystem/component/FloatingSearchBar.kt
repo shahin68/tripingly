@@ -14,17 +14,18 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import com.falcon.tripingly.core.designsystem.generated.resources.*
+import com.falcon.tripingly.core.designsystem.generated.resources.Res
 import com.falcon.tripingly.core.designsystem.theme.spacing
 import org.jetbrains.compose.resources.stringResource
-import com.falcon.tripingly.core.designsystem.generated.resources.Res
-import com.falcon.tripingly.core.designsystem.generated.resources.*
 
 @Composable
 fun FloatingSearchBar(
     query: String,
     onQueryChange: (String) -> Unit,
     modifier: Modifier = Modifier,
-    placeholder: String = stringResource(Res.string.common_search_placeholder)
+    placeholder: String = stringResource(Res.string.common_search_placeholder),
+    trailingIcon: (@Composable () -> Unit)? = null,
 ) {
     TextField(
         value = query,
@@ -35,6 +36,7 @@ fun FloatingSearchBar(
         placeholder = { Text(placeholder) },
         singleLine = true,
         leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
+        trailingIcon = trailingIcon,
         shape = RoundedCornerShape(28.dp),
         colors = TextFieldDefaults.colors(
             focusedIndicatorColor = Color.Transparent,

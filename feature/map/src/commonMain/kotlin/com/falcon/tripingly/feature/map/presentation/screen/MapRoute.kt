@@ -11,11 +11,10 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.compose.LifecycleResumeEffect
-import com.falcon.tripingly.feature.map.presentation.permission.rememberLocationPermissionController
-import com.falcon.tripingly.feature.map.presentation.photos.PhotoCameraDialog
-import com.falcon.tripingly.feature.map.presentation.photos.StopPhotosRoute
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.falcon.tripingly.core.designsystem.component.ReportDialog
+import com.falcon.tripingly.core.location.permission.rememberLocationPermissionController
 import com.falcon.tripingly.feature.map.generated.resources.Res
 import com.falcon.tripingly.feature.map.generated.resources.map_cancel
 import com.falcon.tripingly.feature.map.generated.resources.map_clear_day_message
@@ -32,6 +31,9 @@ import com.falcon.tripingly.feature.map.generated.resources.map_location_setting
 import com.falcon.tripingly.feature.map.generated.resources.map_pin_add
 import com.falcon.tripingly.feature.map.generated.resources.map_pin_name_label
 import com.falcon.tripingly.feature.map.generated.resources.map_pin_name_title
+import com.falcon.tripingly.feature.map.presentation.comments.StopCommentsRoute
+import com.falcon.tripingly.feature.map.presentation.photos.PhotoCameraDialog
+import com.falcon.tripingly.feature.map.presentation.photos.StopPhotosRoute
 import com.falcon.tripingly.feature.map.presentation.screen.MapViewModel.Action
 import com.falcon.tripingly.feature.map.presentation.screen.MapViewModel.Confirm
 import com.falcon.tripingly.feature.map.presentation.screen.MapViewModel.Event
@@ -44,6 +46,8 @@ import org.koin.core.parameter.parametersOf
 fun MapRoute(
     tripId: String,
     onNavigateBack: () -> Unit,
+    onOpenProfile: (String) -> Unit,
+    onOpenTrip: (String) -> Unit,
     // Keyed by trip: the view model store is shared across screens, and the class alone would
     // hand every trip the first trip's view model.
     viewModel: MapViewModel = koinViewModel(key = "map:$tripId") { parametersOf(tripId) }
@@ -65,6 +69,8 @@ fun MapRoute(
                 is Event.RequestPermission -> locationPermission.request()
                 is Event.OpenAppSettings -> locationPermission.openSettings()
                 is Event.NavigateBack -> onNavigateBack()
+                is Event.OpenProfile -> onOpenProfile(event.username)
+                is Event.OpenTrip -> onOpenTrip(event.tripId)
                 is Event.AnimateCamera -> {
                     // Reactive
                 }
@@ -82,6 +88,22 @@ fun MapRoute(
             marker = marker,
             canEdit = state.canEdit,
             onDismiss = { viewModel.onAction(Action.OnCloseStopPhotos) },
+        )
+    }
+
+    state.commentsMarker?.let { marker ->
+        StopCommentsRoute(
+            marker = marker,
+            onOpenProfile = onOpenProfile,
+            onDismiss = { viewModel.onAction(Action.OnCloseStopComments) },
+        )
+    }
+
+    if (state.isReportOpen) {
+        ReportDialog(
+            onReport = { reason, details -> viewModel.onAction(Action.OnSendReport(reason, details)) },
+            onDismiss = { viewModel.onAction(Action.OnDismissReport) },
+            isSending = state.isReporting,
         )
     }
 

@@ -4,4 +4,17 @@
     <string name="common_search_placeholder">Search...</string>
     <string name="osm_attribution">© OpenStreetMap contributors</string>
     <string name="chip_remove">Remove %1$s</string>
+    <string name="common_cancel">Cancel</string>
+    <string name="like">Like</string>
+
+    <!-- Report -->
+    <string name="report_title">Why are you reporting this?</string>
+    <string name="report_reason_spam">Spam</string>
+    <string name="report_reason_harassment">Harassment or bullying</string>
+    <string name="report_reason_nudity">Nudity or sexual content</string>
+    <string name="report_reason_violence">Violence</string>
+    <string name="report_reason_hate">Hate speech</string>
+    <string name="report_reason_other">Something else</string>
+    <string name="report_details">Details (optional)</string>
+    <string name="report_send">Report</string>
 </resources>

@@ -7,11 +7,11 @@ kotlin {
         commonMain.dependencies {
             implementation(projects.core.data)
             implementation(projects.core.ui)
+            implementation(projects.core.location)
             implementation(libs.compose.material.icons.extended)
         }
         androidMain.dependencies {
             implementation(libs.playServices.maps)
-            implementation(libs.playServices.location)
             implementation(libs.maps.compose)
             implementation(libs.androidx.camera.camera2)
             implementation(libs.androidx.camera.lifecycle)

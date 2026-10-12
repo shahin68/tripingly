@@ -7,11 +7,11 @@
     <string name="home_tab_my_trips">Meine Reisen</string>
     <string name="home_tab_social">Social</string>
     <string name="home_search_placeholder_trips">Reisen suchen...</string>
-    <string name="home_search_placeholder_social">Social durchsuchen...</string>
+    <string name="home_search_placeholder_social">Leute suchen …</string>
+    <string name="home_my_profile">Dein Profil</string>
     <string name="home_fab_add_trip">Reise hinzufügen</string>
     <string name="home_list_empty">Noch keine Reisen. Tippe auf +, um eine zu erstellen!</string>
     <string name="home_list_no_matches">Keine Reise passt zu deiner Suche.</string>
-    <string name="home_social_coming_soon">Social kommt bald!</string>
     <string name="home_offline_cached">Du bist offline. Das sind deine gespeicherten Reisen; Änderungen brauchen eine Verbindung.</string>
 
     <!-- Trip list item -->

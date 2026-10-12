@@ -9,8 +9,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.falcon.tripingly.core.common.util.DateUtils
-import kotlinx.datetime.LocalDate
 
 /** The server's answer when it refused a dialog's change. */
 @Composable
@@ -28,11 +26,4 @@ internal fun SavingLabel(isSaving: Boolean, label: String) {
     } else {
         Text(label)
     }
-}
-
-/** "Jun 1, 2025 - Jun 15, 2025", or null for a trip without dates. */
-internal fun formatDateRange(start: LocalDate?, end: LocalDate?): String? = when {
-    start == null -> null
-    end == null || end == start -> DateUtils.formatFormal(start)
-    else -> "${DateUtils.formatFormal(start)} - ${DateUtils.formatFormal(end)}"
 }

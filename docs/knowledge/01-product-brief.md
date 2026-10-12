@@ -42,7 +42,7 @@ Tripinly is a social travel-planning app. People plan trips day by day as marker
 10b. **Routes and places along the way:** a route between two points or through a day's markers is drawn on the map, with attractions, cafés and restaurants along the way suggested.
 10c. **Search:** a search box finds places (ours + OSM POIs) and addresses/cities.
 11. **Collaboration:** owners add people to a trip; collaborators can edit markers and photos.
-12. **Finding people:** by **username search** and **invite links**. No follow system in v1.
+12. **Finding people and following:** by **username search** and **invite links**. People follow each other; two people who follow each other are **friends**, offered first when adding trip members. Profiles show follower and following counts and the person's public trips.
 13. **Add to my trips:** a single button that copies someone else's public trip (or a single marker / popular spot) into an **independent copy owned by the copier**, fully editable, as if they made it. Shows "Copied from @handle" while the original author's account exists.
 14. **Best route:** reorders a day's markers. **Free:** straight-line ordering. **Paid:** real travel times via a routing provider.
 15. **Sharing:** links to a trip or marker.
@@ -60,4 +60,4 @@ Uploads, comments, likes and trip edits by collaborators appear live for everyon
 
 ## Out of scope for now
 
-Bookings, flights, hotels, Google Places / any Google data on the backend, public transit routing, a follow system, direct messages, a web app.
+Bookings, flights, hotels, Google Places / any Google data on the backend, public transit routing, direct messages, a web app.

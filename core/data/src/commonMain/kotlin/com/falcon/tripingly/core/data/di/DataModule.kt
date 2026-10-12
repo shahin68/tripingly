@@ -23,6 +23,9 @@ import com.falcon.tripingly.core.data.push.PushNotifications
 import com.falcon.tripingly.core.data.push.PushRegistration
 import com.falcon.tripingly.core.data.realtime.LiveUpdates
 import com.falcon.tripingly.core.data.realtime.RealtimeSync
+import com.falcon.tripingly.core.data.social.DefaultSocialRepository
+import com.falcon.tripingly.core.data.social.FakeSocialRepository
+import com.falcon.tripingly.core.data.social.SocialRepository
 import com.falcon.tripingly.core.data.trips.DefaultMarkerRepository
 import com.falcon.tripingly.core.data.trips.DefaultTripInviteRepository
 import com.falcon.tripingly.core.data.trips.FakeTripBackend
@@ -38,11 +41,11 @@ import com.falcon.tripingly.core.data.users.FakeUserRepository
 import com.falcon.tripingly.core.data.users.UserRepository
 import com.falcon.tripingly.core.model.account.SessionState
 import com.falcon.tripingly.core.network.ApiConfig
-import kotlin.time.Clock
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.todayIn
 import org.koin.core.qualifier.named
 import org.koin.dsl.module
+import kotlin.time.Clock
 
 val dataModule = module {
     single<TripLocalDataSource> { RoomTripLocalDataSource(get()) }
@@ -72,7 +75,19 @@ val dataModule = module {
         if (get<ApiConfig>().useFakeApi) get<FakeTripBackend>() else DefaultTripInviteRepository(get(), get())
     }
     single<UserRepository> {
-        if (get<ApiConfig>().useFakeApi) FakeUserRepository() else DefaultUserRepository(get())
+        if (get<ApiConfig>().useFakeApi) FakeUserRepository() else DefaultUserRepository(get(), get())
+    }
+    single<SocialRepository> {
+        if (get<ApiConfig>().useFakeApi) {
+            FakeSocialRepository()
+        } else {
+            DefaultSocialRepository(
+                api = get(),
+                local = get(),
+                realtime = get(),
+                currentUserId = { get<SessionRepository>().currentUserId() },
+            )
+        }
     }
     single<AppConfigRepository> {
         if (get<ApiConfig>().useFakeApi) FakeAppConfigRepository() else DefaultAppConfigRepository(get(), get(ApplicationScope))

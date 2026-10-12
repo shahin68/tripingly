@@ -103,6 +103,9 @@ internal fun MarkerDto.toMarker() = TripMarker(
     coverPhotoId = coverPhotoId,
     coverThumbUrl = coverThumbUrl,
     photoCount = photoCount.toInt(),
+    likeCount = likeCount.toInt(),
+    likedByMe = likedByMe,
+    commentCount = commentCount.toInt(),
 )
 
 internal fun DestinationDto.toDestination() = Destination(name = name, location = location.toGeoPoint())

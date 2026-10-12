@@ -7,6 +7,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.falcon.tripingly.core.common.util.DateUtils
 import com.falcon.tripingly.core.common.util.ShareManager
 import com.falcon.tripingly.core.ui.ObserveAsEvents
 import com.falcon.tripingly.feature.trips.generated.resources.Res
@@ -17,7 +18,6 @@ import com.falcon.tripingly.feature.trips.presentation.component.CreateTripSheet
 import com.falcon.tripingly.feature.trips.presentation.component.RenameTripDialog
 import com.falcon.tripingly.feature.trips.presentation.component.RescheduleTripDialog
 import com.falcon.tripingly.feature.trips.presentation.component.TripDialogKind
-import com.falcon.tripingly.feature.trips.presentation.component.formatDateRange
 import com.falcon.tripingly.feature.trips.presentation.members.TripMembersRoute
 import com.falcon.tripingly.feature.trips.presentation.permission.rememberNotificationPermissionRequest
 import com.falcon.tripingly.feature.trips.presentation.screen.HomeViewModel.Action
@@ -30,6 +30,9 @@ import org.koin.compose.viewmodel.koinViewModel
 @Composable
 fun HomeRoute(
     onNavigateToMap: (String) -> Unit,
+    onOpenMyProfile: () -> Unit,
+    /** The Social tab's content, given what's typed in the search bar there. */
+    socialContent: @Composable (query: String) -> Unit,
     viewModel: HomeViewModel = koinViewModel(),
     shareManager: ShareManager = koinInject(),
 ) {
@@ -49,7 +52,7 @@ fun HomeRoute(
             is Event.NavigateToMap -> onNavigateToMap(event.tripId)
             is Event.ShareTrip -> {
                 val trip = event.trip
-                val dates = formatDateRange(trip.startDate, trip.endDate)
+                val dates = DateUtils.formatRange(trip.startDate, trip.endDate)
                 shareManager.share(
                     if (dates != null) {
                         getString(Res.string.share_trip_text, trip.name, dates)
@@ -64,6 +67,8 @@ fun HomeRoute(
     HomeScreen(
         state = state,
         onAction = viewModel::onAction,
+        onOpenMyProfile = onOpenMyProfile,
+        socialContent = socialContent,
     )
 
     val onDismiss = { viewModel.onAction(Action.OnDismissDialog) }

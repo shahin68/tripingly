@@ -39,6 +39,9 @@ data class TripMarker(
     val coverPhotoId: String? = null,
     val coverThumbUrl: String? = null,
     val photoCount: Int = 0,
+    val likeCount: Int = 0,
+    val likedByMe: Boolean = false,
+    val commentCount: Int = 0,
 )
 
 data class GeoPoint(val lat: Double, val lng: Double)

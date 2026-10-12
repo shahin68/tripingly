@@ -1,20 +1,16 @@
 package com.falcon.tripingly.feature.map.presentation.screen
 
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.runtime.rememberUpdatedState
-import androidx.compose.ui.layout.boundsInParent
-import androidx.compose.ui.input.pointer.PointerEventPass
-import androidx.compose.ui.geometry.Rect
-import androidx.compose.animation.scaleOut
-import androidx.compose.animation.scaleIn
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -24,19 +20,28 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.InputChip
 import androidx.compose.material3.InputChipDefaults
@@ -45,64 +50,59 @@ import androidx.compose.material3.SecondaryScrollableTabRow
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
-import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.graphics.Color
-import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.layout.layout
-import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.foundation.gestures.awaitFirstDown
-import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.TransformOrigin
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.boundsInParent
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
-import kotlinx.collections.immutable.ImmutableList
-import kotlinx.collections.immutable.toImmutableList
+import com.falcon.tripingly.core.common.util.DateUtils
 import com.falcon.tripingly.core.designsystem.component.AppDropdownMenu
 import com.falcon.tripingly.core.designsystem.component.DropdownAction
 import com.falcon.tripingly.core.designsystem.component.ErrorBanner
 import com.falcon.tripingly.core.designsystem.component.OsmAttribution
 import com.falcon.tripingly.core.designsystem.component.SuggestionItem
-import com.falcon.tripingly.core.model.place.PlaceSearchResult
 import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
 import com.falcon.tripingly.core.designsystem.theme.spacing
-import com.falcon.tripingly.core.common.util.DateUtils
+import com.falcon.tripingly.core.model.place.PlaceSearchResult
 import com.falcon.tripingly.feature.map.domain.model.MapMarker
+import com.falcon.tripingly.feature.map.generated.resources.*
+import com.falcon.tripingly.feature.map.generated.resources.Res
 import com.falcon.tripingly.feature.map.presentation.component.GoogleMapView
 import com.falcon.tripingly.feature.map.presentation.component.PlaceCard
 import com.falcon.tripingly.feature.map.presentation.component.StopCard
+import com.falcon.tripingly.feature.map.presentation.component.fitCamera
+import com.falcon.tripingly.feature.map.presentation.component.placePinSize
 import com.falcon.tripingly.feature.map.presentation.component.stopPinHeight
 import com.falcon.tripingly.feature.map.presentation.photos.rememberPhotoPicker
-import com.falcon.tripingly.feature.map.presentation.component.placePinSize
-import com.falcon.tripingly.feature.map.presentation.component.fitCamera
 import com.falcon.tripingly.feature.map.presentation.screen.MapViewModel.Action
 import com.falcon.tripingly.feature.map.presentation.screen.MapViewModel.State
+import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.toImmutableList
 import org.jetbrains.compose.resources.stringResource
-import com.falcon.tripingly.feature.map.generated.resources.Res
-import com.falcon.tripingly.feature.map.generated.resources.*
 
 @Composable
 fun MapScreen(
@@ -325,6 +325,10 @@ fun MapScreen(
                     onOpen = { onAction(Action.OnOpenStopPhotos) },
                     onAddPhotos = pickPhotos,
                     onTakePhoto = { onAction(Action.OnOpenPhotoCamera) },
+                    onToggleLike = { onAction(Action.OnToggleStopLike(stopCard.id)) },
+                    onOpenComments = { onAction(Action.OnOpenStopComments) },
+                    canReport = state.isViewer,
+                    onReport = { onAction(Action.OnReportStop) },
                 )
             }
         }
@@ -363,11 +367,29 @@ private fun TripHeader(
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
             )
-            if (state.isSaving || state.isLoading) {
+            if (state.isSaving || state.isLoading || state.isCopying) {
                 CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
             }
             IconButton(onClick = { onAction(Action.OnOpenSearch) }) {
                 Icon(Icons.Default.Search, contentDescription = stringResource(Res.string.map_search))
+            }
+            if (state.isViewer) {
+                Box {
+                    IconButton(onClick = { menuExpanded = true }) {
+                        Icon(Icons.Default.MoreVert, contentDescription = stringResource(Res.string.map_trip_menu))
+                    }
+                    AppDropdownMenu(
+                        expanded = menuExpanded,
+                        onDismissRequest = { menuExpanded = false },
+                        actions = listOfNotNull(
+                            DropdownAction(stringResource(Res.string.map_copy_trip)) { onAction(Action.OnCopyTrip) },
+                            state.ownerUsername?.let { owner ->
+                                DropdownAction(stringResource(Res.string.map_owner_profile, owner)) { onAction(Action.OnOpenOwnerProfile) }
+                            },
+                            DropdownAction(stringResource(Res.string.map_report_trip)) { onAction(Action.OnReportTrip) },
+                        ),
+                    )
+                }
             }
             if (state.canEdit) {
                 Box {

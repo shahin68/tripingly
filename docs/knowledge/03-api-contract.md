@@ -46,6 +46,7 @@ REST over HTTPS, JSON, base path `/v1`.
 | PATCH | `/me` | Display name, username (onboarding), birth date (onboarding only), locale, `defaultTripVisibility` |
 | GET | `/me/stats` | Trips, markers, photos counts |
 | GET | `/me/friends?cursor=&limit=` | The user's friends as user summaries, cursor paginated `{ items, nextCursor }`. The New trip sheet shows the first page (limit 50) as a row of avatars to add as members. Backend: tripinly-backend#32 (generated `UserPageDto`) |
+| GET | `/me/following?cursor=&limit=`, `/me/followers?cursor=&limit=` | Same shape; my profile's Following and Followers lists (pages of 50) |
 | GET | `/me/trips` | Owned + collaborating, cursor paginated; each item has `role`, `coverThumbUrl` (first cover photo in the trip, or null), `dayCount`, `markerCount`, `editorCount` (people it's shared with, owner not counted; backend#30) |
 | PUT | `/me/devices/{fcmToken}` | Register/refresh push device. Body: `platform` (`android`\|`ios`), `locale` |
 | DELETE | `/me/devices/{fcmToken}` | |
@@ -57,8 +58,10 @@ REST over HTTPS, JSON, base path `/v1`.
 |---|---|---|
 | GET | `/users/check-username?username=` | Availability during onboarding |
 | GET | `/users/search?q=` | Prefix search on username and display name; `q` 2–50 characters, up to 20 results `{ items: [UserSummary] }` |
-| GET | `/users/{username}` | Public profile + public trips |
-| POST | `/users/{id}/block` | |
+| GET | `/users/{username}?cursor=&limit=` | Profile: `user`, `followerCount`, `followingCount`, `isFollowing`, `followsMe`, `isFriend`, `publicTripCount`, `trips[]` (trip summaries with `likeCount`, `likedByMe`, `copyCount`), `nextCursor`. The app asks without `@`, pages of 20; `404 NOT_FOUND` for unknown or blocked either way |
+| PUT | `/users/{id}/follow` | Follow (idempotent); the profile's Follow button, shown at once |
+| DELETE | `/users/{id}/follow` | Unfollow |
+| POST | `/users/{id}/block` | From a profile's menu, after a confirmation; the profile then closes |
 | DELETE | `/users/{id}/block` | |
 | GET | `/me/blocks` | |
 
@@ -70,7 +73,7 @@ REST over HTTPS, JSON, base path `/v1`.
 | PATCH | `/trips/{id}` | Owner: title, dates, visibility, `destination` (null removes it) |
 | DELETE | `/trips/{id}` | Owner |
 | POST | `/trips/{id}/copy` | "Add to my trips". Public, not own. Returns the new trip |
-| GET | `/explore/trips` | Public trips from others, ranked |
+| GET | `/explore/trips?cursor=&limit=` | Public trips from others, ranked; Social → Explore, pages of 20 |
 
 ### Days
 | Method | Path | Notes |
@@ -114,10 +117,10 @@ REST over HTTPS, JSON, base path `/v1`.
 ### Comments and likes
 | Method | Path | Notes |
 |---|---|---|
-| GET | `/markers/{id}/comments` | Paginated, oldest first |
-| POST | `/markers/{id}/comments` | |
+| GET | `/markers/{id}/comments` | Paginated, oldest first; the stop's comments sheet loads pages of 50 |
+| POST | `/markers/{id}/comments` | `{ body }` (≤ 1000), with an `Idempotency-Key`; the sheet adds the answer and the cached stop counts it |
 | DELETE | `/comments/{id}` | Author or trip owner |
-| PUT | `/likes/{targetType}/{targetId}` | `trip`, `marker`, `photo`, `comment`, `place` |
+| PUT | `/likes/{targetType}/{targetId}` | `trip`, `marker`, `photo`, `comment`, `place`; answers `{ liked, likeCount }`. The app shows a like at once and puts it back on a refusal (a stop's in the Room cache, the others in the screen's state) |
 | DELETE | `/likes/{targetType}/{targetId}` | |
 
 ### Discovery
@@ -126,7 +129,7 @@ REST over HTTPS, JSON, base path `/v1`.
 | GET | `/places/in-view?bbox=minLng,minLat,maxLng,maxLat&zoom=&categories=&limit=` | Places for the visible map area: Tripinly places first, OSM places when zoomed in, clusters when zoomed out |
 | GET | `/places/tiles?tiles=level/x/y,…&zoom=&categories=&limit=` | The same places for up to 16 fixed map squares (side `360 / 2^level` degrees) in one request: `{ tiles: [{ tile, places[], clusters[] }], attribution }`. The app loads places this way (backend #26) |
 | GET | `/places/search?q=&lat=&lng=&scope=` | Our places + Photon addresses/cities merged. `scope=destination` (the Create Trip destination): only countries, regions, cities and districts, cities first |
-| GET | `/places/nearby?lat=&lng=&radiusKm=` | Popular places around the user; location not stored |
+| GET | `/places/nearby?lat=&lng=&cursor=&limit=` | Popular places around the user with `distanceMeters`; Social → Nearby, pages of 20, asked once per opening with the first location fix; location not stored |
 | GET | `/places/popular?bbox=…&excludeTripId=` | Tripinly places only in the visible area, excluding places already in the trip |
 | GET | `/places/{id}` | Place with popularity and a few public photos |
 | POST | `/places/{id}/add-to-trip` | Body: `dayId` → new marker (not used by the app: it sends `POST /days/{id}/markers` with `id` + `placeId` so the stop shows at once) |

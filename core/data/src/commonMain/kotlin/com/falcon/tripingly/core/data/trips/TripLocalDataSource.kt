@@ -33,6 +33,14 @@ internal interface TripLocalDataSource {
     /** The marker's trip, or null when it isn't cached. */
     suspend fun tripIdOfMarker(markerId: String): String?
 
+    suspend fun marker(markerId: String): TripMarker?
+
+    /** Sets a cached marker's like count, and whether I like it unless [likedByMe] is null. */
+    suspend fun saveMarkerLike(markerId: String, likeCount: Int, likedByMe: Boolean?)
+
+    /** Counts comments added to (positive [delta]) or deleted from a cached marker. */
+    suspend fun addToCommentCount(markerId: String, delta: Int)
+
     suspend fun deleteMarkers(markerIds: List<String>)
 
     /** Applies a day's marker order ([markerIds] in the new order). */

@@ -49,15 +49,33 @@ internal class RealtimeSync(
     override fun stop() = realtime.stop()
 
     internal suspend fun apply(event: RealtimeEvent) {
-        if (event is RealtimeEvent.MyTripsChanged) return myTripsRefreshes.request(MY_TRIPS)
-        event as RealtimeEvent.InTrip
+        when (event) {
+            is RealtimeEvent.InTrip -> applyInTrip(event)
+            is RealtimeEvent.MyTripsChanged -> myTripsRefreshes.request(MY_TRIPS)
+            // For the screens showing people; nothing cached changes.
+            is RealtimeEvent.FollowsChanged -> Unit
+        }
+    }
+
+    private suspend fun applyInTrip(event: RealtimeEvent.InTrip) {
         val byMe = event.actorId != null && event.actorId == currentUserId()
         when (event) {
-            is RealtimeEvent.MarkerSaved -> if (!byMe) saveInCachedTrip(event.tripId) { local.saveMarkers(listOf(event.marker.toMarker())) }
+            is RealtimeEvent.MarkerSaved -> if (!byMe) {
+                saveInCachedTrip(event.tripId) {
+                    // The event's likedByMe is always false; whether I like it stays as it was.
+                    val likedByMe = local.marker(event.marker.id)?.likedByMe ?: false
+                    local.saveMarkers(listOf(event.marker.toMarker().copy(likedByMe = likedByMe)))
+                }
+            }
             is RealtimeEvent.MarkerDeleted -> if (!byMe) saveInCachedTrip(event.tripId) { local.deleteMarkers(listOf(event.markerId)) }
             is RealtimeEvent.MarkersReordered -> if (!byMe) saveInCachedTrip(event.tripId) { local.reorderMarkers(event.markerIds) }
             is RealtimeEvent.TripChanged -> if (!byMe && local.trip(event.tripId) != null) tripRefreshes.request(event.tripId)
             is RealtimeEvent.TripDeleted -> local.deleteTrip(event.tripId)
+            // My own comments were counted when the server took them.
+            is RealtimeEvent.CommentAdded -> if (!byMe) local.addToCommentCount(event.comment.markerId, 1)
+            is RealtimeEvent.CommentDeleted -> if (!byMe) local.addToCommentCount(event.markerId, -1)
+            is RealtimeEvent.LikeCountChanged ->
+                if (event.targetType == MARKER) local.saveMarkerLike(event.targetId, event.count, likedByMe = null)
             is RealtimeEvent.PhotoSaved,
             is RealtimeEvent.PhotoFailed,
             is RealtimeEvent.PhotoDeleted,
@@ -90,5 +108,6 @@ internal class RealtimeSync(
 
     private companion object {
         const val MY_TRIPS = "myTrips"
+        const val MARKER = "marker"
     }
 }

@@ -1,0 +1,59 @@
+<resources>
+    <!-- Common -->
+    <string name="social_back">Back</string>
+    <string name="social_cancel">Cancel</string>
+    <string name="social_more">More</string>
+    <string name="social_retry">Try again</string>
+    <string name="social_report">Report</string>
+    <string name="social_reported">Thanks. We’ll take a look.</string>
+
+    <!-- Social tab -->
+    <string name="social_explore">Explore</string>
+    <string name="social_nearby">Nearby</string>
+    <string name="social_explore_empty">No public trips to explore yet.</string>
+    <string name="social_people_none">No one found with that name.</string>
+    <string name="social_add_to_my_trips">Add to my trips</string>
+    <string name="social_error_not_copyable">This trip can’t be added to your trips.</string>
+    <plurals name="social_trip_stop_count">
+        <item quantity="one">%1$d stop</item>
+        <item quantity="other">%1$d stops</item>
+    </plurals>
+    <plurals name="social_trip_copy_count">
+        <item quantity="one">added once</item>
+        <item quantity="other">added %1$d times</item>
+    </plurals>
+
+    <!-- Nearby -->
+    <string name="social_nearby_ask">See popular places around you. Your location is only used to find them and is never saved.</string>
+    <string name="social_nearby_blocked">Location is turned off for Tripinly. Allow it in Settings to see popular places around you.</string>
+    <string name="social_nearby_allow">Allow location</string>
+    <string name="social_nearby_open_settings">Open settings</string>
+    <string name="social_nearby_location_unavailable">Your location isn’t available right now.</string>
+    <string name="social_nearby_empty">No popular places around you yet.</string>
+    <string name="social_nearby_distance_m">%1$d m away</string>
+    <string name="social_nearby_distance_km">%1$s km away</string>
+    <string name="social_add_place">Add to trip</string>
+    <string name="social_add_place_no_trips">Create a trip first, then add places to it.</string>
+    <string name="social_add_place_pick_trip">Add %1$s to which trip?</string>
+    <string name="social_add_place_pick_day">Which day of %1$s?</string>
+    <string name="social_day_number">Day %1$d</string>
+
+    <!-- Profile -->
+    <string name="social_followers">Followers</string>
+    <string name="social_following">Following</string>
+    <string name="social_friends">Friends</string>
+    <string name="social_follow">Follow</string>
+    <string name="social_following_button">Following</string>
+    <string name="social_follows_you">Follows you</string>
+    <string name="social_public_trips">Public trips (%1$d)</string>
+    <string name="social_profile_no_trips">No public trips yet.</string>
+    <string name="social_profile_not_found">This profile isn’t available.</string>
+    <string name="social_report_user">Report</string>
+    <string name="social_block">Block</string>
+    <string name="social_block_title">Block @%1$s?</string>
+    <string name="social_block_message">You won’t see each other’s trips, stops or comments, you stop following each other, and you leave each other’s trips.</string>
+    <string name="social_block_confirm">Block</string>
+    <string name="social_friends_empty">No friends yet. People you follow who follow you back show up here.</string>
+    <string name="social_following_empty">You don’t follow anyone yet.</string>
+    <string name="social_followers_empty">No followers yet.</string>
+</resources>

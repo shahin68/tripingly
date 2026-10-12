@@ -1,6 +1,7 @@
 package com.falcon.tripingly.feature.map.domain.model
 
 import androidx.compose.runtime.Immutable
+import com.falcon.tripingly.core.location.model.Coordinates
 
 @Immutable
 data class MapMarker(
@@ -13,5 +14,8 @@ data class MapMarker(
     val coverPhotoId: String? = null,
     val coverThumbUrl: String? = null,
     val photoCount: Int = 0,
+    val likeCount: Int = 0,
+    val likedByMe: Boolean = false,
+    val commentCount: Int = 0,
     val color: Long = 0xFF2196F3 // Default Material Blue
 )
