@@ -226,7 +226,6 @@ class MapViewModel(
             val stops = activeDay()?.markers.orEmpty().ifEmpty { details.days.flatMap { it.markers } }
             val destination = details.destination
             if (stops.isEmpty() && destination != null) {
-                ui.update { it.copy(hasCenteredOnTrip = true) }
                 navigateTo(Coordinates(destination.location.lat, destination.location.lng), DESTINATION_ZOOM)
             } else {
                 frameStops(stops)
@@ -323,7 +322,7 @@ class MapViewModel(
     private fun frameStops(markers: List<TripMarker>) {
         if (markers.isEmpty()) return
         val points = markers.map { Coordinates(it.location.lat, it.location.lng) }
-        ui.update { it.copy(hasCenteredOnTrip = true, frame = CameraFrame(points, (it.frame?.id ?: 0) + 1)) }
+        ui.update { it.copy(frame = CameraFrame(points, (it.frame?.id ?: 0) + 1)) }
     }
 
     private fun watchFailedChanges() {
@@ -616,17 +615,14 @@ class MapViewModel(
         }
     }
 
-    /** The permission as read when the map opens or comes back to the front (e.g. from Settings). */
+    /**
+     * The permission as read when the map opens or comes back to the front (e.g. from Settings). Only the
+     * location button asks for it; once granted, the user's dot shows without moving the camera.
+     */
     private fun onPermissionChecked(permission: LocationPermission) {
         val before = ui.value
-        ui.update { it.copy(permission = permission, hasCheckedPermission = true) }
-        when {
-            permission == LocationPermission.Granted && before.permission != LocationPermission.Granted ->
-                startLocationUpdates()
-            // Ask once when the map first opens; after that only the location button asks.
-            permission == LocationPermission.NotAsked && !before.hasCheckedPermission ->
-                sendEvent(Event.RequestPermission)
-        }
+        ui.update { it.copy(permission = permission) }
+        if (permission == LocationPermission.Granted && before.permission != LocationPermission.Granted) startLocationUpdates()
     }
 
     /** The user answered the system prompt. */
@@ -688,8 +684,8 @@ class MapViewModel(
                         is AppResult.Success -> {
                             val coords = result.data
                             ui.update { state ->
-                                val shouldZoom = (state.currentLocation == null && !state.hasCenteredOnTrip) ||
-                                    state.isWaitingForFirstLocation
+                                // Only the location button moves the camera to the user.
+                                val shouldZoom = state.isWaitingForFirstLocation
                                 if (shouldZoom) {
                                     sendEvent(Event.AnimateCamera(coords, 15f))
                                 }
@@ -758,7 +754,6 @@ class MapViewModel(
         val zoomLevel: Float = 13f,
         /** Null until the screen has read it. */
         val permission: LocationPermission? = null,
-        val hasCheckedPermission: Boolean = false,
         val locationPrompt: LocationPrompt? = null,
         val isLoadingLocation: Boolean = false,
         val selectedMarkerId: String? = null,
@@ -778,7 +773,6 @@ class MapViewModel(
         /** Stop changes undone because the connection failed; Retry sends them again. */
         val failedChanges: List<MarkerChangeFailure> = emptyList(),
         val isWaitingForFirstLocation: Boolean = false,
-        val hasCenteredOnTrip: Boolean = false,
         val frame: CameraFrame? = null,
         val confirm: Confirm? = null,
         val selectedPlace: MapPlace? = null,

@@ -168,10 +168,12 @@ class MapViewModelTest {
     }
 
     @Test
-    fun `permission granted triggers location fetch and updates current location`() = runTest(testDispatcher) {
+    fun `allowing the location from the location button moves the camera to the user`() = runTest(testDispatcher) {
         val userCoords = Coordinates(52.5200, 13.4050) // Berlin
         fakeLocationRepository.locationResult = userCoords.asSuccess()
         val viewModel = viewModel()
+        viewModel.onAction(Action.OnPermissionChecked(LocationPermission.NotAsked))
+        viewModel.onAction(Action.CenterOnUserLocation)
 
         viewModel.onAction(Action.OnPermissionResult(LocationPermission.Granted))
         testScheduler.advanceUntilIdle()
@@ -181,6 +183,22 @@ class MapViewModelTest {
         assertEquals(userCoords, state.currentLocation)
         assertEquals(userCoords, state.cameraTarget)
         assertFalse(state.isLoadingLocation)
+    }
+
+    @Test
+    fun `an allowed location shows the user but never moves the camera by itself`() = runTest(testDispatcher) {
+        val userCoords = Coordinates(52.5200, 13.4050) // Berlin
+        fakeLocationRepository.locationResult = userCoords.asSuccess()
+        val viewModel = viewModel()
+        testScheduler.advanceUntilIdle()
+        val before = viewModel.uiState.value.cameraTarget
+
+        viewModel.onAction(Action.OnPermissionChecked(LocationPermission.Granted))
+        testScheduler.advanceUntilIdle()
+
+        val state = viewModel.uiState.value
+        assertEquals(userCoords, state.currentLocation)
+        assertEquals(before, state.cameraTarget)
     }
 
     @Test
@@ -510,15 +528,10 @@ class MapViewModelTest {
         assertEquals(Res.string.error_location_permission_required, message.resource)
     }
     @Test
-    fun `the map asks for the location once when it first opens`() = runTest(testDispatcher) {
+    fun `opening the map doesn't ask for the location`() = runTest(testDispatcher) {
         val viewModel = viewModel()
         testScheduler.advanceUntilIdle()
         viewModel.events.test {
-            viewModel.onAction(Action.OnPermissionChecked(LocationPermission.NotAsked))
-            testScheduler.advanceUntilIdle()
-            assertEquals(Event.RequestPermission, awaitItem())
-
-            // Coming back to the screen doesn't ask again.
             viewModel.onAction(Action.OnPermissionChecked(LocationPermission.NotAsked))
             testScheduler.advanceUntilIdle()
             expectNoEvents()
@@ -546,8 +559,6 @@ class MapViewModelTest {
         viewModel.onAction(Action.OnPermissionChecked(LocationPermission.NotAsked))
         testScheduler.advanceUntilIdle()
         viewModel.events.test {
-            skipItems(1) // the request when the map opened
-
             viewModel.onAction(Action.CenterOnUserLocation)
             testScheduler.advanceUntilIdle()
 
