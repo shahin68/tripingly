@@ -190,6 +190,21 @@ class RealtimeSyncTest {
     }
 
     @Test
+    fun aFollowEvent_leavesLiveUpdatesWorking() = runTest {
+        val sync = sync { json(TripJson.trip("t1")) }
+        cacheTrip()
+        sync.start()
+        // Listening starts on the sync's scope.
+        realTime { delay(100.milliseconds) }
+
+        realtime.send(RealtimeEvent.FollowsChanged(followerId = OTHER, followeeId = ME, following = true))
+        realtime.send(RealtimeEvent.TripChanged("t1", OTHER))
+
+        realTime { sent.first { it.isNotEmpty() } }
+        assertEquals(listOf("/v1/trips/t1"), paths)
+    }
+
+    @Test
     fun reconnect_reloadsWhatWasMissed_butTheFirstConnectionDoesNot() = runTest {
         val sync = sync { request ->
             if (request.url.encodedPath == "/v1/me/trips") json(TripJson.page(null)) else json(TripJson.trip("t1"))

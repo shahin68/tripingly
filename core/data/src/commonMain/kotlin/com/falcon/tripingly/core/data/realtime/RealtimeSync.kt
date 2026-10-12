@@ -49,8 +49,15 @@ internal class RealtimeSync(
     override fun stop() = realtime.stop()
 
     internal suspend fun apply(event: RealtimeEvent) {
-        if (event is RealtimeEvent.MyTripsChanged) return myTripsRefreshes.request(MY_TRIPS)
-        event as RealtimeEvent.InTrip
+        when (event) {
+            is RealtimeEvent.InTrip -> applyInTrip(event)
+            is RealtimeEvent.MyTripsChanged -> myTripsRefreshes.request(MY_TRIPS)
+            // For the screens showing people; nothing cached changes.
+            is RealtimeEvent.FollowsChanged -> Unit
+        }
+    }
+
+    private suspend fun applyInTrip(event: RealtimeEvent.InTrip) {
         val byMe = event.actorId != null && event.actorId == currentUserId()
         when (event) {
             is RealtimeEvent.MarkerSaved -> if (!byMe) {
