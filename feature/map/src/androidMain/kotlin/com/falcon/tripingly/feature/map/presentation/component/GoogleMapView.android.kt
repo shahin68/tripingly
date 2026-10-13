@@ -1,7 +1,9 @@
 package com.falcon.tripingly.feature.map.presentation.component
 
-import androidx.compose.foundation.isSystemInDarkTheme
 import android.graphics.Point
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
@@ -17,19 +19,20 @@ import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asAndroidBitmap
-import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntSize
 import com.falcon.tripingly.core.location.model.Coordinates
 import com.falcon.tripingly.core.model.place.GeoBounds
-import com.falcon.tripingly.core.model.place.PlaceSquare
+import com.falcon.tripingly.core.model.place.PlaceCluster
 import com.falcon.tripingly.core.model.place.MapPlace
 import com.falcon.tripingly.core.model.place.PlaceCategory
 import com.falcon.tripingly.feature.map.domain.model.MapMarker
 import com.google.android.gms.maps.CameraUpdateFactory
+import com.google.android.gms.maps.model.BitmapDescriptor
 import com.google.android.gms.maps.model.BitmapDescriptorFactory
 import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.LatLng
@@ -40,12 +43,8 @@ import com.google.maps.android.compose.MapProperties
 import com.google.maps.android.compose.MapUiSettings
 import com.google.maps.android.compose.Marker
 import com.google.maps.android.compose.MarkerComposable
-import com.google.maps.android.compose.TileOverlay
 import com.google.maps.android.compose.rememberCameraPositionState
 import com.google.maps.android.compose.rememberUpdatedMarkerState
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.collectLatest
-import kotlinx.coroutines.flow.filter
 
 @Composable
 actual fun GoogleMapView(
@@ -53,13 +52,16 @@ actual fun GoogleMapView(
     cameraTarget: Coordinates,
     zoomLevel: Float,
     markers: List<MapMarker>,
-    placeSource: MapPlaceSource?,
+    placePins: List<PlacePin>,
+    placeClusters: List<PlaceCluster>,
     selectedPlace: MapPlace?,
     isMyLocationEnabled: Boolean,
     coveredBottom: Dp,
     onCameraMove: (Coordinates, Float, GeoBounds?) -> Unit,
     onMapTouch: () -> Unit,
     onMapClick: (Coordinates) -> Unit,
+    onPlacePinClick: (MapPlace) -> Unit,
+    onClusterClick: (PlaceCluster) -> Unit,
     onMapLongClick: (Coordinates) -> Unit,
     onMarkerClick: (MapMarker) -> Unit,
 ) {
@@ -90,11 +92,6 @@ actual fun GoogleMapView(
             position.zoom,
             viewBounds(),
         )
-    }
-
-    fun visibleSquares(): List<PlaceSquare> {
-        val bounds = viewBounds() ?: return emptyList()
-        return PlaceSquare.covering(bounds, cameraPositionState.position.zoom.toInt())
     }
 
     // Sync camera position back to ViewModel when it stops moving
@@ -161,7 +158,7 @@ actual fun GoogleMapView(
         // The first camera report comes before the map can tell its bounds, so the squares around the view load from here.
         onMapLoaded = ::reportCamera,
     ) {
-        // Every pin look is drawn once, here where the map can take icons; the tiles copy them.
+        // Every pin look is drawn once, here where the map can take icons, and shared by every pin that looks the same.
         val categoryIcons = PlaceCategory.entries.associateWith { rememberVectorPainter(it.icon) }
         val placeColor = MaterialTheme.colorScheme.secondary
         val onPlaceColor = MaterialTheme.colorScheme.onSecondary
@@ -169,69 +166,74 @@ actual fun GoogleMapView(
         val onHotSpotColor = MaterialTheme.colorScheme.onTertiary
         val density = LocalDensity.current
         val layoutDirection = LocalLayoutDirection.current
-        fun drawPin(look: PlacePinLook) = drawPlacePin(
-            icon = categoryIcons.getValue(look.category),
-            size = look.size,
-            fill = if (look.isTripinly) hotSpotColor else placeColor,
-            iconColor = if (look.isTripinly) onHotSpotColor else onPlaceColor,
-            density = density,
-            layoutDirection = layoutDirection,
-        ).asAndroidBitmap()
+        val textMeasurer = rememberTextMeasurer()
+        val pinIcons = remember(placeColor, hotSpotColor, density) { mutableMapOf<PlacePinLook, BitmapDescriptor>() }
+        fun pinIcon(look: PlacePinLook) = pinIcons.getOrPut(look) {
+            BitmapDescriptorFactory.fromBitmap(
+                drawPlacePin(
+                    icon = categoryIcons.getValue(look.category),
+                    size = look.size,
+                    fill = if (look.isTripinly) hotSpotColor else placeColor,
+                    iconColor = if (look.isTripinly) onHotSpotColor else onPlaceColor,
+                    density = density,
+                    layoutDirection = layoutDirection,
+                ).asAndroidBitmap(),
+            )
+        }
+        val clusterIcons = remember(hotSpotColor, density) { mutableMapOf<Int, BitmapDescriptor>() }
 
-        val tileProvider = remember(placeColor, hotSpotColor, density) {
-            val looks = PlaceCategory.entries.flatMap { category ->
-                listOf(PlacePinLook(category, false, PlainPinSize)) + HotSpotSizes.map { PlacePinLook(category, true, it) }
-            }
-            PlaceTileProvider(
-                pins = looks.associateWith(::drawPin),
-                clusterColor = hotSpotColor.toArgb(),
-                onClusterColor = onHotSpotColor.toArgb(),
-                density = density.density,
-                fontScale = density.fontScale,
-            ).also { it.source = placeSource }
-        }
-        // Google can only drop every tile of an overlay, and its pins would blink while they are
-        // drawn again. So a redraw is a new overlay over the old one: its tiles fade in over the
-        // same pins, and the old overlay goes once they are there.
-        var overlays by remember { mutableStateOf(listOf(0)) }
-        fun redraw() {
-            overlays = listOf(overlays.last(), overlays.last() + 1)
-        }
-        LaunchedEffect(overlays) {
-            if (overlays.size > 1) {
-                delay(KEEP_REPLACED_OVERLAY_MILLIS)
-                overlays = overlays.takeLast(1)
-            }
-        }
-        // New stops hide their places: the tiles are drawn again without them.
-        LaunchedEffect(tileProvider, placeSource) {
-            if (tileProvider.source != placeSource) {
-                tileProvider.source = placeSource
-                redraw()
-            }
-            // A square in view reloaded with new places: the squares reloaded together are drawn
-            // again at once, from what the repository keeps.
-            placeSource?.changes?.filter { it in visibleSquares() }?.collectLatest {
-                delay(REDRAW_AFTER_MILLIS)
-                redraw()
+        // Place pins are markers, so they keep their size on screen while the camera zooms. The first ones
+        // (the most liked, then the best known) are drawn on top; a new pin fades in.
+        placePins.forEachIndexed { index, pin ->
+            // The tapped place is drawn bigger below.
+            if (pin.place.id == selectedPlace?.id) return@forEachIndexed
+            key(pin.place.id) {
+                val alpha = remember { Animatable(0f) }
+                LaunchedEffect(Unit) { alpha.animateTo(1f, tween(PIN_FADE_MILLIS)) }
+                Marker(
+                    state = rememberUpdatedMarkerState(position = LatLng(pin.place.location.lat, pin.place.location.lng)),
+                    icon = pinIcon(PlacePinLook(pin.place.category, pin.place.isTripinly, pin.size)),
+                    title = pin.place.name,
+                    anchor = Offset(0.5f, 0.5f),
+                    alpha = alpha.value,
+                    // Under the clusters and the stops.
+                    zIndex = PLACE_PINS_Z * (1 - (index + 1f) / (placePins.size + 1)),
+                    // No info window and no camera move of the map's own: the card and the camera are ours.
+                    onClick = {
+                        onPlacePinClick(pin.place)
+                        true
+                    },
+                )
             }
         }
-        overlays.forEachIndexed { index, overlay ->
-            key(overlay) { TileOverlay(tileProvider = tileProvider, fadeIn = true, zIndex = index.toFloat()) }
+        placeClusters.forEach { cluster ->
+            key(cluster.location) {
+                Marker(
+                    state = rememberUpdatedMarkerState(position = LatLng(cluster.location.lat, cluster.location.lng)),
+                    icon = clusterIcons.getOrPut(cluster.count) {
+                        BitmapDescriptorFactory.fromBitmap(
+                            drawClusterPin(cluster.count, hotSpotColor, onHotSpotColor, textMeasurer, density, layoutDirection).asAndroidBitmap(),
+                        )
+                    },
+                    anchor = Offset(0.5f, 0.5f),
+                    zIndex = PLACE_PINS_Z,
+                    onClick = {
+                        onClusterClick(cluster)
+                        true
+                    },
+                )
+            }
         }
 
-        // The tapped place is a real marker, bigger and on top of its pin in the tiles.
+        // The tapped place, bigger and on top.
         selectedPlace?.let { place ->
             key(place.id) {
-                val look = PlacePinLook(place.category, place.isTripinly, placePinSize(place, isSelected = true))
-                val icon = remember(look, placeColor, hotSpotColor, density) { BitmapDescriptorFactory.fromBitmap(drawPin(look)) }
                 Marker(
                     state = rememberUpdatedMarkerState(position = LatLng(place.location.lat, place.location.lng)),
-                    icon = icon,
+                    icon = pinIcon(PlacePinLook(place.category, place.isTripinly, SelectedPinSize)),
                     title = place.name,
                     anchor = Offset(0.5f, 0.5f),
                     zIndex = 2f,
-                    // No info window and no camera move of the map's own: the card and the camera are ours.
                     onClick = { true },
                 )
             }
@@ -270,11 +272,11 @@ actual fun GoogleMapView(
     }
 }
 
-/** Lets the squares of one background reload arrive before the tiles are drawn again. */
-private const val REDRAW_AFTER_MILLIS = 300L
+/** A new place pin fades in, as Google's own pins do. */
+private const val PIN_FADE_MILLIS = 250
 
-/** Long enough for the new overlay's tiles to be drawn from the kept squares and faded in. */
-private const val KEEP_REPLACED_OVERLAY_MILLIS = 1_500L
+/** Place pins sit under this, the stops at 1 and the tapped place at 2. */
+private const val PLACE_PINS_Z = 0.5f
 
 /** How long the camera takes to fly to a pin, a search result or the user's location. */
 private const val CAMERA_MOVE_MILLIS = 400

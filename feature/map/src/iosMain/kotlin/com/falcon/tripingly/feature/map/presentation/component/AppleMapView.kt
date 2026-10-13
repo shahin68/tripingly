@@ -2,18 +2,13 @@ package com.falcon.tripingly.feature.map.presentation.component
 
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.interop.UIKitView
 import com.falcon.tripingly.core.location.model.Coordinates
 import com.falcon.tripingly.core.model.place.GeoBounds
 import com.falcon.tripingly.core.model.place.MapPlace
-import com.falcon.tripingly.core.model.place.PlaceSquare
-import com.falcon.tripingly.core.model.place.PlacesInView
+import com.falcon.tripingly.core.model.place.PlaceCluster
 import com.falcon.tripingly.feature.map.domain.model.MapMarker
 import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.cinterop.useContents
@@ -29,9 +24,6 @@ import platform.MapKit.MKPointAnnotation
 import platform.MapKit.MKPointOfInterestFilter
 import platform.UIKit.UIColor
 import platform.darwin.NSObject
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.filter
-import kotlin.math.floor
 import kotlin.math.log2
 import kotlin.math.pow
 
@@ -46,7 +38,8 @@ internal fun AppleMapView(
     cameraTarget: Coordinates,
     zoomLevel: Float,
     markers: List<MapMarker>,
-    placeSource: MapPlaceSource?,
+    placePins: List<PlacePin>,
+    placeClusters: List<PlaceCluster>,
     selectedPlace: MapPlace?,
     isMyLocationEnabled: Boolean,
     onCameraMove: (Coordinates, Float, GeoBounds?) -> Unit,
@@ -54,19 +47,6 @@ internal fun AppleMapView(
     onMapLongClick: (Coordinates) -> Unit,
     onMarkerClick: (MapMarker) -> Unit,
 ) {
-    // The squares in view, loaded once the region rests; see MapPlaceSource.
-    var view by remember { mutableStateOf<Pair<GeoBounds, Int>?>(null) }
-    var shown by remember { mutableStateOf(emptyList<PlacesInView>()) }
-    LaunchedEffect(placeSource, view) {
-        val (bounds, zoom) = view ?: return@LaunchedEffect
-        val source = placeSource ?: return@LaunchedEffect
-        delay(REGION_REST_MILLIS)
-        val squares = PlaceSquare.covering(bounds, zoom)
-        source.placesIn(squares)?.let { shown = it }
-        // A square in view reloaded with new places is drawn again.
-        source.changes.filter { it in squares }.collect { source.placesIn(squares)?.let { shown = it } }
-    }
-
     val delegate = remember {
         object : NSObject(), MKMapViewDelegateProtocol {
             var currentMarkers: List<MapMarker> = emptyList()
@@ -89,7 +69,6 @@ internal fun AppleMapView(
                     )
                 }
                 val zoom = log2(40_000_000.0 / latitudeMeters).toFloat()
-                view = bounds to floor(zoom).toInt()
                 onCameraMove(center, zoom, bounds)
             }
 
@@ -171,12 +150,12 @@ internal fun AppleMapView(
                 }
                 mapView.addAnnotation(annotation)
             }
-            val placeAnnotations = shown.flatMap { it.places }.map { place ->
+            val placeAnnotations = placePins.map { pin ->
                 MKPointAnnotation().apply {
-                    setCoordinate(CLLocationCoordinate2DMake(place.location.lat, place.location.lng))
-                    setTitle(place.name)
+                    setCoordinate(CLLocationCoordinate2DMake(pin.place.location.lat, pin.place.location.lng))
+                    setTitle(pin.place.name)
                 }
-            } + shown.flatMap { it.clusters }.map { cluster ->
+            } + placeClusters.map { cluster ->
                 MKPointAnnotation().apply {
                     setCoordinate(CLLocationCoordinate2DMake(cluster.location.lat, cluster.location.lng))
                     // Shown as the glyph.
@@ -189,4 +168,3 @@ internal fun AppleMapView(
     )
 }
 
-private const val REGION_REST_MILLIS = 300L

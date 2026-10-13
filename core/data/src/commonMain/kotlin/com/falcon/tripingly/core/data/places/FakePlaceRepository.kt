@@ -29,10 +29,10 @@ class FakePlaceRepository : PlaceRepository {
     )
 
     private val sights = listOf(
-        MapPlace("fake-eiffel", "Eiffel Tower", PlaceCategory.Landmark, GeoPoint(48.8584, 2.2945), isTripinly = true, likeCount = 12),
-        MapPlace("fake-louvre", "Louvre", PlaceCategory.Museum, GeoPoint(48.8606, 2.3376), isTripinly = true, likeCount = 8),
-        MapPlace("fake-stephansdom", "Stephansdom", PlaceCategory.Attraction, GeoPoint(48.2085, 16.3731), isTripinly = true, likeCount = 5),
-        MapPlace("fake-cafe-central", "Café Central", PlaceCategory.Cafe, GeoPoint(48.2104, 16.3655), isTripinly = false, likeCount = 0),
+        MapPlace("fake-eiffel", "Eiffel Tower", PlaceCategory.Landmark, GeoPoint(48.8584, 2.2945), isTripinly = true, likeCount = 12, prominence = 100),
+        MapPlace("fake-louvre", "Louvre", PlaceCategory.Museum, GeoPoint(48.8606, 2.3376), isTripinly = true, likeCount = 8, prominence = 97),
+        MapPlace("fake-stephansdom", "Stephansdom", PlaceCategory.Attraction, GeoPoint(48.2085, 16.3731), isTripinly = true, likeCount = 5, prominence = 90),
+        MapPlace("fake-cafe-central", "Café Central", PlaceCategory.Cafe, GeoPoint(48.2104, 16.3655), isTripinly = false, likeCount = 0, prominence = 40),
     )
 
     override suspend fun search(query: String, near: GeoPoint?): AppResult<List<PlaceSearchResult>, DataError.Network> {

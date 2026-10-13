@@ -16,4 +16,10 @@ data class AppConfig(
     val photoJpegQuality: Int = 85,
     /** Photos uploaded at the same time. */
     val photoParallelUploads: Int = 2,
+    /** A place's prominence from which its map pin is drawn largest. */
+    val pinLargeMinProminence: Int = 95,
+    /** A place's prominence from which its map pin is drawn middle-sized; below it, smallest. */
+    val pinMediumMinProminence: Int = 60,
+    /** Most place pins drawn on the map at once: liked places first, then the best known. */
+    val mapMaxPins: Int = 150,
 )

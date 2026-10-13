@@ -127,7 +127,7 @@ REST over HTTPS, JSON, base path `/v1`.
 | Method | Path | Notes |
 |---|---|---|
 | GET | `/places/in-view?bbox=minLng,minLat,maxLng,maxLat&zoom=&categories=&limit=` | Places for the visible map area: Tripinly places first, OSM places when zoomed in, clusters when zoomed out |
-| GET | `/places/tiles?tiles=level/x/y,…&zoom=&categories=&limit=` | The same places for up to 16 fixed map squares (side `360 / 2^level` degrees) in one request: `{ tiles: [{ tile, places[], clusters[] }], attribution }`. The app loads places this way (backend #26) |
+| GET | `/places/tiles?tiles=level/x/y,…&zoom=&categories=&limit=` | The same places for up to 16 fixed map squares (side `360 / 2^level` degrees) in one request: `{ tiles: [{ tile, places[], clusters[] }], attribution }`. The app loads places this way (backend #26). Every place carries `prominence` (0–100, how well known; backend#36), and well-known places come first in each square so they stay as the map zooms in |
 | GET | `/places/search?q=&lat=&lng=&scope=` | Our places + Photon addresses/cities merged. `scope=destination` (the Create Trip destination): only countries, regions, cities and districts, cities first |
 | GET | `/places/nearby?lat=&lng=&cursor=&limit=` | Popular places around the user with `distanceMeters`; Social → Nearby, pages of 20, asked once per opening with the first location fix; location not stored |
 | GET | `/places/popular?bbox=…&excludeTripId=` | Tripinly places only in the visible area, excluding places already in the trip |
@@ -165,7 +165,7 @@ Response shapes and behaviour: see `05-maps-places-routing.md`.
 ### Ops
 | Method | Path | Notes |
 |---|---|---|
-| GET | `/app-config` | Settings that tune the app, no auth, read once per launch: `{ placesRefreshSeconds, photoMaxEdgePx, photoJpegQuality, photoParallelUploads }` (how old a kept map square may get before it's reloaded in the background, default 300; the long edge a photo is shrunk to before upload, default 2560; its JPEG quality, default 85; uploads at a time, default 2; backend#29). Values change on the server's env vars without an app update; feature flags come here after v1 (backend #27) |
+| GET | `/app-config` | Settings that tune the app, no auth, read once per launch: `{ placesRefreshSeconds, photoMaxEdgePx, photoJpegQuality, photoParallelUploads, pinLargeMinProminence, pinMediumMinProminence, mapMaxPins }` (how old a kept map square may get before it's reloaded in the background, default 300; the long edge a photo is shrunk to before upload, default 2560; its JPEG quality, default 85; uploads at a time, default 2; backend#29; the prominence from which a place pin is drawn large, default 95, or medium, default 60; most place pins on the map at once, default 150; backend#36). Values change on the server's env vars without an app update; feature flags come here after v1 (backend #27) |
 | GET | `/health` | Liveness (no auth) |
 | GET | `/health/ready` | DB + Redis reachable |
 | GET | `/.well-known/assetlinks.json`, `/.well-known/apple-app-site-association` | Android App Links / iOS Universal Links for invite and share URLs (served on the app-link domain) |

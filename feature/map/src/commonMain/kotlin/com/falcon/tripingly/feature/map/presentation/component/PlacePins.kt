@@ -11,6 +11,8 @@ import androidx.compose.material.icons.filled.Museum
 import androidx.compose.material.icons.filled.Park
 import androidx.compose.material.icons.filled.Place
 import androidx.compose.material.icons.filled.Restaurant
+import androidx.compose.runtime.Immutable
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Canvas
 import androidx.compose.ui.graphics.Color
@@ -20,12 +22,22 @@ import androidx.compose.ui.graphics.drawscope.CanvasDrawScope
 import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.TextMeasurer
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.drawText
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.falcon.tripingly.core.model.config.AppConfig
+import com.falcon.tripingly.core.model.place.GeoBounds
 import com.falcon.tripingly.core.model.place.MapPlace
 import com.falcon.tripingly.core.model.place.PlaceCategory
+import com.falcon.tripingly.core.model.place.PlaceCluster
+import com.falcon.tripingly.core.model.place.PlacesInView
+import kotlin.math.ceil
 
 /** What a kind of place looks like, on its pin and in its card. */
 val PlaceCategory.icon: ImageVector
@@ -42,23 +54,60 @@ val PlaceCategory.icon: ImageVector
         PlaceCategory.Other -> Icons.Default.Place
     }
 
-/** How big a place pin is: hot spots grow with their likes, and the tapped place is the biggest. */
-fun placePinSize(place: MapPlace, isSelected: Boolean): Dp = when {
-    isSelected -> 44.dp
-    place.isTripinly -> hotSpotSize(place.likeCount)
-    else -> PlainPinSize
+/** A place's pin on the map and how big it is drawn. */
+@Immutable
+data class PlacePin(val place: MapPlace, val size: Dp)
+
+/**
+ * The place pins for the squares in view: places inside [area] that aren't stops of the trip ([hiddenPlaceIds]),
+ * liked places first (the most liked first), then the best known, at most [AppConfig.mapMaxPins]. Pins keep their
+ * size on screen, so each one costs the map; the server already puts a square's best places first.
+ */
+fun placePins(squares: Collection<PlacesInView>, area: GeoBounds, hiddenPlaceIds: Set<String>, config: AppConfig): List<PlacePin> =
+    squares.asSequence()
+        .flatMap { it.places }
+        .filter { it.location in area && it.id !in hiddenPlaceIds }
+        .distinctBy { it.id }
+        .sortedWith(PinOrder)
+        .take(config.mapMaxPins)
+        .map { PlacePin(it, placePinSize(it, config)) }
+        .toList()
+
+/** The clusters of liked places inside [area]. */
+fun placeClusters(squares: Collection<PlacesInView>, area: GeoBounds): List<PlaceCluster> =
+    squares.flatMap { it.clusters }.filter { it.location in area }
+
+private val PinOrder = compareByDescending<MapPlace> { it.isTripinly }
+    .thenByDescending { it.likeCount }
+    .thenByDescending { it.prominence }
+    .thenBy { it.id }
+
+/**
+ * How big a place's pin is: the better known, the bigger ([AppConfig.pinLargeMinProminence] and
+ * [AppConfig.pinMediumMinProminence]). A liked place grows with its likes too and takes the bigger size.
+ */
+fun placePinSize(place: MapPlace, config: AppConfig): Dp {
+    val byProminence = when {
+        place.prominence >= config.pinLargeMinProminence -> PinSizes[2]
+        place.prominence >= config.pinMediumMinProminence -> PinSizes[1]
+        else -> PinSizes[0]
+    }
+    return if (place.isTripinly) maxOf(byProminence, hotSpotSize(place.likeCount)) else byProminence
 }
 
-/** Hot spots in three sizes ([HotSpotSizes]), so the most liked places stand out. */
+/** Liked places in three sizes, so the most liked stand out. */
 fun hotSpotSize(likeCount: Int): Dp = when {
     likeCount >= 20 -> HotSpotSizes[2]
     likeCount >= 5 -> HotSpotSizes[1]
     else -> HotSpotSizes[0]
 }
 
-/** Every size a pin comes in on the map, besides the tapped one. */
-val PlainPinSize: Dp = 22.dp
+/** Place pins by prominence: below medium, medium, large. */
+val PinSizes: List<Dp> = listOf(18.dp, 30.dp, 36.dp)
 val HotSpotSizes: List<Dp> = listOf(24.dp, 30.dp, 36.dp)
+
+/** The tapped place, the biggest pin. */
+val SelectedPinSize: Dp = 44.dp
 
 /**
  * Draws a place pin into a bitmap: a round badge with the place's category icon. The map reuses one
@@ -88,3 +137,38 @@ fun drawPlacePin(
 
 /** What a pin looks like. */
 internal data class PlacePinLook(val category: PlaceCategory, val isTripinly: Boolean, val size: Dp)
+
+/**
+ * Draws a cluster of liked places: a bubble with their count in bold, in a white ring, at least
+ * [CLUSTER_RADIUS] round and wider for long counts.
+ */
+fun drawClusterPin(
+    count: Int,
+    fill: Color,
+    textColor: Color,
+    textMeasurer: TextMeasurer,
+    density: Density,
+    layoutDirection: LayoutDirection,
+): ImageBitmap {
+    val text = textMeasurer.measure(
+        count.toString(),
+        TextStyle(color = textColor, fontSize = CLUSTER_TEXT, fontWeight = FontWeight.Bold),
+        density = density,
+        layoutDirection = layoutDirection,
+    )
+    val radius = with(density) { maxOf(CLUSTER_RADIUS.toPx(), text.size.width / 2f + CLUSTER_PADDING.toPx()) }
+    val border = with(density) { CLUSTER_BORDER.toPx() }
+    val px = ceil(radius * 2).toInt()
+    val bitmap = ImageBitmap(px, px)
+    CanvasDrawScope().draw(density, layoutDirection, Canvas(bitmap), Size(px.toFloat(), px.toFloat())) {
+        drawCircle(Color.White, radius)
+        drawCircle(fill, radius - border)
+        drawText(text, topLeft = Offset((size.width - text.size.width) / 2, (size.height - text.size.height) / 2))
+    }
+    return bitmap
+}
+
+private val CLUSTER_RADIUS = 18.dp
+private val CLUSTER_PADDING = 8.dp
+private val CLUSTER_BORDER = 2.dp
+private val CLUSTER_TEXT = 14.sp

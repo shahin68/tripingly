@@ -79,6 +79,8 @@ internal class DefaultPlaceRepository(
                             location = location,
                             isTripinly = item.isTripinly,
                             likeCount = item.likeCount.toInt(),
+                            // Search results don't say.
+                            prominence = 0,
                         )
                     },
                     osm = item.osmId?.let { osmId -> item.osmType?.let { OsmRef(it.toOsmType(), osmId) } },
@@ -174,6 +176,7 @@ internal class DefaultPlaceRepository(
         location = GeoPoint(location.lat, location.lng),
         isTripinly = isTripinly,
         likeCount = likeCount.toInt(),
+        prominence = prominence.toInt(),
     )
 
     private fun SearchResultDto.OsmType.toOsmType() = when (this) {

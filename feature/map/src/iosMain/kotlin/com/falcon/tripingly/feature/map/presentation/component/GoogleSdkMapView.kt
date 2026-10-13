@@ -10,10 +10,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.viewinterop.UIKitInteropInteractionMode
 import androidx.compose.ui.viewinterop.UIKitInteropProperties
@@ -22,17 +22,14 @@ import com.falcon.tripingly.core.location.model.Coordinates
 import com.falcon.tripingly.core.model.place.GeoBounds
 import com.falcon.tripingly.core.model.place.MapPlace
 import com.falcon.tripingly.core.model.place.PlaceCategory
-import com.falcon.tripingly.core.model.place.PlaceSquare
+import com.falcon.tripingly.core.model.place.PlaceCluster
 import com.falcon.tripingly.feature.map.domain.model.MapMarker
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.collectLatest
-import kotlinx.coroutines.flow.filter
 import platform.UIKit.UIImage
 import kotlin.math.abs
 
 /**
- * Google's map on iOS, driven like the Android one: place pins painted into tiles, stops as
- * numbered markers, the tapped place as a bigger marker on top.
+ * Google's map on iOS, driven like the Android one: place pins as markers that keep their size on
+ * screen, stops as numbered markers, the tapped place as a bigger marker on top.
  */
 @OptIn(ExperimentalComposeUiApi::class)
 @Composable
@@ -42,17 +39,24 @@ internal fun GoogleSdkMapView(
     cameraTarget: Coordinates,
     zoomLevel: Float,
     markers: List<MapMarker>,
-    placeSource: MapPlaceSource?,
+    placePins: List<PlacePin>,
+    placeClusters: List<PlaceCluster>,
     selectedPlace: MapPlace?,
     isMyLocationEnabled: Boolean,
     coveredBottom: Dp,
     onCameraMove: (Coordinates, Float, GeoBounds?) -> Unit,
     onMapTouch: () -> Unit,
     onMapClick: (Coordinates) -> Unit,
+    onPlacePinClick: (MapPlace) -> Unit,
+    onClusterClick: (PlaceCluster) -> Unit,
     onMapLongClick: (Coordinates) -> Unit,
     onMarkerClick: (MapMarker) -> Unit,
 ) {
     val currentMarkers by rememberUpdatedState(markers)
+    val currentPlacePins by rememberUpdatedState(placePins)
+    val currentPlaceClusters by rememberUpdatedState(placeClusters)
+    val currentOnPlacePinClick by rememberUpdatedState(onPlacePinClick)
+    val currentOnClusterClick by rememberUpdatedState(onClusterClick)
     val currentOnCameraMove by rememberUpdatedState(onCameraMove)
     val currentOnMapTouch by rememberUpdatedState(onMapTouch)
     val currentOnMapClick by rememberUpdatedState(onMapClick)
@@ -76,7 +80,6 @@ internal fun GoogleSdkMapView(
                     val bounds = GeoBounds(south, west, north, east)
                     camera.center = Coordinates(latitude, longitude)
                     camera.zoom = zoom
-                    camera.bounds = bounds
                     currentOnCameraMove(Coordinates(latitude, longitude), zoom, bounds)
                 }
 
@@ -94,7 +97,13 @@ internal fun GoogleSdkMapView(
 
                 override fun onMarkerTap(key: String) {
                     currentOnMapTouch()
-                    currentMarkers.find { it.id == key }?.let(currentOnMarkerClick)
+                    when {
+                        key.startsWith(PLACE_KEY) ->
+                            currentPlacePins.find { PLACE_KEY + it.place.id == key }?.let { currentOnPlacePinClick(it.place) }
+                        key.startsWith(CLUSTER_KEY) ->
+                            currentPlaceClusters.find { it.key() == key }?.let(currentOnClusterClick)
+                        else -> currentMarkers.find { it.id == key }?.let(currentOnMarkerClick)
+                    }
                 }
             },
         )
@@ -116,7 +125,7 @@ internal fun GoogleSdkMapView(
     // As much room at the top as at the bottom keeps the camera's center in the middle of the view.
     LaunchedEffect(coveredBottom) { map.setPadding(coveredBottom.value.toDouble(), coveredBottom.value.toDouble()) }
 
-    // Every pin look is drawn once; the tiles copy them.
+    // Every pin look is drawn once and shared by every pin that looks the same.
     val categoryIcons = PlaceCategory.entries.associateWith { rememberVectorPainter(it.icon) }
     val placeColor = MaterialTheme.colorScheme.secondary
     val onPlaceColor = MaterialTheme.colorScheme.onSecondary
@@ -124,52 +133,25 @@ internal fun GoogleSdkMapView(
     val onHotSpotColor = MaterialTheme.colorScheme.onTertiary
     val density = LocalDensity.current
     val layoutDirection = LocalLayoutDirection.current
-    fun drawPin(look: PlacePinLook) = drawPlacePin(
-        icon = categoryIcons.getValue(look.category),
-        size = look.size,
-        fill = if (look.isTripinly) hotSpotColor else placeColor,
-        iconColor = if (look.isTripinly) onHotSpotColor else onPlaceColor,
-        density = density,
-        layoutDirection = layoutDirection,
-    )
-
-    val tiles = remember(placeColor, hotSpotColor, density) {
-        val looks = PlaceCategory.entries.flatMap { category ->
-            listOf(PlacePinLook(category, false, PlainPinSize)) + HotSpotSizes.map { PlacePinLook(category, true, it) }
-        }
-        PlaceTilePainter(
-            pins = looks.associateWith(::drawPin),
-            clusterColor = hotSpotColor.toArgb(),
-            onClusterColor = onHotSpotColor.toArgb(),
-            density = density.density,
-            fontScale = density.fontScale,
-        ).also { it.source = placeSource }
+    val textMeasurer = rememberTextMeasurer()
+    val pinIcons = remember(placeColor, hotSpotColor, density) { mutableMapOf<PlacePinLook, UIImage>() }
+    fun pinIcon(look: PlacePinLook) = pinIcons.getOrPut(look) {
+        drawPlacePin(
+            icon = categoryIcons.getValue(look.category),
+            size = look.size,
+            fill = if (look.isTripinly) hotSpotColor else placeColor,
+            iconColor = if (look.isTripinly) onHotSpotColor else onPlaceColor,
+            density = density,
+            layoutDirection = layoutDirection,
+        ).toUIImage(density.density)
     }
-    LaunchedEffect(tiles) { map.setTiles(tiles) }
-    // New stops hide their places: the tiles are drawn again without them.
-    LaunchedEffect(tiles, placeSource) {
-        if (tiles.source != placeSource) {
-            tiles.source = placeSource
-            map.redrawTiles()
-        }
-        // A square in view reloaded with new places: the squares reloaded together are drawn again
-        // at once, from what the repository keeps.
-        placeSource?.changes?.filter { it in camera.visibleSquares() }?.collectLatest {
-            delay(REDRAW_AFTER_MILLIS)
-            map.redrawTiles()
-        }
-    }
+    val clusterIcons = remember(hotSpotColor, density) { mutableMapOf<Int, UIImage>() }
 
     // A stop's pin is drawn once per number and color.
     // By number, color and cover photo (once its thumbnail has loaded).
     val stopIcons = remember(density) { mutableMapOf<Triple<Int, Long, String?>, UIImage>() }
     val coverThumbs = rememberCoverThumbs(markers)
-    val selectedPlaceIcon = remember(selectedPlace?.id, selectedPlace?.category, selectedPlace?.isTripinly, placeColor, hotSpotColor, density) {
-        selectedPlace?.let { place ->
-            drawPin(PlacePinLook(place.category, place.isTripinly, placePinSize(place, isSelected = true))).toUIImage(density.density)
-        }
-    }
-    LaunchedEffect(markers, coverThumbs, selectedPlace, selectedPlaceIcon) {
+    LaunchedEffect(markers, coverThumbs, selectedPlace, placePins, placeClusters, pinIcons, clusterIcons) {
         val stops = markers.map { marker ->
             GoogleMapMarker(
                 key = marker.id,
@@ -191,26 +173,57 @@ internal fun GoogleSdkMapView(
                 zIndex = 1,
                 // The stop's card shows instead.
                 showsInfoWindow = false,
+                fadesIn = false,
             )
         }
-        // The tapped place is a real marker, bigger and on top of its pin in the tiles. No info
-        // window and no camera move of the map's own: the card and the camera are ours.
-        val place = if (selectedPlace != null && selectedPlaceIcon != null) {
+        // The first pins (the most liked, then the best known) on top; the tapped place is drawn bigger below.
+        val pins = placePins.filter { it.place.id != selectedPlace?.id }.mapIndexed { index, pin ->
+            GoogleMapMarker(
+                key = PLACE_KEY + pin.place.id,
+                latitude = pin.place.location.lat,
+                longitude = pin.place.location.lng,
+                title = pin.place.name,
+                icon = pinIcon(PlacePinLook(pin.place.category, pin.place.isTripinly, pin.size)),
+                anchorX = 0.5,
+                anchorY = 0.5,
+                zIndex = -1 - index,
+                showsInfoWindow = false,
+                fadesIn = true,
+            )
+        }
+        val clusters = placeClusters.map { cluster ->
+            GoogleMapMarker(
+                key = cluster.key(),
+                latitude = cluster.location.lat,
+                longitude = cluster.location.lng,
+                title = cluster.count.toString(),
+                icon = clusterIcons.getOrPut(cluster.count) {
+                    drawClusterPin(cluster.count, hotSpotColor, onHotSpotColor, textMeasurer, density, layoutDirection).toUIImage(density.density)
+                },
+                anchorX = 0.5,
+                anchorY = 0.5,
+                zIndex = 0,
+                showsInfoWindow = false,
+                fadesIn = true,
+            )
+        }
+        // The tapped place, bigger and on top. No info window and no camera move of the map's own: the
+        // card and the camera are ours.
+        val place = selectedPlace?.let {
             GoogleMapMarker(
                 key = SELECTED_PLACE_KEY,
-                latitude = selectedPlace.location.lat,
-                longitude = selectedPlace.location.lng,
-                title = selectedPlace.name,
-                icon = selectedPlaceIcon,
+                latitude = it.location.lat,
+                longitude = it.location.lng,
+                title = it.name,
+                icon = pinIcon(PlacePinLook(it.category, it.isTripinly, SelectedPinSize)),
                 anchorX = 0.5,
                 anchorY = 0.5,
                 zIndex = 2,
                 showsInfoWindow = false,
+                fadesIn = false,
             )
-        } else {
-            null
         }
-        map.setMarkers(stops + listOfNotNull(place))
+        map.setMarkers(pins + clusters + stops + listOfNotNull(place))
     }
 
     UIKitView(
@@ -225,13 +238,11 @@ internal fun GoogleSdkMapView(
 private class CameraRest {
     var center: Coordinates? = null
     var zoom: Float = 0f
-    var bounds: GeoBounds? = null
-
-    fun visibleSquares(): List<PlaceSquare> = bounds?.let { PlaceSquare.covering(it, zoom.toInt()) }.orEmpty()
 }
 
-/** Not a stop id: stop ids are UUIDs. */
-private const val SELECTED_PLACE_KEY = "selected-place"
+private fun PlaceCluster.key() = "$CLUSTER_KEY${location.lat},${location.lng}"
 
-/** Lets the squares of one background reload arrive before the tiles are drawn again. */
-private const val REDRAW_AFTER_MILLIS = 300L
+// Marker keys that aren't stop ids: stop ids are UUIDs.
+private const val SELECTED_PLACE_KEY = "selected-place"
+private const val PLACE_KEY = "place:"
+private const val CLUSTER_KEY = "cluster:"

@@ -18,7 +18,7 @@ Read `docs/knowledge/05-maps-places-routing.md` first. Check `06-current-state.m
 
 ## Implementation notes
 
-**Camera idle → in-view places:** debounce 300 ms, cancel the previous job, compute bbox from the visible region, round the bbox a little outward (so small pans hit the cache), call `/places/in-view`. Keep previous pins until the new ones arrive (no flicker).
+**Camera idle → places by square:** load the squares in view (`PlaceRepository.placesIn`, kept squares answer at once) and prefetch the ring around them 300 ms later; build the pin list in `MapViewModel` (`placePins`: in view, not a stop, liked first then by prominence, capped by `mapMaxPins` from app-config, sized by `placePinSize`). Keep previous pins until the new ones arrive (no flicker). Pins are native markers so they keep their size while the camera zooms.
 
 **Diffing pins:** keep a map `id → native marker`; add/remove/update only what changed. Never clear and redraw all markers on each update.
 
