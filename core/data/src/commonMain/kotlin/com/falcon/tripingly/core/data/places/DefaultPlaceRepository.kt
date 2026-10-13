@@ -79,7 +79,7 @@ internal class DefaultPlaceRepository(
                             location = location,
                             isTripinly = item.isTripinly,
                             likeCount = item.likeCount.toInt(),
-                            // Search results don't say.
+                            // GET /places/search doesn't send prominence. It only sizes pins, and a picked place is drawn as the selected pin.
                             prominence = 0,
                         )
                     },
