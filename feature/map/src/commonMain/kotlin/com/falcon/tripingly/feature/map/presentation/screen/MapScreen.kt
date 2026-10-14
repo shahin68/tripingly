@@ -95,7 +95,7 @@ import com.falcon.tripingly.feature.map.presentation.component.GoogleMapView
 import com.falcon.tripingly.feature.map.presentation.component.PlaceCard
 import com.falcon.tripingly.feature.map.presentation.component.StopCard
 import com.falcon.tripingly.feature.map.presentation.component.fitCamera
-import com.falcon.tripingly.feature.map.presentation.component.placePinSize
+import com.falcon.tripingly.feature.map.presentation.component.SelectedPinSize
 import com.falcon.tripingly.feature.map.presentation.component.stopPinHeight
 import com.falcon.tripingly.feature.map.presentation.photos.rememberPhotoPicker
 import com.falcon.tripingly.feature.map.presentation.screen.MapViewModel.Action
@@ -176,13 +176,16 @@ fun MapScreen(
             cameraTarget = state.cameraTarget,
             zoomLevel = state.zoomLevel,
             markers = markers,
-            placeSource = state.placeSource,
+            placePins = state.placePins,
+            placeClusters = state.placeClusters,
             selectedPlace = state.selectedPlace,
             isMyLocationEnabled = state.isPermissionGranted,
             coveredBottom = with(density) { if (bottomCardsTop > 0f) (mapSize.height - bottomCardsTop).toDp() else 0.dp },
             onCameraMove = { coords, zoom, bounds -> onAction(Action.OnCameraMove(coords, zoom, bounds)) },
             onMapTouch = { onAction(Action.OnScreenTouch) },
             onMapClick = { coords -> onAction(Action.OnMapClick(coords)) },
+            onPlacePinClick = { place -> onAction(Action.OnPlacePinClick(place)) },
+            onClusterClick = { cluster -> onAction(Action.OnClusterClick(cluster)) },
             onMapLongClick = { coords -> onAction(Action.OnMapLongClick(coords)) },
             onMarkerClick = { marker -> onAction(Action.OnMarkerClick(marker)) },
         )
@@ -274,7 +277,7 @@ fun MapScreen(
         // The camera has centered the tapped pin, so the card opens just above the middle of the map,
         // growing out of the pin, and shrinks back into it when it closes.
         val place = card.selectedPlace
-        val pinClearance = place?.let { placePinSize(it, isSelected = true) / 2 + MaterialTheme.spacing.small } ?: 0.dp
+        val pinClearance = place?.let { SelectedPinSize / 2 + MaterialTheme.spacing.small } ?: 0.dp
         AnimatedVisibility(
             visible = isPlaceCardShown,
             enter = scaleIn(transformOrigin = TransformOrigin(0.5f, 1f)) + fadeIn(),

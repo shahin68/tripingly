@@ -6,6 +6,7 @@ import com.falcon.tripingly.core.common.error.DataError
 import com.falcon.tripingly.core.common.result.AppResult
 import com.falcon.tripingly.core.common.result.asError
 import com.falcon.tripingly.core.common.result.asSuccess
+import com.falcon.tripingly.core.data.config.FakeAppConfigRepository
 import com.falcon.tripingly.core.data.photos.FakePhotoRepository
 import com.falcon.tripingly.core.data.places.FakePlaceRepository
 import com.falcon.tripingly.core.data.places.PlaceRepository
@@ -37,6 +38,7 @@ import com.falcon.tripingly.feature.map.generated.resources.Res
 import com.falcon.tripingly.feature.map.generated.resources.error_location_denied_manual
 import com.falcon.tripingly.feature.map.generated.resources.error_location_permission_required
 import com.falcon.tripingly.feature.map.generated.resources.map_change_not_saved
+import com.falcon.tripingly.feature.map.presentation.component.PinSizes
 import com.falcon.tripingly.feature.map.presentation.screen.MapViewModel
 import com.falcon.tripingly.feature.map.presentation.screen.MapViewModel.Action
 import com.falcon.tripingly.feature.map.presentation.screen.MapViewModel.Confirm
@@ -138,9 +140,13 @@ class MapViewModelTest {
         placeRepository = places,
         photoRepository = photos,
         socialRepository = FakeSocialRepository(),
+        appConfigRepository = FakeAppConfigRepository(),
         getCurrentLocationUseCase = GetCurrentLocationUseCase(fakeLocationRepository),
         dispatchers = TestCoroutineDispatchers(testDispatcher),
     ).also { viewModel -> backgroundScope.launch { viewModel.uiState.collect {} } }
+
+    /** The place of the pin named [name] on the map. */
+    private fun MapViewModel.pin(name: String): MapPlace = uiState.value.placePins.single { it.place.name == name }.place
 
     @Test
     fun `opening a trip shows its days from the server`() = runTest(testDispatcher) {
@@ -669,19 +675,21 @@ class MapViewModelTest {
     }
 
     @Test
-    fun `the squares around the view load once the camera has rested`() = runTest(testDispatcher) {
+    fun `the squares in view load when the camera rests, the ones around them once it stays`() = runTest(testDispatcher) {
         val viewModel = viewModel()
         testScheduler.advanceUntilIdle()
+        val elsewhere = GeoBounds(47.9, 1.9, 48.1, 2.1)
 
-        // A fling reports several positions in a row; only the last one asks.
-        viewModel.onAction(Action.OnCameraMove(Coordinates(48.0, 2.0), 15f, GeoBounds(47.9, 1.9, 48.1, 2.1)))
+        // The camera rests twice in a row: each view's squares load at once, only the last one's ring.
+        viewModel.onAction(Action.OnCameraMove(Coordinates(48.0, 2.0), 15f, elsewhere))
         testScheduler.advanceTimeBy(100)
         viewModel.onAction(Action.OnCameraMove(Coordinates(48.86, 2.32), 15.6f, PARIS_CENTER))
         testScheduler.advanceTimeBy(299)
-        assertTrue(places.requests.isEmpty())
+        assertEquals(listOf(PlaceSquare.covering(elsewhere, 15), PlaceSquare.covering(PARIS_CENTER, 15)), places.requests)
 
         testScheduler.advanceUntilIdle()
-        assertEquals(listOf(PlaceSquare.covering(PARIS_CENTER, 15, ring = 1)), places.requests)
+        assertEquals(PlaceSquare.covering(PARIS_CENTER, 15, ring = 1), places.requests.last())
+        assertEquals(3, places.requests.size)
     }
 
     @Test
@@ -691,8 +699,7 @@ class MapViewModelTest {
         viewModel.onAction(Action.OnCameraMove(Coordinates(48.86, 2.32), 15f, PARIS_CENTER))
         testScheduler.advanceUntilIdle()
 
-        // A few points beside the Louvre's pin (about 0.00005° is one point at zoom 15).
-        viewModel.onAction(Action.OnMapClick(Coordinates(LOUVRE.lat + 0.0003, LOUVRE.lng - 0.0003)))
+        viewModel.onAction(Action.OnPlacePinClick(viewModel.pin("Louvre")))
         testScheduler.advanceUntilIdle()
         val louvre = assertNotNull(viewModel.uiState.value.selectedPlace)
         assertEquals("Louvre", louvre.name)
@@ -711,7 +718,7 @@ class MapViewModelTest {
         assertEquals("Louvre", stop.name)
         assertEquals(louvre.id, stop.placeId)
         // It shows as the stop only: its pin leaves the map, and a tap there is a tap on the map.
-        assertEquals(setOf(louvre.id), state.placeSource?.hiddenPlaceIds)
+        assertTrue(state.placePins.none { it.place.id == louvre.id })
         viewModel.onAction(Action.OnMapClick(Coordinates(LOUVRE.lat, LOUVRE.lng)))
         testScheduler.advanceUntilIdle()
         assertNull(viewModel.uiState.value.selectedPlace)
@@ -726,7 +733,7 @@ class MapViewModelTest {
             viewModel.onAction(Action.OnCameraMove(Coordinates(48.86, 2.32), 15f, PARIS_CENTER))
             testScheduler.advanceUntilIdle()
 
-            viewModel.onAction(Action.OnMapClick(Coordinates(LOUVRE.lat, LOUVRE.lng)))
+            viewModel.onAction(Action.OnPlacePinClick(viewModel.pin("Louvre")))
             testScheduler.advanceUntilIdle()
             assertNotNull(viewModel.uiState.value.selectedPlace)
             assertFalse(viewModel.uiState.value.isPlaceCardShown)
@@ -739,7 +746,7 @@ class MapViewModelTest {
             // Tapped again while centered: the touch closes the card, and the camera doesn't move, so the
             // card shows again at once.
             viewModel.onAction(Action.OnScreenTouch)
-            viewModel.onAction(Action.OnMapClick(Coordinates(LOUVRE.lat, LOUVRE.lng)))
+            viewModel.onAction(Action.OnPlacePinClick(viewModel.pin("Louvre")))
             testScheduler.advanceUntilIdle()
             assertTrue(viewModel.uiState.value.isPlaceCardShown)
 
@@ -753,7 +760,7 @@ class MapViewModelTest {
             // The user drags the map while the camera flies to another tap: the place closes.
             viewModel.onAction(Action.OnCameraMove(Coordinates(48.86, 2.32), 15f, PARIS_CENTER))
             viewModel.onAction(Action.OnScreenTouch)
-            viewModel.onAction(Action.OnMapClick(Coordinates(LOUVRE.lat, LOUVRE.lng)))
+            viewModel.onAction(Action.OnPlacePinClick(viewModel.pin("Louvre")))
             testScheduler.advanceUntilIdle()
             assertNotNull(viewModel.uiState.value.selectedPlace)
             viewModel.onAction(Action.OnCameraMove(Coordinates(48.85, 2.30), 15f, PARIS_CENTER))
@@ -763,13 +770,12 @@ class MapViewModelTest {
         }
 
     @Test
-    fun `a tap out of a pin's reach adds a stop`() = runTest(testDispatcher) {
+    fun `a tap on the bare map adds a stop`() = runTest(testDispatcher) {
         val viewModel = viewModel()
         testScheduler.advanceUntilIdle()
         viewModel.onAction(Action.OnCameraMove(Coordinates(48.86, 2.32), 15f, PARIS_CENTER))
         testScheduler.advanceUntilIdle()
 
-        // About 50 points east of the Louvre.
         viewModel.onAction(Action.OnMapClick(Coordinates(LOUVRE.lat, LOUVRE.lng + 0.0021)))
         testScheduler.advanceUntilIdle()
 
@@ -785,12 +791,25 @@ class MapViewModelTest {
         viewModel.onAction(Action.OnCameraMove(Coordinates(48.8, 2.2), 11f, GeoBounds(48.6, 2.0, 49.0, 2.4)))
         testScheduler.advanceUntilIdle()
 
-        viewModel.onAction(Action.OnMapClick(Coordinates(48.801, 2.201)))
+        viewModel.onAction(Action.OnClusterClick(viewModel.uiState.value.placeClusters.single()))
         testScheduler.advanceUntilIdle()
 
         assertEquals(Coordinates(48.80, 2.20), viewModel.uiState.value.cameraTarget)
         assertEquals(13f, viewModel.uiState.value.zoomLevel)
         assertTrue((backend.refreshTrip(trip.trip.id) as AppResult.Success).data.days[0].markers.isEmpty())
+    }
+
+    @Test
+    fun `pins are drawn for the places in view, bigger the better known`() = runTest(testDispatcher) {
+        val viewModel = viewModel()
+        testScheduler.advanceUntilIdle()
+        viewModel.onAction(Action.OnCameraMove(Coordinates(48.86, 2.32), 15f, PARIS_CENTER))
+        testScheduler.advanceUntilIdle()
+
+        val pins = viewModel.uiState.value.placePins
+        assertTrue(pins.isNotEmpty())
+        assertTrue(pins.all { it.place.location in PARIS_CENTER })
+        assertEquals(PinSizes[2], pins.single { it.place.name == "Louvre" }.size)
     }
 
     @Test
@@ -801,7 +820,7 @@ class MapViewModelTest {
         viewModel.onAction(Action.OnCameraMove(Coordinates(48.86, 2.32), 15f, PARIS_CENTER))
         testScheduler.advanceUntilIdle()
 
-        viewModel.onAction(Action.OnMapClick(Coordinates(LOUVRE.lat, LOUVRE.lng)))
+        viewModel.onAction(Action.OnPlacePinClick(viewModel.pin("Louvre")))
         testScheduler.advanceUntilIdle()
         viewModel.onAction(Action.OnAddPlaceToDay)
         testScheduler.advanceUntilIdle()

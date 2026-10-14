@@ -6,6 +6,7 @@ import androidx.compose.ui.unit.Dp
 import com.falcon.tripingly.core.location.model.Coordinates
 import com.falcon.tripingly.core.model.place.GeoBounds
 import com.falcon.tripingly.core.model.place.MapPlace
+import com.falcon.tripingly.core.model.place.PlaceCluster
 import com.falcon.tripingly.feature.map.domain.model.MapMarker
 
 @Composable
@@ -14,8 +15,13 @@ expect fun GoogleMapView(
     cameraTarget: Coordinates,
     zoomLevel: Float,
     markers: List<MapMarker>,
-    /** Our places and OpenStreetMap places, drawn under the stops by map square; null draws none. */
-    placeSource: MapPlaceSource?,
+    /**
+     * Our places and OpenStreetMap places, drawn under the stops as markers that keep their size on screen,
+     * the first ones on top.
+     */
+    placePins: List<PlacePin>,
+    /** Bubbles of liked places, drawn while zoomed out. */
+    placeClusters: List<PlaceCluster>,
     /** The tapped place, drawn bigger on top. */
     selectedPlace: MapPlace?,
     isMyLocationEnabled: Boolean,
@@ -29,8 +35,10 @@ expect fun GoogleMapView(
      * also reach the screen's own touch handling.
      */
     onMapTouch: () -> Unit,
-    /** Also a tap on a place pin: the pins are part of the map's tiles, see [MapPlaceSource]. */
+    /** A tap on the map, not on a pin. */
     onMapClick: (Coordinates) -> Unit,
+    onPlacePinClick: (MapPlace) -> Unit,
+    onClusterClick: (PlaceCluster) -> Unit,
     onMapLongClick: (Coordinates) -> Unit,
     onMarkerClick: (MapMarker) -> Unit,
 )

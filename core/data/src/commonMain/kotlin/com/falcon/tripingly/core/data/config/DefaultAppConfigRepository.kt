@@ -26,6 +26,9 @@ internal class DefaultAppConfigRepository(
                     photoMaxEdgePx = it.photoMaxEdgePx.toInt(),
                     photoJpegQuality = it.photoJpegQuality.toInt(),
                     photoParallelUploads = it.photoParallelUploads.toInt(),
+                    pinLargeMinProminence = it.pinLargeMinProminence.toInt(),
+                    pinMediumMinProminence = it.pinMediumMinProminence.toInt(),
+                    mapMaxPins = it.mapMaxPins.toInt(),
                 )
             }
         }

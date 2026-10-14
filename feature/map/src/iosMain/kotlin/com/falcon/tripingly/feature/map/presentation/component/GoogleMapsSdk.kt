@@ -2,7 +2,6 @@
 
 package com.falcon.tripingly.feature.map.presentation.component
 
-import platform.Foundation.NSData
 import platform.UIKit.UIImage
 import platform.UIKit.UIView
 import kotlin.experimental.ExperimentalObjCName
@@ -20,7 +19,7 @@ interface GoogleMapsSdk {
     fun createMap(listener: GoogleMapListener): GoogleMap
 }
 
-/** One map view. Called on the main thread, except [GoogleMapTiles.tile]. */
+/** One map view. Called on the main thread. */
 @ObjCName("GoogleMap", exact = true)
 interface GoogleMap {
     val view: UIView
@@ -35,26 +34,8 @@ interface GoogleMap {
 
     fun moveCamera(latitude: Double, longitude: Double, zoom: Float, animated: Boolean)
 
-    /** The place pins, painted into tiles the map asks for on its own background threads. */
-    fun setTiles(tiles: GoogleMapTiles)
-
-    /**
-     * Paints the tiles again. The map can only drop every tile of a layer, and its pins would
-     * blink, so a new layer fades in over the old one, which goes once its tiles are there.
-     */
-    fun redrawTiles()
-
     /** Replaces the markers; a marker with the same key is moved or updated. */
     fun setMarkers(markers: List<GoogleMapMarker>)
-}
-
-@ObjCName("GoogleMapTiles", exact = true)
-interface GoogleMapTiles {
-    /** Pixels a side. */
-    val size: Int
-
-    /** The tile's PNG; empty when it has no pins, null when its places can't be loaded now (the map asks again later). */
-    fun tile(x: Int, y: Int, zoom: Int): NSData?
 }
 
 @ObjCName("GoogleMapMarker", exact = true)
@@ -70,6 +51,8 @@ class GoogleMapMarker(
     val zIndex: Int,
     /** A tap shows the title and centers the marker; else the tap is only reported. */
     val showsInfoWindow: Boolean,
+    /** Fades in when it first shows, as Google's own pins do. */
+    val fadesIn: Boolean,
 )
 
 @ObjCName("GoogleMapListener", exact = true)

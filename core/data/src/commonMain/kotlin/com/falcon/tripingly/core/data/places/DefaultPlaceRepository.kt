@@ -79,6 +79,8 @@ internal class DefaultPlaceRepository(
                             location = location,
                             isTripinly = item.isTripinly,
                             likeCount = item.likeCount.toInt(),
+                            // GET /places/search doesn't send prominence. It only sizes pins, and a picked place is drawn as the selected pin.
+                            prominence = 0,
                         )
                     },
                     osm = item.osmId?.let { osmId -> item.osmType?.let { OsmRef(it.toOsmType(), osmId) } },
@@ -174,6 +176,7 @@ internal class DefaultPlaceRepository(
         location = GeoPoint(location.lat, location.lng),
         isTripinly = isTripinly,
         likeCount = likeCount.toInt(),
+        prominence = prominence.toInt(),
     )
 
     private fun SearchResultDto.OsmType.toOsmType() = when (this) {

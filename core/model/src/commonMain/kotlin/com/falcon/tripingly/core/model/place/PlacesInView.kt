@@ -30,6 +30,8 @@ data class MapPlace(
     /** Liked on Tripinly; drawn with the Tripinly pin. */
     val isTripinly: Boolean,
     val likeCount: Int,
+    /** How well known the place is, 0–100 (Wikimedia page views and OpenStreetMap tags); 0 when unknown. */
+    val prominence: Int,
 )
 
 /** Several Tripinly places drawn as one bubble while zoomed out. */

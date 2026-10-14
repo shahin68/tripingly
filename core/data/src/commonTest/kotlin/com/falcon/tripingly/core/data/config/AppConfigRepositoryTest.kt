@@ -32,7 +32,7 @@ class AppConfigRepositoryTest {
             engine = MockEngine {
                 requests++
                 respond(
-                    """{"placesRefreshSeconds": 60, "photoMaxEdgePx": 2048, "photoJpegQuality": 80, "photoParallelUploads": 3}""",
+                    """{"placesRefreshSeconds": 60, "photoMaxEdgePx": 2048, "photoJpegQuality": 80, "photoParallelUploads": 3, "pinLargeMinProminence": 90, "pinMediumMinProminence": 50, "mapMaxPins": 200}""",
                     status,
                     headersOf(HttpHeaders.ContentType, "application/json"),
                 )
@@ -53,7 +53,16 @@ class AppConfigRepositoryTest {
         val loaded = withContext(Dispatchers.Default) {
             withTimeout(5.seconds) { repository.config.first { it != AppConfig() } }
         }
-        assertEquals(AppConfig(placesRefresh = 60.seconds, photoMaxEdgePx = 2048, photoJpegQuality = 80, photoParallelUploads = 3), loaded)
+        val expected = AppConfig(
+            placesRefresh = 60.seconds,
+            photoMaxEdgePx = 2048,
+            photoJpegQuality = 80,
+            photoParallelUploads = 3,
+            pinLargeMinProminence = 90,
+            pinMediumMinProminence = 50,
+            mapMaxPins = 200,
+        )
+        assertEquals(expected, loaded)
     }
 
     @Test

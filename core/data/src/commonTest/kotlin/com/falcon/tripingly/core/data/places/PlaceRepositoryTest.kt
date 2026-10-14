@@ -102,6 +102,7 @@ class PlaceRepositoryTest {
         val places = assertIs<AppResult.Success<Map<PlaceSquare, PlacesInView>>>(first).data.getValue(square).places
         assertEquals("Stephansdom", places.single().name)
         assertEquals(PlaceCategory.Attraction, places.single().category)
+        assertEquals(90, places.single().prominence)
         assertEquals(2, assertIs<AppResult.Success<Map<PlaceSquare, PlacesInView>>>(second).data.size)
         val url = requests.single().url
         assertEquals("/v1/places/tiles", url.encodedPath)
@@ -209,7 +210,7 @@ class PlaceRepositoryTest {
                   "places": [{
                     "id": "p-$tile", "name": "$placeName", "category": "attraction",
                     "location": {"lat": 48.2085, "lng": 16.3731},
-                    "isTripinly": true, "likeCount": 3, "coverThumbUrl": null, "likedByMe": false
+                    "isTripinly": true, "likeCount": 3, "prominence": 90, "coverThumbUrl": null, "likedByMe": false
                   }],
                   "clusters": []
                 }

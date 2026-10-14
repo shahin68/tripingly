@@ -36,8 +36,6 @@ private final class AppGoogleMap: NSObject, GoogleMap, GMSMapViewDelegate {
     private let mapView = GMSMapView(options: GMSMapViewOptions())
     private let listener: any GoogleMapListener
     private var markers: [String: GMSMarker] = [:]
-    private var tiles: (any GoogleMapTiles)?
-    private var tileLayer: PlaceTileLayer?
 
     var view: UIView { mapView }
 
@@ -75,32 +73,11 @@ private final class AppGoogleMap: NSObject, GoogleMap, GMSMapViewDelegate {
         }
     }
 
-    func setTiles(tiles: any GoogleMapTiles) {
-        self.tiles = tiles
-        tileLayer?.map = nil
-        tileLayer = addTileLayer(tiles, zIndex: 0)
-    }
-
-    func redrawTiles() {
-        guard let tiles, let old = tileLayer else { return }
-        tileLayer = addTileLayer(tiles, zIndex: old.zIndex + 1)
-        // The new layer's tiles fade in over the same pins before the old layer goes.
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { old.map = nil }
-    }
-
-    private func addTileLayer(_ tiles: any GoogleMapTiles, zIndex: Int32) -> PlaceTileLayer {
-        let layer = PlaceTileLayer(tiles: tiles)
-        layer.tileSize = Int(tiles.size)
-        layer.fadeIn = true
-        layer.zIndex = zIndex
-        layer.map = mapView
-        return layer
-    }
-
     func setMarkers(markers items: [GoogleMapMarker]) {
         var kept: [String: GMSMarker] = [:]
         for item in items {
             let marker = markers[item.key] ?? GMSMarker()
+            if marker.map == nil { marker.appearAnimation = item.fadesIn ? .fadeIn : .none }
             marker.position = CLLocationCoordinate2D(latitude: item.latitude, longitude: item.longitude)
             marker.title = item.title
             if marker.icon !== item.icon { marker.icon = item.icon }
@@ -152,20 +129,4 @@ private final class AppGoogleMap: NSObject, GoogleMap, GMSMapViewDelegate {
     }
 }
 
-/// Asks the shared code for each tile on the map's background threads.
-private final class PlaceTileLayer: GMSSyncTileLayer {
-
-    private let tiles: any GoogleMapTiles
-
-    init(tiles: any GoogleMapTiles) {
-        self.tiles = tiles
-        super.init()
-    }
-
-    override func tileFor(x: UInt, y: UInt, zoom: UInt) -> UIImage? {
-        // Nil: not loaded now, the map asks again later.
-        guard let png = tiles.tile(x: Int32(x), y: Int32(y), zoom: Int32(zoom)) else { return nil }
-        return png.isEmpty ? kGMSTileLayerNoTile : UIImage(data: png)
-    }
-}
 #endif

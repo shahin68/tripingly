@@ -7,6 +7,7 @@ import androidx.compose.ui.unit.Dp
 import com.falcon.tripingly.core.location.model.Coordinates
 import com.falcon.tripingly.core.model.place.GeoBounds
 import com.falcon.tripingly.core.model.place.MapPlace
+import com.falcon.tripingly.core.model.place.PlaceCluster
 import com.falcon.tripingly.feature.map.domain.model.MapMarker
 import org.koin.compose.getKoin
 
@@ -17,13 +18,16 @@ actual fun GoogleMapView(
     cameraTarget: Coordinates,
     zoomLevel: Float,
     markers: List<MapMarker>,
-    placeSource: MapPlaceSource?,
+    placePins: List<PlacePin>,
+    placeClusters: List<PlaceCluster>,
     selectedPlace: MapPlace?,
     isMyLocationEnabled: Boolean,
     coveredBottom: Dp,
     onCameraMove: (Coordinates, Float, GeoBounds?) -> Unit,
     onMapTouch: () -> Unit,
     onMapClick: (Coordinates) -> Unit,
+    onPlacePinClick: (MapPlace) -> Unit,
+    onClusterClick: (PlaceCluster) -> Unit,
     onMapLongClick: (Coordinates) -> Unit,
     onMarkerClick: (MapMarker) -> Unit,
 ) {
@@ -36,13 +40,16 @@ actual fun GoogleMapView(
             cameraTarget = cameraTarget,
             zoomLevel = zoomLevel,
             markers = markers,
-            placeSource = placeSource,
+            placePins = placePins,
+            placeClusters = placeClusters,
             selectedPlace = selectedPlace,
             isMyLocationEnabled = isMyLocationEnabled,
             coveredBottom = coveredBottom,
             onCameraMove = onCameraMove,
             onMapTouch = onMapTouch,
             onMapClick = onMapClick,
+            onPlacePinClick = onPlacePinClick,
+            onClusterClick = onClusterClick,
             onMapLongClick = onMapLongClick,
             onMarkerClick = onMarkerClick,
         )
@@ -52,7 +59,8 @@ actual fun GoogleMapView(
             cameraTarget = cameraTarget,
             zoomLevel = zoomLevel,
             markers = markers,
-            placeSource = placeSource,
+            placePins = placePins,
+            placeClusters = placeClusters,
             selectedPlace = selectedPlace,
             isMyLocationEnabled = isMyLocationEnabled,
             onCameraMove = onCameraMove,
