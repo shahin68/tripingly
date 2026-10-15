@@ -194,7 +194,7 @@ class PlaceRepositoryTest {
     }
 
     @Test
-    fun `a place's images keep their order, and Commons images their credit`() = runTest {
+    fun `a place's images keep their order and Commons images keep their credit`() = runTest {
         val details = assertIs<AppResult.Success<PlaceDetails>>(repository().place("p1")).data
 
         assertEquals(

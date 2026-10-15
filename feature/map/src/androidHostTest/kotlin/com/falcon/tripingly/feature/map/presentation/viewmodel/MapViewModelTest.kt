@@ -734,6 +734,7 @@ class MapViewModelTest {
         assertEquals(listOf(TRIP_PHOTO, COMMONS_IMAGE), viewModel.uiState.value.selectedPlaceDetails?.images)
 
         viewModel.onAction(Action.OnOpenPlaceImage(1))
+        testScheduler.advanceUntilIdle()
         assertEquals(1, viewModel.uiState.value.placeImageIndex)
         viewModel.onAction(Action.OnReportPlaceImage(COMMONS_IMAGE))
         viewModel.onAction(Action.OnSendReport(ReportReason.Copyright, ""))
