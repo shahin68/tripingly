@@ -17,5 +17,7 @@ data class MapMarker(
     val likeCount: Int = 0,
     val likedByMe: Boolean = false,
     val commentCount: Int = 0,
+    /** The place the stop is at; its images stand in for a missing cover. */
+    val placeId: String? = null,
     val color: Long = 0xFF2196F3 // Default Material Blue
 )

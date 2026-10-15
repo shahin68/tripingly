@@ -34,9 +34,9 @@ import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
 
 /**
- * A place tapped on the map, in a card that floats above its pin: what the pin knows at once, opening
- * hours and website once loaded, and Add to the open day for owners and editors ([dayNumber] is null
- * for viewers).
+ * A place tapped on the map, in a card that floats above its pin: what the pin knows at once, its images,
+ * opening hours and website once loaded, and Add to the open day for owners and editors ([dayNumber] is
+ * null for viewers). A tapped image opens full screen.
  */
 @Composable
 fun PlaceCard(
@@ -46,6 +46,7 @@ fun PlaceCard(
     address: String?,
     dayNumber: Int?,
     onAdd: () -> Unit,
+    onOpenImage: (index: Int) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Card(
@@ -61,6 +62,12 @@ fun PlaceCard(
             modifier = Modifier.padding(MaterialTheme.spacing.medium),
             verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
         ) {
+            PlaceImageStrip(
+                // An address from search is no place of ours, so it has no images to wait for.
+                images = if (address != null) emptyList() else details?.images,
+                category = place.category,
+                onOpen = onOpenImage,
+            )
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(
                     place.category.icon,

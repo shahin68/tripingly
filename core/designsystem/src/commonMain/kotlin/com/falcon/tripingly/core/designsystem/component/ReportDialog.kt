@@ -28,6 +28,7 @@ import androidx.compose.ui.unit.dp
 import com.falcon.tripingly.core.designsystem.generated.resources.Res
 import com.falcon.tripingly.core.designsystem.generated.resources.common_cancel
 import com.falcon.tripingly.core.designsystem.generated.resources.report_details
+import com.falcon.tripingly.core.designsystem.generated.resources.report_reason_copyright
 import com.falcon.tripingly.core.designsystem.generated.resources.report_reason_harassment
 import com.falcon.tripingly.core.designsystem.generated.resources.report_reason_hate
 import com.falcon.tripingly.core.designsystem.generated.resources.report_reason_nudity
@@ -102,6 +103,7 @@ private fun ReportReason.label(): String = stringResource(
         ReportReason.Nudity -> Res.string.report_reason_nudity
         ReportReason.Violence -> Res.string.report_reason_violence
         ReportReason.Hate -> Res.string.report_reason_hate
+        ReportReason.Copyright -> Res.string.report_reason_copyright
         ReportReason.Other -> Res.string.report_reason_other
     },
 )

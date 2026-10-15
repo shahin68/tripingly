@@ -26,6 +26,8 @@ import com.falcon.tripingly.core.model.place.MapPlace
 import com.falcon.tripingly.core.model.place.PlaceCategory
 import com.falcon.tripingly.core.model.place.PlaceCluster
 import com.falcon.tripingly.core.model.place.PlaceDetails
+import com.falcon.tripingly.core.model.place.PlaceImage
+import com.falcon.tripingly.core.model.place.PlaceImageSource
 import com.falcon.tripingly.core.model.place.PlaceSearchResult
 import com.falcon.tripingly.core.model.place.PlaceSquare
 import com.falcon.tripingly.core.model.place.SearchResultType
@@ -117,6 +119,8 @@ class MapViewModel(
     /** The view the place pins are for, once the camera has rested. */
     private var pinArea: PinArea? = null
     private var placeDetailsJob: Job? = null
+    /** Places whose first image is on its way for a stop card; see [loadStopPlaceImage]. */
+    private val loadingStopPlaces = mutableSetOf<String>()
     private var searchJob: Job? = null
     /** The latest touch closed a place or stop, so its tap only closes it (see [onScreenTouch]). */
     private var isClosingTouch = false
@@ -181,6 +185,16 @@ class MapViewModel(
             }
             is Action.OnSendReport -> sendReport(action.reason, action.details)
             is Action.OnDismissReport -> ui.update { it.copy(reporting = null) }
+            is Action.OnOpenPlaceImage -> ui.update { it.copy(placeImageIndex = action.index) }
+            is Action.OnClosePlaceImage -> ui.update { it.copy(placeImageIndex = null) }
+            is Action.OnReportPlaceImage -> ui.update {
+                it.copy(
+                    reporting = when (action.image.source) {
+                        PlaceImageSource.Trip -> ReportSubject(ReportTarget.Photo, action.image.id)
+                        PlaceImageSource.Commons -> ReportSubject(ReportTarget.PlaceImage, action.image.id)
+                    },
+                )
+            }
         }
     }
 
@@ -188,6 +202,8 @@ class MapViewModel(
         val days = details?.days.orEmpty()
         val activeIndex = ui.activeDayIndex.coerceIn(0, (days.size - 1).coerceAtLeast(0))
         val markers = days.getOrNull(activeIndex)?.markers.orEmpty().mapIndexed { index, it -> it.toMapMarker(index + 1) }
+        val selectedMarker = markers.firstOrNull { it.id == ui.selectedMarkerId }
+        val selectedPlaceDetails = ui.selectedPlaceDetails?.takeIf { it.id == ui.selectedPlace?.id }
         return State(
             tripName = details?.trip?.name.orEmpty(),
             days = days.map { DayTab(it.id, it.position + 1, it.date) }.toImmutableList(),
@@ -204,7 +220,8 @@ class MapViewModel(
             frame = ui.frame,
             isPermissionGranted = ui.permission == LocationPermission.Granted,
             isLoadingLocation = ui.isLoadingLocation,
-            selectedMarker = markers.firstOrNull { it.id == ui.selectedMarkerId },
+            selectedMarker = selectedMarker,
+            selectedStopPlaceImage = selectedMarker?.takeIf { it.coverPhotoId == null }?.placeId?.let { ui.stopPlaceImages[it] },
             isStopCardShown = ui.isStopCardShown && markers.any { it.id == ui.selectedMarkerId },
             photosMarker = markers.firstOrNull { it.id == ui.photosMarkerId },
             commentsMarker = markers.firstOrNull { it.id == ui.commentsMarkerId },
@@ -215,7 +232,8 @@ class MapViewModel(
             placePins = ui.placePins.toImmutableList(),
             placeClusters = ui.placeClusters.toImmutableList(),
             selectedPlace = ui.selectedPlace,
-            selectedPlaceDetails = ui.selectedPlaceDetails?.takeIf { it.id == ui.selectedPlace?.id },
+            selectedPlaceDetails = selectedPlaceDetails,
+            placeImageIndex = ui.placeImageIndex?.takeIf { index -> index in selectedPlaceDetails?.images.orEmpty().indices },
             selectedPlaceAddress = ui.selectedAddress?.address,
             isPlaceCardShown = ui.selectedPlace != null && ui.isPlaceCardShown,
             isSearchOpen = ui.isSearchOpen,
@@ -271,6 +289,18 @@ class MapViewModel(
         val isThere = isCameraAt(GeoPoint(marker.position.latitude, marker.position.longitude), zoom)
         ui.update { it.copy(selectedMarkerId = marker.id, isStopCardShown = isThere) }
         navigateTo(marker.position, zoom)
+        if (marker.coverPhotoId == null) loadStopPlaceImage(marker.placeId)
+    }
+
+    /** A stop without a cover shows its place's first image; asked for once per place. */
+    private fun loadStopPlaceImage(placeId: String?) {
+        if (placeId == null || placeId in ui.value.stopPlaceImages || !loadingStopPlaces.add(placeId)) return
+        viewModelScope.launch {
+            placeRepository.place(placeId).onSuccess { details ->
+                ui.update { it.copy(stopPlaceImages = it.stopPlaceImages + (placeId to details.images.firstOrNull())) }
+            }
+            loadingStopPlaces -= placeId
+        }
     }
 
     /**
@@ -496,7 +526,7 @@ class MapViewModel(
 
     private fun closePlace() {
         placeDetailsJob?.cancel()
-        ui.update { it.copy(selectedPlace = null, selectedAddress = null, selectedPlaceDetails = null, isPlaceCardShown = false) }
+        ui.update { it.copy(selectedPlace = null, selectedAddress = null, selectedPlaceDetails = null, isPlaceCardShown = false, placeImageIndex = null) }
     }
 
     /** The camera already rests on [location] at [zoom], so it won't move. */
@@ -759,6 +789,7 @@ class MapViewModel(
         likeCount = likeCount,
         likedByMe = likedByMe,
         commentCount = commentCount,
+        placeId = placeId,
     )
 
     private data class UiState(
@@ -795,6 +826,10 @@ class MapViewModel(
         val confirm: Confirm? = null,
         val selectedPlace: MapPlace? = null,
         val selectedPlaceDetails: PlaceDetails? = null,
+        /** The image of [selectedPlaceDetails] open full screen. */
+        val placeImageIndex: Int? = null,
+        /** The first image of each stop's place, by place ID, for stops without a cover; null when it has none. */
+        val stopPlaceImages: Map<String, PlaceImage?> = emptyMap(),
         /** The address picked from search whose card is open; [selectedPlace] is drawn from it. */
         val selectedAddress: PlaceSearchResult? = null,
         /** The camera has centered [selectedPlace], so its card shows. */
@@ -842,6 +877,8 @@ class MapViewModel(
         val isPermissionGranted: Boolean = false,
         val isLoadingLocation: Boolean = false,
         val selectedMarker: MapMarker? = null,
+        /** The first image of [selectedMarker]'s place, for its card while the stop has no cover. */
+        val selectedStopPlaceImage: PlaceImage? = null,
         /** The card of [selectedMarker] opens once the camera has centered its pin. */
         val isStopCardShown: Boolean = false,
         /** The stop whose photos are open in the sheet. */
@@ -868,8 +905,10 @@ class MapViewModel(
         val placeClusters: ImmutableList<PlaceCluster> = persistentListOf(),
         /** The place whose card is open. */
         val selectedPlace: MapPlace? = null,
-        /** Opening hours and website, once loaded. */
+        /** Images, opening hours and website, once loaded. */
         val selectedPlaceDetails: PlaceDetails? = null,
+        /** The image of [selectedPlaceDetails] open full screen. */
+        val placeImageIndex: Int? = null,
         /** Street, city and country when the card is for an address from search. */
         val selectedPlaceAddress: String? = null,
         /** The card of [selectedPlace] opens once the camera has centered its pin. */
@@ -948,6 +987,11 @@ class MapViewModel(
         data object OnReportStop : Action
         data class OnSendReport(val reason: ReportReason, val details: String) : Action
         data object OnDismissReport : Action
+        /** A tapped image on the place card opens full screen. */
+        data class OnOpenPlaceImage(val index: Int) : Action
+        data object OnClosePlaceImage : Action
+        /** Reports an image of the open place: a trip photo, or a Commons image. */
+        data class OnReportPlaceImage(val image: PlaceImage) : Action
     }
 
     private companion object {

@@ -1,6 +1,7 @@
 package com.falcon.tripingly.core.model.social
 
 import com.falcon.tripingly.core.model.place.PlaceCategory
+import com.falcon.tripingly.core.model.place.PlaceImageSource
 import com.falcon.tripingly.core.model.trip.GeoPoint
 import com.falcon.tripingly.core.model.trip.Trip
 import com.falcon.tripingly.core.model.trip.UserSummary
@@ -55,9 +56,9 @@ enum class LikeTarget { Trip, Marker, Photo, Comment, Place }
 /** A like as the server counted it. */
 data class LikeState(val liked: Boolean, val likeCount: Int)
 
-enum class ReportTarget { User, Trip, Marker, Photo, Comment }
+enum class ReportTarget { User, Trip, Marker, Photo, Comment, PlaceImage }
 
-enum class ReportReason { Spam, Harassment, Nudity, Violence, Hate, Other }
+enum class ReportReason { Spam, Harassment, Nudity, Violence, Hate, Copyright, Other }
 
 /** A popular place around the user (`GET /places/nearby`). */
 data class NearbyPlace(
@@ -69,7 +70,9 @@ data class NearbyPlace(
     val isTripinly: Boolean,
     val likeCount: Int,
     val likedByMe: Boolean,
-    val coverPhotoId: String?,
+    /** The cover's ID: a trip photo's or a Commons image's. */
+    val coverImageId: String?,
+    val coverSource: PlaceImageSource?,
     val coverThumbUrl: String?,
     val distanceMeters: Int,
 )

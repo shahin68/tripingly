@@ -54,7 +54,45 @@ data class PlaceDetails(
     /** OpenStreetMap `opening_hours`, e.g. "Mo-Su 08:00-21:00". */
     val openingHours: String?,
     val website: String?,
+    /** For the card, the cover first: trip photos people liked here, then Wikimedia Commons images. */
+    val images: List<PlaceImage>,
 )
+
+enum class PlaceImageSource { Trip, Commons }
+
+/**
+ * One of a place's images. A trip photo's [id] is the photo's ID; a Commons image has an ID of its own. Both
+ * URLs are signed and change about every hour; [displayUrl] is uncropped.
+ */
+data class PlaceImage(
+    val id: String,
+    val source: PlaceImageSource,
+    val thumbUrl: String?,
+    val displayUrl: String?,
+    val width: Int?,
+    val height: Int?,
+    /** Shown with every Commons image; null for trip photos. */
+    val credit: ImageCredit?,
+)
+
+/** Who to credit for a Wikimedia Commons image, and under which licence. */
+data class ImageCredit(
+    val author: String?,
+    /** The work's title, set only where its licence asks for it. */
+    val title: String?,
+    /** A licence name such as "CC BY-SA 4.0", or [PUBLIC_DOMAIN]. */
+    val license: String,
+    val licenseUrl: String?,
+    /** The file's page on Commons. */
+    val sourceUrl: String,
+) {
+    val isPublicDomain: Boolean get() = license == PUBLIC_DOMAIN
+
+    companion object {
+        /** How the server names a public-domain licence. */
+        const val PUBLIC_DOMAIN = "Public domain"
+    }
+}
 
 /**
  * A fixed square of the map that places load by, the same grid as the server's: `360 / 2^level` degrees a

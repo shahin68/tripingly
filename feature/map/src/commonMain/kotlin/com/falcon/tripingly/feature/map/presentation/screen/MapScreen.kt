@@ -300,6 +300,7 @@ fun MapScreen(
                     address = card.selectedPlaceAddress,
                     dayNumber = card.days.getOrNull(card.activeDayIndex)?.number?.takeIf { card.canEdit },
                     onAdd = { onAction(Action.OnAddPlaceToDay) },
+                    onOpenImage = { index -> onAction(Action.OnOpenPlaceImage(index)) },
                 )
             }
         }
@@ -324,6 +325,7 @@ fun MapScreen(
             if (stopCard != null) {
                 StopCard(
                     marker = stopCard,
+                    placeImage = state.selectedStopPlaceImage,
                     canEdit = state.canEdit,
                     onOpen = { onAction(Action.OnOpenStopPhotos) },
                     onAddPhotos = pickPhotos,

@@ -57,6 +57,7 @@ internal fun ReportTarget.toDto() = when (this) {
     ReportTarget.Marker -> CreateReportDto.TargetType.MARKER
     ReportTarget.Photo -> CreateReportDto.TargetType.PHOTO
     ReportTarget.Comment -> CreateReportDto.TargetType.COMMENT
+    ReportTarget.PlaceImage -> CreateReportDto.TargetType.PLACE_IMAGE
 }
 
 internal fun ReportReason.toDto() = when (this) {
@@ -65,5 +66,6 @@ internal fun ReportReason.toDto() = when (this) {
     ReportReason.Nudity -> CreateReportDto.Reason.NUDITY
     ReportReason.Violence -> CreateReportDto.Reason.VIOLENCE
     ReportReason.Hate -> CreateReportDto.Reason.HATE
+    ReportReason.Copyright -> CreateReportDto.Reason.COPYRIGHT
     ReportReason.Other -> CreateReportDto.Reason.OTHER
 }

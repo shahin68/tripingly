@@ -131,7 +131,7 @@ REST over HTTPS, JSON, base path `/v1`.
 | GET | `/places/search?q=&lat=&lng=&scope=` | Our places + Photon addresses/cities merged. `scope=destination` (the Create Trip destination): only countries, regions, cities and districts, cities first |
 | GET | `/places/nearby?lat=&lng=&cursor=&limit=` | Popular places around the user with `distanceMeters`; Social → Nearby, pages of 20, asked once per opening with the first location fix; location not stored |
 | GET | `/places/popular?bbox=…&excludeTripId=` | Tripinly places only in the visible area, excluding places already in the trip |
-| GET | `/places/{id}` | Place with popularity and a few public photos |
+| GET | `/places/{id}` | Place with popularity and its `images[]` (trip photos, then Wikimedia Commons images with their credit) |
 | POST | `/places/{id}/add-to-trip` | Body: `dayId` → new marker (not used by the app: it sends `POST /days/{id}/markers` with `id` + `placeId` so the stop shows at once) |
 
 ### Routing
@@ -158,7 +158,7 @@ Response shapes and behaviour: see `05-maps-places-routing.md`.
 ### Moderation
 | Method | Path | Notes |
 |---|---|---|
-| POST | `/reports` | Target type, ID, reason, details |
+| POST | `/reports` | Target type (`user`, `trip`, `marker`, `photo`, `comment`, `place_image`), ID, reason (incl. `copyright`), details |
 | GET | `/admin/reports` | Admin only, filter by status |
 | PATCH | `/admin/reports/{id}` | Dismiss, hide content, suspend user |
 
@@ -178,7 +178,8 @@ Field names the client relies on (full schemas in OpenAPI):
 - **Marker**: `id`, `dayId`, `placeId`, `name`, `location`, `time` (`HH:mm` or null), `position`, `coverPhotoId`, `coverThumbUrl`, `photoCount`, `likeCount`, `likedByMe`, `commentCount`, `createdBy` (user summary or null).
 - **Photo**: `id`, `markerId`, `status` (`processing`\|`ready`\|`failed`), `thumbUrl`, `displayUrl` (signed, expire after ~1 h), `width`, `height`, `position`, `likeCount`, `likedByMe`, `uploader`.
 - **User summary**: `id`, `username`, `displayName`.
-- **Place** (in-view/search/along-the-way): see `05-maps-places-routing.md`.
+- **Place** (in-view/search/along-the-way): see `05-maps-places-routing.md`. Every Place shape (tiles, nearby, detail) has `coverImageId`, `coverSource` (`trip`\|`commons`\|null) and `coverThumbUrl`; `coverPhotoId` is set only for a trip photo. Cache a cover by `coverImageId`.
+- **Place detail** (`GET /places/{id}`): adds `tags` (`openingHours`, `website`, …) and `images[]` → `{ id, source (trip|commons), thumbUrl, displayUrl, width, height, credit }`. The first image is the cover. `credit` is null for trip photos; for Commons it's `{ author, title, license, licenseUrl, sourceUrl }` and must show under the image (`CommonsCredit`). `photoThumbUrls` is deprecated (backend#38).
 - **Me**: profile fields, `onboarding` state, `defaultTripVisibility`, `locale`, `entitlements[]` (e.g. `best_route_realtime`).
 
 ## Stable error codes (starter set)

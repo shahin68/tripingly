@@ -32,6 +32,7 @@ import com.falcon.tripingly.feature.map.generated.resources.map_pin_add
 import com.falcon.tripingly.feature.map.generated.resources.map_pin_name_label
 import com.falcon.tripingly.feature.map.generated.resources.map_pin_name_title
 import com.falcon.tripingly.feature.map.presentation.comments.StopCommentsRoute
+import com.falcon.tripingly.feature.map.presentation.component.PlaceImageViewer
 import com.falcon.tripingly.feature.map.presentation.photos.PhotoCameraDialog
 import com.falcon.tripingly.feature.map.presentation.photos.StopPhotosRoute
 import com.falcon.tripingly.feature.map.presentation.screen.MapViewModel.Action
@@ -96,6 +97,16 @@ fun MapRoute(
             marker = marker,
             onOpenProfile = onOpenProfile,
             onDismiss = { viewModel.onAction(Action.OnCloseStopComments) },
+        )
+    }
+
+    val placeImages = state.selectedPlaceDetails?.images.orEmpty()
+    state.placeImageIndex?.let { index ->
+        PlaceImageViewer(
+            images = placeImages,
+            initialIndex = index,
+            onReport = { image -> viewModel.onAction(Action.OnReportPlaceImage(image)) },
+            onDismiss = { viewModel.onAction(Action.OnClosePlaceImage) },
         )
     }
 
