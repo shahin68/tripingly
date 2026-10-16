@@ -18,7 +18,7 @@ Tripinly is a social travel-planning app. People plan trips day by day as marker
 | Your trips | Trips the user owns or collaborates on, including copies they made |
 | Trip map | Days, markers (optional time, order), cover photo inside markers, popular spots near the trip, privacy toggle, collaborators, add day, add marker, best route |
 | Marker sheet | Photo gallery (scrollable, one cover), likes on marker and photos, comments with likes, share, delete |
-| Explore | Public trips from others, ranked by popularity; like; "Add to my trips" (copy) |
+| Explore | Public trips from others, ranked by popularity; like; Save (to My Trips, read-only) |
 | Nearby | Popular places around the user's current location, from Tripinly's own data ranked by likes |
 | Popular spot sheet | Place details, like, add to a trip/day |
 | New trip | Name, length/dates, public/private, invite friends |
@@ -43,7 +43,7 @@ Tripinly is a social travel-planning app. People plan trips day by day as marker
 10c. **Search:** a search box finds places (ours + OSM POIs) and addresses/cities.
 11. **Collaboration:** owners add people to a trip; collaborators can edit markers and photos.
 12. **Finding people and following:** by **username search** and **invite links**. People follow each other; two people who follow each other are **friends**, offered first when adding trip members. Profiles show follower and following counts and the person's public trips.
-13. **Add to my trips:** a single button that copies someone else's public trip (or a single marker / popular spot) into an **independent copy owned by the copier**, fully editable, as if they made it. Shows "Copied from @handle" while the original author's account exists.
+13. **Save and Join (no copies, decided 2026-10-16):** someone else's public trip can be **saved**: it shows in My Trips marked "by @owner", read-only, always the owner's live trip. Or the person **asks to join**: the owner accepts (they become an editor of the same trip and keep access if it turns private) or declines (they can't ask again). A trip has one owner forever; if the owner deletes it, it's gone for savers and joiners too. A single stop or popular spot can still be added to one of my trips.
 14. **Best route:** reorders a day's markers. **Free:** straight-line ordering. **Paid:** real travel times via a routing provider.
 15. **Sharing:** links to a trip or marker.
 16. **Reporting and blocking** of content and users, with admin review (required by App Store and Google Play for user-generated content).

@@ -164,11 +164,10 @@ private fun ExploreContent(state: State, onAction: (Action) -> Unit) {
                 items(state.explore, key = { it.trip.id }) { trip ->
                     PublicTripCard(
                         trip = trip,
-                        isCopying = state.copyingTripId == trip.trip.id,
                         onOpen = { onAction(Action.OnTripClick(trip)) },
                         onOpenOwner = { onAction(Action.OnPersonClick(trip.trip.owner)) },
                         onLike = { onAction(Action.OnLikeTrip(trip)) },
-                        onCopy = { onAction(Action.OnCopyTrip(trip)) },
+                        onToggleSave = { onAction(Action.OnToggleSaveTrip(trip)) },
                         onReport = { onAction(Action.OnReportTrip(trip)) },
                     )
                 }

@@ -3,8 +3,10 @@ package com.falcon.tripingly.feature.trips
 import com.falcon.tripingly.core.common.result.AppResult
 import com.falcon.tripingly.core.data.trips.FakeTripBackend
 import com.falcon.tripingly.core.data.users.FakeUserRepository
+import com.falcon.tripingly.core.model.trip.JoinRequest
 import com.falcon.tripingly.core.model.trip.NewTrip
 import com.falcon.tripingly.core.model.trip.TripRole
+import com.falcon.tripingly.core.model.trip.UserSummary
 import com.falcon.tripingly.core.ui.UiText
 import com.falcon.tripingly.feature.trips.generated.resources.Res
 import com.falcon.tripingly.feature.trips.generated.resources.members_error_user_not_found
@@ -27,6 +29,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
 import kotlin.test.assertTrue
+import kotlin.time.Instant
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class TripMembersViewModelTest {
@@ -63,6 +66,28 @@ class TripMembersViewModelTest {
         assertEquals(listOf("anna", "jonas.k"), state.members.drop(1).map { it.user.username })
         assertTrue(state.pickedFriends.isEmpty())
         assertEquals(listOf("lena"), state.friends.map { it.username })
+    }
+
+    @Test
+    fun joinRequests_acceptOneDeclineOne_editorsAndListFollow() = runTest {
+        val trip = (backend.createTrip(NewTrip("Paris", null, null)) as AppResult.Success).data.trip
+        val mia = JoinRequest("r1", trip.id, UserSummary("u-mia", "mia", "Mia"), Instant.parse("2026-10-16T10:00:00Z"))
+        val tom = JoinRequest("r2", trip.id, UserSummary("u-tom", "tom", "Tom"), Instant.parse("2026-10-16T11:00:00Z"))
+        backend.seedJoinRequest(mia)
+        backend.seedJoinRequest(tom)
+        val viewModel = TripMembersViewModel(trip.id, backend, backend, FakeUserRepository())
+        backgroundScope.launch { viewModel.uiState.collect {} }
+        advanceUntilIdle()
+        assertEquals(listOf("tom", "mia"), viewModel.uiState.value.joinRequests.map { it.user.username })
+
+        viewModel.onAction(Action.OnAcceptJoinRequest(mia))
+        viewModel.onAction(Action.OnDeclineJoinRequest(tom))
+        advanceUntilIdle()
+
+        val state = viewModel.uiState.value
+        assertTrue(state.joinRequests.isEmpty())
+        assertEquals(listOf("mia"), state.members.filter { it.role == TripRole.EDITOR }.map { it.user.username })
+        assertEquals(0, backend.observeTrip(trip.id).first()?.pendingJoinRequestCount)
     }
 
     @Test

@@ -51,6 +51,7 @@
 - Ask for notification permission as Home first opens (after sign-in and onboarding), before the user taps anything; once per visit to Home, rotation included (Shahin, 2026-10-11).
 - Push arrives already localized from the server. Data payload: `{ type, notificationId, deepLink }`.
 - Tapping a push opens the `deepLink`. Mark it read via `POST /notifications/read`.
+- `join_requested` (someone asks to join the owner's trip) links to `tripinly://trips/{id}`: the map opens with "N people want to join", which opens the members sheet with Accept and Decline.
 
 ### In the app (Android; iOS waits for an Apple Developer account)
 

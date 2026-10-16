@@ -6,6 +6,7 @@ import com.falcon.tripingly.core.model.place.OsmRef
 import com.falcon.tripingly.core.model.place.OsmType
 import com.falcon.tripingly.core.model.account.TripVisibility
 import com.falcon.tripingly.core.model.trip.GeoPoint
+import com.falcon.tripingly.core.model.trip.JoinRequestStatus
 import com.falcon.tripingly.core.model.trip.NewMarker
 import com.falcon.tripingly.core.model.trip.Destination
 import com.falcon.tripingly.core.model.trip.NewTrip
@@ -284,6 +285,65 @@ class TripRepositoryTest {
         assertIs<AppResult.Success<*>>(result)
         assertEquals("""{"username":"anna"}""", harness.requests[0].bodyText())
         assertEquals("/v1/trips/t1", harness.requests[1].url.encodedPath)
+    }
+
+    @Test
+    fun setSaved_putsSomeoneElsesTripInMyTrips_andUnsavingTakesItOut() = runTest {
+        val harness = Harness { respond("", HttpStatusCode.NoContent) }
+        val trip = details(TripJson.trip("t1", myRole = "viewer")).trip
+
+        assertIs<AppResult.Success<Unit>>(harness.trips.setSaved(trip, saved = true))
+        assertEquals(listOf("t1"), harness.trips.observeMyTrips().first().map { it.id })
+        assertIs<AppResult.Success<Unit>>(harness.trips.setSaved(trip, saved = false))
+
+        assertTrue(harness.trips.observeMyTrips().first().isEmpty())
+        assertEquals(listOf(HttpMethod.Put, HttpMethod.Delete), harness.requests.map { it.method })
+        assertEquals("/v1/trips/t1/save", harness.requests[0].url.encodedPath)
+    }
+
+    @Test
+    fun refreshMyTrips_listsSavedTrips_andKeepsWhatTheTripSaidAboutJoining() = runTest {
+        val harness = Harness { json(TripJson.page(null, TripJson.summary("t1", "Paris", role = "viewer", savedByMe = true))) }
+        harness.local.saveTrip(details(TripJson.trip("t1", myRole = "viewer", myJoinRequest = "\"pending\"")))
+
+        harness.trips.refreshMyTrips()
+
+        assertTrue(harness.trips.observeMyTrips().first().single().savedByMe)
+        assertEquals(JoinRequestStatus.PENDING, harness.trips.observeTrip("t1").first()?.myJoinRequest)
+    }
+
+    @Test
+    fun requestToJoin_declinedBefore_showsItOnTheTrip() = runTest {
+        val harness = Harness {
+            json(TripJson.error("JOIN_REQUEST_DECLINED", "The owner declined your request."), HttpStatusCode.Conflict)
+        }
+        harness.local.saveTrip(details(TripJson.trip("t1", myRole = "viewer")))
+
+        val result = harness.trips.requestToJoin("t1")
+
+        assertTrue((result as AppResult.Error).error.hasCode(TripErrorCodes.JOIN_REQUEST_DECLINED))
+        assertEquals(JoinRequestStatus.DECLINED, harness.trips.observeTrip("t1").first()?.myJoinRequest)
+    }
+
+    @Test
+    fun joinRequests_ownerAccepts_thenTheTripReloadsWithTheNewEditor() = runTest {
+        val harness = Harness { request ->
+            when (request.url.encodedPath) {
+                "/v1/trips/t1/join-requests" -> json(TripJson.page(null, TripJson.joinRequest("r1", "t1")))
+                "/v1/join-requests/r1/accept" -> json("""{"user":${TripJson.EDITOR},"role":"editor"}""")
+                else -> json(TripJson.trip("t1"))
+            }
+        }
+
+        val requests = (harness.trips.joinRequests("t1") as AppResult.Success).data
+        val accepted = harness.trips.acceptJoinRequest("t1", requests.items.single().id)
+
+        assertEquals("anna", requests.items.single().user.username)
+        assertIs<AppResult.Success<*>>(accepted)
+        assertEquals(
+            listOf("/v1/trips/t1/join-requests", "/v1/join-requests/r1/accept", "/v1/trips/t1"),
+            harness.requests.map { it.url.encodedPath },
+        )
     }
 
     @Test

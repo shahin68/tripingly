@@ -20,7 +20,6 @@ import com.falcon.tripingly.core.model.social.ReportTarget
 import com.falcon.tripingly.core.ui.UiText
 import com.falcon.tripingly.core.ui.toUiText
 import com.falcon.tripingly.feature.social.generated.resources.Res
-import com.falcon.tripingly.feature.social.generated.resources.social_error_not_copyable
 import com.falcon.tripingly.feature.social.generated.resources.social_reported
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
@@ -78,7 +77,7 @@ class ProfileViewModel(
             is Action.OnSendReport -> sendReport(action.reason, action.details)
             Action.OnDismissReport -> _uiState.update { it.copy(reporting = null) }
             is Action.OnLikeTrip -> likeTrip(action.trip)
-            is Action.OnCopyTrip -> copyTrip(action.trip)
+            is Action.OnToggleSaveTrip -> toggleSave(action.trip)
             is Action.OnTripClick -> sendEvent(Event.OpenTrip(action.trip.trip.id))
             is Action.OnOpenList -> sendEvent(Event.OpenList(action.list))
             Action.OnLoadMore -> loadMore()
@@ -211,23 +210,17 @@ class ProfileViewModel(
         _uiState.update { state -> state.copy(trips = state.trips.map { if (it.trip.id == tripId) change(it) else it }.toImmutableList()) }
     }
 
-    private fun copyTrip(trip: PublicTrip) {
-        if (_uiState.value.copyingTripId != null) return
-        _uiState.update { it.copy(copyingTripId = trip.trip.id) }
+    /** Saves to (or removes from) My Trips at once and puts it back when the server refuses. */
+    private fun toggleSave(trip: PublicTrip) {
+        val saved = !trip.trip.savedByMe
+        updateTrip(trip.trip.id) {
+            it.copy(trip = it.trip.copy(savedByMe = saved), saveCount = (it.saveCount + if (saved) 1 else -1).coerceAtLeast(0))
+        }
         viewModelScope.launch {
-            val result = tripRepository.copyTrip(trip.trip.id)
-            _uiState.update { it.copy(copyingTripId = null) }
-            when (result) {
-                is AppResult.Success -> sendEvent(Event.OpenTrip(result.data.trip.id))
-                is AppResult.Error -> _uiState.update {
-                    it.copy(
-                        message = if (result.error.hasCode(TripErrorCodes.TRIP_NOT_COPYABLE)) {
-                            UiText.Resource(Res.string.social_error_not_copyable)
-                        } else {
-                            result.error.toUiText()
-                        },
-                    )
-                }
+            val result = tripRepository.setSaved(trip.trip, saved)
+            if (result is AppResult.Error) {
+                updateTrip(trip.trip.id) { it.copy(trip = it.trip.copy(savedByMe = trip.trip.savedByMe), saveCount = trip.saveCount) }
+                _uiState.update { it.copy(message = result.error.toUiText()) }
             }
         }
     }
@@ -246,7 +239,6 @@ class ProfileViewModel(
         val isLoading: Boolean = true,
         /** Unknown, or a block either way. */
         val isNotFound: Boolean = false,
-        val copyingTripId: String? = null,
         val isConfirmingBlock: Boolean = false,
         val reporting: Reporting? = null,
         val isReporting: Boolean = false,
@@ -264,7 +256,7 @@ class ProfileViewModel(
         data class OnSendReport(val reason: ReportReason, val details: String) : Action
         data object OnDismissReport : Action
         data class OnLikeTrip(val trip: PublicTrip) : Action
-        data class OnCopyTrip(val trip: PublicTrip) : Action
+        data class OnToggleSaveTrip(val trip: PublicTrip) : Action
         data class OnTripClick(val trip: PublicTrip) : Action
         data class OnOpenList(val list: PeopleList) : Action
         data object OnLoadMore : Action

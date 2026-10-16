@@ -11,10 +11,11 @@ internal object TripJson {
         updatedAt: String = "2026-10-04T10:00:00.000Z",
         role: String = "owner",
         editorCount: Int = 0,
+        savedByMe: Boolean = false,
     ) = """
         {"id":"$id","title":"$title","startDate":"2026-06-01","endDate":"2026-06-03","visibility":"public",
          "owner":$OWNER,"role":"$role","coverThumbUrl":null,"dayCount":3,"markerCount":0,"editorCount":$editorCount,
-         "likeCount":0,"likedByMe":false,"copyCount":0,"updatedAt":"$updatedAt"}
+         "likeCount":0,"likedByMe":false,"saveCount":0,"savedByMe":$savedByMe,"updatedAt":"$updatedAt"}
     """.trimIndent()
 
     fun page(nextCursor: String?, vararg items: String) =
@@ -38,13 +39,19 @@ internal object TripJson {
         startDate: String? = "2026-06-01",
         endDate: String? = "2026-06-01",
         destination: String = "null",
+        myJoinRequest: String = "null",
+        pendingJoinRequestCount: Int = 0,
     ) = """
         {"id":"$id","title":"$title","startDate":${startDate?.let { "\"$it\"" } ?: "null"},
          "endDate":${endDate?.let { "\"$it\"" } ?: "null"},"visibility":"private","owner":$OWNER,"myRole":"$myRole",
          "members":[{"user":$OWNER,"role":"owner"},{"user":$EDITOR,"role":"editor"}],
-         "likeCount":0,"likedByMe":false,"copyCount":0,"copiedFrom":null,"destination":$destination,"days":[${days.joinToString(",")}],
+         "likeCount":0,"likedByMe":false,"saveCount":0,"savedByMe":false,"myJoinRequest":$myJoinRequest,
+         "pendingJoinRequestCount":$pendingJoinRequestCount,"destination":$destination,"days":[${days.joinToString(",")}],
          "createdAt":"2026-10-04T09:00:00.000Z","updatedAt":"2026-10-04T10:00:00.000Z"}
     """.trimIndent()
+
+    fun joinRequest(id: String, tripId: String) =
+        """{"id":"$id","tripId":"$tripId","user":$EDITOR,"status":"pending","createdAt":"2026-10-16T10:00:00.000Z"}"""
 
     fun error(code: String, message: String, details: String = "{}") =
         """{"error":{"code":"$code","message":"$message","details":$details}}"""

@@ -128,6 +128,7 @@ class HomeViewModel(
             is Action.OnConfirmDeleteTrip -> save { tripRepository.deleteTrip(action.tripId) }
             is Action.OnConfirmLeaveTrip -> save { tripRepository.leaveTrip(action.tripId) }
             is Action.OnToggleVisibility -> withTrip(action.tripId) { toggleVisibility(it) }
+            is Action.OnRemoveSavedTrip -> withTrip(action.tripId) { removeSavedTrip(it) }
             is Action.OnShareTrip -> withTrip(action.tripId) { sendEvent(Event.ShareTrip(it)) }
             is Action.OnManageMembers -> ui.update { it.copy(membersTripId = action.tripId) }
             Action.OnDismissMembers -> ui.update { it.copy(membersTripId = null) }
@@ -343,6 +344,14 @@ class HomeViewModel(
         }
     }
 
+    /** Someone else's saved trip leaves My Trips once the server agreed; it can be saved again any time. */
+    private fun removeSavedTrip(trip: Trip) {
+        viewModelScope.launch {
+            val result = tripRepository.setSaved(trip, saved = false)
+            if (result is AppResult.Error) ui.update { it.copy(message = result.error.toUiText()) }
+        }
+    }
+
     private fun withTrip(tripId: String, block: (Trip) -> Unit) {
         uiState.value.trips.firstOrNull { it.id == tripId }?.let(block)
     }
@@ -433,6 +442,7 @@ class HomeViewModel(
         data class OnLeaveTrip(val tripId: String) : Action
         data class OnConfirmLeaveTrip(val tripId: String) : Action
         data class OnToggleVisibility(val tripId: String) : Action
+        data class OnRemoveSavedTrip(val tripId: String) : Action
         data class OnShareTrip(val tripId: String) : Action
         data class OnManageMembers(val tripId: String) : Action
         data object OnDismissMembers : Action

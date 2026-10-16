@@ -2,7 +2,10 @@ package com.falcon.tripingly.core.data.trips
 
 import com.falcon.tripingly.core.common.error.DataError
 import com.falcon.tripingly.core.common.result.AppResult
+import com.falcon.tripingly.core.model.Page
 import com.falcon.tripingly.core.model.account.TripVisibility
+import com.falcon.tripingly.core.model.trip.JoinRequest
+import com.falcon.tripingly.core.model.trip.JoinRequestStatus
 import com.falcon.tripingly.core.model.trip.NewTrip
 import com.falcon.tripingly.core.model.trip.Trip
 import com.falcon.tripingly.core.model.trip.TripDetails
@@ -102,8 +105,47 @@ internal class OfflineFirstTripRepository(
         return result
     }
 
-    override suspend fun copyTrip(tripId: String): AppResult<TripDetails, DataError.Network> =
-        api.copy(tripId, newIdempotencyKey()).saved()
+    override suspend fun setSaved(trip: Trip, saved: Boolean): AppResult<Unit, DataError.Network> {
+        val result = if (saved) api.save(trip.id) else api.unsave(trip.id)
+        if (result is AppResult.Success) local.saveSavedByMe(trip, saved)
+        return result
+    }
+
+    override suspend fun requestToJoin(tripId: String): AppResult<Unit, DataError.Network> =
+        when (val result = api.requestJoin(tripId)) {
+            is AppResult.Success -> AppResult.Success(local.saveMyJoinRequest(tripId, JoinRequestStatus.PENDING))
+            is AppResult.Error -> {
+                if (result.error.hasCode(TripErrorCodes.JOIN_REQUEST_DECLINED)) {
+                    local.saveMyJoinRequest(tripId, JoinRequestStatus.DECLINED)
+                }
+                result
+            }
+        }
+
+    override suspend fun cancelJoinRequest(tripId: String): AppResult<Unit, DataError.Network> {
+        val result = api.cancelJoinRequest(tripId)
+        if (result is AppResult.Success) local.saveMyJoinRequest(tripId, null)
+        return result
+    }
+
+    override suspend fun joinRequests(tripId: String, cursor: String?): AppResult<Page<JoinRequest>, DataError.Network> =
+        when (val result = api.joinRequests(tripId, cursor, PAGE_SIZE)) {
+            is AppResult.Success -> AppResult.Success(Page(result.data.items.map { it.toJoinRequest() }, result.data.nextCursor))
+            is AppResult.Error -> result
+        }
+
+    override suspend fun acceptJoinRequest(tripId: String, requestId: String): AppResult<TripDetails, DataError.Network> =
+        when (val result = api.acceptJoinRequest(requestId)) {
+            // The members and the request count changed; reload the trip like adding a member does.
+            is AppResult.Success -> refreshTrip(tripId)
+            is AppResult.Error -> result
+        }
+
+    override suspend fun declineJoinRequest(tripId: String, requestId: String): AppResult<Unit, DataError.Network> {
+        val result = api.declineJoinRequest(requestId)
+        if (result is AppResult.Success) local.removePendingJoinRequest(tripId)
+        return result
+    }
 
     override suspend fun addDay(tripId: String): AppResult<TripDetails, DataError.Network> =
         when (val result = api.addDay(tripId, newIdempotencyKey())) {

@@ -39,6 +39,7 @@ import com.falcon.tripingly.core.common.util.DateUtils
 import com.falcon.tripingly.core.common.util.ShareManager
 import com.falcon.tripingly.core.designsystem.component.ErrorBanner
 import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
+import com.falcon.tripingly.core.model.trip.JoinRequest
 import com.falcon.tripingly.core.model.trip.TripInvite
 import com.falcon.tripingly.core.model.trip.TripMember
 import com.falcon.tripingly.core.model.trip.TripRole
@@ -54,6 +55,9 @@ import com.falcon.tripingly.feature.trips.generated.resources.members_invite_rev
 import com.falcon.tripingly.feature.trips.generated.resources.members_invite_share
 import com.falcon.tripingly.feature.trips.generated.resources.members_invite_share_text
 import com.falcon.tripingly.feature.trips.generated.resources.members_invites_title
+import com.falcon.tripingly.feature.trips.generated.resources.members_join_accept
+import com.falcon.tripingly.feature.trips.generated.resources.members_join_decline
+import com.falcon.tripingly.feature.trips.generated.resources.members_join_requests_title
 import com.falcon.tripingly.feature.trips.generated.resources.members_remove
 import com.falcon.tripingly.feature.trips.generated.resources.members_role_editor
 import com.falcon.tripingly.feature.trips.generated.resources.members_role_owner
@@ -125,6 +129,24 @@ fun TripMembersScreen(
                     CircularProgressIndicator()
                 }
             }
+        }
+        if (state.joinRequests.isNotEmpty()) {
+            item {
+                Text(
+                    text = stringResource(Res.string.members_join_requests_title),
+                    style = MaterialTheme.typography.titleMedium,
+                    modifier = Modifier.padding(horizontal = 24.dp),
+                )
+            }
+            items(state.joinRequests, key = { "request:${it.id}" }) { request ->
+                JoinRequestRow(
+                    request = request,
+                    isAnswering = request.id in state.answeringRequestIds,
+                    onAccept = { onAction(Action.OnAcceptJoinRequest(request)) },
+                    onDecline = { onAction(Action.OnDeclineJoinRequest(request)) },
+                )
+            }
+            item { HorizontalDivider(Modifier.padding(vertical = 8.dp)) }
         }
         items(state.members, key = { it.user.id }) { member ->
             MemberRow(
@@ -219,6 +241,31 @@ private fun MemberRow(member: TripMember, canRemove: Boolean, onRemove: () -> Un
 }
 
 @Composable
+private fun JoinRequestRow(request: JoinRequest, isAnswering: Boolean, onAccept: () -> Unit, onDecline: () -> Unit) {
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(start = 24.dp, end = 16.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(Modifier.weight(1f)) {
+            Text(request.user.displayName, style = MaterialTheme.typography.bodyLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(
+                text = "@${request.user.username}",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        if (isAnswering) {
+            CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
+        } else {
+            TextButton(onClick = onDecline) {
+                Text(stringResource(Res.string.members_join_decline), color = MaterialTheme.colorScheme.error)
+            }
+            TextButton(onClick = onAccept) { Text(stringResource(Res.string.members_join_accept)) }
+        }
+    }
+}
+
+@Composable
 private fun AddMemberField(state: State, onAction: (Action) -> Unit) {
     Row(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp),
@@ -289,6 +336,9 @@ private fun TripMembersScreenPreview() {
                     UserSummary("4", "lena", "Lena"),
                 ),
                 pickedFriends = persistentSetOf("lena"),
+                joinRequests = persistentListOf(
+                    JoinRequest("r1", "t1", UserSummary("5", "mia", "Mia"), Instant.parse("2025-06-01T10:00:00Z")),
+                ),
                 invites = persistentListOf(
                     TripInvite("i1", "https://example.com/i/abc", Instant.parse("2025-06-08T10:00:00Z")),
                 ),

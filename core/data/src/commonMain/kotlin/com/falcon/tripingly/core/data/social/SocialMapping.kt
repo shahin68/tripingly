@@ -20,7 +20,7 @@ internal fun TripSummaryDto.toPublicTrip() = PublicTrip(
     trip = toTrip(),
     likeCount = likeCount.toInt(),
     likedByMe = likedByMe,
-    copyCount = copyCount.toInt(),
+    saveCount = saveCount.toInt(),
 )
 
 internal fun ProfileDto.toProfile() = Profile(

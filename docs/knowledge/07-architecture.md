@@ -84,7 +84,7 @@ Values that tune app behaviour (cache and refresh times, limits, intervals) come
 - Token refresh: on `401` with `TOKEN_EXPIRED`, refresh once (single-flight: concurrent requests wait for the same refresh), retry; if refresh fails (`REFRESH_TOKEN_REUSED`, `ACCOUNT_SUSPENDED`, 401) sign out.
 - Timeouts: 15 s default; uploads go directly to the pre-signed URL with longer timeouts.
 - Pagination: cursor-based `{ items, nextCursor }` through `CursorPaginator`.
-- Idempotency: content-creating POSTs (trips, trip copy, days, markers, add-to-trip, marker copy, comments, invites) send `Idempotency-Key`, one UUID per user action reused on its retries. A marker create uses the marker's own app-chosen ID as its key.
+- Idempotency: content-creating POSTs (trips, days, markers, add-to-trip, marker copy, comments, invites) send `Idempotency-Key`, one UUID per user action reused on its retries. A marker create uses the marker's own app-chosen ID as its key.
 - Error mapping: the Ktorfit `AppResult` converter turns `{ error: { code, message, details } }` into `DataError.Network.Api` (code as a string, details flattened) and any 401 into `Unauthorized`; repositories map known codes to specific UI (see `03-api-contract.md`).
 
 ## Libraries

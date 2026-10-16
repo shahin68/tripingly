@@ -13,10 +13,10 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.icons.outlined.LibraryAdd
+import androidx.compose.material.icons.filled.Bookmark
+import androidx.compose.material.icons.outlined.BookmarkBorder
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -43,27 +43,27 @@ import com.falcon.tripingly.core.designsystem.component.PhotoSize
 import com.falcon.tripingly.core.designsystem.theme.spacing
 import com.falcon.tripingly.core.model.social.PublicTrip
 import com.falcon.tripingly.feature.social.generated.resources.Res
-import com.falcon.tripingly.feature.social.generated.resources.social_add_to_my_trips
 import com.falcon.tripingly.feature.social.generated.resources.social_more
 import com.falcon.tripingly.feature.social.generated.resources.social_report
-import com.falcon.tripingly.feature.social.generated.resources.social_trip_copy_count
+import com.falcon.tripingly.feature.social.generated.resources.social_save_trip
+import com.falcon.tripingly.feature.social.generated.resources.social_saved_trip
+import com.falcon.tripingly.feature.social.generated.resources.social_trip_save_count
 import com.falcon.tripingly.feature.social.generated.resources.social_trip_stop_count
 import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
 
-/** Someone's public trip: who made it, its cover, likes and "Add to my trips". */
+/** Someone's public trip: who made it, its cover, likes and Save (to My Trips, read-only). */
 @Composable
 internal fun PublicTripCard(
     trip: PublicTrip,
-    isCopying: Boolean,
     onOpen: () -> Unit,
     onOpenOwner: () -> Unit,
     onLike: () -> Unit,
-    onCopy: () -> Unit,
+    onToggleSave: () -> Unit,
     onReport: () -> Unit,
     modifier: Modifier = Modifier,
     showOwner: Boolean = true,
-    /** My own trip, on my profile: nothing to add or report. */
+    /** My own trip, on my profile: nothing to save or report. */
     isMine: Boolean = false,
 ) {
     var menuExpanded by remember { mutableStateOf(false) }
@@ -124,8 +124,8 @@ internal fun PublicTripCard(
                     Text(
                         text = buildList {
                             add(pluralStringResource(Res.plurals.social_trip_stop_count, trip.trip.markerCount, trip.trip.markerCount))
-                            if (trip.copyCount > 0) {
-                                add(pluralStringResource(Res.plurals.social_trip_copy_count, trip.copyCount, trip.copyCount))
+                            if (trip.saveCount > 0) {
+                                add(pluralStringResource(Res.plurals.social_trip_save_count, trip.saveCount, trip.saveCount))
                             }
                         }.joinToString(" · "),
                         style = MaterialTheme.typography.bodySmall,
@@ -139,13 +139,17 @@ internal fun PublicTripCard(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 LikeButton(liked = trip.likedByMe, count = trip.likeCount, onToggle = onLike)
-                if (!isMine) TextButton(onClick = onCopy, enabled = !isCopying) {
-                    if (isCopying) {
-                        CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
-                    } else {
-                        Icon(Icons.Outlined.LibraryAdd, contentDescription = null, modifier = Modifier.size(18.dp))
-                    }
-                    Text(stringResource(Res.string.social_add_to_my_trips), modifier = Modifier.padding(start = MaterialTheme.spacing.small))
+                if (!isMine) TextButton(onClick = onToggleSave) {
+                    val saved = trip.trip.savedByMe
+                    Icon(
+                        imageVector = if (saved) Icons.Filled.Bookmark else Icons.Outlined.BookmarkBorder,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp),
+                    )
+                    Text(
+                        text = stringResource(if (saved) Res.string.social_saved_trip else Res.string.social_save_trip),
+                        modifier = Modifier.padding(start = MaterialTheme.spacing.small),
+                    )
                 }
             }
         }

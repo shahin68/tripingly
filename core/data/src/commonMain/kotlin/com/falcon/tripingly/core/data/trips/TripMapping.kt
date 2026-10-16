@@ -1,10 +1,11 @@
 package com.falcon.tripingly.core.data.trips
 
 import com.falcon.tripingly.core.model.account.TripVisibility
-import com.falcon.tripingly.core.model.trip.CopiedFrom
 import com.falcon.tripingly.core.model.trip.Destination
 import com.falcon.tripingly.core.model.trip.GeoPoint
 import com.falcon.tripingly.core.model.trip.InvitePreview
+import com.falcon.tripingly.core.model.trip.JoinRequest
+import com.falcon.tripingly.core.model.trip.JoinRequestStatus
 import com.falcon.tripingly.core.model.trip.Trip
 import com.falcon.tripingly.core.model.trip.TripDay
 import com.falcon.tripingly.core.model.trip.TripDetails
@@ -13,10 +14,10 @@ import com.falcon.tripingly.core.model.trip.TripMarker
 import com.falcon.tripingly.core.model.trip.TripMember
 import com.falcon.tripingly.core.model.trip.TripRole
 import com.falcon.tripingly.core.model.trip.UserSummary
-import com.falcon.tripingly.core.network.model.CopiedFromDto
 import com.falcon.tripingly.core.network.model.DestinationDto
 import com.falcon.tripingly.core.network.model.InviteDto
 import com.falcon.tripingly.core.network.model.InvitePreviewDto
+import com.falcon.tripingly.core.network.model.JoinRequestDto
 import com.falcon.tripingly.core.network.model.LocationDto
 import com.falcon.tripingly.core.network.model.MarkerDto
 import com.falcon.tripingly.core.network.model.TripDayDto
@@ -43,6 +44,7 @@ internal fun TripSummaryDto.toTrip() = Trip(
     dayCount = dayCount.toInt(),
     markerCount = markerCount.toInt(),
     editorCount = editorCount.toInt(),
+    savedByMe = savedByMe,
     updatedAt = updatedAt.toInstant(),
 )
 
@@ -75,11 +77,17 @@ internal fun TripDto.toDetails(): TripDetails {
             dayCount = days.size,
             markerCount = markers.size,
             editorCount = members.count { it.role == TripMemberDto.Role.EDITOR },
+            savedByMe = savedByMe,
             updatedAt = updatedAt.toInstant(),
         ),
         days = days,
         members = members.map { it.toMember() },
-        copiedFrom = copiedFrom?.toCopiedFrom(),
+        myJoinRequest = when (myJoinRequest) {
+            TripDto.MyJoinRequest.PENDING -> JoinRequestStatus.PENDING
+            TripDto.MyJoinRequest.DECLINED -> JoinRequestStatus.DECLINED
+            null -> null
+        },
+        pendingJoinRequestCount = pendingJoinRequestCount.toInt(),
         destination = destination?.toDestination(),
     )
 }
@@ -121,7 +129,12 @@ private fun TripMemberDto.toMember() = TripMember(
     role = if (role == TripMemberDto.Role.OWNER) TripRole.OWNER else TripRole.EDITOR,
 )
 
-private fun CopiedFromDto.toCopiedFrom() = CopiedFrom(tripId = tripId, owner = owner.toUser())
+internal fun JoinRequestDto.toJoinRequest() = JoinRequest(
+    id = id,
+    tripId = tripId,
+    user = user.toUser(),
+    createdAt = createdAt.toInstant(),
+)
 
 internal fun UserSummaryDto.toUser() = UserSummary(id = id, username = username, displayName = displayName)
 

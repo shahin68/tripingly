@@ -2,9 +2,11 @@ package com.falcon.tripingly.core.data.trips
 
 import com.falcon.tripingly.core.common.error.DataError
 import com.falcon.tripingly.core.common.result.AppResult
+import com.falcon.tripingly.core.model.Page
 import com.falcon.tripingly.core.model.account.TripVisibility
-import com.falcon.tripingly.core.model.trip.CopiedFrom
 import com.falcon.tripingly.core.model.trip.InvitePreview
+import com.falcon.tripingly.core.model.trip.JoinRequest
+import com.falcon.tripingly.core.model.trip.JoinRequestStatus
 import com.falcon.tripingly.core.model.trip.MarkerUpdate
 import com.falcon.tripingly.core.model.trip.NewMarker
 import com.falcon.tripingly.core.model.trip.NewTrip
@@ -35,7 +37,8 @@ import kotlin.time.Instant
  * In-memory trips, markers and invites for `-Ptripinly.useFakeApi=true` builds
  * and tests, following the server's rules: days follow the dates, only the owner
  * manages the trip, the last day can't be deleted, the username `unknown` doesn't
- * exist and `blocked` is blocked. Set [nextError] to make the next call fail.
+ * exist and `blocked` is blocked. Only other people's public trips can be saved or joined.
+ * Set [nextError] to make the next call fail.
  */
 class FakeTripBackend(
     private val me: UserSummary = UserSummary("00000000-0000-4000-8000-000000000001", "me", "Me"),
@@ -44,6 +47,7 @@ class FakeTripBackend(
 
     private val trips = MutableStateFlow<Map<String, TripDetails>>(emptyMap())
     private val invites = mutableMapOf<String, MutableList<TripInvite>>()
+    private val joinRequests = mutableMapOf<String, MutableList<JoinRequest>>()
     private var ids = 0
     private val _failures = MutableSharedFlow<MarkerChangeFailure>(extraBufferCapacity = 64)
 
@@ -55,8 +59,17 @@ class FakeTripBackend(
         trips.update { it + (details.trip.id to details) }
     }
 
+    /** Someone asking to join one of my trips, as if they had sent it from their phone. */
+    fun seedJoinRequest(request: JoinRequest) {
+        joinRequests.getOrPut(request.tripId) { mutableListOf() }.add(0, request)
+        trips.update { all ->
+            val details = all[request.tripId] ?: return@update all
+            all + (request.tripId to details.copy(pendingJoinRequestCount = details.pendingJoinRequestCount + 1))
+        }
+    }
+
     override fun observeMyTrips(): Flow<List<Trip>> = trips.map { all ->
-        all.values.map { it.trip }.filter { it.role != TripRole.VIEWER }.sortedByDescending { it.updatedAt }
+        all.values.map { it.trip }.filter { it.role != TripRole.VIEWER || it.savedByMe }.sortedByDescending { it.updatedAt }
     }
 
     override suspend fun refreshMyTrips(): AppResult<Unit, DataError.Network> = call {}
@@ -142,24 +155,53 @@ class FakeTripBackend(
         trips.update { it - tripId }
     }
 
-    override suspend fun copyTrip(tripId: String): AppResult<TripDetails, DataError.Network> = call {
-        val source = trips.value[tripId] ?: return notFound()
-        if (source.trip.owner.id == me.id) {
-            return AppResult.Error(DataError.Network.Api(422, TripErrorCodes.TRIP_NOT_COPYABLE, "This trip can't be copied."))
+    override suspend fun setSaved(trip: Trip, saved: Boolean): AppResult<Unit, DataError.Network> = call {
+        val details = trips.value[trip.id] ?: TripDetails(trip, emptyList(), emptyList())
+        if (saved && !details.isJoinable()) return notFound()
+        trips.update { it + (trip.id to details.copy(trip = details.trip.copy(savedByMe = saved))) }
+    }
+
+    override suspend fun requestToJoin(tripId: String): AppResult<Unit, DataError.Network> = call {
+        val details = trips.value[tripId]?.takeIf { it.isJoinable() } ?: return notFound()
+        if (details.myJoinRequest == JoinRequestStatus.DECLINED) {
+            return AppResult.Error(DataError.Network.Api(409, TripErrorCodes.JOIN_REQUEST_DECLINED, "The owner declined your request."))
         }
-        val id = nextId()
+        trips.update { it + (tripId to details.copy(myJoinRequest = JoinRequestStatus.PENDING)) }
+    }
+
+    override suspend fun cancelJoinRequest(tripId: String): AppResult<Unit, DataError.Network> = call {
+        val details = trips.value[tripId] ?: return@call
+        if (details.myJoinRequest == JoinRequestStatus.PENDING) trips.update { it + (tripId to details.copy(myJoinRequest = null)) }
+    }
+
+    override suspend fun joinRequests(tripId: String, cursor: String?): AppResult<Page<JoinRequest>, DataError.Network> = call {
+        val details = trips.value[tripId] ?: return notFound()
+        if (!details.trip.role.canManage) return forbidden()
+        Page(joinRequests[tripId].orEmpty().toList(), nextCursor = null)
+    }
+
+    override suspend fun acceptJoinRequest(tripId: String, requestId: String): AppResult<TripDetails, DataError.Network> = call {
+        val details = trips.value[tripId] ?: return notFound()
+        if (!details.trip.role.canManage) return forbidden()
+        val request = joinRequests[tripId]?.firstOrNull { it.id == requestId } ?: return notFound()
+        joinRequests[tripId]?.remove(request)
         save(
-            source.copy(
-                trip = source.trip.copy(id = id, role = TripRole.OWNER, owner = me, updatedAt = now()),
-                days = source.days.map { day ->
-                    val dayId = nextId()
-                    day.copy(id = dayId, markers = day.markers.map { it.copy(id = nextId(), tripId = id, dayId = dayId) })
-                },
-                members = listOf(TripMember(me, TripRole.OWNER)),
-                copiedFrom = CopiedFrom(source.trip.id, source.trip.owner),
+            details.copy(
+                members = details.members + TripMember(request.user, TripRole.EDITOR),
+                pendingJoinRequestCount = maxOf(0, details.pendingJoinRequestCount - 1),
             ),
         )
     }
+
+    override suspend fun declineJoinRequest(tripId: String, requestId: String): AppResult<Unit, DataError.Network> = call {
+        val details = trips.value[tripId] ?: return notFound()
+        if (!details.trip.role.canManage) return forbidden()
+        if (joinRequests[tripId]?.removeAll { it.id == requestId } != true) return notFound()
+        trips.update { it + (tripId to details.copy(pendingJoinRequestCount = maxOf(0, details.pendingJoinRequestCount - 1))) }
+    }
+
+    /** Someone else's public trip that I'm not in. */
+    private fun TripDetails.isJoinable() = trip.role == TripRole.VIEWER && trip.visibility == TripVisibility.PUBLIC
 
     override suspend fun addDay(tripId: String): AppResult<TripDetails, DataError.Network> = call {
         val details = trips.value[tripId] ?: return notFound()

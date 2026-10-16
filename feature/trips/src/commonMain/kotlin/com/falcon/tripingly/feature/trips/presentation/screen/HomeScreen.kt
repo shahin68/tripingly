@@ -229,9 +229,14 @@ private fun MyTripsContent(
     }
 }
 
-/** The long-press menu: the owner manages the trip, an editor can share it or leave. */
+/** The long-press menu: the owner manages the trip, an editor can share it or leave, a saved trip can be removed. */
 @Composable
 private fun tripActions(trip: Trip, onAction: (Action) -> Unit): List<DropdownAction> = buildList {
+    if (trip.role == TripRole.VIEWER) {
+        add(DropdownAction(stringResource(Res.string.trip_action_share)) { onAction(Action.OnShareTrip(trip.id)) })
+        add(DropdownAction(stringResource(Res.string.trip_action_remove_saved), isDestructive = true) { onAction(Action.OnRemoveSavedTrip(trip.id)) })
+        return@buildList
+    }
     if (trip.role.canManage) {
         add(DropdownAction(stringResource(Res.string.trip_action_rename)) { onAction(Action.OnRenameTrip(trip.id)) })
         add(DropdownAction(stringResource(Res.string.trip_action_reschedule)) { onAction(Action.OnRescheduleTrip(trip.id)) })
@@ -286,6 +291,7 @@ private fun TripItem(
             )
             val details = buildList {
                 if (trip.role == TripRole.EDITOR) add(stringResource(Res.string.trip_shared_by, trip.owner.username))
+                if (trip.role == TripRole.VIEWER) add(stringResource(Res.string.trip_saved_by, trip.owner.username))
                 if (trip.role == TripRole.OWNER && trip.editorCount > 0) {
                     add(pluralStringResource(Res.plurals.trip_shared_with, trip.editorCount, trip.editorCount))
                 }

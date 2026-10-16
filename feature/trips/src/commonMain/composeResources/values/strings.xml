@@ -18,6 +18,7 @@
     <string name="trip_no_dates">No dates yet</string>
     <string name="trip_private">Private</string>
     <string name="trip_shared_by">Shared by @%1$s</string>
+    <string name="trip_saved_by">Saved · by @%1$s</string>
     <plurals name="trip_shared_with">
         <item quantity="one">Shared with %1$d person</item>
         <item quantity="other">Shared with %1$d people</item>
@@ -40,6 +41,7 @@
     <string name="trip_action_share">Share Trip</string>
     <string name="trip_action_delete">Delete Trip</string>
     <string name="trip_action_leave">Leave Trip</string>
+    <string name="trip_action_remove_saved">Remove from my trips</string>
 
     <!-- Share -->
     <string name="share_trip_text">Check out my trip: %1$s (%2$s)!</string>
@@ -76,6 +78,10 @@
     <!-- Delete and leave -->
     <string name="delete_trip_title">Delete trip?</string>
     <string name="delete_trip_message">“%1$s” and all its days and stops will be deleted for everyone in it. This can’t be undone.</string>
+    <plurals name="delete_trip_editors_warning">
+        <item quantity="one">%1$d person edits this trip with you. It will be gone for them too, with everything they added.</item>
+        <item quantity="other">%1$d people edit this trip with you. It will be gone for them too, with everything they added.</item>
+    </plurals>
     <string name="delete_trip_button">Delete</string>
     <string name="leave_trip_title">Leave trip?</string>
     <string name="leave_trip_message">You won’t see or edit “%1$s” anymore. The owner can add you again.</string>
@@ -91,6 +97,9 @@
     <string name="members_error_user_not_found">No one has that username.</string>
     <string name="members_error_some_not_added">Some of these people can’t be added. Unpick them and try again.</string>
     <string name="members_add_friends">Add %1$d</string>
+    <string name="members_join_requests_title">Asking to join</string>
+    <string name="members_join_accept">Accept</string>
+    <string name="members_join_decline">Decline</string>
     <string name="members_invites_title">Invite links</string>
     <string name="members_invite_hint">Anyone with a link can join as an editor until it expires.</string>
     <string name="members_invite_create">Create invite link</string>

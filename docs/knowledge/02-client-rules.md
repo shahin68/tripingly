@@ -19,7 +19,7 @@ The backend enforces these rules. The client must show them correctly and never 
 - An optional destination (e.g. "Paris"), picked from our place search when creating the trip; never required. The map opens there while the trip has no stops, and never jumps to the device location then.
 - **Owner only:** rename, change dates, change visibility, delete trip, add/remove members, create/revoke invite links.
 - **Owner and editors:** add/edit/delete/reorder markers and days, upload/delete photos, set cover.
-- **Everyone else** sees public trips read-only and can like, comment and copy.
+- **Everyone else** sees public trips read-only and can like, comment, save and ask to join.
 - Hide controls the user can't use; still handle `FORBIDDEN`/`NOT_FOUND` gracefully (roles can change live).
 - Private trips return `NOT_FOUND` to non-members; show "This trip isn't available".
 
@@ -29,10 +29,13 @@ The backend enforces these rules. The client must show them correctly and never 
 - Several photos per marker; one **cover** shown inside the map pin; gallery is swipeable. Markers without photos are plain numbered pins.
 - Limits: 30 photos per marker, 15 MB, JPEG/PNG/HEIC/WebP (server errors `PHOTO_LIMIT_REACHED`, `UPLOAD_TOO_LARGE`, `UNSUPPORTED_MEDIA_TYPE`).
 
-## Add to my trips (copy)
+## Saving and joining (no copies)
 
-- Only public trips/markers of other users. One button, no options: creates an independent editable copy owned by the user, **without** photos, comments or likes.
-- Show "Copied from @handle" only when the response includes `copiedFrom` (it disappears if the original is deleted).
+- Only other people's public trips. There are no trip copies: a trip has one owner forever.
+- **Save** (Explore and profile cards, the trip map's menu): the trip shows in My Trips marked "Saved · by @owner", read-only, always the live original. "Remove from my trips" (Home menu, card, map menu) unsaves it. If the owner deletes the trip or makes it private, it drops out of My Trips on the next refresh.
+- **Ask to join** (the map's menu): the owner accepts (I become an editor, like an invite) or declines; a declined request can't be sent again (`409 JOIN_REQUEST_DECLINED`), so the menu offers nothing more. A pending request can be withdrawn.
+- The owner sees "N people want to join" on the trip map and the requests at the top of the members sheet, with Accept and Decline. Deleting a trip that has editors warns that it's gone for them too.
+- A single stop or popular spot can still be added to one of my trips (`POST /markers/{id}/copy`, no UI yet).
 
 ## Social
 

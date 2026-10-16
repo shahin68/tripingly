@@ -18,8 +18,8 @@ import kotlinx.coroutines.flow.Flow
  */
 @Dao
 abstract class TripDao {
-    /** My Trips: owned and collaborating, most recently updated first, like `GET /me/trips`. */
-    @Query("SELECT * FROM trips WHERE role != 'viewer' ORDER BY updatedAt DESC, id DESC")
+    /** My Trips: owned, collaborating and saved, most recently updated first, like `GET /me/trips`. */
+    @Query("SELECT * FROM trips WHERE role != 'viewer' OR savedByMe = 1 ORDER BY updatedAt DESC, id DESC")
     abstract fun observeMyTrips(): Flow<List<TripEntity>>
 
     @Transaction
@@ -44,7 +44,7 @@ abstract class TripDao {
     @Insert
     abstract suspend fun insertMembers(members: List<TripMemberEntity>)
 
-    @Query("DELETE FROM trips WHERE role != 'viewer' AND id NOT IN (:keepIds)")
+    @Query("DELETE FROM trips WHERE (role != 'viewer' OR savedByMe = 1) AND id NOT IN (:keepIds)")
     abstract suspend fun deleteMyTripsExcept(keepIds: List<String>)
 
     @Query("DELETE FROM trips WHERE id = :tripId")
@@ -75,6 +75,21 @@ abstract class TripDao {
     @Query("UPDATE markers SET commentCount = MAX(0, commentCount + :delta) WHERE id = :markerId")
     abstract suspend fun addToMarkerCommentCount(markerId: String, delta: Int)
 
+    @Query("UPDATE trips SET savedByMe = :saved WHERE id = :tripId")
+    abstract suspend fun updateSavedByMe(tripId: String, saved: Boolean)
+
+    @Query("UPDATE trips SET myJoinRequest = :status WHERE id = :tripId")
+    abstract suspend fun updateMyJoinRequest(tripId: String, status: String?)
+
+    @Query("UPDATE trips SET pendingJoinRequestCount = MAX(0, pendingJoinRequestCount - 1) WHERE id = :tripId")
+    abstract suspend fun decrementPendingJoinRequests(tripId: String)
+
+    /** Saves or unsaves a trip; one that isn't cached yet is added from [trip] (as Explore listed it). */
+    @Transaction
+    open suspend fun saveSavedByMe(trip: TripEntity, saved: Boolean) {
+        if (trip(trip.id) == null) upsertTrips(listOf(trip.copy(savedByMe = saved))) else updateSavedByMe(trip.id, saved)
+    }
+
     @Query("DELETE FROM trips")
     abstract suspend fun deleteAll()
 
@@ -82,15 +97,13 @@ abstract class TripDao {
     @Transaction
     open suspend fun replaceMyTrips(trips: List<TripEntity>) {
         deleteMyTripsExcept(trips.map { it.id })
-        // The list doesn't say where a trip was copied from or where it goes; keep what the trip itself said.
+        // The list doesn't say where a trip goes or how joining it stands; keep what the trip itself said.
         upsertTrips(
             trips.map { summary ->
                 val cached = trip(summary.id) ?: return@map summary
                 summary.copy(
-                    copiedFromTripId = cached.copiedFromTripId,
-                    copiedFromOwnerId = cached.copiedFromOwnerId,
-                    copiedFromOwnerUsername = cached.copiedFromOwnerUsername,
-                    copiedFromOwnerDisplayName = cached.copiedFromOwnerDisplayName,
+                    myJoinRequest = cached.myJoinRequest,
+                    pendingJoinRequestCount = cached.pendingJoinRequestCount,
                     destinationName = cached.destinationName,
                     destinationLat = cached.destinationLat,
                     destinationLng = cached.destinationLng,

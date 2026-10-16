@@ -47,7 +47,7 @@ REST over HTTPS, JSON, base path `/v1`.
 | GET | `/me/stats` | Trips, markers, photos counts |
 | GET | `/me/friends?cursor=&limit=` | The user's friends as user summaries, cursor paginated `{ items, nextCursor }`. The New trip sheet shows the first page (limit 50) as a row of avatars to add as members. Backend: tripinly-backend#32 (generated `UserPageDto`) |
 | GET | `/me/following?cursor=&limit=`, `/me/followers?cursor=&limit=` | Same shape; my profile's Following and Followers lists (pages of 50) |
-| GET | `/me/trips` | Owned + collaborating, cursor paginated; each item has `role`, `coverThumbUrl` (first cover photo in the trip, or null), `dayCount`, `markerCount`, `editorCount` (people it's shared with, owner not counted; backend#30) |
+| GET | `/me/trips` | Owned, collaborating and saved (`role` `viewer`, `savedByMe` true), cursor paginated; each item has `role`, `saveCount`, `savedByMe`, `coverThumbUrl` (first cover photo in the trip, or null), `dayCount`, `markerCount`, `editorCount` (people it's shared with, owner not counted; backend#30) |
 | PUT | `/me/devices/{fcmToken}` | Register/refresh push device. Body: `platform` (`android`\|`ios`), `locale` |
 | DELETE | `/me/devices/{fcmToken}` | |
 | POST | `/me/export` | Starts GDPR export job; email when ready |
@@ -58,7 +58,7 @@ REST over HTTPS, JSON, base path `/v1`.
 |---|---|---|
 | GET | `/users/check-username?username=` | Availability during onboarding |
 | GET | `/users/search?q=` | Prefix search on username and display name; `q` 2–50 characters, up to 20 results `{ items: [UserSummary] }` |
-| GET | `/users/{username}?cursor=&limit=` | Profile: `user`, `followerCount`, `followingCount`, `isFollowing`, `followsMe`, `isFriend`, `publicTripCount`, `trips[]` (trip summaries with `likeCount`, `likedByMe`, `copyCount`), `nextCursor`. The app asks without `@`, pages of 20; `404 NOT_FOUND` for unknown or blocked either way |
+| GET | `/users/{username}?cursor=&limit=` | Profile: `user`, `followerCount`, `followingCount`, `isFollowing`, `followsMe`, `isFriend`, `publicTripCount`, `trips[]` (trip summaries with `likeCount`, `likedByMe`, `saveCount`, `savedByMe`), `nextCursor`. The app asks without `@`, pages of 20; `404 NOT_FOUND` for unknown or blocked either way |
 | PUT | `/users/{id}/follow` | Follow (idempotent); the profile's Follow button, shown at once |
 | DELETE | `/users/{id}/follow` | Unfollow |
 | POST | `/users/{id}/block` | From a profile's menu, after a confirmation; the profile then closes |
@@ -69,10 +69,16 @@ REST over HTTPS, JSON, base path `/v1`.
 | Method | Path | Notes |
 |---|---|---|
 | POST | `/trips` | Title, dates, visibility, optional `destination` `{ name, location }`, optional initial `memberUsernames` (≤ 20, joined as editors; unknown → `400 VALIDATION_FAILED` with `fields["memberUsernames.<i>"] = ["notFound"]`, blocked → `["blocked"]`) |
-| GET | `/trips/{id}` | Trip with days, markers (cover thumbnail URLs), members, `copiedFrom` summary |
+| GET | `/trips/{id}` | Trip with days, markers (cover thumbnail URLs), members, save and join state |
 | PATCH | `/trips/{id}` | Owner: title, dates, visibility, `destination` (null removes it) |
 | DELETE | `/trips/{id}` | Owner |
-| POST | `/trips/{id}/copy` | "Add to my trips". Public, not own. Returns the new trip |
+| PUT | `/trips/{id}/save` | Save someone else's public trip to My Trips (read-only, the live original). Idempotent, 204 |
+| DELETE | `/trips/{id}/save` | Remove it from My Trips. 204 |
+| POST | `/trips/{id}/join-request` | Ask the owner to join as an editor; returns the request (repeating a pending one returns it). `409 JOIN_REQUEST_DECLINED` once declined |
+| DELETE | `/trips/{id}/join-request` | Withdraw my pending request. 204 |
+| GET | `/trips/{id}/join-requests?cursor=&limit=` | Owner: pending requests `{ id, tripId, user, status, createdAt }`, newest first. The members sheet asks only when `pendingJoinRequestCount > 0` |
+| POST | `/join-requests/{id}/accept` | Owner: the person becomes an editor (member limit applies, `LIMIT_REACHED`); returns the member |
+| POST | `/join-requests/{id}/decline` | Owner: 204; they can't ask again |
 | GET | `/explore/trips?cursor=&limit=` | Public trips from others, ranked; Social → Explore, pages of 20 |
 
 ### Days
@@ -174,7 +180,7 @@ Response shapes and behaviour: see `05-maps-places-routing.md`.
 
 Field names the client relies on (full schemas in OpenAPI):
 
-- **Trip** (`GET /trips/{id}`): `id`, `title`, `startDate`, `endDate`, `destination` (`{ name, location }` or null), `visibility`, `owner` (user summary), `myRole` (`owner`\|`editor`\|`viewer`), `members[]`, `likeCount`, `likedByMe`, `copyCount`, `copiedFrom` (`{ tripId, owner: { username } }` or null), `days[]` → `{ id, position, date, markers[] }`.
+- **Trip** (`GET /trips/{id}`): `id`, `title`, `startDate`, `endDate`, `destination` (`{ name, location }` or null), `visibility`, `owner` (user summary), `myRole` (`owner`\|`editor`\|`viewer`), `members[]`, `likeCount`, `likedByMe`, `saveCount`, `savedByMe`, `myJoinRequest` (`pending`\|`declined`\|null), `pendingJoinRequestCount` (owner only, else 0), `days[]` → `{ id, position, date, markers[] }`.
 - **Marker**: `id`, `dayId`, `placeId`, `name`, `location`, `time` (`HH:mm` or null), `position`, `coverPhotoId`, `coverThumbUrl`, `photoCount`, `likeCount`, `likedByMe`, `commentCount`, `createdBy` (user summary or null).
 - **Photo**: `id`, `markerId`, `status` (`processing`\|`ready`\|`failed`), `thumbUrl`, `displayUrl` (signed, expire after ~1 h), `width`, `height`, `position`, `likeCount`, `likedByMe`, `uploader`.
 - **User summary**: `id`, `username`, `displayName`.
@@ -184,6 +190,6 @@ Field names the client relies on (full schemas in OpenAPI):
 
 ## Stable error codes (starter set)
 
-`UNAUTHENTICATED`, `TOKEN_EXPIRED`, `REFRESH_TOKEN_REUSED`, `ONBOARDING_INCOMPLETE`, `CONSENT_REQUIRED`, `AGE_REQUIREMENT_NOT_MET`, `USERNAME_TAKEN`, `USERNAME_INVALID`, `VALIDATION_FAILED`, `ID_CONFLICT`, `NOT_FOUND`, `FORBIDDEN`, `TRIP_NOT_COPYABLE`, `USER_BLOCKED`, `INVITE_EXPIRED`, `PHOTO_LIMIT_REACHED`, `UPLOAD_TOO_LARGE`, `UNSUPPORTED_MEDIA_TYPE`, `PREMIUM_REQUIRED`, `RATE_LIMITED`, `ACCOUNT_SUSPENDED`, `REAUTH_REQUIRED`, `ROUTING_UNAVAILABLE`, `BBOX_TOO_LARGE`.
+`UNAUTHENTICATED`, `TOKEN_EXPIRED`, `REFRESH_TOKEN_REUSED`, `ONBOARDING_INCOMPLETE`, `CONSENT_REQUIRED`, `AGE_REQUIREMENT_NOT_MET`, `USERNAME_TAKEN`, `USERNAME_INVALID`, `VALIDATION_FAILED`, `ID_CONFLICT`, `NOT_FOUND`, `FORBIDDEN`, `TRIP_NOT_COPYABLE` (marker copy), `JOIN_REQUEST_DECLINED`, `USER_BLOCKED`, `INVITE_EXPIRED`, `PHOTO_LIMIT_REACHED`, `UPLOAD_TOO_LARGE`, `UNSUPPORTED_MEDIA_TYPE`, `PREMIUM_REQUIRED`, `RATE_LIMITED`, `ACCOUNT_SUSPENDED`, `REAUTH_REQUIRED`, `ROUTING_UNAVAILABLE`, `BBOX_TOO_LARGE`.
 
 Add new codes here when you introduce them.

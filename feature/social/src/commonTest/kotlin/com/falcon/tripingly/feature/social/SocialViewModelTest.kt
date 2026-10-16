@@ -13,20 +13,20 @@ import com.falcon.tripingly.core.location.GetCurrentLocationUseCase
 import com.falcon.tripingly.core.location.LocationRepository
 import com.falcon.tripingly.core.location.model.Coordinates
 import com.falcon.tripingly.core.model.Page
+import com.falcon.tripingly.core.model.account.TripVisibility
 import com.falcon.tripingly.core.model.social.LikeState
 import com.falcon.tripingly.core.model.social.LikeTarget
 import com.falcon.tripingly.core.model.social.PublicTrip
 import com.falcon.tripingly.core.model.trip.NewTrip
+import com.falcon.tripingly.core.model.trip.Trip
 import com.falcon.tripingly.core.model.trip.TripDetails
 import com.falcon.tripingly.core.model.trip.TripRole
 import com.falcon.tripingly.core.model.trip.UserSummary
-import com.falcon.tripingly.core.ui.UiText
-import com.falcon.tripingly.feature.social.generated.resources.Res
-import com.falcon.tripingly.feature.social.generated.resources.social_error_not_copyable
 import com.falcon.tripingly.feature.social.presentation.social.SocialViewModel
 import com.falcon.tripingly.feature.social.presentation.social.SocialViewModel.Action
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.advanceTimeBy
@@ -41,6 +41,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
+import kotlin.time.Instant
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class SocialViewModelTest {
@@ -81,9 +82,28 @@ class SocialViewModelTest {
 
     private fun viewModel() = SocialViewModel(social, users, FakePlaceRepository(), backend, backend, location)
 
+    /** One of my trips, as if Explore listed it to someone else. */
     private suspend fun publicTrip(): PublicTrip {
         val details: TripDetails = (backend.createTrip(NewTrip("Vienna", LocalDate(2026, 6, 1), LocalDate(2026, 6, 2))) as AppResult.Success).data
-        return PublicTrip(details.trip.copy(role = TripRole.VIEWER), likeCount = 4, likedByMe = false, copyCount = 0)
+        return PublicTrip(details.trip.copy(role = TripRole.VIEWER), likeCount = 4, likedByMe = false, saveCount = 0)
+    }
+
+    /** Anna's public trip. */
+    private fun othersTrip(): PublicTrip {
+        val trip = Trip(
+            id = "t-anna",
+            name = "Budapest",
+            startDate = null,
+            endDate = null,
+            visibility = TripVisibility.PUBLIC,
+            role = TripRole.VIEWER,
+            owner = UserSummary("u-anna", "anna", "Anna"),
+            dayCount = 1,
+            markerCount = 2,
+            updatedAt = Instant.parse("2026-10-16T10:00:00Z"),
+        )
+        backend.seed(TripDetails(trip, emptyList(), emptyList()))
+        return PublicTrip(trip, likeCount = 0, likedByMe = false, saveCount = 2)
     }
 
     @Test
@@ -131,14 +151,32 @@ class SocialViewModelTest {
     }
 
     @Test
-    fun copyingMyOwnTrip_saysItCantBeAdded() = runTest {
+    fun savingATrip_showsAtOnce_andPutsItInMyTrips() = runTest {
+        explore = listOf(othersTrip())
+        val viewModel = viewModel()
+        advanceUntilIdle()
+
+        viewModel.onAction(Action.OnToggleSaveTrip(viewModel.uiState.value.explore.single()))
+        val trip = viewModel.uiState.value.explore.single()
+        assertTrue(trip.trip.savedByMe)
+        assertEquals(3, trip.saveCount)
+        advanceUntilIdle()
+
+        assertEquals(listOf("t-anna"), backend.observeMyTrips().first().map { it.id })
+    }
+
+    @Test
+    fun savingMyOwnTrip_refused_putsItBack() = runTest {
         explore = listOf(publicTrip())
         val viewModel = viewModel()
         advanceUntilIdle()
 
-        viewModel.onAction(Action.OnCopyTrip(viewModel.uiState.value.explore.single()))
+        viewModel.onAction(Action.OnToggleSaveTrip(viewModel.uiState.value.explore.single()))
         advanceUntilIdle()
 
-        assertEquals(UiText.Resource(Res.string.social_error_not_copyable), viewModel.uiState.value.message)
+        val trip = viewModel.uiState.value.explore.single()
+        assertFalse(trip.trip.savedByMe)
+        assertEquals(0, trip.saveCount)
+        assertTrue(viewModel.uiState.value.message != null)
     }
 }
