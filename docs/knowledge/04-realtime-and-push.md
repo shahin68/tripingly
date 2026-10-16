@@ -19,7 +19,7 @@
 | `day.created` / `day.deleted` | Update days |
 | `marker.created` / `marker.updated` / `marker.deleted` | Update markers; refetch the day route if shown |
 | `markers.reordered` | Apply order; refetch the day route if shown |
-| `photo.processing` / `photo.ready` / `photo.failed` / `photo.deleted` | Update gallery; show a placeholder while processing |
+| `photo.processing` / `photo.ready` / `photo.failed` / `photo.deleted` | Update gallery; show a placeholder while processing. For my photo on a place they come to my user room without a `tripId` (`RealtimeEvent.ToMe`) |
 | `marker.cover_changed` | Update the pin thumbnail |
 | `comment.created` / `comment.deleted` | Update the thread and count |
 | `like.count_changed` | Update the count (keep your own `likedByMe`) |

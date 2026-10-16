@@ -13,6 +13,9 @@ object TripErrorCodes {
     /** The owner declined my request to join; it can't be sent again. */
     const val JOIN_REQUEST_DECLINED = "JOIN_REQUEST_DECLINED"
 
+    /** Deleting a stop or day would delete other people's photos, comments or likes; sent again with `confirm`. */
+    const val STOP_HAS_OTHERS_CONTENT = "STOP_HAS_OTHERS_CONTENT"
+
     /** A marker with the app-chosen ID exists already. */
     const val ID_CONFLICT = "ID_CONFLICT"
 

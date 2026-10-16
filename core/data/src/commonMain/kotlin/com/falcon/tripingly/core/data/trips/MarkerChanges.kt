@@ -24,14 +24,20 @@ internal sealed interface MarkerChange {
         override val markerName get() = after.name
     }
 
-    data class Delete(val marker: TripMarker) : MarkerChange {
+    /** [confirm]: other people's photos, comments and likes on it go too. */
+    data class Delete(val marker: TripMarker, val confirm: Boolean = false) : MarkerChange {
         override val tripId get() = marker.tripId
         override val markerId get() = marker.id
         override val markerName get() = marker.name
     }
 
-    /** Deletes all of a day's [markers]. */
-    data class ClearDay(override val tripId: String, val dayId: String, val markers: List<TripMarker>) : MarkerChange {
+    /** Deletes all of a day's [markers]; [confirm] as for [Delete]. */
+    data class ClearDay(
+        override val tripId: String,
+        val dayId: String,
+        val markers: List<TripMarker>,
+        val confirm: Boolean = false,
+    ) : MarkerChange {
         override val markerId get() = dayId
         override val markerName get() = ""
     }
@@ -60,6 +66,16 @@ class MarkerChangeFailure internal constructor(
 ) {
     /** The connection failed, so trying again can help; a refusal by the server won't change. */
     val isConnectionProblem: Boolean get() = error.isConnectionProblem()
+
+    /** A delete the server refused because of other people's content; [MarkerRepository.deleteAnyway] sends it again. */
+    val needsConfirm: Boolean get() = error.hasCode(TripErrorCodes.STOP_HAS_OTHERS_CONTENT)
+}
+
+/** [change] once more, deleting other people's content too; null for a change that isn't a delete. */
+internal fun MarkerChange.confirmed(): MarkerChange? = when (this) {
+    is MarkerChange.Delete -> copy(confirm = true)
+    is MarkerChange.ClearDay -> copy(confirm = true)
+    else -> null
 }
 
 internal fun DataError.Network.isConnectionProblem(): Boolean =

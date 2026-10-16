@@ -46,6 +46,8 @@ internal class DefaultMarkerRepository(
     private val local: TripLocalDataSource,
     private val pending: PendingTripWrites,
     private val scope: CoroutineScope,
+    /** Set as the creator of stops added here. */
+    private val currentUserId: () -> String?,
 ) : MarkerRepository {
 
     private val queuesLock = Mutex()
@@ -68,6 +70,7 @@ internal class DefaultMarkerRepository(
             location = marker.location,
             time = marker.time,
             position = day?.markers?.nextPosition() ?: 0,
+            createdById = currentUserId(),
         )
         submit(MarkerChange.Add(created, marker.osm))
         return created
@@ -103,6 +106,20 @@ internal class DefaultMarkerRepository(
     }
 
     override suspend fun retry(failure: MarkerChangeFailure) = submit(failure.change)
+
+    override suspend fun deleteAnyway(failure: MarkerChangeFailure) {
+        failure.change.confirmed()?.let { submit(it) }
+    }
+
+    override suspend fun removeMyContent(tripId: String, markerId: String): AppResult<Unit, DataError.Network> =
+        when (val result = api.removeMine(markerId)) {
+            is AppResult.Success -> {
+                // The stop's counts and cover changed on the server.
+                trips.refreshTrip(tripId)
+                result
+            }
+            is AppResult.Error -> result
+        }
 
     override suspend fun copyMarker(markerId: String, targetDayId: String): AppResult<TripMarker, DataError.Network> =
         when (val result = api.copy(markerId, CopyMarkerDto(dayId = targetDayId), newIdempotencyKey())) {
@@ -220,8 +237,8 @@ internal class DefaultMarkerRepository(
                     dayId = change.update.dayId,
                 ),
             )
-            is MarkerChange.Delete -> api.delete(change.markerId)
-            is MarkerChange.ClearDay -> api.clearDay(change.dayId)
+            is MarkerChange.Delete -> api.delete(change.markerId, change.confirm)
+            is MarkerChange.ClearDay -> api.clearDay(change.dayId, change.confirm)
             is MarkerChange.Reorder -> api.reorder(
                 change.dayId,
                 MarkerOrderDto(markerIds = change.after.filterNot { it in state.failedAdds }),

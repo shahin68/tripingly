@@ -79,6 +79,15 @@ sealed interface RealtimeEvent {
     /** `trips.changed`, to the user: a trip was added to or removed from My Trips. */
     data class MyTripsChanged(val tripId: String) : RealtimeEvent
 
+    /** Sent to me alone. */
+    sealed interface ToMe : RealtimeEvent
+
+    /** `photo.ready` for my photo on a place (place photos have no trip room). */
+    data class PlacePhotoSaved(val photo: PhotoDto) : ToMe
+
+    /** `photo.failed` for my photo on a place. */
+    data class PlacePhotoFailed(val photoId: String, val placeId: String) : ToMe
+
     /** `follows.changed`, to both people: [followerId] started ([following]) or stopped following [followeeId]. */
     data class FollowsChanged(val followerId: String, val followeeId: String, val following: Boolean) : RealtimeEvent
 }
@@ -104,7 +113,7 @@ private data class MarkerOrderData(val markerIds: List<String>)
 private data class PhotoData(val photo: PhotoDto)
 
 @Serializable
-private data class PhotoIdData(val photoId: String, val markerId: String)
+private data class PhotoIdData(val photoId: String, val markerId: String? = null, val placeId: String? = null)
 
 @Serializable
 private data class PhotoOrderData(val markerId: String, val photoIds: List<String>)
@@ -140,15 +149,21 @@ internal fun parseRealtimeEvent(name: String, payload: JsonElement): RealtimeEve
             inTrip { RealtimeEvent.MarkersReordered(it, actorId, NetworkJson.decodeFromJsonElement<MarkerOrderData>(data).markerIds) }
         "marker.cover_changed" ->
             inTrip { RealtimeEvent.MarkerCoverChanged(it, actorId, NetworkJson.decodeFromJsonElement<MarkerIdData>(data).markerId) }
-        "photo.processing", "photo.ready" ->
-            inTrip { RealtimeEvent.PhotoSaved(it, actorId, NetworkJson.decodeFromJsonElement<PhotoData>(data).photo) }
-        "photo.failed" -> inTrip {
-            val ids = NetworkJson.decodeFromJsonElement<PhotoIdData>(data)
-            RealtimeEvent.PhotoFailed(it, actorId, ids.photoId, ids.markerId)
+        "photo.processing", "photo.ready" -> {
+            val photo = NetworkJson.decodeFromJsonElement<PhotoData>(data).photo
+            if (tripId != null) RealtimeEvent.PhotoSaved(tripId, actorId, photo) else RealtimeEvent.PlacePhotoSaved(photo)
         }
-        "photo.deleted" -> inTrip {
+        "photo.failed" -> {
             val ids = NetworkJson.decodeFromJsonElement<PhotoIdData>(data)
-            RealtimeEvent.PhotoDeleted(it, actorId, ids.photoId, ids.markerId)
+            when {
+                tripId != null && ids.markerId != null -> RealtimeEvent.PhotoFailed(tripId, actorId, ids.photoId, ids.markerId)
+                ids.placeId != null -> RealtimeEvent.PlacePhotoFailed(ids.photoId, ids.placeId)
+                else -> null
+            }
+        }
+        "photo.deleted" -> {
+            val ids = NetworkJson.decodeFromJsonElement<PhotoIdData>(data)
+            ids.markerId?.let { markerId -> inTrip { RealtimeEvent.PhotoDeleted(it, actorId, ids.photoId, markerId) } }
         }
         "photos.reordered" -> inTrip {
             val order = NetworkJson.decodeFromJsonElement<PhotoOrderData>(data)

@@ -6,12 +6,15 @@ import com.falcon.tripingly.core.common.result.map
 import com.falcon.tripingly.core.common.result.onSuccess
 import com.falcon.tripingly.core.data.config.AppConfigRepository
 import com.falcon.tripingly.core.data.realtime.Coalescer
+import com.falcon.tripingly.core.data.social.SocialRepository
 import com.falcon.tripingly.core.data.trips.TripLocalDataSource
 import com.falcon.tripingly.core.data.trips.isConnectionProblem
 import com.falcon.tripingly.core.data.trips.toMarker
 import com.falcon.tripingly.core.model.photo.Photo
+import com.falcon.tripingly.core.model.photo.PhotoOwner
 import com.falcon.tripingly.core.model.photo.PhotoStatus
 import com.falcon.tripingly.core.model.photo.PickedImage
+import com.falcon.tripingly.core.model.social.LikeTarget
 import com.falcon.tripingly.core.model.trip.TripMarker
 import com.falcon.tripingly.core.network.model.CoverDto
 import com.falcon.tripingly.core.network.model.PhotoDto
@@ -42,11 +45,12 @@ internal class DefaultPhotoRepository(
     private val storage: StorageClient,
     private val local: TripLocalDataSource,
     private val config: AppConfigRepository,
+    private val social: SocialRepository,
     private val preparer: PhotoPreparer,
     private val scope: CoroutineScope,
 ) : PhotoRepository {
 
-    private val galleries = MutableStateFlow<Map<String, List<Photo>>>(emptyMap())
+    private val galleries = MutableStateFlow<Map<PhotoOwner, List<Photo>>>(emptyMap())
 
     /** Picked images still on the phone, with where to read them from. */
     private val queue = MutableStateFlow<List<QueuedImage>>(emptyList())
@@ -59,19 +63,25 @@ internal class DefaultPhotoRepository(
     /** Reloads a marker for its cover and photo count, once per burst of changes. */
     private val markerRefreshes = Coalescer(scope) { refreshMarker(it) }
 
-    override fun photos(markerId: String): Flow<List<Photo>?> =
-        galleries.map { it[markerId] }.distinctUntilChanged()
+    override fun photos(owner: PhotoOwner): Flow<List<Photo>?> =
+        galleries.map { it[owner] }.distinctUntilChanged()
 
-    override fun uploads(markerId: String): Flow<List<PhotoUpload>> =
-        queue.map { images -> images.map { it.upload }.filter { it.markerId == markerId } }.distinctUntilChanged()
+    override fun uploads(owner: PhotoOwner): Flow<List<PhotoUpload>> =
+        queue.map { images -> images.map { it.upload }.filter { it.owner == owner } }.distinctUntilChanged()
 
-    override suspend fun loadPhotos(markerId: String): AppResult<List<Photo>, DataError.Network> =
-        api.photos(markerId).map { photos ->
-            photos.map { it.toPhoto() }.sortedBy { it.position }.also { gallery -> galleries.update { it + (markerId to gallery) } }
+    override suspend fun loadPhotos(owner: PhotoOwner): AppResult<List<Photo>, DataError.Network> {
+        val result = when (owner) {
+            is PhotoOwner.Stop -> api.photos(owner.markerId)
+            is PhotoOwner.Place -> api.placePhotos(owner.placeId)
         }
+        return result.map { photos ->
+            // A place's photos come most liked first and keep that order.
+            photos.map { it.toPhoto() }.sortedFor(owner).also { gallery -> galleries.update { it + (owner to gallery) } }
+        }
+    }
 
-    override fun upload(markerId: String, images: List<PickedImage>) {
-        val added = images.map { QueuedImage(PhotoUpload(Uuid.random().toString(), markerId, PhotoUpload.State.Queued), it) }
+    override fun upload(owner: PhotoOwner, images: List<PickedImage>) {
+        val added = images.map { QueuedImage(PhotoUpload(Uuid.random().toString(), owner, PhotoUpload.State.Queued), it) }
         queue.update { it + added }
         added.forEach { image -> scope.launch { send(image.upload.key) } }
     }
@@ -90,19 +100,39 @@ internal class DefaultPhotoRepository(
 
     override suspend fun deletePhoto(photo: Photo): AppResult<Unit, DataError.Network> =
         api.delete(photo.id).map {
-            removePhoto(photo.markerId, photo.id)
-            val marker = cachedMarker(photo.markerId)
+            removePhoto(photo.owner, photo.id)
+            val stop = photo.owner as? PhotoOwner.Stop ?: return@map
+            val marker = cachedMarker(stop.markerId)
             // The server picks a new cover when the cover goes, so only then is the marker asked for again.
             if (marker != null && marker.coverPhotoId != photo.id) {
                 local.saveMarkers(listOf(marker.copy(photoCount = (marker.photoCount - 1).coerceAtLeast(0))))
             } else {
-                refreshMarker(photo.markerId)
+                refreshMarker(stop.markerId)
             }
         }
 
+    override suspend fun setLiked(photo: Photo, liked: Boolean): AppResult<Unit, DataError.Network> {
+        val before = galleries.value[photo.owner]?.firstOrNull { it.id == photo.id } ?: photo
+        if (before.likedByMe != liked) {
+            updatePhoto(photo.owner, photo.id) {
+                it.copy(likedByMe = liked, likeCount = (it.likeCount + if (liked) 1 else -1).coerceAtLeast(0))
+            }
+        }
+        return when (val result = social.setLiked(LikeTarget.Photo, photo.id, liked)) {
+            is AppResult.Success -> {
+                updatePhoto(photo.owner, photo.id) { it.copy(likedByMe = result.data.liked, likeCount = result.data.likeCount) }
+                AppResult.Success(Unit)
+            }
+            is AppResult.Error -> {
+                updatePhoto(photo.owner, photo.id) { it.copy(likedByMe = before.likedByMe, likeCount = before.likeCount) }
+                result
+            }
+        }
+    }
+
     override suspend fun reorderPhotos(markerId: String, photoIds: List<String>): AppResult<Unit, DataError.Network> =
         api.reorder(markerId, PhotoOrderDto(photoIds)).map { photos ->
-            galleries.update { it + (markerId to photos.map { p -> p.toPhoto() }.sortedBy { p -> p.position }) }
+            galleries.update { it + (PhotoOwner.Stop(markerId) to photos.map { p -> p.toPhoto() }.sortedBy { p -> p.position }) }
         }
 
     private suspend fun send(key: String) {
@@ -110,13 +140,13 @@ internal class DefaultPhotoRepository(
         permits.withPermit {
             // Dismissed while it waited.
             val queued = queue.value.firstOrNull { it.upload.key == key } ?: return
-            val markerId = queued.upload.markerId
+            val owner = queued.upload.owner
             setState(key, PhotoUpload.State.Sending(0f))
             val settings = config.config.value
             val jpeg = withContext(Dispatchers.Default) {
                 queued.image.bytes()?.let { preparer.prepare(it, settings.photoMaxEdgePx, settings.photoJpegQuality) }
             } ?: return setState(key, PhotoUpload.State.Failed(null))
-            when (val result = sendWithRetries(markerId, jpeg) { progress -> setState(key, PhotoUpload.State.Sending(progress)) }) {
+            when (val result = sendWithRetries(owner, jpeg) { progress -> setState(key, PhotoUpload.State.Sending(progress)) }) {
                 is AppResult.Error -> setState(key, PhotoUpload.State.Failed(result.error))
                 is AppResult.Success -> {
                     // Processing now; the live connection says when it's ready, and may have said so already.
@@ -130,24 +160,30 @@ internal class DefaultPhotoRepository(
 
     /** Creates the photo, puts the file in storage and has the server process it; retries a dropped connection. */
     private suspend fun sendWithRetries(
-        markerId: String,
+        owner: PhotoOwner,
         jpeg: ByteArray,
         onProgress: (Float) -> Unit,
     ): AppResult<Photo, DataError.Network> {
         var attempt = 0
         while (true) {
-            val result = sendOnce(markerId, jpeg, onProgress)
+            val result = sendOnce(owner, jpeg, onProgress)
             if (result !is AppResult.Error || !result.error.isConnectionProblem() || attempt == RETRY_DELAYS.size) return result
             delay(RETRY_DELAYS[attempt++])
         }
     }
 
     private suspend fun sendOnce(
-        markerId: String,
+        owner: PhotoOwner,
         jpeg: ByteArray,
         onProgress: (Float) -> Unit,
     ): AppResult<Photo, DataError.Network> {
-        val ticket = when (val result = api.uploadUrl(markerId, UploadUrlRequestDto(UploadUrlRequestDto.MimeType.IMAGE_SLASH_JPEG, jpeg.size.toDouble()))) {
+        val request = UploadUrlRequestDto(UploadUrlRequestDto.MimeType.IMAGE_SLASH_JPEG, jpeg.size.toDouble())
+        val ticket = when (
+            val result = when (owner) {
+                is PhotoOwner.Stop -> api.uploadUrl(owner.markerId, request)
+                is PhotoOwner.Place -> api.placeUploadUrl(owner.placeId, request)
+            }
+        ) {
             is AppResult.Error -> return result
             is AppResult.Success -> result.data
         }
@@ -163,21 +199,21 @@ internal class DefaultPhotoRepository(
                 val photo = event.photo.toPhoto()
                 savePhoto(photo, replace = true)
                 // A ready photo counts on the stop, and the first one becomes its cover.
-                if (photo.status == PhotoStatus.Ready) markerRefreshes.request(photo.markerId)
+                val stop = photo.owner as? PhotoOwner.Stop
+                if (photo.status == PhotoStatus.Ready && stop != null) markerRefreshes.request(stop.markerId)
             }
-            is RealtimeEvent.PhotoFailed -> galleries.update { all ->
-                val gallery = all[event.markerId] ?: return@update all
-                all + (event.markerId to gallery.map { if (it.id == event.photoId) it.copy(status = PhotoStatus.Failed) else it })
-            }
+            is RealtimeEvent.PhotoFailed ->
+                updatePhoto(PhotoOwner.Stop(event.markerId), event.photoId) { it.copy(status = PhotoStatus.Failed) }
             is RealtimeEvent.PhotoDeleted -> {
-                removePhoto(event.markerId, event.photoId)
+                removePhoto(PhotoOwner.Stop(event.markerId), event.photoId)
                 // deletePhoto has updated the stop already.
                 if (!byMe) markerRefreshes.request(event.markerId)
             }
             is RealtimeEvent.PhotosReordered -> galleries.update { all ->
-                val gallery = all[event.markerId] ?: return@update all
+                val owner = PhotoOwner.Stop(event.markerId)
+                val gallery = all[owner] ?: return@update all
                 val order = event.photoIds.withIndex().associate { (index, id) -> id to index }
-                all + (event.markerId to gallery.map { it.copy(position = order[it.id] ?: it.position) }.sortedBy { it.position })
+                all + (owner to gallery.map { it.copy(position = order[it.id] ?: it.position) }.sortedBy { it.position })
             }
             // setCover has saved the stop already; a cover set by processing comes with photo.ready.
             is RealtimeEvent.MarkerCoverChanged -> if (!byMe) markerRefreshes.request(event.markerId)
@@ -185,31 +221,47 @@ internal class DefaultPhotoRepository(
         }
     }
 
+    /** My place photo finished processing (or failed); it comes to me alone, since a place has no trip room. */
+    internal fun applyLive(event: RealtimeEvent.ToMe) {
+        when (event) {
+            is RealtimeEvent.PlacePhotoSaved -> savePhoto(event.photo.toPhoto(), replace = true)
+            is RealtimeEvent.PlacePhotoFailed ->
+                updatePhoto(PhotoOwner.Place(event.placeId), event.photoId) { it.copy(status = PhotoStatus.Failed) }
+        }
+    }
+
     /** After the live connection was down: reloads galleries whose photos were processing, and their stops. */
     internal fun catchUp() {
-        galleries.value.filterValues { gallery -> gallery.any { it.status == PhotoStatus.Processing } }.keys.forEach { markerId ->
+        galleries.value.filterValues { gallery -> gallery.any { it.status == PhotoStatus.Processing } }.keys.forEach { owner ->
             scope.launch {
-                loadPhotos(markerId)
-                markerRefreshes.request(markerId)
+                loadPhotos(owner)
+                if (owner is PhotoOwner.Stop) markerRefreshes.request(owner.markerId)
             }
         }
     }
 
-    /** Into a loaded gallery; [replace] an existing copy, or keep it (it may be newer). */
+    /** Into a loaded gallery; [replace] an existing copy, or keep it (it may be newer). A new place photo goes first. */
     private fun savePhoto(photo: Photo, replace: Boolean) {
         galleries.update { all ->
-            val gallery = all[photo.markerId] ?: return@update all
+            val gallery = all[photo.owner] ?: return@update all
             val known = gallery.any { it.id == photo.id }
             when {
-                !known -> all + (photo.markerId to (gallery + photo).sortedBy { it.position })
-                replace -> all + (photo.markerId to gallery.map { if (it.id == photo.id) photo else it })
+                !known -> all + (photo.owner to (gallery + photo).sortedFor(photo.owner, newFirst = photo.id))
+                replace -> all + (photo.owner to gallery.map { if (it.id == photo.id) photo else it })
                 else -> all
             }
         }
     }
 
-    private fun removePhoto(markerId: String, photoId: String) {
-        galleries.update { all -> all[markerId]?.let { all + (markerId to it.filterNot { p -> p.id == photoId }) } ?: all }
+    private fun updatePhoto(owner: PhotoOwner, photoId: String, change: (Photo) -> Photo) {
+        galleries.update { all ->
+            val gallery = all[owner] ?: return@update all
+            all + (owner to gallery.map { if (it.id == photoId) change(it) else it })
+        }
+    }
+
+    private fun removePhoto(owner: PhotoOwner, photoId: String) {
+        galleries.update { all -> all[owner]?.let { all + (owner to it.filterNot { p -> p.id == photoId }) } ?: all }
     }
 
     private suspend fun refreshMarker(markerId: String) {
@@ -240,9 +292,15 @@ internal class DefaultPhotoRepository(
     }
 }
 
+/** A stop's gallery goes by position; a place's keeps the server's order (most liked first), [newFirst] at the top. */
+private fun List<Photo>.sortedFor(owner: PhotoOwner, newFirst: String? = null): List<Photo> = when (owner) {
+    is PhotoOwner.Stop -> sortedBy { it.position }
+    is PhotoOwner.Place -> sortedByDescending { it.id == newFirst }
+}
+
 internal fun PhotoDto.toPhoto() = Photo(
     id = id,
-    markerId = markerId,
+    owner = markerId?.let { PhotoOwner.Stop(it) } ?: PhotoOwner.Place(requireNotNull(placeId) { "A photo has a marker or a place" }),
     status = when (status) {
         PhotoDto.Status.PENDING_UPLOAD -> PhotoStatus.Uploading
         PhotoDto.Status.PROCESSING -> PhotoStatus.Processing

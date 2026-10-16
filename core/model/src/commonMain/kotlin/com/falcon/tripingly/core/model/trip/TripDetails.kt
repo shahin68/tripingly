@@ -45,6 +45,8 @@ data class TripMarker(
     val likeCount: Int = 0,
     val likedByMe: Boolean = false,
     val commentCount: Int = 0,
+    /** Who added the stop; null after they deleted their account. Only they and the trip's owner may delete it. */
+    val createdById: String? = null,
 )
 
 data class GeoPoint(val lat: Double, val lng: Double)

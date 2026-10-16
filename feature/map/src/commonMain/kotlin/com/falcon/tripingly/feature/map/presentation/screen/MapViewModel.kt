@@ -8,8 +8,11 @@ import com.falcon.tripingly.core.common.coroutines.DefaultCoroutineDispatchers
 import com.falcon.tripingly.core.common.error.DataError
 import com.falcon.tripingly.core.common.result.AppResult
 import com.falcon.tripingly.core.common.result.onSuccess
+import com.falcon.tripingly.core.data.account.SessionRepository
 import com.falcon.tripingly.core.data.config.AppConfigRepository
 import com.falcon.tripingly.core.data.photos.PhotoRepository
+import com.falcon.tripingly.core.model.account.SessionState
+import com.falcon.tripingly.core.model.photo.PhotoOwner
 import com.falcon.tripingly.core.data.places.PlaceRepository
 import com.falcon.tripingly.core.data.social.SocialRepository
 import com.falcon.tripingly.core.data.trips.MarkerChangeFailure
@@ -59,6 +62,7 @@ import com.falcon.tripingly.feature.map.generated.resources.map_error_delete_day
 import com.falcon.tripingly.feature.map.generated.resources.map_error_join
 import com.falcon.tripingly.feature.map.generated.resources.map_error_like
 import com.falcon.tripingly.feature.map.generated.resources.map_error_load_trip
+import com.falcon.tripingly.feature.map.generated.resources.map_error_remove_my_content
 import com.falcon.tripingly.feature.map.generated.resources.map_error_report
 import com.falcon.tripingly.feature.map.generated.resources.map_error_save_trip
 import com.falcon.tripingly.feature.map.generated.resources.map_error_stop_change
@@ -66,6 +70,7 @@ import com.falcon.tripingly.feature.map.generated.resources.map_error_unsave_tri
 import com.falcon.tripingly.feature.map.generated.resources.map_join_declined
 import com.falcon.tripingly.feature.map.generated.resources.map_join_requested
 import com.falcon.tripingly.feature.map.generated.resources.map_join_withdrawn
+import com.falcon.tripingly.feature.map.generated.resources.map_my_content_removed
 import com.falcon.tripingly.feature.map.generated.resources.map_reported
 import com.falcon.tripingly.feature.map.generated.resources.map_trip_saved
 import com.falcon.tripingly.feature.map.generated.resources.map_trip_unsaved
@@ -118,11 +123,13 @@ class MapViewModel(
     private val photoRepository: PhotoRepository,
     private val socialRepository: SocialRepository,
     private val appConfigRepository: AppConfigRepository,
+    sessionRepository: SessionRepository,
     private val getCurrentLocationUseCase: GetCurrentLocationUseCase,
     private val dispatchers: CoroutineDispatchers = DefaultCoroutineDispatchers(),
 ) : ViewModel() {
 
     private val ui = MutableStateFlow(UiState())
+    private val myUserId = (sessionRepository.session.value as? SessionState.SignedIn)?.account?.id
 
     private val trip: StateFlow<TripDetails?> =
         tripRepository.observeTrip(tripId).stateIn(viewModelScope, SharingStarted.Eagerly, null)
@@ -173,6 +180,9 @@ class MapViewModel(
             is Action.DeleteDay -> ui.update { it.copy(confirm = Confirm.DeleteDay) }
             is Action.OnConfirm -> confirm()
             is Action.OnDismissConfirm -> ui.update { it.copy(confirm = null) }
+            is Action.OnRemoveMyContent -> if (ui.value.selectedMarkerId != null) ui.update { it.copy(confirm = Confirm.RemoveMyContent) }
+            is Action.OnDeleteAnyway -> deleteAnyway()
+            is Action.OnDismissDeleteAnyway -> ui.update { it.copy(othersContent = null) }
             is Action.AddDay -> addDay()
             is Action.OnMessageShown -> ui.update { it.copy(message = null) }
             is Action.RetryFailedChanges -> retryFailedChanges()
@@ -180,6 +190,8 @@ class MapViewModel(
             is Action.OnScreenTouch -> onScreenTouch()
             is Action.OnOpenStopPhotos -> ui.update { it.copy(photosMarkerId = it.selectedMarkerId) }
             is Action.OnCloseStopPhotos -> ui.update { it.copy(photosMarkerId = null) }
+            is Action.OnOpenPlacePhotos -> ui.update { it.copy(photosPlace = it.selectedPlace.takeIf { _ -> it.selectedAddress == null }) }
+            is Action.OnClosePlacePhotos -> ui.update { it.copy(photosPlace = null) }
             is Action.OnAddStopPhotos -> addStopPhotos(action.images)
             is Action.OnOpenPhotoCamera -> if (canEdit()) ui.update { it.copy(isPhotoCameraOpen = it.selectedMarkerId != null) }
             is Action.OnClosePhotoCamera -> ui.update { it.copy(isPhotoCameraOpen = false) }
@@ -221,7 +233,8 @@ class MapViewModel(
     private fun toState(details: TripDetails?, ui: UiState): State {
         val days = details?.days.orEmpty()
         val activeIndex = ui.activeDayIndex.coerceIn(0, (days.size - 1).coerceAtLeast(0))
-        val markers = days.getOrNull(activeIndex)?.markers.orEmpty().mapIndexed { index, it -> it.toMapMarker(index + 1) }
+        val role = details?.trip?.role
+        val markers = days.getOrNull(activeIndex)?.markers.orEmpty().mapIndexed { index, it -> it.toMapMarker(index + 1, role) }
         val selectedMarker = markers.firstOrNull { it.id == ui.selectedMarkerId }
         val selectedPlaceDetails = ui.selectedPlaceDetails?.takeIf { it.id == ui.selectedPlace?.id }
         return State(
@@ -229,7 +242,9 @@ class MapViewModel(
             days = days.map { DayTab(it.id, it.position + 1, it.date) }.toImmutableList(),
             activeDayIndex = activeIndex,
             markers = markers.toImmutableList(),
-            canEdit = details?.trip?.role?.canEdit == true,
+            canEdit = role?.canEdit == true,
+            // Like the server: an editor only when every stop on the day is theirs.
+            canDeleteDay = role == TripRole.OWNER || (role?.canEdit == true && markers.all { it.canDelete }),
             isViewer = details?.trip?.role == TripRole.VIEWER,
             ownerUsername = details?.trip?.owner?.username,
             isSavedByMe = details?.trip?.savedByMe == true,
@@ -248,6 +263,7 @@ class MapViewModel(
             selectedStopPlaceImage = selectedMarker?.takeIf { it.coverPhotoId == null }?.placeId?.let { ui.stopPlaceImages[it] },
             isStopCardShown = ui.isStopCardShown && markers.any { it.id == ui.selectedMarkerId },
             photosMarker = markers.firstOrNull { it.id == ui.photosMarkerId },
+            photosPlace = ui.photosPlace,
             commentsMarker = markers.firstOrNull { it.id == ui.commentsMarkerId },
             isReportOpen = ui.reporting != null,
             isReporting = ui.isReporting,
@@ -269,6 +285,7 @@ class MapViewModel(
             canRetry = ui.message != null && ui.failedChanges.isNotEmpty(),
             isWaitingForFirstLocation = ui.isWaitingForFirstLocation,
             confirm = ui.confirm,
+            othersContentMessage = ui.othersContent?.message,
             locationPrompt = ui.locationPrompt,
         )
     }
@@ -335,7 +352,7 @@ class MapViewModel(
         ui.update { it.copy(isPhotoCameraOpen = false) }
         val markerId = ui.value.selectedMarkerId ?: return
         if (images.isEmpty() || !canEdit()) return
-        photoRepository.upload(markerId, images)
+        photoRepository.upload(PhotoOwner.Stop(markerId), images)
         ui.update { it.copy(photosMarkerId = markerId) }
     }
 
@@ -413,7 +430,9 @@ class MapViewModel(
             markerRepository.failures.collect { failure ->
                 if (failure.tripId != tripId) return@collect
                 ui.update {
-                    if (failure.isConnectionProblem) {
+                    if (failure.needsConfirm) {
+                        it.copy(othersContent = OthersContent.Change(failure.error.serverMessage(), failure))
+                    } else if (failure.isConnectionProblem) {
                         it.copy(
                             message = UiText.Resource(Res.string.map_change_not_saved),
                             failedChanges = it.failedChanges + failure,
@@ -675,15 +694,50 @@ class MapViewModel(
                 ui.update { it.copy(selectedMarkerId = null, isStopCardShown = false) }
                 viewModelScope.launch { markerRepository.clearDay(tripId, day.id) }
             }
-            Confirm.DeleteDay -> save(Res.string.map_error_delete_day) {
-                tripRepository.deleteDay(tripId, day.id).also { result ->
-                    if (result is AppResult.Success) {
-                        ui.update { it.copy(activeDayIndex = (it.activeDayIndex - 1).coerceAtLeast(0), selectedMarkerId = null, isStopCardShown = false) }
-                    }
+            Confirm.DeleteDay -> deleteDay(day.id, confirm = false)
+            Confirm.RemoveMyContent -> ui.value.selectedMarkerId?.let(::removeMyContent)
+        }
+    }
+
+    private fun deleteDay(dayId: String, confirm: Boolean) = save(Res.string.map_error_delete_day) {
+        tripRepository.deleteDay(tripId, dayId, confirm).also { result ->
+            when {
+                result is AppResult.Success -> ui.update {
+                    it.copy(activeDayIndex = (it.activeDayIndex - 1).coerceAtLeast(0), selectedMarkerId = null, isStopCardShown = false)
+                }
+                result is AppResult.Error && result.error.hasCode(TripErrorCodes.STOP_HAS_OTHERS_CONTENT) -> ui.update {
+                    it.copy(othersContent = OthersContent.Day(result.error.serverMessage(), dayId))
                 }
             }
         }
     }
+
+    /** The user agreed to delete other people's photos, comments and likes with the stop or day. */
+    private fun deleteAnyway() {
+        val othersContent = ui.value.othersContent ?: return
+        ui.update { it.copy(othersContent = null) }
+        when (othersContent) {
+            is OthersContent.Change -> viewModelScope.launch { markerRepository.deleteAnyway(othersContent.failure) }
+            is OthersContent.Day -> deleteDay(othersContent.dayId, confirm = true)
+        }
+    }
+
+    private fun removeMyContent(markerId: String) {
+        viewModelScope.launch {
+            val result = markerRepository.removeMyContent(tripId, markerId)
+            ui.update {
+                it.copy(
+                    message = when (result) {
+                        is AppResult.Success -> UiText.Note(UiText.Resource(Res.string.map_my_content_removed))
+                        is AppResult.Error -> result.error.toUiText(Res.string.map_error_remove_my_content)
+                    },
+                )
+            }
+        }
+    }
+
+    /** The server's localized explanation, for the warning before deleting other people's content. */
+    private fun DataError.Network.serverMessage(): UiText = UiText.Server((this as? DataError.Network.Api)?.message.orEmpty())
 
     /** Runs one day change at a time; a refusal shows [failed] and why. */
     private fun save(failed: StringResource, change: suspend () -> AppResult<*, DataError.Network>) {
@@ -691,8 +745,10 @@ class MapViewModel(
         ui.update { it.copy(isSaving = true) }
         viewModelScope.launch {
             val result = change()
+            // Other people's content on the day asks first instead (see deleteDay).
+            val error = (result as? AppResult.Error)?.error?.takeUnless { it.hasCode(TripErrorCodes.STOP_HAS_OTHERS_CONTENT) }
             ui.update {
-                it.copy(isSaving = false, message = (result as? AppResult.Error)?.error?.toUiText(failed) ?: it.message)
+                it.copy(isSaving = false, message = error?.toUiText(failed) ?: it.message)
             }
         }
     }
@@ -812,8 +868,11 @@ class MapViewModel(
         }
     }
 
-    /** [orderNumber] is the place in the day's list, which stays 1, 2, 3 while a delete waits for the reload. */
-    private fun TripMarker.toMapMarker(orderNumber: Int) = MapMarker(
+    /**
+     * [orderNumber] is the place in the day's list, which stays 1, 2, 3 while a delete waits for the reload.
+     * Only the stop's creator and the trip's owner may delete it.
+     */
+    private fun TripMarker.toMapMarker(orderNumber: Int, role: TripRole?) = MapMarker(
         id = id,
         position = Coordinates(location.lat, location.lng),
         title = name,
@@ -826,6 +885,7 @@ class MapViewModel(
         likedByMe = likedByMe,
         commentCount = commentCount,
         placeId = placeId,
+        canDelete = role == TripRole.OWNER || (role?.canEdit == true && myUserId != null && createdById == myUserId),
     )
 
     private data class UiState(
@@ -846,6 +906,8 @@ class MapViewModel(
         val isStopCardShown: Boolean = false,
         /** The stop whose photos are open. */
         val photosMarkerId: String? = null,
+        /** The place whose photos are open; it stays open when the place's card closes. */
+        val photosPlace: MapPlace? = null,
         /** The in-app camera is open for the selected stop. */
         val isPhotoCameraOpen: Boolean = false,
         /** The stop whose comments are open. */
@@ -863,6 +925,8 @@ class MapViewModel(
         val isWaitingForFirstLocation: Boolean = false,
         val frame: CameraFrame? = null,
         val confirm: Confirm? = null,
+        /** A delete waits for the user to agree that other people's content goes too. */
+        val othersContent: OthersContent? = null,
         val selectedPlace: MapPlace? = null,
         val selectedPlaceDetails: PlaceDetails? = null,
         /** The image of [selectedPlaceDetails] open full screen. */
@@ -885,7 +949,16 @@ class MapViewModel(
     @Immutable
     data class DayTab(val id: String, val number: Int, val date: LocalDate?)
 
-    enum class Confirm { ClearDay, DeleteDay }
+    /** [RemoveMyContent] is about the selected stop. */
+    enum class Confirm { ClearDay, DeleteDay, RemoveMyContent }
+
+    /** What waits for the warning about other people's content, with the server's [message]. */
+    private sealed interface OthersContent {
+        val message: UiText
+
+        data class Change(override val message: UiText, val failure: MarkerChangeFailure) : OthersContent
+        data class Day(override val message: UiText, val dayId: String) : OthersContent
+    }
 
     private data class ReportSubject(val target: ReportTarget, val id: String)
 
@@ -899,8 +972,10 @@ class MapViewModel(
         val activeDayIndex: Int = 0,
         /** The active day's stops in order. */
         val markers: ImmutableList<MapMarker> = persistentListOf(),
-        /** Owners and editors add and remove stops and days. */
+        /** Owners and editors add stops and days. Stops are deleted per [MapMarker.canDelete]. */
         val canEdit: Boolean = false,
+        /** The owner, or an editor whose stops are all of the active day's: clear it or delete it. */
+        val canDeleteDay: Boolean = false,
         /** Someone else's public trip: it can be added to my trips and reported. */
         val isViewer: Boolean = false,
         val ownerUsername: String? = null,
@@ -922,6 +997,8 @@ class MapViewModel(
         val isStopCardShown: Boolean = false,
         /** The stop whose photos are open in the sheet. */
         val photosMarker: MapMarker? = null,
+        /** The place whose photos are open in the sheet. */
+        val photosPlace: MapPlace? = null,
         /** The in-app camera is open; its photo goes to [selectedMarker]. */
         val isPhotoCameraOpen: Boolean = false,
         /** The stop whose comments are open in the sheet. */
@@ -945,6 +1022,8 @@ class MapViewModel(
         val canRetry: Boolean = false,
         val isWaitingForFirstLocation: Boolean = false,
         val confirm: Confirm? = null,
+        /** Deleting would delete other people's photos, comments or likes too; the warning says so. */
+        val othersContentMessage: UiText? = null,
         val locationPrompt: LocationPrompt? = null,
         /** Place pins in view, the most liked and best known first. */
         val placePins: ImmutableList<PlacePin> = persistentListOf(),
@@ -1000,6 +1079,11 @@ class MapViewModel(
         data object DeleteDay : Action
         data object OnConfirm : Action
         data object OnDismissConfirm : Action
+        /** An editor removes their photos, comments and likes from the selected stop they can't delete. */
+        data object OnRemoveMyContent : Action
+        /** Deletes the stop or day although other people's content goes with it. */
+        data object OnDeleteAnyway : Action
+        data object OnDismissDeleteAnyway : Action
         /** The banner has the message; failed changes stay for the next Retry. */
         data object OnMessageShown : Action
         data object RetryFailedChanges : Action
@@ -1010,6 +1094,9 @@ class MapViewModel(
         /** The selected stop's photos open in a sheet. */
         data object OnOpenStopPhotos : Action
         data object OnCloseStopPhotos : Action
+        /** The selected place's photos, which anyone can add to (not for an address from search). */
+        data object OnOpenPlacePhotos : Action
+        data object OnClosePlacePhotos : Action
         /** Photos picked or taken from the stop card for the selected stop. */
         data class OnAddStopPhotos(val images: List<PickedImage>) : Action
         /** The in-app camera opens for the selected stop; its photo comes back as [OnAddStopPhotos]. */

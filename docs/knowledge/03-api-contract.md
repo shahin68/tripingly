@@ -85,8 +85,8 @@ REST over HTTPS, JSON, base path `/v1`.
 | Method | Path | Notes |
 |---|---|---|
 | POST | `/trips/{id}/days` | Append a day |
-| DELETE | `/days/{id}` | Deletes its markers |
-| DELETE | `/days/{id}/markers` | Clears the day: deletes all its markers in one request → 204 (backend#17) |
+| DELETE | `/days/{id}` | Deletes its markers. Owner, or an editor whose stops are all of that day's; `?confirm` as for `DELETE /markers/{id}` (backend#42) |
+| DELETE | `/days/{id}/markers` | Clears the day: deletes all its markers in one request → 204 (backend#17). Same rules and `?confirm` as deleting the day |
 | PUT | `/days/{id}/marker-order` | Body: ordered marker IDs |
 | POST | `/days/{id}/optimize` | Best route. Free: straight-line. Premium: travel times. Returns proposed order + `mode` + optional `savedMinutes`; `?apply=true` persists |
 
@@ -107,7 +107,8 @@ REST over HTTPS, JSON, base path `/v1`.
 | POST | `/days/{id}/markers` | Either `placeId`, or `name` + `location` (+ optional `osmType`/`osmId` from a Photon result), or `location` alone for a tap on the map: the server names the stop (our place within 25 m, else the address, else the coordinates) and the app takes that name from the answer (backend#28). Optional `time`. Optional `id`: a UUID the app chose so the marker shows before the server answers; `409 ID_CONFLICT` if that ID is taken (the app treats it as "already saved"). Google IDs not accepted |
 | GET | `/markers/{id}` | Marker with photos, like state, comment count |
 | PATCH | `/markers/{id}` | Name, time, location, move to another day of the same trip |
-| DELETE | `/markers/{id}` | |
+| DELETE | `/markers/{id}` | The stop's creator (`createdBy`) or the trip owner, else `403`. A stop with other people's photos, comments or likes answers `409 STOP_HAS_OTHERS_CONTENT` (`details`: counts); the app shows the server's message and sends `?confirm=true` once the user agrees (backend#42) |
+| DELETE | `/markers/{id}/mine` | Anyone who can see the trip: deletes my photos and comments on the stop and my likes on it and its photos and comments → 204. Editors use it on stops they can't delete (backend#42) |
 | POST | `/markers/{id}/copy` | Body: target `dayId` in one of my trips |
 
 ### Photos
@@ -118,7 +119,9 @@ REST over HTTPS, JSON, base path `/v1`.
 | GET | `/markers/{id}/photos` | Ordered gallery |
 | PUT | `/markers/{id}/photo-order` | |
 | PUT | `/markers/{id}/cover` | Body: `photoId` |
-| DELETE | `/photos/{id}` | Uploader, trip owner or editor |
+| DELETE | `/photos/{id}` | Uploader, trip owner or editor; a place photo only by its uploader |
+| POST | `/places/{id}/photos/upload-url` | Anyone adds a photo to a visible place (not an address from search). Same answer as for a stop; `422 DAILY_PHOTO_LIMIT_REACHED` (`details.max`) past the server's daily limit. Processing ends with `photo.ready`/`photo.failed` in my user room, without a `tripId` (backend#42) |
+| GET | `/places/{id}/photos` | The place's gallery: most liked first, then newest; my own processing or failed ones too. A blocked uploader shows without a name |
 
 ### Comments and likes
 | Method | Path | Notes |

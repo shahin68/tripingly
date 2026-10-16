@@ -1,9 +1,16 @@
 package com.falcon.tripingly.core.model.photo
 
-/** A photo on a marker. Its URLs are signed and expire after about an hour; its pixels never change. */
+/** What a photo belongs to: a trip's stop, or a place (anyone may add those, without a trip). */
+sealed interface PhotoOwner {
+    data class Stop(val markerId: String) : PhotoOwner
+
+    data class Place(val placeId: String) : PhotoOwner
+}
+
+/** A photo on a stop or a place. Its URLs are signed and expire after about an hour; its pixels never change. */
 data class Photo(
     val id: String,
-    val markerId: String,
+    val owner: PhotoOwner,
     val status: PhotoStatus,
     /** 256 px square; null until ready. */
     val thumbUrl: String?,
@@ -11,7 +18,7 @@ data class Photo(
     val displayUrl: String?,
     val width: Int?,
     val height: Int?,
-    /** Gallery order, 0-based. */
+    /** Gallery order, 0-based; 0 for place photos, which are ordered by likes. */
     val position: Int,
     val likeCount: Int,
     val likedByMe: Boolean,

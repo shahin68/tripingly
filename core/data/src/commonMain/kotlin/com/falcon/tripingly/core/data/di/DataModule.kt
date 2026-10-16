@@ -68,7 +68,14 @@ val dataModule = module {
         if (get<ApiConfig>().useFakeApi) {
             get<FakeTripBackend>()
         } else {
-            DefaultMarkerRepository(api = get(), trips = get(), local = get(), pending = get(), scope = get(ApplicationScope))
+            DefaultMarkerRepository(
+                api = get(),
+                trips = get(),
+                local = get(),
+                pending = get(),
+                scope = get(ApplicationScope),
+                currentUserId = { get<SessionRepository>().currentUserId() },
+            )
         }
     }
     single<TripInviteRepository> {
@@ -99,6 +106,7 @@ val dataModule = module {
             storage = get(),
             local = get(),
             config = get(),
+            social = get(),
             preparer = PlatformPhotoPreparer,
             scope = get(ApplicationScope),
         )

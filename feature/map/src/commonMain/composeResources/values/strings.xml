@@ -132,4 +132,15 @@
     <string name="map_error_load_photos">Couldn’t load the photos.</string>
     <string name="map_error_cover">Couldn’t set the cover photo.</string>
     <string name="map_error_delete_photo">Couldn’t delete the photo.</string>
+
+    <!-- Place photos and deleting stops -->
+    <string name="map_place_photos">Photos</string>
+    <string name="map_error_like_photo">Couldn’t save your like on the photo.</string>
+    <string name="map_delete_others_content_title">Delete for everyone?</string>
+    <string name="map_remove_my_content">Remove my photos, comments and likes</string>
+    <string name="map_remove_my_content_title">Remove your things from this stop?</string>
+    <string name="map_remove_my_content_message">Your photos, comments and likes on this stop are deleted. The stop stays.</string>
+    <string name="map_confirm_remove">Remove</string>
+    <string name="map_my_content_removed">Your photos, comments and likes on this stop were removed.</string>
+    <string name="map_error_remove_my_content">Couldn’t remove your photos, comments and likes.</string>
 </resources>

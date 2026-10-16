@@ -13,6 +13,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.Comment
 import androidx.compose.material.icons.filled.AddPhotoAlternate
 import androidx.compose.material.icons.filled.PhotoCamera
+import androidx.compose.material.icons.outlined.DeleteSweep
 import androidx.compose.material.icons.outlined.Flag
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -39,6 +40,7 @@ import com.falcon.tripingly.core.model.place.PlaceImage
 import com.falcon.tripingly.feature.map.domain.model.MapMarker
 import com.falcon.tripingly.feature.map.generated.resources.*
 import com.falcon.tripingly.feature.map.generated.resources.Res
+import com.falcon.tripingly.feature.map.generated.resources.map_remove_my_content
 import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
 
@@ -61,6 +63,8 @@ fun StopCard(
     onOpenComments: () -> Unit,
     canReport: Boolean,
     onReport: () -> Unit,
+    /** Someone else's stop on a trip I edit: I can't delete it, only my photos, comments and likes on it. */
+    onRemoveMyContent: (() -> Unit)?,
     modifier: Modifier = Modifier,
 ) {
     Card(
@@ -126,6 +130,11 @@ fun StopCard(
                     )
                 }
                 Spacer(Modifier.weight(1f))
+                if (onRemoveMyContent != null) {
+                    IconButton(onClick = onRemoveMyContent) {
+                        Icon(Icons.Outlined.DeleteSweep, contentDescription = stringResource(Res.string.map_remove_my_content))
+                    }
+                }
                 if (canReport) {
                     IconButton(onClick = onReport) {
                         Icon(Icons.Outlined.Flag, contentDescription = stringResource(Res.string.map_stop_report))

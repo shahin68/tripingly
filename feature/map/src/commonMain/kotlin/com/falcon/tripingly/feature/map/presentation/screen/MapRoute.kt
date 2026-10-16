@@ -15,13 +15,16 @@ import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.falcon.tripingly.core.designsystem.component.ReportDialog
 import com.falcon.tripingly.core.location.permission.rememberLocationPermissionController
+import com.falcon.tripingly.core.model.photo.PhotoOwner
 import com.falcon.tripingly.feature.map.generated.resources.Res
 import com.falcon.tripingly.feature.map.generated.resources.map_cancel
 import com.falcon.tripingly.feature.map.generated.resources.map_clear_day_message
 import com.falcon.tripingly.feature.map.generated.resources.map_clear_day_title
 import com.falcon.tripingly.feature.map.generated.resources.map_confirm_delete
+import com.falcon.tripingly.feature.map.generated.resources.map_confirm_remove
 import com.falcon.tripingly.feature.map.generated.resources.map_delete_day_message
 import com.falcon.tripingly.feature.map.generated.resources.map_delete_day_title
+import com.falcon.tripingly.feature.map.generated.resources.map_delete_others_content_title
 import com.falcon.tripingly.feature.map.generated.resources.map_location_continue
 import com.falcon.tripingly.feature.map.generated.resources.map_location_explain_message
 import com.falcon.tripingly.feature.map.generated.resources.map_location_explain_title
@@ -31,10 +34,13 @@ import com.falcon.tripingly.feature.map.generated.resources.map_location_setting
 import com.falcon.tripingly.feature.map.generated.resources.map_pin_add
 import com.falcon.tripingly.feature.map.generated.resources.map_pin_name_label
 import com.falcon.tripingly.feature.map.generated.resources.map_pin_name_title
+import com.falcon.tripingly.feature.map.generated.resources.map_remove_my_content_message
+import com.falcon.tripingly.feature.map.generated.resources.map_remove_my_content_title
+import com.falcon.tripingly.feature.map.generated.resources.map_stop_title_format
 import com.falcon.tripingly.feature.map.presentation.comments.StopCommentsRoute
 import com.falcon.tripingly.feature.map.presentation.component.PlaceImageViewer
 import com.falcon.tripingly.feature.map.presentation.photos.PhotoCameraDialog
-import com.falcon.tripingly.feature.map.presentation.photos.StopPhotosRoute
+import com.falcon.tripingly.feature.map.presentation.photos.PhotosRoute
 import com.falcon.tripingly.feature.map.presentation.screen.MapViewModel.Action
 import com.falcon.tripingly.feature.map.presentation.screen.MapViewModel.Confirm
 import com.falcon.tripingly.feature.map.presentation.screen.MapViewModel.Event
@@ -89,10 +95,24 @@ fun MapRoute(
     }
 
     state.photosMarker?.let { marker ->
-        StopPhotosRoute(
-            marker = marker,
-            canEdit = state.canEdit,
+        PhotosRoute(
+            owner = PhotoOwner.Stop(marker.id),
+            title = marker.title.ifBlank { stringResource(Res.string.map_stop_title_format, marker.orderNumber) },
+            canAdd = state.canEdit,
+            canManage = state.canEdit,
+            coverPhotoId = marker.coverPhotoId,
             onDismiss = { viewModel.onAction(Action.OnCloseStopPhotos) },
+        )
+    }
+
+    state.photosPlace?.let { place ->
+        PhotosRoute(
+            owner = PhotoOwner.Place(place.id),
+            title = place.name,
+            canAdd = true,
+            canManage = false,
+            coverPhotoId = null,
+            onDismiss = { viewModel.onAction(Action.OnClosePlacePhotos) },
         )
     }
 
@@ -175,6 +195,7 @@ fun MapRoute(
                     when (confirm) {
                         Confirm.ClearDay -> stringResource(Res.string.map_clear_day_title, dayNumber)
                         Confirm.DeleteDay -> stringResource(Res.string.map_delete_day_title, dayNumber)
+                        Confirm.RemoveMyContent -> stringResource(Res.string.map_remove_my_content_title)
                     },
                 )
             },
@@ -183,16 +204,38 @@ fun MapRoute(
                     when (confirm) {
                         Confirm.ClearDay -> stringResource(Res.string.map_clear_day_message, state.markers.size)
                         Confirm.DeleteDay -> stringResource(Res.string.map_delete_day_message, state.markers.size)
+                        Confirm.RemoveMyContent -> stringResource(Res.string.map_remove_my_content_message)
                     },
                 )
             },
             confirmButton = {
                 TextButton(onClick = { viewModel.onAction(Action.OnConfirm) }) {
-                    Text(stringResource(Res.string.map_confirm_delete), color = MaterialTheme.colorScheme.error)
+                    Text(
+                        stringResource(if (confirm == Confirm.RemoveMyContent) Res.string.map_confirm_remove else Res.string.map_confirm_delete),
+                        color = MaterialTheme.colorScheme.error,
+                    )
                 }
             },
             dismissButton = {
                 TextButton(onClick = { viewModel.onAction(Action.OnDismissConfirm) }) {
+                    Text(stringResource(Res.string.map_cancel))
+                }
+            },
+        )
+    }
+
+    state.othersContentMessage?.let { message ->
+        AlertDialog(
+            onDismissRequest = { viewModel.onAction(Action.OnDismissDeleteAnyway) },
+            title = { Text(stringResource(Res.string.map_delete_others_content_title)) },
+            text = { Text(message.asString()) },
+            confirmButton = {
+                TextButton(onClick = { viewModel.onAction(Action.OnDeleteAnyway) }) {
+                    Text(stringResource(Res.string.map_confirm_delete), color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { viewModel.onAction(Action.OnDismissDeleteAnyway) }) {
                     Text(stringResource(Res.string.map_cancel))
                 }
             },

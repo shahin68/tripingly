@@ -1,8 +1,10 @@
 package com.falcon.tripingly.feature.map.presentation.photos
 
+import com.falcon.tripingly.core.data.account.FakeAccountBackend
 import com.falcon.tripingly.core.data.photos.FakePhotoRepository
+import com.falcon.tripingly.core.model.photo.PhotoOwner
 import com.falcon.tripingly.core.model.photo.PickedImage
-import com.falcon.tripingly.feature.map.presentation.photos.StopPhotosViewModel.Action
+import com.falcon.tripingly.feature.map.presentation.photos.PhotosViewModel.Action
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.launch
@@ -11,6 +13,7 @@ import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
+import kotlinx.datetime.LocalDate
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
@@ -20,7 +23,7 @@ import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 @OptIn(ExperimentalCoroutinesApi::class)
-class StopPhotosViewModelTest {
+class PhotosViewModelTest {
 
     private val testDispatcher = StandardTestDispatcher()
     private lateinit var photos: FakePhotoRepository
@@ -36,8 +39,9 @@ class StopPhotosViewModelTest {
         Dispatchers.resetMain()
     }
 
-    private fun TestScope.viewModel() = StopPhotosViewModel(MARKER_ID, photos)
-        .also { viewModel -> backgroundScope.launch { viewModel.uiState.collect {} } }
+    private fun TestScope.viewModel(owner: PhotoOwner = PhotoOwner.Stop(MARKER_ID)) =
+        PhotosViewModel(owner, photos, FakeAccountBackend(today = { LocalDate(2026, 10, 16) }))
+            .also { viewModel -> backgroundScope.launch { viewModel.uiState.collect {} } }
 
     private fun images(count: Int) = List(count) { i -> PickedImage { byteArrayOf(i.toByte()) } }
 
@@ -125,7 +129,29 @@ class StopPhotosViewModelTest {
         assertNull(viewModel.uiState.value.openPhotoIndex)
     }
 
+    @Test
+    fun `anyone adds photos to a place and likes them`() = runTest(testDispatcher) {
+        val viewModel = viewModel(PhotoOwner.Place(PLACE_ID))
+        testScheduler.advanceUntilIdle()
+
+        viewModel.onAction(Action.OnAddPhotos(images(1)))
+        testScheduler.advanceUntilIdle()
+        val photo = viewModel.uiState.value.photos.single()
+        assertEquals(PhotoOwner.Place(PLACE_ID), photo.owner)
+
+        viewModel.onAction(Action.OnToggleLike(photo))
+        testScheduler.advanceUntilIdle()
+        assertTrue(viewModel.uiState.value.photos.single().likedByMe)
+        assertEquals(1, viewModel.uiState.value.photos.single().likeCount)
+
+        viewModel.onAction(Action.OnToggleLike(photo))
+        testScheduler.advanceUntilIdle()
+        assertFalse(viewModel.uiState.value.photos.single().likedByMe)
+        assertEquals(0, viewModel.uiState.value.photos.single().likeCount)
+    }
+
     private companion object {
         const val MARKER_ID = "marker-1"
+        const val PLACE_ID = "place-1"
     }
 }

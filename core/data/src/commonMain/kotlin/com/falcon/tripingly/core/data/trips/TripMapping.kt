@@ -114,6 +114,7 @@ internal fun MarkerDto.toMarker() = TripMarker(
     likeCount = likeCount.toInt(),
     likedByMe = likedByMe,
     commentCount = commentCount.toInt(),
+    createdById = createdBy?.id,
 )
 
 internal fun DestinationDto.toDestination() = Destination(name = name, location = location.toGeoPoint())

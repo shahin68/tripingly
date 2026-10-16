@@ -19,5 +19,7 @@ data class MapMarker(
     val commentCount: Int = 0,
     /** The place the stop is at; its images stand in for a missing cover. */
     val placeId: String? = null,
+    /** I added it, or the trip is mine. */
+    val canDelete: Boolean = false,
     val color: Long = 0xFF2196F3 // Default Material Blue
 )

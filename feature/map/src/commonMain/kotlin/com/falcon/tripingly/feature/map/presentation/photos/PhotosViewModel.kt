@@ -4,9 +4,12 @@ import androidx.compose.runtime.Immutable
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.falcon.tripingly.core.common.result.AppResult
+import com.falcon.tripingly.core.data.account.SessionRepository
 import com.falcon.tripingly.core.data.photos.PhotoRepository
 import com.falcon.tripingly.core.data.photos.PhotoUpload
+import com.falcon.tripingly.core.model.account.SessionState
 import com.falcon.tripingly.core.model.photo.Photo
+import com.falcon.tripingly.core.model.photo.PhotoOwner
 import com.falcon.tripingly.core.model.photo.PhotoStatus
 import com.falcon.tripingly.core.model.photo.PickedImage
 import com.falcon.tripingly.core.ui.UiText
@@ -14,6 +17,7 @@ import com.falcon.tripingly.core.ui.toUiText
 import com.falcon.tripingly.feature.map.generated.resources.Res
 import com.falcon.tripingly.feature.map.generated.resources.map_error_cover
 import com.falcon.tripingly.feature.map.generated.resources.map_error_delete_photo
+import com.falcon.tripingly.feature.map.generated.resources.map_error_like_photo
 import com.falcon.tripingly.feature.map.generated.resources.map_error_load_photos
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
@@ -27,20 +31,24 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 /**
- * One stop's photos in the sheet: the gallery, the photos picked on this device still going up, and the
- * full-screen viewer. The gallery loads when the sheet first opens for the stop. Owners and editors add
- * photos (picked or taken with the in-app camera), pick the cover and delete; the server checks that too.
+ * The photos of a stop or a place in the sheet: the gallery, the photos picked on this device still going
+ * up, and the full-screen viewer. The gallery loads when the sheet first opens. A stop's owners and editors
+ * add photos (picked or taken with the in-app camera), pick the cover and delete; anyone adds photos to a
+ * place and deletes their own. Everyone likes photos. The server checks all of it too.
  */
-class StopPhotosViewModel(
-    private val markerId: String,
+class PhotosViewModel(
+    private val owner: PhotoOwner,
     private val photoRepository: PhotoRepository,
+    sessionRepository: SessionRepository,
 ) : ViewModel() {
 
     private val ui = MutableStateFlow(UiState())
 
+    private val myUserId = (sessionRepository.session.value as? SessionState.SignedIn)?.account?.id
+
     val uiState: StateFlow<State> = combine(
-        photoRepository.photos(markerId),
-        photoRepository.uploads(markerId),
+        photoRepository.photos(owner),
+        photoRepository.uploads(owner),
         ui,
         ::toState,
     ).stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), State())
@@ -62,6 +70,7 @@ class StopPhotosViewModel(
             is Action.OnDeletePhoto -> ui.update { it.copy(photoToDelete = action.photo) }
             is Action.OnConfirmDelete -> deletePhoto()
             is Action.OnDismissDelete -> ui.update { it.copy(photoToDelete = null) }
+            is Action.OnToggleLike -> toggleLike(action.photo)
             is Action.OnDismissMessage -> ui.update { it.copy(message = null) }
         }
     }
@@ -78,6 +87,7 @@ class StopPhotosViewModel(
             viewable = viewable.toImmutableList(),
             openPhotoIndex = viewable.indexOfFirst { it.id == ui.openPhotoId }.takeIf { it >= 0 },
             photoToDelete = ui.photoToDelete,
+            myUserId = myUserId,
             isSaving = ui.isSaving,
             isCameraOpen = ui.isCameraOpen,
             message = ui.message,
@@ -86,21 +96,22 @@ class StopPhotosViewModel(
 
     private fun addPhotos(images: List<PickedImage>) {
         ui.update { it.copy(isCameraOpen = false) }
-        if (images.isNotEmpty()) photoRepository.upload(markerId, images)
+        if (images.isNotEmpty()) photoRepository.upload(owner, images)
     }
 
     private fun load() {
         viewModelScope.launch {
-            val result = photoRepository.loadPhotos(markerId)
+            val result = photoRepository.loadPhotos(owner)
             ui.update { it.copy(isLoading = false, message = (result as? AppResult.Error)?.error?.toUiText(Res.string.map_error_load_photos)) }
         }
     }
 
     private fun makeCover(photoId: String) {
+        val stop = owner as? PhotoOwner.Stop ?: return
         if (ui.value.isSaving) return
         ui.update { it.copy(isSaving = true) }
         viewModelScope.launch {
-            val result = photoRepository.setCover(markerId, photoId)
+            val result = photoRepository.setCover(stop.markerId, photoId)
             ui.update { it.copy(isSaving = false, message = (result as? AppResult.Error)?.error?.toUiText(Res.string.map_error_cover)) }
         }
     }
@@ -126,6 +137,15 @@ class StopPhotosViewModel(
         }
     }
 
+    /** Shows at once; see [PhotoRepository.setLiked]. */
+    private fun toggleLike(photo: Photo) {
+        val current = uiState.value.photos.firstOrNull { it.id == photo.id } ?: photo
+        viewModelScope.launch {
+            val result = photoRepository.setLiked(current, !current.likedByMe)
+            if (result is AppResult.Error) ui.update { it.copy(message = result.error.toUiText(Res.string.map_error_like_photo)) }
+        }
+    }
+
     private data class UiState(
         val isLoading: Boolean = true,
         val openPhotoId: String? = null,
@@ -137,7 +157,7 @@ class StopPhotosViewModel(
 
     @Immutable
     data class State(
-        /** The gallery in order: processing and failed photos too, for trip members. */
+        /** The gallery: a stop's in order (processing and failed photos too, for trip members), a place's most liked first. */
         val photos: ImmutableList<Photo> = persistentListOf(),
         /** Photos picked on this device that the server doesn't have yet. */
         val uploads: ImmutableList<PhotoUpload> = persistentListOf(),
@@ -149,6 +169,8 @@ class StopPhotosViewModel(
         val openPhotoIndex: Int? = null,
         /** Waiting for the user to confirm. */
         val photoToDelete: Photo? = null,
+        /** Whose own photos can be deleted by them alone (a place's). */
+        val myUserId: String? = null,
         /** A cover change or delete is waiting for the server. */
         val isSaving: Boolean = false,
         /** The in-app camera is open; its photo comes back as [Action.OnAddPhotos]. */
@@ -169,6 +191,7 @@ class StopPhotosViewModel(
         /** Asks first; see [OnConfirmDelete]. */
         data class OnDeletePhoto(val photo: Photo) : Action
         data object OnConfirmDelete : Action
+        data class OnToggleLike(val photo: Photo) : Action
         data object OnDismissDelete : Action
         data object OnDismissMessage : Action
     }
