@@ -42,6 +42,7 @@ import com.falcon.tripingly.core.designsystem.component.PhotoImage
 import com.falcon.tripingly.core.designsystem.component.PhotoSize
 import com.falcon.tripingly.core.designsystem.theme.spacing
 import com.falcon.tripingly.core.model.social.PublicTrip
+import com.falcon.tripingly.core.model.trip.TripRole
 import com.falcon.tripingly.feature.social.generated.resources.Res
 import com.falcon.tripingly.feature.social.generated.resources.social_more
 import com.falcon.tripingly.feature.social.generated.resources.social_report
@@ -63,9 +64,9 @@ internal fun PublicTripCard(
     onReport: () -> Unit,
     modifier: Modifier = Modifier,
     showOwner: Boolean = true,
-    /** My own trip, on my profile: nothing to save or report. */
-    isMine: Boolean = false,
 ) {
+    // A trip I own or edit (Explore lists those too): nothing to save or report.
+    val isMine = trip.trip.role != TripRole.VIEWER
     var menuExpanded by remember { mutableStateOf(false) }
     Card(
         onClick = onOpen,

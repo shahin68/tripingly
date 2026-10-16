@@ -208,7 +208,6 @@ private fun ProfileContent(profile: Profile, state: State, onAction: (Action) ->
                 onToggleSave = { onAction(Action.OnToggleSaveTrip(trip)) },
                 onReport = { onAction(Action.OnReportTrip(trip)) },
                 showOwner = false,
-                isMine = state.isMe,
             )
         }
     }

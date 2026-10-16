@@ -79,7 +79,7 @@ REST over HTTPS, JSON, base path `/v1`.
 | GET | `/trips/{id}/join-requests?cursor=&limit=` | Owner: pending requests `{ id, tripId, user, status, createdAt }`, newest first. The members sheet asks only when `pendingJoinRequestCount > 0` |
 | POST | `/join-requests/{id}/accept` | Owner: the person becomes an editor (member limit applies, `LIMIT_REACHED`); returns the member |
 | POST | `/join-requests/{id}/decline` | Owner: 204; they can't ask again |
-| GET | `/explore/trips?cursor=&limit=` | Public trips from others, ranked; Social → Explore, pages of 20 |
+| GET | `/explore/trips?cursor=&limit=` | Public trips, mine included (`role` owner/editor: no Save or Report), ranked; Social → Explore, pages of 20 |
 
 ### Days
 | Method | Path | Notes |
