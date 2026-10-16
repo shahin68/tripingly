@@ -52,6 +52,7 @@ import com.falcon.tripingly.core.designsystem.component.LikeButton
 import com.falcon.tripingly.core.designsystem.component.ReportDialog
 import com.falcon.tripingly.core.designsystem.theme.spacing
 import com.falcon.tripingly.core.model.social.Comment
+import com.falcon.tripingly.core.ui.UiText
 import com.falcon.tripingly.feature.map.domain.model.MapMarker
 import com.falcon.tripingly.feature.map.generated.resources.Res
 import com.falcon.tripingly.feature.map.generated.resources.map_cancel
@@ -159,6 +160,7 @@ fun StopCommentsScreen(
         ShowMessage(
             message = state.message?.asString(),
             onShown = { onAction(Action.OnDismissMessage) },
+            isError = state.message !is UiText.Note,
         )
         Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
             when {

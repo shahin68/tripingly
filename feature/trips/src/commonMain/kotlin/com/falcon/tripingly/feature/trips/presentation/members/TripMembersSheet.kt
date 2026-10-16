@@ -34,6 +34,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.falcon.tripingly.core.designsystem.component.MessageBannerHost
 import com.falcon.tripingly.core.designsystem.component.PrimaryButton
+import com.falcon.tripingly.core.ui.UiText
 import com.falcon.tripingly.feature.trips.generated.resources.members_add_friends
 import com.falcon.tripingly.feature.trips.presentation.component.FriendPickerRow
 import com.falcon.tripingly.core.common.util.DateUtils
@@ -107,7 +108,7 @@ fun TripMembersScreen(
     onAction: (Action) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    ShowMessage(message = state.message?.asString(), onShown = { onAction(Action.OnDismissMessage) })
+    ShowMessage(message = state.message?.asString(), onShown = { onAction(Action.OnDismissMessage) }, isError = state.message !is UiText.Note)
     LazyColumn(
         modifier = modifier.fillMaxWidth().navigationBarsPadding(),
         verticalArrangement = Arrangement.spacedBy(8.dp),

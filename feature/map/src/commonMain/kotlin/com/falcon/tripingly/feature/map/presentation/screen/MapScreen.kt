@@ -90,6 +90,7 @@ import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
 import com.falcon.tripingly.core.designsystem.theme.spacing
 import com.falcon.tripingly.core.model.place.PlaceSearchResult
 import com.falcon.tripingly.core.model.trip.JoinRequestStatus
+import com.falcon.tripingly.core.ui.UiText
 import com.falcon.tripingly.feature.map.domain.model.MapMarker
 import com.falcon.tripingly.feature.map.generated.resources.*
 import com.falcon.tripingly.feature.map.generated.resources.Res
@@ -227,6 +228,7 @@ fun MapScreen(
         ShowMessage(
             message = state.message?.asString(),
             onShown = { onAction(Action.OnMessageShown) },
+            isError = state.message !is UiText.Note,
             actionLabel = if (state.canRetry) stringResource(Res.string.map_retry) else null,
             onAction = if (state.canRetry) ({ onAction(Action.RetryFailedChanges) }) else null,
         )

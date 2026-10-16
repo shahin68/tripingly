@@ -31,11 +31,15 @@ sealed interface UiText {
     /** Two sentences in a row, e.g. what failed, then why. */
     data class Joined(val first: UiText, val second: UiText) : UiText
 
+    /** A confirmation or note, not an error ("Saved to My Trips."): the banner shows it in neutral colors. */
+    data class Note(val text: UiText) : UiText
+
     @Composable
     fun asString(): String = when (this) {
         is Resource -> stringResource(resource, *args)
         is Server -> text
         is Joined -> "${first.asString()} ${second.asString()}"
+        is Note -> text.asString()
     }
 }
 

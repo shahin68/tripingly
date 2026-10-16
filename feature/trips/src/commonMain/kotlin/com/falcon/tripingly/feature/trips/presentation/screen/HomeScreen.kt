@@ -55,6 +55,7 @@ import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
 import com.falcon.tripingly.core.model.account.TripVisibility
 import com.falcon.tripingly.core.model.trip.Trip
 import com.falcon.tripingly.core.model.trip.TripRole
+import com.falcon.tripingly.core.ui.UiText
 import com.falcon.tripingly.feature.trips.generated.resources.*
 import com.falcon.tripingly.feature.trips.generated.resources.Res
 import com.falcon.tripingly.feature.trips.presentation.screen.HomeViewModel.Action
@@ -143,6 +144,7 @@ fun HomeScreen(
             ShowMessage(
                 message = state.message?.asString(),
                 onShown = { onAction(Action.OnDismissMessage) },
+                isError = state.message !is UiText.Note,
             )
 
             HorizontalPager(

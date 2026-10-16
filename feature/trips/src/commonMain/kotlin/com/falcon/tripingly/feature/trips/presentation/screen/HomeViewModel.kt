@@ -155,7 +155,7 @@ class HomeViewModel(
     }
 
     private fun refreshMessage(error: DataError.Network): UiText =
-        if (error == DataError.Network.NoInternet) UiText.Resource(Res.string.home_offline_cached) else error.toUiText(Res.string.home_error_load_trips)
+        if (error == DataError.Network.NoInternet) UiText.Note(UiText.Resource(Res.string.home_offline_cached)) else error.toUiText(Res.string.home_error_load_trips)
 
     private fun openDialog(dialog: Dialog) {
         clearSearches()

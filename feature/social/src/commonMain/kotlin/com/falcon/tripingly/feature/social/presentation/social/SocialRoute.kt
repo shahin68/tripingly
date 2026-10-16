@@ -37,6 +37,7 @@ import com.falcon.tripingly.core.designsystem.component.SegmentedToggleOption
 import com.falcon.tripingly.core.designsystem.theme.spacing
 import com.falcon.tripingly.core.location.permission.rememberLocationPermissionController
 import com.falcon.tripingly.core.ui.ObserveAsEvents
+import com.falcon.tripingly.core.ui.UiText
 import com.falcon.tripingly.feature.social.generated.resources.Res
 import com.falcon.tripingly.feature.social.generated.resources.social_explore
 import com.falcon.tripingly.feature.social.generated.resources.social_explore_empty
@@ -105,6 +106,7 @@ internal fun SocialScreen(state: State, onAction: (Action) -> Unit, modifier: Mo
         ShowMessage(
             message = state.message?.asString(),
             onShown = { onAction(Action.OnDismissMessage) },
+            isError = state.message !is UiText.Note,
         )
         if (state.isSearchingByName) {
             PeopleResults(state, onAction)

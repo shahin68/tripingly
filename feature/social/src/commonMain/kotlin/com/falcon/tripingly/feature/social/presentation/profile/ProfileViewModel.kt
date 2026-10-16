@@ -196,7 +196,7 @@ class ProfileViewModel(
             val result = socialRepository.report(reporting.target, reporting.id, reason, details)
             _uiState.update {
                 when (result) {
-                    is AppResult.Success -> it.copy(isReporting = false, reporting = null, message = UiText.Resource(Res.string.social_reported))
+                    is AppResult.Success -> it.copy(isReporting = false, reporting = null, message = UiText.Note(UiText.Resource(Res.string.social_reported)))
                     is AppResult.Error -> it.copy(isReporting = false, message = result.error.toUiText(Res.string.social_error_report))
                 }
             }

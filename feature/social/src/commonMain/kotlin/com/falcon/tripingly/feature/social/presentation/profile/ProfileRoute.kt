@@ -48,6 +48,7 @@ import com.falcon.tripingly.core.designsystem.theme.spacing
 import com.falcon.tripingly.core.model.social.PeopleList
 import com.falcon.tripingly.core.model.social.Profile
 import com.falcon.tripingly.core.ui.ObserveAsEvents
+import com.falcon.tripingly.core.ui.UiText
 import com.falcon.tripingly.feature.social.generated.resources.Res
 import com.falcon.tripingly.feature.social.generated.resources.social_back
 import com.falcon.tripingly.feature.social.generated.resources.social_block
@@ -146,6 +147,7 @@ internal fun ProfileScreen(state: State, onAction: (Action) -> Unit, onBack: () 
             ShowMessage(
                 message = state.message?.asString(),
                 onShown = { onAction(Action.OnDismissMessage) },
+                isError = state.message !is UiText.Note,
             )
             val profile = state.profile
             when {
