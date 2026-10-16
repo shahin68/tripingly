@@ -38,7 +38,7 @@ Contract: the backend's `/v1/openapi.json` (staging: `https://api-staging-4ade.u
 - **Refresh** is automatic: on 401 `TOKEN_EXPIRED` one `POST /auth/refresh` (concurrent requests share it), both tokens saved, request retried. A refused refresh clears the tokens and emits `SessionEvents.sessionEnded` (with `ACCOUNT_SUSPENDED` when that's why); the app listens and goes to sign-in.
 - `TokenStore` is in memory until stage 3 adds Keychain / Keystore storage.
 - `CursorPaginator` + `CursorPage` for `{ items, nextCursor }`.
-- Content-creating POSTs (trips, trip copy, days, markers, add-to-trip, marker copy, comments, invites) declare `@Header(IDEMPOTENCY_KEY_HEADER) idempotencyKey: String` and pass a key from `newIdempotencyKey()` made once per user action and reused for its retries.
+- Content-creating POSTs (trips, days, markers, add-to-trip, marker copy, comments, invites) declare `@Header(IDEMPOTENCY_KEY_HEADER) idempotencyKey: String` and pass a key from `newIdempotencyKey()` made once per user action and reused for its retries.
 - Environment: `-Pbuildkonfig.flavor=local|staging|production` (staging by default); fakes with `tripinly.useFakeApi=true` (`ApiConfig.useFakeApi`) Local config values (keys, client IDs, switches) go in the untracked root `local.properties`, read through `localConfig()` in `core/network/build.gradle.kts`, with a Gradle property as fallback; never in a tracked file.
 - Global handling still to wire in the app (stage 3): `ONBOARDING_INCOMPLETE` → onboarding, `CONSENT_REQUIRED` → consent screen, `ACCOUNT_SUSPENDED` → message + sign-out, `RATE_LIMITED` → "try again shortly".
 
@@ -58,7 +58,7 @@ Feature flags will be served the same way once v1 is in production. Constants th
 
 ## Error codes to handle specifically
 
-`USERNAME_TAKEN`, `USERNAME_INVALID`, `AGE_REQUIREMENT_NOT_MET`, `TRIP_NOT_COPYABLE`, `USER_BLOCKED`, `INVITE_EXPIRED`, `PHOTO_LIMIT_REACHED`, `UPLOAD_TOO_LARGE`, `UNSUPPORTED_MEDIA_TYPE`, `PREMIUM_REQUIRED`, `REAUTH_REQUIRED`, `ROUTING_UNAVAILABLE`, `BBOX_TOO_LARGE`, `NOT_FOUND` (show "not available"), `VALIDATION_FAILED` (map `details` to form fields). Anything else: show the server's `message`.
+`USERNAME_TAKEN`, `USERNAME_INVALID`, `AGE_REQUIREMENT_NOT_MET`, `TRIP_NOT_COPYABLE`, `JOIN_REQUEST_DECLINED`, `USER_BLOCKED`, `INVITE_EXPIRED`, `PHOTO_LIMIT_REACHED`, `UPLOAD_TOO_LARGE`, `UNSUPPORTED_MEDIA_TYPE`, `PREMIUM_REQUIRED`, `REAUTH_REQUIRED`, `ROUTING_UNAVAILABLE`, `BBOX_TOO_LARGE`, `NOT_FOUND` (show "not available"), `VALIDATION_FAILED` (map `details` to form fields). Anything else: show the server's `message`.
 
 ## Contract changes
 

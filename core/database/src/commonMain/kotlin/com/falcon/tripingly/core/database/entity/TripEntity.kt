@@ -27,10 +27,11 @@ data class TripEntity(
     val markerCount: Int,
     val editorCount: Int = 0,
     val updatedAt: Long,
-    val copiedFromTripId: String? = null,
-    val copiedFromOwnerId: String? = null,
-    val copiedFromOwnerUsername: String? = null,
-    val copiedFromOwnerDisplayName: String? = null,
+    /** Someone else's trip I saved; it shows in My Trips with my own and shared trips. */
+    val savedByMe: Boolean = false,
+    /** My request to join: `pending`, `declined` or null. */
+    val myJoinRequest: String? = null,
+    val pendingJoinRequestCount: Int = 0,
     val destinationName: String? = null,
     val destinationLat: Double? = null,
     val destinationLng: Double? = null,

@@ -40,6 +40,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ElevatedCard
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -88,6 +89,7 @@ import com.falcon.tripingly.core.designsystem.component.SuggestionItem
 import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
 import com.falcon.tripingly.core.designsystem.theme.spacing
 import com.falcon.tripingly.core.model.place.PlaceSearchResult
+import com.falcon.tripingly.core.model.trip.JoinRequestStatus
 import com.falcon.tripingly.feature.map.domain.model.MapMarker
 import com.falcon.tripingly.feature.map.generated.resources.*
 import com.falcon.tripingly.feature.map.generated.resources.Res
@@ -102,6 +104,7 @@ import com.falcon.tripingly.feature.map.presentation.screen.MapViewModel.Action
 import com.falcon.tripingly.feature.map.presentation.screen.MapViewModel.State
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.toImmutableList
+import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
 
 @Composable
@@ -201,6 +204,15 @@ fun MapScreen(
                 onAction = onAction,
                 modifier = Modifier.onGloballyPositioned { headerBottom = it.positionInRoot().y + it.size.height },
             )
+
+            if (state.pendingJoinRequestCount > 0 && !state.isSearchOpen) {
+                FilledTonalButton(
+                    onClick = { onAction(Action.OnOpenJoinRequests) },
+                    modifier = Modifier.padding(horizontal = MaterialTheme.spacing.medium),
+                ) {
+                    Text(pluralStringResource(Res.plurals.map_join_request_count, state.pendingJoinRequestCount, state.pendingJoinRequestCount))
+                }
+            }
 
             if (state.isSearchOpen && state.searchResults.isNotEmpty()) {
                 SearchResults(
@@ -372,7 +384,7 @@ private fun TripHeader(
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
             )
-            if (state.isSaving || state.isLoading || state.isCopying) {
+            if (state.isSaving || state.isLoading || state.isUpdatingSharing) {
                 CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
             }
             IconButton(onClick = { onAction(Action.OnOpenSearch) }) {
@@ -387,7 +399,17 @@ private fun TripHeader(
                         expanded = menuExpanded,
                         onDismissRequest = { menuExpanded = false },
                         actions = listOfNotNull(
-                            DropdownAction(stringResource(Res.string.map_copy_trip)) { onAction(Action.OnCopyTrip) },
+                            DropdownAction(stringResource(if (state.isSavedByMe) Res.string.map_unsave_trip else Res.string.map_save_trip)) {
+                                onAction(Action.OnToggleSaveTrip)
+                            },
+                            // Once the owner declined, there's nothing more to ask.
+                            when (state.myJoinRequest) {
+                                null -> DropdownAction(stringResource(Res.string.map_join_trip)) { onAction(Action.OnRequestToJoin) }
+                                JoinRequestStatus.PENDING -> DropdownAction(stringResource(Res.string.map_cancel_join)) {
+                                    onAction(Action.OnCancelJoinRequest)
+                                }
+                                JoinRequestStatus.DECLINED -> null
+                            },
                             state.ownerUsername?.let { owner ->
                                 DropdownAction(stringResource(Res.string.map_owner_profile, owner)) { onAction(Action.OnOpenOwnerProfile) }
                             },

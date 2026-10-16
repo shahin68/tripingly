@@ -99,6 +99,7 @@ fun HomeRoute(
         is Dialog.ConfirmDelete -> ConfirmTripDialog(
             kind = TripDialogKind.Delete,
             tripName = dialog.trip.name,
+            editorCount = dialog.trip.editorCount,
             isSaving = state.isSaving,
             error = error,
             onDismiss = onDismiss,

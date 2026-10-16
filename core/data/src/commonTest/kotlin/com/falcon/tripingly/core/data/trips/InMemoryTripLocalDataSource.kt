@@ -1,5 +1,6 @@
 package com.falcon.tripingly.core.data.trips
 
+import com.falcon.tripingly.core.model.trip.JoinRequestStatus
 import com.falcon.tripingly.core.model.trip.Trip
 import com.falcon.tripingly.core.model.trip.TripDetails
 import com.falcon.tripingly.core.model.trip.TripMarker
@@ -14,7 +15,7 @@ internal class InMemoryTripLocalDataSource : TripLocalDataSource {
     val trips = MutableStateFlow<Map<String, TripDetails>>(emptyMap())
 
     override fun observeMyTrips(): Flow<List<Trip>> = trips.map { all ->
-        all.values.map { it.trip }.filter { it.role != TripRole.VIEWER }
+        all.values.map { it.trip }.filter { it.role != TripRole.VIEWER || it.savedByMe }
             .sortedWith(compareByDescending<Trip> { it.updatedAt }.thenByDescending { it.id })
     }
 
@@ -24,7 +25,7 @@ internal class InMemoryTripLocalDataSource : TripLocalDataSource {
 
     override suspend fun replaceMyTrips(trips: List<Trip>) {
         this.trips.update { cached ->
-            val kept = cached.filterValues { it.trip.role == TripRole.VIEWER }
+            val kept = cached.filterValues { it.trip.role == TripRole.VIEWER && !it.trip.savedByMe }
             kept + trips.associate { trip ->
                 trip.id to (cached[trip.id]?.copy(trip = trip) ?: TripDetails(trip, emptyList(), emptyList()))
             }
@@ -37,6 +38,23 @@ internal class InMemoryTripLocalDataSource : TripLocalDataSource {
 
     override suspend fun deleteTrip(tripId: String) {
         trips.update { it - tripId }
+    }
+
+    override suspend fun saveSavedByMe(trip: Trip, saved: Boolean) {
+        trips.update { all ->
+            val details = all[trip.id] ?: TripDetails(trip, emptyList(), emptyList())
+            all + (trip.id to details.copy(trip = details.trip.copy(savedByMe = saved)))
+        }
+    }
+
+    override suspend fun saveMyJoinRequest(tripId: String, status: JoinRequestStatus?) {
+        trips.update { all -> all[tripId]?.let { all + (tripId to it.copy(myJoinRequest = status)) } ?: all }
+    }
+
+    override suspend fun removePendingJoinRequest(tripId: String) {
+        trips.update { all ->
+            all[tripId]?.let { all + (tripId to it.copy(pendingJoinRequestCount = maxOf(0, it.pendingJoinRequestCount - 1))) } ?: all
+        }
     }
 
     override suspend fun saveMarkers(markers: List<TripMarker>) {

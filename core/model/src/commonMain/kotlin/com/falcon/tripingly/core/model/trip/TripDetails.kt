@@ -1,6 +1,7 @@
 package com.falcon.tripingly.core.model.trip
 
 import kotlinx.datetime.LocalDate
+import kotlin.time.Instant
 
 /** A trip with its days, markers and members (`GET /trips/{id}`). */
 data class TripDetails(
@@ -8,8 +9,10 @@ data class TripDetails(
     /** In order; a trip always has at least one day. */
     val days: List<TripDay>,
     val members: List<TripMember>,
-    /** Set when this trip was copied from another user's trip that still exists. */
-    val copiedFrom: CopiedFrom? = null,
+    /** My request to join someone else's trip; null when I have none (or once I'm a member). */
+    val myJoinRequest: JoinRequestStatus? = null,
+    /** Requests waiting for the owner; 0 for everyone else. */
+    val pendingJoinRequestCount: Int = 0,
     /** Where the trip goes, if the owner picked a place; the map opens there while the trip has no stops. */
     val destination: Destination? = null,
 )
@@ -51,4 +54,18 @@ data class Destination(val name: String, val location: GeoPoint)
 
 data class TripMember(val user: UserSummary, val role: TripRole)
 
-data class CopiedFrom(val tripId: String, val owner: UserSummary)
+enum class JoinRequestStatus {
+    /** Waiting for the owner. */
+    PENDING,
+
+    /** The owner said no; it can't be sent again. */
+    DECLINED,
+}
+
+/** Someone asking the owner to join a trip as an editor. */
+data class JoinRequest(
+    val id: String,
+    val tripId: String,
+    val user: UserSummary,
+    val createdAt: Instant,
+)

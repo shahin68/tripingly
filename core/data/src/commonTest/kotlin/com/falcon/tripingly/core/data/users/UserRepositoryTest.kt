@@ -145,6 +145,6 @@ class UserRepositoryTest {
         const val ANNA = """{"id":"$ANNA_ID","username":"anna","displayName":"Anna"}"""
         const val TRIP = """{"id":"t1","title":"Vienna","startDate":null,"endDate":null,"visibility":"public","owner":$ANNA,
             "role":"viewer","coverThumbUrl":null,"dayCount":1,"markerCount":2,"editorCount":0,"likeCount":4,"likedByMe":false,
-            "copyCount":1,"updatedAt":"2026-10-11T10:00:00Z"}"""
+            "saveCount":1,"savedByMe":false,"updatedAt":"2026-10-11T10:00:00Z"}"""
     }
 }

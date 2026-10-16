@@ -10,7 +10,8 @@ object TripErrorCodes {
     const val LIMIT_REACHED = "LIMIT_REACHED"
     const val USER_BLOCKED = "USER_BLOCKED"
     const val INVITE_EXPIRED = "INVITE_EXPIRED"
-    const val TRIP_NOT_COPYABLE = "TRIP_NOT_COPYABLE"
+    /** The owner declined my request to join; it can't be sent again. */
+    const val JOIN_REQUEST_DECLINED = "JOIN_REQUEST_DECLINED"
 
     /** A marker with the app-chosen ID exists already. */
     const val ID_CONFLICT = "ID_CONFLICT"

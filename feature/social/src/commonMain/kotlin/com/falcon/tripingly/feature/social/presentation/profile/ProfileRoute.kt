@@ -202,14 +202,12 @@ private fun ProfileContent(profile: Profile, state: State, onAction: (Action) ->
         items(state.trips, key = { it.trip.id }) { trip ->
             PublicTripCard(
                 trip = trip,
-                isCopying = state.copyingTripId == trip.trip.id,
                 onOpen = { onAction(Action.OnTripClick(trip)) },
                 onOpenOwner = {},
                 onLike = { onAction(Action.OnLikeTrip(trip)) },
-                onCopy = { onAction(Action.OnCopyTrip(trip)) },
+                onToggleSave = { onAction(Action.OnToggleSaveTrip(trip)) },
                 onReport = { onAction(Action.OnReportTrip(trip)) },
                 showOwner = false,
-                isMine = state.isMe,
             )
         }
     }

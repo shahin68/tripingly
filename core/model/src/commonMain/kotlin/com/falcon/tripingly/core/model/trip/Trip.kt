@@ -20,6 +20,8 @@ data class Trip(
     val markerCount: Int,
     /** People the trip is shared with as editors; the owner isn't counted. */
     val editorCount: Int = 0,
+    /** Someone else's public trip I saved: it shows in My Trips, read-only, as the live original. */
+    val savedByMe: Boolean = false,
     /** My Trips lists the most recently updated first. */
     val updatedAt: Instant,
 )
@@ -28,7 +30,7 @@ enum class TripRole {
     OWNER,
     EDITOR,
 
-    /** Someone else's public trip: read-only. */
+    /** Someone else's public trip (saved or just opened): read-only. */
     VIEWER,
     ;
 

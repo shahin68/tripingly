@@ -35,6 +35,7 @@ import com.falcon.tripingly.core.model.social.LikeTarget
 import com.falcon.tripingly.core.model.social.ReportReason
 import com.falcon.tripingly.core.model.social.ReportTarget
 import com.falcon.tripingly.core.model.trip.GeoPoint
+import com.falcon.tripingly.core.model.trip.JoinRequestStatus
 import com.falcon.tripingly.core.model.trip.NewMarker
 import com.falcon.tripingly.core.model.trip.TripDay
 import com.falcon.tripingly.core.model.trip.TripDetails
@@ -52,8 +53,12 @@ import com.falcon.tripingly.feature.map.generated.resources.error_location_unava
 import com.falcon.tripingly.feature.map.generated.resources.error_location_unexpected
 import com.falcon.tripingly.feature.map.generated.resources.error_location_unknown
 import com.falcon.tripingly.feature.map.generated.resources.map_change_not_saved
-import com.falcon.tripingly.feature.map.generated.resources.map_error_not_copyable
+import com.falcon.tripingly.feature.map.generated.resources.map_join_declined
+import com.falcon.tripingly.feature.map.generated.resources.map_join_requested
+import com.falcon.tripingly.feature.map.generated.resources.map_join_withdrawn
 import com.falcon.tripingly.feature.map.generated.resources.map_reported
+import com.falcon.tripingly.feature.map.generated.resources.map_trip_saved
+import com.falcon.tripingly.feature.map.generated.resources.map_trip_unsaved
 import com.falcon.tripingly.feature.map.presentation.component.PlacePin
 import com.falcon.tripingly.feature.map.presentation.component.placeClusters
 import com.falcon.tripingly.feature.map.presentation.component.placePins
@@ -76,6 +81,7 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.datetime.LocalDate
+import org.jetbrains.compose.resources.StringResource
 import kotlin.coroutines.cancellation.CancellationException
 import kotlin.math.PI
 import kotlin.math.abs
@@ -177,7 +183,11 @@ class MapViewModel(
             is Action.OnToggleStopLike -> toggleStopLike(action.markerId)
             is Action.OnOpenStopComments -> ui.update { it.copy(commentsMarkerId = it.selectedMarkerId) }
             is Action.OnCloseStopComments -> ui.update { it.copy(commentsMarkerId = null) }
-            is Action.OnCopyTrip -> copyTrip()
+            is Action.OnToggleSaveTrip -> toggleSave()
+            is Action.OnRequestToJoin -> updateSharing(Res.string.map_join_requested) { tripRepository.requestToJoin(tripId) }
+            is Action.OnCancelJoinRequest -> updateSharing(Res.string.map_join_withdrawn) { tripRepository.cancelJoinRequest(tripId) }
+            is Action.OnOpenJoinRequests -> ui.update { it.copy(isMembersOpen = true) }
+            is Action.OnCloseJoinRequests -> ui.update { it.copy(isMembersOpen = false) }
             is Action.OnOpenOwnerProfile -> trip.value?.trip?.owner?.let { sendEvent(Event.OpenProfile(it.username)) }
             is Action.OnReportTrip -> ui.update { it.copy(reporting = ReportSubject(ReportTarget.Trip, tripId)) }
             is Action.OnReportStop -> ui.value.selectedMarkerId?.let { id ->
@@ -212,6 +222,10 @@ class MapViewModel(
             canEdit = details?.trip?.role?.canEdit == true,
             isViewer = details?.trip?.role == TripRole.VIEWER,
             ownerUsername = details?.trip?.owner?.username,
+            isSavedByMe = details?.trip?.savedByMe == true,
+            myJoinRequest = details?.myJoinRequest,
+            pendingJoinRequestCount = details?.pendingJoinRequestCount ?: 0,
+            isMembersOpen = ui.isMembersOpen,
             isLoading = days.isEmpty() && ui.isLoadingTrip,
             isSaving = ui.isSaving,
             currentLocation = ui.currentLocation,
@@ -227,7 +241,7 @@ class MapViewModel(
             commentsMarker = markers.firstOrNull { it.id == ui.commentsMarkerId },
             isReportOpen = ui.reporting != null,
             isReporting = ui.isReporting,
-            isCopying = ui.isCopying,
+            isUpdatingSharing = ui.isUpdatingSharing,
             isPhotoCameraOpen = ui.isPhotoCameraOpen && markers.any { it.id == ui.selectedMarkerId },
             placePins = ui.placePins.toImmutableList(),
             placeClusters = ui.placeClusters.toImmutableList(),
@@ -324,24 +338,33 @@ class MapViewModel(
         }
     }
 
-    /** Someone else's trip becomes one of mine, which then opens. */
-    private fun copyTrip() {
-        if (ui.value.isCopying) return
-        ui.update { it.copy(isCopying = true) }
+    /** Someone else's trip goes into My Trips (read-only, the owner's live trip), or out again. */
+    private fun toggleSave() {
+        val trip = trip.value?.trip ?: return
+        val saved = !trip.savedByMe
+        updateSharing(if (saved) Res.string.map_trip_saved else Res.string.map_trip_unsaved) {
+            tripRepository.setSaved(trip, saved)
+        }
+    }
+
+    /** Saving or joining, shown once the server agreed (the cached trip then shows the new state). */
+    private fun updateSharing(done: StringResource, change: suspend () -> AppResult<Unit, DataError.Network>) {
+        if (ui.value.isUpdatingSharing) return
+        ui.update { it.copy(isUpdatingSharing = true) }
         viewModelScope.launch {
-            val result = tripRepository.copyTrip(tripId)
-            ui.update { it.copy(isCopying = false) }
-            when (result) {
-                is AppResult.Success -> sendEvent(Event.OpenTrip(result.data.trip.id))
-                is AppResult.Error -> ui.update {
-                    it.copy(
-                        message = if (result.error.hasCode(TripErrorCodes.TRIP_NOT_COPYABLE)) {
-                            UiText.Resource(Res.string.map_error_not_copyable)
+            val result = change()
+            ui.update {
+                it.copy(
+                    isUpdatingSharing = false,
+                    message = when (result) {
+                        is AppResult.Success -> UiText.Resource(done)
+                        is AppResult.Error -> if (result.error.hasCode(TripErrorCodes.JOIN_REQUEST_DECLINED)) {
+                            UiText.Resource(Res.string.map_join_declined)
                         } else {
                             result.error.toUiText()
-                        },
-                    )
-                }
+                        }
+                    },
+                )
             }
         }
     }
@@ -817,7 +840,10 @@ class MapViewModel(
         /** What the report dialog is about. */
         val reporting: ReportSubject? = null,
         val isReporting: Boolean = false,
-        val isCopying: Boolean = false,
+        /** Saving or joining the trip is waiting for the server. */
+        val isUpdatingSharing: Boolean = false,
+        /** The owner opened who asked to join. */
+        val isMembersOpen: Boolean = false,
         val message: UiText? = null,
         /** Stop changes undone because the connection failed; Retry sends them again. */
         val failedChanges: List<MarkerChangeFailure> = emptyList(),
@@ -891,8 +917,16 @@ class MapViewModel(
         val isReportOpen: Boolean = false,
         /** A report is waiting for the server. */
         val isReporting: Boolean = false,
-        /** Adding the trip to mine is waiting for the server. */
-        val isCopying: Boolean = false,
+        /** Someone else's trip that I saved to My Trips. */
+        val isSavedByMe: Boolean = false,
+        /** My request to join someone else's trip. */
+        val myJoinRequest: JoinRequestStatus? = null,
+        /** The owner's: people waiting for an answer to join. */
+        val pendingJoinRequestCount: Int = 0,
+        /** The owner's members sheet, with the requests to join, is open. */
+        val isMembersOpen: Boolean = false,
+        /** Saving or joining is waiting for the server. */
+        val isUpdatingSharing: Boolean = false,
         val message: UiText? = null,
         /** [message] is about stop changes that didn't save; Retry sends them again. */
         val canRetry: Boolean = false,
@@ -929,8 +963,6 @@ class MapViewModel(
         data object OpenAppSettings : Event
         data object NavigateBack : Event
         data class OpenProfile(val username: String) : Event
-        /** My copy of the trip. */
-        data class OpenTrip(val tripId: String) : Event
     }
 
     sealed interface Action {
@@ -979,8 +1011,16 @@ class MapViewModel(
         /** The selected stop's comments open in a sheet. */
         data object OnOpenStopComments : Action
         data object OnCloseStopComments : Action
-        /** Adds someone else's trip to mine. */
-        data object OnCopyTrip : Action
+        /** Saves someone else's trip to My Trips, or removes it. */
+        data object OnToggleSaveTrip : Action
+
+        /** Asks the owner to let me edit their trip with them. */
+        data object OnRequestToJoin : Action
+        data object OnCancelJoinRequest : Action
+
+        /** The owner opens the members sheet to answer requests to join. */
+        data object OnOpenJoinRequests : Action
+        data object OnCloseJoinRequests : Action
         data object OnOpenOwnerProfile : Action
         data object OnReportTrip : Action
         /** Reports the selected stop. */

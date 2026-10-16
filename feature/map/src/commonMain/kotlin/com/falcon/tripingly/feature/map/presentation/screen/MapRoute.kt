@@ -48,7 +48,8 @@ fun MapRoute(
     tripId: String,
     onNavigateBack: () -> Unit,
     onOpenProfile: (String) -> Unit,
-    onOpenTrip: (String) -> Unit,
+    /** The trip's members sheet (from the trips feature), where the owner answers requests to join. */
+    membersContent: @Composable (tripId: String, onDismiss: () -> Unit) -> Unit,
     // Keyed by trip: the view model store is shared across screens, and the class alone would
     // hand every trip the first trip's view model.
     viewModel: MapViewModel = koinViewModel(key = "map:$tripId") { parametersOf(tripId) }
@@ -71,7 +72,6 @@ fun MapRoute(
                 is Event.OpenAppSettings -> locationPermission.openSettings()
                 is Event.NavigateBack -> onNavigateBack()
                 is Event.OpenProfile -> onOpenProfile(event.username)
-                is Event.OpenTrip -> onOpenTrip(event.tripId)
                 is Event.AnimateCamera -> {
                     // Reactive
                 }
@@ -83,6 +83,10 @@ fun MapRoute(
         state = state,
         onAction = viewModel::onAction
     )
+
+    if (state.isMembersOpen) {
+        membersContent(tripId) { viewModel.onAction(Action.OnCloseJoinRequests) }
+    }
 
     state.photosMarker?.let { marker ->
         StopPhotosRoute(

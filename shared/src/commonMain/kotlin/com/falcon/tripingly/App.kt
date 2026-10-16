@@ -32,6 +32,7 @@ import com.falcon.tripingly.feature.map.presentation.screen.MapRoute
 import com.falcon.tripingly.feature.social.presentation.people.PeopleRoute
 import com.falcon.tripingly.feature.social.presentation.profile.ProfileRoute
 import com.falcon.tripingly.feature.social.presentation.social.SocialRoute
+import com.falcon.tripingly.feature.trips.presentation.members.TripMembersRoute
 import com.falcon.tripingly.feature.trips.presentation.screen.HomeRoute
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.launch
@@ -111,7 +112,7 @@ private fun MainNavigation() {
                         tripId = key.tripId,
                         onNavigateBack = { goBack() },
                         onOpenProfile = { backStack.add(Profile(it)) },
-                        onOpenTrip = { backStack.add(TripMap(it)) },
+                        membersContent = { tripId, onDismiss -> TripMembersRoute(tripId = tripId, onDismiss = onDismiss) },
                     )
                 }
                 is Profile -> {

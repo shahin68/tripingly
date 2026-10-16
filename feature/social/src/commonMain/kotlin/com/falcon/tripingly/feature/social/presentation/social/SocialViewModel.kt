@@ -7,9 +7,7 @@ import com.falcon.tripingly.core.common.result.AppResult
 import com.falcon.tripingly.core.data.places.PlaceRepository
 import com.falcon.tripingly.core.data.social.SocialRepository
 import com.falcon.tripingly.core.data.trips.MarkerRepository
-import com.falcon.tripingly.core.data.trips.TripErrorCodes
 import com.falcon.tripingly.core.data.trips.TripRepository
-import com.falcon.tripingly.core.data.trips.hasCode
 import com.falcon.tripingly.core.data.users.UserRepository
 import com.falcon.tripingly.core.location.GetCurrentLocationUseCase
 import com.falcon.tripingly.core.location.permission.LocationPermission
@@ -27,7 +25,6 @@ import com.falcon.tripingly.core.ui.UiText
 import com.falcon.tripingly.core.ui.toUiText
 import com.falcon.tripingly.feature.social.generated.resources.Res
 import com.falcon.tripingly.feature.social.generated.resources.social_add_place_no_trips
-import com.falcon.tripingly.feature.social.generated.resources.social_error_not_copyable
 import com.falcon.tripingly.feature.social.generated.resources.social_nearby_location_unavailable
 import com.falcon.tripingly.feature.social.generated.resources.social_reported
 import kotlinx.collections.immutable.ImmutableList
@@ -84,7 +81,7 @@ class SocialViewModel(
             is Action.OnTripClick -> sendEvent(Event.OpenTrip(action.trip.trip.id))
             is Action.OnPersonClick -> sendEvent(Event.OpenProfile(action.user.username))
             is Action.OnLikeTrip -> likeTrip(action.trip)
-            is Action.OnCopyTrip -> copyTrip(action.trip)
+            is Action.OnToggleSaveTrip -> toggleSave(action.trip)
             is Action.OnReportTrip -> _uiState.update { it.copy(reporting = action.trip) }
             is Action.OnSendReport -> sendReport(action.reason, action.details)
             Action.OnDismissReport -> _uiState.update { it.copy(reporting = null) }
@@ -197,27 +194,17 @@ class SocialViewModel(
         _uiState.update { state -> state.copy(explore = state.explore.map { if (it.trip.id == tripId) change(it) else it }.toImmutableList()) }
     }
 
-    /** "Add to my trips": the copy opens once the server made it. */
-    private fun copyTrip(trip: PublicTrip) {
-        if (_uiState.value.copyingTripId != null) return
-        _uiState.update { it.copy(copyingTripId = trip.trip.id) }
+    /** Saves to (or removes from) My Trips at once and puts it back when the server refuses. */
+    private fun toggleSave(trip: PublicTrip) {
+        val saved = !trip.trip.savedByMe
+        updateTrip(trip.trip.id) {
+            it.copy(trip = it.trip.copy(savedByMe = saved), saveCount = (it.saveCount + if (saved) 1 else -1).coerceAtLeast(0))
+        }
         viewModelScope.launch {
-            val result = tripRepository.copyTrip(trip.trip.id)
-            _uiState.update { it.copy(copyingTripId = null) }
-            when (result) {
-                is AppResult.Success -> {
-                    updateTrip(trip.trip.id) { it.copy(copyCount = it.copyCount + 1) }
-                    sendEvent(Event.OpenTrip(result.data.trip.id))
-                }
-                is AppResult.Error -> _uiState.update {
-                    it.copy(
-                        message = if (result.error.hasCode(TripErrorCodes.TRIP_NOT_COPYABLE)) {
-                            UiText.Resource(Res.string.social_error_not_copyable)
-                        } else {
-                            result.error.toUiText()
-                        },
-                    )
-                }
+            val result = tripRepository.setSaved(trip.trip, saved)
+            if (result is AppResult.Error) {
+                updateTrip(trip.trip.id) { it.copy(trip = it.trip.copy(savedByMe = trip.trip.savedByMe), saveCount = trip.saveCount) }
+                _uiState.update { it.copy(message = result.error.toUiText()) }
             }
         }
     }
@@ -382,7 +369,6 @@ class SocialViewModel(
         val peopleQuery: String = "",
         val people: ImmutableList<UserSummary> = persistentListOf(),
         val isSearchingPeople: Boolean = false,
-        val copyingTripId: String? = null,
         val reporting: PublicTrip? = null,
         val isReporting: Boolean = false,
         val addPlace: AddPlace? = null,
@@ -400,7 +386,7 @@ class SocialViewModel(
         data class OnTripClick(val trip: PublicTrip) : Action
         data class OnPersonClick(val user: UserSummary) : Action
         data class OnLikeTrip(val trip: PublicTrip) : Action
-        data class OnCopyTrip(val trip: PublicTrip) : Action
+        data class OnToggleSaveTrip(val trip: PublicTrip) : Action
         data class OnReportTrip(val trip: PublicTrip) : Action
         data class OnSendReport(val reason: ReportReason, val details: String) : Action
         data object OnDismissReport : Action

@@ -10,6 +10,7 @@ import com.falcon.tripingly.core.data.trips.TripInviteRepository
 import com.falcon.tripingly.core.data.trips.TripRepository
 import com.falcon.tripingly.core.data.trips.hasCode
 import com.falcon.tripingly.core.data.users.UserRepository
+import com.falcon.tripingly.core.model.trip.JoinRequest
 import com.falcon.tripingly.core.model.trip.TripInvite
 import com.falcon.tripingly.core.model.trip.TripMember
 import com.falcon.tripingly.core.model.trip.UserSummary
@@ -36,7 +37,7 @@ import kotlinx.coroutines.launch
 
 /**
  * Who is in a trip; the owner adds editors (by username, or several friends at once) and removes
- * them, and manages invite links.
+ * them, answers requests to join, and manages invite links.
  */
 class TripMembersViewModel(
     private val tripId: String,
@@ -56,6 +57,8 @@ class TripMembersViewModel(
                 .filterNot { friend -> details?.members.orEmpty().any { it.user.username == friend.username } }
                 .toImmutableList(),
             pickedFriends = ui.pickedFriends,
+            joinRequests = ui.joinRequests,
+            answeringRequestIds = ui.answeringRequestIds,
             invites = ui.invites,
             username = ui.username,
             isLoading = ui.isLoading && (details == null || details.days.isEmpty()),
@@ -86,6 +89,8 @@ class TripMembersViewModel(
             Action.OnCreateInvite -> createInvite()
             is Action.OnShareInvite -> sendEvent(Event.ShareInvite(uiState.value.tripName, action.invite.url))
             is Action.OnRevokeInvite -> revokeInvite(action.inviteId)
+            is Action.OnAcceptJoinRequest -> answerJoinRequest(action.request.id) { tripRepository.acceptJoinRequest(tripId, it) }
+            is Action.OnDeclineJoinRequest -> answerJoinRequest(action.request.id) { tripRepository.declineJoinRequest(tripId, it) }
             Action.OnDismissMessage -> ui.update { it.copy(message = null) }
         }
     }
@@ -95,6 +100,7 @@ class TripMembersViewModel(
             val result = tripRepository.refreshTrip(tripId)
             ui.update { it.copy(isLoading = false, message = (result as? AppResult.Error)?.error?.toUiText()) }
             if (result is AppResult.Success && result.data.trip.role.canManage) {
+                if (result.data.pendingJoinRequestCount > 0) loadJoinRequests()
                 loadFriends()
                 loadInvites()
             }
@@ -104,6 +110,31 @@ class TripMembersViewModel(
     private suspend fun loadFriends() {
         val result = userRepository.friends()
         if (result is AppResult.Success) ui.update { it.copy(friends = result.data.toImmutableList()) }
+    }
+
+    private suspend fun loadJoinRequests() {
+        when (val result = tripRepository.joinRequests(tripId)) {
+            is AppResult.Success -> ui.update { it.copy(joinRequests = result.data.items.toImmutableList()) }
+            is AppResult.Error -> ui.update { it.copy(message = result.error.toUiText()) }
+        }
+    }
+
+    /** Accepting or declining; the request leaves the list once the server agreed (or it was gone already). */
+    private fun answerJoinRequest(requestId: String, answer: suspend (String) -> AppResult<*, DataError.Network>) {
+        if (requestId in ui.value.answeringRequestIds) return
+        ui.update { it.copy(answeringRequestIds = (it.answeringRequestIds + requestId).toImmutableSet(), message = null) }
+        viewModelScope.launch {
+            val result = answer(requestId)
+            val isGone = result is AppResult.Success || (result is AppResult.Error && result.error.hasCode(TripErrorCodes.NOT_FOUND))
+            ui.update { state ->
+                state.copy(
+                    answeringRequestIds = (state.answeringRequestIds - requestId).toImmutableSet(),
+                    joinRequests = if (isGone) state.joinRequests.filterNot { it.id == requestId }.toImmutableList() else state.joinRequests,
+                    // A full trip (`LIMIT_REACHED`) comes with the server's message.
+                    message = (result as? AppResult.Error)?.error?.toUiText(),
+                )
+            }
+        }
     }
 
     private suspend fun loadInvites() {
@@ -190,6 +221,8 @@ class TripMembersViewModel(
     }
 
     private data class UiState(
+        val joinRequests: ImmutableList<JoinRequest> = persistentListOf(),
+        val answeringRequestIds: ImmutableSet<String> = persistentSetOf(),
         val invites: ImmutableList<TripInvite> = persistentListOf(),
         val friends: ImmutableList<UserSummary> = persistentListOf(),
         val pickedFriends: ImmutableSet<String> = persistentSetOf(),
@@ -209,6 +242,10 @@ class TripMembersViewModel(
         val friends: ImmutableList<UserSummary> = persistentListOf(),
         /** Usernames of the friends picked to add together. */
         val pickedFriends: ImmutableSet<String> = persistentSetOf(),
+        /** The owner's: people asking to join, newest first. */
+        val joinRequests: ImmutableList<JoinRequest> = persistentListOf(),
+        /** Requests whose answer is waiting for the server. */
+        val answeringRequestIds: ImmutableSet<String> = persistentSetOf(),
         val invites: ImmutableList<TripInvite> = persistentListOf(),
         val username: String = "",
         val isLoading: Boolean = true,
@@ -230,6 +267,8 @@ class TripMembersViewModel(
         data object OnCreateInvite : Action
         data class OnShareInvite(val invite: TripInvite) : Action
         data class OnRevokeInvite(val inviteId: String) : Action
+        data class OnAcceptJoinRequest(val request: JoinRequest) : Action
+        data class OnDeclineJoinRequest(val request: JoinRequest) : Action
         data object OnDismissMessage : Action
     }
 }

@@ -40,6 +40,6 @@ Go through every item; report which pass, which fail, and what the user must do 
 
 ## Quality
 
-- [ ] Both platforms: sign-in, onboarding, create trip, add marker by search / long press / from map place, upload photos, set cover, route with places along the way, like, comment, copy a public trip, invite link, push tap, block, report, delete account.
+- [ ] Both platforms: sign-in, onboarding, create trip, add marker by search / long press / from map place, upload photos, set cover, route with places along the way, like, comment, save a public trip and ask to join it (owner accepts), invite link, push tap, block, report, delete account.
 - [ ] German and Hungarian UI checked for truncation.
 - [ ] Tests pass.

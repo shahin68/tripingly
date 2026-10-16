@@ -83,9 +83,20 @@
 
     <!-- Social -->
     <string name="map_reported">Danke. Wir sehen es uns an.</string>
-    <string name="map_error_not_copyable">Diese Reise kann nicht zu deinen Reisen hinzugefügt werden.</string>
     <string name="map_trip_menu">Reiseoptionen</string>
-    <string name="map_copy_trip">Zu meinen Reisen hinzufügen</string>
+    <string name="map_save_trip">In meinen Reisen speichern</string>
+    <string name="map_unsave_trip">Aus meinen Reisen entfernen</string>
+    <string name="map_join_trip">Mitmachen anfragen</string>
+    <string name="map_cancel_join">Anfrage zurückziehen</string>
+    <string name="map_trip_saved">In meinen Reisen gespeichert.</string>
+    <string name="map_trip_unsaved">Aus meinen Reisen entfernt.</string>
+    <string name="map_join_requested">Anfrage gesendet. Die Besitzerin oder der Besitzer entscheidet.</string>
+    <string name="map_join_withdrawn">Anfrage zurückgezogen.</string>
+    <string name="map_join_declined">Deine Anfrage zum Mitmachen wurde abgelehnt.</string>
+    <plurals name="map_join_request_count">
+        <item quantity="one">%1$d Person möchte mitmachen</item>
+        <item quantity="other">%1$d Personen möchten mitmachen</item>
+    </plurals>
     <string name="map_owner_profile">Profil von @%1$s</string>
     <string name="map_report_trip">Reise melden</string>
     <string name="map_stop_comment">Kommentieren</string>

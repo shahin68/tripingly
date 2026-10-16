@@ -12,8 +12,8 @@ data class PublicTrip(
     val trip: Trip,
     val likeCount: Int,
     val likedByMe: Boolean,
-    /** How often people added it to their trips. */
-    val copyCount: Int,
+    /** People who saved it to their trips; whether I did is [Trip.savedByMe]. */
+    val saveCount: Int,
 )
 
 /** A person's profile (`GET /users/{username}`) with the first page of their public trips. */

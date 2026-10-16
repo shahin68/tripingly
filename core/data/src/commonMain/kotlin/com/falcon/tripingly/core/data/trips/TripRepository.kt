@@ -2,6 +2,8 @@ package com.falcon.tripingly.core.data.trips
 
 import com.falcon.tripingly.core.common.error.DataError
 import com.falcon.tripingly.core.common.result.AppResult
+import com.falcon.tripingly.core.model.Page
+import com.falcon.tripingly.core.model.trip.JoinRequest
 import com.falcon.tripingly.core.model.trip.NewTrip
 import com.falcon.tripingly.core.model.trip.Trip
 import com.falcon.tripingly.core.model.trip.TripDetails
@@ -14,7 +16,7 @@ import kotlinx.coroutines.flow.Flow
  * has answered.
  */
 interface TripRepository {
-    /** My Trips from the cache, most recently updated first. */
+    /** My Trips (my own, shared with me and saved) from the cache, most recently updated first. */
     fun observeMyTrips(): Flow<List<Trip>>
 
     /** Reloads My Trips from the server and replaces the cached list. */
@@ -37,8 +39,29 @@ interface TripRepository {
     /** Owner only. */
     suspend fun deleteTrip(tripId: String): AppResult<Unit, DataError.Network>
 
-    /** "Add to my trips": an independent copy of another user's public trip, without photos, comments or likes. */
-    suspend fun copyTrip(tripId: String): AppResult<TripDetails, DataError.Network>
+    /**
+     * Saves someone else's public [trip] to My Trips, or removes it ([saved] false). It stays the
+     * owner's live trip, read-only; there are no copies.
+     */
+    suspend fun setSaved(trip: Trip, saved: Boolean): AppResult<Unit, DataError.Network>
+
+    /**
+     * Asks the owner of someone else's public trip to let me edit it with them. Once the owner said
+     * no, it fails with [TripErrorCodes.JOIN_REQUEST_DECLINED] (and the trip shows it).
+     */
+    suspend fun requestToJoin(tripId: String): AppResult<Unit, DataError.Network>
+
+    /** Withdraws my pending request. */
+    suspend fun cancelJoinRequest(tripId: String): AppResult<Unit, DataError.Network>
+
+    /** Owner only: who asked to join, newest first. */
+    suspend fun joinRequests(tripId: String, cursor: String? = null): AppResult<Page<JoinRequest>, DataError.Network>
+
+    /** Owner only: the person becomes an editor (`LIMIT_REACHED` when the trip is full). */
+    suspend fun acceptJoinRequest(tripId: String, requestId: String): AppResult<TripDetails, DataError.Network>
+
+    /** Owner only: the person can't ask again. */
+    suspend fun declineJoinRequest(tripId: String, requestId: String): AppResult<Unit, DataError.Network>
 
     /** Appends an empty day; a dated trip ends one day later. */
     suspend fun addDay(tripId: String): AppResult<TripDetails, DataError.Network>

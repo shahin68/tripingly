@@ -18,6 +18,7 @@
     <string name="trip_no_dates">Noch keine Daten</string>
     <string name="trip_private">Privat</string>
     <string name="trip_shared_by">Geteilt von @%1$s</string>
+    <string name="trip_saved_by">Gespeichert · von @%1$s</string>
     <plurals name="trip_shared_with">
         <item quantity="one">Mit %1$d Person geteilt</item>
         <item quantity="other">Mit %1$d Personen geteilt</item>
@@ -40,6 +41,7 @@
     <string name="trip_action_share">Reise teilen</string>
     <string name="trip_action_delete">Reise löschen</string>
     <string name="trip_action_leave">Reise verlassen</string>
+    <string name="trip_action_remove_saved">Aus meinen Reisen entfernen</string>
 
     <!-- Share -->
     <string name="share_trip_text">Schau dir meine Reise an: %1$s (%2$s)!</string>
@@ -76,6 +78,10 @@
     <!-- Delete and leave -->
     <string name="delete_trip_title">Reise löschen?</string>
     <string name="delete_trip_message">„%1$s“ wird mit allen Tagen und Stopps für alle Mitglieder gelöscht. Das kann nicht rückgängig gemacht werden.</string>
+    <plurals name="delete_trip_editors_warning">
+        <item quantity="one">%1$d Person bearbeitet diese Reise mit dir. Sie verschwindet auch für sie, mit allem, was sie hinzugefügt hat.</item>
+        <item quantity="other">%1$d Personen bearbeiten diese Reise mit dir. Sie verschwindet auch für sie, mit allem, was sie hinzugefügt haben.</item>
+    </plurals>
     <string name="delete_trip_button">Löschen</string>
     <string name="leave_trip_title">Reise verlassen?</string>
     <string name="leave_trip_message">Du kannst „%1$s“ dann nicht mehr sehen oder bearbeiten. Die Besitzerin oder der Besitzer kann dich wieder hinzufügen.</string>
@@ -91,6 +97,9 @@
     <string name="members_error_user_not_found">Niemand hat diesen Benutzernamen.</string>
     <string name="members_error_some_not_added">Einige dieser Personen können nicht hinzugefügt werden. Wähle sie ab und versuche es erneut.</string>
     <string name="members_add_friends">%1$d hinzufügen</string>
+    <string name="members_join_requests_title">Möchten mitmachen</string>
+    <string name="members_join_accept">Annehmen</string>
+    <string name="members_join_decline">Ablehnen</string>
     <string name="members_invites_title">Einladungslinks</string>
     <string name="members_invite_hint">Wer einen Link hat, kann bis zum Ablauf als Bearbeiter beitreten.</string>
     <string name="members_invite_create">Einladungslink erstellen</string>

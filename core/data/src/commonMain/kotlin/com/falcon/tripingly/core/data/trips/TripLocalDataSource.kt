@@ -1,5 +1,6 @@
 package com.falcon.tripingly.core.data.trips
 
+import com.falcon.tripingly.core.model.trip.JoinRequestStatus
 import com.falcon.tripingly.core.model.trip.Trip
 import com.falcon.tripingly.core.model.trip.TripDetails
 import com.falcon.tripingly.core.model.trip.TripMarker
@@ -20,6 +21,14 @@ internal interface TripLocalDataSource {
     suspend fun saveTrip(details: TripDetails)
 
     suspend fun deleteTrip(tripId: String)
+
+    /** Saves or unsaves someone else's trip; one that isn't cached yet is cached from [trip]. */
+    suspend fun saveSavedByMe(trip: Trip, saved: Boolean)
+
+    suspend fun saveMyJoinRequest(tripId: String, status: JoinRequestStatus?)
+
+    /** The owner answered one of the trip's join requests. */
+    suspend fun removePendingJoinRequest(tripId: String)
 
     /** Inserts or updates markers. */
     suspend fun saveMarkers(markers: List<TripMarker>)

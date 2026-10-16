@@ -37,6 +37,7 @@ import com.falcon.tripingly.core.model.social.ReportReason
 import com.falcon.tripingly.core.model.social.ReportTarget
 import com.falcon.tripingly.core.model.trip.Destination
 import com.falcon.tripingly.core.model.trip.GeoPoint
+import com.falcon.tripingly.core.model.trip.JoinRequestStatus
 import com.falcon.tripingly.core.model.trip.NewMarker
 import com.falcon.tripingly.core.model.trip.NewTrip
 import com.falcon.tripingly.core.model.trip.TripDetails
@@ -46,6 +47,7 @@ import com.falcon.tripingly.feature.map.generated.resources.Res
 import com.falcon.tripingly.feature.map.generated.resources.error_location_denied_manual
 import com.falcon.tripingly.feature.map.generated.resources.error_location_permission_required
 import com.falcon.tripingly.feature.map.generated.resources.map_change_not_saved
+import com.falcon.tripingly.feature.map.generated.resources.map_join_requested
 import com.falcon.tripingly.feature.map.presentation.component.PinSizes
 import com.falcon.tripingly.feature.map.presentation.screen.MapViewModel
 import com.falcon.tripingly.feature.map.presentation.screen.MapViewModel.Action
@@ -550,6 +552,24 @@ class MapViewModelTest {
 
         assertFalse(viewModel.uiState.value.canEdit)
         assertTrue(viewModel.uiState.value.markers.isEmpty())
+    }
+
+    @Test
+    fun `a viewer saves the trip and asks to join, once each`() = runTest(testDispatcher) {
+        backend.seed(trip.copy(trip = trip.trip.copy(role = TripRole.VIEWER)))
+        val viewModel = viewModel()
+        testScheduler.advanceUntilIdle()
+
+        viewModel.onAction(Action.OnToggleSaveTrip)
+        testScheduler.advanceUntilIdle()
+        viewModel.onAction(Action.OnRequestToJoin)
+        testScheduler.advanceUntilIdle()
+
+        val state = viewModel.uiState.value
+        assertTrue(state.isSavedByMe)
+        assertEquals(JoinRequestStatus.PENDING, state.myJoinRequest)
+        assertEquals(Res.string.map_join_requested, assertIs<UiText.Resource>(state.message).resource)
+        assertEquals(listOf(trip.trip.id), backend.observeMyTrips().first().map { it.id })
     }
 
     @Test
