@@ -16,13 +16,21 @@ import de.jensklingenberg.ktorfit.http.POST
 import de.jensklingenberg.ktorfit.http.PUT
 import de.jensklingenberg.ktorfit.http.Path
 
-/** Photos on markers. The file itself goes straight to storage, see [StorageClient]. */
+/** Photos on markers and places. The file itself goes straight to storage, see [StorageClient]. */
 interface PhotosApi {
     /** A new photo, waiting for its upload, and the signed URL to `PUT` the file to (10 minutes). */
     @POST("markers/{id}/photos/upload-url")
     @Headers("Content-Type: application/json")
     suspend fun uploadUrl(
         @Path("id") markerId: String,
+        @Body body: UploadUrlRequestDto,
+    ): AppResult<UploadUrlResponseDto, DataError.Network>
+
+    /** Like [uploadUrl], for a photo on a place (no trip); at most the server's daily number per person. */
+    @POST("places/{id}/photos/upload-url")
+    @Headers("Content-Type: application/json")
+    suspend fun placeUploadUrl(
+        @Path("id") placeId: String,
         @Body body: UploadUrlRequestDto,
     ): AppResult<UploadUrlResponseDto, DataError.Network>
 
@@ -33,6 +41,10 @@ interface PhotosApi {
     /** The marker's gallery in order; editors also get processing and failed photos. */
     @GET("markers/{id}/photos")
     suspend fun photos(@Path("id") markerId: String): AppResult<List<PhotoDto>, DataError.Network>
+
+    /** The place's photos, most liked first; my own processing and failed ones too. */
+    @GET("places/{id}/photos")
+    suspend fun placePhotos(@Path("id") placeId: String): AppResult<List<PhotoDto>, DataError.Network>
 
     @PUT("markers/{id}/photo-order")
     @Headers("Content-Type: application/json")

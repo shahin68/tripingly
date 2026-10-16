@@ -215,7 +215,7 @@ class FakeTripBackend(
         )
     }
 
-    override suspend fun deleteDay(tripId: String, dayId: String): AppResult<TripDetails, DataError.Network> = call {
+    override suspend fun deleteDay(tripId: String, dayId: String, confirm: Boolean): AppResult<TripDetails, DataError.Network> = call {
         val details = trips.value[tripId] ?: return notFound()
         if (!details.trip.role.canEdit) return forbidden()
         if (details.days.none { it.id == dayId }) return notFound()
@@ -283,6 +283,7 @@ class FakeTripBackend(
             location = marker.location,
             time = marker.time,
             position = trips.value[tripId]?.days?.firstOrNull { it.id == dayId }?.markers?.size ?: 0,
+            createdById = me.id,
         )
         run(MarkerChange.Add(created))
         return created
@@ -309,6 +310,15 @@ class FakeTripBackend(
     }
 
     override suspend fun retry(failure: MarkerChangeFailure) = run(failure.change)
+
+    override suspend fun deleteAnyway(failure: MarkerChangeFailure) {
+        failure.change.confirmed()?.let { run(it) }
+    }
+
+    /** Nobody else adds photos or comments here, so there is nothing of mine to count back. */
+    override suspend fun removeMyContent(tripId: String, markerId: String): AppResult<Unit, DataError.Network> = call {
+        if (markerOf(markerId) == null) return notFound()
+    }
 
     private suspend fun run(change: MarkerChange) {
         val result = when (change) {

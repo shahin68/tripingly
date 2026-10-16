@@ -3,6 +3,7 @@ package com.falcon.tripingly.core.data.realtime
 import com.falcon.tripingly.core.data.config.FakeAppConfigRepository
 import com.falcon.tripingly.core.data.photos.DefaultPhotoRepository
 import com.falcon.tripingly.core.data.photos.PhotoPreparer
+import com.falcon.tripingly.core.data.social.FakeSocialRepository
 import com.falcon.tripingly.core.data.trips.InMemoryTripLocalDataSource
 import com.falcon.tripingly.core.data.trips.OfflineFirstTripRepository
 import com.falcon.tripingly.core.data.trips.PendingTripWrites
@@ -77,6 +78,7 @@ class RealtimeSyncTest {
             storage = StorageClient(engine),
             local = local,
             config = FakeAppConfigRepository(),
+            social = FakeSocialRepository(),
             preparer = PhotoPreparer { _, _, _ -> null },
             scope = scope,
         )

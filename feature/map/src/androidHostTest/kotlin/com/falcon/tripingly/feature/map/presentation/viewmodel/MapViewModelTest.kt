@@ -7,6 +7,7 @@ import com.falcon.tripingly.core.common.result.AppResult
 import com.falcon.tripingly.core.common.result.asError
 import com.falcon.tripingly.core.common.result.asSuccess
 import com.falcon.tripingly.core.common.result.map
+import com.falcon.tripingly.core.data.account.FakeAccountBackend
 import com.falcon.tripingly.core.data.config.FakeAppConfigRepository
 import com.falcon.tripingly.core.data.photos.FakePhotoRepository
 import com.falcon.tripingly.core.data.places.FakePlaceRepository
@@ -18,6 +19,8 @@ import com.falcon.tripingly.core.location.GetCurrentLocationUseCase
 import com.falcon.tripingly.core.location.LocationRepository
 import com.falcon.tripingly.core.location.model.Coordinates
 import com.falcon.tripingly.core.location.permission.LocationPermission
+import com.falcon.tripingly.core.model.account.ProfileUpdate
+import com.falcon.tripingly.core.model.photo.PhotoOwner
 import com.falcon.tripingly.core.model.photo.PickedImage
 import com.falcon.tripingly.core.model.place.GeoBounds
 import com.falcon.tripingly.core.model.place.ImageCredit
@@ -50,6 +53,7 @@ import com.falcon.tripingly.feature.map.generated.resources.map_change_not_saved
 import com.falcon.tripingly.feature.map.generated.resources.map_error_load_trip
 import com.falcon.tripingly.feature.map.generated.resources.map_error_stop_change
 import com.falcon.tripingly.feature.map.generated.resources.map_join_requested
+import com.falcon.tripingly.feature.map.generated.resources.map_my_content_removed
 import com.falcon.tripingly.feature.map.presentation.component.PinSizes
 import com.falcon.tripingly.feature.map.presentation.screen.MapViewModel
 import com.falcon.tripingly.feature.map.presentation.screen.MapViewModel.Action
@@ -93,6 +97,8 @@ class MapViewModelTest {
     private lateinit var places: CountingPlaceRepository
     private lateinit var photos: FakePhotoRepository
     private lateinit var social: RecordingSocialRepository
+    /** Signed in as the trips backend's `me`. */
+    private lateinit var session: FakeAccountBackend
 
     /** The fake's sights (Eiffel Tower, Louvre …), counting the squares asked for. */
     private class CountingPlaceRepository(
@@ -159,6 +165,12 @@ class MapViewModelTest {
         places = CountingPlaceRepository()
         photos = FakePhotoRepository()
         social = RecordingSocialRepository()
+        session = FakeAccountBackend(today = { LocalDate(2026, 10, 16) }).also {
+            // Onboarded, so the session is SignedIn with an account id.
+            it.signInForDevelopment("me", "Me")
+            it.updateProfile(ProfileUpdate(username = "me", birthDate = LocalDate(1990, 1, 1)))
+            it.accept((it.legalDocuments("en") as AppResult.Success).data)
+        }
         trip = (backend.createTrip(NewTrip("Test Trip", LocalDate(2024, 1, 1), LocalDate(2024, 1, 3))) as AppResult.Success).data
     }
 
@@ -175,6 +187,7 @@ class MapViewModelTest {
         photoRepository = photos,
         socialRepository = social,
         appConfigRepository = FakeAppConfigRepository(),
+        sessionRepository = session,
         getCurrentLocationUseCase = GetCurrentLocationUseCase(fakeLocationRepository),
         dispatchers = TestCoroutineDispatchers(testDispatcher),
     ).also { viewModel -> backgroundScope.launch { viewModel.uiState.collect {} } }
@@ -362,7 +375,7 @@ class MapViewModelTest {
         testScheduler.advanceUntilIdle()
 
         assertEquals(stop.id, viewModel.uiState.value.photosMarker?.id)
-        assertEquals(2, photos.photos(stop.id).first()?.size)
+        assertEquals(2, photos.photos(PhotoOwner.Stop(stop.id)).first()?.size)
 
         viewModel.onAction(Action.OnCloseStopPhotos)
         testScheduler.advanceUntilIdle()
@@ -388,7 +401,7 @@ class MapViewModelTest {
         val state = viewModel.uiState.value
         assertFalse(state.isPhotoCameraOpen)
         assertEquals(stop.id, state.photosMarker?.id)
-        assertEquals(1, photos.photos(stop.id).first()?.size)
+        assertEquals(1, photos.photos(PhotoOwner.Stop(stop.id)).first()?.size)
     }
 
     @Test
@@ -405,7 +418,7 @@ class MapViewModelTest {
         viewModel.onAction(Action.OnAddStopPhotos(listOf(PickedImage { byteArrayOf(1) })))
         testScheduler.advanceUntilIdle()
 
-        assertNull(photos.photos(stop.id).first())
+        assertNull(photos.photos(PhotoOwner.Stop(stop.id)).first())
         assertNull(viewModel.uiState.value.photosMarker)
         assertFalse(viewModel.uiState.value.isPhotoCameraOpen)
     }
@@ -484,6 +497,74 @@ class MapViewModelTest {
         assertEquals(0, viewModel.uiState.value.markers.size)
         assertNull(viewModel.uiState.value.confirm)
         assertNull(viewModel.uiState.value.selectedMarker)
+    }
+
+    @Test
+    fun `an editor deletes only their own stops, and removes their things from someone else's`() = runTest(testDispatcher) {
+        val mine = backend.addMarker(trip.trip.id, trip.days[0].id, NewMarker("Mine", GeoPoint(48.85, 2.35)))
+        backend.addMarker(trip.trip.id, trip.days[0].id, NewMarker("Theirs", GeoPoint(41.9, 12.49)))
+        val shared = backend.observeTrip(trip.trip.id).first()!!
+        backend.seed(
+            shared.copy(
+                trip = shared.trip.copy(role = TripRole.EDITOR),
+                days = shared.days.map { day ->
+                    day.copy(markers = day.markers.map { if (it.id == mine.id) it else it.copy(createdById = "someone-else") })
+                },
+            ),
+        )
+        val viewModel = viewModel()
+        testScheduler.advanceUntilIdle()
+
+        assertEquals(listOf(true, false), viewModel.uiState.value.markers.map { it.canDelete })
+        assertFalse(viewModel.uiState.value.canDeleteDay)
+
+        viewModel.onAction(Action.OnMarkerClick(viewModel.uiState.value.markers[1]))
+        viewModel.onAction(Action.OnRemoveMyContent)
+        testScheduler.advanceUntilIdle()
+        assertEquals(Confirm.RemoveMyContent, viewModel.uiState.value.confirm)
+
+        viewModel.onAction(Action.OnConfirm)
+        testScheduler.advanceUntilIdle()
+        val note = assertIs<UiText.Note>(viewModel.uiState.value.message)
+        assertEquals(Res.string.map_my_content_removed, assertIs<UiText.Resource>(note.text).resource)
+        assertEquals(2, viewModel.uiState.value.markers.size)
+    }
+
+    @Test
+    fun `deleting a stop with other people's things warns first, then deletes it for everyone`() = runTest(testDispatcher) {
+        val stop = backend.addMarker(trip.trip.id, trip.days[0].id, NewMarker("Stop #1", GeoPoint(48.85, 2.35)))
+        val viewModel = viewModel()
+        testScheduler.advanceUntilIdle()
+        backend.nextError = DataError.Network.Api(409, "STOP_HAS_OTHERS_CONTENT", "Their photos go too.")
+
+        viewModel.onAction(Action.OnRemoveMarker(stop.id))
+        testScheduler.advanceUntilIdle()
+        assertEquals(1, viewModel.uiState.value.markers.size)
+        assertEquals(UiText.Server("Their photos go too."), viewModel.uiState.value.othersContentMessage)
+        assertNull(viewModel.uiState.value.message)
+
+        viewModel.onAction(Action.OnDeleteAnyway)
+        testScheduler.advanceUntilIdle()
+        assertTrue(viewModel.uiState.value.markers.isEmpty())
+        assertNull(viewModel.uiState.value.othersContentMessage)
+    }
+
+    @Test
+    fun `deleting a day with other people's things warns first`() = runTest(testDispatcher) {
+        val viewModel = viewModel()
+        testScheduler.advanceUntilIdle()
+        backend.nextError = DataError.Network.Api(409, "STOP_HAS_OTHERS_CONTENT", "Their photos go too.")
+
+        viewModel.onAction(Action.DeleteDay)
+        viewModel.onAction(Action.OnConfirm)
+        testScheduler.advanceUntilIdle()
+        assertEquals(3, viewModel.uiState.value.days.size)
+        assertEquals(UiText.Server("Their photos go too."), viewModel.uiState.value.othersContentMessage)
+        assertNull(viewModel.uiState.value.message)
+
+        viewModel.onAction(Action.OnDeleteAnyway)
+        testScheduler.advanceUntilIdle()
+        assertEquals(2, viewModel.uiState.value.days.size)
     }
 
     @Test

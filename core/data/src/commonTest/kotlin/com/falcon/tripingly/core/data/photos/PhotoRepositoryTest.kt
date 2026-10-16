@@ -2,9 +2,11 @@ package com.falcon.tripingly.core.data.photos
 
 import com.falcon.tripingly.core.common.error.DataError
 import com.falcon.tripingly.core.data.config.FakeAppConfigRepository
+import com.falcon.tripingly.core.data.social.FakeSocialRepository
 import com.falcon.tripingly.core.data.trips.InMemoryTripLocalDataSource
 import com.falcon.tripingly.core.data.trips.TripJson
 import com.falcon.tripingly.core.data.trips.toDetails
+import com.falcon.tripingly.core.model.photo.PhotoOwner
 import com.falcon.tripingly.core.model.photo.PhotoStatus
 import com.falcon.tripingly.core.model.photo.PickedImage
 import com.falcon.tripingly.core.network.ApiConfig
@@ -77,6 +79,7 @@ class PhotoRepositoryTest {
             storage = StorageClient(engine),
             local = local,
             config = FakeAppConfigRepository(),
+            social = FakeSocialRepository(),
             preparer = preparer,
             scope = scope,
         )
@@ -104,10 +107,10 @@ class PhotoRepositoryTest {
             }
         }
 
-        repository.loadPhotos("m1")
-        repository.upload("m1", listOf(PickedImage { byteArrayOf(9, 9, 9, 9) }))
-        realTime { repository.uploads("m1").first { it.isEmpty() } }
-        assertEquals(PhotoStatus.Processing, repository.photos("m1").first()?.single()?.status)
+        repository.loadPhotos(STOP)
+        repository.upload(STOP, listOf(PickedImage { byteArrayOf(9, 9, 9, 9) }))
+        realTime { repository.uploads(STOP).first { it.isEmpty() } }
+        assertEquals(PhotoStatus.Processing, repository.photos(STOP).first()?.single()?.status)
         // Nothing asked until the live connection says it's ready.
         assertTrue(requests.none { it.url.encodedPath.endsWith("markers/m1") })
 
@@ -118,8 +121,8 @@ class PhotoRepositoryTest {
         }["t1"]!!.days.single().markers.single()
         assertEquals(1, marker.photoCount)
         assertEquals(listOf(2560 to 85), prepared)
-        assertEquals(emptyList(), repository.uploads("m1").first())
-        assertEquals(PhotoStatus.Ready, repository.photos("m1").first()?.single()?.status)
+        assertEquals(emptyList(), repository.uploads(STOP).first())
+        assertEquals(PhotoStatus.Ready, repository.photos(STOP).first()?.single()?.status)
         val put = requests.single { it.method == HttpMethod.Put }
         assertEquals("image/jpeg", put.body.contentType?.toString())
         assertEquals(3L, (put.body as OutgoingContent).contentLength)
@@ -131,13 +134,13 @@ class PhotoRepositoryTest {
     fun unreadableImage_failsWithoutAskingTheServer() = runTest {
         val repository = repository(preparer = { _, _, _ -> null }) { error("no request expected") }
 
-        repository.upload("m1", listOf(PickedImage { byteArrayOf(1) }))
+        repository.upload(STOP, listOf(PickedImage { byteArrayOf(1) }))
 
-        val upload = realTime { repository.uploads("m1").first { list -> list.any { it.state is PhotoUpload.State.Failed } } }.single()
+        val upload = realTime { repository.uploads(STOP).first { list -> list.any { it.state is PhotoUpload.State.Failed } } }.single()
         assertNull((upload.state as PhotoUpload.State.Failed).error)
         assertTrue(requests.isEmpty())
         repository.dismissUpload(upload.key)
-        assertEquals(emptyList(), repository.uploads("m1").first())
+        assertEquals(emptyList(), repository.uploads(STOP).first())
     }
 
     @Test
@@ -160,15 +163,58 @@ class PhotoRepositoryTest {
             }
         }
 
-        repository.upload("m1", listOf(PickedImage { byteArrayOf(1) }))
-        val failed = realTime { repository.uploads("m1").first { list -> list.any { it.state is PhotoUpload.State.Failed } } }.single()
+        repository.upload(STOP, listOf(PickedImage { byteArrayOf(1) }))
+        val failed = realTime { repository.uploads(STOP).first { list -> list.any { it.state is PhotoUpload.State.Failed } } }.single()
         val error = assertIs<DataError.Network.Api>((failed.state as PhotoUpload.State.Failed).error)
         assertEquals("PHOTO_LIMIT_REACHED", error.code)
 
         refuse = false
         repository.retryUpload(failed.key)
-        realTime { repository.uploads("m1").first { it.isEmpty() } }
+        realTime { repository.uploads(STOP).first { it.isEmpty() } }
     }
+
+    @Test
+    fun placePhoto_goesToThePlace_andIsReadyWhenMyRoomSaysSo() = runTest {
+        val repository = repository { request ->
+            when {
+                request.url.encodedPath.endsWith("places/pl1/photos/upload-url") -> json(
+                    """{"photo":${placePhoto("pending_upload")},"uploadUrl":"https://storage.test/put/p1",
+                       "uploadHeaders":{"Content-Type":"image/jpeg"},"expiresAt":"2026-10-11T10:00:00.000Z"}""",
+                    HttpStatusCode.Created,
+                )
+                request.url.host == "storage.test" -> respond("", HttpStatusCode.OK)
+                request.url.encodedPath.endsWith("photos/p1/complete") -> json(placePhoto("processing"), HttpStatusCode.Accepted)
+                request.url.encodedPath.endsWith("places/pl1/photos") -> json("[]")
+                else -> error("unexpected ${request.method.value} ${request.url}")
+            }
+        }
+
+        repository.loadPhotos(PLACE)
+        repository.upload(PLACE, listOf(PickedImage { byteArrayOf(9) }))
+        realTime { repository.uploads(PLACE).first { it.isEmpty() } }
+        assertEquals(PhotoStatus.Processing, repository.photos(PLACE).first()?.single()?.status)
+
+        repository.applyLive(RealtimeEvent.PlacePhotoSaved(NetworkJson.decodeFromString<PhotoDto>(placePhoto("ready"))))
+
+        val photo = repository.photos(PLACE).first()?.single()
+        assertEquals(PhotoStatus.Ready, photo?.status)
+        assertEquals(PLACE, photo?.owner)
+    }
+
+    @Test
+    fun like_showsAtOnce_andComesBackFromTheServer() = runTest {
+        val repository = repository { json("[${photo("ready")}]") }
+        repository.loadPhotos(STOP)
+        val photo = repository.photos(STOP).first()!!.single()
+
+        repository.setLiked(photo, liked = true)
+
+        val liked = repository.photos(STOP).first()!!.single()
+        assertTrue(liked.likedByMe)
+        assertEquals(1, liked.likeCount)
+    }
+
+    private fun placePhoto(status: String) = photo(status).replace("\"markerId\":\"m1\"", "\"markerId\":null,\"placeId\":\"pl1\"")
 
     private fun photoDto(status: String) = NetworkJson.decodeFromString<PhotoDto>(photo(status))
 
@@ -180,6 +226,8 @@ class PhotoRepositoryTest {
 
     private companion object {
         val JPEG = byteArrayOf(1, 2, 3)
+        val STOP = PhotoOwner.Stop("m1")
+        val PLACE = PhotoOwner.Place("pl1")
     }
 }
 

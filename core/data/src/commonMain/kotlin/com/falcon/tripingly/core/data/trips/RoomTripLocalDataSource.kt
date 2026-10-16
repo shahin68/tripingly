@@ -169,6 +169,7 @@ private fun MarkerEntity.toMarker() = TripMarker(
     likeCount = likeCount,
     likedByMe = likedByMe,
     commentCount = commentCount,
+    createdById = createdById,
 )
 
 private fun TripMarker.toEntity() = MarkerEntity(
@@ -187,6 +188,7 @@ private fun TripMarker.toEntity() = MarkerEntity(
     likeCount = likeCount,
     likedByMe = likedByMe,
     commentCount = commentCount,
+    createdById = createdById,
 )
 
 internal val TripRole.wireName: String get() = name.lowercase()

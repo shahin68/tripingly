@@ -40,6 +40,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -55,41 +56,52 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.falcon.tripingly.core.data.photos.PhotoUpload
+import com.falcon.tripingly.core.designsystem.component.LikeButton
 import com.falcon.tripingly.core.designsystem.component.MessageBannerHost
 import com.falcon.tripingly.core.designsystem.component.ShowMessage
 import com.falcon.tripingly.core.designsystem.component.PhotoImage
 import com.falcon.tripingly.core.designsystem.component.PhotoSize
 import com.falcon.tripingly.core.designsystem.theme.spacing
 import com.falcon.tripingly.core.model.photo.Photo
+import com.falcon.tripingly.core.model.photo.PhotoOwner
 import com.falcon.tripingly.core.model.photo.PhotoStatus
 import com.falcon.tripingly.core.ui.UiText
-import com.falcon.tripingly.feature.map.domain.model.MapMarker
 import com.falcon.tripingly.feature.map.generated.resources.Res
 import com.falcon.tripingly.feature.map.generated.resources.*
-import com.falcon.tripingly.feature.map.presentation.photos.StopPhotosViewModel.Action
-import com.falcon.tripingly.feature.map.presentation.photos.StopPhotosViewModel.State
+import com.falcon.tripingly.feature.map.presentation.photos.PhotosViewModel.Action
+import com.falcon.tripingly.feature.map.presentation.photos.PhotosViewModel.State
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel
 import org.koin.core.parameter.parametersOf
 
-/** The photos of [marker] in a sheet over the map; owners and editors ([canEdit]) add and manage them. */
+/**
+ * The photos of a stop or a place ([owner]) in a sheet over the map, under [title]. [canAdd]: may add photos
+ * (a stop's owners and editors; anyone on a place). [canManage]: a stop's owners and editors, who pick the
+ * cover ([coverPhotoId]) and delete any photo; everyone else deletes only their own.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun StopPhotosRoute(
-    marker: MapMarker,
-    canEdit: Boolean,
+fun PhotosRoute(
+    owner: PhotoOwner,
+    title: String,
+    canAdd: Boolean,
+    canManage: Boolean,
+    coverPhotoId: String?,
     onDismiss: () -> Unit,
-    viewModel: StopPhotosViewModel = koinViewModel(key = "photos:${marker.id}") { parametersOf(marker.id) },
+    viewModel: PhotosViewModel = koinViewModel(key = "photos:$owner") { parametersOf(owner) },
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val pickPhotos = rememberPhotoPicker { images -> viewModel.onAction(Action.OnAddPhotos(images)) }
 
     ModalBottomSheet(onDismissRequest = onDismiss) {
         Box {
-            StopPhotosScreen(
+            PhotosScreen(
                 state = state,
-                marker = marker,
-                canEdit = canEdit,
+                title = title,
+                subtitle = stringResource(if (owner is PhotoOwner.Place) Res.string.map_place_photos else Res.string.map_stop_photos),
+                canAdd = canAdd,
+                canManage = canManage,
+                coverPhotoId = coverPhotoId,
                 onAddPhotos = pickPhotos,
                 onAction = viewModel::onAction,
             )
@@ -101,8 +113,8 @@ fun StopPhotosRoute(
         PhotoViewer(
             state = state,
             initialIndex = index,
-            coverPhotoId = marker.coverPhotoId,
-            canEdit = canEdit,
+            coverPhotoId = coverPhotoId,
+            canManage = canManage,
             onAction = viewModel::onAction,
         )
     }
@@ -134,10 +146,13 @@ fun StopPhotosRoute(
 }
 
 @Composable
-fun StopPhotosScreen(
+fun PhotosScreen(
     state: State,
-    marker: MapMarker,
-    canEdit: Boolean,
+    title: String,
+    subtitle: String,
+    canAdd: Boolean,
+    canManage: Boolean,
+    coverPhotoId: String?,
     onAddPhotos: () -> Unit,
     onAction: (Action) -> Unit,
     modifier: Modifier = Modifier,
@@ -158,18 +173,18 @@ fun StopPhotosScreen(
             ) {
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = marker.title.ifBlank { stringResource(Res.string.map_stop_title_format, marker.orderNumber) },
+                        text = title,
                         style = MaterialTheme.typography.titleLarge,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )
                     Text(
-                        text = stringResource(Res.string.map_stop_photos),
+                        text = subtitle,
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
-                if (canEdit) {
+                if (canAdd) {
                     FilledTonalButton(onClick = onAddPhotos) {
                         Icon(Icons.Default.AddPhotoAlternate, contentDescription = null, modifier = Modifier.size(18.dp))
                         Text(stringResource(Res.string.map_stop_add_photos), modifier = Modifier.padding(start = MaterialTheme.spacing.small))
@@ -202,8 +217,8 @@ fun StopPhotosScreen(
         items(state.photos, key = { it.id }) { photo ->
             GalleryPhoto(
                 photo = photo,
-                isCover = photo.id == marker.coverPhotoId,
-                canEdit = canEdit,
+                isCover = photo.id == coverPhotoId,
+                canDelete = state.canDelete(photo, canManage),
                 onAction = onAction,
             )
         }
@@ -214,7 +229,7 @@ fun StopPhotosScreen(
 }
 
 @Composable
-private fun GalleryPhoto(photo: Photo, isCover: Boolean, canEdit: Boolean, onAction: (Action) -> Unit) {
+private fun GalleryPhoto(photo: Photo, isCover: Boolean, canDelete: Boolean, onAction: (Action) -> Unit) {
     Box(
         modifier = Modifier
             .aspectRatio(1f)
@@ -240,28 +255,43 @@ private fun GalleryPhoto(photo: Photo, isCover: Boolean, canEdit: Boolean, onAct
                     tint = MaterialTheme.colorScheme.error,
                     modifier = Modifier.align(Alignment.Center),
                 )
-                if (canEdit) {
+                if (canDelete) {
                     IconButton(onClick = { onAction(Action.OnDeletePhoto(photo)) }, modifier = Modifier.align(Alignment.TopEnd)) {
                         Icon(Icons.Default.Delete, contentDescription = stringResource(Res.string.map_photo_delete))
                     }
                 }
             }
-            PhotoStatus.Ready -> if (isCover) {
-                Icon(
-                    Icons.Default.Star,
-                    contentDescription = stringResource(Res.string.map_photo_cover),
-                    tint = Color.White,
-                    modifier = Modifier
-                        .align(Alignment.TopStart)
-                        .padding(4.dp)
-                        .background(Color.Black.copy(alpha = 0.4f), CircleShape)
-                        .padding(2.dp)
-                        .size(16.dp),
-                )
+            PhotoStatus.Ready -> {
+                if (isCover) {
+                    Icon(
+                        Icons.Default.Star,
+                        contentDescription = stringResource(Res.string.map_photo_cover),
+                        tint = Color.White,
+                        modifier = Modifier
+                            .align(Alignment.TopStart)
+                            .padding(4.dp)
+                            .background(Color.Black.copy(alpha = 0.4f), CircleShape)
+                            .padding(2.dp)
+                            .size(16.dp),
+                    )
+                }
+                PhotoLike(photo = photo, onAction = onAction, modifier = Modifier.align(Alignment.BottomEnd).padding(4.dp))
             }
         }
     }
 }
+
+/** The photo's like, on a small pill so it reads on any photo; the same like in the grid and the viewer. */
+@Composable
+private fun PhotoLike(photo: Photo, onAction: (Action) -> Unit, modifier: Modifier = Modifier) {
+    Surface(shape = CircleShape, color = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f), modifier = modifier) {
+        LikeButton(liked = photo.likedByMe, count = photo.likeCount, onToggle = { onAction(Action.OnToggleLike(photo)) })
+    }
+}
+
+/** A stop's owners and editors delete any photo; everyone deletes their own. */
+private fun State.canDelete(photo: Photo, canManage: Boolean): Boolean =
+    canManage || (myUserId != null && photo.uploaderId == myUserId)
 
 @Composable
 private fun GalleryUpload(upload: PhotoUpload, onAction: (Action) -> Unit) {
@@ -306,13 +336,16 @@ private fun GalleryUpload(upload: PhotoUpload, onAction: (Action) -> Unit) {
     }
 }
 
-/** The ready photos full screen, swiped through; owners and editors make one the cover or delete it. */
+/**
+ * The ready photos full screen, swiped through and liked; a stop's owners and editors make one the cover,
+ * and whoever may delete a photo deletes it.
+ */
 @Composable
 private fun PhotoViewer(
     state: State,
     initialIndex: Int,
     coverPhotoId: String?,
-    canEdit: Boolean,
+    canManage: Boolean,
     onAction: (Action) -> Unit,
 ) {
     val viewable = state.viewable
@@ -347,21 +380,27 @@ private fun PhotoViewer(
                     Icon(Icons.Default.Close, contentDescription = stringResource(Res.string.map_close), tint = Color.White)
                 }
                 Box(Modifier.weight(1f))
-                if (canEdit && current != null) {
-                    if (current.id == coverPhotoId) {
-                        Text(
-                            text = stringResource(Res.string.map_photo_cover),
-                            color = Color.White,
-                            style = MaterialTheme.typography.labelLarge,
-                            modifier = Modifier.padding(horizontal = MaterialTheme.spacing.medium),
-                        )
-                    } else {
-                        TextButton(onClick = { onAction(Action.OnMakeCover(current.id)) }, enabled = !state.isSaving) {
-                            Text(stringResource(Res.string.map_photo_make_cover), color = Color.White)
+                if (current != null) {
+                    PhotoLike(photo = current, onAction = onAction, modifier = Modifier.padding(horizontal = MaterialTheme.spacing.small))
+                    // Only a stop's owners and editors manage, and only a stop has a cover.
+                    if (canManage) {
+                        if (current.id == coverPhotoId) {
+                            Text(
+                                text = stringResource(Res.string.map_photo_cover),
+                                color = Color.White,
+                                style = MaterialTheme.typography.labelLarge,
+                                modifier = Modifier.padding(horizontal = MaterialTheme.spacing.medium),
+                            )
+                        } else {
+                            TextButton(onClick = { onAction(Action.OnMakeCover(current.id)) }, enabled = !state.isSaving) {
+                                Text(stringResource(Res.string.map_photo_make_cover), color = Color.White)
+                            }
                         }
                     }
-                    IconButton(onClick = { onAction(Action.OnDeletePhoto(current)) }, enabled = !state.isSaving) {
-                        Icon(Icons.Default.Delete, contentDescription = stringResource(Res.string.map_photo_delete), tint = Color.White)
+                    if (state.canDelete(current, canManage)) {
+                        IconButton(onClick = { onAction(Action.OnDeletePhoto(current)) }, enabled = !state.isSaving) {
+                            Icon(Icons.Default.Delete, contentDescription = stringResource(Res.string.map_photo_delete), tint = Color.White)
+                        }
                     }
                 }
             }

@@ -24,10 +24,20 @@ interface MarkerRepository {
 
     suspend fun updateMarker(markerId: String, update: MarkerUpdate)
 
+    /**
+     * Only the stop's creator or the trip's owner. When other people's photos, comments or likes
+     * are on it, the server refuses ([MarkerChangeFailure.needsConfirm]); [deleteAnyway] sends it again.
+     */
     suspend fun deleteMarker(markerId: String)
 
-    /** Deletes all of the day's markers, sent as one request. */
+    /** Deletes all of the day's markers, sent as one request; refused like [deleteMarker]. */
     suspend fun clearDay(tripId: String, dayId: String)
+
+    /** Sends a refused delete or cleared day again, deleting other people's photos, comments and likes too. */
+    suspend fun deleteAnyway(failure: MarkerChangeFailure)
+
+    /** Deletes my photos and comments on someone else's stop and my likes there; waits for the server. */
+    suspend fun removeMyContent(tripId: String, markerId: String): AppResult<Unit, DataError.Network>
 
     /** [markerIds] is the day's complete marker list in the new order. */
     suspend fun reorderMarkers(tripId: String, dayId: String, markerIds: List<String>)

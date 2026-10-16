@@ -2,12 +2,13 @@ package com.falcon.tripingly.core.data.photos
 
 import com.falcon.tripingly.core.common.error.DataError
 import com.falcon.tripingly.core.model.photo.Photo
+import com.falcon.tripingly.core.model.photo.PhotoOwner
 
 /** A photo picked on this device, until the server has it (then it's a [Photo] in the gallery, processing). */
 data class PhotoUpload(
     /** Local only. */
     val key: String,
-    val markerId: String,
+    val owner: PhotoOwner,
     val state: State,
 ) {
     sealed interface State {

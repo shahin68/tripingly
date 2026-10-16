@@ -88,7 +88,7 @@ class TripRepositoryTest {
         val trips = OfflineFirstTripRepository(ktorfit.createTripsApi(), local, pending, realtime, currentUserId = { ME })
 
         /** Sends on a real dispatcher, like the app. */
-        fun markers() = DefaultMarkerRepository(ktorfit.createMarkersApi(), trips, local, pending, failureScope)
+        fun markers() = DefaultMarkerRepository(ktorfit.createMarkersApi(), trips, local, pending, failureScope, currentUserId = { ME })
 
         suspend fun awaitTrip(condition: (TripDetails) -> Boolean) {
             realTime { local.trips.first { all -> all["t1"]?.let(condition) == true } }
@@ -537,6 +537,44 @@ class TripRepositoryTest {
         assertEquals("/v1/markers/m0", harness.requests.single().url.encodedPath)
         assertTrue(failures.isEmpty())
         assertTrue(harness.local.trip("t1")!!.days[0].markers.isEmpty())
+    }
+
+    @Test
+    fun deleteMarker_withOthersContent_asksFirst_thenDeletesAnyway() = runTest {
+        val harness = Harness { request ->
+            if (request.url.parameters["confirm"] == "true") {
+                respond("", HttpStatusCode.NoContent)
+            } else {
+                json(TripJson.error("STOP_HAS_OTHERS_CONTENT", "Others' photos go too."), HttpStatusCode.Conflict)
+            }
+        }
+        harness.local.saveTrip(details(twoStops()))
+        val markers = harness.markers()
+        val failures = markers.collectFailures()
+
+        markers.deleteMarker("m0")
+        val failure = failures.next()
+
+        // Put back until the user agrees.
+        assertTrue(failure.needsConfirm)
+        assertEquals(listOf("m0", "m1"), harness.local.trip("t1")!!.days[0].markers.map { it.id })
+
+        markers.deleteAnyway(failure)
+
+        assertEquals(listOf("m1"), harness.local.trip("t1")!!.days[0].markers.map { it.id })
+        harness.awaitQueueEmpty()
+        assertEquals(listOf("false", "true"), harness.requests.map { it.url.parameters["confirm"] })
+        assertEquals(listOf("m1"), harness.local.trip("t1")!!.days[0].markers.map { it.id })
+    }
+
+    @Test
+    fun addMarker_isMine() = runTest {
+        val harness = Harness { request -> json(TripJson.marker(request.sentId(), "t1", "d0", 0), HttpStatusCode.Created) }
+        harness.local.saveTrip(details(TripJson.trip("t1")))
+
+        val created = harness.markers().addMarker("t1", "d0", NewMarker("Stop #1", GeoPoint(48.8584, 2.2945)))
+
+        assertEquals(ME, created.createdById)
     }
 
     @Test

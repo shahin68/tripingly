@@ -66,8 +66,12 @@ interface TripRepository {
     /** Appends an empty day; a dated trip ends one day later. */
     suspend fun addDay(tripId: String): AppResult<TripDetails, DataError.Network>
 
-    /** Deletes a day with its markers. The last day can't be deleted. */
-    suspend fun deleteDay(tripId: String, dayId: String): AppResult<TripDetails, DataError.Network>
+    /**
+     * Deletes a day with its markers. The last day can't be deleted. Editors may only delete a day
+     * whose stops are all theirs. Without [confirm], a day with other people's photos, comments or
+     * likes answers `STOP_HAS_OTHERS_CONTENT`.
+     */
+    suspend fun deleteDay(tripId: String, dayId: String, confirm: Boolean = false): AppResult<TripDetails, DataError.Network>
 
     /** Owner only: adds an editor by username (`NOT_FOUND` when no such user, `USER_BLOCKED` when blocked). */
     suspend fun addMember(tripId: String, username: String): AppResult<TripDetails, DataError.Network>

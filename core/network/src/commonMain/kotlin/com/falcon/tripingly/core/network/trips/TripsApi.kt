@@ -88,9 +88,9 @@ interface TripsApi {
         @Header(IDEMPOTENCY_KEY_HEADER) idempotencyKey: String,
     ): AppResult<TripDayDto, DataError.Network>
 
-    /** Deletes the day and its markers; later days move up. */
+    /** Deletes the day and its markers; later days move up. [confirm] as for [MarkersApi.delete]. */
     @DELETE("days/{id}")
-    suspend fun deleteDay(@Path("id") dayId: String): AppResult<Unit, DataError.Network>
+    suspend fun deleteDay(@Path("id") dayId: String, @Query("confirm") confirm: Boolean): AppResult<Unit, DataError.Network>
 
     @POST("trips/{id}/members")
     @Headers("Content-Type: application/json")

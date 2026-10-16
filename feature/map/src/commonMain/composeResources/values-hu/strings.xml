@@ -132,4 +132,15 @@
     <string name="map_error_load_photos">Nem sikerült betölteni a fotókat.</string>
     <string name="map_error_cover">Nem sikerült beállítani a borítóképet.</string>
     <string name="map_error_delete_photo">Nem sikerült törölni a fotót.</string>
+
+    <!-- Place photos and deleting stops -->
+    <string name="map_place_photos">Fotók</string>
+    <string name="map_error_like_photo">Nem sikerült menteni a fotó kedvelését.</string>
+    <string name="map_delete_others_content_title">Törlöd mindenkinek?</string>
+    <string name="map_remove_my_content">Saját fotóim, hozzászólásaim és kedveléseim eltávolítása</string>
+    <string name="map_remove_my_content_title">Eltávolítod a tartalmaidat erről a megállóról?</string>
+    <string name="map_remove_my_content_message">A fotóid, hozzászólásaid és kedveléseid erről a megállóról törlődnek. A megálló megmarad.</string>
+    <string name="map_confirm_remove">Eltávolítás</string>
+    <string name="map_my_content_removed">A fotóid, hozzászólásaid és kedveléseid eltávolítva erről a megállóról.</string>
+    <string name="map_error_remove_my_content">Nem sikerült eltávolítani a fotóidat, hozzászólásaidat és kedveléseidet.</string>
 </resources>

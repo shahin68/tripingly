@@ -132,4 +132,15 @@
     <string name="map_error_load_photos">Die Fotos konnten nicht geladen werden.</string>
     <string name="map_error_cover">Das Titelfoto konnte nicht festgelegt werden.</string>
     <string name="map_error_delete_photo">Das Foto konnte nicht gelöscht werden.</string>
+
+    <!-- Place photos and deleting stops -->
+    <string name="map_place_photos">Fotos</string>
+    <string name="map_error_like_photo">Dein Like für das Foto konnte nicht gespeichert werden.</string>
+    <string name="map_delete_others_content_title">Für alle löschen?</string>
+    <string name="map_remove_my_content">Meine Fotos, Kommentare und Likes entfernen</string>
+    <string name="map_remove_my_content_title">Deine Inhalte von diesem Stopp entfernen?</string>
+    <string name="map_remove_my_content_message">Deine Fotos, Kommentare und Likes auf diesem Stopp werden gelöscht. Der Stopp bleibt.</string>
+    <string name="map_confirm_remove">Entfernen</string>
+    <string name="map_my_content_removed">Deine Fotos, Kommentare und Likes auf diesem Stopp wurden entfernt.</string>
+    <string name="map_error_remove_my_content">Deine Fotos, Kommentare und Likes konnten nicht entfernt werden.</string>
 </resources>

@@ -82,6 +82,19 @@ class RealtimeEventTest {
     }
 
     @Test
+    fun placePhotoEvents_comeToMeWithoutATrip() {
+        val placePhoto = photoJson.replace("\"markerId\":\"m1\"", "\"markerId\":null,\"placeId\":\"pl1\"")
+        val ready = assertIs<RealtimeEvent.PlacePhotoSaved>(
+            parse("photo.ready", envelope("photo.ready", """{"photo":$placePhoto}""", tripId = null)),
+        )
+        assertEquals("pl1", ready.photo.placeId)
+        assertEquals(
+            RealtimeEvent.PlacePhotoFailed("ph1", "pl1"),
+            parse("photo.failed", envelope("photo.failed", """{"photoId":"ph1","placeId":"pl1"}""", tripId = null)),
+        )
+    }
+
+    @Test
     fun tripAndUserEvents() {
         listOf("trip.updated", "day.created", "day.deleted", "member.added", "member.removed").forEach {
             assertEquals(RealtimeEvent.TripChanged("t1", "u2"), parse(it, envelope(it, "{}")))

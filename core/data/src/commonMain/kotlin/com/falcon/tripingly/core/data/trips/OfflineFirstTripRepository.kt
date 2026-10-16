@@ -154,8 +154,8 @@ internal class OfflineFirstTripRepository(
             is AppResult.Error -> result
         }
 
-    override suspend fun deleteDay(tripId: String, dayId: String): AppResult<TripDetails, DataError.Network> =
-        when (val result = api.deleteDay(dayId)) {
+    override suspend fun deleteDay(tripId: String, dayId: String, confirm: Boolean): AppResult<TripDetails, DataError.Network> =
+        when (val result = api.deleteDay(dayId, confirm)) {
             is AppResult.Success -> refreshTrip(tripId)
             is AppResult.Error -> result
         }

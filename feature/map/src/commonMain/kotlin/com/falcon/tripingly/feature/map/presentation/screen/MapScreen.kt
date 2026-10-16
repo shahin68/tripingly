@@ -271,7 +271,7 @@ fun MapScreen(
                 TripItineraryCard(
                     markers = markers,
                     selectedMarkerId = state.selectedMarker?.id,
-                    canEdit = state.canEdit,
+                    canClear = state.canDeleteDay,
                     onAction = onAction,
                     modifier = Modifier
                         .padding(horizontal = MaterialTheme.spacing.medium)
@@ -307,6 +307,7 @@ fun MapScreen(
                     dayNumber = card.days.getOrNull(card.activeDayIndex)?.number?.takeIf { card.canEdit },
                     onAdd = { onAction(Action.OnAddPlaceToDay) },
                     onOpenImage = { index -> onAction(Action.OnOpenPlaceImage(index)) },
+                    onOpenPhotos = { onAction(Action.OnOpenPlacePhotos) },
                 )
             }
         }
@@ -340,6 +341,7 @@ fun MapScreen(
                     onOpenComments = { onAction(Action.OnOpenStopComments) },
                     canReport = state.isViewer,
                     onReport = { onAction(Action.OnReportStop) },
+                    onRemoveMyContent = { onAction(Action.OnRemoveMyContent) }.takeIf { state.canEdit && !stopCard.canDelete },
                 )
             }
         }
@@ -422,7 +424,7 @@ private fun TripHeader(
                         onDismissRequest = { menuExpanded = false },
                         actions = buildList {
                             add(DropdownAction(stringResource(Res.string.map_add_day)) { onAction(Action.AddDay) })
-                            if (state.days.size > 1) {
+                            if (state.days.size > 1 && state.canDeleteDay) {
                                 add(
                                     DropdownAction(stringResource(Res.string.map_delete_day), isDestructive = true) {
                                         onAction(Action.DeleteDay)
@@ -566,7 +568,7 @@ private fun LocationFab(
 private fun TripItineraryCard(
     markers: ImmutableList<MapMarker>,
     selectedMarkerId: String?,
-    canEdit: Boolean,
+    canClear: Boolean,
     onAction: (Action) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -581,7 +583,7 @@ private fun TripItineraryCard(
         Column(
             modifier = Modifier.padding(12.dp),
         ) {
-            ItineraryTitle(stopCount = markers.size, canEdit = canEdit, onAction = onAction)
+            ItineraryTitle(stopCount = markers.size, canClear = canClear, onAction = onAction)
 
             Spacer(modifier = Modifier.height(6.dp))
 
@@ -593,7 +595,6 @@ private fun TripItineraryCard(
                     ItineraryMarkerChip(
                         marker = marker,
                         isSelected = marker.id == selectedMarkerId,
-                        canEdit = canEdit,
                         onAction = onAction,
                     )
                 }
@@ -606,7 +607,6 @@ private fun TripItineraryCard(
 private fun ItineraryMarkerChip(
     marker: MapMarker,
     isSelected: Boolean,
-    canEdit: Boolean,
     onAction: (Action) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -635,7 +635,7 @@ private fun ItineraryMarkerChip(
                 )
             }
         },
-        trailingIcon = if (canEdit) {
+        trailingIcon = if (marker.canDelete) {
             {
                 IconButton(
                     onClick = { onAction(Action.OnRemoveMarker(marker.id)) },
@@ -662,7 +662,7 @@ private fun ItineraryMarkerChip(
 @Composable
 private fun ItineraryTitle(
     stopCount: Int,
-    canEdit: Boolean,
+    canClear: Boolean,
     onAction: (Action) -> Unit,
 ) {
     Row(
@@ -675,7 +675,7 @@ private fun ItineraryTitle(
             style = MaterialTheme.typography.titleSmall,
             fontWeight = FontWeight.Bold,
         )
-        if (canEdit) {
+        if (canClear) {
             TextButton(onClick = { onAction(Action.ClearAllMarkers) }) {
                 Text(stringResource(Res.string.map_itinerary_clear_all), style = MaterialTheme.typography.labelSmall)
             }

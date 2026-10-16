@@ -51,6 +51,7 @@ internal class RealtimeSync(
     internal suspend fun apply(event: RealtimeEvent) {
         when (event) {
             is RealtimeEvent.InTrip -> applyInTrip(event)
+            is RealtimeEvent.ToMe -> photos.applyLive(event)
             is RealtimeEvent.MyTripsChanged -> myTripsRefreshes.request(MY_TRIPS)
             // For the screens showing people; nothing cached changes.
             is RealtimeEvent.FollowsChanged -> Unit

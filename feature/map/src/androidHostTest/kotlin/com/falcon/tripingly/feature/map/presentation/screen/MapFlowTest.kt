@@ -10,6 +10,7 @@ import androidx.compose.ui.test.runComposeUiTest
 import com.falcon.tripingly.core.common.coroutines.CoroutineDispatchers
 import com.falcon.tripingly.core.common.result.AppResult
 import com.falcon.tripingly.core.common.result.asSuccess
+import com.falcon.tripingly.core.data.account.FakeAccountBackend
 import com.falcon.tripingly.core.data.config.FakeAppConfigRepository
 import com.falcon.tripingly.core.data.photos.FakePhotoRepository
 import com.falcon.tripingly.core.data.places.FakePlaceRepository
@@ -68,6 +69,7 @@ class MapFlowTest {
         photoRepository = FakePhotoRepository(),
         socialRepository = FakeSocialRepository(),
         appConfigRepository = FakeAppConfigRepository(),
+        sessionRepository = FakeAccountBackend(today = { LocalDate(2026, 10, 16) }),
         getCurrentLocationUseCase = GetCurrentLocationUseCase(
             object : LocationRepository {
                 override fun getLocationStream() = flowOf(Coordinates.Paris.asSuccess())

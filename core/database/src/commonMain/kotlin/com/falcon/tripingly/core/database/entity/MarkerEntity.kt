@@ -30,4 +30,5 @@ data class MarkerEntity(
     val likeCount: Int,
     val likedByMe: Boolean,
     val commentCount: Int,
+    val createdById: String?,
 )

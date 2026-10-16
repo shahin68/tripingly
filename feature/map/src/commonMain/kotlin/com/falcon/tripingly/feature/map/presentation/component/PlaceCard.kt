@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.PhotoLibrary
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -35,8 +36,8 @@ import org.jetbrains.compose.resources.stringResource
 
 /**
  * A place tapped on the map, in a card that floats above its pin: what the pin knows at once, its images,
- * opening hours and website once loaded, and Add to the open day for owners and editors ([dayNumber] is
- * null for viewers). A tapped image opens full screen.
+ * opening hours and website once loaded, its photos (anyone can add one), and Add to the open day for owners
+ * and editors ([dayNumber] is null for viewers). A tapped image opens full screen.
  */
 @Composable
 fun PlaceCard(
@@ -47,6 +48,7 @@ fun PlaceCard(
     dayNumber: Int?,
     onAdd: () -> Unit,
     onOpenImage: (index: Int) -> Unit,
+    onOpenPhotos: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Card(
@@ -108,6 +110,13 @@ fun PlaceCard(
                 Column {
                     Text(stringResource(Res.string.map_place_opening_hours), style = MaterialTheme.typography.labelMedium)
                     Text(hours, style = MaterialTheme.typography.bodyMedium)
+                }
+            }
+            // An address from search is no place of ours, so it has no photos.
+            if (address == null) {
+                TextButton(onClick = onOpenPhotos) {
+                    Icon(Icons.Default.PhotoLibrary, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Text(stringResource(Res.string.map_place_photos), modifier = Modifier.padding(start = MaterialTheme.spacing.small))
                 }
             }
             details?.website?.let { website ->

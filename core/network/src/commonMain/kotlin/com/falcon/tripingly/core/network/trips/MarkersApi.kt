@@ -18,6 +18,7 @@ import de.jensklingenberg.ktorfit.http.PATCH
 import de.jensklingenberg.ktorfit.http.POST
 import de.jensklingenberg.ktorfit.http.PUT
 import de.jensklingenberg.ktorfit.http.Path
+import de.jensklingenberg.ktorfit.http.Query
 
 /** Markers (stops) on a trip's days. */
 interface MarkersApi {
@@ -37,12 +38,20 @@ interface MarkersApi {
     @Headers("Content-Type: application/json")
     suspend fun update(@Path("id") id: String, @Body body: UpdateMarkerDto): AppResult<MarkerDto, DataError.Network>
 
+    /**
+     * The stop's creator or the trip's owner. Without [confirm], a stop with other people's photos,
+     * comments or likes answers 409 `STOP_HAS_OTHERS_CONTENT`; with it, they go too.
+     */
     @DELETE("markers/{id}")
-    suspend fun delete(@Path("id") id: String): AppResult<Unit, DataError.Network>
+    suspend fun delete(@Path("id") id: String, @Query("confirm") confirm: Boolean): AppResult<Unit, DataError.Network>
 
-    /** Deletes all of the day's markers. */
+    /** Deletes all of the day's markers; [confirm] as for [delete]. */
     @DELETE("days/{id}/markers")
-    suspend fun clearDay(@Path("id") dayId: String): AppResult<Unit, DataError.Network>
+    suspend fun clearDay(@Path("id") dayId: String, @Query("confirm") confirm: Boolean): AppResult<Unit, DataError.Network>
+
+    /** Deletes my photos and comments on the stop and my likes on it and on its photos and comments. */
+    @DELETE("markers/{id}/mine")
+    suspend fun removeMine(@Path("id") id: String): AppResult<Unit, DataError.Network>
 
     /** The day's complete marker list in the new order. */
     @PUT("days/{id}/marker-order")
