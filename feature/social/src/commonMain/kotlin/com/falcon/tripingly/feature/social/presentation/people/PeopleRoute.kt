@@ -22,6 +22,7 @@ import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.falcon.tripingly.core.designsystem.component.ShowMessage
 import com.falcon.tripingly.core.model.social.PeopleList
+import com.falcon.tripingly.core.ui.UiText
 import com.falcon.tripingly.feature.social.generated.resources.Res
 import com.falcon.tripingly.feature.social.generated.resources.social_back
 import com.falcon.tripingly.feature.social.generated.resources.social_followers
@@ -75,6 +76,7 @@ fun PeopleRoute(
             ShowMessage(
                 message = state.message?.asString(),
                 onShown = { viewModel.onAction(Action.OnDismissMessage) },
+                isError = state.message !is UiText.Note,
             )
             when {
                 !state.hasLoaded && state.isLoading -> Centered { CircularProgressIndicator() }

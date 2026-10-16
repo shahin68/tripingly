@@ -147,7 +147,8 @@ class HomeViewModelTest {
         val viewModel = viewModel()
         advanceUntilIdle()
 
-        val message = assertIs<UiText.Resource>(viewModel.uiState.value.message)
+        // A note, not an error: the banner shows it in neutral colors.
+        val message = assertIs<UiText.Resource>(assertIs<UiText.Note>(viewModel.uiState.value.message).text)
         assertEquals(Res.string.home_offline_cached, message.resource)
         assertEquals(1, viewModel.uiState.value.trips.size)
     }

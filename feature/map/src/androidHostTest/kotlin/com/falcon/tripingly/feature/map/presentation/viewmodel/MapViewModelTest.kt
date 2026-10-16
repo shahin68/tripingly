@@ -572,7 +572,7 @@ class MapViewModelTest {
         val state = viewModel.uiState.value
         assertTrue(state.isSavedByMe)
         assertEquals(JoinRequestStatus.PENDING, state.myJoinRequest)
-        assertEquals(Res.string.map_join_requested, assertIs<UiText.Resource>(state.message).resource)
+        assertEquals(Res.string.map_join_requested, assertIs<UiText.Resource>(assertIs<UiText.Note>(state.message).text).resource)
         assertEquals(listOf(trip.trip.id), backend.observeMyTrips().first().map { it.id })
     }
 

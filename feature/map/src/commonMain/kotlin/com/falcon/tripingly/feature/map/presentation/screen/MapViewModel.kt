@@ -370,7 +370,7 @@ class MapViewModel(
                 it.copy(
                     isUpdatingSharing = false,
                     message = when (result) {
-                        is AppResult.Success -> UiText.Resource(done)
+                        is AppResult.Success -> UiText.Note(UiText.Resource(done))
                         is AppResult.Error -> if (result.error.hasCode(TripErrorCodes.JOIN_REQUEST_DECLINED)) {
                             UiText.Resource(Res.string.map_join_declined)
                         } else {
@@ -390,7 +390,7 @@ class MapViewModel(
             val result = socialRepository.report(subject.target, subject.id, reason, details)
             ui.update {
                 when (result) {
-                    is AppResult.Success -> it.copy(isReporting = false, reporting = null, message = UiText.Resource(Res.string.map_reported))
+                    is AppResult.Success -> it.copy(isReporting = false, reporting = null, message = UiText.Note(UiText.Resource(Res.string.map_reported)))
                     is AppResult.Error -> it.copy(isReporting = false, message = result.error.toUiText(Res.string.map_error_report))
                 }
             }

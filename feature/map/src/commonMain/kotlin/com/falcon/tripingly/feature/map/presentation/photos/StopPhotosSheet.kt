@@ -62,6 +62,7 @@ import com.falcon.tripingly.core.designsystem.component.PhotoSize
 import com.falcon.tripingly.core.designsystem.theme.spacing
 import com.falcon.tripingly.core.model.photo.Photo
 import com.falcon.tripingly.core.model.photo.PhotoStatus
+import com.falcon.tripingly.core.ui.UiText
 import com.falcon.tripingly.feature.map.domain.model.MapMarker
 import com.falcon.tripingly.feature.map.generated.resources.Res
 import com.falcon.tripingly.feature.map.generated.resources.*
@@ -141,7 +142,7 @@ fun StopPhotosScreen(
     onAction: (Action) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    ShowMessage(message = state.message?.asString(), onShown = { onAction(Action.OnDismissMessage) })
+    ShowMessage(message = state.message?.asString(), onShown = { onAction(Action.OnDismissMessage) }, isError = state.message !is UiText.Note)
     val fullWidth: LazyGridItemSpanScope.() -> GridItemSpan = { GridItemSpan(maxLineSpan) }
     LazyVerticalGrid(
         columns = GridCells.Adaptive(minSize = 104.dp),

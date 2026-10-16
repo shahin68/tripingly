@@ -20,6 +20,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -73,6 +74,7 @@ class MessageBanner(private val scope: CoroutineScope) {
     class Message internal constructor(
         val id: Long,
         val text: String,
+        val isError: Boolean,
         val actionLabel: String?,
         val onAction: (() -> Unit)?,
     )
@@ -88,9 +90,9 @@ class MessageBanner(private val scope: CoroutineScope) {
     private var nextId = 0L
     private var showing: Job? = null
 
-    fun show(text: String, actionLabel: String? = null, onAction: (() -> Unit)? = null) {
+    fun show(text: String, isError: Boolean = true, actionLabel: String? = null, onAction: (() -> Unit)? = null) {
         if (current?.text == text || pending.any { it.text == text }) return
-        pending.addLast(Message(nextId++, text, actionLabel?.takeIf { onAction != null }, onAction))
+        pending.addLast(Message(nextId++, text, isError, actionLabel?.takeIf { onAction != null }, onAction))
         changed.trySend(Unit)
         if (showing?.isActive != true) showing = scope.launch { showAll() }
     }
@@ -137,12 +139,13 @@ fun rememberMessageBanner(): MessageBanner {
 
 /**
  * Hands [message] to the app's banner once, then calls [onShown] so the screen's state can forget it.
- * [onAction] (e.g. Retry) shows as [actionLabel] on the banner.
+ * A confirmation (not [isError]) shows in neutral colors. [onAction] (e.g. Retry) shows as [actionLabel].
  */
 @Composable
 fun ShowMessage(
     message: String?,
     onShown: () -> Unit,
+    isError: Boolean = true,
     actionLabel: String? = null,
     onAction: (() -> Unit)? = null,
 ) {
@@ -150,7 +153,7 @@ fun ShowMessage(
     val currentOnShown by rememberUpdatedState(onShown)
     LaunchedEffect(message) {
         if (message != null) {
-            banner.show(message, actionLabel, onAction)
+            banner.show(message, isError, actionLabel, onAction)
             currentOnShown()
         }
     }
@@ -180,6 +183,7 @@ fun MessageBannerHost(modifier: Modifier = Modifier) {
             FloatingBanner(
                 text = shown.text,
                 onDismiss = { banner.dismiss(shown) },
+                isError = shown.isError,
                 actionLabel = shown.actionLabel,
                 onAction = shown.onAction?.let { action -> { banner.dismiss(shown); action() } },
             )
@@ -187,12 +191,13 @@ fun MessageBannerHost(modifier: Modifier = Modifier) {
     }
 }
 
-/** An error card that floats over the screen; swipe it sideways or tap the cross to hide it. */
+/** A card that floats over the screen (error colors unless not [isError]); swipe it sideways or tap the cross to hide it. */
 @Composable
 fun FloatingBanner(
     text: String,
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier,
+    isError: Boolean = true,
     actionLabel: String? = null,
     onAction: (() -> Unit)? = null,
 ) {
@@ -218,8 +223,8 @@ fun FloatingBanner(
             )
             .semantics { liveRegion = LiveRegionMode.Polite },
         shape = RoundedCornerShape(12.dp),
-        color = MaterialTheme.colorScheme.errorContainer,
-        contentColor = MaterialTheme.colorScheme.onErrorContainer,
+        color = if (isError) MaterialTheme.colorScheme.errorContainer else MaterialTheme.colorScheme.inverseSurface,
+        contentColor = if (isError) MaterialTheme.colorScheme.onErrorContainer else MaterialTheme.colorScheme.inverseOnSurface,
         shadowElevation = 6.dp,
     ) {
         Row(
@@ -233,13 +238,21 @@ fun FloatingBanner(
             )
             if (actionLabel != null && onAction != null) {
                 TextButton(onClick = onAction) {
-                    Text(text = actionLabel, color = MaterialTheme.colorScheme.onErrorContainer)
+                    Text(text = actionLabel, color = LocalContentColor.current)
                 }
             }
             IconButton(onClick = onDismiss) {
                 Icon(imageVector = Icons.Filled.Close, contentDescription = stringResource(Res.string.common_dismiss))
             }
         }
+    }
+}
+
+@Preview
+@Composable
+private fun FloatingBannerNotePreview() {
+    TripinglyTheme {
+        FloatingBanner(text = "Saved to My Trips.", onDismiss = {}, isError = false)
     }
 }
 
