@@ -15,6 +15,7 @@ import com.falcon.tripingly.core.model.account.SessionState
 import com.falcon.tripingly.core.model.account.UsernameAvailability
 import com.falcon.tripingly.core.model.account.isAtLeast
 import com.falcon.tripingly.core.model.account.isUsernameFormatValid
+import com.falcon.tripingly.feature.auth.generated.resources.Res
 import com.falcon.tripingly.feature.auth.generated.resources.onboarding_error_accept
 import com.falcon.tripingly.feature.auth.generated.resources.onboarding_error_load_documents
 import com.falcon.tripingly.feature.auth.generated.resources.onboarding_error_save_profile
