@@ -41,6 +41,7 @@ import com.falcon.tripingly.core.ui.UiText
 import com.falcon.tripingly.feature.social.generated.resources.Res
 import com.falcon.tripingly.feature.social.generated.resources.social_explore
 import com.falcon.tripingly.feature.social.generated.resources.social_explore_empty
+import com.falcon.tripingly.feature.social.generated.resources.social_explore_empty_filtered
 import com.falcon.tripingly.feature.social.generated.resources.social_nearby
 import com.falcon.tripingly.feature.social.generated.resources.social_people_none
 import com.falcon.tripingly.feature.social.presentation.component.PersonRow
@@ -82,6 +83,7 @@ fun SocialRoute(
             is Event.OpenTrip -> onOpenTrip(event.tripId)
             is Event.OpenProfile -> onOpenProfile(event.username)
             Event.RequestPermission -> locationPermission.request()
+            Event.CheckExploreLocation -> viewModel.onAction(Action.OnExploreLocationChecked(locationPermission.status()))
             Event.OpenAppSettings -> locationPermission.openSettings()
         }
     }
@@ -143,6 +145,7 @@ internal fun SocialScreen(state: State, onAction: (Action) -> Unit, modifier: Mo
 private fun ExploreContent(state: State, onAction: (Action) -> Unit) {
     val listState = rememberLazyListState()
     LoadMoreAtEnd(listState) { onAction(Action.OnLoadMore) }
+    ExploreFilters(state = state, onAction = onAction)
     PullToRefreshBox(
         isRefreshing = state.isLoadingExplore && state.hasLoadedExplore,
         onRefresh = { onAction(Action.OnRefresh) },
@@ -152,7 +155,13 @@ private fun ExploreContent(state: State, onAction: (Action) -> Unit) {
             !state.hasLoadedExplore && state.isLoadingExplore -> Centered { CircularProgressIndicator() }
             state.explore.isEmpty() -> LazyColumn(Modifier.fillMaxSize(), verticalArrangement = Arrangement.Center) {
                 // A list, so pull-to-refresh also works when it's empty.
-                item { EmptyText(stringResource(Res.string.social_explore_empty)) }
+                item {
+                    EmptyText(
+                        stringResource(
+                            if (state.isExploreFiltered) Res.string.social_explore_empty_filtered else Res.string.social_explore_empty,
+                        ),
+                    )
+                }
             }
             else -> LazyColumn(
                 state = listState,

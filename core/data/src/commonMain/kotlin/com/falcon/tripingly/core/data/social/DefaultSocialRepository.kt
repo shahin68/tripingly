@@ -9,6 +9,7 @@ import com.falcon.tripingly.core.data.trips.TripLocalDataSource
 import com.falcon.tripingly.core.model.Page
 import com.falcon.tripingly.core.model.social.Comment
 import com.falcon.tripingly.core.model.social.CommentChange
+import com.falcon.tripingly.core.model.social.ExploreFilter
 import com.falcon.tripingly.core.model.social.LikeState
 import com.falcon.tripingly.core.model.social.LikeTarget
 import com.falcon.tripingly.core.model.social.PublicTrip
@@ -31,8 +32,9 @@ internal class DefaultSocialRepository(
     private val currentUserId: () -> String?,
 ) : SocialRepository {
 
-    override suspend fun explore(cursor: String?): AppResult<Page<PublicTrip>, DataError.Network> =
-        api.explore(cursor, EXPLORE_PAGE_SIZE).map { page -> Page(page.items.map { it.toPublicTrip() }, page.nextCursor) }
+    override suspend fun explore(filter: ExploreFilter, cursor: String?): AppResult<Page<PublicTrip>, DataError.Network> =
+        api.explore(cursor, EXPLORE_PAGE_SIZE, filter.period.name.lowercase(), filter.near?.lat, filter.near?.lng)
+            .map { page -> Page(page.items.map { it.toPublicTrip() }, page.nextCursor) }
 
     override suspend fun comments(markerId: String, cursor: String?): AppResult<Page<Comment>, DataError.Network> =
         api.comments(markerId, cursor, COMMENTS_PAGE_SIZE).map { page -> Page(page.items.map { it.toComment() }, page.nextCursor) }

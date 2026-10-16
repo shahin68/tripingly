@@ -71,4 +71,17 @@
     <string name="social_error_unfollow">Entfolgen ist fehlgeschlagen.</string>
     <string name="social_error_block">Blockieren ist fehlgeschlagen.</string>
     <string name="social_error_load_people">Die Liste konnte nicht geladen werden.</string>
+
+    <!-- Explore filters -->
+    <string name="social_explore_week">Diese Woche</string>
+    <string name="social_explore_month">Diesen Monat</string>
+    <string name="social_explore_year">Dieses Jahr</string>
+    <string name="social_explore_spring">Diesen Frühling</string>
+    <string name="social_explore_summer">Diesen Sommer</string>
+    <string name="social_explore_fall">Diesen Herbst</string>
+    <string name="social_explore_winter">Diesen Winter</string>
+    <string name="social_explore_all">Aller Zeiten</string>
+    <string name="social_explore_filters">Filter für Entdecken</string>
+    <string name="social_explore_empty_filtered">Noch keine Reisen für diese Filter.</string>
+    <string name="social_explore_nearby_blocked">Der Standort ist für Tripinly aus. Schalte ihn in den Einstellungen ein, um Reisen in deiner Nähe zu sehen.</string>
 </resources>

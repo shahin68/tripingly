@@ -5,6 +5,7 @@ import com.falcon.tripingly.core.common.result.AppResult
 import com.falcon.tripingly.core.model.Page
 import com.falcon.tripingly.core.model.social.Comment
 import com.falcon.tripingly.core.model.social.CommentChange
+import com.falcon.tripingly.core.model.social.ExploreFilter
 import com.falcon.tripingly.core.model.social.LikeState
 import com.falcon.tripingly.core.model.social.LikeTarget
 import com.falcon.tripingly.core.model.social.PublicTrip
@@ -15,7 +16,8 @@ import kotlinx.coroutines.flow.Flow
 /** Explore, comments, likes and reports. Everything waits for the server; nothing here is cached. */
 interface SocialRepository {
     /** Public trips from others, most popular first; pass the last page's cursor for more. */
-    suspend fun explore(cursor: String?): AppResult<Page<PublicTrip>, DataError.Network>
+    /** Most liked first, by [filter]; [cursor] continues the list with the same filter. */
+    suspend fun explore(filter: ExploreFilter, cursor: String?): AppResult<Page<PublicTrip>, DataError.Network>
 
     /** A stop's comments, oldest first. */
     suspend fun comments(markerId: String, cursor: String?): AppResult<Page<Comment>, DataError.Network>

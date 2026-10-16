@@ -20,6 +20,8 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -31,7 +33,8 @@ import org.jetbrains.compose.resources.stringResource
 
 /**
  * A pill-shaped chip: a choice to tap (dates), or something picked that [onRemove] takes away again
- * (a person). With an [error] the chip turns red and says why below it.
+ * (a person). With an [error] the chip turns red and says why below it. A [selected] chip (a filter
+ * that's on) shows in the primary container colors.
  */
 @Composable
 fun PillChip(
@@ -42,12 +45,21 @@ fun PillChip(
     leading: (@Composable () -> Unit)? = null,
     error: String? = null,
     enabled: Boolean = true,
+    selected: Boolean = false,
 ) {
     val isError = error != null
-    val container = if (isError) MaterialTheme.colorScheme.errorContainer else MaterialTheme.colorScheme.surfaceVariant
-    val content = if (isError) MaterialTheme.colorScheme.onErrorContainer else MaterialTheme.colorScheme.onSurfaceVariant
+    val container = when {
+        isError -> MaterialTheme.colorScheme.errorContainer
+        selected -> MaterialTheme.colorScheme.primaryContainer
+        else -> MaterialTheme.colorScheme.surfaceVariant
+    }
+    val content = when {
+        isError -> MaterialTheme.colorScheme.onErrorContainer
+        selected -> MaterialTheme.colorScheme.onPrimaryContainer
+        else -> MaterialTheme.colorScheme.onSurfaceVariant
+    }
     val border = if (isError) BorderStroke(1.dp, MaterialTheme.colorScheme.error) else null
-    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraSmall)) {
+    Column(modifier = modifier.semantics { this.selected = selected }, verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraSmall)) {
         val chipContent: @Composable () -> Unit = {
             Row(
                 modifier = Modifier
@@ -114,6 +126,7 @@ private fun PillChipPreviewContent() {
         PillChip(label = "Add dates", onClick = {}, leading = { Icon(Icons.Default.DateRange, null, Modifier.padding(start = 8.dp)) })
         PillChip(label = "@anna", onRemove = {}, leading = { AvatarCircle("Anna", "anna", size = AvatarSize.Small) })
         PillChip(label = "@nobody", onRemove = {}, error = "No one has that username.")
+        PillChip(label = "This month", onClick = {}, selected = true)
     }
 }
 

@@ -71,4 +71,17 @@
     <string name="social_error_unfollow">Couldn’t unfollow them.</string>
     <string name="social_error_block">Couldn’t block them.</string>
     <string name="social_error_load_people">Couldn’t load the list.</string>
+
+    <!-- Explore filters -->
+    <string name="social_explore_week">This week</string>
+    <string name="social_explore_month">This month</string>
+    <string name="social_explore_year">This year</string>
+    <string name="social_explore_spring">This spring</string>
+    <string name="social_explore_summer">This summer</string>
+    <string name="social_explore_fall">This fall</string>
+    <string name="social_explore_winter">This winter</string>
+    <string name="social_explore_all">All time</string>
+    <string name="social_explore_filters">Explore filters</string>
+    <string name="social_explore_empty_filtered">No trips match these filters yet.</string>
+    <string name="social_explore_nearby_blocked">Location is off for Tripinly. Turn it on in Settings to see trips near you.</string>
 </resources>

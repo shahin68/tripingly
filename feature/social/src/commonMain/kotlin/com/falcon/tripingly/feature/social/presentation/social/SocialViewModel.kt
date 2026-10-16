@@ -11,6 +11,8 @@ import com.falcon.tripingly.core.data.trips.TripRepository
 import com.falcon.tripingly.core.data.users.UserRepository
 import com.falcon.tripingly.core.location.GetCurrentLocationUseCase
 import com.falcon.tripingly.core.location.permission.LocationPermission
+import com.falcon.tripingly.core.model.social.ExploreFilter
+import com.falcon.tripingly.core.model.social.ExplorePeriod
 import com.falcon.tripingly.core.model.social.LikeTarget
 import com.falcon.tripingly.core.model.social.NearbyPlace
 import com.falcon.tripingly.core.model.social.PublicTrip
@@ -33,6 +35,7 @@ import com.falcon.tripingly.feature.social.generated.resources.social_error_repo
 import com.falcon.tripingly.feature.social.generated.resources.social_error_save_trip
 import com.falcon.tripingly.feature.social.generated.resources.social_error_search_people
 import com.falcon.tripingly.feature.social.generated.resources.social_error_unsave_trip
+import com.falcon.tripingly.feature.social.generated.resources.social_explore_nearby_blocked
 import com.falcon.tripingly.feature.social.generated.resources.social_nearby_location_unavailable
 import com.falcon.tripingly.feature.social.generated.resources.social_reported
 import kotlinx.collections.immutable.ImmutableList
@@ -50,8 +53,9 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 /**
- * The Social tab: Explore (public trips, liked and added to my trips), Nearby (popular places around me,
- * liked and added to a day of one of my trips) and finding people by name.
+ * The Social tab: Explore (public trips, most liked first, filtered by period and optionally near me; liked
+ * and added to my trips), Nearby (popular places around me, liked and added to a day of one of my trips)
+ * and finding people by name. Explore's Nearby filter asks for the location only when it's switched on.
  */
 class SocialViewModel(
     private val socialRepository: SocialRepository,
@@ -73,6 +77,13 @@ class SocialViewModel(
 
     /** Where Nearby looked, for its next pages; kept in memory only while the tab is open. */
     private var nearbyPoint: GeoPoint? = null
+
+    /** Where Explore's Nearby filter looks while it's on; in memory only, like [nearbyPoint]. */
+    private var explorePoint: GeoPoint? = null
+
+    /** The location was asked for because Explore's Nearby filter was switched on. */
+    private var isAskingForExplore = false
+    private var exploreLoad: Job? = null
     private var peopleSearch: Job? = null
     private var loadingMore: Job? = null
 
@@ -83,6 +94,9 @@ class SocialViewModel(
     fun onAction(action: Action) {
         when (action) {
             is Action.OnSectionSelected -> _uiState.update { it.copy(section = action.section) }
+            is Action.OnExplorePeriodSelected -> selectPeriod(action.period)
+            Action.OnToggleExploreNearby -> toggleExploreNearby()
+            is Action.OnExploreLocationChecked -> onExploreLocation(action.permission)
             is Action.OnQueryChanged -> searchPeople(action.query)
             Action.OnRefresh -> refresh()
             Action.OnLoadMore -> loadMore()
@@ -107,10 +121,13 @@ class SocialViewModel(
         }
     }
 
+    /** The first page for the current filters; replaces a load still on its way, and stops loading more of the old list. */
     private fun loadExplore() {
-        viewModelScope.launch {
+        exploreLoad?.cancel()
+        loadingMore?.cancel()
+        exploreLoad = viewModelScope.launch {
             _uiState.update { it.copy(isLoadingExplore = true) }
-            when (val result = socialRepository.explore(cursor = null)) {
+            when (val result = socialRepository.explore(exploreFilter(), cursor = null)) {
                 is AppResult.Success -> {
                     exploreCursor = result.data.nextCursor
                     _uiState.update {
@@ -136,7 +153,7 @@ class SocialViewModel(
             when (_uiState.value.section) {
                 Section.Explore -> {
                     val cursor = exploreCursor ?: return@launch
-                    val result = socialRepository.explore(cursor)
+                    val result = socialRepository.explore(exploreFilter(), cursor)
                     if (result is AppResult.Success) {
                         exploreCursor = result.data.nextCursor
                         _uiState.update { state ->
@@ -156,6 +173,58 @@ class SocialViewModel(
                             state.copy(nearby = (state.nearby + result.data.items.filterNot { it.id in known }).toImmutableList())
                         }
                     }
+                }
+            }
+        }
+    }
+
+    private fun exploreFilter() = ExploreFilter(
+        period = _uiState.value.explorePeriod,
+        near = explorePoint.takeIf { _uiState.value.isExploreNearby },
+    )
+
+    private fun selectPeriod(period: ExplorePeriod) {
+        if (period == _uiState.value.explorePeriod) return
+        _uiState.update { it.copy(explorePeriod = period) }
+        loadExplore()
+    }
+
+    /** Off at once; on only once the location is known, asked for right then if it isn't allowed yet. */
+    private fun toggleExploreNearby() {
+        if (_uiState.value.isExploreNearby) {
+            explorePoint = null
+            _uiState.update { it.copy(isExploreNearby = false) }
+            loadExplore()
+        } else {
+            sendEvent(Event.CheckExploreLocation)
+        }
+    }
+
+    private fun onExploreLocation(permission: LocationPermission) {
+        when (permission) {
+            LocationPermission.Granted -> locateForExplore()
+            LocationPermission.NotAsked, LocationPermission.ShouldExplain -> {
+                isAskingForExplore = true
+                sendEvent(Event.RequestPermission)
+            }
+            LocationPermission.Blocked -> _uiState.update { it.copy(message = UiText.Resource(Res.string.social_explore_nearby_blocked)) }
+        }
+    }
+
+    private fun locateForExplore() {
+        _uiState.update { it.copy(isExploreNearby = true, isLoadingExplore = true) }
+        viewModelScope.launch {
+            when (val location = getCurrentLocation().first()) {
+                is AppResult.Success -> {
+                    explorePoint = GeoPoint(location.data.latitude, location.data.longitude)
+                    loadExplore()
+                }
+                is AppResult.Error -> _uiState.update {
+                    it.copy(
+                        isExploreNearby = false,
+                        isLoadingExplore = false,
+                        message = UiText.Resource(Res.string.social_nearby_location_unavailable),
+                    )
                 }
             }
         }
@@ -235,6 +304,12 @@ class SocialViewModel(
 
     /** Nearby asks for the location only once its tab is open; the place list loads once it's allowed. */
     private fun onPermission(permission: LocationPermission, isAnswer: Boolean) {
+        // The answer to Explore's Nearby filter; a no leaves the filter off.
+        if (isAnswer && isAskingForExplore) {
+            isAskingForExplore = false
+            if (permission == LocationPermission.Granted) locateForExplore()
+            return
+        }
         val status = when (permission) {
             LocationPermission.Granted -> null
             LocationPermission.Blocked -> NearbyStatus.Blocked
@@ -372,6 +447,10 @@ class SocialViewModel(
         val explore: ImmutableList<PublicTrip> = persistentListOf(),
         val isLoadingExplore: Boolean = false,
         val hasLoadedExplore: Boolean = false,
+        /** Which likes rank Explore; This month when the tab opens. */
+        val explorePeriod: ExplorePeriod = ExplorePeriod.Month,
+        /** Explore shows only trips with a stop near me. */
+        val isExploreNearby: Boolean = false,
         val nearby: ImmutableList<NearbyPlace> = persistentListOf(),
         val nearbyStatus: NearbyStatus = NearbyStatus.Unknown,
         val isLoadingNearby: Boolean = false,
@@ -383,12 +462,20 @@ class SocialViewModel(
         val addPlace: AddPlace? = null,
         val message: UiText? = null,
     ) {
+        /** Explore shows less than everything: a period other than All time, or only trips near me. */
+        val isExploreFiltered: Boolean get() = explorePeriod != ExplorePeriod.All || isExploreNearby
+
         /** People results replace the tabs while a name is being searched. */
         val isSearchingByName: Boolean get() = peopleQuery.trim().removePrefix("@").length >= UserRepository.MIN_SEARCH_LENGTH
     }
 
     sealed interface Action {
         data class OnSectionSelected(val section: Section) : Action
+        data class OnExplorePeriodSelected(val period: ExplorePeriod) : Action
+        data object OnToggleExploreNearby : Action
+
+        /** The permission, read when [Event.CheckExploreLocation] asked for it. */
+        data class OnExploreLocationChecked(val permission: LocationPermission) : Action
         data class OnQueryChanged(val query: String) : Action
         data object OnRefresh : Action
         data object OnLoadMore : Action
@@ -414,6 +501,9 @@ class SocialViewModel(
         data class OpenTrip(val tripId: String) : Event
         data class OpenProfile(val username: String) : Event
         data object RequestPermission : Event
+
+        /** Read the location permission for Explore's Nearby filter; answered with [Action.OnExploreLocationChecked]. */
+        data object CheckExploreLocation : Event
         data object OpenAppSettings : Event
     }
 
