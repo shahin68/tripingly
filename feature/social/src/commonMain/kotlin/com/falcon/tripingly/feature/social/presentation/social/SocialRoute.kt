@@ -160,6 +160,7 @@ private fun ExploreContent(state: State, onAction: (Action) -> Unit) {
             ) {
                 items(state.explore, key = { it.trip.id }) { trip ->
                     PublicTripCard(
+                        modifier = Modifier.animateItem(),
                         trip = trip,
                         onOpen = { onAction(Action.OnTripClick(trip)) },
                         onOpenOwner = { onAction(Action.OnPersonClick(trip.trip.owner)) },
