@@ -17,6 +17,14 @@ import com.falcon.tripingly.core.model.trip.UserSummary
 import com.falcon.tripingly.core.ui.UiText
 import com.falcon.tripingly.core.ui.toUiText
 import com.falcon.tripingly.feature.trips.generated.resources.Res
+import com.falcon.tripingly.feature.trips.generated.resources.members_error_add
+import com.falcon.tripingly.feature.trips.generated.resources.members_error_answer_request
+import com.falcon.tripingly.feature.trips.generated.resources.members_error_create_invite
+import com.falcon.tripingly.feature.trips.generated.resources.members_error_load
+import com.falcon.tripingly.feature.trips.generated.resources.members_error_load_invites
+import com.falcon.tripingly.feature.trips.generated.resources.members_error_load_requests
+import com.falcon.tripingly.feature.trips.generated.resources.members_error_remove
+import com.falcon.tripingly.feature.trips.generated.resources.members_error_revoke_invite
 import com.falcon.tripingly.feature.trips.generated.resources.members_error_some_not_added
 import com.falcon.tripingly.feature.trips.generated.resources.members_error_user_not_found
 import kotlinx.collections.immutable.ImmutableList
@@ -34,6 +42,7 @@ import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import org.jetbrains.compose.resources.StringResource
 
 /**
  * Who is in a trip; the owner adds editors (by username, or several friends at once) and removes
@@ -85,7 +94,7 @@ class TripMembersViewModel(
                 it.copy(pickedFriends = picked.toImmutableSet(), message = null)
             }
             Action.OnAddPickedFriends -> addPickedFriends()
-            is Action.OnRemoveMember -> run { tripRepository.removeMember(tripId, action.userId) }
+            is Action.OnRemoveMember -> run(Res.string.members_error_remove) { tripRepository.removeMember(tripId, action.userId) }
             Action.OnCreateInvite -> createInvite()
             is Action.OnShareInvite -> sendEvent(Event.ShareInvite(uiState.value.tripName, action.invite.url))
             is Action.OnRevokeInvite -> revokeInvite(action.inviteId)
@@ -98,7 +107,7 @@ class TripMembersViewModel(
     private fun load() {
         viewModelScope.launch {
             val result = tripRepository.refreshTrip(tripId)
-            ui.update { it.copy(isLoading = false, message = (result as? AppResult.Error)?.error?.toUiText()) }
+            ui.update { it.copy(isLoading = false, message = (result as? AppResult.Error)?.error?.toUiText(Res.string.members_error_load)) }
             if (result is AppResult.Success && result.data.trip.role.canManage) {
                 if (result.data.pendingJoinRequestCount > 0) loadJoinRequests()
                 loadFriends()
@@ -115,7 +124,7 @@ class TripMembersViewModel(
     private suspend fun loadJoinRequests() {
         when (val result = tripRepository.joinRequests(tripId)) {
             is AppResult.Success -> ui.update { it.copy(joinRequests = result.data.items.toImmutableList()) }
-            is AppResult.Error -> ui.update { it.copy(message = result.error.toUiText()) }
+            is AppResult.Error -> ui.update { it.copy(message = result.error.toUiText(Res.string.members_error_load_requests)) }
         }
     }
 
@@ -131,7 +140,7 @@ class TripMembersViewModel(
                     answeringRequestIds = (state.answeringRequestIds - requestId).toImmutableSet(),
                     joinRequests = if (isGone) state.joinRequests.filterNot { it.id == requestId }.toImmutableList() else state.joinRequests,
                     // A full trip (`LIMIT_REACHED`) comes with the server's message.
-                    message = (result as? AppResult.Error)?.error?.toUiText(),
+                    message = (result as? AppResult.Error)?.error?.toUiText(Res.string.members_error_answer_request),
                 )
             }
         }
@@ -140,7 +149,7 @@ class TripMembersViewModel(
     private suspend fun loadInvites() {
         when (val result = inviteRepository.invites(tripId)) {
             is AppResult.Success -> ui.update { it.copy(invites = result.data.toImmutableList()) }
-            is AppResult.Error -> ui.update { it.copy(message = result.error.toUiText()) }
+            is AppResult.Error -> ui.update { it.copy(message = result.error.toUiText(Res.string.members_error_load_invites)) }
         }
     }
 
@@ -178,11 +187,11 @@ class TripMembersViewModel(
         if (error.hasCode(TripErrorCodes.VALIDATION_FAILED)) {
             UiText.Resource(Res.string.members_error_some_not_added)
         } else {
-            error.toUiText()
+            error.toUiText(Res.string.members_error_add)
         }
 
     private fun addMemberError(error: DataError.Network): UiText =
-        if (error.hasCode(TripErrorCodes.NOT_FOUND)) UiText.Resource(Res.string.members_error_user_not_found) else error.toUiText()
+        if (error.hasCode(TripErrorCodes.NOT_FOUND)) UiText.Resource(Res.string.members_error_user_not_found) else error.toUiText(Res.string.members_error_add)
 
     private fun createInvite() {
         if (ui.value.isCreatingInvite) return
@@ -193,7 +202,7 @@ class TripMembersViewModel(
                     ui.update { it.copy(isCreatingInvite = false, invites = (it.invites + result.data).toImmutableList()) }
                     sendEvent(Event.ShareInvite(uiState.value.tripName, result.data.url))
                 }
-                is AppResult.Error -> ui.update { it.copy(isCreatingInvite = false, message = result.error.toUiText()) }
+                is AppResult.Error -> ui.update { it.copy(isCreatingInvite = false, message = result.error.toUiText(Res.string.members_error_create_invite)) }
             }
         }
     }
@@ -204,15 +213,15 @@ class TripMembersViewModel(
             if (result is AppResult.Success || (result is AppResult.Error && result.error.hasCode(TripErrorCodes.NOT_FOUND))) {
                 ui.update { state -> state.copy(invites = state.invites.filterNot { it.id == inviteId }.toImmutableList()) }
             } else if (result is AppResult.Error) {
-                ui.update { it.copy(message = result.error.toUiText()) }
+                ui.update { it.copy(message = result.error.toUiText(Res.string.members_error_revoke_invite)) }
             }
         }
     }
 
-    private fun run(change: suspend () -> AppResult<*, DataError.Network>) {
+    private fun run(failed: StringResource, change: suspend () -> AppResult<*, DataError.Network>) {
         viewModelScope.launch {
             val result = change()
-            if (result is AppResult.Error) ui.update { it.copy(message = result.error.toUiText()) }
+            if (result is AppResult.Error) ui.update { it.copy(message = result.error.toUiText(failed)) }
         }
     }
 

@@ -41,4 +41,11 @@
     <string name="onboarding_document_privacy">Adatvédelmi tájékoztató</string>
     <string name="onboarding_document_marketing">Hírek és ajánlatok</string>
     <string name="onboarding_consent_accept">Elfogadás és tovább</string>
+
+    <!-- Errors: what failed -->
+    <string name="error_try_again">Próbáld újra.</string>
+    <string name="signin_error_sign_in">Nem sikerült bejelentkezni.</string>
+    <string name="onboarding_error_save_profile">Nem sikerült menteni a profilodat.</string>
+    <string name="onboarding_error_load_documents">Nem sikerült betölteni a felhasználási feltételeket és az adatvédelmi tájékoztatót.</string>
+    <string name="onboarding_error_accept">Nem sikerült menteni a hozzájárulásodat.</string>
 </resources>

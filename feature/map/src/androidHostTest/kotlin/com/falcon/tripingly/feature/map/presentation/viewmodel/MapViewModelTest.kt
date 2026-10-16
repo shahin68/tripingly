@@ -47,6 +47,8 @@ import com.falcon.tripingly.feature.map.generated.resources.Res
 import com.falcon.tripingly.feature.map.generated.resources.error_location_denied_manual
 import com.falcon.tripingly.feature.map.generated.resources.error_location_permission_required
 import com.falcon.tripingly.feature.map.generated.resources.map_change_not_saved
+import com.falcon.tripingly.feature.map.generated.resources.map_error_load_trip
+import com.falcon.tripingly.feature.map.generated.resources.map_error_stop_change
 import com.falcon.tripingly.feature.map.generated.resources.map_join_requested
 import com.falcon.tripingly.feature.map.presentation.component.PinSizes
 import com.falcon.tripingly.feature.map.presentation.screen.MapViewModel
@@ -199,10 +201,11 @@ class MapViewModelTest {
         val viewModel = viewModel(tripId = "missing")
         testScheduler.advanceUntilIdle()
 
-        val message = assertIs<UiText.Resource>(viewModel.uiState.value.message)
+        val message = assertIs<UiText.Joined>(viewModel.uiState.value.message)
         assertTrue(viewModel.uiState.value.days.isEmpty())
         assertFalse(viewModel.uiState.value.canEdit)
-        assertTrue(message.resource.key.contains("not_available"))
+        assertEquals(Res.string.map_error_load_trip, assertIs<UiText.Resource>(message.first).resource)
+        assertTrue(assertIs<UiText.Resource>(message.second).resource.key.contains("not_available"))
     }
 
     @Test
@@ -510,7 +513,8 @@ class MapViewModelTest {
         testScheduler.advanceUntilIdle()
 
         assertTrue(viewModel.uiState.value.markers.isEmpty())
-        assertIs<UiText.Resource>(viewModel.uiState.value.message)
+        val message = assertIs<UiText.Joined>(viewModel.uiState.value.message)
+        assertEquals(Res.string.map_error_stop_change, assertIs<UiText.Resource>(message.first).resource)
         assertFalse(viewModel.uiState.value.canRetry)
     }
 

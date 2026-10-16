@@ -27,6 +27,7 @@ import com.falcon.tripingly.feature.trips.generated.resources.Res
 import com.falcon.tripingly.feature.trips.generated.resources.create_trip_error_members
 import com.falcon.tripingly.feature.trips.generated.resources.create_trip_member_blocked
 import com.falcon.tripingly.feature.trips.generated.resources.create_trip_member_not_found
+import com.falcon.tripingly.feature.trips.generated.resources.home_error_make_private
 import com.falcon.tripingly.feature.trips.generated.resources.home_offline_cached
 import com.falcon.tripingly.feature.trips.generated.resources.reschedule_error_days_not_empty
 import com.falcon.tripingly.feature.trips.presentation.screen.HomeViewModel
@@ -265,7 +266,10 @@ class HomeViewModelTest {
         advanceUntilIdle()
 
         assertEquals(TripVisibility.PUBLIC, viewModel.uiState.value.trips.single().visibility)
-        assertIs<UiText.Resource>(viewModel.uiState.value.message)
+        // What failed, then why.
+        val message = assertIs<UiText.Joined>(viewModel.uiState.value.message)
+        assertEquals(Res.string.home_error_make_private, assertIs<UiText.Resource>(message.first).resource)
+        assertTrue(assertIs<UiText.Resource>(message.second).resource.key.contains("no_internet"))
     }
 
     @Test

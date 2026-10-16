@@ -20,6 +20,14 @@ import com.falcon.tripingly.core.model.social.ReportTarget
 import com.falcon.tripingly.core.ui.UiText
 import com.falcon.tripingly.core.ui.toUiText
 import com.falcon.tripingly.feature.social.generated.resources.Res
+import com.falcon.tripingly.feature.social.generated.resources.social_error_block
+import com.falcon.tripingly.feature.social.generated.resources.social_error_follow
+import com.falcon.tripingly.feature.social.generated.resources.social_error_like
+import com.falcon.tripingly.feature.social.generated.resources.social_error_load_profile
+import com.falcon.tripingly.feature.social.generated.resources.social_error_report
+import com.falcon.tripingly.feature.social.generated.resources.social_error_save_trip
+import com.falcon.tripingly.feature.social.generated.resources.social_error_unfollow
+import com.falcon.tripingly.feature.social.generated.resources.social_error_unsave_trip
 import com.falcon.tripingly.feature.social.generated.resources.social_reported
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
@@ -100,7 +108,7 @@ class ProfileViewModel(
                     if (result.error.hasCode(TripErrorCodes.NOT_FOUND)) {
                         it.copy(isLoading = false, isNotFound = true)
                     } else {
-                        it.copy(isLoading = false, message = result.error.toUiText())
+                        it.copy(isLoading = false, message = result.error.toUiText(Res.string.social_error_load_profile))
                     }
                 }
             }
@@ -161,7 +169,10 @@ class ProfileViewModel(
         }
         viewModelScope.launch {
             val result = userRepository.setFollowing(before.user.id, following)
-            if (result is AppResult.Error) _uiState.update { it.copy(profile = before, message = result.error.toUiText()) }
+            if (result is AppResult.Error) {
+                val failed = if (following) Res.string.social_error_follow else Res.string.social_error_unfollow
+                _uiState.update { it.copy(profile = before, message = result.error.toUiText(failed)) }
+            }
         }
     }
 
@@ -172,7 +183,7 @@ class ProfileViewModel(
         viewModelScope.launch {
             when (val result = userRepository.setBlocked(user.id, blocked = true)) {
                 is AppResult.Success -> sendEvent(Event.Close)
-                is AppResult.Error -> _uiState.update { it.copy(message = result.error.toUiText()) }
+                is AppResult.Error -> _uiState.update { it.copy(message = result.error.toUiText(Res.string.social_error_block)) }
             }
         }
     }
@@ -186,7 +197,7 @@ class ProfileViewModel(
             _uiState.update {
                 when (result) {
                     is AppResult.Success -> it.copy(isReporting = false, reporting = null, message = UiText.Resource(Res.string.social_reported))
-                    is AppResult.Error -> it.copy(isReporting = false, message = result.error.toUiText())
+                    is AppResult.Error -> it.copy(isReporting = false, message = result.error.toUiText(Res.string.social_error_report))
                 }
             }
         }
@@ -200,7 +211,7 @@ class ProfileViewModel(
                 is AppResult.Success -> updateTrip(trip.trip.id) { it.copy(likedByMe = result.data.liked, likeCount = result.data.likeCount) }
                 is AppResult.Error -> {
                     updateTrip(trip.trip.id) { it.copy(likedByMe = trip.likedByMe, likeCount = trip.likeCount) }
-                    _uiState.update { it.copy(message = result.error.toUiText()) }
+                    _uiState.update { it.copy(message = result.error.toUiText(Res.string.social_error_like)) }
                 }
             }
         }
@@ -220,7 +231,8 @@ class ProfileViewModel(
             val result = tripRepository.setSaved(trip.trip, saved)
             if (result is AppResult.Error) {
                 updateTrip(trip.trip.id) { it.copy(trip = it.trip.copy(savedByMe = trip.trip.savedByMe), saveCount = trip.saveCount) }
-                _uiState.update { it.copy(message = result.error.toUiText()) }
+                val failed = if (saved) Res.string.social_error_save_trip else Res.string.social_error_unsave_trip
+                _uiState.update { it.copy(message = result.error.toUiText(failed)) }
             }
         }
     }

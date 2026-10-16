@@ -49,7 +49,7 @@ import androidx.compose.ui.unit.dp
 import com.falcon.tripingly.core.common.util.DateUtils
 import com.falcon.tripingly.core.designsystem.component.AppDropdownMenu
 import com.falcon.tripingly.core.designsystem.component.DropdownAction
-import com.falcon.tripingly.core.designsystem.component.ErrorBanner
+import com.falcon.tripingly.core.designsystem.component.ShowMessage
 import com.falcon.tripingly.core.designsystem.component.FloatingSearchBar
 import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
 import com.falcon.tripingly.core.model.account.TripVisibility
@@ -140,13 +140,10 @@ fun HomeScreen(
                 },
             )
 
-            state.message?.let { message ->
-                ErrorBanner(
-                    errorMessage = message.asString(),
-                    onDismiss = { onAction(Action.OnDismissMessage) },
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
-                )
-            }
+            ShowMessage(
+                message = state.message?.asString(),
+                onShown = { onAction(Action.OnDismissMessage) },
+            )
 
             HorizontalPager(
                 state = pagerState,

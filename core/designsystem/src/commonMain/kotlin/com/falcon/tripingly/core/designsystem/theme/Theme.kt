@@ -6,6 +6,8 @@ import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import com.falcon.tripingly.core.designsystem.component.LocalMessageBanner
+import com.falcon.tripingly.core.designsystem.component.rememberMessageBanner
 
 private val LightColorScheme = lightColorScheme(
     primary = PrimaryLight,
@@ -50,6 +52,7 @@ fun TripinglyTheme(
 
     CompositionLocalProvider(
         LocalSpacing provides Spacing(),
+        LocalMessageBanner provides rememberMessageBanner(),
     ) {
         MaterialTheme(
             colorScheme = colorScheme,

@@ -41,4 +41,11 @@
     <string name="onboarding_document_privacy">Privacy Policy</string>
     <string name="onboarding_document_marketing">News and offers</string>
     <string name="onboarding_consent_accept">Accept and continue</string>
+
+    <!-- Errors: what failed -->
+    <string name="error_try_again">Try again.</string>
+    <string name="signin_error_sign_in">Couldn’t sign you in.</string>
+    <string name="onboarding_error_save_profile">Couldn’t save your profile.</string>
+    <string name="onboarding_error_load_documents">Couldn’t load the terms and privacy policy.</string>
+    <string name="onboarding_error_accept">Couldn’t save your consent.</string>
 </resources>

@@ -12,17 +12,15 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.falcon.tripingly.core.designsystem.component.ErrorBanner
-import com.falcon.tripingly.core.designsystem.theme.spacing
+import com.falcon.tripingly.core.designsystem.component.ShowMessage
 import com.falcon.tripingly.core.model.social.PeopleList
 import com.falcon.tripingly.feature.social.generated.resources.Res
 import com.falcon.tripingly.feature.social.generated.resources.social_back
@@ -74,17 +72,15 @@ fun PeopleRoute(
         },
     ) { padding ->
         Column(Modifier.fillMaxSize().padding(padding)) {
-            state.message?.let { message ->
-                ErrorBanner(
-                    errorMessage = message.asString(),
-                    onDismiss = { viewModel.onAction(Action.OnDismissMessage) },
-                    modifier = Modifier.padding(horizontal = MaterialTheme.spacing.medium, vertical = 4.dp),
-                    actionLabel = if (!state.hasLoaded) stringResource(Res.string.social_retry) else null,
-                    onAction = if (!state.hasLoaded) ({ viewModel.onAction(Action.OnRetry) }) else null,
-                )
-            }
+            ShowMessage(
+                message = state.message?.asString(),
+                onShown = { viewModel.onAction(Action.OnDismissMessage) },
+            )
             when {
                 !state.hasLoaded && state.isLoading -> Centered { CircularProgressIndicator() }
+                !state.hasLoaded -> Centered {
+                    TextButton(onClick = { viewModel.onAction(Action.OnRetry) }) { Text(stringResource(Res.string.social_retry)) }
+                }
                 state.hasLoaded && state.people.isEmpty() -> Centered {
                     EmptyText(
                         stringResource(

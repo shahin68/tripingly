@@ -107,4 +107,18 @@
     <string name="members_invite_share">Share</string>
     <string name="members_invite_revoke">Revoke</string>
     <string name="members_invite_share_text">Join my trip “%1$s” on Tripinly: %2$s</string>
+
+    <!-- Errors: what failed -->
+    <string name="home_error_load_trips">Couldn’t load your trips.</string>
+    <string name="home_error_make_public">Couldn’t make the trip public.</string>
+    <string name="home_error_make_private">Couldn’t make the trip private.</string>
+    <string name="home_error_remove_saved">Couldn’t remove the trip from your trips.</string>
+    <string name="members_error_load">Couldn’t load the members.</string>
+    <string name="members_error_load_requests">Couldn’t load the requests to join.</string>
+    <string name="members_error_answer_request">Couldn’t answer the request to join.</string>
+    <string name="members_error_load_invites">Couldn’t load the invite links.</string>
+    <string name="members_error_add">Couldn’t add them to the trip.</string>
+    <string name="members_error_create_invite">Couldn’t create an invite link.</string>
+    <string name="members_error_revoke_invite">Couldn’t turn off the invite link.</string>
+    <string name="members_error_remove">Couldn’t remove them from the trip.</string>
 </resources>

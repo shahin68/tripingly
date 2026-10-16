@@ -107,4 +107,18 @@
     <string name="members_invite_share">Teilen</string>
     <string name="members_invite_revoke">Widerrufen</string>
     <string name="members_invite_share_text">Mach mit bei meiner Reise „%1$s“ auf Tripinly: %2$s</string>
+
+    <!-- Errors: what failed -->
+    <string name="home_error_load_trips">Deine Reisen konnten nicht geladen werden.</string>
+    <string name="home_error_make_public">Die Reise konnte nicht öffentlich gemacht werden.</string>
+    <string name="home_error_make_private">Die Reise konnte nicht privat gemacht werden.</string>
+    <string name="home_error_remove_saved">Die Reise konnte nicht aus deinen Reisen entfernt werden.</string>
+    <string name="members_error_load">Die Mitglieder konnten nicht geladen werden.</string>
+    <string name="members_error_load_requests">Die Beitrittsanfragen konnten nicht geladen werden.</string>
+    <string name="members_error_answer_request">Die Beitrittsanfrage konnte nicht beantwortet werden.</string>
+    <string name="members_error_load_invites">Die Einladungslinks konnten nicht geladen werden.</string>
+    <string name="members_error_add">Sie konnten nicht zur Reise hinzugefügt werden.</string>
+    <string name="members_error_create_invite">Der Einladungslink konnte nicht erstellt werden.</string>
+    <string name="members_error_revoke_invite">Der Einladungslink konnte nicht deaktiviert werden.</string>
+    <string name="members_error_remove">Sie konnten nicht aus der Reise entfernt werden.</string>
 </resources>

@@ -17,6 +17,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
 import com.falcon.tripingly.core.common.util.DateUtils
+import com.falcon.tripingly.core.designsystem.component.MessageBannerHost
 import com.falcon.tripingly.core.designsystem.theme.spacing
 import com.falcon.tripingly.feature.social.generated.resources.Res
 import com.falcon.tripingly.feature.social.generated.resources.social_add_place_pick_day
@@ -31,40 +32,43 @@ import org.jetbrains.compose.resources.stringResource
 @Composable
 internal fun AddPlaceSheet(addPlace: AddPlace, onAction: (Action) -> Unit) {
     ModalBottomSheet(onDismissRequest = { onAction(Action.OnDismissAddPlace) }) {
-        Column(Modifier.padding(bottom = MaterialTheme.spacing.large)) {
-            val trip = addPlace.trip
-            Text(
-                text = if (trip == null) {
-                    stringResource(Res.string.social_add_place_pick_trip, addPlace.place.name)
-                } else {
-                    stringResource(Res.string.social_add_place_pick_day, trip.name)
-                },
-                style = MaterialTheme.typography.titleMedium,
-                modifier = Modifier.padding(horizontal = MaterialTheme.spacing.medium, vertical = MaterialTheme.spacing.small),
-            )
-            when {
-                trip == null -> LazyColumn {
-                    items(addPlace.trips, key = { it.id }) { option ->
-                        SheetRow(
-                            title = option.name,
-                            subtitle = DateUtils.formatRange(option.startDate, option.endDate),
-                            onClick = { onAction(Action.OnPickTrip(option)) },
-                        )
+        Box {
+            Column(Modifier.padding(bottom = MaterialTheme.spacing.large)) {
+                val trip = addPlace.trip
+                Text(
+                    text = if (trip == null) {
+                        stringResource(Res.string.social_add_place_pick_trip, addPlace.place.name)
+                    } else {
+                        stringResource(Res.string.social_add_place_pick_day, trip.name)
+                    },
+                    style = MaterialTheme.typography.titleMedium,
+                    modifier = Modifier.padding(horizontal = MaterialTheme.spacing.medium, vertical = MaterialTheme.spacing.small),
+                )
+                when {
+                    trip == null -> LazyColumn {
+                        items(addPlace.trips, key = { it.id }) { option ->
+                            SheetRow(
+                                title = option.name,
+                                subtitle = DateUtils.formatRange(option.startDate, option.endDate),
+                                onClick = { onAction(Action.OnPickTrip(option)) },
+                            )
+                        }
                     }
-                }
-                addPlace.isLoadingDays -> Box(Modifier.fillMaxWidth().padding(MaterialTheme.spacing.large), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator()
-                }
-                else -> LazyColumn {
-                    items(addPlace.days, key = { it.id }) { day ->
-                        SheetRow(
-                            title = stringResource(Res.string.social_day_number, day.position + 1),
-                            subtitle = day.date?.let(DateUtils::formatAbbreviated),
-                            onClick = { onAction(Action.OnPickDay(day)) },
-                        )
+                    addPlace.isLoadingDays -> Box(Modifier.fillMaxWidth().padding(MaterialTheme.spacing.large), contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator()
+                    }
+                    else -> LazyColumn {
+                        items(addPlace.days, key = { it.id }) { day ->
+                            SheetRow(
+                                title = stringResource(Res.string.social_day_number, day.position + 1),
+                                subtitle = day.date?.let(DateUtils::formatAbbreviated),
+                                onClick = { onAction(Action.OnPickDay(day)) },
+                            )
+                        }
                     }
                 }
             }
+            MessageBannerHost(Modifier.align(Alignment.TopCenter))
         }
     }
 }

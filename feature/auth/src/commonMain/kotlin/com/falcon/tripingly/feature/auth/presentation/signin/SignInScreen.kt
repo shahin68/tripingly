@@ -31,7 +31,7 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.falcon.tripingly.core.designsystem.component.ErrorBanner
+import com.falcon.tripingly.core.designsystem.component.ShowMessage
 import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
 import com.falcon.tripingly.core.designsystem.theme.spacing
 import com.falcon.tripingly.core.model.account.SignOutReason
@@ -81,12 +81,11 @@ internal fun SignInScreen(
             )
             Spacer(Modifier.height(MaterialTheme.spacing.large))
 
-            if (reason != null && !reasonDismissed) {
-                ErrorBanner(errorMessage = stringResource(reason.message()), onDismiss = { reasonDismissed = true })
-            }
-            state.error?.let { error ->
-                ErrorBanner(errorMessage = error.asString(), onDismiss = { onAction(SignInViewModel.Action.OnDismissError) })
-            }
+            ShowMessage(
+                message = reason?.takeUnless { reasonDismissed }?.let { stringResource(it.message()) },
+                onShown = { reasonDismissed = true },
+            )
+            ShowMessage(message = state.error?.asString(), onShown = { onAction(SignInViewModel.Action.OnDismissError) })
 
             Button(
                 onClick = { onAction(SignInViewModel.Action.OnGoogleClick) },

@@ -25,6 +25,14 @@ import com.falcon.tripingly.core.ui.UiText
 import com.falcon.tripingly.core.ui.toUiText
 import com.falcon.tripingly.feature.social.generated.resources.Res
 import com.falcon.tripingly.feature.social.generated.resources.social_add_place_no_trips
+import com.falcon.tripingly.feature.social.generated.resources.social_error_like
+import com.falcon.tripingly.feature.social.generated.resources.social_error_load_days
+import com.falcon.tripingly.feature.social.generated.resources.social_error_load_explore
+import com.falcon.tripingly.feature.social.generated.resources.social_error_load_nearby
+import com.falcon.tripingly.feature.social.generated.resources.social_error_report
+import com.falcon.tripingly.feature.social.generated.resources.social_error_save_trip
+import com.falcon.tripingly.feature.social.generated.resources.social_error_search_people
+import com.falcon.tripingly.feature.social.generated.resources.social_error_unsave_trip
 import com.falcon.tripingly.feature.social.generated.resources.social_nearby_location_unavailable
 import com.falcon.tripingly.feature.social.generated.resources.social_reported
 import kotlinx.collections.immutable.ImmutableList
@@ -109,7 +117,7 @@ class SocialViewModel(
                         it.copy(explore = result.data.items.toImmutableList(), isLoadingExplore = false, hasLoadedExplore = true)
                     }
                 }
-                is AppResult.Error -> _uiState.update { it.copy(isLoadingExplore = false, message = result.error.toUiText()) }
+                is AppResult.Error -> _uiState.update { it.copy(isLoadingExplore = false, message = result.error.toUiText(Res.string.social_error_load_explore)) }
             }
         }
     }
@@ -169,7 +177,7 @@ class SocialViewModel(
             _uiState.update {
                 when (result) {
                     is AppResult.Success -> it.copy(people = result.data.toImmutableList(), isSearchingPeople = false)
-                    is AppResult.Error -> it.copy(isSearchingPeople = false, message = result.error.toUiText())
+                    is AppResult.Error -> it.copy(isSearchingPeople = false, message = result.error.toUiText(Res.string.social_error_search_people))
                 }
             }
         }
@@ -184,7 +192,7 @@ class SocialViewModel(
                 is AppResult.Success -> updateTrip(trip.trip.id) { it.copy(likedByMe = result.data.liked, likeCount = result.data.likeCount) }
                 is AppResult.Error -> {
                     updateTrip(trip.trip.id) { it.copy(likedByMe = trip.likedByMe, likeCount = trip.likeCount) }
-                    _uiState.update { it.copy(message = result.error.toUiText()) }
+                    _uiState.update { it.copy(message = result.error.toUiText(Res.string.social_error_like)) }
                 }
             }
         }
@@ -204,7 +212,8 @@ class SocialViewModel(
             val result = tripRepository.setSaved(trip.trip, saved)
             if (result is AppResult.Error) {
                 updateTrip(trip.trip.id) { it.copy(trip = it.trip.copy(savedByMe = trip.trip.savedByMe), saveCount = trip.saveCount) }
-                _uiState.update { it.copy(message = result.error.toUiText()) }
+                val failed = if (saved) Res.string.social_error_save_trip else Res.string.social_error_unsave_trip
+                _uiState.update { it.copy(message = result.error.toUiText(failed)) }
             }
         }
     }
@@ -218,7 +227,7 @@ class SocialViewModel(
             _uiState.update {
                 when (result) {
                     is AppResult.Success -> it.copy(isReporting = false, reporting = null, message = UiText.Resource(Res.string.social_reported))
-                    is AppResult.Error -> it.copy(isReporting = false, message = result.error.toUiText())
+                    is AppResult.Error -> it.copy(isReporting = false, message = result.error.toUiText(Res.string.social_error_report))
                 }
             }
         }
@@ -267,7 +276,7 @@ class SocialViewModel(
                     }
                 }
                 is AppResult.Error -> _uiState.update {
-                    it.copy(isLoadingNearby = false, nearbyStatus = NearbyStatus.Ready, message = result.error.toUiText())
+                    it.copy(isLoadingNearby = false, nearbyStatus = NearbyStatus.Ready, message = result.error.toUiText(Res.string.social_error_load_nearby))
                 }
             }
         }
@@ -281,7 +290,7 @@ class SocialViewModel(
                 is AppResult.Success -> updatePlace(place.id) { it.copy(likedByMe = result.data.liked, likeCount = result.data.likeCount) }
                 is AppResult.Error -> {
                     updatePlace(place.id) { it.copy(likedByMe = place.likedByMe, likeCount = place.likeCount) }
-                    _uiState.update { it.copy(message = result.error.toUiText()) }
+                    _uiState.update { it.copy(message = result.error.toUiText(Res.string.social_error_like)) }
                 }
             }
         }
@@ -311,7 +320,7 @@ class SocialViewModel(
                 val addPlace = state.addPlace?.takeIf { it.trip?.id == trip.id } ?: return@update state
                 when (result) {
                     is AppResult.Success -> state.copy(addPlace = addPlace.copy(days = result.data.days.toImmutableList(), isLoadingDays = false))
-                    is AppResult.Error -> state.copy(addPlace = addPlace.copy(isLoadingDays = false), message = result.error.toUiText())
+                    is AppResult.Error -> state.copy(addPlace = addPlace.copy(isLoadingDays = false), message = result.error.toUiText(Res.string.social_error_load_days))
                 }
             }
         }

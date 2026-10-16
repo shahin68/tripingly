@@ -56,4 +56,19 @@
     <string name="social_friends_empty">Noch keine Freunde. Hier erscheinen Leute, denen du folgst und die dir zurückfolgen.</string>
     <string name="social_following_empty">Du folgst noch niemandem.</string>
     <string name="social_followers_empty">Noch keine Follower.</string>
+
+    <!-- Errors: what failed -->
+    <string name="social_error_load_explore">Entdecken konnte nicht geladen werden.</string>
+    <string name="social_error_search_people">Die Personensuche ist fehlgeschlagen.</string>
+    <string name="social_error_like">Dein Like konnte nicht gespeichert werden.</string>
+    <string name="social_error_save_trip">Die Reise konnte nicht gespeichert werden.</string>
+    <string name="social_error_unsave_trip">Die Reise konnte nicht aus deinen Reisen entfernt werden.</string>
+    <string name="social_error_report">Deine Meldung konnte nicht gesendet werden.</string>
+    <string name="social_error_load_nearby">Orte in deiner Nähe konnten nicht geladen werden.</string>
+    <string name="social_error_load_days">Die Tage der Reise konnten nicht geladen werden.</string>
+    <string name="social_error_load_profile">Das Profil konnte nicht geladen werden.</string>
+    <string name="social_error_follow">Folgen ist fehlgeschlagen.</string>
+    <string name="social_error_unfollow">Entfolgen ist fehlgeschlagen.</string>
+    <string name="social_error_block">Blockieren ist fehlgeschlagen.</string>
+    <string name="social_error_load_people">Die Liste konnte nicht geladen werden.</string>
 </resources>

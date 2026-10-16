@@ -26,6 +26,10 @@ import com.falcon.tripingly.feature.trips.generated.resources.Res
 import com.falcon.tripingly.feature.trips.generated.resources.create_trip_error_members
 import com.falcon.tripingly.feature.trips.generated.resources.create_trip_member_blocked
 import com.falcon.tripingly.feature.trips.generated.resources.create_trip_member_not_found
+import com.falcon.tripingly.feature.trips.generated.resources.home_error_load_trips
+import com.falcon.tripingly.feature.trips.generated.resources.home_error_make_private
+import com.falcon.tripingly.feature.trips.generated.resources.home_error_make_public
+import com.falcon.tripingly.feature.trips.generated.resources.home_error_remove_saved
 import com.falcon.tripingly.feature.trips.generated.resources.home_offline_cached
 import com.falcon.tripingly.feature.trips.generated.resources.reschedule_error_days_not_empty
 import kotlinx.collections.immutable.ImmutableList
@@ -151,7 +155,7 @@ class HomeViewModel(
     }
 
     private fun refreshMessage(error: DataError.Network): UiText =
-        if (error == DataError.Network.NoInternet) UiText.Resource(Res.string.home_offline_cached) else error.toUiText()
+        if (error == DataError.Network.NoInternet) UiText.Resource(Res.string.home_offline_cached) else error.toUiText(Res.string.home_error_load_trips)
 
     private fun openDialog(dialog: Dialog) {
         clearSearches()
@@ -340,7 +344,8 @@ class HomeViewModel(
         val visibility = if (trip.visibility == TripVisibility.PUBLIC) TripVisibility.PRIVATE else TripVisibility.PUBLIC
         viewModelScope.launch {
             val result = tripRepository.updateTrip(trip.id, TripUpdate(visibility = visibility))
-            if (result is AppResult.Error) ui.update { it.copy(message = result.error.toUiText()) }
+            val failed = if (visibility == TripVisibility.PUBLIC) Res.string.home_error_make_public else Res.string.home_error_make_private
+            if (result is AppResult.Error) ui.update { it.copy(message = result.error.toUiText(failed)) }
         }
     }
 
@@ -348,7 +353,7 @@ class HomeViewModel(
     private fun removeSavedTrip(trip: Trip) {
         viewModelScope.launch {
             val result = tripRepository.setSaved(trip, saved = false)
-            if (result is AppResult.Error) ui.update { it.copy(message = result.error.toUiText()) }
+            if (result is AppResult.Error) ui.update { it.copy(message = result.error.toUiText(Res.string.home_error_remove_saved)) }
         }
     }
 

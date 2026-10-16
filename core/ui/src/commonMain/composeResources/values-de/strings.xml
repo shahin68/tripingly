@@ -5,4 +5,7 @@
     <string name="error_unknown">Etwas ist schiefgelaufen. Versuche es erneut.</string>
     <string name="error_not_available">Diese Reise ist nicht verfügbar.</string>
     <string name="error_forbidden">Du kannst diese Reise nicht ändern.</string>
+    <string name="error_reason_not_available">Es ist nicht verfügbar.</string>
+    <string name="error_reason_forbidden">Dazu fehlt dir die Berechtigung.</string>
+    <string name="error_try_again">Versuche es erneut.</string>
 </resources>
