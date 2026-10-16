@@ -19,6 +19,7 @@ import com.falcon.tripingly.core.location.GetCurrentLocationUseCase
 import com.falcon.tripingly.core.location.LocationRepository
 import com.falcon.tripingly.core.location.model.Coordinates
 import com.falcon.tripingly.core.location.permission.LocationPermission
+import com.falcon.tripingly.core.model.account.ProfileUpdate
 import com.falcon.tripingly.core.model.photo.PhotoOwner
 import com.falcon.tripingly.core.model.photo.PickedImage
 import com.falcon.tripingly.core.model.place.GeoBounds
@@ -164,7 +165,12 @@ class MapViewModelTest {
         places = CountingPlaceRepository()
         photos = FakePhotoRepository()
         social = RecordingSocialRepository()
-        session = FakeAccountBackend(today = { LocalDate(2026, 10, 16) }).also { it.signInForDevelopment("me", null) }
+        session = FakeAccountBackend(today = { LocalDate(2026, 10, 16) }).also {
+            // Onboarded, so the session is SignedIn with an account id.
+            it.signInForDevelopment("me", "Me")
+            it.updateProfile(ProfileUpdate(username = "me", birthDate = LocalDate(1990, 1, 1)))
+            it.accept((it.legalDocuments("en") as AppResult.Success).data)
+        }
         trip = (backend.createTrip(NewTrip("Test Trip", LocalDate(2024, 1, 1), LocalDate(2024, 1, 3))) as AppResult.Success).data
     }
 
