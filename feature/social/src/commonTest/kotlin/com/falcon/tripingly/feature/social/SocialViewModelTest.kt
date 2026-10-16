@@ -34,7 +34,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOf
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.advanceUntilIdle
@@ -208,30 +207,28 @@ class SocialViewModelTest {
     @Test
     fun exploreNearby_asksForTheLocationOnlyWhenSwitchedOn() = runTest {
         val viewModel = viewModel()
-        val events = mutableListOf<Event>()
-        backgroundScope.launch { viewModel.events.collect { events += it } }
         advanceUntilIdle()
 
         viewModel.onAction(Action.OnToggleExploreNearby)
         advanceUntilIdle()
-        assertEquals(listOf<Event>(Event.CheckExploreLocation), events)
+        assertEquals(Event.CheckExploreLocation, viewModel.events.first())
 
         viewModel.onAction(Action.OnExploreLocationChecked(LocationPermission.NotAsked))
         advanceUntilIdle()
-        assertEquals(Event.RequestPermission, events.last())
+        assertEquals(Event.RequestPermission, viewModel.events.first())
 
         viewModel.onAction(Action.OnPermissionResult(LocationPermission.Granted))
         advanceUntilIdle()
-        assertTrue(viewModel.uiState.value.isExploreNearby)
+        assertTrue(viewModel.uiState.value.isExploreNearby, "Nearby is on once allowed")
         val paris = GeoPoint(Coordinates.Paris.latitude, Coordinates.Paris.longitude)
-        assertEquals(ExploreFilter(ExplorePeriod.Month, near = paris), filters.last())
+        assertEquals(ExploreFilter(ExplorePeriod.Month, near = paris), filters.last(), "loads the trips near the user")
         // Places nearby load only on their own tab.
-        assertEquals(NearbyStatus.Unknown, viewModel.uiState.value.nearbyStatus)
+        assertEquals(NearbyStatus.Unknown, viewModel.uiState.value.nearbyStatus, "places nearby don't load")
 
         viewModel.onAction(Action.OnToggleExploreNearby)
         advanceUntilIdle()
-        assertFalse(viewModel.uiState.value.isExploreNearby)
-        assertEquals(ExploreFilter(ExplorePeriod.Month), filters.last())
+        assertFalse(viewModel.uiState.value.isExploreNearby, "Nearby switches off")
+        assertEquals(ExploreFilter(ExplorePeriod.Month), filters.last(), "reloads without the location")
     }
 
     @Test
