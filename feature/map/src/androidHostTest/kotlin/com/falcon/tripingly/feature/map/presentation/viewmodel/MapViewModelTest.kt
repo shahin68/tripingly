@@ -19,6 +19,7 @@ import com.falcon.tripingly.core.location.GetCurrentLocationUseCase
 import com.falcon.tripingly.core.location.LocationRepository
 import com.falcon.tripingly.core.location.model.Coordinates
 import com.falcon.tripingly.core.location.permission.LocationPermission
+import com.falcon.tripingly.core.model.photo.PhotoOwner
 import com.falcon.tripingly.core.model.photo.PickedImage
 import com.falcon.tripingly.core.model.place.GeoBounds
 import com.falcon.tripingly.core.model.place.ImageCredit
@@ -368,7 +369,7 @@ class MapViewModelTest {
         testScheduler.advanceUntilIdle()
 
         assertEquals(stop.id, viewModel.uiState.value.photosMarker?.id)
-        assertEquals(2, photos.photos(stop.id).first()?.size)
+        assertEquals(2, photos.photos(PhotoOwner.Stop(stop.id)).first()?.size)
 
         viewModel.onAction(Action.OnCloseStopPhotos)
         testScheduler.advanceUntilIdle()
@@ -394,7 +395,7 @@ class MapViewModelTest {
         val state = viewModel.uiState.value
         assertFalse(state.isPhotoCameraOpen)
         assertEquals(stop.id, state.photosMarker?.id)
-        assertEquals(1, photos.photos(stop.id).first()?.size)
+        assertEquals(1, photos.photos(PhotoOwner.Stop(stop.id)).first()?.size)
     }
 
     @Test
@@ -411,7 +412,7 @@ class MapViewModelTest {
         viewModel.onAction(Action.OnAddStopPhotos(listOf(PickedImage { byteArrayOf(1) })))
         testScheduler.advanceUntilIdle()
 
-        assertNull(photos.photos(stop.id).first())
+        assertNull(photos.photos(PhotoOwner.Stop(stop.id)).first())
         assertNull(viewModel.uiState.value.photosMarker)
         assertFalse(viewModel.uiState.value.isPhotoCameraOpen)
     }
