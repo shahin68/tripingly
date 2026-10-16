@@ -55,7 +55,8 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.falcon.tripingly.core.data.photos.PhotoUpload
-import com.falcon.tripingly.core.designsystem.component.ErrorBanner
+import com.falcon.tripingly.core.designsystem.component.MessageBannerHost
+import com.falcon.tripingly.core.designsystem.component.ShowMessage
 import com.falcon.tripingly.core.designsystem.component.PhotoImage
 import com.falcon.tripingly.core.designsystem.component.PhotoSize
 import com.falcon.tripingly.core.designsystem.theme.spacing
@@ -83,13 +84,16 @@ fun StopPhotosRoute(
     val pickPhotos = rememberPhotoPicker { images -> viewModel.onAction(Action.OnAddPhotos(images)) }
 
     ModalBottomSheet(onDismissRequest = onDismiss) {
-        StopPhotosScreen(
-            state = state,
-            marker = marker,
-            canEdit = canEdit,
-            onAddPhotos = pickPhotos,
-            onAction = viewModel::onAction,
-        )
+        Box {
+            StopPhotosScreen(
+                state = state,
+                marker = marker,
+                canEdit = canEdit,
+                onAddPhotos = pickPhotos,
+                onAction = viewModel::onAction,
+            )
+            MessageBannerHost(Modifier.align(Alignment.TopCenter))
+        }
     }
 
     state.openPhotoIndex?.let { index ->
@@ -137,6 +141,7 @@ fun StopPhotosScreen(
     onAction: (Action) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    ShowMessage(message = state.message?.asString(), onShown = { onAction(Action.OnDismissMessage) })
     val fullWidth: LazyGridItemSpanScope.() -> GridItemSpan = { GridItemSpan(maxLineSpan) }
     LazyVerticalGrid(
         columns = GridCells.Adaptive(minSize = 104.dp),
@@ -175,11 +180,6 @@ fun StopPhotosScreen(
                         Icon(Icons.Default.PhotoCamera, contentDescription = stringResource(Res.string.map_camera_take_photo))
                     }
                 }
-            }
-        }
-        state.message?.let { message ->
-            item(span = fullWidth) {
-                ErrorBanner(errorMessage = message.asString(), onDismiss = { onAction(Action.OnDismissMessage) })
             }
         }
         if (state.isLoading && state.uploads.isEmpty()) {
@@ -332,6 +332,8 @@ private fun PhotoViewer(
                     contentScale = ContentScale.Fit,
                 )
             }
+            // Full screen, so the viewer shows the app's messages itself, below its top bar.
+            MessageBannerHost(Modifier.align(Alignment.TopCenter).safeDrawingPadding().padding(top = 56.dp))
             val current = viewable.getOrNull(pagerState.currentPage)
             Row(
                 modifier = Modifier

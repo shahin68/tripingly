@@ -42,7 +42,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.falcon.tripingly.core.designsystem.component.AppDropdownMenu
 import com.falcon.tripingly.core.designsystem.component.AvatarCircle
 import com.falcon.tripingly.core.designsystem.component.DropdownAction
-import com.falcon.tripingly.core.designsystem.component.ErrorBanner
+import com.falcon.tripingly.core.designsystem.component.ShowMessage
 import com.falcon.tripingly.core.designsystem.component.ReportDialog
 import com.falcon.tripingly.core.designsystem.theme.spacing
 import com.falcon.tripingly.core.model.social.PeopleList
@@ -143,13 +143,10 @@ internal fun ProfileScreen(state: State, onAction: (Action) -> Unit, onBack: () 
         },
     ) { padding ->
         Column(Modifier.fillMaxSize().padding(padding)) {
-            state.message?.let { message ->
-                ErrorBanner(
-                    errorMessage = message.asString(),
-                    onDismiss = { onAction(Action.OnDismissMessage) },
-                    modifier = Modifier.padding(horizontal = MaterialTheme.spacing.medium, vertical = 4.dp),
-                )
-            }
+            ShowMessage(
+                message = state.message?.asString(),
+                onShown = { onAction(Action.OnDismissMessage) },
+            )
             val profile = state.profile
             when {
                 profile != null -> ProfileContent(profile, state, onAction)

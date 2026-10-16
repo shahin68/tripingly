@@ -30,7 +30,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.falcon.tripingly.core.designsystem.component.ErrorBanner
+import com.falcon.tripingly.core.designsystem.component.ShowMessage
 import com.falcon.tripingly.core.designsystem.component.ReportDialog
 import com.falcon.tripingly.core.designsystem.component.SegmentedToggle
 import com.falcon.tripingly.core.designsystem.component.SegmentedToggleOption
@@ -102,13 +102,10 @@ fun SocialRoute(
 @Composable
 internal fun SocialScreen(state: State, onAction: (Action) -> Unit, modifier: Modifier = Modifier) {
     Column(modifier.fillMaxSize()) {
-        state.message?.let { message ->
-            ErrorBanner(
-                errorMessage = message.asString(),
-                onDismiss = { onAction(Action.OnDismissMessage) },
-                modifier = Modifier.padding(horizontal = MaterialTheme.spacing.medium, vertical = 4.dp),
-            )
-        }
+        ShowMessage(
+            message = state.message?.asString(),
+            onShown = { onAction(Action.OnDismissMessage) },
+        )
         if (state.isSearchingByName) {
             PeopleResults(state, onAction)
             return@Column
@@ -163,6 +160,7 @@ private fun ExploreContent(state: State, onAction: (Action) -> Unit) {
             ) {
                 items(state.explore, key = { it.trip.id }) { trip ->
                     PublicTripCard(
+                        modifier = Modifier.animateItem(),
                         trip = trip,
                         onOpen = { onAction(Action.OnTripClick(trip)) },
                         onOpenOwner = { onAction(Action.OnPersonClick(trip.trip.owner)) },

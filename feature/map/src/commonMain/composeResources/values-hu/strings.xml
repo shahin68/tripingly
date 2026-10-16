@@ -114,4 +114,22 @@
         <item quantity="one">%1$d hozzászólás</item>
         <item quantity="other">%1$d hozzászólás</item>
     </plurals>
+
+    <!-- Errors: what failed -->
+    <string name="map_error_load_trip">Nem sikerült betölteni az utazást.</string>
+    <string name="map_error_like">Nem sikerült menteni a kedvelést.</string>
+    <string name="map_error_save_trip">Nem sikerült elmenteni az utazást.</string>
+    <string name="map_error_unsave_trip">Nem sikerült eltávolítani az utazást az utazásaid közül.</string>
+    <string name="map_error_join">Nem sikerült elküldeni a csatlakozási kérést.</string>
+    <string name="map_error_cancel_join">Nem sikerült visszavonni a csatlakozási kérést.</string>
+    <string name="map_error_report">Nem sikerült elküldeni a bejelentést.</string>
+    <string name="map_error_stop_change">Nem sikerült menteni a megállók módosítását.</string>
+    <string name="map_error_add_day">Nem sikerült hozzáadni a napot.</string>
+    <string name="map_error_delete_day">Nem sikerült törölni a napot.</string>
+    <string name="map_error_load_comments">Nem sikerült betölteni a hozzászólásokat.</string>
+    <string name="map_error_send_comment">Nem sikerült elküldeni a hozzászólásodat.</string>
+    <string name="map_error_delete_comment">Nem sikerült törölni a hozzászólást.</string>
+    <string name="map_error_load_photos">Nem sikerült betölteni a fotókat.</string>
+    <string name="map_error_cover">Nem sikerült beállítani a borítóképet.</string>
+    <string name="map_error_delete_photo">Nem sikerült törölni a fotót.</string>
 </resources>

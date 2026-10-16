@@ -15,6 +15,10 @@ import com.falcon.tripingly.core.model.account.SessionState
 import com.falcon.tripingly.core.model.account.UsernameAvailability
 import com.falcon.tripingly.core.model.account.isAtLeast
 import com.falcon.tripingly.core.model.account.isUsernameFormatValid
+import com.falcon.tripingly.feature.auth.generated.resources.Res
+import com.falcon.tripingly.feature.auth.generated.resources.onboarding_error_accept
+import com.falcon.tripingly.feature.auth.generated.resources.onboarding_error_load_documents
+import com.falcon.tripingly.feature.auth.generated.resources.onboarding_error_save_profile
 import com.falcon.tripingly.feature.auth.presentation.common.UiMessage
 import com.falcon.tripingly.feature.auth.presentation.common.toUiMessage
 import kotlinx.collections.immutable.ImmutableList
@@ -204,7 +208,7 @@ internal class OnboardingViewModel(
                             // Under 16: the session is already signed out and the gate shows why.
                             error is DataError.Network.Api && error.code == AGE_REQUIREMENT_NOT_MET ->
                                 it.copy(isSaving = false)
-                            else -> it.copy(isSaving = false, error = error.toUiMessage())
+                            else -> it.copy(isSaving = false, error = error.toUiMessage(Res.string.onboarding_error_save_profile))
                         }
                     }
                 }
@@ -225,7 +229,7 @@ internal class OnboardingViewModel(
                     )
                 }
                 is AppResult.Error -> _uiState.update {
-                    it.copy(isLoadingDocuments = false, error = result.error.toUiMessage())
+                    it.copy(isLoadingDocuments = false, error = result.error.toUiMessage(Res.string.onboarding_error_load_documents))
                 }
             }
         }
@@ -238,7 +242,7 @@ internal class OnboardingViewModel(
         viewModelScope.launch {
             when (val result = accountRepository.accept(state.documents.map { it.document })) {
                 is AppResult.Success -> _uiState.update { it.copy(isSaving = false) }
-                is AppResult.Error -> _uiState.update { it.copy(isSaving = false, error = result.error.toUiMessage()) }
+                is AppResult.Error -> _uiState.update { it.copy(isSaving = false, error = result.error.toUiMessage(Res.string.onboarding_error_accept)) }
             }
         }
     }

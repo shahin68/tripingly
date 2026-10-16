@@ -107,4 +107,18 @@
     <string name="members_invite_share">Megosztás</string>
     <string name="members_invite_revoke">Visszavonás</string>
     <string name="members_invite_share_text">Csatlakozz a(z) „%1$s” utazásomhoz a Tripinlyn: %2$s</string>
+
+    <!-- Errors: what failed -->
+    <string name="home_error_load_trips">Nem sikerült betölteni az utazásaidat.</string>
+    <string name="home_error_make_public">Nem sikerült nyilvánossá tenni az utazást.</string>
+    <string name="home_error_make_private">Nem sikerült priváttá tenni az utazást.</string>
+    <string name="home_error_remove_saved">Nem sikerült eltávolítani az utazást az utazásaid közül.</string>
+    <string name="members_error_load">Nem sikerült betölteni a tagokat.</string>
+    <string name="members_error_load_requests">Nem sikerült betölteni a csatlakozási kéréseket.</string>
+    <string name="members_error_answer_request">Nem sikerült válaszolni a csatlakozási kérésre.</string>
+    <string name="members_error_load_invites">Nem sikerült betölteni a meghívó linkeket.</string>
+    <string name="members_error_add">Nem sikerült hozzáadni őket az utazáshoz.</string>
+    <string name="members_error_create_invite">Nem sikerült meghívó linket létrehozni.</string>
+    <string name="members_error_revoke_invite">Nem sikerült kikapcsolni a meghívó linket.</string>
+    <string name="members_error_remove">Nem sikerült eltávolítani őket az utazásból.</string>
 </resources>

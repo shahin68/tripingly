@@ -53,6 +53,16 @@ import com.falcon.tripingly.feature.map.generated.resources.error_location_unava
 import com.falcon.tripingly.feature.map.generated.resources.error_location_unexpected
 import com.falcon.tripingly.feature.map.generated.resources.error_location_unknown
 import com.falcon.tripingly.feature.map.generated.resources.map_change_not_saved
+import com.falcon.tripingly.feature.map.generated.resources.map_error_add_day
+import com.falcon.tripingly.feature.map.generated.resources.map_error_cancel_join
+import com.falcon.tripingly.feature.map.generated.resources.map_error_delete_day
+import com.falcon.tripingly.feature.map.generated.resources.map_error_join
+import com.falcon.tripingly.feature.map.generated.resources.map_error_like
+import com.falcon.tripingly.feature.map.generated.resources.map_error_load_trip
+import com.falcon.tripingly.feature.map.generated.resources.map_error_report
+import com.falcon.tripingly.feature.map.generated.resources.map_error_save_trip
+import com.falcon.tripingly.feature.map.generated.resources.map_error_stop_change
+import com.falcon.tripingly.feature.map.generated.resources.map_error_unsave_trip
 import com.falcon.tripingly.feature.map.generated.resources.map_join_declined
 import com.falcon.tripingly.feature.map.generated.resources.map_join_requested
 import com.falcon.tripingly.feature.map.generated.resources.map_join_withdrawn
@@ -164,7 +174,7 @@ class MapViewModel(
             is Action.OnConfirm -> confirm()
             is Action.OnDismissConfirm -> ui.update { it.copy(confirm = null) }
             is Action.AddDay -> addDay()
-            is Action.DismissError -> ui.update { it.copy(message = null, failedChanges = emptyList()) }
+            is Action.OnMessageShown -> ui.update { it.copy(message = null) }
             is Action.RetryFailedChanges -> retryFailedChanges()
             is Action.OnCameraMove -> onCameraMove(action.coordinates, action.zoom, action.bounds)
             is Action.OnScreenTouch -> onScreenTouch()
@@ -184,8 +194,8 @@ class MapViewModel(
             is Action.OnOpenStopComments -> ui.update { it.copy(commentsMarkerId = it.selectedMarkerId) }
             is Action.OnCloseStopComments -> ui.update { it.copy(commentsMarkerId = null) }
             is Action.OnToggleSaveTrip -> toggleSave()
-            is Action.OnRequestToJoin -> updateSharing(Res.string.map_join_requested) { tripRepository.requestToJoin(tripId) }
-            is Action.OnCancelJoinRequest -> updateSharing(Res.string.map_join_withdrawn) { tripRepository.cancelJoinRequest(tripId) }
+            is Action.OnRequestToJoin -> updateSharing(Res.string.map_join_requested, Res.string.map_error_join) { tripRepository.requestToJoin(tripId) }
+            is Action.OnCancelJoinRequest -> updateSharing(Res.string.map_join_withdrawn, Res.string.map_error_cancel_join) { tripRepository.cancelJoinRequest(tripId) }
             is Action.OnOpenJoinRequests -> ui.update { it.copy(isMembersOpen = true) }
             is Action.OnCloseJoinRequests -> ui.update { it.copy(isMembersOpen = false) }
             is Action.OnOpenOwnerProfile -> trip.value?.trip?.owner?.let { sendEvent(Event.OpenProfile(it.username)) }
@@ -266,7 +276,7 @@ class MapViewModel(
     private fun loadTrip() {
         viewModelScope.launch {
             val result = tripRepository.refreshTrip(tripId)
-            ui.update { it.copy(isLoadingTrip = false, message = (result as? AppResult.Error)?.error?.toUiText()) }
+            ui.update { it.copy(isLoadingTrip = false, message = (result as? AppResult.Error)?.error?.toUiText(Res.string.map_error_load_trip)) }
         }
         // Show the open day's stops when the trip opens, or the whole trip's while that day has none,
         // or the trip's destination while it has no stops at all.
@@ -334,7 +344,7 @@ class MapViewModel(
         val stop = currentDays().firstNotNullOfOrNull { day -> day.markers.firstOrNull { it.id == markerId } } ?: return
         viewModelScope.launch {
             val result = socialRepository.setLiked(LikeTarget.Marker, markerId, liked = !stop.likedByMe)
-            if (result is AppResult.Error) ui.update { it.copy(message = result.error.toUiText()) }
+            if (result is AppResult.Error) ui.update { it.copy(message = result.error.toUiText(Res.string.map_error_like)) }
         }
     }
 
@@ -342,13 +352,16 @@ class MapViewModel(
     private fun toggleSave() {
         val trip = trip.value?.trip ?: return
         val saved = !trip.savedByMe
-        updateSharing(if (saved) Res.string.map_trip_saved else Res.string.map_trip_unsaved) {
+        updateSharing(
+            done = if (saved) Res.string.map_trip_saved else Res.string.map_trip_unsaved,
+            failed = if (saved) Res.string.map_error_save_trip else Res.string.map_error_unsave_trip,
+        ) {
             tripRepository.setSaved(trip, saved)
         }
     }
 
     /** Saving or joining, shown once the server agreed (the cached trip then shows the new state). */
-    private fun updateSharing(done: StringResource, change: suspend () -> AppResult<Unit, DataError.Network>) {
+    private fun updateSharing(done: StringResource, failed: StringResource, change: suspend () -> AppResult<Unit, DataError.Network>) {
         if (ui.value.isUpdatingSharing) return
         ui.update { it.copy(isUpdatingSharing = true) }
         viewModelScope.launch {
@@ -361,7 +374,7 @@ class MapViewModel(
                         is AppResult.Error -> if (result.error.hasCode(TripErrorCodes.JOIN_REQUEST_DECLINED)) {
                             UiText.Resource(Res.string.map_join_declined)
                         } else {
-                            result.error.toUiText()
+                            result.error.toUiText(failed)
                         }
                     },
                 )
@@ -378,7 +391,7 @@ class MapViewModel(
             ui.update {
                 when (result) {
                     is AppResult.Success -> it.copy(isReporting = false, reporting = null, message = UiText.Resource(Res.string.map_reported))
-                    is AppResult.Error -> it.copy(isReporting = false, message = result.error.toUiText())
+                    is AppResult.Error -> it.copy(isReporting = false, message = result.error.toUiText(Res.string.map_error_report))
                 }
             }
         }
@@ -407,7 +420,7 @@ class MapViewModel(
                         )
                     } else {
                         // Trying again won't change the server's mind.
-                        it.copy(message = failure.error.toUiText(), failedChanges = emptyList())
+                        it.copy(message = failure.error.toUiText(Res.string.map_error_stop_change), failedChanges = emptyList())
                     }
                 }
             }
@@ -643,7 +656,7 @@ class MapViewModel(
 
     private fun addDay() {
         if (!canEdit()) return
-        save {
+        save(Res.string.map_error_add_day) {
             tripRepository.addDay(tripId).also { result ->
                 if (result is AppResult.Success) {
                     ui.update { it.copy(activeDayIndex = result.data.days.lastIndex, selectedMarkerId = null, isStopCardShown = false) }
@@ -662,7 +675,7 @@ class MapViewModel(
                 ui.update { it.copy(selectedMarkerId = null, isStopCardShown = false) }
                 viewModelScope.launch { markerRepository.clearDay(tripId, day.id) }
             }
-            Confirm.DeleteDay -> save {
+            Confirm.DeleteDay -> save(Res.string.map_error_delete_day) {
                 tripRepository.deleteDay(tripId, day.id).also { result ->
                     if (result is AppResult.Success) {
                         ui.update { it.copy(activeDayIndex = (it.activeDayIndex - 1).coerceAtLeast(0), selectedMarkerId = null, isStopCardShown = false) }
@@ -672,14 +685,14 @@ class MapViewModel(
         }
     }
 
-    /** Runs one day change at a time; a refusal shows the server's message. */
-    private fun save(change: suspend () -> AppResult<*, DataError.Network>) {
+    /** Runs one day change at a time; a refusal shows [failed] and why. */
+    private fun save(failed: StringResource, change: suspend () -> AppResult<*, DataError.Network>) {
         if (ui.value.isSaving) return
         ui.update { it.copy(isSaving = true) }
         viewModelScope.launch {
             val result = change()
             ui.update {
-                it.copy(isSaving = false, message = (result as? AppResult.Error)?.error?.toUiText() ?: it.message)
+                it.copy(isSaving = false, message = (result as? AppResult.Error)?.error?.toUiText(failed) ?: it.message)
             }
         }
     }
@@ -987,7 +1000,8 @@ class MapViewModel(
         data object DeleteDay : Action
         data object OnConfirm : Action
         data object OnDismissConfirm : Action
-        data object DismissError : Action
+        /** The banner has the message; failed changes stay for the next Retry. */
+        data object OnMessageShown : Action
         data object RetryFailedChanges : Action
         data class OnCameraMove(val coordinates: Coordinates, val zoom: Float, val bounds: GeoBounds? = null) : Action
         /** A touch began anywhere outside the place card, on the map or on the screen's other controls. */

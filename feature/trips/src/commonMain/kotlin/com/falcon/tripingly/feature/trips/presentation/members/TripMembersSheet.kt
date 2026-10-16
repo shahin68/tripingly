@@ -32,12 +32,13 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.falcon.tripingly.core.designsystem.component.MessageBannerHost
 import com.falcon.tripingly.core.designsystem.component.PrimaryButton
 import com.falcon.tripingly.feature.trips.generated.resources.members_add_friends
 import com.falcon.tripingly.feature.trips.presentation.component.FriendPickerRow
 import com.falcon.tripingly.core.common.util.DateUtils
 import com.falcon.tripingly.core.common.util.ShareManager
-import com.falcon.tripingly.core.designsystem.component.ErrorBanner
+import com.falcon.tripingly.core.designsystem.component.ShowMessage
 import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
 import com.falcon.tripingly.core.model.trip.JoinRequest
 import com.falcon.tripingly.core.model.trip.TripInvite
@@ -93,7 +94,10 @@ fun TripMembersRoute(
     }
 
     ModalBottomSheet(onDismissRequest = onDismiss) {
-        TripMembersScreen(state = state, onAction = viewModel::onAction)
+        Box {
+            TripMembersScreen(state = state, onAction = viewModel::onAction)
+            MessageBannerHost(Modifier.align(Alignment.TopCenter))
+        }
     }
 }
 
@@ -103,6 +107,7 @@ fun TripMembersScreen(
     onAction: (Action) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    ShowMessage(message = state.message?.asString(), onShown = { onAction(Action.OnDismissMessage) })
     LazyColumn(
         modifier = modifier.fillMaxWidth().navigationBarsPadding(),
         verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -113,15 +118,6 @@ fun TripMembersScreen(
                 style = MaterialTheme.typography.titleLarge,
                 modifier = Modifier.padding(horizontal = 24.dp),
             )
-        }
-        state.message?.let { message ->
-            item {
-                ErrorBanner(
-                    errorMessage = message.asString(),
-                    onDismiss = { onAction(Action.OnDismissMessage) },
-                    modifier = Modifier.padding(horizontal = 16.dp),
-                )
-            }
         }
         if (state.isLoading) {
             item {

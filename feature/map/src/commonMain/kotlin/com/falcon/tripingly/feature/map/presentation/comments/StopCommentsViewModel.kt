@@ -13,6 +13,11 @@ import com.falcon.tripingly.core.model.social.ReportTarget
 import com.falcon.tripingly.core.ui.UiText
 import com.falcon.tripingly.core.ui.toUiText
 import com.falcon.tripingly.feature.map.generated.resources.Res
+import com.falcon.tripingly.feature.map.generated.resources.map_error_delete_comment
+import com.falcon.tripingly.feature.map.generated.resources.map_error_like
+import com.falcon.tripingly.feature.map.generated.resources.map_error_load_comments
+import com.falcon.tripingly.feature.map.generated.resources.map_error_report
+import com.falcon.tripingly.feature.map.generated.resources.map_error_send_comment
 import com.falcon.tripingly.feature.map.generated.resources.map_reported
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
@@ -70,7 +75,7 @@ class StopCommentsViewModel(
                         isLoading = false,
                     )
                 }
-                is AppResult.Error -> _uiState.update { it.copy(isLoading = false, message = result.error.toUiText()) }
+                is AppResult.Error -> _uiState.update { it.copy(isLoading = false, message = result.error.toUiText(Res.string.map_error_load_comments)) }
             }
         }
     }
@@ -107,7 +112,7 @@ class StopCommentsViewModel(
                         comments = (state.comments.filterNot { it.id == result.data.id } + result.data).toImmutableList(),
                     )
                 }
-                is AppResult.Error -> _uiState.update { it.copy(isSending = false, message = result.error.toUiText()) }
+                is AppResult.Error -> _uiState.update { it.copy(isSending = false, message = result.error.toUiText(Res.string.map_error_send_comment)) }
             }
         }
     }
@@ -123,7 +128,7 @@ class StopCommentsViewModel(
                 }
                 is AppResult.Error -> {
                     updateComment(comment.id) { it.copy(likedByMe = comment.likedByMe, likeCount = comment.likeCount) }
-                    _uiState.update { it.copy(message = result.error.toUiText()) }
+                    _uiState.update { it.copy(message = result.error.toUiText(Res.string.map_error_like)) }
                 }
             }
         }
@@ -135,7 +140,7 @@ class StopCommentsViewModel(
         viewModelScope.launch {
             when (val result = socialRepository.deleteComment(comment)) {
                 is AppResult.Success -> updateComments { comments -> comments.filterNot { it.id == comment.id } }
-                is AppResult.Error -> _uiState.update { it.copy(message = result.error.toUiText()) }
+                is AppResult.Error -> _uiState.update { it.copy(message = result.error.toUiText(Res.string.map_error_delete_comment)) }
             }
         }
     }
@@ -149,7 +154,7 @@ class StopCommentsViewModel(
             _uiState.update {
                 when (result) {
                     is AppResult.Success -> it.copy(isReporting = false, reporting = null, message = UiText.Resource(Res.string.map_reported))
-                    is AppResult.Error -> it.copy(isReporting = false, message = result.error.toUiText())
+                    is AppResult.Error -> it.copy(isReporting = false, message = result.error.toUiText(Res.string.map_error_report))
                 }
             }
         }

@@ -56,4 +56,19 @@
     <string name="social_friends_empty">No friends yet. People you follow who follow you back show up here.</string>
     <string name="social_following_empty">You don’t follow anyone yet.</string>
     <string name="social_followers_empty">No followers yet.</string>
+
+    <!-- Errors: what failed -->
+    <string name="social_error_load_explore">Couldn’t load Explore.</string>
+    <string name="social_error_search_people">Couldn’t search for people.</string>
+    <string name="social_error_like">Couldn’t save your like.</string>
+    <string name="social_error_save_trip">Couldn’t save the trip.</string>
+    <string name="social_error_unsave_trip">Couldn’t remove the trip from your trips.</string>
+    <string name="social_error_report">Couldn’t send your report.</string>
+    <string name="social_error_load_nearby">Couldn’t load places near you.</string>
+    <string name="social_error_load_days">Couldn’t load the trip’s days.</string>
+    <string name="social_error_load_profile">Couldn’t load the profile.</string>
+    <string name="social_error_follow">Couldn’t follow them.</string>
+    <string name="social_error_unfollow">Couldn’t unfollow them.</string>
+    <string name="social_error_block">Couldn’t block them.</string>
+    <string name="social_error_load_people">Couldn’t load the list.</string>
 </resources>

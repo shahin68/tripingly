@@ -2,6 +2,7 @@ package com.falcon.tripingly.feature.trips.presentation.component
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
@@ -42,6 +43,7 @@ import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.falcon.tripingly.core.common.util.DateUtils
+import com.falcon.tripingly.core.designsystem.component.MessageBannerHost
 import com.falcon.tripingly.core.designsystem.component.OsmAttribution
 import com.falcon.tripingly.core.designsystem.component.PillChip
 import com.falcon.tripingly.core.designsystem.component.PrimaryButton
@@ -88,7 +90,10 @@ internal fun CreateTripSheet(
         onDismissRequest = { onAction(Action.OnDismissDialog) },
         sheetState = sheetState,
     ) {
-        CreateTripSheetContent(form = form, isSaving = isSaving, error = error, onAction = onAction)
+        Box {
+            CreateTripSheetContent(form = form, isSaving = isSaving, error = error, onAction = onAction)
+            MessageBannerHost(Modifier.align(Alignment.TopCenter))
+        }
     }
 }
 

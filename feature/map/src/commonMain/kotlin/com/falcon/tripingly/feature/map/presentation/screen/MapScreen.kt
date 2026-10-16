@@ -83,7 +83,7 @@ import androidx.compose.ui.unit.dp
 import com.falcon.tripingly.core.common.util.DateUtils
 import com.falcon.tripingly.core.designsystem.component.AppDropdownMenu
 import com.falcon.tripingly.core.designsystem.component.DropdownAction
-import com.falcon.tripingly.core.designsystem.component.ErrorBanner
+import com.falcon.tripingly.core.designsystem.component.ShowMessage
 import com.falcon.tripingly.core.designsystem.component.OsmAttribution
 import com.falcon.tripingly.core.designsystem.component.SuggestionItem
 import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
@@ -221,23 +221,15 @@ fun MapScreen(
                     modifier = Modifier.padding(horizontal = MaterialTheme.spacing.medium),
                 )
             }
-
-            AnimatedVisibility(
-                visible = state.message != null,
-                enter = fadeIn() + slideInVertically(),
-                exit = fadeOut() + slideOutVertically(),
-                modifier = Modifier.padding(MaterialTheme.spacing.medium)
-            ) {
-                state.message?.let { message ->
-                    ErrorBanner(
-                        errorMessage = message.asString(),
-                        onDismiss = { onAction(Action.DismissError) },
-                        actionLabel = if (state.canRetry) stringResource(Res.string.map_retry) else null,
-                        onAction = if (state.canRetry) ({ onAction(Action.RetryFailedChanges) }) else null,
-                    )
-                }
-            }
         }
+
+        // Retry sends every stop change that failed for a connection problem, earlier ones too.
+        ShowMessage(
+            message = state.message?.asString(),
+            onShown = { onAction(Action.OnMessageShown) },
+            actionLabel = if (state.canRetry) stringResource(Res.string.map_retry) else null,
+            onAction = if (state.canRetry) ({ onAction(Action.RetryFailedChanges) }) else null,
+        )
 
         Column(
             modifier = Modifier

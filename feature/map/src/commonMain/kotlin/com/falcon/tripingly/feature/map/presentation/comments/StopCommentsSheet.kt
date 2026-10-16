@@ -46,7 +46,8 @@ import com.falcon.tripingly.core.designsystem.component.AppDropdownMenu
 import com.falcon.tripingly.core.designsystem.component.AvatarCircle
 import com.falcon.tripingly.core.designsystem.component.AvatarSize
 import com.falcon.tripingly.core.designsystem.component.DropdownAction
-import com.falcon.tripingly.core.designsystem.component.ErrorBanner
+import com.falcon.tripingly.core.designsystem.component.MessageBannerHost
+import com.falcon.tripingly.core.designsystem.component.ShowMessage
 import com.falcon.tripingly.core.designsystem.component.LikeButton
 import com.falcon.tripingly.core.designsystem.component.ReportDialog
 import com.falcon.tripingly.core.designsystem.theme.spacing
@@ -86,12 +87,15 @@ fun StopCommentsRoute(
     val state by viewModel.uiState.collectAsStateWithLifecycle()
 
     ModalBottomSheet(onDismissRequest = onDismiss) {
-        StopCommentsScreen(
-            state = state,
-            marker = marker,
-            onOpenProfile = onOpenProfile,
-            onAction = viewModel::onAction,
-        )
+        Box {
+            StopCommentsScreen(
+                state = state,
+                marker = marker,
+                onOpenProfile = onOpenProfile,
+                onAction = viewModel::onAction,
+            )
+            MessageBannerHost(Modifier.align(Alignment.TopCenter))
+        }
     }
 
     if (state.reporting != null) {
@@ -152,13 +156,10 @@ fun StopCommentsScreen(
             fontWeight = FontWeight.Bold,
             modifier = Modifier.padding(horizontal = MaterialTheme.spacing.medium),
         )
-        state.message?.let { message ->
-            ErrorBanner(
-                errorMessage = message.asString(),
-                onDismiss = { onAction(Action.OnDismissMessage) },
-                modifier = Modifier.padding(MaterialTheme.spacing.medium),
-            )
-        }
+        ShowMessage(
+            message = state.message?.asString(),
+            onShown = { onAction(Action.OnDismissMessage) },
+        )
         Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
             when {
                 state.comments.isEmpty() && state.isLoading -> CircularProgressIndicator(Modifier.align(Alignment.Center))

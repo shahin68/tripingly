@@ -56,4 +56,19 @@
     <string name="social_friends_empty">Még nincsenek barátaid. Itt jelennek meg azok, akiket követsz, és visszakövetnek.</string>
     <string name="social_following_empty">Még senkit sem követsz.</string>
     <string name="social_followers_empty">Még nincsenek követőid.</string>
+
+    <!-- Errors: what failed -->
+    <string name="social_error_load_explore">Nem sikerült betölteni a Felfedezést.</string>
+    <string name="social_error_search_people">Nem sikerült embereket keresni.</string>
+    <string name="social_error_like">Nem sikerült menteni a kedvelést.</string>
+    <string name="social_error_save_trip">Nem sikerült elmenteni az utazást.</string>
+    <string name="social_error_unsave_trip">Nem sikerült eltávolítani az utazást az utazásaid közül.</string>
+    <string name="social_error_report">Nem sikerült elküldeni a bejelentést.</string>
+    <string name="social_error_load_nearby">Nem sikerült betölteni a közeli helyeket.</string>
+    <string name="social_error_load_days">Nem sikerült betölteni az utazás napjait.</string>
+    <string name="social_error_load_profile">Nem sikerült betölteni a profilt.</string>
+    <string name="social_error_follow">Nem sikerült követni.</string>
+    <string name="social_error_unfollow">Nem sikerült leállítani a követést.</string>
+    <string name="social_error_block">Nem sikerült letiltani.</string>
+    <string name="social_error_load_people">Nem sikerült betölteni a listát.</string>
 </resources>

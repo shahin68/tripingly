@@ -11,6 +11,10 @@ import com.falcon.tripingly.core.model.photo.PhotoStatus
 import com.falcon.tripingly.core.model.photo.PickedImage
 import com.falcon.tripingly.core.ui.UiText
 import com.falcon.tripingly.core.ui.toUiText
+import com.falcon.tripingly.feature.map.generated.resources.Res
+import com.falcon.tripingly.feature.map.generated.resources.map_error_cover
+import com.falcon.tripingly.feature.map.generated.resources.map_error_delete_photo
+import com.falcon.tripingly.feature.map.generated.resources.map_error_load_photos
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.toImmutableList
@@ -88,7 +92,7 @@ class StopPhotosViewModel(
     private fun load() {
         viewModelScope.launch {
             val result = photoRepository.loadPhotos(markerId)
-            ui.update { it.copy(isLoading = false, message = (result as? AppResult.Error)?.error?.toUiText()) }
+            ui.update { it.copy(isLoading = false, message = (result as? AppResult.Error)?.error?.toUiText(Res.string.map_error_load_photos)) }
         }
     }
 
@@ -97,7 +101,7 @@ class StopPhotosViewModel(
         ui.update { it.copy(isSaving = true) }
         viewModelScope.launch {
             val result = photoRepository.setCover(markerId, photoId)
-            ui.update { it.copy(isSaving = false, message = (result as? AppResult.Error)?.error?.toUiText()) }
+            ui.update { it.copy(isSaving = false, message = (result as? AppResult.Error)?.error?.toUiText(Res.string.map_error_cover)) }
         }
     }
 
@@ -115,7 +119,7 @@ class StopPhotosViewModel(
             ui.update { state ->
                 state.copy(
                     isSaving = false,
-                    message = (result as? AppResult.Error)?.error?.toUiText(),
+                    message = (result as? AppResult.Error)?.error?.toUiText(Res.string.map_error_delete_photo),
                     openPhotoId = if (result is AppResult.Success && state.openPhotoId == photo.id) next else state.openPhotoId,
                 )
             }

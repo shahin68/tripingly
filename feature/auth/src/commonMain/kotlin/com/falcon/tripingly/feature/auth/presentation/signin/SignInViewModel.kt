@@ -12,6 +12,7 @@ import com.falcon.tripingly.feature.auth.generated.resources.signin_error_accoun
 import com.falcon.tripingly.feature.auth.generated.resources.signin_error_developer_refused
 import com.falcon.tripingly.feature.auth.generated.resources.signin_error_failed
 import com.falcon.tripingly.feature.auth.generated.resources.signin_error_not_configured
+import com.falcon.tripingly.feature.auth.generated.resources.signin_error_sign_in
 import com.falcon.tripingly.feature.auth.presentation.common.UiMessage
 import com.falcon.tripingly.feature.auth.presentation.common.toUiMessage
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -97,7 +98,7 @@ internal class SignInViewModel(
                     UiMessage.Resource(Res.string.signin_error_account_suspended)
                 // The provider token was rejected (expired, wrong audience).
                 error is DataError.Network.Unauthorized -> UiMessage.Resource(Res.string.signin_error_failed)
-                else -> error.toUiMessage()
+                else -> error.toUiMessage(Res.string.signin_error_sign_in)
             }
         }
     }

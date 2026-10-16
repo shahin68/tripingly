@@ -114,4 +114,22 @@
         <item quantity="one">%1$d comment</item>
         <item quantity="other">%1$d comments</item>
     </plurals>
+
+    <!-- Errors: what failed -->
+    <string name="map_error_load_trip">Couldn’t load the trip.</string>
+    <string name="map_error_like">Couldn’t save your like.</string>
+    <string name="map_error_save_trip">Couldn’t save the trip.</string>
+    <string name="map_error_unsave_trip">Couldn’t remove the trip from your trips.</string>
+    <string name="map_error_join">Couldn’t send your request to join.</string>
+    <string name="map_error_cancel_join">Couldn’t withdraw your request to join.</string>
+    <string name="map_error_report">Couldn’t send your report.</string>
+    <string name="map_error_stop_change">Couldn’t save your change to the stops.</string>
+    <string name="map_error_add_day">Couldn’t add the day.</string>
+    <string name="map_error_delete_day">Couldn’t delete the day.</string>
+    <string name="map_error_load_comments">Couldn’t load the comments.</string>
+    <string name="map_error_send_comment">Couldn’t post your comment.</string>
+    <string name="map_error_delete_comment">Couldn’t delete the comment.</string>
+    <string name="map_error_load_photos">Couldn’t load the photos.</string>
+    <string name="map_error_cover">Couldn’t set the cover photo.</string>
+    <string name="map_error_delete_photo">Couldn’t delete the photo.</string>
 </resources>

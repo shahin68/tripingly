@@ -9,6 +9,8 @@ import com.falcon.tripingly.core.model.social.PeopleList
 import com.falcon.tripingly.core.model.trip.UserSummary
 import com.falcon.tripingly.core.ui.UiText
 import com.falcon.tripingly.core.ui.toUiText
+import com.falcon.tripingly.feature.social.generated.resources.Res
+import com.falcon.tripingly.feature.social.generated.resources.social_error_load_people
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.toImmutableList
@@ -57,7 +59,7 @@ class PeopleViewModel(
                         state.copy(people = people.toImmutableList(), isLoading = false, hasLoaded = true)
                     }
                 }
-                is AppResult.Error -> _uiState.update { it.copy(isLoading = false, message = result.error.toUiText()) }
+                is AppResult.Error -> _uiState.update { it.copy(isLoading = false, message = result.error.toUiText(Res.string.social_error_load_people)) }
             }
         }
     }

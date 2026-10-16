@@ -42,7 +42,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.falcon.tripingly.core.designsystem.component.ErrorBanner
+import com.falcon.tripingly.core.designsystem.component.ShowMessage
 import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
 import com.falcon.tripingly.core.designsystem.theme.spacing
 import com.falcon.tripingly.core.model.account.LegalDocument
@@ -130,9 +130,7 @@ internal fun OnboardingScreen(
                 .padding(MaterialTheme.spacing.large),
             verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium),
         ) {
-            state.error?.let { error ->
-                ErrorBanner(errorMessage = error.asString(), onDismiss = { onAction(Action.OnDismissError) })
-            }
+            ShowMessage(message = state.error?.asString(), onShown = { onAction(Action.OnDismissError) })
             when (state.step) {
                 Step.PROFILE -> ProfileStep(state, onAction)
                 Step.CONSENT -> ConsentStep(state, onAction)
