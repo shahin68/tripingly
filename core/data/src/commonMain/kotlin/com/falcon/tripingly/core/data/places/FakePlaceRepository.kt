@@ -57,7 +57,7 @@ class FakePlaceRepository : PlaceRepository {
 
     override suspend fun place(id: String): AppResult<PlaceDetails, DataError.Network> {
         val place = sights.firstOrNull { it.id == id } ?: return AppResult.Error(DataError.Network.Api(404, "NOT_FOUND", "This place isn't available."))
-        return AppResult.Success(PlaceDetails(place.id, place.name, place.category, place.likeCount, "Mo-Su 09:00-18:00", null))
+        return AppResult.Success(PlaceDetails(place.id, place.name, place.category, place.likeCount, "Mo-Su 09:00-18:00", null, images = emptyList()))
     }
 
     /** The sights by distance, as the crow flies. */
@@ -73,7 +73,8 @@ class FakePlaceRepository : PlaceRepository {
                         isTripinly = place.isTripinly,
                         likeCount = place.likeCount,
                         likedByMe = false,
-                        coverPhotoId = null,
+                        coverImageId = null,
+                        coverSource = null,
                         coverThumbUrl = null,
                         distanceMeters = distanceMeters(point, place.location),
                     )

@@ -3,6 +3,9 @@
     <string name="common_dismiss">Schließen</string>
     <string name="common_search_placeholder">Suchen …</string>
     <string name="osm_attribution">© OpenStreetMap-Mitwirkende</string>
+    <string name="image_credit_commons">Wikimedia Commons</string>
+    <string name="image_credit_public_domain">Gemeinfrei</string>
+    <string name="image_credit_cropped">zugeschnitten</string>
     <string name="chip_remove">%1$s entfernen</string>
     <string name="common_cancel">Abbrechen</string>
     <string name="like">Gefällt mir</string>
@@ -14,6 +17,7 @@
     <string name="report_reason_nudity">Nacktheit oder sexuelle Inhalte</string>
     <string name="report_reason_violence">Gewalt</string>
     <string name="report_reason_hate">Hassrede</string>
+    <string name="report_reason_copyright">Urheberrecht oder Eigentum</string>
     <string name="report_reason_other">Etwas anderes</string>
     <string name="report_details">Details (optional)</string>
     <string name="report_send">Melden</string>

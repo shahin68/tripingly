@@ -3,6 +3,9 @@
     <string name="common_dismiss">Bezárás</string>
     <string name="common_search_placeholder">Keresés…</string>
     <string name="osm_attribution">© OpenStreetMap közreműködők</string>
+    <string name="image_credit_commons">Wikimedia Commons</string>
+    <string name="image_credit_public_domain">Közkincs</string>
+    <string name="image_credit_cropped">levágva</string>
     <string name="chip_remove">%1$s eltávolítása</string>
     <string name="common_cancel">Mégse</string>
     <string name="like">Tetszik</string>
@@ -14,6 +17,7 @@
     <string name="report_reason_nudity">Meztelenség vagy szexuális tartalom</string>
     <string name="report_reason_violence">Erőszak</string>
     <string name="report_reason_hate">Gyűlöletbeszéd</string>
+    <string name="report_reason_copyright">Szerzői jog vagy tulajdon</string>
     <string name="report_reason_other">Valami más</string>
     <string name="report_details">Részletek (nem kötelező)</string>
     <string name="report_send">Jelentés</string>

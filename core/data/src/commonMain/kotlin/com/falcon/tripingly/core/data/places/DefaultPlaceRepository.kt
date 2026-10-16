@@ -10,7 +10,10 @@ import com.falcon.tripingly.core.model.place.OsmRef
 import com.falcon.tripingly.core.model.place.OsmType
 import com.falcon.tripingly.core.model.place.PlaceCategory
 import com.falcon.tripingly.core.model.place.PlaceCluster
+import com.falcon.tripingly.core.model.place.ImageCredit
 import com.falcon.tripingly.core.model.place.PlaceDetails
+import com.falcon.tripingly.core.model.place.PlaceImage
+import com.falcon.tripingly.core.model.place.PlaceImageSource
 import com.falcon.tripingly.core.model.place.PlaceSearchResult
 import com.falcon.tripingly.core.model.place.PlaceSquare
 import com.falcon.tripingly.core.model.place.PlacesInView
@@ -18,7 +21,9 @@ import com.falcon.tripingly.core.model.place.SearchResultType
 import com.falcon.tripingly.core.model.social.NearbyPlace
 import com.falcon.tripingly.core.model.trip.GeoPoint
 import com.falcon.tripingly.core.network.model.PlaceClusterDto
+import com.falcon.tripingly.core.network.model.NearbyPlaceDto
 import com.falcon.tripingly.core.network.model.PlaceDetailDto
+import com.falcon.tripingly.core.network.model.PlaceImageDto
 import com.falcon.tripingly.core.network.model.PlaceItemDto
 import com.falcon.tripingly.core.network.model.SearchResultDto
 import com.falcon.tripingly.core.network.places.PlacesApi
@@ -212,7 +217,12 @@ internal class DefaultPlaceRepository(
                         isTripinly = item.isTripinly,
                         likeCount = item.likeCount.toInt(),
                         likedByMe = item.likedByMe,
-                        coverPhotoId = item.coverPhotoId,
+                        coverImageId = item.coverImageId,
+                        coverSource = when (item.coverSource) {
+                            NearbyPlaceDto.CoverSource.TRIP -> PlaceImageSource.Trip
+                            NearbyPlaceDto.CoverSource.COMMONS -> PlaceImageSource.Commons
+                            null -> null
+                        },
                         coverThumbUrl = item.coverThumbUrl,
                         distanceMeters = item.distanceMeters.toInt(),
                     )
@@ -228,6 +238,20 @@ internal class DefaultPlaceRepository(
         likeCount = likeCount.toInt(),
         openingHours = tags.openingHours,
         website = tags.website,
+        images = images.map { image ->
+            PlaceImage(
+                id = image.id,
+                source = when (image.source) {
+                    PlaceImageDto.Source.TRIP -> PlaceImageSource.Trip
+                    PlaceImageDto.Source.COMMONS -> PlaceImageSource.Commons
+                },
+                thumbUrl = image.thumbUrl,
+                displayUrl = image.displayUrl,
+                width = image.width?.toInt(),
+                height = image.height?.toInt(),
+                credit = image.credit?.let { ImageCredit(it.author, it.title, it.license, it.licenseUrl, it.sourceUrl) },
+            )
+        },
     )
 
     private fun PlaceItemDto.Category.toCategory() = when (this) {

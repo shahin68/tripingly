@@ -35,6 +35,9 @@
     <string name="map_place_add_to_day">Hozzáadás a(z) %1$d. naphoz</string>
     <string name="map_place_opening_hours">Nyitvatartás</string>
     <string name="map_place_website">Weboldal</string>
+    <string name="map_place_image_position">%1$d / %2$d</string>
+    <string name="map_place_image_report">Kép jelentése</string>
+    <string name="map_place_images">A hely képei</string>
     <string name="map_place_likes">Kedvelések a Tripinlyn</string>
     <string name="map_place_category_cafe">Kávézó</string>
     <string name="map_place_category_restaurant">Étterem</string>

@@ -6,11 +6,13 @@ import com.falcon.tripingly.core.common.error.DataError
 import com.falcon.tripingly.core.common.result.AppResult
 import com.falcon.tripingly.core.common.result.asError
 import com.falcon.tripingly.core.common.result.asSuccess
+import com.falcon.tripingly.core.common.result.map
 import com.falcon.tripingly.core.data.config.FakeAppConfigRepository
 import com.falcon.tripingly.core.data.photos.FakePhotoRepository
 import com.falcon.tripingly.core.data.places.FakePlaceRepository
 import com.falcon.tripingly.core.data.places.PlaceRepository
 import com.falcon.tripingly.core.data.social.FakeSocialRepository
+import com.falcon.tripingly.core.data.social.SocialRepository
 import com.falcon.tripingly.core.data.trips.FakeTripBackend
 import com.falcon.tripingly.core.location.GetCurrentLocationUseCase
 import com.falcon.tripingly.core.location.LocationRepository
@@ -18,15 +20,21 @@ import com.falcon.tripingly.core.location.model.Coordinates
 import com.falcon.tripingly.core.location.permission.LocationPermission
 import com.falcon.tripingly.core.model.photo.PickedImage
 import com.falcon.tripingly.core.model.place.GeoBounds
+import com.falcon.tripingly.core.model.place.ImageCredit
 import com.falcon.tripingly.core.model.place.MapPlace
 import com.falcon.tripingly.core.model.place.OsmRef
 import com.falcon.tripingly.core.model.place.OsmType
 import com.falcon.tripingly.core.model.place.PlaceCategory
 import com.falcon.tripingly.core.model.place.PlaceCluster
+import com.falcon.tripingly.core.model.place.PlaceDetails
+import com.falcon.tripingly.core.model.place.PlaceImage
+import com.falcon.tripingly.core.model.place.PlaceImageSource
 import com.falcon.tripingly.core.model.place.PlaceSearchResult
 import com.falcon.tripingly.core.model.place.PlaceSquare
 import com.falcon.tripingly.core.model.place.PlacesInView
 import com.falcon.tripingly.core.model.place.SearchResultType
+import com.falcon.tripingly.core.model.social.ReportReason
+import com.falcon.tripingly.core.model.social.ReportTarget
 import com.falcon.tripingly.core.model.trip.Destination
 import com.falcon.tripingly.core.model.trip.GeoPoint
 import com.falcon.tripingly.core.model.trip.NewMarker
@@ -80,6 +88,7 @@ class MapViewModelTest {
     private lateinit var trip: TripDetails
     private lateinit var places: CountingPlaceRepository
     private lateinit var photos: FakePhotoRepository
+    private lateinit var social: RecordingSocialRepository
 
     /** The fake's sights (Eiffel Tower, Louvre …), counting the squares asked for. */
     private class CountingPlaceRepository(
@@ -88,6 +97,14 @@ class MapViewModelTest {
         val requests = mutableListOf<List<PlaceSquare>>()
         /** A cluster drawn besides the sights. */
         var cluster: PlaceCluster? = null
+        /** Images of the sights, by place ID. */
+        val images = mutableMapOf<String, List<PlaceImage>>()
+        val detailRequests = mutableListOf<String>()
+
+        override suspend fun place(id: String): AppResult<PlaceDetails, DataError.Network> {
+            detailRequests += id
+            return fake.place(id).map { it.copy(images = images[id].orEmpty()) }
+        }
 
         override suspend fun placesIn(squares: Collection<PlaceSquare>): AppResult<Map<PlaceSquare, PlacesInView>, DataError.Network> {
             requests += squares.toList()
@@ -99,6 +116,18 @@ class MapViewModelTest {
                 val cluster = cluster?.takeIf { it.location in square.bounds } ?: return@mapValues places
                 places.copy(clusters = listOf(cluster))
             }
+    }
+
+    /** Keeps what was reported. */
+    private class RecordingSocialRepository(
+        private val fake: FakeSocialRepository = FakeSocialRepository(),
+    ) : SocialRepository by fake {
+        val reports = mutableListOf<Pair<ReportTarget, String>>()
+
+        override suspend fun report(target: ReportTarget, targetId: String, reason: ReportReason, details: String?): AppResult<Unit, DataError.Network> {
+            reports += target to targetId
+            return fake.report(target, targetId, reason, details)
+        }
     }
 
     private class TestCoroutineDispatchers(private val dispatcher: CoroutineDispatcher) : CoroutineDispatchers {
@@ -125,6 +154,7 @@ class MapViewModelTest {
         backend = FakeTripBackend()
         places = CountingPlaceRepository()
         photos = FakePhotoRepository()
+        social = RecordingSocialRepository()
         trip = (backend.createTrip(NewTrip("Test Trip", LocalDate(2024, 1, 1), LocalDate(2024, 1, 3))) as AppResult.Success).data
     }
 
@@ -139,7 +169,7 @@ class MapViewModelTest {
         markerRepository = backend,
         placeRepository = places,
         photoRepository = photos,
-        socialRepository = FakeSocialRepository(),
+        socialRepository = social,
         appConfigRepository = FakeAppConfigRepository(),
         getCurrentLocationUseCase = GetCurrentLocationUseCase(fakeLocationRepository),
         dispatchers = TestCoroutineDispatchers(testDispatcher),
@@ -693,6 +723,51 @@ class MapViewModelTest {
     }
 
     @Test
+    fun `a place's images open full screen, and a Commons image is reported as the place's image`() = runTest(testDispatcher) {
+        places.images["fake-louvre"] = listOf(TRIP_PHOTO, COMMONS_IMAGE)
+        val viewModel = viewModel()
+        testScheduler.advanceUntilIdle()
+        viewModel.onAction(Action.OnCameraMove(Coordinates(48.86, 2.32), 15f, PARIS_CENTER))
+        testScheduler.advanceUntilIdle()
+        viewModel.onAction(Action.OnPlacePinClick(viewModel.pin("Louvre")))
+        testScheduler.advanceUntilIdle()
+        assertEquals(listOf(TRIP_PHOTO, COMMONS_IMAGE), viewModel.uiState.value.selectedPlaceDetails?.images)
+
+        viewModel.onAction(Action.OnOpenPlaceImage(1))
+        testScheduler.advanceUntilIdle()
+        assertEquals(1, viewModel.uiState.value.placeImageIndex)
+        viewModel.onAction(Action.OnReportPlaceImage(COMMONS_IMAGE))
+        viewModel.onAction(Action.OnSendReport(ReportReason.Copyright, ""))
+        testScheduler.advanceUntilIdle()
+        viewModel.onAction(Action.OnReportPlaceImage(TRIP_PHOTO))
+        viewModel.onAction(Action.OnSendReport(ReportReason.Spam, ""))
+        testScheduler.advanceUntilIdle()
+        assertEquals(listOf(ReportTarget.PlaceImage to "pi1", ReportTarget.Photo to "ph1"), social.reports)
+
+        // Closing the place closes its images too.
+        viewModel.onAction(Action.OnScreenTouch)
+        testScheduler.advanceUntilIdle()
+        assertNull(viewModel.uiState.value.placeImageIndex)
+    }
+
+    @Test
+    fun `a stop without a cover shows its place's first image, asked for once`() = runTest(testDispatcher) {
+        places.images["fake-louvre"] = listOf(COMMONS_IMAGE)
+        backend.addMarker(trip.trip.id, trip.days[0].id, NewMarker("Louvre", LOUVRE, placeId = "fake-louvre"))
+        val viewModel = viewModel()
+        testScheduler.advanceUntilIdle()
+
+        val stop = viewModel.uiState.value.markers.single()
+        viewModel.onAction(Action.OnMarkerClick(stop))
+        testScheduler.advanceUntilIdle()
+        assertEquals(COMMONS_IMAGE, viewModel.uiState.value.selectedStopPlaceImage)
+
+        viewModel.onAction(Action.OnMarkerClick(stop))
+        testScheduler.advanceUntilIdle()
+        assertEquals(listOf("fake-louvre"), places.detailRequests)
+    }
+
+    @Test
     fun `a tap on a pin opens its place, and adding it makes a stop named after it`() = runTest(testDispatcher) {
         val viewModel = viewModel()
         testScheduler.advanceUntilIdle()
@@ -903,5 +978,15 @@ class MapViewModelTest {
         val PARIS_CENTER = GeoBounds(48.84, 2.28, 48.87, 2.35)
         /** Where the fake's Louvre is. */
         val LOUVRE = GeoPoint(48.8606, 2.3376)
+        val TRIP_PHOTO = PlaceImage("ph1", PlaceImageSource.Trip, "https://r2/ph1/thumb", "https://r2/ph1/display", 1600, 1200, credit = null)
+        val COMMONS_IMAGE = PlaceImage(
+            id = "pi1",
+            source = PlaceImageSource.Commons,
+            thumbUrl = "https://r2/pi1/thumb",
+            displayUrl = "https://r2/pi1/display",
+            width = 1280,
+            height = 960,
+            credit = ImageCredit("Jane Doe", null, "CC BY-SA 4.0", "https://creativecommons.org/licenses/by-sa/4.0", "https://commons.wikimedia.org/wiki/File:Louvre.jpg"),
+        )
     }
 }

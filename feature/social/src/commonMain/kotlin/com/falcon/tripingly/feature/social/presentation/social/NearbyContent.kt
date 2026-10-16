@@ -36,6 +36,7 @@ import com.falcon.tripingly.core.designsystem.component.OsmAttribution
 import com.falcon.tripingly.core.designsystem.component.PhotoImage
 import com.falcon.tripingly.core.designsystem.component.PhotoSize
 import com.falcon.tripingly.core.designsystem.theme.spacing
+import com.falcon.tripingly.core.model.place.PlaceImageSource
 import com.falcon.tripingly.core.model.social.NearbyPlace
 import com.falcon.tripingly.feature.social.generated.resources.Res
 import com.falcon.tripingly.feature.social.generated.resources.social_add_place
@@ -115,9 +116,11 @@ private fun NearbyPlaceRow(place: NearbyPlace, onLike: () -> Unit, onAdd: () -> 
             .padding(horizontal = MaterialTheme.spacing.medium, vertical = MaterialTheme.spacing.small),
         verticalAlignment = Alignment.CenterVertically,
     ) {
+        // Only a trip photo: a Commons cover needs its credit, which this list doesn't have.
+        val tripCover = place.coverImageId?.takeIf { place.coverSource == PlaceImageSource.Trip }
         PhotoImage(
-            photoId = place.coverPhotoId ?: place.id,
-            url = place.coverThumbUrl,
+            photoId = tripCover ?: place.id,
+            url = place.coverThumbUrl?.takeIf { tripCover != null },
             size = PhotoSize.Thumb,
             contentDescription = null,
             modifier = Modifier.size(56.dp).clip(RoundedCornerShape(8.dp)),

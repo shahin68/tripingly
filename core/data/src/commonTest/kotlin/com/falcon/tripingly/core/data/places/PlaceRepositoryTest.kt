@@ -4,6 +4,10 @@ import com.falcon.tripingly.core.common.result.AppResult
 import com.falcon.tripingly.core.data.config.AppConfigRepository
 import com.falcon.tripingly.core.model.config.AppConfig
 import com.falcon.tripingly.core.model.place.GeoBounds
+import com.falcon.tripingly.core.model.place.ImageCredit
+import com.falcon.tripingly.core.model.place.PlaceDetails
+import com.falcon.tripingly.core.model.place.PlaceImage
+import com.falcon.tripingly.core.model.place.PlaceImageSource
 import com.falcon.tripingly.core.model.place.PlaceCategory
 import com.falcon.tripingly.core.model.place.PlaceSquare
 import com.falcon.tripingly.core.model.place.PlacesInView
@@ -56,6 +60,8 @@ class PlaceRepositoryTest {
                 requestsLock.withLock { requests += request }
                 val body = if (request.url.encodedPath.endsWith("places/search")) {
                     """{"items":[],"attribution":"© OpenStreetMap contributors"}"""
+                } else if (request.url.encodedPath.endsWith("places/p1")) {
+                    PLACE_DETAIL
                 } else {
                     tilesAnswer(request.url.parameters["tiles"].orEmpty(), placeName)
                 }
@@ -188,6 +194,33 @@ class PlaceRepositoryTest {
     }
 
     @Test
+    fun `a place's images keep their order and Commons images keep their credit`() = runTest {
+        val details = assertIs<AppResult.Success<PlaceDetails>>(repository().place("p1")).data
+
+        assertEquals(
+            listOf(
+                PlaceImage("ph1", PlaceImageSource.Trip, "https://r2/ph1/thumb", "https://r2/ph1/display", 1600, 1200, credit = null),
+                PlaceImage(
+                    id = "pi1",
+                    source = PlaceImageSource.Commons,
+                    thumbUrl = "https://r2/pi1/thumb",
+                    displayUrl = "https://r2/pi1/display",
+                    width = 1280,
+                    height = 960,
+                    credit = ImageCredit(
+                        author = "Jane Doe",
+                        title = null,
+                        license = "CC BY-SA 4.0",
+                        licenseUrl = "https://creativecommons.org/licenses/by-sa/4.0",
+                        sourceUrl = "https://commons.wikimedia.org/wiki/File:Stephansdom_Wien.jpg",
+                    ),
+                ),
+            ),
+            details.images,
+        )
+    }
+
+    @Test
     fun `squares cover the view on the server's grid`() {
         // Zoom 15 loads squares of level 13, 360 / 2^13 ≈ 0.044° a side.
         val squares = PlaceSquare.covering(GeoBounds(48.20, 16.35, 48.22, 16.39), 15)
@@ -200,6 +233,28 @@ class PlaceRepositoryTest {
     }
 
     private companion object {
+        val PLACE_DETAIL = """
+            {
+              "id": "p1", "name": "Stephansdom", "category": "attraction",
+              "location": {"lat": 48.2085, "lng": 16.3731},
+              "isTripinly": true, "likeCount": 3, "prominence": 90,
+              "coverPhotoId": "ph1", "coverImageId": "ph1", "coverSource": "trip", "coverThumbUrl": "https://r2/ph1/thumb",
+              "likedByMe": false, "source": "osm", "isActive": true, "osmType": "way", "osmId": "1",
+              "tags": {"openingHours": null, "website": null, "cuisine": null, "wikidata": null},
+              "photoThumbUrls": ["https://r2/ph1/thumb"],
+              "images": [
+                {"id": "ph1", "source": "trip", "thumbUrl": "https://r2/ph1/thumb", "displayUrl": "https://r2/ph1/display",
+                 "width": 1600, "height": 1200, "credit": null},
+                {"id": "pi1", "source": "commons", "thumbUrl": "https://r2/pi1/thumb", "displayUrl": "https://r2/pi1/display",
+                 "width": 1280, "height": 960,
+                 "credit": {"author": "Jane Doe", "title": null, "license": "CC BY-SA 4.0",
+                            "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+                            "sourceUrl": "https://commons.wikimedia.org/wiki/File:Stephansdom_Wien.jpg"}}
+              ],
+              "attribution": "© OpenStreetMap contributors"
+            }
+        """.trimIndent()
+
         fun tilesAnswer(tiles: String, placeName: String) = tiles.split(",").joinToString(
             prefix = "{\"tiles\": [",
             postfix = "], \"attribution\": \"© OpenStreetMap contributors\"}",
