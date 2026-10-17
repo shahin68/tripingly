@@ -57,7 +57,8 @@ data class Comment(
     val createdAt: Instant,
 )
 
-enum class LikeTarget { Trip, Marker, Photo, Comment, Place }
+/** A stop has no likes of its own: its heart likes its [Place]. */
+enum class LikeTarget { Trip, Photo, Comment, Place }
 
 /** A like as the server counted it. */
 data class LikeState(val liked: Boolean, val likeCount: Int)

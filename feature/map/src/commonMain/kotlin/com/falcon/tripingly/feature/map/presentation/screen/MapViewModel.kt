@@ -356,11 +356,12 @@ class MapViewModel(
         ui.update { it.copy(photosMarkerId = markerId) }
     }
 
-    /** Shows at once; see [SocialRepository.setLiked]. */
+    /** A stop's heart likes its place; shows at once, see [SocialRepository.setLiked]. */
     private fun toggleStopLike(markerId: String) {
         val stop = currentDays().firstNotNullOfOrNull { day -> day.markers.firstOrNull { it.id == markerId } } ?: return
+        if (!stop.canLike) return
         viewModelScope.launch {
-            val result = socialRepository.setLiked(LikeTarget.Marker, markerId, liked = !stop.likedByMe)
+            val result = socialRepository.setLiked(LikeTarget.Place, stop.placeId, liked = !stop.likedByMe)
             if (result is AppResult.Error) ui.update { it.copy(message = result.error.toUiText(Res.string.map_error_like)) }
         }
     }
@@ -883,6 +884,7 @@ class MapViewModel(
         photoCount = photoCount,
         likeCount = likeCount,
         likedByMe = likedByMe,
+        canLike = canLike,
         commentCount = commentCount,
         placeId = placeId,
         canDelete = role == TripRole.OWNER || (role?.canEdit == true && myUserId != null && createdById == myUserId),

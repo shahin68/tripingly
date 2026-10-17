@@ -108,7 +108,7 @@ REST over HTTPS, JSON, base path `/v1`.
 | GET | `/markers/{id}` | Marker with photos, like state, comment count |
 | PATCH | `/markers/{id}` | Name, time, location, move to another day of the same trip |
 | DELETE | `/markers/{id}` | The stop's creator (`createdBy`) or the trip owner, else `403`. A stop with other people's photos, comments or likes answers `409 STOP_HAS_OTHERS_CONTENT` (`details`: counts); the app shows the server's message and sends `?confirm=true` once the user agrees (backend#42) |
-| DELETE | `/markers/{id}/mine` | Anyone who can see the trip: deletes my photos and comments on the stop and my likes on it and its photos and comments → 204. Editors use it on stops they can't delete (backend#42) |
+| DELETE | `/markers/{id}/mine` | Anyone who can see the trip: deletes my photos and comments on the stop and my likes on its photos and comments → 204 (a like on its place stays: it belongs to the place). Editors use it on stops they can't delete (backend#42) |
 | POST | `/markers/{id}/copy` | Body: target `dayId` in one of my trips |
 
 ### Photos
@@ -129,7 +129,7 @@ REST over HTTPS, JSON, base path `/v1`.
 | GET | `/markers/{id}/comments` | Paginated, oldest first; the stop's comments sheet loads pages of 50 |
 | POST | `/markers/{id}/comments` | `{ body }` (≤ 1000), with an `Idempotency-Key`; the sheet adds the answer and the cached stop counts it |
 | DELETE | `/comments/{id}` | Author or trip owner |
-| PUT | `/likes/{targetType}/{targetId}` | `trip`, `marker`, `photo`, `comment`, `place`; answers `{ liked, likeCount }`. The app shows a like at once and puts it back on a refusal (a stop's in the Room cache, the others in the screen's state) |
+| PUT | `/likes/{targetType}/{targetId}` | `trip`, `photo`, `comment`, `place` (`marker` answers `400`: a stop's heart likes its place, one like per person per place, backend#44); answers `{ liked, likeCount }`. The app shows a like at once and puts it back on a refusal (a place's on every cached stop at that place in Room, the others in the screen's state). A custom spot only in private trips can't be liked (`404`) |
 | DELETE | `/likes/{targetType}/{targetId}` | |
 
 ### Discovery
@@ -184,7 +184,7 @@ Response shapes and behaviour: see `05-maps-places-routing.md`.
 Field names the client relies on (full schemas in OpenAPI):
 
 - **Trip** (`GET /trips/{id}`): `id`, `title`, `startDate`, `endDate`, `destination` (`{ name, location }` or null), `visibility`, `owner` (user summary), `myRole` (`owner`\|`editor`\|`viewer`), `members[]`, `likeCount`, `likedByMe`, `saveCount`, `savedByMe`, `myJoinRequest` (`pending`\|`declined`\|null), `pendingJoinRequestCount` (owner only, else 0), `days[]` → `{ id, position, date, markers[] }`.
-- **Marker**: `id`, `dayId`, `placeId`, `name`, `location`, `time` (`HH:mm` or null), `position`, `coverPhotoId`, `coverThumbUrl`, `photoCount`, `likeCount`, `likedByMe`, `commentCount`, `createdBy` (user summary or null).
+- **Marker**: `id`, `dayId`, `placeId`, `name`, `location`, `time` (`HH:mm` or null), `position`, `coverPhotoId`, `coverThumbUrl`, `photoCount`, `likeCount`, `likedByMe` (the stop's place: the same on every stop at it), `canLike` (false for a custom spot only in private trips: no heart), `commentCount`, `createdBy` (user summary or null).
 - **Photo**: `id`, `markerId`, `status` (`processing`\|`ready`\|`failed`), `thumbUrl`, `displayUrl` (signed, expire after ~1 h), `width`, `height`, `position`, `likeCount`, `likedByMe`, `uploader`.
 - **User summary**: `id`, `username`, `displayName`.
 - **Place** (in-view/search/along-the-way): see `05-maps-places-routing.md`. Every Place shape (tiles, nearby, detail) has `coverImageId`, `coverSource` (`trip`\|`commons`\|null) and `coverThumbUrl`; `coverPhotoId` is set only for a trip photo. Cache a cover by `coverImageId`.

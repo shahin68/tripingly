@@ -117,7 +117,7 @@ fun StopCard(
             }
             fallback?.credit?.let { credit -> CommonsCredit(credit = credit, cropped = true, maxLines = 2) }
             Row(verticalAlignment = Alignment.CenterVertically) {
-                LikeButton(liked = marker.likedByMe, count = marker.likeCount, onToggle = onToggleLike)
+                if (marker.canLike) LikeButton(liked = marker.likedByMe, count = marker.likeCount, onToggle = onToggleLike)
                 TextButton(onClick = onOpenComments) {
                     Icon(Icons.AutoMirrored.Outlined.Comment, contentDescription = null, modifier = Modifier.size(18.dp))
                     Text(

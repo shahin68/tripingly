@@ -24,7 +24,7 @@ internal object TripJson {
     fun marker(id: String, tripId: String, dayId: String, position: Int, name: String = "Stop #${position + 1}") = """
         {"id":"$id","tripId":"$tripId","dayId":"$dayId","placeId":"99999999-9999-4999-8999-99999999999$position",
          "name":"$name","location":{"lat":48.8584,"lng":2.2945},"time":null,"position":$position,
-         "coverPhotoId":null,"coverThumbUrl":null,"photoCount":0,"likeCount":0,"likedByMe":false,
+         "coverPhotoId":null,"coverThumbUrl":null,"photoCount":0,"likeCount":0,"likedByMe":false,"canLike":true,
          "commentCount":0,"createdBy":$OWNER,"createdAt":"2026-10-04T10:00:00.000Z","updatedAt":"2026-10-04T10:00:00.000Z"}
     """.trimIndent()
 
