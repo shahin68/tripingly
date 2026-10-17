@@ -182,6 +182,8 @@ internal class DefaultPlaceRepository(
         isTripinly = isTripinly,
         likeCount = likeCount.toInt(),
         prominence = prominence.toInt(),
+        coverImageId = coverImageId,
+        coverThumbUrl = coverThumbUrl,
     )
 
     private fun SearchResultDto.OsmType.toOsmType() = when (this) {

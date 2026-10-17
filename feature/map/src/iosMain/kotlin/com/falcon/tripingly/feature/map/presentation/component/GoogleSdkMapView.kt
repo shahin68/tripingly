@@ -134,24 +134,34 @@ internal fun GoogleSdkMapView(
     val density = LocalDensity.current
     val layoutDirection = LocalLayoutDirection.current
     val textMeasurer = rememberTextMeasurer()
+    val pinPhotos = rememberPinPhotos(placePins)
     val pinIcons = remember(placeColor, hotSpotColor, density) { mutableMapOf<PlacePinLook, UIImage>() }
     fun pinIcon(look: PlacePinLook) = pinIcons.getOrPut(look) {
-        drawPlacePin(
-            icon = categoryIcons.getValue(look.category),
-            size = look.size,
-            fill = if (look.isTripinly) hotSpotColor else placeColor,
-            iconColor = if (look.isTripinly) onHotSpotColor else onPlaceColor,
-            density = density,
-            layoutDirection = layoutDirection,
-        ).toUIImage(density.density)
+        val fill = if (look.isTripinly) hotSpotColor else placeColor
+        val photo = look.photoId?.let { pinPhotos[it] }
+        val bitmap = if (photo != null) {
+            drawPlacePhotoPin(photo, look.size, fill, density, layoutDirection)
+        } else {
+            drawPlacePin(
+                icon = categoryIcons.getValue(look.category),
+                size = look.size,
+                fill = fill,
+                iconColor = if (look.isTripinly) onHotSpotColor else onPlaceColor,
+                density = density,
+                layoutDirection = layoutDirection,
+            )
+        }
+        bitmap.toUIImage(density.density)
     }
+    // A photo pin keeps its icon until its photo has loaded.
+    fun photoId(place: MapPlace, photo: Boolean) = place.coverImageId?.takeIf { photo && it in pinPhotos }
     val clusterIcons = remember(hotSpotColor, density) { mutableMapOf<Int, UIImage>() }
 
     // A stop's pin is drawn once per number and color.
     // By number, color and cover photo (once its thumbnail has loaded).
     val stopIcons = remember(density) { mutableMapOf<Triple<Int, Long, String?>, UIImage>() }
     val coverThumbs = rememberCoverThumbs(markers)
-    LaunchedEffect(markers, coverThumbs, selectedPlace, placePins, placeClusters, pinIcons, clusterIcons) {
+    LaunchedEffect(markers, coverThumbs, pinPhotos, selectedPlace, placePins, placeClusters, pinIcons, clusterIcons) {
         val stops = markers.map { marker ->
             GoogleMapMarker(
                 key = marker.id,
@@ -183,7 +193,7 @@ internal fun GoogleSdkMapView(
                 latitude = pin.place.location.lat,
                 longitude = pin.place.location.lng,
                 title = pin.place.name,
-                icon = pinIcon(PlacePinLook(pin.place.category, pin.place.isTripinly, pin.size)),
+                icon = pinIcon(PlacePinLook(pin.place.category, pin.place.isTripinly, pin.size, photoId(pin.place, pin.photo))),
                 anchorX = 0.5,
                 anchorY = 0.5,
                 zIndex = -1 - index,
@@ -215,7 +225,7 @@ internal fun GoogleSdkMapView(
                 latitude = it.location.lat,
                 longitude = it.location.lng,
                 title = it.name,
-                icon = pinIcon(PlacePinLook(it.category, it.isTripinly, SelectedPinSize)),
+                icon = pinIcon(PlacePinLook(it.category, it.isTripinly, SelectedPinSize, photoId(it, placePins.any { pin -> pin.photo && pin.place.id == it.id }))),
                 anchorX = 0.5,
                 anchorY = 0.5,
                 zIndex = 2,

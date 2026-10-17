@@ -32,7 +32,7 @@ class AppConfigRepositoryTest {
             engine = MockEngine {
                 requests++
                 respond(
-                    """{"placesRefreshSeconds": 60, "photoMaxEdgePx": 2048, "photoJpegQuality": 80, "photoParallelUploads": 3, "pinLargeMinProminence": 90, "pinMediumMinProminence": 50, "mapMaxPins": 200}""",
+                    """{"placesRefreshSeconds": 60, "photoMaxEdgePx": 2048, "photoJpegQuality": 80, "photoParallelUploads": 3, "pinLargeMinProminence": 90, "pinMediumMinProminence": 50, "mapMaxPins": 200, "photoPinMinProminence": 80, "photoPinMinLikes": 5, "mapMaxPhotoPins": 10}""",
                     status,
                     headersOf(HttpHeaders.ContentType, "application/json"),
                 )
@@ -61,6 +61,9 @@ class AppConfigRepositoryTest {
             pinLargeMinProminence = 90,
             pinMediumMinProminence = 50,
             mapMaxPins = 200,
+            photoPinMinProminence = 80,
+            photoPinMinLikes = 5,
+            mapMaxPhotoPins = 10,
         )
         assertEquals(expected, loaded)
     }
