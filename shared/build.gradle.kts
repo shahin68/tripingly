@@ -55,5 +55,12 @@ buildkonfig {
         // The iOS app's Google Maps key, like MAPS_API_KEY for Android (androidApp). Without it the
         // iOS app shows Apple's map.
         buildConfigField(STRING, "MAPS_API_KEY_IOS", localProperties.getProperty("MAPS_API_KEY_IOS") ?: "")
+        // Firebase (push) for the iOS app, from GoogleService-Info.plist, which stays out of the repo. The
+        // project and sender are the Android app's; the app ID and API key are the iOS app's own. Without
+        // them the iOS app runs without push.
+        buildConfigField(STRING, "FIREBASE_PROJECT_ID", localProperties.getProperty("firebase.projectId") ?: "")
+        buildConfigField(STRING, "FIREBASE_SENDER_ID", localProperties.getProperty("firebase.senderId") ?: "")
+        buildConfigField(STRING, "FIREBASE_IOS_APP_ID", localProperties.getProperty("firebase.ios.appId") ?: "")
+        buildConfigField(STRING, "FIREBASE_IOS_API_KEY", localProperties.getProperty("firebase.ios.apiKey") ?: "")
     }
 }
