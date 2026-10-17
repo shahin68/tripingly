@@ -12,11 +12,15 @@ import com.falcon.tripingly.core.data.users.UserRepository
 import com.falcon.tripingly.core.location.GetCurrentLocationUseCase
 import com.falcon.tripingly.core.location.LocationRepository
 import com.falcon.tripingly.core.location.model.Coordinates
+import com.falcon.tripingly.core.location.permission.LocationPermission
 import com.falcon.tripingly.core.model.Page
 import com.falcon.tripingly.core.model.account.TripVisibility
+import com.falcon.tripingly.core.model.social.ExploreFilter
+import com.falcon.tripingly.core.model.social.ExplorePeriod
 import com.falcon.tripingly.core.model.social.LikeState
 import com.falcon.tripingly.core.model.social.LikeTarget
 import com.falcon.tripingly.core.model.social.PublicTrip
+import com.falcon.tripingly.core.model.trip.GeoPoint
 import com.falcon.tripingly.core.model.trip.NewTrip
 import com.falcon.tripingly.core.model.trip.Trip
 import com.falcon.tripingly.core.model.trip.TripDetails
@@ -24,6 +28,8 @@ import com.falcon.tripingly.core.model.trip.TripRole
 import com.falcon.tripingly.core.model.trip.UserSummary
 import com.falcon.tripingly.feature.social.presentation.social.SocialViewModel
 import com.falcon.tripingly.feature.social.presentation.social.SocialViewModel.Action
+import com.falcon.tripingly.feature.social.presentation.social.SocialViewModel.Event
+import com.falcon.tripingly.feature.social.presentation.social.SocialViewModel.NearbyStatus
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
@@ -50,9 +56,14 @@ class SocialViewModelTest {
     private var explore = emptyList<PublicTrip>()
     private var likeRefused = false
 
+    /** The filter of every first page of Explore asked for. */
+    private val filters = mutableListOf<ExploreFilter>()
+
     private val social = object : SocialRepository by FakeSocialRepository() {
-        override suspend fun explore(cursor: String?): AppResult<Page<PublicTrip>, DataError.Network> =
-            Page(explore, nextCursor = null).asSuccess()
+        override suspend fun explore(filter: ExploreFilter, cursor: String?): AppResult<Page<PublicTrip>, DataError.Network> {
+            if (cursor == null) filters += filter
+            return Page(explore, nextCursor = null).asSuccess()
+        }
 
         override suspend fun setLiked(target: LikeTarget, targetId: String, liked: Boolean): AppResult<LikeState, DataError.Network> =
             if (likeRefused) AppResult.Error(DataError.Network.NoInternet) else LikeState(liked, if (liked) 5 else 4).asSuccess()
@@ -178,5 +189,63 @@ class SocialViewModelTest {
         assertFalse(trip.trip.savedByMe)
         assertEquals(0, trip.saveCount)
         assertTrue(viewModel.uiState.value.message != null)
+    }
+
+    @Test
+    fun explore_opensOnThisMonth_andAPickedPeriodReloadsTheList() = runTest {
+        val viewModel = viewModel()
+        advanceUntilIdle()
+
+        viewModel.onAction(Action.OnExplorePeriodSelected(ExplorePeriod.Week))
+        viewModel.onAction(Action.OnExplorePeriodSelected(ExplorePeriod.Week))
+        advanceUntilIdle()
+
+        assertEquals(listOf(ExploreFilter(ExplorePeriod.Month), ExploreFilter(ExplorePeriod.Week)), filters)
+        assertEquals(ExplorePeriod.Week, viewModel.uiState.value.explorePeriod)
+    }
+
+    @Test
+    fun exploreNearby_asksForTheLocationOnlyWhenSwitchedOn() = runTest {
+        val viewModel = viewModel()
+        advanceUntilIdle()
+
+        viewModel.onAction(Action.OnToggleExploreNearby)
+        advanceUntilIdle()
+        assertEquals(Event.CheckExploreLocation, viewModel.events.first())
+
+        viewModel.onAction(Action.OnExploreLocationChecked(LocationPermission.NotAsked))
+        advanceUntilIdle()
+        assertEquals(Event.RequestPermission, viewModel.events.first())
+
+        viewModel.onAction(Action.OnPermissionResult(LocationPermission.Granted))
+        advanceUntilIdle()
+        assertTrue(viewModel.uiState.value.isExploreNearby, "Nearby is on once allowed")
+        val paris = GeoPoint(Coordinates.Paris.latitude, Coordinates.Paris.longitude)
+        assertEquals(ExploreFilter(ExplorePeriod.Month, near = paris), filters.last(), "loads the trips near the user")
+        // Places nearby load only on their own tab.
+        assertEquals(NearbyStatus.Unknown, viewModel.uiState.value.nearbyStatus, "places nearby don't load")
+
+        viewModel.onAction(Action.OnToggleExploreNearby)
+        advanceUntilIdle()
+        assertFalse(viewModel.uiState.value.isExploreNearby, "Nearby switches off")
+        assertEquals(ExploreFilter(ExplorePeriod.Month), filters.last(), "reloads without the location")
+    }
+
+    @Test
+    fun exploreNearby_staysOffWhenTheLocationIsRefused() = runTest {
+        val viewModel = viewModel()
+        advanceUntilIdle()
+
+        viewModel.onAction(Action.OnToggleExploreNearby)
+        viewModel.onAction(Action.OnExploreLocationChecked(LocationPermission.ShouldExplain))
+        viewModel.onAction(Action.OnPermissionResult(LocationPermission.ShouldExplain))
+        advanceUntilIdle()
+        assertFalse(viewModel.uiState.value.isExploreNearby)
+
+        viewModel.onAction(Action.OnExploreLocationChecked(LocationPermission.Blocked))
+        advanceUntilIdle()
+        assertFalse(viewModel.uiState.value.isExploreNearby)
+        assertTrue(viewModel.uiState.value.message != null)
+        assertEquals(1, filters.size)
     }
 }

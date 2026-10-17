@@ -5,6 +5,7 @@ import com.falcon.tripingly.core.common.result.AppResult
 import com.falcon.tripingly.core.model.Page
 import com.falcon.tripingly.core.model.social.Comment
 import com.falcon.tripingly.core.model.social.CommentChange
+import com.falcon.tripingly.core.model.social.ExploreFilter
 import com.falcon.tripingly.core.model.social.LikeState
 import com.falcon.tripingly.core.model.social.LikeTarget
 import com.falcon.tripingly.core.model.social.PublicTrip
@@ -25,7 +26,7 @@ class FakeSocialRepository(
     private val liked = mutableSetOf<Pair<LikeTarget, String>>()
     private var nextId = 0
 
-    override suspend fun explore(cursor: String?): AppResult<Page<PublicTrip>, DataError.Network> =
+    override suspend fun explore(filter: ExploreFilter, cursor: String?): AppResult<Page<PublicTrip>, DataError.Network> =
         AppResult.Success(Page(emptyList(), nextCursor = null))
 
     override suspend fun comments(markerId: String, cursor: String?): AppResult<Page<Comment>, DataError.Network> =

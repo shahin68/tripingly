@@ -71,4 +71,17 @@
     <string name="social_error_unfollow">Nem sikerült leállítani a követést.</string>
     <string name="social_error_block">Nem sikerült letiltani.</string>
     <string name="social_error_load_people">Nem sikerült betölteni a listát.</string>
+
+    <!-- Explore filters -->
+    <string name="social_explore_week">Ezen a héten</string>
+    <string name="social_explore_month">Ebben a hónapban</string>
+    <string name="social_explore_year">Idén</string>
+    <string name="social_explore_spring">Idén tavasszal</string>
+    <string name="social_explore_summer">Idén nyáron</string>
+    <string name="social_explore_fall">Idén ősszel</string>
+    <string name="social_explore_winter">Idén télen</string>
+    <string name="social_explore_all">Minden idők</string>
+    <string name="social_explore_filters">Felfedezés szűrői</string>
+    <string name="social_explore_empty_filtered">Még nincs utazás ezekkel a szűrőkkel.</string>
+    <string name="social_explore_nearby_blocked">A Tripinly nem fér hozzá a helyadatokhoz. Kapcsold be a Beállításokban, hogy lásd a közeli utakat.</string>
 </resources>

@@ -79,7 +79,7 @@ REST over HTTPS, JSON, base path `/v1`.
 | GET | `/trips/{id}/join-requests?cursor=&limit=` | Owner: pending requests `{ id, tripId, user, status, createdAt }`, newest first. The members sheet asks only when `pendingJoinRequestCount > 0` |
 | POST | `/join-requests/{id}/accept` | Owner: the person becomes an editor (member limit applies, `LIMIT_REACHED`); returns the member |
 | POST | `/join-requests/{id}/decline` | Owner: 204; they can't ask again |
-| GET | `/explore/trips?cursor=&limit=` | Public trips, mine included (`role` owner/editor: no Save or Report), ranked; Social → Explore, pages of 20 |
+| GET | `/explore/trips?cursor=&limit=&period=&lat=&lng=` | Public trips, mine included (`role` owner/editor: no Save or Report), ranked by likes only; Social → Explore, pages of 20. `period`: `week`/`month`/`year` (likes of the last 7/30/365 days), `season` (trips travelled in the current season), `all`; the app opens on `month`. `lat`+`lng` (the Nearby chip) keep trips with a stop nearby; the point is sent for that request only. `nextCursor` goes with the same filters |
 
 ### Days
 | Method | Path | Notes |

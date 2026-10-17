@@ -22,11 +22,17 @@ import de.jensklingenberg.ktorfit.http.Query
 
 /** Explore, comments, likes and reports. */
 interface SocialApi {
-    /** Public trips from others, most popular first. */
+    /**
+     * Public trips, mine included, most liked first. [period]: `week`, `month`, `year`, `season` or `all`;
+     * [lat] and [lng] together keep trips with a stop nearby.
+     */
     @GET("explore/trips")
     suspend fun explore(
         @Query("cursor") cursor: String?,
         @Query("limit") limit: Int,
+        @Query("period") period: String,
+        @Query("lat") lat: Double?,
+        @Query("lng") lng: Double?,
     ): AppResult<TripSummaryPageDto, DataError.Network>
 
     /** Oldest first; comments by people with a block with me are left out. */
