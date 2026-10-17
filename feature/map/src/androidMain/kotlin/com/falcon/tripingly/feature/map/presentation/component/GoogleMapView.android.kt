@@ -27,8 +27,8 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntSize
 import com.falcon.tripingly.core.location.model.Coordinates
 import com.falcon.tripingly.core.model.place.GeoBounds
-import com.falcon.tripingly.core.model.place.PlaceCluster
 import com.falcon.tripingly.core.model.place.MapPlace
+import com.falcon.tripingly.core.model.place.PlaceCluster
 import com.falcon.tripingly.core.model.place.PlaceCategory
 import com.falcon.tripingly.feature.map.domain.model.MapMarker
 import com.google.android.gms.maps.CameraUpdateFactory
@@ -167,19 +167,27 @@ actual fun GoogleMapView(
         val density = LocalDensity.current
         val layoutDirection = LocalLayoutDirection.current
         val textMeasurer = rememberTextMeasurer()
+        val pinPhotos = rememberPinPhotos(placePins)
         val pinIcons = remember(placeColor, hotSpotColor, density) { mutableMapOf<PlacePinLook, BitmapDescriptor>() }
         fun pinIcon(look: PlacePinLook) = pinIcons.getOrPut(look) {
-            BitmapDescriptorFactory.fromBitmap(
+            val fill = if (look.isTripinly) hotSpotColor else placeColor
+            val photo = look.photoId?.let { pinPhotos[it] }
+            val bitmap = if (photo != null) {
+                drawPlacePhotoPin(photo, look.size, fill, density, layoutDirection)
+            } else {
                 drawPlacePin(
                     icon = categoryIcons.getValue(look.category),
                     size = look.size,
-                    fill = if (look.isTripinly) hotSpotColor else placeColor,
+                    fill = fill,
                     iconColor = if (look.isTripinly) onHotSpotColor else onPlaceColor,
                     density = density,
                     layoutDirection = layoutDirection,
-                ).asAndroidBitmap(),
-            )
+                )
+            }
+            BitmapDescriptorFactory.fromBitmap(bitmap.asAndroidBitmap())
         }
+        // A photo pin keeps its icon until its photo has loaded.
+        fun photoId(place: MapPlace, photo: Boolean) = place.coverImageId?.takeIf { photo && it in pinPhotos }
         val clusterIcons = remember(hotSpotColor, density) { mutableMapOf<Int, BitmapDescriptor>() }
 
         // Place pins are markers, so they keep their size on screen while the camera zooms. The first ones
@@ -192,7 +200,7 @@ actual fun GoogleMapView(
                 LaunchedEffect(Unit) { alpha.animateTo(1f, tween(PIN_FADE_MILLIS)) }
                 Marker(
                     state = rememberUpdatedMarkerState(position = LatLng(pin.place.location.lat, pin.place.location.lng)),
-                    icon = pinIcon(PlacePinLook(pin.place.category, pin.place.isTripinly, pin.size)),
+                    icon = pinIcon(PlacePinLook(pin.place.category, pin.place.isTripinly, pin.size, photoId(pin.place, pin.photo))),
                     title = pin.place.name,
                     anchor = Offset(0.5f, 0.5f),
                     alpha = alpha.value,
@@ -230,7 +238,7 @@ actual fun GoogleMapView(
             key(place.id) {
                 Marker(
                     state = rememberUpdatedMarkerState(position = LatLng(place.location.lat, place.location.lng)),
-                    icon = pinIcon(PlacePinLook(place.category, place.isTripinly, SelectedPinSize)),
+                    icon = pinIcon(PlacePinLook(place.category, place.isTripinly, SelectedPinSize, photoId(place, placePins.any { it.photo && it.place.id == place.id }))),
                     title = place.name,
                     anchor = Offset(0.5f, 0.5f),
                     zIndex = 2f,
