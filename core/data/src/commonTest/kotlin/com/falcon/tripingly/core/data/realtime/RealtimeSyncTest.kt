@@ -121,14 +121,14 @@ class RealtimeSyncTest {
     fun othersLikesAndComments_countOnTheStop_andKeepWhetherILikeIt() = runTest {
         val sync = sync { error("no request expected") }
         cacheTrip()
-        local.saveMarkerLike("m0", likeCount = 1, likedByMe = true)
+        local.savePlaceLike(PLACE, likeCount = 1, likedByMe = true)
         val comment = NetworkJson.decodeFromString<CommentDto>(
             """{"id":"c1","markerId":"m0","body":"Nice","author":{"id":"$OTHER","username":"anna","displayName":"Anna"},
                "likeCount":0,"likedByMe":false,"canDelete":false,"createdAt":"2026-10-11T10:00:00Z"}""",
         )
 
         sync.apply(RealtimeEvent.MarkerSaved("t1", OTHER, NetworkJson.decodeFromString<MarkerDto>(TripJson.marker("m0", "t1", "d0", 0, name = "Renamed"))))
-        sync.apply(RealtimeEvent.LikeCountChanged("t1", OTHER, "marker", "m0", 2))
+        sync.apply(RealtimeEvent.LikeCountChanged("t1", OTHER, "place", PLACE, 2))
         sync.apply(RealtimeEvent.CommentAdded("t1", OTHER, comment))
         sync.apply(RealtimeEvent.CommentAdded("t1", ME, comment))
 
@@ -237,6 +237,9 @@ class RealtimeSyncTest {
     private companion object {
         const val ME = "22222222-2222-4222-8222-222222222222"
         const val OTHER = "33333333-3333-4333-8333-333333333333"
+
+        /** The place of the cached trip's first stop (see [TripJson.marker]). */
+        const val PLACE = "99999999-9999-4999-8999-999999999990"
     }
 }
 

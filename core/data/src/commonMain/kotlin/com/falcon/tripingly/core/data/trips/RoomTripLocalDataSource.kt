@@ -77,8 +77,10 @@ internal class RoomTripLocalDataSource(
 
     override suspend fun marker(markerId: String): TripMarker? = dao.marker(markerId)?.toMarker()
 
-    override suspend fun saveMarkerLike(markerId: String, likeCount: Int, likedByMe: Boolean?) {
-        if (likedByMe == null) dao.updateMarkerLikeCount(markerId, likeCount) else dao.updateMarkerLike(markerId, likeCount, likedByMe)
+    override suspend fun markerAtPlace(placeId: String): TripMarker? = dao.markerAtPlace(placeId)?.toMarker()
+
+    override suspend fun savePlaceLike(placeId: String, likeCount: Int, likedByMe: Boolean?) {
+        if (likedByMe == null) dao.updatePlaceLikeCount(placeId, likeCount) else dao.updatePlaceLike(placeId, likeCount, likedByMe)
     }
 
     override suspend fun addToCommentCount(markerId: String, delta: Int) = dao.addToMarkerCommentCount(markerId, delta)
@@ -168,6 +170,7 @@ private fun MarkerEntity.toMarker() = TripMarker(
     photoCount = photoCount,
     likeCount = likeCount,
     likedByMe = likedByMe,
+    canLike = canLike,
     commentCount = commentCount,
     createdById = createdById,
 )
@@ -187,6 +190,7 @@ private fun TripMarker.toEntity() = MarkerEntity(
     photoCount = photoCount,
     likeCount = likeCount,
     likedByMe = likedByMe,
+    canLike = canLike,
     commentCount = commentCount,
     createdById = createdById,
 )

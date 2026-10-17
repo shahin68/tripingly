@@ -68,14 +68,14 @@ class SocialRepositoryTest {
     private fun HttpRequestData.bodyText() = (body as TextContent).text
 
     @Test
-    fun likingAStop_savesTheServersCount_inTheCachedTrip() = runTest {
+    fun likingAStop_likesItsPlace_andSavesTheServersCount_inTheCachedTrip() = runTest {
         cacheTrip()
-        val repository = repository("""{"targetType":"marker","targetId":"m0","liked":true,"likeCount":3}""")
+        val repository = repository("""{"targetType":"place","targetId":"$PLACE","liked":true,"likeCount":3}""")
 
-        val state = (repository.setLiked(LikeTarget.Marker, "m0", liked = true) as AppResult.Success).data
+        val state = (repository.setLiked(LikeTarget.Place, PLACE, liked = true) as AppResult.Success).data
 
         assertEquals(3, state.likeCount)
-        assertEquals("PUT /v1/likes/marker/m0", requests.single().let { "${it.method.value} ${it.url.encodedPath}" })
+        assertEquals("PUT /v1/likes/place/$PLACE", requests.single().let { "${it.method.value} ${it.url.encodedPath}" })
         val stop = local.marker("m0")!!
         assertEquals(3, stop.likeCount)
         assertTrue(stop.likedByMe)
@@ -89,7 +89,7 @@ class SocialRepositoryTest {
             HttpStatusCode.NotFound,
         )
 
-        val result = repository.setLiked(LikeTarget.Marker, "m0", liked = true)
+        val result = repository.setLiked(LikeTarget.Place, PLACE, liked = true)
 
         assertTrue(result is AppResult.Error)
         val stop = local.marker("m0")!!
@@ -156,5 +156,8 @@ class SocialRepositoryTest {
     private companion object {
         const val ME = "11111111-1111-4111-8111-111111111111"
         const val OTHER = "33333333-3333-4333-8333-333333333333"
+
+        /** The place of the cached trip's first stop (see [TripJson.marker]). */
+        const val PLACE = "99999999-9999-4999-8999-999999999990"
     }
 }

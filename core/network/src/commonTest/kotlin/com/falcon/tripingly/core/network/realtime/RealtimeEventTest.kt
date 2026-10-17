@@ -16,7 +16,7 @@ class RealtimeEventTest {
     private val markerJson = """
         {"id":"m1","tripId":"t1","dayId":"d1","placeId":"p1","name":"Louvre","location":{"lat":48.86,"lng":2.33},
          "time":null,"position":2,"coverPhotoId":null,"coverThumbUrl":null,"photoCount":0,"likeCount":0,
-         "likedByMe":false,"commentCount":0,"createdBy":null,"createdAt":"2026-10-11T10:00:00Z","updatedAt":"2026-10-11T10:00:00Z"}
+         "likedByMe":false,"canLike":true,"commentCount":0,"createdBy":null,"createdAt":"2026-10-11T10:00:00Z","updatedAt":"2026-10-11T10:00:00Z"}
     """.trimIndent()
 
     private val photoJson = """

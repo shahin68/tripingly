@@ -113,6 +113,7 @@ internal fun MarkerDto.toMarker() = TripMarker(
     photoCount = photoCount.toInt(),
     likeCount = likeCount.toInt(),
     likedByMe = likedByMe,
+    canLike = canLike,
     commentCount = commentCount.toInt(),
     createdById = createdBy?.id,
 )

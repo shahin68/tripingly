@@ -42,8 +42,11 @@ data class TripMarker(
     val coverPhotoId: String? = null,
     val coverThumbUrl: String? = null,
     val photoCount: Int = 0,
+    /** The place's likes: a stop's heart likes its place, so every stop there shows the same count. */
     val likeCount: Int = 0,
     val likedByMe: Boolean = false,
+    /** False for a custom spot that is only in private trips: it has no heart. */
+    val canLike: Boolean = true,
     val commentCount: Int = 0,
     /** Who added the stop; null after they deleted their account. Only they and the trip's owner may delete it. */
     val createdById: String? = null,

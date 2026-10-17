@@ -48,15 +48,15 @@ internal class DefaultSocialRepository(
         api.deleteComment(comment.id).onSuccess { local.addToCommentCount(comment.markerId, -1) }
 
     override suspend fun setLiked(target: LikeTarget, targetId: String, liked: Boolean): AppResult<LikeState, DataError.Network> {
-        // A stop's heart changes at once in the cached trip; a refusal puts it back.
-        val before = if (target == LikeTarget.Marker) local.marker(targetId) else null
+        // A place's heart changes at once on its stops in the cached trips; a refusal puts it back.
+        val before = if (target == LikeTarget.Place) local.markerAtPlace(targetId) else null
         if (before != null && before.likedByMe != liked) {
-            local.saveMarkerLike(targetId, (before.likeCount + if (liked) 1 else -1).coerceAtLeast(0), liked)
+            local.savePlaceLike(targetId, (before.likeCount + if (liked) 1 else -1).coerceAtLeast(0), liked)
         }
         val result = if (liked) api.like(target.wireName, targetId) else api.unlike(target.wireName, targetId)
         return result.map { it.toLikeState() }
-            .onSuccess { if (target == LikeTarget.Marker) local.saveMarkerLike(targetId, it.likeCount, it.liked) }
-            .onError { if (before != null) local.saveMarkerLike(targetId, before.likeCount, before.likedByMe) }
+            .onSuccess { if (target == LikeTarget.Place) local.savePlaceLike(targetId, it.likeCount, it.liked) }
+            .onError { if (before != null) local.savePlaceLike(targetId, before.likeCount, before.likedByMe) }
     }
 
     override suspend fun report(
