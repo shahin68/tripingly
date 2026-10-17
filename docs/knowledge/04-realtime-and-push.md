@@ -53,11 +53,12 @@
 - Tapping a push opens the `deepLink`. Mark it read via `POST /notifications/read`.
 - `join_requested` (someone asks to join the owner's trip) links to `tripinly://trips/{id}`: the map opens with "N people want to join", which opens the members sheet with Accept and Decline.
 
-### In the app (Android; iOS waits for an Apple Developer account)
+### In the app
 
 - Firebase starts from four values in `local.properties` (`firebase.projectId`, `firebase.senderId`, `firebase.appId`, `firebase.apiKey`, copied from `google-services.json`, which stays out of the repo). Without them there's no push.
+- iOS uses the same project and sender plus its own `firebase.ios.appId` and `firebase.ios.apiKey` (`GOOGLE_APP_ID` and `API_KEY` from `GoogleService-Info.plist`, which stays out of the repo too). It also needs a paid Apple Developer account, the APNs key uploaded to Firebase and the Push Notifications capability on the app; without them the app runs, only without a token.
 - `PushRegistration` registers the device when the signed-in app starts and when FCM issues a new token, but asks the server only when the account, token or language changed since the last registration. Sign-out unregisters before `POST /auth/logout`.
-- The permission (Android 13+) is asked right after the user creates a trip. Pushes that arrive while the app is open are shown by the app in the same channel the system uses for the others.
+- The permission (Android 13+, and iOS) is asked as Home opens. Pushes that arrive while the app is open are shown too: on Android by the app, in the same channel the system uses for the others; on iOS as a banner.
 - A tap opens the `deepLink` (`tripinly://trips/{id}`, `tripinly://markers/{id}` opens the stop's trip; `tripinly://notifications` just opens the app until there's an Activity screen) and marks the notification read.
 
 ## Deep links
