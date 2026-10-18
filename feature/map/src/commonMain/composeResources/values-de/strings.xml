@@ -131,6 +131,7 @@
     <string name="map_error_send_comment">Dein Kommentar konnte nicht gesendet werden.</string>
     <string name="map_error_delete_comment">Der Kommentar konnte nicht gelöscht werden.</string>
     <string name="map_error_load_photos">Die Fotos konnten nicht geladen werden.</string>
+    <string name="map_photo_gone">Dieses Foto ist nicht mehr verfügbar.</string>
     <string name="map_error_cover">Das Titelfoto konnte nicht festgelegt werden.</string>
     <string name="map_error_delete_photo">Das Foto konnte nicht gelöscht werden.</string>
 

@@ -1,7 +1,11 @@
 package com.falcon.tripingly.feature.map.presentation.photos
 
 import com.falcon.tripingly.core.data.account.FakeAccountBackend
+import com.falcon.tripingly.core.common.error.DataError
+import com.falcon.tripingly.core.common.result.AppResult
 import com.falcon.tripingly.core.data.photos.FakePhotoRepository
+import com.falcon.tripingly.core.data.photos.PhotoRepository
+import com.falcon.tripingly.core.model.photo.Photo
 import com.falcon.tripingly.core.model.photo.PhotoOwner
 import com.falcon.tripingly.core.model.photo.PickedImage
 import com.falcon.tripingly.feature.map.presentation.photos.PhotosViewModel.Action
@@ -73,6 +77,28 @@ class PhotosViewModelTest {
         viewModel.onAction(Action.OnClosePhoto)
         testScheduler.advanceUntilIdle()
         assertNull(viewModel.uiState.value.openPhotoIndex)
+    }
+
+    @Test
+    fun `a photo opened from outside that the gallery doesn't know reloads it once`() = runTest(testDispatcher) {
+        val counting = CountingPhotoRepository(photos)
+        val viewModel = PhotosViewModel(PhotoOwner.Stop(MARKER_ID), counting, FakeAccountBackend(today = { LocalDate(2026, 10, 16) }))
+            .also { viewModel -> backgroundScope.launch { viewModel.uiState.collect {} } }
+        testScheduler.advanceUntilIdle()
+        viewModel.onAction(Action.OnAddPhotos(images(1)))
+        testScheduler.advanceUntilIdle()
+        val known = viewModel.uiState.value.photos.single().id
+
+        viewModel.onAction(Action.OnOpenPhoto(known))
+        testScheduler.advanceUntilIdle()
+        assertEquals(0, viewModel.uiState.value.openPhotoIndex)
+        assertEquals(1, counting.loads)
+
+        viewModel.onAction(Action.OnOpenPhoto("gone"))
+        testScheduler.advanceUntilIdle()
+        assertFalse(viewModel.uiState.value.isFindingPhoto)
+        assertNull(viewModel.uiState.value.openPhotoIndex)
+        assertEquals(2, counting.loads)
     }
 
     @Test
@@ -153,5 +179,14 @@ class PhotosViewModelTest {
     private companion object {
         const val MARKER_ID = "marker-1"
         const val PLACE_ID = "place-1"
+    }
+}
+
+private class CountingPhotoRepository(private val inner: PhotoRepository) : PhotoRepository by inner {
+    var loads = 0
+
+    override suspend fun loadPhotos(owner: PhotoOwner): AppResult<List<Photo>, DataError.Network> {
+        loads++
+        return inner.loadPhotos(owner)
     }
 }

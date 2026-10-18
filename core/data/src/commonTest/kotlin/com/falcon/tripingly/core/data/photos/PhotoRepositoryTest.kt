@@ -214,6 +214,28 @@ class PhotoRepositoryTest {
         assertEquals(1, liked.likeCount)
     }
 
+    @Test
+    fun aTripPhotoInAPlacesGallery_isLikedAndDeletedInBothGalleries() = runTest {
+        // A liked trip photo shows in its place's gallery too, still owned by its stop.
+        val repository = repository { request ->
+            if (request.method.value == "DELETE") respond("", HttpStatusCode.NoContent) else json("[${photo("ready")}]")
+        }
+        repository.loadPhotos(STOP)
+        repository.loadPhotos(PLACE)
+        val inPlace = repository.photos(PLACE).first()!!.single()
+        assertEquals(STOP, inPlace.owner)
+
+        repository.setLiked(inPlace, liked = true)
+
+        assertTrue(repository.photos(PLACE).first()!!.single().likedByMe)
+        assertTrue(repository.photos(STOP).first()!!.single().likedByMe)
+
+        repository.deletePhoto(inPlace)
+
+        assertEquals(emptyList(), repository.photos(PLACE).first())
+        assertEquals(emptyList(), repository.photos(STOP).first())
+    }
+
     private fun placePhoto(status: String) = photo(status).replace("\"markerId\":\"m1\"", "\"markerId\":null,\"placeId\":\"pl1\"")
 
     private fun photoDto(status: String) = NetworkJson.decodeFromString<PhotoDto>(photo(status))

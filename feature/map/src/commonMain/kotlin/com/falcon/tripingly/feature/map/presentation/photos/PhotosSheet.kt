@@ -41,8 +41,10 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -144,11 +146,16 @@ fun PhotoViewerRoute(
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     LaunchedEffect(photoId) { viewModel.onAction(Action.OnOpenPhoto(photoId)) }
+    // Left without closing (e.g. the card went away), the shared gallery must not stay on this photo.
+    DisposableEffect(viewModel) { onDispose { viewModel.onAction(Action.OnClosePhoto) } }
     val onAction: (Action) -> Unit = { action ->
         viewModel.onAction(action)
         if (action is Action.OnClosePhoto) onDismiss()
     }
-    val index = state.openPhotoIndex
+    // Until the gallery has taken this photo in, the state can still be an older one.
+    val isAsked = state.openPhotoId == photoId
+    val index = state.openPhotoIndex?.takeIf { isAsked }
+    val message = state.message
     when {
         index != null -> GalleryViewer(
             state = state,
@@ -158,8 +165,8 @@ fun PhotoViewerRoute(
             onReport = onReport,
             onAction = onAction,
         )
-        // The gallery is loading, or the photo is about to open; a photo that isn't in it (deleted meanwhile) closes.
-        state.isLoading || state.viewable.any { it.id == photoId } -> Dialog(
+        // The gallery is loading, or still looking for the photo.
+        !isAsked || state.isLoading || state.isFindingPhoto -> Dialog(
             onDismissRequest = { onAction(Action.OnClosePhoto) },
             properties = DialogProperties(usePlatformDefaultWidth = false),
         ) {
@@ -167,7 +174,23 @@ fun PhotoViewerRoute(
                 CircularProgressIndicator()
             }
         }
-        else -> LaunchedEffect(Unit) { onAction(Action.OnClosePhoto) }
+        // Not there even after a fresh look (deleted, hidden, or the gallery didn't load): say why, then close.
+        else -> {
+            val text = message?.asString() ?: stringResource(Res.string.map_photo_gone)
+            val closingText = remember { text }
+            ShowMessage(
+                message = closingText,
+                onShown = {
+                    onAction(Action.OnDismissMessage)
+                    onAction(Action.OnClosePhoto)
+                },
+                isError = message !is UiText.Note,
+            )
+        }
+    }
+    // While it's still looking, a message waits: the close above says it.
+    if (index != null) {
+        ShowMessage(message = message?.asString(), onShown = { onAction(Action.OnDismissMessage) }, isError = message !is UiText.Note)
     }
     if (state.photoToDelete != null) DeletePhotoDialog(viewModel::onAction)
 }

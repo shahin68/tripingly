@@ -131,6 +131,7 @@
     <string name="map_error_send_comment">Couldn’t post your comment.</string>
     <string name="map_error_delete_comment">Couldn’t delete the comment.</string>
     <string name="map_error_load_photos">Couldn’t load the photos.</string>
+    <string name="map_photo_gone">This photo is no longer available.</string>
     <string name="map_error_cover">Couldn’t set the cover photo.</string>
     <string name="map_error_delete_photo">Couldn’t delete the photo.</string>
 

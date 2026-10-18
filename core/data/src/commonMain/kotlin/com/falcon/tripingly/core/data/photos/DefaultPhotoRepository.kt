@@ -101,7 +101,7 @@ internal class DefaultPhotoRepository(
 
     override suspend fun deletePhoto(photo: Photo): AppResult<Unit, DataError.Network> =
         api.delete(photo.id).map {
-            removePhoto(photo.owner, photo.id)
+            removePhoto(photo.id)
             val stop = photo.owner as? PhotoOwner.Stop ?: return@map
             val marker = cachedMarker(stop.markerId)
             // The server picks a new cover when the cover goes, so only then is the marker asked for again.
@@ -113,20 +113,20 @@ internal class DefaultPhotoRepository(
         }
 
     override suspend fun setLiked(photo: Photo, liked: Boolean): AppResult<Unit, DataError.Network> {
-        val before = galleries.value[photo.owner]?.firstOrNull { it.id == photo.id } ?: photo
+        val before = galleries.value.values.firstNotNullOfOrNull { gallery -> gallery.firstOrNull { it.id == photo.id } } ?: photo
         if (before.likedByMe != liked) {
-            updatePhoto(photo.owner, photo.id) {
+            updatePhoto(photo.id) {
                 it.copy(likedByMe = liked, likeCount = (it.likeCount + if (liked) 1 else -1).coerceAtLeast(0))
             }
         }
         val target = if (photo.credit != null) LikeTarget.PlaceImage else LikeTarget.Photo
         return when (val result = social.setLiked(target, photo.id, liked)) {
             is AppResult.Success -> {
-                updatePhoto(photo.owner, photo.id) { it.copy(likedByMe = result.data.liked, likeCount = result.data.likeCount) }
+                updatePhoto(photo.id) { it.copy(likedByMe = result.data.liked, likeCount = result.data.likeCount) }
                 AppResult.Success(Unit)
             }
             is AppResult.Error -> {
-                updatePhoto(photo.owner, photo.id) { it.copy(likedByMe = before.likedByMe, likeCount = before.likeCount) }
+                updatePhoto(photo.id) { it.copy(likedByMe = before.likedByMe, likeCount = before.likeCount) }
                 result
             }
         }
@@ -205,9 +205,9 @@ internal class DefaultPhotoRepository(
                 if (photo.status == PhotoStatus.Ready && stop != null) markerRefreshes.request(stop.markerId)
             }
             is RealtimeEvent.PhotoFailed ->
-                updatePhoto(PhotoOwner.Stop(event.markerId), event.photoId) { it.copy(status = PhotoStatus.Failed) }
+                updatePhoto(event.photoId) { it.copy(status = PhotoStatus.Failed) }
             is RealtimeEvent.PhotoDeleted -> {
-                removePhoto(PhotoOwner.Stop(event.markerId), event.photoId)
+                removePhoto(event.photoId)
                 // deletePhoto has updated the stop already.
                 if (!byMe) markerRefreshes.request(event.markerId)
             }
@@ -228,7 +228,7 @@ internal class DefaultPhotoRepository(
         when (event) {
             is RealtimeEvent.PlacePhotoSaved -> savePhoto(event.photo.toPhoto(), replace = true)
             is RealtimeEvent.PlacePhotoFailed ->
-                updatePhoto(PhotoOwner.Place(event.placeId), event.photoId) { it.copy(status = PhotoStatus.Failed) }
+                updatePhoto(event.photoId) { it.copy(status = PhotoStatus.Failed) }
         }
     }
 
@@ -242,28 +242,28 @@ internal class DefaultPhotoRepository(
         }
     }
 
-    /** Into a loaded gallery; [replace] an existing copy, or keep it (it may be newer). A new place photo goes first. */
+    /**
+     * A new photo joins its own loaded gallery (a new place photo goes first); a known one is replaced
+     * ([replace]) in every gallery that shows it, or kept (it may be newer).
+     * A photo can show in more than one: a liked trip photo is in its stop's gallery and its place's.
+     */
     private fun savePhoto(photo: Photo, replace: Boolean) {
         galleries.update { all ->
-            val gallery = all[photo.owner] ?: return@update all
-            val known = gallery.any { it.id == photo.id }
-            when {
-                !known -> all + (photo.owner to (gallery + photo).sortedFor(photo.owner, newFirst = photo.id))
-                replace -> all + (photo.owner to gallery.map { if (it.id == photo.id) photo else it })
-                else -> all
-            }
+            val withPhoto = if (replace) all.mapValues { (_, gallery) -> gallery.map { if (it.id == photo.id) photo else it } } else all
+            val gallery = withPhoto[photo.owner] ?: return@update withPhoto
+            if (gallery.any { it.id == photo.id }) withPhoto
+            else withPhoto + (photo.owner to (gallery + photo).sortedFor(photo.owner, newFirst = photo.id))
         }
     }
 
-    private fun updatePhoto(owner: PhotoOwner, photoId: String, change: (Photo) -> Photo) {
-        galleries.update { all ->
-            val gallery = all[owner] ?: return@update all
-            all + (owner to gallery.map { if (it.id == photoId) change(it) else it })
-        }
+    /** Changes the photo in every gallery that shows it (see [savePhoto]). */
+    private fun updatePhoto(photoId: String, change: (Photo) -> Photo) {
+        galleries.update { all -> all.mapValues { (_, gallery) -> gallery.map { if (it.id == photoId) change(it) else it } } }
     }
 
-    private fun removePhoto(owner: PhotoOwner, photoId: String) {
-        galleries.update { all -> all[owner]?.let { all + (owner to it.filterNot { p -> p.id == photoId }) } ?: all }
+    /** Takes the photo out of every gallery that shows it (see [savePhoto]). */
+    private fun removePhoto(photoId: String) {
+        galleries.update { all -> all.mapValues { (_, gallery) -> gallery.filterNot { it.id == photoId } } }
     }
 
     private suspend fun refreshMarker(markerId: String) {
