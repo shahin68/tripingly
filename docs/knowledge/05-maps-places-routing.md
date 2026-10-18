@@ -111,14 +111,16 @@ Decided 2026-10-10 (Shahin, "Tiles + prefetch"): places load and draw like Googl
 - Mode selector: walking (default), cycling, driving. No public transport.
 - **Along the way**: show `alongTheWay` pins and a horizontal list under the map ("in 12 min · 80 m off route"), ordered along the route. Each item has "Add to trip".
 - Refetch the day route after marker add/move/delete/reorder (including realtime events).
-- `ROUTING_UNAVAILABLE` → show straight lines between markers with a small "Route unavailable" note. A `degraded: true` flag means the same.
+- **Routes are Tripinly Pro** (`routes` in `GET /me` entitlements; the server answers 403 `PREMIUM_REQUIRED` otherwise). Without Pro, the Route button and "Route from here" show a "comes with Tripinly Pro" note (the paywall later).
+- **Never straight lines** (product owner, 2026-10-18): the map shows the day's curved direction lines or a real route, nothing in between. `ROUTING_UNAVAILABLE` or `degraded: true` → no route drawn, the curves stay, and a small "Routes aren't available right now" note.
 
 *(Built in stage 8: the Route button on the stops card turns the day's route on; leg times sit between the stop chips; Walk/Bike/Car chips; the places along the way are a row in the same card and pins on the map. "Route from here" / "Route to here" on place cards, the A→B card replaces the stops card until closed. Routes are kept in memory by stops and mode, so the same stops are routed once; a day is routed after its own stop changes reached the server. The MapKit fallback on iOS draws no route.)*
 
-*Direction lines: while no route shows, the open day's stops are joined by curved coral dashed lines whose dashes march from each stop to the next (`StopPath.kt`), drawn on the device with no routing call.*
+*Direction lines: while no route shows, the open day's stops are joined by one smooth coral dashed line through them (no corner at a stop, like a hand-drawn line; two stops get a gentle arc) whose dashes march from each stop to the next (`StopPath.kt`), drawn on the device with no routing call. The owner may ask for straight lines instead later.*
 
 ## Best route
 
 `POST /days/{id}/optimize` → preview the new order (a list in a dialog) → "Apply" saves it as a normal reorder (`PUT /days/{id}/marker-order`, optimistic like every stop change) rather than `?apply=true`, so it shows at once.
-- `mode: "straight_line"`: free result; show a hint that premium uses real travel times (see `premium-and-paywall`).
+Free for everyone, by real travel times (product owner, 2026-10-18).
 - `mode: "travel_time"`: show "N min shorter" from `savedMinutes`.
+- `mode: "straight_line"` (`degraded`): travel times weren't available; say it's ordered by distance.

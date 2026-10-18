@@ -3,6 +3,9 @@ package com.falcon.tripingly.core.model.route
 import com.falcon.tripingly.core.model.place.MapPlace
 import com.falcon.tripingly.core.model.trip.GeoPoint
 
+/** The entitlement in `GET /me` that unlocks routes along streets: Tripinly Pro. */
+const val ROUTES_ENTITLEMENT = "routes"
+
 /** How the route is travelled. No public transport. */
 enum class TravelMode { Walking, Cycling, Driving }
 
@@ -37,7 +40,7 @@ data class RoutePlan(
     val route: Route?,
     /** Ordered along the route. */
     val alongTheWay: List<AlongTheWayPlace>,
-    /** Real routing wasn't available: [route] is straight lines with estimated times. */
+    /** Real routing wasn't available: [route] is straight lines with estimated times, which the app doesn't draw. */
     val isEstimated: Boolean,
     /** "© openrouteservice.org | © OpenStreetMap contributors", shown with the route. */
     val attribution: String,

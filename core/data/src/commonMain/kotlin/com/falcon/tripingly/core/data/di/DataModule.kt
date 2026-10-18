@@ -43,6 +43,7 @@ import com.falcon.tripingly.core.data.users.DefaultUserRepository
 import com.falcon.tripingly.core.data.users.FakeUserRepository
 import com.falcon.tripingly.core.data.users.UserRepository
 import com.falcon.tripingly.core.model.account.SessionState
+import com.falcon.tripingly.core.model.route.ROUTES_ENTITLEMENT
 import com.falcon.tripingly.core.network.ApiConfig
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.todayIn
@@ -183,6 +184,8 @@ val dataModule = module {
         FakeAccountBackend(
             today = { Clock.System.todayIn(TimeZone.currentSystemDefault()) },
             cleaners = { getAll<LocalDataCleaner>() },
+            // Like dev accounts on staging: Pro features to try out until the paywall exists.
+            entitlements = setOf(ROUTES_ENTITLEMENT),
         )
     }
 

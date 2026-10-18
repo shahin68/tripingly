@@ -157,7 +157,8 @@
     <string name="map_route_meters">%1$d m</string>
     <string name="map_route_km">%1$s km</string>
     <string name="map_route_total">%1$s · %2$s</string>
-    <string name="map_route_estimated">Légvonal: az útvonalak most nem érhetők el.</string>
+    <string name="map_route_estimated">Az útvonalak most nem érhetők el.</string>
+    <string name="map_route_pro">Az utcákon vezető útvonalak a Tripinly Pro részei.</string>
     <string name="map_along_the_way">Útközben</string>
     <string name="map_along_the_way_item">%1$s múlva · %2$s-re az útvonaltól</string>
     <string name="map_along_add">Hozzáadás a(z) %1$d. naphoz</string>
@@ -170,7 +171,7 @@
     <string name="map_best_order">Legjobb sorrend</string>
     <string name="map_best_order_title">A nap legjobb sorrendje</string>
     <string name="map_best_order_saved">%1$d perccel rövidebb, mint most.</string>
-    <string name="map_best_order_hint">Távolság szerint rendezve. A Tripinly Pro valós menetidőkkel tervez.</string>
+    <string name="map_best_order_hint">Távolság szerint rendezve: a menetidők most nem érhetők el.</string>
     <string name="map_best_order_apply">Alkalmaz</string>
     <string name="map_best_order_already">A megállóid már a legjobb sorrendben vannak.</string>
     <string name="map_error_route">Nem sikerült betölteni az útvonalat.</string>

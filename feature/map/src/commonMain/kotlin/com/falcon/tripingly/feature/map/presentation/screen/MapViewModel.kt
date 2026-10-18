@@ -38,6 +38,7 @@ import com.falcon.tripingly.core.model.place.PlaceSquare
 import com.falcon.tripingly.core.model.place.SearchResultType
 import com.falcon.tripingly.core.model.route.AlongTheWayPlace
 import com.falcon.tripingly.core.model.route.BestOrder
+import com.falcon.tripingly.core.model.route.ROUTES_ENTITLEMENT
 import com.falcon.tripingly.core.model.route.RoutePlan
 import com.falcon.tripingly.core.model.route.TravelMode
 import com.falcon.tripingly.core.model.social.LikeTarget
@@ -82,6 +83,7 @@ import com.falcon.tripingly.feature.map.generated.resources.map_join_withdrawn
 import com.falcon.tripingly.feature.map.generated.resources.map_my_content_removed
 import com.falcon.tripingly.feature.map.generated.resources.map_reported
 import com.falcon.tripingly.feature.map.generated.resources.map_route_pick_destination
+import com.falcon.tripingly.feature.map.generated.resources.map_route_pro
 import com.falcon.tripingly.feature.map.generated.resources.map_trip_saved
 import com.falcon.tripingly.feature.map.generated.resources.map_trip_unsaved
 import com.falcon.tripingly.feature.map.presentation.component.PlacePin
@@ -144,7 +146,8 @@ class MapViewModel(
 ) : ViewModel() {
 
     private val ui = MutableStateFlow(UiState())
-    private val myUserId = (sessionRepository.session.value as? SessionState.SignedIn)?.account?.id
+    private val session = sessionRepository.session
+    private val myUserId = (session.value as? SessionState.SignedIn)?.account?.id
 
     private val trip: StateFlow<TripDetails?> =
         tripRepository.observeTrip(tripId).stateIn(viewModelScope, SharingStarted.Eagerly, null)
@@ -242,7 +245,11 @@ class MapViewModel(
                 val target = if (action.photo.credit != null) ReportTarget.PlaceImage else ReportTarget.Photo
                 it.copy(reporting = ReportSubject(target, action.photo.id))
             }
-            is Action.OnToggleDayRoute -> ui.update { it.copy(isDayRouteShown = !it.isDayRouteShown) }
+            is Action.OnToggleDayRoute -> when {
+                ui.value.isDayRouteShown -> ui.update { it.copy(isDayRouteShown = false) }
+                hasRoutes() -> ui.update { it.copy(isDayRouteShown = true) }
+                else -> showRoutesArePro()
+            }
             is Action.OnTravelModeSelected -> ui.update { it.copy(travelMode = action.mode) }
             is Action.OnRouteFromPlace -> startPointRoute()
             is Action.OnRouteToPlace -> showPointRoute()
@@ -266,17 +273,12 @@ class MapViewModel(
         val plan = ui.routePlan
         val stopPlaceIds = stopPlaceIds(details)
         // A place added from the list is a stop now, until the route reloads without it.
-        val alongTheWay = plan?.alongTheWay.orEmpty().filter { it.place.id !in stopPlaceIds }
+        val alongTheWay = plan?.takeIf { !it.isEstimated }?.alongTheWay.orEmpty().filter { it.place.id !in stopPlaceIds }
         val pinnedIds = ui.placePins.mapTo(HashSet()) { it.place.id }
         val config = appConfigRepository.config.value
-        val routePoints = plan?.route?.points
-        val routeLine = when {
-            routePoints != null -> routePoints.map { Coordinates(it.lat, it.lng) }
-            // No route right now: straight lines between the stops, or from A to B.
-            ui.isRouteUnavailable -> ui.pointRoute?.let { listOf(it.from.location, it.to.location).map { p -> Coordinates(p.lat, p.lng) } }
-                ?: markers.map { it.position }
-            else -> emptyList()
-        }
+        // Only a real route is drawn; without one the day keeps its own lines between the stops.
+        val route = plan?.takeIf { !it.isEstimated }?.route
+        val routeLine = route?.points.orEmpty().map { Coordinates(it.lat, it.lng) }
         val isDayRoute = ui.pointRoute == null && ui.isDayRouteShown
         val shownRouteLine = routeLine.takeIf { isDayRoute || ui.pointRoute != null }.orEmpty()
         return State(
@@ -340,9 +342,9 @@ class MapViewModel(
             stopPath = markers.map { it.position }
                 .takeIf { shownRouteLine.isEmpty() && ui.pointRoute == null && it.size > 1 }.orEmpty().toImmutableList(),
             isRouteEstimated = ui.isRouteUnavailable || plan?.isEstimated == true,
-            routeDurationSeconds = plan?.route?.durationSeconds,
-            routeDistanceMeters = plan?.route?.distanceMeters,
-            legSeconds = if (isDayRoute) plan?.route?.legs.orEmpty().mapNotNull { leg -> leg.toMarkerId?.let { it to leg.durationSeconds } }.toMap() else emptyMap(),
+            routeDurationSeconds = route?.durationSeconds,
+            routeDistanceMeters = route?.distanceMeters,
+            legSeconds = if (isDayRoute) route?.legs.orEmpty().mapNotNull { leg -> leg.toMarkerId?.let { it to leg.durationSeconds } }.toMap() else emptyMap(),
             alongTheWay = alongTheWay.toImmutableList(),
             routeAttribution = plan?.attribution,
             isLoadingRoute = ui.isLoadingRoute,
@@ -498,7 +500,7 @@ class MapViewModel(
     /**
      * Draws the route the map shows: the open day's (the Route button), or one from A to B, which takes its
      * place while it's open. Asked for again when the stops or their order change, here or from someone else,
-     * or another way to travel is picked. A route that can't be had shows straight lines.
+     * or another way to travel is picked. Without a route the day keeps its own lines between the stops.
      */
     private fun watchRoute() {
         viewModelScope.launch {
@@ -541,20 +543,41 @@ class MapViewModel(
         ui.update {
             when (result) {
                 is AppResult.Success -> it.copy(routePlan = result.data, isRouteUnavailable = false, isLoadingRoute = false)
-                is AppResult.Error -> it.copy(
-                    routePlan = null,
-                    isRouteUnavailable = true,
-                    isLoadingRoute = false,
-                    // The note on the route says it already; anything else (the connection) is explained too.
-                    message = if (result.error.hasCode(RouteErrorCodes.ROUTING_UNAVAILABLE)) it.message else result.error.toUiText(Res.string.map_error_route),
-                )
+                // Not Pro after all (the account changed): the route closes with the server's message.
+                is AppResult.Error -> if (result.error.hasCode(RouteErrorCodes.PREMIUM_REQUIRED)) {
+                    it.copy(
+                        routePlan = null,
+                        isDayRouteShown = false,
+                        pointRoute = null,
+                        isLoadingRoute = false,
+                        message = result.error.toUiText(Res.string.map_error_route),
+                    )
+                } else {
+                    it.copy(
+                        routePlan = null,
+                        isRouteUnavailable = true,
+                        isLoadingRoute = false,
+                        // The note on the route says it already; anything else (the connection) is explained too.
+                        message = if (result.error.hasCode(RouteErrorCodes.ROUTING_UNAVAILABLE)) it.message else result.error.toUiText(Res.string.map_error_route),
+                    )
+                }
             }
         }
+    }
+
+    /** Routes along streets are Tripinly Pro; the server decides, `GET /me` tells the app. */
+    private fun hasRoutes(): Boolean =
+        (session.value as? SessionState.SignedIn)?.account?.entitlements?.contains(ROUTES_ENTITLEMENT) == true
+
+    /** Until there's a paywall, a note says routes come with Tripinly Pro. */
+    private fun showRoutesArePro() {
+        ui.update { it.copy(message = UiText.Note(UiText.Resource(Res.string.map_route_pro))) }
     }
 
     /** "Route from here" on a place's card: the next place's card offers "Route to here". */
     private fun startPointRoute() {
         val place = ui.value.selectedPlace ?: return
+        if (!hasRoutes()) return showRoutesArePro()
         closePlace()
         ui.update { it.copy(routeStart = place, message = UiText.Note(UiText.Resource(Res.string.map_route_pick_destination))) }
     }
@@ -1147,7 +1170,7 @@ class MapViewModel(
         /** A route from A to B, shown instead of the day's. */
         val pointRoute: PointRoute? = null,
         val routePlan: RoutePlan? = null,
-        /** The route couldn't be had: straight lines without times. */
+        /** The route couldn't be had: the day keeps its own lines, without times. */
         val isRouteUnavailable: Boolean = false,
         val isLoadingRoute: Boolean = false,
         /** The best order proposed for the open day, waiting for Apply. */
@@ -1176,7 +1199,7 @@ class MapViewModel(
     @Immutable
     data class BestOrderPreview(
         val stops: ImmutableList<MapMarker>,
-        /** By real travel times (Tripinly Pro), else by straight-line distance. */
+        /** By real travel times; by straight-line distance when they weren't available. */
         val byTravelTime: Boolean,
         val savedMinutes: Int?,
     )
@@ -1295,7 +1318,7 @@ class MapViewModel(
         val travelMode: TravelMode = TravelMode.Walking,
         /** The route to draw, the day's or from A to B; empty when there's none. */
         val routeLine: ImmutableList<Coordinates> = persistentListOf(),
-        /** [routeLine] is straight lines: real routes aren't available right now. */
+        /** Real routes aren't available right now: nothing is drawn for them and a note says so. */
         val isRouteEstimated: Boolean = false,
         /** The open day's stops in order, joined on the map by curved direction lines while no route shows. */
         val stopPath: ImmutableList<Coordinates> = persistentListOf(),

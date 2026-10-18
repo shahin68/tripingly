@@ -23,11 +23,12 @@ import kotlinx.datetime.LocalDate
 /**
  * In-memory sign-in and onboarding for `-Ptripinly.useFakeApi=true` builds and
  * tests: any sign-in starts a new account that needs onboarding; the username
- * `taken` is taken.
+ * `taken` is taken. Accounts have [entitlements] (Tripinly Pro features).
  */
 class FakeAccountBackend(
     private val today: () -> LocalDate,
     private val cleaners: () -> List<LocalDataCleaner> = { emptyList() },
+    private val entitlements: Set<String> = emptySet(),
 ) : SessionRepository, AccountRepository {
 
     private val state = MutableStateFlow<SessionState>(SessionState.Restoring)
@@ -119,7 +120,7 @@ class FakeAccountBackend(
                 defaultTripVisibility = TripVisibility.PUBLIC,
                 isAdmin = false,
                 onboarding = OnboardingState(false, emptySet(), emptySet()),
-                entitlements = emptySet(),
+                entitlements = entitlements,
             ),
         )
         return AppResult.Success(Unit)

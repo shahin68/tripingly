@@ -34,7 +34,7 @@ Read `docs/knowledge/05-maps-places-routing.md` first. Check `06-current-state.m
 
 **Along the way:** pins with highlight + horizontal list under the map, ordered by `positionAlongRoute`; list item tap ↔ pin selection stay in sync.
 
-**Best route:** preview the proposed order (reordered list + numbered pins) before applying; "Apply" → `?apply=true`; show `savedMinutes` for premium; straight-line result shows the upsell hint.
+**Best route:** preview the proposed order (reordered list + numbered pins) before applying; "Apply" → `?apply=true`; show `savedMinutes` (free for everyone); a straight-line result says travel times weren't available. Routes are Pro; the map never draws straight lines between stops (curved direction lines or a real route).
 
 **Performance:** at most a few hundred native markers; rely on the server's limits and clustering. Pause in-view loading while the user drags.
 

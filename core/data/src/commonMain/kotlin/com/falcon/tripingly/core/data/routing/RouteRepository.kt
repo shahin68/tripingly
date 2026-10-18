@@ -28,6 +28,9 @@ interface RouteRepository {
 }
 
 object RouteErrorCodes {
-    /** Routing failed on the server; the app draws straight lines between the stops. */
+    /** Routing failed on the server; the app keeps its own lines between the stops. */
     const val ROUTING_UNAVAILABLE = "ROUTING_UNAVAILABLE"
+
+    /** Routes are Tripinly Pro and the user doesn't have it (the app thought otherwise). */
+    const val PREMIUM_REQUIRED = "PREMIUM_REQUIRED"
 }

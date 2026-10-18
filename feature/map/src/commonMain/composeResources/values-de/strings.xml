@@ -157,7 +157,8 @@
     <string name="map_route_meters">%1$d m</string>
     <string name="map_route_km">%1$s km</string>
     <string name="map_route_total">%1$s · %2$s</string>
-    <string name="map_route_estimated">Luftlinie: Routen sind gerade nicht verfügbar.</string>
+    <string name="map_route_estimated">Routen sind gerade nicht verfügbar.</string>
+    <string name="map_route_pro">Routen entlang der Straßen gibt es mit Tripinly Pro.</string>
     <string name="map_along_the_way">Auf dem Weg</string>
     <string name="map_along_the_way_item">in %1$s · %2$s abseits der Route</string>
     <string name="map_along_add">Zu Tag %1$d hinzufügen</string>
@@ -170,7 +171,7 @@
     <string name="map_best_order">Beste Reihenfolge</string>
     <string name="map_best_order_title">Beste Reihenfolge für diesen Tag</string>
     <string name="map_best_order_saved">%1$d Min. kürzer als jetzt.</string>
-    <string name="map_best_order_hint">Nach Entfernung sortiert. Tripinly Pro plant mit echten Reisezeiten.</string>
+    <string name="map_best_order_hint">Nach Entfernung sortiert: Reisezeiten sind gerade nicht verfügbar.</string>
     <string name="map_best_order_apply">Übernehmen</string>
     <string name="map_best_order_already">Deine Stopps sind schon in der besten Reihenfolge.</string>
     <string name="map_error_route">Die Route konnte nicht geladen werden.</string>

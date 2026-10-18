@@ -42,6 +42,7 @@ import com.falcon.tripingly.core.model.place.PlaceSquare
 import com.falcon.tripingly.core.model.place.PlacesInView
 import com.falcon.tripingly.core.model.place.SearchResultType
 import com.falcon.tripingly.core.model.route.BestOrder
+import com.falcon.tripingly.core.model.route.ROUTES_ENTITLEMENT
 import com.falcon.tripingly.core.model.route.RoutePlan
 import com.falcon.tripingly.core.model.route.TravelMode
 import com.falcon.tripingly.core.model.social.ReportReason
@@ -202,12 +203,8 @@ class MapViewModelTest {
         photos = FakePhotoRepository()
         social = RecordingSocialRepository()
         routes = RecordingRouteRepository()
-        session = FakeAccountBackend(today = { LocalDate(2026, 10, 16) }).also {
-            // Onboarded, so the session is SignedIn with an account id.
-            it.signInForDevelopment("me", "Me")
-            it.updateProfile(ProfileUpdate(username = "me", birthDate = LocalDate(1990, 1, 1)))
-            it.accept((it.legalDocuments("en") as AppResult.Success).data)
-        }
+        // With Tripinly Pro, for the routes.
+        session = signedIn(setOf(ROUTES_ENTITLEMENT))
         trip = (backend.createTrip(NewTrip("Test Trip", LocalDate(2024, 1, 1), LocalDate(2024, 1, 3))) as AppResult.Success).data
     }
 
@@ -215,6 +212,14 @@ class MapViewModelTest {
     fun tearDown() {
         Dispatchers.resetMain()
     }
+
+    /** Onboarded, so the session is SignedIn with an account id. */
+    private suspend fun signedIn(entitlements: Set<String>) =
+        FakeAccountBackend(today = { LocalDate(2026, 10, 16) }, entitlements = entitlements).also {
+            it.signInForDevelopment("me", "Me")
+            it.updateProfile(ProfileUpdate(username = "me", birthDate = LocalDate(1990, 1, 1)))
+            it.accept((it.legalDocuments("en") as AppResult.Success).data)
+        }
 
     private fun TestScope.viewModel(tripId: String = trip.trip.id) = MapViewModel(
         tripId = tripId,
@@ -1200,7 +1205,7 @@ class MapViewModelTest {
     }
 
     @Test
-    fun `without routing the day's route is straight lines between the stops`() = runTest(testDispatcher) {
+    fun `without routing the day keeps its own lines between the stops, never straight lines`() = runTest(testDispatcher) {
         addStops(GeoPoint(48.2085, 16.3731), GeoPoint(48.2104, 16.3655))
         routes.error = DataError.Network.Api(503, RouteErrorCodes.ROUTING_UNAVAILABLE, "Routes aren't available")
         val viewModel = viewModel()
@@ -1208,11 +1213,33 @@ class MapViewModelTest {
         testScheduler.advanceUntilIdle()
 
         val state = viewModel.uiState.value
-        assertEquals(state.markers.map { it.position }, state.routeLine)
+        assertTrue(state.routeLine.isEmpty())
+        assertEquals(state.markers.map { it.position }, state.stopPath)
         assertTrue(state.isRouteEstimated)
         assertNull(state.routeDurationSeconds)
         // The route's own note says so.
         assertNull(state.message)
+    }
+
+    @Test
+    fun `routes are Tripinly Pro`() = runTest(testDispatcher) {
+        session = signedIn(entitlements = emptySet())
+        addStops(GeoPoint(48.2085, 16.3731), GeoPoint(48.2104, 16.3655))
+        val viewModel = viewModel()
+        testScheduler.advanceUntilIdle()
+
+        viewModel.onAction(Action.OnToggleDayRoute)
+        testScheduler.advanceUntilIdle()
+        assertFalse(viewModel.uiState.value.isDayRouteShown)
+        assertNotNull(viewModel.uiState.value.message)
+        assertEquals(viewModel.uiState.value.markers.map { it.position }, viewModel.uiState.value.stopPath)
+
+        val place = MapPlace("a", "Oper", PlaceCategory.Attraction, GeoPoint(48.2031, 16.3691), isTripinly = false, likeCount = 0, prominence = 80)
+        viewModel.onAction(Action.OnPlacePinClick(place))
+        viewModel.onAction(Action.OnRouteFromPlace)
+        testScheduler.advanceUntilIdle()
+        assertNull(viewModel.uiState.value.routeStart)
+        assertTrue(routes.dayRoutes.isEmpty() && routes.pointRoutes.isEmpty())
     }
 
     @Test

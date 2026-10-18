@@ -44,7 +44,6 @@ internal fun GoogleSdkMapView(
     placeClusters: List<PlaceCluster>,
     selectedPlace: MapPlace?,
     routeLine: List<Coordinates>,
-    isRouteEstimated: Boolean,
     stopPath: List<Coordinates>,
     isMyLocationEnabled: Boolean,
     coveredBottom: Dp,
@@ -130,11 +129,10 @@ internal fun GoogleSdkMapView(
     LaunchedEffect(coveredBottom) { map.setPadding(coveredBottom.value.toDouble(), coveredBottom.value.toDouble()) }
 
     // Under every pin, as on Android.
-    LaunchedEffect(routeLine, isRouteEstimated) {
-        val color = if (isRouteEstimated) RouteColor.copy(alpha = ESTIMATED_ROUTE_ALPHA) else RouteColor
+    LaunchedEffect(routeLine) {
         map.setRoute(
             points = routeLine.map { GoogleMapPoint(it.latitude, it.longitude) },
-            color = UIColor.colorWithRed(color.red.toDouble(), color.green.toDouble(), color.blue.toDouble(), color.alpha.toDouble()),
+            color = RouteColor.let { UIColor.colorWithRed(it.red.toDouble(), it.green.toDouble(), it.blue.toDouble(), it.alpha.toDouble()) },
             width = RouteWidth.value.toDouble(),
         )
     }

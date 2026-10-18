@@ -51,7 +51,7 @@ import kotlinx.collections.immutable.ImmutableList
 import org.jetbrains.compose.resources.stringResource
 import kotlin.math.roundToInt
 
-/** How to travel, and the route's time and length (or why it's straight lines). */
+/** How to travel, and the route's time and length (or that routes aren't available right now). */
 @Composable
 fun RouteSummary(
     mode: TravelMode,

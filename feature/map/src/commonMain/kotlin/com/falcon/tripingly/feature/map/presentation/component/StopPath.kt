@@ -5,9 +5,10 @@ import androidx.compose.ui.unit.dp
 import com.falcon.tripingly.core.location.model.Coordinates
 import kotlin.math.PI
 import kotlin.math.cos
+import kotlin.math.sin
 
 /*
- * While no route shows, the open day's stops are joined by curved dashed lines whose dashes march from each
+ * While no route shows, the open day's stops are joined by one smooth dashed line whose dashes march from each
  * stop to the next, so the order of the day reads at a glance. Drawn by the app alone: no routing call.
  */
 
@@ -21,41 +22,63 @@ internal val StopPathGap = 8.dp
 /** The dashes move one dash and gap further in this time. */
 internal const val STOP_PATH_PERIOD_MILLIS = 600
 
-/** How far each curve bows out, as a share of the distance between its stops. */
-private const val BEND = 0.2
+/** How far the line between just two stops bows out, as an angle off the straight line (radians). */
+private const val TWO_STOP_BEND = 0.4
 
 private const val STEPS_PER_LEG = 24
 
 /**
- * The [stops] joined in order by gentle arcs, each bowing to the right of its direction of travel. Stops in
- * the same spot are joined directly.
+ * One smooth line through the [stops] in order, with no corner at any stop, like a line drawn by hand: at
+ * each stop it heads from the stop before towards the one after, and at the first and last stop it swings
+ * in the way the next curve would. Two stops get a gentle arc.
  */
 internal fun curvedStopPath(stops: List<Coordinates>): List<Coordinates> {
     if (stops.size < 2) return stops
+    // Longitude degrees shrink away from the equator: curve in a square view so curves look the same everywhere.
+    val xScale = cos(stops.sumOf { it.latitude } / stops.size * PI / 180)
+    val points = stops.map { Point(it.longitude * xScale, it.latitude) }
+    val tangents = tangents(points)
     val path = mutableListOf(stops.first())
-    stops.zipWithNext { from, to ->
-        // Longitude degrees shrink away from the equator: bend in a square view so arcs look the same everywhere.
-        val xScale = cos((from.latitude + to.latitude) / 2 * PI / 180)
-        val dx = (to.longitude - from.longitude) * xScale
-        val dy = to.latitude - from.latitude
-        if (dx == 0.0 && dy == 0.0) {
-            path += to
-            return@zipWithNext
-        }
-        // The middle, moved sideways to the right of travel (the normal (dy, -dx)).
-        val controlX = (from.longitude * xScale + to.longitude * xScale) / 2 + dy * BEND
-        val controlY = (from.latitude + to.latitude) / 2 - dx * BEND
+    for (i in 0 until points.lastIndex) {
+        // A cubic curve from stop i to stop i + 1 leaving and arriving along their tangents.
+        val start = points[i]
+        val end = points[i + 1]
+        val c1 = start + tangents[i] / 3.0
+        val c2 = end - tangents[i + 1] / 3.0
         for (step in 1 until STEPS_PER_LEG) {
             val t = step.toDouble() / STEPS_PER_LEG
-            val a = (1 - t) * (1 - t)
-            val b = 2 * (1 - t) * t
-            val c = t * t
-            path += Coordinates(
-                latitude = a * from.latitude + b * controlY + c * to.latitude,
-                longitude = (a * from.longitude * xScale + b * controlX + c * to.longitude * xScale) / xScale,
-            )
+            val u = 1 - t
+            val p = start * (u * u * u) + c1 * (3 * u * u * t) + c2 * (3 * u * t * t) + end * (t * t * t)
+            path += Coordinates(latitude = p.y, longitude = p.x / xScale)
         }
-        path += to
+        path += stops[i + 1]
     }
     return path
+}
+
+/** The direction (and pull) of the line at each stop. */
+private fun tangents(points: List<Point>): List<Point> {
+    if (points.size == 2) {
+        val chord = points[1] - points[0]
+        // Leaving to the right of the straight line and coming back to it: the arc bows right of travel.
+        return listOf(chord.rotated(TWO_STOP_BEND), chord.rotated(-TWO_STOP_BEND))
+    }
+    val inner = List(points.size) { i ->
+        if (i == 0 || i == points.lastIndex) Point(0.0, 0.0) else (points[i + 1] - points[i - 1]) / 2.0
+    }.toMutableList()
+    // The ends turn in the way a curve through the first (or last) three stops would.
+    inner[0] = (points[1] - points[0]) * 2.0 - inner[1]
+    val last = points.lastIndex
+    inner[last] = (points[last] - points[last - 1]) * 2.0 - inner[last - 1]
+    return inner
+}
+
+private data class Point(val x: Double, val y: Double) {
+    operator fun plus(other: Point) = Point(x + other.x, y + other.y)
+    operator fun minus(other: Point) = Point(x - other.x, y - other.y)
+    operator fun times(factor: Double) = Point(x * factor, y * factor)
+    operator fun div(factor: Double) = Point(x / factor, y / factor)
+
+    /** Turned by [angle] radians, clockwise for a positive angle. */
+    fun rotated(angle: Double) = Point(x * cos(angle) + y * sin(angle), -x * sin(angle) + y * cos(angle))
 }

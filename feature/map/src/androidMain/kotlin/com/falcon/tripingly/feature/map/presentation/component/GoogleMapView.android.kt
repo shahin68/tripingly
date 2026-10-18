@@ -66,7 +66,6 @@ actual fun GoogleMapView(
     placeClusters: List<PlaceCluster>,
     selectedPlace: MapPlace?,
     routeLine: List<Coordinates>,
-    isRouteEstimated: Boolean,
     stopPath: List<Coordinates>,
     isMyLocationEnabled: Boolean,
     coveredBottom: Dp,
@@ -260,7 +259,7 @@ actual fun GoogleMapView(
         if (routeLine.size > 1) {
             Polyline(
                 points = remember(routeLine) { routeLine.map { LatLng(it.latitude, it.longitude) } },
-                color = if (isRouteEstimated) RouteColor.copy(alpha = ESTIMATED_ROUTE_ALPHA) else RouteColor,
+                color = RouteColor,
                 width = with(density) { RouteWidth.toPx() },
             )
         }

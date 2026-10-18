@@ -44,7 +44,7 @@ Tripinly is a social travel-planning app. People plan trips day by day as marker
 11. **Collaboration:** owners add people to a trip; collaborators can edit markers and photos.
 12. **Finding people and following:** by **username search** and **invite links**. People follow each other; two people who follow each other are **friends**, offered first when adding trip members. Profiles show follower and following counts and the person's public trips.
 13. **Save and Join (no copies, decided 2026-10-16):** someone else's public trip can be **saved**: it shows in My Trips marked "by @owner", read-only, always the owner's live trip. Or the person **asks to join**: the owner accepts (they become an editor of the same trip and keep access if it turns private) or declines (they can't ask again). A trip has one owner forever; if the owner deletes it, it's gone for savers and joiners too. A single stop or popular spot can still be added to one of my trips.
-14. **Best route:** reorders a day's markers. **Free:** straight-line ordering. **Paid:** real travel times via a routing provider.
+14. **Best order:** reorders a day's markers by real travel times, free for everyone. **Routes** along streets (day route, A→B, places along the way) are paid (Tripinly Pro).
 15. **Sharing:** links to a trip or marker.
 16. **Reporting and blocking** of content and users, with admin review (required by App Store and Google Play for user-generated content).
 17. **Account deletion** and **data export** (GDPR).

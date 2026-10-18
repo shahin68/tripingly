@@ -47,7 +47,7 @@ The backend enforces these rules. The client must show them correctly and never 
 ## Places, map and routes
 
 - The map shows Tripinly places (liked by users) prominently and OpenStreetMap places as smaller dots when zoomed in. See `05-maps-places-routing.md`.
-- Route lines and places along the way are free. **Best route**: free = straight-line reordering; premium = real travel times with "N min shorter".
+- **Routes** (route lines along streets, A→B, places along the way) are Tripinly Pro (`routes` entitlement). **Best order** by real travel times with "N min shorter" is free for everyone. The map never draws straight lines between stops: the app's curved direction lines or a real route.
 
 ## Server-controlled settings
 

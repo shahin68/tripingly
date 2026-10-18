@@ -5,6 +5,7 @@ import com.google.android.gms.maps.model.Dash
 import com.google.android.gms.maps.model.Gap
 import com.google.android.gms.maps.model.PatternItem
 import kotlin.math.abs
+import kotlin.math.hypot
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -26,15 +27,34 @@ class StopPathTest {
     }
 
     @Test
-    fun aCurveBowsToTheRightOfTravel() {
+    fun twoStopsAreJoinedByAnArcBowingToTheRightOfTravel() {
         // Due north: right is east.
         val path = curvedStopPath(listOf(Coordinates(48.0, 16.0), Coordinates(48.1, 16.0)))
         assertTrue(path[path.size / 2].longitude > 16.0)
     }
 
     @Test
-    fun stopsInTheSameSpotAreJoinedDirectly() {
-        assertEquals(listOf(opera, opera), curvedStopPath(listOf(opera, opera)))
+    fun theLineHasNoCornerAtAStop() {
+        // Like a hand-drawn U: down from the first stop, level through the low one, up to the last.
+        val low = Coordinates(48.0, 16.1)
+        val path = curvedStopPath(listOf(Coordinates(48.1, 16.0), low, Coordinates(48.15, 16.2)))
+        val at = path.indexOf(low)
+        val before = path[at - 1]
+        val after = path[at + 1]
+        // Arriving and leaving in the same direction: the neighbours sit on a line through the stop.
+        val inLat = low.latitude - before.latitude
+        val inLng = low.longitude - before.longitude
+        val outLat = after.latitude - low.latitude
+        val outLng = after.longitude - low.longitude
+        val sine = (inLat * outLng - inLng * outLat) / (hypot(inLat, inLng) * hypot(outLat, outLng))
+        assertTrue(abs(sine) < 0.3, "turns by asin($sine) at the stop")
+        // The line dips from the first stop instead of heading straight for the low one.
+        assertTrue(path[1].latitude < 48.1 - (48.1 - 48.0) / 24)
+    }
+
+    @Test
+    fun stopsInTheSameSpotStayInPlace() {
+        assertTrue(curvedStopPath(listOf(opera, opera)).all { it == opera })
         assertEquals(listOf(opera), curvedStopPath(listOf(opera)))
     }
 

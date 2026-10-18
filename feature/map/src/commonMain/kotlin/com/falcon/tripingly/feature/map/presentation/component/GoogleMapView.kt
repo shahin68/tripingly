@@ -28,8 +28,6 @@ expect fun GoogleMapView(
     selectedPlace: MapPlace?,
     /** The route to draw under the pins, from start to end; empty for none. */
     routeLine: List<Coordinates>,
-    /** [routeLine] is straight lines, drawn fainter. */
-    isRouteEstimated: Boolean,
     /** The stops in order, joined by curved direction lines; empty for none. */
     stopPath: List<Coordinates>,
     isMyLocationEnabled: Boolean,
@@ -53,8 +51,5 @@ expect fun GoogleMapView(
 
 /** The route's line, in the stops' blue. */
 internal val RouteColor = Color(0xFF2196F3)
-
-/** A straight-line estimate is drawn fainter. */
-internal const val ESTIMATED_ROUTE_ALPHA = 0.5f
 
 internal val RouteWidth = 5.dp
