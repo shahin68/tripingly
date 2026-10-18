@@ -219,6 +219,9 @@ internal class DefaultPhotoRepository(
             }
             // setCover has saved the stop already; a cover set by processing comes with photo.ready.
             is RealtimeEvent.MarkerCoverChanged -> if (!byMe) markerRefreshes.request(event.markerId)
+            // Other people's likes; mine came back with my own request (a late event could be older).
+            is RealtimeEvent.LikeCountChanged ->
+                if (!byMe && event.targetType == LikeTarget.Photo.wireName) updatePhoto(event.targetId) { it.copy(likeCount = event.count) }
             else -> Unit
         }
     }

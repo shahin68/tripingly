@@ -236,6 +236,18 @@ class PhotoRepositoryTest {
         assertEquals(emptyList(), repository.photos(STOP).first())
     }
 
+    @Test
+    fun otherPeoplesLikes_comeLive_butMineComeFromMyOwnRequest() = runTest {
+        val repository = repository { json("[${photo("ready")}]") }
+        repository.loadPhotos(STOP)
+
+        repository.applyLive(RealtimeEvent.LikeCountChanged("t1", "someone-else", "photo", "p1", 4), byMe = false)
+        assertEquals(4, repository.photos(STOP).first()!!.single().likeCount)
+
+        repository.applyLive(RealtimeEvent.LikeCountChanged("t1", "me", "photo", "p1", 9), byMe = true)
+        assertEquals(4, repository.photos(STOP).first()!!.single().likeCount)
+    }
+
     private fun placePhoto(status: String) = photo(status).replace("\"markerId\":\"m1\"", "\"markerId\":null,\"placeId\":\"pl1\"")
 
     private fun photoDto(status: String) = NetworkJson.decodeFromString<PhotoDto>(photo(status))
