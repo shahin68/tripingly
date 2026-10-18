@@ -191,26 +191,23 @@ actual fun GoogleMapView(
         val clusterIcons = remember(hotSpotColor, density) { mutableMapOf<Int, BitmapDescriptor>() }
 
         // Place pins are markers, so they keep their size on screen while the camera zooms. The first ones
-        // (the most liked, then the best known) are drawn on top; a new pin fades in. The tapped place keeps its
-        // own pin, only bigger and on top, so it grows without being taken off the map and put back (which blinks).
+        // (the most liked, then the best known) are drawn on top; a new pin fades in. The tapped place's
+        // pin stays as it is and a bigger copy is drawn over it: changing or removing a pin makes the map blink.
         placePins.forEachIndexed { index, pin ->
-            val isSelected = pin.place.id == selectedPlace?.id
             key(pin.place.id) {
                 val alpha = remember { Animatable(0f) }
                 LaunchedEffect(Unit) { alpha.animateTo(1f, tween(PIN_FADE_MILLIS)) }
                 Marker(
                     state = rememberUpdatedMarkerState(position = LatLng(pin.place.location.lat, pin.place.location.lng)),
-                    icon = pinIcon(
-                        PlacePinLook(pin.place.category, pin.place.isTripinly, if (isSelected) SelectedPinSize else pin.size, photoId(pin.place, pin.photo)),
-                    ),
+                    icon = pinIcon(PlacePinLook(pin.place.category, pin.place.isTripinly, pin.size, photoId(pin.place, pin.photo))),
                     title = pin.place.name,
                     anchor = Offset(0.5f, 0.5f),
                     alpha = alpha.value,
-                    // Under the clusters and the stops; the tapped one above everything.
-                    zIndex = if (isSelected) 2f else PLACE_PINS_Z * (1 - (index + 1f) / (placePins.size + 1)),
+                    // Under the clusters and the stops.
+                    zIndex = PLACE_PINS_Z * (1 - (index + 1f) / (placePins.size + 1)),
                     // No info window and no camera move of the map's own: the card and the camera are ours.
                     onClick = {
-                        if (!isSelected) onPlacePinClick(pin.place)
+                        onPlacePinClick(pin.place)
                         true
                     },
                 )
@@ -235,12 +232,12 @@ actual fun GoogleMapView(
             }
         }
 
-        // A tapped place without a pin of its own (e.g. a search result), bigger and on top.
-        selectedPlace?.takeIf { selected -> placePins.none { it.place.id == selected.id } }?.let { place ->
+        // The tapped place, bigger and on top.
+        selectedPlace?.let { place ->
             key(place.id) {
                 Marker(
                     state = rememberUpdatedMarkerState(position = LatLng(place.location.lat, place.location.lng)),
-                    icon = pinIcon(PlacePinLook(place.category, place.isTripinly, SelectedPinSize, photoId(place, photo = false))),
+                    icon = pinIcon(PlacePinLook(place.category, place.isTripinly, SelectedPinSize, photoId(place, placePins.any { it.photo && it.place.id == place.id }))),
                     title = place.name,
                     anchor = Offset(0.5f, 0.5f),
                     zIndex = 2f,
