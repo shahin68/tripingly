@@ -54,6 +54,7 @@ internal fun GoogleSdkMapView(
 ) {
     val currentMarkers by rememberUpdatedState(markers)
     val currentPlacePins by rememberUpdatedState(placePins)
+    val currentSelectedPlace by rememberUpdatedState(selectedPlace)
     val currentPlaceClusters by rememberUpdatedState(placeClusters)
     val currentOnPlacePinClick by rememberUpdatedState(onPlacePinClick)
     val currentOnClusterClick by rememberUpdatedState(onClusterClick)
@@ -99,7 +100,10 @@ internal fun GoogleSdkMapView(
                     currentOnMapTouch()
                     when {
                         key.startsWith(PLACE_KEY) ->
-                            currentPlacePins.find { PLACE_KEY + it.place.id == key }?.let { currentOnPlacePinClick(it.place) }
+                            // The tapped place's own pin does nothing more.
+                            currentPlacePins.find { PLACE_KEY + it.place.id == key }
+                                ?.takeIf { it.place.id != currentSelectedPlace?.id }
+                                ?.let { currentOnPlacePinClick(it.place) }
                         key.startsWith(CLUSTER_KEY) ->
                             currentPlaceClusters.find { it.key() == key }?.let(currentOnClusterClick)
                         else -> currentMarkers.find { it.id == key }?.let(currentOnMarkerClick)
@@ -186,17 +190,21 @@ internal fun GoogleSdkMapView(
                 fadesIn = false,
             )
         }
-        // The first pins (the most liked, then the best known) on top; the tapped place is drawn bigger below.
-        val pins = placePins.filter { it.place.id != selectedPlace?.id }.mapIndexed { index, pin ->
+        // The first pins (the most liked, then the best known) on top. The tapped place keeps its own pin, only
+        // bigger and on top, so it grows without being taken off the map and put back (which blinks).
+        val pins = placePins.mapIndexed { index, pin ->
+            val isSelected = pin.place.id == selectedPlace?.id
             GoogleMapMarker(
                 key = PLACE_KEY + pin.place.id,
                 latitude = pin.place.location.lat,
                 longitude = pin.place.location.lng,
                 title = pin.place.name,
-                icon = pinIcon(PlacePinLook(pin.place.category, pin.place.isTripinly, pin.size, photoId(pin.place, pin.photo))),
+                icon = pinIcon(
+                    PlacePinLook(pin.place.category, pin.place.isTripinly, if (isSelected) SelectedPinSize else pin.size, photoId(pin.place, pin.photo)),
+                ),
                 anchorX = 0.5,
                 anchorY = 0.5,
-                zIndex = -1 - index,
+                zIndex = if (isSelected) 2 else -1 - index,
                 showsInfoWindow = false,
                 fadesIn = true,
             )
@@ -217,15 +225,15 @@ internal fun GoogleSdkMapView(
                 fadesIn = true,
             )
         }
-        // The tapped place, bigger and on top. No info window and no camera move of the map's own: the
-        // card and the camera are ours.
-        val place = selectedPlace?.let {
+        // A tapped place without a pin of its own (e.g. a search result), bigger and on top. No info window and no
+        // camera move of the map's own: the card and the camera are ours.
+        val place = selectedPlace?.takeIf { selected -> placePins.none { it.place.id == selected.id } }?.let {
             GoogleMapMarker(
                 key = SELECTED_PLACE_KEY,
                 latitude = it.location.lat,
                 longitude = it.location.lng,
                 title = it.name,
-                icon = pinIcon(PlacePinLook(it.category, it.isTripinly, SelectedPinSize, photoId(it, placePins.any { pin -> pin.photo && pin.place.id == it.id }))),
+                icon = pinIcon(PlacePinLook(it.category, it.isTripinly, SelectedPinSize, photoId(it, photo = false))),
                 anchorX = 0.5,
                 anchorY = 0.5,
                 zIndex = 2,
