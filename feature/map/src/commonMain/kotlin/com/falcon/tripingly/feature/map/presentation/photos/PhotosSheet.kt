@@ -31,6 +31,7 @@ import androidx.compose.material.icons.filled.ErrorOutline
 import androidx.compose.material.icons.filled.PhotoCamera
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.outlined.Flag
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -44,6 +45,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -78,7 +80,8 @@ import org.koin.core.parameter.parametersOf
 /**
  * The photos of a stop or a place ([owner]) in a sheet over the map, under [title]. [canAdd]: may add photos
  * (a stop's owners and editors; anyone on a place). [canManage]: a stop's owners and editors, who pick the
- * cover ([coverPhotoId]) and delete any photo; everyone else deletes only their own.
+ * cover ([coverPhotoId]) and delete any photo; everyone else deletes only their own. [onReport] reports the
+ * photo open in the viewer.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -88,6 +91,7 @@ fun PhotosRoute(
     canAdd: Boolean,
     canManage: Boolean,
     coverPhotoId: String?,
+    onReport: (Photo) -> Unit,
     onDismiss: () -> Unit,
     viewModel: PhotosViewModel = koinViewModel(key = "photos:$owner") { parametersOf(owner) },
 ) {
@@ -116,6 +120,7 @@ fun PhotosRoute(
             initialIndex = index,
             coverPhotoId = coverPhotoId,
             canManage = canManage,
+            onReport = onReport,
             onAction = viewModel::onAction,
         )
     }
@@ -127,23 +132,68 @@ fun PhotosRoute(
         )
     }
 
-    state.photoToDelete?.let {
-        AlertDialog(
-            onDismissRequest = { viewModel.onAction(Action.OnDismissDelete) },
-            title = { Text(stringResource(Res.string.map_photo_delete_title)) },
-            text = { Text(stringResource(Res.string.map_photo_delete_message)) },
-            confirmButton = {
-                TextButton(onClick = { viewModel.onAction(Action.OnConfirmDelete) }) {
-                    Text(stringResource(Res.string.map_confirm_delete))
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { viewModel.onAction(Action.OnDismissDelete) }) {
-                    Text(stringResource(Res.string.map_cancel))
-                }
-            },
-        )
+    if (state.photoToDelete != null) DeletePhotoDialog(viewModel::onAction)
+}
+
+/**
+ * One photo of [owner]'s gallery ([photoId]) full screen, without the sheet: the same viewer, likes and
+ * gallery as [PhotosRoute], opened from elsewhere (a place card's images). Closing it ends [onDismiss].
+ */
+@Composable
+fun PhotoViewerRoute(
+    owner: PhotoOwner,
+    photoId: String,
+    onReport: (Photo) -> Unit,
+    onDismiss: () -> Unit,
+    viewModel: PhotosViewModel = koinViewModel(key = "photos:$owner") { parametersOf(owner) },
+) {
+    val state by viewModel.uiState.collectAsStateWithLifecycle()
+    LaunchedEffect(photoId) { viewModel.onAction(Action.OnOpenPhoto(photoId)) }
+    val onAction: (Action) -> Unit = { action ->
+        viewModel.onAction(action)
+        if (action is Action.OnClosePhoto) onDismiss()
     }
+    val index = state.openPhotoIndex
+    when {
+        index != null -> PhotoViewer(
+            state = state,
+            initialIndex = index,
+            coverPhotoId = null,
+            canManage = false,
+            onReport = onReport,
+            onAction = onAction,
+        )
+        // The gallery is loading, or the photo is about to open; a photo that isn't in it (deleted meanwhile) closes.
+        state.isLoading || state.viewable.any { it.id == photoId } -> Dialog(
+            onDismissRequest = { onAction(Action.OnClosePhoto) },
+            properties = DialogProperties(usePlatformDefaultWidth = false),
+        ) {
+            Box(Modifier.fillMaxSize().background(Color.Black), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator()
+            }
+        }
+        else -> LaunchedEffect(Unit) { onAction(Action.OnClosePhoto) }
+    }
+    if (state.photoToDelete != null) DeletePhotoDialog(viewModel::onAction)
+}
+
+@Composable
+private fun DeletePhotoDialog(onAction: (Action) -> Unit) {
+    AlertDialog(
+        onDismissRequest = { onAction(Action.OnDismissDelete) },
+        title = { Text(stringResource(Res.string.map_photo_delete_title)) },
+        text = { Text(stringResource(Res.string.map_photo_delete_message)) },
+        confirmButton = {
+            TextButton(onClick = { onAction(Action.OnConfirmDelete) }) {
+                Text(stringResource(Res.string.map_confirm_delete))
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = { onAction(Action.OnDismissDelete) }) {
+                Text(stringResource(Res.string.map_cancel))
+            }
+        },
+    )
 }
 
 @Composable
@@ -349,8 +399,9 @@ private fun GalleryUpload(upload: PhotoUpload, onAction: (Action) -> Unit) {
 }
 
 /**
- * The ready photos full screen, swiped through and liked, a Commons image with its credit; a stop's owners
- * and editors make one the cover, and whoever may delete a photo deletes it.
+ * The ready photos full screen, swiped through, liked and reported, a Commons image with its credit; a stop's
+ * owners and editors make one the cover, and whoever may delete a photo deletes it. The app's one full-screen
+ * photo viewer, for a stop's or a place's photos alike.
  */
 @Composable
 private fun PhotoViewer(
@@ -358,6 +409,7 @@ private fun PhotoViewer(
     initialIndex: Int,
     coverPhotoId: String?,
     canManage: Boolean,
+    onReport: (Photo) -> Unit,
     onAction: (Action) -> Unit,
 ) {
     val viewable = state.viewable
@@ -394,6 +446,12 @@ private fun PhotoViewer(
                 Box(Modifier.weight(1f))
                 if (current != null) {
                     PhotoLike(photo = current, onAction = onAction, modifier = Modifier.padding(horizontal = MaterialTheme.spacing.small))
+                    // Nobody reports their own photo; they delete it.
+                    if (state.myUserId == null || current.uploaderId != state.myUserId) {
+                        IconButton(onClick = { onReport(current) }) {
+                            Icon(Icons.Outlined.Flag, contentDescription = stringResource(Res.string.map_place_image_report), tint = Color.White)
+                        }
+                    }
                     // Only a stop's owners and editors manage, and only a stop has a cover.
                     if (canManage) {
                         if (current.id == coverPhotoId) {

@@ -12,6 +12,7 @@ import com.falcon.tripingly.core.data.account.SessionRepository
 import com.falcon.tripingly.core.data.config.AppConfigRepository
 import com.falcon.tripingly.core.data.photos.PhotoRepository
 import com.falcon.tripingly.core.model.account.SessionState
+import com.falcon.tripingly.core.model.photo.Photo
 import com.falcon.tripingly.core.model.photo.PhotoOwner
 import com.falcon.tripingly.core.data.places.PlaceRepository
 import com.falcon.tripingly.core.data.social.SocialRepository
@@ -30,7 +31,6 @@ import com.falcon.tripingly.core.model.place.PlaceCategory
 import com.falcon.tripingly.core.model.place.PlaceCluster
 import com.falcon.tripingly.core.model.place.PlaceDetails
 import com.falcon.tripingly.core.model.place.PlaceImage
-import com.falcon.tripingly.core.model.place.PlaceImageSource
 import com.falcon.tripingly.core.model.place.PlaceSearchResult
 import com.falcon.tripingly.core.model.place.PlaceSquare
 import com.falcon.tripingly.core.model.place.SearchResultType
@@ -219,13 +219,10 @@ class MapViewModel(
             is Action.OnDismissReport -> ui.update { it.copy(reporting = null) }
             is Action.OnOpenPlaceImage -> ui.update { it.copy(placeImageIndex = action.index) }
             is Action.OnClosePlaceImage -> ui.update { it.copy(placeImageIndex = null) }
-            is Action.OnReportPlaceImage -> ui.update {
-                it.copy(
-                    reporting = when (action.image.source) {
-                        PlaceImageSource.Trip -> ReportSubject(ReportTarget.Photo, action.image.id)
-                        PlaceImageSource.Commons -> ReportSubject(ReportTarget.PlaceImage, action.image.id)
-                    },
-                )
+            is Action.OnReportPhoto -> ui.update {
+                // A place's Commons image is reported as the place's image, every other photo as a photo.
+                val target = if (action.photo.credit != null) ReportTarget.PlaceImage else ReportTarget.Photo
+                it.copy(reporting = ReportSubject(target, action.photo.id))
             }
         }
     }
@@ -1133,8 +1130,8 @@ class MapViewModel(
         /** A tapped image on the place card opens full screen. */
         data class OnOpenPlaceImage(val index: Int) : Action
         data object OnClosePlaceImage : Action
-        /** Reports an image of the open place: a trip photo, or a Commons image. */
-        data class OnReportPlaceImage(val image: PlaceImage) : Action
+        /** Reports the photo open in a viewer: a Commons image as the place's image, anything else as a photo. */
+        data class OnReportPhoto(val photo: Photo) : Action
     }
 
     private companion object {

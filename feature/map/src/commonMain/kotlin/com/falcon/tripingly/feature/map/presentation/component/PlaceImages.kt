@@ -5,21 +5,16 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.outlined.Flag
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -27,10 +22,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.window.DialogProperties
 import com.falcon.tripingly.core.designsystem.component.CommonsCredit
 import com.falcon.tripingly.core.designsystem.component.PhotoImage
 import com.falcon.tripingly.core.designsystem.component.PhotoSize
@@ -38,9 +30,7 @@ import com.falcon.tripingly.core.designsystem.theme.spacing
 import com.falcon.tripingly.core.model.place.PlaceCategory
 import com.falcon.tripingly.core.model.place.PlaceImage
 import com.falcon.tripingly.feature.map.generated.resources.Res
-import com.falcon.tripingly.feature.map.generated.resources.map_close
 import com.falcon.tripingly.feature.map.generated.resources.map_place_image_position
-import com.falcon.tripingly.feature.map.generated.resources.map_place_image_report
 import com.falcon.tripingly.feature.map.generated.resources.map_place_images
 import org.jetbrains.compose.resources.stringResource
 
@@ -100,65 +90,6 @@ internal fun PlaceImageStrip(
             }
             images.getOrNull(pagerState.currentPage)?.credit?.let { credit ->
                 CommonsCredit(credit = credit, cropped = true, maxLines = 2)
-            }
-        }
-    }
-}
-
-/**
- * A place's images full screen and uncropped, swiped through, each Commons image with its credit. Any image
- * can be reported: a trip photo as the photo, a Commons image as the place's image.
- */
-@Composable
-internal fun PlaceImageViewer(
-    images: List<PlaceImage>,
-    initialIndex: Int,
-    onReport: (PlaceImage) -> Unit,
-    onDismiss: () -> Unit,
-) {
-    val pagerState = rememberPagerState(initialPage = initialIndex) { images.size }
-    Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
-        Box(Modifier.fillMaxSize().background(Color.Black)) {
-            HorizontalPager(state = pagerState, modifier = Modifier.fillMaxSize(), key = { images[it].id }) { page ->
-                PhotoImage(
-                    photoId = images[page].id,
-                    url = images[page].displayUrl,
-                    size = PhotoSize.Display,
-                    contentDescription = null,
-                    modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.Fit,
-                )
-            }
-            val current = images.getOrNull(pagerState.currentPage)
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .safeDrawingPadding()
-                    .padding(MaterialTheme.spacing.small),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                IconButton(onClick = onDismiss) {
-                    Icon(Icons.Default.Close, contentDescription = stringResource(Res.string.map_close), tint = Color.White)
-                }
-                Box(Modifier.weight(1f))
-                if (current != null) {
-                    IconButton(onClick = { onReport(current) }) {
-                        Icon(Icons.Outlined.Flag, contentDescription = stringResource(Res.string.map_place_image_report), tint = Color.White)
-                    }
-                }
-            }
-            current?.credit?.let { credit ->
-                CommonsCredit(
-                    credit = credit,
-                    cropped = false,
-                    color = Color.White,
-                    modifier = Modifier
-                        .align(Alignment.BottomCenter)
-                        .fillMaxWidth()
-                        .safeDrawingPadding()
-                        .background(Color.Black.copy(alpha = 0.5f))
-                        .padding(MaterialTheme.spacing.medium),
-                )
             }
         }
     }
