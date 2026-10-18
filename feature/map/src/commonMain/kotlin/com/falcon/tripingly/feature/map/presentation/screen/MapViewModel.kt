@@ -278,6 +278,7 @@ class MapViewModel(
             else -> emptyList()
         }
         val isDayRoute = ui.pointRoute == null && ui.isDayRouteShown
+        val shownRouteLine = routeLine.takeIf { isDayRoute || ui.pointRoute != null }.orEmpty()
         return State(
             tripName = details?.trip?.name.orEmpty(),
             tripCreatedAt = details?.trip?.createdAt,
@@ -334,7 +335,10 @@ class MapViewModel(
             locationPrompt = ui.locationPrompt,
             isDayRouteShown = ui.isDayRouteShown,
             travelMode = ui.travelMode,
-            routeLine = routeLine.takeIf { isDayRoute || ui.pointRoute != null }.orEmpty().toImmutableList(),
+            routeLine = shownRouteLine.toImmutableList(),
+            // While no route shows (also while the day's route loads); not under a route from A to B.
+            stopPath = markers.map { it.position }
+                .takeIf { shownRouteLine.isEmpty() && ui.pointRoute == null && it.size > 1 }.orEmpty().toImmutableList(),
             isRouteEstimated = ui.isRouteUnavailable || plan?.isEstimated == true,
             routeDurationSeconds = plan?.route?.durationSeconds,
             routeDistanceMeters = plan?.route?.distanceMeters,
@@ -1293,6 +1297,8 @@ class MapViewModel(
         val routeLine: ImmutableList<Coordinates> = persistentListOf(),
         /** [routeLine] is straight lines: real routes aren't available right now. */
         val isRouteEstimated: Boolean = false,
+        /** The open day's stops in order, joined on the map by curved direction lines while no route shows. */
+        val stopPath: ImmutableList<Coordinates> = persistentListOf(),
         val routeDurationSeconds: Int? = null,
         val routeDistanceMeters: Int? = null,
         /** The time to each stop from the one before, by stop ID. */

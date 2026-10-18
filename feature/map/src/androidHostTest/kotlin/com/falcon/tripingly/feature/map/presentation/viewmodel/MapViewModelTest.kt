@@ -1165,12 +1165,15 @@ class MapViewModelTest {
         val viewModel = viewModel()
         testScheduler.advanceUntilIdle()
         assertTrue(viewModel.uiState.value.routeLine.isEmpty())
+        // Without the route, direction lines join the stops, with no routing call.
+        assertEquals(viewModel.uiState.value.markers.map { it.position }, viewModel.uiState.value.stopPath)
         assertTrue(routes.dayRoutes.isEmpty())
 
         viewModel.onAction(Action.OnToggleDayRoute)
         testScheduler.advanceUntilIdle()
         val state = viewModel.uiState.value
         assertEquals(state.markers.map { it.position }, state.routeLine)
+        assertTrue(state.stopPath.isEmpty())
         assertNotNull(state.routeDurationSeconds)
         assertEquals(state.markers[1].id, state.legSeconds.keys.single())
         assertEquals(1, routes.dayRoutes.size)
@@ -1192,6 +1195,7 @@ class MapViewModelTest {
         viewModel.onAction(Action.OnToggleDayRoute)
         testScheduler.advanceUntilIdle()
         assertTrue(viewModel.uiState.value.routeLine.isEmpty())
+        assertEquals(3, viewModel.uiState.value.stopPath.size)
         assertEquals(3, routes.dayRoutes.size)
     }
 
@@ -1234,6 +1238,7 @@ class MapViewModelTest {
         assertNull(state.routeStart)
         assertEquals(listOf(from.location to to.location), routes.pointRoutes)
         assertEquals(listOf(Coordinates(48.2031, 16.3691), Coordinates(48.2166, 16.3958)), state.routeLine)
+        assertTrue(state.stopPath.isEmpty())
         assertTrue(state.legSeconds.isEmpty())
 
         viewModel.onAction(Action.OnClosePointRoute)

@@ -37,8 +37,14 @@ private final class AppGoogleMap: NSObject, GoogleMap, GMSMapViewDelegate {
     private let listener: any GoogleMapListener
     private var markers: [String: GMSMarker] = [:]
     private var route: GMSPolyline?
+    private var stopPath: GMSPolyline?
+    private var stopPathTimer: Timer?
 
     var view: UIView { mapView }
+
+    deinit {
+        stopPathTimer?.invalidate()
+    }
 
     init(listener: any GoogleMapListener) {
         self.listener = listener
@@ -107,6 +113,41 @@ private final class AppGoogleMap: NSObject, GoogleMap, GMSMapViewDelegate {
         line.strokeWidth = CGFloat(width)
         line.map = mapView
         route = line
+    }
+
+    func setStopPath(points: [GoogleMapPoint], color: UIColor, width: Double, dash: Double, gap: Double, periodSeconds: Double) {
+        stopPathTimer?.invalidate()
+        stopPathTimer = nil
+        stopPath?.map = nil
+        stopPath = nil
+        guard points.count > 1 else { return }
+        let path = GMSMutablePath()
+        for point in points {
+            path.add(CLLocationCoordinate2D(latitude: point.latitude, longitude: point.longitude))
+        }
+        let line = GMSPolyline(path: path)
+        line.strokeWidth = CGFloat(width)
+        line.map = mapView
+        stopPath = line
+        let styles = [GMSStrokeStyle.solidColor(color), GMSStrokeStyle.solidColor(.clear)]
+        let start = CACurrentMediaTime()
+        let march = { [weak self] in
+            guard let self, let line = self.stopPath else { return }
+            // The SDK measures dashes in meters: convert the points at the camera's zoom so they keep their size on screen.
+            let camera = self.mapView.camera
+            let metersPerPoint = 156_543.033_92 * cos(camera.target.latitude * .pi / 180) / pow(2, Double(camera.zoom))
+            let progress = (CACurrentMediaTime() - start).truncatingRemainder(dividingBy: periodSeconds) / periodSeconds
+            // A smaller offset moves the dashes towards the line's end.
+            let offset = (1 - progress) * (dash + gap) * metersPerPoint
+            line.spans = GMSStyleSpansOffset(
+                path, styles, [NSNumber(value: dash * metersPerPoint), NSNumber(value: gap * metersPerPoint)], .rhumb, offset
+            )
+        }
+        march()
+        // 30 times a second, also while a finger moves the map.
+        let timer = Timer(timeInterval: 1.0 / 30, repeats: true) { _ in march() }
+        RunLoop.main.add(timer, forMode: .common)
+        stopPathTimer = timer
     }
 
     func mapView(_ mapView: GMSMapView, idleAt position: GMSCameraPosition) {

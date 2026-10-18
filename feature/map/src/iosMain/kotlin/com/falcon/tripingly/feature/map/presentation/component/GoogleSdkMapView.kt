@@ -45,6 +45,7 @@ internal fun GoogleSdkMapView(
     selectedPlace: MapPlace?,
     routeLine: List<Coordinates>,
     isRouteEstimated: Boolean,
+    stopPath: List<Coordinates>,
     isMyLocationEnabled: Boolean,
     coveredBottom: Dp,
     onCameraMove: (Coordinates, Float, GeoBounds?) -> Unit,
@@ -135,6 +136,16 @@ internal fun GoogleSdkMapView(
             points = routeLine.map { GoogleMapPoint(it.latitude, it.longitude) },
             color = UIColor.colorWithRed(color.red.toDouble(), color.green.toDouble(), color.blue.toDouble(), color.alpha.toDouble()),
             width = RouteWidth.value.toDouble(),
+        )
+    }
+    LaunchedEffect(stopPath) {
+        map.setStopPath(
+            points = curvedStopPath(stopPath).map { GoogleMapPoint(it.latitude, it.longitude) },
+            color = StopPathColor.let { UIColor.colorWithRed(it.red.toDouble(), it.green.toDouble(), it.blue.toDouble(), it.alpha.toDouble()) },
+            width = StopPathWidth.value.toDouble(),
+            dash = StopPathDash.value.toDouble(),
+            gap = StopPathGap.value.toDouble(),
+            periodSeconds = STOP_PATH_PERIOD_MILLIS / 1000.0,
         )
     }
 

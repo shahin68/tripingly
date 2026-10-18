@@ -40,6 +40,13 @@ interface GoogleMap {
 
     /** Replaces the route's line, drawn under the markers; fewer than two points draw none. [width] is in points. */
     fun setRoute(points: List<GoogleMapPoint>, color: UIColor, width: Double)
+
+    /**
+     * Replaces the stops' direction line, drawn under the markers: dashes of [dash] points with [gap] points
+     * between them that move one dash and gap towards the line's end every [periodSeconds]. Fewer than two
+     * points draw none.
+     */
+    fun setStopPath(points: List<GoogleMapPoint>, color: UIColor, width: Double, dash: Double, gap: Double, periodSeconds: Double)
 }
 
 @ObjCName("GoogleMapPoint", exact = true)

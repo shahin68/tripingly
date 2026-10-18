@@ -2,6 +2,10 @@ package com.falcon.tripingly.feature.map.presentation.component
 
 import android.graphics.Point
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.PaddingValues
@@ -35,10 +39,15 @@ import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.model.BitmapDescriptor
 import com.google.android.gms.maps.model.BitmapDescriptorFactory
 import com.google.android.gms.maps.model.CameraPosition
+import com.google.android.gms.maps.model.Dash
+import com.google.android.gms.maps.model.Gap
+import com.google.android.gms.maps.model.JointType
 import com.google.android.gms.maps.model.LatLng
 import com.google.android.gms.maps.model.MapStyleOptions
+import com.google.android.gms.maps.model.PatternItem
 import com.google.maps.android.compose.ComposeMapColorScheme
 import com.google.maps.android.compose.GoogleMap
+import com.google.maps.android.compose.GoogleMapComposable
 import com.google.maps.android.compose.MapProperties
 import com.google.maps.android.compose.MapUiSettings
 import com.google.maps.android.compose.Marker
@@ -58,6 +67,7 @@ actual fun GoogleMapView(
     selectedPlace: MapPlace?,
     routeLine: List<Coordinates>,
     isRouteEstimated: Boolean,
+    stopPath: List<Coordinates>,
     isMyLocationEnabled: Boolean,
     coveredBottom: Dp,
     onCameraMove: (Coordinates, Float, GeoBounds?) -> Unit,
@@ -254,6 +264,7 @@ actual fun GoogleMapView(
                 width = with(density) { RouteWidth.toPx() },
             )
         }
+        if (stopPath.size > 1) StopPathLine(stopPath)
 
         // The tapped place, bigger and on top.
         selectedPlace?.let { place ->
@@ -301,6 +312,41 @@ actual fun GoogleMapView(
         }
     }
 }
+
+/** The stops joined by curves whose dashes march from each stop to the next. */
+@Composable
+@GoogleMapComposable
+private fun StopPathLine(stops: List<Coordinates>) {
+    val density = LocalDensity.current
+    val dash = with(density) { StopPathDash.toPx() }
+    val gap = with(density) { StopPathGap.toPx() }
+    val shift by rememberInfiniteTransition(label = "stopPath").animateFloat(
+        initialValue = 0f,
+        targetValue = dash + gap,
+        animationSpec = infiniteRepeatable(tween(STOP_PATH_PERIOD_MILLIS, easing = LinearEasing)),
+        label = "stopPathShift",
+    )
+    Polyline(
+        points = remember(stops) { curvedStopPath(stops).map { LatLng(it.latitude, it.longitude) } },
+        color = StopPathColor,
+        width = with(density) { StopPathWidth.toPx() },
+        pattern = marchingDashes(dash, gap, shift),
+        jointType = JointType.ROUND,
+    )
+}
+
+/**
+ * A [dash] and [gap] pattern whose first dash starts [shift] pixels into the line (0 until a dash and a gap),
+ * so a growing shift moves the dashes towards the line's end.
+ */
+internal fun marchingDashes(dash: Float, gap: Float, shift: Float): List<PatternItem> =
+    if (shift < gap) {
+        listOf(Gap(shift), Dash(dash), Gap(gap - shift))
+    } else {
+        // The dash wraps around: its end at the start of the line, its beginning at the end of the pattern.
+        val head = shift - gap
+        listOf(Dash(head), Gap(gap), Dash(dash - head))
+    }
 
 /** A new place pin fades in, as Google's own pins do. */
 private const val PIN_FADE_MILLIS = 250

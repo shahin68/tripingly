@@ -195,6 +195,7 @@ fun MapScreen(
                 selectedPlace = state.selectedPlace,
                 routeLine = state.routeLine,
                 isRouteEstimated = state.isRouteEstimated,
+                stopPath = state.stopPath,
                 isMyLocationEnabled = state.isPermissionGranted,
                 coveredBottom = with(density) { if (bottomCardsTop > 0f) (mapSize.height - bottomCardsTop).toDp() else 0.dp },
                 onCameraMove = { coords, zoom, bounds -> onAction(Action.OnCameraMove(coords, zoom, bounds)) },

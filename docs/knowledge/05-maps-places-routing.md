@@ -115,6 +115,8 @@ Decided 2026-10-10 (Shahin, "Tiles + prefetch"): places load and draw like Googl
 
 *(Built in stage 8: the Route button on the stops card turns the day's route on; leg times sit between the stop chips; Walk/Bike/Car chips; the places along the way are a row in the same card and pins on the map. "Route from here" / "Route to here" on place cards, the A→B card replaces the stops card until closed. Routes are kept in memory by stops and mode, so the same stops are routed once; a day is routed after its own stop changes reached the server. The MapKit fallback on iOS draws no route.)*
 
+*Direction lines: while no route shows, the open day's stops are joined by curved coral dashed lines whose dashes march from each stop to the next (`StopPath.kt`), drawn on the device with no routing call.*
+
 ## Best route
 
 `POST /days/{id}/optimize` → preview the new order (a list in a dialog) → "Apply" saves it as a normal reorder (`PUT /days/{id}/marker-order`, optimistic like every stop change) rather than `?apply=true`, so it shows at once.

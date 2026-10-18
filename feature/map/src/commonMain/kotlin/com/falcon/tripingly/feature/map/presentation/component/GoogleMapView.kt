@@ -30,6 +30,8 @@ expect fun GoogleMapView(
     routeLine: List<Coordinates>,
     /** [routeLine] is straight lines, drawn fainter. */
     isRouteEstimated: Boolean,
+    /** The stops in order, joined by curved direction lines; empty for none. */
+    stopPath: List<Coordinates>,
     isMyLocationEnabled: Boolean,
     /** How much of the map's bottom the screen's cards cover: Google's logo stays above it. */
     coveredBottom: Dp,
