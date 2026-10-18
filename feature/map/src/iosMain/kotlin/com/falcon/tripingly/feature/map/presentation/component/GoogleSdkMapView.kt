@@ -219,11 +219,11 @@ internal fun GoogleSdkMapView(
                 fadesIn = true,
             )
         }
-        // The tapped place, bigger and on top; it fades in over its own pin. No info window and no camera move of
-        // the map's own: the card and the camera are ours.
+        // The tapped place, bigger and on top. No info window and no camera move of the map's own: the
+        // card and the camera are ours.
         val place = selectedPlace?.let {
             GoogleMapMarker(
-                key = SELECTED_PLACE_KEY + it.id,
+                key = SELECTED_PLACE_KEY,
                 latitude = it.location.lat,
                 longitude = it.location.lng,
                 title = it.name,
@@ -232,7 +232,7 @@ internal fun GoogleSdkMapView(
                 anchorY = 0.5,
                 zIndex = 2,
                 showsInfoWindow = false,
-                fadesIn = true,
+                fadesIn = false,
             )
         }
         map.setMarkers(pins + clusters + stops + listOfNotNull(place))

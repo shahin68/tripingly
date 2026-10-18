@@ -235,17 +235,14 @@ actual fun GoogleMapView(
             }
         }
 
-        // The tapped place, bigger and on top. It fades in quickly over its own pin, so the pin seems to grow.
+        // The tapped place, bigger and on top.
         selectedPlace?.let { place ->
             key(place.id) {
-                val alpha = remember { Animatable(0f) }
-                LaunchedEffect(Unit) { alpha.animateTo(1f, tween(SELECTED_PIN_FADE_MILLIS)) }
                 Marker(
                     state = rememberUpdatedMarkerState(position = LatLng(place.location.lat, place.location.lng)),
                     icon = pinIcon(PlacePinLook(place.category, place.isTripinly, SelectedPinSize, photoId(place, placePins.any { it.photo && it.place.id == place.id }))),
                     title = place.name,
                     anchor = Offset(0.5f, 0.5f),
-                    alpha = alpha.value,
                     zIndex = 2f,
                     onClick = { true },
                 )
@@ -287,9 +284,6 @@ actual fun GoogleMapView(
 
 /** A new place pin fades in, as Google's own pins do. */
 private const val PIN_FADE_MILLIS = 250
-
-/** The tapped place's bigger pin fades in faster, so the tap feels instant. */
-private const val SELECTED_PIN_FADE_MILLIS = 150
 
 /** Place pins sit under this, the stops at 1 and the tapped place at 2. */
 private const val PLACE_PINS_Z = 0.5f

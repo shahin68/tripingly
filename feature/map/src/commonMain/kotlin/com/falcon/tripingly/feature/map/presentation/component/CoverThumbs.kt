@@ -14,6 +14,9 @@ import com.falcon.tripingly.core.designsystem.component.PhotoSize
 import com.falcon.tripingly.core.designsystem.component.photoRequest
 import com.falcon.tripingly.core.model.place.MapPlace
 import com.falcon.tripingly.feature.map.domain.model.MapMarker
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 
 /** The cover thumbnails of [markers] by photo ID, for drawing into their pins (null when one failed to load). */
 @Composable
@@ -37,7 +40,8 @@ internal fun rememberPinPhotos(pins: List<PlacePin>): Map<String, ImageBitmap?> 
 
 /**
  * The thumbnails of [covers] (image ID to signed URL) by ID, null for one that failed to load. Loaded through
- * the app's image loader, so an image already seen comes from its cache, whatever its signed URL is now.
+ * the app's image loader, so an image already seen comes from its cache, whatever its signed URL is now. The new
+ * ones load together and arrive at once: on Android each change of the pins can make the map blink.
  */
 @Composable
 private fun rememberThumbs(covers: Map<String, String>): Map<String, ImageBitmap?> {
@@ -45,11 +49,12 @@ private fun rememberThumbs(covers: Map<String, String>): Map<String, ImageBitmap
     var thumbs by remember { mutableStateOf(emptyMap<String, ImageBitmap?>()) }
     LaunchedEffect(covers.keys) {
         val loader = SingletonImageLoader.get(context)
-        for ((id, url) in covers) {
-            if (id in thumbs) continue
-            val image = loader.execute(photoRequest(context, id, url, PhotoSize.Thumb)).image
-            thumbs = thumbs + (id to image?.toPinBitmap())
+        val loaded = coroutineScope {
+            covers.filterKeys { it !in thumbs }
+                .map { (id, url) -> async { id to loader.execute(photoRequest(context, id, url, PhotoSize.Thumb)).image?.toPinBitmap() } }
+                .awaitAll()
         }
+        if (loaded.isNotEmpty()) thumbs = thumbs + loaded
     }
     return thumbs
 }
