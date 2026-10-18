@@ -85,12 +85,11 @@ actual fun GoogleMapView(
         )
     }
 
-    // While the camera flies to a target, its position on the way isn't reported: the map loading (onMapLoaded) mid-flight
-    // would make the half-way point the new target and stop the flight there.
-    var isFlying by remember { mutableStateOf(false) }
+    // A camera animation started before the map has loaded doesn't run (on a fresh start the trip's stops arrive
+    // first), so until then the camera jumps instead.
+    var isMapLoaded by remember { mutableStateOf(false) }
 
     fun reportCamera() {
-        if (isFlying) return
         val position = cameraPositionState.position
         onCameraMove(
             Coordinates(position.target.latitude, position.target.longitude),
@@ -132,21 +131,14 @@ actual fun GoogleMapView(
         val zoomDiff = Math.abs(current.zoom - zoomLevel)
         
         if (latDiff > 0.00001 || lngDiff > 0.00001 || zoomDiff > 0.01) {
-            if (cameraPositionState.projection == null) {
+            if (!isMapLoaded) {
                 // The map isn't drawn yet: start it there instead of animating.
                 cameraPositionState.position = CameraPosition.fromLatLngZoom(targetLatLng, zoomLevel)
             } else {
-                isFlying = true
-                try {
-                    cameraPositionState.animate(
-                        CameraUpdateFactory.newLatLngZoom(targetLatLng, zoomLevel),
-                        durationMs = CAMERA_MOVE_MILLIS
-                    )
-                } finally {
-                    isFlying = false
-                }
-                // Arrived: where it rests is reported (a finger stopping the flight reports when the camera rests).
-                reportCamera()
+                cameraPositionState.animate(
+                    CameraUpdateFactory.newLatLngZoom(targetLatLng, zoomLevel),
+                    durationMs = CAMERA_MOVE_MILLIS
+                )
             }
         }
     }
@@ -168,7 +160,10 @@ actual fun GoogleMapView(
             onMapLongClick(Coordinates(latitude = latLng.latitude, longitude = latLng.longitude))
         },
         // The first camera report comes before the map can tell its bounds, so the squares around the view load from here.
-        onMapLoaded = ::reportCamera,
+        onMapLoaded = {
+            isMapLoaded = true
+            reportCamera()
+        },
     ) {
         // Every pin look is drawn once, here where the map can take icons, and shared by every pin that looks the same.
         val categoryIcons = PlaceCategory.entries.associateWith { rememberVectorPainter(it.icon) }
