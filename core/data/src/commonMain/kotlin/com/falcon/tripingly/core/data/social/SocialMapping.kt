@@ -49,7 +49,13 @@ internal fun CommentDto.toComment() = Comment(
 internal fun LikeStateDto.toLikeState() = LikeState(liked = liked, likeCount = likeCount.toInt())
 
 /** The name in `/likes/{targetType}/…` and in `like.count_changed`. */
-internal val LikeTarget.wireName: String get() = name.lowercase()
+internal val LikeTarget.wireName: String get() = when (this) {
+    LikeTarget.Trip -> "trip"
+    LikeTarget.Photo -> "photo"
+    LikeTarget.Comment -> "comment"
+    LikeTarget.Place -> "place"
+    LikeTarget.PlaceImage -> "place_image"
+}
 
 internal fun ReportTarget.toDto() = when (this) {
     ReportTarget.User -> CreateReportDto.TargetType.USER

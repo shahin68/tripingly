@@ -22,7 +22,13 @@ import com.falcon.tripingly.core.network.realtime.RealtimeClient
 import com.falcon.tripingly.core.network.realtime.RealtimeEvent
 import com.falcon.tripingly.core.network.social.SocialApi
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.mapNotNull
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.flow.updateAndGet
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 
 internal class DefaultSocialRepository(
     private val api: SocialApi,
@@ -47,16 +53,64 @@ internal class DefaultSocialRepository(
     override suspend fun deleteComment(comment: Comment): AppResult<Unit, DataError.Network> =
         api.deleteComment(comment.id).onSuccess { local.addToCommentCount(comment.markerId, -1) }
 
+    /** Per item, while taps on its heart are being sent: see [sendLatestLike]. */
+    private class LikeSync(var wanted: Boolean) {
+        val lock = Mutex()
+        val callers = MutableStateFlow(0)
+        var confirmed: LikeState? = null
+        var failure: AppResult.Error<DataError.Network>? = null
+    }
+
+    private val likeSyncs = mutableMapOf<String, LikeSync>()
+    private val likeSyncsLock = Mutex()
+
     override suspend fun setLiked(target: LikeTarget, targetId: String, liked: Boolean): AppResult<LikeState, DataError.Network> {
         // A place's heart changes at once on its stops in the cached trips; a refusal puts it back.
         val before = if (target == LikeTarget.Place) local.markerAtPlace(targetId) else null
         if (before != null && before.likedByMe != liked) {
             local.savePlaceLike(targetId, (before.likeCount + if (liked) 1 else -1).coerceAtLeast(0), liked)
         }
-        val result = if (liked) api.like(target.wireName, targetId) else api.unlike(target.wireName, targetId)
-        return result.map { it.toLikeState() }
+        val key = "${target.wireName}:$targetId"
+        val sync = likeSyncsLock.withLock {
+            likeSyncs.getOrPut(key) { LikeSync(liked) }.also { it.wanted = liked; it.callers.update { n -> n + 1 } }
+        }
+        val result = try {
+            var isSender = false
+            val result = sync.lock.withLock {
+                sync.failure ?: sendLatestLike(target, targetId, sync).also { isSender = true }
+            }
+            // A failed burst: the tap that sent it answers last, so its "before" (the heart before the burst) is
+            // what callers put back, not the heart of some tap in between.
+            if (isSender && result is AppResult.Error) sync.callers.first { it == 1 }
+            result
+        } finally {
+            // The burst of taps is over: the next tap asks the server again (another device may have changed it).
+            likeSyncsLock.withLock { if (sync.callers.updateAndGet { it - 1 } == 0) likeSyncs.remove(key) }
+        }
+        return result
             .onSuccess { if (target == LikeTarget.Place) local.savePlaceLike(targetId, it.likeCount, it.liked) }
             .onError { if (before != null) local.savePlaceLike(targetId, before.likeCount, before.likedByMe) }
+    }
+
+    /**
+     * The last tap wins: one request at a time per item, all sent by the burst's first tap. Taps meanwhile
+     * only change what's wanted; when an answer no longer matches it, one more request follows. Every tap of
+     * the burst gets the final state, so an older answer never puts an old heart back. A failure ends the
+     * burst: every tap of it gets that failure.
+     */
+    private suspend fun sendLatestLike(target: LikeTarget, targetId: String, sync: LikeSync): AppResult<LikeState, DataError.Network> {
+        while (true) {
+            val confirmed = sync.confirmed
+            if (confirmed != null && confirmed.liked == sync.wanted) return AppResult.Success(confirmed)
+            val wanted = sync.wanted
+            when (val result = (if (wanted) api.like(target.wireName, targetId) else api.unlike(target.wireName, targetId)).map { it.toLikeState() }) {
+                is AppResult.Success -> sync.confirmed = result.data
+                is AppResult.Error -> {
+                    sync.failure = result
+                    return result
+                }
+            }
+        }
     }
 
     override suspend fun report(

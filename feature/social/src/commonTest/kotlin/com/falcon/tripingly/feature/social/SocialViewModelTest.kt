@@ -111,6 +111,7 @@ class SocialViewModelTest {
             owner = UserSummary("u-anna", "anna", "Anna"),
             dayCount = 1,
             markerCount = 2,
+            createdAt = Instant.parse("2026-10-16T10:00:00Z"),
             updatedAt = Instant.parse("2026-10-16T10:00:00Z"),
         )
         backend.seed(TripDetails(trip, emptyList(), emptyList()))

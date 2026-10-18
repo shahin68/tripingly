@@ -63,9 +63,9 @@ private final class AppGoogleMap: NSObject, GoogleMap, GMSMapViewDelegate {
     func moveCamera(latitude: Double, longitude: Double, zoom: Float, animated: Bool) {
         let camera = GMSCameraPosition(latitude: latitude, longitude: longitude, zoom: zoom)
         if animated {
-            // As fast as on Android (400 ms).
+            // As fast as on Android (180 ms).
             CATransaction.begin()
-            CATransaction.setAnimationDuration(0.4)
+            CATransaction.setAnimationDuration(0.18)
             mapView.animate(to: camera)
             CATransaction.commit()
         } else {

@@ -26,6 +26,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -64,7 +65,7 @@ class PhotosViewModel(
             is Action.OnCloseCamera -> ui.update { it.copy(isCameraOpen = false) }
             is Action.OnRetryUpload -> photoRepository.retryUpload(action.key)
             is Action.OnRemoveUpload -> photoRepository.dismissUpload(action.key)
-            is Action.OnOpenPhoto -> ui.update { it.copy(openPhotoId = action.photoId) }
+            is Action.OnOpenPhoto -> openPhoto(action.photoId)
             is Action.OnClosePhoto -> ui.update { it.copy(openPhotoId = null) }
             is Action.OnMakeCover -> makeCover(action.photoId)
             is Action.OnDeletePhoto -> ui.update { it.copy(photoToDelete = action.photo) }
@@ -84,7 +85,9 @@ class PhotosViewModel(
             photos = gallery.toImmutableList(),
             uploads = uploads.toImmutableList(),
             isLoading = photos == null && ui.isLoading,
+            isFindingPhoto = ui.isFindingPhoto,
             viewable = viewable.toImmutableList(),
+            openPhotoId = ui.openPhotoId,
             openPhotoIndex = viewable.indexOfFirst { it.id == ui.openPhotoId }.takeIf { it >= 0 },
             photoToDelete = ui.photoToDelete,
             myUserId = myUserId,
@@ -103,6 +106,26 @@ class PhotosViewModel(
         viewModelScope.launch {
             val result = photoRepository.loadPhotos(owner)
             ui.update { it.copy(isLoading = false, message = (result as? AppResult.Error)?.error?.toUiText(Res.string.map_error_load_photos)) }
+        }
+    }
+
+    /**
+     * Opened from outside the sheet (the place card), the photo can be newer than the gallery this device
+     * already has, so a photo the gallery doesn't know reloads it once. The first load counts as that reload.
+     */
+    private fun openPhoto(photoId: String) {
+        val wasLoading = ui.value.isLoading
+        ui.update { it.copy(openPhotoId = photoId, isFindingPhoto = true) }
+        viewModelScope.launch {
+            ui.first { !it.isLoading }
+            val isKnown = photoRepository.photos(owner).first().orEmpty().any { it.id == photoId }
+            val result = if (isKnown || wasLoading) null else photoRepository.loadPhotos(owner)
+            ui.update { state ->
+                state.copy(
+                    isFindingPhoto = false,
+                    message = (result as? AppResult.Error)?.error?.toUiText(Res.string.map_error_load_photos) ?: state.message,
+                )
+            }
         }
     }
 
@@ -149,6 +172,7 @@ class PhotosViewModel(
     private data class UiState(
         val isLoading: Boolean = true,
         val openPhotoId: String? = null,
+        val isFindingPhoto: Boolean = false,
         val photoToDelete: Photo? = null,
         val isSaving: Boolean = false,
         val isCameraOpen: Boolean = false,
@@ -163,8 +187,12 @@ class PhotosViewModel(
         val uploads: ImmutableList<PhotoUpload> = persistentListOf(),
         /** The gallery hasn't loaded yet. */
         val isLoading: Boolean = true,
+        /** The photo asked for is being looked up, see [Action.OnOpenPhoto]. */
+        val isFindingPhoto: Boolean = false,
         /** The photos the viewer pages through: the ready ones. */
         val viewable: ImmutableList<Photo> = persistentListOf(),
+        /** The photo asked for with [Action.OnOpenPhoto], until it closes. */
+        val openPhotoId: String? = null,
         /** The viewer is open on this index of [viewable]. */
         val openPhotoIndex: Int? = null,
         /** Waiting for the user to confirm. */

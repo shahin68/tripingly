@@ -214,6 +214,40 @@ class PhotoRepositoryTest {
         assertEquals(1, liked.likeCount)
     }
 
+    @Test
+    fun aTripPhotoInAPlacesGallery_isLikedAndDeletedInBothGalleries() = runTest {
+        // A liked trip photo shows in its place's gallery too, still owned by its stop.
+        val repository = repository { request ->
+            if (request.method.value == "DELETE") respond("", HttpStatusCode.NoContent) else json("[${photo("ready")}]")
+        }
+        repository.loadPhotos(STOP)
+        repository.loadPhotos(PLACE)
+        val inPlace = repository.photos(PLACE).first()!!.single()
+        assertEquals(STOP, inPlace.owner)
+
+        repository.setLiked(inPlace, liked = true)
+
+        assertTrue(repository.photos(PLACE).first()!!.single().likedByMe)
+        assertTrue(repository.photos(STOP).first()!!.single().likedByMe)
+
+        repository.deletePhoto(inPlace)
+
+        assertEquals(emptyList(), repository.photos(PLACE).first())
+        assertEquals(emptyList(), repository.photos(STOP).first())
+    }
+
+    @Test
+    fun otherPeoplesLikes_comeLive_butMineComeFromMyOwnRequest() = runTest {
+        val repository = repository { json("[${photo("ready")}]") }
+        repository.loadPhotos(STOP)
+
+        repository.applyLive(RealtimeEvent.LikeCountChanged("t1", "someone-else", "photo", "p1", 4), byMe = false)
+        assertEquals(4, repository.photos(STOP).first()!!.single().likeCount)
+
+        repository.applyLive(RealtimeEvent.LikeCountChanged("t1", "me", "photo", "p1", 9), byMe = true)
+        assertEquals(4, repository.photos(STOP).first()!!.single().likeCount)
+    }
+
     private fun placePhoto(status: String) = photo(status).replace("\"markerId\":\"m1\"", "\"markerId\":null,\"placeId\":\"pl1\"")
 
     private fun photoDto(status: String) = NetworkJson.decodeFromString<PhotoDto>(photo(status))
@@ -221,7 +255,8 @@ class PhotoRepositoryTest {
     private fun photo(status: String) = """
         {"id":"p1","markerId":"m1","status":"$status","thumbUrl":${if (status == "ready") "\"https://storage.test/t\"" else "null"},
          "displayUrl":null,"width":null,"height":null,"position":0,"likeCount":0,"likedByMe":false,
-         "uploader":${TripJson.OWNER},"createdAt":"2026-10-11T09:00:00.000Z"}
+         "uploader":${TripJson.OWNER},"createdAt":"2026-10-11T09:00:00.000Z",
+         "source":"user","credit":null}
     """.trimIndent()
 
     private companion object {

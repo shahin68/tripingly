@@ -76,7 +76,7 @@ internal class RealtimeSync(
             is RealtimeEvent.CommentAdded -> if (!byMe) local.addToCommentCount(event.comment.markerId, 1)
             is RealtimeEvent.CommentDeleted -> if (!byMe) local.addToCommentCount(event.markerId, -1)
             is RealtimeEvent.LikeCountChanged ->
-                if (event.targetType == PLACE) local.savePlaceLike(event.targetId, event.count, likedByMe = null)
+                if (event.targetType == PLACE) local.savePlaceLike(event.targetId, event.count, likedByMe = null) else photos.applyLive(event, byMe)
             is RealtimeEvent.PhotoSaved,
             is RealtimeEvent.PhotoFailed,
             is RealtimeEvent.PhotoDeleted,

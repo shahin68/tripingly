@@ -84,4 +84,5 @@
     <string name="social_explore_filters">Felfedezés szűrői</string>
     <string name="social_explore_empty_filtered">Még nincs utazás ezekkel a szűrőkkel.</string>
     <string name="social_explore_nearby_blocked">A Tripinly nem fér hozzá a helyadatokhoz. Kapcsold be a Beállításokban, hogy lásd a közeli utakat.</string>
+    <string name="social_trip_created">Létrehozva %1$s</string>
 </resources>

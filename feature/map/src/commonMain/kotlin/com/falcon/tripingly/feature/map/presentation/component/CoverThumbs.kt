@@ -12,27 +12,49 @@ import coil3.SingletonImageLoader
 import coil3.compose.LocalPlatformContext
 import com.falcon.tripingly.core.designsystem.component.PhotoSize
 import com.falcon.tripingly.core.designsystem.component.photoRequest
+import com.falcon.tripingly.core.model.place.MapPlace
 import com.falcon.tripingly.feature.map.domain.model.MapMarker
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
+
+/** The cover thumbnails of [markers] by photo ID, for drawing into their pins (null when one failed to load). */
+@Composable
+internal fun rememberCoverThumbs(markers: List<MapMarker>): Map<String, ImageBitmap?> =
+    rememberThumbs(
+        markers.mapNotNull { marker ->
+            val id = marker.coverPhotoId ?: return@mapNotNull null
+            marker.coverThumbUrl?.let { id to it }
+        }.toMap(),
+    )
+
+/** The photos of the photo pins in [pins] by image ID ([MapPlace.coverImageId]), null when one failed to load. */
+@Composable
+internal fun rememberPinPhotos(pins: List<PlacePin>): Map<String, ImageBitmap?> =
+    rememberThumbs(
+        pins.filter { it.photo }.mapNotNull { pin ->
+            val id = pin.place.coverImageId ?: return@mapNotNull null
+            pin.place.coverThumbUrl?.let { id to it }
+        }.toMap(),
+    )
 
 /**
- * The cover thumbnails of [markers] by photo ID, for drawing into their pins. Loaded through the app's
- * image loader, so a cover already seen comes from its cache, whatever its signed URL is now.
+ * The thumbnails of [covers] (image ID to signed URL) by ID, null for one that failed to load. Loaded through
+ * the app's image loader, so an image already seen comes from its cache, whatever its signed URL is now. The new
+ * ones load together and arrive at once: on Android each change of the pins can make the map blink.
  */
 @Composable
-internal fun rememberCoverThumbs(markers: List<MapMarker>): Map<String, ImageBitmap> {
+private fun rememberThumbs(covers: Map<String, String>): Map<String, ImageBitmap?> {
     val context = LocalPlatformContext.current
-    var thumbs by remember { mutableStateOf(emptyMap<String, ImageBitmap>()) }
-    val covers = markers.mapNotNull { marker ->
-        val id = marker.coverPhotoId ?: return@mapNotNull null
-        marker.coverThumbUrl?.let { id to it }
-    }.toMap()
+    var thumbs by remember { mutableStateOf(emptyMap<String, ImageBitmap?>()) }
     LaunchedEffect(covers.keys) {
         val loader = SingletonImageLoader.get(context)
-        for ((id, url) in covers) {
-            if (id in thumbs) continue
-            val image = loader.execute(photoRequest(context, id, url, PhotoSize.Thumb)).image ?: continue
-            thumbs = thumbs + (id to image.toPinBitmap())
+        val loaded = coroutineScope {
+            covers.filterKeys { it !in thumbs }
+                .map { (id, url) -> async { id to loader.execute(photoRequest(context, id, url, PhotoSize.Thumb)).image?.toPinBitmap() } }
+                .awaitAll()
         }
+        if (loaded.isNotEmpty()) thumbs = thumbs + loaded
     }
     return thumbs
 }

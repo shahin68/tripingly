@@ -41,10 +41,19 @@
 - A trip is subscribed while `TripRepository.observeTrip` is collected (counted, so two screens on one trip share it), and every subscription is sent again after a reconnect.
 - `RealtimeSync` (`core:data`) applies events to the Room cache, never the screens: others' `marker.*` and `markers.reordered` are saved from the payload (if the trip has unsent changes of its own, the trip reloads once they're sent instead); `trip.updated`, `day.*` and `member.*` reload the trip, at most twice per burst; `trip.deleted` drops it; `trips.changed` reloads My Trips; photo events update open galleries, and a ready or deleted photo reloads its stop for the cover and count. Events this user caused are skipped where the app applied the change itself.
 - After every reconnect but the first since launch or sign-in: My Trips, the watched trips and galleries with processing photos are reloaded.
-- `comment.*` and `like.count_changed` from others change a stop's comment and like counts in Room (a `place` like count goes to every cached stop at that place; the server sends it to each trip with a stop there) (`RealtimeSync`), keeping my own `likedByMe`; an open comments sheet adds and drops comments and updates comment likes live (`SocialRepository.commentChanges`, `likeCounts`). My own comment echoes are skipped (the server's answer already counted them).
+- `comment.*` and `like.count_changed` from others change a stop's comment and like counts in Room (a `place` like count goes to every cached stop at that place; the server sends it to each trip with a stop there) (`RealtimeSync`), keeping my own `likedByMe`; an open comments sheet adds and drops comments and updates comment likes live (`SocialRepository.commentChanges`, `likeCounts`). Others' `photo` like counts update every open gallery showing the photo (`PhotoRepository`), keeping my own heart. My own comment and like echoes are skipped (the server's answer already counted them; a late echo could be older).
 - Not used yet: `notification.created` (stage 9 push).
 
+### What is live, and what isn't (2026-10-18)
+
+- **Live (socket, as it happens):** an open trip's stops, days, members, trip details, trip deletion; photos ready/failed/deleted/reordered and covers; comments; My Trips list changes; follows; my own place photos finishing.
+- **Near live:** like counts on stops (their place), comments and trip photos (at most one update per item every 2 s); in-app notifications appear at once, but their pushes are batched (collaborator changes, 10 min) or grouped (likes, at most one push per hour); map places in view refresh every `placesRefreshSeconds` (default 300 s).
+- **Not live (loaded when the screen opens, pulled to refresh, or scrolled):** Explore, Nearby, profiles and Friends lists, search, place details and place pins, likes on place photos and Wikimedia images (no trip room), trip likes on Explore cards. Wikimedia images sync once a day.
+
 ## Push (Firebase Cloud Messaging)
+
+**Push cost rule (Shahin, 2026-10-18):** be conservative with pushes. Likes never push one by one: one grouped push per person per hour, counting people, not likes, so someone tapping a heart over and over counts once; unlikes, own likes and place likes never push. New push types need the same care (batch or group anything that can repeat).
+
 
 - Android: FCM directly. iOS: Firebase Messaging with APNs (APNs key uploaded to Firebase by the user).
 - Register the device after sign-in and whenever the token changes: `PUT /me/devices/{fcmToken}` with platform and app language. On sign-out: `DELETE /me/devices/{fcmToken}` then `POST /auth/logout`.

@@ -77,5 +77,6 @@ class FakePhotoRepository : PhotoRepository {
         likeCount = 0,
         likedByMe = false,
         uploaderId = null,
+        credit = null,
     )
 }

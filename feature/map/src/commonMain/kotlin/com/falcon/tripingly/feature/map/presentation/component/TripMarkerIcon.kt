@@ -17,9 +17,12 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.LineHeightStyle
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
 
 private val MarkerTipShape = GenericShape { size, _ ->
@@ -56,7 +59,8 @@ fun TripMarkerIcon(
                     text = orderNumber.toString(),
                     color = Color.White,
                     fontSize = 14.sp,
-                    fontWeight = FontWeight.Bold
+                    fontWeight = FontWeight.Bold,
+                    style = PinNumberStyle,
                 )
             }
         } else {
@@ -82,7 +86,8 @@ fun TripMarkerIcon(
                         text = orderNumber.toString(),
                         color = Color.White,
                         fontSize = 10.sp,
-                        fontWeight = FontWeight.Bold
+                        fontWeight = FontWeight.Bold,
+                        style = PinNumberStyle,
                     )
                 }
             }
@@ -95,6 +100,12 @@ fun TripMarkerIcon(
         )
     }
 }
+
+/** The number sits in the middle of its circle: one line exactly as tall as its glyphs, without the theme's line height. */
+private val PinNumberStyle = TextStyle(
+    lineHeight = 1.em,
+    lineHeightStyle = LineHeightStyle(LineHeightStyle.Alignment.Center, LineHeightStyle.Trim.Both),
+)
 
 private val PIN_SIZE = 32.dp
 private val TIP_HEIGHT = 8.dp

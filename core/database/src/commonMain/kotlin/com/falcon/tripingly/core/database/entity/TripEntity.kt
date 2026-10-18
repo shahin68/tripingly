@@ -7,7 +7,7 @@ import androidx.room.PrimaryKey
 /**
  * A cached trip. The server is the source of truth; the cache holds the signed-in
  * user's trips for offline reading and is wiped when the session ends.
- * Dates are `YYYY-MM-DD`, [updatedAt] epoch milliseconds.
+ * Dates are `YYYY-MM-DD`, [createdAt] and [updatedAt] epoch milliseconds.
  */
 @Entity(tableName = "trips", indices = [Index(value = ["role", "updatedAt"])])
 data class TripEntity(
@@ -26,6 +26,7 @@ data class TripEntity(
     val dayCount: Int,
     val markerCount: Int,
     val editorCount: Int = 0,
+    val createdAt: Long,
     val updatedAt: Long,
     /** Someone else's trip I saved; it shows in My Trips with my own and shared trips. */
     val savedByMe: Boolean = false,

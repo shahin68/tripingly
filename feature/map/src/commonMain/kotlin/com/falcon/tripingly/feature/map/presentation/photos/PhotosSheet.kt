@@ -12,15 +12,12 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyGridItemSpanScope
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
-import androidx.compose.foundation.pager.HorizontalPager
-import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -31,6 +28,7 @@ import androidx.compose.material.icons.filled.ErrorOutline
 import androidx.compose.material.icons.filled.PhotoCamera
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.outlined.Flag
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -40,26 +38,28 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.falcon.tripingly.core.data.photos.PhotoUpload
-import com.falcon.tripingly.core.designsystem.component.LikeButton
 import com.falcon.tripingly.core.designsystem.component.MessageBannerHost
 import com.falcon.tripingly.core.designsystem.component.ShowMessage
 import com.falcon.tripingly.core.designsystem.component.PhotoImage
+import com.falcon.tripingly.core.designsystem.component.PhotoLike
+import com.falcon.tripingly.core.designsystem.component.PhotoViewer
 import com.falcon.tripingly.core.designsystem.component.PhotoSize
 import com.falcon.tripingly.core.designsystem.theme.spacing
 import com.falcon.tripingly.core.model.photo.Photo
@@ -77,7 +77,8 @@ import org.koin.core.parameter.parametersOf
 /**
  * The photos of a stop or a place ([owner]) in a sheet over the map, under [title]. [canAdd]: may add photos
  * (a stop's owners and editors; anyone on a place). [canManage]: a stop's owners and editors, who pick the
- * cover ([coverPhotoId]) and delete any photo; everyone else deletes only their own.
+ * cover ([coverPhotoId]) and delete any photo; everyone else deletes only their own. [onReport] reports the
+ * photo open in the viewer.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -87,6 +88,7 @@ fun PhotosRoute(
     canAdd: Boolean,
     canManage: Boolean,
     coverPhotoId: String?,
+    onReport: (Photo) -> Unit,
     onDismiss: () -> Unit,
     viewModel: PhotosViewModel = koinViewModel(key = "photos:$owner") { parametersOf(owner) },
 ) {
@@ -110,11 +112,12 @@ fun PhotosRoute(
     }
 
     state.openPhotoIndex?.let { index ->
-        PhotoViewer(
+        GalleryViewer(
             state = state,
             initialIndex = index,
             coverPhotoId = coverPhotoId,
             canManage = canManage,
+            onReport = onReport,
             onAction = viewModel::onAction,
         )
     }
@@ -126,23 +129,89 @@ fun PhotosRoute(
         )
     }
 
-    state.photoToDelete?.let {
-        AlertDialog(
-            onDismissRequest = { viewModel.onAction(Action.OnDismissDelete) },
-            title = { Text(stringResource(Res.string.map_photo_delete_title)) },
-            text = { Text(stringResource(Res.string.map_photo_delete_message)) },
-            confirmButton = {
-                TextButton(onClick = { viewModel.onAction(Action.OnConfirmDelete) }) {
-                    Text(stringResource(Res.string.map_confirm_delete))
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { viewModel.onAction(Action.OnDismissDelete) }) {
-                    Text(stringResource(Res.string.map_cancel))
-                }
-            },
-        )
+    if (state.photoToDelete != null) DeletePhotoDialog(viewModel::onAction)
+}
+
+/**
+ * One photo of [owner]'s gallery ([photoId]) full screen, without the sheet: the same viewer, likes and
+ * gallery as [PhotosRoute], opened from elsewhere (a place card's images). Closing it ends [onDismiss].
+ */
+@Composable
+fun PhotoViewerRoute(
+    owner: PhotoOwner,
+    photoId: String,
+    onReport: (Photo) -> Unit,
+    onDismiss: () -> Unit,
+    viewModel: PhotosViewModel = koinViewModel(key = "photos:$owner") { parametersOf(owner) },
+) {
+    val state by viewModel.uiState.collectAsStateWithLifecycle()
+    LaunchedEffect(photoId) { viewModel.onAction(Action.OnOpenPhoto(photoId)) }
+    // Left without closing (e.g. the card went away), the shared gallery must not stay on this photo.
+    DisposableEffect(viewModel) { onDispose { viewModel.onAction(Action.OnClosePhoto) } }
+    val onAction: (Action) -> Unit = { action ->
+        viewModel.onAction(action)
+        if (action is Action.OnClosePhoto) onDismiss()
     }
+    // Until the gallery has taken this photo in, the state can still be an older one.
+    val isAsked = state.openPhotoId == photoId
+    val index = state.openPhotoIndex?.takeIf { isAsked }
+    val message = state.message
+    when {
+        index != null -> GalleryViewer(
+            state = state,
+            initialIndex = index,
+            coverPhotoId = null,
+            canManage = false,
+            onReport = onReport,
+            onAction = onAction,
+        )
+        // The gallery is loading, or still looking for the photo.
+        !isAsked || state.isLoading || state.isFindingPhoto -> Dialog(
+            onDismissRequest = { onAction(Action.OnClosePhoto) },
+            properties = DialogProperties(usePlatformDefaultWidth = false),
+        ) {
+            Box(Modifier.fillMaxSize().background(Color.Black), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator()
+            }
+        }
+        // Not there even after a fresh look (deleted, hidden, or the gallery didn't load): say why, then close.
+        else -> {
+            val text = message?.asString() ?: stringResource(Res.string.map_photo_gone)
+            val closingText = remember { text }
+            ShowMessage(
+                message = closingText,
+                onShown = {
+                    onAction(Action.OnDismissMessage)
+                    onAction(Action.OnClosePhoto)
+                },
+                isError = message !is UiText.Note,
+            )
+        }
+    }
+    // While it's still looking, a message waits: the close above says it.
+    if (index != null) {
+        ShowMessage(message = message?.asString(), onShown = { onAction(Action.OnDismissMessage) }, isError = message !is UiText.Note)
+    }
+    if (state.photoToDelete != null) DeletePhotoDialog(viewModel::onAction)
+}
+
+@Composable
+private fun DeletePhotoDialog(onAction: (Action) -> Unit) {
+    AlertDialog(
+        onDismissRequest = { onAction(Action.OnDismissDelete) },
+        title = { Text(stringResource(Res.string.map_photo_delete_title)) },
+        text = { Text(stringResource(Res.string.map_photo_delete_message)) },
+        confirmButton = {
+            TextButton(onClick = { onAction(Action.OnConfirmDelete) }) {
+                Text(stringResource(Res.string.map_confirm_delete))
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = { onAction(Action.OnDismissDelete) }) {
+                Text(stringResource(Res.string.map_cancel))
+            }
+        },
+    )
 }
 
 @Composable
@@ -225,6 +294,17 @@ fun PhotosScreen(
         items(state.uploads, key = { it.key }) { upload ->
             GalleryUpload(upload = upload, onAction = onAction)
         }
+        // Commons images are cropped in the grid; each shows its full credit in the viewer.
+        if (state.photos.any { it.credit != null }) {
+            item(span = fullWidth) {
+                Text(
+                    text = stringResource(Res.string.map_photos_commons_note),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(vertical = MaterialTheme.spacing.small),
+                )
+            }
+        }
     }
 }
 
@@ -275,17 +355,9 @@ private fun GalleryPhoto(photo: Photo, isCover: Boolean, canDelete: Boolean, onA
                             .size(16.dp),
                     )
                 }
-                PhotoLike(photo = photo, onAction = onAction, modifier = Modifier.align(Alignment.BottomEnd).padding(4.dp))
+                PhotoLike(photo = photo, onToggle = { onAction(Action.OnToggleLike(photo)) }, modifier = Modifier.align(Alignment.BottomEnd).padding(4.dp))
             }
         }
-    }
-}
-
-/** The photo's like, on a small pill so it reads on any photo; the same like in the grid and the viewer. */
-@Composable
-private fun PhotoLike(photo: Photo, onAction: (Action) -> Unit, modifier: Modifier = Modifier) {
-    Surface(shape = CircleShape, color = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f), modifier = modifier) {
-        LikeButton(liked = photo.likedByMe, count = photo.likeCount, onToggle = { onAction(Action.OnToggleLike(photo)) })
     }
 }
 
@@ -337,72 +409,47 @@ private fun GalleryUpload(upload: PhotoUpload, onAction: (Action) -> Unit) {
 }
 
 /**
- * The ready photos full screen, swiped through and liked; a stop's owners and editors make one the cover,
- * and whoever may delete a photo deletes it.
+ * The ready photos in the app's [PhotoViewer], with what this gallery adds for the photo on show: report
+ * (not one's own), make it the cover (a stop's owners and editors), and delete (whoever may).
  */
 @Composable
-private fun PhotoViewer(
+private fun GalleryViewer(
     state: State,
     initialIndex: Int,
     coverPhotoId: String?,
     canManage: Boolean,
+    onReport: (Photo) -> Unit,
     onAction: (Action) -> Unit,
 ) {
-    val viewable = state.viewable
-    val pagerState = rememberPagerState(initialPage = initialIndex) { viewable.size }
-    Dialog(
-        onDismissRequest = { onAction(Action.OnClosePhoto) },
-        properties = DialogProperties(usePlatformDefaultWidth = false),
-    ) {
-        Box(Modifier.fillMaxSize().background(Color.Black)) {
-            HorizontalPager(state = pagerState, modifier = Modifier.fillMaxSize(), key = { viewable[it].id }) { page ->
-                val photo = viewable[page]
-                PhotoImage(
-                    photoId = photo.id,
-                    url = photo.displayUrl,
-                    size = PhotoSize.Display,
-                    contentDescription = null,
-                    modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.Fit,
-                )
+    PhotoViewer(
+        photos = state.viewable,
+        initialIndex = initialIndex,
+        onToggleLike = { onAction(Action.OnToggleLike(it)) },
+        onDismiss = { onAction(Action.OnClosePhoto) },
+    ) { current ->
+        if (state.myUserId == null || current.uploaderId != state.myUserId) {
+            IconButton(onClick = { onReport(current) }) {
+                Icon(Icons.Outlined.Flag, contentDescription = stringResource(Res.string.map_place_image_report), tint = Color.White)
             }
-            // Full screen, so the viewer shows the app's messages itself, below its top bar.
-            MessageBannerHost(Modifier.align(Alignment.TopCenter).safeDrawingPadding().padding(top = 56.dp))
-            val current = viewable.getOrNull(pagerState.currentPage)
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .safeDrawingPadding()
-                    .padding(MaterialTheme.spacing.small),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                IconButton(onClick = { onAction(Action.OnClosePhoto) }) {
-                    Icon(Icons.Default.Close, contentDescription = stringResource(Res.string.map_close), tint = Color.White)
+        }
+        // Only a stop's owners and editors manage, and only a stop has a cover.
+        if (canManage) {
+            if (current.id == coverPhotoId) {
+                Text(
+                    text = stringResource(Res.string.map_photo_cover),
+                    color = Color.White,
+                    style = MaterialTheme.typography.labelLarge,
+                    modifier = Modifier.padding(horizontal = MaterialTheme.spacing.medium),
+                )
+            } else {
+                TextButton(onClick = { onAction(Action.OnMakeCover(current.id)) }, enabled = !state.isSaving) {
+                    Text(stringResource(Res.string.map_photo_make_cover), color = Color.White)
                 }
-                Box(Modifier.weight(1f))
-                if (current != null) {
-                    PhotoLike(photo = current, onAction = onAction, modifier = Modifier.padding(horizontal = MaterialTheme.spacing.small))
-                    // Only a stop's owners and editors manage, and only a stop has a cover.
-                    if (canManage) {
-                        if (current.id == coverPhotoId) {
-                            Text(
-                                text = stringResource(Res.string.map_photo_cover),
-                                color = Color.White,
-                                style = MaterialTheme.typography.labelLarge,
-                                modifier = Modifier.padding(horizontal = MaterialTheme.spacing.medium),
-                            )
-                        } else {
-                            TextButton(onClick = { onAction(Action.OnMakeCover(current.id)) }, enabled = !state.isSaving) {
-                                Text(stringResource(Res.string.map_photo_make_cover), color = Color.White)
-                            }
-                        }
-                    }
-                    if (state.canDelete(current, canManage)) {
-                        IconButton(onClick = { onAction(Action.OnDeletePhoto(current)) }, enabled = !state.isSaving) {
-                            Icon(Icons.Default.Delete, contentDescription = stringResource(Res.string.map_photo_delete), tint = Color.White)
-                        }
-                    }
-                }
+            }
+        }
+        if (state.canDelete(current, canManage)) {
+            IconButton(onClick = { onAction(Action.OnDeletePhoto(current)) }, enabled = !state.isSaving) {
+                Icon(Icons.Default.Delete, contentDescription = stringResource(Res.string.map_photo_delete), tint = Color.White)
             }
         }
     }

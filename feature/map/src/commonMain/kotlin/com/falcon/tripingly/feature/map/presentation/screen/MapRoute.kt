@@ -38,8 +38,8 @@ import com.falcon.tripingly.feature.map.generated.resources.map_remove_my_conten
 import com.falcon.tripingly.feature.map.generated.resources.map_remove_my_content_title
 import com.falcon.tripingly.feature.map.generated.resources.map_stop_title_format
 import com.falcon.tripingly.feature.map.presentation.comments.StopCommentsRoute
-import com.falcon.tripingly.feature.map.presentation.component.PlaceImageViewer
 import com.falcon.tripingly.feature.map.presentation.photos.PhotoCameraDialog
+import com.falcon.tripingly.feature.map.presentation.photos.PhotoViewerRoute
 import com.falcon.tripingly.feature.map.presentation.photos.PhotosRoute
 import com.falcon.tripingly.feature.map.presentation.screen.MapViewModel.Action
 import com.falcon.tripingly.feature.map.presentation.screen.MapViewModel.Confirm
@@ -101,6 +101,7 @@ fun MapRoute(
             canAdd = state.canEdit,
             canManage = state.canEdit,
             coverPhotoId = marker.coverPhotoId,
+            onReport = { photo -> viewModel.onAction(Action.OnReportPhoto(photo)) },
             onDismiss = { viewModel.onAction(Action.OnCloseStopPhotos) },
         )
     }
@@ -112,6 +113,7 @@ fun MapRoute(
             canAdd = true,
             canManage = false,
             coverPhotoId = null,
+            onReport = { photo -> viewModel.onAction(Action.OnReportPhoto(photo)) },
             onDismiss = { viewModel.onAction(Action.OnClosePlacePhotos) },
         )
     }
@@ -124,12 +126,14 @@ fun MapRoute(
         )
     }
 
-    val placeImages = state.selectedPlaceDetails?.images.orEmpty()
-    state.placeImageIndex?.let { index ->
-        PlaceImageViewer(
-            images = placeImages,
-            initialIndex = index,
-            onReport = { image -> viewModel.onAction(Action.OnReportPlaceImage(image)) },
+    // A card image opens in the place's photo viewer, so its heart is the same like as in the Photos sheet.
+    val place = state.selectedPlaceDetails
+    val placeImage = state.placeImageIndex?.let { place?.images?.getOrNull(it) }
+    if (place != null && placeImage != null) {
+        PhotoViewerRoute(
+            owner = PhotoOwner.Place(place.id),
+            photoId = placeImage.id,
+            onReport = { photo -> viewModel.onAction(Action.OnReportPhoto(photo)) },
             onDismiss = { viewModel.onAction(Action.OnClosePlaceImage) },
         )
     }

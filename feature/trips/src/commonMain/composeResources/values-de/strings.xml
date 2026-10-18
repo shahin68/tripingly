@@ -121,4 +121,5 @@
     <string name="members_error_create_invite">Der Einladungslink konnte nicht erstellt werden.</string>
     <string name="members_error_revoke_invite">Der Einladungslink konnte nicht deaktiviert werden.</string>
     <string name="members_error_remove">Sie konnten nicht aus der Reise entfernt werden.</string>
+    <string name="trip_created">Erstellt %1$s</string>
 </resources>

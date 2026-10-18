@@ -151,7 +151,8 @@ internal class DefaultPlaceRepository(
                                     loaded.places = places
                                     loaded.loadedAt = TimeSource.Monotonic.markNow()
                                     loaded.first.complete(AppResult.Success(places))
-                                    square.takeIf { previous != null && previous != places }
+                                    // A photo's link is signed anew on every answer, so it alone isn't a change.
+                                    square.takeIf { previous != null && previous.withoutPhotoLinks() != places.withoutPhotoLinks() }
                                 }
                                 is AppResult.Error -> {
                                     // A square never loaded isn't kept, so the next caller asks again; a
@@ -172,6 +173,8 @@ internal class DefaultPlaceRepository(
     override suspend fun place(id: String): AppResult<PlaceDetails, DataError.Network> =
         api.place(id).map { it.toPlaceDetails() }
 
+    private fun PlacesInView.withoutPhotoLinks() = copy(places = places.map { it.copy(coverThumbUrl = null) })
+
     private fun PlaceClusterDto.toPlaceCluster() = PlaceCluster(count.toInt(), GeoPoint(location.lat, location.lng))
 
     private fun PlaceItemDto.toMapPlace() = MapPlace(
@@ -182,6 +185,8 @@ internal class DefaultPlaceRepository(
         isTripinly = isTripinly,
         likeCount = likeCount.toInt(),
         prominence = prominence.toInt(),
+        coverImageId = coverImageId,
+        coverThumbUrl = coverThumbUrl,
     )
 
     private fun SearchResultDto.OsmType.toOsmType() = when (this) {

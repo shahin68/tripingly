@@ -21,7 +21,8 @@ class RealtimeEventTest {
 
     private val photoJson = """
         {"id":"ph1","markerId":"m1","status":"ready","thumbUrl":"https://t","displayUrl":"https://d","width":800,
-         "height":600,"position":0,"likeCount":0,"likedByMe":false,"uploader":null,"createdAt":"2026-10-11T10:00:00Z"}
+         "height":600,"position":0,"likeCount":0,"likedByMe":false,"uploader":null,"createdAt":"2026-10-11T10:00:00Z",
+         "source":"user","credit":null}
     """.trimIndent()
 
     @Test

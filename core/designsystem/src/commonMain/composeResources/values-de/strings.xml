@@ -9,6 +9,7 @@
     <string name="chip_remove">%1$s entfernen</string>
     <string name="common_cancel">Abbrechen</string>
     <string name="like">Gefällt mir</string>
+    <string name="photo_viewer_close">Schließen</string>
 
     <!-- Report -->
     <string name="report_title">Warum meldest du das?</string>

@@ -106,6 +106,7 @@ internal class RoomTripLocalDataSource(
         dayCount = dayCount,
         markerCount = markerCount,
         editorCount = editorCount,
+        createdAt = createdAt.toEpochMilliseconds(),
         updatedAt = updatedAt.toEpochMilliseconds(),
         savedByMe = savedByMe,
         myJoinRequest = details?.myJoinRequest?.name?.lowercase(),
@@ -129,6 +130,7 @@ internal fun TripEntity.toTrip() = Trip(
     markerCount = markerCount,
     editorCount = editorCount,
     savedByMe = savedByMe,
+    createdAt = Instant.fromEpochMilliseconds(createdAt),
     updatedAt = Instant.fromEpochMilliseconds(updatedAt),
 )
 

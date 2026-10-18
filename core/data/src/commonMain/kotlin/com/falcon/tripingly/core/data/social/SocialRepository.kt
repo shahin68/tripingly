@@ -27,7 +27,10 @@ interface SocialRepository {
 
     suspend fun deleteComment(comment: Comment): AppResult<Unit, DataError.Network>
 
-    /** Likes or unlikes; a stop's heart and count change at once in the cached trip, and go back on a refusal. */
+    /**
+     * Likes or unlikes; a stop's heart and count change at once in the cached trip, and go back on a refusal.
+     * Fast taps on one heart: the last one wins, and every call returns the server's final state.
+     */
     suspend fun setLiked(target: LikeTarget, targetId: String, liked: Boolean): AppResult<LikeState, DataError.Network>
 
     suspend fun report(

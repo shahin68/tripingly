@@ -84,4 +84,5 @@
     <string name="social_explore_filters">Filter für Entdecken</string>
     <string name="social_explore_empty_filtered">Noch keine Reisen für diese Filter.</string>
     <string name="social_explore_nearby_blocked">Der Standort ist für Tripinly aus. Schalte ihn in den Einstellungen ein, um Reisen in deiner Nähe zu sehen.</string>
+    <string name="social_trip_created">Erstellt %1$s</string>
 </resources>

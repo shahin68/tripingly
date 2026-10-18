@@ -29,6 +29,9 @@ internal class DefaultAppConfigRepository(
                     pinLargeMinProminence = it.pinLargeMinProminence.toInt(),
                     pinMediumMinProminence = it.pinMediumMinProminence.toInt(),
                     mapMaxPins = it.mapMaxPins.toInt(),
+                    photoPinMinProminence = it.photoPinMinProminence.toInt(),
+                    photoPinMinLikes = it.photoPinMinLikes.toInt(),
+                    mapMaxPhotoPins = it.mapMaxPhotoPins.toInt(),
                 )
             }
         }

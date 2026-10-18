@@ -22,6 +22,8 @@ data class Trip(
     val editorCount: Int = 0,
     /** Someone else's public trip I saved: it shows in My Trips, read-only, as the live original. */
     val savedByMe: Boolean = false,
+    /** Shown on trip cards ("3 days ago") and as a date on the trip screen; Explore's time chips filter by it. */
+    val createdAt: Instant,
     /** My Trips lists the most recently updated first. */
     val updatedAt: Instant,
 )

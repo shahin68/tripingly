@@ -20,8 +20,10 @@ import com.falcon.tripingly.core.location.LocationRepository
 import com.falcon.tripingly.core.location.model.Coordinates
 import com.falcon.tripingly.core.location.permission.LocationPermission
 import com.falcon.tripingly.core.model.account.ProfileUpdate
+import com.falcon.tripingly.core.model.photo.Photo
 import com.falcon.tripingly.core.model.photo.PhotoOwner
 import com.falcon.tripingly.core.model.photo.PickedImage
+import com.falcon.tripingly.core.model.photo.PhotoStatus
 import com.falcon.tripingly.core.model.place.GeoBounds
 import com.falcon.tripingly.core.model.place.ImageCredit
 import com.falcon.tripingly.core.model.place.MapPlace
@@ -432,6 +434,11 @@ class MapViewModelTest {
         testScheduler.advanceUntilIdle()
 
         assertEquals(listOf(Coordinates(48.85, 2.35), Coordinates(48.86, 2.29)), viewModel.uiState.value.frame?.points)
+        // The map shows once the screen has fitted the stops, so it opens on them and not on the default.
+        assertFalse(viewModel.uiState.value.isCameraReady)
+        viewModel.onAction(Action.NavigateToLocation(Coordinates(48.855, 2.32), 14f))
+        testScheduler.advanceUntilIdle()
+        assertTrue(viewModel.uiState.value.isCameraReady)
 
         viewModel.onAction(Action.OnDaySelected(1))
         testScheduler.advanceUntilIdle()
@@ -463,6 +470,7 @@ class MapViewModelTest {
         assertEquals(Coordinates(41.9028, 12.4964), state.cameraTarget)
         assertEquals(12f, state.zoomLevel)
         assertEquals(null, state.frame)
+        assertTrue(state.isCameraReady)
     }
 
     @Test
@@ -841,10 +849,10 @@ class MapViewModelTest {
         viewModel.onAction(Action.OnOpenPlaceImage(1))
         testScheduler.advanceUntilIdle()
         assertEquals(1, viewModel.uiState.value.placeImageIndex)
-        viewModel.onAction(Action.OnReportPlaceImage(COMMONS_IMAGE))
+        viewModel.onAction(Action.OnReportPhoto(COMMONS_IMAGE.asPhoto()))
         viewModel.onAction(Action.OnSendReport(ReportReason.Copyright, ""))
         testScheduler.advanceUntilIdle()
-        viewModel.onAction(Action.OnReportPlaceImage(TRIP_PHOTO))
+        viewModel.onAction(Action.OnReportPhoto(TRIP_PHOTO.asPhoto()))
         viewModel.onAction(Action.OnSendReport(ReportReason.Spam, ""))
         testScheduler.advanceUntilIdle()
         assertEquals(listOf(ReportTarget.PlaceImage to "pi1", ReportTarget.Photo to "ph1"), social.reports)
@@ -854,6 +862,22 @@ class MapViewModelTest {
         testScheduler.advanceUntilIdle()
         assertNull(viewModel.uiState.value.placeImageIndex)
     }
+
+    /** The image as the place's photo viewer has it. */
+    private fun PlaceImage.asPhoto() = Photo(
+        id = id,
+        owner = PhotoOwner.Place("fake-louvre"),
+        status = PhotoStatus.Ready,
+        thumbUrl = thumbUrl,
+        displayUrl = displayUrl,
+        width = width,
+        height = height,
+        position = 0,
+        likeCount = 0,
+        likedByMe = false,
+        uploaderId = null,
+        credit = credit,
+    )
 
     @Test
     fun `a stop without a cover shows its place's first image, asked for once`() = runTest(testDispatcher) {

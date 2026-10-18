@@ -175,24 +175,27 @@ fun MapScreen(
                 }
             }
     ) {
-        GoogleMapView(
-            modifier = Modifier.fillMaxSize(),
-            cameraTarget = state.cameraTarget,
-            zoomLevel = state.zoomLevel,
-            markers = markers,
-            placePins = state.placePins,
-            placeClusters = state.placeClusters,
-            selectedPlace = state.selectedPlace,
-            isMyLocationEnabled = state.isPermissionGranted,
-            coveredBottom = with(density) { if (bottomCardsTop > 0f) (mapSize.height - bottomCardsTop).toDp() else 0.dp },
-            onCameraMove = { coords, zoom, bounds -> onAction(Action.OnCameraMove(coords, zoom, bounds)) },
-            onMapTouch = { onAction(Action.OnScreenTouch) },
-            onMapClick = { coords -> onAction(Action.OnMapClick(coords)) },
-            onPlacePinClick = { place -> onAction(Action.OnPlacePinClick(place)) },
-            onClusterClick = { cluster -> onAction(Action.OnClusterClick(cluster)) },
-            onMapLongClick = { coords -> onAction(Action.OnMapLongClick(coords)) },
-            onMarkerClick = { marker -> onAction(Action.OnMarkerClick(marker)) },
-        )
+        // Not before the camera knows where the trip is: the map opens right there instead of flying from Paris.
+        if (state.isCameraReady) {
+            GoogleMapView(
+                modifier = Modifier.fillMaxSize(),
+                cameraTarget = state.cameraTarget,
+                zoomLevel = state.zoomLevel,
+                markers = markers,
+                placePins = state.placePins,
+                placeClusters = state.placeClusters,
+                selectedPlace = state.selectedPlace,
+                isMyLocationEnabled = state.isPermissionGranted,
+                coveredBottom = with(density) { if (bottomCardsTop > 0f) (mapSize.height - bottomCardsTop).toDp() else 0.dp },
+                onCameraMove = { coords, zoom, bounds -> onAction(Action.OnCameraMove(coords, zoom, bounds)) },
+                onMapTouch = { onAction(Action.OnScreenTouch) },
+                onMapClick = { coords -> onAction(Action.OnMapClick(coords)) },
+                onPlacePinClick = { place -> onAction(Action.OnPlacePinClick(place)) },
+                onClusterClick = { cluster -> onAction(Action.OnClusterClick(cluster)) },
+                onMapLongClick = { coords -> onAction(Action.OnMapLongClick(coords)) },
+                onMarkerClick = { marker -> onAction(Action.OnMarkerClick(marker)) },
+            )
+        }
 
         Column(
             modifier = Modifier
@@ -374,12 +377,20 @@ private fun TripHeader(
             IconButton(onClick = { onAction(Action.OnBackClick) }) {
                 Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(Res.string.map_back))
             }
-            Text(
-                text = state.tripName,
-                modifier = Modifier.weight(1f).padding(vertical = 16.dp),
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-            )
+            Column(Modifier.weight(1f).padding(vertical = if (state.tripCreatedAt == null) 16.dp else 8.dp)) {
+                Text(
+                    text = state.tripName,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                )
+                state.tripCreatedAt?.let { createdAt ->
+                    Text(
+                        text = stringResource(Res.string.map_trip_created, DateUtils.formatFormal(createdAt)),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
             if (state.isSaving || state.isLoading || state.isUpdatingSharing) {
                 CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
             }

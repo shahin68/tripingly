@@ -37,6 +37,7 @@
     <string name="map_place_website">Website</string>
     <string name="map_place_image_position">%1$d / %2$d</string>
     <string name="map_place_image_report">Report image</string>
+    <string name="map_photos_commons_note">Images from Wikimedia Commons: open one to see its author and licence.</string>
     <string name="map_place_images">Images of this place</string>
     <string name="map_place_likes">Likes on Tripinly</string>
     <string name="map_place_category_cafe">Café</string>
@@ -130,6 +131,7 @@
     <string name="map_error_send_comment">Couldn’t post your comment.</string>
     <string name="map_error_delete_comment">Couldn’t delete the comment.</string>
     <string name="map_error_load_photos">Couldn’t load the photos.</string>
+    <string name="map_photo_gone">This photo is no longer available.</string>
     <string name="map_error_cover">Couldn’t set the cover photo.</string>
     <string name="map_error_delete_photo">Couldn’t delete the photo.</string>
 
@@ -143,4 +145,5 @@
     <string name="map_confirm_remove">Remove</string>
     <string name="map_my_content_removed">Your photos, comments and likes on this stop were removed.</string>
     <string name="map_error_remove_my_content">Couldn’t remove your photos, comments and likes.</string>
+    <string name="map_trip_created">Created %1$s</string>
 </resources>

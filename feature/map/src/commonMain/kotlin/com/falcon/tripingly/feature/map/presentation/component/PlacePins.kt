@@ -13,12 +13,15 @@ import androidx.compose.material.icons.filled.Place
 import androidx.compose.material.icons.filled.Restaurant
 import androidx.compose.runtime.Immutable
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Canvas
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.CanvasDrawScope
+import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -28,6 +31,8 @@ import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -38,6 +43,7 @@ import com.falcon.tripingly.core.model.place.PlaceCategory
 import com.falcon.tripingly.core.model.place.PlaceCluster
 import com.falcon.tripingly.core.model.place.PlacesInView
 import kotlin.math.ceil
+import kotlin.math.roundToInt
 
 /** What a kind of place looks like, on its pin and in its card. */
 val PlaceCategory.icon: ImageVector
@@ -54,24 +60,36 @@ val PlaceCategory.icon: ImageVector
         PlaceCategory.Other -> Icons.Default.Place
     }
 
-/** A place's pin on the map and how big it is drawn. */
+/** A place's pin on the map, how big it is drawn and whether it shows the place's photo. */
 @Immutable
-data class PlacePin(val place: MapPlace, val size: Dp)
+data class PlacePin(val place: MapPlace, val size: Dp, val photo: Boolean = false)
 
 /**
  * The place pins for the squares in view: places inside [area] that aren't stops of the trip ([hiddenPlaceIds]),
  * liked places first (the most liked first), then the best known, at most [AppConfig.mapMaxPins]. Pins keep their
- * size on screen, so each one costs the map; the server already puts a square's best places first.
+ * size on screen, so each one costs the map; the server already puts a square's best places first. The first
+ * [AppConfig.mapMaxPhotoPins] places that have a photo and are well known or liked enough show it ([showsPhoto]).
  */
-fun placePins(squares: Collection<PlacesInView>, area: GeoBounds, hiddenPlaceIds: Set<String>, config: AppConfig): List<PlacePin> =
-    squares.asSequence()
+fun placePins(squares: Collection<PlacesInView>, area: GeoBounds, hiddenPlaceIds: Set<String>, config: AppConfig): List<PlacePin> {
+    var photos = 0
+    return squares.asSequence()
         .flatMap { it.places }
         .filter { it.location in area && it.id !in hiddenPlaceIds }
         .distinctBy { it.id }
         .sortedWith(PinOrder)
         .take(config.mapMaxPins)
-        .map { PlacePin(it, placePinSize(it, config)) }
+        .map { place ->
+            val photo = photos < config.mapMaxPhotoPins && place.showsPhoto(config)
+            if (photo) photos++
+            PlacePin(place, if (photo) PhotoPinSize else placePinSize(place, config), photo)
+        }
         .toList()
+}
+
+/** A place with a photo shows it on its pin once it's well known or liked enough (server values). */
+private fun MapPlace.showsPhoto(config: AppConfig): Boolean =
+    coverImageId != null && coverThumbUrl != null &&
+        (prominence >= config.photoPinMinProminence || likeCount >= config.photoPinMinLikes)
 
 /** The clusters of liked places inside [area]. */
 fun placeClusters(squares: Collection<PlacesInView>, area: GeoBounds): List<PlaceCluster> =
@@ -106,6 +124,9 @@ fun hotSpotSize(likeCount: Int): Dp = when {
 val PinSizes: List<Dp> = listOf(18.dp, 30.dp, 36.dp)
 val HotSpotSizes: List<Dp> = listOf(24.dp, 30.dp, 36.dp)
 
+/** A pin with the place's photo. */
+val PhotoPinSize: Dp = 40.dp
+
 /** The tapped place, the biggest pin. */
 val SelectedPinSize: Dp = 44.dp
 
@@ -135,8 +156,41 @@ fun drawPlacePin(
     return bitmap
 }
 
-/** What a pin looks like. */
-internal data class PlacePinLook(val category: PlaceCategory, val isTripinly: Boolean, val size: Dp)
+/**
+ * Draws a photo pin into a bitmap: the place's photo, cropped to a circle, in a white ring and a ring of the
+ * pin's [fill] color.
+ */
+fun drawPlacePhotoPin(
+    photo: ImageBitmap,
+    size: Dp,
+    fill: Color,
+    density: Density,
+    layoutDirection: LayoutDirection,
+): ImageBitmap {
+    val px = with(density) { size.roundToPx() }
+    val border = with(density) { 2.dp.toPx() }
+    val bitmap = ImageBitmap(px, px)
+    CanvasDrawScope().draw(density, layoutDirection, Canvas(bitmap), Size(px.toFloat(), px.toFloat())) {
+        drawCircle(Color.White)
+        drawCircle(fill, radius = this.size.minDimension / 2 - border)
+        val inset = (border * 2).roundToInt()
+        val side = px - inset * 2
+        val crop = minOf(photo.width, photo.height)
+        clipPath(Path().apply { addOval(Rect(inset.toFloat(), inset.toFloat(), (inset + side).toFloat(), (inset + side).toFloat())) }) {
+            drawImage(
+                photo,
+                srcOffset = IntOffset((photo.width - crop) / 2, (photo.height - crop) / 2),
+                srcSize = IntSize(crop, crop),
+                dstOffset = IntOffset(inset, inset),
+                dstSize = IntSize(side, side),
+            )
+        }
+    }
+    return bitmap
+}
+
+/** What a pin looks like: its category icon, or the photo with [photoId] once its thumbnail has loaded. */
+internal data class PlacePinLook(val category: PlaceCategory, val isTripinly: Boolean, val size: Dp, val photoId: String? = null)
 
 /**
  * Draws a cluster of liked places: a bubble with their count in bold, in a white ring, at least

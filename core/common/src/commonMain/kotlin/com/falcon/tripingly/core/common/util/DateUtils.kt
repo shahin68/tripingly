@@ -2,14 +2,19 @@ package com.falcon.tripingly.core.common.util
 
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toLocalDateTime
 import kotlinx.datetime.todayIn
 import kotlin.time.Clock
+import kotlin.time.Instant
 
 object DateUtils {
     fun today(): LocalDate = Clock.System.todayIn(TimeZone.currentSystemDefault())
 
     /** Day, month name and year in the device's locale, e.g. "Oct 4, 2026", "4. Okt. 2026", "2026. okt. 4.". */
     fun formatFormal(date: LocalDate): String = formatLocalized(date, "yMMMd")
+
+    /** The day [instant] falls on where the device is, as [formatFormal]. */
+    fun formatFormal(instant: Instant): String = formatFormal(instant.toLocalDateTime(TimeZone.currentSystemDefault()).date)
 
     /** Day and month name in the device's locale, e.g. "Oct 4", "4. Okt.", "okt. 4.". */
     fun formatAbbreviated(date: LocalDate): String = formatLocalized(date, "MMMd")

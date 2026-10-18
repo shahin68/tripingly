@@ -37,6 +37,7 @@
     <string name="map_place_website">Weboldal</string>
     <string name="map_place_image_position">%1$d / %2$d</string>
     <string name="map_place_image_report">Kép jelentése</string>
+    <string name="map_photos_commons_note">Képek a Wikimedia Commonsról: nyiss meg egyet a szerző és a licenc megtekintéséhez.</string>
     <string name="map_place_images">A hely képei</string>
     <string name="map_place_likes">Kedvelések a Tripinlyn</string>
     <string name="map_place_category_cafe">Kávézó</string>
@@ -130,6 +131,7 @@
     <string name="map_error_send_comment">Nem sikerült elküldeni a hozzászólásodat.</string>
     <string name="map_error_delete_comment">Nem sikerült törölni a hozzászólást.</string>
     <string name="map_error_load_photos">Nem sikerült betölteni a fotókat.</string>
+    <string name="map_photo_gone">Ez a fotó már nem érhető el.</string>
     <string name="map_error_cover">Nem sikerült beállítani a borítóképet.</string>
     <string name="map_error_delete_photo">Nem sikerült törölni a fotót.</string>
 
@@ -143,4 +145,5 @@
     <string name="map_confirm_remove">Eltávolítás</string>
     <string name="map_my_content_removed">A fotóid, hozzászólásaid és kedveléseid eltávolítva erről a megállóról.</string>
     <string name="map_error_remove_my_content">Nem sikerült eltávolítani a fotóidat, hozzászólásaidat és kedveléseidet.</string>
+    <string name="map_trip_created">Létrehozva: %1$s</string>
 </resources>

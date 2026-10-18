@@ -32,6 +32,10 @@ data class MapPlace(
     val likeCount: Int,
     /** How well known the place is, 0–100 (Wikimedia page views and OpenStreetMap tags); 0 when unknown. */
     val prominence: Int,
+    /** The place's image, a Tripinly photo or a Wikimedia Commons image, or null; cache it by this id. */
+    val coverImageId: String? = null,
+    /** Its thumbnail (signed, valid about an hour), drawn inside a photo pin. */
+    val coverThumbUrl: String? = null,
 )
 
 /** Several Tripinly places drawn as one bubble while zoomed out. */

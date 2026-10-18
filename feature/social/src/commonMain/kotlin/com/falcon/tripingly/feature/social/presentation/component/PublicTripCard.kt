@@ -43,12 +43,14 @@ import com.falcon.tripingly.core.designsystem.component.PhotoSize
 import com.falcon.tripingly.core.designsystem.theme.spacing
 import com.falcon.tripingly.core.model.social.PublicTrip
 import com.falcon.tripingly.core.model.trip.TripRole
+import com.falcon.tripingly.core.ui.timeAgo
 import com.falcon.tripingly.feature.social.generated.resources.Res
 import com.falcon.tripingly.feature.social.generated.resources.social_more
 import com.falcon.tripingly.feature.social.generated.resources.social_report
 import com.falcon.tripingly.feature.social.generated.resources.social_save_trip
 import com.falcon.tripingly.feature.social.generated.resources.social_saved_trip
 import com.falcon.tripingly.feature.social.generated.resources.social_trip_save_count
+import com.falcon.tripingly.feature.social.generated.resources.social_trip_created
 import com.falcon.tripingly.feature.social.generated.resources.social_trip_stop_count
 import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
@@ -128,6 +130,7 @@ internal fun PublicTripCard(
                             if (trip.saveCount > 0) {
                                 add(pluralStringResource(Res.plurals.social_trip_save_count, trip.saveCount, trip.saveCount))
                             }
+                            add(stringResource(Res.string.social_trip_created, timeAgo(trip.trip.createdAt)))
                         }.joinToString(" · "),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
