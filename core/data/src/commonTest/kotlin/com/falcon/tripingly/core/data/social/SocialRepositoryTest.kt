@@ -149,6 +149,35 @@ class SocialRepositoryTest {
     }
 
     @Test
+    fun aFailedBurstOfTaps_putsTheHeartBackToBeforeTheBurst() = runTest {
+        cacheTrip()
+        val firstSent = CompletableDeferred<Unit>()
+        val release = CompletableDeferred<Unit>()
+        val repository = repository {
+            firstSent.complete(Unit)
+            release.await()
+            respond(
+                """{"error":{"code":"NOT_FOUND","message":"Gone","details":{}}}""",
+                HttpStatusCode.NotFound,
+                headersOf(HttpHeaders.ContentType, "application/json"),
+            )
+        }
+
+        val taps = mutableListOf(async { repository.setLiked(LikeTarget.Place, PLACE, liked = true) })
+        firstSent.await()
+        taps += async { repository.setLiked(LikeTarget.Place, PLACE, liked = false) }
+        taps += async { repository.setLiked(LikeTarget.Place, PLACE, liked = true) }
+        testScheduler.runCurrent()
+        release.complete(Unit)
+
+        taps.forEach { assertTrue(it.await() is AppResult.Error) }
+        assertEquals(1, requests.size)
+        val stop = local.marker("m0")!!
+        assertFalse(stop.likedByMe)
+        assertEquals(0, stop.likeCount)
+    }
+
+    @Test
     fun addingAComment_countsItOnTheStop_andSendsAnIdempotencyKey() = runTest {
         cacheTrip()
         val repository = repository(comment(author = ME, canDelete = true))
