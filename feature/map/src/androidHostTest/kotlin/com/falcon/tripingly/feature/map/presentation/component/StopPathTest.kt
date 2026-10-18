@@ -53,8 +53,8 @@ class StopPathTest {
     }
 
     @Test
-    fun stopsInTheSameSpotStayInPlace() {
-        assertTrue(curvedStopPath(listOf(opera, opera)).all { it == opera })
+    fun stopsInTheSameSpotAreJoinedDirectly() {
+        assertEquals(listOf(opera, opera), curvedStopPath(listOf(opera, opera)))
         assertEquals(listOf(opera), curvedStopPath(listOf(opera)))
     }
 

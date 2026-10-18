@@ -30,7 +30,7 @@ private const val STEPS_PER_LEG = 24
 /**
  * One smooth line through the [stops] in order, with no corner at any stop, like a line drawn by hand: at
  * each stop it heads from the stop before towards the one after, and at the first and last stop it swings
- * in the way the next curve would. Two stops get a gentle arc.
+ * in the way the next curve would. Two stops get a gentle arc; stops in the same spot are joined directly.
  */
 internal fun curvedStopPath(stops: List<Coordinates>): List<Coordinates> {
     if (stops.size < 2) return stops
@@ -43,6 +43,11 @@ internal fun curvedStopPath(stops: List<Coordinates>): List<Coordinates> {
         // A cubic curve from stop i to stop i + 1 leaving and arriving along their tangents.
         val start = points[i]
         val end = points[i + 1]
+        // Two stops in the same spot: nothing to draw between them.
+        if (start == end) {
+            path += stops[i + 1]
+            continue
+        }
         val c1 = start + tangents[i] / 3.0
         val c2 = end - tangents[i + 1] / 3.0
         for (step in 1 until STEPS_PER_LEG) {
