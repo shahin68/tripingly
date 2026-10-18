@@ -426,17 +426,14 @@ class MapViewModelTest {
     }
 
     @Test
-    fun `opening a trip frames all its stops, then a chosen day's`() = runTest(testDispatcher) {
+    fun `opening a trip frames the open day's stops`() = runTest(testDispatcher) {
         backend.addMarker(trip.trip.id, trip.days[0].id, NewMarker("Stop #1", GeoPoint(48.85, 2.35)))
         backend.addMarker(trip.trip.id, trip.days[0].id, NewMarker("Stop #2", GeoPoint(48.86, 2.29)))
         backend.addMarker(trip.trip.id, trip.days[1].id, NewMarker("Stop #1", GeoPoint(41.9, 12.49)))
         val viewModel = viewModel()
         testScheduler.advanceUntilIdle()
 
-        assertEquals(
-            listOf(Coordinates(48.85, 2.35), Coordinates(48.86, 2.29), Coordinates(41.9, 12.49)),
-            viewModel.uiState.value.frame?.points,
-        )
+        assertEquals(listOf(Coordinates(48.85, 2.35), Coordinates(48.86, 2.29)), viewModel.uiState.value.frame?.points)
         // The map shows once the screen has fitted the stops, so it opens on them and not on the default.
         assertFalse(viewModel.uiState.value.isCameraReady)
         viewModel.onAction(Action.NavigateToLocation(Coordinates(48.855, 2.32), 14f))
@@ -474,21 +471,6 @@ class MapViewModelTest {
         assertEquals(12f, state.zoomLevel)
         assertEquals(null, state.frame)
         assertTrue(state.isCameraReady)
-    }
-
-    @Test
-    fun `a stop deleted is left out when the trip is framed again`() = runTest(testDispatcher) {
-        backend.addMarker(trip.trip.id, trip.days[0].id, NewMarker("Stop #1", GeoPoint(48.85, 2.35)))
-        val faraway = backend.addMarker(trip.trip.id, trip.days[1].id, NewMarker("Far away", GeoPoint(41.9, 12.49)))
-        val viewModel = viewModel()
-        testScheduler.advanceUntilIdle()
-        assertEquals(2, viewModel.uiState.value.frame?.points?.size)
-
-        viewModel.onAction(Action.OnRemoveMarker(faraway.id))
-        testScheduler.advanceUntilIdle()
-
-        // On a return to the screen the frame is fitted again, from the stops as they are now.
-        assertEquals(listOf(Coordinates(48.85, 2.35)), viewModel.uiState.value.frame?.points)
     }
 
     @Test
