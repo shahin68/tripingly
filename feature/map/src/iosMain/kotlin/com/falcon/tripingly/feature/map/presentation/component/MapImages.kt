@@ -31,8 +31,11 @@ internal fun Image.png(): NSData = encodeToData(EncodedImageFormat.PNG)!!.bytes.
 internal fun ByteArray.toNSData(): NSData =
     if (isEmpty()) NSData() else usePinned { NSData.create(bytes = it.addressOf(0), length = size.toULong()) }
 
-/** Bold text for numbers on pins, at [points] screen points. */
-internal fun boldFont(points: Float): Font = Font(FontMgr.default.matchFamilyStyle(null, FontStyle.BOLD), points)
+/**
+ * Bold text for numbers on pins, at [points] screen points, in the system font. (Matching a null family
+ * finds no font on iOS, which drew no numbers at all.)
+ */
+internal fun boldFont(points: Float): Font = Font(FontMgr.default.legacyMakeTypeface("", FontStyle.BOLD), points)
 
 /**
  * A stop's pin: a round badge in the day's color with its number, on a small tip touching its
