@@ -256,11 +256,7 @@ class MapViewModel(
             cameraTarget = ui.cameraTarget,
             zoomLevel = ui.zoomLevel,
             isCameraReady = ui.isCameraReady,
-            // From the stops as they are now, so a return to the screen frames them without one deleted since.
-            frame = ui.frame?.let { frame ->
-                val stops = if (frame.dayId == null) days.flatMap { it.markers } else days.firstOrNull { it.id == frame.dayId }?.markers.orEmpty()
-                stops.takeIf { it.isNotEmpty() }?.let { CameraFrame(it.map { stop -> Coordinates(stop.location.lat, stop.location.lng) }, frame.id) }
-            },
+            frame = ui.frame,
             isPermissionGranted = ui.permission == LocationPermission.Granted,
             isLoadingLocation = ui.isLoadingLocation,
             selectedMarker = selectedMarker,
@@ -318,8 +314,7 @@ class MapViewModel(
                 // A trip without a location: the map opens on the default.
                 ui.update { it.copy(isCameraReady = true) }
             } else {
-                // The open day as when its tab is tapped; the whole trip while that day has no stops.
-                frame(activeDay()?.takeIf { it.markers.isNotEmpty() }?.id)
+                frameStops(stops)
             }
         }
     }
@@ -335,7 +330,7 @@ class MapViewModel(
 
     private fun selectDay(index: Int) {
         ui.update { it.copy(activeDayIndex = index, selectedMarkerId = null, isStopCardShown = false) }
-        currentDays().getOrNull(index)?.takeIf { it.markers.isNotEmpty() }?.let { frame(it.id) }
+        currentDays().getOrNull(index)?.let { frameStops(it.markers) }
     }
 
     /** From the map or a chip: bring the stop to the middle, then show its card (at once when it's already there). */
@@ -434,9 +429,11 @@ class MapViewModel(
         ui.update { it.copy(selectedMarkerId = null, isStopCardShown = false) }
     }
 
-    /** The screen fits the camera to the stops of the day with [dayId], or of the whole trip when null. */
-    private fun frame(dayId: String?) {
-        ui.update { it.copy(frame = FrameRequest(dayId, (it.frame?.id ?: 0) + 1)) }
+    /** The screen fits the camera to these stops; without stops the camera stays where it is. */
+    private fun frameStops(markers: List<TripMarker>) {
+        if (markers.isEmpty()) return
+        val points = markers.map { Coordinates(it.location.lat, it.location.lng) }
+        ui.update { it.copy(frame = CameraFrame(points, (it.frame?.id ?: 0) + 1)) }
     }
 
     private fun watchFailedChanges() {
@@ -903,9 +900,6 @@ class MapViewModel(
         canDelete = role == TripRole.OWNER || (role?.canEdit == true && myUserId != null && createdById == myUserId),
     )
 
-    /** Which stops to frame: a day's, or the whole trip's when [dayId] is null. A new [id] frames them again. */
-    private data class FrameRequest(val dayId: String?, val id: Int)
-
     private data class UiState(
         val placePins: List<PlacePin> = emptyList(),
         val placeClusters: List<PlaceCluster> = emptyList(),
@@ -942,7 +936,7 @@ class MapViewModel(
         /** Stop changes undone because the connection failed; Retry sends them again. */
         val failedChanges: List<MarkerChangeFailure> = emptyList(),
         val isWaitingForFirstLocation: Boolean = false,
-        val frame: FrameRequest? = null,
+        val frame: CameraFrame? = null,
         val confirm: Confirm? = null,
         /** A delete waits for the user to agree that other people's content goes too. */
         val othersContent: OthersContent? = null,

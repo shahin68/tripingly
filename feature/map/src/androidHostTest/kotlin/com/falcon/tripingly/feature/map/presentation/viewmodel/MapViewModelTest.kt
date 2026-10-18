@@ -474,21 +474,6 @@ class MapViewModelTest {
     }
 
     @Test
-    fun `a stop deleted is left out when the day is framed again`() = runTest(testDispatcher) {
-        backend.addMarker(trip.trip.id, trip.days[0].id, NewMarker("Stop #1", GeoPoint(48.85, 2.35)))
-        val faraway = backend.addMarker(trip.trip.id, trip.days[0].id, NewMarker("Far away", GeoPoint(41.9, 12.49)))
-        val viewModel = viewModel()
-        testScheduler.advanceUntilIdle()
-        assertEquals(2, viewModel.uiState.value.frame?.points?.size)
-
-        viewModel.onAction(Action.OnRemoveMarker(faraway.id))
-        testScheduler.advanceUntilIdle()
-
-        // On a return to the screen the frame is fitted again, from the stops as they are now.
-        assertEquals(listOf(Coordinates(48.85, 2.35)), viewModel.uiState.value.frame?.points)
-    }
-
-    @Test
     fun `choosing the same day again frames it again`() = runTest(testDispatcher) {
         backend.addMarker(trip.trip.id, trip.days[0].id, NewMarker("Stop #1", GeoPoint(48.85, 2.35)))
         val viewModel = viewModel()
