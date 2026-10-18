@@ -2,6 +2,7 @@
 
 package com.falcon.tripingly.feature.map.presentation.component
 
+import platform.UIKit.UIColor
 import platform.UIKit.UIImage
 import platform.UIKit.UIView
 import kotlin.experimental.ExperimentalObjCName
@@ -36,7 +37,13 @@ interface GoogleMap {
 
     /** Replaces the markers; a marker with the same key is moved or updated. */
     fun setMarkers(markers: List<GoogleMapMarker>)
+
+    /** Replaces the route's line, drawn under the markers; fewer than two points draw none. [width] is in points. */
+    fun setRoute(points: List<GoogleMapPoint>, color: UIColor, width: Double)
 }
+
+@ObjCName("GoogleMapPoint", exact = true)
+class GoogleMapPoint(val latitude: Double, val longitude: Double)
 
 @ObjCName("GoogleMapMarker", exact = true)
 class GoogleMapMarker(

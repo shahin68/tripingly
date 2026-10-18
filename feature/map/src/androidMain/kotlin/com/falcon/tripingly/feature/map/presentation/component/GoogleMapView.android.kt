@@ -43,6 +43,7 @@ import com.google.maps.android.compose.MapProperties
 import com.google.maps.android.compose.MapUiSettings
 import com.google.maps.android.compose.Marker
 import com.google.maps.android.compose.MarkerComposable
+import com.google.maps.android.compose.Polyline
 import com.google.maps.android.compose.rememberCameraPositionState
 import com.google.maps.android.compose.rememberUpdatedMarkerState
 
@@ -55,6 +56,8 @@ actual fun GoogleMapView(
     placePins: List<PlacePin>,
     placeClusters: List<PlaceCluster>,
     selectedPlace: MapPlace?,
+    routeLine: List<Coordinates>,
+    isRouteEstimated: Boolean,
     isMyLocationEnabled: Boolean,
     coveredBottom: Dp,
     onCameraMove: (Coordinates, Float, GeoBounds?) -> Unit,
@@ -241,6 +244,15 @@ actual fun GoogleMapView(
                     },
                 )
             }
+        }
+
+        // Under every pin.
+        if (routeLine.size > 1) {
+            Polyline(
+                points = remember(routeLine) { routeLine.map { LatLng(it.latitude, it.longitude) } },
+                color = if (isRouteEstimated) RouteColor.copy(alpha = ESTIMATED_ROUTE_ALPHA) else RouteColor,
+                width = with(density) { RouteWidth.toPx() },
+            )
         }
 
         // The tapped place, bigger and on top.

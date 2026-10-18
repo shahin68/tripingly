@@ -24,6 +24,7 @@ import com.falcon.tripingly.core.model.place.MapPlace
 import com.falcon.tripingly.core.model.place.PlaceCategory
 import com.falcon.tripingly.core.model.place.PlaceCluster
 import com.falcon.tripingly.feature.map.domain.model.MapMarker
+import platform.UIKit.UIColor
 import platform.UIKit.UIImage
 import kotlin.math.abs
 
@@ -42,6 +43,8 @@ internal fun GoogleSdkMapView(
     placePins: List<PlacePin>,
     placeClusters: List<PlaceCluster>,
     selectedPlace: MapPlace?,
+    routeLine: List<Coordinates>,
+    isRouteEstimated: Boolean,
     isMyLocationEnabled: Boolean,
     coveredBottom: Dp,
     onCameraMove: (Coordinates, Float, GeoBounds?) -> Unit,
@@ -124,6 +127,16 @@ internal fun GoogleSdkMapView(
     LaunchedEffect(isMyLocationEnabled) { map.setMyLocationEnabled(isMyLocationEnabled) }
     // As much room at the top as at the bottom keeps the camera's center in the middle of the view.
     LaunchedEffect(coveredBottom) { map.setPadding(coveredBottom.value.toDouble(), coveredBottom.value.toDouble()) }
+
+    // Under every pin, as on Android.
+    LaunchedEffect(routeLine, isRouteEstimated) {
+        val color = if (isRouteEstimated) RouteColor.copy(alpha = ESTIMATED_ROUTE_ALPHA) else RouteColor
+        map.setRoute(
+            points = routeLine.map { GoogleMapPoint(it.latitude, it.longitude) },
+            color = UIColor.colorWithRed(color.red.toDouble(), color.green.toDouble(), color.blue.toDouble(), color.alpha.toDouble()),
+            width = RouteWidth.value.toDouble(),
+        )
+    }
 
     // Every pin look is drawn once and shared by every pin that looks the same.
     val categoryIcons = PlaceCategory.entries.associateWith { rememberVectorPainter(it.icon) }

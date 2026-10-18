@@ -1,5 +1,8 @@
 package com.falcon.tripingly.feature.map.presentation.screen
 
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -11,12 +14,18 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.falcon.tripingly.core.designsystem.component.ReportDialog
 import com.falcon.tripingly.core.location.permission.rememberLocationPermissionController
 import com.falcon.tripingly.core.model.photo.PhotoOwner
 import com.falcon.tripingly.feature.map.generated.resources.Res
+import com.falcon.tripingly.feature.map.generated.resources.map_best_order_apply
+import com.falcon.tripingly.feature.map.generated.resources.map_best_order_hint
+import com.falcon.tripingly.feature.map.generated.resources.map_best_order_saved
+import com.falcon.tripingly.feature.map.generated.resources.map_best_order_title
 import com.falcon.tripingly.feature.map.generated.resources.map_cancel
 import com.falcon.tripingly.feature.map.generated.resources.map_clear_day_message
 import com.falcon.tripingly.feature.map.generated.resources.map_clear_day_title
@@ -240,6 +249,47 @@ fun MapRoute(
             },
             dismissButton = {
                 TextButton(onClick = { viewModel.onAction(Action.OnDismissDeleteAnyway) }) {
+                    Text(stringResource(Res.string.map_cancel))
+                }
+            },
+        )
+    }
+
+    // The best order, for the user to look at before it's saved.
+    state.bestOrder?.let { order ->
+        AlertDialog(
+            onDismissRequest = { viewModel.onAction(Action.OnDismissBestOrder) },
+            title = { Text(stringResource(Res.string.map_best_order_title)) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    order.stops.forEachIndexed { index, stop ->
+                        val name = stop.title.ifBlank { stringResource(Res.string.map_stop_title_format, stop.orderNumber) }
+                        Text("${index + 1}. $name", style = MaterialTheme.typography.bodyMedium)
+                    }
+                    // Free: by distance, with what Tripinly Pro does instead. Pro: the minutes it saves.
+                    val savedMinutes = order.savedMinutes?.takeIf { it > 0 }
+                    val note = when {
+                        !order.byTravelTime -> stringResource(Res.string.map_best_order_hint)
+                        savedMinutes != null -> stringResource(Res.string.map_best_order_saved, savedMinutes)
+                        else -> null
+                    }
+                    note?.let {
+                        Text(
+                            text = it,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(top = 8.dp),
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { viewModel.onAction(Action.OnApplyBestOrder) }) {
+                    Text(stringResource(Res.string.map_best_order_apply))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { viewModel.onAction(Action.OnDismissBestOrder) }) {
                     Text(stringResource(Res.string.map_cancel))
                 }
             },

@@ -12,6 +12,9 @@ import com.falcon.tripingly.core.data.config.FakeAppConfigRepository
 import com.falcon.tripingly.core.data.photos.FakePhotoRepository
 import com.falcon.tripingly.core.data.places.FakePlaceRepository
 import com.falcon.tripingly.core.data.places.PlaceRepository
+import com.falcon.tripingly.core.data.routing.FakeRouteRepository
+import com.falcon.tripingly.core.data.routing.RouteErrorCodes
+import com.falcon.tripingly.core.data.routing.RouteRepository
 import com.falcon.tripingly.core.data.social.FakeSocialRepository
 import com.falcon.tripingly.core.data.social.SocialRepository
 import com.falcon.tripingly.core.data.trips.FakeTripBackend
@@ -38,6 +41,9 @@ import com.falcon.tripingly.core.model.place.PlaceSearchResult
 import com.falcon.tripingly.core.model.place.PlaceSquare
 import com.falcon.tripingly.core.model.place.PlacesInView
 import com.falcon.tripingly.core.model.place.SearchResultType
+import com.falcon.tripingly.core.model.route.BestOrder
+import com.falcon.tripingly.core.model.route.RoutePlan
+import com.falcon.tripingly.core.model.route.TravelMode
 import com.falcon.tripingly.core.model.social.ReportReason
 import com.falcon.tripingly.core.model.social.ReportTarget
 import com.falcon.tripingly.core.model.trip.Destination
@@ -45,6 +51,7 @@ import com.falcon.tripingly.core.model.trip.GeoPoint
 import com.falcon.tripingly.core.model.trip.JoinRequestStatus
 import com.falcon.tripingly.core.model.trip.NewMarker
 import com.falcon.tripingly.core.model.trip.NewTrip
+import com.falcon.tripingly.core.model.trip.TripDay
 import com.falcon.tripingly.core.model.trip.TripDetails
 import com.falcon.tripingly.core.model.trip.TripRole
 import com.falcon.tripingly.core.ui.UiText
@@ -55,6 +62,7 @@ import com.falcon.tripingly.feature.map.generated.resources.map_change_not_saved
 import com.falcon.tripingly.feature.map.generated.resources.map_error_load_trip
 import com.falcon.tripingly.feature.map.generated.resources.map_error_stop_change
 import com.falcon.tripingly.feature.map.generated.resources.map_join_requested
+import com.falcon.tripingly.feature.map.generated.resources.map_best_order_already
 import com.falcon.tripingly.feature.map.generated.resources.map_my_content_removed
 import com.falcon.tripingly.feature.map.presentation.component.PinSizes
 import com.falcon.tripingly.feature.map.presentation.screen.MapViewModel
@@ -99,6 +107,7 @@ class MapViewModelTest {
     private lateinit var places: CountingPlaceRepository
     private lateinit var photos: FakePhotoRepository
     private lateinit var social: RecordingSocialRepository
+    private lateinit var routes: RecordingRouteRepository
     /** Signed in as the trips backend's `me`. */
     private lateinit var session: FakeAccountBackend
 
@@ -128,6 +137,31 @@ class MapViewModelTest {
                 val cluster = cluster?.takeIf { it.location in square.bounds } ?: return@mapValues places
                 places.copy(clusters = listOf(cluster))
             }
+    }
+
+    /** Straight lines between the stops, counting what was asked for. */
+    private class RecordingRouteRepository(
+        private val fake: FakeRouteRepository = FakeRouteRepository(),
+    ) : RouteRepository by fake {
+        val dayRoutes = mutableListOf<Pair<List<String>, TravelMode>>()
+        val pointRoutes = mutableListOf<Pair<GeoPoint, GeoPoint>>()
+        /** Answers every route with this error when set. */
+        var error: DataError.Network? = null
+        /** The best order to propose; the fake's (nearest stop next) when null. */
+        var bestOrder: List<String>? = null
+
+        override suspend fun dayRoute(tripId: String, day: TripDay, mode: TravelMode): AppResult<RoutePlan, DataError.Network> {
+            dayRoutes += day.markers.map { it.id } to mode
+            return error?.asError() ?: fake.dayRoute(tripId, day, mode)
+        }
+
+        override suspend fun route(from: GeoPoint, to: GeoPoint, mode: TravelMode, tripId: String?): AppResult<RoutePlan, DataError.Network> {
+            pointRoutes += from to to
+            return error?.asError() ?: fake.route(from, to, mode, tripId)
+        }
+
+        override suspend fun bestOrder(tripId: String, day: TripDay, mode: TravelMode): AppResult<BestOrder, DataError.Network> =
+            bestOrder?.let { BestOrder(it, byTravelTime = false, savedMinutes = null).asSuccess() } ?: fake.bestOrder(tripId, day, mode)
     }
 
     /** Keeps what was reported. */
@@ -167,6 +201,7 @@ class MapViewModelTest {
         places = CountingPlaceRepository()
         photos = FakePhotoRepository()
         social = RecordingSocialRepository()
+        routes = RecordingRouteRepository()
         session = FakeAccountBackend(today = { LocalDate(2026, 10, 16) }).also {
             // Onboarded, so the session is SignedIn with an account id.
             it.signInForDevelopment("me", "Me")
@@ -186,6 +221,7 @@ class MapViewModelTest {
         tripRepository = backend,
         markerRepository = backend,
         placeRepository = places,
+        routeRepository = routes,
         photoRepository = photos,
         socialRepository = social,
         appConfigRepository = FakeAppConfigRepository(),
@@ -1117,5 +1153,125 @@ class MapViewModelTest {
             height = 960,
             credit = ImageCredit("Jane Doe", null, "CC BY-SA 4.0", "https://creativecommons.org/licenses/by-sa/4.0", "https://commons.wikimedia.org/wiki/File:Louvre.jpg"),
         )
+    }
+
+    private suspend fun addStops(vararg points: GeoPoint) = points.forEachIndexed { index, point ->
+        backend.addMarker(trip.trip.id, trip.days[0].id, NewMarker("Stop ${index + 1}", point))
+    }
+
+    @Test
+    fun `the route button draws the day's route, asked for again when the stops or the mode change`() = runTest(testDispatcher) {
+        addStops(GeoPoint(48.2085, 16.3731), GeoPoint(48.2104, 16.3655))
+        val viewModel = viewModel()
+        testScheduler.advanceUntilIdle()
+        assertTrue(viewModel.uiState.value.routeLine.isEmpty())
+        assertTrue(routes.dayRoutes.isEmpty())
+
+        viewModel.onAction(Action.OnToggleDayRoute)
+        testScheduler.advanceUntilIdle()
+        val state = viewModel.uiState.value
+        assertEquals(state.markers.map { it.position }, state.routeLine)
+        assertNotNull(state.routeDurationSeconds)
+        assertEquals(state.markers[1].id, state.legSeconds.keys.single())
+        assertEquals(1, routes.dayRoutes.size)
+
+        // Unrelated changes don't ask again.
+        viewModel.onAction(Action.OnCameraMove(Coordinates(48.2, 16.37), 14f))
+        testScheduler.advanceUntilIdle()
+        assertEquals(1, routes.dayRoutes.size)
+
+        viewModel.onAction(Action.OnMapClick(Coordinates(48.215, 16.36)))
+        testScheduler.advanceUntilIdle()
+        assertEquals(3, routes.dayRoutes.last().first.size)
+
+        viewModel.onAction(Action.OnTravelModeSelected(TravelMode.Cycling))
+        testScheduler.advanceUntilIdle()
+        assertEquals(TravelMode.Cycling, routes.dayRoutes.last().second)
+        assertEquals(3, routes.dayRoutes.size)
+
+        viewModel.onAction(Action.OnToggleDayRoute)
+        testScheduler.advanceUntilIdle()
+        assertTrue(viewModel.uiState.value.routeLine.isEmpty())
+        assertEquals(3, routes.dayRoutes.size)
+    }
+
+    @Test
+    fun `without routing the day's route is straight lines between the stops`() = runTest(testDispatcher) {
+        addStops(GeoPoint(48.2085, 16.3731), GeoPoint(48.2104, 16.3655))
+        routes.error = DataError.Network.Api(503, RouteErrorCodes.ROUTING_UNAVAILABLE, "Routes aren't available")
+        val viewModel = viewModel()
+        viewModel.onAction(Action.OnToggleDayRoute)
+        testScheduler.advanceUntilIdle()
+
+        val state = viewModel.uiState.value
+        assertEquals(state.markers.map { it.position }, state.routeLine)
+        assertTrue(state.isRouteEstimated)
+        assertNull(state.routeDurationSeconds)
+        // The route's own note says so.
+        assertNull(state.message)
+    }
+
+    @Test
+    fun `a route from one place to another shows instead of the day's until it is closed`() = runTest(testDispatcher) {
+        addStops(GeoPoint(48.2085, 16.3731), GeoPoint(48.2104, 16.3655))
+        val viewModel = viewModel()
+        viewModel.onAction(Action.OnToggleDayRoute)
+        testScheduler.advanceUntilIdle()
+        val from = MapPlace("a", "Oper", PlaceCategory.Attraction, GeoPoint(48.2031, 16.3691), isTripinly = false, likeCount = 0, prominence = 80)
+        val to = MapPlace("b", "Prater", PlaceCategory.Park, GeoPoint(48.2166, 16.3958), isTripinly = false, likeCount = 0, prominence = 80)
+
+        viewModel.onAction(Action.OnPlacePinClick(from))
+        viewModel.onAction(Action.OnRouteFromPlace)
+        testScheduler.advanceUntilIdle()
+        assertEquals(from, viewModel.uiState.value.routeStart)
+        assertNull(viewModel.uiState.value.selectedPlace)
+
+        viewModel.onAction(Action.OnPlacePinClick(to))
+        viewModel.onAction(Action.OnRouteToPlace)
+        testScheduler.advanceUntilIdle()
+        val state = viewModel.uiState.value
+        assertEquals(MapViewModel.PointRoute(from, to), state.pointRoute)
+        assertNull(state.routeStart)
+        assertEquals(listOf(from.location to to.location), routes.pointRoutes)
+        assertEquals(listOf(Coordinates(48.2031, 16.3691), Coordinates(48.2166, 16.3958)), state.routeLine)
+        assertTrue(state.legSeconds.isEmpty())
+
+        viewModel.onAction(Action.OnClosePointRoute)
+        testScheduler.advanceUntilIdle()
+        assertNull(viewModel.uiState.value.pointRoute)
+        assertEquals(viewModel.uiState.value.markers.map { it.position }, viewModel.uiState.value.routeLine)
+    }
+
+    @Test
+    fun `the best order shows first and is saved on apply`() = runTest(testDispatcher) {
+        addStops(GeoPoint(48.20, 16.37), GeoPoint(48.30, 16.37), GeoPoint(48.21, 16.37))
+        val viewModel = viewModel()
+        testScheduler.advanceUntilIdle()
+        val (first, far, near) = viewModel.uiState.value.markers.map { it.id }
+        assertTrue(viewModel.uiState.value.canFindBestOrder)
+
+        viewModel.onAction(Action.OnFindBestOrder)
+        testScheduler.advanceUntilIdle()
+        assertEquals(listOf(first, near, far), viewModel.uiState.value.bestOrder?.stops?.map { it.id })
+        assertEquals(listOf(first, far, near), viewModel.uiState.value.markers.map { it.id })
+
+        viewModel.onAction(Action.OnApplyBestOrder)
+        testScheduler.advanceUntilIdle()
+        assertNull(viewModel.uiState.value.bestOrder)
+        assertEquals(listOf(first, near, far), viewModel.uiState.value.markers.map { it.id })
+    }
+
+    @Test
+    fun `stops already in the best order say so`() = runTest(testDispatcher) {
+        addStops(GeoPoint(48.20, 16.37), GeoPoint(48.21, 16.37), GeoPoint(48.30, 16.37))
+        val viewModel = viewModel()
+        testScheduler.advanceUntilIdle()
+
+        viewModel.onAction(Action.OnFindBestOrder)
+        testScheduler.advanceUntilIdle()
+
+        assertNull(viewModel.uiState.value.bestOrder)
+        val note = assertIs<UiText.Note>(viewModel.uiState.value.message)
+        assertEquals(Res.string.map_best_order_already, assertIs<UiText.Resource>(note.text).resource)
     }
 }

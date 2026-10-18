@@ -2,7 +2,9 @@ package com.falcon.tripingly.feature.map.presentation.component
 
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
 import com.falcon.tripingly.core.location.model.Coordinates
 import com.falcon.tripingly.core.model.place.GeoBounds
 import com.falcon.tripingly.core.model.place.MapPlace
@@ -24,6 +26,10 @@ expect fun GoogleMapView(
     placeClusters: List<PlaceCluster>,
     /** The tapped place, drawn bigger on top. */
     selectedPlace: MapPlace?,
+    /** The route to draw under the pins, from start to end; empty for none. */
+    routeLine: List<Coordinates>,
+    /** [routeLine] is straight lines, drawn fainter. */
+    isRouteEstimated: Boolean,
     isMyLocationEnabled: Boolean,
     /** How much of the map's bottom the screen's cards cover: Google's logo stays above it. */
     coveredBottom: Dp,
@@ -42,3 +48,11 @@ expect fun GoogleMapView(
     onMapLongClick: (Coordinates) -> Unit,
     onMarkerClick: (MapMarker) -> Unit,
 )
+
+/** The route's line, in the stops' blue. */
+internal val RouteColor = Color(0xFF2196F3)
+
+/** A straight-line estimate is drawn fainter. */
+internal const val ESTIMATED_ROUTE_ALPHA = 0.5f
+
+internal val RouteWidth = 5.dp

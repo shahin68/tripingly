@@ -34,13 +34,17 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Directions
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material3.AssistChip
+import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -94,7 +98,11 @@ import com.falcon.tripingly.core.ui.UiText
 import com.falcon.tripingly.feature.map.domain.model.MapMarker
 import com.falcon.tripingly.feature.map.generated.resources.*
 import com.falcon.tripingly.feature.map.generated.resources.Res
+import com.falcon.tripingly.feature.map.presentation.component.AlongTheWay
 import com.falcon.tripingly.feature.map.presentation.component.GoogleMapView
+import com.falcon.tripingly.feature.map.presentation.component.RouteAttribution
+import com.falcon.tripingly.feature.map.presentation.component.RouteSummary
+import com.falcon.tripingly.feature.map.presentation.component.durationLabel
 import com.falcon.tripingly.feature.map.presentation.component.PlaceCard
 import com.falcon.tripingly.feature.map.presentation.component.StopCard
 import com.falcon.tripingly.feature.map.presentation.component.fitCamera
@@ -185,6 +193,8 @@ fun MapScreen(
                 placePins = state.placePins,
                 placeClusters = state.placeClusters,
                 selectedPlace = state.selectedPlace,
+                routeLine = state.routeLine,
+                isRouteEstimated = state.isRouteEstimated,
                 isMyLocationEnabled = state.isPermissionGranted,
                 coveredBottom = with(density) { if (bottomCardsTop > 0f) (mapSize.height - bottomCardsTop).toDp() else 0.dp },
                 onCameraMove = { coords, zoom, bounds -> onAction(Action.OnCameraMove(coords, zoom, bounds)) },
@@ -251,12 +261,27 @@ fun MapScreen(
                     .padding(MaterialTheme.spacing.medium),
                 verticalAlignment = Alignment.Bottom,
             ) {
-                // Our places come from OpenStreetMap.
-                OsmAttribution(
-                    modifier = Modifier.background(MaterialTheme.colorScheme.surface.copy(alpha = 0.8f), RoundedCornerShape(4.dp)),
-                )
+                // Our places come from OpenStreetMap, routes from openrouteservice too.
+                val attributionBackground = Modifier.background(MaterialTheme.colorScheme.surface.copy(alpha = 0.8f), RoundedCornerShape(4.dp))
+                val routeAttribution = state.routeAttribution?.takeIf { state.routeLine.isNotEmpty() }
+                if (routeAttribution != null) {
+                    RouteAttribution(routeAttribution, modifier = Modifier.weight(1f, fill = false).then(attributionBackground))
+                } else {
+                    OsmAttribution(modifier = attributionBackground)
+                }
                 Spacer(modifier = Modifier.weight(1f))
                 LocationFab(state = state, onAction = onAction)
+            }
+
+            state.routeStart?.let { start ->
+                AssistChip(
+                    onClick = { onAction(Action.OnCancelRouteStart) },
+                    label = { Text(stringResource(Res.string.map_route_start, start.name)) },
+                    leadingIcon = { Icon(Icons.Default.Directions, contentDescription = null, modifier = Modifier.size(18.dp)) },
+                    trailingIcon = { Icon(Icons.Default.Close, contentDescription = stringResource(Res.string.map_route_close), modifier = Modifier.size(18.dp)) },
+                    colors = AssistChipDefaults.assistChipColors(containerColor = MaterialTheme.colorScheme.surface),
+                    modifier = Modifier.align(Alignment.Start).padding(horizontal = MaterialTheme.spacing.medium),
+                )
             }
 
             DaySelectionTabs(
@@ -266,20 +291,39 @@ fun MapScreen(
             )
 
             AnimatedVisibility(
-                visible = state.markers.isNotEmpty(),
+                visible = state.markers.isNotEmpty() && state.pointRoute == null,
                 enter = fadeIn() + slideInVertically(initialOffsetY = { it }),
                 exit = fadeOut() + slideOutVertically(targetOffsetY = { it }),
                 modifier = Modifier.fillMaxWidth()
             ) {
                 TripItineraryCard(
                     markers = markers,
-                    selectedMarkerId = state.selectedMarker?.id,
-                    canClear = state.canDeleteDay,
+                    state = state,
                     onAction = onAction,
                     modifier = Modifier
                         .padding(horizontal = MaterialTheme.spacing.medium)
                         .padding(bottom = MaterialTheme.spacing.medium)
                 )
+            }
+
+            // A route from A to B takes the stops' place until it's closed, and keeps showing while it slides out.
+            val pointRoute = remember { mutableStateOf(state.pointRoute) }.apply { if (state.pointRoute != null) value = state.pointRoute }.value
+            AnimatedVisibility(
+                visible = state.pointRoute != null,
+                enter = fadeIn() + slideInVertically(initialOffsetY = { it }),
+                exit = fadeOut() + slideOutVertically(targetOffsetY = { it }),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                if (pointRoute != null) {
+                    PointRouteCard(
+                        route = pointRoute,
+                        state = state,
+                        onAction = onAction,
+                        modifier = Modifier
+                            .padding(horizontal = MaterialTheme.spacing.medium)
+                            .padding(bottom = MaterialTheme.spacing.medium)
+                    )
+                }
             }
         }
 
@@ -311,6 +355,10 @@ fun MapScreen(
                     onAdd = { onAction(Action.OnAddPlaceToDay) },
                     onOpenImage = { index -> onAction(Action.OnOpenPlaceImage(index)) },
                     onOpenPhotos = { onAction(Action.OnOpenPlacePhotos) },
+                    onRouteFrom = { onAction(Action.OnRouteFromPlace) },
+                    onRouteTo = { onAction(Action.OnRouteToPlace) }.takeIf {
+                        card.routeStart != null && card.routeStart?.location != place.location
+                    },
                 )
             }
         }
@@ -575,14 +623,15 @@ private fun LocationFab(
     }
 }
 
+/** The open day's stops; with the Route button on, the route's times, the best order and the places along the way. */
 @Composable
 private fun TripItineraryCard(
     markers: ImmutableList<MapMarker>,
-    selectedMarkerId: String?,
-    canClear: Boolean,
+    state: State,
     onAction: (Action) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val isRouteShown = state.isDayRouteShown && markers.size >= 2
     ElevatedCard(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
@@ -594,22 +643,116 @@ private fun TripItineraryCard(
         Column(
             modifier = Modifier.padding(12.dp),
         ) {
-            ItineraryTitle(stopCount = markers.size, canClear = canClear, onAction = onAction)
+            ItineraryTitle(
+                stopCount = markers.size,
+                canClear = state.canDeleteDay,
+                // A route needs two stops.
+                isRouteShown = state.isDayRouteShown.takeIf { markers.size >= 2 },
+                onAction = onAction,
+            )
 
             Spacer(modifier = Modifier.height(6.dp))
 
             LazyRow(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 contentPadding = PaddingValues(horizontal = 4.dp),
+                verticalAlignment = Alignment.CenterVertically,
             ) {
-                items(markers, key = { it.id }) { marker ->
-                    ItineraryMarkerChip(
-                        marker = marker,
-                        isSelected = marker.id == selectedMarkerId,
-                        onAction = onAction,
-                    )
+                markers.forEach { marker ->
+                    // The time from the stop before.
+                    val legSeconds = state.legSeconds[marker.id]?.takeIf { isRouteShown }
+                    if (legSeconds != null) {
+                        item(key = "leg:${marker.id}") {
+                            Text(
+                                text = durationLabel(legSeconds),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    }
+                    item(key = marker.id) {
+                        ItineraryMarkerChip(
+                            marker = marker,
+                            isSelected = marker.id == state.selectedMarker?.id,
+                            onAction = onAction,
+                        )
+                    }
                 }
             }
+
+            if (isRouteShown) {
+                RouteSummary(
+                    mode = state.travelMode,
+                    durationSeconds = state.routeDurationSeconds,
+                    distanceMeters = state.routeDistanceMeters,
+                    isEstimated = state.isRouteEstimated,
+                    isLoading = state.isLoadingRoute,
+                    onModeSelected = { onAction(Action.OnTravelModeSelected(it)) },
+                    modifier = Modifier.padding(top = MaterialTheme.spacing.small),
+                )
+                if (state.canFindBestOrder) {
+                    TextButton(onClick = { onAction(Action.OnFindBestOrder) }, enabled = !state.isFindingBestOrder) {
+                        Text(stringResource(Res.string.map_best_order))
+                        if (state.isFindingBestOrder) {
+                            CircularProgressIndicator(modifier = Modifier.padding(start = 8.dp).size(14.dp), strokeWidth = 2.dp)
+                        }
+                    }
+                }
+                AlongTheWay(
+                    places = state.alongTheWay,
+                    dayNumber = state.days.getOrNull(state.activeDayIndex)?.number?.takeIf { state.canEdit },
+                    onOpen = { onAction(Action.OnAlongTheWayClick(it)) },
+                    onAdd = { onAction(Action.OnAddAlongTheWay(it)) },
+                )
+            }
+        }
+    }
+}
+
+/** A route from one place to another, with its time, how to travel and the places along the way. */
+@Composable
+private fun PointRouteCard(
+    route: MapViewModel.PointRoute,
+    state: State,
+    onAction: (Action) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    ElevatedCard(
+        modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.elevatedCardColors(
+            containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f),
+            contentColor = MaterialTheme.colorScheme.onSurface,
+        ),
+    ) {
+        Column(modifier = Modifier.padding(12.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = stringResource(Res.string.map_route_between, route.from.name, route.to.name),
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 2,
+                    modifier = Modifier.weight(1f),
+                )
+                IconButton(onClick = { onAction(Action.OnClosePointRoute) }) {
+                    Icon(Icons.Default.Close, contentDescription = stringResource(Res.string.map_route_close))
+                }
+            }
+            RouteSummary(
+                mode = state.travelMode,
+                durationSeconds = state.routeDurationSeconds,
+                distanceMeters = state.routeDistanceMeters,
+                isEstimated = state.isRouteEstimated,
+                isLoading = state.isLoadingRoute,
+                onModeSelected = { onAction(Action.OnTravelModeSelected(it)) },
+            )
+            AlongTheWay(
+                places = state.alongTheWay,
+                dayNumber = state.days.getOrNull(state.activeDayIndex)?.number?.takeIf { state.canEdit },
+                onOpen = { onAction(Action.OnAlongTheWayClick(it)) },
+                onAdd = { onAction(Action.OnAddAlongTheWay(it)) },
+                modifier = Modifier.padding(top = MaterialTheme.spacing.small),
+            )
         }
     }
 }
@@ -674,6 +817,8 @@ private fun ItineraryMarkerChip(
 private fun ItineraryTitle(
     stopCount: Int,
     canClear: Boolean,
+    /** The Route button's state; null hides it. */
+    isRouteShown: Boolean?,
     onAction: (Action) -> Unit,
 ) {
     Row(
@@ -685,7 +830,16 @@ private fun ItineraryTitle(
             text = stringResource(Res.string.map_itinerary_title, stopCount),
             style = MaterialTheme.typography.titleSmall,
             fontWeight = FontWeight.Bold,
+            modifier = Modifier.weight(1f),
         )
+        if (isRouteShown != null) {
+            FilterChip(
+                selected = isRouteShown,
+                onClick = { onAction(Action.OnToggleDayRoute) },
+                label = { Text(stringResource(Res.string.map_route)) },
+                leadingIcon = { Icon(Icons.Default.Directions, contentDescription = null, modifier = Modifier.size(18.dp)) },
+            )
+        }
         if (canClear) {
             TextButton(onClick = { onAction(Action.ClearAllMarkers) }) {
                 Text(stringResource(Res.string.map_itinerary_clear_all), style = MaterialTheme.typography.labelSmall)

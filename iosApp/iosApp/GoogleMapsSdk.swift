@@ -36,6 +36,7 @@ private final class AppGoogleMap: NSObject, GoogleMap, GMSMapViewDelegate {
     private let mapView = GMSMapView(options: GMSMapViewOptions())
     private let listener: any GoogleMapListener
     private var markers: [String: GMSMarker] = [:]
+    private var route: GMSPolyline?
 
     var view: UIView { mapView }
 
@@ -91,6 +92,21 @@ private final class AppGoogleMap: NSObject, GoogleMap, GMSMapViewDelegate {
             marker.map = nil
         }
         markers = kept
+    }
+
+    func setRoute(points: [GoogleMapPoint], color: UIColor, width: Double) {
+        route?.map = nil
+        route = nil
+        guard points.count > 1 else { return }
+        let path = GMSMutablePath()
+        for point in points {
+            path.add(CLLocationCoordinate2D(latitude: point.latitude, longitude: point.longitude))
+        }
+        let line = GMSPolyline(path: path)
+        line.strokeColor = color
+        line.strokeWidth = CGFloat(width)
+        line.map = mapView
+        route = line
     }
 
     func mapView(_ mapView: GMSMapView, idleAt position: GMSCameraPosition) {

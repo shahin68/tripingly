@@ -9,6 +9,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Directions
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.PhotoLibrary
 import androidx.compose.material3.Button
@@ -37,7 +38,8 @@ import org.jetbrains.compose.resources.stringResource
 /**
  * A place tapped on the map, in a card that floats above its pin: what the pin knows at once, its images,
  * opening hours and website once loaded, its photos (anyone can add one), and Add to the open day for owners
- * and editors ([dayNumber] is null for viewers). A tapped image opens full screen.
+ * and editors ([dayNumber] is null for viewers). A tapped image opens full screen. Anyone can route from the
+ * place, and to it once another place was picked to start from ([onRouteTo]).
  */
 @Composable
 fun PlaceCard(
@@ -49,6 +51,9 @@ fun PlaceCard(
     onAdd: () -> Unit,
     onOpenImage: (index: Int) -> Unit,
     onOpenPhotos: () -> Unit,
+    onRouteFrom: () -> Unit,
+    /** Null until "Route from here" was tapped on another place. */
+    onRouteTo: (() -> Unit)?,
     modifier: Modifier = Modifier,
 ) {
     Card(
@@ -117,6 +122,17 @@ fun PlaceCard(
                 TextButton(onClick = onOpenPhotos) {
                     Icon(Icons.Default.PhotoLibrary, contentDescription = null, modifier = Modifier.size(18.dp))
                     Text(stringResource(Res.string.map_place_photos), modifier = Modifier.padding(start = MaterialTheme.spacing.small))
+                }
+            }
+            Row {
+                TextButton(onClick = onRouteFrom) {
+                    Icon(Icons.Default.Directions, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Text(stringResource(Res.string.map_route_from_here), modifier = Modifier.padding(start = MaterialTheme.spacing.small))
+                }
+                if (onRouteTo != null) {
+                    TextButton(onClick = onRouteTo) {
+                        Text(stringResource(Res.string.map_route_to_here))
+                    }
                 }
             }
             details?.website?.let { website ->
