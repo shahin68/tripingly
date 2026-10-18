@@ -69,8 +69,6 @@ import com.falcon.tripingly.feature.trips.presentation.members.TripMembersViewMo
 import com.falcon.tripingly.feature.trips.presentation.members.TripMembersViewModel.State
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.persistentSetOf
-import kotlinx.datetime.TimeZone
-import kotlinx.datetime.toLocalDateTime
 import org.jetbrains.compose.resources.getString
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.koinInject
@@ -301,7 +299,7 @@ private fun InviteRow(invite: TripInvite, onShare: () -> Unit, onRevoke: () -> U
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(
-            text = stringResource(Res.string.members_invite_expires, invite.expiresAt.formatDate()),
+            text = stringResource(Res.string.members_invite_expires, DateUtils.formatFormal(invite.expiresAt)),
             style = MaterialTheme.typography.bodyMedium,
             modifier = Modifier.weight(1f),
         )
@@ -311,9 +309,6 @@ private fun InviteRow(invite: TripInvite, onShare: () -> Unit, onRevoke: () -> U
         }
     }
 }
-
-private fun Instant.formatDate(): String =
-    DateUtils.formatFormal(toLocalDateTime(TimeZone.currentSystemDefault()).date)
 
 @Preview
 @Composable

@@ -45,6 +45,7 @@ internal fun TripSummaryDto.toTrip() = Trip(
     markerCount = markerCount.toInt(),
     editorCount = editorCount.toInt(),
     savedByMe = savedByMe,
+    createdAt = createdAt.toInstant(),
     updatedAt = updatedAt.toInstant(),
 )
 
@@ -78,6 +79,7 @@ internal fun TripDto.toDetails(): TripDetails {
             markerCount = markers.size,
             editorCount = members.count { it.role == TripMemberDto.Role.EDITOR },
             savedByMe = savedByMe,
+            createdAt = createdAt.toInstant(),
             updatedAt = updatedAt.toInstant(),
         ),
         days = days,

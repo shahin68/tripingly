@@ -145,4 +145,5 @@
     <string name="map_confirm_remove">Eltávolítás</string>
     <string name="map_my_content_removed">A fotóid, hozzászólásaid és kedveléseid eltávolítva erről a megállóról.</string>
     <string name="map_error_remove_my_content">Nem sikerült eltávolítani a fotóidat, hozzászólásaidat és kedveléseidet.</string>
+    <string name="map_trip_created">Létrehozva: %1$s</string>
 </resources>

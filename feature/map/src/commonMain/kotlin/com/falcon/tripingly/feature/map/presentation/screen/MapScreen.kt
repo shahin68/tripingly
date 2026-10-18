@@ -374,12 +374,20 @@ private fun TripHeader(
             IconButton(onClick = { onAction(Action.OnBackClick) }) {
                 Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(Res.string.map_back))
             }
-            Text(
-                text = state.tripName,
-                modifier = Modifier.weight(1f).padding(vertical = 16.dp),
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-            )
+            Column(Modifier.weight(1f).padding(vertical = if (state.tripCreatedAt == null) 16.dp else 8.dp)) {
+                Text(
+                    text = state.tripName,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                )
+                state.tripCreatedAt?.let { createdAt ->
+                    Text(
+                        text = stringResource(Res.string.map_trip_created, DateUtils.formatFormal(createdAt)),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
             if (state.isSaving || state.isLoading || state.isUpdatingSharing) {
                 CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
             }

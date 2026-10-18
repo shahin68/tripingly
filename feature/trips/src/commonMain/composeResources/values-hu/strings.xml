@@ -121,4 +121,5 @@
     <string name="members_error_create_invite">Nem sikerült meghívó linket létrehozni.</string>
     <string name="members_error_revoke_invite">Nem sikerült kikapcsolni a meghívó linket.</string>
     <string name="members_error_remove">Nem sikerült eltávolítani őket az utazásból.</string>
+    <string name="trip_created">Létrehozva %1$s</string>
 </resources>

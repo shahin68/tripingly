@@ -96,6 +96,7 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.datetime.LocalDate
+import kotlin.time.Instant
 import org.jetbrains.compose.resources.StringResource
 import kotlin.coroutines.cancellation.CancellationException
 import kotlin.math.PI
@@ -236,6 +237,7 @@ class MapViewModel(
         val selectedPlaceDetails = ui.selectedPlaceDetails?.takeIf { it.id == ui.selectedPlace?.id }
         return State(
             tripName = details?.trip?.name.orEmpty(),
+            tripCreatedAt = details?.trip?.createdAt,
             days = days.map { DayTab(it.id, it.position + 1, it.date) }.toImmutableList(),
             activeDayIndex = activeIndex,
             markers = markers.toImmutableList(),
@@ -967,6 +969,8 @@ class MapViewModel(
     @Immutable
     data class State(
         val tripName: String = "",
+        /** Shown as a date under the trip name. */
+        val tripCreatedAt: Instant? = null,
         val days: ImmutableList<DayTab> = persistentListOf(),
         val activeDayIndex: Int = 0,
         /** The active day's stops in order. */

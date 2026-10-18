@@ -56,6 +56,7 @@ import com.falcon.tripingly.core.model.account.TripVisibility
 import com.falcon.tripingly.core.model.trip.Trip
 import com.falcon.tripingly.core.model.trip.TripRole
 import com.falcon.tripingly.core.ui.UiText
+import com.falcon.tripingly.core.ui.timeAgo
 import com.falcon.tripingly.feature.trips.generated.resources.*
 import com.falcon.tripingly.feature.trips.generated.resources.Res
 import com.falcon.tripingly.feature.trips.presentation.screen.HomeViewModel.Action
@@ -284,6 +285,7 @@ private fun TripItem(
                 text = listOf(
                     pluralStringResource(Res.plurals.trip_day_count, trip.dayCount, trip.dayCount),
                     pluralStringResource(Res.plurals.trip_stop_count, trip.markerCount, trip.markerCount),
+                    stringResource(Res.string.trip_created, timeAgo(trip.createdAt)),
                 ).joinToString(" · "),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,

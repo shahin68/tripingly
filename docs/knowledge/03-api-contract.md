@@ -47,7 +47,7 @@ REST over HTTPS, JSON, base path `/v1`.
 | GET | `/me/stats` | Trips, markers, photos counts |
 | GET | `/me/friends?cursor=&limit=` | The user's friends as user summaries, cursor paginated `{ items, nextCursor }`. The New trip sheet shows the first page (limit 50) as a row of avatars to add as members. Backend: tripinly-backend#32 (generated `UserPageDto`) |
 | GET | `/me/following?cursor=&limit=`, `/me/followers?cursor=&limit=` | Same shape; my profile's Following and Followers lists (pages of 50) |
-| GET | `/me/trips` | Owned, collaborating and saved (`role` `viewer`, `savedByMe` true), cursor paginated; each item has `role`, `saveCount`, `savedByMe`, `coverThumbUrl` (first cover photo in the trip, or null), `dayCount`, `markerCount`, `editorCount` (people it's shared with, owner not counted; backend#30) |
+| GET | `/me/trips` | Owned, collaborating and saved (`role` `viewer`, `savedByMe` true), cursor paginated; each item has `role`, `saveCount`, `savedByMe`, `coverThumbUrl` (first cover photo in the trip, or null), `dayCount`, `markerCount`, `editorCount` (people it's shared with, owner not counted; backend#30), `createdAt` (cards show "3 days ago"; backend#48) |
 | PUT | `/me/devices/{fcmToken}` | Register/refresh push device. Body: `platform` (`android`\|`ios`), `locale` |
 | DELETE | `/me/devices/{fcmToken}` | |
 | POST | `/me/export` | Starts GDPR export job; email when ready |
@@ -79,7 +79,7 @@ REST over HTTPS, JSON, base path `/v1`.
 | GET | `/trips/{id}/join-requests?cursor=&limit=` | Owner: pending requests `{ id, tripId, user, status, createdAt }`, newest first. The members sheet asks only when `pendingJoinRequestCount > 0` |
 | POST | `/join-requests/{id}/accept` | Owner: the person becomes an editor (member limit applies, `LIMIT_REACHED`); returns the member |
 | POST | `/join-requests/{id}/decline` | Owner: 204; they can't ask again |
-| GET | `/explore/trips?cursor=&limit=&period=&lat=&lng=` | Public trips, mine included (`role` owner/editor: no Save or Report), ranked by likes only; Social → Explore, pages of 20. `period`: `week`/`month`/`year` (likes of the last 7/30/365 days), `season` (trips travelled in the current season), `all`; the app opens on `month`. `lat`+`lng` (the Nearby chip) keep trips with a stop nearby; the point is sent for that request only. `nextCursor` goes with the same filters |
+| GET | `/explore/trips?cursor=&limit=&period=&lat=&lng=` | Public trips, mine included (`role` owner/editor: no Save or Report), ranked by likes only; Social → Explore, pages of 20. `period`: `week`/`month`/`year` (only trips created in the last 7/30/365 days), `season` (trips travelled in the current season), `all`; the app opens on `month`. `lat`+`lng` (the Nearby chip) keep trips with a stop nearby; the point is sent for that request only. `nextCursor` goes with the same filters |
 
 ### Days
 | Method | Path | Notes |

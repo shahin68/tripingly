@@ -145,4 +145,5 @@
     <string name="map_confirm_remove">Entfernen</string>
     <string name="map_my_content_removed">Deine Fotos, Kommentare und Likes auf diesem Stopp wurden entfernt.</string>
     <string name="map_error_remove_my_content">Deine Fotos, Kommentare und Likes konnten nicht entfernt werden.</string>
+    <string name="map_trip_created">Erstellt am %1$s</string>
 </resources>

@@ -19,6 +19,7 @@ internal val tripsPreviewData = persistentListOf(
         owner = UserSummary("u1", "shahin", "Shahin"),
         dayCount = 15,
         markerCount = 4,
+        createdAt = Instant.parse("2025-05-01T10:00:00Z"),
         updatedAt = Instant.parse("2025-05-01T10:00:00Z"),
     ),
     Trip(
@@ -31,6 +32,7 @@ internal val tripsPreviewData = persistentListOf(
         owner = UserSummary("u2", "anna", "Anna"),
         dayCount = 11,
         markerCount = 0,
+        createdAt = Instant.parse("2025-04-01T10:00:00Z"),
         updatedAt = Instant.parse("2025-04-01T10:00:00Z"),
     ),
 )

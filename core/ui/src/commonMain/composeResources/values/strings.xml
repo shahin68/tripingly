@@ -8,4 +8,29 @@
     <string name="error_reason_not_available">It isn't available.</string>
     <string name="error_reason_forbidden">You don't have permission.</string>
     <string name="error_try_again">Try again.</string>
+    <string name="time_ago_just_now">just now</string>
+    <plurals name="time_ago_minutes">
+        <item quantity="one">a minute ago</item>
+        <item quantity="other">%d minutes ago</item>
+    </plurals>
+    <plurals name="time_ago_hours">
+        <item quantity="one">an hour ago</item>
+        <item quantity="other">%d hours ago</item>
+    </plurals>
+    <plurals name="time_ago_days">
+        <item quantity="one">a day ago</item>
+        <item quantity="other">%d days ago</item>
+    </plurals>
+    <plurals name="time_ago_weeks">
+        <item quantity="one">a week ago</item>
+        <item quantity="other">%d weeks ago</item>
+    </plurals>
+    <plurals name="time_ago_months">
+        <item quantity="one">a month ago</item>
+        <item quantity="other">%d months ago</item>
+    </plurals>
+    <plurals name="time_ago_years">
+        <item quantity="one">a year ago</item>
+        <item quantity="other">%d years ago</item>
+    </plurals>
 </resources>

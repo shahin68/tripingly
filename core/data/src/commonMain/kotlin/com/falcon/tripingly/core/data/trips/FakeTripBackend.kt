@@ -105,6 +105,7 @@ class FakeTripBackend(
                     owner = me,
                     dayCount = 0,
                     markerCount = 0,
+                    createdAt = now(),
                     updatedAt = now(),
                 ),
                 days = List(dayCount) { position -> TripDay(nextId(), position, trip.startDate?.plusDays(position), emptyList()) },
