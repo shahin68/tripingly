@@ -194,8 +194,8 @@ actual fun GoogleMapView(
         // (the most liked, then the best known) are drawn on top; a new pin fades in. Changing a pin's icon makes
         // every pin on the map blink, so a pin whose look changes comes back as a new pin, a photo pin waits for its
         // photo, and the tapped place's pin stays as it is under a bigger copy.
-        placePins.forEachIndexed { index, pin ->
-            if (pin.photo && pin.place.coverImageId !in pinPhotos) return@forEachIndexed
+        placePins.forEach { pin ->
+            if (pin.photo && pin.place.coverImageId !in pinPhotos) return@forEach
             val look = PlacePinLook(pin.place.category, pin.place.isTripinly, pin.size, photoId(pin.place, pin.photo))
             key(pin.place.id, look) {
                 val alpha = remember { Animatable(0f) }
@@ -206,8 +206,9 @@ actual fun GoogleMapView(
                     title = pin.place.name,
                     anchor = Offset(0.5f, 0.5f),
                     alpha = alpha.value,
-                    // Under the clusters and the stops.
-                    zIndex = PLACE_PINS_Z * (1 - (index + 1f) / (placePins.size + 1)),
+                    // Under the clusters and the stops. Taken from the place, not from its place in the list, so a
+                    // pin's z-order stays the same when pins come and go: changing it makes pins vanish for a frame.
+                    zIndex = PLACE_PINS_Z * pinRank(pin.place),
                     // No info window and no camera move of the map's own: the card and the camera are ours.
                     onClick = {
                         onPlacePinClick(pin.place)
@@ -284,6 +285,10 @@ actual fun GoogleMapView(
 
 /** A new place pin fades in, as Google's own pins do. */
 private const val PIN_FADE_MILLIS = 250
+
+/** Between 0 and 1, higher for a better place: liked places by their likes above the others by how well known. */
+private fun pinRank(place: MapPlace): Float =
+    if (place.likeCount > 0) 0.5f + minOf(place.likeCount, 1000) / 2500f else place.prominence / 250f
 
 /** Place pins sit under this, the stops at 1 and the tapped place at 2. */
 private const val PLACE_PINS_Z = 0.5f
