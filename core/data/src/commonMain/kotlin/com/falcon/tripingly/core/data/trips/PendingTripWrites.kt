@@ -1,5 +1,8 @@
 package com.falcon.tripingly.core.data.trips
 
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
@@ -16,10 +19,14 @@ internal class PendingTripWrites {
     private val versions = mutableMapOf<String, Long>()
     private val stale = mutableSetOf<String>()
 
+    /** Trips with changes on their way. */
+    private val unsent = MutableStateFlow(emptySet<String>())
+
     /** Marks a change as started and applies [applyLocally] in the same step. */
     suspend fun begin(tripId: String, applyLocally: suspend () -> Unit) = mutex.withLock {
         pending[tripId] = (pending[tripId] ?: 0) + 1
         versions[tripId] = (versions[tripId] ?: 0) + 1
+        unsent.update { it + tripId }
         applyLocally()
     }
 
@@ -27,7 +34,13 @@ internal class PendingTripWrites {
     suspend fun end(tripId: String): Boolean = mutex.withLock {
         val left = (pending[tripId] ?: 1) - 1
         if (left <= 0) pending.remove(tripId) else pending[tripId] = left
+        if (left <= 0) unsent.update { it - tripId }
         left <= 0
+    }
+
+    /** Returns once every change to the trip has reached the server, or failed and was undone. */
+    suspend fun awaitSent(tripId: String) {
+        unsent.first { tripId !in it }
     }
 
     suspend fun version(tripId: String): Long = mutex.withLock { versions[tripId] ?: 0 }
