@@ -113,8 +113,10 @@ Decided 2026-10-10 (Shahin, "Tiles + prefetch"): places load and draw like Googl
 - Refetch the day route after marker add/move/delete/reorder (including realtime events).
 - `ROUTING_UNAVAILABLE` → show straight lines between markers with a small "Route unavailable" note. A `degraded: true` flag means the same.
 
+*(Built in stage 8: the Route button on the stops card turns the day's route on; leg times sit between the stop chips; Walk/Bike/Car chips; the places along the way are a row in the same card and pins on the map. "Route from here" / "Route to here" on place cards, the A→B card replaces the stops card until closed. Routes are kept in memory by stops and mode, so the same stops are routed once; a day is routed after its own stop changes reached the server. The MapKit fallback on iOS draws no route.)*
+
 ## Best route
 
-`POST /days/{id}/optimize` → preview the new order (animate the pins or show a list) → "Apply" calls `?apply=true`.
+`POST /days/{id}/optimize` → preview the new order (a list in a dialog) → "Apply" saves it as a normal reorder (`PUT /days/{id}/marker-order`, optimistic like every stop change) rather than `?apply=true`, so it shows at once.
 - `mode: "straight_line"`: free result; show a hint that premium uses real travel times (see `premium-and-paywall`).
 - `mode: "travel_time"`: show "N min shorter" from `savedMinutes`.
