@@ -85,7 +85,12 @@ actual fun GoogleMapView(
         )
     }
 
+    // While the camera flies to a target, its position on the way isn't reported: the map loading (onMapLoaded) mid-flight
+    // would make the half-way point the new target and stop the flight there.
+    var isFlying by remember { mutableStateOf(false) }
+
     fun reportCamera() {
+        if (isFlying) return
         val position = cameraPositionState.position
         onCameraMove(
             Coordinates(position.target.latitude, position.target.longitude),
@@ -131,10 +136,17 @@ actual fun GoogleMapView(
                 // The map isn't drawn yet: start it there instead of animating.
                 cameraPositionState.position = CameraPosition.fromLatLngZoom(targetLatLng, zoomLevel)
             } else {
-                cameraPositionState.animate(
-                    CameraUpdateFactory.newLatLngZoom(targetLatLng, zoomLevel),
-                    durationMs = CAMERA_MOVE_MILLIS
-                )
+                isFlying = true
+                try {
+                    cameraPositionState.animate(
+                        CameraUpdateFactory.newLatLngZoom(targetLatLng, zoomLevel),
+                        durationMs = CAMERA_MOVE_MILLIS
+                    )
+                } finally {
+                    isFlying = false
+                }
+                // Arrived: where it rests is reported (a finger stopping the flight reports when the camera rests).
+                reportCamera()
             }
         }
     }
