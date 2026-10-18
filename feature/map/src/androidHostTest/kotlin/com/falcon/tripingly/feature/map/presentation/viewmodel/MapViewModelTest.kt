@@ -434,6 +434,11 @@ class MapViewModelTest {
         testScheduler.advanceUntilIdle()
 
         assertEquals(listOf(Coordinates(48.85, 2.35), Coordinates(48.86, 2.29)), viewModel.uiState.value.frame?.points)
+        // The map shows once the screen has fitted the stops, so it opens on them and not on the default.
+        assertFalse(viewModel.uiState.value.isCameraReady)
+        viewModel.onAction(Action.NavigateToLocation(Coordinates(48.855, 2.32), 14f))
+        testScheduler.advanceUntilIdle()
+        assertTrue(viewModel.uiState.value.isCameraReady)
 
         viewModel.onAction(Action.OnDaySelected(1))
         testScheduler.advanceUntilIdle()
@@ -465,6 +470,7 @@ class MapViewModelTest {
         assertEquals(Coordinates(41.9028, 12.4964), state.cameraTarget)
         assertEquals(12f, state.zoomLevel)
         assertEquals(null, state.frame)
+        assertTrue(state.isCameraReady)
     }
 
     @Test

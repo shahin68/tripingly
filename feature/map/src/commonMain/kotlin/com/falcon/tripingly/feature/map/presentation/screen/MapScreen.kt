@@ -175,24 +175,27 @@ fun MapScreen(
                 }
             }
     ) {
-        GoogleMapView(
-            modifier = Modifier.fillMaxSize(),
-            cameraTarget = state.cameraTarget,
-            zoomLevel = state.zoomLevel,
-            markers = markers,
-            placePins = state.placePins,
-            placeClusters = state.placeClusters,
-            selectedPlace = state.selectedPlace,
-            isMyLocationEnabled = state.isPermissionGranted,
-            coveredBottom = with(density) { if (bottomCardsTop > 0f) (mapSize.height - bottomCardsTop).toDp() else 0.dp },
-            onCameraMove = { coords, zoom, bounds -> onAction(Action.OnCameraMove(coords, zoom, bounds)) },
-            onMapTouch = { onAction(Action.OnScreenTouch) },
-            onMapClick = { coords -> onAction(Action.OnMapClick(coords)) },
-            onPlacePinClick = { place -> onAction(Action.OnPlacePinClick(place)) },
-            onClusterClick = { cluster -> onAction(Action.OnClusterClick(cluster)) },
-            onMapLongClick = { coords -> onAction(Action.OnMapLongClick(coords)) },
-            onMarkerClick = { marker -> onAction(Action.OnMarkerClick(marker)) },
-        )
+        // Not before the camera knows where the trip is: the map opens right there instead of flying from Paris.
+        if (state.isCameraReady) {
+            GoogleMapView(
+                modifier = Modifier.fillMaxSize(),
+                cameraTarget = state.cameraTarget,
+                zoomLevel = state.zoomLevel,
+                markers = markers,
+                placePins = state.placePins,
+                placeClusters = state.placeClusters,
+                selectedPlace = state.selectedPlace,
+                isMyLocationEnabled = state.isPermissionGranted,
+                coveredBottom = with(density) { if (bottomCardsTop > 0f) (mapSize.height - bottomCardsTop).toDp() else 0.dp },
+                onCameraMove = { coords, zoom, bounds -> onAction(Action.OnCameraMove(coords, zoom, bounds)) },
+                onMapTouch = { onAction(Action.OnScreenTouch) },
+                onMapClick = { coords -> onAction(Action.OnMapClick(coords)) },
+                onPlacePinClick = { place -> onAction(Action.OnPlacePinClick(place)) },
+                onClusterClick = { cluster -> onAction(Action.OnClusterClick(cluster)) },
+                onMapLongClick = { coords -> onAction(Action.OnMapLongClick(coords)) },
+                onMarkerClick = { marker -> onAction(Action.OnMarkerClick(marker)) },
+            )
+        }
 
         Column(
             modifier = Modifier

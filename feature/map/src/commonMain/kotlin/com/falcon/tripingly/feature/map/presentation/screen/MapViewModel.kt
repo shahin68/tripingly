@@ -255,6 +255,7 @@ class MapViewModel(
             currentLocation = ui.currentLocation,
             cameraTarget = ui.cameraTarget,
             zoomLevel = ui.zoomLevel,
+            isCameraReady = ui.isCameraReady,
             frame = ui.frame,
             isPermissionGranted = ui.permission == LocationPermission.Granted,
             isLoadingLocation = ui.isLoadingLocation,
@@ -292,7 +293,14 @@ class MapViewModel(
     private fun loadTrip() {
         viewModelScope.launch {
             val result = tripRepository.refreshTrip(tripId)
-            ui.update { it.copy(isLoadingTrip = false, message = (result as? AppResult.Error)?.error?.toUiText(Res.string.map_error_load_trip)) }
+            ui.update {
+                it.copy(
+                    isLoadingTrip = false,
+                    message = (result as? AppResult.Error)?.error?.toUiText(Res.string.map_error_load_trip),
+                    // Without the trip, or a trip without days, there's nothing to show first: the map opens on the default.
+                    isCameraReady = it.isCameraReady || result is AppResult.Error || (result as? AppResult.Success)?.data?.days?.isEmpty() == true,
+                )
+            }
         }
         // Show the open day's stops when the trip opens, or the whole trip's while that day has none,
         // or the trip's destination while it has no stops at all.
@@ -302,6 +310,9 @@ class MapViewModel(
             val destination = details.destination
             if (stops.isEmpty() && destination != null) {
                 navigateTo(Coordinates(destination.location.lat, destination.location.lng), DESTINATION_ZOOM)
+            } else if (stops.isEmpty()) {
+                // A trip without a location: the map opens on the default.
+                ui.update { it.copy(isCameraReady = true) }
             } else {
                 frameStops(stops)
             }
@@ -858,7 +869,7 @@ class MapViewModel(
     }
 
     private fun navigateTo(coordinates: Coordinates, zoom: Float) {
-        ui.update { it.copy(cameraTarget = coordinates, zoomLevel = zoom) }
+        ui.update { it.copy(cameraTarget = coordinates, zoomLevel = zoom, isCameraReady = true) }
         sendEvent(Event.AnimateCamera(coordinates, zoom))
     }
 
@@ -898,6 +909,7 @@ class MapViewModel(
         val currentLocation: Coordinates? = null,
         val cameraTarget: Coordinates = Coordinates.Paris,
         val zoomLevel: Float = 13f,
+        val isCameraReady: Boolean = false,
         /** Null until the screen has read it. */
         val permission: LocationPermission? = null,
         val locationPrompt: LocationPrompt? = null,
@@ -989,6 +1001,11 @@ class MapViewModel(
         val currentLocation: Coordinates? = null,
         val cameraTarget: Coordinates = Coordinates.Paris,
         val zoomLevel: Float = 13f,
+        /**
+         * The map shows once the camera knows where the trip is (its stops or destination), so it opens right
+         * there; only a trip without a location opens on the default ([cameraTarget] starts at Paris).
+         */
+        val isCameraReady: Boolean = false,
         /** The stops to fit on screen: the open day's, framed on open, on a day change and on every return. */
         val frame: CameraFrame? = null,
         val isPermissionGranted: Boolean = false,
