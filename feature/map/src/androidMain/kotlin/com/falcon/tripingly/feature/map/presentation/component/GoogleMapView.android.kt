@@ -186,20 +186,23 @@ actual fun GoogleMapView(
             }
             BitmapDescriptorFactory.fromBitmap(bitmap.asAndroidBitmap())
         }
-        // A photo pin keeps its icon until its photo has loaded.
-        fun photoId(place: MapPlace, photo: Boolean) = place.coverImageId?.takeIf { photo && it in pinPhotos }
+        // A photo pin that couldn't load its photo shows its icon.
+        fun photoId(place: MapPlace, photo: Boolean) = place.coverImageId?.takeIf { photo && pinPhotos[it] != null }
         val clusterIcons = remember(hotSpotColor, density) { mutableMapOf<Int, BitmapDescriptor>() }
 
         // Place pins are markers, so they keep their size on screen while the camera zooms. The first ones
-        // (the most liked, then the best known) are drawn on top; a new pin fades in. The tapped place's
-        // pin stays as it is and a bigger copy is drawn over it: changing or removing a pin makes the map blink.
+        // (the most liked, then the best known) are drawn on top; a new pin fades in. Changing a pin's icon makes
+        // every pin on the map blink, so a pin whose look changes comes back as a new pin, a photo pin waits for its
+        // photo, and the tapped place's pin stays as it is under a bigger copy.
         placePins.forEachIndexed { index, pin ->
-            key(pin.place.id) {
+            if (pin.photo && pin.place.coverImageId !in pinPhotos) return@forEachIndexed
+            val look = PlacePinLook(pin.place.category, pin.place.isTripinly, pin.size, photoId(pin.place, pin.photo))
+            key(pin.place.id, look) {
                 val alpha = remember { Animatable(0f) }
                 LaunchedEffect(Unit) { alpha.animateTo(1f, tween(PIN_FADE_MILLIS)) }
                 Marker(
                     state = rememberUpdatedMarkerState(position = LatLng(pin.place.location.lat, pin.place.location.lng)),
-                    icon = pinIcon(PlacePinLook(pin.place.category, pin.place.isTripinly, pin.size, photoId(pin.place, pin.photo))),
+                    icon = pinIcon(look),
                     title = pin.place.name,
                     anchor = Offset(0.5f, 0.5f),
                     alpha = alpha.value,
@@ -232,14 +235,17 @@ actual fun GoogleMapView(
             }
         }
 
-        // The tapped place, bigger and on top.
+        // The tapped place, bigger and on top. It fades in quickly over its own pin, so the pin seems to grow.
         selectedPlace?.let { place ->
             key(place.id) {
+                val alpha = remember { Animatable(0f) }
+                LaunchedEffect(Unit) { alpha.animateTo(1f, tween(SELECTED_PIN_FADE_MILLIS)) }
                 Marker(
                     state = rememberUpdatedMarkerState(position = LatLng(place.location.lat, place.location.lng)),
                     icon = pinIcon(PlacePinLook(place.category, place.isTripinly, SelectedPinSize, photoId(place, placePins.any { it.photo && it.place.id == place.id }))),
                     title = place.name,
                     anchor = Offset(0.5f, 0.5f),
+                    alpha = alpha.value,
                     zIndex = 2f,
                     onClick = { true },
                 )
@@ -282,8 +288,11 @@ actual fun GoogleMapView(
 /** A new place pin fades in, as Google's own pins do. */
 private const val PIN_FADE_MILLIS = 250
 
+/** The tapped place's bigger pin fades in faster, so the tap feels instant. */
+private const val SELECTED_PIN_FADE_MILLIS = 150
+
 /** Place pins sit under this, the stops at 1 and the tapped place at 2. */
 private const val PLACE_PINS_Z = 0.5f
 
 /** How long the camera takes to fly to a pin, a search result or the user's location. */
-private const val CAMERA_MOVE_MILLIS = 400
+private const val CAMERA_MOVE_MILLIS = 250

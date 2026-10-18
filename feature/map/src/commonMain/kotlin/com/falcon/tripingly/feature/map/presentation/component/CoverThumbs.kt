@@ -15,9 +15,9 @@ import com.falcon.tripingly.core.designsystem.component.photoRequest
 import com.falcon.tripingly.core.model.place.MapPlace
 import com.falcon.tripingly.feature.map.domain.model.MapMarker
 
-/** The cover thumbnails of [markers] by photo ID, for drawing into their pins. */
+/** The cover thumbnails of [markers] by photo ID, for drawing into their pins (null when one failed to load). */
 @Composable
-internal fun rememberCoverThumbs(markers: List<MapMarker>): Map<String, ImageBitmap> =
+internal fun rememberCoverThumbs(markers: List<MapMarker>): Map<String, ImageBitmap?> =
     rememberThumbs(
         markers.mapNotNull { marker ->
             val id = marker.coverPhotoId ?: return@mapNotNull null
@@ -25,9 +25,9 @@ internal fun rememberCoverThumbs(markers: List<MapMarker>): Map<String, ImageBit
         }.toMap(),
     )
 
-/** The photos of the photo pins in [pins] by image ID ([MapPlace.coverImageId]). */
+/** The photos of the photo pins in [pins] by image ID ([MapPlace.coverImageId]), null when one failed to load. */
 @Composable
-internal fun rememberPinPhotos(pins: List<PlacePin>): Map<String, ImageBitmap> =
+internal fun rememberPinPhotos(pins: List<PlacePin>): Map<String, ImageBitmap?> =
     rememberThumbs(
         pins.filter { it.photo }.mapNotNull { pin ->
             val id = pin.place.coverImageId ?: return@mapNotNull null
@@ -36,19 +36,19 @@ internal fun rememberPinPhotos(pins: List<PlacePin>): Map<String, ImageBitmap> =
     )
 
 /**
- * The thumbnails of [covers] (image ID to signed URL) by ID. Loaded through the app's image loader, so an
- * image already seen comes from its cache, whatever its signed URL is now.
+ * The thumbnails of [covers] (image ID to signed URL) by ID, null for one that failed to load. Loaded through
+ * the app's image loader, so an image already seen comes from its cache, whatever its signed URL is now.
  */
 @Composable
-private fun rememberThumbs(covers: Map<String, String>): Map<String, ImageBitmap> {
+private fun rememberThumbs(covers: Map<String, String>): Map<String, ImageBitmap?> {
     val context = LocalPlatformContext.current
-    var thumbs by remember { mutableStateOf(emptyMap<String, ImageBitmap>()) }
+    var thumbs by remember { mutableStateOf(emptyMap<String, ImageBitmap?>()) }
     LaunchedEffect(covers.keys) {
         val loader = SingletonImageLoader.get(context)
         for ((id, url) in covers) {
             if (id in thumbs) continue
-            val image = loader.execute(photoRequest(context, id, url, PhotoSize.Thumb)).image ?: continue
-            thumbs = thumbs + (id to image.toPinBitmap())
+            val image = loader.execute(photoRequest(context, id, url, PhotoSize.Thumb)).image
+            thumbs = thumbs + (id to image?.toPinBitmap())
         }
     }
     return thumbs

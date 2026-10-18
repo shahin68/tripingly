@@ -153,8 +153,8 @@ internal fun GoogleSdkMapView(
         }
         bitmap.toUIImage(density.density)
     }
-    // A photo pin keeps its icon until its photo has loaded.
-    fun photoId(place: MapPlace, photo: Boolean) = place.coverImageId?.takeIf { photo && it in pinPhotos }
+    // A photo pin that couldn't load its photo shows its icon.
+    fun photoId(place: MapPlace, photo: Boolean) = place.coverImageId?.takeIf { photo && pinPhotos[it] != null }
     val clusterIcons = remember(hotSpotColor, density) { mutableMapOf<Int, UIImage>() }
 
     // A stop's pin is drawn once per number and color.
@@ -186,9 +186,10 @@ internal fun GoogleSdkMapView(
                 fadesIn = false,
             )
         }
-        // The first pins (the most liked, then the best known) on top. The tapped place's pin stays as it is and a
-        // bigger copy is drawn over it below: changing or removing a pin makes the map blink.
-        val pins = placePins.mapIndexed { index, pin ->
+        // The first pins (the most liked, then the best known) on top. A photo pin waits for its photo. The tapped
+        // place's pin stays as it is and a bigger copy is drawn over it below, as on Android.
+        val pins = placePins.mapIndexedNotNull { index, pin ->
+            if (pin.photo && pin.place.coverImageId !in pinPhotos) return@mapIndexedNotNull null
             GoogleMapMarker(
                 key = PLACE_KEY + pin.place.id,
                 latitude = pin.place.location.lat,
@@ -218,11 +219,11 @@ internal fun GoogleSdkMapView(
                 fadesIn = true,
             )
         }
-        // The tapped place, bigger and on top. No info window and no camera move of the map's own: the
-        // card and the camera are ours.
+        // The tapped place, bigger and on top; it fades in over its own pin. No info window and no camera move of
+        // the map's own: the card and the camera are ours.
         val place = selectedPlace?.let {
             GoogleMapMarker(
-                key = SELECTED_PLACE_KEY,
+                key = SELECTED_PLACE_KEY + it.id,
                 latitude = it.location.lat,
                 longitude = it.location.lng,
                 title = it.name,
@@ -231,7 +232,7 @@ internal fun GoogleSdkMapView(
                 anchorY = 0.5,
                 zIndex = 2,
                 showsInfoWindow = false,
-                fadesIn = false,
+                fadesIn = true,
             )
         }
         map.setMarkers(pins + clusters + stops + listOfNotNull(place))
