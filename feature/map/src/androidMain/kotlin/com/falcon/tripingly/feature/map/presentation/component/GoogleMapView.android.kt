@@ -306,7 +306,7 @@ actual fun GoogleMapView(
     }
 }
 
-/** The stops joined by a curve with arrows pointing the way; a streak runs along it once when it changes. */
+/** The stops joined by straight lines with arrows pointing the way; a streak runs along it once when it changes. */
 @Composable
 @GoogleMapComposable
 private fun StopPathLine(stops: List<Coordinates>) {

@@ -28,7 +28,7 @@ expect fun GoogleMapView(
     selectedPlace: MapPlace?,
     /** The route to draw under the pins, from start to end; empty for none. */
     routeLine: List<Coordinates>,
-    /** The stops in order, joined by curved direction lines; empty for none. */
+    /** The stops in order, joined by direction lines; empty for none. */
     stopPath: List<Coordinates>,
     isMyLocationEnabled: Boolean,
     /** How much of the map's bottom the screen's cards cover: Google's logo stays above it. */

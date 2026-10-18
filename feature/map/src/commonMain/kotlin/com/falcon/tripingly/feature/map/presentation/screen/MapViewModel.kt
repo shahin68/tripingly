@@ -1320,7 +1320,7 @@ class MapViewModel(
         val routeLine: ImmutableList<Coordinates> = persistentListOf(),
         /** Real routes aren't available right now: nothing is drawn for them and a note says so. */
         val isRouteEstimated: Boolean = false,
-        /** The open day's stops in order, joined on the map by curved direction lines while no route shows. */
+        /** The open day's stops in order, joined on the map by direction lines while no route shows. */
         val stopPath: ImmutableList<Coordinates> = persistentListOf(),
         val routeDurationSeconds: Int? = null,
         val routeDistanceMeters: Int? = null,
