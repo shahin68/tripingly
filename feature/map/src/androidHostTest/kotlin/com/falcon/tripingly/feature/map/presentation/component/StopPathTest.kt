@@ -1,9 +1,6 @@
 package com.falcon.tripingly.feature.map.presentation.component
 
 import com.falcon.tripingly.core.location.model.Coordinates
-import com.google.android.gms.maps.model.Dash
-import com.google.android.gms.maps.model.Gap
-import com.google.android.gms.maps.model.PatternItem
 import kotlin.math.abs
 import kotlin.math.hypot
 import kotlin.test.Test
@@ -18,7 +15,7 @@ class StopPathTest {
 
     @Test
     fun theCurvesPassThroughEveryStopInOrder() {
-        val path = curvedStopPath(listOf(opera, stephansdom, prater))
+        val path = stopPathShape(listOf(opera, stephansdom, prater)).points
 
         assertEquals(opera, path.first())
         assertEquals(prater, path.last())
@@ -29,7 +26,7 @@ class StopPathTest {
     @Test
     fun twoStopsAreJoinedByAnArcBowingToTheRightOfTravel() {
         // Due north: right is east.
-        val path = curvedStopPath(listOf(Coordinates(48.0, 16.0), Coordinates(48.1, 16.0)))
+        val path = stopPathShape(listOf(Coordinates(48.0, 16.0), Coordinates(48.1, 16.0))).points
         assertTrue(path[path.size / 2].longitude > 16.0)
     }
 
@@ -37,7 +34,7 @@ class StopPathTest {
     fun theLineHasNoCornerAtAStop() {
         // Like a hand-drawn U: down from the first stop, level through the low one, up to the last.
         val low = Coordinates(48.0, 16.1)
-        val path = curvedStopPath(listOf(Coordinates(48.1, 16.0), low, Coordinates(48.15, 16.2)))
+        val path = stopPathShape(listOf(Coordinates(48.1, 16.0), low, Coordinates(48.15, 16.2))).points
         val at = path.indexOf(low)
         val before = path[at - 1]
         val after = path[at + 1]
@@ -54,22 +51,30 @@ class StopPathTest {
 
     @Test
     fun stopsInTheSameSpotAreJoinedDirectly() {
-        assertEquals(listOf(opera, opera), curvedStopPath(listOf(opera, opera)))
-        assertEquals(listOf(opera), curvedStopPath(listOf(opera)))
+        assertEquals(listOf(opera, opera), stopPathShape(listOf(opera, opera)).points)
+        assertEquals(listOf(opera), stopPathShape(listOf(opera)).points)
     }
 
     @Test
-    fun theDashesMoveTowardsTheEnd() {
-        assertEquals(listOf("gap" to 3f, "dash" to 10f, "gap" to 5f), marchingDashes(dash = 10f, gap = 8f, shift = 3f).described())
-        // Past the gap, the dash wraps around: 2 at the start, 8 at the end of the pattern.
-        assertEquals(listOf("dash" to 2f, "gap" to 8f, "dash" to 8f), marchingDashes(dash = 10f, gap = 8f, shift = 10f).described())
+    fun eachStretchHasAnArrowPointingToTheNextStop() {
+        // East, then north.
+        val arrows = stopPathShape(listOf(Coordinates(48.0, 16.0), Coordinates(48.0, 16.1), Coordinates(48.1, 16.1))).arrows
+
+        assertEquals(2, arrows.size)
+        assertTrue(arrows[0].bearing in 45f..135f, "east-ish: ${arrows[0].bearing}")
+        assertTrue(arrows[1].bearing in -45f..45f, "north-ish: ${arrows[1].bearing}")
+        assertTrue(stopPathShape(listOf(opera, opera)).arrows.isEmpty())
     }
 
-    private fun List<PatternItem>.described() = map {
-        when (it) {
-            is Dash -> "dash" to it.length
-            is Gap -> "gap" to it.length
-            else -> error("Unexpected $it")
-        }
+    @Test
+    fun theStreakRunsFromTheStartToTheEnd() {
+        val points = (0..100).toList()
+
+        assertTrue(sweepOf(points, 0f).size < 2)
+        val early = sweepOf(points, 0.2f)
+        val late = sweepOf(points, 0.7f)
+        assertEquals(0, early.first())
+        assertTrue(late.first() > early.last())
+        assertTrue(sweepOf(points, 1f).size < 2)
     }
 }

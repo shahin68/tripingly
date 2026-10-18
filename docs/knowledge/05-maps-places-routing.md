@@ -116,7 +116,7 @@ Decided 2026-10-10 (Shahin, "Tiles + prefetch"): places load and draw like Googl
 
 *(Built in stage 8: the Route button on the stops card turns the day's route on; leg times sit between the stop chips; Walk/Bike/Car chips; the places along the way are a row in the same card and pins on the map. "Route from here" / "Route to here" on place cards, the A→B card replaces the stops card until closed. Routes are kept in memory by stops and mode, so the same stops are routed once; a day is routed after its own stop changes reached the server. The MapKit fallback on iOS draws no route.)*
 
-*Direction lines: while no route shows, the open day's stops are joined by one smooth coral dashed line through them (no corner at a stop, like a hand-drawn line; two stops get a gentle arc) whose dashes march from each stop to the next (`StopPath.kt`), drawn on the device with no routing call. The owner may ask for straight lines instead later.*
+*Direction lines: while no route shows, the open day's stops are joined by one smooth coral line through them (no corner at a stop, like a hand-drawn line; two stops get a gentle arc) with a flat arrow halfway along each stretch pointing to the next stop (`StopPath.kt`). When the line appears or changes, a light streak runs along it once (1.2 s, like a progress bar); nothing animates after that, because a lasting animation redraws the map every frame and heats the phone (owner, 2026-10-18). Drawn on the device with no routing call. The owner may ask for straight lines instead later.*
 
 ## Best route
 

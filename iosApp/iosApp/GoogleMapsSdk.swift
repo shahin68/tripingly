@@ -38,13 +38,10 @@ private final class AppGoogleMap: NSObject, GoogleMap, GMSMapViewDelegate {
     private var markers: [String: GMSMarker] = [:]
     private var route: GMSPolyline?
     private var stopPath: GMSPolyline?
-    private var stopPathTimer: Timer?
+    private var stopPathArrows: [GMSMarker] = []
+    private var stopPathSweep: GMSPolyline?
 
     var view: UIView { mapView }
-
-    deinit {
-        stopPathTimer?.invalidate()
-    }
 
     init(listener: any GoogleMapListener) {
         self.listener = listener
@@ -115,39 +112,52 @@ private final class AppGoogleMap: NSObject, GoogleMap, GMSMapViewDelegate {
         route = line
     }
 
-    func setStopPath(points: [GoogleMapPoint], color: UIColor, width: Double, dash: Double, gap: Double, periodSeconds: Double) {
-        stopPathTimer?.invalidate()
-        stopPathTimer = nil
+    func setStopPath(points: [GoogleMapPoint], color: UIColor, width: Double, arrows: [GoogleMapArrow], arrowIcon: UIImage) {
         stopPath?.map = nil
         stopPath = nil
+        stopPathArrows.forEach { $0.map = nil }
+        stopPathArrows = []
         guard points.count > 1 else { return }
+        let line = GMSPolyline(path: path(of: points))
+        line.strokeColor = color
+        line.strokeWidth = CGFloat(width)
+        line.map = mapView
+        stopPath = line
+        stopPathArrows = arrows.map { arrow in
+            let marker = GMSMarker(position: CLLocationCoordinate2D(latitude: arrow.latitude, longitude: arrow.longitude))
+            marker.icon = arrowIcon
+            // Flat, so it turns with the map and keeps pointing along the line.
+            marker.isFlat = true
+            marker.rotation = arrow.bearing
+            marker.groundAnchor = CGPoint(x: 0.5, y: 0.5)
+            marker.isTappable = false
+            marker.zIndex = 0
+            marker.map = mapView
+            return marker
+        }
+    }
+
+    func setStopPathSweep(points: [GoogleMapPoint], color: UIColor, width: Double) {
+        guard points.count > 1 else {
+            stopPathSweep?.map = nil
+            stopPathSweep = nil
+            return
+        }
+        let line = stopPathSweep ?? GMSPolyline()
+        line.path = path(of: points)
+        line.strokeColor = color
+        line.strokeWidth = CGFloat(width)
+        line.zIndex = 1
+        if line.map == nil { line.map = mapView }
+        stopPathSweep = line
+    }
+
+    private func path(of points: [GoogleMapPoint]) -> GMSPath {
         let path = GMSMutablePath()
         for point in points {
             path.add(CLLocationCoordinate2D(latitude: point.latitude, longitude: point.longitude))
         }
-        let line = GMSPolyline(path: path)
-        line.strokeWidth = CGFloat(width)
-        line.map = mapView
-        stopPath = line
-        let styles = [GMSStrokeStyle.solidColor(color), GMSStrokeStyle.solidColor(.clear)]
-        let start = CACurrentMediaTime()
-        let march = { [weak self] in
-            guard let self, let line = self.stopPath else { return }
-            // The SDK measures dashes in meters: convert the points at the camera's zoom so they keep their size on screen.
-            let camera = self.mapView.camera
-            let metersPerPoint = 156_543.033_92 * cos(camera.target.latitude * .pi / 180) / pow(2, Double(camera.zoom))
-            let progress = (CACurrentMediaTime() - start).truncatingRemainder(dividingBy: periodSeconds) / periodSeconds
-            // A smaller offset moves the dashes towards the line's end.
-            let offset = (1 - progress) * (dash + gap) * metersPerPoint
-            line.spans = GMSStyleSpansOffset(
-                path, styles, [NSNumber(value: dash * metersPerPoint), NSNumber(value: gap * metersPerPoint)], .rhumb, offset
-            )
-        }
-        march()
-        // 30 times a second, also while a finger moves the map.
-        let timer = Timer(timeInterval: 1.0 / 30, repeats: true) { _ in march() }
-        RunLoop.main.add(timer, forMode: .common)
-        stopPathTimer = timer
+        return path
     }
 
     func mapView(_ mapView: GMSMapView, idleAt position: GMSCameraPosition) {

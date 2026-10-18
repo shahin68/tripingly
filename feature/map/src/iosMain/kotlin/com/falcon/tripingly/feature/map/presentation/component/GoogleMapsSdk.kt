@@ -42,15 +42,21 @@ interface GoogleMap {
     fun setRoute(points: List<GoogleMapPoint>, color: UIColor, width: Double)
 
     /**
-     * Replaces the stops' direction line, drawn under the markers: dashes of [dash] points with [gap] points
-     * between them that move one dash and gap towards the line's end every [periodSeconds]. Fewer than two
-     * points draw none.
+     * Replaces the stops' direction line, drawn under the markers, and its [arrows]: flat markers showing
+     * [arrowIcon] (pointing north) turned by their bearing. Fewer than two points draw none.
      */
-    fun setStopPath(points: List<GoogleMapPoint>, color: UIColor, width: Double, dash: Double, gap: Double, periodSeconds: Double)
+    fun setStopPath(points: List<GoogleMapPoint>, color: UIColor, width: Double, arrows: List<GoogleMapArrow>, arrowIcon: UIImage)
+
+    /** Replaces the streak running along the stops' line, on top of it; fewer than two points draw none. */
+    fun setStopPathSweep(points: List<GoogleMapPoint>, color: UIColor, width: Double)
 }
 
 @ObjCName("GoogleMapPoint", exact = true)
 class GoogleMapPoint(val latitude: Double, val longitude: Double)
+
+/** [bearing] in degrees clockwise from north. */
+@ObjCName("GoogleMapArrow", exact = true)
+class GoogleMapArrow(val latitude: Double, val longitude: Double, val bearing: Double)
 
 @ObjCName("GoogleMapMarker", exact = true)
 class GoogleMapMarker(

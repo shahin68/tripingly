@@ -1,5 +1,8 @@
 package com.falcon.tripingly.feature.map.presentation.component
 
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
@@ -10,6 +13,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
@@ -132,18 +136,8 @@ internal fun GoogleSdkMapView(
     LaunchedEffect(routeLine) {
         map.setRoute(
             points = routeLine.map { GoogleMapPoint(it.latitude, it.longitude) },
-            color = RouteColor.let { UIColor.colorWithRed(it.red.toDouble(), it.green.toDouble(), it.blue.toDouble(), it.alpha.toDouble()) },
+            color = RouteColor.toUIColor(),
             width = RouteWidth.value.toDouble(),
-        )
-    }
-    LaunchedEffect(stopPath) {
-        map.setStopPath(
-            points = curvedStopPath(stopPath).map { GoogleMapPoint(it.latitude, it.longitude) },
-            color = StopPathColor.let { UIColor.colorWithRed(it.red.toDouble(), it.green.toDouble(), it.blue.toDouble(), it.alpha.toDouble()) },
-            width = StopPathWidth.value.toDouble(),
-            dash = StopPathDash.value.toDouble(),
-            gap = StopPathGap.value.toDouble(),
-            periodSeconds = STOP_PATH_PERIOD_MILLIS / 1000.0,
         )
     }
 
@@ -155,6 +149,27 @@ internal fun GoogleSdkMapView(
     val onHotSpotColor = MaterialTheme.colorScheme.onTertiary
     val density = LocalDensity.current
     val layoutDirection = LocalLayoutDirection.current
+
+    // The stops' line with its arrows, as on Android.
+    val stopPathShape = remember(stopPath) { stopPathShape(stopPath) }
+    val arrowIcon = remember(density) { drawPathArrow(density, layoutDirection).toUIImage(density.density) }
+    LaunchedEffect(stopPathShape) {
+        val points = stopPathShape.points.map { GoogleMapPoint(it.latitude, it.longitude) }
+        val width = StopPathWidth.value.toDouble()
+        map.setStopPath(
+            points = points,
+            color = StopPathColor.toUIColor(),
+            width = width,
+            arrows = stopPathShape.arrows.map { GoogleMapArrow(it.position.latitude, it.position.longitude, it.bearing.toDouble()) },
+            arrowIcon = arrowIcon,
+        )
+        // Once, like a progress bar; then nothing moves.
+        val sweepColor = StopPathSweepColor.toUIColor()
+        Animatable(0f).animateTo(1f, tween(STOP_PATH_SWEEP_MILLIS, easing = LinearEasing)) {
+            map.setStopPathSweep(sweepOf(points, value), sweepColor, width)
+        }
+        map.setStopPathSweep(emptyList(), sweepColor, width)
+    }
     val textMeasurer = rememberTextMeasurer()
     val pinPhotos = rememberPinPhotos(placePins)
     val pinIcons = remember(placeColor, hotSpotColor, density) { mutableMapOf<PlacePinLook, UIImage>() }
@@ -280,3 +295,5 @@ private fun PlaceCluster.key() = "$CLUSTER_KEY${location.lat},${location.lng}"
 private const val SELECTED_PLACE_KEY = "selected-place"
 private const val PLACE_KEY = "place:"
 private const val CLUSTER_KEY = "cluster:"
+
+private fun Color.toUIColor(): UIColor = UIColor.colorWithRed(red.toDouble(), green.toDouble(), blue.toDouble(), alpha.toDouble())
