@@ -221,7 +221,8 @@ class PhotoRepositoryTest {
     private fun photo(status: String) = """
         {"id":"p1","markerId":"m1","status":"$status","thumbUrl":${if (status == "ready") "\"https://storage.test/t\"" else "null"},
          "displayUrl":null,"width":null,"height":null,"position":0,"likeCount":0,"likedByMe":false,
-         "uploader":${TripJson.OWNER},"createdAt":"2026-10-11T09:00:00.000Z"}
+         "uploader":${TripJson.OWNER},"createdAt":"2026-10-11T09:00:00.000Z",
+         "source":"user","credit":null}
     """.trimIndent()
 
     private companion object {

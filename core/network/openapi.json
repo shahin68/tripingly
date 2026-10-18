@@ -2778,7 +2778,7 @@
     },
     "/v1/places/{id}/photos": {
       "get": {
-        "description": "Ready place photos, most liked first, then newest; at most 100. Your own photos still processing or failed are included. A photo by someone you blocked (or who blocked you) shows without its uploader.",
+        "description": "Ready place photos, plus photos on stops here in public trips that APP_PLACE_PHOTO_PIN_MIN_LIKES (3) people other than the uploader liked (the same photos, not copies; markerId set), most liked first, then newest; at most 100. Your own place photos still processing or failed are included. A place photo by someone you blocked (or who blocked you) shows without its uploader; their trip photos don't show.",
         "operationId": "Photos_placeGallery",
         "parameters": [
           {
@@ -3183,7 +3183,8 @@
                 "trip",
                 "photo",
                 "comment",
-                "place"
+                "place",
+                "place_image"
               ]
             }
           },
@@ -3214,7 +3215,7 @@
             "bearer": []
           }
         ],
-        "summary": "Like a trip, marker, photo, comment or place",
+        "summary": "Like a trip, photo, comment, place or a place's Commons image",
         "tags": [
           "social"
         ]
@@ -3233,7 +3234,8 @@
                 "trip",
                 "photo",
                 "comment",
-                "place"
+                "place",
+                "place_image"
               ]
             }
           },
@@ -6452,6 +6454,24 @@
           },
           "createdAt": {
             "type": "string"
+          },
+          "source": {
+            "type": "string",
+            "enum": [
+              "user",
+              "commons"
+            ],
+            "description": "`user`: uploaded by someone in the app. `commons`: one of a place's Wikimedia Commons images, only in a place's Photos list; like it with targetType place_image, and show its credit"
+          },
+          "credit": {
+            "nullable": true,
+            "description": "Commons images only: show \"© author · licence · Wikimedia Commons\" with it. Null for photos people uploaded",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ImageCreditDto"
+              }
+            ]
           }
         },
         "required": [
@@ -6467,7 +6487,9 @@
           "likeCount",
           "likedByMe",
           "uploader",
-          "createdAt"
+          "createdAt",
+          "source",
+          "credit"
         ]
       },
       "UploadUrlResponseDto": {
@@ -6620,7 +6642,8 @@
               "trip",
               "photo",
               "comment",
-              "place"
+              "place",
+              "place_image"
             ]
           },
           "targetId": {

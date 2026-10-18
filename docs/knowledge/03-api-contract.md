@@ -121,7 +121,7 @@ REST over HTTPS, JSON, base path `/v1`.
 | PUT | `/markers/{id}/cover` | Body: `photoId` |
 | DELETE | `/photos/{id}` | Uploader, trip owner or editor; a place photo only by its uploader |
 | POST | `/places/{id}/photos/upload-url` | Anyone adds a photo to a visible place (not an address from search). Same answer as for a stop; `422 DAILY_PHOTO_LIMIT_REACHED` (`details.max`) past the server's daily limit. Processing ends with `photo.ready`/`photo.failed` in my user room, without a `tripId` (backend#42) |
-| GET | `/places/{id}/photos` | The place's gallery: most liked first, then newest; my own processing or failed ones too. A blocked uploader shows without a name |
+| GET | `/places/{id}/photos` | The place's gallery: people's photos most liked first, then newest (my own processing or failed ones too), then the place's Wikimedia Commons images (`source: commons`, with `credit`), most liked first. People's photos always come first. A blocked uploader shows without a name (backend#47) |
 
 ### Comments and likes
 | Method | Path | Notes |
@@ -129,7 +129,7 @@ REST over HTTPS, JSON, base path `/v1`.
 | GET | `/markers/{id}/comments` | Paginated, oldest first; the stop's comments sheet loads pages of 50 |
 | POST | `/markers/{id}/comments` | `{ body }` (≤ 1000), with an `Idempotency-Key`; the sheet adds the answer and the cached stop counts it |
 | DELETE | `/comments/{id}` | Author or trip owner |
-| PUT | `/likes/{targetType}/{targetId}` | `trip`, `photo`, `comment`, `place` (`marker` answers `400`: a stop's heart likes its place, one like per person per place, backend#44); answers `{ liked, likeCount }`. The app shows a like at once and puts it back on a refusal (a place's on every cached stop at that place in Room, the others in the screen's state). A custom spot only in private trips can't be liked (`404`) |
+| PUT | `/likes/{targetType}/{targetId}` | `trip`, `photo`, `comment`, `place`, `place_image` (a Commons image in a place's gallery, backend#47) (`marker` answers `400`: a stop's heart likes its place, one like per person per place, backend#44); answers `{ liked, likeCount }`. The app shows a like at once and puts it back on a refusal (a place's on every cached stop at that place in Room, the others in the screen's state). A custom spot only in private trips can't be liked (`404`) |
 | DELETE | `/likes/{targetType}/{targetId}` | |
 
 ### Discovery
@@ -185,7 +185,7 @@ Field names the client relies on (full schemas in OpenAPI):
 
 - **Trip** (`GET /trips/{id}`): `id`, `title`, `startDate`, `endDate`, `destination` (`{ name, location }` or null), `visibility`, `owner` (user summary), `myRole` (`owner`\|`editor`\|`viewer`), `members[]`, `likeCount`, `likedByMe`, `saveCount`, `savedByMe`, `myJoinRequest` (`pending`\|`declined`\|null), `pendingJoinRequestCount` (owner only, else 0), `days[]` → `{ id, position, date, markers[] }`.
 - **Marker**: `id`, `dayId`, `placeId`, `name`, `location`, `time` (`HH:mm` or null), `position`, `coverPhotoId`, `coverThumbUrl`, `photoCount`, `likeCount`, `likedByMe` (the stop's place: the same on every stop at it), `canLike` (false for a custom spot only in private trips: no heart), `commentCount`, `createdBy` (user summary or null).
-- **Photo**: `id`, `markerId`, `status` (`processing`\|`ready`\|`failed`), `thumbUrl`, `displayUrl` (signed, expire after ~1 h), `width`, `height`, `position`, `likeCount`, `likedByMe`, `uploader`.
+- **Photo**: `id`, `markerId`, `status` (`processing`\|`ready`\|`failed`), `thumbUrl`, `displayUrl` (signed, expire after ~1 h), `width`, `height`, `position`, `likeCount`, `likedByMe`, `uploader`, `source` (`user`, or `commons` for a place's Commons image), `credit` (Commons only; shown in the viewer with `CommonsCredit`).
 - **User summary**: `id`, `username`, `displayName`.
 - **Place** (in-view/search/along-the-way): see `05-maps-places-routing.md`. Every Place shape (tiles, nearby, detail) has `coverImageId`, `coverSource` (`trip`\|`commons`\|null) and `coverThumbUrl`; `coverPhotoId` is set only for a Tripinly photo (`coverSource: trip`, a place photo or a public trip photo). The cover is the most liked photo that 3 people other than its uploader liked, else a Commons image (backend#45); it's also the pin's photo. Cache a cover by `coverImageId`.
 - **Place detail** (`GET /places/{id}`): adds `tags` (`openingHours`, `website`, …) and `images[]` → `{ id, source (trip|commons), thumbUrl, displayUrl, width, height, credit }`. The first image is the cover. `credit` is null for trip photos; for Commons it's `{ author, title, license, licenseUrl, sourceUrl }` and must show under the image (`CommonsCredit`). `photoThumbUrls` is deprecated (backend#38).

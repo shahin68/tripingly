@@ -1,5 +1,7 @@
 package com.falcon.tripingly.core.model.photo
 
+import com.falcon.tripingly.core.model.place.ImageCredit
+
 /** What a photo belongs to: a trip's stop, or a place (anyone may add those, without a trip). */
 sealed interface PhotoOwner {
     data class Stop(val markerId: String) : PhotoOwner
@@ -7,7 +9,10 @@ sealed interface PhotoOwner {
     data class Place(val placeId: String) : PhotoOwner
 }
 
-/** A photo on a stop or a place. Its URLs are signed and expire after about an hour; its pixels never change. */
+/**
+ * A photo on a stop or a place, or one of a place's Wikimedia Commons images in its gallery ([credit] set).
+ * Its URLs are signed and expire after about an hour; its pixels never change.
+ */
 data class Photo(
     val id: String,
     val owner: PhotoOwner,
@@ -23,6 +28,8 @@ data class Photo(
     val likeCount: Int,
     val likedByMe: Boolean,
     val uploaderId: String?,
+    /** Set only on a place's Wikimedia Commons image, shown with it; nobody uploaded or deletes those. */
+    val credit: ImageCredit?,
 )
 
 enum class PhotoStatus {

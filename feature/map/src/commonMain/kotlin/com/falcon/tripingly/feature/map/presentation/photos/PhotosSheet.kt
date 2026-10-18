@@ -56,6 +56,7 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.falcon.tripingly.core.data.photos.PhotoUpload
+import com.falcon.tripingly.core.designsystem.component.CommonsCredit
 import com.falcon.tripingly.core.designsystem.component.LikeButton
 import com.falcon.tripingly.core.designsystem.component.MessageBannerHost
 import com.falcon.tripingly.core.designsystem.component.ShowMessage
@@ -225,6 +226,17 @@ fun PhotosScreen(
         items(state.uploads, key = { it.key }) { upload ->
             GalleryUpload(upload = upload, onAction = onAction)
         }
+        // Commons images are cropped in the grid; each shows its full credit in the viewer.
+        if (state.photos.any { it.credit != null }) {
+            item(span = fullWidth) {
+                Text(
+                    text = stringResource(Res.string.map_photos_commons_note),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(vertical = MaterialTheme.spacing.small),
+                )
+            }
+        }
     }
 }
 
@@ -337,8 +349,8 @@ private fun GalleryUpload(upload: PhotoUpload, onAction: (Action) -> Unit) {
 }
 
 /**
- * The ready photos full screen, swiped through and liked; a stop's owners and editors make one the cover,
- * and whoever may delete a photo deletes it.
+ * The ready photos full screen, swiped through and liked, a Commons image with its credit; a stop's owners
+ * and editors make one the cover, and whoever may delete a photo deletes it.
  */
 @Composable
 private fun PhotoViewer(
@@ -403,6 +415,19 @@ private fun PhotoViewer(
                         }
                     }
                 }
+            }
+            current?.credit?.let { credit ->
+                CommonsCredit(
+                    credit = credit,
+                    cropped = false,
+                    color = Color.White,
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .fillMaxWidth()
+                        .safeDrawingPadding()
+                        .background(Color.Black.copy(alpha = 0.5f))
+                        .padding(MaterialTheme.spacing.medium),
+                )
             }
         }
     }

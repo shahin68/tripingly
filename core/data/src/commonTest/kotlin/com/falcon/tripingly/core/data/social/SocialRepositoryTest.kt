@@ -82,6 +82,15 @@ class SocialRepositoryTest {
     }
 
     @Test
+    fun likingACommonsImage_usesThePlaceImageTarget() = runTest {
+        val repository = repository("""{"targetType":"place_image","targetId":"i1","liked":true,"likeCount":1}""")
+
+        repository.setLiked(LikeTarget.PlaceImage, "i1", liked = true)
+
+        assertEquals("PUT /v1/likes/place_image/i1", requests.single().let { "${it.method.value} ${it.url.encodedPath}" })
+    }
+
+    @Test
     fun likingAStop_refused_putsTheHeartBack() = runTest {
         cacheTrip()
         val repository = repository(

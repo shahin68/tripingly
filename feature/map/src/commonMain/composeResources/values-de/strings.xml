@@ -37,6 +37,7 @@
     <string name="map_place_website">Website</string>
     <string name="map_place_image_position">%1$d / %2$d</string>
     <string name="map_place_image_report">Bild melden</string>
+    <string name="map_photos_commons_note">Bilder von Wikimedia Commons: Öffne eines, um Urheber und Lizenz zu sehen.</string>
     <string name="map_place_images">Bilder dieses Ortes</string>
     <string name="map_place_likes">Likes auf Tripinly</string>
     <string name="map_place_category_cafe">Café</string>

@@ -11,6 +11,7 @@ import com.falcon.tripingly.core.data.trips.TripLocalDataSource
 import com.falcon.tripingly.core.data.trips.isConnectionProblem
 import com.falcon.tripingly.core.data.trips.toMarker
 import com.falcon.tripingly.core.model.photo.Photo
+import com.falcon.tripingly.core.model.place.ImageCredit
 import com.falcon.tripingly.core.model.photo.PhotoOwner
 import com.falcon.tripingly.core.model.photo.PhotoStatus
 import com.falcon.tripingly.core.model.photo.PickedImage
@@ -118,7 +119,8 @@ internal class DefaultPhotoRepository(
                 it.copy(likedByMe = liked, likeCount = (it.likeCount + if (liked) 1 else -1).coerceAtLeast(0))
             }
         }
-        return when (val result = social.setLiked(LikeTarget.Photo, photo.id, liked)) {
+        val target = if (photo.credit != null) LikeTarget.PlaceImage else LikeTarget.Photo
+        return when (val result = social.setLiked(target, photo.id, liked)) {
             is AppResult.Success -> {
                 updatePhoto(photo.owner, photo.id) { it.copy(likedByMe = result.data.liked, likeCount = result.data.likeCount) }
                 AppResult.Success(Unit)
@@ -315,4 +317,5 @@ internal fun PhotoDto.toPhoto() = Photo(
     likeCount = likeCount.toInt(),
     likedByMe = likedByMe,
     uploaderId = uploader?.id,
+    credit = credit?.let { ImageCredit(it.author, it.title, it.license, it.licenseUrl, it.sourceUrl) },
 )
