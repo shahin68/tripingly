@@ -49,7 +49,7 @@ data class MapState(
 |---|---|---|
 | Trip marker with photo | Larger round pin with the **cover thumbnail** inside plus day-order number | Trip `markers[].coverThumbUrl` |
 | Trip marker without photo | Numbered pin in the day color | Trip markers |
-| Place with a photo | Round pin (40 dp) with the place's image (`coverThumbUrl`) inside a ring of its pin color; for places with prominence ≥ `photoPinMinProminence` (90) or ≥ `photoPinMinLikes` (3) likes, the first `mapMaxPhotoPins` (30) in pin order (all from `GET /app-config`). The icon shows until the image has loaded | Place shapes' `coverImageId`, `coverThumbUrl` (backend#45) |
+| Place with a photo | Round pin (40 dp) with the place's image (`coverThumbUrl`) inside a ring of its pin color; for places with prominence ≥ `photoPinMinProminence` (90) or ≥ `photoPinMinLikes` (3) likes, the first `mapMaxPhotoPins` (100) in pin order (all from `GET /app-config`). The icon shows until the image has loaded | Place shapes' `coverImageId`, `coverThumbUrl` (backend#45) |
 | Tripinly place (not in trip) | Medium "unselected" pin with category icon and like count | `in-view` with `isTripinly: true` |
 | OSM place | Small dot with category icon, name only at high zoom | `in-view` with `isTripinly: false` |
 | Along the way | Like OSM or Tripinly pins, with a subtle highlight | `alongTheWay` |

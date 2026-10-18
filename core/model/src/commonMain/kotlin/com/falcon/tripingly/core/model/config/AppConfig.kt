@@ -27,5 +27,5 @@ data class AppConfig(
     /** A place's pin shows its photo when it has at least this many likes, or [photoPinMinProminence]. */
     val photoPinMinLikes: Int = 3,
     /** Most pins drawn with a photo at once, in pin order; the rest keep their icon. */
-    val mapMaxPhotoPins: Int = 30,
+    val mapMaxPhotoPins: Int = 100,
 )
