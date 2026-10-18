@@ -11,26 +11,26 @@
     <string name="time_ago_just_now">gerade eben</string>
     <plurals name="time_ago_minutes">
         <item quantity="one">vor einer Minute</item>
-        <item quantity="other">vor %d Minuten</item>
+        <item quantity="other">vor %1$d Minuten</item>
     </plurals>
     <plurals name="time_ago_hours">
         <item quantity="one">vor einer Stunde</item>
-        <item quantity="other">vor %d Stunden</item>
+        <item quantity="other">vor %1$d Stunden</item>
     </plurals>
     <plurals name="time_ago_days">
         <item quantity="one">vor einem Tag</item>
-        <item quantity="other">vor %d Tagen</item>
+        <item quantity="other">vor %1$d Tagen</item>
     </plurals>
     <plurals name="time_ago_weeks">
         <item quantity="one">vor einer Woche</item>
-        <item quantity="other">vor %d Wochen</item>
+        <item quantity="other">vor %1$d Wochen</item>
     </plurals>
     <plurals name="time_ago_months">
         <item quantity="one">vor einem Monat</item>
-        <item quantity="other">vor %d Monaten</item>
+        <item quantity="other">vor %1$d Monaten</item>
     </plurals>
     <plurals name="time_ago_years">
         <item quantity="one">vor einem Jahr</item>
-        <item quantity="other">vor %d Jahren</item>
+        <item quantity="other">vor %1$d Jahren</item>
     </plurals>
 </resources>
