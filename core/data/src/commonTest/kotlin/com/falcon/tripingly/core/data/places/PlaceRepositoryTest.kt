@@ -57,13 +57,14 @@ class PlaceRepositoryTest {
         createHttpClient(
             engine = MockEngine { request ->
                 // Requests of one batch arrive together.
-                requestsLock.withLock { requests += request }
+                val count = requestsLock.withLock { requests += request; requests.size }
                 val body = if (request.url.encodedPath.endsWith("places/search")) {
                     """{"items":[],"attribution":"© OpenStreetMap contributors"}"""
                 } else if (request.url.encodedPath.endsWith("places/p1")) {
                     PLACE_DETAIL
                 } else {
-                    tilesAnswer(request.url.parameters["tiles"].orEmpty(), placeName)
+                    // The photo's link is signed anew on every answer.
+                    tilesAnswer(request.url.parameters["tiles"].orEmpty(), placeName, signature = count)
                 }
                 respond(body, status, headersOf(HttpHeaders.ContentType, "application/json"))
             },
@@ -157,7 +158,7 @@ class PlaceRepositoryTest {
         backgroundScope.launch { repository.changedSquares.collect { changed += it } }
         repository.placesIn(listOf(square))
 
-        // Answered from what's kept, then reloaded; nothing new, so nothing to redraw.
+        // Answered from what's kept, then reloaded; nothing new (only the photo's link), so nothing to redraw.
         val again = assertIs<AppResult.Success<Map<PlaceSquare, PlacesInView>>>(repository.placesIn(listOf(square)))
         assertEquals("Stephansdom", again.data.getValue(square).places.single().name)
         eventually { requests.size == 2 }
@@ -255,7 +256,7 @@ class PlaceRepositoryTest {
             }
         """.trimIndent()
 
-        fun tilesAnswer(tiles: String, placeName: String) = tiles.split(",").joinToString(
+        fun tilesAnswer(tiles: String, placeName: String, signature: Int) = tiles.split(",").joinToString(
             prefix = "{\"tiles\": [",
             postfix = "], \"attribution\": \"© OpenStreetMap contributors\"}",
         ) { tile ->
@@ -265,7 +266,8 @@ class PlaceRepositoryTest {
                   "places": [{
                     "id": "p-$tile", "name": "$placeName", "category": "attraction",
                     "location": {"lat": 48.2085, "lng": 16.3731},
-                    "isTripinly": true, "likeCount": 3, "prominence": 90, "coverThumbUrl": null, "likedByMe": false
+                    "isTripinly": true, "likeCount": 3, "prominence": 90, "likedByMe": false,
+                    "coverImageId": "img-$tile", "coverThumbUrl": "https://images.test/img-$tile?sig=$signature"
                   }],
                   "clusters": []
                 }
