@@ -12,15 +12,12 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyGridItemSpanScope
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
-import androidx.compose.foundation.pager.HorizontalPager
-import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -41,7 +38,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -51,18 +47,17 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.falcon.tripingly.core.data.photos.PhotoUpload
-import com.falcon.tripingly.core.designsystem.component.CommonsCredit
-import com.falcon.tripingly.core.designsystem.component.LikeButton
 import com.falcon.tripingly.core.designsystem.component.MessageBannerHost
 import com.falcon.tripingly.core.designsystem.component.ShowMessage
 import com.falcon.tripingly.core.designsystem.component.PhotoImage
+import com.falcon.tripingly.core.designsystem.component.PhotoLike
+import com.falcon.tripingly.core.designsystem.component.PhotoViewer
 import com.falcon.tripingly.core.designsystem.component.PhotoSize
 import com.falcon.tripingly.core.designsystem.theme.spacing
 import com.falcon.tripingly.core.model.photo.Photo
@@ -115,7 +110,7 @@ fun PhotosRoute(
     }
 
     state.openPhotoIndex?.let { index ->
-        PhotoViewer(
+        GalleryViewer(
             state = state,
             initialIndex = index,
             coverPhotoId = coverPhotoId,
@@ -155,7 +150,7 @@ fun PhotoViewerRoute(
     }
     val index = state.openPhotoIndex
     when {
-        index != null -> PhotoViewer(
+        index != null -> GalleryViewer(
             state = state,
             initialIndex = index,
             coverPhotoId = null,
@@ -337,17 +332,9 @@ private fun GalleryPhoto(photo: Photo, isCover: Boolean, canDelete: Boolean, onA
                             .size(16.dp),
                     )
                 }
-                PhotoLike(photo = photo, onAction = onAction, modifier = Modifier.align(Alignment.BottomEnd).padding(4.dp))
+                PhotoLike(photo = photo, onToggle = { onAction(Action.OnToggleLike(photo)) }, modifier = Modifier.align(Alignment.BottomEnd).padding(4.dp))
             }
         }
-    }
-}
-
-/** The photo's like, on a small pill so it reads on any photo; the same like in the grid and the viewer. */
-@Composable
-private fun PhotoLike(photo: Photo, onAction: (Action) -> Unit, modifier: Modifier = Modifier) {
-    Surface(shape = CircleShape, color = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f), modifier = modifier) {
-        LikeButton(liked = photo.likedByMe, count = photo.likeCount, onToggle = { onAction(Action.OnToggleLike(photo)) })
     }
 }
 
@@ -399,12 +386,11 @@ private fun GalleryUpload(upload: PhotoUpload, onAction: (Action) -> Unit) {
 }
 
 /**
- * The ready photos full screen, swiped through, liked and reported, a Commons image with its credit; a stop's
- * owners and editors make one the cover, and whoever may delete a photo deletes it. The app's one full-screen
- * photo viewer, for a stop's or a place's photos alike.
+ * The ready photos in the app's [PhotoViewer], with what this gallery adds for the photo on show: report
+ * (not one's own), make it the cover (a stop's owners and editors), and delete (whoever may).
  */
 @Composable
-private fun PhotoViewer(
+private fun GalleryViewer(
     state: State,
     initialIndex: Int,
     coverPhotoId: String?,
@@ -412,80 +398,35 @@ private fun PhotoViewer(
     onReport: (Photo) -> Unit,
     onAction: (Action) -> Unit,
 ) {
-    val viewable = state.viewable
-    val pagerState = rememberPagerState(initialPage = initialIndex) { viewable.size }
-    Dialog(
-        onDismissRequest = { onAction(Action.OnClosePhoto) },
-        properties = DialogProperties(usePlatformDefaultWidth = false),
-    ) {
-        Box(Modifier.fillMaxSize().background(Color.Black)) {
-            HorizontalPager(state = pagerState, modifier = Modifier.fillMaxSize(), key = { viewable[it].id }) { page ->
-                val photo = viewable[page]
-                PhotoImage(
-                    photoId = photo.id,
-                    url = photo.displayUrl,
-                    size = PhotoSize.Display,
-                    contentDescription = null,
-                    modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.Fit,
-                )
+    PhotoViewer(
+        photos = state.viewable,
+        initialIndex = initialIndex,
+        onToggleLike = { onAction(Action.OnToggleLike(it)) },
+        onDismiss = { onAction(Action.OnClosePhoto) },
+    ) { current ->
+        if (state.myUserId == null || current.uploaderId != state.myUserId) {
+            IconButton(onClick = { onReport(current) }) {
+                Icon(Icons.Outlined.Flag, contentDescription = stringResource(Res.string.map_place_image_report), tint = Color.White)
             }
-            // Full screen, so the viewer shows the app's messages itself, below its top bar.
-            MessageBannerHost(Modifier.align(Alignment.TopCenter).safeDrawingPadding().padding(top = 56.dp))
-            val current = viewable.getOrNull(pagerState.currentPage)
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .safeDrawingPadding()
-                    .padding(MaterialTheme.spacing.small),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                IconButton(onClick = { onAction(Action.OnClosePhoto) }) {
-                    Icon(Icons.Default.Close, contentDescription = stringResource(Res.string.map_close), tint = Color.White)
-                }
-                Box(Modifier.weight(1f))
-                if (current != null) {
-                    PhotoLike(photo = current, onAction = onAction, modifier = Modifier.padding(horizontal = MaterialTheme.spacing.small))
-                    // Nobody reports their own photo; they delete it.
-                    if (state.myUserId == null || current.uploaderId != state.myUserId) {
-                        IconButton(onClick = { onReport(current) }) {
-                            Icon(Icons.Outlined.Flag, contentDescription = stringResource(Res.string.map_place_image_report), tint = Color.White)
-                        }
-                    }
-                    // Only a stop's owners and editors manage, and only a stop has a cover.
-                    if (canManage) {
-                        if (current.id == coverPhotoId) {
-                            Text(
-                                text = stringResource(Res.string.map_photo_cover),
-                                color = Color.White,
-                                style = MaterialTheme.typography.labelLarge,
-                                modifier = Modifier.padding(horizontal = MaterialTheme.spacing.medium),
-                            )
-                        } else {
-                            TextButton(onClick = { onAction(Action.OnMakeCover(current.id)) }, enabled = !state.isSaving) {
-                                Text(stringResource(Res.string.map_photo_make_cover), color = Color.White)
-                            }
-                        }
-                    }
-                    if (state.canDelete(current, canManage)) {
-                        IconButton(onClick = { onAction(Action.OnDeletePhoto(current)) }, enabled = !state.isSaving) {
-                            Icon(Icons.Default.Delete, contentDescription = stringResource(Res.string.map_photo_delete), tint = Color.White)
-                        }
-                    }
-                }
-            }
-            current?.credit?.let { credit ->
-                CommonsCredit(
-                    credit = credit,
-                    cropped = false,
+        }
+        // Only a stop's owners and editors manage, and only a stop has a cover.
+        if (canManage) {
+            if (current.id == coverPhotoId) {
+                Text(
+                    text = stringResource(Res.string.map_photo_cover),
                     color = Color.White,
-                    modifier = Modifier
-                        .align(Alignment.BottomCenter)
-                        .fillMaxWidth()
-                        .safeDrawingPadding()
-                        .background(Color.Black.copy(alpha = 0.5f))
-                        .padding(MaterialTheme.spacing.medium),
+                    style = MaterialTheme.typography.labelLarge,
+                    modifier = Modifier.padding(horizontal = MaterialTheme.spacing.medium),
                 )
+            } else {
+                TextButton(onClick = { onAction(Action.OnMakeCover(current.id)) }, enabled = !state.isSaving) {
+                    Text(stringResource(Res.string.map_photo_make_cover), color = Color.White)
+                }
+            }
+        }
+        if (state.canDelete(current, canManage)) {
+            IconButton(onClick = { onAction(Action.OnDeletePhoto(current)) }, enabled = !state.isSaving) {
+                Icon(Icons.Default.Delete, contentDescription = stringResource(Res.string.map_photo_delete), tint = Color.White)
             }
         }
     }

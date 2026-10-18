@@ -9,6 +9,7 @@
     <string name="chip_remove">%1$s eltávolítása</string>
     <string name="common_cancel">Mégse</string>
     <string name="like">Tetszik</string>
+    <string name="photo_viewer_close">Bezárás</string>
 
     <!-- Report -->
     <string name="report_title">Miért jelented ezt?</string>
