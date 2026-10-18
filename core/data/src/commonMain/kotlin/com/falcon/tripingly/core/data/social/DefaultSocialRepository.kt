@@ -23,6 +23,8 @@ import com.falcon.tripingly.core.network.realtime.RealtimeEvent
 import com.falcon.tripingly.core.network.social.SocialApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.mapNotNull
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 
 internal class DefaultSocialRepository(
     private val api: SocialApi,
@@ -47,16 +49,55 @@ internal class DefaultSocialRepository(
     override suspend fun deleteComment(comment: Comment): AppResult<Unit, DataError.Network> =
         api.deleteComment(comment.id).onSuccess { local.addToCommentCount(comment.markerId, -1) }
 
+    /** Per item, while taps on its heart are being sent: see [sendLatestLike]. */
+    private class LikeSync(var wanted: Boolean) {
+        val lock = Mutex()
+        var callers = 0
+        var confirmed: LikeState? = null
+    }
+
+    private val likeSyncs = mutableMapOf<String, LikeSync>()
+    private val likeSyncsLock = Mutex()
+
     override suspend fun setLiked(target: LikeTarget, targetId: String, liked: Boolean): AppResult<LikeState, DataError.Network> {
         // A place's heart changes at once on its stops in the cached trips; a refusal puts it back.
         val before = if (target == LikeTarget.Place) local.markerAtPlace(targetId) else null
         if (before != null && before.likedByMe != liked) {
             local.savePlaceLike(targetId, (before.likeCount + if (liked) 1 else -1).coerceAtLeast(0), liked)
         }
-        val result = if (liked) api.like(target.wireName, targetId) else api.unlike(target.wireName, targetId)
-        return result.map { it.toLikeState() }
+        val key = "${target.wireName}:$targetId"
+        val sync = likeSyncsLock.withLock {
+            likeSyncs.getOrPut(key) { LikeSync(liked) }.also { it.wanted = liked; it.callers++ }
+        }
+        val result = try {
+            sync.lock.withLock { sendLatestLike(target, targetId, sync) }
+        } finally {
+            // The burst of taps is over: the next tap asks the server again (another device may have changed it).
+            likeSyncsLock.withLock { if (--sync.callers == 0) likeSyncs.remove(key) }
+        }
+        return result
             .onSuccess { if (target == LikeTarget.Place) local.savePlaceLike(targetId, it.likeCount, it.liked) }
             .onError { if (before != null) local.savePlaceLike(targetId, before.likeCount, before.likedByMe) }
+    }
+
+    /**
+     * The last tap wins: one request at a time per item. Taps meanwhile only change what's wanted; when an
+     * answer no longer matches it, one more request follows. Every tap of the burst gets the final state, so
+     * an older answer never puts an old heart back.
+     */
+    private suspend fun sendLatestLike(target: LikeTarget, targetId: String, sync: LikeSync): AppResult<LikeState, DataError.Network> {
+        while (true) {
+            val confirmed = sync.confirmed
+            if (confirmed != null && confirmed.liked == sync.wanted) return AppResult.Success(confirmed)
+            val wanted = sync.wanted
+            when (val result = (if (wanted) api.like(target.wireName, targetId) else api.unlike(target.wireName, targetId)).map { it.toLikeState() }) {
+                is AppResult.Success -> sync.confirmed = result.data
+                is AppResult.Error -> {
+                    sync.confirmed = null
+                    return result
+                }
+            }
+        }
     }
 
     override suspend fun report(

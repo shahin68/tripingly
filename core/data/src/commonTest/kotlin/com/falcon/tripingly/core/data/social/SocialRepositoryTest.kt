@@ -20,12 +20,17 @@ import com.falcon.tripingly.core.network.realtime.FakeRealtimeClient
 import com.falcon.tripingly.core.network.realtime.RealtimeEvent
 import com.falcon.tripingly.core.network.social.createSocialApi
 import io.ktor.client.engine.mock.MockEngine
+import io.ktor.client.engine.mock.MockRequestHandleScope
 import io.ktor.client.engine.mock.respond
 import io.ktor.client.request.HttpRequestData
+import io.ktor.client.request.HttpResponseData
 import io.ktor.http.HttpHeaders
+import io.ktor.http.HttpMethod
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.content.TextContent
 import io.ktor.http.headersOf
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
@@ -40,12 +45,15 @@ class SocialRepositoryTest {
     private val requests = mutableListOf<HttpRequestData>()
     private val local = InMemoryTripLocalDataSource()
 
-    private fun repository(body: String, status: HttpStatusCode = HttpStatusCode.OK) = DefaultSocialRepository(
+    private fun repository(body: String, status: HttpStatusCode = HttpStatusCode.OK) =
+        repository { respond(body, status, headersOf(HttpHeaders.ContentType, "application/json")) }
+
+    private fun repository(handler: suspend MockRequestHandleScope.(HttpRequestData) -> HttpResponseData) = DefaultSocialRepository(
         api = createKtorfit(
             createHttpClient(
                 engine = MockEngine { request ->
                     requests += request
-                    respond(body, status, headersOf(HttpHeaders.ContentType, "application/json"))
+                    handler(request)
                 },
                 config = config,
                 tokenStore = InMemoryTokenStore(),
@@ -104,6 +112,40 @@ class SocialRepositoryTest {
         val stop = local.marker("m0")!!
         assertEquals(0, stop.likeCount)
         assertFalse(stop.likedByMe)
+    }
+
+    @Test
+    fun fastTapsOnOneHeart_theLastTapWins_andEveryTapGetsTheFinalState() = runTest {
+        val firstSent = CompletableDeferred<Unit>()
+        val release = CompletableDeferred<Unit>()
+        val repository = repository { request ->
+            val liked = request.method == HttpMethod.Put
+            if (requests.size == 1) {
+                firstSent.complete(Unit)
+                release.await()
+            }
+            respond(
+                """{"targetType":"photo","targetId":"p1","liked":$liked,"likeCount":${if (liked) 1 else 0}}""",
+                HttpStatusCode.OK,
+                headersOf(HttpHeaders.ContentType, "application/json"),
+            )
+        }
+
+        val like = async { repository.setLiked(LikeTarget.Photo, "p1", liked = true) }
+        firstSent.await()
+        val unlike = async { repository.setLiked(LikeTarget.Photo, "p1", liked = false) }
+        val likeAgain = async { repository.setLiked(LikeTarget.Photo, "p1", liked = true) }
+        val unlikeAgain = async { repository.setLiked(LikeTarget.Photo, "p1", liked = false) }
+        testScheduler.runCurrent()
+        release.complete(Unit)
+
+        listOf(like, unlike, likeAgain, unlikeAgain).forEach { assertFalse((it.await() as AppResult.Success).data.liked) }
+        // The like on its way, then one unlike for the three taps after it.
+        assertEquals(listOf(HttpMethod.Put, HttpMethod.Delete), requests.map { it.method })
+
+        // Once the taps are done, a new tap asks the server again.
+        repository.setLiked(LikeTarget.Photo, "p1", liked = false)
+        assertEquals(3, requests.size)
     }
 
     @Test
