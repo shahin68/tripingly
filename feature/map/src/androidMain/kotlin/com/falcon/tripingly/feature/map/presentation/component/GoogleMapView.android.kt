@@ -294,4 +294,4 @@ private fun pinRank(place: MapPlace): Float =
 private const val PLACE_PINS_Z = 0.5f
 
 /** How long the camera takes to fly to a pin, a search result or the user's location. */
-private const val CAMERA_MOVE_MILLIS = 250
+private const val CAMERA_MOVE_MILLIS = 180
