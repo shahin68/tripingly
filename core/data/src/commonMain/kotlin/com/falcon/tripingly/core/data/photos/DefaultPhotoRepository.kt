@@ -7,6 +7,7 @@ import com.falcon.tripingly.core.common.result.onSuccess
 import com.falcon.tripingly.core.data.config.AppConfigRepository
 import com.falcon.tripingly.core.data.realtime.Coalescer
 import com.falcon.tripingly.core.data.social.SocialRepository
+import com.falcon.tripingly.core.data.social.wireName
 import com.falcon.tripingly.core.data.trips.TripLocalDataSource
 import com.falcon.tripingly.core.data.trips.isConnectionProblem
 import com.falcon.tripingly.core.data.trips.toMarker
