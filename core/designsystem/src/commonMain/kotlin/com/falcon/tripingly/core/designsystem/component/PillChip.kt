@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
@@ -62,8 +63,11 @@ fun PillChip(
     Column(modifier = modifier.semantics { this.selected = selected }, verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraSmall)) {
         val chipContent: @Composable () -> Unit = {
             Row(
+                // A bounded width keeps the weighted label measurable in a scrolling row, where the width
+                // is otherwise unbounded and the label measures to nothing.
                 modifier = Modifier
                     .heightIn(min = ChipHeight)
+                    .widthIn(max = ChipMaxWidth)
                     .padding(
                         start = if (leading != null) MaterialTheme.spacing.extraSmall else MaterialTheme.spacing.medium,
                         end = if (onRemove != null) MaterialTheme.spacing.none else MaterialTheme.spacing.medium,
@@ -115,6 +119,7 @@ fun PillChip(
 }
 
 private val ChipHeight = 40.dp
+private val ChipMaxWidth = 280.dp
 private val RemoveIconSize = 18.dp
 
 @Composable
