@@ -55,6 +55,10 @@ class SettingsViewModel(
     private var savedVisibility = TripVisibility.PUBLIC
     private var visibilityJob: Job? = null
 
+    /** The switches as the server last confirmed them, and the change on its way per switch. */
+    private var savedNotifications = NotificationSettings()
+    private val notificationJobs = mutableMapOf<NotificationType, Job>()
+
     init {
         viewModelScope.launch {
             sessionRepository.session.collect { session ->
@@ -118,22 +122,26 @@ class SettingsViewModel(
         _uiState.update { it.copy(hasNotificationsFailed = false) }
         viewModelScope.launch {
             when (val result = accountRepository.notificationSettings()) {
-                is AppResult.Success -> _uiState.update { it.copy(notifications = result.data) }
+                is AppResult.Success -> {
+                    savedNotifications = result.data
+                    _uiState.update { it.copy(notifications = result.data) }
+                }
                 is AppResult.Error -> _uiState.update { it.copy(hasNotificationsFailed = true) }
             }
         }
     }
 
     private fun setNotification(type: NotificationType, enabled: Boolean) {
-        // The switch moves at once and moves back if the server refuses.
         fun NotificationSettings.with(on: Boolean) = NotificationSettings(if (on) this.enabled + type else this.enabled - type)
+        // Like the visibility: shown at once and kept; a newer tap on the same switch replaces the change on its way.
         _uiState.update { state -> state.copy(notifications = state.notifications?.with(enabled)) }
-        viewModelScope.launch {
-            val result = accountRepository.setNotification(type, enabled)
-            if (result is AppResult.Error) {
-                _uiState.update { state ->
+        notificationJobs[type]?.cancel()
+        notificationJobs[type] = viewModelScope.launch {
+            when (val result = accountRepository.setNotification(type, enabled)) {
+                is AppResult.Success -> savedNotifications = result.data
+                is AppResult.Error -> _uiState.update { state ->
                     state.copy(
-                        notifications = state.notifications?.with(!enabled),
+                        notifications = state.notifications?.with(type in savedNotifications.enabled),
                         message = result.error.toUiText(Res.string.settings_error_notifications),
                     )
                 }

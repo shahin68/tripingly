@@ -37,7 +37,7 @@ On app start: tokens present → `GET /me` → if not onboarded, resume the step
 
 Every way a session ends (sign-out, refused refresh, suspended or under-age account, a `401` on restore, a sign-in whose `/me` fails, a cold start without tokens) goes through `SessionRepositoryImpl.endSession`: tokens first, then every `LocalDataCleaner` bound in Koin, then the `SignedOut` state. Anything new that stores user data (a cache, a table, images, a provider SDK's remembered account) binds its own cleaner with a `named(...)` qualifier in its module, e.g. `single(named("photosCache")) { LocalDataCleaner { ... } }`. Bound today: Room trips + markers (`dataModule`), Google credential state (Android `authPlatformModule`, iOS `MainViewController` → `NativeSignIn.signOut()`). Nothing user-related is kept across sign-out unless a flow explicitly needs it and the decision log says so.
 
-Screens are wiped too: the ViewModels of onboarding and the signed-in app live in `AuthGateViewModel.session`, a `ViewModelStore` that `AuthGate` provides as `LocalViewModelStoreOwner` and clears whenever the session ends. A screen therefore never needs to watch for an account change; its `init` runs again for the next account. The store outlives rotation, so landscape round-trips keep state.
+Screens are wiped too: their ViewModels are scoped to their back-stack entry, and sign-out removes the whole back stack (`NavDisplay` leaves the composition), so the next account's screens are new. Onboarding isn't on the back stack; `OnboardingViewModel` forgets its form on `SignedOut`. A Koin `single` that keeps user data still needs its own `LocalDataCleaner`.
 
 ## Re-authentication
 

@@ -11,14 +11,12 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
 import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
 import com.falcon.tripingly.core.designsystem.theme.spacing
 import com.falcon.tripingly.core.model.account.SessionState
@@ -33,8 +31,8 @@ import org.koin.compose.viewmodel.koinViewModel
 
 /**
  * Shows sign-in or onboarding until the user is signed in and onboarded, then
- * [content]. Their ViewModels belong to the session: a sign-out clears them,
- * so screens start fresh for the next user.
+ * [content]. After a sign-out [content] leaves the composition, so screens
+ * start fresh for the next user.
  */
 @Composable
 fun AuthGate(content: @Composable () -> Unit) {
@@ -43,14 +41,9 @@ fun AuthGate(content: @Composable () -> Unit) {
     when (val session = state.session) {
         SessionState.Restoring -> LaunchScreen(state = state, onAction = viewModel::onAction)
         is SessionState.SignedOut -> SignInRoute(reason = session.reason)
-        is SessionState.Onboarding -> InSession(viewModel) { OnboardingRoute() }
-        is SessionState.SignedIn -> InSession(viewModel) { content() }
+        is SessionState.Onboarding -> OnboardingRoute()
+        is SessionState.SignedIn -> content()
     }
-}
-
-@Composable
-private fun InSession(viewModel: AuthGateViewModel, content: @Composable () -> Unit) {
-    CompositionLocalProvider(LocalViewModelStoreOwner provides viewModel.session, content = content)
 }
 
 @Composable

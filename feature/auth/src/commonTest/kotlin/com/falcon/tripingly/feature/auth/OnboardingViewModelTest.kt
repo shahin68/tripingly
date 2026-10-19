@@ -128,4 +128,18 @@ class OnboardingViewModelTest {
         assertEquals("", viewModel.uiState.value.displayName)
         assertEquals(UsernameStatus.IDLE, viewModel.uiState.value.usernameStatus)
     }
+
+    @Test
+    fun signingOut_forgetsTheForm() = runTest(dispatcher) {
+        val viewModel = signedInViewModel()
+        viewModel.onAction(Action.OnDisplayNameChange("Jonas"))
+        viewModel.onAction(Action.OnUsernameChange("jonas.k"))
+        advanceUntilIdle()
+
+        backend.signOut(reason = null)
+        advanceUntilIdle()
+
+        assertEquals("", viewModel.uiState.value.username)
+        assertEquals("", viewModel.uiState.value.displayName)
+    }
 }
