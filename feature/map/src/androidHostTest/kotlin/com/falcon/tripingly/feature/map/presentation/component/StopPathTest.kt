@@ -54,4 +54,10 @@ class StopPathTest {
         assertTrue(late.first() > early.last())
         assertTrue(sweepOf(points, 1f).size < 2)
     }
+
+    @Test
+    fun noStreakWithoutALine() {
+        assertTrue(sweepOf(emptyList<Int>(), 0.5f).isEmpty())
+        assertTrue(sweepOf(listOf(1), 0.5f).isEmpty())
+    }
 }

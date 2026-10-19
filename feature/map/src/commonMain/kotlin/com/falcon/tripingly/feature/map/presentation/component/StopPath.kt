@@ -81,6 +81,8 @@ internal fun stopPathShape(stops: List<Coordinates>): StopPathShape {
  * like an indeterminate progress bar. Fewer than two points while it's off the line.
  */
 internal fun <T> sweepOf(points: List<T>, progress: Float): List<T> {
+    // No line: the last stop was just removed.
+    if (points.size < 2) return emptyList()
     val last = points.lastIndex
     val head = (progress * (1 + SWEEP_LENGTH) * last).roundToInt()
     val tail = head - (SWEEP_LENGTH * last).roundToInt()
