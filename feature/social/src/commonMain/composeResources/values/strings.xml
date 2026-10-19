@@ -1,6 +1,7 @@
 <resources>
     <!-- Common -->
     <string name="social_back">Back</string>
+    <string name="social_settings">Settings</string>
     <string name="social_cancel">Cancel</string>
     <string name="social_more">More</string>
     <string name="social_retry">Try again</string>

@@ -33,12 +33,14 @@ import com.falcon.tripingly.core.navigation.Home
 import com.falcon.tripingly.core.navigation.NavConfig
 import com.falcon.tripingly.core.navigation.People
 import com.falcon.tripingly.core.navigation.Profile
+import com.falcon.tripingly.core.navigation.Settings
 import com.falcon.tripingly.core.navigation.TripMap
 import com.falcon.tripingly.core.network.photos.StorageClient
 import com.falcon.tripingly.deeplink.DeepLink
 import com.falcon.tripingly.deeplink.DeepLinks
 import com.falcon.tripingly.feature.auth.presentation.gate.AuthGate
 import com.falcon.tripingly.feature.map.presentation.screen.MapRoute
+import com.falcon.tripingly.feature.settings.presentation.SettingsRoute
 import com.falcon.tripingly.feature.social.presentation.people.PeopleRoute
 import com.falcon.tripingly.feature.social.presentation.profile.ProfileRoute
 import com.falcon.tripingly.feature.social.presentation.social.SocialRoute
@@ -139,6 +141,7 @@ private fun MainNavigation() {
                         onBack = { goBack() },
                         onOpenTrip = { backStack.add(TripMap(it)) },
                         onOpenList = { backStack.add(People(it.name)) },
+                        onOpenSettings = { backStack.add(Settings) },
                     )
                 }
                 is People -> {
@@ -148,6 +151,7 @@ private fun MainNavigation() {
                         onOpenProfile = { backStack.add(Profile(it)) },
                     )
                 }
+                is Settings -> SettingsRoute(onBack = { goBack() })
             }
         }
     }

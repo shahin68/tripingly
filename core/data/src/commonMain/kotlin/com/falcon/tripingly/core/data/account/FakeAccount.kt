@@ -3,9 +3,13 @@ package com.falcon.tripingly.core.data.account
 import com.falcon.tripingly.core.common.error.DataError
 import com.falcon.tripingly.core.common.result.AppResult
 import com.falcon.tripingly.core.model.account.Account
+import com.falcon.tripingly.core.model.account.DataExport
+import com.falcon.tripingly.core.model.account.DataExportStatus
 import com.falcon.tripingly.core.model.account.LegalDocument
 import com.falcon.tripingly.core.model.account.LegalDocumentType
 import com.falcon.tripingly.core.model.account.MINIMUM_AGE
+import com.falcon.tripingly.core.model.account.NotificationSettings
+import com.falcon.tripingly.core.model.account.NotificationType
 import com.falcon.tripingly.core.model.account.OnboardingState
 import com.falcon.tripingly.core.model.account.ProfileField
 import com.falcon.tripingly.core.model.account.ProfileUpdate
@@ -38,6 +42,8 @@ class FakeAccountBackend(
     private var account: Account? = null
     private var signIns = 0
     private val accepted = mutableSetOf<LegalDocumentType>()
+    private var notifications = NotificationSettings()
+    private var export: DataExport? = null
 
     override suspend fun restore(): AppResult<Unit, DataError.Network> {
         state.value = account?.toSessionState() ?: SessionState.SignedOut()
@@ -106,6 +112,35 @@ class FakeAccountBackend(
         val current = account ?: return AppResult.Error(DataError.Network.Unauthorized)
         accepted += documents.map { it.type }
         return AppResult.Success(publish(current))
+    }
+
+    override suspend fun setDefaultTripVisibility(visibility: TripVisibility): AppResult<Account, DataError.Network> {
+        val current = account ?: return AppResult.Error(DataError.Network.Unauthorized)
+        return AppResult.Success(publish(current.copy(defaultTripVisibility = visibility)))
+    }
+
+    override suspend fun notificationSettings(): AppResult<NotificationSettings, DataError.Network> =
+        AppResult.Success(notifications)
+
+    override suspend fun setNotification(type: NotificationType, enabled: Boolean): AppResult<NotificationSettings, DataError.Network> {
+        notifications = NotificationSettings(if (enabled) notifications.enabled + type else notifications.enabled - type)
+        return AppResult.Success(notifications)
+    }
+
+    override suspend fun dataExport(): AppResult<DataExport?, DataError.Network> = AppResult.Success(export)
+
+    /** Ready at once, with a link that goes nowhere. */
+    override suspend fun requestDataExport(): AppResult<DataExport, DataError.Network> {
+        val ready = DataExport(DataExportStatus.READY, downloadUrl = "https://example.com/export.zip", expiresAt = null)
+        export = ready
+        return AppResult.Success(ready)
+    }
+
+    override suspend fun deleteAccount(): AppResult<Unit, DataError.Network> {
+        export = null
+        notifications = NotificationSettings()
+        signOut(SignOutReason.ACCOUNT_DELETED)
+        return AppResult.Success(Unit)
     }
 
     private fun signIn(name: String?): AppResult<Unit, DataError.Network> {

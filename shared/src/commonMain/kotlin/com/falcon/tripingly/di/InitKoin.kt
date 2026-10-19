@@ -9,6 +9,7 @@ import com.falcon.tripingly.core.storage.di.storageModule
 import com.falcon.tripingly.deeplink.DeepLinks
 import com.falcon.tripingly.feature.auth.di.authModule
 import com.falcon.tripingly.feature.map.di.mapModule
+import com.falcon.tripingly.feature.settings.di.settingsModule
 import com.falcon.tripingly.feature.social.di.socialModule
 import com.falcon.tripingly.feature.trips.di.tripsModule
 import org.koin.core.context.startKoin
@@ -29,6 +30,7 @@ fun initKoin(appDeclaration: KoinAppDeclaration = {}) {
             tripsModule,
             mapModule,
             socialModule,
+            settingsModule,
             appModule,
         )
     }

@@ -1,19 +1,26 @@
 package com.falcon.tripingly.core.data.account
 
 import com.falcon.tripingly.core.model.account.Account
+import com.falcon.tripingly.core.model.account.DataExport
+import com.falcon.tripingly.core.model.account.DataExportStatus
 import com.falcon.tripingly.core.model.account.LegalDocument
 import com.falcon.tripingly.core.model.account.LegalDocumentType
+import com.falcon.tripingly.core.model.account.NotificationSettings
+import com.falcon.tripingly.core.model.account.NotificationType
 import com.falcon.tripingly.core.model.account.OnboardingState
 import com.falcon.tripingly.core.model.account.ProfileField
 import com.falcon.tripingly.core.model.account.SessionState
 import com.falcon.tripingly.core.model.account.TripVisibility
 import com.falcon.tripingly.core.model.account.UsernameAvailability
+import com.falcon.tripingly.core.network.model.DataExportDto
 import com.falcon.tripingly.core.network.model.LegalDocumentDto
 import com.falcon.tripingly.core.network.model.MeDto
+import com.falcon.tripingly.core.network.model.NotificationSettingsDto
 import com.falcon.tripingly.core.network.model.OnboardingStateDto
 import com.falcon.tripingly.core.network.model.RecordConsentDto
 import com.falcon.tripingly.core.network.model.UsernameAvailabilityDto
 import kotlinx.datetime.LocalDate
+import kotlin.time.Instant
 
 internal fun MeDto.toAccount() = Account(
     id = id,
@@ -74,3 +81,24 @@ internal fun UsernameAvailabilityDto.toAvailability() = when {
     reason == UsernameAvailabilityDto.Reason.INVALID -> UsernameAvailability.INVALID
     else -> UsernameAvailability.TAKEN
 }
+
+internal fun NotificationSettingsDto.toNotificationSettings() = NotificationSettings(
+    enabled = buildSet {
+        if (commentOnMarker) add(NotificationType.COMMENTS)
+        if (addedToTrip) add(NotificationType.ADDED_TO_TRIP)
+        if (tripChangedByCollaborator) add(NotificationType.TRIP_CHANGES)
+        if (likesGrouped) add(NotificationType.LIKES)
+        if (joinRequested) add(NotificationType.JOIN_REQUESTS)
+    },
+)
+
+internal fun DataExportDto.toDataExport() = DataExport(
+    status = when (status) {
+        DataExportDto.Status.PENDING -> DataExportStatus.PENDING
+        DataExportDto.Status.READY -> DataExportStatus.READY
+        DataExportDto.Status.FAILED -> DataExportStatus.FAILED
+        DataExportDto.Status.EXPIRED -> DataExportStatus.EXPIRED
+    },
+    downloadUrl = downloadUrl,
+    expiresAt = expiresAt?.let { runCatching { Instant.parse(it) }.getOrNull() },
+)

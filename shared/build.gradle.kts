@@ -37,6 +37,7 @@ kotlin {
             implementation(projects.feature.trips)
             implementation(projects.feature.map)
             implementation(projects.feature.social)
+            implementation(projects.feature.settings)
 
             implementation(libs.koin.core)
             implementation(libs.kotlinx.coroutines.core)

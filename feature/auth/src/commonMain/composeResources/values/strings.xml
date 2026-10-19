@@ -17,6 +17,7 @@
     <string name="signin_reason_session_expired">You have been signed out. Sign in again to continue.</string>
     <string name="signin_reason_account_suspended">This account has been suspended.</string>
     <string name="signin_reason_under_age">Tripinly is available from age 16. Your details have not been kept.</string>
+    <string name="signin_reason_account_deleted">Your account and everything you made are being deleted.</string>
     <string name="signin_error_not_configured">This sign-in option is not set up in this build yet.</string>
     <string name="signin_error_failed">Sign-in did not work. Try again.</string>
     <string name="signin_error_account_suspended">This account has been suspended.</string>

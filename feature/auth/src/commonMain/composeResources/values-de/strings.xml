@@ -17,6 +17,7 @@
     <string name="signin_reason_session_expired">Du wurdest abgemeldet. Melde dich erneut an, um fortzufahren.</string>
     <string name="signin_reason_account_suspended">Dieses Konto wurde gesperrt.</string>
     <string name="signin_reason_under_age">Tripinly ist ab 16 Jahren verfügbar. Deine Angaben wurden nicht gespeichert.</string>
+    <string name="signin_reason_account_deleted">Dein Konto und alles, was du erstellt hast, werden gelöscht.</string>
     <string name="signin_error_not_configured">Diese Anmeldeoption ist in dieser Version noch nicht eingerichtet.</string>
     <string name="signin_error_failed">Die Anmeldung hat nicht funktioniert. Versuche es erneut.</string>
     <string name="signin_error_account_suspended">Dieses Konto wurde gesperrt.</string>

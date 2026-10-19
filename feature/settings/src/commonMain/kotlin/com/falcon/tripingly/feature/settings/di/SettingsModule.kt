@@ -1,0 +1,19 @@
+package com.falcon.tripingly.feature.settings.di
+
+import androidx.compose.ui.text.intl.Locale
+import com.falcon.tripingly.core.network.ApiConfig
+import com.falcon.tripingly.feature.settings.presentation.SettingsViewModel
+import org.koin.core.module.dsl.viewModel
+import org.koin.dsl.module
+
+val settingsModule = module {
+    viewModel {
+        SettingsViewModel(
+            sessionRepository = get(),
+            accountRepository = get(),
+            // The client header carries it: `android/1.0`.
+            appVersion = get<ApiConfig>().client.substringAfter('/'),
+            languageTag = { Locale.current.toLanguageTag() },
+        )
+    }
+}
