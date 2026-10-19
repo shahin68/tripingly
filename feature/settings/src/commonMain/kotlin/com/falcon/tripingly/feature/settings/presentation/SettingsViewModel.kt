@@ -27,6 +27,7 @@ import com.falcon.tripingly.feature.settings.generated.resources.settings_error_
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.toImmutableList
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -50,11 +51,18 @@ class SettingsViewModel(
     private val _uiState = MutableStateFlow(State(appVersion = appVersion, appleAvailable = socialSignIn.appleAvailable))
     val uiState: StateFlow<State> = _uiState.asStateFlow()
 
+    /** The default the server last confirmed; the toggle falls back to it when a change fails. */
+    private var savedVisibility = TripVisibility.PUBLIC
+    private var visibilityJob: Job? = null
+
     init {
         viewModelScope.launch {
             sessionRepository.session.collect { session ->
                 val account = (session as? SessionState.SignedIn)?.account ?: return@collect
-                _uiState.update { it.copy(username = account.username, defaultVisibility = account.defaultTripVisibility) }
+                savedVisibility = account.defaultTripVisibility
+                // While a change is on its way the toggle keeps showing the person's latest choice.
+                val visibility = if (visibilityJob?.isActive == true) _uiState.value.defaultVisibility else savedVisibility
+                _uiState.update { it.copy(username = account.username, defaultVisibility = visibility) }
             }
         }
         loadNotifications()
@@ -94,14 +102,14 @@ class SettingsViewModel(
     }
 
     private fun setVisibility(visibility: TripVisibility) {
-        val previous = _uiState.value.defaultVisibility
-        if (visibility == previous) return
-        // Shown at once; the session's account follows the server's answer.
+        if (visibility == _uiState.value.defaultVisibility) return
+        // Shown at once and kept; only a refusal moves it back. A newer tap replaces the change on its way.
         _uiState.update { it.copy(defaultVisibility = visibility) }
-        viewModelScope.launch {
+        visibilityJob?.cancel()
+        visibilityJob = viewModelScope.launch {
             val result = accountRepository.setDefaultTripVisibility(visibility)
             if (result is AppResult.Error) {
-                _uiState.update { it.copy(defaultVisibility = previous, message = result.error.toUiText(Res.string.settings_error_visibility)) }
+                _uiState.update { it.copy(defaultVisibility = savedVisibility, message = result.error.toUiText(Res.string.settings_error_visibility)) }
             }
         }
     }

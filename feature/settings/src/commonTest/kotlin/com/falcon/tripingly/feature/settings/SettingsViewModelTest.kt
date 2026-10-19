@@ -18,7 +18,11 @@ import com.falcon.tripingly.feature.settings.presentation.SettingsViewModel
 import com.falcon.tripingly.feature.settings.presentation.SettingsViewModel.Action
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
@@ -111,6 +115,31 @@ class SettingsViewModelTest {
 
         assertEquals(TripVisibility.PUBLIC, viewModel.uiState.value.defaultVisibility)
         assertNotNull(viewModel.uiState.value.message)
+    }
+
+    @Test
+    fun tappingAgainWhileTheServerIsSlow_keepsTheLatestChoice() = runTest {
+        val account = signedIn()
+        val slow = object : AccountRepository by account {
+            override suspend fun setDefaultTripVisibility(visibility: TripVisibility) =
+                delay(1_000).let { account.setDefaultTripVisibility(visibility) }
+        }
+        val viewModel = viewModel(account, slow)
+        advanceUntilIdle()
+        val shown = mutableListOf<TripVisibility>()
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+            viewModel.uiState.collect { shown += it.defaultVisibility }
+        }
+
+        viewModel.onAction(Action.OnVisibilityChange(TripVisibility.PRIVATE))
+        advanceTimeBy(500)
+        viewModel.onAction(Action.OnVisibilityChange(TripVisibility.PUBLIC))
+        advanceUntilIdle()
+
+        // Each tap moves the toggle once; the server's answers never move it again.
+        assertEquals(listOf(TripVisibility.PUBLIC, TripVisibility.PRIVATE, TripVisibility.PUBLIC), shown.distinctUntilChanged())
+        val session = account.session.value as SessionState.SignedIn
+        assertEquals(TripVisibility.PUBLIC, session.account.defaultTripVisibility)
     }
 
     @Test
@@ -293,3 +322,6 @@ class SettingsViewModelTest {
         assertEquals(SessionState.SignedOut(null), account.session.value)
     }
 }
+
+/** The values in order, without repeats in a row. */
+private fun <T> List<T>.distinctUntilChanged(): List<T> = filterIndexed { i, value -> i == 0 || this[i - 1] != value }

@@ -57,6 +57,7 @@ Values that tune app behaviour (cache and refresh times, limits, intervals) come
 - **Actions:** one sealed `XAction` and one `onAction(action)` entry point. Actions describe what the user did (`TitleChanged`, `SaveClicked`); the ViewModel decides what that means.
 - **Effects:** anything that can be state is state (a dialog shown, a field error). True one-shots (navigate, open the share sheet) go through a `Channel`, collected with `ObserveAsEvents` on `Dispatchers.Main.immediate` while the lifecycle is started, so none are lost.
 - **Reducers:** non-trivial transitions are pure `reduce(state, input)` functions, tested without coroutines.
+- **Lifetime:** ViewModels of onboarding and the signed-in app belong to the session, not to the app: `AuthGate` gives them `AuthGateViewModel.session` as their store and clears it when the session ends, so a sign-out leaves no screen state behind (rotation keeps it). The sign-in and launch screens use the app's store.
 - **Streams:** repository flows become state with `stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), initial)`. ViewModels never expose `MutableStateFlow`, never hold platform objects and never pick dispatchers; dispatchers are injected where blocking work happens (data layer).
 
 ## Passing state down (property drilling)

@@ -1,6 +1,8 @@
 package com.falcon.tripingly.feature.auth.presentation.gate
 
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelStore
+import androidx.lifecycle.ViewModelStoreOwner
 import androidx.lifecycle.viewModelScope
 import com.falcon.tripingly.core.common.result.AppResult
 import com.falcon.tripingly.core.data.account.SessionRepository
@@ -11,11 +13,17 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChangedBy
+import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
-/** Restores the session at start and tells the gate which screen to show. */
+/**
+ * Restores the session at start and tells the gate which screen to show. Holds the
+ * ViewModels of the screens behind the gate ([session]) and clears them when the
+ * session ends, so nothing of one account is still on screen for the next.
+ */
 internal class AuthGateViewModel(
     private val sessionRepository: SessionRepository,
 ) : ViewModel() {
@@ -37,8 +45,24 @@ internal class AuthGateViewModel(
         State(session = session, restoreError = status.error, isRetrying = status.running)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), State())
 
+    /** Owns the ViewModels of onboarding and the signed-in app; outlives rotation, not the session. */
+    val session = object : ViewModelStoreOwner {
+        override val viewModelStore = ViewModelStore()
+    }
+
     init {
         restore()
+        viewModelScope.launch {
+            // Each change from in a session (onboarding, signed in) to signed out.
+            sessionRepository.session
+                .distinctUntilChangedBy { it is SessionState.SignedOut }
+                .drop(1)
+                .collect { if (it is SessionState.SignedOut) session.viewModelStore.clear() }
+        }
+    }
+
+    override fun onCleared() {
+        session.viewModelStore.clear()
     }
 
     fun onAction(action: Action) {
