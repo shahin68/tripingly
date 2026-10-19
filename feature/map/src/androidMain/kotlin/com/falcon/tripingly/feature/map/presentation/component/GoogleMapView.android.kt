@@ -14,7 +14,6 @@ import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
@@ -51,7 +50,6 @@ import com.google.maps.android.compose.MarkerComposable
 import com.google.maps.android.compose.Polyline
 import com.google.maps.android.compose.rememberCameraPositionState
 import com.google.maps.android.compose.rememberUpdatedMarkerState
-import kotlinx.coroutines.delay
 
 @Composable
 actual fun GoogleMapView(
@@ -223,17 +221,8 @@ actual fun GoogleMapView(
         // photo, and the tapped place's pin stays as it is under a bigger copy.
         //
         // Zoomed out below pinDotBelowZoom, the pins turn into dots. Each pin has its dot marker from the start, hidden,
-        // so the swap only shows one and hides the other: no markers are made or dropped while the fingers move. The
-        // fade between them takes a few steps, not one per frame, as every step redraws every pin.
+        // so the swap only shows one and hides the other, at once: no markers are made or dropped while the fingers move.
         val isDots by remember(pinDotBelowZoom) { derivedStateOf { cameraPositionState.position.zoom < pinDotBelowZoom } }
-        val dotness by produceState(if (isDots) 1f else 0f, isDots) {
-            val from = value
-            val to = if (isDots) 1f else 0f
-            for (step in 1..PIN_DOT_STEPS) {
-                delay(PIN_DOT_MILLIS.toLong() / PIN_DOT_STEPS)
-                value = from + (to - from) * step / PIN_DOT_STEPS
-            }
-        }
         placePins.forEach { pin ->
             if (pin.photo && pin.place.coverImageId !in pinPhotos) return@forEach
             val look = PlacePinLook(pin.place.category, pin.place.isTripinly, pin.size, photoId(pin.place, pin.photo), pin.isAlongTheWay)
@@ -256,8 +245,8 @@ actual fun GoogleMapView(
                         icon = pinIcon(look),
                         title = pin.place.name,
                         anchor = Offset(0.5f, 0.5f),
-                        alpha = fadeIn.value * (1f - dotness),
-                        visible = dotness < 1f,
+                        alpha = fadeIn.value,
+                        visible = !isDots,
                         zIndex = zIndex,
                         onClick = { onClick() },
                     )
@@ -268,8 +257,8 @@ actual fun GoogleMapView(
                         icon = pinIcon(dotLook),
                         title = pin.place.name,
                         anchor = Offset(0.5f, 0.5f),
-                        alpha = fadeIn.value * dotness,
-                        visible = dotness > 0f,
+                        alpha = fadeIn.value,
+                        visible = isDots,
                         zIndex = zIndex,
                         onClick = { onClick() },
                     )
@@ -397,7 +386,6 @@ private fun StopPathLine(stops: List<Coordinates>) {
 private const val PIN_FADE_MILLIS = 250
 
 /** The pin-to-dot fade in a few steps, each one redrawing every pin. */
-private const val PIN_DOT_STEPS = 3
 
 /** Between 0 and 1, higher for a better place: liked places by their likes above the others by how well known. */
 private fun pinRank(place: MapPlace): Float =

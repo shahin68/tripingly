@@ -84,17 +84,7 @@ private final class AppGoogleMap: NSObject, GoogleMap, GMSMapViewDelegate {
             if marker.map == nil { marker.appearAnimation = item.fadesIn ? .fadeIn : .none }
             marker.position = CLLocationCoordinate2D(latitude: item.latitude, longitude: item.longitude)
             marker.title = item.title
-            if marker.icon !== item.icon {
-                marker.icon = item.icon
-                // A shown pin that changes (to its dot and back) fades into its new look.
-                if marker.map != nil && item.fadesIn {
-                    let fade = CABasicAnimation(keyPath: "opacity")
-                    fade.fromValue = 0.3
-                    fade.toValue = 1
-                    fade.duration = 0.2
-                    marker.layer.add(fade, forKey: "look")
-                }
-            }
+            if marker.icon !== item.icon { marker.icon = item.icon }
             marker.groundAnchor = CGPoint(x: item.anchorX, y: item.anchorY)
             marker.zIndex = item.zIndex
             marker.userData = item

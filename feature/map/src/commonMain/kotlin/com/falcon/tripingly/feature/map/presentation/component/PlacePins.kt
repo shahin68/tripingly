@@ -136,9 +136,6 @@ val SelectedPinSize: Dp = 44.dp
 /** A pin while zoomed out below [AppConfig.pinDotBelowZoom]: a small dot, so route lines and stops stay readable. */
 val PlaceDotSize: Dp = 10.dp
 
-/** Pin and dot change into each other this fast when the zoom crosses [AppConfig.pinDotBelowZoom]. */
-const val PIN_DOT_MILLIS = 200
-
 /** Places along the shown route: violet, apart from the map's places and from the hot spots. */
 val AlongTheWayPinColor = Color(0xFF8E24AA)
 
