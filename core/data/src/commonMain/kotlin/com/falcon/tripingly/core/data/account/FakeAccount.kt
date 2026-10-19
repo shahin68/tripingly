@@ -5,6 +5,7 @@ import com.falcon.tripingly.core.common.result.AppResult
 import com.falcon.tripingly.core.model.account.Account
 import com.falcon.tripingly.core.model.account.DataExport
 import com.falcon.tripingly.core.model.account.DataExportStatus
+import com.falcon.tripingly.core.model.account.IdentityProof
 import com.falcon.tripingly.core.model.account.LegalDocument
 import com.falcon.tripingly.core.model.account.LegalDocumentType
 import com.falcon.tripingly.core.model.account.MINIMUM_AGE
@@ -142,6 +143,8 @@ class FakeAccountBackend(
         signOut(SignOutReason.ACCOUNT_DELETED)
         return AppResult.Success(Unit)
     }
+
+    override suspend fun confirmAccountDeletion(proof: IdentityProof): AppResult<Unit, DataError.Network> = deleteAccount()
 
     private fun signIn(name: String?): AppResult<Unit, DataError.Network> {
         signIns++

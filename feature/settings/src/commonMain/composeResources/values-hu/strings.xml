@@ -2,7 +2,6 @@
     <string name="settings_title">Beállítások</string>
     <string name="settings_back">Vissza</string>
     <string name="settings_cancel">Mégse</string>
-    <string name="settings_ok">OK</string>
     <string name="settings_retry">Nem sikerült betölteni. Koppints az újrapróbáláshoz</string>
     <string name="settings_signed_in_as">Bejelentkezve: @%1$s</string>
     <string name="settings_new_trips">Új utak</string>
@@ -38,10 +37,13 @@
     <string name="settings_delete_title">Törlöd a fiókodat?</string>
     <string name="settings_delete_message">A profilod, utaid, megállóid, fotóid, hozzászólásaid és kedveléseid végleg törlődnek. Akik csatlakoztak az utaidhoz, szintén elveszítik őket. Ez nem vonható vissza.</string>
     <string name="settings_delete_confirm">Törlés</string>
-    <string name="settings_reauth_title">Előbb jelentkezz be újra</string>
-    <string name="settings_reauth_message">A biztonságod érdekében a fiók törléséhez friss bejelentkezés kell.</string>
+    <string name="settings_reauth_title">Erősítsd meg, hogy te vagy az</string>
+    <string name="settings_reauth_message">A fiók törlése nem vonható vissza. Hogy biztosak legyünk benne, hogy te vagy az, jelentkezz be azzal a fiókkal, amelyet a Tripinlyhez használsz.</string>
+    <string name="settings_reauth_google">Folytatás Google-fiókkal</string>
+    <string name="settings_reauth_apple">Folytatás Apple-fiókkal</string>
     <string name="settings_error_visibility">Nem sikerült módosítani az új utak alapbeállítását.</string>
     <string name="settings_error_notifications">Nem sikerült módosítani ezt az értesítést.</string>
     <string name="settings_error_export">Nem sikerült másolatot kérni az adataidról.</string>
+    <string name="settings_error_reauth">Nem sikerült megerősíteni, hogy te vagy az. Próbáld újra.</string>
     <string name="settings_error_delete">Nem sikerült törölni a fiókodat.</string>
 </resources>

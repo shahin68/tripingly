@@ -5,6 +5,7 @@ import com.falcon.tripingly.core.common.result.AppResult
 import com.falcon.tripingly.core.common.result.map
 import com.falcon.tripingly.core.model.account.Account
 import com.falcon.tripingly.core.model.account.DataExport
+import com.falcon.tripingly.core.model.account.IdentityProof
 import com.falcon.tripingly.core.model.account.LegalDocument
 import com.falcon.tripingly.core.model.account.NotificationSettings
 import com.falcon.tripingly.core.model.account.NotificationType
@@ -14,6 +15,7 @@ import com.falcon.tripingly.core.model.account.TripVisibility
 import com.falcon.tripingly.core.model.account.UsernameAvailability
 import com.falcon.tripingly.core.network.account.AccountApi
 import com.falcon.tripingly.core.network.baseLanguageTag
+import com.falcon.tripingly.core.network.model.ConfirmedDeletionDto
 import com.falcon.tripingly.core.network.model.RecordConsentDto
 import com.falcon.tripingly.core.network.model.UpdateMeDto
 import com.falcon.tripingly.core.network.model.UpdateNotificationSettingsDto
@@ -104,8 +106,17 @@ internal class AccountRepositoryImpl(
     override suspend fun requestDataExport(): AppResult<DataExport, DataError.Network> =
         api.requestDataExport().map { it.toDataExport() }
 
-    override suspend fun deleteAccount(): AppResult<Unit, DataError.Network> {
-        val result = api.deleteAccount()
+    override suspend fun deleteAccount(): AppResult<Unit, DataError.Network> = signOutOnceDeleted(api.deleteAccount())
+
+    override suspend fun confirmAccountDeletion(proof: IdentityProof): AppResult<Unit, DataError.Network> {
+        val body = when (proof) {
+            is IdentityProof.Google -> ConfirmedDeletionDto(provider = ConfirmedDeletionDto.Provider.GOOGLE, token = proof.idToken)
+            is IdentityProof.Apple -> ConfirmedDeletionDto(provider = ConfirmedDeletionDto.Provider.APPLE, token = proof.identityToken)
+        }
+        return signOutOnceDeleted(api.confirmAccountDeletion(body))
+    }
+
+    private suspend fun signOutOnceDeleted(result: AppResult<*, DataError.Network>): AppResult<Unit, DataError.Network> {
         if (result is AppResult.Error) return result
         // The server has closed every session already; keep nothing.
         session.forget(SignOutReason.ACCOUNT_DELETED)

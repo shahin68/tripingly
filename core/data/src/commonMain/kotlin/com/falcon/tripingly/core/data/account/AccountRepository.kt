@@ -4,6 +4,7 @@ import com.falcon.tripingly.core.common.error.DataError
 import com.falcon.tripingly.core.common.result.AppResult
 import com.falcon.tripingly.core.model.account.Account
 import com.falcon.tripingly.core.model.account.DataExport
+import com.falcon.tripingly.core.model.account.IdentityProof
 import com.falcon.tripingly.core.model.account.LegalDocument
 import com.falcon.tripingly.core.model.account.NotificationSettings
 import com.falcon.tripingly.core.model.account.NotificationType
@@ -51,4 +52,10 @@ interface AccountRepository {
      * local. 403 `REAUTH_REQUIRED` when the last Google or Apple sign-in is older than 10 minutes.
      */
     suspend fun deleteAccount(): AppResult<Unit, DataError.Network>
+
+    /**
+     * [deleteAccount] after `REAUTH_REQUIRED`, with a fresh sign-in as [proof]. The session stays
+     * as it is; 403 `REAUTH_FAILED` when the proof is another account's, and nothing is deleted.
+     */
+    suspend fun confirmAccountDeletion(proof: IdentityProof): AppResult<Unit, DataError.Network>
 }

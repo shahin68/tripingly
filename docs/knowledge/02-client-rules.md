@@ -57,7 +57,7 @@ The backend enforces these rules. The client must show them correctly and never 
 
 - Location permission only for Nearby, "center on me" and routes from current location. Ask in context, work without it.
 - Send the user's location only in Nearby/search/route requests. Never store location history.
-- Account deletion (Settings): explain what's deleted (everything they made; people who joined their trips lose them too), require a fresh sign-in if the server returns `REAUTH_REQUIRED`, then sign out with "Your account is being deleted" and wipe all local data (tokens, caches, databases, images).
+- Account deletion (Settings): explain what's deleted (everything they made; people who joined their trips lose them too), and if the server returns `REAUTH_REQUIRED` ask "Confirm it's you": the Google (or Apple, iOS) sheet, whose token goes only to `POST /me/deletion`, never to a sign-in, so the session is never switched and another account changes nothing. Then sign out with "Your account is being deleted" and wipe all local data (tokens, caches, databases, images).
 - Data export: Settings → My data asks for a copy and shows Download while it's ready (`GET /me/export`); the server also emails the link once email is set up.
 - Settings (gear on my own profile) hold the default visibility for new trips, per-type push switches, my data, legal documents and credits, sign-out and account deletion. Every setting lives on the server; nothing is kept on the device.
 

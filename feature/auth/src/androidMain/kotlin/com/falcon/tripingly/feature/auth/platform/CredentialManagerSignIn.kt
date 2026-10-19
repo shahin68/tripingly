@@ -5,8 +5,8 @@ import androidx.credentials.CustomCredential
 import androidx.credentials.GetCredentialRequest
 import androidx.credentials.exceptions.GetCredentialCancellationException
 import androidx.credentials.exceptions.GetCredentialException
-import com.falcon.tripingly.feature.auth.domain.SocialSignIn
-import com.falcon.tripingly.feature.auth.domain.SocialSignInResult
+import com.falcon.tripingly.core.data.account.SocialSignIn
+import com.falcon.tripingly.core.data.account.SocialSignInResult
 import com.google.android.libraries.identity.googleid.GetSignInWithGoogleOption
 import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
 import com.google.android.libraries.identity.googleid.GoogleIdTokenParsingException

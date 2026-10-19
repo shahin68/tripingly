@@ -3,6 +3,7 @@ package com.falcon.tripingly.core.network.account
 import com.falcon.tripingly.core.common.error.DataError
 import com.falcon.tripingly.core.common.result.AppResult
 import com.falcon.tripingly.core.network.model.AccountDeletionDto
+import com.falcon.tripingly.core.network.model.ConfirmedDeletionDto
 import com.falcon.tripingly.core.network.model.ConsentsDto
 import com.falcon.tripingly.core.network.model.DataExportDto
 import com.falcon.tripingly.core.network.model.LegalDocumentsDto
@@ -59,4 +60,8 @@ interface AccountApi {
     /** 403 `REAUTH_REQUIRED` without a Google or Apple sign-in in the last 10 minutes. */
     @DELETE("me")
     suspend fun deleteAccount(): AppResult<AccountDeletionDto, DataError.Network>
+
+    /** Deletion confirmed by a fresh sign-in; 403 `REAUTH_FAILED` when the token is another account's. */
+    @POST("me/deletion")
+    suspend fun confirmAccountDeletion(@Body body: ConfirmedDeletionDto): AppResult<AccountDeletionDto, DataError.Network>
 }

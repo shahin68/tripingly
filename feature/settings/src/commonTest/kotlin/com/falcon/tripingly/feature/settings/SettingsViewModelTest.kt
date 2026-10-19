@@ -4,7 +4,10 @@ import com.falcon.tripingly.core.common.error.DataError
 import com.falcon.tripingly.core.common.result.AppResult
 import com.falcon.tripingly.core.data.account.AccountRepository
 import com.falcon.tripingly.core.data.account.FakeAccountBackend
+import com.falcon.tripingly.core.data.account.SocialSignIn
+import com.falcon.tripingly.core.data.account.SocialSignInResult
 import com.falcon.tripingly.core.model.account.DataExportStatus
+import com.falcon.tripingly.core.model.account.IdentityProof
 import com.falcon.tripingly.core.model.account.NotificationSettings
 import com.falcon.tripingly.core.model.account.NotificationType
 import com.falcon.tripingly.core.model.account.ProfileUpdate
@@ -46,9 +49,21 @@ class SettingsViewModelTest {
         it.accept((it.legalDocuments("en") as AppResult.Success).data)
     }
 
-    private fun viewModel(account: FakeAccountBackend, repository: AccountRepository = account) = SettingsViewModel(
+    /** The Google sheet answers [google]. */
+    private class FakeSocialSignIn(var google: SocialSignInResult = SocialSignInResult.Google("fresh-token")) : SocialSignIn {
+        override val appleAvailable = false
+        override suspend fun google() = google
+        override suspend fun apple() = SocialSignInResult.NotConfigured
+    }
+
+    private fun viewModel(
+        account: FakeAccountBackend,
+        repository: AccountRepository = account,
+        socialSignIn: SocialSignIn = FakeSocialSignIn(),
+    ) = SettingsViewModel(
         sessionRepository = account,
         accountRepository = repository,
+        socialSignIn = socialSignIn,
         appVersion = "1.0",
         languageTag = { "en" },
     )
@@ -192,6 +207,76 @@ class SettingsViewModelTest {
         assertFalse(state.isConfirmingDelete)
         assertNull(state.message)
         assertTrue(account.session.value is SessionState.SignedIn)
+    }
+
+    private fun needingSignIn(account: FakeAccountBackend, confirm: suspend (IdentityProof) -> AppResult<Unit, DataError.Network>) =
+        object : AccountRepository by account {
+            var proof: IdentityProof? = null
+            override suspend fun deleteAccount() =
+                AppResult.Error(DataError.Network.Api(403, "REAUTH_REQUIRED", "Sign in again."))
+            override suspend fun confirmAccountDeletion(proof: IdentityProof): AppResult<Unit, DataError.Network> {
+                this.proof = proof
+                return confirm(proof)
+            }
+        }
+
+    @Test
+    fun confirmingWithTheSameAccount_deletesIt() = runTest {
+        val account = signedIn()
+        val repository = needingSignIn(account) { account.confirmAccountDeletion(it) }
+        val viewModel = viewModel(account, repository)
+        advanceUntilIdle()
+
+        viewModel.onAction(Action.OnDeleteAccount)
+        viewModel.onAction(Action.OnConfirmDelete)
+        advanceUntilIdle()
+        viewModel.onAction(Action.OnConfirmWithGoogle)
+        advanceUntilIdle()
+
+        assertEquals(IdentityProof.Google("fresh-token"), repository.proof)
+        assertEquals(SessionState.SignedOut(SignOutReason.ACCOUNT_DELETED), account.session.value)
+    }
+
+    @Test
+    fun confirmingWithAnotherAccount_keepsEverything() = runTest {
+        val account = signedIn()
+        val repository = needingSignIn(account) {
+            AppResult.Error(DataError.Network.Api(403, "REAUTH_FAILED", "That sign-in didn't confirm this account."))
+        }
+        val viewModel = viewModel(account, repository)
+        advanceUntilIdle()
+
+        viewModel.onAction(Action.OnDeleteAccount)
+        viewModel.onAction(Action.OnConfirmDelete)
+        advanceUntilIdle()
+        viewModel.onAction(Action.OnConfirmWithGoogle)
+        advanceUntilIdle()
+
+        val state = viewModel.uiState.value
+        assertFalse(state.isReauthNeeded)
+        assertFalse(state.isDeleting)
+        assertNotNull(state.message)
+        assertTrue(account.session.value is SessionState.SignedIn)
+    }
+
+    @Test
+    fun closingTheSignInSheet_keepsTheDialog() = runTest {
+        val account = signedIn()
+        val repository = needingSignIn(account) { AppResult.Success(Unit) }
+        val viewModel = viewModel(account, repository, FakeSocialSignIn(SocialSignInResult.Cancelled))
+        advanceUntilIdle()
+
+        viewModel.onAction(Action.OnDeleteAccount)
+        viewModel.onAction(Action.OnConfirmDelete)
+        advanceUntilIdle()
+        viewModel.onAction(Action.OnConfirmWithGoogle)
+        advanceUntilIdle()
+
+        val state = viewModel.uiState.value
+        assertTrue(state.isReauthNeeded)
+        assertFalse(state.isDeleting)
+        assertNull(state.message)
+        assertNull(repository.proof)
     }
 
     @Test

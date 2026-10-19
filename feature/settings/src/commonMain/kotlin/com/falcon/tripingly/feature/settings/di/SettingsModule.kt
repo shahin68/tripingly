@@ -11,6 +11,7 @@ val settingsModule = module {
         SettingsViewModel(
             sessionRepository = get(),
             accountRepository = get(),
+            socialSignIn = get(),
             // The client header carries it: `android/1.0`.
             appVersion = get<ApiConfig>().client.substringAfter('/'),
             languageTag = { Locale.current.toLanguageTag() },

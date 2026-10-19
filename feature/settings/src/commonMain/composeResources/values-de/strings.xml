@@ -2,7 +2,6 @@
     <string name="settings_title">Einstellungen</string>
     <string name="settings_back">Zurück</string>
     <string name="settings_cancel">Abbrechen</string>
-    <string name="settings_ok">OK</string>
     <string name="settings_retry">Laden fehlgeschlagen. Tippe, um es erneut zu versuchen</string>
     <string name="settings_signed_in_as">Angemeldet als @%1$s</string>
     <string name="settings_new_trips">Neue Reisen</string>
@@ -38,10 +37,13 @@
     <string name="settings_delete_title">Konto löschen?</string>
     <string name="settings_delete_message">Dein Profil, deine Reisen, Stopps, Fotos, Kommentare und Likes werden endgültig gelöscht. Wer deinen Reisen beigetreten ist, verliert sie ebenfalls. Das lässt sich nicht rückgängig machen.</string>
     <string name="settings_delete_confirm">Löschen</string>
-    <string name="settings_reauth_title">Bitte zuerst neu anmelden</string>
-    <string name="settings_reauth_message">Zu deiner Sicherheit braucht das Löschen deines Kontos eine frische Anmeldung.</string>
+    <string name="settings_reauth_title">Bestätige, dass du es bist</string>
+    <string name="settings_reauth_message">Das Löschen deines Kontos lässt sich nicht rückgängig machen. Damit wir sicher sind, dass du es bist, melde dich mit dem Konto an, das du für Tripinly nutzt.</string>
+    <string name="settings_reauth_google">Weiter mit Google</string>
+    <string name="settings_reauth_apple">Weiter mit Apple</string>
     <string name="settings_error_visibility">Die Voreinstellung für neue Reisen konnte nicht geändert werden.</string>
     <string name="settings_error_notifications">Diese Benachrichtigung konnte nicht geändert werden.</string>
     <string name="settings_error_export">Die Kopie deiner Daten konnte nicht angefordert werden.</string>
+    <string name="settings_error_reauth">Wir konnten nicht bestätigen, dass du es bist. Bitte versuche es noch einmal.</string>
     <string name="settings_error_delete">Dein Konto konnte nicht gelöscht werden.</string>
 </resources>

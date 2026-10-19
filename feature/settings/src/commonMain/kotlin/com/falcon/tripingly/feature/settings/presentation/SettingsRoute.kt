@@ -83,8 +83,9 @@ import com.falcon.tripingly.feature.settings.generated.resources.settings_notifi
 import com.falcon.tripingly.feature.settings.generated.resources.settings_notification_likes
 import com.falcon.tripingly.feature.settings.generated.resources.settings_notifications
 import com.falcon.tripingly.feature.settings.generated.resources.settings_notifications_hint
-import com.falcon.tripingly.feature.settings.generated.resources.settings_ok
 import com.falcon.tripingly.feature.settings.generated.resources.settings_privacy_policy
+import com.falcon.tripingly.feature.settings.generated.resources.settings_reauth_apple
+import com.falcon.tripingly.feature.settings.generated.resources.settings_reauth_google
 import com.falcon.tripingly.feature.settings.generated.resources.settings_reauth_message
 import com.falcon.tripingly.feature.settings.generated.resources.settings_reauth_title
 import com.falcon.tripingly.feature.settings.generated.resources.settings_retry
@@ -149,11 +150,27 @@ fun SettingsRoute(
     }
     if (state.isReauthNeeded) {
         AlertDialog(
-            onDismissRequest = { viewModel.onAction(Action.OnDismissReauth) },
+            onDismissRequest = { if (!state.isDeleting) viewModel.onAction(Action.OnDismissReauth) },
             title = { Text(stringResource(Res.string.settings_reauth_title)) },
             text = { Text(stringResource(Res.string.settings_reauth_message)) },
             confirmButton = {
-                TextButton(onClick = { viewModel.onAction(Action.OnDismissReauth) }) { Text(stringResource(Res.string.settings_ok)) }
+                if (state.isDeleting) {
+                    CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
+                } else {
+                    TextButton(onClick = { viewModel.onAction(Action.OnConfirmWithGoogle) }) {
+                        Text(stringResource(Res.string.settings_reauth_google))
+                    }
+                    if (state.appleAvailable) {
+                        TextButton(onClick = { viewModel.onAction(Action.OnConfirmWithApple) }) {
+                            Text(stringResource(Res.string.settings_reauth_apple))
+                        }
+                    }
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { viewModel.onAction(Action.OnDismissReauth) }, enabled = !state.isDeleting) {
+                    Text(stringResource(Res.string.settings_cancel))
+                }
             },
         )
     }
