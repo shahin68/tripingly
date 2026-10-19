@@ -146,4 +146,34 @@
     <string name="map_my_content_removed">Deine Fotos, Kommentare und Likes auf diesem Stopp wurden entfernt.</string>
     <string name="map_error_remove_my_content">Deine Fotos, Kommentare und Likes konnten nicht entfernt werden.</string>
     <string name="map_trip_created">Erstellt am %1$s</string>
+
+    <!-- Routes -->
+    <string name="map_route">Route</string>
+    <string name="map_mode_walking">Zu Fuß</string>
+    <string name="map_mode_cycling">Rad</string>
+    <string name="map_mode_driving">Auto</string>
+    <string name="map_route_minutes">%1$d Min.</string>
+    <string name="map_route_hours">%1$d Std. %2$d Min.</string>
+    <string name="map_route_meters">%1$d m</string>
+    <string name="map_route_km">%1$s km</string>
+    <string name="map_route_total">%1$s · %2$s</string>
+    <string name="map_route_estimated">Routen sind gerade nicht verfügbar.</string>
+    <string name="map_route_pro">Routen entlang der Straßen gibt es mit Tripinly Pro.</string>
+    <string name="map_along_the_way">Auf dem Weg</string>
+    <string name="map_along_the_way_item">in %1$s · %2$s abseits der Route</string>
+    <string name="map_along_add">Zu Tag %1$d hinzufügen</string>
+    <string name="map_route_from_here">Route von hier</string>
+    <string name="map_route_to_here">Route hierher</string>
+    <string name="map_route_pick_destination">Öffne jetzt den Ort, zu dem du willst.</string>
+    <string name="map_route_start">Route von %1$s</string>
+    <string name="map_route_between">%1$s → %2$s</string>
+    <string name="map_route_close">Route schließen</string>
+    <string name="map_best_order">Beste Reihenfolge</string>
+    <string name="map_best_order_title">Beste Reihenfolge für diesen Tag</string>
+    <string name="map_best_order_saved">%1$d Min. kürzer als jetzt.</string>
+    <string name="map_best_order_hint">Nach Entfernung sortiert: Reisezeiten sind gerade nicht verfügbar.</string>
+    <string name="map_best_order_apply">Übernehmen</string>
+    <string name="map_best_order_already">Deine Stopps sind schon in der besten Reihenfolge.</string>
+    <string name="map_error_route">Die Route konnte nicht geladen werden.</string>
+    <string name="map_error_best_order">Die beste Reihenfolge konnte nicht ermittelt werden.</string>
 </resources>

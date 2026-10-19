@@ -15,6 +15,8 @@ import com.falcon.tripingly.core.model.account.SessionState
 import com.falcon.tripingly.core.model.photo.Photo
 import com.falcon.tripingly.core.model.photo.PhotoOwner
 import com.falcon.tripingly.core.data.places.PlaceRepository
+import com.falcon.tripingly.core.data.routing.RouteErrorCodes
+import com.falcon.tripingly.core.data.routing.RouteRepository
 import com.falcon.tripingly.core.data.social.SocialRepository
 import com.falcon.tripingly.core.data.trips.MarkerChangeFailure
 import com.falcon.tripingly.core.data.trips.MarkerRepository
@@ -34,6 +36,11 @@ import com.falcon.tripingly.core.model.place.PlaceImage
 import com.falcon.tripingly.core.model.place.PlaceSearchResult
 import com.falcon.tripingly.core.model.place.PlaceSquare
 import com.falcon.tripingly.core.model.place.SearchResultType
+import com.falcon.tripingly.core.model.route.AlongTheWayPlace
+import com.falcon.tripingly.core.model.route.BestOrder
+import com.falcon.tripingly.core.model.route.ROUTES_ENTITLEMENT
+import com.falcon.tripingly.core.model.route.RoutePlan
+import com.falcon.tripingly.core.model.route.TravelMode
 import com.falcon.tripingly.core.model.social.LikeTarget
 import com.falcon.tripingly.core.model.social.ReportReason
 import com.falcon.tripingly.core.model.social.ReportTarget
@@ -56,7 +63,10 @@ import com.falcon.tripingly.feature.map.generated.resources.error_location_unava
 import com.falcon.tripingly.feature.map.generated.resources.error_location_unexpected
 import com.falcon.tripingly.feature.map.generated.resources.error_location_unknown
 import com.falcon.tripingly.feature.map.generated.resources.map_change_not_saved
+import com.falcon.tripingly.feature.map.generated.resources.map_best_order_already
 import com.falcon.tripingly.feature.map.generated.resources.map_error_add_day
+import com.falcon.tripingly.feature.map.generated.resources.map_error_best_order
+import com.falcon.tripingly.feature.map.generated.resources.map_error_route
 import com.falcon.tripingly.feature.map.generated.resources.map_error_cancel_join
 import com.falcon.tripingly.feature.map.generated.resources.map_error_delete_day
 import com.falcon.tripingly.feature.map.generated.resources.map_error_join
@@ -72,10 +82,13 @@ import com.falcon.tripingly.feature.map.generated.resources.map_join_requested
 import com.falcon.tripingly.feature.map.generated.resources.map_join_withdrawn
 import com.falcon.tripingly.feature.map.generated.resources.map_my_content_removed
 import com.falcon.tripingly.feature.map.generated.resources.map_reported
+import com.falcon.tripingly.feature.map.generated.resources.map_route_pick_destination
+import com.falcon.tripingly.feature.map.generated.resources.map_route_pro
 import com.falcon.tripingly.feature.map.generated.resources.map_trip_saved
 import com.falcon.tripingly.feature.map.generated.resources.map_trip_unsaved
 import com.falcon.tripingly.feature.map.presentation.component.PlacePin
 import com.falcon.tripingly.feature.map.presentation.component.placeClusters
+import com.falcon.tripingly.feature.map.presentation.component.placePinSize
 import com.falcon.tripingly.feature.map.presentation.component.placePins
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
@@ -87,6 +100,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.first
@@ -114,13 +128,15 @@ import kotlin.math.sqrt
  * changes wait for the server. Place pins load by map square once the camera rests (see [showPins]);
  * a tapped place opens a card that adds it to the open day. Everyone who sees the trip likes and comments
  * on its stops; someone else's public trip can also be added to my trips, its owner's profile opened and
- * the trip or a stop reported.
+ * the trip or a stop reported. The day's route, or a route from one place to another, is drawn with its
+ * travel times and the places along the way; owners and editors can put a day's stops in the best order.
  */
 class MapViewModel(
     private val tripId: String,
     private val tripRepository: TripRepository,
     private val markerRepository: MarkerRepository,
     private val placeRepository: PlaceRepository,
+    private val routeRepository: RouteRepository,
     private val photoRepository: PhotoRepository,
     private val socialRepository: SocialRepository,
     private val appConfigRepository: AppConfigRepository,
@@ -130,7 +146,8 @@ class MapViewModel(
 ) : ViewModel() {
 
     private val ui = MutableStateFlow(UiState())
-    private val myUserId = (sessionRepository.session.value as? SessionState.SignedIn)?.account?.id
+    private val session = sessionRepository.session
+    private val myUserId = (session.value as? SessionState.SignedIn)?.account?.id
 
     private val trip: StateFlow<TripDetails?> =
         tripRepository.observeTrip(tripId).stateIn(viewModelScope, SharingStarted.Eagerly, null)
@@ -146,6 +163,8 @@ class MapViewModel(
     /** Places whose first image is on its way for a stop card; see [loadStopPlaceImage]. */
     private val loadingStopPlaces = mutableSetOf<String>()
     private var searchJob: Job? = null
+    /** What the route on the map was last asked for. */
+    private var routeRequest: RouteRequest? = null
     /** The latest touch closed a place or stop, so its tap only closes it (see [onScreenTouch]). */
     private var isClosingTouch = false
 
@@ -156,6 +175,7 @@ class MapViewModel(
         loadTrip()
         watchFailedChanges()
         watchPinChanges()
+        watchRoute()
     }
 
     fun onAction(action: Action) {
@@ -225,6 +245,21 @@ class MapViewModel(
                 val target = if (action.photo.credit != null) ReportTarget.PlaceImage else ReportTarget.Photo
                 it.copy(reporting = ReportSubject(target, action.photo.id))
             }
+            is Action.OnToggleDayRoute -> when {
+                ui.value.isDayRouteShown -> ui.update { it.copy(isDayRouteShown = false) }
+                hasRoutes() -> ui.update { it.copy(isDayRouteShown = true) }
+                else -> showRoutesArePro()
+            }
+            is Action.OnTravelModeSelected -> ui.update { it.copy(travelMode = action.mode) }
+            is Action.OnRouteFromPlace -> startPointRoute()
+            is Action.OnRouteToPlace -> showPointRoute()
+            is Action.OnCancelRouteStart -> ui.update { it.copy(routeStart = null) }
+            is Action.OnClosePointRoute -> ui.update { it.copy(pointRoute = null) }
+            is Action.OnAlongTheWayClick -> openPlace(action.place)
+            is Action.OnAddAlongTheWay -> addAlongTheWay(action.place)
+            is Action.OnFindBestOrder -> findBestOrder()
+            is Action.OnApplyBestOrder -> applyBestOrder()
+            is Action.OnDismissBestOrder -> ui.update { it.copy(bestOrder = null) }
         }
     }
 
@@ -235,6 +270,17 @@ class MapViewModel(
         val markers = days.getOrNull(activeIndex)?.markers.orEmpty().mapIndexed { index, it -> it.toMapMarker(index + 1, role) }
         val selectedMarker = markers.firstOrNull { it.id == ui.selectedMarkerId }
         val selectedPlaceDetails = ui.selectedPlaceDetails?.takeIf { it.id == ui.selectedPlace?.id }
+        val plan = ui.routePlan
+        val stopPlaceIds = stopPlaceIds(details)
+        // A place added from the list is a stop now, until the route reloads without it.
+        val alongTheWay = plan?.takeIf { !it.isEstimated }?.alongTheWay.orEmpty().filter { it.place.id !in stopPlaceIds }
+        val pinnedIds = ui.placePins.mapTo(HashSet()) { it.place.id }
+        val config = appConfigRepository.config.value
+        // Only a real route is drawn; without one the day keeps its own lines between the stops.
+        val route = plan?.takeIf { !it.isEstimated }?.route
+        val routeLine = route?.points.orEmpty().map { Coordinates(it.lat, it.lng) }
+        val isDayRoute = ui.pointRoute == null && ui.isDayRouteShown
+        val shownRouteLine = routeLine.takeIf { isDayRoute || ui.pointRoute != null }.orEmpty()
         return State(
             tripName = details?.trip?.name.orEmpty(),
             tripCreatedAt = details?.trip?.createdAt,
@@ -269,7 +315,13 @@ class MapViewModel(
             isReporting = ui.isReporting,
             isUpdatingSharing = ui.isUpdatingSharing,
             isPhotoCameraOpen = ui.isPhotoCameraOpen && markers.any { it.id == ui.selectedMarkerId },
-            placePins = ui.placePins.toImmutableList(),
+            // The places along the way show on the map too, also where the map's own pins leave them out, in their own color.
+            placePins = alongTheWay.mapTo(HashSet()) { it.place.id }.let { alongIds ->
+                (ui.placePins.map { if (it.place.id in alongIds) it.copy(isAlongTheWay = true) else it } +
+                    alongTheWay.filter { it.place.id !in pinnedIds }.map { PlacePin(it.place, placePinSize(it.place, config), isAlongTheWay = true) })
+                    .toImmutableList()
+            },
+            pinDotBelowZoom = config.pinDotBelowZoom,
             placeClusters = ui.placeClusters.toImmutableList(),
             selectedPlace = ui.selectedPlace,
             selectedPlaceDetails = selectedPlaceDetails,
@@ -287,6 +339,30 @@ class MapViewModel(
             confirm = ui.confirm,
             othersContentMessage = ui.othersContent?.message,
             locationPrompt = ui.locationPrompt,
+            isDayRouteShown = ui.isDayRouteShown,
+            travelMode = ui.travelMode,
+            routeLine = shownRouteLine.toImmutableList(),
+            // While no route shows (also while the day's route loads); not under a route from A to B.
+            stopPath = markers.map { it.position }
+                .takeIf { shownRouteLine.isEmpty() && ui.pointRoute == null && it.size > 1 }.orEmpty().toImmutableList(),
+            isRouteEstimated = ui.isRouteUnavailable || plan?.isEstimated == true,
+            routeDurationSeconds = route?.durationSeconds,
+            routeDistanceMeters = route?.distanceMeters,
+            legSeconds = if (isDayRoute) route?.legs.orEmpty().mapNotNull { leg -> leg.toMarkerId?.let { it to leg.durationSeconds } }.toMap() else emptyMap(),
+            alongTheWay = alongTheWay.toImmutableList(),
+            routeAttribution = plan?.attribution,
+            isLoadingRoute = ui.isLoadingRoute,
+            routeStart = ui.routeStart,
+            pointRoute = ui.pointRoute,
+            canFindBestOrder = role?.canEdit == true && markers.size in MIN_BEST_ORDER_STOPS..MAX_BEST_ORDER_STOPS,
+            isFindingBestOrder = ui.isFindingBestOrder,
+            bestOrder = ui.bestOrder?.let { order ->
+                BestOrderPreview(
+                    stops = order.markerIds.mapNotNull { id -> markers.firstOrNull { it.id == id } }.toImmutableList(),
+                    byTravelTime = order.byTravelTime,
+                    savedMinutes = order.savedMinutes,
+                )
+            },
         )
     }
 
@@ -329,7 +405,7 @@ class MapViewModel(
     private fun canEdit(): Boolean = trip.value?.trip?.role?.canEdit == true
 
     private fun selectDay(index: Int) {
-        ui.update { it.copy(activeDayIndex = index, selectedMarkerId = null, isStopCardShown = false) }
+        ui.update { it.copy(activeDayIndex = index, selectedMarkerId = null, isStopCardShown = false, bestOrder = null) }
         currentDays().getOrNull(index)?.let { frameStops(it.markers) }
     }
 
@@ -423,6 +499,140 @@ class MapViewModel(
                 }
             }
         }
+    }
+
+    /**
+     * Draws the route the map shows: the open day's (the Route button), or one from A to B, which takes its
+     * place while it's open. Asked for again when the stops or their order change, here or from someone else,
+     * or another way to travel is picked. Without a route the day keeps its own lines between the stops.
+     */
+    private fun watchRoute() {
+        viewModelScope.launch {
+            combine(trip, ui, ::routeRequestOf).distinctUntilChanged().collectLatest(::loadRoute)
+        }
+    }
+
+    private fun routeRequestOf(details: TripDetails?, ui: UiState): RouteRequest? {
+        ui.pointRoute?.let { return RouteRequest.Between(it.from.location, it.to.location, ui.travelMode) }
+        if (!ui.isDayRouteShown) return null
+        val days = details?.days.orEmpty()
+        val day = days.getOrNull(ui.activeDayIndex.coerceIn(0, (days.size - 1).coerceAtLeast(0))) ?: return null
+        if (day.markers.size < 2) return null
+        return RouteRequest.Day(day.id, day.markers.map { it.id to it.location }, ui.travelMode)
+    }
+
+    private suspend fun loadRoute(request: RouteRequest?) {
+        val before = routeRequest
+        routeRequest = request
+        if (request == null) {
+            ui.update { it.copy(routePlan = null, isRouteUnavailable = false, isLoadingRoute = false) }
+            return
+        }
+        // The line stays while the same day or the same two places load again; another one's goes at once.
+        val isSameRoute = before != null && before.subject == request.subject
+        ui.update {
+            it.copy(
+                isLoadingRoute = true,
+                routePlan = it.routePlan.takeIf { isSameRoute },
+                isRouteUnavailable = it.isRouteUnavailable && isSameRoute,
+            )
+        }
+        val result = when (request) {
+            is RouteRequest.Day -> {
+                val day = currentDays().firstOrNull { it.id == request.dayId } ?: return ui.update { it.copy(isLoadingRoute = false) }
+                routeRepository.dayRoute(tripId, day, request.mode)
+            }
+            is RouteRequest.Between -> routeRepository.route(request.from, request.to, request.mode, tripId)
+        }
+        ui.update {
+            when (result) {
+                is AppResult.Success -> it.copy(routePlan = result.data, isRouteUnavailable = false, isLoadingRoute = false)
+                // Not Pro after all (the account changed): the route closes with the server's message.
+                is AppResult.Error -> if (result.error.hasCode(RouteErrorCodes.PREMIUM_REQUIRED)) {
+                    it.copy(
+                        routePlan = null,
+                        isDayRouteShown = false,
+                        pointRoute = null,
+                        isLoadingRoute = false,
+                        message = result.error.toUiText(Res.string.map_error_route),
+                    )
+                } else {
+                    it.copy(
+                        routePlan = null,
+                        isRouteUnavailable = true,
+                        isLoadingRoute = false,
+                        // The note on the route says it already; anything else (the connection) is explained too.
+                        message = if (result.error.hasCode(RouteErrorCodes.ROUTING_UNAVAILABLE)) it.message else result.error.toUiText(Res.string.map_error_route),
+                    )
+                }
+            }
+        }
+    }
+
+    /** Routes along streets are Tripinly Pro; the server decides, `GET /me` tells the app. */
+    private fun hasRoutes(): Boolean =
+        (session.value as? SessionState.SignedIn)?.account?.entitlements?.contains(ROUTES_ENTITLEMENT) == true
+
+    /** Until there's a paywall, a note says routes come with Tripinly Pro. */
+    private fun showRoutesArePro() {
+        ui.update { it.copy(message = UiText.Note(UiText.Resource(Res.string.map_route_pro))) }
+    }
+
+    /** "Route from here" on a place's card: the next place's card offers "Route to here". */
+    private fun startPointRoute() {
+        val place = ui.value.selectedPlace ?: return
+        if (!hasRoutes()) return showRoutesArePro()
+        closePlace()
+        ui.update { it.copy(routeStart = place, message = UiText.Note(UiText.Resource(Res.string.map_route_pick_destination))) }
+    }
+
+    /** From the place picked first to this one, both on screen. */
+    private fun showPointRoute() {
+        val from = ui.value.routeStart ?: return
+        val to = ui.value.selectedPlace ?: return
+        closePlace()
+        val points = listOf(from.location, to.location).map { Coordinates(it.lat, it.lng) }
+        ui.update { it.copy(routeStart = null, pointRoute = PointRoute(from, to), frame = CameraFrame(points, (it.frame?.id ?: 0) + 1)) }
+    }
+
+    /** A place along the way becomes the open day's last stop; shows at once like a tap on the map. */
+    private fun addAlongTheWay(place: MapPlace) {
+        val day = activeDay() ?: return
+        if (!canEdit()) return
+        viewModelScope.launch { markerRepository.addMarker(tripId, day.id, NewMarker(place.name, place.location, placeId = place.id)) }
+    }
+
+    /** Asks the server for the best order of the open day's stops; it shows for the user to apply. */
+    private fun findBestOrder() {
+        val day = activeDay() ?: return
+        if (!canEdit() || ui.value.isFindingBestOrder) return
+        ui.update { it.copy(isFindingBestOrder = true) }
+        viewModelScope.launch {
+            val result = routeRepository.bestOrder(tripId, day, ui.value.travelMode)
+            val current = activeDay()?.markers?.map { it.id }
+            ui.update {
+                when {
+                    result is AppResult.Error -> it.copy(isFindingBestOrder = false, message = result.error.toUiText(Res.string.map_error_best_order))
+                    (result as AppResult.Success).data.markerIds == current ->
+                        it.copy(isFindingBestOrder = false, message = UiText.Note(UiText.Resource(Res.string.map_best_order_already)))
+                    else -> it.copy(isFindingBestOrder = false, bestOrder = result.data)
+                }
+            }
+        }
+    }
+
+    /**
+     * Saves the proposed order like any reorder: shown at once, sent in the background. A stop added since
+     * keeps its place at the end.
+     */
+    private fun applyBestOrder() {
+        val order = ui.value.bestOrder ?: return
+        val day = activeDay() ?: return
+        ui.update { it.copy(bestOrder = null) }
+        if (!canEdit()) return
+        val current = day.markers.map { it.id }
+        val ids = order.markerIds.filter { it in current } + current.filter { it !in order.markerIds }
+        viewModelScope.launch { markerRepository.reorderMarkers(tripId, day.id, ids) }
     }
 
     private fun closeStop() {
@@ -956,6 +1166,46 @@ class MapViewModel(
         val isSearching: Boolean = false,
         /** Where a long press dropped a pin that waits for its name. */
         val pinToName: Coordinates? = null,
+        /** The Route button: the open day's route is drawn. */
+        val isDayRouteShown: Boolean = false,
+        val travelMode: TravelMode = TravelMode.Walking,
+        /** "Route from here" was tapped on this place; the next place's card offers "Route to here". */
+        val routeStart: MapPlace? = null,
+        /** A route from A to B, shown instead of the day's. */
+        val pointRoute: PointRoute? = null,
+        val routePlan: RoutePlan? = null,
+        /** The route couldn't be had: the day keeps its own lines, without times. */
+        val isRouteUnavailable: Boolean = false,
+        val isLoadingRoute: Boolean = false,
+        /** The best order proposed for the open day, waiting for Apply. */
+        val bestOrder: BestOrder? = null,
+        val isFindingBestOrder: Boolean = false,
+    )
+
+    /** What a route is asked for; [subject] is the same for the same day or the same two places. */
+    private sealed interface RouteRequest {
+        val subject: Any
+
+        data class Day(val dayId: String, val stops: List<Pair<String, GeoPoint>>, val mode: TravelMode) : RouteRequest {
+            override val subject get() = dayId
+        }
+
+        data class Between(val from: GeoPoint, val to: GeoPoint, val mode: TravelMode) : RouteRequest {
+            override val subject get() = from to to
+        }
+    }
+
+    /** A route from one place to another. */
+    @Immutable
+    data class PointRoute(val from: MapPlace, val to: MapPlace)
+
+    /** The best order, for the user to apply: the stops in their new order (numbered as they are now). */
+    @Immutable
+    data class BestOrderPreview(
+        val stops: ImmutableList<MapMarker>,
+        /** By real travel times; by straight-line distance when they weren't available. */
+        val byTravelTime: Boolean,
+        val savedMinutes: Int?,
     )
 
     /** A day tab: [number] counts from 1; [date] is null when the trip has no dates. */
@@ -1047,6 +1297,8 @@ class MapViewModel(
         val locationPrompt: LocationPrompt? = null,
         /** Place pins in view, the most liked and best known first. */
         val placePins: ImmutableList<PlacePin> = persistentListOf(),
+        /** Below this camera zoom the place pins are drawn as dots (server value). */
+        val pinDotBelowZoom: Float = 14f,
         /** Bubbles of liked places when zoomed out. */
         val placeClusters: ImmutableList<PlaceCluster> = persistentListOf(),
         /** The place whose card is open. */
@@ -1067,6 +1319,33 @@ class MapViewModel(
         val isSearching: Boolean = false,
         /** A long press dropped a pin; the name dialog is open. */
         val isNamingPin: Boolean = false,
+        /** The Route button is on: the open day's route shows with its times. */
+        val isDayRouteShown: Boolean = false,
+        val travelMode: TravelMode = TravelMode.Walking,
+        /** The route to draw, the day's or from A to B; empty when there's none. */
+        val routeLine: ImmutableList<Coordinates> = persistentListOf(),
+        /** Real routes aren't available right now: nothing is drawn for them and a note says so. */
+        val isRouteEstimated: Boolean = false,
+        /** The open day's stops in order, joined on the map by direction lines while no route shows. */
+        val stopPath: ImmutableList<Coordinates> = persistentListOf(),
+        val routeDurationSeconds: Int? = null,
+        val routeDistanceMeters: Int? = null,
+        /** The time to each stop from the one before, by stop ID. */
+        val legSeconds: Map<String, Int> = emptyMap(),
+        /** Places near the route, in the order the route passes them. */
+        val alongTheWay: ImmutableList<AlongTheWayPlace> = persistentListOf(),
+        /** Shown over the map with a route. */
+        val routeAttribution: String? = null,
+        val isLoadingRoute: Boolean = false,
+        /** "Route from here" was tapped on this place; another place's card offers "Route to here". */
+        val routeStart: MapPlace? = null,
+        /** A route from A to B shows instead of the day's. */
+        val pointRoute: PointRoute? = null,
+        /** An owner or editor, with 3 to 25 stops on the open day. */
+        val canFindBestOrder: Boolean = false,
+        val isFindingBestOrder: Boolean = false,
+        /** The proposed best order, waiting for Apply. */
+        val bestOrder: BestOrderPreview? = null,
     )
 
     sealed interface Event {
@@ -1153,6 +1432,21 @@ class MapViewModel(
         data object OnClosePlaceImage : Action
         /** Reports the photo open in a viewer: a Commons image as the place's image, anything else as a photo. */
         data class OnReportPhoto(val photo: Photo) : Action
+        /** The Route button: shows or hides the open day's route. */
+        data object OnToggleDayRoute : Action
+        data class OnTravelModeSelected(val mode: TravelMode) : Action
+        /** The open place's card: a route from here to the next place picked. */
+        data object OnRouteFromPlace : Action
+        /** The open place's card: the route from the place picked first to this one. */
+        data object OnRouteToPlace : Action
+        data object OnCancelRouteStart : Action
+        data object OnClosePointRoute : Action
+        data class OnAlongTheWayClick(val place: MapPlace) : Action
+        /** Adds a place along the way to the open day. */
+        data class OnAddAlongTheWay(val place: MapPlace) : Action
+        data object OnFindBestOrder : Action
+        data object OnApplyBestOrder : Action
+        data object OnDismissBestOrder : Action
     }
 
     private companion object {
@@ -1168,5 +1462,8 @@ class MapViewModel(
         val ADDRESS_TYPES = setOf(SearchResultType.Place, SearchResultType.House, SearchResultType.Street, SearchResultType.Other)
         /** A tapped cluster opens up into its places. */
         const val CLUSTER_ZOOM_STEP = 2f
+        /** With two stops there's only one order (the first stays first); the server orders up to 25. */
+        const val MIN_BEST_ORDER_STOPS = 3
+        const val MAX_BEST_ORDER_STOPS = 25
     }
 }

@@ -52,11 +52,25 @@ data class MapState(
 | Place with a photo | Round pin (40 dp) with the place's image (`coverThumbUrl`) inside a ring of its pin color; for places with prominence ≥ `photoPinMinProminence` (90) or ≥ `photoPinMinLikes` (3) likes, the first `mapMaxPhotoPins` (100) in pin order (all from `GET /app-config`). The icon shows until the image has loaded | Place shapes' `coverImageId`, `coverThumbUrl` (backend#45) |
 | Tripinly place (not in trip) | Medium "unselected" pin with category icon and like count | `in-view` with `isTripinly: true` |
 | OSM place | Small dot with category icon, name only at high zoom | `in-view` with `isTripinly: false` |
-| Along the way | Like OSM or Tripinly pins, with a subtle highlight | `alongTheWay` |
+| Along the way | Like the other place pins, but violet (`AlongTheWayPinColor`) with a white icon, also when the place was already a pin | `alongTheWay` |
 | Cluster | Circle with count | `in-view` cluster items |
 
 - Render thumbnails to bitmaps off the main thread (download with the app's image loader, crop circle). Android: `BitmapDescriptor`; iOS: `UIImage` icon (prefer icon images over `iconView` for performance).
 - Built (stage 6): `rememberCoverThumbs` loads each cover through Coil's singleton loader, cached by **photo ID + size**, not by the signed URL (it changes about every hour). Android draws the pin with `MarkerComposable` + `TripMarkerIcon(cover)`, iOS paints it with Skia (`drawCoverPin`). A pin is redrawn only when its number, color or cover changes.
+- **Dots when zoomed out** (owner, 2026-10-19, like Google Maps): below camera zoom `pinDotBelowZoom` (server, `APP_PIN_DOT_BELOW_ZOOM`, default 14) every place pin, photo pins included, turns into a small dot of its pin color (`PlaceDotSize` 10 dp, white ring), so route lines and stops stay readable; zooming back in grows them into pins. The tapped place, stops and clusters stay as they are. The change is instant, with no animation (owner, 2026-10-19: a fade was tried, a scale is too costly on Android; revisit later): Android gives each pin a hidden dot marker from the start and only shows one and hides the other (making or dropping 150 markers mid-pinch lagged, and changing a marker's icon makes every pin blink; each pin's markers sit under one key by place ID so a pin reload doesn't remake them all), iOS changes the icon (Swift `setMarkers`). A real shrink would redraw every pin icon on every frame, which costs battery and blinks on Android. Android reads the live zoom from the camera; iOS reports it from Swift (`onZoomChange`).
+
+### Map look: where to change it
+
+| What | Value | Where |
+|---|---|---|
+| Zoom below which place pins are dots | 14 (0–22) | Railway api `APP_PIN_DOT_BELOW_ZOOM` → `pinDotBelowZoom` |
+| Dot size | 10 dp | `PlaceDotSize`, `PlacePins.kt` |
+| Pin ↔ dot change | instant, no animation | `GoogleMapView.android.kt` (`isDots`), Swift `setMarkers` |
+| Along-the-way pin color | violet `0xFF8E24AA` | `AlongTheWayPinColor`, `PlacePins.kt` |
+| Place pin sizes | 18 / 30 / 36 dp by prominence (`pinMediumMinProminence` 60, `pinLargeMinProminence` 95 from the server) | `PinSizes`, `PlacePins.kt` |
+| Route line | bright blue `0xFF2196F3`, 5 dp | `RouteColor`, `RouteWidth`, `GoogleMapView.kt` |
+| Direction lines (no route) | slate blue `0xFF3D5A80`, 3 dp, arrows, one 1.2 s streak | `StopPathColor`, `StopPathWidth`, `STOP_PATH_SWEEP_MILLIS`, `StopPath.kt` |
+
 - Use the Google Maps utility libraries for **client-side clustering** of trip markers only if needed. Place clusters come from the server.
 
 ## Stop card and photos
@@ -108,13 +122,20 @@ Decided 2026-10-10 (Shahin, "Tiles + prefetch"): places load and draw like Googl
 
 - Trip screen: toggle "Show route" for the selected day → `GET /days/{id}/route?mode=walking&categories=…`. Draw the decoded polyline (encoded polyline, precision 5; decode in shared code). Show total time/distance and per-leg times between pins.
 - A→B: from the place card or search, "Route from here / to here" → `GET /routes?from=…&to=…&mode=…`.
-- Mode selector: walking (default), cycling, driving. No public transport.
+- Mode selector: walking (default), cycling, driving. Public transport (tram, U-Bahn, bus) is being decided (owner, 2026-10-19): openrouteservice has none on its hosted service.
 - **Along the way**: show `alongTheWay` pins and a horizontal list under the map ("in 12 min · 80 m off route"), ordered along the route. Each item has "Add to trip".
 - Refetch the day route after marker add/move/delete/reorder (including realtime events).
-- `ROUTING_UNAVAILABLE` → show straight lines between markers with a small "Route unavailable" note. A `degraded: true` flag means the same.
+- **Routes are Tripinly Pro** (`routes` in `GET /me` entitlements; the server answers 403 `PREMIUM_REQUIRED` otherwise). Without Pro, the Route button and "Route from here" show a "comes with Tripinly Pro" note (the paywall later).
+- **One line style** (product owner, 2026-10-18): the map shows the day's direction lines or a real route, never a server straight-line estimate on top. `ROUTING_UNAVAILABLE` or `degraded: true` → no route drawn, the direction lines stay, and a small "Routes aren't available right now" note.
+
+*(Built in stage 8: the Route button on the stops card turns the day's route on; leg times sit between the stop chips; Walk/Bike/Car chips; the places along the way are a row in the same card and pins on the map. "Route from here" / "Route to here" on place cards, the A→B card replaces the stops card until closed. Routes are kept in memory by stops and mode, so the same stops are routed once; a day is routed after its own stop changes reached the server. The MapKit fallback on iOS draws no route.)*
+
+*Direction lines: while no route shows, the open day's stops are joined by straight slate-blue lines (`StopPathColor`, quieter than the route's bright blue) with a flat arrow halfway along each stretch pointing to the next stop (`StopPath.kt`). When the line appears or changes, a light streak runs along it once (1.2 s, like a progress bar); nothing animates after that, because a lasting animation redraws the map every frame and heats the phone (owner, 2026-10-18). Drawn on the device with no routing call. Straight since 2026-10-18: the owner tried the curve and the coral and didn't like them.*
 
 ## Best route
 
-`POST /days/{id}/optimize` → preview the new order (animate the pins or show a list) → "Apply" calls `?apply=true`.
-- `mode: "straight_line"`: free result; show a hint that premium uses real travel times (see `premium-and-paywall`).
+The Best order button sits on the stops card whether or not the route shows (owner, 2026-10-19), for owners and editors with 3–25 stops; it uses the selected travel mode (walking by default).
+`POST /days/{id}/optimize` → preview the new order (a list in a dialog) → "Apply" saves it as a normal reorder (`PUT /days/{id}/marker-order`, optimistic like every stop change) rather than `?apply=true`, so it shows at once.
+Free for everyone, by real travel times (product owner, 2026-10-18).
 - `mode: "travel_time"`: show "N min shorter" from `savedMinutes`.
+- `mode: "straight_line"` (`degraded`): travel times weren't available; say it's ordered by distance.

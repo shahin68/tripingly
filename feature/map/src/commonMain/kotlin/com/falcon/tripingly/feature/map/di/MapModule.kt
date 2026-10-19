@@ -13,6 +13,7 @@ val mapModule = module {
             tripRepository = get(),
             markerRepository = get(),
             placeRepository = get(),
+            routeRepository = get(),
             photoRepository = get(),
             socialRepository = get(),
             appConfigRepository = get(),

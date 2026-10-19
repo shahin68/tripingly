@@ -146,4 +146,34 @@
     <string name="map_my_content_removed">Your photos, comments and likes on this stop were removed.</string>
     <string name="map_error_remove_my_content">Couldn’t remove your photos, comments and likes.</string>
     <string name="map_trip_created">Created %1$s</string>
+
+    <!-- Routes -->
+    <string name="map_route">Route</string>
+    <string name="map_mode_walking">Walk</string>
+    <string name="map_mode_cycling">Bike</string>
+    <string name="map_mode_driving">Car</string>
+    <string name="map_route_minutes">%1$d min</string>
+    <string name="map_route_hours">%1$d h %2$d min</string>
+    <string name="map_route_meters">%1$d m</string>
+    <string name="map_route_km">%1$s km</string>
+    <string name="map_route_total">%1$s · %2$s</string>
+    <string name="map_route_estimated">Routes aren’t available right now.</string>
+    <string name="map_route_pro">Routes along streets come with Tripinly Pro.</string>
+    <string name="map_along_the_way">Along the way</string>
+    <string name="map_along_the_way_item">in %1$s · %2$s off route</string>
+    <string name="map_along_add">Add to day %1$d</string>
+    <string name="map_route_from_here">Route from here</string>
+    <string name="map_route_to_here">Route to here</string>
+    <string name="map_route_pick_destination">Now open the place you want to go to.</string>
+    <string name="map_route_start">Route from %1$s</string>
+    <string name="map_route_between">%1$s → %2$s</string>
+    <string name="map_route_close">Close the route</string>
+    <string name="map_best_order">Best order</string>
+    <string name="map_best_order_title">Best order for this day</string>
+    <string name="map_best_order_saved">%1$d min shorter than now.</string>
+    <string name="map_best_order_hint">Ordered by distance: travel times aren’t available right now.</string>
+    <string name="map_best_order_apply">Apply</string>
+    <string name="map_best_order_already">Your stops are already in the best order.</string>
+    <string name="map_error_route">Couldn’t load the route.</string>
+    <string name="map_error_best_order">Couldn’t find the best order.</string>
 </resources>

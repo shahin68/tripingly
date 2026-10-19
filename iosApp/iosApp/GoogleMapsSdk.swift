@@ -36,6 +36,10 @@ private final class AppGoogleMap: NSObject, GoogleMap, GMSMapViewDelegate {
     private let mapView = GMSMapView(options: GMSMapViewOptions())
     private let listener: any GoogleMapListener
     private var markers: [String: GMSMarker] = [:]
+    private var route: GMSPolyline?
+    private var stopPath: GMSPolyline?
+    private var stopPathArrows: [GMSMarker] = []
+    private var stopPathSweep: GMSPolyline?
 
     var view: UIView { mapView }
 
@@ -93,6 +97,69 @@ private final class AppGoogleMap: NSObject, GoogleMap, GMSMapViewDelegate {
         markers = kept
     }
 
+    func setRoute(points: [GoogleMapPoint], color: UIColor, width: Double) {
+        route?.map = nil
+        route = nil
+        guard points.count > 1 else { return }
+        let path = GMSMutablePath()
+        for point in points {
+            path.add(CLLocationCoordinate2D(latitude: point.latitude, longitude: point.longitude))
+        }
+        let line = GMSPolyline(path: path)
+        line.strokeColor = color
+        line.strokeWidth = CGFloat(width)
+        line.map = mapView
+        route = line
+    }
+
+    func setStopPath(points: [GoogleMapPoint], color: UIColor, width: Double, arrows: [GoogleMapArrow], arrowIcon: UIImage) {
+        stopPath?.map = nil
+        stopPath = nil
+        stopPathArrows.forEach { $0.map = nil }
+        stopPathArrows = []
+        guard points.count > 1 else { return }
+        let line = GMSPolyline(path: path(of: points))
+        line.strokeColor = color
+        line.strokeWidth = CGFloat(width)
+        line.map = mapView
+        stopPath = line
+        stopPathArrows = arrows.map { arrow in
+            let marker = GMSMarker(position: CLLocationCoordinate2D(latitude: arrow.latitude, longitude: arrow.longitude))
+            marker.icon = arrowIcon
+            // Flat, so it turns with the map and keeps pointing along the line.
+            marker.isFlat = true
+            marker.rotation = arrow.bearing
+            marker.groundAnchor = CGPoint(x: 0.5, y: 0.5)
+            marker.isTappable = false
+            marker.zIndex = 0
+            marker.map = mapView
+            return marker
+        }
+    }
+
+    func setStopPathSweep(points: [GoogleMapPoint], color: UIColor, width: Double) {
+        guard points.count > 1 else {
+            stopPathSweep?.map = nil
+            stopPathSweep = nil
+            return
+        }
+        let line = stopPathSweep ?? GMSPolyline()
+        line.path = path(of: points)
+        line.strokeColor = color
+        line.strokeWidth = CGFloat(width)
+        line.zIndex = 1
+        if line.map == nil { line.map = mapView }
+        stopPathSweep = line
+    }
+
+    private func path(of points: [GoogleMapPoint]) -> GMSPath {
+        let path = GMSMutablePath()
+        for point in points {
+            path.add(CLLocationCoordinate2D(latitude: point.latitude, longitude: point.longitude))
+        }
+        return path
+    }
+
     func mapView(_ mapView: GMSMapView, idleAt position: GMSCameraPosition) {
         // The whole view, not only the part inside the padding.
         let size = mapView.bounds.size
@@ -107,6 +174,10 @@ private final class AppGoogleMap: NSObject, GoogleMap, GMSMapViewDelegate {
             north: corners.map(\.latitude).max() ?? position.target.latitude,
             east: corners.map(\.longitude).max() ?? position.target.longitude
         )
+    }
+
+    func mapView(_ mapView: GMSMapView, didChange position: GMSCameraPosition) {
+        listener.onZoomChange(zoom: position.zoom)
     }
 
     func mapView(_ mapView: GMSMapView, willMove gesture: Bool) {

@@ -14,6 +14,7 @@ import com.falcon.tripingly.core.data.account.FakeAccountBackend
 import com.falcon.tripingly.core.data.config.FakeAppConfigRepository
 import com.falcon.tripingly.core.data.photos.FakePhotoRepository
 import com.falcon.tripingly.core.data.places.FakePlaceRepository
+import com.falcon.tripingly.core.data.routing.FakeRouteRepository
 import com.falcon.tripingly.core.data.social.FakeSocialRepository
 import com.falcon.tripingly.core.data.trips.FakeTripBackend
 import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
@@ -66,6 +67,7 @@ class MapFlowTest {
         tripRepository = backend,
         markerRepository = backend,
         placeRepository = FakePlaceRepository(),
+        routeRepository = FakeRouteRepository(),
         photoRepository = FakePhotoRepository(),
         socialRepository = FakeSocialRepository(),
         appConfigRepository = FakeAppConfigRepository(),

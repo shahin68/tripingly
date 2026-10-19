@@ -146,4 +146,34 @@
     <string name="map_my_content_removed">A fotóid, hozzászólásaid és kedveléseid eltávolítva erről a megállóról.</string>
     <string name="map_error_remove_my_content">Nem sikerült eltávolítani a fotóidat, hozzászólásaidat és kedveléseidet.</string>
     <string name="map_trip_created">Létrehozva: %1$s</string>
+
+    <!-- Routes -->
+    <string name="map_route">Útvonal</string>
+    <string name="map_mode_walking">Gyalog</string>
+    <string name="map_mode_cycling">Bicikli</string>
+    <string name="map_mode_driving">Autó</string>
+    <string name="map_route_minutes">%1$d perc</string>
+    <string name="map_route_hours">%1$d óra %2$d perc</string>
+    <string name="map_route_meters">%1$d m</string>
+    <string name="map_route_km">%1$s km</string>
+    <string name="map_route_total">%1$s · %2$s</string>
+    <string name="map_route_estimated">Az útvonalak most nem érhetők el.</string>
+    <string name="map_route_pro">Az utcákon vezető útvonalak a Tripinly Pro részei.</string>
+    <string name="map_along_the_way">Útközben</string>
+    <string name="map_along_the_way_item">%1$s múlva · %2$s-re az útvonaltól</string>
+    <string name="map_along_add">Hozzáadás a(z) %1$d. naphoz</string>
+    <string name="map_route_from_here">Útvonal innen</string>
+    <string name="map_route_to_here">Útvonal ide</string>
+    <string name="map_route_pick_destination">Most nyisd meg a helyet, ahová menni szeretnél.</string>
+    <string name="map_route_start">Útvonal innen: %1$s</string>
+    <string name="map_route_between">%1$s → %2$s</string>
+    <string name="map_route_close">Útvonal bezárása</string>
+    <string name="map_best_order">Legjobb sorrend</string>
+    <string name="map_best_order_title">A nap legjobb sorrendje</string>
+    <string name="map_best_order_saved">%1$d perccel rövidebb, mint most.</string>
+    <string name="map_best_order_hint">Távolság szerint rendezve: a menetidők most nem érhetők el.</string>
+    <string name="map_best_order_apply">Alkalmaz</string>
+    <string name="map_best_order_already">A megállóid már a legjobb sorrendben vannak.</string>
+    <string name="map_error_route">Nem sikerült betölteni az útvonalat.</string>
+    <string name="map_error_best_order">Nem sikerült megtalálni a legjobb sorrendet.</string>
 </resources>

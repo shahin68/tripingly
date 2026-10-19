@@ -1,16 +1,17 @@
 ---
 name: premium-and-paywall
-description: Use for Tripinly premium features in the app — reading entitlements, showing premium vs free behaviour (best route by real travel time), upsell hints, and the paywall/purchase flow once the billing provider is decided.
+description: Use for Tripinly premium features in the app — reading entitlements, showing premium vs free behaviour (routes along streets), upsell hints, and the paywall/purchase flow once the billing provider is decided.
 ---
 
 # Premium and paywall
 
 ## Now (billing not decided)
 
-- Entitlements come from `GET /me` (for example `best_route_realtime`). Store them in the session state; refresh on app foreground and after purchase.
-- Best route: always call `POST /days/{id}/optimize`; the server returns `mode`. For `straight_line`, show the result plus a small hint: "Premium plans this with real walking times". For `travel_time`, show "N min shorter".
+- Entitlements come from `GET /me` (today `routes`). Store them in the session state; refresh on app foreground and after purchase.
+- Routes (day route, A→B, places along the way) need `routes`; without it the Route button and "Route from here" show a "comes with Tripinly Pro" note (the paywall later). The server enforces it with 403 `PREMIUM_REQUIRED`.
+- Best order is free for everyone: always call `POST /days/{id}/optimize`; `travel_time` → "N min shorter", `straight_line` (degraded) → "ordered by distance".
 - Never unlock by a local flag. Debug builds may have a developer menu that *displays* entitlement state, but not one that fakes it.
-- Route lines and places along the way are free: no premium UI there.
+- Dev accounts on staging (`DEV_ACCOUNTS_PRO`) and the fake-API build have Pro until the paywall exists.
 
 ## Later (after the user decides — see open question 1)
 

@@ -2,6 +2,7 @@
 
 package com.falcon.tripingly.feature.map.presentation.component
 
+import platform.UIKit.UIColor
 import platform.UIKit.UIImage
 import platform.UIKit.UIView
 import kotlin.experimental.ExperimentalObjCName
@@ -36,7 +37,26 @@ interface GoogleMap {
 
     /** Replaces the markers; a marker with the same key is moved or updated. */
     fun setMarkers(markers: List<GoogleMapMarker>)
+
+    /** Replaces the route's line, drawn under the markers; fewer than two points draw none. [width] is in points. */
+    fun setRoute(points: List<GoogleMapPoint>, color: UIColor, width: Double)
+
+    /**
+     * Replaces the stops' direction line, drawn under the markers, and its [arrows]: flat markers showing
+     * [arrowIcon] (pointing north) turned by their bearing. Fewer than two points draw none.
+     */
+    fun setStopPath(points: List<GoogleMapPoint>, color: UIColor, width: Double, arrows: List<GoogleMapArrow>, arrowIcon: UIImage)
+
+    /** Replaces the streak running along the stops' line, on top of it; fewer than two points draw none. */
+    fun setStopPathSweep(points: List<GoogleMapPoint>, color: UIColor, width: Double)
 }
+
+@ObjCName("GoogleMapPoint", exact = true)
+class GoogleMapPoint(val latitude: Double, val longitude: Double)
+
+/** [bearing] in degrees clockwise from north. */
+@ObjCName("GoogleMapArrow", exact = true)
+class GoogleMapArrow(val latitude: Double, val longitude: Double, val bearing: Double)
 
 @ObjCName("GoogleMapMarker", exact = true)
 class GoogleMapMarker(
@@ -62,6 +82,9 @@ interface GoogleMapListener {
 
     /** A finger started moving the camera. */
     fun onGestureStart()
+
+    /** The camera's zoom while it moves, every frame: keep it cheap. */
+    fun onZoomChange(zoom: Float)
 
     fun onTap(latitude: Double, longitude: Double)
 

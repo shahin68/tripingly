@@ -28,4 +28,6 @@ data class AppConfig(
     val photoPinMinLikes: Int = 3,
     /** Most pins drawn with a photo at once, in pin order; the rest keep their icon. */
     val mapMaxPhotoPins: Int = 100,
+    /** Below this camera zoom, place pins are drawn as small dots; they grow back to pins when zoomed in. */
+    val pinDotBelowZoom: Float = 14f,
 )

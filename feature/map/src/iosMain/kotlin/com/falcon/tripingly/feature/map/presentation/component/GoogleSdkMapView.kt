@@ -1,15 +1,22 @@
 package com.falcon.tripingly.feature.map.presentation.component
 
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
@@ -24,6 +31,7 @@ import com.falcon.tripingly.core.model.place.MapPlace
 import com.falcon.tripingly.core.model.place.PlaceCategory
 import com.falcon.tripingly.core.model.place.PlaceCluster
 import com.falcon.tripingly.feature.map.domain.model.MapMarker
+import platform.UIKit.UIColor
 import platform.UIKit.UIImage
 import kotlin.math.abs
 
@@ -40,8 +48,11 @@ internal fun GoogleSdkMapView(
     zoomLevel: Float,
     markers: List<MapMarker>,
     placePins: List<PlacePin>,
+    pinDotBelowZoom: Float,
     placeClusters: List<PlaceCluster>,
     selectedPlace: MapPlace?,
+    routeLine: List<Coordinates>,
+    stopPath: List<Coordinates>,
     isMyLocationEnabled: Boolean,
     coveredBottom: Dp,
     onCameraMove: (Coordinates, Float, GeoBounds?) -> Unit,
@@ -65,6 +76,9 @@ internal fun GoogleSdkMapView(
 
     // Where the camera last rested, so a camera target that is already there isn't sent again.
     val camera = remember { CameraRest() }
+    // The camera's zoom as it moves, read only to tell when the pins turn into dots and back.
+    var liveZoom by remember { mutableStateOf(zoomLevel) }
+    val isDots by remember(pinDotBelowZoom) { derivedStateOf { liveZoom < pinDotBelowZoom } }
     val map = remember(googleMaps) {
         googleMaps.createMap(
             object : GoogleMapListener {
@@ -84,6 +98,10 @@ internal fun GoogleSdkMapView(
                 }
 
                 override fun onGestureStart() = currentOnMapTouch()
+
+                override fun onZoomChange(zoom: Float) {
+                    liveZoom = zoom
+                }
 
                 override fun onTap(latitude: Double, longitude: Double) {
                     currentOnMapTouch()
@@ -125,6 +143,15 @@ internal fun GoogleSdkMapView(
     // As much room at the top as at the bottom keeps the camera's center in the middle of the view.
     LaunchedEffect(coveredBottom) { map.setPadding(coveredBottom.value.toDouble(), coveredBottom.value.toDouble()) }
 
+    // Under every pin, as on Android.
+    LaunchedEffect(routeLine) {
+        map.setRoute(
+            points = routeLine.map { GoogleMapPoint(it.latitude, it.longitude) },
+            color = RouteColor.toUIColor(),
+            width = RouteWidth.value.toDouble(),
+        )
+    }
+
     // Every pin look is drawn once and shared by every pin that looks the same.
     val categoryIcons = PlaceCategory.entries.associateWith { rememberVectorPainter(it.icon) }
     val placeColor = MaterialTheme.colorScheme.secondary
@@ -133,20 +160,51 @@ internal fun GoogleSdkMapView(
     val onHotSpotColor = MaterialTheme.colorScheme.onTertiary
     val density = LocalDensity.current
     val layoutDirection = LocalLayoutDirection.current
+
+    // The stops' line with its arrows, as on Android.
+    val stopPathShape = remember(stopPath) { stopPathShape(stopPath) }
+    val arrowIcon = remember(density) { drawPathArrow(density, layoutDirection).toUIImage(density.density) }
+    LaunchedEffect(stopPathShape) {
+        val points = stopPathShape.points.map { GoogleMapPoint(it.latitude, it.longitude) }
+        val width = StopPathWidth.value.toDouble()
+        map.setStopPath(
+            points = points,
+            color = StopPathColor.toUIColor(),
+            width = width,
+            arrows = stopPathShape.arrows.map { GoogleMapArrow(it.position.latitude, it.position.longitude, it.bearing.toDouble()) },
+            arrowIcon = arrowIcon,
+        )
+        // Once, like a progress bar; then nothing moves.
+        val sweepColor = StopPathSweepColor.toUIColor()
+        Animatable(0f).animateTo(1f, tween(STOP_PATH_SWEEP_MILLIS, easing = LinearEasing)) {
+            map.setStopPathSweep(sweepOf(points, value), sweepColor, width)
+        }
+        map.setStopPathSweep(emptyList(), sweepColor, width)
+    }
     val textMeasurer = rememberTextMeasurer()
     val pinPhotos = rememberPinPhotos(placePins)
     val pinIcons = remember(placeColor, hotSpotColor, density) { mutableMapOf<PlacePinLook, UIImage>() }
     fun pinIcon(look: PlacePinLook) = pinIcons.getOrPut(look) {
-        val fill = if (look.isTripinly) hotSpotColor else placeColor
+        val fill = when {
+            look.isAlongTheWay -> AlongTheWayPinColor
+            look.isTripinly -> hotSpotColor
+            else -> placeColor
+        }
         val photo = look.photoId?.let { pinPhotos[it] }
-        val bitmap = if (photo != null) {
+        val bitmap = if (look.isDot) {
+            drawPlaceDot(look.size, fill, density, layoutDirection)
+        } else if (photo != null) {
             drawPlacePhotoPin(photo, look.size, fill, density, layoutDirection)
         } else {
             drawPlacePin(
                 icon = categoryIcons.getValue(look.category),
                 size = look.size,
                 fill = fill,
-                iconColor = if (look.isTripinly) onHotSpotColor else onPlaceColor,
+                iconColor = when {
+                    look.isAlongTheWay -> Color.White
+                    look.isTripinly -> onHotSpotColor
+                    else -> onPlaceColor
+                },
                 density = density,
                 layoutDirection = layoutDirection,
             )
@@ -161,7 +219,7 @@ internal fun GoogleSdkMapView(
     // By number, color and cover photo (once its thumbnail has loaded).
     val stopIcons = remember(density) { mutableMapOf<Triple<Int, Long, String?>, UIImage>() }
     val coverThumbs = rememberCoverThumbs(markers)
-    LaunchedEffect(markers, coverThumbs, pinPhotos, selectedPlace, placePins, placeClusters, pinIcons, clusterIcons) {
+    LaunchedEffect(markers, coverThumbs, pinPhotos, selectedPlace, placePins, placeClusters, pinIcons, clusterIcons, isDots) {
         val stops = markers.map { marker ->
             GoogleMapMarker(
                 key = marker.id,
@@ -187,7 +245,8 @@ internal fun GoogleSdkMapView(
             )
         }
         // The first pins (the most liked, then the best known) on top. A photo pin waits for its photo. The tapped
-        // place's pin stays as it is and a bigger copy is drawn over it below, as on Android.
+        // place's pin stays as it is and a bigger copy is drawn over it below, as on Android. Zoomed out below
+        // pinDotBelowZoom, every pin is its dot; the map fades a pin into its new look.
         val pins = placePins.mapIndexedNotNull { index, pin ->
             if (pin.photo && pin.place.coverImageId !in pinPhotos) return@mapIndexedNotNull null
             GoogleMapMarker(
@@ -195,7 +254,9 @@ internal fun GoogleSdkMapView(
                 latitude = pin.place.location.lat,
                 longitude = pin.place.location.lng,
                 title = pin.place.name,
-                icon = pinIcon(PlacePinLook(pin.place.category, pin.place.isTripinly, pin.size, photoId(pin.place, pin.photo))),
+                icon = pinIcon(
+                    if (isDots) pin.dotLook() else PlacePinLook(pin.place.category, pin.place.isTripinly, pin.size, photoId(pin.place, pin.photo), pin.isAlongTheWay),
+                ),
                 anchorX = 0.5,
                 anchorY = 0.5,
                 zIndex = -1 - index,
@@ -227,7 +288,15 @@ internal fun GoogleSdkMapView(
                 latitude = it.location.lat,
                 longitude = it.location.lng,
                 title = it.name,
-                icon = pinIcon(PlacePinLook(it.category, it.isTripinly, SelectedPinSize, photoId(it, placePins.any { pin -> pin.photo && pin.place.id == it.id }))),
+                icon = pinIcon(
+                    PlacePinLook(
+                        it.category,
+                        it.isTripinly,
+                        SelectedPinSize,
+                        photoId(it, placePins.any { pin -> pin.photo && pin.place.id == it.id }),
+                        isAlongTheWay = placePins.any { pin -> pin.isAlongTheWay && pin.place.id == it.id },
+                    ),
+                ),
                 anchorX = 0.5,
                 anchorY = 0.5,
                 zIndex = 2,
@@ -258,3 +327,5 @@ private fun PlaceCluster.key() = "$CLUSTER_KEY${location.lat},${location.lng}"
 private const val SELECTED_PLACE_KEY = "selected-place"
 private const val PLACE_KEY = "place:"
 private const val CLUSTER_KEY = "cluster:"
+
+private fun Color.toUIColor(): UIColor = UIColor.colorWithRed(red.toDouble(), green.toDouble(), blue.toDouble(), alpha.toDouble())

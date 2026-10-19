@@ -23,6 +23,9 @@ import com.falcon.tripingly.core.data.push.PushNotifications
 import com.falcon.tripingly.core.data.push.PushRegistration
 import com.falcon.tripingly.core.data.realtime.LiveUpdates
 import com.falcon.tripingly.core.data.realtime.RealtimeSync
+import com.falcon.tripingly.core.data.routing.DefaultRouteRepository
+import com.falcon.tripingly.core.data.routing.FakeRouteRepository
+import com.falcon.tripingly.core.data.routing.RouteRepository
 import com.falcon.tripingly.core.data.social.DefaultSocialRepository
 import com.falcon.tripingly.core.data.social.FakeSocialRepository
 import com.falcon.tripingly.core.data.social.SocialRepository
@@ -40,6 +43,7 @@ import com.falcon.tripingly.core.data.users.DefaultUserRepository
 import com.falcon.tripingly.core.data.users.FakeUserRepository
 import com.falcon.tripingly.core.data.users.UserRepository
 import com.falcon.tripingly.core.model.account.SessionState
+import com.falcon.tripingly.core.model.route.ROUTES_ENTITLEMENT
 import com.falcon.tripingly.core.network.ApiConfig
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.todayIn
@@ -117,6 +121,10 @@ val dataModule = module {
     single<PlaceRepository> {
         if (get<ApiConfig>().useFakeApi) FakePlaceRepository() else DefaultPlaceRepository(get(), get(), get(ApplicationScope))
     }
+    single { DefaultRouteRepository(get(), get()) }
+    single<RouteRepository> {
+        if (get<ApiConfig>().useFakeApi) FakeRouteRepository() else get<DefaultRouteRepository>()
+    }
 
     single {
         RealtimeSync(
@@ -176,6 +184,8 @@ val dataModule = module {
         FakeAccountBackend(
             today = { Clock.System.todayIn(TimeZone.currentSystemDefault()) },
             cleaners = { getAll<LocalDataCleaner>() },
+            // Like dev accounts on staging: Pro features to try out until the paywall exists.
+            entitlements = setOf(ROUTES_ENTITLEMENT),
         )
     }
 
@@ -183,6 +193,12 @@ val dataModule = module {
     single(named("photos")) {
         val photos = get<DefaultPhotoRepository>()
         LocalDataCleaner { photos.clear() }
+    }
+
+    // Places along the way were for whoever was signed in.
+    single(named("routes")) {
+        val routes = get<DefaultRouteRepository>()
+        LocalDataCleaner { routes.clear() }
     }
 
     // The next account registers this device for push again.
