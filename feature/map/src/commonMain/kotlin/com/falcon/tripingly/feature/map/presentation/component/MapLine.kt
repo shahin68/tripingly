@@ -29,14 +29,14 @@ import kotlin.math.roundToInt
  */
 
 /** How a line looks. */
-internal data class MapLineStyle(val color: Color, val width: Dp)
+data class MapLineStyle(val color: Color, val width: Dp)
 
 /** A line to draw: its [points] from start to end and the [arrows] pointing the way. A new value runs the streak again. */
 @Immutable
-internal data class MapLine(val points: List<Coordinates>, val arrows: List<PathArrow>, val style: MapLineStyle)
+data class MapLine(val points: List<Coordinates>, val arrows: List<PathArrow>, val style: MapLineStyle)
 
 /** [bearing] in degrees clockwise from north, the way the line runs here. */
-internal data class PathArrow(val position: Coordinates, val bearing: Float)
+data class PathArrow(val position: Coordinates, val bearing: Float)
 
 /** A real route along streets: one color per way of travelling, the same on the line and on its button. */
 internal val TravelMode.lineColor: Color
