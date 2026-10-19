@@ -20,7 +20,6 @@ import com.falcon.tripingly.core.network.model.OnboardingStateDto
 import com.falcon.tripingly.core.network.model.RecordConsentDto
 import com.falcon.tripingly.core.network.model.UsernameAvailabilityDto
 import kotlinx.datetime.LocalDate
-import kotlin.time.Instant
 
 internal fun MeDto.toAccount() = Account(
     id = id,
@@ -100,5 +99,5 @@ internal fun DataExportDto.toDataExport() = DataExport(
         DataExportDto.Status.EXPIRED -> DataExportStatus.EXPIRED
     },
     downloadUrl = downloadUrl,
-    expiresAt = expiresAt?.let { runCatching { Instant.parse(it) }.getOrNull() },
+    expiresAt = expiresAt,
 )
