@@ -17,10 +17,12 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -65,6 +67,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
@@ -136,21 +139,32 @@ fun MapScreen(
     val density = LocalDensity.current
     var mapSize by remember { mutableStateOf(IntSize.Zero) }
     var headerBottom by remember { mutableStateOf(0f) }
-    var tabsTop by remember { mutableStateOf(0f) }
+    var tabsHeight by remember { mutableStateOf(0) }
+    var stopsCardHeight by remember { mutableStateOf(0) }
+    var routeCardHeight by remember { mutableStateOf(0) }
     var bottomCardsTop by remember { mutableStateOf(0f) }
     var fittedFrameId by rememberSaveable { mutableStateOf<Int?>(null) }
     val isLaidOut = mapSize != IntSize.Zero
+    val isStopsCardShown = state.markers.isNotEmpty() && state.pointRoute == null
+    val isRouteCardShown = state.pointRoute != null
+    val navigationBarsBottom = WindowInsets.navigationBars.getBottom(density)
     LaunchedEffect(state.frame, isLaidOut) {
         val frame = state.frame ?: return@LaunchedEffect
         if (!isLaidOut || frame.id == fittedFrameId) return@LaunchedEffect
         fittedFrameId = frame.id
+        // The cards below cover the map from their full height on, even while they still slide in (as they do
+        // when the trip opens), so the fit is the same as on a day tap. One frame first, so a card that
+        // appears together with the stops has been measured.
+        withFrameNanos {}
+        val coveredBottom = navigationBarsBottom + tabsHeight +
+            (if (isStopsCardShown) stopsCardHeight else 0) + (if (isRouteCardShown) routeCardHeight else 0)
         val fit = with(density) {
             fitCamera(
                 points = frame.points,
                 mapWidth = mapSize.width.toDp().value,
                 mapHeight = mapSize.height.toDp().value,
                 top = headerBottom.toDp().value,
-                bottom = if (tabsTop > 0f) (mapSize.height - tabsTop).toDp().value else 0f,
+                bottom = coveredBottom.toDp().value,
                 margin = 48f,
             )
         }
@@ -288,14 +302,14 @@ fun MapScreen(
             DaySelectionTabs(
                 state = state,
                 onDaySelected = { onAction(Action.OnDaySelected(it)) },
-                modifier = Modifier.onGloballyPositioned { tabsTop = it.positionInRoot().y },
+                modifier = Modifier.onSizeChanged { tabsHeight = it.height },
             )
 
             AnimatedVisibility(
-                visible = state.markers.isNotEmpty() && state.pointRoute == null,
+                visible = isStopsCardShown,
                 enter = fadeIn() + slideInVertically(initialOffsetY = { it }),
                 exit = fadeOut() + slideOutVertically(targetOffsetY = { it }),
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth().onSizeChanged { stopsCardHeight = it.height }
             ) {
                 TripItineraryCard(
                     markers = markers,
@@ -310,10 +324,10 @@ fun MapScreen(
             // A route from A to B takes the stops' place until it's closed, and keeps showing while it slides out.
             val pointRoute = remember { mutableStateOf(state.pointRoute) }.apply { if (state.pointRoute != null) value = state.pointRoute }.value
             AnimatedVisibility(
-                visible = state.pointRoute != null,
+                visible = isRouteCardShown,
                 enter = fadeIn() + slideInVertically(initialOffsetY = { it }),
                 exit = fadeOut() + slideOutVertically(targetOffsetY = { it }),
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth().onSizeChanged { routeCardHeight = it.height }
             ) {
                 if (pointRoute != null) {
                     PointRouteCard(
