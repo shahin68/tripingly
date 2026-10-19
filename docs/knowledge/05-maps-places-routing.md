@@ -57,7 +57,7 @@ data class MapState(
 
 - Render thumbnails to bitmaps off the main thread (download with the app's image loader, crop circle). Android: `BitmapDescriptor`; iOS: `UIImage` icon (prefer icon images over `iconView` for performance).
 - Built (stage 6): `rememberCoverThumbs` loads each cover through Coil's singleton loader, cached by **photo ID + size**, not by the signed URL (it changes about every hour). Android draws the pin with `MarkerComposable` + `TripMarkerIcon(cover)`, iOS paints it with Skia (`drawCoverPin`). A pin is redrawn only when its number, color or cover changes.
-- **Dots when zoomed out** (owner, 2026-10-19, like Google Maps): below camera zoom `pinDotBelowZoom` (server, `APP_PIN_DOT_BELOW_ZOOM`, default 14) every place pin, photo pins included, turns into a small dot of its pin color (`PlaceDotSize` 10 dp, white ring), so route lines and stops stay readable; zooming back in grows them into pins. The tapped place, stops and clusters stay as they are. The change is a short fade between pin and dot (`PIN_DOT_MILLIS` 200 ms): Android swaps each pin for a new dot marker under one shared fade (changing a marker's icon makes every pin blink), iOS changes the icon and fades it in (Swift `setMarkers`). A real shrink would redraw every pin icon on every frame, which costs battery and blinks on Android. Android reads the live zoom from the camera; iOS reports it from Swift (`onZoomChange`).
+- **Dots when zoomed out** (owner, 2026-10-19, like Google Maps): below camera zoom `pinDotBelowZoom` (server, `APP_PIN_DOT_BELOW_ZOOM`, default 14) every place pin, photo pins included, turns into a small dot of its pin color (`PlaceDotSize` 10 dp, white ring), so route lines and stops stay readable; zooming back in grows them into pins. The tapped place, stops and clusters stay as they are. The change is a short fade between pin and dot (`PIN_DOT_MILLIS` 200 ms): Android gives each pin a hidden dot marker from the start and only shows one and hides the other, in 3 fade steps (`PIN_DOT_STEPS`; making or dropping 150 markers mid-pinch lagged, and changing a marker's icon makes every pin blink; each pin's markers sit under one key by place ID so a pin reload doesn't remake them all), iOS changes the icon and fades it in (Swift `setMarkers`). A real shrink would redraw every pin icon on every frame, which costs battery and blinks on Android. Android reads the live zoom from the camera; iOS reports it from Swift (`onZoomChange`).
 
 ### Map look: where to change it
 
@@ -65,7 +65,7 @@ data class MapState(
 |---|---|---|
 | Zoom below which place pins are dots | 14 (0–22) | Railway api `APP_PIN_DOT_BELOW_ZOOM` → `pinDotBelowZoom` |
 | Dot size | 10 dp | `PlaceDotSize`, `PlacePins.kt` |
-| Pin ↔ dot fade | 200 ms | `PIN_DOT_MILLIS`, `PlacePins.kt` |
+| Pin ↔ dot fade | 200 ms, 3 steps on Android | `PIN_DOT_MILLIS`, `PlacePins.kt`; `PIN_DOT_STEPS`, `GoogleMapView.android.kt` |
 | Along-the-way pin color | violet `0xFF8E24AA` | `AlongTheWayPinColor`, `PlacePins.kt` |
 | Place pin sizes | 18 / 30 / 36 dp by prominence (`pinMediumMinProminence` 60, `pinLargeMinProminence` 95 from the server) | `PinSizes`, `PlacePins.kt` |
 | Route line | bright blue `0xFF2196F3`, 5 dp | `RouteColor`, `RouteWidth`, `GoogleMapView.kt` |
