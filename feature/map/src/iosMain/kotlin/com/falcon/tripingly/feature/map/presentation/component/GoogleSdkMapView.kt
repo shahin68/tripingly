@@ -51,8 +51,7 @@ internal fun GoogleSdkMapView(
     pinDotBelowZoom: Float,
     placeClusters: List<PlaceCluster>,
     selectedPlace: MapPlace?,
-    routeLine: List<Coordinates>,
-    stopPath: List<Coordinates>,
+    line: MapLine?,
     isMyLocationEnabled: Boolean,
     coveredBottom: Dp,
     onCameraMove: (Coordinates, Float, GeoBounds?) -> Unit,
@@ -143,15 +142,6 @@ internal fun GoogleSdkMapView(
     // As much room at the top as at the bottom keeps the camera's center in the middle of the view.
     LaunchedEffect(coveredBottom) { map.setPadding(coveredBottom.value.toDouble(), coveredBottom.value.toDouble()) }
 
-    // Under every pin, as on Android.
-    LaunchedEffect(routeLine) {
-        map.setRoute(
-            points = routeLine.map { GoogleMapPoint(it.latitude, it.longitude) },
-            color = RouteColor.toUIColor(),
-            width = RouteWidth.value.toDouble(),
-        )
-    }
-
     // Every pin look is drawn once and shared by every pin that looks the same.
     val categoryIcons = PlaceCategory.entries.associateWith { rememberVectorPainter(it.icon) }
     val placeColor = MaterialTheme.colorScheme.secondary
@@ -161,25 +151,29 @@ internal fun GoogleSdkMapView(
     val density = LocalDensity.current
     val layoutDirection = LocalLayoutDirection.current
 
-    // The stops' line with its arrows, as on Android.
-    val stopPathShape = remember(stopPath) { stopPathShape(stopPath) }
-    val arrowIcon = remember(density) { drawPathArrow(density, layoutDirection).toUIImage(density.density) }
-    LaunchedEffect(stopPathShape) {
-        val points = stopPathShape.points.map { GoogleMapPoint(it.latitude, it.longitude) }
-        val width = StopPathWidth.value.toDouble()
-        map.setStopPath(
+    // The line under every pin, with its arrows, as on Android.
+    LaunchedEffect(line) {
+        if (line == null || line.points.size < 2) {
+            map.setLine(emptyList(), StopPathColor.toUIColor(), 0.0, emptyList(), null, null)
+            map.setLineSweep(emptyList(), MapLineSweepColor.toUIColor(), 0.0)
+            return@LaunchedEffect
+        }
+        val points = line.points.map { GoogleMapPoint(it.latitude, it.longitude) }
+        val width = line.style.width.value.toDouble()
+        map.setLine(
             points = points,
-            color = StopPathColor.toUIColor(),
+            color = line.style.color.toUIColor(),
             width = width,
-            arrows = stopPathShape.arrows.map { GoogleMapArrow(it.position.latitude, it.position.longitude, it.bearing.toDouble()) },
-            arrowIcon = arrowIcon,
+            arrows = line.arrows.map { GoogleMapArrow(it.position.latitude, it.position.longitude, it.bearing.toDouble()) },
+            arrowIcon = drawPathArrow(density, layoutDirection, line.style.color).toUIImage(density.density),
+            capIcon = drawLineCap(density, layoutDirection, line.style).toUIImage(density.density),
         )
         // Once, like a progress bar; then nothing moves.
-        val sweepColor = StopPathSweepColor.toUIColor()
-        Animatable(0f).animateTo(1f, tween(STOP_PATH_SWEEP_MILLIS, easing = LinearEasing)) {
-            map.setStopPathSweep(sweepOf(points, value), sweepColor, width)
+        val sweepColor = MapLineSweepColor.toUIColor()
+        Animatable(0f).animateTo(1f, tween(MAP_LINE_SWEEP_MILLIS, easing = LinearEasing)) {
+            map.setLineSweep(sweepOf(points, value), sweepColor, width)
         }
-        map.setStopPathSweep(emptyList(), sweepColor, width)
+        map.setLineSweep(emptyList(), sweepColor, width)
     }
     val textMeasurer = rememberTextMeasurer()
     val pinPhotos = rememberPinPhotos(placePins)

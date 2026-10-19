@@ -68,8 +68,8 @@ data class MapState(
 | Pin ↔ dot change | instant, no animation | `GoogleMapView.android.kt` (`isDots`), Swift `setMarkers` |
 | Along-the-way pin color | violet `0xFF8E24AA` | `AlongTheWayPinColor`, `PlacePins.kt` |
 | Place pin sizes | 18 / 30 / 36 dp by prominence (`pinMediumMinProminence` 60, `pinLargeMinProminence` 95 from the server) | `PinSizes`, `PlacePins.kt` |
-| Route line | bright blue `0xFF2196F3`, 5 dp | `RouteColor`, `RouteWidth`, `GoogleMapView.kt` |
-| Direction lines (no route) | slate blue `0xFF3D5A80`, 3 dp, arrows, one 1.2 s streak | `StopPathColor`, `StopPathWidth`, `STOP_PATH_SWEEP_MILLIS`, `StopPath.kt` |
+| Route line | by way of travelling: walk green `0xFF2E7D32`, bike orange `0xFFEF6C00`, car blue `0xFF1E88E5` (also the mode chip's color), 5 dp, arrows, rounded ends, one 1.2 s streak | `TravelMode.lineColor`, `RouteWidth`, `routeLine()`, `MapLine.kt` |
+| Direction lines (no route) | slate blue `0xFF3D5A80`, 3 dp, arrows, rounded ends, one 1.2 s streak | `StopPathStyle`, `MAP_LINE_SWEEP_MILLIS`, `StopPath.kt` |
 
 - Use the Google Maps utility libraries for **client-side clustering** of trip markers only if needed. Place clusters come from the server.
 
@@ -131,6 +131,8 @@ Decided 2026-10-10 (Shahin, "Tiles + prefetch"): places load and draw like Googl
 *(Built in stage 8: the Route button on the stops card turns the day's route on; leg times sit between the stop chips; Walk/Bike/Car chips; the places along the way are a row in the same card and pins on the map. "Route from here" / "Route to here" on place cards, the A→B card replaces the stops card until closed. Routes are kept in memory by stops and mode, so the same stops are routed once; a day is routed after its own stop changes reached the server. The MapKit fallback on iOS draws no route.)*
 
 *Direction lines: while no route shows, the open day's stops are joined by straight slate-blue lines (`StopPathColor`, quieter than the route's bright blue) with a flat arrow halfway along each stretch pointing to the next stop (`StopPath.kt`). When the line appears or changes, a light streak runs along it once (1.2 s, like a progress bar); nothing animates after that, because a lasting animation redraws the map every frame and heats the phone (owner, 2026-10-18). Drawn on the device with no routing call. Straight since 2026-10-18: the owner tried the curve and the coral and didn't like them.*
+
+*Every map line is one `MapLine` (points, arrows, `MapLineStyle` color and width) drawn by one piece of code per platform (`MapLineView` on Android, Swift `setLine`/`setLineSweep` on iOS): rounded ends (Android `RoundCap`; iOS draws a dot as wide as the line on each end, since `GMSPolyline` has square ends), flat arrows, and the one-time streak. Real routes (owner, 2026-10-19) look the same as the direction lines but take their way of travelling's color, and the mode chips on the route card use the same color. A route starts and ends exactly on the first and last stop (joined to the street the route starts on), has an arrow halfway between each two stops, and is cut into about 200 even steps so the streak glides at one speed on long straight roads. The color comes from the mode the shown route was asked for, so a line still loading a new mode keeps its old color until the new one arrives. A new line kind only needs a new style.*
 
 ## Best route
 

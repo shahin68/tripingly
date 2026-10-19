@@ -342,6 +342,8 @@ class MapViewModel(
             isDayRouteShown = ui.isDayRouteShown,
             travelMode = ui.travelMode,
             routeLine = shownRouteLine.toImmutableList(),
+            routeMode = ui.routePlanMode,
+            routeStops = ui.routePlanStops.map { Coordinates(it.lat, it.lng) }.toImmutableList(),
             // While no route shows (also while the day's route loads); not under a route from A to B.
             stopPath = markers.map { it.position }
                 .takeIf { shownRouteLine.isEmpty() && ui.pointRoute == null && it.size > 1 }.orEmpty().toImmutableList(),
@@ -546,7 +548,19 @@ class MapViewModel(
         }
         ui.update {
             when (result) {
-                is AppResult.Success -> it.copy(routePlan = result.data, isRouteUnavailable = false, isLoadingRoute = false)
+                is AppResult.Success -> it.copy(
+                    routePlan = result.data,
+                    routePlanMode = when (request) {
+                        is RouteRequest.Day -> request.mode
+                        is RouteRequest.Between -> request.mode
+                    },
+                    routePlanStops = when (request) {
+                        is RouteRequest.Day -> request.stops.map { stop -> stop.second }
+                        is RouteRequest.Between -> listOf(request.from, request.to)
+                    },
+                    isRouteUnavailable = false,
+                    isLoadingRoute = false,
+                )
                 // Not Pro after all (the account changed): the route closes with the server's message.
                 is AppResult.Error -> if (result.error.hasCode(RouteErrorCodes.PREMIUM_REQUIRED)) {
                     it.copy(
@@ -1174,6 +1188,9 @@ class MapViewModel(
         /** A route from A to B, shown instead of the day's. */
         val pointRoute: PointRoute? = null,
         val routePlan: RoutePlan? = null,
+        /** How [routePlan] is travelled and the stops it goes through, as asked: its line's color and ends. */
+        val routePlanMode: TravelMode = TravelMode.Walking,
+        val routePlanStops: List<GeoPoint> = emptyList(),
         /** The route couldn't be had: the day keeps its own lines, without times. */
         val isRouteUnavailable: Boolean = false,
         val isLoadingRoute: Boolean = false,
@@ -1324,6 +1341,10 @@ class MapViewModel(
         val travelMode: TravelMode = TravelMode.Walking,
         /** The route to draw, the day's or from A to B; empty when there's none. */
         val routeLine: ImmutableList<Coordinates> = persistentListOf(),
+        /** How [routeLine] is travelled, which gives it its color. */
+        val routeMode: TravelMode = TravelMode.Walking,
+        /** The stops [routeLine] goes through in order: it starts and ends exactly on the first and last. */
+        val routeStops: ImmutableList<Coordinates> = persistentListOf(),
         /** Real routes aren't available right now: nothing is drawn for them and a note says so. */
         val isRouteEstimated: Boolean = false,
         /** The open day's stops in order, joined on the map by direction lines while no route shows. */

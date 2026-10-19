@@ -30,7 +30,7 @@ Read `docs/knowledge/05-maps-places-routing.md` first. Check `06-current-state.m
 
 **Long press:** custom pin → sheet asking for a name and the target day → `POST /days/{id}/markers` with name + location.
 
-**Routes:** decode the encoded polyline (precision 5) in shared code; draw with a width of about 5 dp in the day color; fit the camera to the route with padding for sheets. Leg times appear as small labels between pins or in the day list.
+**Routes:** decode the encoded polyline (precision 5) in shared code; draw every line as a `MapLine` (`MapLine.kt`: points, arrows, `MapLineStyle`) through the one line drawer per platform, so routes and direction lines share rounded ends, arrows and the one-time streak; a route is 5 dp in its travel mode's color (`TravelMode.lineColor`, also on the mode chips) and starts and ends on the first and last stop; a new kind of line only needs a style; fit the camera to the route with padding for sheets. Leg times appear as small labels between pins or in the day list.
 
 **Along the way:** violet pins (`AlongTheWayPinColor`) + horizontal list under the map, ordered by `positionAlongRoute`; list item tap ↔ pin selection stay in sync.
 
