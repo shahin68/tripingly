@@ -29,6 +29,7 @@ import com.falcon.tripingly.core.data.routing.RouteRepository
 import com.falcon.tripingly.core.data.social.DefaultSocialRepository
 import com.falcon.tripingly.core.data.social.FakeSocialRepository
 import com.falcon.tripingly.core.data.social.SocialRepository
+import com.falcon.tripingly.core.data.trips.DataStoreTripMapViewRepository
 import com.falcon.tripingly.core.data.trips.DefaultMarkerRepository
 import com.falcon.tripingly.core.data.trips.DefaultTripInviteRepository
 import com.falcon.tripingly.core.data.trips.FakeTripBackend
@@ -38,6 +39,7 @@ import com.falcon.tripingly.core.data.trips.PendingTripWrites
 import com.falcon.tripingly.core.data.trips.RoomTripLocalDataSource
 import com.falcon.tripingly.core.data.trips.TripInviteRepository
 import com.falcon.tripingly.core.data.trips.TripLocalDataSource
+import com.falcon.tripingly.core.data.trips.TripMapViewRepository
 import com.falcon.tripingly.core.data.trips.TripRepository
 import com.falcon.tripingly.core.data.users.DefaultUserRepository
 import com.falcon.tripingly.core.data.users.FakeUserRepository
@@ -64,10 +66,12 @@ val dataModule = module {
                 local = get(),
                 pending = get(),
                 realtime = get(),
+                mapViews = get(),
                 currentUserId = { get<SessionRepository>().currentUserId() },
             )
         }
     }
+    single<TripMapViewRepository> { DataStoreTripMapViewRepository(get()) }
     single<MarkerRepository> {
         if (get<ApiConfig>().useFakeApi) {
             get<FakeTripBackend>()
@@ -224,4 +228,10 @@ private fun SessionRepository.currentUserId(): String? = when (val session = ses
     is SessionState.SignedIn -> session.account.id
     is SessionState.Onboarding -> session.account.id
     else -> null
+
+    // How each trip's map was left belongs to whoever was signed in.
+    single(named("tripMapViews")) {
+        val views = get<TripMapViewRepository>()
+        LocalDataCleaner { views.clear() }
+    }
 }

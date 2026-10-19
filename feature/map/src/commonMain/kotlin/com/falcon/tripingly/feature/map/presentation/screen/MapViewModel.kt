@@ -21,6 +21,7 @@ import com.falcon.tripingly.core.data.social.SocialRepository
 import com.falcon.tripingly.core.data.trips.MarkerChangeFailure
 import com.falcon.tripingly.core.data.trips.MarkerRepository
 import com.falcon.tripingly.core.data.trips.TripErrorCodes
+import com.falcon.tripingly.core.data.trips.TripMapViewRepository
 import com.falcon.tripingly.core.data.trips.TripRepository
 import com.falcon.tripingly.core.data.trips.hasCode
 import com.falcon.tripingly.core.location.GetCurrentLocationUseCase
@@ -49,6 +50,7 @@ import com.falcon.tripingly.core.model.trip.JoinRequestStatus
 import com.falcon.tripingly.core.model.trip.NewMarker
 import com.falcon.tripingly.core.model.trip.TripDay
 import com.falcon.tripingly.core.model.trip.TripDetails
+import com.falcon.tripingly.core.model.trip.TripMapView
 import com.falcon.tripingly.core.model.trip.TripMarker
 import com.falcon.tripingly.core.model.trip.TripRole
 import com.falcon.tripingly.core.ui.UiText
@@ -140,6 +142,8 @@ class MapViewModel(
     private val photoRepository: PhotoRepository,
     private val socialRepository: SocialRepository,
     private val appConfigRepository: AppConfigRepository,
+    /** How this trip's map was left: restored when it opens, saved as it changes. */
+    private val mapViews: TripMapViewRepository,
     sessionRepository: SessionRepository,
     private val getCurrentLocationUseCase: GetCurrentLocationUseCase,
     private val dispatchers: CoroutineDispatchers = DefaultCoroutineDispatchers(),
@@ -176,6 +180,7 @@ class MapViewModel(
         watchFailedChanges()
         watchPinChanges()
         watchRoute()
+        rememberView()
     }
 
     fun onAction(action: Action) {
@@ -380,10 +385,12 @@ class MapViewModel(
                 )
             }
         }
-        // Show the open day's stops when the trip opens, or the whole trip's while that day has none,
-        // or the trip's destination while it has no stops at all.
+        // Show the trip as it was left; the first time, the open day's stops, or the whole trip's while that
+        // day has none, or the trip's destination while it has no stops at all.
         viewModelScope.launch {
+            val left = mapViews.get(tripId)
             val details = trip.first { it != null && it.days.isNotEmpty() } ?: return@launch
+            if (left != null) return@launch restoreView(left, details)
             val stops = activeDay()?.markers.orEmpty().ifEmpty { details.days.flatMap { it.markers } }
             val destination = details.destination
             if (stops.isEmpty() && destination != null) {
@@ -395,6 +402,46 @@ class MapViewModel(
                 frameStops(stops)
             }
         }
+    }
+
+    /** The open day (the first one if it's gone), the camera where it was and the Route button, as they were left. */
+    private fun restoreView(left: TripMapView, details: TripDetails) {
+        ui.update {
+            it.copy(
+                activeDayIndex = details.days.indexOfFirst { day -> day.id == left.dayId }.coerceAtLeast(0),
+                cameraTarget = Coordinates(left.latitude, left.longitude),
+                zoomLevel = left.zoom,
+                isCameraReady = true,
+                // Routes are Pro: one left on stays off once Pro is gone.
+                isDayRouteShown = left.isRouteShown && hasRoutes(),
+                travelMode = left.travelMode,
+            )
+        }
+    }
+
+    /** Saves the view once it rests, not on every camera frame, so it's there after the app is closed too. */
+    private fun rememberView() {
+        viewModelScope.launch {
+            combine(trip, ui, ::viewOf).distinctUntilChanged().collectLatest { view ->
+                view ?: return@collectLatest
+                delay(SAVE_VIEW_DELAY_MILLIS)
+                mapViews.save(tripId, view)
+            }
+        }
+    }
+
+    /** Null until the map shows the trip. */
+    private fun viewOf(details: TripDetails?, ui: UiState): TripMapView? {
+        if (!ui.isCameraReady) return null
+        val day = details?.days?.getOrNull(ui.activeDayIndex) ?: return null
+        return TripMapView(
+            dayId = day.id,
+            latitude = ui.cameraTarget.latitude,
+            longitude = ui.cameraTarget.longitude,
+            zoom = ui.zoomLevel,
+            isRouteShown = ui.isDayRouteShown,
+            travelMode = ui.travelMode,
+        )
     }
 
     private fun currentDays(): List<TripDay> = trip.value?.days.orEmpty()
@@ -1473,6 +1520,9 @@ class MapViewModel(
     private companion object {
         /** A city fills the screen. */
         const val DESTINATION_ZOOM = 12f
+
+        /** How long the view rests before it's saved. */
+        const val SAVE_VIEW_DELAY_MILLIS = 500L
         /** Same wait as for search: the camera has rested. */
         const val PREFETCH_DELAY_MILLIS = 300L
         /** How far the camera may rest from a place it flew to and still count as on it (rounding). */

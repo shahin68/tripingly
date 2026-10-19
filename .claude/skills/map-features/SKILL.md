@@ -18,6 +18,8 @@ Read `docs/knowledge/05-maps-places-routing.md` first. Check `06-current-state.m
 
 ## Implementation notes
 
+**Reopening a trip:** `MapViewModel` restores the trip's last view from `TripMapViewRepository` (DataStore) before the map shows: day by id (first day if it's gone), camera target and zoom, Route on only with Pro, travel mode. It saves the view 500 ms after it rests. Keep anything new that a person sets on the map and expects back in that same record.
+
 **Camera idle → places by square:** load the squares in view (`PlaceRepository.placesIn`, kept squares answer at once) and prefetch the ring around them 300 ms later; build the pin list in `MapViewModel` (`placePins`: in view, not a stop, liked first then by prominence, capped by `mapMaxPins` from app-config, sized by `placePinSize`). Keep previous pins until the new ones arrive (no flicker). Pins are native markers so they keep their size while the camera zooms.
 
 **Diffing pins:** keep a map `id → native marker`; add/remove/update only what changed. Never clear and redraw all markers on each update.

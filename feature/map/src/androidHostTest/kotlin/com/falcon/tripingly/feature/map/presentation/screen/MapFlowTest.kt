@@ -26,6 +26,7 @@ import com.falcon.tripingly.core.model.trip.NewMarker
 import com.falcon.tripingly.core.model.trip.NewTrip
 import com.falcon.tripingly.core.model.trip.TripDetails
 import com.falcon.tripingly.core.model.trip.TripRole
+import com.falcon.tripingly.feature.map.presentation.FakeTripMapViewRepository
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.flowOf
@@ -71,6 +72,7 @@ class MapFlowTest {
         photoRepository = FakePhotoRepository(),
         socialRepository = FakeSocialRepository(),
         appConfigRepository = FakeAppConfigRepository(),
+        mapViews = FakeTripMapViewRepository(),
         sessionRepository = FakeAccountBackend(today = { LocalDate(2026, 10, 16) }),
         getCurrentLocationUseCase = GetCurrentLocationUseCase(
             object : LocationRepository {

@@ -2,25 +2,28 @@ package com.falcon.tripingly.core.data.trips
 
 import com.falcon.tripingly.core.common.error.DataError
 import com.falcon.tripingly.core.common.result.AppResult
+import com.falcon.tripingly.core.model.account.TripVisibility
 import com.falcon.tripingly.core.model.place.OsmRef
 import com.falcon.tripingly.core.model.place.OsmType
-import com.falcon.tripingly.core.model.account.TripVisibility
+import com.falcon.tripingly.core.model.route.TravelMode
+import com.falcon.tripingly.core.model.trip.Destination
 import com.falcon.tripingly.core.model.trip.GeoPoint
 import com.falcon.tripingly.core.model.trip.JoinRequestStatus
 import com.falcon.tripingly.core.model.trip.NewMarker
-import com.falcon.tripingly.core.model.trip.Destination
 import com.falcon.tripingly.core.model.trip.NewTrip
 import com.falcon.tripingly.core.model.trip.TripDates
+import com.falcon.tripingly.core.model.trip.TripDetails
+import com.falcon.tripingly.core.model.trip.TripMapView
 import com.falcon.tripingly.core.model.trip.TripRole
 import com.falcon.tripingly.core.model.trip.TripUpdate
 import com.falcon.tripingly.core.network.ApiConfig
 import com.falcon.tripingly.core.network.IDEMPOTENCY_KEY_HEADER
 import com.falcon.tripingly.core.network.NetworkJson
-import com.falcon.tripingly.core.network.model.TripDto
 import com.falcon.tripingly.core.network.auth.InMemoryTokenStore
 import com.falcon.tripingly.core.network.auth.SessionEvents
 import com.falcon.tripingly.core.network.createHttpClient
 import com.falcon.tripingly.core.network.createKtorfit
+import com.falcon.tripingly.core.network.model.TripDto
 import com.falcon.tripingly.core.network.realtime.FakeRealtimeClient
 import com.falcon.tripingly.core.network.trips.createMarkersApi
 import com.falcon.tripingly.core.network.trips.createTripsApi
@@ -34,11 +37,6 @@ import io.ktor.http.HttpMethod
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.content.TextContent
 import io.ktor.http.headersOf
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.test.runTest
-import kotlinx.datetime.LocalDate
-import kotlinx.io.IOException
-import com.falcon.tripingly.core.model.trip.TripDetails
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
@@ -47,18 +45,22 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
+import kotlinx.datetime.LocalDate
+import kotlinx.io.IOException
 import kotlin.test.AfterTest
 import kotlin.test.Test
-import kotlin.time.Duration.Companion.milliseconds
-import kotlin.time.Duration.Companion.seconds
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
+import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.Duration.Companion.seconds
 
 class TripRepositoryTest {
 
@@ -85,7 +87,8 @@ class TripRepositoryTest {
         )
         val pending = PendingTripWrites()
         val realtime = FakeRealtimeClient()
-        val trips = OfflineFirstTripRepository(ktorfit.createTripsApi(), local, pending, realtime, currentUserId = { ME })
+        val mapViews = FakeTripMapViewRepository()
+        val trips = OfflineFirstTripRepository(ktorfit.createTripsApi(), local, pending, realtime, mapViews, currentUserId = { ME })
 
         /** Sends on a real dispatcher, like the app. */
         fun markers() = DefaultMarkerRepository(ktorfit.createMarkersApi(), trips, local, pending, failureScope, currentUserId = { ME })
@@ -350,6 +353,7 @@ class TripRepositoryTest {
     fun leaveTrip_removesTheSignedInUser_andDropsTheTrip() = runTest {
         val harness = Harness { respond("", HttpStatusCode.NoContent) }
         harness.local.saveTrip(details(TripJson.trip("t1", myRole = "editor")))
+        harness.mapViews.save("t1", TripMapView("d0", 48.2, 16.37, 15f, isRouteShown = false, TravelMode.Walking))
 
         val result = harness.trips.leaveTrip("t1")
 
@@ -357,6 +361,7 @@ class TripRepositoryTest {
         assertEquals(HttpMethod.Delete, harness.requests.single().method)
         assertEquals("/v1/trips/t1/members/$ME", harness.requests.single().url.encodedPath)
         assertTrue(harness.trips.observeMyTrips().first().isEmpty())
+        assertNull(harness.mapViews.get("t1"))
     }
 
     @Test

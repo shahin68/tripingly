@@ -29,6 +29,8 @@ internal class OfflineFirstTripRepository(
     private val pending: PendingTripWrites,
     /** Watches an observed trip, so changes from others come in live. */
     private val realtime: RealtimeClient,
+    /** How each trip's map was left; forgotten with the trip. */
+    private val mapViews: TripMapViewRepository,
     /** The signed-in user's id, for leaving a trip. */
     private val currentUserId: () -> String?,
 ) : TripRepository {
@@ -101,7 +103,7 @@ internal class OfflineFirstTripRepository(
 
     override suspend fun deleteTrip(tripId: String): AppResult<Unit, DataError.Network> {
         val result = api.delete(tripId)
-        if (result is AppResult.Success || result.isNotFound()) local.deleteTrip(tripId)
+        if (result is AppResult.Success || result.isNotFound()) forget(tripId)
         return result
     }
 
@@ -181,8 +183,13 @@ internal class OfflineFirstTripRepository(
     override suspend fun leaveTrip(tripId: String): AppResult<Unit, DataError.Network> {
         val userId = currentUserId() ?: return AppResult.Error(DataError.Network.Unauthorized)
         val result = api.removeMember(tripId, userId)
-        if (result is AppResult.Success || result.isNotFound()) local.deleteTrip(tripId)
+        if (result is AppResult.Success || result.isNotFound()) forget(tripId)
         return result
+    }
+
+    private suspend fun forget(tripId: String) {
+        local.deleteTrip(tripId)
+        mapViews.remove(tripId)
     }
 
     /** Caches the server's answer. */
