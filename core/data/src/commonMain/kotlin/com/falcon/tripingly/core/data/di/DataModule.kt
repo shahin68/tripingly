@@ -217,6 +217,12 @@ val dataModule = module {
         LocalDataCleaner { sync.clear() }
     }
 
+    // How each trip's map was left belongs to whoever was signed in.
+    single(named("tripMapViews")) {
+        val views = get<TripMapViewRepository>()
+        LocalDataCleaner { views.clear() }
+    }
+
     // The cached trips belong to whoever was signed in.
     single(named("tripsCache")) {
         val trips = get<TripLocalDataSource>()
@@ -228,10 +234,4 @@ private fun SessionRepository.currentUserId(): String? = when (val session = ses
     is SessionState.SignedIn -> session.account.id
     is SessionState.Onboarding -> session.account.id
     else -> null
-
-    // How each trip's map was left belongs to whoever was signed in.
-    single(named("tripMapViews")) {
-        val views = get<TripMapViewRepository>()
-        LocalDataCleaner { views.clear() }
-    }
 }

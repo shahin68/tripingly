@@ -21,7 +21,7 @@ interface TripMapViewRepository {
     suspend fun clear()
 }
 
-/** Five values per trip in the UI state DataStore, under `tripMap:<tripId>:…`. */
+/** Six values per trip in the UI state DataStore, under `tripMap:<tripId>:…`. */
 internal class DataStoreTripMapViewRepository(private val store: DataStore<Preferences>) : TripMapViewRepository {
 
     override suspend fun get(tripId: String): TripMapView? {
