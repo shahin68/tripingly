@@ -22,6 +22,8 @@ expect fun GoogleMapView(
      * the first ones on top.
      */
     placePins: List<PlacePin>,
+    /** Below this camera zoom the place pins turn into small dots, and grow back when zoomed in. */
+    pinDotBelowZoom: Float,
     /** Bubbles of liked places, drawn while zoomed out. */
     placeClusters: List<PlaceCluster>,
     /** The tapped place, drawn bigger on top. */

@@ -41,6 +41,7 @@ import com.falcon.tripingly.core.model.place.PlaceSearchResult
 import com.falcon.tripingly.core.model.place.PlaceSquare
 import com.falcon.tripingly.core.model.place.PlacesInView
 import com.falcon.tripingly.core.model.place.SearchResultType
+import com.falcon.tripingly.core.model.route.AlongTheWayPlace
 import com.falcon.tripingly.core.model.route.BestOrder
 import com.falcon.tripingly.core.model.route.ROUTES_ENTITLEMENT
 import com.falcon.tripingly.core.model.route.RoutePlan
@@ -150,10 +151,12 @@ class MapViewModelTest {
         var error: DataError.Network? = null
         /** The best order to propose; the fake's (nearest stop next) when null. */
         var bestOrder: List<String>? = null
+        /** The places along every day route. */
+        var alongTheWay: List<AlongTheWayPlace> = emptyList()
 
         override suspend fun dayRoute(tripId: String, day: TripDay, mode: TravelMode): AppResult<RoutePlan, DataError.Network> {
             dayRoutes += day.markers.map { it.id } to mode
-            return error?.asError() ?: fake.dayRoute(tripId, day, mode)
+            return error?.asError() ?: fake.dayRoute(tripId, day, mode).map { it.copy(alongTheWay = alongTheWay) }
         }
 
         override suspend fun route(from: GeoPoint, to: GeoPoint, mode: TravelMode, tripId: String?): AppResult<RoutePlan, DataError.Network> {
@@ -1219,6 +1222,22 @@ class MapViewModelTest {
         assertNull(state.routeDurationSeconds)
         // The route's own note says so.
         assertNull(state.message)
+    }
+
+    @Test
+    fun `places along the way get pins of their own color`() = runTest(testDispatcher) {
+        addStops(GeoPoint(48.2085, 16.3731), GeoPoint(48.2104, 16.3655))
+        val cafe = MapPlace("cafe", "Café Central", PlaceCategory.Cafe, GeoPoint(48.2101, 16.3654), isTripinly = false, likeCount = 0, prominence = 70)
+        routes.alongTheWay = listOf(AlongTheWayPlace(cafe, distanceFromRouteMeters = 40, etaFromStartSeconds = 300))
+        val viewModel = viewModel()
+        testScheduler.advanceUntilIdle()
+        assertTrue(viewModel.uiState.value.placePins.none { it.isAlongTheWay })
+
+        viewModel.onAction(Action.OnToggleDayRoute)
+        testScheduler.advanceUntilIdle()
+
+        assertTrue(viewModel.uiState.value.placePins.single { it.place.id == "cafe" }.isAlongTheWay)
+        assertEquals(1, viewModel.uiState.value.placePins.count { it.isAlongTheWay })
     }
 
     @Test

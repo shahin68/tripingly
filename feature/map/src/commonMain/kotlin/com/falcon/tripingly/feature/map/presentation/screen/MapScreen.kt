@@ -191,6 +191,7 @@ fun MapScreen(
                 zoomLevel = state.zoomLevel,
                 markers = markers,
                 placePins = state.placePins,
+                pinDotBelowZoom = state.pinDotBelowZoom,
                 placeClusters = state.placeClusters,
                 selectedPlace = state.selectedPlace,
                 routeLine = state.routeLine,
@@ -623,7 +624,7 @@ private fun LocationFab(
     }
 }
 
-/** The open day's stops; with the Route button on, the route's times, the best order and the places along the way. */
+/** The open day's stops and the best order; with the Route button on, the route's times and the places along the way. */
 @Composable
 private fun TripItineraryCard(
     markers: ImmutableList<MapMarker>,
@@ -680,6 +681,16 @@ private fun TripItineraryCard(
                 }
             }
 
+            // Free for everyone, with or without the route.
+            if (state.canFindBestOrder) {
+                TextButton(onClick = { onAction(Action.OnFindBestOrder) }, enabled = !state.isFindingBestOrder) {
+                    Text(stringResource(Res.string.map_best_order))
+                    if (state.isFindingBestOrder) {
+                        CircularProgressIndicator(modifier = Modifier.padding(start = 8.dp).size(14.dp), strokeWidth = 2.dp)
+                    }
+                }
+            }
+
             if (isRouteShown) {
                 RouteSummary(
                     mode = state.travelMode,
@@ -690,14 +701,6 @@ private fun TripItineraryCard(
                     onModeSelected = { onAction(Action.OnTravelModeSelected(it)) },
                     modifier = Modifier.padding(top = MaterialTheme.spacing.small),
                 )
-                if (state.canFindBestOrder) {
-                    TextButton(onClick = { onAction(Action.OnFindBestOrder) }, enabled = !state.isFindingBestOrder) {
-                        Text(stringResource(Res.string.map_best_order))
-                        if (state.isFindingBestOrder) {
-                            CircularProgressIndicator(modifier = Modifier.padding(start = 8.dp).size(14.dp), strokeWidth = 2.dp)
-                        }
-                    }
-                }
                 AlongTheWay(
                     places = state.alongTheWay,
                     dayNumber = state.days.getOrNull(state.activeDayIndex)?.number?.takeIf { state.canEdit },

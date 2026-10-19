@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
@@ -57,6 +58,7 @@ actual fun GoogleMapView(
     zoomLevel: Float,
     markers: List<MapMarker>,
     placePins: List<PlacePin>,
+    pinDotBelowZoom: Float,
     placeClusters: List<PlaceCluster>,
     selectedPlace: MapPlace?,
     routeLine: List<Coordinates>,
@@ -183,16 +185,26 @@ actual fun GoogleMapView(
         val pinPhotos = rememberPinPhotos(placePins)
         val pinIcons = remember(placeColor, hotSpotColor, density) { mutableMapOf<PlacePinLook, BitmapDescriptor>() }
         fun pinIcon(look: PlacePinLook) = pinIcons.getOrPut(look) {
-            val fill = if (look.isTripinly) hotSpotColor else placeColor
+            val fill = when {
+                look.isAlongTheWay -> AlongTheWayPinColor
+                look.isTripinly -> hotSpotColor
+                else -> placeColor
+            }
             val photo = look.photoId?.let { pinPhotos[it] }
-            val bitmap = if (photo != null) {
+            val bitmap = if (look.isDot) {
+                drawPlaceDot(look.size, fill, density, layoutDirection)
+            } else if (photo != null) {
                 drawPlacePhotoPin(photo, look.size, fill, density, layoutDirection)
             } else {
                 drawPlacePin(
                     icon = categoryIcons.getValue(look.category),
                     size = look.size,
                     fill = fill,
-                    iconColor = if (look.isTripinly) onHotSpotColor else onPlaceColor,
+                    iconColor = when {
+                        look.isAlongTheWay -> Color.White
+                        look.isTripinly -> onHotSpotColor
+                        else -> onPlaceColor
+                    },
                     density = density,
                     layoutDirection = layoutDirection,
                 )
@@ -207,27 +219,36 @@ actual fun GoogleMapView(
         // (the most liked, then the best known) are drawn on top; a new pin fades in. Changing a pin's icon makes
         // every pin on the map blink, so a pin whose look changes comes back as a new pin, a photo pin waits for its
         // photo, and the tapped place's pin stays as it is under a bigger copy.
+        //
+        // Zoomed out below pinDotBelowZoom, the pins turn into dots: one shared fade swaps every pin for its dot
+        // and back (a new marker each, for the same reason). Nothing moves once the swap is done.
+        val isDots by remember(pinDotBelowZoom) { derivedStateOf { cameraPositionState.position.zoom < pinDotBelowZoom } }
+        val dotness = remember { Animatable(if (isDots) 1f else 0f) }
+        LaunchedEffect(isDots) { dotness.animateTo(if (isDots) 1f else 0f, tween(PIN_DOT_MILLIS)) }
         placePins.forEach { pin ->
             if (pin.photo && pin.place.coverImageId !in pinPhotos) return@forEach
-            val look = PlacePinLook(pin.place.category, pin.place.isTripinly, pin.size, photoId(pin.place, pin.photo))
-            key(pin.place.id, look) {
-                val alpha = remember { Animatable(0f) }
-                LaunchedEffect(Unit) { alpha.animateTo(1f, tween(PIN_FADE_MILLIS)) }
-                Marker(
-                    state = rememberUpdatedMarkerState(position = LatLng(pin.place.location.lat, pin.place.location.lng)),
-                    icon = pinIcon(look),
-                    title = pin.place.name,
-                    anchor = Offset(0.5f, 0.5f),
-                    alpha = alpha.value,
-                    // Under the clusters and the stops. Taken from the place, not from its place in the list, so a
-                    // pin's z-order stays the same when pins come and go: changing it makes pins vanish for a frame.
-                    zIndex = PLACE_PINS_Z * pinRank(pin.place),
-                    // No info window and no camera move of the map's own: the card and the camera are ours.
-                    onClick = {
-                        onPlacePinClick(pin.place)
-                        true
-                    },
-                )
+            val look = PlacePinLook(pin.place.category, pin.place.isTripinly, pin.size, photoId(pin.place, pin.photo), pin.isAlongTheWay)
+            listOf(look to 1f - dotness.value, pin.dotLook() to dotness.value).forEach { (shown, share) ->
+                if (share <= 0f) return@forEach
+                key(pin.place.id, shown) {
+                    val alpha = remember { Animatable(0f) }
+                    LaunchedEffect(Unit) { alpha.animateTo(1f, tween(PIN_FADE_MILLIS)) }
+                    Marker(
+                        state = rememberUpdatedMarkerState(position = LatLng(pin.place.location.lat, pin.place.location.lng)),
+                        icon = pinIcon(shown),
+                        title = pin.place.name,
+                        anchor = Offset(0.5f, 0.5f),
+                        alpha = alpha.value * share,
+                        // Under the clusters and the stops. Taken from the place, not from its place in the list, so a
+                        // pin's z-order stays the same when pins come and go: changing it makes pins vanish for a frame.
+                        zIndex = PLACE_PINS_Z * pinRank(pin.place),
+                        // No info window and no camera move of the map's own: the card and the camera are ours.
+                        onClick = {
+                            onPlacePinClick(pin.place)
+                            true
+                        },
+                    )
+                }
             }
         }
         placeClusters.forEach { cluster ->
@@ -264,7 +285,15 @@ actual fun GoogleMapView(
             key(place.id) {
                 Marker(
                     state = rememberUpdatedMarkerState(position = LatLng(place.location.lat, place.location.lng)),
-                    icon = pinIcon(PlacePinLook(place.category, place.isTripinly, SelectedPinSize, photoId(place, placePins.any { it.photo && it.place.id == place.id }))),
+                    icon = pinIcon(
+                        PlacePinLook(
+                            place.category,
+                            place.isTripinly,
+                            SelectedPinSize,
+                            photoId(place, placePins.any { it.photo && it.place.id == place.id }),
+                            isAlongTheWay = placePins.any { it.isAlongTheWay && it.place.id == place.id },
+                        ),
+                    ),
                     title = place.name,
                     anchor = Offset(0.5f, 0.5f),
                     zIndex = 2f,

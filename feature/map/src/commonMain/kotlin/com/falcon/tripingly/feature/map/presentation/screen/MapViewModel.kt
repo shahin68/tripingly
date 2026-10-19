@@ -315,9 +315,13 @@ class MapViewModel(
             isReporting = ui.isReporting,
             isUpdatingSharing = ui.isUpdatingSharing,
             isPhotoCameraOpen = ui.isPhotoCameraOpen && markers.any { it.id == ui.selectedMarkerId },
-            // The places along the way show on the map too, also where the map's own pins leave them out.
-            placePins = (ui.placePins + alongTheWay.filter { it.place.id !in pinnedIds }.map { PlacePin(it.place, placePinSize(it.place, config)) })
-                .toImmutableList(),
+            // The places along the way show on the map too, also where the map's own pins leave them out, in their own color.
+            placePins = alongTheWay.mapTo(HashSet()) { it.place.id }.let { alongIds ->
+                (ui.placePins.map { if (it.place.id in alongIds) it.copy(isAlongTheWay = true) else it } +
+                    alongTheWay.filter { it.place.id !in pinnedIds }.map { PlacePin(it.place, placePinSize(it.place, config), isAlongTheWay = true) })
+                    .toImmutableList()
+            },
+            pinDotBelowZoom = config.pinDotBelowZoom,
             placeClusters = ui.placeClusters.toImmutableList(),
             selectedPlace = ui.selectedPlace,
             selectedPlaceDetails = selectedPlaceDetails,
@@ -1293,6 +1297,8 @@ class MapViewModel(
         val locationPrompt: LocationPrompt? = null,
         /** Place pins in view, the most liked and best known first. */
         val placePins: ImmutableList<PlacePin> = persistentListOf(),
+        /** Below this camera zoom the place pins are drawn as dots (server value). */
+        val pinDotBelowZoom: Float = 14f,
         /** Bubbles of liked places when zoomed out. */
         val placeClusters: ImmutableList<PlaceCluster> = persistentListOf(),
         /** The place whose card is open. */

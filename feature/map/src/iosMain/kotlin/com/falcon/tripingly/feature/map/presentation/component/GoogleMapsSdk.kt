@@ -83,6 +83,9 @@ interface GoogleMapListener {
     /** A finger started moving the camera. */
     fun onGestureStart()
 
+    /** The camera's zoom while it moves, every frame: keep it cheap. */
+    fun onZoomChange(zoom: Float)
+
     fun onTap(latitude: Double, longitude: Double)
 
     fun onLongPress(latitude: Double, longitude: Double)

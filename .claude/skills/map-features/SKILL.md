@@ -32,7 +32,9 @@ Read `docs/knowledge/05-maps-places-routing.md` first. Check `06-current-state.m
 
 **Routes:** decode the encoded polyline (precision 5) in shared code; draw with a width of about 5 dp in the day color; fit the camera to the route with padding for sheets. Leg times appear as small labels between pins or in the day list.
 
-**Along the way:** pins with highlight + horizontal list under the map, ordered by `positionAlongRoute`; list item tap ↔ pin selection stay in sync.
+**Along the way:** violet pins (`AlongTheWayPinColor`) + horizontal list under the map, ordered by `positionAlongRoute`; list item tap ↔ pin selection stay in sync.
+
+**Zoomed out:** below `pinDotBelowZoom` (from `GET /app-config`) place pins fade into dots and back; never animate pin icons frame by frame. Every map look value and where it lives is in the "Map look: where to change it" table of `docs/knowledge/05-maps-places-routing.md`; add new ones there.
 
 **Best route:** preview the proposed order (reordered list + numbered pins) before applying; "Apply" → `?apply=true`; show `savedMinutes` (free for everyone); a straight-line result says travel times weren't available. Routes are Pro; the map shows the app's straight direction lines with arrows or a real route, never both.
 
