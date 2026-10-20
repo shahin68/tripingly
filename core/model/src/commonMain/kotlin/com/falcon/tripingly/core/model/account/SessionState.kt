@@ -19,4 +19,6 @@ enum class SignOutReason {
     ACCOUNT_SUSPENDED,
     /** The birth date was under 16; the server deleted the account. */
     UNDER_AGE,
+    /** The person deleted their account in Settings. */
+    ACCOUNT_DELETED,
 }

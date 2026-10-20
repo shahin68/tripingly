@@ -17,6 +17,7 @@ val mapModule = module {
             photoRepository = get(),
             socialRepository = get(),
             appConfigRepository = get(),
+            mapViews = get(),
             sessionRepository = get(),
             getCurrentLocationUseCase = get(),
             dispatchers = get(),

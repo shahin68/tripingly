@@ -23,6 +23,9 @@ data class Profile(val username: String?) : Route
 @Serializable
 data class People(val list: String) : Route
 
+@Serializable
+data object Settings : Route
+
 val NavConfig = SavedStateConfiguration {
     this.serializersModule = SerializersModule {
         polymorphic(NavKey::class) {
@@ -30,6 +33,7 @@ val NavConfig = SavedStateConfiguration {
             subclass(TripMap::class, TripMap.serializer())
             subclass(Profile::class, Profile.serializer())
             subclass(People::class, People.serializer())
+            subclass(Settings::class, Settings.serializer())
         }
     }
 }

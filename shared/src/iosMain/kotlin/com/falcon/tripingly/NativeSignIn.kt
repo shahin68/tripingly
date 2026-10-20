@@ -1,7 +1,7 @@
 package com.falcon.tripingly
 
-import com.falcon.tripingly.feature.auth.domain.SocialSignIn
-import com.falcon.tripingly.feature.auth.domain.SocialSignInResult
+import com.falcon.tripingly.core.data.account.SocialSignIn
+import com.falcon.tripingly.core.data.account.SocialSignInResult
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext

@@ -17,6 +17,7 @@
     <string name="signin_reason_session_expired">Kijelentkeztettünk. A folytatáshoz jelentkezz be újra.</string>
     <string name="signin_reason_account_suspended">Ezt a fiókot felfüggesztettük.</string>
     <string name="signin_reason_under_age">A Tripinly 16 éves kortól használható. Az adataidat nem őriztük meg.</string>
+    <string name="signin_reason_account_deleted">A fiókodat és mindent, amit létrehoztál, töröljük.</string>
     <string name="signin_error_not_configured">Ez a bejelentkezési mód ebben a verzióban még nincs beállítva.</string>
     <string name="signin_error_failed">A bejelentkezés nem sikerült. Próbáld újra.</string>
     <string name="signin_error_account_suspended">Ezt a fiókot felfüggesztettük.</string>

@@ -5,8 +5,8 @@ import androidx.lifecycle.viewModelScope
 import com.falcon.tripingly.core.common.error.DataError
 import com.falcon.tripingly.core.common.result.AppResult
 import com.falcon.tripingly.core.data.account.SessionRepository
-import com.falcon.tripingly.feature.auth.domain.SocialSignIn
-import com.falcon.tripingly.feature.auth.domain.SocialSignInResult
+import com.falcon.tripingly.core.data.account.SocialSignIn
+import com.falcon.tripingly.core.data.account.SocialSignInResult
 import com.falcon.tripingly.feature.auth.generated.resources.Res
 import com.falcon.tripingly.feature.auth.generated.resources.signin_error_account_suspended
 import com.falcon.tripingly.feature.auth.generated.resources.signin_error_developer_refused

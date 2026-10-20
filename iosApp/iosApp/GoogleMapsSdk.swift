@@ -36,10 +36,9 @@ private final class AppGoogleMap: NSObject, GoogleMap, GMSMapViewDelegate {
     private let mapView = GMSMapView(options: GMSMapViewOptions())
     private let listener: any GoogleMapListener
     private var markers: [String: GMSMarker] = [:]
-    private var route: GMSPolyline?
-    private var stopPath: GMSPolyline?
-    private var stopPathArrows: [GMSMarker] = []
-    private var stopPathSweep: GMSPolyline?
+    private var line: GMSPolyline?
+    private var lineMarkers: [GMSMarker] = []
+    private var lineSweep: GMSPolyline?
 
     var view: UIView { mapView }
 
@@ -97,59 +96,55 @@ private final class AppGoogleMap: NSObject, GoogleMap, GMSMapViewDelegate {
         markers = kept
     }
 
-    func setRoute(points: [GoogleMapPoint], color: UIColor, width: Double) {
-        route?.map = nil
-        route = nil
-        guard points.count > 1 else { return }
-        let path = GMSMutablePath()
-        for point in points {
-            path.add(CLLocationCoordinate2D(latitude: point.latitude, longitude: point.longitude))
-        }
-        let line = GMSPolyline(path: path)
-        line.strokeColor = color
-        line.strokeWidth = CGFloat(width)
-        line.map = mapView
-        route = line
+    func setLine(points: [GoogleMapPoint], color: UIColor, width: Double, arrows: [GoogleMapArrow], arrowIcon: UIImage?, capIcon: UIImage?) {
+        line?.map = nil
+        line = nil
+        lineMarkers.forEach { $0.map = nil }
+        lineMarkers = []
+        guard points.count > 1, let first = points.first, let last = points.last else { return }
+        let polyline = GMSPolyline(path: path(of: points))
+        polyline.strokeColor = color
+        polyline.strokeWidth = CGFloat(width)
+        polyline.map = mapView
+        line = polyline
+        // Flat, so the arrows turn with the map and keep pointing along the line.
+        let arrowMarkers: [GMSMarker] = arrowIcon.map { icon in
+            arrows.map { arrow in
+                flatMarker(latitude: arrow.latitude, longitude: arrow.longitude, icon: icon, rotation: arrow.bearing)
+            }
+        } ?? []
+        // GMSPolyline has square ends: a dot as wide as the line on each end rounds them.
+        let capMarkers: [GMSMarker] = capIcon.map { icon in
+            [first, last].map { point in flatMarker(latitude: point.latitude, longitude: point.longitude, icon: icon, rotation: 0) }
+        } ?? []
+        lineMarkers = capMarkers + arrowMarkers
     }
 
-    func setStopPath(points: [GoogleMapPoint], color: UIColor, width: Double, arrows: [GoogleMapArrow], arrowIcon: UIImage) {
-        stopPath?.map = nil
-        stopPath = nil
-        stopPathArrows.forEach { $0.map = nil }
-        stopPathArrows = []
-        guard points.count > 1 else { return }
-        let line = GMSPolyline(path: path(of: points))
-        line.strokeColor = color
-        line.strokeWidth = CGFloat(width)
-        line.map = mapView
-        stopPath = line
-        stopPathArrows = arrows.map { arrow in
-            let marker = GMSMarker(position: CLLocationCoordinate2D(latitude: arrow.latitude, longitude: arrow.longitude))
-            marker.icon = arrowIcon
-            // Flat, so it turns with the map and keeps pointing along the line.
-            marker.isFlat = true
-            marker.rotation = arrow.bearing
-            marker.groundAnchor = CGPoint(x: 0.5, y: 0.5)
-            marker.isTappable = false
-            marker.zIndex = 0
-            marker.map = mapView
-            return marker
-        }
+    private func flatMarker(latitude: Double, longitude: Double, icon: UIImage, rotation: Double) -> GMSMarker {
+        let marker = GMSMarker(position: CLLocationCoordinate2D(latitude: latitude, longitude: longitude))
+        marker.icon = icon
+        marker.isFlat = true
+        marker.rotation = rotation
+        marker.groundAnchor = CGPoint(x: 0.5, y: 0.5)
+        marker.isTappable = false
+        marker.zIndex = 0
+        marker.map = mapView
+        return marker
     }
 
-    func setStopPathSweep(points: [GoogleMapPoint], color: UIColor, width: Double) {
+    func setLineSweep(points: [GoogleMapPoint], color: UIColor, width: Double) {
         guard points.count > 1 else {
-            stopPathSweep?.map = nil
-            stopPathSweep = nil
+            lineSweep?.map = nil
+            lineSweep = nil
             return
         }
-        let line = stopPathSweep ?? GMSPolyline()
-        line.path = path(of: points)
-        line.strokeColor = color
-        line.strokeWidth = CGFloat(width)
-        line.zIndex = 1
-        if line.map == nil { line.map = mapView }
-        stopPathSweep = line
+        let sweep = lineSweep ?? GMSPolyline()
+        sweep.path = path(of: points)
+        sweep.strokeColor = color
+        sweep.strokeWidth = CGFloat(width)
+        sweep.zIndex = 1
+        if sweep.map == nil { sweep.map = mapView }
+        lineSweep = sweep
     }
 
     private func path(of points: [GoogleMapPoint]) -> GMSPath {

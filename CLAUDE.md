@@ -69,7 +69,9 @@ A modular KMP app: `androidApp` and `iosApp` shells, `shared` as the umbrella, `
 8. Routes: day route line, A→B route, places along the way, best route (free/premium).
 9. Real time and push notifications, deep links.
 10. Settings: privacy default, notification settings, data export, account deletion, legal/about with attribution.
-11. Paywall (once billing is decided), store release checklist.
+11. Paywall (once billing is decided).
+12. Redesign and full code review: looks, smoothness, accessibility, every screen size and landscape; Shahin hands over the review criteria at the start.
+13. Store release checklist.
 
 Report to the user after each stage.
 

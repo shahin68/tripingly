@@ -37,11 +37,13 @@ kotlin {
             implementation(projects.feature.trips)
             implementation(projects.feature.map)
             implementation(projects.feature.social)
+            implementation(projects.feature.settings)
 
             implementation(libs.koin.core)
             implementation(libs.kotlinx.coroutines.core)
             implementation(libs.koin.compose)
             implementation(libs.androidx.lifecycle.runtimeCompose)
+            implementation(libs.androidx.lifecycle.viewmodelNavigation3)
             implementation(libs.coil.network.ktor3)
         }
     }

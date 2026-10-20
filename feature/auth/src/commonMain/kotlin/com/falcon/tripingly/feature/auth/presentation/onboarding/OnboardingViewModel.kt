@@ -29,7 +29,6 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.filterIsInstance
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.datetime.LocalDate
@@ -96,7 +95,14 @@ internal class OnboardingViewModel(
 
     init {
         viewModelScope.launch {
-            sessionRepository.session.filterIsInstance<SessionState.Onboarding>().collect { onAccount(it.account) }
+            sessionRepository.session.collect { session ->
+                when (session) {
+                    is SessionState.Onboarding -> onAccount(session.account)
+                    // Sign-in screens aren't on the back stack: the half-filled form is forgotten here.
+                    is SessionState.SignedOut -> forgetAccount()
+                    SessionState.Restoring, is SessionState.SignedIn -> Unit
+                }
+            }
         }
     }
 
@@ -133,6 +139,12 @@ internal class OnboardingViewModel(
             Action.OnDismissError -> _uiState.update { it.copy(error = null) }
             Action.OnSignOutClick -> viewModelScope.launch { sessionRepository.signOut() }
         }
+    }
+
+    private fun forgetAccount() {
+        usernameCheck?.cancel()
+        account = null
+        _uiState.value = State()
     }
 
     private fun onAccount(account: Account) {

@@ -4,6 +4,7 @@ import com.falcon.tripingly.core.data.config.FakeAppConfigRepository
 import com.falcon.tripingly.core.data.photos.DefaultPhotoRepository
 import com.falcon.tripingly.core.data.photos.PhotoPreparer
 import com.falcon.tripingly.core.data.social.FakeSocialRepository
+import com.falcon.tripingly.core.data.trips.FakeTripMapViewRepository
 import com.falcon.tripingly.core.data.trips.InMemoryTripLocalDataSource
 import com.falcon.tripingly.core.data.trips.OfflineFirstTripRepository
 import com.falcon.tripingly.core.data.trips.PendingTripWrites
@@ -71,7 +72,7 @@ class RealtimeSyncTest {
             handler(request)
         }
         val ktorfit = createKtorfit(createHttpClient(engine, config, InMemoryTokenStore(), SessionEvents(), languageTag = { "en" }), config)
-        val trips = OfflineFirstTripRepository(ktorfit.createTripsApi(), local, pending, realtime, currentUserId = { ME })
+        val trips = OfflineFirstTripRepository(ktorfit.createTripsApi(), local, pending, realtime, FakeTripMapViewRepository(), currentUserId = { ME })
         val photos = DefaultPhotoRepository(
             api = ktorfit.createPhotosApi(),
             markersApi = ktorfit.createMarkersApi(),

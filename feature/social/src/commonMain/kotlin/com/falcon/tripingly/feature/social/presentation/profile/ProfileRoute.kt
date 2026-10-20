@@ -16,6 +16,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
@@ -68,6 +69,7 @@ import com.falcon.tripingly.feature.social.generated.resources.social_profile_no
 import com.falcon.tripingly.feature.social.generated.resources.social_public_trips
 import com.falcon.tripingly.feature.social.generated.resources.social_report_user
 import com.falcon.tripingly.feature.social.generated.resources.social_retry
+import com.falcon.tripingly.feature.social.generated.resources.social_settings
 import com.falcon.tripingly.feature.social.presentation.component.PublicTripCard
 import com.falcon.tripingly.feature.social.presentation.profile.ProfileViewModel.Action
 import com.falcon.tripingly.feature.social.presentation.profile.ProfileViewModel.Event
@@ -86,6 +88,7 @@ fun ProfileRoute(
     onBack: () -> Unit,
     onOpenTrip: (tripId: String) -> Unit,
     onOpenList: (PeopleList) -> Unit,
+    onOpenSettings: () -> Unit,
     // Keyed by person, like the trip map: the class alone would hand everyone the first profile's view model.
     viewModel: ProfileViewModel = koinViewModel(key = "profile:${username.orEmpty()}") { parametersOf(username) },
 ) {
@@ -98,7 +101,7 @@ fun ProfileRoute(
         }
     }
 
-    ProfileScreen(state = state, onAction = viewModel::onAction, onBack = onBack)
+    ProfileScreen(state = state, onAction = viewModel::onAction, onBack = onBack, onOpenSettings = onOpenSettings)
 
     if (state.reporting != null) {
         ReportDialog(
@@ -127,7 +130,7 @@ fun ProfileRoute(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-internal fun ProfileScreen(state: State, onAction: (Action) -> Unit, onBack: () -> Unit) {
+internal fun ProfileScreen(state: State, onAction: (Action) -> Unit, onBack: () -> Unit, onOpenSettings: () -> Unit) {
     Scaffold(
         topBar = {
             TopAppBar(
@@ -138,7 +141,13 @@ internal fun ProfileScreen(state: State, onAction: (Action) -> Unit, onBack: () 
                     }
                 },
                 actions = {
-                    if (!state.isMe && state.profile != null) ProfileMenu(onAction)
+                    if (state.isMe) {
+                        IconButton(onClick = onOpenSettings) {
+                            Icon(Icons.Default.Settings, contentDescription = stringResource(Res.string.social_settings))
+                        }
+                    } else if (state.profile != null) {
+                        ProfileMenu(onAction)
+                    }
                 },
             )
         },

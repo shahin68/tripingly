@@ -1,6 +1,7 @@
 <resources>
     <!-- Common -->
     <string name="social_back">Vissza</string>
+    <string name="social_settings">Beállítások</string>
     <string name="social_cancel">Mégse</string>
     <string name="social_more">Továbbiak</string>
     <string name="social_retry">Újra</string>

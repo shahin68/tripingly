@@ -4,7 +4,7 @@ import androidx.compose.ui.window.ComposeUIViewController
 import com.falcon.tripingly.core.data.account.LocalDataCleaner
 import com.falcon.tripingly.core.data.push.PushMessaging
 import com.falcon.tripingly.di.initKoin
-import com.falcon.tripingly.feature.auth.domain.SocialSignIn
+import com.falcon.tripingly.core.data.account.SocialSignIn
 import com.falcon.tripingly.feature.map.presentation.component.GoogleMapsSdk
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext

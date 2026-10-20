@@ -1,4 +1,4 @@
-package com.falcon.tripingly.feature.auth.domain
+package com.falcon.tripingly.core.data.account
 
 /**
  * The platform sign-in SDKs (Credential Manager on Android, GoogleSignIn and

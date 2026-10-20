@@ -6,7 +6,7 @@ import androidx.credentials.ClearCredentialStateRequest
 import androidx.credentials.CredentialManager
 import com.falcon.tripingly.core.data.account.LocalDataCleaner
 import com.falcon.tripingly.core.network.ApiConfig
-import com.falcon.tripingly.feature.auth.domain.SocialSignIn
+import com.falcon.tripingly.core.data.account.SocialSignIn
 import com.falcon.tripingly.feature.auth.platform.CredentialManagerSignIn
 import com.falcon.tripingly.feature.auth.platform.CurrentActivity
 import org.koin.core.module.Module

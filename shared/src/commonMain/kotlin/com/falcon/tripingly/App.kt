@@ -14,8 +14,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.lifecycle.compose.LifecycleStartEffect
+import androidx.lifecycle.viewmodel.navigation3.rememberViewModelStoreNavEntryDecorator
 import androidx.navigation3.runtime.NavEntry
 import androidx.navigation3.runtime.rememberNavBackStack
+import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
 import androidx.navigation3.ui.NavDisplay
 import coil3.ImageLoader
 import coil3.compose.setSingletonImageLoaderFactory
@@ -33,12 +35,14 @@ import com.falcon.tripingly.core.navigation.Home
 import com.falcon.tripingly.core.navigation.NavConfig
 import com.falcon.tripingly.core.navigation.People
 import com.falcon.tripingly.core.navigation.Profile
+import com.falcon.tripingly.core.navigation.Settings
 import com.falcon.tripingly.core.navigation.TripMap
 import com.falcon.tripingly.core.network.photos.StorageClient
 import com.falcon.tripingly.deeplink.DeepLink
 import com.falcon.tripingly.deeplink.DeepLinks
 import com.falcon.tripingly.feature.auth.presentation.gate.AuthGate
 import com.falcon.tripingly.feature.map.presentation.screen.MapRoute
+import com.falcon.tripingly.feature.settings.presentation.SettingsRoute
 import com.falcon.tripingly.feature.social.presentation.people.PeopleRoute
 import com.falcon.tripingly.feature.social.presentation.profile.ProfileRoute
 import com.falcon.tripingly.feature.social.presentation.social.SocialRoute
@@ -107,6 +111,12 @@ private fun MainNavigation() {
     NavDisplay(
         backStack = backStack,
         onBack = { goBack() },
+        // Each screen's ViewModels live while it is on the back stack; leaving it, or signing out
+        // (this whole display goes away), clears them. Rotation keeps them.
+        entryDecorators = listOf(
+            rememberSaveableStateHolderNavEntryDecorator(),
+            rememberViewModelStoreNavEntryDecorator(),
+        ),
     ) { route ->
         NavEntry(route) { key ->
             when (key) {
@@ -139,6 +149,7 @@ private fun MainNavigation() {
                         onBack = { goBack() },
                         onOpenTrip = { backStack.add(TripMap(it)) },
                         onOpenList = { backStack.add(People(it.name)) },
+                        onOpenSettings = { backStack.add(Settings) },
                     )
                 }
                 is People -> {
@@ -148,6 +159,7 @@ private fun MainNavigation() {
                         onOpenProfile = { backStack.add(Profile(it)) },
                     )
                 }
+                is Settings -> SettingsRoute(onBack = { goBack() })
             }
         }
     }

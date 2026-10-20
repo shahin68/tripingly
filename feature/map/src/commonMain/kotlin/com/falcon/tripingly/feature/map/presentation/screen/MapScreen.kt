@@ -105,6 +105,8 @@ import com.falcon.tripingly.feature.map.presentation.component.AlongTheWay
 import com.falcon.tripingly.feature.map.presentation.component.GoogleMapView
 import com.falcon.tripingly.feature.map.presentation.component.RouteAttribution
 import com.falcon.tripingly.feature.map.presentation.component.RouteSummary
+import com.falcon.tripingly.feature.map.presentation.component.routeLine
+import com.falcon.tripingly.feature.map.presentation.component.stopPathShape
 import com.falcon.tripingly.feature.map.presentation.component.durationLabel
 import com.falcon.tripingly.feature.map.presentation.component.PlaceCard
 import com.falcon.tripingly.feature.map.presentation.component.StopCard
@@ -197,6 +199,14 @@ fun MapScreen(
                 }
             }
     ) {
+        // A real route in its way of travelling's color, or else the stops joined in order.
+        val mapLine = remember(state.routeLine, state.routeStops, state.routeMode, state.stopPath) {
+            when {
+                state.routeLine.size > 1 -> routeLine(state.routeLine, state.routeStops, state.routeMode)
+                state.stopPath.size > 1 -> stopPathShape(state.stopPath)
+                else -> null
+            }
+        }
         // Not before the camera knows where the trip is: the map opens right there instead of flying from Paris.
         if (state.isCameraReady) {
             GoogleMapView(
@@ -208,8 +218,7 @@ fun MapScreen(
                 pinDotBelowZoom = state.pinDotBelowZoom,
                 placeClusters = state.placeClusters,
                 selectedPlace = state.selectedPlace,
-                routeLine = state.routeLine,
-                stopPath = state.stopPath,
+                line = mapLine,
                 isMyLocationEnabled = state.isPermissionGranted,
                 coveredBottom = with(density) { if (bottomCardsTop > 0f) (mapSize.height - bottomCardsTop).toDp() else 0.dp },
                 onCameraMove = { coords, zoom, bounds -> onAction(Action.OnCameraMove(coords, zoom, bounds)) },

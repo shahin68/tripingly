@@ -40,6 +40,7 @@ import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.JointType
 import com.google.android.gms.maps.model.LatLng
 import com.google.android.gms.maps.model.MapStyleOptions
+import com.google.android.gms.maps.model.RoundCap
 import com.google.maps.android.compose.ComposeMapColorScheme
 import com.google.maps.android.compose.GoogleMap
 import com.google.maps.android.compose.GoogleMapComposable
@@ -61,8 +62,7 @@ actual fun GoogleMapView(
     pinDotBelowZoom: Float,
     placeClusters: List<PlaceCluster>,
     selectedPlace: MapPlace?,
-    routeLine: List<Coordinates>,
-    stopPath: List<Coordinates>,
+    line: MapLine?,
     isMyLocationEnabled: Boolean,
     coveredBottom: Dp,
     onCameraMove: (Coordinates, Float, GeoBounds?) -> Unit,
@@ -285,14 +285,7 @@ actual fun GoogleMapView(
         }
 
         // Under every pin.
-        if (routeLine.size > 1) {
-            Polyline(
-                points = remember(routeLine) { routeLine.map { LatLng(it.latitude, it.longitude) } },
-                color = RouteColor,
-                width = with(density) { RouteWidth.toPx() },
-            )
-        }
-        if (stopPath.size > 1) StopPathLine(stopPath)
+        if (line != null && line.points.size > 1) MapLineView(line)
 
         // The tapped place, bigger and on top.
         selectedPlace?.let { place ->
@@ -349,20 +342,22 @@ actual fun GoogleMapView(
     }
 }
 
-/** The stops joined by straight lines with arrows pointing the way; a streak runs along it once when it changes. */
+/** A line with rounded ends and arrows pointing the way; a streak runs along it once when it changes. */
 @Composable
 @GoogleMapComposable
-private fun StopPathLine(stops: List<Coordinates>) {
+private fun MapLineView(line: MapLine) {
     val density = LocalDensity.current
     val layoutDirection = LocalLayoutDirection.current
-    val shape = remember(stops) { stopPathShape(stops) }
-    val points = remember(shape) { shape.points.map { LatLng(it.latitude, it.longitude) } }
-    val width = with(density) { StopPathWidth.toPx() }
-    Polyline(points = points, color = StopPathColor, width = width, jointType = JointType.ROUND)
+    val points = remember(line) { line.points.map { LatLng(it.latitude, it.longitude) } }
+    val width = with(density) { line.style.width.toPx() }
+    Polyline(points = points, color = line.style.color, width = width, jointType = JointType.ROUND, startCap = RoundCap(), endCap = RoundCap())
 
     // Flat, so they turn with the map and keep pointing along the line; under every pin (z 0).
-    val arrowIcon = remember(density) { BitmapDescriptorFactory.fromBitmap(drawPathArrow(density, layoutDirection).asAndroidBitmap()) }
-    shape.arrows.forEach { arrow ->
+    val arrowColor = line.style.color
+    val arrowIcon = remember(density, arrowColor) {
+        BitmapDescriptorFactory.fromBitmap(drawPathArrow(density, layoutDirection, arrowColor).asAndroidBitmap())
+    }
+    line.arrows.forEach { arrow ->
         key(arrow) {
             Marker(
                 state = rememberUpdatedMarkerState(position = LatLng(arrow.position.latitude, arrow.position.longitude)),
@@ -376,10 +371,20 @@ private fun StopPathLine(stops: List<Coordinates>) {
     }
 
     // Once, like a progress bar; then nothing moves.
-    val sweep = remember(shape) { Animatable(0f) }
-    LaunchedEffect(shape) { sweep.animateTo(1f, tween(STOP_PATH_SWEEP_MILLIS, easing = LinearEasing)) }
+    val sweep = remember(line) { Animatable(0f) }
+    LaunchedEffect(line) { sweep.animateTo(1f, tween(MAP_LINE_SWEEP_MILLIS, easing = LinearEasing)) }
     val streak = sweepOf(points, sweep.value)
-    if (streak.size > 1) Polyline(points = streak, color = StopPathSweepColor, width = width, jointType = JointType.ROUND, zIndex = 1f)
+    if (streak.size > 1) {
+        Polyline(
+            points = streak,
+            color = MapLineSweepColor,
+            width = width,
+            jointType = JointType.ROUND,
+            startCap = RoundCap(),
+            endCap = RoundCap(),
+            zIndex = 1f,
+        )
+    }
 }
 
 /** A new place pin fades in, as Google's own pins do. */

@@ -25,8 +25,8 @@ import com.falcon.tripingly.core.location.permission.LocationPermission
 import com.falcon.tripingly.core.model.account.ProfileUpdate
 import com.falcon.tripingly.core.model.photo.Photo
 import com.falcon.tripingly.core.model.photo.PhotoOwner
-import com.falcon.tripingly.core.model.photo.PickedImage
 import com.falcon.tripingly.core.model.photo.PhotoStatus
+import com.falcon.tripingly.core.model.photo.PickedImage
 import com.falcon.tripingly.core.model.place.GeoBounds
 import com.falcon.tripingly.core.model.place.ImageCredit
 import com.falcon.tripingly.core.model.place.MapPlace
@@ -55,6 +55,7 @@ import com.falcon.tripingly.core.model.trip.NewMarker
 import com.falcon.tripingly.core.model.trip.NewTrip
 import com.falcon.tripingly.core.model.trip.TripDay
 import com.falcon.tripingly.core.model.trip.TripDetails
+import com.falcon.tripingly.core.model.trip.TripMapView
 import com.falcon.tripingly.core.model.trip.TripRole
 import com.falcon.tripingly.core.ui.UiText
 import com.falcon.tripingly.feature.map.generated.resources.Res
@@ -66,6 +67,7 @@ import com.falcon.tripingly.feature.map.generated.resources.map_error_stop_chang
 import com.falcon.tripingly.feature.map.generated.resources.map_join_requested
 import com.falcon.tripingly.feature.map.generated.resources.map_best_order_already
 import com.falcon.tripingly.feature.map.generated.resources.map_my_content_removed
+import com.falcon.tripingly.feature.map.presentation.FakeTripMapViewRepository
 import com.falcon.tripingly.feature.map.presentation.component.PinSizes
 import com.falcon.tripingly.feature.map.presentation.screen.MapViewModel
 import com.falcon.tripingly.feature.map.presentation.screen.MapViewModel.Action
@@ -112,6 +114,7 @@ class MapViewModelTest {
     private lateinit var routes: RecordingRouteRepository
     /** Signed in as the trips backend's `me`. */
     private lateinit var session: FakeAccountBackend
+    private lateinit var mapViews: FakeTripMapViewRepository
 
     /** The fake's sights (Eiffel Tower, Louvre …), counting the squares asked for. */
     private class CountingPlaceRepository(
@@ -206,6 +209,7 @@ class MapViewModelTest {
         photos = FakePhotoRepository()
         social = RecordingSocialRepository()
         routes = RecordingRouteRepository()
+        mapViews = FakeTripMapViewRepository()
         // With Tripinly Pro, for the routes.
         session = signedIn(setOf(ROUTES_ENTITLEMENT))
         trip = (backend.createTrip(NewTrip("Test Trip", LocalDate(2024, 1, 1), LocalDate(2024, 1, 3))) as AppResult.Success).data
@@ -233,6 +237,7 @@ class MapViewModelTest {
         photoRepository = photos,
         socialRepository = social,
         appConfigRepository = FakeAppConfigRepository(),
+        mapViews = mapViews,
         sessionRepository = session,
         getCurrentLocationUseCase = GetCurrentLocationUseCase(fakeLocationRepository),
         dispatchers = TestCoroutineDispatchers(testDispatcher),
@@ -487,6 +492,58 @@ class MapViewModelTest {
         viewModel.onAction(Action.OnDaySelected(1))
         testScheduler.advanceUntilIdle()
         assertEquals(listOf(Coordinates(41.9, 12.49)), viewModel.uiState.value.frame?.points)
+    }
+
+    @Test
+    fun `reopening a trip shows it as it was left`() = runTest(testDispatcher) {
+        backend.addMarker(trip.trip.id, trip.days[0].id, NewMarker("Stop #1", GeoPoint(48.85, 2.35)))
+        backend.addMarker(trip.trip.id, trip.days[1].id, NewMarker("Stop #1", GeoPoint(41.9, 12.49)))
+        backend.addMarker(trip.trip.id, trip.days[1].id, NewMarker("Stop #2", GeoPoint(41.89, 12.48)))
+        val left = viewModel()
+        testScheduler.advanceUntilIdle()
+        left.onAction(Action.NavigateToLocation(Coordinates(48.855, 2.32), 14f))
+        left.onAction(Action.OnDaySelected(1))
+        left.onAction(Action.OnCameraMove(Coordinates(41.9, 12.49), 15.5f))
+        left.onAction(Action.OnToggleDayRoute)
+        left.onAction(Action.OnTravelModeSelected(TravelMode.Cycling))
+        testScheduler.advanceUntilIdle()
+
+        val reopened = viewModel()
+        testScheduler.advanceUntilIdle()
+
+        val state = reopened.uiState.value
+        assertEquals(1, state.activeDayIndex)
+        assertEquals(Coordinates(41.9, 12.49), state.cameraTarget)
+        assertEquals(15.5f, state.zoomLevel)
+        assertTrue(state.isCameraReady)
+        // Where it was left, not fitted again.
+        assertNull(state.frame)
+        assertTrue(state.isDayRouteShown)
+        assertEquals(TravelMode.Cycling, state.travelMode)
+    }
+
+    @Test
+    fun `a reopened trip whose day is gone opens on its first day`() = runTest(testDispatcher) {
+        backend.addMarker(trip.trip.id, trip.days[0].id, NewMarker("Stop #1", GeoPoint(48.85, 2.35)))
+        mapViews.views[trip.trip.id] = TripMapView("gone", 48.85, 2.35, 15f, isRouteShown = false, TravelMode.Walking)
+
+        val viewModel = viewModel()
+        testScheduler.advanceUntilIdle()
+
+        assertEquals(0, viewModel.uiState.value.activeDayIndex)
+        assertTrue(viewModel.uiState.value.isCameraReady)
+    }
+
+    @Test
+    fun `a route left on stays off without Pro`() = runTest(testDispatcher) {
+        session = signedIn(entitlements = emptySet())
+        backend.addMarker(trip.trip.id, trip.days[0].id, NewMarker("Stop #1", GeoPoint(48.85, 2.35)))
+        mapViews.views[trip.trip.id] = TripMapView(trip.days[0].id, 48.85, 2.35, 15f, isRouteShown = true, TravelMode.Driving)
+
+        val viewModel = viewModel()
+        testScheduler.advanceUntilIdle()
+
+        assertFalse(viewModel.uiState.value.isDayRouteShown)
     }
 
     @Test

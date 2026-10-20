@@ -18,6 +18,7 @@ import androidx.compose.material.icons.automirrored.filled.DirectionsWalk
 import androidx.compose.material.icons.filled.DirectionsCar
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -26,6 +27,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -70,6 +72,13 @@ fun RouteSummary(
                     onClick = { onModeSelected(entry) },
                     label = { Text(stringResource(entry.label())) },
                     leadingIcon = { Icon(entry.icon(), contentDescription = null, modifier = Modifier.size(18.dp)) },
+                    // The same color as this way's route line on the map.
+                    colors = FilterChipDefaults.filterChipColors(
+                        iconColor = entry.lineColor,
+                        selectedContainerColor = entry.lineColor,
+                        selectedLabelColor = Color.White,
+                        selectedLeadingIconColor = Color.White,
+                    ),
                 )
             }
             if (isLoading) CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)

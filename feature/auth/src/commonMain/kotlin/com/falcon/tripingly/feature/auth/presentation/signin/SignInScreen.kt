@@ -42,6 +42,7 @@ import com.falcon.tripingly.feature.auth.generated.resources.signin_developer_bu
 import com.falcon.tripingly.feature.auth.generated.resources.signin_developer_subject
 import com.falcon.tripingly.feature.auth.generated.resources.signin_developer_title
 import com.falcon.tripingly.feature.auth.generated.resources.signin_google
+import com.falcon.tripingly.feature.auth.generated.resources.signin_reason_account_deleted
 import com.falcon.tripingly.feature.auth.generated.resources.signin_reason_account_suspended
 import com.falcon.tripingly.feature.auth.generated.resources.signin_reason_session_expired
 import com.falcon.tripingly.feature.auth.generated.resources.signin_reason_under_age
@@ -141,6 +142,7 @@ private fun SignOutReason.message() = when (this) {
     SignOutReason.SESSION_EXPIRED -> Res.string.signin_reason_session_expired
     SignOutReason.ACCOUNT_SUSPENDED -> Res.string.signin_reason_account_suspended
     SignOutReason.UNDER_AGE -> Res.string.signin_reason_under_age
+    SignOutReason.ACCOUNT_DELETED -> Res.string.signin_reason_account_deleted
 }
 
 @Preview

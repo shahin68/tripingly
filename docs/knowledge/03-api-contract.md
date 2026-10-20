@@ -50,8 +50,10 @@ REST over HTTPS, JSON, base path `/v1`.
 | GET | `/me/trips` | Owned, collaborating and saved (`role` `viewer`, `savedByMe` true), cursor paginated; each item has `role`, `saveCount`, `savedByMe`, `coverThumbUrl` (first cover photo in the trip, or null), `dayCount`, `markerCount`, `editorCount` (people it's shared with, owner not counted; backend#30), `createdAt` (cards show "3 days ago"; backend#48) |
 | PUT | `/me/devices/{fcmToken}` | Register/refresh push device. Body: `platform` (`android`\|`ios`), `locale` |
 | DELETE | `/me/devices/{fcmToken}` | |
-| POST | `/me/export` | Starts GDPR export job; email when ready |
+| POST | `/me/export` | Starts the GDPR export (202 **DataExport**); one at a time, one per 24 h (429 `RATE_LIMITED`) |
+| GET | `/me/export` | Latest **DataExport** (404 when none): `status` (`pending`\|`ready`\|`failed`\|`expired`), `expiresAt`, `downloadUrl` (signed, only while ready; never log it). Settings shows Download from it, so the copy doesn't depend on email |
 | DELETE | `/me` | Starts account deletion (returns 202; requires a sign-in within the last 10 minutes, else `REAUTH_REQUIRED`) |
+| POST | `/me/deletion` | Deletion after `REAUTH_REQUIRED`: `{ provider: google\|apple, token }` with a fresh Google ID token or Apple identity token → 202. 403 `REAUTH_FAILED` when the token is invalid or another account's; nothing is deleted (backend#53). Dev accounts can't confirm this way: delete within 10 minutes of a dev sign-in |
 
 ### Users
 | Method | Path | Notes |
@@ -162,7 +164,7 @@ Response shapes and behaviour: see `05-maps-places-routing.md`.
 |---|---|---|
 | GET | `/notifications` | Paginated, newest first |
 | POST | `/notifications/read` | Body: IDs or `all` |
-| GET/PATCH | `/me/notification-settings` | Per-type push on/off |
+| GET/PATCH | `/me/notification-settings` | Per-type push on/off: `commentOnMarker`, `addedToTrip`, `tripChangedByCollaborator`, `likesGrouped`, `joinRequested`; PATCH sends only the one that changed |
 
 ### Moderation
 | Method | Path | Notes |
@@ -193,6 +195,6 @@ Field names the client relies on (full schemas in OpenAPI):
 
 ## Stable error codes (starter set)
 
-`UNAUTHENTICATED`, `TOKEN_EXPIRED`, `REFRESH_TOKEN_REUSED`, `ONBOARDING_INCOMPLETE`, `CONSENT_REQUIRED`, `AGE_REQUIREMENT_NOT_MET`, `USERNAME_TAKEN`, `USERNAME_INVALID`, `VALIDATION_FAILED`, `ID_CONFLICT`, `NOT_FOUND`, `FORBIDDEN`, `TRIP_NOT_COPYABLE` (marker copy), `JOIN_REQUEST_DECLINED`, `USER_BLOCKED`, `INVITE_EXPIRED`, `PHOTO_LIMIT_REACHED`, `UPLOAD_TOO_LARGE`, `UNSUPPORTED_MEDIA_TYPE`, `PREMIUM_REQUIRED`, `RATE_LIMITED`, `ACCOUNT_SUSPENDED`, `REAUTH_REQUIRED`, `ROUTING_UNAVAILABLE`, `BBOX_TOO_LARGE`.
+`UNAUTHENTICATED`, `TOKEN_EXPIRED`, `REFRESH_TOKEN_REUSED`, `ONBOARDING_INCOMPLETE`, `CONSENT_REQUIRED`, `AGE_REQUIREMENT_NOT_MET`, `USERNAME_TAKEN`, `USERNAME_INVALID`, `VALIDATION_FAILED`, `ID_CONFLICT`, `NOT_FOUND`, `FORBIDDEN`, `TRIP_NOT_COPYABLE` (marker copy), `JOIN_REQUEST_DECLINED`, `USER_BLOCKED`, `INVITE_EXPIRED`, `PHOTO_LIMIT_REACHED`, `UPLOAD_TOO_LARGE`, `UNSUPPORTED_MEDIA_TYPE`, `PREMIUM_REQUIRED`, `RATE_LIMITED`, `ACCOUNT_SUSPENDED`, `REAUTH_REQUIRED`, `REAUTH_FAILED`, `ROUTING_UNAVAILABLE`, `BBOX_TOO_LARGE`.
 
 Add new codes here when you introduce them.

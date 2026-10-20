@@ -26,5 +26,5 @@ val authModule = module {
     }
 }
 
-/** Binds the platform's [com.falcon.tripingly.feature.auth.domain.SocialSignIn]. */
+/** Binds the platform's [com.falcon.tripingly.core.data.account.SocialSignIn]. */
 internal expect val authPlatformModule: Module

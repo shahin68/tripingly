@@ -38,17 +38,15 @@ interface GoogleMap {
     /** Replaces the markers; a marker with the same key is moved or updated. */
     fun setMarkers(markers: List<GoogleMapMarker>)
 
-    /** Replaces the route's line, drawn under the markers; fewer than two points draw none. [width] is in points. */
-    fun setRoute(points: List<GoogleMapPoint>, color: UIColor, width: Double)
-
     /**
-     * Replaces the stops' direction line, drawn under the markers, and its [arrows]: flat markers showing
-     * [arrowIcon] (pointing north) turned by their bearing. Fewer than two points draw none.
+     * Replaces the line drawn under the markers (a route, or the stops joined in order) and its [arrows]: flat
+     * markers showing [arrowIcon] (pointing north) turned by their bearing. [capIcon], a dot as wide as the line,
+     * sits on both ends to round them. [width] is in points; fewer than two points draw none.
      */
-    fun setStopPath(points: List<GoogleMapPoint>, color: UIColor, width: Double, arrows: List<GoogleMapArrow>, arrowIcon: UIImage)
+    fun setLine(points: List<GoogleMapPoint>, color: UIColor, width: Double, arrows: List<GoogleMapArrow>, arrowIcon: UIImage?, capIcon: UIImage?)
 
-    /** Replaces the streak running along the stops' line, on top of it; fewer than two points draw none. */
-    fun setStopPathSweep(points: List<GoogleMapPoint>, color: UIColor, width: Double)
+    /** Replaces the streak running along the line, on top of it; fewer than two points draw none. */
+    fun setLineSweep(points: List<GoogleMapPoint>, color: UIColor, width: Double)
 }
 
 @ObjCName("GoogleMapPoint", exact = true)
