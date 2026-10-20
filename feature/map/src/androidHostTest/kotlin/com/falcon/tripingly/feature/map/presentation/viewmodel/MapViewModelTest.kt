@@ -1315,6 +1315,8 @@ class MapViewModelTest {
             viewModel.onAction(Action.OnPlacePinClick(place))
             viewModel.onAction(Action.OnRouteFromPlace)
             testScheduler.advanceUntilIdle()
+            // The place's card first moves the camera to it.
+            assertTrue(awaitItem() is Event.AnimateCamera)
             assertEquals(Event.OpenPaywall, awaitItem())
             assertNull(viewModel.uiState.value.routeStart)
             assertTrue(routes.dayRoutes.isEmpty() && routes.pointRoutes.isEmpty())
