@@ -158,7 +158,6 @@
     <string name="map_route_km">%1$s km</string>
     <string name="map_route_total">%1$s · %2$s</string>
     <string name="map_route_estimated">Az útvonalak most nem érhetők el.</string>
-    <string name="map_route_pro">Az utcákon vezető útvonalak a Tripinly Pro részei.</string>
     <string name="map_along_the_way">Útközben</string>
     <string name="map_along_the_way_item">%1$s múlva · %2$s-re az útvonaltól</string>
     <string name="map_along_add">Hozzáadás a(z) %1$d. naphoz</string>

@@ -1,5 +1,6 @@
 package com.falcon.tripingly.feature.settings.presentation
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -13,6 +14,8 @@ import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.filled.Directions
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Public
 import androidx.compose.material3.AlertDialog
@@ -84,6 +87,9 @@ import com.falcon.tripingly.feature.settings.generated.resources.settings_notifi
 import com.falcon.tripingly.feature.settings.generated.resources.settings_notifications
 import com.falcon.tripingly.feature.settings.generated.resources.settings_notifications_hint
 import com.falcon.tripingly.feature.settings.generated.resources.settings_privacy_policy
+import com.falcon.tripingly.feature.settings.generated.resources.settings_pro
+import com.falcon.tripingly.feature.settings.generated.resources.settings_pro_active
+import com.falcon.tripingly.feature.settings.generated.resources.settings_pro_get
 import com.falcon.tripingly.feature.settings.generated.resources.settings_reauth_apple
 import com.falcon.tripingly.feature.settings.generated.resources.settings_reauth_google
 import com.falcon.tripingly.feature.settings.generated.resources.settings_reauth_message
@@ -107,10 +113,12 @@ import org.koin.compose.viewmodel.koinViewModel
 @Composable
 fun SettingsRoute(
     onBack: () -> Unit,
+    /** Tripinly Pro's paywall: buying, restoring and managing the subscription. */
+    onOpenPro: () -> Unit,
     viewModel: SettingsViewModel = koinViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
-    SettingsScreen(state = state, onAction = viewModel::onAction, onBack = onBack)
+    SettingsScreen(state = state, onAction = viewModel::onAction, onBack = onBack, onOpenPro = onOpenPro)
 
     if (state.isConfirmingSignOut) {
         AlertDialog(
@@ -178,7 +186,7 @@ fun SettingsRoute(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-internal fun SettingsScreen(state: State, onAction: (Action) -> Unit, onBack: () -> Unit) {
+internal fun SettingsScreen(state: State, onAction: (Action) -> Unit, onBack: () -> Unit, onOpenPro: () -> Unit) {
     Scaffold(
         topBar = {
             TopAppBar(
@@ -210,6 +218,15 @@ internal fun SettingsScreen(state: State, onAction: (Action) -> Unit, onBack: ()
                         modifier = Modifier.padding(horizontal = MaterialTheme.spacing.medium),
                     )
                 }
+
+                ListItem(
+                    headlineContent = { Text(stringResource(Res.string.settings_pro)) },
+                    supportingContent = { Text(stringResource(if (state.hasPro) Res.string.settings_pro_active else Res.string.settings_pro_get)) },
+                    leadingContent = { Icon(Icons.Default.Directions, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
+                    trailingContent = { Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null) },
+                    colors = ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.surface),
+                    modifier = Modifier.clickable(role = Role.Button, onClick = onOpenPro),
+                )
 
                 Section(stringResource(Res.string.settings_new_trips))
                 SegmentedToggle(Modifier.fillMaxWidth().padding(horizontal = MaterialTheme.spacing.medium)) {
@@ -392,6 +409,7 @@ private fun SettingsScreenPreview() {
             ),
             onAction = {},
             onBack = {},
+            onOpenPro = {},
         )
     }
 }

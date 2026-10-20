@@ -33,6 +33,18 @@ sealed interface DataError : RootError {
         data class Unknown(val message: String? = null) : Local
     }
 
+    /** Buying Tripinly Pro in the app store. */
+    sealed interface Purchase : DataError {
+        /** This build has no purchases (no RevenueCat key), or the store can't be used on this device. */
+        data object Unavailable : Purchase
+        data object NoInternet : Purchase
+        /** The store waits for the payment (a slow method or a parent's approval); Pro comes once it's paid. */
+        data object Pending : Purchase
+        /** Purchases are turned off on this device or account. */
+        data object NotAllowed : Purchase
+        data class Store(val message: String? = null) : Purchase
+    }
+
     sealed interface Location : DataError {
         data object PermissionDenied : Location
         data object ServiceDisabled : Location

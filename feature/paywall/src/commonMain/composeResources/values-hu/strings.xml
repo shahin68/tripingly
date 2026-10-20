@@ -1,0 +1,34 @@
+<resources>
+    <string name="paywall_back">Vissza</string>
+    <string name="paywall_title">Tripinly Pro</string>
+    <string name="paywall_intro">Tervezd a napjaidat valódi útvonalakkal, ne csak vonalakkal a megállók között.</string>
+    <string name="paywall_benefit_routes">Utcákon vezető útvonalak gyalog, kerékpárral és autóval</string>
+    <string name="paywall_benefit_times">Menetidők a nap minden szakaszára</string>
+    <string name="paywall_benefit_along">Megállásra érdemes helyek útközben</string>
+    <string name="paywall_benefit_between">Útvonalak bármely helyről bármely másikra</string>
+    <string name="paywall_monthly">Havi</string>
+    <string name="paywall_monthly_price">%1$s havonta</string>
+    <string name="paywall_yearly">Éves</string>
+    <string name="paywall_yearly_price">%1$s évente</string>
+    <string name="paywall_lifetime">Örökös</string>
+    <string name="paywall_lifetime_price">%1$s egyszer, örökre a tiéd</string>
+    <string name="paywall_buy">Tovább</string>
+    <string name="paywall_restore">Vásárlások visszaállítása</string>
+    <string name="paywall_offers_failed">Nem sikerült betölteni az árakat. Ellenőrizd a kapcsolatot, és próbáld újra.</string>
+    <string name="paywall_retry">Újra</string>
+    <string name="paywall_unavailable">Az alkalmazás ezen verziójában nem lehet vásárolni.</string>
+    <string name="paywall_active">Neked már van Tripinly Pro előfizetésed.</string>
+    <string name="paywall_active_hint">Az útvonalak, a menetidők és az útközbeni helyek a fiókodhoz tartoznak, minden eszközön, ahol bejelentkezel.</string>
+    <string name="paywall_manage">Előfizetés kezelése</string>
+    <string name="paywall_fine_print">A fizetés az áruházi fiókodon keresztül történik. Az előfizetés automatikusan megújul, hacsak nem mondod le legalább 24 órával az aktuális időszak vége előtt; bármikor lemondhatod az áruházi fiókod beállításaiban.</string>
+    <string name="paywall_terms">Felhasználási feltételek</string>
+    <string name="paywall_privacy">Adatvédelmi irányelvek</string>
+    <string name="paywall_welcome">Üdv a Tripinly Pro-ban!</string>
+    <string name="paywall_confirming">Köszönjük! A vásárlásod megerősítése folyamatban van; a Pro hamarosan bekapcsol.</string>
+    <string name="paywall_pending">A fizetésed jóváhagyásra vár. A Pro a fizetés után kapcsol be.</string>
+    <string name="paywall_nothing_to_restore">Ezen az áruházi fiókon nem található korábbi Tripinly Pro vásárlás.</string>
+    <string name="paywall_error_purchase">Nem sikerült befejezni a vásárlást.</string>
+    <string name="paywall_error_restore">Nem sikerült visszaállítani a vásárlásaidat.</string>
+    <string name="paywall_error_not_allowed">Ezen az eszközön vagy áruházi fiókon nem engedélyezett a vásárlás.</string>
+    <string name="paywall_error_no_internet">Nincs internetkapcsolat. Ellenőrizd a kapcsolatot, és próbáld újra.</string>
+</resources>

@@ -63,6 +63,8 @@ fun MapRoute(
     tripId: String,
     onNavigateBack: () -> Unit,
     onOpenProfile: (String) -> Unit,
+    /** Tripinly Pro's paywall, when a free user taps a route. */
+    onOpenPaywall: () -> Unit,
     /** The trip's members sheet (from the trips feature), where the owner answers requests to join. */
     membersContent: @Composable (tripId: String, onDismiss: () -> Unit) -> Unit,
     // Keyed by trip: the view model store is shared across screens, and the class alone would
@@ -87,6 +89,7 @@ fun MapRoute(
                 is Event.OpenAppSettings -> locationPermission.openSettings()
                 is Event.NavigateBack -> onNavigateBack()
                 is Event.OpenProfile -> onOpenProfile(event.username)
+                Event.OpenPaywall -> onOpenPaywall()
                 is Event.AnimateCamera -> {
                     // Reactive
                 }

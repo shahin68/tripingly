@@ -2,6 +2,7 @@ package com.falcon.tripingly
 
 import androidx.compose.ui.window.ComposeUIViewController
 import com.falcon.tripingly.core.data.account.LocalDataCleaner
+import com.falcon.tripingly.core.data.billing.StorePurchases
 import com.falcon.tripingly.core.data.push.PushMessaging
 import com.falcon.tripingly.di.initKoin
 import com.falcon.tripingly.core.data.account.SocialSignIn
@@ -14,7 +15,12 @@ import platform.UIKit.UIViewController
 
 private var isKoinStarted = false
 
-fun MainViewController(nativeSignIn: NativeSignIn, googleMaps: GoogleMapsSdk, push: NativePush): UIViewController {
+fun MainViewController(
+    nativeSignIn: NativeSignIn,
+    googleMaps: GoogleMapsSdk,
+    push: NativePush,
+    purchases: NativePurchases,
+): UIViewController {
     if (!isKoinStarted) {
         // Without the key the map is Apple's.
         val hasGoogleMaps = googleMaps.start(AppBuildConfig.MAPS_API_KEY_IOS)
@@ -24,6 +30,7 @@ fun MainViewController(nativeSignIn: NativeSignIn, googleMaps: GoogleMapsSdk, pu
             appId = AppBuildConfig.FIREBASE_IOS_APP_ID,
             apiKey = AppBuildConfig.FIREBASE_IOS_API_KEY,
         )
+        val hasPurchases = purchases.start(AppBuildConfig.REVENUECAT_IOS_KEY)
         initKoin {
             modules(
                 module {
@@ -33,6 +40,7 @@ fun MainViewController(nativeSignIn: NativeSignIn, googleMaps: GoogleMapsSdk, pu
                     }
                     if (hasGoogleMaps) single { googleMaps }
                     // At start, so a push tapped to launch the app is opened.
+                    if (hasPurchases) single<StorePurchases> { IosStorePurchases(purchases) }
                     if (hasPush) single<PushMessaging>(createdAtStart = true) { IosPushMessaging(push, get()).also(push::setListener) }
                 },
             )

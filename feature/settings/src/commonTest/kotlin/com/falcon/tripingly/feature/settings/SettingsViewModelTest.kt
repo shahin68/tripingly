@@ -79,11 +79,25 @@ class SettingsViewModelTest {
 
         val state = viewModel.uiState.value
         assertEquals("me", state.username)
+        assertFalse(state.hasPro)
         assertEquals(TripVisibility.PUBLIC, state.defaultVisibility)
         assertEquals(NotificationType.entries.toSet(), state.notifications?.enabled)
         assertNull(state.export)
         assertTrue(state.hasLoadedExport)
         assertEquals(2, state.legalDocuments.size)
+    }
+
+    @Test
+    fun aProAccount_showsProAsActive() = runTest {
+        val account = FakeAccountBackend(today = { LocalDate(2026, 10, 20) }, entitlements = setOf("routes")).also {
+            it.signInForDevelopment("me", "Me")
+            it.updateProfile(ProfileUpdate(username = "me", birthDate = LocalDate(1990, 1, 1)))
+            it.accept((it.legalDocuments("en") as AppResult.Success).data)
+        }
+        val viewModel = viewModel(account)
+        advanceUntilIdle()
+
+        assertTrue(viewModel.uiState.value.hasPro)
     }
 
     @Test

@@ -46,4 +46,7 @@
     <string name="settings_error_export">Die Kopie deiner Daten konnte nicht angefordert werden.</string>
     <string name="settings_error_reauth">Wir konnten nicht bestätigen, dass du es bist. Bitte versuche es noch einmal.</string>
     <string name="settings_error_delete">Dein Konto konnte nicht gelöscht werden.</string>
+    <string name="settings_pro">Tripinly Pro</string>
+    <string name="settings_pro_active">Für dein Konto aktiv</string>
+    <string name="settings_pro_get">Routen entlang der Straßen, Fahrzeiten und mehr</string>
 </resources>

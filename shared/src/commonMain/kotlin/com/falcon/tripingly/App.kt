@@ -24,6 +24,7 @@ import coil3.compose.setSingletonImageLoaderFactory
 import coil3.network.ktor3.KtorNetworkFetcherFactory
 import coil3.request.crossfade
 import com.falcon.tripingly.core.common.result.AppResult
+import com.falcon.tripingly.core.data.billing.ProRepository
 import com.falcon.tripingly.core.data.push.PushNotifications
 import com.falcon.tripingly.core.data.realtime.LiveUpdates
 import com.falcon.tripingly.core.data.trips.MarkerRepository
@@ -33,6 +34,7 @@ import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
 import com.falcon.tripingly.core.model.social.PeopleList
 import com.falcon.tripingly.core.navigation.Home
 import com.falcon.tripingly.core.navigation.NavConfig
+import com.falcon.tripingly.core.navigation.Paywall
 import com.falcon.tripingly.core.navigation.People
 import com.falcon.tripingly.core.navigation.Profile
 import com.falcon.tripingly.core.navigation.Settings
@@ -42,6 +44,7 @@ import com.falcon.tripingly.deeplink.DeepLink
 import com.falcon.tripingly.deeplink.DeepLinks
 import com.falcon.tripingly.feature.auth.presentation.gate.AuthGate
 import com.falcon.tripingly.feature.map.presentation.screen.MapRoute
+import com.falcon.tripingly.feature.paywall.presentation.PaywallRoute
 import com.falcon.tripingly.feature.settings.presentation.SettingsRoute
 import com.falcon.tripingly.feature.social.presentation.people.PeopleRoute
 import com.falcon.tripingly.feature.social.presentation.profile.ProfileRoute
@@ -89,6 +92,9 @@ private fun MainNavigation() {
     }
     val push = koinInject<PushNotifications>()
     LaunchedEffect(push) { push.start() }
+    // Purchases made from here on belong to this account.
+    val pro = koinInject<ProRepository>()
+    LaunchedEffect(pro) { pro.start() }
     val backStack = rememberNavBackStack(NavConfig, Home)
     val goBack = { if (backStack.size > 1) backStack.removeAt(backStack.size - 1) }
 
@@ -140,6 +146,7 @@ private fun MainNavigation() {
                         tripId = key.tripId,
                         onNavigateBack = { goBack() },
                         onOpenProfile = { backStack.add(Profile(it)) },
+                        onOpenPaywall = { backStack.add(Paywall) },
                         membersContent = { tripId, onDismiss -> TripMembersRoute(tripId = tripId, onDismiss = onDismiss) },
                     )
                 }
@@ -159,7 +166,8 @@ private fun MainNavigation() {
                         onOpenProfile = { backStack.add(Profile(it)) },
                     )
                 }
-                is Settings -> SettingsRoute(onBack = { goBack() })
+                is Settings -> SettingsRoute(onBack = { goBack() }, onOpenPro = { backStack.add(Paywall) })
+                is Paywall -> PaywallRoute(onBack = { goBack() })
             }
         }
     }

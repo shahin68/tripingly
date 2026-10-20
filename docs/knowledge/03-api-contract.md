@@ -191,7 +191,7 @@ Field names the client relies on (full schemas in OpenAPI):
 - **User summary**: `id`, `username`, `displayName`.
 - **Place** (in-view/search/along-the-way): see `05-maps-places-routing.md`. Every Place shape (tiles, nearby, detail) has `coverImageId`, `coverSource` (`trip`\|`commons`\|null) and `coverThumbUrl`; `coverPhotoId` is set only for a Tripinly photo (`coverSource: trip`, a place photo or a public trip photo). The cover is the most liked photo that 3 people other than its uploader liked, else a Commons image (backend#45); it's also the pin's photo. Cache a cover by `coverImageId`.
 - **Place detail** (`GET /places/{id}`): adds `tags` (`openingHours`, `website`, …) and `images[]` → `{ id, source (trip|commons), thumbUrl, displayUrl, width, height, credit }`. The first image is the cover. `credit` is null for trip photos; for Commons it's `{ author, title, license, licenseUrl, sourceUrl }` and must show under the image (`CommonsCredit`). `photoThumbUrls` is deprecated (backend#38).
-- **Me**: profile fields, `onboarding` state, `defaultTripVisibility`, `locale`, `entitlements[]` (e.g. `routes`: route lines, A→B and places along the way; 403 `PREMIUM_REQUIRED` without it).
+- **Me**: profile fields, `onboarding` state, `defaultTripVisibility`, `locale`, `entitlements[]` (e.g. `routes`: route lines, A→B and places along the way; 403 `PREMIUM_REQUIRED` without it). A purchase reaches the server through RevenueCat's webhook (`POST /billing/revenuecat/webhook`, backend#54; the app never calls it): after buying, the app re-reads `GET /me` until `entitlements` has Pro.
 
 ## Stable error codes (starter set)
 

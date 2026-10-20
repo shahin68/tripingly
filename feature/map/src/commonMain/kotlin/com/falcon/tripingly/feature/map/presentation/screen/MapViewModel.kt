@@ -85,7 +85,6 @@ import com.falcon.tripingly.feature.map.generated.resources.map_join_withdrawn
 import com.falcon.tripingly.feature.map.generated.resources.map_my_content_removed
 import com.falcon.tripingly.feature.map.generated.resources.map_reported
 import com.falcon.tripingly.feature.map.generated.resources.map_route_pick_destination
-import com.falcon.tripingly.feature.map.generated.resources.map_route_pro
 import com.falcon.tripingly.feature.map.generated.resources.map_trip_saved
 import com.falcon.tripingly.feature.map.generated.resources.map_trip_unsaved
 import com.falcon.tripingly.feature.map.presentation.component.PlacePin
@@ -634,9 +633,9 @@ class MapViewModel(
     private fun hasRoutes(): Boolean =
         (session.value as? SessionState.SignedIn)?.account?.entitlements?.contains(ROUTES_ENTITLEMENT) == true
 
-    /** Until there's a paywall, a note says routes come with Tripinly Pro. */
+    /** Without Pro, a tap on a route opens the paywall. */
     private fun showRoutesArePro() {
-        ui.update { it.copy(message = UiText.Note(UiText.Resource(Res.string.map_route_pro))) }
+        sendEvent(Event.OpenPaywall)
     }
 
     /** "Route from here" on a place's card: the next place's card offers "Route to here". */
@@ -1422,6 +1421,7 @@ class MapViewModel(
         data object OpenAppSettings : Event
         data object NavigateBack : Event
         data class OpenProfile(val username: String) : Event
+        data object OpenPaywall : Event
     }
 
     sealed interface Action {
