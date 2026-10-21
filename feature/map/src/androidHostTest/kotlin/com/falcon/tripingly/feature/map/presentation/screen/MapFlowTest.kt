@@ -7,7 +7,6 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.runComposeUiTest
-import com.falcon.tripingly.core.common.coroutines.CoroutineDispatchers
 import com.falcon.tripingly.core.common.result.AppResult
 import com.falcon.tripingly.core.common.result.asSuccess
 import com.falcon.tripingly.core.data.account.FakeAccountBackend
@@ -27,8 +26,6 @@ import com.falcon.tripingly.core.model.trip.NewTrip
 import com.falcon.tripingly.core.model.trip.TripDetails
 import com.falcon.tripingly.core.model.trip.TripRole
 import com.falcon.tripingly.feature.map.presentation.FakeTripMapViewRepository
-import kotlinx.coroutines.CoroutineDispatcher
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.runBlocking
 import kotlinx.datetime.LocalDate
@@ -42,13 +39,6 @@ import kotlin.test.assertTrue
 @OptIn(ExperimentalTestApi::class)
 @RunWith(RobolectricTestRunner::class)
 class MapFlowTest {
-
-    private class MainDispatchers : CoroutineDispatchers {
-        override val main: CoroutineDispatcher = Dispatchers.Main
-        override val io: CoroutineDispatcher = Dispatchers.Main
-        override val default: CoroutineDispatcher = Dispatchers.Main
-        override val unconfined: CoroutineDispatcher = Dispatchers.Main
-    }
 
     private val backend = FakeTripBackend()
     private val trip: TripDetails = runBlocking {
@@ -79,7 +69,6 @@ class MapFlowTest {
                 override fun getLocationStream() = flowOf(Coordinates.Paris.asSuccess())
             },
         ),
-        dispatchers = MainDispatchers(),
     )
 
     private fun dayOneStops() = runBlocking {

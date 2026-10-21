@@ -35,6 +35,9 @@ interface GoogleMap {
 
     fun moveCamera(latitude: Double, longitude: Double, zoom: Float, animated: Boolean)
 
+    /** Flies to show all of the area, [padding] points inside the map's padding. */
+    fun fitBounds(south: Double, west: Double, north: Double, east: Double, padding: Double)
+
     /** Replaces the markers; a marker with the same key is moved or updated. */
     fun setMarkers(markers: List<GoogleMapMarker>)
 

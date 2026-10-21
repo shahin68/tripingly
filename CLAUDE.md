@@ -54,7 +54,7 @@ A modular KMP app: `androidApp` and `iosApp` shells, `shared` as the umbrella, `
 3. **Use the matching skill** from `.claude/skills/`.
 4. **Backend not ready?** Put a repository interface in front of every API use, with a fake implementation behind a build flag, so features can be built and demoed before the endpoint exists. Remove fakes from release builds.
 5. **Test** shared logic with unit tests (`commonTest`): repositories with a mocked HTTP engine, state holders, mapping, error handling.
-6. **Before saying you're done:** CI green on both platforms (Android build and tests, iOS framework and simulator tests), check both platforms visually where UI changed or tell the user exactly what to check, update `06-current-state.md` if structure changed.
+6. **Before saying you're done:** run the `verify` skill on the diff and fix what it confirms, then CI green on both platforms (Android build and tests, iOS framework and simulator tests), check both platforms visually where UI changed or tell the user exactly what to check, update `06-current-state.md` if structure changed.
 7. **Report briefly:** what changed, what to test on each platform, contract changes (and the backend PR that carries them), open follow-ups.
 
 ## Build order (from the current state)
@@ -90,3 +90,4 @@ Report to the user after each stage.
 | `localization` | Strings, languages, date/number formats |
 | `premium-and-paywall` | Entitlements, paid UI, best route premium, purchases once decided |
 | `release-checklist` | Before any store build: privacy, store requirements, config |
+| `verify` | Before every PR: reviewer agents on the diff vs `develop`, validated findings, fixes, then `allTests` |

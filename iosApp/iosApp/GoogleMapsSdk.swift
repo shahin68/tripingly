@@ -60,6 +60,8 @@ private final class AppGoogleMap: NSObject, GoogleMap, GMSMapViewDelegate {
     }
 
     func setPadding(top: Double, bottom: Double) {
+        // The screen's padding already counts the status bar and the home indicator.
+        mapView.paddingAdjustmentBehavior = .never
         mapView.padding = UIEdgeInsets(top: top, left: 0, bottom: bottom, right: 0)
     }
 
@@ -74,6 +76,18 @@ private final class AppGoogleMap: NSObject, GoogleMap, GMSMapViewDelegate {
         } else {
             mapView.camera = camera
         }
+    }
+
+    func fitBounds(south: Double, west: Double, north: Double, east: Double, padding: Double) {
+        let bounds = GMSCoordinateBounds(
+            coordinate: CLLocationCoordinate2D(latitude: south, longitude: west),
+            coordinate: CLLocationCoordinate2D(latitude: north, longitude: east)
+        )
+        // As fast as a move to a pin; the map's own padding is kept out too.
+        CATransaction.begin()
+        CATransaction.setAnimationDuration(0.18)
+        mapView.animate(with: GMSCameraUpdate.fit(bounds, withPadding: CGFloat(padding)))
+        CATransaction.commit()
     }
 
     func setMarkers(markers items: [GoogleMapMarker]) {

@@ -1,19 +1,30 @@
 package com.falcon.tripingly.feature.map.presentation.component
 
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
 import com.falcon.tripingly.core.location.model.Coordinates
 import com.falcon.tripingly.core.model.place.GeoBounds
 import com.falcon.tripingly.core.model.place.MapPlace
 import com.falcon.tripingly.core.model.place.PlaceCluster
+import com.falcon.tripingly.feature.map.domain.model.CameraCommand
 import com.falcon.tripingly.feature.map.domain.model.MapMarker
+import kotlinx.coroutines.flow.Flow
 
 @Composable
 expect fun GoogleMapView(
     modifier: Modifier = Modifier,
-    cameraTarget: Coordinates,
-    zoomLevel: Float,
+    /** Where the map starts; it moves only by [cameraCommands] and the user's fingers after that. */
+    initialTarget: Coordinates,
+    initialZoom: Float,
+    /** Each command runs once, in order; a fit waits until the map has loaded. */
+    cameraCommands: Flow<CameraCommand>,
+    /**
+     * The parts the screen's header and cards cover. The camera centers and fits within the rest, and Google's
+     * logo stays clear of them.
+     */
+    contentPadding: PaddingValues,
     markers: List<MapMarker>,
     /**
      * Our places and OpenStreetMap places, drawn under the stops as markers that keep their size on screen,
@@ -29,8 +40,6 @@ expect fun GoogleMapView(
     /** The line under the pins: a real route, or the stops joined in order; null for none. */
     line: MapLine?,
     isMyLocationEnabled: Boolean,
-    /** How much of the map's bottom the screen's cards cover: Google's logo stays above it. */
-    coveredBottom: Dp,
     /** The camera's center, zoom and visible area (null while the map can't tell yet). */
     onCameraMove: (Coordinates, Float, GeoBounds?) -> Unit,
     /**
@@ -46,3 +55,9 @@ expect fun GoogleMapView(
     onMapLongClick: (Coordinates) -> Unit,
     onMarkerClick: (MapMarker) -> Unit,
 )
+
+/** Room kept free around the points of a fit, inside the content padding. */
+internal val FitMargin = 48.dp
+
+/** How long the camera takes to fly to a pin, a search result, the user's location or a fit. */
+internal const val CAMERA_MOVE_MILLIS = 180

@@ -2,12 +2,14 @@ package com.falcon.tripingly.feature.map.domain.model
 
 import androidx.compose.runtime.Immutable
 import com.falcon.tripingly.core.location.model.Coordinates
+import com.falcon.tripingly.core.ui.UiText
 
 @Immutable
 data class MapMarker(
     val id: String,
     val position: Coordinates,
-    val title: String,
+    /** The stop's name, or "Stop 3" while it has none (one just tapped on the map waits for the server's). */
+    val title: UiText,
     val orderNumber: Int,
     val snippet: String? = null,
     /** The cover photo, drawn inside the pin; see [coverThumbUrl]. */

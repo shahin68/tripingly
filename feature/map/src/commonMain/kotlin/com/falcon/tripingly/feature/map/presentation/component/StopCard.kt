@@ -98,7 +98,7 @@ fun StopCard(
                 }
                 Column(modifier = Modifier.weight(1f, fill = false)) {
                     Text(
-                        text = marker.title,
+                        text = marker.title.asString(),
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
                         maxLines = 2,

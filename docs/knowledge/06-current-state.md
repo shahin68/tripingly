@@ -90,7 +90,8 @@ Not present yet: detekt/ktlint.
 
 ## Map integration
 
-- Common `expect fun GoogleMapView(...)` in `feature/map`.
+- **Map screen structure (2026-10-21):** `MapViewModel` exposes `MapUiState`, one sub-state per UI element (`header`, `search`, `dayTabs`, `stopsCard`, `pointRouteCard`, `placeCard`, `stopCard`, `layers`, `camera`, `location`, `sheet`, `dialog`, `message`; all in `MapUiState.kt`), plus `events` (navigation, permission) and `cameraCommands` (`CameraCommand.MoveTo`/`Fit`). Its private state is `MapModel` (`MapModel.kt`), shared through `MapContext` with small internal holders, one per concern: `MapCamera`, `MapSelection`, `MapSearch`, `MapRoutes`, `MapLocation`, `MapPins`, `MapEdits`. `MapStateMapper` builds `MapUiState` from the trip and the model in one place. The screen is split by section: `MapScreen` (map, padding, cards), `MapHeader`, `MapBottomCards`, `MapDialogs`; `MapRoute` renders the sheets. Only the header's and bottom cards' sizes are measured, and only as the map's content padding.
+- Common `expect fun GoogleMapView(...)` in `feature/map`: takes `cameraCommands` and `contentPadding`; each platform flies, jumps (before the map loads) or fits the camera itself and reports where it rests.
 - **Android:** `maps-compose` `GoogleMap`, `MarkerComposable` with the numbered `TripMarkerIcon` (above), place pins and clusters as `Marker`s (bitmaps per look from `drawPlacePin`/`drawClusterPin`, fading in), the tapped place as a bigger `Marker`, the route as a `Polyline` under the pins, my-location layer, long press. Google POIs are hidden by a JSON map style (`MapStyle.kt`, light and night).
 - **iOS:** the "GoogleMapView" actual is the **Google Maps SDK** (`GoogleSdkMapView`) when the app started it with a key: Swift (`AppGoogleMapsSdk`, handed to `MainViewController` like `NativeSignIn`) hosts `GMSMapView` behind the `GoogleMapsSdk`/`GoogleMap`/`GoogleMapListener` interfaces (exported with exact ObjC names); place pins, clusters and stops are `GMSMarker`s set together through `GoogleMapsSdk.setMarkers` (stops drawn by `drawTripPin`), the route a `GMSPolyline` through `setRoute`, and it takes taps, long presses and pin taps. Without `MAPS_API_KEY_IOS` it falls back to **Apple MapKit** (`AppleMapView`, no taps).
 - Location (`core:location`): `LocationDataSource` with fused location (Android) and `CLLocationManager` (iOS); the location permission is an `expect/actual` `LocationPermissionController` (`status()`, `request()`, `openSettings()`), re-read whenever the map resumes; the view model decides when to ask, explain or send the user to Settings.
@@ -127,7 +128,7 @@ Domain models in `core/model/.../trip/` follow the API (UUIDs, `LocalDate` dates
 
 1. **No proactive offline detection.** Offline is noticed when a call fails; writes need a connection (no outbox).
 2. **iOS map** is the Google Maps SDK since 2026-10-10; it hasn't been run on a device or simulator yet (no Mac).
-3. **The Google logo is covered** by the day tabs and itinerary card on Android (legal rule 3 wants it visible; needs map padding that the camera framing accounts for).
+3. **The Google logo** now sits above the bottom cards through the map's content padding (2026-10-21); check it on both platforms once the map refactor is merged.
 4. **Two message types:** `feature:auth` still has its own `UiMessage`; move it to `core:ui`'s `UiText` when auth is next touched.
 5. **No marker rename/reorder UI yet** (repository supports both); invite accept and marker copy have no UI yet.
 6. **No architecture or lint checks** beyond module boundaries (no Konsist, detekt or ktlint yet).

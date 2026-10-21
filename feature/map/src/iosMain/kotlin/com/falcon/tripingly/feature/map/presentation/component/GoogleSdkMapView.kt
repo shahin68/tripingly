@@ -4,6 +4,7 @@ import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
@@ -14,6 +15,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -21,7 +23,6 @@ import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.text.rememberTextMeasurer
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.viewinterop.UIKitInteropInteractionMode
 import androidx.compose.ui.viewinterop.UIKitInteropProperties
 import androidx.compose.ui.viewinterop.UIKitView
@@ -30,10 +31,12 @@ import com.falcon.tripingly.core.model.place.GeoBounds
 import com.falcon.tripingly.core.model.place.MapPlace
 import com.falcon.tripingly.core.model.place.PlaceCategory
 import com.falcon.tripingly.core.model.place.PlaceCluster
+import com.falcon.tripingly.feature.map.domain.model.CameraCommand
 import com.falcon.tripingly.feature.map.domain.model.MapMarker
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
 import platform.UIKit.UIColor
 import platform.UIKit.UIImage
-import kotlin.math.abs
 
 /**
  * Google's map on iOS, driven like the Android one: place pins as markers that keep their size on
@@ -44,8 +47,10 @@ import kotlin.math.abs
 internal fun GoogleSdkMapView(
     googleMaps: GoogleMapsSdk,
     modifier: Modifier,
-    cameraTarget: Coordinates,
-    zoomLevel: Float,
+    initialTarget: Coordinates,
+    initialZoom: Float,
+    cameraCommands: Flow<CameraCommand>,
+    contentPadding: PaddingValues,
     markers: List<MapMarker>,
     placePins: List<PlacePin>,
     pinDotBelowZoom: Float,
@@ -53,7 +58,6 @@ internal fun GoogleSdkMapView(
     selectedPlace: MapPlace?,
     line: MapLine?,
     isMyLocationEnabled: Boolean,
-    coveredBottom: Dp,
     onCameraMove: (Coordinates, Float, GeoBounds?) -> Unit,
     onMapTouch: () -> Unit,
     onMapClick: (Coordinates) -> Unit,
@@ -73,10 +77,10 @@ internal fun GoogleSdkMapView(
     val currentOnMapLongClick by rememberUpdatedState(onMapLongClick)
     val currentOnMarkerClick by rememberUpdatedState(onMarkerClick)
 
-    // Where the camera last rested, so a camera target that is already there isn't sent again.
-    val camera = remember { CameraRest() }
+    // The map has rested once, so it has its size: a camera move flies from then on, and a fit can run.
+    var isMapReady by remember { mutableStateOf(false) }
     // The camera's zoom as it moves, read only to tell when the pins turn into dots and back.
-    var liveZoom by remember { mutableStateOf(zoomLevel) }
+    var liveZoom by remember { mutableStateOf(initialZoom) }
     val isDots by remember(pinDotBelowZoom) { derivedStateOf { liveZoom < pinDotBelowZoom } }
     val map = remember(googleMaps) {
         googleMaps.createMap(
@@ -91,8 +95,7 @@ internal fun GoogleSdkMapView(
                     east: Double,
                 ) {
                     val bounds = GeoBounds(south, west, north, east)
-                    camera.center = Coordinates(latitude, longitude)
-                    camera.zoom = zoom
+                    isMapReady = true
                     currentOnCameraMove(Coordinates(latitude, longitude), zoom, bounds)
                 }
 
@@ -126,21 +129,26 @@ internal fun GoogleSdkMapView(
         )
     }
 
-    LaunchedEffect(cameraTarget, zoomLevel) {
-        val center = camera.center
-        val moved = center == null ||
-            abs(center.latitude - cameraTarget.latitude) > 0.00001 ||
-            abs(center.longitude - cameraTarget.longitude) > 0.00001 ||
-            abs(camera.zoom - zoomLevel) > 0.01
-        // Until the map has rested once, it starts there instead of flying there.
-        if (moved) map.moveCamera(cameraTarget.latitude, cameraTarget.longitude, zoomLevel, animated = center != null)
+    LaunchedEffect(map) { map.moveCamera(initialTarget.latitude, initialTarget.longitude, initialZoom, animated = false) }
+    LaunchedEffect(cameraCommands) {
+        cameraCommands.collect { command ->
+            when (command) {
+                // Until the map has rested once, it starts there instead of flying there.
+                is CameraCommand.MoveTo -> map.moveCamera(command.target.latitude, command.target.longitude, command.zoom, animated = isMapReady)
+                is CameraCommand.Fit -> {
+                    snapshotFlow { isMapReady }.first { it }
+                    with(command.bounds) { map.fitBounds(south, west, north, east, FitMargin.value.toDouble()) }
+                }
+            }
+        }
     }
 
     val isDark = isSystemInDarkTheme()
     LaunchedEffect(isDark) { map.setStyle(if (isDark) DARK_MAP_STYLE else LIGHT_MAP_STYLE) }
     LaunchedEffect(isMyLocationEnabled) { map.setMyLocationEnabled(isMyLocationEnabled) }
-    // As much room at the top as at the bottom keeps the camera's center in the middle of the view.
-    LaunchedEffect(coveredBottom) { map.setPadding(coveredBottom.value.toDouble(), coveredBottom.value.toDouble()) }
+    val top = contentPadding.calculateTopPadding()
+    val bottom = contentPadding.calculateBottomPadding()
+    LaunchedEffect(top, bottom) { map.setPadding(top.value.toDouble(), bottom.value.toDouble()) }
 
     // Every pin look is drawn once and shared by every pin that looks the same.
     val categoryIcons = PlaceCategory.entries.associateWith { rememberVectorPainter(it.icon) }
@@ -213,13 +221,14 @@ internal fun GoogleSdkMapView(
     // By number, color and cover photo (once its thumbnail has loaded).
     val stopIcons = remember(density) { mutableMapOf<Triple<Int, Long, String?>, UIImage>() }
     val coverThumbs = rememberCoverThumbs(markers)
-    LaunchedEffect(markers, coverThumbs, pinPhotos, selectedPlace, placePins, placeClusters, pinIcons, clusterIcons, isDots) {
-        val stops = markers.map { marker ->
+    val stopTitles = markers.map { it.title.asString() }
+    LaunchedEffect(markers, stopTitles, coverThumbs, pinPhotos, selectedPlace, placePins, placeClusters, pinIcons, clusterIcons, isDots) {
+        val stops = markers.mapIndexed { index, marker ->
             GoogleMapMarker(
                 key = marker.id,
                 latitude = marker.position.latitude,
                 longitude = marker.position.longitude,
-                title = marker.title,
+                title = stopTitles[index],
                 icon = marker.coverPhotoId?.let { coverThumbs[it] }.let { cover ->
                     stopIcons.getOrPut(Triple(marker.orderNumber, marker.color, marker.coverPhotoId.takeIf { cover != null })) {
                         if (cover == null) {
@@ -307,12 +316,6 @@ internal fun GoogleSdkMapView(
         // The map takes every touch at once, without waiting to see whether Compose scrolls.
         properties = UIKitInteropProperties(interactionMode = UIKitInteropInteractionMode.NonCooperative),
     )
-}
-
-/** Where the camera last came to rest. */
-private class CameraRest {
-    var center: Coordinates? = null
-    var zoom: Float = 0f
 }
 
 private fun PlaceCluster.key() = "$CLUSTER_KEY${location.lat},${location.lng}"
