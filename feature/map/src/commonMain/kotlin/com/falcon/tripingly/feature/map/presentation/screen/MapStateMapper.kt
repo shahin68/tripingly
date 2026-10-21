@@ -1,5 +1,6 @@
 package com.falcon.tripingly.feature.map.presentation.screen
 
+import com.falcon.tripingly.core.common.util.DateUtils
 import com.falcon.tripingly.core.location.model.Coordinates
 import com.falcon.tripingly.core.location.permission.LocationPermission
 import com.falcon.tripingly.core.model.config.AppConfig
@@ -10,13 +11,18 @@ import com.falcon.tripingly.core.model.trip.TripRole
 import com.falcon.tripingly.core.ui.UiText
 import com.falcon.tripingly.feature.map.domain.model.MapMarker
 import com.falcon.tripingly.feature.map.generated.resources.Res
+import com.falcon.tripingly.feature.map.generated.resources.map_day_label
+import com.falcon.tripingly.feature.map.generated.resources.map_day_label_no_date
 import com.falcon.tripingly.feature.map.generated.resources.map_stop_title_format
+import com.falcon.tripingly.feature.map.generated.resources.map_trip_created
 import com.falcon.tripingly.feature.map.presentation.component.PlacePin
+import com.falcon.tripingly.feature.map.presentation.component.durationText
 import com.falcon.tripingly.feature.map.presentation.component.placePinSize
 import com.falcon.tripingly.feature.map.presentation.component.routeLine
 import com.falcon.tripingly.feature.map.presentation.component.stopPathShape
 import kotlinx.collections.immutable.toImmutableList
 import kotlinx.collections.immutable.toImmutableMap
+import kotlinx.datetime.LocalDate
 
 /** Builds [MapUiState] from the trip and the screen's [MapModel], one part per thing on screen. */
 internal class MapStateMapper(
@@ -45,7 +51,7 @@ internal class MapStateMapper(
     fun map(): MapUiState = MapUiState(
         header = header(),
         search = model.search?.let { SearchState(it.query, it.results.toImmutableList(), it.isSearching) },
-        dayTabs = DayTabsState(days.map { DayTab(it.id, it.position + 1, it.date) }.toImmutableList(), activeIndex),
+        dayTabs = DayTabsState(days.map { DayTab(it.id, it.position + 1, dayLabel(it.position + 1, it.date)) }.toImmutableList(), activeIndex),
         stopsCard = stopsCard(),
         pointRouteCard = route.between?.let { PointRouteCardState(it.from, it.to, routeSummary()) },
         routeStartName = route.start?.name,
@@ -64,7 +70,7 @@ internal class MapStateMapper(
         val trip = details?.trip
         return HeaderState(
             tripName = trip?.name.orEmpty(),
-            tripCreatedAt = trip?.createdAt,
+            createdLabel = trip?.createdAt?.let { UiText.Resource(Res.string.map_trip_created, DateUtils.formatFormal(it)) },
             isBusy = model.isSaving || model.isUpdatingSharing || (days.isEmpty() && model.isLoadingTrip),
             viewerMenu = trip?.takeIf { role == TripRole.VIEWER }?.let {
                 ViewerMenu(isSavedByMe = it.savedByMe, myJoinRequest = details?.myJoinRequest, ownerUsername = it.owner?.username)
@@ -87,10 +93,10 @@ internal class MapStateMapper(
             // A route needs two stops.
             isRouteOn = route.isDayRouteShown.takeIf { stops.size >= 2 },
             route = routeSummary().takeIf { isRouteShown },
-            legSeconds = if (isRouteShown && isDayRoute) {
-                plan?.route?.legs.orEmpty().mapNotNull { leg -> leg.toMarkerId?.let { it to leg.durationSeconds } }.toMap().toImmutableMap()
+            legLabels = if (isRouteShown && isDayRoute) {
+                plan?.route?.legs.orEmpty().mapNotNull { leg -> leg.toMarkerId?.let { it to durationText(leg.durationSeconds) } }.toMap().toImmutableMap()
             } else {
-                emptyMap<String, Int>().toImmutableMap()
+                emptyMap<String, UiText>().toImmutableMap()
             },
             canFindBestOrder = canEdit && stops.size in MIN_BEST_ORDER_STOPS..MAX_BEST_ORDER_STOPS,
             isFindingBestOrder = route.isFindingBestOrder,
@@ -213,6 +219,13 @@ internal class MapStateMapper(
         placeId = placeId,
         canDelete = role == TripRole.OWNER || (canEdit && myUserId != null && createdById == myUserId),
     )
+
+    private fun dayLabel(number: Int, date: LocalDate?): UiText =
+        if (date != null) {
+            UiText.Resource(Res.string.map_day_label, number, DateUtils.formatAbbreviated(date))
+        } else {
+            UiText.Resource(Res.string.map_day_label_no_date, number)
+        }
 
     private companion object {
         /** With two stops there's only one order (the first stays first); the server orders up to 25. */

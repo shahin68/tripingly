@@ -67,6 +67,7 @@ actual fun GoogleMapView(
             initialTarget = initialTarget,
             initialZoom = initialZoom,
             cameraCommands = cameraCommands,
+            contentPadding = contentPadding,
             markers = markers,
             placePins = placePins,
             placeClusters = placeClusters,

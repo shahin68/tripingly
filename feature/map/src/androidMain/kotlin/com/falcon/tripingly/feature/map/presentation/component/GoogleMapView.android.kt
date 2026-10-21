@@ -142,11 +142,13 @@ actual fun GoogleMapView(
                 is CameraCommand.MoveTo -> CameraUpdateFactory.newLatLngZoom(LatLng(command.target.latitude, command.target.longitude), command.zoom)
                 is CameraCommand.Fit -> {
                     snapshotFlow { isMapLoaded }.first { it }
+                    awaitPaddingFrames()
                     val bounds = command.bounds
                     CameraUpdateFactory.newLatLngBounds(LatLngBounds(LatLng(bounds.south, bounds.west), LatLng(bounds.north, bounds.east)), fitMargin)
                 }
             }
-            if (!isMapLoaded) {
+            // Before the map has loaded, and for a new map's first fit, the camera starts there instead of flying.
+            if (!isMapLoaded || (command as? CameraCommand.Fit)?.isAnimated == false) {
                 cameraPositionState.move(update)
             } else {
                 try {

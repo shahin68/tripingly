@@ -37,7 +37,6 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.falcon.tripingly.core.common.util.DateUtils
 import com.falcon.tripingly.core.designsystem.component.AppDropdownMenu
 import com.falcon.tripingly.core.designsystem.component.DropdownAction
 import com.falcon.tripingly.core.designsystem.component.OsmAttribution
@@ -58,7 +57,6 @@ import com.falcon.tripingly.feature.map.generated.resources.map_save_trip
 import com.falcon.tripingly.feature.map.generated.resources.map_search
 import com.falcon.tripingly.feature.map.generated.resources.map_search_clear
 import com.falcon.tripingly.feature.map.generated.resources.map_search_placeholder
-import com.falcon.tripingly.feature.map.generated.resources.map_trip_created
 import com.falcon.tripingly.feature.map.generated.resources.map_trip_menu
 import com.falcon.tripingly.feature.map.generated.resources.map_unsave_trip
 import kotlinx.collections.immutable.ImmutableList
@@ -97,15 +95,15 @@ private fun TripTitle(header: HeaderState, onAction: (MapAction) -> Unit) {
         IconButton(onClick = { onAction(MapAction.OnBackClick) }) {
             Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(Res.string.map_back))
         }
-        Column(Modifier.weight(1f).padding(vertical = if (header.tripCreatedAt == null) 16.dp else 8.dp)) {
+        Column(Modifier.weight(1f).padding(vertical = if (header.createdLabel == null) 16.dp else 8.dp)) {
             Text(
                 text = header.tripName,
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
             )
-            header.tripCreatedAt?.let { createdAt ->
+            header.createdLabel?.let { created ->
                 Text(
-                    text = stringResource(Res.string.map_trip_created, DateUtils.formatFormal(createdAt)),
+                    text = created.asString(),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )

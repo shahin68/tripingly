@@ -38,13 +38,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.falcon.tripingly.core.common.util.DateUtils
 import com.falcon.tripingly.core.designsystem.theme.spacing
 import com.falcon.tripingly.feature.map.domain.model.MapMarker
 import com.falcon.tripingly.feature.map.generated.resources.Res
 import com.falcon.tripingly.feature.map.generated.resources.map_best_order
-import com.falcon.tripingly.feature.map.generated.resources.map_day_label
-import com.falcon.tripingly.feature.map.generated.resources.map_day_label_no_date
 import com.falcon.tripingly.feature.map.generated.resources.map_itinerary_clear_all
 import com.falcon.tripingly.feature.map.generated.resources.map_itinerary_title
 import com.falcon.tripingly.feature.map.generated.resources.map_remove_stop
@@ -54,7 +51,6 @@ import com.falcon.tripingly.feature.map.generated.resources.map_route_close
 import com.falcon.tripingly.feature.map.generated.resources.map_route_start
 import com.falcon.tripingly.feature.map.presentation.component.AlongTheWay
 import com.falcon.tripingly.feature.map.presentation.component.RouteSummary
-import com.falcon.tripingly.feature.map.presentation.component.durationLabel
 import org.jetbrains.compose.resources.stringResource
 
 @Composable
@@ -77,13 +73,7 @@ internal fun DayTabs(
                 selected = tabs.activeIndex == index,
                 onClick = { onAction(MapAction.OnDaySelected(index)) },
                 text = {
-                    Text(
-                        if (day.date != null) {
-                            stringResource(Res.string.map_day_label, day.number, DateUtils.formatAbbreviated(day.date))
-                        } else {
-                            stringResource(Res.string.map_day_label_no_date, day.number)
-                        },
-                    )
+                    Text(day.label.asString())
                 },
             )
         }
@@ -148,10 +138,10 @@ internal fun StopsCard(
         ) {
             card.stops.forEach { stop ->
                 // The time from the stop before.
-                card.legSeconds[stop.id]?.let { legSeconds ->
+                card.legLabels[stop.id]?.let { leg ->
                     item(key = "leg:${stop.id}") {
                         Text(
-                            text = durationLabel(legSeconds),
+                            text = leg.asString(),
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )

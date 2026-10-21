@@ -18,8 +18,6 @@ import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.ImmutableMap
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.persistentMapOf
-import kotlinx.datetime.LocalDate
-import kotlin.time.Instant
 
 /**
  * The trip's map, one part per thing on screen: each section of [MapScreen] takes its own part. A part
@@ -54,8 +52,8 @@ data class MapUiState(
 @Immutable
 data class HeaderState(
     val tripName: String = "",
-    /** Shown as a date under the trip's name. */
-    val tripCreatedAt: Instant? = null,
+    /** "Created …" under the trip's name. */
+    val createdLabel: UiText? = null,
     /** The trip is loading, or a day change, a save or a request to join waits for the server. */
     val isBusy: Boolean = false,
     /** Someone else's public trip: save it, ask to join, see its owner, report it. */
@@ -91,9 +89,9 @@ data class DayTabsState(
     val activeIndex: Int = 0,
 )
 
-/** A day tab: [number] counts from 1; [date] is null when the trip has no dates. */
+/** A day tab: [number] counts from 1; [label] is "Day 2 · Jun 2", or "Day 2" when the trip has no dates. */
 @Immutable
-data class DayTab(val id: String, val number: Int, val date: LocalDate?)
+data class DayTab(val id: String, val number: Int, val label: UiText)
 
 @Immutable
 data class StopsCardState(
@@ -106,8 +104,8 @@ data class StopsCardState(
     val isRouteOn: Boolean?,
     /** The route's times and the places along it, while the Route button is on. */
     val route: RouteSummaryState?,
-    /** The time to each stop from the one before, by stop ID, while the route shows. */
-    val legSeconds: ImmutableMap<String, Int> = persistentMapOf(),
+    /** The time to each stop from the one before ("12 min"), by stop ID, while the route shows. */
+    val legLabels: ImmutableMap<String, UiText> = persistentMapOf(),
     /** An owner or editor, with 3 to 25 stops on the day. */
     val canFindBestOrder: Boolean,
     val isFindingBestOrder: Boolean,

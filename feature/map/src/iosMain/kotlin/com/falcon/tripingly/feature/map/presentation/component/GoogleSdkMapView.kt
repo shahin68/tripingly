@@ -137,7 +137,8 @@ internal fun GoogleSdkMapView(
                 is CameraCommand.MoveTo -> map.moveCamera(command.target.latitude, command.target.longitude, command.zoom, animated = isMapReady)
                 is CameraCommand.Fit -> {
                     snapshotFlow { isMapReady }.first { it }
-                    with(command.bounds) { map.fitBounds(south, west, north, east, FitMargin.value.toDouble()) }
+                    awaitPaddingFrames()
+                    with(command.bounds) { map.fitBounds(south, west, north, east, FitMargin.value.toDouble(), animated = command.isAnimated) }
                 }
             }
         }

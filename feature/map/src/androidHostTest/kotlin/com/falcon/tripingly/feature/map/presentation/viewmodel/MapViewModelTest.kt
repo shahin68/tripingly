@@ -6,6 +6,7 @@ import com.falcon.tripingly.core.common.result.AppResult
 import com.falcon.tripingly.core.common.result.asError
 import com.falcon.tripingly.core.common.result.asSuccess
 import com.falcon.tripingly.core.common.result.map
+import com.falcon.tripingly.core.common.util.DateUtils
 import com.falcon.tripingly.core.data.account.FakeAccountBackend
 import com.falcon.tripingly.core.data.config.FakeAppConfigRepository
 import com.falcon.tripingly.core.data.photos.FakePhotoRepository
@@ -61,6 +62,7 @@ import com.falcon.tripingly.feature.map.generated.resources.Res
 import com.falcon.tripingly.feature.map.generated.resources.error_location_denied_manual
 import com.falcon.tripingly.feature.map.generated.resources.error_location_permission_required
 import com.falcon.tripingly.feature.map.generated.resources.map_change_not_saved
+import com.falcon.tripingly.feature.map.generated.resources.map_day_label
 import com.falcon.tripingly.feature.map.generated.resources.map_error_load_trip
 import com.falcon.tripingly.feature.map.generated.resources.map_error_stop_change
 import com.falcon.tripingly.feature.map.generated.resources.map_join_requested
@@ -269,7 +271,7 @@ class MapViewModelTest {
         val state = viewModel.uiState.value
         assertEquals("Test Trip", state.header.tripName)
         assertEquals(listOf(1, 2, 3), state.dayTabs.days.map { it.number })
-        assertEquals(LocalDate(2024, 1, 2), state.dayTabs.days[1].date)
+        assertEquals(UiText.Resource(Res.string.map_day_label, 2, DateUtils.formatAbbreviated(LocalDate(2024, 1, 2))), state.dayTabs.days[1].label)
         assertNotNull(state.header.editorMenu)
         assertFalse(state.header.isBusy)
         assertTrue(state.layers.stops.isEmpty())
@@ -510,7 +512,8 @@ class MapViewModelTest {
         viewModel.cameraCommands.test {
             testScheduler.advanceUntilIdle()
 
-            assertEquals(CameraCommand.fit(listOf(Coordinates(48.85, 2.35), Coordinates(48.86, 2.29))), awaitItem())
+            // The new map opens on them at once; later fits fly.
+            assertEquals(CameraCommand.fit(listOf(Coordinates(48.85, 2.35), Coordinates(48.86, 2.29))).copy(isAnimated = false), awaitItem())
             // The map shows in the middle of the stops, then fits them, so it opens on them and not on the default.
             assertTrue(viewModel.uiState.value.camera.isReady)
             val target = viewModel.uiState.value.camera.target
@@ -581,7 +584,7 @@ class MapViewModelTest {
         testScheduler.advanceUntilIdle()
 
         viewModel.cameraCommands.test {
-            assertEquals(CameraCommand.fit(listOf(Coordinates(41.9, 12.49))), awaitItem())
+            assertEquals(CameraCommand.fit(listOf(Coordinates(41.9, 12.49))).copy(isAnimated = false), awaitItem())
         }
     }
 
@@ -613,12 +616,12 @@ class MapViewModelTest {
         val viewModel = viewModel()
         viewModel.cameraCommands.test {
             testScheduler.advanceUntilIdle()
-            val first = awaitItem()
+            val first = assertIs<CameraCommand.Fit>(awaitItem())
 
             viewModel.onAction(MapAction.OnDaySelected(0))
             testScheduler.advanceUntilIdle()
 
-            assertEquals(first, awaitItem())
+            assertEquals(first.copy(isAnimated = true), awaitItem())
         }
     }
 
@@ -1286,7 +1289,7 @@ class MapViewModelTest {
         state.assertRoute(state.stopPositions)
         val card = assertNotNull(state.stopsCard)
         assertNotNull(card.route?.durationSeconds)
-        assertEquals(state.layers.stops[1].id, card.legSeconds.keys.single())
+        assertEquals(state.layers.stops[1].id, card.legLabels.keys.single())
         assertEquals(1, routes.dayRoutes.size)
 
         // Unrelated changes don't ask again.
