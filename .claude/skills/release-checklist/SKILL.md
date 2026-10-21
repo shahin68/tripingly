@@ -23,7 +23,8 @@ Go through every item; report which pass, which fail, and what the user must do 
 - [ ] Terms and privacy policy links in onboarding and Settings.
 - [ ] Permission texts (iOS `Info.plist`): location when in use, photo library (only if not using the picker), notifications. Explain why in plain language, localized.
 - [ ] App Store privacy "nutrition label" and Google Play "Data safety" answers match what the app does (the user fills them in; give them the list: name, username, birth date, photos, user content, coarse/precise location used for features and not stored, device token, crash data if any).
-- [ ] If purchases exist: restore purchases, subscription terms, links to manage subscriptions.
+- [ ] Purchases: restore purchases, subscription terms, links to manage subscriptions (all on the paywall).
+- [ ] RevenueCat: real Play Store and App Store apps and products (`monthly`, `yearly`, `lifetime`) attached to `tripinly_pro` and the default offering; production `revenuecat.androidKey` / `revenuecat.iosKey` (not the Test Store key) in the release build; webhook pointed at production with `REVENUECAT_WEBHOOK_AUTH`; `DEV_ACCOUNTS_PRO` off.
 
 ## Legal and attribution
 

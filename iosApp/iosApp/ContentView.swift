@@ -7,7 +7,8 @@ struct ComposeView: UIViewControllerRepresentable {
         MainViewControllerKt.MainViewController(
             nativeSignIn: AppNativeSignIn.shared,
             googleMaps: AppGoogleMapsSdk.shared,
-            push: AppNativePush.shared
+            push: AppNativePush.shared,
+            purchases: AppNativePurchases.shared
         )
     }
 

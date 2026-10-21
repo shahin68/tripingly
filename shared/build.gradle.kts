@@ -38,6 +38,7 @@ kotlin {
             implementation(projects.feature.map)
             implementation(projects.feature.social)
             implementation(projects.feature.settings)
+            implementation(projects.feature.paywall)
 
             implementation(libs.koin.core)
             implementation(libs.kotlinx.coroutines.core)
@@ -64,5 +65,8 @@ buildkonfig {
         buildConfigField(STRING, "FIREBASE_SENDER_ID", localProperties.getProperty("firebase.senderId") ?: "")
         buildConfigField(STRING, "FIREBASE_IOS_APP_ID", localProperties.getProperty("firebase.ios.appId") ?: "")
         buildConfigField(STRING, "FIREBASE_IOS_API_KEY", localProperties.getProperty("firebase.ios.apiKey") ?: "")
+        // RevenueCat's public iOS key (Test Store key until the App Store app exists). Without it the iOS
+        // app has no purchases.
+        buildConfigField(STRING, "REVENUECAT_IOS_KEY", localProperties.getProperty("revenuecat.iosKey") ?: "")
     }
 }

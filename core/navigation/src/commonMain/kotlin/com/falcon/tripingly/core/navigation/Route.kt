@@ -26,6 +26,10 @@ data class People(val list: String) : Route
 @Serializable
 data object Settings : Route
 
+/** Tripinly Pro: what it unlocks, buying it and restoring earlier purchases. */
+@Serializable
+data object Paywall : Route
+
 val NavConfig = SavedStateConfiguration {
     this.serializersModule = SerializersModule {
         polymorphic(NavKey::class) {
@@ -34,6 +38,7 @@ val NavConfig = SavedStateConfiguration {
             subclass(Profile::class, Profile.serializer())
             subclass(People::class, People.serializer())
             subclass(Settings::class, Settings.serializer())
+            subclass(Paywall::class, Paywall.serializer())
         }
     }
 }

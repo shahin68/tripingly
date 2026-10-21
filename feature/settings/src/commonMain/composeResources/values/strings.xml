@@ -46,4 +46,7 @@
     <string name="settings_error_export">Couldn't request a copy of your data.</string>
     <string name="settings_error_reauth">Couldn't confirm it's you. Please try again.</string>
     <string name="settings_error_delete">Couldn't delete your account.</string>
+    <string name="settings_pro">Tripinly Pro</string>
+    <string name="settings_pro_active">Active on your account</string>
+    <string name="settings_pro_get">Routes along streets, travel times and more</string>
 </resources>

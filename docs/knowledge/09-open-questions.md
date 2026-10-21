@@ -10,4 +10,4 @@ Ask the user before building anything that depends on these. When answered, move
 
 ## Has a working default
 
-4. **Paywall prices and placement:** RevenueCat is decided; prices and where the paywall appears come with the paywall stage.
+4. **Paywall prices:** set by Shahin in RevenueCat and the stores; the app shows the store's prices. Placement is decided (2026-10-20: Route taps and Settings).

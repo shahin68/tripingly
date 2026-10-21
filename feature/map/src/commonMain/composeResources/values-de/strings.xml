@@ -158,7 +158,6 @@
     <string name="map_route_km">%1$s km</string>
     <string name="map_route_total">%1$s · %2$s</string>
     <string name="map_route_estimated">Routen sind gerade nicht verfügbar.</string>
-    <string name="map_route_pro">Routen entlang der Straßen gibt es mit Tripinly Pro.</string>
     <string name="map_along_the_way">Auf dem Weg</string>
     <string name="map_along_the_way_item">in %1$s · %2$s abseits der Route</string>
     <string name="map_along_add">Zu Tag %1$d hinzufügen</string>

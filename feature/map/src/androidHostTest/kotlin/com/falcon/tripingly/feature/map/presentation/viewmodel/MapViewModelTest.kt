@@ -1298,24 +1298,30 @@ class MapViewModelTest {
     }
 
     @Test
-    fun `routes are Tripinly Pro`() = runTest(testDispatcher) {
+    fun `routes are Tripinly Pro, so a free user's tap opens the paywall`() = runTest(testDispatcher) {
         session = signedIn(entitlements = emptySet())
         addStops(GeoPoint(48.2085, 16.3731), GeoPoint(48.2104, 16.3655))
         val viewModel = viewModel()
         testScheduler.advanceUntilIdle()
 
-        viewModel.onAction(Action.OnToggleDayRoute)
-        testScheduler.advanceUntilIdle()
-        assertFalse(viewModel.uiState.value.isDayRouteShown)
-        assertNotNull(viewModel.uiState.value.message)
-        assertEquals(viewModel.uiState.value.markers.map { it.position }, viewModel.uiState.value.stopPath)
+        viewModel.events.test {
+            viewModel.onAction(Action.OnToggleDayRoute)
+            testScheduler.advanceUntilIdle()
+            assertEquals(Event.OpenPaywall, awaitItem())
+            assertFalse(viewModel.uiState.value.isDayRouteShown)
+            assertEquals(viewModel.uiState.value.markers.map { it.position }, viewModel.uiState.value.stopPath)
 
-        val place = MapPlace("a", "Oper", PlaceCategory.Attraction, GeoPoint(48.2031, 16.3691), isTripinly = false, likeCount = 0, prominence = 80)
-        viewModel.onAction(Action.OnPlacePinClick(place))
-        viewModel.onAction(Action.OnRouteFromPlace)
-        testScheduler.advanceUntilIdle()
-        assertNull(viewModel.uiState.value.routeStart)
-        assertTrue(routes.dayRoutes.isEmpty() && routes.pointRoutes.isEmpty())
+            val place = MapPlace("a", "Oper", PlaceCategory.Attraction, GeoPoint(48.2031, 16.3691), isTripinly = false, likeCount = 0, prominence = 80)
+            viewModel.onAction(Action.OnPlacePinClick(place))
+            viewModel.onAction(Action.OnRouteFromPlace)
+            testScheduler.advanceUntilIdle()
+            // The place's card first moves the camera to it.
+            assertTrue(awaitItem() is Event.AnimateCamera)
+            assertEquals(Event.OpenPaywall, awaitItem())
+            assertNull(viewModel.uiState.value.routeStart)
+            assertTrue(routes.dayRoutes.isEmpty() && routes.pointRoutes.isEmpty())
+            cancelAndIgnoreRemainingEvents()
+        }
     }
 
     @Test

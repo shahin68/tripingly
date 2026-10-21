@@ -46,4 +46,7 @@
     <string name="settings_error_export">Nem sikerült másolatot kérni az adataidról.</string>
     <string name="settings_error_reauth">Nem sikerült megerősíteni, hogy te vagy az. Próbáld újra.</string>
     <string name="settings_error_delete">Nem sikerült törölni a fiókodat.</string>
+    <string name="settings_pro">Tripinly Pro</string>
+    <string name="settings_pro_active">A fiókodban aktív</string>
+    <string name="settings_pro_get">Utcákon vezető útvonalak, menetidők és még több</string>
 </resources>

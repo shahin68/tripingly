@@ -8,6 +8,9 @@ import com.falcon.tripingly.core.data.account.FakeAccountBackend
 import com.falcon.tripingly.core.data.account.LocalDataCleaner
 import com.falcon.tripingly.core.data.account.SessionRepository
 import com.falcon.tripingly.core.data.account.SessionRepositoryImpl
+import com.falcon.tripingly.core.data.billing.DefaultProRepository
+import com.falcon.tripingly.core.data.billing.ProRepository
+import com.falcon.tripingly.core.data.billing.StorePurchases
 import com.falcon.tripingly.core.data.config.AppConfigRepository
 import com.falcon.tripingly.core.data.config.DefaultAppConfigRepository
 import com.falcon.tripingly.core.data.config.FakeAppConfigRepository
@@ -185,6 +188,15 @@ val dataModule = module {
     }
     single<PushNotifications> { get<PushRegistration>() }
     single {
+        DefaultProRepository(
+            // The app binds the store where a RevenueCat key is set; the fake API's accounts have Pro already.
+            store = if (get<ApiConfig>().useFakeApi) null else getOrNull<StorePurchases>(),
+            session = get(),
+            scope = get(ApplicationScope),
+        )
+    }
+    single<ProRepository> { get<DefaultProRepository>() }
+    single {
         FakeAccountBackend(
             today = { Clock.System.todayIn(TimeZone.currentSystemDefault()) },
             cleaners = { getAll<LocalDataCleaner>() },
@@ -221,6 +233,12 @@ val dataModule = module {
     single(named("tripMapViews")) {
         val views = get<TripMapViewRepository>()
         LocalDataCleaner { views.clear() }
+    }
+
+    // Purchases made next belong to the next account.
+    single(named("purchases")) {
+        val pro = get<DefaultProRepository>()
+        LocalDataCleaner { pro.clear() }
     }
 
     // The cached trips belong to whoever was signed in.

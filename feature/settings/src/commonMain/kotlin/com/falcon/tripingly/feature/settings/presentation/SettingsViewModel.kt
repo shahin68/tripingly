@@ -16,6 +16,7 @@ import com.falcon.tripingly.core.model.account.NotificationSettings
 import com.falcon.tripingly.core.model.account.NotificationType
 import com.falcon.tripingly.core.model.account.SessionState
 import com.falcon.tripingly.core.model.account.TripVisibility
+import com.falcon.tripingly.core.model.account.hasPro
 import com.falcon.tripingly.core.ui.UiText
 import com.falcon.tripingly.core.ui.toUiText
 import com.falcon.tripingly.feature.settings.generated.resources.Res
@@ -35,7 +36,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 /**
- * Settings: default trip visibility, which pushes arrive, a copy of my data, legal documents,
+ * Settings: Tripinly Pro, default trip visibility, which pushes arrive, a copy of my data, legal documents,
  * sign-out and account deletion. The server holds every setting; nothing is kept on the device.
  */
 class SettingsViewModel(
@@ -66,7 +67,7 @@ class SettingsViewModel(
                 savedVisibility = account.defaultTripVisibility
                 // While a change is on its way the toggle keeps showing the person's latest choice.
                 val visibility = if (visibilityJob?.isActive == true) _uiState.value.defaultVisibility else savedVisibility
-                _uiState.update { it.copy(username = account.username, defaultVisibility = visibility) }
+                _uiState.update { it.copy(username = account.username, hasPro = account.hasPro, defaultVisibility = visibility) }
             }
         }
         loadNotifications()
@@ -221,6 +222,7 @@ class SettingsViewModel(
     data class State(
         val appVersion: String,
         val username: String? = null,
+        val hasPro: Boolean = false,
         val defaultVisibility: TripVisibility = TripVisibility.PUBLIC,
         /** Null until loaded. */
         val notifications: NotificationSettings? = null,

@@ -1,0 +1,34 @@
+<resources>
+    <string name="paywall_back">Zurück</string>
+    <string name="paywall_title">Tripinly Pro</string>
+    <string name="paywall_intro">Plane deine Tage mit echten Routen statt nur Linien zwischen den Stopps.</string>
+    <string name="paywall_benefit_routes">Routen entlang der Straßen zu Fuß, mit dem Rad und mit dem Auto</string>
+    <string name="paywall_benefit_times">Fahrzeiten für jeden Abschnitt deines Tages</string>
+    <string name="paywall_benefit_along">Orte unterwegs, die einen Stopp wert sind</string>
+    <string name="paywall_benefit_between">Routen von jedem Ort zu jedem anderen</string>
+    <string name="paywall_monthly">Monatlich</string>
+    <string name="paywall_monthly_price">%1$s pro Monat</string>
+    <string name="paywall_yearly">Jährlich</string>
+    <string name="paywall_yearly_price">%1$s pro Jahr</string>
+    <string name="paywall_lifetime">Lebenslang</string>
+    <string name="paywall_lifetime_price">%1$s einmalig, für immer deins</string>
+    <string name="paywall_buy">Weiter</string>
+    <string name="paywall_restore">Käufe wiederherstellen</string>
+    <string name="paywall_offers_failed">Die Preise konnten nicht geladen werden. Prüfe deine Verbindung und versuche es noch einmal.</string>
+    <string name="paywall_retry">Erneut versuchen</string>
+    <string name="paywall_unavailable">In dieser Version der App sind keine Käufe möglich.</string>
+    <string name="paywall_active">Du hast Tripinly Pro.</string>
+    <string name="paywall_active_hint">Routen, Fahrzeiten und Orte unterwegs sind für dein Konto auf jedem Gerät aktiv, auf dem du angemeldet bist.</string>
+    <string name="paywall_manage">Abo verwalten</string>
+    <string name="paywall_fine_print">Die Zahlung erfolgt über dein Store-Konto. Abos verlängern sich automatisch, wenn sie nicht spätestens 24 Stunden vor Ende des laufenden Zeitraums gekündigt werden; kündigen kannst du jederzeit in den Einstellungen deines Store-Kontos.</string>
+    <string name="paywall_terms">Nutzungsbedingungen</string>
+    <string name="paywall_privacy">Datenschutzerklärung</string>
+    <string name="paywall_welcome">Willkommen bei Tripinly Pro!</string>
+    <string name="paywall_confirming">Danke! Dein Kauf wird bestätigt; Pro ist gleich aktiv.</string>
+    <string name="paywall_pending">Deine Zahlung wartet auf Freigabe. Pro wird aktiv, sobald sie bezahlt ist.</string>
+    <string name="paywall_nothing_to_restore">Auf diesem Store-Konto wurde kein früherer Kauf von Tripinly Pro gefunden.</string>
+    <string name="paywall_error_purchase">Der Kauf konnte nicht abgeschlossen werden.</string>
+    <string name="paywall_error_restore">Deine Käufe konnten nicht wiederhergestellt werden.</string>
+    <string name="paywall_error_not_allowed">Käufe sind auf diesem Gerät oder Store-Konto nicht erlaubt.</string>
+    <string name="paywall_error_no_internet">Keine Internetverbindung. Prüfe deine Verbindung und versuche es noch einmal.</string>
+</resources>
