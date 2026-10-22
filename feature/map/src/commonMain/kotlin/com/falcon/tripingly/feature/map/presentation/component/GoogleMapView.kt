@@ -2,7 +2,6 @@ package com.falcon.tripingly.feature.map.presentation.component
 
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.falcon.tripingly.core.location.model.Coordinates
@@ -62,11 +61,3 @@ internal val FitMargin = 48.dp
 
 /** How long the camera takes to fly to a pin, a search result, the user's location or a fit. */
 internal const val CAMERA_MOVE_MILLIS = 180
-
-/**
- * Waits until a card that came with the command is laid out and its height is the map's padding, so a fit keeps
- * out of it: one frame to compose and measure it, one for the map to take the new padding.
- */
-internal suspend fun awaitPaddingFrames() {
-    repeat(2) { withFrameNanos { } }
-}

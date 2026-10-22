@@ -6,7 +6,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.interop.UIKitView
 import com.falcon.tripingly.core.location.model.Coordinates
@@ -138,27 +140,36 @@ internal fun AppleMapView(
             setRegion(regionAround(initialTarget, initialZoom), animated = false)
         }
     }
-    val padding by rememberUpdatedState(contentPadding)
+    // The latest fit holds until the camera is sent elsewhere, and fits again when what the screen covers changes.
+    var fit by remember { mutableStateOf<CameraCommand.Fit?>(null) }
+    var fitCount by remember { mutableIntStateOf(0) }
     LaunchedEffect(cameraCommands) {
         cameraCommands.collect { command ->
             when (command) {
-                is CameraCommand.MoveTo -> mapView.setRegion(mapView.regionThatFits(regionAround(command.target, command.zoom)), animated = true)
+                is CameraCommand.MoveTo -> {
+                    fit = null
+                    mapView.setRegion(mapView.regionThatFits(regionAround(command.target, command.zoom)), animated = true)
+                }
                 is CameraCommand.Fit -> {
-                    awaitPaddingFrames()
-                    // MapKit fits the rectangle itself, keeping out of what the header and cards cover.
-                    mapView.setVisibleMapRect(
-                        mapRect(command.bounds),
-                        edgePadding = UIEdgeInsetsMake(
-                            top = padding.calculateTopPadding().value + FitMargin.value.toDouble(),
-                            left = FitMargin.value.toDouble(),
-                            bottom = padding.calculateBottomPadding().value + FitMargin.value.toDouble(),
-                            right = FitMargin.value.toDouble(),
-                        ),
-                        animated = command.isAnimated,
-                    )
+                    fit = command
+                    fitCount++
                 }
             }
         }
+    }
+    LaunchedEffect(fit, fitCount, contentPadding) {
+        val command = fit ?: return@LaunchedEffect
+        // MapKit fits the rectangle itself, keeping out of what the header and cards cover.
+        mapView.setVisibleMapRect(
+            mapRect(command.bounds),
+            edgePadding = UIEdgeInsetsMake(
+                top = contentPadding.calculateTopPadding().value + FitMargin.value.toDouble(),
+                left = FitMargin.value.toDouble(),
+                bottom = contentPadding.calculateBottomPadding().value + FitMargin.value.toDouble(),
+                right = FitMargin.value.toDouble(),
+            ),
+            animated = command.isAnimated,
+        )
     }
     val titles = markers.map { it.title.asString() }
     UIKitView(

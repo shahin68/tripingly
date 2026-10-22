@@ -43,6 +43,22 @@ internal class MapCamera(private val context: MapContext) {
         _commands.trySend(fit)
     }
 
+    /**
+     * Shows the open day: its stops; the whole trip's while that day has none; the trip's destination while the
+     * trip has no stops at all; else the map stays where it is. Opening a trip and tapping a day tab both show a day
+     * this way, so they frame alike.
+     */
+    fun showOpenDay() {
+        val details = context.trip.value ?: return showAsItIs()
+        val stops = context.activeDay()?.markers.orEmpty().ifEmpty { details.days.flatMap { it.markers } }
+        val destination = details.destination
+        when {
+            stops.isNotEmpty() -> frame(stops.map { Coordinates(it.location.lat, it.location.lng) })
+            destination != null -> moveTo(Coordinates(destination.location.lat, destination.location.lng), DESTINATION_ZOOM)
+            else -> showAsItIs()
+        }
+    }
+
     /** The map opens where it is: it has nothing to show first. */
     fun showAsItIs() = context.update { it.copy(camera = it.camera.copy(isReady = true)) }
 
@@ -65,5 +81,7 @@ internal class MapCamera(private val context: MapContext) {
     private companion object {
         /** How far the camera may rest from a place it flew to and still count as on it (rounding). */
         const val CENTERED_POINTS = 2.0
+        /** A city fills the screen. */
+        const val DESTINATION_ZOOM = 12f
     }
 }

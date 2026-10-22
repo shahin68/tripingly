@@ -175,7 +175,7 @@ class MapViewModel(
     private fun selectDay(index: Int) {
         selection.closeStop()
         context.update { it.copy(activeDayIndex = index, dialog = it.dialog.takeUnless { dialog -> dialog is Dialog.BestOrder }) }
-        context.days().getOrNull(index)?.let { day -> camera.frame(day.markers.map { Coordinates(it.location.lat, it.location.lng) }) }
+        camera.showOpenDay()
     }
 
     private fun openSheet(sheet: Sheet) = context.update { it.copy(sheet = sheet) }

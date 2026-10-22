@@ -13,10 +13,10 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.geometry.Offset
@@ -34,6 +34,7 @@ import com.falcon.tripingly.core.model.place.PlaceCluster
 import com.falcon.tripingly.core.model.place.PlaceCategory
 import com.falcon.tripingly.feature.map.domain.model.CameraCommand
 import com.falcon.tripingly.feature.map.domain.model.MapMarker
+import com.google.android.gms.maps.CameraUpdate
 import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.model.BitmapDescriptor
 import com.google.android.gms.maps.model.BitmapDescriptorFactory
@@ -43,6 +44,7 @@ import com.google.android.gms.maps.model.LatLng
 import com.google.android.gms.maps.model.LatLngBounds
 import com.google.android.gms.maps.model.MapStyleOptions
 import com.google.android.gms.maps.model.RoundCap
+import com.google.maps.android.compose.CameraMoveStartedReason
 import com.google.maps.android.compose.ComposeMapColorScheme
 import com.google.maps.android.compose.GoogleMap
 import com.google.maps.android.compose.GoogleMapComposable
@@ -135,30 +137,53 @@ actual fun GoogleMapView(
         )
     }
 
-    val fitMargin = with(LocalDensity.current) { FitMargin.roundToPx() }
+    suspend fun runCamera(update: CameraUpdate, isAnimated: Boolean) {
+        // Before the map has loaded, the camera starts there instead of flying.
+        if (!isMapLoaded || !isAnimated) {
+            cameraPositionState.move(update)
+        } else {
+            try {
+                cameraPositionState.animate(update, durationMs = CAMERA_MOVE_MILLIS)
+            } catch (e: CancellationException) {
+                // A finger stopped the flight, or the fit started again; the next move still runs.
+                currentCoroutineContext().ensureActive()
+            }
+        }
+    }
+
+    // The latest fit holds until the camera is sent elsewhere or a finger moves the map: whenever what the screen
+    // covers changes (a card comes in, the header grows), the map fits it again into what's left.
+    var fit by remember { mutableStateOf<CameraCommand.Fit?>(null) }
+    // Counts the fits, so the same fit sent again (the same day tapped again) runs again.
+    var fitCount by remember { mutableIntStateOf(0) }
     LaunchedEffect(cameraCommands) {
         cameraCommands.collect { command ->
-            val update = when (command) {
-                is CameraCommand.MoveTo -> CameraUpdateFactory.newLatLngZoom(LatLng(command.target.latitude, command.target.longitude), command.zoom)
-                is CameraCommand.Fit -> {
-                    snapshotFlow { isMapLoaded }.first { it }
-                    awaitPaddingFrames()
-                    val bounds = command.bounds
-                    CameraUpdateFactory.newLatLngBounds(LatLngBounds(LatLng(bounds.south, bounds.west), LatLng(bounds.north, bounds.east)), fitMargin)
+            when (command) {
+                is CameraCommand.MoveTo -> {
+                    fit = null
+                    runCamera(CameraUpdateFactory.newLatLngZoom(LatLng(command.target.latitude, command.target.longitude), command.zoom), isAnimated = true)
                 }
-            }
-            // Before the map has loaded, and for a new map's first fit, the camera starts there instead of flying.
-            if (!isMapLoaded || (command as? CameraCommand.Fit)?.isAnimated == false) {
-                cameraPositionState.move(update)
-            } else {
-                try {
-                    cameraPositionState.animate(update, durationMs = CAMERA_MOVE_MILLIS)
-                } catch (e: CancellationException) {
-                    // A finger stopped the flight; the next command still runs.
-                    currentCoroutineContext().ensureActive()
+                is CameraCommand.Fit -> {
+                    fit = command
+                    fitCount++
                 }
             }
         }
+    }
+    LaunchedEffect(cameraPositionState.cameraMoveStartedReason) {
+        if (cameraPositionState.cameraMoveStartedReason == CameraMoveStartedReason.GESTURE) fit = null
+    }
+    val fitMargin = with(LocalDensity.current) { FitMargin.roundToPx() }
+    // The map's padding is already the new one here: effects run after the map took this composition's values.
+    LaunchedEffect(fit, fitCount, contentPadding, isMapLoaded) {
+        val command = fit ?: return@LaunchedEffect
+        // A fit needs the map's size.
+        if (!isMapLoaded) return@LaunchedEffect
+        val bounds = command.bounds
+        runCamera(
+            CameraUpdateFactory.newLatLngBounds(LatLngBounds(LatLng(bounds.south, bounds.west), LatLng(bounds.north, bounds.east)), fitMargin),
+            command.isAnimated,
+        )
     }
 
     GoogleMap(

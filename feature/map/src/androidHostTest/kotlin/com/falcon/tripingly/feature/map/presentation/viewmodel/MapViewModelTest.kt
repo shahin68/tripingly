@@ -527,30 +527,48 @@ class MapViewModelTest {
     }
 
     @Test
-    fun `reopening a trip shows it as it was left`() = runTest(testDispatcher) {
+    fun `reopening a trip opens its day and route as left, framed like a tap on the day's tab`() = runTest(testDispatcher) {
         backend.addMarker(trip.trip.id, trip.days[0].id, NewMarker("Stop #1", GeoPoint(48.85, 2.35)))
         backend.addMarker(trip.trip.id, trip.days[1].id, NewMarker("Stop #1", GeoPoint(41.9, 12.49)))
         backend.addMarker(trip.trip.id, trip.days[1].id, NewMarker("Stop #2", GeoPoint(41.89, 12.48)))
         val left = viewModel()
         testScheduler.advanceUntilIdle()
-        left.onAction(MapAction.OnDaySelected(1))
-        left.onAction(MapAction.OnCameraMove(Coordinates(41.9, 12.49), 15.5f))
+        lateinit var dayTabFit: CameraCommand.Fit
+        left.cameraCommands.test {
+            left.onAction(MapAction.OnDaySelected(1))
+            testScheduler.advanceUntilIdle()
+            dayTabFit = assertIs<CameraCommand.Fit>(expectMostRecentItem())
+        }
+        // The user moved away from the stops before leaving.
+        left.onAction(MapAction.OnCameraMove(Coordinates(10.0, 10.0), 5f))
         left.onAction(MapAction.OnToggleDayRoute)
         left.onAction(MapAction.OnTravelModeSelected(TravelMode.Cycling))
         testScheduler.advanceUntilIdle()
 
         val reopened = viewModel()
-        testScheduler.advanceUntilIdle()
-
+        reopened.cameraCommands.test {
+            testScheduler.advanceUntilIdle()
+            // The same fit as the day's tab, only without flying in.
+            assertEquals(dayTabFit.copy(isAnimated = false), awaitItem())
+        }
         val state = reopened.uiState.value
         assertEquals(1, state.dayTabs.activeIndex)
-        assertEquals(Coordinates(41.9, 12.49), state.camera.target)
-        assertEquals(15.5f, state.camera.zoom)
         assertTrue(state.camera.isReady)
         assertEquals(true, state.stopsCard?.isRouteOn)
         assertEquals(TravelMode.Cycling, state.stopsCard?.route?.mode)
-        // Where it was left, not fitted again.
-        reopened.cameraCommands.test { expectNoEvents() }
+    }
+
+    @Test
+    fun `a day without stops shows the whole trip, as when a trip opens on it`() = runTest(testDispatcher) {
+        backend.addMarker(trip.trip.id, trip.days[0].id, NewMarker("Stop #1", GeoPoint(48.85, 2.35)))
+        val viewModel = viewModel()
+        testScheduler.advanceUntilIdle()
+
+        viewModel.cameraCommands.test {
+            viewModel.onAction(MapAction.OnDaySelected(2))
+            testScheduler.advanceUntilIdle()
+            assertEquals(CameraCommand.fit(listOf(Coordinates(48.85, 2.35))), expectMostRecentItem())
+        }
     }
 
     @Test
