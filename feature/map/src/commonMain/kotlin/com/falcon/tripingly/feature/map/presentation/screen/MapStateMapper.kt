@@ -84,13 +84,12 @@ internal class MapStateMapper(
     private fun canDeleteDay() = role == TripRole.OWNER || (canEdit && stops.all { it.canDelete })
 
     private fun stopsCard(): StopsCardState? {
-        // A day without stops keeps its card too, so the sheet and the map's padding stay the same between days.
-        if (days.getOrNull(activeIndex) == null || route.between != null) return null
+        if (stops.isEmpty() || route.between != null) return null
         val isRouteShown = route.isDayRouteShown && stops.size >= 2
         return StopsCardState(
             stops = stops.toImmutableList(),
             selectedStopId = (model.selection as? Selection.Stop)?.markerId,
-            canClear = stops.isNotEmpty() && canDeleteDay(),
+            canClear = canDeleteDay(),
             // A route needs two stops.
             isRouteOn = route.isDayRouteShown.takeIf { stops.size >= 2 },
             route = routeSummary().takeIf { isRouteShown },

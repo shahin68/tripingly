@@ -1,6 +1,7 @@
 package com.falcon.tripingly.feature.map.presentation.component
 
 import androidx.compose.ui.unit.dp
+import com.falcon.tripingly.core.location.model.Coordinates
 import com.falcon.tripingly.core.model.place.GeoBounds
 import kotlin.math.PI
 import kotlin.math.atan
@@ -47,5 +48,14 @@ class FittedCameraTest {
         assertEquals(2f, zoom, 1e-4f)
         assertEquals(atan(sinh(-PI / 4)) * 180 / PI, target.latitude, 1e-9)
         assertEquals(0.0, target.longitude, 1e-9)
+    }
+
+    @Test
+    fun `shifting south and back north lands on the same point`() {
+        val start = Coordinates(48.2, 16.37)
+        val back = start.shiftedSouth(40.dp, 14f).shiftedSouth(-40.dp, 14f)
+
+        assertEquals(start.latitude, back.latitude, 1e-9)
+        assertEquals(start.longitude, back.longitude, 1e-9)
     }
 }

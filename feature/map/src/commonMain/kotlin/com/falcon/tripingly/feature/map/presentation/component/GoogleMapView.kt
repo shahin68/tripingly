@@ -86,13 +86,15 @@ internal fun fittedCamera(bounds: GeoBounds, width: Dp, height: Dp, raise: Dp = 
     val fitWidth = (width - FitMargin * 2).value.coerceAtLeast(1f)
     val fitHeight = (height - FitMargin * 2).value.coerceAtLeast(1f)
     val zoom = log2(min(fitWidth / (WORLD_DP * spanX), fitHeight / (WORLD_DP * spanY))).toFloat().coerceIn(MIN_ZOOM, MAX_ZOOM)
+    val center = Coordinates(latitude = atan(sinh((north + south) / 2)) * 180 / PI, longitude = (bounds.west + bounds.east) / 2)
     // The camera's target is the middle of the padded map; moving it south by [raise] lifts the bounds by as much.
-    val targetY = (north + south) / 2 - raise.value / (WORLD_DP * 2.0.pow(zoom.toDouble())) * 2 * PI
-    val target = Coordinates(
-        latitude = atan(sinh(targetY)) * 180 / PI,
-        longitude = (bounds.west + bounds.east) / 2,
-    )
-    return target to zoom
+    return center.shiftedSouth(raise, zoom) to zoom
+}
+
+/** The point [by] south of this one on a map at [zoom] (north for a negative [by]), along Web Mercator as the SDKs draw. */
+internal fun Coordinates.shiftedSouth(by: Dp, zoom: Float): Coordinates {
+    val y = ln(tan(PI / 4 + latitude * PI / 360)) - by.value / (WORLD_DP * 2.0.pow(zoom.toDouble())) * 2 * PI
+    return Coordinates(latitude = atan(sinh(y)) * 180 / PI, longitude = longitude)
 }
 
 /** How wide the whole world is at zoom 0. */

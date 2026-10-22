@@ -676,11 +676,7 @@ class MapViewModelTest {
 
         assertEquals(0, viewModel.uiState.value.layers.stops.size)
         assertNull(viewModel.uiState.value.dialog)
-        // The emptied day keeps its card, so the sheet stays and the map doesn't move; there's nothing left to clear.
-        val card = assertNotNull(viewModel.uiState.value.stopsCard)
-        assertEquals(emptyList(), card.stops)
-        assertNull(card.selectedStopId)
-        assertFalse(card.canClear)
+        assertNull(viewModel.uiState.value.stopsCard?.selectedStopId)
     }
 
     @Test
