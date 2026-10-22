@@ -132,6 +132,7 @@ class MapViewModel(
             is MapAction.OnSearchResultClick -> search.onResultClick(action.result)
             is MapAction.OnCloseSearch -> search.close()
             is MapAction.OnDaySelected -> selectDay(action.dayIndex)
+            is MapAction.OnFitDay -> camera.showOpenDay()
             is MapAction.OnBackClick -> sendEvent(MapEvent.NavigateBack)
             is MapAction.OnToggleStopLike -> toggleStopLike(action.markerId)
             is MapAction.OnOpenStopComments -> selection.selectedMarkerId?.let { openSheet(Sheet.StopComments(it)) }
@@ -174,8 +175,8 @@ class MapViewModel(
 
     private fun selectDay(index: Int) {
         selection.closeStop()
+        // The camera stays where it is (Shahin, 2026-10-22); the fit-day button frames the day.
         context.update { it.copy(activeDayIndex = index, dialog = it.dialog.takeUnless { dialog -> dialog is Dialog.BestOrder }) }
-        camera.showOpenDay()
     }
 
     private fun openSheet(sheet: Sheet) = context.update { it.copy(sheet = sheet) }

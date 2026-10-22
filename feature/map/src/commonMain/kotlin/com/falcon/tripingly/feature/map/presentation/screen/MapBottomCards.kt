@@ -16,6 +16,7 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CenterFocusStrong
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Directions
 import androidx.compose.material3.AssistChip
@@ -29,6 +30,7 @@ import androidx.compose.material3.InputChip
 import androidx.compose.material3.InputChipDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SecondaryScrollableTabRow
+import androidx.compose.material3.SmallFloatingActionButton
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -42,6 +44,7 @@ import com.falcon.tripingly.core.designsystem.theme.spacing
 import com.falcon.tripingly.feature.map.domain.model.MapMarker
 import com.falcon.tripingly.feature.map.generated.resources.Res
 import com.falcon.tripingly.feature.map.generated.resources.map_best_order
+import com.falcon.tripingly.feature.map.generated.resources.map_fit_day
 import com.falcon.tripingly.feature.map.generated.resources.map_itinerary_clear_all
 import com.falcon.tripingly.feature.map.generated.resources.map_itinerary_title
 import com.falcon.tripingly.feature.map.generated.resources.map_remove_stop
@@ -53,11 +56,6 @@ import com.falcon.tripingly.feature.map.presentation.component.AlongTheWay
 import com.falcon.tripingly.feature.map.presentation.component.RouteSummary
 import org.jetbrains.compose.resources.stringResource
 
-internal val DayTabsHeight = 48.dp
-
-/** The credits and the location button above the plan: the button's height and its margins. */
-internal val MapControlsHeight = 88.dp
-
 @Composable
 internal fun DayTabs(
     tabs: DayTabsState,
@@ -65,13 +63,12 @@ internal fun DayTabs(
     modifier: Modifier = Modifier,
 ) {
     if (tabs.days.isEmpty()) return Spacer(modifier.navigationBarsPadding())
-    // A fixed height, part of what the map keeps out of; the background reaches down under the navigation bar.
+    // The background reaches down under the navigation bar.
     SecondaryScrollableTabRow(
         selectedTabIndex = tabs.activeIndex,
         modifier = modifier
             .background(MaterialTheme.colorScheme.surface)
-            .navigationBarsPadding()
-            .height(DayTabsHeight),
+            .navigationBarsPadding(),
         containerColor = Color.Transparent,
         contentColor = MaterialTheme.colorScheme.onSurface,
         edgePadding = 16.dp,
@@ -86,6 +83,20 @@ internal fun DayTabs(
                 },
             )
         }
+    }
+}
+
+/** Fits the camera to the open day: its stops, else the whole trip's, else the destination. */
+@Composable
+internal fun FitDayFab(onAction: (MapAction) -> Unit, modifier: Modifier = Modifier) {
+    SmallFloatingActionButton(
+        onClick = { onAction(MapAction.OnFitDay) },
+        shape = CircleShape,
+        containerColor = MaterialTheme.colorScheme.primaryContainer,
+        contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+        modifier = modifier,
+    ) {
+        Icon(Icons.Default.CenterFocusStrong, contentDescription = stringResource(Res.string.map_fit_day))
     }
 }
 

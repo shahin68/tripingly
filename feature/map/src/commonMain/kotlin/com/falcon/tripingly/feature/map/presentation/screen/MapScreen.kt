@@ -3,6 +3,7 @@ package com.falcon.tripingly.feature.map.presentation.screen
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
@@ -13,8 +14,8 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.FilledTonalButton
@@ -33,6 +34,7 @@ import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.tooling.preview.PreviewParameter
@@ -71,10 +73,12 @@ fun MapScreen(
     onAction: (MapAction) -> Unit,
 ) {
     val density = LocalDensity.current
-    // Layout only: how much of the map the header and the bottom cards cover, handed to the map as its padding.
-    var coveredTop by remember { mutableStateOf(0.dp) }
-    // The map waits for the header's height, so it can open already fitted below it.
-    var isHeaderPlaced by remember { mutableStateOf(false) }
+    // Layout only: what the header, the day tabs and the credits cover of the map, handed to it as its padding. Each is
+    // measured when its size changes; the map waits for all three, so it opens already fitted to what's left.
+    var headerHeight by remember { mutableStateOf<Dp?>(null) }
+    // The tabs' height with whether there were days to show, so the map doesn't open on the height without tabs.
+    var tabsHeight by remember { mutableStateOf<Pair<Boolean, Dp>?>(null) }
+    var creditsHeight by remember { mutableStateOf<Dp?>(null) }
     // Where the open cards are, so a touch on them doesn't close them.
     var placeCardBounds by remember { mutableStateOf(Rect.Zero) }
     var stopCardBounds by remember { mutableStateOf(Rect.Zero) }
@@ -94,10 +98,15 @@ fun MapScreen(
                 }
             }
     ) {
-        val coveredBottom = bottomCover(hasDays = state.dayTabs.days.isNotEmpty(), hasPlan = state.stopsCard != null || state.pointRouteCard != null)
+        val plan: Any? = state.pointRouteCard ?: state.stopsCard
+        val statusBar = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
+        val coveredTop = statusBar + (headerHeight ?: 0.dp)
+        // The pulled-up sheet doesn't count: only the part that always shows.
+        val hasDays = state.dayTabs.days.isNotEmpty()
+        val coveredBottom = (tabsHeight?.second ?: 0.dp) + (if (plan != null) PlanSheetPeek else 0.dp) + (creditsHeight ?: 0.dp)
         // Not before the camera knows where the trip is: the map opens there, fitted to the open day, instead of
         // starting somewhere and then fitting.
-        if (state.camera.isReady && isHeaderPlaced) {
+        if (state.camera.isReady && headerHeight != null && tabsHeight?.first == hasDays && creditsHeight != null) {
             val camera = state.camera
             val (target, zoom) = camera.openingBounds?.let { fittedCamera(it, maxWidth, maxHeight - coveredTop - coveredBottom) }
                 ?: (camera.target to camera.zoom)
@@ -135,10 +144,7 @@ fun MapScreen(
                 header = state.header,
                 search = state.search,
                 onAction = onAction,
-                modifier = Modifier.onGloballyPositioned {
-                    coveredTop = with(density) { it.boundsInRoot().bottom.toDp() }
-                    isHeaderPlaced = true
-                },
+                modifier = Modifier.onSizeChanged { headerHeight = with(density) { it.height.toDp() } },
             )
             if (state.header.pendingJoinRequestCount > 0 && state.search == null) {
                 FilledTonalButton(
@@ -169,9 +175,10 @@ fun MapScreen(
             location = state.location,
             routeStartName = state.routeStartName,
             dayTabs = state.dayTabs,
-            stopsCard = state.stopsCard,
-            pointRouteCard = state.pointRouteCard,
+            plan = plan,
             onAction = onAction,
+            onTabsHeight = { tabsHeight = hasDays to with(density) { it.toDp() } },
+            onCreditsHeight = { creditsHeight = with(density) { it.toDp() } },
             modifier = Modifier.align(Alignment.BottomCenter).padding(top = coveredTop),
         )
 
@@ -221,8 +228,9 @@ fun MapScreen(
 }
 
 /**
- * The credits and the location button, the route-start chip and the open day's plan in its sheet, over the day tabs
- * at the bottom. Their heights are fixed (see [bottomCover]), so the map never waits for them to be measured.
+ * The credits and the location button, the route-start chip and the open day's [plan] (the stops, or a route from A to
+ * B) in its sheet, over the day tabs at the bottom. [onTabsHeight] and [onCreditsHeight] report what always covers the
+ * map; the location button and a pulled-up sheet only float over it.
  */
 @Composable
 private fun BottomCards(
@@ -230,57 +238,59 @@ private fun BottomCards(
     location: LocationState,
     routeStartName: String?,
     dayTabs: DayTabsState,
-    stopsCard: StopsCardState?,
-    pointRouteCard: PointRouteCardState?,
+    plan: Any?,
     onAction: (MapAction) -> Unit,
+    onTabsHeight: (Int) -> Unit,
+    onCreditsHeight: (Int) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(modifier = modifier.fillMaxWidth()) {
         PlanSheet(
+            plan = plan,
             above = {
+                routeStartName?.let { name ->
+                    RouteStartChip(name, onAction, Modifier.padding(start = MaterialTheme.spacing.medium))
+                }
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(MaterialTheme.spacing.medium),
+                        .padding(horizontal = MaterialTheme.spacing.medium),
                     verticalAlignment = Alignment.Bottom,
                 ) {
-                    // Our places come from OpenStreetMap, routes from openrouteservice too.
-                    val attributionBackground = Modifier.background(MaterialTheme.colorScheme.surface.copy(alpha = 0.8f), RoundedCornerShape(4.dp))
+                    // Our places come from OpenStreetMap, routes from openrouteservice too. The credits and the gap
+                    // under them are what this row covers of the map.
+                    val credits = Modifier
+                        .onSizeChanged { onCreditsHeight(it.height) }
+                        .padding(bottom = MaterialTheme.spacing.small)
+                        .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.8f), RoundedCornerShape(4.dp))
                     if (routeAttribution != null) {
-                        RouteAttribution(routeAttribution, modifier = Modifier.weight(1f, fill = false).then(attributionBackground))
+                        RouteAttribution(routeAttribution, modifier = Modifier.weight(1f, fill = false).then(credits))
                     } else {
-                        OsmAttribution(modifier = attributionBackground)
+                        OsmAttribution(modifier = credits)
                     }
                     Spacer(modifier = Modifier.weight(1f))
-                    LocationFab(location = location, onAction = onAction)
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
+                        modifier = Modifier.padding(bottom = MaterialTheme.spacing.small),
+                    ) {
+                        FitDayFab(onAction = onAction)
+                        LocationFab(location = location, onAction = onAction)
+                    }
                 }
-                routeStartName?.let { name ->
-                    RouteStartChip(name, onAction, Modifier.padding(start = MaterialTheme.spacing.medium, bottom = MaterialTheme.spacing.small))
-                }
-            },
-            // A route from A to B takes the stops' place until it's closed.
-            content = when {
-                pointRouteCard != null -> ({ PointRouteCard(card = pointRouteCard, onAction = onAction) })
-                stopsCard != null -> ({ StopsCard(card = stopsCard, onAction = onAction) })
-                else -> null
             },
             modifier = Modifier.weight(1f, fill = false),
-        )
+        ) { shown ->
+            // A route from A to B takes the stops' place until it's closed.
+            when (shown) {
+                is PointRouteCardState -> PointRouteCard(card = shown, onAction = onAction)
+                is StopsCardState -> StopsCard(card = shown, onAction = onAction)
+            }
+        }
         // The day tabs stay at the bottom; everything else opens above them.
-        DayTabs(tabs = dayTabs, onAction = onAction)
+        DayTabs(tabs = dayTabs, onAction = onAction, modifier = Modifier.onSizeChanged { onTabsHeight(it.height) })
     }
 }
-
-/**
- * What the bottom of the screen covers of the map, all fixed heights: the day tabs, the pulled-down plan sheet and the
- * credits row above it. Pulling the sheet up doesn't move the map.
- */
-@Composable
-private fun bottomCover(hasDays: Boolean, hasPlan: Boolean): Dp =
-    WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() +
-        (if (hasDays) DayTabsHeight else 0.dp) +
-        (if (hasPlan) PlanSheetPeek else 0.dp) +
-        MapControlsHeight
 
 @Preview
 @Composable

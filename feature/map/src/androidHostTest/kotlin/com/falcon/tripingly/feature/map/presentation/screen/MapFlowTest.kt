@@ -6,6 +6,11 @@ import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.swipeDown
+import androidx.compose.ui.test.swipeUp
+import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.test.assertIsNotDisplayed
+import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.runComposeUiTest
 import com.falcon.tripingly.core.common.result.AppResult
 import com.falcon.tripingly.core.common.result.asSuccess
@@ -84,6 +89,21 @@ class MapFlowTest {
         // Each chip shows the stop's number next to its name.
         listOf("1", "2", "3").forEach { onNodeWithText(it).assertExists() }
         listOf("Stephansdom", "Hofburg", "Hotel Sacher").forEach { onNodeWithText(it).assertExists() }
+    }
+
+    @Test
+    fun `the plan sheet pulls up and down from anywhere on it`() = runComposeUiTest {
+        setContent { TripinglyTheme { MapRoute(trip.trip.id, onNavigateBack = {}, onOpenProfile = {}, onOpenPaywall = {}, membersContent = { _, _ -> }, viewModel = viewModel()) } }
+        onAllNodesWithContentDescription("Remove stop")[0].assertIsNotDisplayed()
+
+        // Dragged by its title, not its handle.
+        onNodeWithText("Trip Plan (3 stops)").performTouchInput { swipeUp() }
+        waitForIdle()
+        onAllNodesWithContentDescription("Remove stop")[0].assertIsDisplayed()
+
+        onNodeWithText("Trip Plan (3 stops)").performTouchInput { swipeDown() }
+        waitForIdle()
+        onAllNodesWithContentDescription("Remove stop")[0].assertIsNotDisplayed()
     }
 
     @Test

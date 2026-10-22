@@ -61,7 +61,10 @@ sealed interface MapAction {
     data class OnSearchQueryChanged(val query: String) : MapAction
     data class OnSearchResultClick(val result: PlaceSearchResult) : MapAction
     data object OnCloseSearch : MapAction
+    /** Opens the tapped day; the camera stays where it is. */
     data class OnDaySelected(val dayIndex: Int) : MapAction
+    /** The button above the location button: fits the camera to the open day. */
+    data object OnFitDay : MapAction
     data object OnBackClick : MapAction
     data class OnToggleStopLike(val markerId: String) : MapAction
     /** The selected stop's comments open in a sheet. */
