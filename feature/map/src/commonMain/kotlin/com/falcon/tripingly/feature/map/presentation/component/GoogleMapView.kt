@@ -3,6 +3,7 @@ package com.falcon.tripingly.feature.map.presentation.component
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.falcon.tripingly.core.location.model.Coordinates
 import com.falcon.tripingly.core.model.place.GeoBounds
@@ -11,6 +12,13 @@ import com.falcon.tripingly.core.model.place.PlaceCluster
 import com.falcon.tripingly.feature.map.domain.model.CameraCommand
 import com.falcon.tripingly.feature.map.domain.model.MapMarker
 import kotlinx.coroutines.flow.Flow
+import kotlin.math.PI
+import kotlin.math.atan
+import kotlin.math.ln
+import kotlin.math.log2
+import kotlin.math.min
+import kotlin.math.sinh
+import kotlin.math.tan
 
 @Composable
 expect fun GoogleMapView(
@@ -61,3 +69,29 @@ internal val FitMargin = 48.dp
 
 /** How long the camera takes to fly to a pin, a search result, the user's location or a fit. */
 internal const val CAMERA_MOVE_MILLIS = 180
+
+/**
+ * Where a fit of [bounds] puts the camera in a view [width] by [height] that the map sees after its content padding,
+ * worked out the way the map SDKs fit (a 256 dp world at zoom 0, Web Mercator, [FitMargin] inside), so a new map can
+ * start already fitted instead of fitting after it shows.
+ */
+internal fun fittedCamera(bounds: GeoBounds, width: Dp, height: Dp): Pair<Coordinates, Float> {
+    fun mercatorY(latitude: Double) = ln(tan(PI / 4 + latitude * PI / 360))
+    val north = mercatorY(bounds.north)
+    val south = mercatorY(bounds.south)
+    val spanX = (bounds.east - bounds.west) / 360
+    val spanY = (north - south) / (2 * PI)
+    val fitWidth = (width - FitMargin * 2).value.coerceAtLeast(1f)
+    val fitHeight = (height - FitMargin * 2).value.coerceAtLeast(1f)
+    val zoom = log2(min(fitWidth / (WORLD_DP * spanX), fitHeight / (WORLD_DP * spanY))).toFloat()
+    val center = Coordinates(
+        latitude = atan(sinh((north + south) / 2)) * 180 / PI,
+        longitude = (bounds.west + bounds.east) / 2,
+    )
+    return center to zoom.coerceIn(MIN_ZOOM, MAX_ZOOM)
+}
+
+/** How wide the whole world is at zoom 0. */
+private const val WORLD_DP = 256.0
+private const val MIN_ZOOM = 2f
+private const val MAX_ZOOM = 21f

@@ -28,19 +28,15 @@ internal class MapCamera(private val context: MapContext) {
         _commands.trySend(CameraCommand.MoveTo(target, zoom))
     }
 
-    /** Shows all of [points]; without points the camera stays where it is. A new map starts in their middle. */
+    /** Shows all of [points]; without points the camera stays where it is. A new map opens on them already fitted. */
     fun frame(points: List<Coordinates>) {
         if (points.isEmpty()) return
         val fit = CameraCommand.fit(points)
-        context.update {
-            if (it.camera.isReady) {
-                it
-            } else {
-                val center = Coordinates((fit.bounds.south + fit.bounds.north) / 2, (fit.bounds.west + fit.bounds.east) / 2)
-                it.copy(camera = it.camera.copy(target = center, isReady = true))
-            }
+        if (context.model.value.camera.isReady) {
+            _commands.trySend(fit)
+        } else {
+            context.update { it.copy(camera = it.camera.copy(openingBounds = fit.bounds, isReady = true)) }
         }
-        _commands.trySend(fit)
     }
 
     /**
@@ -64,7 +60,7 @@ internal class MapCamera(private val context: MapContext) {
 
     /** Where the map came to rest. */
     fun onRest(target: Coordinates, zoom: Float) =
-        context.update { it.copy(camera = it.camera.copy(target = target, zoom = zoom)) }
+        context.update { it.copy(camera = it.camera.copy(target = target, zoom = zoom, openingBounds = null)) }
 
     /** The camera already rests on [location] at [zoom], so it won't move. */
     fun isAt(location: GeoPoint, zoom: Float): Boolean =

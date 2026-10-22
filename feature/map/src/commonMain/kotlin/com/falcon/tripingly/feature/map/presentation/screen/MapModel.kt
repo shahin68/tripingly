@@ -48,6 +48,8 @@ internal data class CameraModel(
     val isReady: Boolean = false,
     val target: Coordinates = Coordinates.Paris,
     val zoom: Float = 13f,
+    /** The area a new map opens fitted to, until the map first rests. */
+    val openingBounds: GeoBounds? = null,
 )
 
 /** The tapped stop or place. Its card shows once the camera has centered it ([isCardShown]). */

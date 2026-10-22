@@ -504,6 +504,20 @@ class MapViewModelTest {
     }
 
     @Test
+    fun `the map rests where it opened, so a rotation keeps it there`() = runTest(testDispatcher) {
+        backend.addMarker(trip.trip.id, trip.days[0].id, NewMarker("Stop #1", GeoPoint(48.85, 2.35)))
+        val viewModel = viewModel()
+        testScheduler.advanceUntilIdle()
+
+        viewModel.onAction(MapAction.OnCameraMove(Coordinates(48.85, 2.35), 15f))
+        testScheduler.advanceUntilIdle()
+
+        val camera = viewModel.uiState.value.camera
+        assertNull(camera.openingBounds)
+        assertEquals(15f, camera.zoom)
+    }
+
+    @Test
     fun `opening a trip frames the open day's stops`() = runTest(testDispatcher) {
         backend.addMarker(trip.trip.id, trip.days[0].id, NewMarker("Stop #1", GeoPoint(48.85, 2.35)))
         backend.addMarker(trip.trip.id, trip.days[0].id, NewMarker("Stop #2", GeoPoint(48.86, 2.29)))
@@ -512,13 +526,11 @@ class MapViewModelTest {
         viewModel.cameraCommands.test {
             testScheduler.advanceUntilIdle()
 
-            // The same fit as a tap on the day's tab.
-            assertEquals(CameraCommand.fit(listOf(Coordinates(48.85, 2.35), Coordinates(48.86, 2.29))), awaitItem())
-            // The map shows in the middle of the stops, then fits them, so it opens on them and not on the default.
-            assertTrue(viewModel.uiState.value.camera.isReady)
-            val target = viewModel.uiState.value.camera.target
-            assertEquals(48.855, target.latitude, 1e-9)
-            assertEquals(2.32, target.longitude, 1e-9)
+            // The new map opens already fitted to them, the same area a tap on the day's tab fits; nothing moves it after.
+            val camera = viewModel.uiState.value.camera
+            assertTrue(camera.isReady)
+            assertEquals(CameraCommand.fit(listOf(Coordinates(48.85, 2.35), Coordinates(48.86, 2.29))).bounds, camera.openingBounds)
+            expectNoEvents()
 
             viewModel.onAction(MapAction.OnDaySelected(1))
             testScheduler.advanceUntilIdle()
@@ -546,12 +558,10 @@ class MapViewModelTest {
         testScheduler.advanceUntilIdle()
 
         val reopened = viewModel()
-        reopened.cameraCommands.test {
-            testScheduler.advanceUntilIdle()
-            // The same fit as the day's tab.
-            assertEquals(dayTabFit, awaitItem())
-        }
+        testScheduler.advanceUntilIdle()
         val state = reopened.uiState.value
+        // Opens fitted to the same area as the day's tab.
+        assertEquals(dayTabFit.bounds, state.camera.openingBounds)
         assertEquals(1, state.dayTabs.activeIndex)
         assertTrue(state.camera.isReady)
         assertEquals(true, state.stopsCard?.isRouteOn)
@@ -601,9 +611,7 @@ class MapViewModelTest {
         val viewModel = viewModel()
         testScheduler.advanceUntilIdle()
 
-        viewModel.cameraCommands.test {
-            assertEquals(CameraCommand.fit(listOf(Coordinates(41.9, 12.49))), awaitItem())
-        }
+        assertEquals(CameraCommand.fit(listOf(Coordinates(41.9, 12.49))).bounds, viewModel.uiState.value.camera.openingBounds)
     }
 
     @Test
@@ -632,7 +640,9 @@ class MapViewModelTest {
     fun `choosing the same day again frames it again`() = runTest(testDispatcher) {
         backend.addMarker(trip.trip.id, trip.days[0].id, NewMarker("Stop #1", GeoPoint(48.85, 2.35)))
         val viewModel = viewModel()
+        testScheduler.advanceUntilIdle()
         viewModel.cameraCommands.test {
+            viewModel.onAction(MapAction.OnDaySelected(0))
             testScheduler.advanceUntilIdle()
             val first = assertIs<CameraCommand.Fit>(awaitItem())
 

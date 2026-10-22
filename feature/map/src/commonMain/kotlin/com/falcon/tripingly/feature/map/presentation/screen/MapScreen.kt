@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -50,6 +51,7 @@ import com.falcon.tripingly.feature.map.presentation.component.GoogleMapView
 import com.falcon.tripingly.feature.map.presentation.component.PlaceCard
 import com.falcon.tripingly.feature.map.presentation.component.RouteAttribution
 import com.falcon.tripingly.feature.map.presentation.component.SelectedPinSize
+import com.falcon.tripingly.feature.map.presentation.component.fittedCamera
 import com.falcon.tripingly.feature.map.presentation.component.StopCard
 import com.falcon.tripingly.feature.map.presentation.component.stopPinHeight
 import com.falcon.tripingly.feature.map.presentation.photos.rememberPhotoPicker
@@ -71,13 +73,15 @@ fun MapScreen(
     val density = LocalDensity.current
     // Layout only: how much of the map the header and the bottom cards cover, handed to the map as its padding.
     var coveredTop by remember { mutableStateOf(0.dp) }
+    // The map waits for the header's height, so it can open already fitted below it.
+    var isHeaderPlaced by remember { mutableStateOf(false) }
     // Where the open cards are, so a touch on them doesn't close them.
     var placeCardBounds by remember { mutableStateOf(Rect.Zero) }
     var stopCardBounds by remember { mutableStateOf(Rect.Zero) }
     val isPlaceCardOpen by rememberUpdatedState(state.placeCard != null)
     val isStopCardOpen by rememberUpdatedState(state.stopCard != null)
 
-    Box(
+    BoxWithConstraints(
         modifier = Modifier
             .fillMaxSize()
             // Any touch outside the open card closes it, and still reaches the map and the controls.
@@ -90,14 +94,18 @@ fun MapScreen(
                 }
             }
     ) {
-        // Not before the camera knows where the trip is: the map opens right there instead of flying from Paris.
         val coveredBottom = bottomCover(hasDays = state.dayTabs.days.isNotEmpty(), hasPlan = state.stopsCard != null || state.pointRouteCard != null)
-        if (state.camera.isReady) {
+        // Not before the camera knows where the trip is: the map opens there, fitted to the open day, instead of
+        // starting somewhere and then fitting.
+        if (state.camera.isReady && isHeaderPlaced) {
+            val camera = state.camera
+            val (target, zoom) = camera.openingBounds?.let { fittedCamera(it, maxWidth, maxHeight - coveredTop - coveredBottom) }
+                ?: (camera.target to camera.zoom)
             val layers = state.layers
             GoogleMapView(
                 modifier = Modifier.fillMaxSize(),
-                initialTarget = state.camera.target,
-                initialZoom = state.camera.zoom,
+                initialTarget = target,
+                initialZoom = zoom,
                 cameraCommands = cameraCommands,
                 contentPadding = PaddingValues(top = coveredTop, bottom = coveredBottom),
                 markers = layers.stops,
@@ -127,7 +135,10 @@ fun MapScreen(
                 header = state.header,
                 search = state.search,
                 onAction = onAction,
-                modifier = Modifier.onGloballyPositioned { coveredTop = with(density) { it.boundsInRoot().bottom.toDp() } },
+                modifier = Modifier.onGloballyPositioned {
+                    coveredTop = with(density) { it.boundsInRoot().bottom.toDp() }
+                    isHeaderPlaced = true
+                },
             )
             if (state.header.pendingJoinRequestCount > 0 && state.search == null) {
                 FilledTonalButton(

@@ -1,6 +1,7 @@
 package com.falcon.tripingly.feature.map.presentation.screen
 
 import androidx.compose.runtime.Immutable
+import com.falcon.tripingly.core.model.place.GeoBounds
 import com.falcon.tripingly.core.location.model.Coordinates
 import com.falcon.tripingly.core.model.place.MapPlace
 import com.falcon.tripingly.core.model.place.PlaceCluster
@@ -190,6 +191,8 @@ data class CameraState(
     val isReady: Boolean = false,
     val target: Coordinates = Coordinates.Paris,
     val zoom: Float = 13f,
+    /** A new map opens already fitted to this area (the open day's stops) instead of on [target] and [zoom]. */
+    val openingBounds: GeoBounds? = null,
 )
 
 @Immutable

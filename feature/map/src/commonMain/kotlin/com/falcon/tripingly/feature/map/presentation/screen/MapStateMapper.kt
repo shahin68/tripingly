@@ -58,7 +58,7 @@ internal class MapStateMapper(
         placeCard = placeCard(),
         stopCard = stopCard(),
         layers = layers(),
-        camera = CameraState(model.camera.isReady, model.camera.target, model.camera.zoom),
+        camera = CameraState(model.camera.isReady, model.camera.target, model.camera.zoom, model.camera.openingBounds),
         location = LocationState(isLoading = model.location.isLoading),
         routeAttribution = plan?.attribution?.takeIf { routePoints.isNotEmpty() },
         sheet = sheet(),
