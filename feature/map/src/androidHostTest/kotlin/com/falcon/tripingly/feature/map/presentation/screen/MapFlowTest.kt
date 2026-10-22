@@ -90,6 +90,8 @@ class MapFlowTest {
     fun `removing a chip deletes the stop and renumbers the rest`() = runComposeUiTest {
         setContent { TripinglyTheme { MapRoute(trip.trip.id, onNavigateBack = {}, onOpenProfile = {}, onOpenPaywall = {}, membersContent = { _, _ -> }, viewModel = viewModel()) } }
 
+        // The chips show once the plan sheet is pulled up.
+        onNodeWithContentDescription("Show or hide the whole plan").performClick()
         onAllNodesWithContentDescription("Remove stop")[1].performClick()
 
         onNodeWithText("Trip Plan (2 stops)").assertExists()

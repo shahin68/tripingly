@@ -20,9 +20,7 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Directions
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.AssistChipDefaults
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
@@ -55,6 +53,11 @@ import com.falcon.tripingly.feature.map.presentation.component.AlongTheWay
 import com.falcon.tripingly.feature.map.presentation.component.RouteSummary
 import org.jetbrains.compose.resources.stringResource
 
+internal val DayTabsHeight = 48.dp
+
+/** The credits and the location button above the plan: the button's height and its margins. */
+internal val MapControlsHeight = 88.dp
+
 @Composable
 internal fun DayTabs(
     tabs: DayTabsState,
@@ -62,12 +65,13 @@ internal fun DayTabs(
     modifier: Modifier = Modifier,
 ) {
     if (tabs.days.isEmpty()) return Spacer(modifier.navigationBarsPadding())
-    // The tabs' background reaches down under the navigation bar.
+    // A fixed height, part of what the map keeps out of; the background reaches down under the navigation bar.
     SecondaryScrollableTabRow(
         selectedTabIndex = tabs.activeIndex,
         modifier = modifier
-            .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.8f))
-            .navigationBarsPadding(),
+            .background(MaterialTheme.colorScheme.surface)
+            .navigationBarsPadding()
+            .height(DayTabsHeight),
         containerColor = Color.Transparent,
         contentColor = MaterialTheme.colorScheme.onSurface,
         edgePadding = 16.dp,
@@ -196,16 +200,8 @@ internal fun PointRouteCard(
 
 @Composable
 private fun BottomCard(modifier: Modifier, content: @Composable () -> Unit) {
-    ElevatedCard(
-        modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.elevatedCardColors(
-            containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f),
-            contentColor = MaterialTheme.colorScheme.onSurface,
-        ),
-    ) {
-        Column(modifier = Modifier.padding(12.dp)) { content() }
-    }
+    // The plan sheet is the card; its handle sits above.
+    Column(modifier = modifier.fillMaxWidth().padding(start = 12.dp, end = 12.dp, bottom = 12.dp)) { content() }
 }
 
 @Composable
