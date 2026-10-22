@@ -13,13 +13,11 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalUriHandler
-import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.compose.LifecycleStartEffect
 import androidx.lifecycle.viewmodel.navigation3.rememberViewModelStoreNavEntryDecorator
 import androidx.navigation3.runtime.NavEntry
 import androidx.navigation3.runtime.rememberNavBackStack
 import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
-import androidx.navigation3.scene.DialogSceneStrategy
 import androidx.navigation3.ui.NavDisplay
 import coil3.ImageLoader
 import coil3.compose.setSingletonImageLoaderFactory
@@ -125,11 +123,8 @@ private fun MainNavigation() {
             rememberSaveableStateHolderNavEntryDecorator(),
             rememberViewModelStoreNavEntryDecorator(),
         ),
-        // The paywall opens over the screen it came from, which stays as it was (the trip map isn't drawn again).
-        sceneStrategies = listOf(DialogSceneStrategy()),
     ) { route ->
-        val metadata = if (route is Paywall) DialogSceneStrategy.dialog(DialogProperties(usePlatformDefaultWidth = false)) else emptyMap()
-        NavEntry(route, metadata = metadata) { key ->
+        NavEntry(route) { key ->
             when (key) {
                 is Home -> {
                     HomeRoute(
@@ -172,15 +167,7 @@ private fun MainNavigation() {
                     )
                 }
                 is Settings -> SettingsRoute(onBack = { goBack() }, onOpenPro = { backStack.add(Paywall) })
-                is Paywall -> Box(Modifier.fillMaxSize()) {
-                    PaywallRoute(onBack = { goBack() })
-                    // A dialog is a window above the app's banner.
-                    MessageBannerHost(
-                        Modifier
-                            .align(Alignment.TopCenter)
-                            .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal)),
-                    )
-                }
+                is Paywall -> PaywallRoute(onBack = { goBack() })
             }
         }
     }
