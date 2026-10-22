@@ -96,10 +96,10 @@ data class DayTab(val id: String, val number: Int, val label: UiText)
 
 @Immutable
 data class StopsCardState(
-    /** The open day's stops in order. */
+    /** The open day's stops in order; empty on a day without stops, whose card still shows. */
     val stops: ImmutableList<MapMarker>,
     val selectedStopId: String?,
-    /** The owner, or an editor whose stops are all of the day's: the day can be cleared. */
+    /** The day has stops, and the owner or an editor whose stops are all of the day's can clear them. */
     val canClear: Boolean,
     /** The Route button; null with fewer than two stops, which have no route. */
     val isRouteOn: Boolean?,
