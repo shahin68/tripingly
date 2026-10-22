@@ -7,4 +7,7 @@ sealed interface MapEvent {
     data object NavigateBack : MapEvent
     data class OpenProfile(val username: String) : MapEvent
     data object OpenPaywall : MapEvent
+
+    /** The user added a stop: the plan sheet opens all the way, so its list and Best order show. */
+    data object ShowWholePlan : MapEvent
 }

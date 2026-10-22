@@ -70,10 +70,11 @@ import org.jetbrains.compose.resources.stringResource
  * padding: the camera centers and fits within the rest, and the tapped pin's card opens just above its middle.
  */
 @Composable
-fun MapScreen(
+internal fun MapScreen(
     state: MapUiState,
     cameraCommands: Flow<CameraCommand>,
     onAction: (MapAction) -> Unit,
+    planSheet: AnchoredDraggableState<PlanSheetValue> = rememberPlanSheetState(),
 ) {
     val density = LocalDensity.current
     // Layout only: what the header, the day tabs and the credits cover of the map, handed to it as its padding. Each is
@@ -87,7 +88,6 @@ fun MapScreen(
     var stopCardBounds by remember { mutableStateOf(Rect.Zero) }
     val isPlaceCardOpen by rememberUpdatedState(state.placeCard != null)
     val isStopCardOpen by rememberUpdatedState(state.stopCard != null)
-    val planSheet = rememberPlanSheetState()
 
     BoxWithConstraints(
         modifier = Modifier

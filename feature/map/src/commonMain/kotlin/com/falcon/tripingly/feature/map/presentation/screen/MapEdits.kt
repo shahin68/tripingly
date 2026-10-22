@@ -31,6 +31,7 @@ internal class MapEdits(
     private val selection: MapSelection,
     private val tripRepository: TripRepository,
     private val markerRepository: MarkerRepository,
+    private val onStopAdded: () -> Unit,
 ) {
     init {
         context.scope.launch {
@@ -133,6 +134,7 @@ internal class MapEdits(
         val day = context.activeDay() ?: return
         if (!context.canEdit()) return
         context.scope.launch { markerRepository.addMarker(context.tripId, day.id, marker) }
+        onStopAdded()
     }
 
     private fun deleteDay(dayId: String, confirm: Boolean) = save(Res.string.map_error_delete_day) {

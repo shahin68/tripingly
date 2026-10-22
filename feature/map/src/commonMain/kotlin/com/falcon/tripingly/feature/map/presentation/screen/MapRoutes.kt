@@ -38,6 +38,7 @@ internal class MapRoutes(
     private val hasRoutes: () -> Boolean,
     /** Without Pro, a tap on a route opens the paywall. */
     private val showRoutesArePro: () -> Unit,
+    private val onStopAdded: () -> Unit,
 ) {
     /** What the route on the map was last asked for. */
     private var request: RouteRequest? = null
@@ -87,6 +88,7 @@ internal class MapRoutes(
         val day = context.activeDay() ?: return
         if (!context.canEdit()) return
         context.scope.launch { markerRepository.addMarker(context.tripId, day.id, NewMarker(place.name, place.location, placeId = place.id)) }
+        onStopAdded()
     }
 
     /** Asks the server for the best order of the open day's stops; it shows for the user to apply. */

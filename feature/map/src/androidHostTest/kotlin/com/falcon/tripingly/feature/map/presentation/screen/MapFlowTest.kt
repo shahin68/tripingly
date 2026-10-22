@@ -107,6 +107,26 @@ class MapFlowTest {
     }
 
     @Test
+    fun `adding a stop pulls the plan sheet all the way up`() = runComposeUiTest {
+        val viewModel = viewModel()
+        setContent { TripinglyTheme { MapRoute(trip.trip.id, onNavigateBack = {}, onOpenProfile = {}, onOpenPaywall = {}, membersContent = { _, _ -> }, viewModel = viewModel) } }
+        onAllNodesWithContentDescription("Remove stop")[0].assertIsNotDisplayed()
+
+        viewModel.onAction(MapAction.OnMapClick(Coordinates(48.21, 16.37)))
+        waitForIdle()
+        onNodeWithText("Trip Plan (4 stops)").assertIsDisplayed()
+        onAllNodesWithContentDescription("Remove stop")[0].assertIsDisplayed()
+
+        // The first stop of an empty day: the sheet comes up whole.
+        viewModel.onAction(MapAction.OnDaySelected(1))
+        waitForIdle()
+        viewModel.onAction(MapAction.OnMapClick(Coordinates(48.21, 16.37)))
+        waitForIdle()
+        onNodeWithText("Trip Plan (1 stops)").assertIsDisplayed()
+        onAllNodesWithContentDescription("Remove stop")[0].assertIsDisplayed()
+    }
+
+    @Test
     fun `removing a chip deletes the stop and renumbers the rest`() = runComposeUiTest {
         setContent { TripinglyTheme { MapRoute(trip.trip.id, onNavigateBack = {}, onOpenProfile = {}, onOpenPaywall = {}, membersContent = { _, _ -> }, viewModel = viewModel()) } }
 

@@ -73,10 +73,14 @@ class MapViewModel(
     val cameraCommands: Flow<CameraCommand> = camera.commands
 
     private val selection = MapSelection(context, camera, placeRepository)
-    private val edits = MapEdits(context, selection, tripRepository, markerRepository)
+    private val edits = MapEdits(context, selection, tripRepository, markerRepository) { sendEvent(MapEvent.ShowWholePlan) }
     private val pins = MapPins(context, placeRepository, appConfigRepository)
     private val search = MapSearch(context, camera, selection, placeRepository)
-    private val routes = MapRoutes(context, camera, selection, routeRepository, markerRepository, ::hasRoutes) { sendEvent(MapEvent.OpenPaywall) }
+    private val routes = MapRoutes(
+        context, camera, selection, routeRepository, markerRepository, ::hasRoutes,
+        showRoutesArePro = { sendEvent(MapEvent.OpenPaywall) },
+        onStopAdded = { sendEvent(MapEvent.ShowWholePlan) },
+    )
     private val location = MapLocation(context, camera, getCurrentLocationUseCase, ::sendEvent)
     private val sharing = MapSharing(context, tripRepository, socialRepository)
     private val opening = MapOpening(context, camera, tripRepository, mapViews, ::hasRoutes)

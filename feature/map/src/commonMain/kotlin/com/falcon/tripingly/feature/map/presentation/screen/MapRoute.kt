@@ -1,7 +1,9 @@
 package com.falcon.tripingly.feature.map.presentation.screen
 
+import androidx.compose.foundation.gestures.animateTo
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.falcon.tripingly.core.location.permission.rememberLocationPermissionController
@@ -12,6 +14,7 @@ import com.falcon.tripingly.feature.map.presentation.photos.PhotoCameraDialog
 import com.falcon.tripingly.feature.map.presentation.photos.PhotoViewerRoute
 import com.falcon.tripingly.feature.map.presentation.photos.PhotosRoute
 import org.koin.compose.viewmodel.koinViewModel
+import kotlinx.coroutines.launch
 import org.koin.core.parameter.parametersOf
 
 @Composable
@@ -39,6 +42,8 @@ fun MapRoute(
         onPauseOrDispose {}
     }
 
+    val planSheet = rememberPlanSheetState()
+    val scope = rememberCoroutineScope()
     ObserveAsEvents(viewModel.events) { event ->
         when (event) {
             MapEvent.RequestPermission -> locationPermission.request()
@@ -46,12 +51,14 @@ fun MapRoute(
             MapEvent.NavigateBack -> onNavigateBack()
             is MapEvent.OpenProfile -> onOpenProfile(event.username)
             MapEvent.OpenPaywall -> onOpenPaywall()
+            MapEvent.ShowWholePlan -> scope.launch { planSheet.animateTo(PlanSheetValue.Expanded) }
         }
     }
 
     MapScreen(
         state = state,
         cameraCommands = viewModel.cameraCommands,
+        planSheet = planSheet,
         onAction = onAction,
     )
 
