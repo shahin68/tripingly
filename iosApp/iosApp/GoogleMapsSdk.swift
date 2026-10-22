@@ -39,6 +39,7 @@ private final class AppGoogleMap: NSObject, GoogleMap, GMSMapViewDelegate {
     private var line: GMSPolyline?
     private var lineMarkers: [GMSMarker] = []
     private var lineSweep: GMSPolyline?
+    private var hasPadding = false
 
     var view: UIView { mapView }
 
@@ -62,7 +63,14 @@ private final class AppGoogleMap: NSObject, GoogleMap, GMSMapViewDelegate {
     func setPadding(top: Double, bottom: Double) {
         // The screen's padding already counts the status bar and the home indicator.
         mapView.paddingAdjustmentBehavior = .never
+        let old = mapView.padding
         mapView.padding = UIEdgeInsets(top: top, left: 0, bottom: bottom, right: 0)
+        // The SDK keeps the camera's target in the middle of the padding, so a new padding would move the map under
+        // the finger (a day's sheet coming or going). Moving the camera back by as much keeps the map still, as on
+        // Android; the first padding is the one the starting camera was worked out for.
+        guard hasPadding else { hasPadding = true; return }
+        let shift = ((top - old.top) - (bottom - old.bottom)) / 2
+        if shift != 0 { mapView.moveCamera(GMSCameraUpdate.scrollBy(x: 0, y: shift)) }
     }
 
     func moveCamera(latitude: Double, longitude: Double, zoom: Float, animated: Bool) {
