@@ -44,6 +44,7 @@ A modular KMP app: `androidApp` and `iosApp` shells, `shared` as the umbrella, `
 ## Modules and conventions
 
 - New code goes in the module that owns it: `core:*` for what several features share, `feature:<name>` for one feature. A feature never depends on another feature. Module rules, MVI contract, state passing and testing rules are in `docs/knowledge/07-architecture.md`.
+- **Shorter code wins:** whenever code can get shorter without hiding what it does, shorten it; a class that grows with every feature (dependencies, branches, init calls) is split into small parts plugged in through DI (e.g. a set of startup tasks). See `07-architecture.md`.
 - New modules apply a convention plugin (`tripinly.kmp.library`, `tripinly.kmp.compose`, `tripinly.kmp.feature`) and are registered in `settings.gradle.kts`; use the `feature-module` skill.
 
 ## How to work
