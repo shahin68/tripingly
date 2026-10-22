@@ -77,7 +77,7 @@ internal fun DayTabs(
         tabs.days.forEachIndexed { index, day ->
             Tab(
                 selected = tabs.activeIndex == index,
-                onClick = { onAction(MapAction.OnDaySelected(index)) },
+                onClick = { onAction(MapAction.Days.Select(index)) },
                 text = {
                     Text(day.label.asString())
                 },
@@ -90,7 +90,7 @@ internal fun DayTabs(
 @Composable
 internal fun FitDayFab(onAction: (MapAction) -> Unit, modifier: Modifier = Modifier) {
     SmallFloatingActionButton(
-        onClick = { onAction(MapAction.OnFitDay) },
+        onClick = { onAction(MapAction.Days.FitDay) },
         shape = CircleShape,
         containerColor = MaterialTheme.colorScheme.primaryContainer,
         contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
@@ -107,7 +107,7 @@ internal fun LocationFab(
     modifier: Modifier = Modifier,
 ) {
     FloatingActionButton(
-        onClick = { onAction(MapAction.CenterOnUserLocation) },
+        onClick = { onAction(MapAction.Location.CenterOnUser) },
         shape = CircleShape,
         containerColor = MaterialTheme.colorScheme.primaryContainer,
         contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
@@ -132,7 +132,7 @@ internal fun LocationFab(
 @Composable
 internal fun RouteStartChip(placeName: String, onAction: (MapAction) -> Unit, modifier: Modifier = Modifier) {
     AssistChip(
-        onClick = { onAction(MapAction.OnCancelRouteStart) },
+        onClick = { onAction(MapAction.Plan.CancelRouteStart) },
         label = { Text(stringResource(Res.string.map_route_start, placeName)) },
         leadingIcon = { Icon(Icons.Default.Directions, contentDescription = null, modifier = Modifier.size(18.dp)) },
         trailingIcon = { Icon(Icons.Default.Close, contentDescription = stringResource(Res.string.map_route_close), modifier = Modifier.size(18.dp)) },
@@ -174,7 +174,7 @@ internal fun StopsCard(
         }
         // Free for everyone, with or without the route.
         if (card.canFindBestOrder) {
-            TextButton(onClick = { onAction(MapAction.OnFindBestOrder) }, enabled = !card.isFindingBestOrder) {
+            TextButton(onClick = { onAction(MapAction.Plan.FindBestOrder) }, enabled = !card.isFindingBestOrder) {
                 Text(stringResource(Res.string.map_best_order))
                 if (card.isFindingBestOrder) {
                     CircularProgressIndicator(modifier = Modifier.padding(start = 8.dp).size(14.dp), strokeWidth = 2.dp)
@@ -201,7 +201,7 @@ internal fun PointRouteCard(
                 maxLines = 2,
                 modifier = Modifier.weight(1f),
             )
-            IconButton(onClick = { onAction(MapAction.OnClosePointRoute) }) {
+            IconButton(onClick = { onAction(MapAction.Plan.ClosePointRoute) }) {
                 Icon(Icons.Default.Close, contentDescription = stringResource(Res.string.map_route_close))
             }
         }
@@ -224,13 +224,13 @@ private fun RouteDetails(route: RouteSummaryState, onAction: (MapAction) -> Unit
             distanceMeters = route.distanceMeters,
             isEstimated = route.isEstimated,
             isLoading = route.isLoading,
-            onModeSelected = { onAction(MapAction.OnTravelModeSelected(it)) },
+            onModeSelected = { onAction(MapAction.Plan.SelectTravelMode(it)) },
         )
         AlongTheWay(
             places = route.alongTheWay,
             dayNumber = route.addToDayNumber,
-            onOpen = { onAction(MapAction.OnAlongTheWayClick(it)) },
-            onAdd = { onAction(MapAction.OnAddAlongTheWay(it)) },
+            onOpen = { onAction(MapAction.Plan.AlongTheWayClick(it)) },
+            onAdd = { onAction(MapAction.Plan.AddAlongTheWay(it)) },
             modifier = Modifier.padding(top = MaterialTheme.spacing.small),
         )
     }
@@ -244,7 +244,7 @@ private fun StopChip(
 ) {
     InputChip(
         selected = isSelected,
-        onClick = { onAction(MapAction.OnMarkerClick(stop)) },
+        onClick = { onAction(MapAction.MapView.MarkerClick(stop)) },
         label = {
             Text(
                 text = stop.title.asString(),
@@ -270,7 +270,7 @@ private fun StopChip(
         trailingIcon = if (stop.canDelete) {
             {
                 IconButton(
-                    onClick = { onAction(MapAction.OnRemoveMarker(stop.id)) },
+                    onClick = { onAction(MapAction.Plan.RemoveStop(stop.id)) },
                     modifier = Modifier.size(16.dp),
                 ) {
                     Icon(
@@ -312,13 +312,13 @@ private fun StopsCardTitle(
         if (isRouteOn != null) {
             FilterChip(
                 selected = isRouteOn,
-                onClick = { onAction(MapAction.OnToggleDayRoute) },
+                onClick = { onAction(MapAction.Plan.ToggleRoute) },
                 label = { Text(stringResource(Res.string.map_route)) },
                 leadingIcon = { Icon(Icons.Default.Directions, contentDescription = null, modifier = Modifier.size(18.dp)) },
             )
         }
         if (canClear) {
-            TextButton(onClick = { onAction(MapAction.ClearAllMarkers) }) {
+            TextButton(onClick = { onAction(MapAction.Plan.ClearAll) }) {
                 Text(stringResource(Res.string.map_itinerary_clear_all), style = MaterialTheme.typography.labelSmall)
             }
         }

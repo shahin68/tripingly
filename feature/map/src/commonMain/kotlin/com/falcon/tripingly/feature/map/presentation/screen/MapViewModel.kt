@@ -94,84 +94,150 @@ class MapViewModel(
 
     fun onAction(action: MapAction) {
         when (action) {
-            is MapAction.OnPermissionChecked -> location.onPermissionChecked(action.permission)
-            is MapAction.OnPermissionResult -> location.onPermissionResult(action.permission)
-            is MapAction.OnConfirmLocationPrompt -> location.confirmPrompt()
-            is MapAction.OnDismissLocationPrompt -> location.dismissPrompt()
-            is MapAction.CenterOnUserLocation -> location.centerOnUser()
-            is MapAction.OnMapClick -> edits.onMapClick(action.coordinates)
-            is MapAction.OnPlacePinClick -> selection.openPlace(action.place)
-            is MapAction.OnClusterClick -> camera.moveTo(
+            is MapAction.MapView -> onMapView(action)
+            is MapAction.Header -> onHeader(action)
+            is MapAction.Search -> onSearch(action)
+            is MapAction.Location -> onLocation(action)
+            is MapAction.Days -> onDays(action)
+            is MapAction.Plan -> onPlan(action)
+            is MapAction.StopCard -> onStopCard(action)
+            is MapAction.PlaceCard -> onPlaceCard(action)
+            is MapAction.Sheet -> onSheet(action)
+            is MapAction.Dialog -> onDialog(action)
+            is MapAction.Message -> onMessage(action)
+        }
+    }
+
+    private fun onMapView(action: MapAction.MapView) {
+        when (action) {
+            is MapAction.MapView.Click -> edits.onMapClick(action.coordinates)
+            is MapAction.MapView.LongClick -> edits.onMapLongClick(action.coordinates)
+            is MapAction.MapView.PlacePinClick -> selection.openPlace(action.place)
+            is MapAction.MapView.ClusterClick -> camera.moveTo(
                 Coordinates(action.cluster.location.lat, action.cluster.location.lng),
                 camera.zoom + CLUSTER_ZOOM_STEP,
             )
-            is MapAction.OnMapLongClick -> edits.onMapLongClick(action.coordinates)
-            is MapAction.OnConfirmPinName -> edits.addNamedPin(action.name)
-            is MapAction.OnDismissPinName -> closeDialog()
-            is MapAction.OnMarkerClick -> selection.selectMarker(action.marker)
-            is MapAction.OnRemoveMarker -> edits.removeMarker(action.markerId)
-            is MapAction.ClearAllMarkers -> openDialog(Dialog.ClearDay)
-            is MapAction.DeleteDay -> openDialog(Dialog.DeleteDay)
-            is MapAction.OnConfirm -> edits.confirm()
-            is MapAction.OnDismissConfirm -> closeDialog()
-            is MapAction.OnRemoveMyContent -> if (selection.selectedMarkerId != null) openDialog(Dialog.RemoveMyContent)
-            is MapAction.OnDeleteAnyway -> edits.deleteAnyway()
-            is MapAction.OnDismissDeleteAnyway -> closeDialog()
-            is MapAction.AddDay -> edits.addDay()
-            is MapAction.OnMessageShown -> context.showMessage(null)
-            is MapAction.RetryFailedChanges -> edits.retryFailedChanges()
-            is MapAction.OnCameraMove -> onCameraMove(action)
-            is MapAction.OnScreenTouch -> selection.onScreenTouch()
-            is MapAction.OnOpenStopPhotos -> selection.selectedMarkerId?.let { openSheet(Sheet.StopPhotos(it)) }
-            is MapAction.OnCloseStopPhotos -> closeSheet()
+            is MapAction.MapView.MarkerClick -> selection.selectMarker(action.marker)
+            is MapAction.MapView.CameraRest -> onCameraRest(action)
+            is MapAction.MapView.ScreenTouch -> selection.onScreenTouch()
+        }
+    }
+
+    private fun onHeader(action: MapAction.Header) {
+        when (action) {
+            is MapAction.Header.Back -> sendEvent(MapEvent.NavigateBack)
+            is MapAction.Header.AddDay -> edits.addDay()
+            is MapAction.Header.DeleteDay -> openDialog(Dialog.DeleteDay)
+            is MapAction.Header.ToggleSave -> sharing.toggleSave()
+            is MapAction.Header.RequestToJoin -> sharing.requestToJoin()
+            is MapAction.Header.CancelJoinRequest -> sharing.cancelJoinRequest()
+            is MapAction.Header.OpenJoinRequests -> openSheet(Sheet.Members)
+            is MapAction.Header.OpenOwnerProfile -> trip.value?.trip?.owner?.let { sendEvent(MapEvent.OpenProfile(it.username)) }
+            is MapAction.Header.ReportTrip -> sharing.report(ReportTarget.Trip, context.tripId)
+        }
+    }
+
+    private fun onSearch(action: MapAction.Search) {
+        when (action) {
+            is MapAction.Search.Open -> search.open()
+            is MapAction.Search.QueryChanged -> search.onQueryChanged(action.query)
+            is MapAction.Search.ResultClick -> search.onResultClick(action.result)
+            is MapAction.Search.Close -> search.close()
+        }
+    }
+
+    private fun onLocation(action: MapAction.Location) {
+        when (action) {
+            is MapAction.Location.PermissionChecked -> location.onPermissionChecked(action.permission)
+            is MapAction.Location.PermissionResult -> location.onPermissionResult(action.permission)
+            is MapAction.Location.ConfirmPrompt -> location.confirmPrompt()
+            is MapAction.Location.DismissPrompt -> location.dismissPrompt()
+            is MapAction.Location.CenterOnUser -> location.centerOnUser()
+        }
+    }
+
+    private fun onDays(action: MapAction.Days) {
+        when (action) {
+            is MapAction.Days.Select -> selectDay(action.dayIndex)
+            is MapAction.Days.FitDay -> camera.showOpenDay()
+        }
+    }
+
+    private fun onPlan(action: MapAction.Plan) {
+        when (action) {
+            is MapAction.Plan.RemoveStop -> edits.removeMarker(action.markerId)
+            is MapAction.Plan.ClearAll -> openDialog(Dialog.ClearDay)
+            is MapAction.Plan.ToggleRoute -> routes.toggleDayRoute()
+            is MapAction.Plan.SelectTravelMode -> routes.selectTravelMode(action.mode)
+            is MapAction.Plan.FindBestOrder -> routes.findBestOrder()
+            is MapAction.Plan.AlongTheWayClick -> selection.openPlace(action.place)
+            is MapAction.Plan.AddAlongTheWay -> routes.addAlongTheWay(action.place)
+            is MapAction.Plan.ClosePointRoute -> routes.closePointRoute()
+            is MapAction.Plan.CancelRouteStart -> routes.cancelRouteStart()
+        }
+    }
+
+    private fun onStopCard(action: MapAction.StopCard) {
+        when (action) {
+            is MapAction.StopCard.ToggleLike -> toggleStopLike(action.markerId)
+            is MapAction.StopCard.OpenPhotos -> selection.selectedMarkerId?.let { openSheet(Sheet.StopPhotos(it)) }
+            is MapAction.StopCard.OpenComments -> selection.selectedMarkerId?.let { openSheet(Sheet.StopComments(it)) }
+            is MapAction.StopCard.AddPhotos -> addStopPhotos(action.images)
+            is MapAction.StopCard.OpenCamera -> if (context.canEdit() && selection.selectedMarkerId != null) openSheet(Sheet.PhotoCamera)
+            is MapAction.StopCard.RemoveMyContent -> if (selection.selectedMarkerId != null) openDialog(Dialog.RemoveMyContent)
+            is MapAction.StopCard.Report -> selection.selectedMarkerId?.let { sharing.report(ReportTarget.Marker, it) }
+        }
+    }
+
+    private fun onPlaceCard(action: MapAction.PlaceCard) {
+        when (action) {
+            is MapAction.PlaceCard.AddToDay -> edits.addPlace()
             // Not for an address from search: it isn't one of our places yet.
-            is MapAction.OnOpenPlacePhotos -> selection.selectedPlace?.takeIf { it.address == null }?.let { openSheet(Sheet.PlacePhotos(it.place)) }
-            is MapAction.OnClosePlacePhotos -> closeSheet()
-            is MapAction.OnAddStopPhotos -> addStopPhotos(action.images)
-            is MapAction.OnOpenPhotoCamera -> if (context.canEdit() && selection.selectedMarkerId != null) openSheet(Sheet.PhotoCamera)
-            is MapAction.OnClosePhotoCamera -> closeSheet()
-            is MapAction.OnAddPlaceToDay -> edits.addPlace()
-            is MapAction.OnOpenSearch -> search.open()
-            is MapAction.OnSearchQueryChanged -> search.onQueryChanged(action.query)
-            is MapAction.OnSearchResultClick -> search.onResultClick(action.result)
-            is MapAction.OnCloseSearch -> search.close()
-            is MapAction.OnDaySelected -> selectDay(action.dayIndex)
-            is MapAction.OnFitDay -> camera.showOpenDay()
-            is MapAction.OnBackClick -> sendEvent(MapEvent.NavigateBack)
-            is MapAction.OnToggleStopLike -> toggleStopLike(action.markerId)
-            is MapAction.OnOpenStopComments -> selection.selectedMarkerId?.let { openSheet(Sheet.StopComments(it)) }
-            is MapAction.OnCloseStopComments -> closeSheet()
-            is MapAction.OnToggleSaveTrip -> sharing.toggleSave()
-            is MapAction.OnRequestToJoin -> sharing.requestToJoin()
-            is MapAction.OnCancelJoinRequest -> sharing.cancelJoinRequest()
-            is MapAction.OnOpenJoinRequests -> openSheet(Sheet.Members)
-            is MapAction.OnCloseJoinRequests -> closeSheet()
-            is MapAction.OnOpenOwnerProfile -> trip.value?.trip?.owner?.let { sendEvent(MapEvent.OpenProfile(it.username)) }
-            is MapAction.OnReportTrip -> sharing.report(ReportTarget.Trip, context.tripId)
-            is MapAction.OnReportStop -> selection.selectedMarkerId?.let { sharing.report(ReportTarget.Marker, it) }
-            is MapAction.OnSendReport -> sharing.sendReport(action.reason, action.details)
-            is MapAction.OnDismissReport -> closeDialog()
-            is MapAction.OnOpenPlaceImage -> selection.openPlaceImage(action.index)
-            is MapAction.OnClosePlaceImage -> selection.openPlaceImage(null)
-            is MapAction.OnReportPhoto -> sharing.reportPhoto(action.photo)
-            is MapAction.OnToggleDayRoute -> routes.toggleDayRoute()
-            is MapAction.OnTravelModeSelected -> routes.selectTravelMode(action.mode)
-            is MapAction.OnRouteFromPlace -> routes.startPointRoute()
-            is MapAction.OnRouteToPlace -> routes.showPointRoute()
-            is MapAction.OnCancelRouteStart -> routes.cancelRouteStart()
-            is MapAction.OnClosePointRoute -> routes.closePointRoute()
-            is MapAction.OnAlongTheWayClick -> selection.openPlace(action.place)
-            is MapAction.OnAddAlongTheWay -> routes.addAlongTheWay(action.place)
-            is MapAction.OnFindBestOrder -> routes.findBestOrder()
-            is MapAction.OnApplyBestOrder -> routes.applyBestOrder()
-            is MapAction.OnDismissBestOrder -> closeDialog()
+            is MapAction.PlaceCard.OpenPhotos -> selection.selectedPlace?.takeIf { it.address == null }?.let { openSheet(Sheet.PlacePhotos(it.place)) }
+            is MapAction.PlaceCard.OpenImage -> selection.openPlaceImage(action.index)
+            is MapAction.PlaceCard.RouteFrom -> routes.startPointRoute()
+            is MapAction.PlaceCard.RouteTo -> routes.showPointRoute()
+        }
+    }
+
+    private fun onSheet(action: MapAction.Sheet) {
+        when (action) {
+            is MapAction.Sheet.ClosePlaceImage -> selection.openPlaceImage(null)
+            is MapAction.Sheet.ReportPhoto -> sharing.reportPhoto(action.photo)
+            is MapAction.Sheet.CloseStopPhotos,
+            is MapAction.Sheet.ClosePlacePhotos,
+            is MapAction.Sheet.CloseStopComments,
+            is MapAction.Sheet.CloseJoinRequests,
+            is MapAction.Sheet.CloseCamera -> closeSheet()
+        }
+    }
+
+    private fun onDialog(action: MapAction.Dialog) {
+        when (action) {
+            is MapAction.Dialog.ConfirmPinName -> edits.addNamedPin(action.name)
+            is MapAction.Dialog.Confirm -> edits.confirm()
+            is MapAction.Dialog.DeleteAnyway -> edits.deleteAnyway()
+            is MapAction.Dialog.SendReport -> sharing.sendReport(action.reason, action.details)
+            is MapAction.Dialog.ApplyBestOrder -> routes.applyBestOrder()
+            is MapAction.Dialog.DismissPinName,
+            is MapAction.Dialog.DismissConfirm,
+            is MapAction.Dialog.DismissDeleteAnyway,
+            is MapAction.Dialog.DismissReport,
+            is MapAction.Dialog.DismissBestOrder -> closeDialog()
+        }
+    }
+
+    private fun onMessage(action: MapAction.Message) {
+        when (action) {
+            is MapAction.Message.Shown -> context.showMessage(null)
+            is MapAction.Message.RetryFailedChanges -> edits.retryFailedChanges()
         }
     }
 
     private fun toUiState(details: TripDetails?, model: MapModel): MapUiState =
         MapStateMapper(details, model, appConfigRepository.config.value, myUserId).map()
 
-    private fun onCameraMove(action: MapAction.OnCameraMove) {
+    private fun onCameraRest(action: MapAction.MapView.CameraRest) {
         camera.onRest(action.coordinates, action.zoom)
         selection.onCameraRest(action.coordinates, action.zoom)
         action.bounds?.let { pins.onCameraRest(it, action.zoom) }

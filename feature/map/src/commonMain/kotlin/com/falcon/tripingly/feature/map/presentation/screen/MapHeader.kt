@@ -95,7 +95,7 @@ internal fun MapHeader(
 @Composable
 private fun TripTitle(header: HeaderState, onAction: (MapAction) -> Unit) {
     Row(verticalAlignment = Alignment.CenterVertically) {
-        IconButton(onClick = { onAction(MapAction.OnBackClick) }) {
+        IconButton(onClick = { onAction(MapAction.Header.Back) }) {
             Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(Res.string.map_back))
         }
         Column(Modifier.weight(1f).padding(vertical = if (header.createdLabel == null) 16.dp else 8.dp)) {
@@ -127,7 +127,7 @@ private fun TripTitle(header: HeaderState, onAction: (MapAction) -> Unit) {
         if (header.isBusy) {
             CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
         }
-        IconButton(onClick = { onAction(MapAction.OnOpenSearch) }) {
+        IconButton(onClick = { onAction(MapAction.Search.Open) }) {
             Icon(Icons.Default.Search, contentDescription = stringResource(Res.string.map_search))
         }
         header.viewerMenu?.let { ViewerMenuButton(it, onAction) }
@@ -141,18 +141,18 @@ private fun ViewerMenuButton(menu: ViewerMenu, onAction: (MapAction) -> Unit) {
         contentDescription = stringResource(Res.string.map_trip_menu),
         actions = listOfNotNull(
             DropdownAction(stringResource(if (menu.isSavedByMe) Res.string.map_unsave_trip else Res.string.map_save_trip)) {
-                onAction(MapAction.OnToggleSaveTrip)
+                onAction(MapAction.Header.ToggleSave)
             },
             // Once the owner declined, there's nothing more to ask.
             when (menu.myJoinRequest) {
-                null -> DropdownAction(stringResource(Res.string.map_join_trip)) { onAction(MapAction.OnRequestToJoin) }
-                JoinRequestStatus.PENDING -> DropdownAction(stringResource(Res.string.map_cancel_join)) { onAction(MapAction.OnCancelJoinRequest) }
+                null -> DropdownAction(stringResource(Res.string.map_join_trip)) { onAction(MapAction.Header.RequestToJoin) }
+                JoinRequestStatus.PENDING -> DropdownAction(stringResource(Res.string.map_cancel_join)) { onAction(MapAction.Header.CancelJoinRequest) }
                 JoinRequestStatus.DECLINED -> null
             },
             menu.ownerUsername?.let { owner ->
-                DropdownAction(stringResource(Res.string.map_owner_profile, owner)) { onAction(MapAction.OnOpenOwnerProfile) }
+                DropdownAction(stringResource(Res.string.map_owner_profile, owner)) { onAction(MapAction.Header.OpenOwnerProfile) }
             },
-            DropdownAction(stringResource(Res.string.map_report_trip)) { onAction(MapAction.OnReportTrip) },
+            DropdownAction(stringResource(Res.string.map_report_trip)) { onAction(MapAction.Header.ReportTrip) },
         ),
     )
 }
@@ -162,8 +162,8 @@ private fun EditorMenuButton(menu: EditorMenu, onAction: (MapAction) -> Unit) {
     MenuButton(
         contentDescription = stringResource(Res.string.map_day_menu),
         actions = listOfNotNull(
-            DropdownAction(stringResource(Res.string.map_add_day)) { onAction(MapAction.AddDay) },
-            DropdownAction(stringResource(Res.string.map_delete_day), isDestructive = true) { onAction(MapAction.DeleteDay) }
+            DropdownAction(stringResource(Res.string.map_add_day)) { onAction(MapAction.Header.AddDay) },
+            DropdownAction(stringResource(Res.string.map_delete_day), isDestructive = true) { onAction(MapAction.Header.DeleteDay) }
                 .takeIf { menu.canDeleteDay },
         ),
     )
@@ -186,12 +186,12 @@ private fun SearchField(search: SearchState, onAction: (MapAction) -> Unit) {
     val focusRequester = remember { FocusRequester() }
     LaunchedEffect(Unit) { focusRequester.requestFocus() }
     Row(verticalAlignment = Alignment.CenterVertically) {
-        IconButton(onClick = { onAction(MapAction.OnCloseSearch) }) {
+        IconButton(onClick = { onAction(MapAction.Search.Close) }) {
             Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(Res.string.map_back))
         }
         TextField(
             value = search.query,
-            onValueChange = { onAction(MapAction.OnSearchQueryChanged(it)) },
+            onValueChange = { onAction(MapAction.Search.QueryChanged(it)) },
             placeholder = { Text(stringResource(Res.string.map_search_placeholder)) },
             singleLine = true,
             colors = TextFieldDefaults.colors(
@@ -207,7 +207,7 @@ private fun SearchField(search: SearchState, onAction: (MapAction) -> Unit) {
                 modifier = Modifier.padding(horizontal = 14.dp).size(20.dp),
                 strokeWidth = 2.dp,
             )
-            search.query.isNotEmpty() -> IconButton(onClick = { onAction(MapAction.OnSearchQueryChanged("")) }) {
+            search.query.isNotEmpty() -> IconButton(onClick = { onAction(MapAction.Search.QueryChanged("")) }) {
                 Icon(Icons.Default.Close, contentDescription = stringResource(Res.string.map_search_clear))
             }
         }
@@ -233,7 +233,7 @@ internal fun SearchResults(
                 SuggestionItem(
                     title = result.name,
                     subtitle = result.address,
-                    onClick = { onAction(MapAction.OnSearchResultClick(result)) },
+                    onClick = { onAction(MapAction.Search.ResultClick(result)) },
                 )
             }
             OsmAttribution(modifier = Modifier.padding(MaterialTheme.spacing.medium))

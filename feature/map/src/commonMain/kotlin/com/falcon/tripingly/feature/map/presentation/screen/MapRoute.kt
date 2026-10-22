@@ -34,11 +34,11 @@ fun MapRoute(
     val onAction = viewModel::onAction
 
     val locationPermission = rememberLocationPermissionController { permission ->
-        onAction(MapAction.OnPermissionResult(permission))
+        onAction(MapAction.Location.PermissionResult(permission))
     }
     // On open and on every return to the app, e.g. from Settings.
     LifecycleResumeEffect(locationPermission) {
-        onAction(MapAction.OnPermissionChecked(locationPermission.status()))
+        onAction(MapAction.Location.PermissionChecked(locationPermission.status()))
         onPauseOrDispose {}
     }
 
@@ -69,8 +69,8 @@ fun MapRoute(
             canAdd = sheet.canEdit,
             canManage = sheet.canEdit,
             coverPhotoId = sheet.stop.coverPhotoId,
-            onReport = { photo -> onAction(MapAction.OnReportPhoto(photo)) },
-            onDismiss = { onAction(MapAction.OnCloseStopPhotos) },
+            onReport = { photo -> onAction(MapAction.Sheet.ReportPhoto(photo)) },
+            onDismiss = { onAction(MapAction.Sheet.CloseStopPhotos) },
         )
         is MapSheet.PlacePhotos -> PhotosRoute(
             owner = PhotoOwner.Place(sheet.place.id),
@@ -78,24 +78,24 @@ fun MapRoute(
             canAdd = true,
             canManage = false,
             coverPhotoId = null,
-            onReport = { photo -> onAction(MapAction.OnReportPhoto(photo)) },
-            onDismiss = { onAction(MapAction.OnClosePlacePhotos) },
+            onReport = { photo -> onAction(MapAction.Sheet.ReportPhoto(photo)) },
+            onDismiss = { onAction(MapAction.Sheet.ClosePlacePhotos) },
         )
         is MapSheet.StopComments -> StopCommentsRoute(
             marker = sheet.stop,
             onOpenProfile = onOpenProfile,
-            onDismiss = { onAction(MapAction.OnCloseStopComments) },
+            onDismiss = { onAction(MapAction.Sheet.CloseStopComments) },
         )
-        MapSheet.Members -> membersContent(tripId) { onAction(MapAction.OnCloseJoinRequests) }
+        MapSheet.Members -> membersContent(tripId) { onAction(MapAction.Sheet.CloseJoinRequests) }
         is MapSheet.PlaceImage -> PhotoViewerRoute(
             owner = PhotoOwner.Place(sheet.placeId),
             photoId = sheet.photoId,
-            onReport = { photo -> onAction(MapAction.OnReportPhoto(photo)) },
-            onDismiss = { onAction(MapAction.OnClosePlaceImage) },
+            onReport = { photo -> onAction(MapAction.Sheet.ReportPhoto(photo)) },
+            onDismiss = { onAction(MapAction.Sheet.ClosePlaceImage) },
         )
         MapSheet.PhotoCamera -> PhotoCameraDialog(
-            onPhoto = { onAction(MapAction.OnAddStopPhotos(listOf(it))) },
-            onDismiss = { onAction(MapAction.OnClosePhotoCamera) },
+            onPhoto = { onAction(MapAction.StopCard.AddPhotos(listOf(it))) },
+            onDismiss = { onAction(MapAction.Sheet.CloseCamera) },
         )
         null -> Unit
     }

@@ -98,7 +98,7 @@ internal fun MapScreen(
                     val down = awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
                     val isOnCard = (isPlaceCardOpen && placeCardBounds.contains(down.position)) ||
                         (isStopCardOpen && stopCardBounds.contains(down.position))
-                    if (!isOnCard) onAction(MapAction.OnScreenTouch)
+                    if (!isOnCard) onAction(MapAction.MapView.ScreenTouch)
                 }
             }
     ) {
@@ -140,13 +140,13 @@ internal fun MapScreen(
                 selectedPlace = layers.selectedPlace,
                 line = layers.line,
                 isMyLocationEnabled = layers.isMyLocationEnabled,
-                onCameraMove = { coords, zoom, bounds -> onAction(MapAction.OnCameraMove(coords, zoom, bounds)) },
-                onMapTouch = { onAction(MapAction.OnScreenTouch) },
-                onMapClick = { coords -> onAction(MapAction.OnMapClick(coords)) },
-                onPlacePinClick = { place -> onAction(MapAction.OnPlacePinClick(place)) },
-                onClusterClick = { cluster -> onAction(MapAction.OnClusterClick(cluster)) },
-                onMapLongClick = { coords -> onAction(MapAction.OnMapLongClick(coords)) },
-                onMarkerClick = { marker -> onAction(MapAction.OnMarkerClick(marker)) },
+                onCameraMove = { coords, zoom, bounds -> onAction(MapAction.MapView.CameraRest(coords, zoom, bounds)) },
+                onMapTouch = { onAction(MapAction.MapView.ScreenTouch) },
+                onMapClick = { coords -> onAction(MapAction.MapView.Click(coords)) },
+                onPlacePinClick = { place -> onAction(MapAction.MapView.PlacePinClick(place)) },
+                onClusterClick = { cluster -> onAction(MapAction.MapView.ClusterClick(cluster)) },
+                onMapLongClick = { coords -> onAction(MapAction.MapView.LongClick(coords)) },
+                onMarkerClick = { marker -> onAction(MapAction.MapView.MarkerClick(marker)) },
             )
         }
 
@@ -164,7 +164,7 @@ internal fun MapScreen(
             )
             if (state.header.pendingJoinRequestCount > 0 && state.search == null) {
                 FilledTonalButton(
-                    onClick = { onAction(MapAction.OnOpenJoinRequests) },
+                    onClick = { onAction(MapAction.Header.OpenJoinRequests) },
                     modifier = Modifier.padding(horizontal = MaterialTheme.spacing.medium),
                 ) {
                     val count = state.header.pendingJoinRequestCount
@@ -180,10 +180,10 @@ internal fun MapScreen(
         val message = state.message
         ShowMessage(
             message = message?.text?.asString(),
-            onShown = { onAction(MapAction.OnMessageShown) },
+            onShown = { onAction(MapAction.Message.Shown) },
             isError = message?.text !is UiText.Note,
             actionLabel = if (message?.canRetry == true) stringResource(Res.string.map_retry) else null,
-            onAction = if (message?.canRetry == true) ({ onAction(MapAction.RetryFailedChanges) }) else null,
+            onAction = if (message?.canRetry == true) ({ onAction(MapAction.Message.RetryFailedChanges) }) else null,
         )
 
         BottomCards(
@@ -212,14 +212,14 @@ internal fun MapScreen(
                     details = card.details,
                     address = card.address,
                     dayNumber = card.addToDayNumber,
-                    onAdd = { onAction(MapAction.OnAddPlaceToDay) },
-                    onOpenImage = { index -> onAction(MapAction.OnOpenPlaceImage(index)) },
-                    onOpenPhotos = { onAction(MapAction.OnOpenPlacePhotos) },
-                    onRouteFrom = { onAction(MapAction.OnRouteFromPlace) },
-                    onRouteTo = { onAction(MapAction.OnRouteToPlace) }.takeIf { card.canRouteTo },
+                    onAdd = { onAction(MapAction.PlaceCard.AddToDay) },
+                    onOpenImage = { index -> onAction(MapAction.PlaceCard.OpenImage(index)) },
+                    onOpenPhotos = { onAction(MapAction.PlaceCard.OpenPhotos) },
+                    onRouteFrom = { onAction(MapAction.PlaceCard.RouteFrom) },
+                    onRouteTo = { onAction(MapAction.PlaceCard.RouteTo) }.takeIf { card.canRouteTo },
                 )
             }
-            val pickPhotos = rememberPhotoPicker { images -> onAction(MapAction.OnAddStopPhotos(images)) }
+            val pickPhotos = rememberPhotoPicker { images -> onAction(MapAction.StopCard.AddPhotos(images)) }
             PinCard(
                 card = state.stopCard,
                 key = { it.stop.id },
@@ -230,14 +230,14 @@ internal fun MapScreen(
                     marker = card.stop,
                     placeImage = card.placeImage,
                     canEdit = card.canEdit,
-                    onOpen = { onAction(MapAction.OnOpenStopPhotos) },
+                    onOpen = { onAction(MapAction.StopCard.OpenPhotos) },
                     onAddPhotos = pickPhotos,
-                    onTakePhoto = { onAction(MapAction.OnOpenPhotoCamera) },
-                    onToggleLike = { onAction(MapAction.OnToggleStopLike(card.stop.id)) },
-                    onOpenComments = { onAction(MapAction.OnOpenStopComments) },
+                    onTakePhoto = { onAction(MapAction.StopCard.OpenCamera) },
+                    onToggleLike = { onAction(MapAction.StopCard.ToggleLike(card.stop.id)) },
+                    onOpenComments = { onAction(MapAction.StopCard.OpenComments) },
                     canReport = card.canReport,
-                    onReport = { onAction(MapAction.OnReportStop) },
-                    onRemoveMyContent = { onAction(MapAction.OnRemoveMyContent) }.takeIf { card.canRemoveMyContent },
+                    onReport = { onAction(MapAction.StopCard.Report) },
+                    onRemoveMyContent = { onAction(MapAction.StopCard.RemoveMyContent) }.takeIf { card.canRemoveMyContent },
                 )
             }
         }
