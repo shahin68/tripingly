@@ -78,19 +78,6 @@ private final class AppGoogleMap: NSObject, GoogleMap, GMSMapViewDelegate {
         }
     }
 
-    func fitBounds(south: Double, west: Double, north: Double, east: Double, padding: Double) {
-        let bounds = GMSCoordinateBounds(
-            coordinate: CLLocationCoordinate2D(latitude: south, longitude: west),
-            coordinate: CLLocationCoordinate2D(latitude: north, longitude: east)
-        )
-        let update = GMSCameraUpdate.fit(bounds, withPadding: CGFloat(padding))
-        // As fast as a move to a pin; the map's own padding is kept out too.
-        CATransaction.begin()
-        CATransaction.setAnimationDuration(0.18)
-        mapView.animate(with: update)
-        CATransaction.commit()
-    }
-
     func setMarkers(markers items: [GoogleMapMarker]) {
         var kept: [String: GMSMarker] = [:]
         for item in items {

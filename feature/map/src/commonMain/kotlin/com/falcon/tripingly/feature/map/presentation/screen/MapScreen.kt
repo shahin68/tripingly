@@ -1,6 +1,7 @@
 package com.falcon.tripingly.feature.map.presentation.screen
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.AnchoredDraggableState
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Arrangement
@@ -41,6 +42,7 @@ import androidx.compose.ui.tooling.preview.PreviewParameter
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.falcon.tripingly.core.designsystem.component.OsmAttribution
+import com.falcon.tripingly.core.model.place.GeoBounds
 import com.falcon.tripingly.core.designsystem.component.ShowMessage
 import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
 import com.falcon.tripingly.core.designsystem.theme.spacing
@@ -59,6 +61,7 @@ import com.falcon.tripingly.feature.map.presentation.component.stopPinHeight
 import com.falcon.tripingly.feature.map.presentation.photos.rememberPhotoPicker
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emptyFlow
+import kotlinx.coroutines.flow.map
 import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
 
@@ -84,6 +87,7 @@ fun MapScreen(
     var stopCardBounds by remember { mutableStateOf(Rect.Zero) }
     val isPlaceCardOpen by rememberUpdatedState(state.placeCard != null)
     val isStopCardOpen by rememberUpdatedState(state.stopCard != null)
+    val planSheet = rememberPlanSheetState()
 
     BoxWithConstraints(
         modifier = Modifier
@@ -106,16 +110,28 @@ fun MapScreen(
         val coveredBottom = (tabsHeight?.second ?: 0.dp) + (if (plan != null) PlanSheetPeek else 0.dp) + (creditsHeight ?: 0.dp)
         // Not before the camera knows where the trip is: the map opens there, fitted to the open day, instead of
         // starting somewhere and then fitting.
+        // A fit frames the bounds in the map that shows right now: above the sheet as far as it's pulled up.
+        val fit by rememberUpdatedState { bounds: GeoBounds ->
+            val pulledUp = if (plan != null) with(density) { planSheet.pulledUp().toDp() } else 0.dp
+            fittedCamera(bounds, maxWidth, maxHeight - coveredTop - coveredBottom - pulledUp, raise = pulledUp / 2)
+        }
+        val moves = remember(cameraCommands) {
+            cameraCommands.map { command ->
+                when (command) {
+                    is CameraCommand.MoveTo -> command
+                    is CameraCommand.Fit -> fit(command.bounds).let { (target, zoom) -> CameraCommand.MoveTo(target, zoom) }
+                }
+            }
+        }
         if (state.camera.isReady && headerHeight != null && tabsHeight?.first == hasDays && creditsHeight != null) {
             val camera = state.camera
-            val (target, zoom) = camera.openingBounds?.let { fittedCamera(it, maxWidth, maxHeight - coveredTop - coveredBottom) }
-                ?: (camera.target to camera.zoom)
+            val (target, zoom) = camera.openingBounds?.let(fit) ?: (camera.target to camera.zoom)
             val layers = state.layers
             GoogleMapView(
                 modifier = Modifier.fillMaxSize(),
                 initialTarget = target,
                 initialZoom = zoom,
-                cameraCommands = cameraCommands,
+                cameraCommands = moves,
                 contentPadding = PaddingValues(top = coveredTop, bottom = coveredBottom),
                 markers = layers.stops,
                 placePins = layers.placePins,
@@ -176,6 +192,7 @@ fun MapScreen(
             routeStartName = state.routeStartName,
             dayTabs = state.dayTabs,
             plan = plan,
+            planSheet = planSheet,
             onAction = onAction,
             onTabsHeight = { tabsHeight = hasDays to with(density) { it.toDp() } },
             onCreditsHeight = { creditsHeight = with(density) { it.toDp() } },
@@ -239,6 +256,7 @@ private fun BottomCards(
     routeStartName: String?,
     dayTabs: DayTabsState,
     plan: Any?,
+    planSheet: AnchoredDraggableState<PlanSheetValue>,
     onAction: (MapAction) -> Unit,
     onTabsHeight: (Int) -> Unit,
     onCreditsHeight: (Int) -> Unit,
@@ -247,6 +265,7 @@ private fun BottomCards(
     Column(modifier = modifier.fillMaxWidth()) {
         PlanSheet(
             plan = plan,
+            state = planSheet,
             above = {
                 routeStartName?.let { name ->
                     RouteStartChip(name, onAction, Modifier.padding(start = MaterialTheme.spacing.medium))

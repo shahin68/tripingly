@@ -17,6 +17,7 @@ import kotlin.math.atan
 import kotlin.math.ln
 import kotlin.math.log2
 import kotlin.math.min
+import kotlin.math.pow
 import kotlin.math.sinh
 import kotlin.math.tan
 
@@ -26,8 +27,8 @@ expect fun GoogleMapView(
     /** Where the map starts; it moves only by [cameraCommands] and the user's fingers after that. */
     initialTarget: Coordinates,
     initialZoom: Float,
-    /** Each command runs once, in order; a fit waits until the map has loaded. */
-    cameraCommands: Flow<CameraCommand>,
+    /** Each move runs once, in order; fits are worked out into moves by the screen (see [fittedCamera]). */
+    cameraCommands: Flow<CameraCommand.MoveTo>,
     /**
      * The parts the screen's header and cards cover. The camera centers and fits within the rest, and Google's
      * logo stays clear of them.
@@ -72,10 +73,11 @@ internal const val CAMERA_MOVE_MILLIS = 180
 
 /**
  * Where a fit of [bounds] puts the camera in a view [width] by [height] that the map sees after its content padding,
- * worked out the way the map SDKs fit (a 256 dp world at zoom 0, Web Mercator, [FitMargin] inside), so a new map can
- * start already fitted instead of fitting after it shows.
+ * worked out the way the map SDKs fit (a 256 dp world at zoom 0, Web Mercator, [FitMargin] inside). The screen fits
+ * this way every time, so a new map starts already fitted and a fit can keep out of what floats over the map: with
+ * [raise], the bounds sit that far above the middle of the padded map, for a [height] that is less than it.
  */
-internal fun fittedCamera(bounds: GeoBounds, width: Dp, height: Dp): Pair<Coordinates, Float> {
+internal fun fittedCamera(bounds: GeoBounds, width: Dp, height: Dp, raise: Dp = 0.dp): Pair<Coordinates, Float> {
     fun mercatorY(latitude: Double) = ln(tan(PI / 4 + latitude * PI / 360))
     val north = mercatorY(bounds.north)
     val south = mercatorY(bounds.south)
@@ -83,12 +85,14 @@ internal fun fittedCamera(bounds: GeoBounds, width: Dp, height: Dp): Pair<Coordi
     val spanY = (north - south) / (2 * PI)
     val fitWidth = (width - FitMargin * 2).value.coerceAtLeast(1f)
     val fitHeight = (height - FitMargin * 2).value.coerceAtLeast(1f)
-    val zoom = log2(min(fitWidth / (WORLD_DP * spanX), fitHeight / (WORLD_DP * spanY))).toFloat()
-    val center = Coordinates(
-        latitude = atan(sinh((north + south) / 2)) * 180 / PI,
+    val zoom = log2(min(fitWidth / (WORLD_DP * spanX), fitHeight / (WORLD_DP * spanY))).toFloat().coerceIn(MIN_ZOOM, MAX_ZOOM)
+    // The camera's target is the middle of the padded map; moving it south by [raise] lifts the bounds by as much.
+    val targetY = (north + south) / 2 - raise.value / (WORLD_DP * 2.0.pow(zoom.toDouble())) * 2 * PI
+    val target = Coordinates(
+        latitude = atan(sinh(targetY)) * 180 / PI,
         longitude = (bounds.west + bounds.east) / 2,
     )
-    return center to zoom.coerceIn(MIN_ZOOM, MAX_ZOOM)
+    return target to zoom
 }
 
 /** How wide the whole world is at zoom 0. */

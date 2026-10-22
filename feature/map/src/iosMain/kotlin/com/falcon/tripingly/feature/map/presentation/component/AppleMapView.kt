@@ -1,14 +1,9 @@
 package com.falcon.tripingly.feature.map.presentation.component
 
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.interop.UIKitView
 import com.falcon.tripingly.core.location.model.Coordinates
@@ -18,9 +13,7 @@ import com.falcon.tripingly.core.model.place.PlaceCluster
 import com.falcon.tripingly.feature.map.domain.model.CameraCommand
 import com.falcon.tripingly.feature.map.domain.model.MapMarker
 import kotlinx.coroutines.flow.Flow
-import kotlinx.cinterop.CValue
 import kotlinx.cinterop.ExperimentalForeignApi
-import kotlinx.cinterop.cValue
 import kotlinx.cinterop.useContents
 import platform.CoreLocation.CLLocationCoordinate2DMake
 import platform.MapKit.MKCoordinateRegionMakeWithDistance
@@ -28,16 +21,12 @@ import platform.MapKit.MKAnnotationProtocol
 import platform.MapKit.MKAnnotationView
 import platform.MapKit.MKFeatureDisplayPriorityDefaultLow
 import platform.MapKit.MKMarkerAnnotationView
-import platform.MapKit.MKMapPointForCoordinate
-import platform.MapKit.MKMapRect
 import platform.MapKit.MKMapView
 import platform.MapKit.MKMapViewDelegateProtocol
 import platform.MapKit.MKPointAnnotation
 import platform.MapKit.MKPointOfInterestFilter
 import platform.UIKit.UIColor
-import platform.UIKit.UIEdgeInsetsMake
 import platform.darwin.NSObject
-import kotlin.math.abs
 import kotlin.math.log2
 import kotlin.math.pow
 
@@ -51,8 +40,7 @@ internal fun AppleMapView(
     modifier: Modifier,
     initialTarget: Coordinates,
     initialZoom: Float,
-    cameraCommands: Flow<CameraCommand>,
-    contentPadding: PaddingValues,
+    cameraCommands: Flow<CameraCommand.MoveTo>,
     markers: List<MapMarker>,
     placePins: List<PlacePin>,
     placeClusters: List<PlaceCluster>,
@@ -140,36 +128,11 @@ internal fun AppleMapView(
             setRegion(regionAround(initialTarget, initialZoom), animated = false)
         }
     }
-    // The latest fit holds until the camera is sent elsewhere, and fits again when what the screen covers changes.
-    var fit by remember { mutableStateOf<CameraCommand.Fit?>(null) }
-    var fitCount by remember { mutableIntStateOf(0) }
+    // MapKit has no padding for the camera, so the target sits in the middle of the whole view.
     LaunchedEffect(cameraCommands) {
         cameraCommands.collect { command ->
-            when (command) {
-                is CameraCommand.MoveTo -> {
-                    fit = null
-                    mapView.setRegion(mapView.regionThatFits(regionAround(command.target, command.zoom)), animated = true)
-                }
-                is CameraCommand.Fit -> {
-                    fit = command
-                    fitCount++
-                }
-            }
+            mapView.setRegion(mapView.regionThatFits(regionAround(command.target, command.zoom)), animated = true)
         }
-    }
-    LaunchedEffect(fit, fitCount, contentPadding) {
-        val command = fit ?: return@LaunchedEffect
-        // MapKit fits the rectangle itself, keeping out of what the header and cards cover.
-        mapView.setVisibleMapRect(
-            mapRect(command.bounds),
-            edgePadding = UIEdgeInsetsMake(
-                top = contentPadding.calculateTopPadding().value + FitMargin.value.toDouble(),
-                left = FitMargin.value.toDouble(),
-                bottom = contentPadding.calculateBottomPadding().value + FitMargin.value.toDouble(),
-                right = FitMargin.value.toDouble(),
-            ),
-            animated = true,
-        )
     }
     val titles = markers.map { it.title.asString() }
     UIKitView(
@@ -219,19 +182,3 @@ private fun regionAround(target: Coordinates, zoom: Float) = MKCoordinateRegionM
     40_000_000.0 / 2.0.pow(zoom.toDouble()),
     40_000_000.0 / 2.0.pow(zoom.toDouble()),
 )
-
-/** The map's own rectangle around [bounds]. */
-@OptIn(ExperimentalForeignApi::class)
-private fun mapRect(bounds: GeoBounds): CValue<MKMapRect> {
-    val southWest = MKMapPointForCoordinate(CLLocationCoordinate2DMake(bounds.south, bounds.west))
-    val northEast = MKMapPointForCoordinate(CLLocationCoordinate2DMake(bounds.north, bounds.east))
-    val (x1, y1) = southWest.useContents { x to y }
-    val (x2, y2) = northEast.useContents { x to y }
-    return cValue {
-        origin.x = minOf(x1, x2)
-        origin.y = minOf(y1, y2)
-        size.width = abs(x2 - x1)
-        size.height = abs(y2 - y1)
-    }
-}
-

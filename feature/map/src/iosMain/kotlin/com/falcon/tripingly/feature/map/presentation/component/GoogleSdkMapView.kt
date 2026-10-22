@@ -11,7 +11,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
@@ -49,7 +48,7 @@ internal fun GoogleSdkMapView(
     modifier: Modifier,
     initialTarget: Coordinates,
     initialZoom: Float,
-    cameraCommands: Flow<CameraCommand>,
+    cameraCommands: Flow<CameraCommand.MoveTo>,
     contentPadding: PaddingValues,
     markers: List<MapMarker>,
     placePins: List<PlacePin>,
@@ -77,13 +76,8 @@ internal fun GoogleSdkMapView(
     val currentOnMapLongClick by rememberUpdatedState(onMapLongClick)
     val currentOnMarkerClick by rememberUpdatedState(onMarkerClick)
 
-    // The map has rested once, so it has its size: a camera move flies from then on, and a fit can run.
+    // The map has rested once, so it has its size: a camera move flies from then on.
     var isMapReady by remember { mutableStateOf(false) }
-    // The latest fit holds until the camera is sent elsewhere or a finger moves the map: whenever what the screen
-    // covers changes (a card comes in, the header grows), the map fits it again into what's left.
-    var fit by remember { mutableStateOf<CameraCommand.Fit?>(null) }
-    // Counts the fits, so the same fit sent again (the same day tapped again) runs again.
-    var fitCount by remember { mutableIntStateOf(0) }
     // The camera's zoom as it moves, read only to tell when the pins turn into dots and back.
     var liveZoom by remember { mutableStateOf(initialZoom) }
     val isDots by remember(pinDotBelowZoom) { derivedStateOf { liveZoom < pinDotBelowZoom } }
@@ -105,8 +99,6 @@ internal fun GoogleSdkMapView(
                 }
 
                 override fun onGestureStart() {
-                    // A finger moved the map: the latest fit no longer holds.
-                    fit = null
                     currentOnMapTouch()
                 }
 
@@ -141,17 +133,8 @@ internal fun GoogleSdkMapView(
     LaunchedEffect(map) { map.moveCamera(initialTarget.latitude, initialTarget.longitude, initialZoom, animated = false) }
     LaunchedEffect(cameraCommands) {
         cameraCommands.collect { command ->
-            when (command) {
-                // Until the map has rested once, it starts there instead of flying there.
-                is CameraCommand.MoveTo -> {
-                    fit = null
-                    map.moveCamera(command.target.latitude, command.target.longitude, command.zoom, animated = isMapReady)
-                }
-                is CameraCommand.Fit -> {
-                    fit = command
-                    fitCount++
-                }
-            }
+            // Until the map has rested once, it starts there instead of flying there.
+            map.moveCamera(command.target.latitude, command.target.longitude, command.zoom, animated = isMapReady)
         }
     }
 
@@ -160,12 +143,7 @@ internal fun GoogleSdkMapView(
     LaunchedEffect(isMyLocationEnabled) { map.setMyLocationEnabled(isMyLocationEnabled) }
     val top = contentPadding.calculateTopPadding()
     val bottom = contentPadding.calculateBottomPadding()
-    LaunchedEffect(top, bottom, fit, fitCount, isMapReady) {
-        map.setPadding(top.value.toDouble(), bottom.value.toDouble())
-        // A fit needs the map's size, which it has once it rested.
-        val command = fit?.takeIf { isMapReady } ?: return@LaunchedEffect
-        with(command.bounds) { map.fitBounds(south, west, north, east, FitMargin.value.toDouble()) }
-    }
+    LaunchedEffect(top, bottom) { map.setPadding(top.value.toDouble(), bottom.value.toDouble()) }
 
     // Every pin look is drawn once and shared by every pin that looks the same.
     val categoryIcons = PlaceCategory.entries.associateWith { rememberVectorPainter(it.icon) }

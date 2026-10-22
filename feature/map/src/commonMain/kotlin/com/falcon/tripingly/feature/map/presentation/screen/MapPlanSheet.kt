@@ -52,20 +52,29 @@ private val HandleAreaHeight = 24.dp
 
 internal enum class PlanSheetValue { Collapsed, Expanded }
 
+/** Where the plan sheet is pulled to; kept over rotation and process death. */
+@Composable
+internal fun rememberPlanSheetState(): AnchoredDraggableState<PlanSheetValue> =
+    rememberSaveable(saver = AnchoredDraggableState.Saver()) { AnchoredDraggableState(PlanSheetValue.Collapsed) }
+
+/** How far, in px, the sheet is pulled up above its peek right now; 0 before it's laid out. */
+internal fun AnchoredDraggableState<PlanSheetValue>.pulledUp(): Float =
+    (anchors.maxPosition() - offset).takeIf { it.isFinite() }?.coerceAtLeast(0f) ?: 0f
+
 /**
  * The open day's [plan] in a sheet that rests on the day tabs. A drag anywhere on it pulls it up to show all of it, or
  * down to leave [PlanSheetPeek] of it; a tap on its handle does the same. It isn't modal: the map stays usable around
- * it, and the map keeps out of the peek only, so pulling the sheet doesn't move the map. [above] (the credits, the
- * location button) rides on the sheet's top. The sheet slides up when a plan comes and down when it goes.
+ * it, and the map keeps out of the peek only, so pulling the sheet doesn't move the map; a fit keeps out of all that
+ * shows of it (see [pulledUp]). [above] (the credits, the location button) rides on the sheet's top. The sheet slides up when a plan comes and down when it goes.
  */
 @Composable
 internal fun <T : Any> PlanSheet(
     plan: T?,
+    state: AnchoredDraggableState<PlanSheetValue>,
     above: @Composable ColumnScope.() -> Unit,
     modifier: Modifier = Modifier,
     content: @Composable (T) -> Unit,
 ) {
-    val state = rememberSaveable(saver = AnchoredDraggableState.Saver()) { AnchoredDraggableState(PlanSheetValue.Collapsed) }
     val scope = rememberCoroutineScope()
     val handleLabel = stringResource(Res.string.map_plan_handle)
     // The pulled-down part of the sheet sits below this box, behind the day tabs.
