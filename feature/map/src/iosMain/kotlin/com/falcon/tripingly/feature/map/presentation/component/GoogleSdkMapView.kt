@@ -164,7 +164,7 @@ internal fun GoogleSdkMapView(
         map.setPadding(top.value.toDouble(), bottom.value.toDouble())
         // A fit needs the map's size, which it has once it rested.
         val command = fit?.takeIf { isMapReady } ?: return@LaunchedEffect
-        with(command.bounds) { map.fitBounds(south, west, north, east, FitMargin.value.toDouble(), animated = command.isAnimated) }
+        with(command.bounds) { map.fitBounds(south, west, north, east, FitMargin.value.toDouble()) }
     }
 
     // Every pin look is drawn once and shared by every pin that looks the same.

@@ -512,8 +512,8 @@ class MapViewModelTest {
         viewModel.cameraCommands.test {
             testScheduler.advanceUntilIdle()
 
-            // The new map opens on them at once; later fits fly.
-            assertEquals(CameraCommand.fit(listOf(Coordinates(48.85, 2.35), Coordinates(48.86, 2.29))).copy(isAnimated = false), awaitItem())
+            // The same fit as a tap on the day's tab.
+            assertEquals(CameraCommand.fit(listOf(Coordinates(48.85, 2.35), Coordinates(48.86, 2.29))), awaitItem())
             // The map shows in the middle of the stops, then fits them, so it opens on them and not on the default.
             assertTrue(viewModel.uiState.value.camera.isReady)
             val target = viewModel.uiState.value.camera.target
@@ -548,8 +548,8 @@ class MapViewModelTest {
         val reopened = viewModel()
         reopened.cameraCommands.test {
             testScheduler.advanceUntilIdle()
-            // The same fit as the day's tab, only without flying in.
-            assertEquals(dayTabFit.copy(isAnimated = false), awaitItem())
+            // The same fit as the day's tab.
+            assertEquals(dayTabFit, awaitItem())
         }
         val state = reopened.uiState.value
         assertEquals(1, state.dayTabs.activeIndex)
@@ -602,7 +602,7 @@ class MapViewModelTest {
         testScheduler.advanceUntilIdle()
 
         viewModel.cameraCommands.test {
-            assertEquals(CameraCommand.fit(listOf(Coordinates(41.9, 12.49))).copy(isAnimated = false), awaitItem())
+            assertEquals(CameraCommand.fit(listOf(Coordinates(41.9, 12.49))), awaitItem())
         }
     }
 
@@ -639,7 +639,7 @@ class MapViewModelTest {
             viewModel.onAction(MapAction.OnDaySelected(0))
             testScheduler.advanceUntilIdle()
 
-            assertEquals(first.copy(isAnimated = true), awaitItem())
+            assertEquals(first, awaitItem())
         }
     }
 

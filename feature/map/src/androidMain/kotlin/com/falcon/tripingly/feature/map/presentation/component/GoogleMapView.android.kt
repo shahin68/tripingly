@@ -137,9 +137,9 @@ actual fun GoogleMapView(
         )
     }
 
-    suspend fun runCamera(update: CameraUpdate, isAnimated: Boolean) {
+    suspend fun runCamera(update: CameraUpdate) {
         // Before the map has loaded, the camera starts there instead of flying.
-        if (!isMapLoaded || !isAnimated) {
+        if (!isMapLoaded) {
             cameraPositionState.move(update)
         } else {
             try {
@@ -161,7 +161,7 @@ actual fun GoogleMapView(
             when (command) {
                 is CameraCommand.MoveTo -> {
                     fit = null
-                    runCamera(CameraUpdateFactory.newLatLngZoom(LatLng(command.target.latitude, command.target.longitude), command.zoom), isAnimated = true)
+                    runCamera(CameraUpdateFactory.newLatLngZoom(LatLng(command.target.latitude, command.target.longitude), command.zoom))
                 }
                 is CameraCommand.Fit -> {
                     fit = command
@@ -182,7 +182,6 @@ actual fun GoogleMapView(
         val bounds = command.bounds
         runCamera(
             CameraUpdateFactory.newLatLngBounds(LatLngBounds(LatLng(bounds.south, bounds.west), LatLng(bounds.north, bounds.east)), fitMargin),
-            command.isAnimated,
         )
     }
 

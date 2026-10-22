@@ -11,7 +11,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -210,7 +209,7 @@ fun MapScreen(
 }
 
 /**
- * The credits and the location button, the route-start chip, the day tabs and the open day's card. [onHeightChanged]
+ * The credits and the location button, the route-start chip, the open day's card and, at the bottom, the day tabs. [onHeightChanged]
  * gets the height they take once a card has come in, not the height while it slides, so the map fits its camera
  * around the card that is coming.
  */
@@ -231,8 +230,7 @@ private fun BottomCards(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .onSizeChanged { onHeightChanged(it.height) }
-                .navigationBarsPadding(),
+                .onSizeChanged { onHeightChanged(it.height) },
             horizontalAlignment = Alignment.End,
         ) {
             Row(
@@ -256,13 +254,14 @@ private fun BottomCards(
                 RouteStartChip(name, onAction, Modifier.align(Alignment.Start).padding(horizontal = MaterialTheme.spacing.medium))
             }
 
-            DayTabs(tabs = dayTabs, onAction = onAction)
-
             val cardPadding = Modifier.padding(horizontal = MaterialTheme.spacing.medium).padding(bottom = MaterialTheme.spacing.medium)
             // Each card slides in and out, showing what it last showed while it leaves; while shown, it only updates.
             SlidingCard(card = stopsCard, key = { true }) { StopsCard(card = it, onAction = onAction, modifier = cardPadding) }
             // A route from A to B takes the stops' place until it's closed.
             SlidingCard(card = pointRouteCard, key = { it.from to it.to }) { PointRouteCard(card = it, onAction = onAction, modifier = cardPadding) }
+
+            // The day tabs stay at the bottom; everything else opens above them.
+            DayTabs(tabs = dayTabs, onAction = onAction)
         }
     }
 }

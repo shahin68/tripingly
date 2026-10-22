@@ -11,11 +11,8 @@ import com.falcon.tripingly.core.model.place.GeoBounds
 sealed interface CameraCommand {
     data class MoveTo(val target: Coordinates, val zoom: Float) : CameraCommand
 
-    /**
-     * Shows all of [bounds], with a margin, in the part of the map nothing covers. A new map's first fit isn't
-     * [isAnimated]: the map opens right there instead of flying in from the default.
-     */
-    data class Fit(val bounds: GeoBounds, val isAnimated: Boolean = true) : CameraCommand
+    /** Shows all of [bounds], with a margin, in the part of the map nothing covers. */
+    data class Fit(val bounds: GeoBounds) : CameraCommand
 
     companion object {
         /**

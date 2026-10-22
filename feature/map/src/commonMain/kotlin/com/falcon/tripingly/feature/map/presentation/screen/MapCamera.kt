@@ -31,7 +31,7 @@ internal class MapCamera(private val context: MapContext) {
     /** Shows all of [points]; without points the camera stays where it is. A new map starts in their middle. */
     fun frame(points: List<Coordinates>) {
         if (points.isEmpty()) return
-        val fit = CameraCommand.fit(points).copy(isAnimated = context.model.value.camera.isReady)
+        val fit = CameraCommand.fit(points)
         context.update {
             if (it.camera.isReady) {
                 it

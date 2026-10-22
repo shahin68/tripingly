@@ -168,7 +168,7 @@ internal fun AppleMapView(
                 bottom = contentPadding.calculateBottomPadding().value + FitMargin.value.toDouble(),
                 right = FitMargin.value.toDouble(),
             ),
-            animated = command.isAnimated,
+            animated = true,
         )
     }
     val titles = markers.map { it.title.asString() }
