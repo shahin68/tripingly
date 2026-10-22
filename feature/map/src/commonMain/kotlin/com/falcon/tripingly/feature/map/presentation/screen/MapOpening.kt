@@ -17,7 +17,7 @@ import kotlinx.coroutines.launch
 
 /**
  * Loads the trip and opens it on the day and Route button it was left with ([mapViews]), framed like a tap on that
- * day's tab ([MapCamera.showOpenDay]). Saves them once the view rests, so they're there after the app is closed too.
+ * day's tab ([MapCamera.showOpenDay]). Saves them when they change, so they're there after the app is closed too.
  */
 internal class MapOpening(
     private val context: MapContext,
@@ -58,7 +58,7 @@ internal class MapOpening(
         }
     }
 
-    /** Saves the view once it rests, not on every camera frame. */
+    /** Saves the view once it settles, not on every quick change. */
     private fun rememberView() {
         context.scope.launch {
             combine(context.trip, context.model, ::viewOf).distinctUntilChanged().collectLatest { view ->
@@ -75,16 +75,13 @@ internal class MapOpening(
         val day = details?.days?.getOrNull(model.activeDayIndex) ?: return null
         return TripMapView(
             dayId = day.id,
-            latitude = model.camera.target.latitude,
-            longitude = model.camera.target.longitude,
-            zoom = model.camera.zoom,
             isRouteShown = model.route.isDayRouteShown,
             travelMode = model.route.travelMode,
         )
     }
 
     private companion object {
-        /** How long the view rests before it's saved. */
+        /** How long the view stays the same before it's saved. */
         const val SAVE_VIEW_DELAY_MILLIS = 500L
     }
 }

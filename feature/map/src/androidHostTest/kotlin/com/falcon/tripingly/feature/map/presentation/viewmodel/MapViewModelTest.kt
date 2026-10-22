@@ -590,7 +590,7 @@ class MapViewModelTest {
     @Test
     fun `a reopened trip whose day is gone opens on its first day`() = runTest(testDispatcher) {
         backend.addMarker(trip.trip.id, trip.days[0].id, NewMarker("Stop #1", GeoPoint(48.85, 2.35)))
-        mapViews.views[trip.trip.id] = TripMapView("gone", 48.85, 2.35, 15f, isRouteShown = false, TravelMode.Walking)
+        mapViews.views[trip.trip.id] = TripMapView("gone", isRouteShown = false, TravelMode.Walking)
 
         val viewModel = viewModel()
         testScheduler.advanceUntilIdle()
@@ -603,7 +603,7 @@ class MapViewModelTest {
     fun `a route left on stays off without Pro`() = runTest(testDispatcher) {
         session = signedIn(entitlements = emptySet())
         backend.addMarker(trip.trip.id, trip.days[0].id, NewMarker("Stop #1", GeoPoint(48.85, 2.35)))
-        mapViews.views[trip.trip.id] = TripMapView(trip.days[0].id, 48.85, 2.35, 15f, isRouteShown = true, TravelMode.Driving)
+        mapViews.views[trip.trip.id] = TripMapView(trip.days[0].id, isRouteShown = true, TravelMode.Driving)
 
         val viewModel = viewModel()
         testScheduler.advanceUntilIdle()
