@@ -90,28 +90,12 @@ internal class MapSelection(
         model.copy(selection = selection.copy(imageIndex = index))
     }
 
-    /**
-     * The camera came to rest: on the tapped place or stop, its card opens; anywhere else (the user moved the map
-     * while it flew), the place or stop closes.
-     */
-    fun onCameraRest(target: Coordinates, zoom: Float) {
-        when (val selection = context.model.value.selection) {
-            is Selection.Place -> if (!selection.isCardShown) {
-                if (camera.isCentered(selection.place.location, target, zoom)) {
-                    context.update { it.copy(selection = selection.copy(isCardShown = true)) }
-                } else {
-                    closePlace()
-                }
-            }
-            is Selection.Stop -> if (!selection.isCardShown) {
-                val stop = context.activeDay()?.markers?.firstOrNull { it.id == selection.markerId }
-                if (stop != null && camera.isCentered(stop.location, target, zoom)) {
-                    context.update { it.copy(selection = selection.copy(isCardShown = true)) }
-                } else {
-                    closeStop()
-                }
-            }
-            null -> Unit
+    /** The camera came to rest: the tapped place's or stop's card opens. Moving the map closes it already (see [onScreenTouch]). */
+    fun onCameraRest() = context.update { model ->
+        when (val selection = model.selection) {
+            is Selection.Place -> model.copy(selection = selection.copy(isCardShown = true))
+            is Selection.Stop -> model.copy(selection = selection.copy(isCardShown = true))
+            null -> model
         }
     }
 
