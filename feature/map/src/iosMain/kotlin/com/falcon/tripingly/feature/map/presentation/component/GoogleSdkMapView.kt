@@ -86,8 +86,6 @@ internal fun GoogleSdkMapView(
     val currentFreeMiddleAbove by rememberUpdatedState(freeMiddleAbove)
     // Where the camera last rested, to report it again when the free middle moves.
     var rest by remember { mutableStateOf<Triple<Coordinates, Float, GeoBounds>?>(null) }
-    // Where the camera is flying, until it rests; aimed again if the free middle moves on the way.
-    var flight by remember { mutableStateOf<Pair<Coordinates, Float>?>(null) }
     // The map has rested once, so it has its size: a camera move flies from then on.
     var isMapReady by remember { mutableStateOf(false) }
     // The camera's zoom as it moves, read only to tell when the pins turn into dots and back.
@@ -107,14 +105,11 @@ internal fun GoogleSdkMapView(
                 ) {
                     val bounds = GeoBounds(south, west, north, east)
                     isMapReady = true
-                    flight = null
                     rest = Triple(Coordinates(latitude, longitude), zoom, bounds)
                     currentOnCameraMove(Coordinates(latitude, longitude).shiftedSouth(-currentFreeMiddleAbove, zoom), zoom, bounds)
                 }
 
                 override fun onGestureStart() {
-                    // The user takes over; their move isn't aimed again.
-                    flight = null
                     currentOnMapTouch()
                 }
 
@@ -154,7 +149,6 @@ internal fun GoogleSdkMapView(
     LaunchedEffect(cameraCommands) {
         cameraCommands.collect { command ->
             // Until the map has rested once, it starts there instead of flying there.
-            if (isMapReady) flight = command.target to command.zoom
             moveCamera(command.target, command.zoom, animated = isMapReady)
         }
     }
@@ -165,13 +159,8 @@ internal fun GoogleSdkMapView(
     // As much at the top as at the bottom: enough for the header there and for the logo above the cards here.
     val padding = maxOf(top, bottom).value.toDouble()
     LaunchedEffect(padding) { map.setPadding(padding, padding) }
-    // The middle of what's free moved (e.g. search closing as its result is picked). A flight on its way is aimed
-    // again, so it still lands on its target; a resting map stays put and the view model learns where its target now is.
+    // The map stays put, but the middle of what's free moved: the view model learns where the target now is.
     LaunchedEffect(freeMiddleAbove) {
-        flight?.let { (target, zoom) ->
-            moveCamera(target, zoom, animated = true)
-            return@LaunchedEffect
-        }
         val (center, zoom, bounds) = rest ?: return@LaunchedEffect
         currentOnCameraMove(center.shiftedSouth(-freeMiddleAbove, zoom), zoom, bounds)
     }
