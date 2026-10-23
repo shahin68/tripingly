@@ -600,6 +600,32 @@ class MapViewModelTest {
     }
 
     @Test
+    fun `a tap on Route shows the whole plan, on and off, and without Pro opens the paywall`() = runTest(testDispatcher) {
+        backend.addMarker(trip.trip.id, trip.days[0].id, NewMarker("Stop #1", GeoPoint(48.85, 2.35)))
+        backend.addMarker(trip.trip.id, trip.days[0].id, NewMarker("Stop #2", GeoPoint(41.9, 12.49)))
+        val viewModel = viewModel()
+        testScheduler.advanceUntilIdle()
+        viewModel.events.test {
+            viewModel.onAction(MapAction.OnToggleDayRoute)
+            testScheduler.advanceUntilIdle()
+            assertEquals(MapEvent.ShowWholePlan, awaitItem())
+            viewModel.onAction(MapAction.OnToggleDayRoute)
+            testScheduler.advanceUntilIdle()
+            assertEquals(MapEvent.ShowWholePlan, awaitItem())
+        }
+
+        session = signedIn(entitlements = emptySet())
+        val free = viewModel()
+        testScheduler.advanceUntilIdle()
+        free.events.test {
+            free.onAction(MapAction.OnToggleDayRoute)
+            testScheduler.advanceUntilIdle()
+            assertEquals(MapEvent.OpenPaywall, awaitItem())
+            expectNoEvents()
+        }
+    }
+
+    @Test
     fun `a route left on stays off without Pro`() = runTest(testDispatcher) {
         session = signedIn(entitlements = emptySet())
         backend.addMarker(trip.trip.id, trip.days[0].id, NewMarker("Stop #1", GeoPoint(48.85, 2.35)))

@@ -94,22 +94,25 @@ class MapFlowTest {
     @Test
     fun `the plan sheet pulls up and down from anywhere on it`() = runComposeUiTest {
         setContent { TripinglyTheme { MapRoute(trip.trip.id, onNavigateBack = {}, onOpenProfile = {}, onOpenPaywall = {}, membersContent = { _, _ -> }, viewModel = viewModel()) } }
-        onAllNodesWithContentDescription("Remove stop")[0].assertIsNotDisplayed()
-
-        // Dragged by its title, not its handle.
-        onNodeWithText("Trip Plan (3 stops)").performTouchInput { swipeUp() }
-        waitForIdle()
+        // A trip with stops opens with the whole plan showing.
         onAllNodesWithContentDescription("Remove stop")[0].assertIsDisplayed()
 
+        // Dragged by its title, not its handle.
         onNodeWithText("Trip Plan (3 stops)").performTouchInput { swipeDown() }
         waitForIdle()
         onAllNodesWithContentDescription("Remove stop")[0].assertIsNotDisplayed()
+
+        onNodeWithText("Trip Plan (3 stops)").performTouchInput { swipeUp() }
+        waitForIdle()
+        onAllNodesWithContentDescription("Remove stop")[0].assertIsDisplayed()
     }
 
     @Test
     fun `adding a stop pulls the plan sheet all the way up`() = runComposeUiTest {
         val viewModel = viewModel()
         setContent { TripinglyTheme { MapRoute(trip.trip.id, onNavigateBack = {}, onOpenProfile = {}, onOpenPaywall = {}, membersContent = { _, _ -> }, viewModel = viewModel) } }
+        onNodeWithContentDescription("Show or hide the whole plan").performClick()
+        waitForIdle()
         onAllNodesWithContentDescription("Remove stop")[0].assertIsNotDisplayed()
 
         viewModel.onAction(MapAction.OnMapClick(Coordinates(48.21, 16.37)))
@@ -117,7 +120,9 @@ class MapFlowTest {
         onNodeWithText("Trip Plan (4 stops)").assertIsDisplayed()
         onAllNodesWithContentDescription("Remove stop")[0].assertIsDisplayed()
 
-        // The first stop of an empty day: the sheet comes up whole.
+        // The first stop of an empty day: the sheet comes up whole, though it was pulled down before.
+        onNodeWithContentDescription("Show or hide the whole plan").performClick()
+        waitForIdle()
         viewModel.onAction(MapAction.OnDaySelected(1))
         waitForIdle()
         viewModel.onAction(MapAction.OnMapClick(Coordinates(48.21, 16.37)))
@@ -127,11 +132,26 @@ class MapFlowTest {
     }
 
     @Test
+    fun `a pulled-down plan comes back whole after a day without stops`() = runComposeUiTest {
+        val viewModel = viewModel()
+        setContent { TripinglyTheme { MapRoute(trip.trip.id, onNavigateBack = {}, onOpenProfile = {}, onOpenPaywall = {}, membersContent = { _, _ -> }, viewModel = viewModel) } }
+        onNodeWithContentDescription("Show or hide the whole plan").performClick()
+        waitForIdle()
+        onAllNodesWithContentDescription("Remove stop")[0].assertIsNotDisplayed()
+
+        // The empty day has no sheet; back on a day with stops it comes up whole.
+        viewModel.onAction(MapAction.OnDaySelected(1))
+        waitForIdle()
+        onNodeWithContentDescription("Show or hide the whole plan").assertDoesNotExist()
+        viewModel.onAction(MapAction.OnDaySelected(0))
+        waitForIdle()
+        onAllNodesWithContentDescription("Remove stop")[0].assertIsDisplayed()
+    }
+
+    @Test
     fun `removing a chip deletes the stop and renumbers the rest`() = runComposeUiTest {
         setContent { TripinglyTheme { MapRoute(trip.trip.id, onNavigateBack = {}, onOpenProfile = {}, onOpenPaywall = {}, membersContent = { _, _ -> }, viewModel = viewModel()) } }
 
-        // The chips show once the plan sheet is pulled up.
-        onNodeWithContentDescription("Show or hide the whole plan").performClick()
         onAllNodesWithContentDescription("Remove stop")[1].performClick()
 
         onNodeWithText("Trip Plan (2 stops)").assertExists()

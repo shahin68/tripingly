@@ -38,7 +38,8 @@ internal class MapRoutes(
     private val hasRoutes: () -> Boolean,
     /** Without Pro, a tap on a route opens the paywall. */
     private val showRoutesArePro: () -> Unit,
-    private val onStopAdded: () -> Unit,
+    /** A stop was added or a route asked for: the plan sheet opens all the way. */
+    private val showWholePlan: () -> Unit,
 ) {
     /** What the route on the map was last asked for. */
     private var request: RouteRequest? = null
@@ -49,10 +50,11 @@ internal class MapRoutes(
         }
     }
 
-    fun toggleDayRoute() = when {
-        context.model.value.route.isDayRouteShown -> update { it.copy(isDayRouteShown = false) }
-        hasRoutes() -> update { it.copy(isDayRouteShown = true) }
-        else -> showRoutesArePro()
+    fun toggleDayRoute() {
+        val isShown = context.model.value.route.isDayRouteShown
+        if (!isShown && !hasRoutes()) return showRoutesArePro()
+        update { it.copy(isDayRouteShown = !isShown) }
+        showWholePlan()
     }
 
     fun selectTravelMode(mode: TravelMode) = update { it.copy(travelMode = mode) }
@@ -78,6 +80,7 @@ internal class MapRoutes(
         val to = selection.selectedPlace?.place ?: return
         selection.closePlace()
         update { it.copy(start = null, between = PointRoute(from, to)) }
+        showWholePlan()
         camera.frame(listOf(from.location, to.location).map { Coordinates(it.lat, it.lng) })
     }
 
@@ -88,7 +91,7 @@ internal class MapRoutes(
         val day = context.activeDay() ?: return
         if (!context.canEdit()) return
         context.scope.launch { markerRepository.addMarker(context.tripId, day.id, NewMarker(place.name, place.location, placeId = place.id)) }
-        onStopAdded()
+        showWholePlan()
     }
 
     /** Asks the server for the best order of the open day's stops; it shows for the user to apply. */

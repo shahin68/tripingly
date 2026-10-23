@@ -1,6 +1,7 @@
 package com.falcon.tripingly.feature.map.presentation.screen
 
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.EnterExitState
 import androidx.compose.animation.SizeTransform
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
@@ -12,6 +13,7 @@ import androidx.compose.foundation.gestures.DraggableAnchors
 import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.gestures.anchoredDraggable
 import androidx.compose.foundation.gestures.animateTo
+import androidx.compose.foundation.gestures.snapTo
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
@@ -24,6 +26,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -52,10 +55,10 @@ private val HandleAreaHeight = 24.dp
 
 internal enum class PlanSheetValue { Collapsed, Expanded }
 
-/** Where the plan sheet is pulled to; kept over rotation and process death. */
+/** Where the plan sheet is pulled to, all the way up at first; kept over rotation and process death. */
 @Composable
 internal fun rememberPlanSheetState(): AnchoredDraggableState<PlanSheetValue> =
-    rememberSaveable(saver = AnchoredDraggableState.Saver()) { AnchoredDraggableState(PlanSheetValue.Collapsed) }
+    rememberSaveable(saver = AnchoredDraggableState.Saver()) { AnchoredDraggableState(PlanSheetValue.Expanded) }
 
 /** How far, in px, the sheet is pulled up above its peek right now; 0 before it's laid out. */
 internal fun AnchoredDraggableState<PlanSheetValue>.pulledUp(): Float =
@@ -65,7 +68,8 @@ internal fun AnchoredDraggableState<PlanSheetValue>.pulledUp(): Float =
  * The open day's [plan] in a sheet that rests on the day tabs. A drag anywhere on it pulls it up to show all of it, or
  * down to leave [PlanSheetPeek] of it; a tap on its handle does the same. It isn't modal: the map stays usable around
  * it, and the map keeps out of the peek only, so pulling the sheet doesn't move the map; a fit keeps out of all that
- * shows of it (see [pulledUp]). [above] (the credits, the location button) rides on the sheet's top. The sheet slides up when a plan comes and down when it goes.
+ * shows of it (see [pulledUp]). [above] (the credits, the location button) rides on the sheet's top. The sheet slides up
+ * all the way when a plan comes, and down when it goes.
  */
 @Composable
 internal fun <T : Any> PlanSheet(
@@ -88,6 +92,9 @@ internal fun <T : Any> PlanSheet(
             transitionSpec = { (slideInVertically { it } togetherWith slideOutVertically { it }).using(SizeTransform(clip = false)) },
         ) { shown ->
             if (shown == null) return@AnimatedContent
+            // A sheet that comes in (not one shown again after a rotation) comes in all the way up.
+            val isComingIn = transition.currentState == EnterExitState.PreEnter
+            LaunchedEffect(Unit) { if (isComingIn) state.snapTo(PlanSheetValue.Expanded) }
             Surface(
                 modifier = Modifier
                     .fillMaxWidth()

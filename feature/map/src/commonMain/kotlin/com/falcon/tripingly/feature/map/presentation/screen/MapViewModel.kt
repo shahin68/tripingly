@@ -79,7 +79,7 @@ class MapViewModel(
     private val routes = MapRoutes(
         context, camera, selection, routeRepository, markerRepository, ::hasRoutes,
         showRoutesArePro = { sendEvent(MapEvent.OpenPaywall) },
-        onStopAdded = { sendEvent(MapEvent.ShowWholePlan) },
+        showWholePlan = { sendEvent(MapEvent.ShowWholePlan) },
     )
     private val location = MapLocation(context, camera, getCurrentLocationUseCase, ::sendEvent)
     private val sharing = MapSharing(context, tripRepository, socialRepository)
