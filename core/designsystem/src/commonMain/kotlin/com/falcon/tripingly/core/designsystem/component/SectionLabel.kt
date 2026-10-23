@@ -8,6 +8,7 @@ import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.tooling.preview.Preview
 import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
+import androidx.compose.foundation.background
 
 /** The small heading above a group of fields in a form or sheet ("Who can see it"). */
 @Composable
@@ -27,4 +28,12 @@ fun SectionLabel(
 @Composable
 private fun SectionLabelPreview() {
     TripinglyTheme { SectionLabel("Who can see it") }
+}
+
+@Preview
+@Composable
+private fun SectionLabelDarkPreview() {
+    TripinglyTheme(darkTheme = true) {
+        SectionLabel("Who can see it", Modifier.background(MaterialTheme.colorScheme.surface))
+    }
 }

@@ -10,6 +10,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.tooling.preview.Preview
+import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
 
 data class DropdownAction(
     val label: String,
@@ -49,4 +51,22 @@ fun AppDropdownMenu(
             }
         }
     }
+}
+
+private val previewActions = listOf(
+    DropdownAction("Rename trip", onClick = {}),
+    DropdownAction("Change dates", onClick = {}),
+    DropdownAction("Delete trip", isDestructive = true, onClick = {}),
+)
+
+@Preview
+@Composable
+private fun AppDropdownMenuPreview() {
+    TripinglyTheme { AppDropdownMenu(expanded = true, onDismissRequest = {}, actions = previewActions) }
+}
+
+@Preview
+@Composable
+private fun AppDropdownMenuDarkPreview() {
+    TripinglyTheme(darkTheme = true) { AppDropdownMenu(expanded = true, onDismissRequest = {}, actions = previewActions) }
 }

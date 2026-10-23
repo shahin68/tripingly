@@ -38,6 +38,11 @@ import kotlinx.datetime.todayIn
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
 import kotlin.time.Clock
+import androidx.compose.ui.tooling.preview.Preview
+import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
+import androidx.compose.ui.tooling.preview.PreviewParameter
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
 
 /** Explore's filters in one scrolling row: Nearby switches on and off, then one period is picked. */
 @Composable
@@ -86,4 +91,10 @@ private fun currentSeasonLabel(): StringResource = when (Clock.System.todayIn(Ti
     Month.JUNE, Month.JULY, Month.AUGUST -> Res.string.social_explore_summer
     Month.SEPTEMBER, Month.OCTOBER, Month.NOVEMBER -> Res.string.social_explore_fall
     Month.DECEMBER, Month.JANUARY, Month.FEBRUARY -> Res.string.social_explore_winter
+}
+
+@Preview
+@Composable
+private fun ExploreFiltersPreview(@PreviewParameter(ExploreFiltersPreviewStates::class) state: ExploreState) {
+    TripinglyTheme { Box(Modifier.background(MaterialTheme.colorScheme.surface)) { ExploreFilters(state = state, onAction = {}) } }
 }

@@ -56,6 +56,10 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filter
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel
+import androidx.compose.ui.tooling.preview.Preview
+import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
+import androidx.compose.ui.tooling.preview.PreviewParameter
+import androidx.compose.foundation.background
 
 /**
  * The Social tab's content under Home's search bar: [query] (what's typed there) finds people; otherwise
@@ -228,3 +232,23 @@ internal fun EmptyText(text: String) {
 }
 
 private const val LOAD_MORE_THRESHOLD = 3
+
+@Preview
+@Composable
+private fun SocialScreenPreview(@PreviewParameter(SocialScreenPreviewStates::class) state: State) {
+    TripinglyTheme { SocialScreen(state = state, onAction = {}, modifier = Modifier.background(MaterialTheme.colorScheme.surface)) }
+}
+
+@Preview(widthDp = 800, heightDp = 360)
+@Composable
+private fun SocialScreenLandscapePreview() {
+    TripinglyTheme(darkTheme = true) {
+        SocialScreen(state = SocialScreenPreviewStates().values.first(), onAction = {}, modifier = Modifier.background(MaterialTheme.colorScheme.surface))
+    }
+}
+
+@Preview
+@Composable
+private fun EmptyTextPreview() {
+    TripinglyTheme { EmptyText("Nobody found by that name.") }
+}

@@ -25,6 +25,9 @@ import com.falcon.tripingly.feature.settings.presentation.SettingsViewModel.Acco
 import com.falcon.tripingly.feature.settings.presentation.SettingsViewModel.AccountDialogState
 import com.falcon.tripingly.feature.settings.presentation.SettingsViewModel.Action
 import org.jetbrains.compose.resources.stringResource
+import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.tooling.preview.PreviewParameter
+import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
 
 /** Confirming sign-out or deletion, and the fresh sign-in the server may want before it deletes. */
 @Composable
@@ -79,4 +82,17 @@ internal fun AccountConfirmation(state: AccountDialogState, appleAvailable: Bool
             TextButton(onClick = dismiss, enabled = !state.isDeleting) { Text(stringResource(Res.string.settings_cancel)) }
         },
     )
+}
+
+@Preview
+@Composable
+private fun AccountConfirmationPreview(@PreviewParameter(AccountDialogPreviewStates::class) state: AccountDialogState) {
+    TripinglyTheme { AccountConfirmation(state = state, appleAvailable = false, onAction = {}) }
+}
+
+/** The fresh sign-in on iOS, which offers Apple too. */
+@Preview
+@Composable
+private fun AccountConfirmationApplePreview() {
+    TripinglyTheme(darkTheme = true) { AccountConfirmation(state = AccountDialogState(AccountDialog.Reauth), appleAvailable = true, onAction = {}) }
 }

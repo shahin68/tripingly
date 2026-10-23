@@ -30,6 +30,12 @@ import com.falcon.tripingly.core.designsystem.generated.resources.photo_viewer_c
 import com.falcon.tripingly.core.designsystem.theme.spacing
 import com.falcon.tripingly.core.model.photo.Photo
 import org.jetbrains.compose.resources.stringResource
+import androidx.compose.foundation.layout.Arrangement
+import com.falcon.tripingly.core.model.photo.PhotoOwner
+import com.falcon.tripingly.core.model.photo.PhotoStatus
+import com.falcon.tripingly.core.model.place.ImageCredit
+import androidx.compose.ui.tooling.preview.Preview
+import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
 
 /**
  * The app's one full-screen photo viewer: [photos] uncropped on black, swiped through from [initialIndex] (one
@@ -100,4 +106,69 @@ fun PhotoLike(photo: Photo, onToggle: () -> Unit, modifier: Modifier = Modifier)
     Surface(shape = CircleShape, color = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f), modifier = modifier) {
         LikeButton(liked = photo.likedByMe, count = photo.likeCount, onToggle = onToggle)
     }
+}
+
+private fun previewPhoto(id: String, likes: Int, liked: Boolean, credit: ImageCredit? = null) = Photo(
+    id = id,
+    owner = PhotoOwner.Place("place"),
+    status = PhotoStatus.Ready,
+    thumbUrl = null,
+    displayUrl = null,
+    width = 1600,
+    height = 1200,
+    position = 0,
+    likeCount = likes,
+    likedByMe = liked,
+    uploaderId = null,
+    credit = credit,
+)
+
+private val previewViewerPhotos = listOf(
+    previewPhoto(
+        id = "1",
+        likes = 12,
+        liked = true,
+        credit = ImageCredit(
+            author = "Benh Lieu Song",
+            title = null,
+            license = "CC BY-SA 3.0",
+            licenseUrl = null,
+            sourceUrl = "https://commons.wikimedia.org/wiki/File:Tour_Eiffel.jpg",
+        ),
+    ),
+    previewPhoto(id = "2", likes = 0, liked = false),
+)
+
+@Preview
+@Composable
+private fun PhotoViewerPreview() {
+    TripinglyTheme { PhotoViewer(photos = previewViewerPhotos, initialIndex = 0, onToggleLike = {}, onDismiss = {}) }
+}
+
+@Preview(widthDp = 800, heightDp = 360)
+@Composable
+private fun PhotoViewerLandscapePreview() {
+    TripinglyTheme(darkTheme = true) {
+        PhotoViewer(photos = previewViewerPhotos, initialIndex = 1, onToggleLike = {}, onDismiss = {})
+    }
+}
+
+@Composable
+private fun PhotoLikePreviewContent() {
+    Row(Modifier.background(Color.DarkGray).padding(8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        PhotoLike(photo = previewViewerPhotos[0], onToggle = {})
+        PhotoLike(photo = previewViewerPhotos[1], onToggle = {})
+    }
+}
+
+@Preview
+@Composable
+private fun PhotoLikePreview() {
+    TripinglyTheme { PhotoLikePreviewContent() }
+}
+
+@Preview
+@Composable
+private fun PhotoLikeDarkPreview() {
+    TripinglyTheme(darkTheme = true) { PhotoLikePreviewContent() }
 }

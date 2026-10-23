@@ -11,6 +11,12 @@ import androidx.compose.ui.layout.ContentScale
 import coil3.compose.AsyncImage
 import coil3.compose.LocalPlatformContext
 import coil3.request.ImageRequest
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.size
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.tooling.preview.Preview
+import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
 
 /** The sizes the server makes of every photo. */
 enum class PhotoSize(internal val key: String) {
@@ -60,4 +66,25 @@ fun photoRequest(context: coil3.PlatformContext, photoId: String, url: String, s
         .memoryCacheKey(key)
         .diskCacheKey(key)
         .build()
+}
+
+/** Previews have no network, so both show the placeholder: a photo still processing, and one loading. */
+@Composable
+private fun PhotoImagePreviewContent() {
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        PhotoImage(photoId = "1", url = null, size = PhotoSize.Thumb, contentDescription = null, modifier = Modifier.size(64.dp))
+        PhotoImage(photoId = "2", url = "https://example.com/2.jpg", size = PhotoSize.Thumb, contentDescription = null, modifier = Modifier.size(64.dp))
+    }
+}
+
+@Preview
+@Composable
+private fun PhotoImagePreview() {
+    TripinglyTheme { PhotoImagePreviewContent() }
+}
+
+@Preview
+@Composable
+private fun PhotoImageDarkPreview() {
+    TripinglyTheme(darkTheme = true) { PhotoImagePreviewContent() }
 }

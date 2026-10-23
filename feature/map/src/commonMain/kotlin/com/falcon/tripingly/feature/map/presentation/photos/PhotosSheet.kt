@@ -73,6 +73,9 @@ import com.falcon.tripingly.feature.map.presentation.photos.PhotosViewModel.Stat
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel
 import org.koin.core.parameter.parametersOf
+import androidx.compose.ui.tooling.preview.Preview
+import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
+import androidx.compose.ui.tooling.preview.PreviewParameter
 
 /**
  * The photos of a stop or a place ([owner]) in a sheet over the map, under [title]. [canAdd]: may add photos
@@ -453,4 +456,62 @@ private fun GalleryViewer(
             }
         }
     }
+}
+
+@Preview
+@Composable
+private fun PhotosScreenPreview(@PreviewParameter(PhotosPreviewStates::class) state: State) {
+    TripinglyTheme {
+        PhotosScreen(
+            state = state,
+            title = "Eiffel Tower",
+            subtitle = "Day 1 · Stop 1",
+            canAdd = true,
+            canManage = true,
+            coverPhotoId = "ph1",
+            onAddPhotos = {},
+            onAction = {},
+            modifier = Modifier.background(MaterialTheme.colorScheme.surface),
+        )
+    }
+}
+
+/** A viewer's gallery of a place: no Add, nothing to manage. */
+@Preview(widthDp = 800, heightDp = 360)
+@Composable
+private fun PhotosScreenLandscapePreview() {
+    TripinglyTheme(darkTheme = true) {
+        PhotosScreen(
+            state = PhotosPreviewStates().values.first(),
+            title = "A very long place name that doesn't fit on one line of the gallery",
+            subtitle = "5 photos",
+            canAdd = false,
+            canManage = false,
+            coverPhotoId = null,
+            onAddPhotos = {},
+            onAction = {},
+            modifier = Modifier.background(MaterialTheme.colorScheme.surface),
+        )
+    }
+}
+
+/** A ready photo as the cover, one processing, one that failed (deletable), and each state of an upload. */
+@Preview
+@Composable
+private fun GalleryItemsPreview() {
+    TripinglyTheme {
+        Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+            val item = Modifier.size(104.dp)
+            Box(item) { GalleryPhoto(previewGalleryPhotos[0], isCover = true, canDelete = true, onAction = {}) }
+            Box(item) { GalleryPhoto(previewGalleryPhotos[2], isCover = false, canDelete = true, onAction = {}) }
+            Box(item) { GalleryPhoto(previewGalleryPhotos[3], isCover = false, canDelete = true, onAction = {}) }
+            previewUploads.forEach { upload -> Box(item) { GalleryUpload(upload, onAction = {}) } }
+        }
+    }
+}
+
+@Preview
+@Composable
+private fun DeletePhotoDialogPreview() {
+    TripinglyTheme { DeletePhotoDialog(onAction = {}) }
 }

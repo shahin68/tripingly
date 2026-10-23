@@ -21,16 +21,13 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.tooling.preview.PreviewParameter
-import androidx.compose.ui.tooling.preview.PreviewParameterProvider
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.falcon.tripingly.core.designsystem.component.ShowMessage
 import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
 import com.falcon.tripingly.core.model.social.PeopleList
-import com.falcon.tripingly.core.model.trip.UserSummary
 import com.falcon.tripingly.core.ui.UiText
 import com.falcon.tripingly.feature.social.generated.resources.Res
 import com.falcon.tripingly.feature.social.generated.resources.social_back
-import com.falcon.tripingly.feature.social.generated.resources.social_error_load_people
 import com.falcon.tripingly.feature.social.generated.resources.social_followers
 import com.falcon.tripingly.feature.social.generated.resources.social_followers_empty
 import com.falcon.tripingly.feature.social.generated.resources.social_following
@@ -43,7 +40,6 @@ import com.falcon.tripingly.feature.social.presentation.people.PeopleViewModel.A
 import com.falcon.tripingly.feature.social.presentation.social.Centered
 import com.falcon.tripingly.feature.social.presentation.social.EmptyText
 import com.falcon.tripingly.feature.social.presentation.social.LoadMoreAtEnd
-import kotlinx.collections.immutable.persistentListOf
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel
 import org.koin.core.parameter.parametersOf
@@ -124,19 +120,6 @@ private fun PeopleScreen(
             }
         }
     }
-}
-
-/** Loaded, loading, nobody yet, and a first page that failed. */
-internal class PeopleScreenPreviewStates : PreviewParameterProvider<PeopleViewModel.State> {
-    override val values = sequenceOf(
-        PeopleViewModel.State(
-            people = persistentListOf(UserSummary("u1", "anna", "Anna"), UserSummary("u2", "jonas.k", "Jonas")),
-            hasLoaded = true,
-        ),
-        PeopleViewModel.State(isLoading = true),
-        PeopleViewModel.State(hasLoaded = true),
-        PeopleViewModel.State(message = UiText.Resource(Res.string.social_error_load_people)),
-    )
 }
 
 @Preview

@@ -80,6 +80,10 @@ import com.falcon.tripingly.feature.social.presentation.social.LoadMoreAtEnd
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel
 import org.koin.core.parameter.parametersOf
+import androidx.compose.ui.tooling.preview.Preview
+import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
+import androidx.compose.ui.tooling.preview.PreviewParameter
+import androidx.compose.foundation.background
 
 /** A person's profile; [username] null is my own. */
 @Composable
@@ -269,5 +273,27 @@ private fun Count(count: Int, label: String, onClick: (() -> Unit)?) {
     ) {
         Text(count.toString(), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
         Text(label, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+}
+
+@Preview
+@Composable
+private fun ProfileScreenPreview(@PreviewParameter(ProfileScreenPreviewStates::class) state: State) {
+    TripinglyTheme { ProfileScreen(state = state, onAction = {}, onBack = {}, onOpenSettings = {}) }
+}
+
+@Preview(widthDp = 800, heightDp = 360)
+@Composable
+private fun ProfileScreenLandscapePreview() {
+    TripinglyTheme(darkTheme = true) {
+        ProfileScreen(state = ProfileScreenPreviewStates().values.first(), onAction = {}, onBack = {}, onOpenSettings = {})
+    }
+}
+
+@Preview
+@Composable
+private fun ProfileHeaderPreview(@PreviewParameter(ProfileHeaderPreviewStates::class) profile: Profile) {
+    TripinglyTheme {
+        Box(Modifier.background(MaterialTheme.colorScheme.surface)) { ProfileHeader(profile = profile, isMe = false, onAction = {}) }
     }
 }

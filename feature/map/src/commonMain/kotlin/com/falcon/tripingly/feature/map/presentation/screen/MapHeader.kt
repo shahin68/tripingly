@@ -64,6 +64,9 @@ import com.falcon.tripingly.feature.map.generated.resources.map_trip_menu
 import com.falcon.tripingly.feature.map.generated.resources.map_unsave_trip
 import kotlinx.collections.immutable.ImmutableList
 import org.jetbrains.compose.resources.stringResource
+import androidx.compose.ui.tooling.preview.Preview
+import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
+import androidx.compose.ui.tooling.preview.PreviewParameter
 
 /** The trip's name with back, search and the trip's menu; the search field while searching. */
 @Composable
@@ -239,4 +242,28 @@ internal fun SearchResults(
             OsmAttribution(modifier = Modifier.padding(MaterialTheme.spacing.medium))
         }
     }
+}
+
+@Preview
+@Composable
+private fun MapHeaderPreview(@PreviewParameter(MapHeaderPreviewStates::class) preview: MapHeaderPreview) {
+    TripinglyTheme { MapHeader(header = preview.header, search = preview.search, onAction = {}) }
+}
+
+@Preview
+@Composable
+private fun MapHeaderDarkPreview() {
+    TripinglyTheme(darkTheme = true) {
+        val preview = MapHeaderPreviewStates().values.last()
+        Column {
+            MapHeader(header = preview.header, search = null, onAction = {})
+            SearchResults(results = preview.search!!.results, onAction = {})
+        }
+    }
+}
+
+@Preview
+@Composable
+private fun SearchResultsPreview() {
+    TripinglyTheme { SearchResults(results = MapHeaderPreviewStates().values.last().search!!.results, onAction = {}) }
 }

@@ -75,10 +75,11 @@ import com.falcon.tripingly.feature.paywall.generated.resources.paywall_yearly
 import com.falcon.tripingly.feature.paywall.generated.resources.paywall_yearly_price
 import com.falcon.tripingly.feature.paywall.presentation.PaywallViewModel.Action
 import com.falcon.tripingly.feature.paywall.presentation.PaywallViewModel.State
-import kotlinx.collections.immutable.persistentListOf
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel
+import androidx.compose.ui.tooling.preview.PreviewParameter
+import androidx.compose.foundation.background
 
 @Composable
 fun PaywallRoute(
@@ -263,28 +264,35 @@ private val ContentMaxWidth = 600.dp
 
 @Preview
 @Composable
-private fun PaywallScreenPreview() {
+private fun PaywallScreenPreview(@PreviewParameter(PaywallPreviewStates::class) state: State) {
+    TripinglyTheme { PaywallScreen(state = state, onAction = {}, onBack = {}) }
+}
+
+@Preview(widthDp = 800, heightDp = 360)
+@Composable
+private fun PaywallScreenLandscapePreview() {
+    TripinglyTheme(darkTheme = true) { PaywallScreen(state = PaywallPreviewStates().values.first(), onAction = {}, onBack = {}) }
+}
+
+/** The picked offer, another one, and one while a purchase is under way. */
+@Preview
+@Composable
+private fun OfferRowPreview() {
     TripinglyTheme {
-        PaywallScreen(
-            state = State(
-                isAvailable = true,
-                offers = persistentListOf(
-                    ProOffer("\$rc_monthly", ProPeriod.Monthly, "€3.99"),
-                    ProOffer("\$rc_annual", ProPeriod.Yearly, "€24.99"),
-                    ProOffer("\$rc_lifetime", ProPeriod.Lifetime, "€59.99"),
-                ),
-                selectedOfferId = "\$rc_annual",
-            ),
-            onAction = {},
-            onBack = {},
-        )
+        Column(Modifier.background(MaterialTheme.colorScheme.surface).padding(MaterialTheme.spacing.medium)) {
+            OfferRow(previewOffers[1], selected = true, enabled = true, onSelect = {})
+            OfferRow(previewOffers[0], selected = false, enabled = true, onSelect = {})
+            OfferRow(previewOffers[2], selected = false, enabled = false, onSelect = {})
+        }
     }
 }
 
 @Preview
 @Composable
-private fun PaywallScreenActivePreview() {
+private fun BenefitPreview() {
     TripinglyTheme {
-        PaywallScreen(state = State(isAvailable = true, hasPro = true, managementUrl = "https://play.google.com"), onAction = {}, onBack = {})
+        Column(Modifier.background(MaterialTheme.colorScheme.surface).padding(MaterialTheme.spacing.medium)) {
+            Benefits.forEach { Benefit(stringResource(it)) }
+        }
     }
 }

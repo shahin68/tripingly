@@ -53,6 +53,11 @@ import com.falcon.tripingly.feature.social.presentation.social.SocialViewModel.A
 import com.falcon.tripingly.feature.social.presentation.social.SocialViewModel.NearbyStatus
 import com.falcon.tripingly.feature.social.presentation.social.SocialViewModel.NearbyState
 import org.jetbrains.compose.resources.stringResource
+import androidx.compose.ui.tooling.preview.Preview
+import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
+import androidx.compose.ui.tooling.preview.PreviewParameter
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -152,3 +157,20 @@ internal fun distanceText(meters: Int): UiText =
     } else {
         UiText.Resource(Res.string.social_nearby_distance_km, NumberUtils.kilometers(meters))
     }
+
+@Preview
+@Composable
+private fun NearbyContentPreview(@PreviewParameter(NearbyPreviewStates::class) state: NearbyState) {
+    TripinglyTheme { Box(Modifier.background(MaterialTheme.colorScheme.surface)) { NearbyContent(state = state, onAction = {}) } }
+}
+
+/** A liked Tripinly place close by, and a long-named one further away. */
+@Preview
+@Composable
+private fun NearbyPlaceRowPreview() {
+    TripinglyTheme {
+        Column(Modifier.background(MaterialTheme.colorScheme.surface)) {
+            previewNearbyPlaces.forEach { place -> NearbyPlaceRow(place = place, onLike = {}, onAdd = {}) }
+        }
+    }
+}

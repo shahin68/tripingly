@@ -55,6 +55,9 @@ import com.falcon.tripingly.feature.map.generated.resources.map_route_start
 import com.falcon.tripingly.feature.map.presentation.component.AlongTheWay
 import com.falcon.tripingly.feature.map.presentation.component.RouteSummary
 import org.jetbrains.compose.resources.stringResource
+import androidx.compose.ui.tooling.preview.Preview
+import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
+import androidx.compose.ui.tooling.preview.PreviewParameter
 
 @Composable
 internal fun DayTabs(
@@ -321,6 +324,70 @@ private fun StopsCardTitle(
             TextButton(onClick = { onAction(MapAction.Plan.ClearAll) }) {
                 Text(stringResource(Res.string.map_itinerary_clear_all), style = MaterialTheme.typography.labelSmall)
             }
+        }
+    }
+}
+
+@Preview
+@Composable
+private fun DayTabsPreview(@PreviewParameter(DayTabsPreviewStates::class) tabs: DayTabsState) {
+    TripinglyTheme { DayTabs(tabs = tabs, onAction = {}) }
+}
+
+/** The fit button, and the location button idle and while the location is on its way. */
+@Preview
+@Composable
+private fun MapFabsPreview() {
+    TripinglyTheme {
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+            FitDayFab(onAction = {})
+            LocationFab(location = LocationState(), onAction = {})
+            LocationFab(location = LocationState(isLoading = true), onAction = {})
+        }
+    }
+}
+
+@Preview
+@Composable
+private fun RouteStartChipPreview() {
+    TripinglyTheme {
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            RouteStartChip(placeName = "Eiffel Tower", onAction = {})
+            RouteStartChip(placeName = "Musée national des Arts asiatiques – Guimet", onAction = {})
+        }
+    }
+}
+
+@Preview
+@Composable
+private fun StopsCardPreview(@PreviewParameter(StopsCardPreviewStates::class) card: StopsCardState) {
+    TripinglyTheme { StopsCard(card = card, onAction = {}, modifier = Modifier.background(MaterialTheme.colorScheme.surface)) }
+}
+
+@Preview
+@Composable
+private fun StopsCardDarkPreview() {
+    TripinglyTheme(darkTheme = true) {
+        StopsCard(card = StopsCardPreviewStates().values.elementAt(1), onAction = {}, modifier = Modifier.background(MaterialTheme.colorScheme.surface))
+    }
+}
+
+@Preview
+@Composable
+private fun PointRouteCardPreview(@PreviewParameter(PointRouteCardPreviewStates::class) card: PointRouteCardState) {
+    TripinglyTheme { PointRouteCard(card = card, onAction = {}, modifier = Modifier.background(MaterialTheme.colorScheme.surface)) }
+}
+
+/** A stop I can remove, the selected one, and the trip owner's on someone else's trip. */
+@Preview
+@Composable
+private fun StopChipPreview() {
+    val stop = StopsCardPreviewStates().values.first().stops.first()
+    TripinglyTheme {
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            StopChip(stop = stop, isSelected = false, onAction = {})
+            StopChip(stop = stop.copy(orderNumber = 2), isSelected = true, onAction = {})
+            StopChip(stop = stop.copy(orderNumber = 12, canDelete = false, isByTripOwner = true), isSelected = false, onAction = {})
         }
     }
 }

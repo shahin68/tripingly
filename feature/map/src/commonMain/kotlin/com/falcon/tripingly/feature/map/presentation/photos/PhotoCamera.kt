@@ -48,6 +48,11 @@ import com.falcon.tripingly.feature.map.presentation.permission.CameraPermission
 import com.falcon.tripingly.feature.map.presentation.permission.rememberCameraPermissionController
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.stringResource
+import androidx.compose.ui.tooling.preview.Preview
+import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
+import androidx.compose.foundation.layout.Row
+import com.falcon.tripingly.feature.map.generated.resources.map_camera_settings_message
+import com.falcon.tripingly.feature.map.generated.resources.map_camera_open_settings
 
 /** Takes one photo with the running camera. */
 fun interface CameraShutter {
@@ -206,6 +211,30 @@ private fun CameraMessage(text: String, action: String? = null, onAction: () -> 
         ) {
             Text(text = text, color = Color.White, textAlign = TextAlign.Center, style = MaterialTheme.typography.bodyLarge)
             if (action != null) Button(onClick = onAction) { Text(action) }
+        }
+    }
+}
+
+/** The shutter ready, waiting for the camera, and taking a photo. */
+@Preview
+@Composable
+private fun ShutterButtonPreview() {
+    TripinglyTheme {
+        Row(Modifier.background(Color.Black).padding(MaterialTheme.spacing.medium), horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium)) {
+            ShutterButton(enabled = true, isTaking = false, onClick = {})
+            ShutterButton(enabled = false, isTaking = false, onClick = {})
+            ShutterButton(enabled = false, isTaking = true, onClick = {})
+        }
+    }
+}
+
+/** What shows instead of the camera when it isn't allowed. */
+@Preview(heightDp = 360)
+@Composable
+private fun CameraMessagePreview() {
+    TripinglyTheme {
+        Box(Modifier.background(Color.Black)) {
+            CameraMessage(text = stringResource(Res.string.map_camera_settings_message), action = stringResource(Res.string.map_camera_open_settings))
         }
     }
 }

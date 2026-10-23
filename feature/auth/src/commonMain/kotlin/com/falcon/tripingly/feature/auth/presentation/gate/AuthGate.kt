@@ -22,12 +22,11 @@ import com.falcon.tripingly.core.designsystem.theme.spacing
 import com.falcon.tripingly.core.model.account.SessionState
 import com.falcon.tripingly.feature.auth.generated.resources.Res
 import com.falcon.tripingly.feature.auth.generated.resources.common_retry
-import com.falcon.tripingly.feature.auth.generated.resources.error_no_internet
-import com.falcon.tripingly.feature.auth.presentation.common.UiMessage
 import com.falcon.tripingly.feature.auth.presentation.onboarding.OnboardingRoute
 import com.falcon.tripingly.feature.auth.presentation.signin.SignInRoute
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel
+import androidx.compose.ui.tooling.preview.PreviewParameter
 
 /**
  * Shows sign-in or onboarding until the user is signed in and onboarded, then
@@ -77,11 +76,6 @@ internal fun LaunchScreen(
 
 @Preview
 @Composable
-private fun LaunchScreenOfflinePreview() {
-    TripinglyTheme {
-        LaunchScreen(
-            state = AuthGateViewModel.State(restoreError = UiMessage.Resource(Res.string.error_no_internet)),
-            onAction = {},
-        )
-    }
+private fun LaunchScreenPreview(@PreviewParameter(LaunchScreenPreviewStates::class) state: AuthGateViewModel.State) {
+    TripinglyTheme { LaunchScreen(state = state, onAction = {}) }
 }

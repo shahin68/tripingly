@@ -40,6 +40,11 @@ import com.falcon.tripingly.feature.trips.presentation.screen.CreateTripForm
 import com.falcon.tripingly.feature.trips.presentation.screen.HomeViewModel.Action
 import kotlinx.collections.immutable.ImmutableList
 import org.jetbrains.compose.resources.stringResource
+import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.tooling.preview.PreviewParameter
+import androidx.compose.ui.tooling.preview.PreviewParameterProvider
+import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
+import androidx.compose.foundation.background
 
 /**
  * People to add: a row of friends to tap, an "Add by username" chip that opens a username search,
@@ -141,5 +146,40 @@ internal fun FriendPickerRow(
                 enabled = enabled,
             )
         }
+    }
+}
+
+/** Friends with one picked and a person added by username, and a username that doesn't exist. */
+internal class CreateTripMembersPreviewStates : PreviewParameterProvider<CreateTripForm> {
+    override val values = sequenceOf(createTripFormPreviewData, createTripFormWithErrorsPreviewData)
+}
+
+@Preview
+@Composable
+private fun CreateTripMembersPreview(@PreviewParameter(CreateTripMembersPreviewStates::class) form: CreateTripForm) {
+    TripinglyTheme {
+        CreateTripMembers(form = form, isSaving = false, onAction = {}, modifier = Modifier.background(MaterialTheme.colorScheme.surface))
+    }
+}
+
+@Preview
+@Composable
+private fun CreateTripMembersSavingPreview() {
+    TripinglyTheme(darkTheme = true) {
+        CreateTripMembers(form = createTripFormPreviewData, isSaving = true, onAction = {}, modifier = Modifier.background(MaterialTheme.colorScheme.surface))
+    }
+}
+
+@Preview
+@Composable
+private fun FriendPickerRowPreview() {
+    TripinglyTheme {
+        FriendPickerRow(
+            friends = createTripFormPreviewData.friends,
+            isPicked = { it.username == "anna" },
+            onToggle = {},
+            enabled = true,
+            modifier = Modifier.background(MaterialTheme.colorScheme.surface),
+        )
     }
 }

@@ -65,6 +65,7 @@ import com.falcon.tripingly.feature.trips.presentation.screen.HomeViewModel.Tab
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
+import androidx.compose.ui.tooling.preview.PreviewParameter
 
 @Composable
 fun HomeScreen(
@@ -323,19 +324,35 @@ private fun HomeNavigationBar(
 
 @Preview
 @Composable
-private fun HomeScreenPreview() {
+private fun HomeScreenPreview(@PreviewParameter(HomeScreenPreviewStates::class) state: State) {
+    TripinglyTheme { HomeScreen(state = state, onAction = {}, onOpenMyProfile = {}) }
+}
+
+@Preview(widthDp = 800, heightDp = 360)
+@Composable
+private fun HomeScreenLandscapePreview() {
+    TripinglyTheme(darkTheme = true) { HomeScreen(state = HomeScreenPreviewStates().values.first(), onAction = {}, onOpenMyProfile = {}) }
+}
+
+/** My trip with dates, a private trip shared with me, a saved trip, and the selected one after a long press. */
+@Preview
+@Composable
+private fun TripItemPreview() {
     TripinglyTheme {
-        HomeScreen(
-            state = State(
-                trips = tripsPreviewData,
-                hasTrips = true,
-                hasLoaded = true,
-            ),
-            onAction = {},
-            onOpenMyProfile = {},
-        )
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            tripsPreviewData.forEach { trip -> TripItem(trip = trip, onClick = {}, onLongClick = {}, isSelected = false) }
+            TripItem(trip = tripsPreviewData.first(), onClick = {}, onLongClick = {}, isSelected = true)
+        }
     }
 }
 
-
-
+@Preview
+@Composable
+private fun HomeNavigationBarPreview() {
+    TripinglyTheme {
+        Column {
+            HomeNavigationBar(selectedTab = Tab.MyTrips, onTabSelected = {})
+            HomeNavigationBar(selectedTab = Tab.Social, onTabSelected = {})
+        }
+    }
+}

@@ -54,6 +54,11 @@ import kotlinx.collections.immutable.ImmutableList
 import com.falcon.tripingly.core.ui.UiText
 import org.jetbrains.compose.resources.stringResource
 import kotlin.math.roundToInt
+import androidx.compose.ui.tooling.preview.Preview
+import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
+import androidx.compose.ui.tooling.preview.PreviewParameter
+import androidx.compose.ui.tooling.preview.PreviewParameterProvider
+import androidx.compose.foundation.background
 
 /** How to travel, and the route's time and length (or that routes aren't available right now). */
 @Composable
@@ -203,3 +208,60 @@ private fun TravelMode.icon() = when (this) {
 }
 
 private const val COPYRIGHT_URL = "https://www.openstreetmap.org/copyright"
+
+/** A loaded route, one loading, estimated times, and one over an hour by car. */
+internal class RouteSummaryPreviewStates : PreviewParameterProvider<RouteSummaryPreview> {
+    override val values = sequenceOf(
+        RouteSummaryPreview(TravelMode.Walking, durationSeconds = 2_700, distanceMeters = 3_400, isEstimated = false, isLoading = false),
+        RouteSummaryPreview(TravelMode.Cycling, durationSeconds = null, distanceMeters = null, isEstimated = false, isLoading = true),
+        RouteSummaryPreview(TravelMode.Walking, durationSeconds = 2_900, distanceMeters = 3_100, isEstimated = true, isLoading = false),
+        RouteSummaryPreview(TravelMode.Driving, durationSeconds = 4_800, distanceMeters = 86_000, isEstimated = false, isLoading = false),
+    )
+}
+
+internal data class RouteSummaryPreview(
+    val mode: TravelMode,
+    val durationSeconds: Int?,
+    val distanceMeters: Int?,
+    val isEstimated: Boolean,
+    val isLoading: Boolean,
+)
+
+@Preview
+@Composable
+private fun RouteSummaryPreview(@PreviewParameter(RouteSummaryPreviewStates::class) route: RouteSummaryPreview) {
+    TripinglyTheme {
+        RouteSummary(
+            mode = route.mode,
+            durationSeconds = route.durationSeconds,
+            distanceMeters = route.distanceMeters,
+            isEstimated = route.isEstimated,
+            isLoading = route.isLoading,
+            onModeSelected = {},
+            modifier = Modifier.background(MaterialTheme.colorScheme.surface),
+        )
+    }
+}
+
+@Preview
+@Composable
+private fun AlongTheWayPreview() {
+    TripinglyTheme {
+        Column(Modifier.background(MaterialTheme.colorScheme.surface).padding(MaterialTheme.spacing.medium)) {
+            // An owner's or editor's, with Add; a viewer's, without.
+            AlongTheWay(places = previewAlongTheWay, dayNumber = 2, onOpen = {}, onAdd = {})
+            AlongTheWay(places = previewAlongTheWay, dayNumber = null, onOpen = {}, onAdd = {})
+        }
+    }
+}
+
+@Preview
+@Composable
+private fun RouteAttributionPreview() {
+    TripinglyTheme {
+        RouteAttribution(
+            text = "© openrouteservice.org | © OpenStreetMap contributors",
+            modifier = Modifier.background(MaterialTheme.colorScheme.surface),
+        )
+    }
+}

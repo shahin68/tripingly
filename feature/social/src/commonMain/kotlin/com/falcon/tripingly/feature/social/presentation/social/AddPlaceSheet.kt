@@ -26,6 +26,10 @@ import com.falcon.tripingly.feature.social.generated.resources.social_day_number
 import com.falcon.tripingly.feature.social.presentation.social.SocialViewModel.Action
 import com.falcon.tripingly.feature.social.presentation.social.SocialViewModel.AddPlaceState
 import org.jetbrains.compose.resources.stringResource
+import androidx.compose.ui.tooling.preview.Preview
+import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
+import androidx.compose.ui.tooling.preview.PreviewParameter
+import androidx.compose.foundation.background
 
 /** Adds a Nearby place to a day: pick one of my trips, then the day. */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -84,6 +88,23 @@ private fun SheetRow(title: String, subtitle: String?, onClick: () -> Unit) {
         Text(title, style = MaterialTheme.typography.bodyLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)
         subtitle?.let {
             Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+    }
+}
+
+@Preview
+@Composable
+private fun AddPlaceSheetPreview(@PreviewParameter(AddPlacePreviewStates::class) state: AddPlaceState) {
+    TripinglyTheme { AddPlaceSheet(addPlace = state, onAction = {}) }
+}
+
+@Preview
+@Composable
+private fun SheetRowPreview() {
+    TripinglyTheme {
+        Column(Modifier.background(MaterialTheme.colorScheme.surface)) {
+            SheetRow(title = "A week in Vienna", subtitle = "Jun 1 – Jun 7, 2026", onClick = {})
+            SheetRow(title = "A very long trip name that goes on and on and doesn't fit on one line", subtitle = null, onClick = {})
         }
     }
 }

@@ -113,3 +113,15 @@ private fun ReportReason.label(): String = stringResource(
 private fun ReportDialogPreview() {
     TripinglyTheme { ReportDialog(onReport = { _, _ -> }, onDismiss = {}) }
 }
+
+@Preview
+@Composable
+private fun ReportDialogDarkPreview() {
+    TripinglyTheme(darkTheme = true) { ReportDialog(onReport = { _, _ -> }, onDismiss = {}) }
+}
+
+@Preview(widthDp = 800, heightDp = 360)
+@Composable
+private fun ReportDialogLandscapePreview() {
+    TripinglyTheme { ReportDialog(onReport = { _, _ -> }, onDismiss = {}) }
+}

@@ -47,6 +47,11 @@ import com.falcon.tripingly.feature.map.generated.resources.map_plan_handle
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.stringResource
 import kotlin.math.roundToInt
+import androidx.compose.ui.tooling.preview.Preview
+import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
+import com.falcon.tripingly.core.designsystem.theme.spacing
 
 /** How much of the plan sheet shows while it's pulled down: its handle and its title row. */
 internal val PlanSheetPeek = 72.dp
@@ -177,5 +182,20 @@ private fun AnchoredDraggableState<PlanSheetValue>.pullFirst() = object : Nested
             else -> animateTo(if (offset > anchors.maxPosition() / 2) PlanSheetValue.Collapsed else PlanSheetValue.Expanded)
         }
         return available
+    }
+}
+
+/** The plan sheet with the day's stops, its credits and location button riding on top. */
+@Preview(heightDp = 400)
+@Composable
+private fun PlanSheetPreview() {
+    TripinglyTheme {
+        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.BottomCenter) {
+            PlanSheet(
+                plan = StopsCardPreviewStates().values.elementAt(1),
+                state = rememberPlanSheetState(),
+                above = { LocationFab(LocationState(), onAction = {}, modifier = Modifier.align(Alignment.End).padding(MaterialTheme.spacing.medium)) },
+            ) { card -> StopsCard(card = card, onAction = {}) }
+        }
     }
 }

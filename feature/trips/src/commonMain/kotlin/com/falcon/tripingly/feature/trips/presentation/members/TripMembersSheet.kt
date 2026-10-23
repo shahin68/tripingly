@@ -49,7 +49,6 @@ import com.falcon.tripingly.core.model.trip.JoinRequest
 import com.falcon.tripingly.core.model.trip.TripInvite
 import com.falcon.tripingly.core.model.trip.TripMember
 import com.falcon.tripingly.core.model.trip.TripRole
-import com.falcon.tripingly.core.model.trip.UserSummary
 import com.falcon.tripingly.core.ui.ObserveAsEvents
 import com.falcon.tripingly.feature.trips.generated.resources.Res
 import com.falcon.tripingly.feature.trips.generated.resources.members_add_button
@@ -70,18 +69,15 @@ import com.falcon.tripingly.feature.trips.generated.resources.members_role_owner
 import com.falcon.tripingly.feature.trips.generated.resources.members_title
 import com.falcon.tripingly.feature.trips.presentation.members.TripMembersViewModel.Action
 import com.falcon.tripingly.feature.trips.presentation.members.TripMembersViewModel.AddState
-import com.falcon.tripingly.feature.trips.presentation.members.TripMembersViewModel.InvitesState
-import com.falcon.tripingly.feature.trips.presentation.members.TripMembersViewModel.JoinRequestsState
 import com.falcon.tripingly.feature.trips.presentation.members.TripMembersViewModel.Event
 import com.falcon.tripingly.feature.trips.presentation.members.TripMembersViewModel.State
-import kotlinx.collections.immutable.persistentListOf
-import kotlinx.collections.immutable.persistentSetOf
 import org.jetbrains.compose.resources.getString
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.koinInject
 import org.koin.compose.viewmodel.koinViewModel
 import org.koin.core.parameter.parametersOf
-import kotlin.time.Instant
+import androidx.compose.ui.tooling.preview.PreviewParameter
+import androidx.compose.foundation.background
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -324,32 +320,57 @@ private fun InviteRow(invite: TripInvite, onShare: () -> Unit, onRevoke: () -> U
 
 @Preview
 @Composable
-private fun TripMembersScreenPreview() {
+private fun TripMembersScreenPreview(@PreviewParameter(TripMembersPreviewStates::class) state: State) {
+    TripinglyTheme { TripMembersScreen(state = state, onAction = {}, modifier = Modifier.background(MaterialTheme.colorScheme.surface)) }
+}
+
+@Preview(widthDp = 800, heightDp = 360)
+@Composable
+private fun TripMembersScreenLandscapePreview() {
+    TripinglyTheme(darkTheme = true) {
+        TripMembersScreen(state = TripMembersPreviewStates().values.first(), onAction = {}, modifier = Modifier.background(MaterialTheme.colorScheme.surface))
+    }
+}
+
+/** The owner, who can't be removed, and an editor the owner can remove. */
+@Preview
+@Composable
+private fun MemberRowPreview() {
     TripinglyTheme {
-        TripMembersScreen(
-            state = State(
-                tripName = "Summer Vacation in Paris",
-                canManage = true,
-                isLoading = false,
-                members = persistentListOf(
-                    TripMember(UserSummary("1", "shahin", "Shahin"), TripRole.OWNER),
-                    TripMember(UserSummary("2", "anna", "Anna"), TripRole.EDITOR),
-                ),
-                add = AddState(
-                    friends = persistentListOf(
-                        UserSummary("3", "jonas.k", "Jonas"),
-                        UserSummary("4", "lena", "Lena"),
-                    ),
-                    pickedFriends = persistentSetOf("lena"),
-                ),
-                joinRequests = JoinRequestsState(
-                    persistentListOf(JoinRequest("r1", "t1", UserSummary("5", "mia", "Mia"), Instant.parse("2025-06-01T10:00:00Z"))),
-                ),
-                invites = InvitesState(
-                    persistentListOf(TripInvite("i1", "https://example.com/i/abc", Instant.parse("2025-06-08T10:00:00Z"))),
-                ),
-            ),
-            onAction = {},
-        )
+        Column(Modifier.background(MaterialTheme.colorScheme.surface)) {
+            previewMembers.forEach { member -> MemberRow(member = member, canRemove = member.role != TripRole.OWNER, onRemove = {}) }
+        }
+    }
+}
+
+/** A request to answer, and one whose answer waits for the server. */
+@Preview
+@Composable
+private fun JoinRequestRowPreview() {
+    TripinglyTheme {
+        Column(Modifier.background(MaterialTheme.colorScheme.surface)) {
+            JoinRequestRow(previewJoinRequest, isAnswering = false, onAccept = {}, onDecline = {})
+            JoinRequestRow(previewJoinRequest, isAnswering = true, onAccept = {}, onDecline = {})
+        }
+    }
+}
+
+/** Empty, and a username typed while it's being added. */
+@Preview
+@Composable
+private fun AddMemberFieldPreview() {
+    TripinglyTheme {
+        Column(Modifier.background(MaterialTheme.colorScheme.surface)) {
+            AddMemberField(state = AddState(), onAction = {})
+            AddMemberField(state = AddState(username = "jonas.k", isAdding = true), onAction = {})
+        }
+    }
+}
+
+@Preview
+@Composable
+private fun InviteRowPreview() {
+    TripinglyTheme {
+        InviteRow(invite = previewInvite, onShare = {}, onRevoke = {})
     }
 }

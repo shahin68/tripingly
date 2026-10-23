@@ -75,6 +75,11 @@ import kotlinx.datetime.toLocalDateTime
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel
 import org.koin.core.parameter.parametersOf
+import androidx.compose.ui.tooling.preview.Preview
+import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
+import androidx.compose.ui.tooling.preview.PreviewParameter
+import androidx.compose.foundation.background
+import com.falcon.tripingly.feature.map.presentation.component.previewStop
 
 /** The comments on [marker] in a sheet over the map; tapping an author opens their profile. */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -269,3 +274,44 @@ private const val SHEET_HEIGHT_FRACTION = 0.85f
 
 /** Comments from the end at which the next page loads. */
 private const val LOAD_MORE_THRESHOLD = 5
+
+@Preview
+@Composable
+private fun StopCommentsScreenPreview(@PreviewParameter(StopCommentsPreviewStates::class) state: State) {
+    TripinglyTheme {
+        StopCommentsScreen(
+            state = state,
+            marker = previewStop,
+            onOpenProfile = {},
+            onAction = {},
+            modifier = Modifier.background(MaterialTheme.colorScheme.surface),
+        )
+    }
+}
+
+@Preview(widthDp = 800, heightDp = 360)
+@Composable
+private fun StopCommentsScreenLandscapePreview() {
+    TripinglyTheme(darkTheme = true) {
+        StopCommentsScreen(
+            state = StopCommentsPreviewStates().values.first(),
+            marker = previewStop,
+            onOpenProfile = {},
+            onAction = {},
+            modifier = Modifier.background(MaterialTheme.colorScheme.surface),
+        )
+    }
+}
+
+/** Someone else's comment I liked, and my own, which I can delete. */
+@Preview
+@Composable
+private fun CommentRowPreview() {
+    TripinglyTheme {
+        Column(Modifier.background(MaterialTheme.colorScheme.surface)) {
+            StopCommentsPreviewStates().values.first().comments.forEach { comment ->
+                CommentRow(comment = comment, onOpenProfile = {}, onAction = {})
+            }
+        }
+    }
+}

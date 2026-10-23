@@ -50,11 +50,9 @@ import com.falcon.tripingly.core.designsystem.component.SegmentedToggleOption
 import com.falcon.tripingly.core.designsystem.component.ShowMessage
 import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
 import com.falcon.tripingly.core.designsystem.theme.spacing
-import com.falcon.tripingly.core.model.account.DataExport
 import com.falcon.tripingly.core.model.account.DataExportStatus
 import com.falcon.tripingly.core.model.account.LegalDocument
 import com.falcon.tripingly.core.model.account.LegalDocumentType
-import com.falcon.tripingly.core.model.account.NotificationSettings
 import com.falcon.tripingly.core.model.account.NotificationType
 import com.falcon.tripingly.core.model.account.TripVisibility
 import com.falcon.tripingly.core.ui.UiText
@@ -102,6 +100,8 @@ import kotlinx.collections.immutable.ImmutableList
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel
+import androidx.compose.ui.tooling.preview.PreviewParameter
+import androidx.compose.foundation.background
 
 @Composable
 fun SettingsRoute(
@@ -329,18 +329,35 @@ private const val COMMONS_URL = "https://commons.wikimedia.org"
 
 @Preview
 @Composable
-private fun SettingsScreenPreview() {
+private fun SettingsScreenPreview(@PreviewParameter(SettingsPreviewStates::class) state: State) {
+    TripinglyTheme { SettingsScreen(state = state, onAction = {}, onBack = {}, onOpenPro = {}) }
+}
+
+@Preview(widthDp = 800, heightDp = 360)
+@Composable
+private fun SettingsScreenLandscapePreview() {
+    TripinglyTheme(darkTheme = true) { SettingsScreen(state = SettingsPreviewStates().values.first(), onAction = {}, onBack = {}, onOpenPro = {}) }
+}
+
+@Preview
+@Composable
+private fun NotificationsPreview(@PreviewParameter(NotificationsPreviewStates::class) state: NotificationsState) {
+    TripinglyTheme { Column(Modifier.background(MaterialTheme.colorScheme.surface)) { Notifications(state = state, onAction = {}) } }
+}
+
+@Preview
+@Composable
+private fun DataExportSectionPreview(@PreviewParameter(ExportPreviewStates::class) state: ExportState) {
+    TripinglyTheme { Column(Modifier.background(MaterialTheme.colorScheme.surface)) { DataExportSection(state = state, onAction = {}) } }
+}
+
+@Preview
+@Composable
+private fun AboutPreview() {
     TripinglyTheme {
-        SettingsScreen(
-            state = State(
-                appVersion = "1.0",
-                username = "jonas.k",
-                notifications = NotificationsState(NotificationSettings(NotificationType.entries.toSet() - NotificationType.LIKES)),
-                export = ExportState(DataExport(DataExportStatus.PENDING, downloadUrl = null, expiresAt = null), hasLoaded = true),
-            ),
-            onAction = {},
-            onBack = {},
-            onOpenPro = {},
-        )
+        Column(Modifier.background(MaterialTheme.colorScheme.surface)) {
+            Section("About")
+            About(legalDocuments = previewLegalDocuments, appVersion = "1.0 (42)")
+        }
     }
 }

@@ -33,6 +33,11 @@ import com.falcon.tripingly.feature.map.generated.resources.Res
 import com.falcon.tripingly.feature.map.generated.resources.map_place_image_position
 import com.falcon.tripingly.feature.map.generated.resources.map_place_images
 import org.jetbrains.compose.resources.stringResource
+import androidx.compose.ui.tooling.preview.Preview
+import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
+import androidx.compose.ui.tooling.preview.PreviewParameter
+import androidx.compose.ui.tooling.preview.PreviewParameterProvider
+import androidx.compose.foundation.layout.width
 
 /**
  * The top of the place card: its images swiped through, cropped to the card, each Commons image with its
@@ -96,3 +101,16 @@ internal fun PlaceImageStrip(
 }
 
 private val StripHeight = 140.dp
+
+/** Loading, a place without images (its category icon), and a place with images. */
+internal class PlaceImageStripPreviewStates : PreviewParameterProvider<List<PlaceImage>?> {
+    override val values = sequenceOf(null, emptyList(), previewPlaceImages)
+}
+
+@Preview
+@Composable
+private fun PlaceImageStripPreview(@PreviewParameter(PlaceImageStripPreviewStates::class) images: List<PlaceImage>?) {
+    TripinglyTheme {
+        PlaceImageStrip(images = images, category = PlaceCategory.Museum, onOpen = {}, modifier = Modifier.width(320.dp))
+    }
+}

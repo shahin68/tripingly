@@ -34,6 +34,10 @@ import com.falcon.tripingly.feature.map.generated.resources.Res
 import com.falcon.tripingly.feature.map.generated.resources.*
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
+import androidx.compose.ui.tooling.preview.Preview
+import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
+import androidx.compose.ui.tooling.preview.PreviewParameter
+import androidx.compose.ui.tooling.preview.PreviewParameterProvider
 
 /**
  * A place tapped on the map, in a card that floats above its pin: what the pin knows at once, its images,
@@ -168,4 +172,48 @@ private fun PlaceCategory.label(): StringResource = when (this) {
     PlaceCategory.Nature -> Res.string.map_place_category_nature
     PlaceCategory.Landmark -> Res.string.map_place_category_landmark
     PlaceCategory.Other -> Res.string.map_place_category_other
+}
+
+/** A place loading, loaded with images, hours and website, an address from search, and a viewer's offering "Route to here". */
+internal class PlaceCardPreviewStates : PreviewParameterProvider<PlaceCardPreview> {
+    override val values = sequenceOf(
+        PlaceCardPreview(previewPlace, details = null, address = null, dayNumber = 2, canRouteTo = false),
+        PlaceCardPreview(previewPlace, previewPlaceDetails, address = null, dayNumber = 2, canRouteTo = false),
+        PlaceCardPreview(previewCafe.copy(name = "12 Rue de Rivoli"), details = null, address = "12 Rue de Rivoli, 75004 Paris, France", dayNumber = 1, canRouteTo = false),
+        PlaceCardPreview(previewCafe, previewPlaceDetails.copy(images = emptyList(), openingHours = null, website = null), address = null, dayNumber = null, canRouteTo = true),
+    )
+}
+
+internal data class PlaceCardPreview(
+    val place: MapPlace,
+    val details: PlaceDetails?,
+    val address: String?,
+    val dayNumber: Int?,
+    val canRouteTo: Boolean,
+)
+
+@Preview
+@Composable
+private fun PlaceCardPreview(@PreviewParameter(PlaceCardPreviewStates::class) card: PlaceCardPreview) {
+    TripinglyTheme {
+        PlaceCard(
+            place = card.place,
+            details = card.details,
+            address = card.address,
+            dayNumber = card.dayNumber,
+            onAdd = {},
+            onOpenImage = {},
+            onOpenPhotos = {},
+            onRouteFrom = {},
+            onRouteTo = if (card.canRouteTo) ({}) else null,
+        )
+    }
+}
+
+@Preview
+@Composable
+private fun PlaceCardDarkPreview() {
+    TripinglyTheme(darkTheme = true) {
+        PlaceCard(previewPlace, previewPlaceDetails, address = null, dayNumber = 2, onAdd = {}, onOpenImage = {}, onOpenPhotos = {}, onRouteFrom = {}, onRouteTo = null)
+    }
 }
