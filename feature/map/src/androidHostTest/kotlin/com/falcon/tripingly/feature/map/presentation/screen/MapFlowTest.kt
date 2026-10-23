@@ -115,7 +115,7 @@ class MapFlowTest {
         waitForIdle()
         onAllNodesWithContentDescription("Remove stop")[0].assertIsNotDisplayed()
 
-        viewModel.onAction(MapAction.OnMapClick(Coordinates(48.21, 16.37)))
+        viewModel.onAction(MapAction.MapView.Click(Coordinates(48.21, 16.37)))
         waitForIdle()
         onNodeWithText("Trip Plan (4 stops)").assertIsDisplayed()
         onAllNodesWithContentDescription("Remove stop")[0].assertIsDisplayed()
@@ -123,9 +123,9 @@ class MapFlowTest {
         // The first stop of an empty day: the sheet comes up whole, though it was pulled down before.
         onNodeWithContentDescription("Show or hide the whole plan").performClick()
         waitForIdle()
-        viewModel.onAction(MapAction.OnDaySelected(1))
+        viewModel.onAction(MapAction.Days.Select(1))
         waitForIdle()
-        viewModel.onAction(MapAction.OnMapClick(Coordinates(48.21, 16.37)))
+        viewModel.onAction(MapAction.MapView.Click(Coordinates(48.21, 16.37)))
         waitForIdle()
         onNodeWithText("Trip Plan (1 stops)").assertIsDisplayed()
         onAllNodesWithContentDescription("Remove stop")[0].assertIsDisplayed()
@@ -140,10 +140,10 @@ class MapFlowTest {
         onAllNodesWithContentDescription("Remove stop")[0].assertIsNotDisplayed()
 
         // The empty day has no sheet; back on a day with stops it comes up whole.
-        viewModel.onAction(MapAction.OnDaySelected(1))
+        viewModel.onAction(MapAction.Days.Select(1))
         waitForIdle()
         onNodeWithContentDescription("Show or hide the whole plan").assertDoesNotExist()
-        viewModel.onAction(MapAction.OnDaySelected(0))
+        viewModel.onAction(MapAction.Days.Select(0))
         waitForIdle()
         onAllNodesWithContentDescription("Remove stop")[0].assertIsDisplayed()
     }

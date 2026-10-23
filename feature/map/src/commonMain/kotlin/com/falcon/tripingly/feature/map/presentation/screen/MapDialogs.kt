@@ -70,12 +70,12 @@ internal fun MapDialogs(dialog: MapDialog, onAction: (MapAction) -> Unit) {
             text = dialog.message.asString(),
             confirm = stringResource(Res.string.map_confirm_delete),
             isDestructive = true,
-            onConfirm = { onAction(MapAction.OnDeleteAnyway) },
-            onDismiss = { onAction(MapAction.OnDismissDeleteAnyway) },
+            onConfirm = { onAction(MapAction.Dialog.DeleteAnyway) },
+            onDismiss = { onAction(MapAction.Dialog.DismissDeleteAnyway) },
         )
         is MapDialog.Report -> ReportDialog(
-            onReport = { reason, details -> onAction(MapAction.OnSendReport(reason, details)) },
-            onDismiss = { onAction(MapAction.OnDismissReport) },
+            onReport = { reason, details -> onAction(MapAction.Dialog.SendReport(reason, details)) },
+            onDismiss = { onAction(MapAction.Dialog.DismissReport) },
             isSending = dialog.isSending,
         )
         MapDialog.NamePin -> NamePinDialog(onAction)
@@ -98,8 +98,8 @@ internal fun MapDialogs(dialog: MapDialog, onAction: (MapAction) -> Unit) {
                     LocationPrompt.OpenSettings -> Res.string.map_location_open_settings
                 },
             ),
-            onConfirm = { onAction(MapAction.OnConfirmLocationPrompt) },
-            onDismiss = { onAction(MapAction.OnDismissLocationPrompt) },
+            onConfirm = { onAction(MapAction.Location.ConfirmPrompt) },
+            onDismiss = { onAction(MapAction.Location.DismissPrompt) },
         )
         is MapDialog.BestOrder -> BestOrderDialog(dialog.preview, onAction)
     }
@@ -112,8 +112,8 @@ private fun ConfirmDialog(title: String, text: String, confirm: StringResource, 
     text = text,
     confirm = stringResource(confirm),
     isDestructive = true,
-    onConfirm = { onAction(MapAction.OnConfirm) },
-    onDismiss = { onAction(MapAction.OnDismissConfirm) },
+    onConfirm = { onAction(MapAction.Dialog.Confirm) },
+    onDismiss = { onAction(MapAction.Dialog.DismissConfirm) },
 )
 
 @Composable
@@ -146,7 +146,7 @@ private fun SimpleDialog(
 @Composable
 private fun BestOrderDialog(order: BestOrderPreview, onAction: (MapAction) -> Unit) {
     AlertDialog(
-        onDismissRequest = { onAction(MapAction.OnDismissBestOrder) },
+        onDismissRequest = { onAction(MapAction.Dialog.DismissBestOrder) },
         title = { Text(stringResource(Res.string.map_best_order_title)) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -171,12 +171,12 @@ private fun BestOrderDialog(order: BestOrderPreview, onAction: (MapAction) -> Un
             }
         },
         confirmButton = {
-            TextButton(onClick = { onAction(MapAction.OnApplyBestOrder) }) {
+            TextButton(onClick = { onAction(MapAction.Dialog.ApplyBestOrder) }) {
                 Text(stringResource(Res.string.map_best_order_apply))
             }
         },
         dismissButton = {
-            TextButton(onClick = { onAction(MapAction.OnDismissBestOrder) }) {
+            TextButton(onClick = { onAction(MapAction.Dialog.DismissBestOrder) }) {
                 Text(stringResource(Res.string.map_cancel))
             }
         },
@@ -188,7 +188,7 @@ private fun NamePinDialog(onAction: (MapAction) -> Unit) {
     // What the user typed: the text field's own state, kept across a rotation.
     var name by rememberSaveable { mutableStateOf("") }
     AlertDialog(
-        onDismissRequest = { onAction(MapAction.OnDismissPinName) },
+        onDismissRequest = { onAction(MapAction.Dialog.DismissPinName) },
         title = { Text(stringResource(Res.string.map_pin_name_title)) },
         text = {
             OutlinedTextField(
@@ -199,12 +199,12 @@ private fun NamePinDialog(onAction: (MapAction) -> Unit) {
             )
         },
         confirmButton = {
-            TextButton(onClick = { onAction(MapAction.OnConfirmPinName(name)) }, enabled = name.isNotBlank()) {
+            TextButton(onClick = { onAction(MapAction.Dialog.ConfirmPinName(name)) }, enabled = name.isNotBlank()) {
                 Text(stringResource(Res.string.map_pin_add))
             }
         },
         dismissButton = {
-            TextButton(onClick = { onAction(MapAction.OnDismissPinName) }) {
+            TextButton(onClick = { onAction(MapAction.Dialog.DismissPinName) }) {
                 Text(stringResource(Res.string.map_cancel))
             }
         },
