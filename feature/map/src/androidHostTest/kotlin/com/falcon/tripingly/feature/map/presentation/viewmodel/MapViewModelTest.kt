@@ -1172,7 +1172,7 @@ class MapViewModelTest {
     }
 
     @Test
-    fun `a place's card opens once the camera has centered it, and moving the map away or touching elsewhere closes the place`() =
+    fun `a place's card opens once the camera stops, and touching the map closes the place`() =
         runTest(testDispatcher) {
             val viewModel = viewModel()
             testScheduler.advanceUntilIdle()
@@ -1203,12 +1203,22 @@ class MapViewModelTest {
             assertNull(viewModel.uiState.value.layers.selectedPlace)
             assertTrue((backend.refreshTrip(trip.trip.id) as AppResult.Success).data.days[0].markers.isEmpty())
 
-            // The user drags the map while the camera flies to another tap: the place closes.
+            // The camera stops a little off the place (the layout moved during the flight): the card still opens.
             viewModel.onAction(MapAction.MapView.CameraRest(Coordinates(48.86, 2.32), 15f, PARIS_CENTER))
+            viewModel.onAction(MapAction.MapView.PlacePinClick(viewModel.pin("Louvre")))
+            testScheduler.advanceUntilIdle()
+            viewModel.onAction(MapAction.MapView.CameraRest(Coordinates(LOUVRE.lat + 0.0002, LOUVRE.lng), 15f, PARIS_CENTER))
+            testScheduler.advanceUntilIdle()
+            assertNotNull(viewModel.uiState.value.placeCard)
+
+            // The user drags the map while the camera flies to another tap: the finger closes the place, and the
+            // camera stopping where the drag left it opens nothing.
             viewModel.onAction(MapAction.MapView.ScreenTouch)
+            viewModel.onAction(MapAction.MapView.CameraRest(Coordinates(48.86, 2.32), 15f, PARIS_CENTER))
             viewModel.onAction(MapAction.MapView.PlacePinClick(viewModel.pin("Louvre")))
             testScheduler.advanceUntilIdle()
             assertNotNull(viewModel.uiState.value.layers.selectedPlace)
+            viewModel.onAction(MapAction.MapView.ScreenTouch)
             viewModel.onAction(MapAction.MapView.CameraRest(Coordinates(48.85, 2.30), 15f, PARIS_CENTER))
             testScheduler.advanceUntilIdle()
             assertNull(viewModel.uiState.value.layers.selectedPlace)

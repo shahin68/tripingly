@@ -67,7 +67,7 @@ internal class MapCamera(private val context: MapContext) {
         abs(this.zoom - zoom) < 0.01f && isCentered(location, target, zoom)
 
     /** [location] is within a couple of screen points of the camera's [center]. */
-    fun isCentered(location: GeoPoint, center: Coordinates, zoom: Float): Boolean {
+    private fun isCentered(location: GeoPoint, center: Coordinates, zoom: Float): Boolean {
         val pointsPerDegree = 256 * 2.0.pow(zoom.toDouble()) / 360
         val dx = (location.lng - center.longitude) * pointsPerDegree
         val dy = (location.lat - center.latitude) * pointsPerDegree / cos(center.latitude * PI / 180)

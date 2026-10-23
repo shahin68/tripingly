@@ -239,7 +239,7 @@ class MapViewModel(
 
     private fun onCameraRest(action: MapAction.MapView.CameraRest) {
         camera.onRest(action.coordinates, action.zoom)
-        selection.onCameraRest(action.coordinates, action.zoom)
+        selection.onCameraRest()
         action.bounds?.let { pins.onCameraRest(it, action.zoom) }
     }
 
