@@ -608,10 +608,10 @@ class MapViewModelTest {
         val viewModel = viewModel()
         testScheduler.advanceUntilIdle()
         viewModel.events.test {
-            viewModel.onAction(MapAction.OnToggleDayRoute)
+            viewModel.onAction(MapAction.Plan.ToggleRoute)
             testScheduler.advanceUntilIdle()
             assertEquals(MapEvent.ShowWholePlan, awaitItem())
-            viewModel.onAction(MapAction.OnToggleDayRoute)
+            viewModel.onAction(MapAction.Plan.ToggleRoute)
             testScheduler.advanceUntilIdle()
             assertEquals(MapEvent.ShowWholePlan, awaitItem())
         }
@@ -620,7 +620,7 @@ class MapViewModelTest {
         val free = viewModel()
         testScheduler.advanceUntilIdle()
         free.events.test {
-            free.onAction(MapAction.OnToggleDayRoute)
+            free.onAction(MapAction.Plan.ToggleRoute)
             testScheduler.advanceUntilIdle()
             assertEquals(MapEvent.OpenPaywall, awaitItem())
             expectNoEvents()
