@@ -172,6 +172,7 @@ class PaywallViewModelTest {
         val viewModel = PaywallViewModel(account, FakePro(offers = AppResult.Success(listOf(yearly))), legal, languageTag = { "en" })
         advanceUntilIdle()
         assertTrue(viewModel.uiState.value.hasOffersFailed)
+        assertTrue(viewModel.uiState.value.offers.isEmpty())
 
         legalFails = false
         viewModel.onAction(Action.OnRetryOffers)
@@ -179,6 +180,7 @@ class PaywallViewModelTest {
 
         assertFalse(viewModel.uiState.value.hasOffersFailed)
         assertTrue(viewModel.uiState.value.legalDocuments.isNotEmpty())
+        assertEquals(listOf(yearly), viewModel.uiState.value.offers)
     }
 
     @Test

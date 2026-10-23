@@ -79,8 +79,9 @@ class PaywallViewModel(
         _uiState.update { it.copy(isLoadingOffers = true, hasOffersFailed = false) }
         viewModelScope.launch {
             val documents = async { _uiState.value.legalDocuments.ifEmpty { legalDocuments() } }
-            val offers = (proRepository.offers() as? AppResult.Success)?.data?.sortedBy { it.period.ordinal }
+            val loaded = (proRepository.offers() as? AppResult.Success)?.data?.sortedBy { it.period.ordinal }
             val legal = documents.await()
+            val offers = loaded?.takeIf { legal.isNotEmpty() }
             _uiState.update { state ->
                 state.copy(
                     offers = offers.orEmpty().toImmutableList(),
@@ -88,7 +89,7 @@ class PaywallViewModel(
                     selectedOfferId = state.selectedOfferId ?: (offers?.firstOrNull { it.period == ProPeriod.Yearly } ?: offers?.firstOrNull())?.id,
                     legalDocuments = legal.toImmutableList(),
                     isLoadingOffers = false,
-                    hasOffersFailed = offers == null || legal.isEmpty(),
+                    hasOffersFailed = offers == null,
                 )
             }
         }
