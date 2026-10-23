@@ -55,6 +55,8 @@ data class HeaderState(
     val tripName: String = "",
     /** "Created …" under the trip's name. */
     val createdLabel: UiText? = null,
+    /** "by Anna" after it, on someone else's trip. */
+    val ownerLabel: UiText? = null,
     /** The trip is loading, or a day change, a save or a request to join waits for the server. */
     val isBusy: Boolean = false,
     /** Someone else's public trip: save it, ask to join, see its owner, report it. */

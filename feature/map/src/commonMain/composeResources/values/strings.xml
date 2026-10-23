@@ -148,6 +148,7 @@
     <string name="map_my_content_removed">Your photos, comments and likes on this stop were removed.</string>
     <string name="map_error_remove_my_content">Couldn’t remove your photos, comments and likes.</string>
     <string name="map_trip_created">Created %1$s</string>
+    <string name="map_trip_owner">by %1$s</string>
 
     <!-- Routes -->
     <string name="map_route">Route</string>

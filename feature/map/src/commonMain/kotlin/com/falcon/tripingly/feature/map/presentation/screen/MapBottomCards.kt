@@ -256,13 +256,13 @@ private fun StopChip(
             Box(
                 modifier = Modifier
                     .size(20.dp)
-                    .background(MaterialTheme.colorScheme.primary, CircleShape),
+                    .background(if (stop.isByTripOwner) Color(stop.color) else MaterialTheme.colorScheme.primary, CircleShape),
                 contentAlignment = Alignment.Center,
             ) {
                 Text(
                     text = stop.orderNumber.toString(),
                     style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onPrimary,
+                    color = if (stop.isByTripOwner) Color.White else MaterialTheme.colorScheme.onPrimary,
                     fontWeight = FontWeight.Bold,
                 )
             }

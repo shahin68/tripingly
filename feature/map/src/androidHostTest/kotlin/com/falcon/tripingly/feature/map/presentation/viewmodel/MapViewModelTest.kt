@@ -68,6 +68,7 @@ import com.falcon.tripingly.feature.map.generated.resources.map_error_stop_chang
 import com.falcon.tripingly.feature.map.generated.resources.map_join_requested
 import com.falcon.tripingly.feature.map.generated.resources.map_best_order_already
 import com.falcon.tripingly.feature.map.generated.resources.map_my_content_removed
+import com.falcon.tripingly.feature.map.generated.resources.map_trip_owner
 import com.falcon.tripingly.feature.map.presentation.FakeTripMapViewRepository
 import com.falcon.tripingly.feature.map.presentation.component.PinSizes
 import com.falcon.tripingly.feature.map.presentation.screen.MapViewModel
@@ -77,6 +78,7 @@ import com.falcon.tripingly.feature.map.presentation.screen.MapEvent
 import com.falcon.tripingly.feature.map.presentation.screen.MapSheet
 import com.falcon.tripingly.feature.map.presentation.screen.MapUiState
 import com.falcon.tripingly.feature.map.domain.model.CameraCommand
+import com.falcon.tripingly.feature.map.domain.model.TripOwnerColor
 import com.falcon.tripingly.feature.map.presentation.component.routeLine
 import com.falcon.tripingly.feature.map.presentation.component.stopPathShape
 import com.falcon.tripingly.feature.map.presentation.screen.LocationPrompt
@@ -735,6 +737,35 @@ class MapViewModelTest {
         val note = assertIs<UiText.Note>(viewModel.uiState.value.message?.text)
         assertEquals(Res.string.map_my_content_removed, assertIs<UiText.Resource>(note.text).resource)
         assertEquals(2, viewModel.uiState.value.layers.stops.size)
+    }
+
+    @Test
+    fun `on someone else's trip the owner's name and stops show in the owner's colour, others' stops stay blue`() = runTest(testDispatcher) {
+        backend.addMarker(trip.trip.id, trip.days[0].id, NewMarker("Owner's", GeoPoint(48.85, 2.35)))
+        backend.addMarker(trip.trip.id, trip.days[0].id, NewMarker("Another editor's", GeoPoint(41.9, 12.49)))
+        val own = viewModel()
+        testScheduler.advanceUntilIdle()
+        assertEquals(listOf(false, false), own.uiState.value.layers.stops.map { it.isByTripOwner })
+        assertNull(own.uiState.value.header.ownerLabel)
+
+        val shared = backend.observeTrip(trip.trip.id).first()!!
+        backend.seed(
+            shared.copy(
+                trip = shared.trip.copy(role = TripRole.EDITOR),
+                days = shared.days.map { day ->
+                    day.copy(markers = day.markers.mapIndexed { i, it -> it.copy(createdById = if (i == 0) shared.trip.owner.id else "someone-else") })
+                },
+            ),
+        )
+        val viewModel = viewModel()
+        testScheduler.advanceUntilIdle()
+
+        val stops = viewModel.uiState.value.layers.stops
+        assertEquals(listOf(true, false), stops.map { it.isByTripOwner })
+        assertEquals(listOf(TripOwnerColor, 0xFF2196F3), stops.map { it.color })
+        assertEquals(stops, viewModel.uiState.value.stopsCard?.stops)
+        val owner = assertIs<UiText.Resource>(viewModel.uiState.value.header.ownerLabel)
+        assertEquals(Res.string.map_trip_owner, owner.resource)
     }
 
     @Test

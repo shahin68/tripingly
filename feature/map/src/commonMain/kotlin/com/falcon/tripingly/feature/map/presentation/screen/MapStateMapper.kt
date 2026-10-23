@@ -15,6 +15,7 @@ import com.falcon.tripingly.feature.map.generated.resources.map_day_label
 import com.falcon.tripingly.feature.map.generated.resources.map_day_label_no_date
 import com.falcon.tripingly.feature.map.generated.resources.map_stop_title_format
 import com.falcon.tripingly.feature.map.generated.resources.map_trip_created
+import com.falcon.tripingly.feature.map.generated.resources.map_trip_owner
 import com.falcon.tripingly.feature.map.presentation.component.PlacePin
 import com.falcon.tripingly.feature.map.presentation.component.durationText
 import com.falcon.tripingly.feature.map.presentation.component.placePinSize
@@ -35,6 +36,8 @@ internal class MapStateMapper(
     private val activeIndex = activeDayIndex(days.size, model.activeDayIndex)
     private val role = details?.trip?.role
     private val canEdit = role?.canEdit == true
+    /** Someone else's trip: the owner's name and stops show in the owner's colour. */
+    private val otherOwnerId = details?.trip?.owner?.id?.takeIf { role != TripRole.OWNER }
     private val stops = days.getOrNull(activeIndex)?.markers.orEmpty().mapIndexed { index, it -> it.toMapMarker(index + 1) }
     private val dayNumber = days.getOrNull(activeIndex)?.let { it.position + 1 }
     private val route = model.route
@@ -71,6 +74,7 @@ internal class MapStateMapper(
         return HeaderState(
             tripName = trip?.name.orEmpty(),
             createdLabel = trip?.createdAt?.let { UiText.Resource(Res.string.map_trip_created, DateUtils.formatFormal(it)) },
+            ownerLabel = trip?.owner?.takeIf { otherOwnerId != null }?.let { UiText.Resource(Res.string.map_trip_owner, it.displayName) },
             isBusy = model.isSaving || model.isUpdatingSharing || (days.isEmpty() && model.isLoadingTrip),
             viewerMenu = trip?.takeIf { role == TripRole.VIEWER }?.let {
                 ViewerMenu(isSavedByMe = it.savedByMe, myJoinRequest = details?.myJoinRequest, ownerUsername = it.owner?.username)
@@ -218,6 +222,7 @@ internal class MapStateMapper(
         commentCount = commentCount,
         placeId = placeId,
         canDelete = role == TripRole.OWNER || (canEdit && myUserId != null && createdById == myUserId),
+        isByTripOwner = otherOwnerId != null && createdById == otherOwnerId,
     )
 
     private fun dayLabel(number: Int, date: LocalDate?): UiText =
