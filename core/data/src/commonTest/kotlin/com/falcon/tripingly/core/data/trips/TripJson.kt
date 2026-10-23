@@ -14,7 +14,7 @@ internal object TripJson {
         savedByMe: Boolean = false,
     ) = """
         {"id":"$id","title":"$title","startDate":"2026-06-01","endDate":"2026-06-03","visibility":"public",
-         "owner":$OWNER,"role":"$role","coverThumbUrl":null,"dayCount":3,"markerCount":0,"editorCount":$editorCount,
+         "owner":$OWNER,"role":"$role","coverPhotoId":null,"coverThumbUrl":null,"dayCount":3,"markerCount":0,"editorCount":$editorCount,
          "likeCount":0,"likedByMe":false,"saveCount":0,"savedByMe":$savedByMe,"createdAt":"2026-10-01T10:00:00.000Z","updatedAt":"$updatedAt"}
     """.trimIndent()
 

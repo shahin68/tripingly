@@ -24,14 +24,14 @@ import com.falcon.tripingly.feature.social.generated.resources.social_add_place_
 import com.falcon.tripingly.feature.social.generated.resources.social_add_place_pick_trip
 import com.falcon.tripingly.feature.social.generated.resources.social_day_number
 import com.falcon.tripingly.feature.social.presentation.social.SocialViewModel.Action
-import com.falcon.tripingly.feature.social.presentation.social.SocialViewModel.AddPlace
+import com.falcon.tripingly.feature.social.presentation.social.SocialViewModel.AddPlaceState
 import org.jetbrains.compose.resources.stringResource
 
 /** Adds a Nearby place to a day: pick one of my trips, then the day. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-internal fun AddPlaceSheet(addPlace: AddPlace, onAction: (Action) -> Unit) {
-    ModalBottomSheet(onDismissRequest = { onAction(Action.OnDismissAddPlace) }) {
+internal fun AddPlaceSheet(addPlace: AddPlaceState, onAction: (Action) -> Unit) {
+    ModalBottomSheet(onDismissRequest = { onAction(Action.AddToTrip.Dismiss) }) {
         Box {
             Column(Modifier.padding(bottom = MaterialTheme.spacing.large)) {
                 val trip = addPlace.trip
@@ -50,7 +50,7 @@ internal fun AddPlaceSheet(addPlace: AddPlace, onAction: (Action) -> Unit) {
                             SheetRow(
                                 title = option.name,
                                 subtitle = DateUtils.formatRange(option.startDate, option.endDate),
-                                onClick = { onAction(Action.OnPickTrip(option)) },
+                                onClick = { onAction(Action.AddToTrip.PickTrip(option)) },
                             )
                         }
                     }
@@ -62,7 +62,7 @@ internal fun AddPlaceSheet(addPlace: AddPlace, onAction: (Action) -> Unit) {
                             SheetRow(
                                 title = stringResource(Res.string.social_day_number, day.position + 1),
                                 subtitle = day.date?.let(DateUtils::formatAbbreviated),
-                                onClick = { onAction(Action.OnPickDay(day)) },
+                                onClick = { onAction(Action.AddToTrip.PickDay(day)) },
                             )
                         }
                     }

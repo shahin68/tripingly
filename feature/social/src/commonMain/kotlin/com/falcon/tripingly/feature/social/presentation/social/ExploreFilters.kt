@@ -31,7 +31,7 @@ import com.falcon.tripingly.feature.social.generated.resources.social_explore_wi
 import com.falcon.tripingly.feature.social.generated.resources.social_explore_year
 import com.falcon.tripingly.feature.social.generated.resources.social_nearby
 import com.falcon.tripingly.feature.social.presentation.social.SocialViewModel.Action
-import com.falcon.tripingly.feature.social.presentation.social.SocialViewModel.State
+import com.falcon.tripingly.feature.social.presentation.social.SocialViewModel.ExploreState
 import kotlinx.datetime.Month
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.todayIn
@@ -41,7 +41,7 @@ import kotlin.time.Clock
 
 /** Explore's filters in one scrolling row: Nearby switches on and off, then one period is picked. */
 @Composable
-internal fun ExploreFilters(state: State, onAction: (Action) -> Unit) {
+internal fun ExploreFilters(state: ExploreState, onAction: (Action) -> Unit) {
     val description = stringResource(Res.string.social_explore_filters)
     LazyRow(
         modifier = Modifier.fillMaxWidth().semantics { contentDescription = description },
@@ -51,8 +51,8 @@ internal fun ExploreFilters(state: State, onAction: (Action) -> Unit) {
         item {
             PillChip(
                 label = stringResource(Res.string.social_nearby),
-                onClick = { onAction(Action.OnToggleExploreNearby) },
-                selected = state.isExploreNearby,
+                onClick = { onAction(Action.Explore.ToggleNearby) },
+                selected = state.isNearbyFilter,
                 leading = {
                     Icon(
                         Icons.Default.NearMe,
@@ -65,8 +65,8 @@ internal fun ExploreFilters(state: State, onAction: (Action) -> Unit) {
         items(ExplorePeriod.entries, key = { it.name }) { period ->
             PillChip(
                 label = stringResource(period.label()),
-                onClick = { onAction(Action.OnExplorePeriodSelected(period)) },
-                selected = period == state.explorePeriod,
+                onClick = { onAction(Action.Explore.PeriodSelected(period)) },
+                selected = period == state.period,
             )
         }
     }

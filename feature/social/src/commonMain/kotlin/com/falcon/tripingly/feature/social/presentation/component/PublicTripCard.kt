@@ -12,8 +12,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Bookmark
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.outlined.BookmarkBorder
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -25,12 +25,15 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.tooling.preview.PreviewParameter
+import androidx.compose.ui.tooling.preview.PreviewParameterProvider
 import androidx.compose.ui.unit.dp
 import com.falcon.tripingly.core.common.util.DateUtils
 import com.falcon.tripingly.core.designsystem.component.AppDropdownMenu
@@ -40,20 +43,26 @@ import com.falcon.tripingly.core.designsystem.component.DropdownAction
 import com.falcon.tripingly.core.designsystem.component.LikeButton
 import com.falcon.tripingly.core.designsystem.component.PhotoImage
 import com.falcon.tripingly.core.designsystem.component.PhotoSize
+import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
 import com.falcon.tripingly.core.designsystem.theme.spacing
+import com.falcon.tripingly.core.model.account.TripVisibility
 import com.falcon.tripingly.core.model.social.PublicTrip
+import com.falcon.tripingly.core.model.trip.Trip
 import com.falcon.tripingly.core.model.trip.TripRole
+import com.falcon.tripingly.core.model.trip.UserSummary
 import com.falcon.tripingly.core.ui.timeAgo
 import com.falcon.tripingly.feature.social.generated.resources.Res
 import com.falcon.tripingly.feature.social.generated.resources.social_more
 import com.falcon.tripingly.feature.social.generated.resources.social_report
 import com.falcon.tripingly.feature.social.generated.resources.social_save_trip
 import com.falcon.tripingly.feature.social.generated.resources.social_saved_trip
-import com.falcon.tripingly.feature.social.generated.resources.social_trip_save_count
 import com.falcon.tripingly.feature.social.generated.resources.social_trip_created
+import com.falcon.tripingly.feature.social.generated.resources.social_trip_save_count
 import com.falcon.tripingly.feature.social.generated.resources.social_trip_stop_count
+import kotlinx.datetime.LocalDate
 import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
+import kotlin.time.Instant
 
 /** Someone's public trip: who made it, its cover, likes and Save (to My Trips, read-only). */
 @Composable
@@ -69,7 +78,7 @@ internal fun PublicTripCard(
 ) {
     // A trip I own or edit (Explore lists those too): nothing to save or report.
     val isMine = trip.trip.role != TripRole.VIEWER
-    var menuExpanded by remember { mutableStateOf(false) }
+    var menuExpanded by rememberSaveable { mutableStateOf(false) }
     Card(
         onClick = onOpen,
         modifier = modifier.fillMaxWidth(),
@@ -109,10 +118,12 @@ internal fun PublicTripCard(
                 }
             }
             Row(verticalAlignment = Alignment.CenterVertically) {
-                trip.trip.coverThumbUrl?.let { url ->
+                val coverId = trip.trip.coverPhotoId
+                val coverUrl = trip.trip.coverThumbUrl
+                if (coverId != null && coverUrl != null) {
                     PhotoImage(
-                        photoId = url,
-                        url = url,
+                        photoId = coverId,
+                        url = coverUrl,
                         size = PhotoSize.Thumb,
                         contentDescription = null,
                         modifier = Modifier.size(64.dp).clip(RoundedCornerShape(8.dp)),
@@ -157,5 +168,41 @@ internal fun PublicTripCard(
                 }
             }
         }
+    }
+}
+
+private val previewTrip = PublicTrip(
+    trip = Trip(
+        id = "t1",
+        name = "A week in Vienna",
+        startDate = LocalDate(2026, 6, 1),
+        endDate = LocalDate(2026, 6, 7),
+        visibility = TripVisibility.PUBLIC,
+        role = TripRole.VIEWER,
+        owner = UserSummary("u1", "anna", "Anna"),
+        dayCount = 7,
+        markerCount = 12,
+        createdAt = Instant.fromEpochSeconds(1_790_000_000),
+        updatedAt = Instant.fromEpochSeconds(1_790_000_000),
+    ),
+    likeCount = 24,
+    likedByMe = true,
+    saveCount = 3,
+)
+
+/** Someone else's trip I liked, one I saved, and one of mine (nothing to save or report). */
+internal class PublicTripCardPreviewStates : PreviewParameterProvider<PublicTrip> {
+    override val values = sequenceOf(
+        previewTrip,
+        previewTrip.copy(trip = previewTrip.trip.copy(savedByMe = true, startDate = null, endDate = null), likedByMe = false),
+        previewTrip.copy(trip = previewTrip.trip.copy(role = TripRole.OWNER), likeCount = 0, likedByMe = false, saveCount = 0),
+    )
+}
+
+@Preview
+@Composable
+private fun PublicTripCardPreview(@PreviewParameter(PublicTripCardPreviewStates::class) trip: PublicTrip) {
+    TripinglyTheme {
+        PublicTripCard(trip = trip, onOpen = {}, onOpenOwner = {}, onLike = {}, onToggleSave = {}, onReport = {})
     }
 }

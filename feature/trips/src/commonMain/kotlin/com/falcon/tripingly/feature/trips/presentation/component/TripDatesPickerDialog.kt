@@ -31,11 +31,12 @@ import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.atStartOfDayIn
 import kotlinx.datetime.toLocalDateTime
+import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
 import kotlin.time.Instant
 
 /**
- * The New trip sheet's date range picker, from today on. OK hands back the picked range
+ * A trip's date range picker (New trip, Reschedule), from today on. OK hands back the picked range
  * (the end is null when only one day was tapped); Cancel keeps the dates as they were.
  */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -45,6 +46,8 @@ internal fun TripDatesPickerDialog(
     initialEndDate: LocalDate?,
     onDismiss: () -> Unit,
     onConfirm: (LocalDate?, LocalDate?) -> Unit,
+    title: StringResource = Res.string.create_trip_picker_title,
+    headline: StringResource = Res.string.create_trip_picker_headline,
 ) {
     val today = DateUtils.today()
     val state = rememberDateRangePickerState(
@@ -67,14 +70,14 @@ internal fun TripDatesPickerDialog(
                     modifier = Modifier.weight(1f),
                     title = {
                         Text(
-                            text = stringResource(Res.string.create_trip_picker_title),
+                            text = stringResource(title),
                             modifier = Modifier.padding(16.dp),
                             style = MaterialTheme.typography.titleMedium,
                         )
                     },
                     headline = {
                         Text(
-                            text = stringResource(Res.string.create_trip_picker_headline),
+                            text = stringResource(headline),
                             modifier = Modifier.padding(horizontal = 16.dp),
                             style = MaterialTheme.typography.bodySmall,
                         )

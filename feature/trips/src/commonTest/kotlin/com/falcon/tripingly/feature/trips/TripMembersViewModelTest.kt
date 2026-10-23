@@ -1,10 +1,13 @@
 package com.falcon.tripingly.feature.trips
 
+import com.falcon.tripingly.core.common.error.DataError
 import com.falcon.tripingly.core.common.result.AppResult
 import com.falcon.tripingly.core.data.trips.FakeTripBackend
+import com.falcon.tripingly.core.data.trips.TripRepository
 import com.falcon.tripingly.core.data.users.FakeUserRepository
 import com.falcon.tripingly.core.model.trip.JoinRequest
 import com.falcon.tripingly.core.model.trip.NewTrip
+import com.falcon.tripingly.core.model.trip.TripDetails
 import com.falcon.tripingly.core.model.trip.TripRole
 import com.falcon.tripingly.core.model.trip.UserSummary
 import com.falcon.tripingly.core.ui.UiText
@@ -46,6 +49,7 @@ class TripMembersViewModelTest {
         val trip = (backend.createTrip(NewTrip("Paris", null, null)) as AppResult.Success).data
         return TripMembersViewModel(trip.trip.id, backend, backend, FakeUserRepository()).also { viewModel ->
             backgroundScope.launch { viewModel.uiState.collect {} }
+            viewModel.onAction(Action.Opened)
         }
     }
 
@@ -53,19 +57,47 @@ class TripMembersViewModelTest {
     fun pickedFriends_areAddedInOneRequest_andLeaveTheFriendsRow() = runTest {
         val viewModel = viewModel()
         advanceUntilIdle()
-        val (anna, jonas) = viewModel.uiState.value.friends
+        val (anna, jonas) = viewModel.uiState.value.add.friends
 
-        viewModel.onAction(Action.OnFriendToggled(anna))
-        viewModel.onAction(Action.OnFriendToggled(jonas))
-        viewModel.onAction(Action.OnFriendToggled(jonas))
-        viewModel.onAction(Action.OnFriendToggled(jonas))
-        viewModel.onAction(Action.OnAddPickedFriends)
+        viewModel.onAction(Action.Add.FriendToggled(anna))
+        viewModel.onAction(Action.Add.FriendToggled(jonas))
+        viewModel.onAction(Action.Add.FriendToggled(jonas))
+        viewModel.onAction(Action.Add.FriendToggled(jonas))
+        viewModel.onAction(Action.Add.PickedFriends)
         advanceUntilIdle()
 
         val state = viewModel.uiState.value
         assertEquals(listOf("anna", "jonas.k"), state.members.drop(1).map { it.user.username })
-        assertTrue(state.pickedFriends.isEmpty())
-        assertEquals(listOf("lena"), state.friends.map { it.username })
+        assertTrue(state.add.pickedFriends.isEmpty())
+        assertEquals(listOf("lena"), state.add.friends.map { it.username })
+    }
+
+    @Test
+    fun pickedFriend_whoJoinedAnotherWay_isNotSentAgain() = runTest {
+        val sent = mutableListOf<List<String>>()
+        val repository = object : TripRepository by backend {
+            override suspend fun addMembers(tripId: String, usernames: List<String>): AppResult<TripDetails, DataError.Network> {
+                sent += usernames
+                return backend.addMembers(tripId, usernames)
+            }
+        }
+        val trip = (backend.createTrip(NewTrip("Paris", null, null)) as AppResult.Success).data
+        val viewModel = TripMembersViewModel(trip.trip.id, repository, backend, FakeUserRepository())
+        backgroundScope.launch { viewModel.uiState.collect {} }
+        viewModel.onAction(Action.Opened)
+        advanceUntilIdle()
+        val (anna, jonas) = viewModel.uiState.value.add.friends
+
+        viewModel.onAction(Action.Add.FriendToggled(anna))
+        viewModel.onAction(Action.Add.FriendToggled(jonas))
+        backend.addMember(trip.trip.id, "anna")
+        advanceUntilIdle()
+        assertEquals(setOf("jonas.k"), viewModel.uiState.value.add.pickedFriends)
+        viewModel.onAction(Action.Add.PickedFriends)
+        advanceUntilIdle()
+
+        assertEquals(listOf(listOf("jonas.k")), sent)
+        assertEquals(listOf("anna", "jonas.k"), viewModel.uiState.value.members.drop(1).map { it.user.username })
     }
 
     @Test
@@ -77,17 +109,38 @@ class TripMembersViewModelTest {
         backend.seedJoinRequest(tom)
         val viewModel = TripMembersViewModel(trip.id, backend, backend, FakeUserRepository())
         backgroundScope.launch { viewModel.uiState.collect {} }
+        viewModel.onAction(Action.Opened)
         advanceUntilIdle()
-        assertEquals(listOf("tom", "mia"), viewModel.uiState.value.joinRequests.map { it.user.username })
+        assertEquals(listOf("tom", "mia"), viewModel.uiState.value.joinRequests.requests.map { it.user.username })
 
-        viewModel.onAction(Action.OnAcceptJoinRequest(mia))
-        viewModel.onAction(Action.OnDeclineJoinRequest(tom))
+        viewModel.onAction(Action.JoinRequests.Accept(mia))
+        viewModel.onAction(Action.JoinRequests.Decline(tom))
         advanceUntilIdle()
 
         val state = viewModel.uiState.value
-        assertTrue(state.joinRequests.isEmpty())
+        assertTrue(state.joinRequests.requests.isEmpty())
         assertEquals(listOf("mia"), state.members.filter { it.role == TripRole.EDITOR }.map { it.user.username })
         assertEquals(0, backend.observeTrip(trip.id).first()?.pendingJoinRequestCount)
+    }
+
+    @Test
+    fun reopening_reloadsJoinRequests_andForgetsTheLastVisit() = runTest {
+        val trip = (backend.createTrip(NewTrip("Paris", null, null)) as AppResult.Success).data.trip
+        val viewModel = TripMembersViewModel(trip.id, backend, backend, FakeUserRepository())
+        backgroundScope.launch { viewModel.uiState.collect {} }
+        viewModel.onAction(Action.Opened)
+        advanceUntilIdle()
+        viewModel.onAction(Action.Add.UsernameChanged("som"))
+        viewModel.onAction(Action.Add.FriendToggled(viewModel.uiState.value.add.friends.first()))
+        backend.seedJoinRequest(JoinRequest("r1", trip.id, UserSummary("u-mia", "mia", "Mia"), Instant.parse("2026-10-16T10:00:00Z")))
+
+        viewModel.onAction(Action.Opened)
+        advanceUntilIdle()
+
+        val state = viewModel.uiState.value
+        assertEquals(listOf("mia"), state.joinRequests.requests.map { it.user.username })
+        assertEquals("", state.add.username)
+        assertTrue(state.add.pickedFriends.isEmpty())
     }
 
     @Test
@@ -95,15 +148,15 @@ class TripMembersViewModelTest {
         val viewModel = viewModel()
         advanceUntilIdle()
 
-        viewModel.onAction(Action.OnUsernameChanged("@Anna"))
-        viewModel.onAction(Action.OnAddMember)
+        viewModel.onAction(Action.Add.UsernameChanged("@Anna"))
+        viewModel.onAction(Action.Add.ByUsername)
         advanceUntilIdle()
 
         val state = viewModel.uiState.value
         assertTrue(state.canManage)
         assertEquals(listOf(TripRole.OWNER, TripRole.EDITOR), state.members.map { it.role })
         assertEquals("anna", state.members[1].user.username)
-        assertEquals("", state.username)
+        assertEquals("", state.add.username)
     }
 
     @Test
@@ -111,24 +164,24 @@ class TripMembersViewModelTest {
         val viewModel = viewModel()
         advanceUntilIdle()
 
-        viewModel.onAction(Action.OnUsernameChanged("unknown"))
-        viewModel.onAction(Action.OnAddMember)
+        viewModel.onAction(Action.Add.UsernameChanged("unknown"))
+        viewModel.onAction(Action.Add.ByUsername)
         advanceUntilIdle()
 
         val message = assertIs<UiText.Resource>(viewModel.uiState.value.message)
         assertEquals(Res.string.members_error_user_not_found, message.resource)
-        assertEquals("unknown", viewModel.uiState.value.username)
+        assertEquals("unknown", viewModel.uiState.value.add.username)
     }
 
     @Test
     fun removeMember_removesTheEditor() = runTest {
         val viewModel = viewModel()
         advanceUntilIdle()
-        viewModel.onAction(Action.OnUsernameChanged("anna"))
-        viewModel.onAction(Action.OnAddMember)
+        viewModel.onAction(Action.Add.UsernameChanged("anna"))
+        viewModel.onAction(Action.Add.ByUsername)
         advanceUntilIdle()
 
-        viewModel.onAction(Action.OnRemoveMember(viewModel.uiState.value.members[1].user.id))
+        viewModel.onAction(Action.RemoveMember(viewModel.uiState.value.members[1].user.id))
         advanceUntilIdle()
 
         assertEquals(1, viewModel.uiState.value.members.size)
@@ -139,14 +192,14 @@ class TripMembersViewModelTest {
         val viewModel = viewModel()
         advanceUntilIdle()
 
-        viewModel.onAction(Action.OnCreateInvite)
+        viewModel.onAction(Action.Invites.Create)
         advanceUntilIdle()
 
-        val invite = viewModel.uiState.value.invites.single()
+        val invite = viewModel.uiState.value.invites.invites.single()
         assertEquals(Event.ShareInvite("Paris", invite.url), viewModel.events.first())
 
-        viewModel.onAction(Action.OnRevokeInvite(invite.id))
+        viewModel.onAction(Action.Invites.Revoke(invite.id))
         advanceUntilIdle()
-        assertTrue(viewModel.uiState.value.invites.isEmpty())
+        assertTrue(viewModel.uiState.value.invites.invites.isEmpty())
     }
 }

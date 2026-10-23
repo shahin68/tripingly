@@ -47,7 +47,7 @@ REST over HTTPS, JSON, base path `/v1`.
 | GET | `/me/stats` | Trips, markers, photos counts |
 | GET | `/me/friends?cursor=&limit=` | The user's friends as user summaries, cursor paginated `{ items, nextCursor }`. The New trip sheet shows the first page (limit 50) as a row of avatars to add as members. Backend: tripinly-backend#32 (generated `UserPageDto`) |
 | GET | `/me/following?cursor=&limit=`, `/me/followers?cursor=&limit=` | Same shape; my profile's Following and Followers lists (pages of 50) |
-| GET | `/me/trips` | Owned, collaborating and saved (`role` `viewer`, `savedByMe` true), cursor paginated; each item has `role`, `saveCount`, `savedByMe`, `coverThumbUrl` (first cover photo in the trip, or null), `dayCount`, `markerCount`, `editorCount` (people it's shared with, owner not counted; backend#30), `createdAt` (cards show "3 days ago"; backend#48) |
+| GET | `/me/trips` | Owned, collaborating and saved (`role` `viewer`, `savedByMe` true), cursor paginated; each item has `role`, `saveCount`, `savedByMe`, `coverPhotoId` and `coverThumbUrl` (first cover photo in the trip, or null; cache the image by `coverPhotoId`, backend#57), `dayCount`, `markerCount`, `editorCount` (people it's shared with, owner not counted; backend#30), `createdAt` (cards show "3 days ago"; backend#48) |
 | PUT | `/me/devices/{fcmToken}` | Register/refresh push device. Body: `platform` (`android`\|`ios`), `locale` |
 | DELETE | `/me/devices/{fcmToken}` | |
 | POST | `/me/export` | Starts the GDPR export (202 **DataExport**); one at a time, one per 24 h (429 `RATE_LIMITED`) |

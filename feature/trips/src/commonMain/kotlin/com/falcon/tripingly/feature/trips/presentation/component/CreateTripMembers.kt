@@ -58,13 +58,13 @@ internal fun CreateTripMembers(
         FriendPickerRow(
             friends = form.friends,
             isPicked = form::isMember,
-            onToggle = { onAction(Action.OnFriendToggled(it)) },
+            onToggle = { onAction(Action.CreateTrip.FriendToggled(it)) },
             enabled = !isSaving,
         )
         if (searching || form.memberQuery.isNotEmpty()) {
             RoundedTextField(
                 value = form.memberQuery,
-                onValueChange = { onAction(Action.OnMemberQueryChanged(it)) },
+                onValueChange = { onAction(Action.CreateTrip.MemberQueryChanged(it)) },
                 placeholder = stringResource(Res.string.create_trip_member_placeholder),
                 leadingIcon = { Icon(Icons.Default.PersonAdd, contentDescription = null) },
                 trailingIcon = if (form.isSearchingMembers) {
@@ -85,7 +85,7 @@ internal fun CreateTripMembers(
                 SuggestionItem(
                     title = user.displayName,
                     subtitle = "@${user.username}",
-                    onClick = { onAction(Action.OnMemberAdded(user)) },
+                    onClick = { onAction(Action.CreateTrip.MemberAdded(user)) },
                 )
             }
         }
@@ -96,7 +96,7 @@ internal fun CreateTripMembers(
             form.members.forEach { member ->
                 PillChip(
                     label = "@${member.username}",
-                    onRemove = { onAction(Action.OnMemberRemoved(member.username)) },
+                    onRemove = { onAction(Action.CreateTrip.MemberRemoved(member.username)) },
                     leading = { AvatarCircle(name = member.displayName, key = member.username, size = AvatarSize.Small) },
                     error = form.memberErrors[member.username]?.asString(),
                     enabled = !isSaving,

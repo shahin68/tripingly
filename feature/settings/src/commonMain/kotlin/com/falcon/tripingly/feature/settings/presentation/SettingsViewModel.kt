@@ -73,9 +73,9 @@ class SettingsViewModel(
         loadNotifications()
         viewModelScope.launch {
             when (val result = accountRepository.dataExport()) {
-                is AppResult.Success -> _uiState.update { it.copy(export = result.data, hasLoadedExport = true) }
+                is AppResult.Success -> updateExport { it.copy(export = result.data, hasLoaded = true) }
                 // Not worth a banner: the button to ask for a copy still works.
-                is AppResult.Error -> _uiState.update { it.copy(hasLoadedExport = true) }
+                is AppResult.Error -> updateExport { it.copy(hasLoaded = true) }
             }
         }
         viewModelScope.launch {
@@ -86,25 +86,45 @@ class SettingsViewModel(
 
     fun onAction(action: Action) {
         when (action) {
-            is Action.OnVisibilityChange -> setVisibility(action.visibility)
-            is Action.OnNotificationChange -> setNotification(action.type, action.enabled)
-            Action.OnRetryNotifications -> loadNotifications()
-            Action.OnRequestExport -> requestExport()
-            Action.OnSignOut -> _uiState.update { it.copy(isConfirmingSignOut = true) }
-            Action.OnDismissSignOut -> _uiState.update { it.copy(isConfirmingSignOut = false) }
-            Action.OnConfirmSignOut -> {
-                _uiState.update { it.copy(isConfirmingSignOut = false) }
-                viewModelScope.launch { sessionRepository.signOut() }
-            }
-            Action.OnDeleteAccount -> _uiState.update { it.copy(isConfirmingDelete = true) }
-            Action.OnDismissDelete -> _uiState.update { it.copy(isConfirmingDelete = false) }
-            Action.OnConfirmDelete -> deleteAccount()
-            Action.OnConfirmWithGoogle -> confirmDeletion { socialSignIn.google() }
-            Action.OnConfirmWithApple -> confirmDeletion { socialSignIn.apple() }
-            Action.OnDismissReauth -> _uiState.update { it.copy(isReauthNeeded = false) }
-            Action.OnDismissMessage -> _uiState.update { it.copy(message = null) }
+            is Action.VisibilityChanged -> setVisibility(action.visibility)
+            Action.RequestExport -> requestExport()
+            Action.DismissMessage -> _uiState.update { it.copy(message = null) }
+            is Action.Notifications -> onNotificationsAction(action)
+            is Action.Account -> onAccountAction(action)
         }
     }
+
+    private fun onNotificationsAction(action: Action.Notifications) {
+        when (action) {
+            is Action.Notifications.Changed -> setNotification(action.type, action.enabled)
+            Action.Notifications.Retry -> loadNotifications()
+        }
+    }
+
+    private fun onAccountAction(action: Action.Account) {
+        when (action) {
+            Action.Account.SignOut -> _uiState.update { it.copy(account = AccountDialogState(AccountDialog.SignOut)) }
+            Action.Account.ConfirmSignOut -> {
+                _uiState.update { it.copy(account = null) }
+                viewModelScope.launch { sessionRepository.signOut() }
+            }
+            Action.Account.Delete -> _uiState.update { it.copy(account = AccountDialogState(AccountDialog.Delete)) }
+            Action.Account.ConfirmDelete -> deleteAccount()
+            Action.Account.ConfirmWithGoogle -> confirmDeletion { socialSignIn.google() }
+            Action.Account.ConfirmWithApple -> confirmDeletion { socialSignIn.apple() }
+            // A deletion on its way can't be called off.
+            Action.Account.Dismiss -> _uiState.update { if (it.account?.isDeleting == true) it else it.copy(account = null) }
+        }
+    }
+
+    private fun updateNotifications(change: (NotificationsState) -> NotificationsState) =
+        _uiState.update { it.copy(notifications = change(it.notifications)) }
+
+    private fun updateExport(change: (ExportState) -> ExportState) = _uiState.update { it.copy(export = change(it.export)) }
+
+    /** Changes the open account dialog; nothing once it's closed. */
+    private fun updateAccount(change: (AccountDialogState) -> AccountDialogState?) =
+        _uiState.update { state -> state.account?.let { state.copy(account = change(it)) } ?: state }
 
     private fun setVisibility(visibility: TripVisibility) {
         if (visibility == _uiState.value.defaultVisibility) return
@@ -120,14 +140,14 @@ class SettingsViewModel(
     }
 
     private fun loadNotifications() {
-        _uiState.update { it.copy(hasNotificationsFailed = false) }
+        updateNotifications { it.copy(hasFailed = false) }
         viewModelScope.launch {
             when (val result = accountRepository.notificationSettings()) {
                 is AppResult.Success -> {
                     savedNotifications = result.data
-                    _uiState.update { it.copy(notifications = result.data) }
+                    updateNotifications { it.copy(settings = result.data) }
                 }
-                is AppResult.Error -> _uiState.update { it.copy(hasNotificationsFailed = true) }
+                is AppResult.Error -> updateNotifications { it.copy(hasFailed = true) }
             }
         }
     }
@@ -135,14 +155,14 @@ class SettingsViewModel(
     private fun setNotification(type: NotificationType, enabled: Boolean) {
         fun NotificationSettings.with(on: Boolean) = NotificationSettings(if (on) this.enabled + type else this.enabled - type)
         // Like the visibility: shown at once and kept; a newer tap on the same switch replaces the change on its way.
-        _uiState.update { state -> state.copy(notifications = state.notifications?.with(enabled)) }
+        updateNotifications { it.copy(settings = it.settings?.with(enabled)) }
         notificationJobs[type]?.cancel()
         notificationJobs[type] = viewModelScope.launch {
             when (val result = accountRepository.setNotification(type, enabled)) {
                 is AppResult.Success -> savedNotifications = result.data
                 is AppResult.Error -> _uiState.update { state ->
                     state.copy(
-                        notifications = state.notifications?.with(type in savedNotifications.enabled),
+                        notifications = state.notifications.copy(settings = state.notifications.settings?.with(type in savedNotifications.enabled)),
                         message = result.error.toUiText(Res.string.settings_error_notifications),
                     )
                 }
@@ -151,33 +171,32 @@ class SettingsViewModel(
     }
 
     private fun requestExport() {
-        if (_uiState.value.isRequestingExport) return
-        _uiState.update { it.copy(isRequestingExport = true) }
+        if (_uiState.value.export.isRequesting) return
+        updateExport { it.copy(isRequesting = true) }
         viewModelScope.launch {
             when (val result = accountRepository.requestDataExport()) {
-                is AppResult.Success -> _uiState.update { it.copy(export = result.data, isRequestingExport = false) }
+                is AppResult.Success -> updateExport { it.copy(export = result.data, isRequesting = false) }
                 // Once a day: the server's message says when the next one can be made.
                 is AppResult.Error -> _uiState.update {
-                    it.copy(isRequestingExport = false, message = result.error.toUiText(Res.string.settings_error_export))
+                    it.copy(export = it.export.copy(isRequesting = false), message = result.error.toUiText(Res.string.settings_error_export))
                 }
             }
         }
     }
 
     private fun deleteAccount() {
-        if (_uiState.value.isDeleting) return
-        _uiState.update { it.copy(isDeleting = true) }
+        if (_uiState.value.account?.isDeleting != false) return
+        updateAccount { it.copy(isDeleting = true) }
         viewModelScope.launch {
             // On success the session ends and the app shows the sign-in screen.
             val result = accountRepository.deleteAccount()
             if (result is AppResult.Error) {
                 val error = result.error
-                _uiState.update {
-                    if (error is DataError.Network.Api && error.code == REAUTH_REQUIRED) {
-                        it.copy(isDeleting = false, isConfirmingDelete = false, isReauthNeeded = true)
-                    } else {
-                        it.copy(isDeleting = false, message = error.toUiText(Res.string.settings_error_delete))
-                    }
+                if (error is DataError.Network.Api && error.code == REAUTH_REQUIRED) {
+                    updateAccount { AccountDialogState(AccountDialog.Reauth) }
+                } else {
+                    updateAccount { it.copy(isDeleting = false) }
+                    _uiState.update { it.copy(message = error.toUiText(Res.string.settings_error_delete)) }
                 }
             }
         }
@@ -189,21 +208,19 @@ class SettingsViewModel(
      * the session is never switched, so picking another account changes nothing.
      */
     private fun confirmDeletion(signIn: suspend () -> SocialSignInResult) {
-        if (_uiState.value.isDeleting) return
-        _uiState.update { it.copy(isDeleting = true) }
+        if (_uiState.value.account?.isDeleting != false) return
+        updateAccount { it.copy(isDeleting = true) }
         viewModelScope.launch {
             val proof = when (val result = signIn()) {
                 is SocialSignInResult.Google -> IdentityProof.Google(result.idToken)
                 is SocialSignInResult.Apple -> IdentityProof.Apple(result.identityToken)
                 // Closed the sheet: the dialog stays for another try.
                 SocialSignInResult.Cancelled -> {
-                    _uiState.update { it.copy(isDeleting = false) }
+                    updateAccount { it.copy(isDeleting = false) }
                     return@launch
                 }
                 SocialSignInResult.NotConfigured, SocialSignInResult.Failed -> {
-                    _uiState.update {
-                        it.copy(isDeleting = false, isReauthNeeded = false, message = UiText.Resource(Res.string.settings_error_reauth))
-                    }
+                    _uiState.update { it.copy(account = null, message = UiText.Resource(Res.string.settings_error_reauth)) }
                     return@launch
                 }
             }
@@ -211,9 +228,7 @@ class SettingsViewModel(
             val result = accountRepository.confirmAccountDeletion(proof)
             if (result is AppResult.Error) {
                 // REAUTH_FAILED (another account) carries the server's own message.
-                _uiState.update {
-                    it.copy(isDeleting = false, isReauthNeeded = false, message = result.error.toUiText(Res.string.settings_error_reauth))
-                }
+                _uiState.update { it.copy(account = null, message = result.error.toUiText(Res.string.settings_error_reauth)) }
             }
         }
     }
@@ -224,38 +239,56 @@ class SettingsViewModel(
         val username: String? = null,
         val hasPro: Boolean = false,
         val defaultVisibility: TripVisibility = TripVisibility.PUBLIC,
-        /** Null until loaded. */
-        val notifications: NotificationSettings? = null,
-        val hasNotificationsFailed: Boolean = false,
-        val export: DataExport? = null,
-        val hasLoadedExport: Boolean = false,
-        val isRequestingExport: Boolean = false,
+        val notifications: NotificationsState = NotificationsState(),
+        val export: ExportState = ExportState(),
         val legalDocuments: ImmutableList<LegalDocument> = persistentListOf(),
-        val isConfirmingSignOut: Boolean = false,
-        val isConfirmingDelete: Boolean = false,
-        val isDeleting: Boolean = false,
-        /** The server wants a fresh Google or Apple sign-in before it deletes the account. */
-        val isReauthNeeded: Boolean = false,
+        /** Sign-out or deletion being confirmed; null while neither dialog is open. */
+        val account: AccountDialogState? = null,
         /** Sign in with Apple is offered on iOS only. */
         val appleAvailable: Boolean = false,
         val message: UiText? = null,
     )
 
+    @Immutable
+    data class NotificationsState(
+        /** Null until loaded. */
+        val settings: NotificationSettings? = null,
+        val hasFailed: Boolean = false,
+    )
+
+    @Immutable
+    data class ExportState(val export: DataExport? = null, val hasLoaded: Boolean = false, val isRequesting: Boolean = false)
+
+    @Immutable
+    data class AccountDialogState(val dialog: AccountDialog, val isDeleting: Boolean = false)
+
+    enum class AccountDialog {
+        SignOut,
+        Delete,
+
+        /** The server wants a fresh Google or Apple sign-in before it deletes the account. */
+        Reauth,
+    }
+
     sealed interface Action {
-        data class OnVisibilityChange(val visibility: TripVisibility) : Action
-        data class OnNotificationChange(val type: NotificationType, val enabled: Boolean) : Action
-        data object OnRetryNotifications : Action
-        data object OnRequestExport : Action
-        data object OnSignOut : Action
-        data object OnConfirmSignOut : Action
-        data object OnDismissSignOut : Action
-        data object OnDeleteAccount : Action
-        data object OnConfirmDelete : Action
-        data object OnDismissDelete : Action
-        data object OnConfirmWithGoogle : Action
-        data object OnConfirmWithApple : Action
-        data object OnDismissReauth : Action
-        data object OnDismissMessage : Action
+        data class VisibilityChanged(val visibility: TripVisibility) : Action
+        data object RequestExport : Action
+        data object DismissMessage : Action
+
+        sealed interface Notifications : Action {
+            data class Changed(val type: NotificationType, val enabled: Boolean) : Notifications
+            data object Retry : Notifications
+        }
+
+        sealed interface Account : Action {
+            data object SignOut : Account
+            data object ConfirmSignOut : Account
+            data object Delete : Account
+            data object ConfirmDelete : Account
+            data object ConfirmWithGoogle : Account
+            data object ConfirmWithApple : Account
+            data object Dismiss : Account
+        }
     }
 
     private companion object {

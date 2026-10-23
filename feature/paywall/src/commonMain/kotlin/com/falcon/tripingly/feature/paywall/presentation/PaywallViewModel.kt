@@ -27,6 +27,7 @@ import com.falcon.tripingly.feature.paywall.generated.resources.paywall_welcome
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.toImmutableList
+import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -56,10 +57,10 @@ class PaywallViewModel(
                 if (hasPro) loadManagementUrl()
             }
         }
-        if (proRepository.isAvailable) loadOffers()
-        viewModelScope.launch {
-            val documents = accountRepository.legalDocuments(languageTag())
-            if (documents is AppResult.Success) _uiState.update { it.copy(legalDocuments = documents.data.toImmutableList()) }
+        if (proRepository.isAvailable) {
+            loadOffers()
+        } else {
+            viewModelScope.launch { _uiState.update { it.copy(legalDocuments = legalDocuments().toImmutableList()) } }
         }
     }
 
@@ -73,25 +74,28 @@ class PaywallViewModel(
         }
     }
 
+    /** The offers and the Terms and Privacy links shown with them, retried together: nothing is sold without the links. */
     private fun loadOffers() {
         _uiState.update { it.copy(isLoadingOffers = true, hasOffersFailed = false) }
         viewModelScope.launch {
-            when (val result = proRepository.offers()) {
-                is AppResult.Success -> {
-                    val offers = result.data.sortedBy { it.period.ordinal }
-                    _uiState.update { state ->
-                        state.copy(
-                            offers = offers.toImmutableList(),
-                            // The yearly plan is the one most people pick.
-                            selectedOfferId = state.selectedOfferId ?: (offers.firstOrNull { it.period == ProPeriod.Yearly } ?: offers.firstOrNull())?.id,
-                            isLoadingOffers = false,
-                        )
-                    }
-                }
-                is AppResult.Error -> _uiState.update { it.copy(isLoadingOffers = false, hasOffersFailed = true) }
+            val documents = async { _uiState.value.legalDocuments.ifEmpty { legalDocuments() } }
+            val offers = (proRepository.offers() as? AppResult.Success)?.data?.sortedBy { it.period.ordinal }
+            val legal = documents.await()
+            _uiState.update { state ->
+                state.copy(
+                    offers = offers.orEmpty().toImmutableList(),
+                    // The yearly plan is the one most people pick.
+                    selectedOfferId = state.selectedOfferId ?: (offers?.firstOrNull { it.period == ProPeriod.Yearly } ?: offers?.firstOrNull())?.id,
+                    legalDocuments = legal.toImmutableList(),
+                    isLoadingOffers = false,
+                    hasOffersFailed = offers == null || legal.isEmpty(),
+                )
             }
         }
     }
+
+    private suspend fun legalDocuments(): List<LegalDocument> =
+        (accountRepository.legalDocuments(languageTag()) as? AppResult.Success)?.data.orEmpty()
 
     private fun buy() {
         val state = _uiState.value

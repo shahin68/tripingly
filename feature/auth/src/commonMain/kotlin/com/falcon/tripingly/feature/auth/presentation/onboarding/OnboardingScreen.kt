@@ -42,6 +42,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.falcon.tripingly.core.common.util.DateUtils
 import com.falcon.tripingly.core.designsystem.component.ShowMessage
 import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
 import com.falcon.tripingly.core.designsystem.theme.spacing
@@ -184,7 +185,7 @@ private fun BirthDateField(date: LocalDate?, onClick: () -> Unit) {
         interactions.interactions.collect { if (it is PressInteraction.Release) onClick() }
     }
     OutlinedTextField(
-        value = date?.toString().orEmpty(),
+        value = date?.let(DateUtils::formatFormal).orEmpty(),
         onValueChange = {},
         readOnly = true,
         label = { Text(stringResource(Res.string.onboarding_birth_date)) },

@@ -48,6 +48,8 @@ import com.falcon.tripingly.feature.social.presentation.component.PersonRow
 import com.falcon.tripingly.feature.social.presentation.component.PublicTripCard
 import com.falcon.tripingly.feature.social.presentation.social.SocialViewModel.Action
 import com.falcon.tripingly.feature.social.presentation.social.SocialViewModel.Event
+import com.falcon.tripingly.feature.social.presentation.social.SocialViewModel.ExploreState
+import com.falcon.tripingly.feature.social.presentation.social.SocialViewModel.PeopleSearchState
 import com.falcon.tripingly.feature.social.presentation.social.SocialViewModel.Section
 import com.falcon.tripingly.feature.social.presentation.social.SocialViewModel.State
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -67,13 +69,13 @@ fun SocialRoute(
     viewModel: SocialViewModel = koinViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
-    LaunchedEffect(query) { viewModel.onAction(Action.OnQueryChanged(query)) }
+    LaunchedEffect(query) { viewModel.onAction(Action.People.QueryChanged(query)) }
 
-    val locationPermission = rememberLocationPermissionController { viewModel.onAction(Action.OnPermissionResult(it)) }
+    val locationPermission = rememberLocationPermissionController { viewModel.onAction(Action.LocationPermissionResult(it)) }
     if (state.section == Section.Nearby) {
         // When Nearby opens and on every return to the app, e.g. from Settings.
         LifecycleResumeEffect(locationPermission) {
-            viewModel.onAction(Action.OnPermissionChecked(locationPermission.status()))
+            viewModel.onAction(Action.Nearby.PermissionChecked(locationPermission.status()))
             onPauseOrDispose {}
         }
     }
@@ -83,18 +85,18 @@ fun SocialRoute(
             is Event.OpenTrip -> onOpenTrip(event.tripId)
             is Event.OpenProfile -> onOpenProfile(event.username)
             Event.RequestPermission -> locationPermission.request()
-            Event.CheckExploreLocation -> viewModel.onAction(Action.OnExploreLocationChecked(locationPermission.status()))
+            Event.CheckExploreLocation -> viewModel.onAction(Action.Explore.LocationChecked(locationPermission.status()))
             Event.OpenAppSettings -> locationPermission.openSettings()
         }
     }
 
     SocialScreen(state = state, onAction = viewModel::onAction)
 
-    if (state.reporting != null) {
+    state.report?.let { report ->
         ReportDialog(
-            onReport = { reason, details -> viewModel.onAction(Action.OnSendReport(reason, details)) },
-            onDismiss = { viewModel.onAction(Action.OnDismissReport) },
-            isSending = state.isReporting,
+            onReport = { reason, details -> viewModel.onAction(Action.Report.Send(reason, details)) },
+            onDismiss = { viewModel.onAction(Action.Report.Dismiss) },
+            isSending = report.isSending,
         )
     }
     state.addPlace?.let { addPlace ->
@@ -107,11 +109,11 @@ internal fun SocialScreen(state: State, onAction: (Action) -> Unit, modifier: Mo
     Column(modifier.fillMaxSize()) {
         ShowMessage(
             message = state.message?.asString(),
-            onShown = { onAction(Action.OnDismissMessage) },
+            onShown = { onAction(Action.DismissMessage) },
             isError = state.message !is UiText.Note,
         )
-        if (state.isSearchingByName) {
-            PeopleResults(state, onAction)
+        if (state.people.isSearchingByName) {
+            PeopleResults(state.people, onAction)
             return@Column
         }
         SegmentedToggle(
@@ -123,42 +125,42 @@ internal fun SocialScreen(state: State, onAction: (Action) -> Unit, modifier: Mo
             SegmentedToggleOption(
                 label = stringResource(Res.string.social_explore),
                 selected = state.section == Section.Explore,
-                onClick = { onAction(Action.OnSectionSelected(Section.Explore)) },
+                onClick = { onAction(Action.SectionSelected(Section.Explore)) },
                 icon = Icons.Default.Explore,
             )
             SegmentedToggleOption(
                 label = stringResource(Res.string.social_nearby),
                 selected = state.section == Section.Nearby,
-                onClick = { onAction(Action.OnSectionSelected(Section.Nearby)) },
+                onClick = { onAction(Action.SectionSelected(Section.Nearby)) },
                 icon = Icons.Default.NearMe,
             )
         }
         when (state.section) {
-            Section.Explore -> ExploreContent(state, onAction)
-            Section.Nearby -> NearbyContent(state, onAction)
+            Section.Explore -> ExploreContent(state.explore, onAction)
+            Section.Nearby -> NearbyContent(state.nearby, onAction)
         }
     }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun ExploreContent(state: State, onAction: (Action) -> Unit) {
+private fun ExploreContent(state: ExploreState, onAction: (Action) -> Unit) {
     val listState = rememberLazyListState()
-    LoadMoreAtEnd(listState) { onAction(Action.OnLoadMore) }
+    LoadMoreAtEnd(listState) { onAction(Action.Explore.LoadMore) }
     ExploreFilters(state = state, onAction = onAction)
     PullToRefreshBox(
-        isRefreshing = state.isLoadingExplore && state.hasLoadedExplore,
-        onRefresh = { onAction(Action.OnRefresh) },
+        isRefreshing = state.isLoading && state.hasLoaded,
+        onRefresh = { onAction(Action.Explore.Refresh) },
         modifier = Modifier.fillMaxSize(),
     ) {
         when {
-            !state.hasLoadedExplore && state.isLoadingExplore -> Centered { CircularProgressIndicator() }
-            state.explore.isEmpty() -> LazyColumn(Modifier.fillMaxSize(), verticalArrangement = Arrangement.Center) {
+            !state.hasLoaded && state.isLoading -> Centered { CircularProgressIndicator() }
+            state.trips.isEmpty() -> LazyColumn(Modifier.fillMaxSize(), verticalArrangement = Arrangement.Center) {
                 // A list, so pull-to-refresh also works when it's empty.
                 item {
                     EmptyText(
                         stringResource(
-                            if (state.isExploreFiltered) Res.string.social_explore_empty_filtered else Res.string.social_explore_empty,
+                            if (state.isFiltered) Res.string.social_explore_empty_filtered else Res.string.social_explore_empty,
                         ),
                     )
                 }
@@ -169,15 +171,15 @@ private fun ExploreContent(state: State, onAction: (Action) -> Unit) {
                 contentPadding = PaddingValues(MaterialTheme.spacing.medium),
                 verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium),
             ) {
-                items(state.explore, key = { it.trip.id }) { trip ->
+                items(state.trips, key = { it.trip.id }) { trip ->
                     PublicTripCard(
                         modifier = Modifier.animateItem(),
                         trip = trip,
-                        onOpen = { onAction(Action.OnTripClick(trip)) },
-                        onOpenOwner = { onAction(Action.OnPersonClick(trip.trip.owner)) },
-                        onLike = { onAction(Action.OnLikeTrip(trip)) },
-                        onToggleSave = { onAction(Action.OnToggleSaveTrip(trip)) },
-                        onReport = { onAction(Action.OnReportTrip(trip)) },
+                        onOpen = { onAction(Action.Explore.TripClick(trip)) },
+                        onOpenOwner = { onAction(Action.Explore.OwnerClick(trip.trip.owner)) },
+                        onLike = { onAction(Action.Explore.LikeTrip(trip)) },
+                        onToggleSave = { onAction(Action.Explore.ToggleSaveTrip(trip)) },
+                        onReport = { onAction(Action.Explore.ReportTrip(trip)) },
                     )
                 }
             }
@@ -186,13 +188,13 @@ private fun ExploreContent(state: State, onAction: (Action) -> Unit) {
 }
 
 @Composable
-private fun PeopleResults(state: State, onAction: (Action) -> Unit) {
+private fun PeopleResults(state: PeopleSearchState, onAction: (Action) -> Unit) {
     when {
-        state.isSearchingPeople && state.people.isEmpty() -> Centered { CircularProgressIndicator() }
-        state.people.isEmpty() -> Centered { EmptyText(stringResource(Res.string.social_people_none)) }
+        state.isSearching && state.results.isEmpty() -> Centered { CircularProgressIndicator() }
+        state.results.isEmpty() -> Centered { EmptyText(stringResource(Res.string.social_people_none)) }
         else -> LazyColumn(Modifier.fillMaxSize()) {
-            items(state.people, key = { it.id }) { user ->
-                PersonRow(user = user, onClick = { onAction(Action.OnPersonClick(user)) })
+            items(state.results, key = { it.id }) { user ->
+                PersonRow(user = user, onClick = { onAction(Action.People.PersonClick(user)) })
             }
         }
     }

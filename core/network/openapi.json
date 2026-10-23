@@ -78,6 +78,35 @@
         ]
       }
     },
+    "/v1/billing/revenuecat/webhook": {
+      "post": {
+        "description": "Authorized by the Authorization header set in RevenueCat (REVENUECAT_WEBHOOK_AUTH). Reads the named customers from RevenueCat and writes their Tripinly Pro entitlements; 503 while REVENUECAT_API_KEY is unset, so RevenueCat retries.",
+        "operationId": "RevenueCatWebhook_receive",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RevenueCatWebhookDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "401": {
+            "description": "UNAUTHENTICATED: wrong or missing Authorization"
+          }
+        },
+        "summary": "RevenueCat purchase events (called by RevenueCat, not the apps)",
+        "tags": [
+          "billing"
+        ]
+      }
+    },
     "/v1/auth/google": {
       "post": {
         "operationId": "Auth_google_",
@@ -4257,6 +4286,22 @@
           "pinDotBelowZoom"
         ]
       },
+      "RevenueCatWebhookDto": {
+        "type": "object",
+        "properties": {
+          "event": {
+            "type": "object",
+            "additionalProperties": true,
+            "description": "The RevenueCat event; `app_user_id`, `aliases`, `transferred_from` and `transferred_to` name the customers to sync"
+          },
+          "api_version": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "event"
+        ]
+      },
       "GoogleSignInDto": {
         "type": "object",
         "properties": {
@@ -4771,6 +4816,12 @@
               "viewer"
             ]
           },
+          "coverPhotoId": {
+            "type": "string",
+            "nullable": true,
+            "description": "The cover photo shown as coverThumbUrl: cache the image by this id, since the URL is re-signed",
+            "format": "uuid"
+          },
           "coverThumbUrl": {
             "type": "string",
             "nullable": true,
@@ -4816,6 +4867,7 @@
           "visibility",
           "owner",
           "role",
+          "coverPhotoId",
           "coverThumbUrl",
           "dayCount",
           "markerCount",

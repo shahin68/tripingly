@@ -22,6 +22,7 @@ import com.falcon.tripingly.feature.trips.presentation.members.TripMembersRoute
 import com.falcon.tripingly.feature.trips.presentation.permission.rememberNotificationPermissionRequest
 import com.falcon.tripingly.feature.trips.presentation.screen.HomeViewModel.Action
 import com.falcon.tripingly.feature.trips.presentation.screen.HomeViewModel.Dialog
+import com.falcon.tripingly.feature.trips.presentation.screen.HomeViewModel.DialogState
 import com.falcon.tripingly.feature.trips.presentation.screen.HomeViewModel.Event
 import org.jetbrains.compose.resources.getString
 import org.koin.compose.koinInject
@@ -71,22 +72,28 @@ fun HomeRoute(
         socialContent = socialContent,
     )
 
-    val onDismiss = { viewModel.onAction(Action.OnDismissDialog) }
-    val error = state.dialogError?.asString()
-    when (val dialog = state.dialog) {
-        null -> Unit
-        Dialog.Create -> CreateTripSheet(
-            form = state.createTrip,
-            isSaving = state.isSaving,
-            error = state.dialogError,
-            onAction = viewModel::onAction,
+    state.dialog?.let { TripDialog(it, viewModel::onAction) }
+
+    state.membersTripId?.let { tripId ->
+        TripMembersRoute(
+            tripId = tripId,
+            onDismiss = { viewModel.onAction(Action.Trips.DismissMembers) },
         )
+    }
+}
+
+@Composable
+private fun TripDialog(state: DialogState, onAction: (Action) -> Unit) {
+    val onDismiss = { onAction(Action.TripDialog.Dismiss) }
+    val error = state.error?.asString()
+    when (val dialog = state.dialog) {
+        is Dialog.Create -> CreateTripSheet(form = dialog.form, isSaving = state.isSaving, error = state.error, onAction = onAction)
         is Dialog.Rename -> RenameTripDialog(
             initialName = dialog.trip.name,
             isSaving = state.isSaving,
             error = error,
             onDismiss = onDismiss,
-            onConfirm = { viewModel.onAction(Action.OnConfirmRenameTrip(dialog.trip.id, it)) },
+            onConfirm = { onAction(Action.TripDialog.ConfirmRename(dialog.trip.id, it)) },
         )
         is Dialog.Reschedule -> RescheduleTripDialog(
             initialStartDate = dialog.trip.startDate,
@@ -94,7 +101,7 @@ fun HomeRoute(
             isSaving = state.isSaving,
             error = error,
             onDismiss = onDismiss,
-            onConfirm = { start, end -> viewModel.onAction(Action.OnConfirmRescheduleTrip(dialog.trip.id, start, end)) },
+            onConfirm = { start, end -> onAction(Action.TripDialog.ConfirmReschedule(dialog.trip.id, start, end)) },
         )
         is Dialog.ConfirmDelete -> ConfirmTripDialog(
             kind = TripDialogKind.Delete,
@@ -103,7 +110,7 @@ fun HomeRoute(
             isSaving = state.isSaving,
             error = error,
             onDismiss = onDismiss,
-            onConfirm = { viewModel.onAction(Action.OnConfirmDeleteTrip(dialog.trip.id)) },
+            onConfirm = { onAction(Action.TripDialog.ConfirmDelete(dialog.trip.id)) },
         )
         is Dialog.ConfirmLeave -> ConfirmTripDialog(
             kind = TripDialogKind.Leave,
@@ -111,14 +118,7 @@ fun HomeRoute(
             isSaving = state.isSaving,
             error = error,
             onDismiss = onDismiss,
-            onConfirm = { viewModel.onAction(Action.OnConfirmLeaveTrip(dialog.trip.id)) },
-        )
-    }
-
-    state.membersTripId?.let { tripId ->
-        TripMembersRoute(
-            tripId = tripId,
-            onDismiss = { viewModel.onAction(Action.OnDismissMembers) },
+            onConfirm = { onAction(Action.TripDialog.ConfirmLeave(dialog.trip.id)) },
         )
     }
 }

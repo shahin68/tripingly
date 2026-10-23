@@ -37,8 +37,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -84,7 +84,7 @@ fun HomeScreen(
     val currentTab = Tab.entries[pagerState.currentPage]
 
     LaunchedEffect(pagerState.currentPage) {
-        onAction(Action.OnTabSelected(currentTab))
+        onAction(Action.TabSelected(currentTab))
     }
 
     Scaffold(
@@ -109,7 +109,7 @@ fun HomeScreen(
 
             if (fabScale > 0f) {
                 FloatingActionButton(
-                    onClick = { onAction(Action.OnAddTripClick) },
+                    onClick = { onAction(Action.Trips.Add) },
                     modifier = Modifier.scale(fabScale)
                 ) {
                     Icon(
@@ -128,7 +128,7 @@ fun HomeScreen(
             FloatingSearchBar(
                 query = if (currentTab == Tab.MyTrips) state.searchQuery else state.peopleQuery,
                 onQueryChange = {
-                    onAction(if (currentTab == Tab.MyTrips) Action.OnSearchQueryChanged(it) else Action.OnPeopleQueryChanged(it))
+                    onAction(if (currentTab == Tab.MyTrips) Action.SearchQueryChanged(it) else Action.PeopleQueryChanged(it))
                 },
                 placeholder = if (currentTab == Tab.MyTrips) {
                     stringResource(Res.string.home_search_placeholder_trips)
@@ -144,7 +144,7 @@ fun HomeScreen(
 
             ShowMessage(
                 message = state.message?.asString(),
-                onShown = { onAction(Action.OnDismissMessage) },
+                onShown = { onAction(Action.DismissMessage) },
                 isError = state.message !is UiText.Note,
             )
 
@@ -172,11 +172,11 @@ private fun MyTripsContent(
     state: State,
     onAction: (Action) -> Unit
 ) {
-    var selectedTripId by remember { mutableStateOf<String?>(null) }
+    var selectedTripId by rememberSaveable { mutableStateOf<String?>(null) }
 
     PullToRefreshBox(
         isRefreshing = state.isRefreshing && state.hasLoaded,
-        onRefresh = { onAction(Action.OnRefresh) },
+        onRefresh = { onAction(Action.Trips.Refresh) },
         modifier = Modifier.fillMaxSize(),
     ) {
         when {
@@ -209,7 +209,7 @@ private fun MyTripsContent(
                     ) {
                         TripItem(
                             trip = trip,
-                            onClick = { onAction(Action.OnTripClick(trip.id)) },
+                            onClick = { onAction(Action.Trips.Click(trip.id)) },
                             onLongClick = { selectedTripId = trip.id },
                             isSelected = isSelected
                         )
@@ -229,30 +229,21 @@ private fun MyTripsContent(
     }
 }
 
-/** The long-press menu: the owner manages the trip, an editor can share it or leave, a saved trip can be removed. */
+/** The long-press menu; which entries a trip has is decided by [menu]. */
 @Composable
-private fun tripActions(trip: Trip, onAction: (Action) -> Unit): List<DropdownAction> = buildList {
-    if (trip.role == TripRole.VIEWER) {
-        add(DropdownAction(stringResource(Res.string.trip_action_share)) { onAction(Action.OnShareTrip(trip.id)) })
-        add(DropdownAction(stringResource(Res.string.trip_action_remove_saved), isDestructive = true) { onAction(Action.OnRemoveSavedTrip(trip.id)) })
-        return@buildList
-    }
-    if (trip.role.canManage) {
-        add(DropdownAction(stringResource(Res.string.trip_action_rename)) { onAction(Action.OnRenameTrip(trip.id)) })
-        add(DropdownAction(stringResource(Res.string.trip_action_reschedule)) { onAction(Action.OnRescheduleTrip(trip.id)) })
-        val visibilityLabel = if (trip.visibility == TripVisibility.PUBLIC) {
-            Res.string.trip_action_make_private
-        } else {
-            Res.string.trip_action_make_public
+private fun tripActions(trip: Trip, onAction: (Action) -> Unit): List<DropdownAction> = trip.menu().map { item ->
+    when (item) {
+        TripMenuItem.Rename -> DropdownAction(stringResource(Res.string.trip_action_rename)) { onAction(Action.Trips.Rename(trip.id)) }
+        TripMenuItem.Reschedule -> DropdownAction(stringResource(Res.string.trip_action_reschedule)) { onAction(Action.Trips.Reschedule(trip.id)) }
+        TripMenuItem.MakePrivate -> DropdownAction(stringResource(Res.string.trip_action_make_private)) { onAction(Action.Trips.ToggleVisibility(trip.id)) }
+        TripMenuItem.MakePublic -> DropdownAction(stringResource(Res.string.trip_action_make_public)) { onAction(Action.Trips.ToggleVisibility(trip.id)) }
+        TripMenuItem.Members -> DropdownAction(stringResource(Res.string.trip_action_members)) { onAction(Action.Trips.ManageMembers(trip.id)) }
+        TripMenuItem.Share -> DropdownAction(stringResource(Res.string.trip_action_share)) { onAction(Action.Trips.Share(trip.id)) }
+        TripMenuItem.RemoveSaved -> DropdownAction(stringResource(Res.string.trip_action_remove_saved), isDestructive = true) {
+            onAction(Action.Trips.RemoveSaved(trip.id))
         }
-        add(DropdownAction(stringResource(visibilityLabel)) { onAction(Action.OnToggleVisibility(trip.id)) })
-    }
-    add(DropdownAction(stringResource(Res.string.trip_action_members)) { onAction(Action.OnManageMembers(trip.id)) })
-    add(DropdownAction(stringResource(Res.string.trip_action_share)) { onAction(Action.OnShareTrip(trip.id)) })
-    if (trip.role.canManage) {
-        add(DropdownAction(stringResource(Res.string.trip_action_delete), isDestructive = true) { onAction(Action.OnDeleteTrip(trip.id)) })
-    } else if (trip.role.canEdit) {
-        add(DropdownAction(stringResource(Res.string.trip_action_leave), isDestructive = true) { onAction(Action.OnLeaveTrip(trip.id)) })
+        TripMenuItem.Delete -> DropdownAction(stringResource(Res.string.trip_action_delete), isDestructive = true) { onAction(Action.Trips.Delete(trip.id)) }
+        TripMenuItem.Leave -> DropdownAction(stringResource(Res.string.trip_action_leave), isDestructive = true) { onAction(Action.Trips.Leave(trip.id)) }
     }
 }
 

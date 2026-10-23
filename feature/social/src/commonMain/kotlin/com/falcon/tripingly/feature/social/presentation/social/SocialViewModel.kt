@@ -11,33 +11,19 @@ import com.falcon.tripingly.core.data.trips.TripRepository
 import com.falcon.tripingly.core.data.users.UserRepository
 import com.falcon.tripingly.core.location.GetCurrentLocationUseCase
 import com.falcon.tripingly.core.location.permission.LocationPermission
-import com.falcon.tripingly.core.model.social.ExploreFilter
 import com.falcon.tripingly.core.model.social.ExplorePeriod
-import com.falcon.tripingly.core.model.social.LikeTarget
 import com.falcon.tripingly.core.model.social.NearbyPlace
 import com.falcon.tripingly.core.model.social.PublicTrip
 import com.falcon.tripingly.core.model.social.ReportReason
 import com.falcon.tripingly.core.model.social.ReportTarget
-import com.falcon.tripingly.core.model.trip.GeoPoint
-import com.falcon.tripingly.core.model.trip.NewMarker
 import com.falcon.tripingly.core.model.trip.Trip
 import com.falcon.tripingly.core.model.trip.TripDay
 import com.falcon.tripingly.core.model.trip.UserSummary
 import com.falcon.tripingly.core.ui.UiText
 import com.falcon.tripingly.core.ui.toUiText
 import com.falcon.tripingly.feature.social.generated.resources.Res
-import com.falcon.tripingly.feature.social.generated.resources.social_add_place_no_trips
-import com.falcon.tripingly.feature.social.generated.resources.social_error_like
-import com.falcon.tripingly.feature.social.generated.resources.social_error_load_days
-import com.falcon.tripingly.feature.social.generated.resources.social_error_load_explore
-import com.falcon.tripingly.feature.social.generated.resources.social_error_load_nearby
-import com.falcon.tripingly.feature.social.generated.resources.social_error_report
-import com.falcon.tripingly.feature.social.generated.resources.social_error_save_trip
 import com.falcon.tripingly.feature.social.generated.resources.social_error_search_people
-import com.falcon.tripingly.feature.social.generated.resources.social_error_unsave_trip
-import com.falcon.tripingly.feature.social.generated.resources.social_explore_nearby_blocked
-import com.falcon.tripingly.feature.social.generated.resources.social_nearby_location_unavailable
-import com.falcon.tripingly.feature.social.generated.resources.social_reported
+import com.falcon.tripingly.feature.social.presentation.component.PublicTripActions
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.toImmutableList
@@ -47,7 +33,6 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -55,15 +40,15 @@ import kotlinx.coroutines.launch
 /**
  * The Social tab: Explore (public trips, most liked first, filtered by period and optionally near me; liked
  * and added to my trips), Nearby (popular places around me, liked and added to a day of one of my trips)
- * and finding people by name. Explore's Nearby filter asks for the location only when it's switched on.
+ * and finding people by name. Explore and Nearby each have their own part ([SocialExplore], [SocialNearby]).
  */
 class SocialViewModel(
-    private val socialRepository: SocialRepository,
+    socialRepository: SocialRepository,
     private val userRepository: UserRepository,
-    private val placeRepository: PlaceRepository,
-    private val tripRepository: TripRepository,
-    private val markerRepository: MarkerRepository,
-    private val getCurrentLocation: GetCurrentLocationUseCase,
+    placeRepository: PlaceRepository,
+    tripRepository: TripRepository,
+    markerRepository: MarkerRepository,
+    getCurrentLocation: GetCurrentLocationUseCase,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(State())
@@ -72,346 +57,133 @@ class SocialViewModel(
     private val _events = Channel<Event>(capacity = Channel.BUFFERED)
     val events = _events.receiveAsFlow()
 
-    private var exploreCursor: String? = null
-    private var nearbyCursor: String? = null
-
-    /** Where Nearby looked, for its next pages; kept in memory only while the tab is open. */
-    private var nearbyPoint: GeoPoint? = null
-
-    /** Where Explore's Nearby filter looks while it's on; in memory only, like [nearbyPoint]. */
-    private var explorePoint: GeoPoint? = null
-
-    /** The location was asked for because Explore's Nearby filter was switched on. */
-    private var isAskingForExplore = false
-    private var exploreLoad: Job? = null
+    private val tripActions = PublicTripActions(
+        scope = viewModelScope,
+        socialRepository = socialRepository,
+        tripRepository = tripRepository,
+        trip = { id -> _uiState.value.explore.trips.firstOrNull { it.trip.id == id } },
+        updateTrip = { id, change -> _uiState.update { it.copy(explore = it.explore.updateTrip(id, change)) } },
+        showMessage = ::showMessage,
+    )
+    private val explore = SocialExplore(viewModelScope, _uiState, socialRepository, getCurrentLocation, ::sendEvent, ::showMessage)
+    private val nearby = SocialNearby(
+        viewModelScope, _uiState, placeRepository, socialRepository, tripRepository, markerRepository, getCurrentLocation, ::sendEvent, ::showMessage,
+    )
     private var peopleSearch: Job? = null
-    private var loadingMore: Job? = null
 
     init {
-        loadExplore()
-    }
-
-    fun onAction(action: Action) {
-        when (action) {
-            is Action.OnSectionSelected -> _uiState.update { it.copy(section = action.section) }
-            is Action.OnExplorePeriodSelected -> selectPeriod(action.period)
-            Action.OnToggleExploreNearby -> toggleExploreNearby()
-            is Action.OnExploreLocationChecked -> onExploreLocation(action.permission)
-            is Action.OnQueryChanged -> searchPeople(action.query)
-            Action.OnRefresh -> refresh()
-            Action.OnLoadMore -> loadMore()
-            is Action.OnTripClick -> sendEvent(Event.OpenTrip(action.trip.trip.id))
-            is Action.OnPersonClick -> sendEvent(Event.OpenProfile(action.user.username))
-            is Action.OnLikeTrip -> likeTrip(action.trip)
-            is Action.OnToggleSaveTrip -> toggleSave(action.trip)
-            is Action.OnReportTrip -> _uiState.update { it.copy(reporting = action.trip) }
-            is Action.OnSendReport -> sendReport(action.reason, action.details)
-            Action.OnDismissReport -> _uiState.update { it.copy(reporting = null) }
-            is Action.OnPermissionChecked -> onPermission(action.permission, isAnswer = false)
-            is Action.OnPermissionResult -> onPermission(action.permission, isAnswer = true)
-            Action.OnAllowLocation -> sendEvent(
-                if (_uiState.value.nearbyStatus == NearbyStatus.Blocked) Event.OpenAppSettings else Event.RequestPermission,
-            )
-            is Action.OnLikePlace -> likePlace(action.place)
-            is Action.OnAddPlace -> openAddPlace(action.place)
-            is Action.OnPickTrip -> pickTrip(action.trip)
-            is Action.OnPickDay -> addPlace(action.day)
-            Action.OnDismissAddPlace -> _uiState.update { it.copy(addPlace = null) }
-            Action.OnDismissMessage -> _uiState.update { it.copy(message = null) }
-        }
-    }
-
-    /** The first page for the current filters; replaces a load still on its way, and stops loading more of the old list. */
-    private fun loadExplore() {
-        exploreLoad?.cancel()
-        loadingMore?.cancel()
-        exploreLoad = viewModelScope.launch {
-            _uiState.update { it.copy(isLoadingExplore = true) }
-            when (val result = socialRepository.explore(exploreFilter(), cursor = null)) {
-                is AppResult.Success -> {
-                    exploreCursor = result.data.nextCursor
-                    _uiState.update {
-                        it.copy(explore = result.data.items.toImmutableList(), isLoadingExplore = false, hasLoadedExplore = true)
-                    }
-                }
-                is AppResult.Error -> _uiState.update { it.copy(isLoadingExplore = false, message = result.error.toUiText(Res.string.social_error_load_explore)) }
-            }
-        }
-    }
-
-    private fun refresh() {
-        when (_uiState.value.section) {
-            Section.Explore -> loadExplore()
-            Section.Nearby -> nearbyPoint?.let { loadNearby(it) }
-        }
-    }
-
-    /** The next page of the list on show; one request at a time. */
-    private fun loadMore() {
-        if (loadingMore?.isActive == true) return
-        loadingMore = viewModelScope.launch {
-            when (_uiState.value.section) {
-                Section.Explore -> {
-                    val cursor = exploreCursor ?: return@launch
-                    val result = socialRepository.explore(exploreFilter(), cursor)
-                    if (result is AppResult.Success) {
-                        exploreCursor = result.data.nextCursor
-                        _uiState.update { state ->
-                            val known = state.explore.map { it.trip.id }.toSet()
-                            state.copy(explore = (state.explore + result.data.items.filterNot { it.trip.id in known }).toImmutableList())
-                        }
-                    }
-                }
-                Section.Nearby -> {
-                    val cursor = nearbyCursor ?: return@launch
-                    val point = nearbyPoint ?: return@launch
-                    val result = placeRepository.nearby(point, cursor)
-                    if (result is AppResult.Success) {
-                        nearbyCursor = result.data.nextCursor
-                        _uiState.update { state ->
-                            val known = state.nearby.map { it.id }.toSet()
-                            state.copy(nearby = (state.nearby + result.data.items.filterNot { it.id in known }).toImmutableList())
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    private fun exploreFilter() = ExploreFilter(
-        period = _uiState.value.explorePeriod,
-        near = explorePoint.takeIf { _uiState.value.isExploreNearby },
-    )
-
-    private fun selectPeriod(period: ExplorePeriod) {
-        if (period == _uiState.value.explorePeriod) return
-        _uiState.update { it.copy(explorePeriod = period) }
-        loadExplore()
-    }
-
-    /** Off at once; on only once the location is known, asked for right then if it isn't allowed yet. */
-    private fun toggleExploreNearby() {
-        if (_uiState.value.isExploreNearby) {
-            explorePoint = null
-            _uiState.update { it.copy(isExploreNearby = false) }
-            loadExplore()
-        } else {
-            sendEvent(Event.CheckExploreLocation)
-        }
-    }
-
-    private fun onExploreLocation(permission: LocationPermission) {
-        when (permission) {
-            LocationPermission.Granted -> locateForExplore()
-            LocationPermission.NotAsked, LocationPermission.ShouldExplain -> {
-                isAskingForExplore = true
-                sendEvent(Event.RequestPermission)
-            }
-            LocationPermission.Blocked -> _uiState.update { it.copy(message = UiText.Resource(Res.string.social_explore_nearby_blocked)) }
-        }
-    }
-
-    private fun locateForExplore() {
-        _uiState.update { it.copy(isExploreNearby = true, isLoadingExplore = true) }
+        explore.load()
+        // Someone blocked here leaves the lists at once.
         viewModelScope.launch {
-            when (val location = getCurrentLocation().first()) {
-                is AppResult.Success -> {
-                    explorePoint = GeoPoint(location.data.latitude, location.data.longitude)
-                    loadExplore()
-                }
-                is AppResult.Error -> _uiState.update {
-                    it.copy(
-                        isExploreNearby = false,
-                        isLoadingExplore = false,
-                        message = UiText.Resource(Res.string.social_nearby_location_unavailable),
+            userRepository.blocks.collect { userId ->
+                _uiState.update { state ->
+                    state.copy(
+                        explore = state.explore.copy(trips = state.explore.trips.filterNot { it.trip.owner.id == userId }.toImmutableList()),
+                        people = state.people.copy(results = state.people.results.filterNot { it.id == userId }.toImmutableList()),
                     )
                 }
             }
         }
     }
 
+    fun onAction(action: Action) {
+        when (action) {
+            is Action.SectionSelected -> _uiState.update { it.copy(section = action.section) }
+            is Action.LocationPermissionResult -> if (!explore.onPermissionAnswer(action.permission)) nearby.onPermission(action.permission, isAnswer = true)
+            Action.DismissMessage -> _uiState.update { it.copy(message = null) }
+            is Action.Explore -> onExplore(action)
+            is Action.Nearby -> onNearby(action)
+            is Action.People -> onPeople(action)
+            is Action.Report -> onReport(action)
+            is Action.AddToTrip -> onAddToTrip(action)
+        }
+    }
+
+    private fun onExplore(action: Action.Explore) {
+        when (action) {
+            is Action.Explore.PeriodSelected -> explore.selectPeriod(action.period)
+            Action.Explore.ToggleNearby -> explore.toggleNearby()
+            is Action.Explore.LocationChecked -> explore.onLocationChecked(action.permission)
+            Action.Explore.Refresh -> explore.load()
+            Action.Explore.LoadMore -> explore.loadMore()
+            is Action.Explore.TripClick -> sendEvent(Event.OpenTrip(action.trip.trip.id))
+            is Action.Explore.OwnerClick -> sendEvent(Event.OpenProfile(action.owner.username))
+            is Action.Explore.LikeTrip -> tripActions.toggleLike(action.trip.trip.id)
+            is Action.Explore.ToggleSaveTrip -> tripActions.toggleSave(action.trip.trip.id)
+            is Action.Explore.ReportTrip -> _uiState.update { it.copy(report = ReportState(action.trip)) }
+        }
+    }
+
+    private fun onNearby(action: Action.Nearby) {
+        when (action) {
+            is Action.Nearby.PermissionChecked -> nearby.onPermission(action.permission, isAnswer = false)
+            Action.Nearby.AllowLocation -> sendEvent(
+                if (_uiState.value.nearby.status == NearbyStatus.Blocked) Event.OpenAppSettings else Event.RequestPermission,
+            )
+            Action.Nearby.Refresh -> nearby.refresh()
+            Action.Nearby.LoadMore -> nearby.loadMore()
+            is Action.Nearby.LikePlace -> nearby.toggleLike(action.place.id)
+            is Action.Nearby.AddPlace -> nearby.openAddPlace(action.place)
+        }
+    }
+
+    private fun onPeople(action: Action.People) {
+        when (action) {
+            is Action.People.QueryChanged -> searchPeople(action.query)
+            is Action.People.PersonClick -> sendEvent(Event.OpenProfile(action.user.username))
+        }
+    }
+
+    private fun onReport(action: Action.Report) {
+        when (action) {
+            is Action.Report.Send -> sendReport(action.reason, action.details)
+            Action.Report.Dismiss -> _uiState.update { it.copy(report = null) }
+        }
+    }
+
+    private fun onAddToTrip(action: Action.AddToTrip) {
+        when (action) {
+            is Action.AddToTrip.PickTrip -> nearby.pickTrip(action.trip)
+            is Action.AddToTrip.PickDay -> nearby.addPlace(action.day)
+            Action.AddToTrip.Dismiss -> _uiState.update { it.copy(addPlace = null) }
+        }
+    }
+
     /** Asks the server only once typing pauses; a short or cleared query clears the results at once. */
     private fun searchPeople(query: String) {
-        if (query == _uiState.value.peopleQuery) return
+        if (query == _uiState.value.people.query) return
         peopleSearch?.cancel()
-        _uiState.update { it.copy(peopleQuery = query) }
-        if (query.trim().removePrefix("@").length < UserRepository.MIN_SEARCH_LENGTH) {
-            _uiState.update { it.copy(people = persistentListOf(), isSearchingPeople = false) }
+        _uiState.update { it.copy(people = it.people.copy(query = query)) }
+        if (!_uiState.value.people.isSearchingByName) {
+            _uiState.update { it.copy(people = it.people.copy(results = persistentListOf(), isSearching = false)) }
             return
         }
         peopleSearch = viewModelScope.launch {
             delay(SEARCH_DEBOUNCE_MILLIS)
-            _uiState.update { it.copy(isSearchingPeople = true) }
+            _uiState.update { it.copy(people = it.people.copy(isSearching = true)) }
             val result = userRepository.search(query)
             _uiState.update {
                 when (result) {
-                    is AppResult.Success -> it.copy(people = result.data.toImmutableList(), isSearchingPeople = false)
-                    is AppResult.Error -> it.copy(isSearchingPeople = false, message = result.error.toUiText(Res.string.social_error_search_people))
+                    is AppResult.Success -> it.copy(people = it.people.copy(results = result.data.toImmutableList(), isSearching = false))
+                    is AppResult.Error -> it.copy(
+                        people = it.people.copy(isSearching = false),
+                        message = result.error.toUiText(Res.string.social_error_search_people),
+                    )
                 }
-            }
-        }
-    }
-
-    /** Shows the like at once and puts it back when the server refuses. */
-    private fun likeTrip(trip: PublicTrip) {
-        val liked = !trip.likedByMe
-        updateTrip(trip.trip.id) { it.copy(likedByMe = liked, likeCount = (it.likeCount + if (liked) 1 else -1).coerceAtLeast(0)) }
-        viewModelScope.launch {
-            when (val result = socialRepository.setLiked(LikeTarget.Trip, trip.trip.id, liked)) {
-                is AppResult.Success -> updateTrip(trip.trip.id) { it.copy(likedByMe = result.data.liked, likeCount = result.data.likeCount) }
-                is AppResult.Error -> {
-                    updateTrip(trip.trip.id) { it.copy(likedByMe = trip.likedByMe, likeCount = trip.likeCount) }
-                    _uiState.update { it.copy(message = result.error.toUiText(Res.string.social_error_like)) }
-                }
-            }
-        }
-    }
-
-    private fun updateTrip(tripId: String, change: (PublicTrip) -> PublicTrip) {
-        _uiState.update { state -> state.copy(explore = state.explore.map { if (it.trip.id == tripId) change(it) else it }.toImmutableList()) }
-    }
-
-    /** Saves to (or removes from) My Trips at once and puts it back when the server refuses. */
-    private fun toggleSave(trip: PublicTrip) {
-        val saved = !trip.trip.savedByMe
-        updateTrip(trip.trip.id) {
-            it.copy(trip = it.trip.copy(savedByMe = saved), saveCount = (it.saveCount + if (saved) 1 else -1).coerceAtLeast(0))
-        }
-        viewModelScope.launch {
-            val result = tripRepository.setSaved(trip.trip, saved)
-            if (result is AppResult.Error) {
-                updateTrip(trip.trip.id) { it.copy(trip = it.trip.copy(savedByMe = trip.trip.savedByMe), saveCount = trip.saveCount) }
-                val failed = if (saved) Res.string.social_error_save_trip else Res.string.social_error_unsave_trip
-                _uiState.update { it.copy(message = result.error.toUiText(failed)) }
             }
         }
     }
 
     private fun sendReport(reason: ReportReason, details: String) {
-        val trip = _uiState.value.reporting ?: return
-        if (_uiState.value.isReporting) return
-        _uiState.update { it.copy(isReporting = true) }
+        val report = _uiState.value.report?.takeUnless { it.isSending } ?: return
+        _uiState.update { it.copy(report = report.copy(isSending = true)) }
         viewModelScope.launch {
-            val result = socialRepository.report(ReportTarget.Trip, trip.trip.id, reason, details)
-            _uiState.update {
-                when (result) {
-                    is AppResult.Success -> it.copy(isReporting = false, reporting = null, message = UiText.Note(UiText.Resource(Res.string.social_reported)))
-                    is AppResult.Error -> it.copy(isReporting = false, message = result.error.toUiText(Res.string.social_error_report))
-                }
-            }
+            val sent = tripActions.report(ReportTarget.Trip, report.trip.trip.id, reason, details)
+            _uiState.update { it.copy(report = if (sent) null else it.report?.copy(isSending = false)) }
         }
     }
 
-    /** Nearby asks for the location only once its tab is open; the place list loads once it's allowed. */
-    private fun onPermission(permission: LocationPermission, isAnswer: Boolean) {
-        // The answer to Explore's Nearby filter; a no leaves the filter off.
-        if (isAnswer && isAskingForExplore) {
-            isAskingForExplore = false
-            if (permission == LocationPermission.Granted) locateForExplore()
-            return
-        }
-        val status = when (permission) {
-            LocationPermission.Granted -> null
-            LocationPermission.Blocked -> NearbyStatus.Blocked
-            LocationPermission.NotAsked, LocationPermission.ShouldExplain -> NearbyStatus.NeedsPermission
-        }
-        if (status != null) {
-            // A first check that finds nothing allowed yet shows the ask; an answer of no keeps it.
-            if (isAnswer || _uiState.value.nearbyStatus != NearbyStatus.Ready) _uiState.update { it.copy(nearbyStatus = status) }
-            return
-        }
-        if (_uiState.value.nearbyStatus == NearbyStatus.Ready || _uiState.value.nearbyStatus == NearbyStatus.Locating) return
-        locate()
-    }
-
-    private fun locate() {
-        _uiState.update { it.copy(nearbyStatus = NearbyStatus.Locating) }
-        viewModelScope.launch {
-            when (val location = getCurrentLocation().first()) {
-                is AppResult.Success -> {
-                    val point = GeoPoint(location.data.latitude, location.data.longitude)
-                    nearbyPoint = point
-                    loadNearby(point)
-                }
-                is AppResult.Error -> _uiState.update {
-                    it.copy(nearbyStatus = NearbyStatus.Unavailable, message = UiText.Resource(Res.string.social_nearby_location_unavailable))
-                }
-            }
-        }
-    }
-
-    private fun loadNearby(point: GeoPoint) {
-        viewModelScope.launch {
-            _uiState.update { it.copy(isLoadingNearby = true) }
-            when (val result = placeRepository.nearby(point, cursor = null)) {
-                is AppResult.Success -> {
-                    nearbyCursor = result.data.nextCursor
-                    _uiState.update {
-                        it.copy(nearby = result.data.items.toImmutableList(), isLoadingNearby = false, nearbyStatus = NearbyStatus.Ready)
-                    }
-                }
-                is AppResult.Error -> _uiState.update {
-                    it.copy(isLoadingNearby = false, nearbyStatus = NearbyStatus.Ready, message = result.error.toUiText(Res.string.social_error_load_nearby))
-                }
-            }
-        }
-    }
-
-    private fun likePlace(place: NearbyPlace) {
-        val liked = !place.likedByMe
-        updatePlace(place.id) { it.copy(likedByMe = liked, likeCount = (it.likeCount + if (liked) 1 else -1).coerceAtLeast(0)) }
-        viewModelScope.launch {
-            when (val result = socialRepository.setLiked(LikeTarget.Place, place.id, liked)) {
-                is AppResult.Success -> updatePlace(place.id) { it.copy(likedByMe = result.data.liked, likeCount = result.data.likeCount) }
-                is AppResult.Error -> {
-                    updatePlace(place.id) { it.copy(likedByMe = place.likedByMe, likeCount = place.likeCount) }
-                    _uiState.update { it.copy(message = result.error.toUiText(Res.string.social_error_like)) }
-                }
-            }
-        }
-    }
-
-    private fun updatePlace(placeId: String, change: (NearbyPlace) -> NearbyPlace) {
-        _uiState.update { state -> state.copy(nearby = state.nearby.map { if (it.id == placeId) change(it) else it }.toImmutableList()) }
-    }
-
-    /** The trips I can add stops to, from the device; the picked trip's days come from the server. */
-    private fun openAddPlace(place: NearbyPlace) {
-        viewModelScope.launch {
-            val trips = tripRepository.observeMyTrips().first().filter { it.role.canEdit }
-            if (trips.isEmpty()) {
-                _uiState.update { it.copy(message = UiText.Resource(Res.string.social_add_place_no_trips)) }
-                return@launch
-            }
-            _uiState.update { it.copy(addPlace = AddPlace(place, trips.toImmutableList())) }
-        }
-    }
-
-    private fun pickTrip(trip: Trip) {
-        _uiState.update { state -> state.copy(addPlace = state.addPlace?.copy(trip = trip, days = persistentListOf(), isLoadingDays = true)) }
-        viewModelScope.launch {
-            val result = tripRepository.refreshTrip(trip.id)
-            _uiState.update { state ->
-                val addPlace = state.addPlace?.takeIf { it.trip?.id == trip.id } ?: return@update state
-                when (result) {
-                    is AppResult.Success -> state.copy(addPlace = addPlace.copy(days = result.data.days.toImmutableList(), isLoadingDays = false))
-                    is AppResult.Error -> state.copy(addPlace = addPlace.copy(isLoadingDays = false), message = result.error.toUiText(Res.string.social_error_load_days))
-                }
-            }
-        }
-    }
-
-    /** Added at once, like a stop added on the map, and the trip opens to show it. */
-    private fun addPlace(day: TripDay) {
-        val addPlace = _uiState.value.addPlace ?: return
-        val trip = addPlace.trip ?: return
-        val place = addPlace.place
-        _uiState.update { it.copy(addPlace = null) }
-        viewModelScope.launch {
-            markerRepository.addMarker(trip.id, day.id, NewMarker(name = place.name, location = place.location, placeId = place.id))
-            sendEvent(Event.OpenTrip(trip.id))
-        }
-    }
+    private fun showMessage(message: UiText) = _uiState.update { it.copy(message = message) }
 
     private fun sendEvent(event: Event) {
         viewModelScope.launch { _events.send(event) }
@@ -431,9 +203,47 @@ class SocialViewModel(
         Ready,
     }
 
+    @Immutable
+    data class ExploreState(
+        val trips: ImmutableList<PublicTrip> = persistentListOf(),
+        /** Which likes rank Explore; This month when the tab opens. */
+        val period: ExplorePeriod = ExplorePeriod.Month,
+        /** Only trips with a stop near me. */
+        val isNearbyFilter: Boolean = false,
+        val isLoading: Boolean = false,
+        val hasLoaded: Boolean = false,
+    ) {
+        /** Less than everything: a period other than All time, or only trips near me. */
+        val isFiltered: Boolean get() = period != ExplorePeriod.All || isNearbyFilter
+
+        internal fun updateTrip(tripId: String, change: (PublicTrip) -> PublicTrip) =
+            copy(trips = trips.map { if (it.trip.id == tripId) change(it) else it }.toImmutableList())
+    }
+
+    @Immutable
+    data class NearbyState(
+        val status: NearbyStatus = NearbyStatus.Unknown,
+        val places: ImmutableList<NearbyPlace> = persistentListOf(),
+        val isLoading: Boolean = false,
+    )
+
+    @Immutable
+    data class PeopleSearchState(
+        val query: String = "",
+        val results: ImmutableList<UserSummary> = persistentListOf(),
+        val isSearching: Boolean = false,
+    ) {
+        /** People results replace the tabs while a name is being searched. */
+        val isSearchingByName: Boolean get() = query.trim().removePrefix("@").length >= UserRepository.MIN_SEARCH_LENGTH
+    }
+
+    /** The report dialog, open for [trip]. */
+    @Immutable
+    data class ReportState(val trip: PublicTrip, val isSending: Boolean = false)
+
     /** Adding a Nearby place to a day: first the trip, then its day. */
     @Immutable
-    data class AddPlace(
+    data class AddPlaceState(
         val place: NearbyPlace,
         val trips: ImmutableList<Trip>,
         val trip: Trip? = null,
@@ -444,57 +254,63 @@ class SocialViewModel(
     @Immutable
     data class State(
         val section: Section = Section.Explore,
-        val explore: ImmutableList<PublicTrip> = persistentListOf(),
-        val isLoadingExplore: Boolean = false,
-        val hasLoadedExplore: Boolean = false,
-        /** Which likes rank Explore; This month when the tab opens. */
-        val explorePeriod: ExplorePeriod = ExplorePeriod.Month,
-        /** Explore shows only trips with a stop near me. */
-        val isExploreNearby: Boolean = false,
-        val nearby: ImmutableList<NearbyPlace> = persistentListOf(),
-        val nearbyStatus: NearbyStatus = NearbyStatus.Unknown,
-        val isLoadingNearby: Boolean = false,
-        val peopleQuery: String = "",
-        val people: ImmutableList<UserSummary> = persistentListOf(),
-        val isSearchingPeople: Boolean = false,
-        val reporting: PublicTrip? = null,
-        val isReporting: Boolean = false,
-        val addPlace: AddPlace? = null,
+        val explore: ExploreState = ExploreState(),
+        val nearby: NearbyState = NearbyState(),
+        val people: PeopleSearchState = PeopleSearchState(),
+        val report: ReportState? = null,
+        val addPlace: AddPlaceState? = null,
         val message: UiText? = null,
-    ) {
-        /** Explore shows less than everything: a period other than All time, or only trips near me. */
-        val isExploreFiltered: Boolean get() = explorePeriod != ExplorePeriod.All || isExploreNearby
+    )
 
-        /** People results replace the tabs while a name is being searched. */
-        val isSearchingByName: Boolean get() = peopleQuery.trim().removePrefix("@").length >= UserRepository.MIN_SEARCH_LENGTH
-    }
-
+    /** Grouped by the part of the tab they come from. */
     sealed interface Action {
-        data class OnSectionSelected(val section: Section) : Action
-        data class OnExplorePeriodSelected(val period: ExplorePeriod) : Action
-        data object OnToggleExploreNearby : Action
+        data class SectionSelected(val section: Section) : Action
 
-        /** The permission, read when [Event.CheckExploreLocation] asked for it. */
-        data class OnExploreLocationChecked(val permission: LocationPermission) : Action
-        data class OnQueryChanged(val query: String) : Action
-        data object OnRefresh : Action
-        data object OnLoadMore : Action
-        data class OnTripClick(val trip: PublicTrip) : Action
-        data class OnPersonClick(val user: UserSummary) : Action
-        data class OnLikeTrip(val trip: PublicTrip) : Action
-        data class OnToggleSaveTrip(val trip: PublicTrip) : Action
-        data class OnReportTrip(val trip: PublicTrip) : Action
-        data class OnSendReport(val reason: ReportReason, val details: String) : Action
-        data object OnDismissReport : Action
-        data class OnPermissionChecked(val permission: LocationPermission) : Action
-        data class OnPermissionResult(val permission: LocationPermission) : Action
-        data object OnAllowLocation : Action
-        data class OnLikePlace(val place: NearbyPlace) : Action
-        data class OnAddPlace(val place: NearbyPlace) : Action
-        data class OnPickTrip(val trip: Trip) : Action
-        data class OnPickDay(val day: TripDay) : Action
-        data object OnDismissAddPlace : Action
-        data object OnDismissMessage : Action
+        /** The answer to a location prompt, from Explore's Nearby filter or the Nearby tab. */
+        data class LocationPermissionResult(val permission: LocationPermission) : Action
+        data object DismissMessage : Action
+
+        sealed interface Explore : Action {
+            data class PeriodSelected(val period: ExplorePeriod) : Explore
+            data object ToggleNearby : Explore
+
+            /** The permission, read when [Event.CheckExploreLocation] asked for it. */
+            data class LocationChecked(val permission: LocationPermission) : Explore
+            data object Refresh : Explore
+            data object LoadMore : Explore
+            data class TripClick(val trip: PublicTrip) : Explore
+            data class OwnerClick(val owner: UserSummary) : Explore
+            data class LikeTrip(val trip: PublicTrip) : Explore
+            data class ToggleSaveTrip(val trip: PublicTrip) : Explore
+            data class ReportTrip(val trip: PublicTrip) : Explore
+        }
+
+        sealed interface Nearby : Action {
+            data class PermissionChecked(val permission: LocationPermission) : Nearby
+            data object AllowLocation : Nearby
+            data object Refresh : Nearby
+            data object LoadMore : Nearby
+            data class LikePlace(val place: NearbyPlace) : Nearby
+            data class AddPlace(val place: NearbyPlace) : Nearby
+        }
+
+        /** Finding people by the name typed in Home's search bar. */
+        sealed interface People : Action {
+            data class QueryChanged(val query: String) : People
+            data class PersonClick(val user: UserSummary) : People
+        }
+
+        sealed interface Report : Action {
+            data class Send(val reason: ReportReason, val details: String) : Report
+            data object Dismiss : Report
+        }
+
+        /** The sheet that adds a Nearby place to a day of one of my trips. */
+        sealed interface AddToTrip : Action {
+            data class PickTrip(val trip: Trip) : AddToTrip
+            data class PickDay(val day: TripDay) : AddToTrip
+            data object Dismiss : AddToTrip
+        }
     }
 
     sealed interface Event {
@@ -502,7 +318,7 @@ class SocialViewModel(
         data class OpenProfile(val username: String) : Event
         data object RequestPermission : Event
 
-        /** Read the location permission for Explore's Nearby filter; answered with [Action.OnExploreLocationChecked]. */
+        /** Read the location permission for Explore's Nearby filter; answered with [Action.Explore.LocationChecked]. */
         data object CheckExploreLocation : Event
         data object OpenAppSettings : Event
     }

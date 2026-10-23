@@ -32,6 +32,7 @@ import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.falcon.tripingly.core.common.util.NumberUtils
 import com.falcon.tripingly.core.designsystem.theme.spacing
 import com.falcon.tripingly.core.model.place.MapPlace
 import com.falcon.tripingly.core.model.route.AlongTheWayPlace
@@ -86,7 +87,7 @@ fun RouteSummary(
         }
         if (durationSeconds != null && distanceMeters != null) {
             Text(
-                text = stringResource(Res.string.map_route_total, durationLabel(durationSeconds), distanceLabel(distanceMeters)),
+                text = stringResource(Res.string.map_route_total, durationLabel(durationSeconds), distanceText(distanceMeters).asString()),
                 style = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.Bold,
             )
@@ -135,7 +136,7 @@ fun AlongTheWay(
                         Column(modifier = Modifier.padding(horizontal = MaterialTheme.spacing.small, vertical = 6.dp).weight(1f, fill = false)) {
                             Text(item.place.name, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Medium, maxLines = 1, overflow = TextOverflow.Ellipsis)
                             Text(
-                                text = stringResource(Res.string.map_along_the_way_item, durationLabel(item.etaFromStartSeconds), distanceLabel(item.distanceFromRouteMeters)),
+                                text = stringResource(Res.string.map_along_the_way_item, durationLabel(item.etaFromStartSeconds), distanceText(item.distanceFromRouteMeters).asString()),
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 maxLines = 1,
@@ -181,14 +182,12 @@ internal fun durationText(seconds: Int): UiText {
     }
 }
 
-/** "350 m" up to a kilometre, then "2.4 km", as on Nearby. */
-@Composable
-private fun distanceLabel(meters: Int): String =
+/** "350 m" up to a kilometre, then "2.4 km" ("2,4 km" in German and Hungarian), as on Nearby. */
+internal fun distanceText(meters: Int): UiText =
     if (meters < 1000) {
-        stringResource(Res.string.map_route_meters, meters)
+        UiText.Resource(Res.string.map_route_meters, meters)
     } else {
-        val tenths = (meters / 100.0).roundToInt()
-        stringResource(Res.string.map_route_km, "${tenths / 10}.${tenths % 10}")
+        UiText.Resource(Res.string.map_route_km, NumberUtils.kilometers(meters))
     }
 
 private fun TravelMode.label() = when (this) {

@@ -2,9 +2,11 @@ package com.falcon.tripingly.feature.paywall
 
 import com.falcon.tripingly.core.common.error.DataError
 import com.falcon.tripingly.core.common.result.AppResult
+import com.falcon.tripingly.core.data.account.AccountRepository
 import com.falcon.tripingly.core.data.account.FakeAccountBackend
 import com.falcon.tripingly.core.data.billing.ProRepository
 import com.falcon.tripingly.core.data.billing.PurchaseOutcome
+import com.falcon.tripingly.core.model.account.LegalDocument
 import com.falcon.tripingly.core.model.account.ProOffer
 import com.falcon.tripingly.core.model.account.ProPeriod
 import com.falcon.tripingly.core.model.account.ProfileUpdate
@@ -157,6 +159,26 @@ class PaywallViewModelTest {
 
         assertFalse(viewModel.uiState.value.hasOffersFailed)
         assertEquals(listOf(yearly), viewModel.uiState.value.offers)
+    }
+
+    @Test
+    fun termsThatFailToLoad_holdBackTheOffers_untilARetryBringsBoth() = runTest {
+        val account = signedIn()
+        var legalFails = true
+        val legal = object : AccountRepository by account {
+            override suspend fun legalDocuments(locale: String): AppResult<List<LegalDocument>, DataError.Network> =
+                if (legalFails) AppResult.Error(DataError.Network.NoInternet) else account.legalDocuments(locale)
+        }
+        val viewModel = PaywallViewModel(account, FakePro(offers = AppResult.Success(listOf(yearly))), legal, languageTag = { "en" })
+        advanceUntilIdle()
+        assertTrue(viewModel.uiState.value.hasOffersFailed)
+
+        legalFails = false
+        viewModel.onAction(Action.OnRetryOffers)
+        advanceUntilIdle()
+
+        assertFalse(viewModel.uiState.value.hasOffersFailed)
+        assertTrue(viewModel.uiState.value.legalDocuments.isNotEmpty())
     }
 
     @Test

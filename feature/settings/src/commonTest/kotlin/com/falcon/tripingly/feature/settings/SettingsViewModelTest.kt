@@ -15,7 +15,10 @@ import com.falcon.tripingly.core.model.account.SessionState
 import com.falcon.tripingly.core.model.account.SignOutReason
 import com.falcon.tripingly.core.model.account.TripVisibility
 import com.falcon.tripingly.feature.settings.presentation.SettingsViewModel
+import com.falcon.tripingly.feature.settings.presentation.SettingsViewModel.AccountDialog
+import com.falcon.tripingly.feature.settings.presentation.SettingsViewModel.AccountDialogState
 import com.falcon.tripingly.feature.settings.presentation.SettingsViewModel.Action
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.delay
@@ -81,9 +84,9 @@ class SettingsViewModelTest {
         assertEquals("me", state.username)
         assertFalse(state.hasPro)
         assertEquals(TripVisibility.PUBLIC, state.defaultVisibility)
-        assertEquals(NotificationType.entries.toSet(), state.notifications?.enabled)
-        assertNull(state.export)
-        assertTrue(state.hasLoadedExport)
+        assertEquals(NotificationType.entries.toSet(), state.notifications.settings?.enabled)
+        assertNull(state.export.export)
+        assertTrue(state.export.hasLoaded)
         assertEquals(2, state.legalDocuments.size)
     }
 
@@ -106,7 +109,7 @@ class SettingsViewModelTest {
         val viewModel = viewModel(account)
         advanceUntilIdle()
 
-        viewModel.onAction(Action.OnVisibilityChange(TripVisibility.PRIVATE))
+        viewModel.onAction(Action.VisibilityChanged(TripVisibility.PRIVATE))
         assertEquals(TripVisibility.PRIVATE, viewModel.uiState.value.defaultVisibility)
         advanceUntilIdle()
 
@@ -124,7 +127,7 @@ class SettingsViewModelTest {
         val viewModel = viewModel(account, refusing)
         advanceUntilIdle()
 
-        viewModel.onAction(Action.OnVisibilityChange(TripVisibility.PRIVATE))
+        viewModel.onAction(Action.VisibilityChanged(TripVisibility.PRIVATE))
         advanceUntilIdle()
 
         assertEquals(TripVisibility.PUBLIC, viewModel.uiState.value.defaultVisibility)
@@ -145,9 +148,9 @@ class SettingsViewModelTest {
             viewModel.uiState.collect { shown += it.defaultVisibility }
         }
 
-        viewModel.onAction(Action.OnVisibilityChange(TripVisibility.PRIVATE))
+        viewModel.onAction(Action.VisibilityChanged(TripVisibility.PRIVATE))
         advanceTimeBy(500)
-        viewModel.onAction(Action.OnVisibilityChange(TripVisibility.PUBLIC))
+        viewModel.onAction(Action.VisibilityChanged(TripVisibility.PUBLIC))
         advanceUntilIdle()
 
         // Each tap moves the toggle once; the server's answers never move it again.
@@ -162,9 +165,9 @@ class SettingsViewModelTest {
         val viewModel = viewModel(account)
         advanceUntilIdle()
 
-        viewModel.onAction(Action.OnNotificationChange(NotificationType.LIKES, enabled = false))
+        viewModel.onAction(Action.Notifications.Changed(NotificationType.LIKES, enabled = false))
 
-        assertFalse(NotificationType.LIKES in viewModel.uiState.value.notifications!!.enabled)
+        assertFalse(NotificationType.LIKES in viewModel.uiState.value.notifications.settings!!.enabled)
         advanceUntilIdle()
         val saved = (account.notificationSettings() as AppResult.Success).data
         assertEquals(NotificationSettings(NotificationType.entries.toSet() - NotificationType.LIKES), saved)
@@ -180,10 +183,10 @@ class SettingsViewModelTest {
         val viewModel = viewModel(account, refusing)
         advanceUntilIdle()
 
-        viewModel.onAction(Action.OnNotificationChange(NotificationType.COMMENTS, enabled = false))
+        viewModel.onAction(Action.Notifications.Changed(NotificationType.COMMENTS, enabled = false))
         advanceUntilIdle()
 
-        assertTrue(NotificationType.COMMENTS in viewModel.uiState.value.notifications!!.enabled)
+        assertTrue(NotificationType.COMMENTS in viewModel.uiState.value.notifications.settings!!.enabled)
         assertNotNull(viewModel.uiState.value.message)
     }
 
@@ -192,10 +195,10 @@ class SettingsViewModelTest {
         val viewModel = viewModel(signedIn())
         advanceUntilIdle()
 
-        viewModel.onAction(Action.OnRequestExport)
+        viewModel.onAction(Action.RequestExport)
         advanceUntilIdle()
 
-        val export = viewModel.uiState.value.export!!
+        val export = viewModel.uiState.value.export.export!!
         assertEquals(DataExportStatus.READY, export.status)
         assertNotNull(export.downloadUrl)
     }
@@ -210,10 +213,10 @@ class SettingsViewModelTest {
         val viewModel = viewModel(account, limited)
         advanceUntilIdle()
 
-        viewModel.onAction(Action.OnRequestExport)
+        viewModel.onAction(Action.RequestExport)
         advanceUntilIdle()
 
-        assertFalse(viewModel.uiState.value.isRequestingExport)
+        assertFalse(viewModel.uiState.value.export.isRequesting)
         assertNotNull(viewModel.uiState.value.message)
     }
 
@@ -223,12 +226,41 @@ class SettingsViewModelTest {
         val viewModel = viewModel(account)
         advanceUntilIdle()
 
-        viewModel.onAction(Action.OnDeleteAccount)
-        assertTrue(viewModel.uiState.value.isConfirmingDelete)
-        viewModel.onAction(Action.OnConfirmDelete)
+        viewModel.onAction(Action.Account.Delete)
+        assertEquals(AccountDialog.Delete, viewModel.uiState.value.account?.dialog)
+        viewModel.onAction(Action.Account.ConfirmDelete)
         advanceUntilIdle()
 
         assertEquals(SessionState.SignedOut(SignOutReason.ACCOUNT_DELETED), account.session.value)
+    }
+
+    @Test
+    fun theDeleteDialog_closes_butNotWhileTheDeletionIsOnItsWay() = runTest {
+        val account = signedIn()
+        val slow = CompletableDeferred<Unit>()
+        val repository = object : AccountRepository by account {
+            override suspend fun deleteAccount(): AppResult<Unit, DataError.Network> {
+                slow.await()
+                return AppResult.Error(DataError.Network.NoInternet)
+            }
+        }
+        val viewModel = viewModel(account, repository)
+        advanceUntilIdle()
+
+        viewModel.onAction(Action.Account.Delete)
+        viewModel.onAction(Action.Account.Dismiss)
+        assertNull(viewModel.uiState.value.account)
+
+        viewModel.onAction(Action.Account.Delete)
+        viewModel.onAction(Action.Account.ConfirmDelete)
+        advanceUntilIdle()
+        viewModel.onAction(Action.Account.Dismiss)
+        assertEquals(AccountDialogState(AccountDialog.Delete, isDeleting = true), viewModel.uiState.value.account)
+
+        slow.complete(Unit)
+        advanceUntilIdle()
+        assertEquals(AccountDialogState(AccountDialog.Delete), viewModel.uiState.value.account)
+        assertNotNull(viewModel.uiState.value.message)
     }
 
     @Test
@@ -241,13 +273,12 @@ class SettingsViewModelTest {
         val viewModel = viewModel(account, needsSignIn)
         advanceUntilIdle()
 
-        viewModel.onAction(Action.OnDeleteAccount)
-        viewModel.onAction(Action.OnConfirmDelete)
+        viewModel.onAction(Action.Account.Delete)
+        viewModel.onAction(Action.Account.ConfirmDelete)
         advanceUntilIdle()
 
         val state = viewModel.uiState.value
-        assertTrue(state.isReauthNeeded)
-        assertFalse(state.isConfirmingDelete)
+        assertEquals(AccountDialogState(AccountDialog.Reauth), state.account)
         assertNull(state.message)
         assertTrue(account.session.value is SessionState.SignedIn)
     }
@@ -270,10 +301,10 @@ class SettingsViewModelTest {
         val viewModel = viewModel(account, repository)
         advanceUntilIdle()
 
-        viewModel.onAction(Action.OnDeleteAccount)
-        viewModel.onAction(Action.OnConfirmDelete)
+        viewModel.onAction(Action.Account.Delete)
+        viewModel.onAction(Action.Account.ConfirmDelete)
         advanceUntilIdle()
-        viewModel.onAction(Action.OnConfirmWithGoogle)
+        viewModel.onAction(Action.Account.ConfirmWithGoogle)
         advanceUntilIdle()
 
         assertEquals(IdentityProof.Google("fresh-token"), repository.proof)
@@ -289,15 +320,14 @@ class SettingsViewModelTest {
         val viewModel = viewModel(account, repository)
         advanceUntilIdle()
 
-        viewModel.onAction(Action.OnDeleteAccount)
-        viewModel.onAction(Action.OnConfirmDelete)
+        viewModel.onAction(Action.Account.Delete)
+        viewModel.onAction(Action.Account.ConfirmDelete)
         advanceUntilIdle()
-        viewModel.onAction(Action.OnConfirmWithGoogle)
+        viewModel.onAction(Action.Account.ConfirmWithGoogle)
         advanceUntilIdle()
 
         val state = viewModel.uiState.value
-        assertFalse(state.isReauthNeeded)
-        assertFalse(state.isDeleting)
+        assertNull(state.account)
         assertNotNull(state.message)
         assertTrue(account.session.value is SessionState.SignedIn)
     }
@@ -309,15 +339,14 @@ class SettingsViewModelTest {
         val viewModel = viewModel(account, repository, FakeSocialSignIn(SocialSignInResult.Cancelled))
         advanceUntilIdle()
 
-        viewModel.onAction(Action.OnDeleteAccount)
-        viewModel.onAction(Action.OnConfirmDelete)
+        viewModel.onAction(Action.Account.Delete)
+        viewModel.onAction(Action.Account.ConfirmDelete)
         advanceUntilIdle()
-        viewModel.onAction(Action.OnConfirmWithGoogle)
+        viewModel.onAction(Action.Account.ConfirmWithGoogle)
         advanceUntilIdle()
 
         val state = viewModel.uiState.value
-        assertTrue(state.isReauthNeeded)
-        assertFalse(state.isDeleting)
+        assertEquals(AccountDialogState(AccountDialog.Reauth), state.account)
         assertNull(state.message)
         assertNull(repository.proof)
     }
@@ -328,9 +357,9 @@ class SettingsViewModelTest {
         val viewModel = viewModel(account)
         advanceUntilIdle()
 
-        viewModel.onAction(Action.OnSignOut)
+        viewModel.onAction(Action.Account.SignOut)
         assertTrue(account.session.value is SessionState.SignedIn)
-        viewModel.onAction(Action.OnConfirmSignOut)
+        viewModel.onAction(Action.Account.ConfirmSignOut)
         advanceUntilIdle()
 
         assertEquals(SessionState.SignedOut(null), account.session.value)

@@ -22,7 +22,11 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.ImeAction
@@ -65,6 +69,9 @@ import com.falcon.tripingly.feature.trips.generated.resources.members_role_edito
 import com.falcon.tripingly.feature.trips.generated.resources.members_role_owner
 import com.falcon.tripingly.feature.trips.generated.resources.members_title
 import com.falcon.tripingly.feature.trips.presentation.members.TripMembersViewModel.Action
+import com.falcon.tripingly.feature.trips.presentation.members.TripMembersViewModel.AddState
+import com.falcon.tripingly.feature.trips.presentation.members.TripMembersViewModel.InvitesState
+import com.falcon.tripingly.feature.trips.presentation.members.TripMembersViewModel.JoinRequestsState
 import com.falcon.tripingly.feature.trips.presentation.members.TripMembersViewModel.Event
 import com.falcon.tripingly.feature.trips.presentation.members.TripMembersViewModel.State
 import kotlinx.collections.immutable.persistentListOf
@@ -85,6 +92,11 @@ fun TripMembersRoute(
     shareManager: ShareManager = koinInject(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    var isOpened by rememberSaveable { mutableStateOf(false) }
+    LaunchedEffect(Unit) {
+        if (!isOpened) viewModel.onAction(Action.Opened)
+        isOpened = true
+    }
 
     ObserveAsEvents(viewModel.events) { event ->
         when (event) {
@@ -106,7 +118,7 @@ fun TripMembersScreen(
     onAction: (Action) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    ShowMessage(message = state.message?.asString(), onShown = { onAction(Action.OnDismissMessage) }, isError = state.message !is UiText.Note)
+    ShowMessage(message = state.message?.asString(), onShown = { onAction(Action.DismissMessage) }, isError = state.message !is UiText.Note)
     LazyColumn(
         modifier = modifier.fillMaxWidth().navigationBarsPadding(),
         verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -125,7 +137,7 @@ fun TripMembersScreen(
                 }
             }
         }
-        if (state.joinRequests.isNotEmpty()) {
+        if (state.joinRequests.requests.isNotEmpty()) {
             item {
                 Text(
                     text = stringResource(Res.string.members_join_requests_title),
@@ -133,12 +145,12 @@ fun TripMembersScreen(
                     modifier = Modifier.padding(horizontal = 24.dp),
                 )
             }
-            items(state.joinRequests, key = { "request:${it.id}" }) { request ->
+            items(state.joinRequests.requests, key = { "request:${it.id}" }) { request ->
                 JoinRequestRow(
                     request = request,
-                    isAnswering = request.id in state.answeringRequestIds,
-                    onAccept = { onAction(Action.OnAcceptJoinRequest(request)) },
-                    onDecline = { onAction(Action.OnDeclineJoinRequest(request)) },
+                    isAnswering = request.id in state.joinRequests.answeringIds,
+                    onAccept = { onAction(Action.JoinRequests.Accept(request)) },
+                    onDecline = { onAction(Action.JoinRequests.Decline(request)) },
                 )
             }
             item { HorizontalDivider(Modifier.padding(vertical = 8.dp)) }
@@ -147,32 +159,32 @@ fun TripMembersScreen(
             MemberRow(
                 member = member,
                 canRemove = state.canManage && member.role != TripRole.OWNER,
-                onRemove = { onAction(Action.OnRemoveMember(member.user.id)) },
+                onRemove = { onAction(Action.RemoveMember(member.user.id)) },
             )
         }
         if (state.canManage) {
-            if (state.friends.isNotEmpty()) {
+            if (state.add.friends.isNotEmpty()) {
                 item {
                     FriendPickerRow(
-                        friends = state.friends,
-                        isPicked = { it.username in state.pickedFriends },
-                        onToggle = { onAction(Action.OnFriendToggled(it)) },
-                        enabled = !state.isAdding,
+                        friends = state.add.friends,
+                        isPicked = { it.username in state.add.pickedFriends },
+                        onToggle = { onAction(Action.Add.FriendToggled(it)) },
+                        enabled = !state.add.isAdding,
                         modifier = Modifier.padding(horizontal = 16.dp),
                     )
                 }
             }
-            if (state.pickedFriends.isNotEmpty()) {
+            if (state.add.pickedFriends.isNotEmpty()) {
                 item {
                     PrimaryButton(
-                        text = stringResource(Res.string.members_add_friends, state.pickedFriends.size),
-                        onClick = { onAction(Action.OnAddPickedFriends) },
-                        isLoading = state.isAdding,
+                        text = stringResource(Res.string.members_add_friends, state.add.pickedFriends.size),
+                        onClick = { onAction(Action.Add.PickedFriends) },
+                        isLoading = state.add.isAdding,
                         modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp),
                     )
                 }
             }
-            item { AddMemberField(state, onAction) }
+            item { AddMemberField(state.add, onAction) }
             item {
                 HorizontalDivider(Modifier.padding(vertical = 8.dp))
                 Text(
@@ -187,20 +199,20 @@ fun TripMembersScreen(
                     modifier = Modifier.padding(horizontal = 24.dp),
                 )
             }
-            items(state.invites, key = { it.id }) { invite ->
+            items(state.invites.invites, key = { it.id }) { invite ->
                 InviteRow(
                     invite = invite,
-                    onShare = { onAction(Action.OnShareInvite(invite)) },
-                    onRevoke = { onAction(Action.OnRevokeInvite(invite.id)) },
+                    onShare = { onAction(Action.Invites.Share(invite)) },
+                    onRevoke = { onAction(Action.Invites.Revoke(invite.id)) },
                 )
             }
             item {
                 OutlinedButton(
-                    onClick = { onAction(Action.OnCreateInvite) },
-                    enabled = !state.isCreatingInvite,
+                    onClick = { onAction(Action.Invites.Create) },
+                    enabled = !state.invites.isCreating,
                     modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 8.dp),
                 ) {
-                    if (state.isCreatingInvite) {
+                    if (state.invites.isCreating) {
                         CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
                     } else {
                         Text(stringResource(Res.string.members_invite_create))
@@ -261,7 +273,7 @@ private fun JoinRequestRow(request: JoinRequest, isAnswering: Boolean, onAccept:
 }
 
 @Composable
-private fun AddMemberField(state: State, onAction: (Action) -> Unit) {
+private fun AddMemberField(state: AddState, onAction: (Action) -> Unit) {
     Row(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -269,7 +281,7 @@ private fun AddMemberField(state: State, onAction: (Action) -> Unit) {
     ) {
         OutlinedTextField(
             value = state.username,
-            onValueChange = { onAction(Action.OnUsernameChanged(it)) },
+            onValueChange = { onAction(Action.Add.UsernameChanged(it)) },
             label = { Text(stringResource(Res.string.members_add_label)) },
             singleLine = true,
             enabled = !state.isAdding,
@@ -279,10 +291,10 @@ private fun AddMemberField(state: State, onAction: (Action) -> Unit) {
                 keyboardType = KeyboardType.Ascii,
                 imeAction = ImeAction.Done,
             ),
-            keyboardActions = KeyboardActions(onDone = { onAction(Action.OnAddMember) }),
+            keyboardActions = KeyboardActions(onDone = { onAction(Action.Add.ByUsername) }),
             modifier = Modifier.weight(1f),
         )
-        TextButton(onClick = { onAction(Action.OnAddMember) }, enabled = !state.isAdding && state.username.isNotBlank()) {
+        TextButton(onClick = { onAction(Action.Add.ByUsername) }, enabled = !state.isAdding && state.username.isNotBlank()) {
             if (state.isAdding) {
                 CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
             } else {
@@ -323,16 +335,18 @@ private fun TripMembersScreenPreview() {
                     TripMember(UserSummary("1", "shahin", "Shahin"), TripRole.OWNER),
                     TripMember(UserSummary("2", "anna", "Anna"), TripRole.EDITOR),
                 ),
-                friends = persistentListOf(
-                    UserSummary("3", "jonas.k", "Jonas"),
-                    UserSummary("4", "lena", "Lena"),
+                add = AddState(
+                    friends = persistentListOf(
+                        UserSummary("3", "jonas.k", "Jonas"),
+                        UserSummary("4", "lena", "Lena"),
+                    ),
+                    pickedFriends = persistentSetOf("lena"),
                 ),
-                pickedFriends = persistentSetOf("lena"),
-                joinRequests = persistentListOf(
-                    JoinRequest("r1", "t1", UserSummary("5", "mia", "Mia"), Instant.parse("2025-06-01T10:00:00Z")),
+                joinRequests = JoinRequestsState(
+                    persistentListOf(JoinRequest("r1", "t1", UserSummary("5", "mia", "Mia"), Instant.parse("2025-06-01T10:00:00Z"))),
                 ),
-                invites = persistentListOf(
-                    TripInvite("i1", "https://example.com/i/abc", Instant.parse("2025-06-08T10:00:00Z")),
+                invites = InvitesState(
+                    persistentListOf(TripInvite("i1", "https://example.com/i/abc", Instant.parse("2025-06-08T10:00:00Z"))),
                 ),
             ),
             onAction = {},
