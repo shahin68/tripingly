@@ -1,22 +1,26 @@
 package com.falcon.tripingly.feature.map.presentation.component
 
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.Dp
 import com.falcon.tripingly.core.location.model.Coordinates
 import com.falcon.tripingly.core.model.place.GeoBounds
 import com.falcon.tripingly.core.model.place.MapPlace
 import com.falcon.tripingly.core.model.place.PlaceCluster
+import com.falcon.tripingly.feature.map.domain.model.CameraCommand
 import com.falcon.tripingly.feature.map.domain.model.MapMarker
+import kotlinx.coroutines.flow.Flow
 import org.koin.compose.getKoin
 
 /** Google's map once the app has handed the SDK its key (see [GoogleMapsSdk]), else Apple's. */
 @Composable
 actual fun GoogleMapView(
     modifier: Modifier,
-    cameraTarget: Coordinates,
-    zoomLevel: Float,
+    initialTarget: Coordinates,
+    initialZoom: Float,
+    cameraCommands: Flow<CameraCommand.MoveTo>,
+    contentPadding: PaddingValues,
     markers: List<MapMarker>,
     placePins: List<PlacePin>,
     pinDotBelowZoom: Float,
@@ -24,7 +28,6 @@ actual fun GoogleMapView(
     selectedPlace: MapPlace?,
     line: MapLine?,
     isMyLocationEnabled: Boolean,
-    coveredBottom: Dp,
     onCameraMove: (Coordinates, Float, GeoBounds?) -> Unit,
     onMapTouch: () -> Unit,
     onMapClick: (Coordinates) -> Unit,
@@ -39,8 +42,10 @@ actual fun GoogleMapView(
         GoogleSdkMapView(
             googleMaps = googleMaps,
             modifier = modifier,
-            cameraTarget = cameraTarget,
-            zoomLevel = zoomLevel,
+            initialTarget = initialTarget,
+            initialZoom = initialZoom,
+            cameraCommands = cameraCommands,
+            contentPadding = contentPadding,
             markers = markers,
             placePins = placePins,
             pinDotBelowZoom = pinDotBelowZoom,
@@ -48,7 +53,6 @@ actual fun GoogleMapView(
             selectedPlace = selectedPlace,
             line = line,
             isMyLocationEnabled = isMyLocationEnabled,
-            coveredBottom = coveredBottom,
             onCameraMove = onCameraMove,
             onMapTouch = onMapTouch,
             onMapClick = onMapClick,
@@ -60,8 +64,9 @@ actual fun GoogleMapView(
     } else {
         AppleMapView(
             modifier = modifier,
-            cameraTarget = cameraTarget,
-            zoomLevel = zoomLevel,
+            initialTarget = initialTarget,
+            initialZoom = initialZoom,
+            cameraCommands = cameraCommands,
             markers = markers,
             placePins = placePins,
             placeClusters = placeClusters,

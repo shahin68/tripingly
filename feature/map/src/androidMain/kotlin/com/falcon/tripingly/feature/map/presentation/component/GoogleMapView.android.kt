@@ -25,14 +25,15 @@ import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.text.rememberTextMeasurer
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntSize
 import com.falcon.tripingly.core.location.model.Coordinates
 import com.falcon.tripingly.core.model.place.GeoBounds
 import com.falcon.tripingly.core.model.place.MapPlace
 import com.falcon.tripingly.core.model.place.PlaceCluster
 import com.falcon.tripingly.core.model.place.PlaceCategory
+import com.falcon.tripingly.feature.map.domain.model.CameraCommand
 import com.falcon.tripingly.feature.map.domain.model.MapMarker
+import com.google.android.gms.maps.CameraUpdate
 import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.model.BitmapDescriptor
 import com.google.android.gms.maps.model.BitmapDescriptorFactory
@@ -51,12 +52,19 @@ import com.google.maps.android.compose.MarkerComposable
 import com.google.maps.android.compose.Polyline
 import com.google.maps.android.compose.rememberCameraPositionState
 import com.google.maps.android.compose.rememberUpdatedMarkerState
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
 
 @Composable
 actual fun GoogleMapView(
     modifier: Modifier,
-    cameraTarget: Coordinates,
-    zoomLevel: Float,
+    initialTarget: Coordinates,
+    initialZoom: Float,
+    cameraCommands: Flow<CameraCommand.MoveTo>,
+    contentPadding: PaddingValues,
     markers: List<MapMarker>,
     placePins: List<PlacePin>,
     pinDotBelowZoom: Float,
@@ -64,7 +72,6 @@ actual fun GoogleMapView(
     selectedPlace: MapPlace?,
     line: MapLine?,
     isMyLocationEnabled: Boolean,
-    coveredBottom: Dp,
     onCameraMove: (Coordinates, Float, GeoBounds?) -> Unit,
     onMapTouch: () -> Unit,
     onMapClick: (Coordinates) -> Unit,
@@ -73,12 +80,11 @@ actual fun GoogleMapView(
     onMapLongClick: (Coordinates) -> Unit,
     onMarkerClick: (MapMarker) -> Unit,
 ) {
-    val initialLatLng = remember { LatLng(cameraTarget.latitude, cameraTarget.longitude) }
     val cameraPositionState = rememberCameraPositionState {
-        position = CameraPosition.fromLatLngZoom(initialLatLng, zoomLevel)
+        position = CameraPosition.fromLatLngZoom(LatLng(initialTarget.latitude, initialTarget.longitude), initialZoom)
     }
 
-    // The area the whole view shows. The map's visible region leaves out its padding (see coveredBottom).
+    // The area the whole view shows. The map's visible region leaves out its padding (see contentPadding).
     var mapSize by remember { mutableStateOf(IntSize.Zero) }
     fun viewBounds(): GeoBounds? {
         val projection = cameraPositionState.projection ?: return null
@@ -128,26 +134,23 @@ actual fun GoogleMapView(
         )
     }
 
-    // Animate camera when cameraTarget or zoomLevel changes externally
-    LaunchedEffect(cameraTarget, zoomLevel) {
-        val targetLatLng = LatLng(cameraTarget.latitude, cameraTarget.longitude)
-        // Only animate if the target is significantly different from current camera state
-        // to avoid jitter when syncing back and forth.
-        val current = cameraPositionState.position
-        val latDiff = Math.abs(current.target.latitude - targetLatLng.latitude)
-        val lngDiff = Math.abs(current.target.longitude - targetLatLng.longitude)
-        val zoomDiff = Math.abs(current.zoom - zoomLevel)
-        
-        if (latDiff > 0.00001 || lngDiff > 0.00001 || zoomDiff > 0.01) {
-            if (!isMapLoaded) {
-                // The map isn't drawn yet: start it there instead of animating.
-                cameraPositionState.position = CameraPosition.fromLatLngZoom(targetLatLng, zoomLevel)
-            } else {
-                cameraPositionState.animate(
-                    CameraUpdateFactory.newLatLngZoom(targetLatLng, zoomLevel),
-                    durationMs = CAMERA_MOVE_MILLIS
-                )
+    suspend fun runCamera(update: CameraUpdate) {
+        // Before the map has loaded, the camera starts there instead of flying.
+        if (!isMapLoaded) {
+            cameraPositionState.move(update)
+        } else {
+            try {
+                cameraPositionState.animate(update, durationMs = CAMERA_MOVE_MILLIS)
+            } catch (e: CancellationException) {
+                // A finger stopped the flight; the next move still runs.
+                currentCoroutineContext().ensureActive()
             }
+        }
+    }
+
+    LaunchedEffect(cameraCommands) {
+        cameraCommands.collect { command ->
+            runCamera(CameraUpdateFactory.newLatLngZoom(LatLng(command.target.latitude, command.target.longitude), command.zoom))
         }
     }
 
@@ -156,9 +159,7 @@ actual fun GoogleMapView(
         cameraPositionState = cameraPositionState,
         properties = mapProperties,
         uiSettings = uiSettings,
-        // Keeps Google's logo above the cards. As much room at the top as at the bottom keeps the
-        // camera's center in the middle of the view.
-        contentPadding = PaddingValues(vertical = coveredBottom),
+        contentPadding = contentPadding,
         // Dark map in dark mode, so the light status bar icons stay readable.
         mapColorScheme = ComposeMapColorScheme.FOLLOW_SYSTEM,
         onMapClick = { latLng ->
@@ -321,7 +322,7 @@ actual fun GoogleMapView(
                     // Empty until the cover's thumbnail has loaded.
                     marker.coverPhotoId.takeIf { cover != null }.orEmpty(),
                     state = markerState,
-                    title = marker.title,
+                    title = marker.title.asString(),
                     anchor = Offset(0.5f, 1f),
                     // Above the places.
                     zIndex = 1f,
@@ -399,5 +400,3 @@ private fun pinRank(place: MapPlace): Float =
 /** Place pins sit under this, the stops at 1 and the tapped place at 2. */
 private const val PLACE_PINS_Z = 0.5f
 
-/** How long the camera takes to fly to a pin, a search result or the user's location. */
-private const val CAMERA_MOVE_MILLIS = 180

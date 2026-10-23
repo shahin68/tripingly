@@ -3,6 +3,8 @@
     <string name="map_day_label">Day %1$d (%2$s)</string>
     <string name="map_day_label_no_date">Day %1$d</string>
     <string name="map_itinerary_title">Trip Plan (%1$d stops)</string>
+    <string name="map_fit_day">Show the whole day</string>
+    <string name="map_plan_handle">Show or hide the whole plan</string>
     <string name="map_itinerary_clear_all">Clear All</string>
     <string name="map_stop_title_format">Stop #%1$d</string>
     <string name="map_remove_stop">Remove stop</string>
@@ -146,6 +148,7 @@
     <string name="map_my_content_removed">Your photos, comments and likes on this stop were removed.</string>
     <string name="map_error_remove_my_content">Couldn’t remove your photos, comments and likes.</string>
     <string name="map_trip_created">Created %1$s</string>
+    <string name="map_trip_owner">by %1$s</string>
 
     <!-- Routes -->
     <string name="map_route">Route</string>

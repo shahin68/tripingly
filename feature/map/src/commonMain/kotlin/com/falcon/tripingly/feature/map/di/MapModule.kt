@@ -20,7 +20,6 @@ val mapModule = module {
             mapViews = get(),
             sessionRepository = get(),
             getCurrentLocationUseCase = get(),
-            dispatchers = get(),
         )
     }
     viewModel { params -> PhotosViewModel(owner = params.get(), photoRepository = get(), sessionRepository = get()) }

@@ -2,6 +2,7 @@ package com.falcon.tripingly.feature.map.presentation.component
 
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.interop.UIKitView
@@ -9,7 +10,9 @@ import com.falcon.tripingly.core.location.model.Coordinates
 import com.falcon.tripingly.core.model.place.GeoBounds
 import com.falcon.tripingly.core.model.place.MapPlace
 import com.falcon.tripingly.core.model.place.PlaceCluster
+import com.falcon.tripingly.feature.map.domain.model.CameraCommand
 import com.falcon.tripingly.feature.map.domain.model.MapMarker
+import kotlinx.coroutines.flow.Flow
 import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.cinterop.useContents
 import platform.CoreLocation.CLLocationCoordinate2DMake
@@ -35,8 +38,9 @@ import kotlin.math.pow
 @Composable
 internal fun AppleMapView(
     modifier: Modifier,
-    cameraTarget: Coordinates,
-    zoomLevel: Float,
+    initialTarget: Coordinates,
+    initialZoom: Float,
+    cameraCommands: Flow<CameraCommand.MoveTo>,
     markers: List<MapMarker>,
     placePins: List<PlacePin>,
     placeClusters: List<PlaceCluster>,
@@ -49,7 +53,8 @@ internal fun AppleMapView(
 ) {
     val delegate = remember {
         object : NSObject(), MKMapViewDelegateProtocol {
-            var currentMarkers: List<MapMarker> = emptyList()
+            /** The stops by their title, which is all an annotation keeps. */
+            var currentMarkers: Map<String, MapMarker> = emptyMap()
             /** Annotations of places and clusters, drawn smaller and grey under the stops. */
             var placeAnnotations: Set<MKPointAnnotation> = emptySet()
 
@@ -95,10 +100,8 @@ internal fun AppleMapView(
                     }
 
                     // Find corresponding marker to set color and glyph
-                    val marker = currentMarkers.find { 
-                        it.title == viewForAnnotation.title 
-                    }
-                    
+    val marker = currentMarkers[viewForAnnotation.title]
+
                     marker?.let { 
                         annotationView.glyphText = it.orderNumber.toString()
                         val color = it.color
@@ -117,27 +120,31 @@ internal fun AppleMapView(
         }
     }
 
+    val mapView = remember {
+        MKMapView().apply {
+            this.delegate = delegate
+            // Places on our map come from our server only.
+            pointOfInterestFilter = MKPointOfInterestFilter(includingCategories = emptyList<Any>())
+            setRegion(regionAround(initialTarget, initialZoom), animated = false)
+        }
+    }
+    // MapKit has no padding for the camera, so the target sits in the middle of the whole view.
+    LaunchedEffect(cameraCommands) {
+        cameraCommands.collect { command ->
+            mapView.setRegion(mapView.regionThatFits(regionAround(command.target, command.zoom)), animated = true)
+        }
+    }
+    val titles = markers.map { it.title.asString() }
     UIKitView(
-        factory = {
-            MKMapView().apply {
-                this.delegate = delegate
-                // Places on our map come from our server only.
-                pointOfInterestFilter = MKPointOfInterestFilter(includingCategories = emptyList<Any>())
-            }
-        },
+        factory = { mapView },
         modifier = modifier.fillMaxSize(),
         update = { mapView ->
-            delegate.currentMarkers = markers
+            delegate.currentMarkers = titles.zip(markers).toMap()
             mapView.showsUserLocation = isMyLocationEnabled
-
-            val center = CLLocationCoordinate2DMake(cameraTarget.latitude, cameraTarget.longitude)
-            val distance = (40_000_000.0 / 2.0.pow(zoomLevel.toDouble()))
-            val region = MKCoordinateRegionMakeWithDistance(center, distance, distance)
-            mapView.setRegion(region, animated = true)
 
             // Synchronize annotations
             mapView.removeAnnotations(mapView.annotations)
-            markers.forEach { marker ->
+            markers.forEachIndexed { index, marker ->
                 val annotation = MKPointAnnotation().apply {
                     setCoordinate(
                         CLLocationCoordinate2DMake(
@@ -145,7 +152,7 @@ internal fun AppleMapView(
                             marker.position.longitude
                         )
                     )
-                    setTitle(marker.title)
+                    setTitle(titles[index])
                     setSubtitle(marker.snippet)
                 }
                 mapView.addAnnotation(annotation)
@@ -168,3 +175,10 @@ internal fun AppleMapView(
     )
 }
 
+/** [zoom] as Google's: the world is 40,000 km wide at zoom 0. */
+@OptIn(ExperimentalForeignApi::class)
+private fun regionAround(target: Coordinates, zoom: Float) = MKCoordinateRegionMakeWithDistance(
+    CLLocationCoordinate2DMake(target.latitude, target.longitude),
+    40_000_000.0 / 2.0.pow(zoom.toDouble()),
+    40_000_000.0 / 2.0.pow(zoom.toDouble()),
+)

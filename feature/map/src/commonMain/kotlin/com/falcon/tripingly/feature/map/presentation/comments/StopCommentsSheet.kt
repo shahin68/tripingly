@@ -152,7 +152,7 @@ fun StopCommentsScreen(
             .imePadding(),
     ) {
         Text(
-            text = stringResource(Res.string.map_comments_title, marker.title),
+            text = stringResource(Res.string.map_comments_title, marker.title.asString()),
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.Bold,
             modifier = Modifier.padding(horizontal = MaterialTheme.spacing.medium),

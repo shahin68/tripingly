@@ -50,6 +50,7 @@ import com.falcon.tripingly.feature.map.generated.resources.map_route_meters
 import com.falcon.tripingly.feature.map.generated.resources.map_route_minutes
 import com.falcon.tripingly.feature.map.generated.resources.map_route_total
 import kotlinx.collections.immutable.ImmutableList
+import com.falcon.tripingly.core.ui.UiText
 import org.jetbrains.compose.resources.stringResource
 import kotlin.math.roundToInt
 
@@ -168,12 +169,15 @@ fun RouteAttribution(text: String, modifier: Modifier = Modifier) {
 
 /** "45 min", or "1 h 20 min" from an hour on; at least a minute. */
 @Composable
-fun durationLabel(seconds: Int): String {
+fun durationLabel(seconds: Int): String = durationText(seconds).asString()
+
+/** [durationLabel] for state built outside composition. */
+internal fun durationText(seconds: Int): UiText {
     val minutes = (seconds / 60.0).roundToInt().coerceAtLeast(1)
     return if (minutes < 60) {
-        stringResource(Res.string.map_route_minutes, minutes)
+        UiText.Resource(Res.string.map_route_minutes, minutes)
     } else {
-        stringResource(Res.string.map_route_hours, minutes / 60, minutes % 60)
+        UiText.Resource(Res.string.map_route_hours, minutes / 60, minutes % 60)
     }
 }
 

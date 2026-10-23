@@ -60,6 +60,8 @@ private final class AppGoogleMap: NSObject, GoogleMap, GMSMapViewDelegate {
     }
 
     func setPadding(top: Double, bottom: Double) {
+        // The screen's padding already counts the status bar and the home indicator.
+        mapView.paddingAdjustmentBehavior = .never
         mapView.padding = UIEdgeInsets(top: top, left: 0, bottom: bottom, right: 0)
     }
 

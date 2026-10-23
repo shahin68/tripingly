@@ -353,7 +353,7 @@ class TripRepositoryTest {
     fun leaveTrip_removesTheSignedInUser_andDropsTheTrip() = runTest {
         val harness = Harness { respond("", HttpStatusCode.NoContent) }
         harness.local.saveTrip(details(TripJson.trip("t1", myRole = "editor")))
-        harness.mapViews.save("t1", TripMapView("d0", 48.2, 16.37, 15f, isRouteShown = false, TravelMode.Walking))
+        harness.mapViews.save("t1", TripMapView("d0", isRouteShown = false, TravelMode.Walking))
 
         val result = harness.trips.leaveTrip("t1")
 
