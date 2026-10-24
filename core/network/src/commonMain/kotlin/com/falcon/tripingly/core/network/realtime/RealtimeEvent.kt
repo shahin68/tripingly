@@ -45,13 +45,6 @@ sealed interface RealtimeEvent {
         val markerId: String,
     ) : InTrip
 
-    data class PhotosReordered(
-        override val tripId: String,
-        override val actorId: String?,
-        val markerId: String,
-        val photoIds: List<String>,
-    ) : InTrip
-
     /** `comment.created`; the comment is viewer-neutral (`likedByMe` and `canDelete` false). */
     data class CommentAdded(override val tripId: String, override val actorId: String?, val comment: CommentDto) : InTrip
 
@@ -124,9 +117,6 @@ private data class PhotoData(val photo: PhotoDto)
 private data class PhotoIdData(val photoId: String, val markerId: String? = null, val placeId: String? = null)
 
 @Serializable
-private data class PhotoOrderData(val markerId: String, val photoIds: List<String>)
-
-@Serializable
 private data class CommentData(val comment: CommentDto)
 
 @Serializable
@@ -175,10 +165,6 @@ internal fun parseRealtimeEvent(name: String, payload: JsonElement): RealtimeEve
         "photo.deleted" -> {
             val ids = NetworkJson.decodeFromJsonElement<PhotoIdData>(data)
             ids.markerId?.let { markerId -> inTrip { RealtimeEvent.PhotoDeleted(it, actorId, ids.photoId, markerId) } }
-        }
-        "photos.reordered" -> inTrip {
-            val order = NetworkJson.decodeFromJsonElement<PhotoOrderData>(data)
-            RealtimeEvent.PhotosReordered(it, actorId, order.markerId, order.photoIds)
         }
         "comment.created" ->
             inTrip { RealtimeEvent.CommentAdded(it, actorId, NetworkJson.decodeFromJsonElement<CommentData>(data).comment) }

@@ -6,7 +6,7 @@ import com.falcon.tripingly.core.location.model.Coordinates
 import com.falcon.tripingly.core.model.place.MapPlace
 import com.falcon.tripingly.core.model.place.PlaceCluster
 import com.falcon.tripingly.core.model.place.PlaceDetails
-import com.falcon.tripingly.core.model.place.PlaceImage
+import com.falcon.tripingly.core.model.place.ImageCredit
 import com.falcon.tripingly.core.model.place.PlaceSearchResult
 import com.falcon.tripingly.core.model.route.AlongTheWayPlace
 import com.falcon.tripingly.core.model.route.TravelMode
@@ -152,8 +152,8 @@ data class PlaceCardState(
 @Immutable
 data class StopCardState(
     val stop: MapMarker,
-    /** The first image of the stop's place, while the stop has no cover of its own. */
-    val placeImage: PlaceImage?,
+    /** The cover's credit, when it is one of the place's Wikimedia Commons images. */
+    val coverCredit: ImageCredit?,
     /** An owner or editor: photos can be added and taken. */
     val canEdit: Boolean,
     /** Someone else's public trip: the stop can be reported. */

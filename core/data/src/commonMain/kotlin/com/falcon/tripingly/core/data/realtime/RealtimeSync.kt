@@ -63,9 +63,17 @@ internal class RealtimeSync(
         when (event) {
             is RealtimeEvent.MarkerSaved -> if (!byMe) {
                 saveInCachedTrip(event.tripId) {
-                    // The event's hotByMe is always false; whether I marked it hot stays as it was.
-                    val hotByMe = local.marker(event.marker.id)?.hotByMe ?: false
-                    local.saveMarkers(listOf(event.marker.toMarker().copy(hotByMe = hotByMe)))
+                    // The event's hotByMe is always false, and its cover is only a picked one: the place's image
+                    // depends on who looks. Both stay as they were; a new stop without a picked cover is loaded.
+                    val cached = local.marker(event.marker.id)
+                    val marker = event.marker.toMarker()
+                    local.saveMarkers(
+                        listOf(
+                            if (marker.coverPhotoId != null || cached == null) marker.copy(hotByMe = cached?.hotByMe ?: false)
+                            else marker.copy(hotByMe = cached.hotByMe, coverPhotoId = cached.coverPhotoId, coverThumbUrl = cached.coverThumbUrl),
+                        ),
+                    )
+                    if (cached == null && marker.coverPhotoId == null) photos.refreshStop(marker.id)
                 }
             }
             is RealtimeEvent.MarkerDeleted -> if (!byMe) saveInCachedTrip(event.tripId) { local.deleteMarkers(listOf(event.markerId)) }
@@ -80,7 +88,6 @@ internal class RealtimeSync(
             is RealtimeEvent.PhotoSaved,
             is RealtimeEvent.PhotoFailed,
             is RealtimeEvent.PhotoDeleted,
-            is RealtimeEvent.PhotosReordered,
             is RealtimeEvent.MarkerCoverChanged,
             -> photos.applyLive(event, byMe)
         }

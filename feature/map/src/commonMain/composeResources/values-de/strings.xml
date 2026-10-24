@@ -68,6 +68,7 @@
     <string name="map_stop_photos">Fotos</string>
     <string name="map_photo_make_cover">Als Titelbild</string>
     <string name="map_photo_cover">Titelbild</string>
+    <string name="map_photo_this_trip">Diese Reise</string>
     <string name="map_photo_delete">Foto löschen</string>
     <string name="map_photo_delete_title">Dieses Foto löschen?</string>
     <string name="map_photo_delete_message">Das Foto wird für alle in der Reise gelöscht.</string>

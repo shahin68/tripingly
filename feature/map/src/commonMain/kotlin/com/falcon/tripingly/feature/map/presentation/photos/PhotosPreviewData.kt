@@ -24,7 +24,6 @@ private fun previewPhoto(id: String, status: PhotoStatus = PhotoStatus.Ready, li
     displayUrl = null,
     width = 1600,
     height = 1200,
-    position = 0,
     likeCount = likes,
     likedByMe = likes > 0,
     uploader = UserSummary(id = "u1", username = "anna", displayName = "Anna"),

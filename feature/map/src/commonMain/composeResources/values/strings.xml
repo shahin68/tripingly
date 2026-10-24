@@ -68,6 +68,7 @@
     <string name="map_stop_photos">Photos</string>
     <string name="map_photo_make_cover">Make cover</string>
     <string name="map_photo_cover">Cover</string>
+    <string name="map_photo_this_trip">This trip</string>
     <string name="map_photo_delete">Delete photo</string>
     <string name="map_photo_delete_title">Delete this photo?</string>
     <string name="map_photo_delete_message">The photo will be deleted for everyone in the trip.</string>

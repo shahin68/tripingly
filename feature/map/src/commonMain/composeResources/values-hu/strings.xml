@@ -68,6 +68,7 @@
     <string name="map_stop_photos">Fotók</string>
     <string name="map_photo_make_cover">Legyen borítókép</string>
     <string name="map_photo_cover">Borítókép</string>
+    <string name="map_photo_this_trip">Ez az út</string>
     <string name="map_photo_delete">Fotó törlése</string>
     <string name="map_photo_delete_title">Törlöd ezt a fotót?</string>
     <string name="map_photo_delete_message">A fotó mindenki számára törlődik az utazásban.</string>

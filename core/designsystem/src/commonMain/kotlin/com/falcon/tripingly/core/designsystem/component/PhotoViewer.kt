@@ -129,7 +129,6 @@ private fun previewPhoto(id: String, likes: Int, liked: Boolean, credit: ImageCr
     displayUrl = null,
     width = 1600,
     height = 1200,
-    position = 0,
     likeCount = likes,
     likedByMe = liked,
     uploader = uploader,

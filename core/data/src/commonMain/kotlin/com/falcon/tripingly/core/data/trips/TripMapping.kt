@@ -74,9 +74,8 @@ internal fun TripDto.toDetails(): TripDetails {
                 TripDto.MyRole.VIEWER -> TripRole.VIEWER
             },
             owner = owner.toUser(),
-            // Like the list: the first cover photo in the trip.
-            coverPhotoId = markers.firstOrNull { it.coverThumbUrl != null }?.coverPhotoId,
-            coverThumbUrl = markers.firstNotNullOfOrNull { it.coverThumbUrl },
+            coverPhotoId = coverPhotoId,
+            coverThumbUrl = coverThumbUrl,
             dayCount = days.size,
             markerCount = markers.size,
             editorCount = members.count { it.role == TripMemberDto.Role.EDITOR },

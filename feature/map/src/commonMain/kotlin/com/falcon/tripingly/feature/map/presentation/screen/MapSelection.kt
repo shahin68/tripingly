@@ -22,7 +22,7 @@ internal class MapSelection(
     private val placeRepository: PlaceRepository,
 ) {
     private var placeDetailsJob: Job? = null
-    /** Places whose first image is on its way for a stop card; see [loadStopPlaceImage]. */
+    /** Places whose images are on their way for a stop card; see [loadStopPlaceImages]. */
     private val loadingStopPlaces = mutableSetOf<String>()
     /** The latest touch closed a place or stop, so its tap only closes it (see [onScreenTouch]). */
     var isClosingTouch = false
@@ -38,7 +38,7 @@ internal class MapSelection(
         val isThere = camera.isAt(GeoPoint(marker.position.latitude, marker.position.longitude), zoom)
         context.update { it.copy(selection = Selection.Stop(marker.id, isCardShown = isThere)) }
         camera.moveTo(marker.position, zoom)
-        if (marker.coverPhotoId == null) loadStopPlaceImage(marker.placeId)
+        if (marker.coverPhotoId != null) loadStopPlaceImages(marker.placeId)
     }
 
     /** Shows the card with what the pin knows and adds the place's details. */
@@ -109,12 +109,12 @@ internal class MapSelection(
         closeStop()
     }
 
-    /** A stop without a cover shows its place's first image; asked for once per place. */
-    private fun loadStopPlaceImage(placeId: String?) {
+    /** A stop's cover may be one of its place's Commons images, shown with its credit; asked for once per place. */
+    private fun loadStopPlaceImages(placeId: String?) {
         if (placeId == null || placeId in context.model.value.stopPlaceImages || !loadingStopPlaces.add(placeId)) return
         context.scope.launch {
             placeRepository.place(placeId).onSuccess { details ->
-                context.update { it.copy(stopPlaceImages = it.stopPlaceImages + (placeId to details.images.firstOrNull())) }
+                context.update { it.copy(stopPlaceImages = it.stopPlaceImages + (placeId to details.images)) }
             }
             loadingStopPlaces -= placeId
         }

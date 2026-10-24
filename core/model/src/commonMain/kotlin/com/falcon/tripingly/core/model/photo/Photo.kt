@@ -24,8 +24,6 @@ data class Photo(
     val displayUrl: String?,
     val width: Int?,
     val height: Int?,
-    /** Gallery order, 0-based; 0 for place photos, which are ordered by likes. */
-    val position: Int,
     val likeCount: Int,
     val likedByMe: Boolean,
     /** Who uploaded it, credited with it; null for Commons images and for someone with a block either way. */

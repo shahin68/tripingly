@@ -36,7 +36,7 @@ import com.falcon.tripingly.core.designsystem.component.HotButton
 import com.falcon.tripingly.core.designsystem.component.PhotoImage
 import com.falcon.tripingly.core.designsystem.component.PhotoSize
 import com.falcon.tripingly.core.designsystem.theme.spacing
-import com.falcon.tripingly.core.model.place.PlaceImage
+import com.falcon.tripingly.core.model.place.ImageCredit
 import com.falcon.tripingly.feature.map.domain.model.MapMarker
 import com.falcon.tripingly.feature.map.generated.resources.*
 import com.falcon.tripingly.feature.map.generated.resources.Res
@@ -50,16 +50,17 @@ import androidx.compose.ui.tooling.preview.PreviewParameterProvider
 import com.falcon.tripingly.core.ui.UiText
 
 /**
- * A stop tapped on the map, in a card that floats above its pin like the place card: its cover (or, without
- * one, its place's first image, with its credit), name and photo count, with its likes and comments. Tapping
+ * A stop tapped on the map, in a card that floats above its pin like the place card: the image its pin shows
+ * (the picked cover, else its place's image; a Commons image with its [coverCredit]), name and photo count,
+ * with its hot marks and comments. Tapping
  * it opens the stop's photos; owners and editors also get Add photos and the camera, and others
  * ([canReport]) can report the stop.
  */
 @Composable
 fun StopCard(
     marker: MapMarker,
-    /** The stop's place's first image, shown while the stop has no cover of its own. */
-    placeImage: PlaceImage?,
+    /** The cover's credit, when it is a Wikimedia Commons image. */
+    coverCredit: ImageCredit?,
     canEdit: Boolean,
     onOpen: () -> Unit,
     onAddPhotos: () -> Unit,
@@ -86,13 +87,11 @@ fun StopCard(
             modifier = Modifier.padding(MaterialTheme.spacing.medium),
             verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
         ) {
-            val fallback = placeImage?.takeIf { marker.coverPhotoId == null }
             Row(verticalAlignment = Alignment.CenterVertically) {
-                val coverId = marker.coverPhotoId ?: fallback?.id
-                if (coverId != null) {
+                if (marker.coverPhotoId != null) {
                     PhotoImage(
-                        photoId = coverId,
-                        url = if (fallback != null) fallback.thumbUrl else marker.coverThumbUrl,
+                        photoId = marker.coverPhotoId,
+                        url = marker.coverThumbUrl,
                         size = PhotoSize.Thumb,
                         contentDescription = null,
                         modifier = Modifier
@@ -120,7 +119,7 @@ fun StopCard(
                     )
                 }
             }
-            fallback?.credit?.let { credit -> CommonsCredit(credit = credit, cropped = true, maxLines = 2) }
+            coverCredit?.let { credit -> CommonsCredit(credit = credit, cropped = true, maxLines = 2) }
             Row(verticalAlignment = Alignment.CenterVertically) {
                 if (marker.canMarkHot) HotButton(hot = marker.hotByMe, count = marker.hotCount, onToggle = onToggleHot)
                 TextButton(onClick = onOpenComments) {
@@ -195,7 +194,7 @@ private fun StopCardPreview(@PreviewParameter(StopCardPreviewStates::class) card
     TripinglyTheme {
         StopCard(
             marker = card.stop,
-            placeImage = previewPlaceImages.first(),
+            coverCredit = previewPlaceImages.first().credit,
             canEdit = card.canEdit,
             onOpen = {},
             onAddPhotos = {},
@@ -215,7 +214,7 @@ private fun StopCardDarkPreview() {
     TripinglyTheme(darkTheme = true) {
         StopCard(
             marker = previewStop,
-            placeImage = null,
+            coverCredit = null,
             canEdit = true,
             onOpen = {},
             onAddPhotos = {},

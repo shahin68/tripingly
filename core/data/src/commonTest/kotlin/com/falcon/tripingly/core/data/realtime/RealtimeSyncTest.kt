@@ -95,8 +95,12 @@ class RealtimeSyncTest {
         ).toDetails(),
     )
 
-    private fun marker(id: String, name: String) =
-        NetworkJson.decodeFromString<MarkerDto>(TripJson.marker(id, "t1", "d0", 1, name = name))
+    private fun marker(id: String, name: String, cover: String? = "ph-$id") =
+        NetworkJson.decodeFromString<MarkerDto>(withCover(TripJson.marker(id, "t1", "d0", 1, name = name), cover))
+
+    private fun withCover(marker: String, cover: String?) =
+        if (cover == null) marker
+        else marker.replace("\"coverPhotoId\":null,\"coverThumbUrl\":null", "\"coverPhotoId\":\"$cover\",\"coverThumbUrl\":\"https://r2.test/$cover\"")
 
     private suspend fun markerNames() = local.trip("t1")!!.days.single().markers.map { it.name }
 
@@ -116,6 +120,30 @@ class RealtimeSyncTest {
         sync.apply(RealtimeEvent.MarkerSaved("t2", OTHER, marker("m3", "Elsewhere")))
         assertNull(local.trip("t2"))
         assertTrue(paths.isEmpty())
+    }
+
+    @Test
+    fun othersStopChanges_keepThePlaceImage_andANewStopLoadsIt() = runTest {
+        val loaded = CompletableDeferred<Unit>()
+        val sync = sync { request ->
+            assertEquals("/v1/markers/m1", request.url.encodedPath)
+            json(withCover(TripJson.marker("m1", "t1", "d0", 1, name = "Louvre"), "img1")).also { loaded.complete(Unit) }
+        }
+        cacheTrip()
+        local.saveMarkers(listOf(local.marker("m0")!!.copy(coverPhotoId = "img0", coverThumbUrl = "https://r2.test/img0")))
+
+        // A rename comes with no cover: the place's image depends on who looks, so the one on the device stays.
+        sync.apply(RealtimeEvent.MarkerSaved("t1", OTHER, marker("m0", "Renamed", cover = null)))
+        assertEquals("Renamed", local.marker("m0")!!.name)
+        assertEquals("img0", local.marker("m0")!!.coverPhotoId)
+        // A new stop without a picked cover is loaded for its place's image.
+        sync.apply(RealtimeEvent.MarkerSaved("t1", OTHER, marker("m1", "Louvre", cover = null)))
+        withContext(Dispatchers.Default) {
+            withTimeout(5.seconds) {
+                loaded.await()
+                while (local.marker("m1")?.coverPhotoId != "img1") delay(10.milliseconds)
+            }
+        }
     }
 
     @Test

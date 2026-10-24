@@ -410,7 +410,6 @@ class SocialViewModelTest {
         displayUrl = null,
         width = null,
         height = null,
-        position = 0,
         likeCount = 0,
         likedByMe = false,
         uploader = null,

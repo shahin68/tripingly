@@ -5,7 +5,6 @@ import com.falcon.tripingly.core.common.result.AppResult
 import com.falcon.tripingly.core.network.model.CoverDto
 import com.falcon.tripingly.core.network.model.MarkerDto
 import com.falcon.tripingly.core.network.model.PhotoDto
-import com.falcon.tripingly.core.network.model.PhotoOrderDto
 import com.falcon.tripingly.core.network.model.UploadUrlRequestDto
 import com.falcon.tripingly.core.network.model.UploadUrlResponseDto
 import de.jensklingenberg.ktorfit.http.Body
@@ -38,20 +37,16 @@ interface PhotosApi {
     @POST("photos/{id}/complete")
     suspend fun complete(@Path("id") id: String): AppResult<PhotoDto, DataError.Network>
 
-    /** The marker's gallery in order; editors also get processing and failed photos. */
+    /**
+     * The stop's photo grid: members' uploads still processing or failed first, then its photos, the place's popular
+     * photos and its Commons images ranked by likes.
+     */
     @GET("markers/{id}/photos")
     suspend fun photos(@Path("id") markerId: String): AppResult<List<PhotoDto>, DataError.Network>
 
     /** The place's photos, most liked first; my own processing and failed ones too. */
     @GET("places/{id}/photos")
     suspend fun placePhotos(@Path("id") placeId: String): AppResult<List<PhotoDto>, DataError.Network>
-
-    @PUT("markers/{id}/photo-order")
-    @Headers("Content-Type: application/json")
-    suspend fun reorder(
-        @Path("id") markerId: String,
-        @Body body: PhotoOrderDto,
-    ): AppResult<List<PhotoDto>, DataError.Network>
 
     @PUT("markers/{id}/cover")
     @Headers("Content-Type: application/json")

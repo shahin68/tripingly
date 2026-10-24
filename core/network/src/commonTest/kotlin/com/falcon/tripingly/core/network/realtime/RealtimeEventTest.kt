@@ -80,10 +80,6 @@ class RealtimeEventTest {
             RealtimeEvent.PhotoDeleted("t1", "u2", "ph1", "m1"),
             parse("photo.deleted", envelope("photo.deleted", """{"photoId":"ph1","markerId":"m1","coverPhotoId":null}""")),
         )
-        assertEquals(
-            RealtimeEvent.PhotosReordered("t1", "u2", "m1", listOf("ph2", "ph1")),
-            parse("photos.reordered", envelope("photos.reordered", """{"markerId":"m1","photoIds":["ph2","ph1"]}""")),
-        )
     }
 
     @Test

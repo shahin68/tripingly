@@ -228,7 +228,7 @@ internal fun MapScreen(
             ) { card ->
                 StopCard(
                     marker = card.stop,
-                    placeImage = card.placeImage,
+                    coverCredit = card.coverCredit,
                     canEdit = card.canEdit,
                     onOpen = { onAction(MapAction.StopCard.OpenPhotos) },
                     onAddPhotos = pickPhotos,

@@ -71,7 +71,7 @@ REST over HTTPS, JSON, base path `/v1`.
 | Method | Path | Notes |
 |---|---|---|
 | POST | `/trips` | Title, dates, visibility, optional `destination` `{ name, location }`, optional initial `memberUsernames` (≤ 20, joined as editors; unknown → `400 VALIDATION_FAILED` with `fields["memberUsernames.<i>"] = ["notFound"]`, blocked → `["blocked"]`) |
-| GET | `/trips/{id}` | Trip with days, markers (cover thumbnail URLs), members, save and join state |
+| GET | `/trips/{id}` | Trip with days, markers (cover thumbnail URLs), members, save and join state, and the trip card's `coverPhotoId`/`coverThumbUrl` (the first picked stop cover, else the trip's first photo; same as the list) |
 | PATCH | `/trips/{id}` | Owner: title, dates, visibility, `destination` (null removes it) |
 | DELETE | `/trips/{id}` | Owner |
 | PUT | `/trips/{id}/save` | Save someone else's public trip to My Trips (read-only, the live original). Idempotent, 204 |
@@ -119,8 +119,7 @@ REST over HTTPS, JSON, base path `/v1`.
 | POST | `/markers/{id}/photos/upload-url` | Body: mime type, size. Returns photo ID + pre-signed PUT URL + `uploadHeaders` (a string map the PUT must send; typed as a map since backend#29). The PUT goes to storage without our `Authorization` header |
 | POST | `/photos/{id}/complete` | Client confirms upload → processing job |
 | GET | `/markers/{id}/photos` | Ordered gallery |
-| PUT | `/markers/{id}/photo-order` | |
-| PUT | `/markers/{id}/cover` | Body: `photoId` |
+| PUT | `/markers/{id}/cover` | Body: `photoId`: any ready photo or Commons image of the stop's grid (`GET /markers/{id}/photos`: members' uploads in progress first, then the stop's photos, the place's popular photos and its Commons images ranked by likes, on a tie the stop's own first). A photo never becomes the cover by itself. There is no manual photo order any more (backend#59) |
 | DELETE | `/photos/{id}` | Uploader, trip owner or editor; a place photo only by its uploader |
 | POST | `/places/{id}/photos/upload-url` | Anyone adds a photo to a visible place (not an address from search). Same answer as for a stop; `422 DAILY_PHOTO_LIMIT_REACHED` (`details.max`) past the server's daily limit. Processing ends with `photo.ready`/`photo.failed` in my user room, without a `tripId` (backend#42) |
 | GET | `/places/{id}/photos` | The place's gallery: people's photos most liked first, then newest (my own processing or failed ones too), then the place's Wikimedia Commons images (`source: commons`, with `credit`), most liked first. People's photos always come first. A blocked uploader shows without a name (backend#47) |
@@ -187,7 +186,7 @@ Response shapes and behaviour: see `05-maps-places-routing.md`.
 Field names the client relies on (full schemas in OpenAPI):
 
 - **Trip** (`GET /trips/{id}`): `id`, `title`, `startDate`, `endDate`, `destination` (`{ name, location }` or null), `visibility`, `owner` (user summary), `myRole` (`owner`\|`editor`\|`viewer`), `members[]`, `likeCount`, `likedByMe`, `saveCount`, `savedByMe`, `myJoinRequest` (`pending`\|`declined`\|null), `pendingJoinRequestCount` (owner only, else 0), `days[]` → `{ id, position, date, markers[] }`.
-- **Marker**: `id`, `dayId`, `placeId`, `name`, `location`, `time` (`HH:mm` or null), `position`, `coverPhotoId`, `coverThumbUrl`, `photoCount`, `hotCount`, `hotByMe` (the stop's place: the same on every stop at it), `canMarkHot` (false for a custom spot only in private trips: no flame), `commentCount`, `createdBy` (user summary or null).
+- **Marker**: `id`, `dayId`, `placeId`, `name`, `location`, `time` (`HH:mm` or null), `position`, `coverPhotoId` (the image the pin shows, cache key: the picked cover, else the place's image, a photo or Commons image id; in live `marker.*` events only a picked cover, so the app keeps the image it has), `coverThumbUrl`, `photoCount`, `hotCount`, `hotByMe` (the stop's place: the same on every stop at it), `canMarkHot` (false for a custom spot only in private trips: no flame), `commentCount`, `createdBy` (user summary or null).
 - **Photo**: `id`, `markerId`, `status` (`processing`\|`ready`\|`failed`), `thumbUrl`, `displayUrl` (signed, expire after ~1 h), `width`, `height`, `position`, `likeCount`, `likedByMe`, `uploader`, `source` (`user`, or `commons` for a place's Commons image), `credit` (Commons only; shown in the viewer with `CommonsCredit`).
 - **User summary**: `id`, `username`, `displayName`.
 - Places and search results carry `hotCount` and (in-view, nearby, detail) `hotByMe` instead of likes; `isTripinly` means a hot spot (backend#59).

@@ -135,7 +135,7 @@ internal class MapStateMapper(
         val stop = stops.firstOrNull { it.id == selection.markerId } ?: return null
         return StopCardState(
             stop = stop,
-            placeImage = stop.placeId?.takeIf { stop.coverPhotoId == null }?.let { model.stopPlaceImages[it] },
+            coverCredit = stop.placeId?.let { model.stopPlaceImages[it] }?.firstOrNull { it.id == stop.coverPhotoId }?.credit,
             canEdit = canEdit,
             canReport = role == TripRole.VIEWER,
             canRemoveMyContent = canEdit && !stop.canDelete,

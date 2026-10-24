@@ -1111,7 +1111,6 @@ class MapViewModelTest {
         displayUrl = displayUrl,
         width = width,
         height = height,
-        position = 0,
         likeCount = 0,
         likedByMe = false,
         uploader = null,
@@ -1119,9 +1118,18 @@ class MapViewModelTest {
     )
 
     @Test
-    fun `a stop without a cover shows its place's first image, asked for once`() = runTest(testDispatcher) {
+    fun `a stop whose pin shows a Commons image credits it, its place asked for once`() = runTest(testDispatcher) {
         places.images["fake-louvre"] = listOf(COMMONS_IMAGE)
         backend.addMarker(trip.trip.id, trip.days[0].id, NewMarker("Louvre", LOUVRE, placeId = "fake-louvre"))
+        // The server sends the place's image as the cover of a stop without a picked one.
+        val withStop = (backend.refreshTrip(trip.trip.id) as AppResult.Success).data
+        backend.seed(
+            withStop.copy(
+                days = withStop.days.map { day ->
+                    day.copy(markers = day.markers.map { it.copy(coverPhotoId = COMMONS_IMAGE.id, coverThumbUrl = COMMONS_IMAGE.thumbUrl) })
+                },
+            ),
+        )
         val viewModel = viewModel()
         testScheduler.advanceUntilIdle()
 
@@ -1129,7 +1137,7 @@ class MapViewModelTest {
         viewModel.onAction(MapAction.MapView.MarkerClick(stop))
         restOnTarget(viewModel)
         testScheduler.advanceUntilIdle()
-        assertEquals(COMMONS_IMAGE, viewModel.uiState.value.stopCard?.placeImage)
+        assertEquals(COMMONS_IMAGE.credit, viewModel.uiState.value.stopCard?.coverCredit)
 
         viewModel.onAction(MapAction.MapView.MarkerClick(stop))
         testScheduler.advanceUntilIdle()

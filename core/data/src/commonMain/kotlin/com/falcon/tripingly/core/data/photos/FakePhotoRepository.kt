@@ -29,7 +29,7 @@ class FakePhotoRepository : PhotoRepository {
     override fun upload(owner: PhotoOwner, images: List<PickedImage>) {
         galleries.update { all ->
             val gallery = all[owner].orEmpty()
-            all + (owner to gallery + images.indices.map { i -> photo(owner, gallery.size + i) })
+            all + (owner to images.map { photo(owner) } + gallery)
         }
     }
 
@@ -56,16 +56,7 @@ class FakePhotoRepository : PhotoRepository {
         return AppResult.Success(Unit)
     }
 
-    override suspend fun reorderPhotos(markerId: String, photoIds: List<String>): AppResult<Unit, DataError.Network> {
-        val owner = PhotoOwner.Stop(markerId)
-        galleries.update { all ->
-            val byId = all[owner].orEmpty().associateBy { it.id }
-            all + (owner to photoIds.mapIndexedNotNull { i, id -> byId[id]?.copy(position = i) })
-        }
-        return AppResult.Success(Unit)
-    }
-
-    private fun photo(owner: PhotoOwner, position: Int) = Photo(
+    private fun photo(owner: PhotoOwner) = Photo(
         id = Uuid.random().toString(),
         owner = owner,
         status = PhotoStatus.Ready,
@@ -73,7 +64,6 @@ class FakePhotoRepository : PhotoRepository {
         displayUrl = null,
         width = null,
         height = null,
-        position = position,
         likeCount = 0,
         likedByMe = false,
         uploader = null,
