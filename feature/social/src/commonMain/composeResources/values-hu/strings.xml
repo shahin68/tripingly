@@ -33,6 +33,7 @@
     <string name="social_nearby_empty">Még nincs népszerű hely a közeledben.</string>
     <string name="social_nearby_distance_m">%1$d m-re</string>
     <string name="social_nearby_distance_km">%1$s km-re</string>
+    <string name="social_nearby_open_images">Fotók megtekintése</string>
     <string name="social_add_place">Utazáshoz adás</string>
     <string name="social_add_place_no_trips">Előbb hozz létre egy utazást, aztán adj hozzá helyeket.</string>
     <string name="social_add_place_pick_trip">Melyik utazáshoz add hozzá: %1$s?</string>
@@ -62,6 +63,7 @@
     <string name="social_error_load_explore">Nem sikerült betölteni a Felfedezést.</string>
     <string name="social_error_search_people">Nem sikerült embereket keresni.</string>
     <string name="social_error_like">Nem sikerült menteni a kedvelést.</string>
+    <string name="social_error_hot">Nem sikerült hotspotként megjelölni a helyet.</string>
     <string name="social_error_save_trip">Nem sikerült elmenteni az utazást.</string>
     <string name="social_error_unsave_trip">Nem sikerült eltávolítani az utazást az utazásaid közül.</string>
     <string name="social_error_report">Nem sikerült elküldeni a bejelentést.</string>

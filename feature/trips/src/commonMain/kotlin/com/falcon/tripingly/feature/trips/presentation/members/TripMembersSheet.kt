@@ -22,7 +22,11 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.ImeAction
@@ -45,7 +49,6 @@ import com.falcon.tripingly.core.model.trip.JoinRequest
 import com.falcon.tripingly.core.model.trip.TripInvite
 import com.falcon.tripingly.core.model.trip.TripMember
 import com.falcon.tripingly.core.model.trip.TripRole
-import com.falcon.tripingly.core.model.trip.UserSummary
 import com.falcon.tripingly.core.ui.ObserveAsEvents
 import com.falcon.tripingly.feature.trips.generated.resources.Res
 import com.falcon.tripingly.feature.trips.generated.resources.members_add_button
@@ -65,16 +68,16 @@ import com.falcon.tripingly.feature.trips.generated.resources.members_role_edito
 import com.falcon.tripingly.feature.trips.generated.resources.members_role_owner
 import com.falcon.tripingly.feature.trips.generated.resources.members_title
 import com.falcon.tripingly.feature.trips.presentation.members.TripMembersViewModel.Action
+import com.falcon.tripingly.feature.trips.presentation.members.TripMembersViewModel.AddState
 import com.falcon.tripingly.feature.trips.presentation.members.TripMembersViewModel.Event
 import com.falcon.tripingly.feature.trips.presentation.members.TripMembersViewModel.State
-import kotlinx.collections.immutable.persistentListOf
-import kotlinx.collections.immutable.persistentSetOf
 import org.jetbrains.compose.resources.getString
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.koinInject
 import org.koin.compose.viewmodel.koinViewModel
 import org.koin.core.parameter.parametersOf
-import kotlin.time.Instant
+import androidx.compose.ui.tooling.preview.PreviewParameter
+import androidx.compose.foundation.background
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -85,6 +88,11 @@ fun TripMembersRoute(
     shareManager: ShareManager = koinInject(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    var isOpened by rememberSaveable { mutableStateOf(false) }
+    LaunchedEffect(Unit) {
+        if (!isOpened) viewModel.onAction(Action.Opened)
+        isOpened = true
+    }
 
     ObserveAsEvents(viewModel.events) { event ->
         when (event) {
@@ -106,7 +114,7 @@ fun TripMembersScreen(
     onAction: (Action) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    ShowMessage(message = state.message?.asString(), onShown = { onAction(Action.OnDismissMessage) }, isError = state.message !is UiText.Note)
+    ShowMessage(message = state.message?.asString(), onShown = { onAction(Action.DismissMessage) }, isError = state.message !is UiText.Note)
     LazyColumn(
         modifier = modifier.fillMaxWidth().navigationBarsPadding(),
         verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -125,7 +133,7 @@ fun TripMembersScreen(
                 }
             }
         }
-        if (state.joinRequests.isNotEmpty()) {
+        if (state.joinRequests.requests.isNotEmpty()) {
             item {
                 Text(
                     text = stringResource(Res.string.members_join_requests_title),
@@ -133,46 +141,48 @@ fun TripMembersScreen(
                     modifier = Modifier.padding(horizontal = 24.dp),
                 )
             }
-            items(state.joinRequests, key = { "request:${it.id}" }) { request ->
+            items(state.joinRequests.requests, key = { "request:${it.id}" }) { request ->
                 JoinRequestRow(
+                    modifier = Modifier.animateItem(),
                     request = request,
-                    isAnswering = request.id in state.answeringRequestIds,
-                    onAccept = { onAction(Action.OnAcceptJoinRequest(request)) },
-                    onDecline = { onAction(Action.OnDeclineJoinRequest(request)) },
+                    isAnswering = request.id in state.joinRequests.answeringIds,
+                    onAccept = { onAction(Action.JoinRequests.Accept(request)) },
+                    onDecline = { onAction(Action.JoinRequests.Decline(request)) },
                 )
             }
             item { HorizontalDivider(Modifier.padding(vertical = 8.dp)) }
         }
         items(state.members, key = { it.user.id }) { member ->
             MemberRow(
+                modifier = Modifier.animateItem(),
                 member = member,
                 canRemove = state.canManage && member.role != TripRole.OWNER,
-                onRemove = { onAction(Action.OnRemoveMember(member.user.id)) },
+                onRemove = { onAction(Action.RemoveMember(member.user.id)) },
             )
         }
         if (state.canManage) {
-            if (state.friends.isNotEmpty()) {
+            if (state.add.friends.isNotEmpty()) {
                 item {
                     FriendPickerRow(
-                        friends = state.friends,
-                        isPicked = { it.username in state.pickedFriends },
-                        onToggle = { onAction(Action.OnFriendToggled(it)) },
-                        enabled = !state.isAdding,
+                        friends = state.add.friends,
+                        isPicked = { it.username in state.add.pickedFriends },
+                        onToggle = { onAction(Action.Add.FriendToggled(it)) },
+                        enabled = !state.add.isAdding,
                         modifier = Modifier.padding(horizontal = 16.dp),
                     )
                 }
             }
-            if (state.pickedFriends.isNotEmpty()) {
+            if (state.add.pickedFriends.isNotEmpty()) {
                 item {
                     PrimaryButton(
-                        text = stringResource(Res.string.members_add_friends, state.pickedFriends.size),
-                        onClick = { onAction(Action.OnAddPickedFriends) },
-                        isLoading = state.isAdding,
+                        text = stringResource(Res.string.members_add_friends, state.add.pickedFriends.size),
+                        onClick = { onAction(Action.Add.PickedFriends) },
+                        isLoading = state.add.isAdding,
                         modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp),
                     )
                 }
             }
-            item { AddMemberField(state, onAction) }
+            item { AddMemberField(state.add, onAction) }
             item {
                 HorizontalDivider(Modifier.padding(vertical = 8.dp))
                 Text(
@@ -187,20 +197,21 @@ fun TripMembersScreen(
                     modifier = Modifier.padding(horizontal = 24.dp),
                 )
             }
-            items(state.invites, key = { it.id }) { invite ->
+            items(state.invites.invites, key = { it.id }) { invite ->
                 InviteRow(
+                    modifier = Modifier.animateItem(),
                     invite = invite,
-                    onShare = { onAction(Action.OnShareInvite(invite)) },
-                    onRevoke = { onAction(Action.OnRevokeInvite(invite.id)) },
+                    onShare = { onAction(Action.Invites.Share(invite)) },
+                    onRevoke = { onAction(Action.Invites.Revoke(invite.id)) },
                 )
             }
             item {
                 OutlinedButton(
-                    onClick = { onAction(Action.OnCreateInvite) },
-                    enabled = !state.isCreatingInvite,
+                    onClick = { onAction(Action.Invites.Create) },
+                    enabled = !state.invites.isCreating,
                     modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 8.dp),
                 ) {
-                    if (state.isCreatingInvite) {
+                    if (state.invites.isCreating) {
                         CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
                     } else {
                         Text(stringResource(Res.string.members_invite_create))
@@ -212,9 +223,9 @@ fun TripMembersScreen(
 }
 
 @Composable
-private fun MemberRow(member: TripMember, canRemove: Boolean, onRemove: () -> Unit) {
+private fun MemberRow(member: TripMember, canRemove: Boolean, onRemove: () -> Unit, modifier: Modifier = Modifier) {
     Row(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp),
+        modifier = modifier.fillMaxWidth().padding(horizontal = 24.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(Modifier.weight(1f)) {
@@ -236,9 +247,9 @@ private fun MemberRow(member: TripMember, canRemove: Boolean, onRemove: () -> Un
 }
 
 @Composable
-private fun JoinRequestRow(request: JoinRequest, isAnswering: Boolean, onAccept: () -> Unit, onDecline: () -> Unit) {
+private fun JoinRequestRow(request: JoinRequest, isAnswering: Boolean, onAccept: () -> Unit, onDecline: () -> Unit, modifier: Modifier = Modifier) {
     Row(
-        modifier = Modifier.fillMaxWidth().padding(start = 24.dp, end = 16.dp),
+        modifier = modifier.fillMaxWidth().padding(start = 24.dp, end = 16.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(Modifier.weight(1f)) {
@@ -261,7 +272,7 @@ private fun JoinRequestRow(request: JoinRequest, isAnswering: Boolean, onAccept:
 }
 
 @Composable
-private fun AddMemberField(state: State, onAction: (Action) -> Unit) {
+private fun AddMemberField(state: AddState, onAction: (Action) -> Unit) {
     Row(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -269,7 +280,7 @@ private fun AddMemberField(state: State, onAction: (Action) -> Unit) {
     ) {
         OutlinedTextField(
             value = state.username,
-            onValueChange = { onAction(Action.OnUsernameChanged(it)) },
+            onValueChange = { onAction(Action.Add.UsernameChanged(it)) },
             label = { Text(stringResource(Res.string.members_add_label)) },
             singleLine = true,
             enabled = !state.isAdding,
@@ -279,10 +290,10 @@ private fun AddMemberField(state: State, onAction: (Action) -> Unit) {
                 keyboardType = KeyboardType.Ascii,
                 imeAction = ImeAction.Done,
             ),
-            keyboardActions = KeyboardActions(onDone = { onAction(Action.OnAddMember) }),
+            keyboardActions = KeyboardActions(onDone = { onAction(Action.Add.ByUsername) }),
             modifier = Modifier.weight(1f),
         )
-        TextButton(onClick = { onAction(Action.OnAddMember) }, enabled = !state.isAdding && state.username.isNotBlank()) {
+        TextButton(onClick = { onAction(Action.Add.ByUsername) }, enabled = !state.isAdding && state.username.isNotBlank()) {
             if (state.isAdding) {
                 CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
             } else {
@@ -293,9 +304,9 @@ private fun AddMemberField(state: State, onAction: (Action) -> Unit) {
 }
 
 @Composable
-private fun InviteRow(invite: TripInvite, onShare: () -> Unit, onRevoke: () -> Unit) {
+private fun InviteRow(invite: TripInvite, onShare: () -> Unit, onRevoke: () -> Unit, modifier: Modifier = Modifier) {
     Row(
-        modifier = Modifier.fillMaxWidth().padding(start = 24.dp, end = 16.dp),
+        modifier = modifier.fillMaxWidth().padding(start = 24.dp, end = 16.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(
@@ -312,30 +323,57 @@ private fun InviteRow(invite: TripInvite, onShare: () -> Unit, onRevoke: () -> U
 
 @Preview
 @Composable
-private fun TripMembersScreenPreview() {
+private fun TripMembersScreenPreview(@PreviewParameter(TripMembersPreviewStates::class) state: State) {
+    TripinglyTheme { TripMembersScreen(state = state, onAction = {}, modifier = Modifier.background(MaterialTheme.colorScheme.surface)) }
+}
+
+@Preview(widthDp = 800, heightDp = 360)
+@Composable
+private fun TripMembersScreenLandscapePreview() {
+    TripinglyTheme(darkTheme = true) {
+        TripMembersScreen(state = TripMembersPreviewStates().values.first(), onAction = {}, modifier = Modifier.background(MaterialTheme.colorScheme.surface))
+    }
+}
+
+/** The owner, who can't be removed, and an editor the owner can remove. */
+@Preview
+@Composable
+private fun MemberRowPreview() {
     TripinglyTheme {
-        TripMembersScreen(
-            state = State(
-                tripName = "Summer Vacation in Paris",
-                canManage = true,
-                isLoading = false,
-                members = persistentListOf(
-                    TripMember(UserSummary("1", "shahin", "Shahin"), TripRole.OWNER),
-                    TripMember(UserSummary("2", "anna", "Anna"), TripRole.EDITOR),
-                ),
-                friends = persistentListOf(
-                    UserSummary("3", "jonas.k", "Jonas"),
-                    UserSummary("4", "lena", "Lena"),
-                ),
-                pickedFriends = persistentSetOf("lena"),
-                joinRequests = persistentListOf(
-                    JoinRequest("r1", "t1", UserSummary("5", "mia", "Mia"), Instant.parse("2025-06-01T10:00:00Z")),
-                ),
-                invites = persistentListOf(
-                    TripInvite("i1", "https://example.com/i/abc", Instant.parse("2025-06-08T10:00:00Z")),
-                ),
-            ),
-            onAction = {},
-        )
+        Column(Modifier.background(MaterialTheme.colorScheme.surface)) {
+            previewMembers.forEach { member -> MemberRow(member = member, canRemove = member.role != TripRole.OWNER, onRemove = {}) }
+        }
+    }
+}
+
+/** A request to answer, and one whose answer waits for the server. */
+@Preview
+@Composable
+private fun JoinRequestRowPreview() {
+    TripinglyTheme {
+        Column(Modifier.background(MaterialTheme.colorScheme.surface)) {
+            JoinRequestRow(previewJoinRequest, isAnswering = false, onAccept = {}, onDecline = {})
+            JoinRequestRow(previewJoinRequest, isAnswering = true, onAccept = {}, onDecline = {})
+        }
+    }
+}
+
+/** Empty, and a username typed while it's being added. */
+@Preview
+@Composable
+private fun AddMemberFieldPreview() {
+    TripinglyTheme {
+        Column(Modifier.background(MaterialTheme.colorScheme.surface)) {
+            AddMemberField(state = AddState(), onAction = {})
+            AddMemberField(state = AddState(username = "jonas.k", isAdding = true), onAction = {})
+        }
+    }
+}
+
+@Preview
+@Composable
+private fun InviteRowPreview() {
+    TripinglyTheme {
+        InviteRow(invite = previewInvite, onShare = {}, onRevoke = {})
     }
 }

@@ -11,7 +11,6 @@ import com.falcon.tripingly.core.data.trips.TripRepository
 import com.falcon.tripingly.core.data.trips.hasCode
 import com.falcon.tripingly.core.data.users.UserRepository
 import com.falcon.tripingly.core.model.account.SessionState
-import com.falcon.tripingly.core.model.social.LikeTarget
 import com.falcon.tripingly.core.model.social.PeopleList
 import com.falcon.tripingly.core.model.social.Profile
 import com.falcon.tripingly.core.model.social.PublicTrip
@@ -22,13 +21,9 @@ import com.falcon.tripingly.core.ui.toUiText
 import com.falcon.tripingly.feature.social.generated.resources.Res
 import com.falcon.tripingly.feature.social.generated.resources.social_error_block
 import com.falcon.tripingly.feature.social.generated.resources.social_error_follow
-import com.falcon.tripingly.feature.social.generated.resources.social_error_like
 import com.falcon.tripingly.feature.social.generated.resources.social_error_load_profile
-import com.falcon.tripingly.feature.social.generated.resources.social_error_report
-import com.falcon.tripingly.feature.social.generated.resources.social_error_save_trip
 import com.falcon.tripingly.feature.social.generated.resources.social_error_unfollow
-import com.falcon.tripingly.feature.social.generated.resources.social_error_unsave_trip
-import com.falcon.tripingly.feature.social.generated.resources.social_reported
+import com.falcon.tripingly.feature.social.presentation.component.PublicTripActions
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.toImmutableList
@@ -67,6 +62,19 @@ class ProfileViewModel(
 
     private var tripsCursor: String? = null
     private var loadingMore: Job? = null
+    private var following: Job? = null
+
+    /** The follow as the server last confirmed it: the profile before the first tap of a burst. */
+    private lateinit var confirmedFollow: Profile
+
+    private val tripActions = PublicTripActions(
+        scope = viewModelScope,
+        socialRepository = socialRepository,
+        tripRepository = tripRepository,
+        trip = { id -> _uiState.value.trips.firstOrNull { it.trip.id == id } },
+        updateTrip = { id, change -> _uiState.update { state -> state.copy(trips = state.trips.map { if (it.trip.id == id) change(it) else it }.toImmutableList()) } },
+        showMessage = { message -> _uiState.update { it.copy(message = message) } },
+    )
 
     init {
         load()
@@ -75,21 +83,27 @@ class ProfileViewModel(
 
     fun onAction(action: Action) {
         when (action) {
-            Action.OnRetry -> load()
-            Action.OnToggleFollow -> toggleFollow()
-            Action.OnBlock -> _uiState.update { it.copy(isConfirmingBlock = true) }
-            Action.OnConfirmBlock -> block()
-            Action.OnDismissBlock -> _uiState.update { it.copy(isConfirmingBlock = false) }
-            Action.OnReportUser -> _uiState.update { state -> state.copy(reporting = state.profile?.user?.id?.let { Reporting(ReportTarget.User, it) }) }
-            is Action.OnReportTrip -> _uiState.update { it.copy(reporting = Reporting(ReportTarget.Trip, action.trip.trip.id)) }
-            is Action.OnSendReport -> sendReport(action.reason, action.details)
-            Action.OnDismissReport -> _uiState.update { it.copy(reporting = null) }
-            is Action.OnLikeTrip -> likeTrip(action.trip)
-            is Action.OnToggleSaveTrip -> toggleSave(action.trip)
-            is Action.OnTripClick -> sendEvent(Event.OpenTrip(action.trip.trip.id))
-            is Action.OnOpenList -> sendEvent(Event.OpenList(action.list))
-            Action.OnLoadMore -> loadMore()
-            Action.OnDismissMessage -> _uiState.update { it.copy(message = null) }
+            Action.Retry -> load()
+            is Action.OpenList -> sendEvent(Event.OpenList(action.list))
+            Action.DismissMessage -> _uiState.update { it.copy(message = null) }
+            is Action.Person -> when (action) {
+                Action.Person.ToggleFollow -> toggleFollow()
+                Action.Person.Block -> _uiState.update { it.copy(isConfirmingBlock = true) }
+                Action.Person.ConfirmBlock -> block()
+                Action.Person.DismissBlock -> _uiState.update { it.copy(isConfirmingBlock = false) }
+                Action.Person.Report -> _uiState.update { state -> state.copy(report = state.profile?.user?.id?.let { ReportState(ReportTarget.User, it) }) }
+            }
+            is Action.Trips -> when (action) {
+                is Action.Trips.Click -> sendEvent(Event.OpenTrip(action.trip.trip.id))
+                is Action.Trips.Like -> tripActions.toggleLike(action.trip.trip.id)
+                is Action.Trips.ToggleSave -> tripActions.toggleSave(action.trip.trip.id)
+                is Action.Trips.Report -> _uiState.update { it.copy(report = ReportState(ReportTarget.Trip, action.trip.trip.id)) }
+                Action.Trips.LoadMore -> loadMore()
+            }
+            is Action.Report -> when (action) {
+                is Action.Report.Send -> sendReport(action.reason, action.details)
+                Action.Report.Dismiss -> _uiState.update { it.copy(report = null) }
+            }
         }
     }
 
@@ -154,24 +168,32 @@ class ProfileViewModel(
         }
     }
 
-    /** Shown at once and put back when the server refuses. */
+    /** Like a heart: shown at once and kept; a newer tap wins, and only a refusal puts back what the server last confirmed. */
     private fun toggleFollow() {
-        val before = _uiState.value.profile ?: return
-        val following = !before.isFollowing
+        val shown = _uiState.value.profile ?: return
+        if (following?.isActive != true) confirmedFollow = shown
+        following?.cancel()
+        val follow = !shown.isFollowing
         _uiState.update {
             it.copy(
-                profile = before.copy(
-                    isFollowing = following,
-                    isFriend = following && before.followsMe,
-                    followerCount = (before.followerCount + if (following) 1 else -1).coerceAtLeast(0),
+                profile = shown.copy(
+                    isFollowing = follow,
+                    isFriend = follow && shown.followsMe,
+                    followerCount = (shown.followerCount + if (follow) 1 else -1).coerceAtLeast(0),
                 ),
             )
         }
-        viewModelScope.launch {
-            val result = userRepository.setFollowing(before.user.id, following)
+        following = viewModelScope.launch {
+            val result = userRepository.setFollowing(shown.user.id, follow)
             if (result is AppResult.Error) {
-                val failed = if (following) Res.string.social_error_follow else Res.string.social_error_unfollow
-                _uiState.update { it.copy(profile = before, message = result.error.toUiText(failed)) }
+                val failed = if (follow) Res.string.social_error_follow else Res.string.social_error_unfollow
+                _uiState.update { state ->
+                    val before = confirmedFollow
+                    state.copy(
+                        profile = state.profile?.copy(isFollowing = before.isFollowing, isFriend = before.isFriend, followerCount = before.followerCount),
+                        message = result.error.toUiText(failed),
+                    )
+                }
             }
         }
     }
@@ -189,51 +211,11 @@ class ProfileViewModel(
     }
 
     private fun sendReport(reason: ReportReason, details: String) {
-        val reporting = _uiState.value.reporting ?: return
-        if (_uiState.value.isReporting) return
-        _uiState.update { it.copy(isReporting = true) }
+        val report = _uiState.value.report?.takeUnless { it.isSending } ?: return
+        _uiState.update { it.copy(report = report.copy(isSending = true)) }
         viewModelScope.launch {
-            val result = socialRepository.report(reporting.target, reporting.id, reason, details)
-            _uiState.update {
-                when (result) {
-                    is AppResult.Success -> it.copy(isReporting = false, reporting = null, message = UiText.Note(UiText.Resource(Res.string.social_reported)))
-                    is AppResult.Error -> it.copy(isReporting = false, message = result.error.toUiText(Res.string.social_error_report))
-                }
-            }
-        }
-    }
-
-    private fun likeTrip(trip: PublicTrip) {
-        val liked = !trip.likedByMe
-        updateTrip(trip.trip.id) { it.copy(likedByMe = liked, likeCount = (it.likeCount + if (liked) 1 else -1).coerceAtLeast(0)) }
-        viewModelScope.launch {
-            when (val result = socialRepository.setLiked(LikeTarget.Trip, trip.trip.id, liked)) {
-                is AppResult.Success -> updateTrip(trip.trip.id) { it.copy(likedByMe = result.data.liked, likeCount = result.data.likeCount) }
-                is AppResult.Error -> {
-                    updateTrip(trip.trip.id) { it.copy(likedByMe = trip.likedByMe, likeCount = trip.likeCount) }
-                    _uiState.update { it.copy(message = result.error.toUiText(Res.string.social_error_like)) }
-                }
-            }
-        }
-    }
-
-    private fun updateTrip(tripId: String, change: (PublicTrip) -> PublicTrip) {
-        _uiState.update { state -> state.copy(trips = state.trips.map { if (it.trip.id == tripId) change(it) else it }.toImmutableList()) }
-    }
-
-    /** Saves to (or removes from) My Trips at once and puts it back when the server refuses. */
-    private fun toggleSave(trip: PublicTrip) {
-        val saved = !trip.trip.savedByMe
-        updateTrip(trip.trip.id) {
-            it.copy(trip = it.trip.copy(savedByMe = saved), saveCount = (it.saveCount + if (saved) 1 else -1).coerceAtLeast(0))
-        }
-        viewModelScope.launch {
-            val result = tripRepository.setSaved(trip.trip, saved)
-            if (result is AppResult.Error) {
-                updateTrip(trip.trip.id) { it.copy(trip = it.trip.copy(savedByMe = trip.trip.savedByMe), saveCount = trip.saveCount) }
-                val failed = if (saved) Res.string.social_error_save_trip else Res.string.social_error_unsave_trip
-                _uiState.update { it.copy(message = result.error.toUiText(failed)) }
-            }
+            val sent = tripActions.report(report.target, report.id, reason, details)
+            _uiState.update { state -> state.copy(report = state.report?.copy(isSending = false)?.takeUnless { sent }) }
         }
     }
 
@@ -241,7 +223,9 @@ class ProfileViewModel(
         viewModelScope.launch { _events.send(event) }
     }
 
-    data class Reporting(val target: ReportTarget, val id: String)
+    /** The report dialog for the person or one of their trips. */
+    @Immutable
+    data class ReportState(val target: ReportTarget, val id: String, val isSending: Boolean = false)
 
     @Immutable
     data class State(
@@ -252,27 +236,36 @@ class ProfileViewModel(
         /** Unknown, or a block either way. */
         val isNotFound: Boolean = false,
         val isConfirmingBlock: Boolean = false,
-        val reporting: Reporting? = null,
-        val isReporting: Boolean = false,
+        val report: ReportState? = null,
         val message: UiText? = null,
     )
 
     sealed interface Action {
-        data object OnRetry : Action
-        data object OnToggleFollow : Action
-        data object OnBlock : Action
-        data object OnConfirmBlock : Action
-        data object OnDismissBlock : Action
-        data object OnReportUser : Action
-        data class OnReportTrip(val trip: PublicTrip) : Action
-        data class OnSendReport(val reason: ReportReason, val details: String) : Action
-        data object OnDismissReport : Action
-        data class OnLikeTrip(val trip: PublicTrip) : Action
-        data class OnToggleSaveTrip(val trip: PublicTrip) : Action
-        data class OnTripClick(val trip: PublicTrip) : Action
-        data class OnOpenList(val list: PeopleList) : Action
-        data object OnLoadMore : Action
-        data object OnDismissMessage : Action
+        data object Retry : Action
+        data class OpenList(val list: PeopleList) : Action
+        data object DismissMessage : Action
+
+        /** The person: follow, block and report. */
+        sealed interface Person : Action {
+            data object ToggleFollow : Person
+            data object Block : Person
+            data object ConfirmBlock : Person
+            data object DismissBlock : Person
+            data object Report : Person
+        }
+
+        sealed interface Trips : Action {
+            data class Click(val trip: PublicTrip) : Trips
+            data class Like(val trip: PublicTrip) : Trips
+            data class ToggleSave(val trip: PublicTrip) : Trips
+            data class Report(val trip: PublicTrip) : Trips
+            data object LoadMore : Trips
+        }
+
+        sealed interface Report : Action {
+            data class Send(val reason: ReportReason, val details: String) : Report
+            data object Dismiss : Report
+        }
     }
 
     sealed interface Event {

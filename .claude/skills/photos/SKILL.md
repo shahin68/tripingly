@@ -18,8 +18,8 @@ Upload several photos in sequence (at most 2 in parallel). Keep an upload queue 
 
 ## Gallery and cover
 
-- Swipeable gallery in the marker sheet; the cover is marked. Owners/editors can: set cover (`PUT /markers/{id}/cover`), reorder (`PUT /markers/{id}/photo-order`), delete (`DELETE /photos/{id}`, confirm first).
-- The first ready photo becomes the cover automatically (server does it); update the pin when `marker.cover_changed` arrives.
+- The stop's photo grid comes ranked from the server (its photos, the place's popular photos and Commons images); keep that order, new uploads on top, and tag the stop's own "This trip" while others' share it. The cover is marked. Owners/editors can: make any grid photo the cover (`PUT /markers/{id}/cover`) and delete the stop's own (`DELETE /photos/{id}`, confirm first). There is no manual order.
+- A photo never becomes the cover by itself; until one is picked the pin shows the place's image (server). Update the pin when `marker.cover_changed` arrives.
 - Viewers see like buttons and a report option on each photo.
 
 ## Loading

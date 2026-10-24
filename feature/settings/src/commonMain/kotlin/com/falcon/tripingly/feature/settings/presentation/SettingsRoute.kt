@@ -18,7 +18,6 @@ import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Directions
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Public
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
@@ -51,25 +50,20 @@ import com.falcon.tripingly.core.designsystem.component.SegmentedToggleOption
 import com.falcon.tripingly.core.designsystem.component.ShowMessage
 import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
 import com.falcon.tripingly.core.designsystem.theme.spacing
-import com.falcon.tripingly.core.model.account.DataExport
 import com.falcon.tripingly.core.model.account.DataExportStatus
+import com.falcon.tripingly.core.model.account.LegalDocument
 import com.falcon.tripingly.core.model.account.LegalDocumentType
-import com.falcon.tripingly.core.model.account.NotificationSettings
 import com.falcon.tripingly.core.model.account.NotificationType
 import com.falcon.tripingly.core.model.account.TripVisibility
 import com.falcon.tripingly.core.ui.UiText
 import com.falcon.tripingly.feature.settings.generated.resources.Res
 import com.falcon.tripingly.feature.settings.generated.resources.settings_about
 import com.falcon.tripingly.feature.settings.generated.resources.settings_back
-import com.falcon.tripingly.feature.settings.generated.resources.settings_cancel
 import com.falcon.tripingly.feature.settings.generated.resources.settings_credit_commons
 import com.falcon.tripingly.feature.settings.generated.resources.settings_credit_photon
 import com.falcon.tripingly.feature.settings.generated.resources.settings_credit_routes
 import com.falcon.tripingly.feature.settings.generated.resources.settings_data
 import com.falcon.tripingly.feature.settings.generated.resources.settings_delete_account
-import com.falcon.tripingly.feature.settings.generated.resources.settings_delete_confirm
-import com.falcon.tripingly.feature.settings.generated.resources.settings_delete_message
-import com.falcon.tripingly.feature.settings.generated.resources.settings_delete_title
 import com.falcon.tripingly.feature.settings.generated.resources.settings_export_download
 import com.falcon.tripingly.feature.settings.generated.resources.settings_export_failed
 import com.falcon.tripingly.feature.settings.generated.resources.settings_export_intro
@@ -90,14 +84,8 @@ import com.falcon.tripingly.feature.settings.generated.resources.settings_privac
 import com.falcon.tripingly.feature.settings.generated.resources.settings_pro
 import com.falcon.tripingly.feature.settings.generated.resources.settings_pro_active
 import com.falcon.tripingly.feature.settings.generated.resources.settings_pro_get
-import com.falcon.tripingly.feature.settings.generated.resources.settings_reauth_apple
-import com.falcon.tripingly.feature.settings.generated.resources.settings_reauth_google
-import com.falcon.tripingly.feature.settings.generated.resources.settings_reauth_message
-import com.falcon.tripingly.feature.settings.generated.resources.settings_reauth_title
 import com.falcon.tripingly.feature.settings.generated.resources.settings_retry
 import com.falcon.tripingly.feature.settings.generated.resources.settings_sign_out
-import com.falcon.tripingly.feature.settings.generated.resources.settings_sign_out_confirm
-import com.falcon.tripingly.feature.settings.generated.resources.settings_sign_out_message
 import com.falcon.tripingly.feature.settings.generated.resources.settings_signed_in_as
 import com.falcon.tripingly.feature.settings.generated.resources.settings_terms
 import com.falcon.tripingly.feature.settings.generated.resources.settings_title
@@ -105,10 +93,15 @@ import com.falcon.tripingly.feature.settings.generated.resources.settings_versio
 import com.falcon.tripingly.feature.settings.generated.resources.settings_visibility_private
 import com.falcon.tripingly.feature.settings.generated.resources.settings_visibility_public
 import com.falcon.tripingly.feature.settings.presentation.SettingsViewModel.Action
+import com.falcon.tripingly.feature.settings.presentation.SettingsViewModel.ExportState
+import com.falcon.tripingly.feature.settings.presentation.SettingsViewModel.NotificationsState
 import com.falcon.tripingly.feature.settings.presentation.SettingsViewModel.State
+import kotlinx.collections.immutable.ImmutableList
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel
+import androidx.compose.ui.tooling.preview.PreviewParameter
+import androidx.compose.foundation.background
 
 @Composable
 fun SettingsRoute(
@@ -120,68 +113,7 @@ fun SettingsRoute(
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     SettingsScreen(state = state, onAction = viewModel::onAction, onBack = onBack, onOpenPro = onOpenPro)
 
-    if (state.isConfirmingSignOut) {
-        AlertDialog(
-            onDismissRequest = { viewModel.onAction(Action.OnDismissSignOut) },
-            title = { Text(stringResource(Res.string.settings_sign_out)) },
-            text = { Text(stringResource(Res.string.settings_sign_out_message)) },
-            confirmButton = {
-                TextButton(onClick = { viewModel.onAction(Action.OnConfirmSignOut) }) {
-                    Text(stringResource(Res.string.settings_sign_out_confirm))
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { viewModel.onAction(Action.OnDismissSignOut) }) { Text(stringResource(Res.string.settings_cancel)) }
-            },
-        )
-    }
-    if (state.isConfirmingDelete) {
-        AlertDialog(
-            onDismissRequest = { if (!state.isDeleting) viewModel.onAction(Action.OnDismissDelete) },
-            title = { Text(stringResource(Res.string.settings_delete_title)) },
-            text = { Text(stringResource(Res.string.settings_delete_message)) },
-            confirmButton = {
-                TextButton(onClick = { viewModel.onAction(Action.OnConfirmDelete) }, enabled = !state.isDeleting) {
-                    if (state.isDeleting) {
-                        CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
-                    } else {
-                        Text(stringResource(Res.string.settings_delete_confirm), color = MaterialTheme.colorScheme.error)
-                    }
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { viewModel.onAction(Action.OnDismissDelete) }, enabled = !state.isDeleting) {
-                    Text(stringResource(Res.string.settings_cancel))
-                }
-            },
-        )
-    }
-    if (state.isReauthNeeded) {
-        AlertDialog(
-            onDismissRequest = { if (!state.isDeleting) viewModel.onAction(Action.OnDismissReauth) },
-            title = { Text(stringResource(Res.string.settings_reauth_title)) },
-            text = { Text(stringResource(Res.string.settings_reauth_message)) },
-            confirmButton = {
-                if (state.isDeleting) {
-                    CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
-                } else {
-                    TextButton(onClick = { viewModel.onAction(Action.OnConfirmWithGoogle) }) {
-                        Text(stringResource(Res.string.settings_reauth_google))
-                    }
-                    if (state.appleAvailable) {
-                        TextButton(onClick = { viewModel.onAction(Action.OnConfirmWithApple) }) {
-                            Text(stringResource(Res.string.settings_reauth_apple))
-                        }
-                    }
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { viewModel.onAction(Action.OnDismissReauth) }, enabled = !state.isDeleting) {
-                    Text(stringResource(Res.string.settings_cancel))
-                }
-            },
-        )
-    }
+    state.account?.let { AccountConfirmation(it, appleAvailable = state.appleAvailable, onAction = viewModel::onAction) }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -201,7 +133,7 @@ internal fun SettingsScreen(state: State, onAction: (Action) -> Unit, onBack: ()
     ) { padding ->
         ShowMessage(
             message = state.message?.asString(),
-            onShown = { onAction(Action.OnDismissMessage) },
+            onShown = { onAction(Action.DismissMessage) },
             isError = state.message !is UiText.Note,
         )
         // One readable column, also on tablets and in landscape.
@@ -233,36 +165,36 @@ internal fun SettingsScreen(state: State, onAction: (Action) -> Unit, onBack: ()
                     SegmentedToggleOption(
                         label = stringResource(Res.string.settings_visibility_public),
                         selected = state.defaultVisibility == TripVisibility.PUBLIC,
-                        onClick = { onAction(Action.OnVisibilityChange(TripVisibility.PUBLIC)) },
+                        onClick = { onAction(Action.VisibilityChanged(TripVisibility.PUBLIC)) },
                         icon = Icons.Default.Public,
                     )
                     SegmentedToggleOption(
                         label = stringResource(Res.string.settings_visibility_private),
                         selected = state.defaultVisibility == TripVisibility.PRIVATE,
-                        onClick = { onAction(Action.OnVisibilityChange(TripVisibility.PRIVATE)) },
+                        onClick = { onAction(Action.VisibilityChanged(TripVisibility.PRIVATE)) },
                         icon = Icons.Default.Lock,
                     )
                 }
                 Hint(stringResource(Res.string.settings_new_trips_hint))
 
                 Section(stringResource(Res.string.settings_notifications))
-                Notifications(state, onAction)
+                Notifications(state.notifications, onAction)
 
                 Section(stringResource(Res.string.settings_data))
-                DataExportSection(state, onAction)
+                DataExportSection(state.export, onAction)
 
                 Section(stringResource(Res.string.settings_about))
-                About(state)
+                About(state.legalDocuments, state.appVersion)
 
                 HorizontalDivider(Modifier.padding(vertical = MaterialTheme.spacing.small))
                 OutlinedButton(
-                    onClick = { onAction(Action.OnSignOut) },
+                    onClick = { onAction(Action.Account.SignOut) },
                     modifier = Modifier.fillMaxWidth().padding(horizontal = MaterialTheme.spacing.medium),
                 ) {
                     Text(stringResource(Res.string.settings_sign_out))
                 }
                 TextButton(
-                    onClick = { onAction(Action.OnDeleteAccount) },
+                    onClick = { onAction(Action.Account.Delete) },
                     modifier = Modifier.fillMaxWidth().padding(horizontal = MaterialTheme.spacing.medium),
                 ) {
                     Text(stringResource(Res.string.settings_delete_account), color = MaterialTheme.colorScheme.error)
@@ -273,21 +205,21 @@ internal fun SettingsScreen(state: State, onAction: (Action) -> Unit, onBack: ()
 }
 
 @Composable
-private fun Notifications(state: State, onAction: (Action) -> Unit) {
-    val settings = state.notifications
+private fun Notifications(state: NotificationsState, onAction: (Action) -> Unit) {
+    val settings = state.settings
     when {
         settings != null -> {
             NotificationType.entries.forEach { type ->
                 SwitchRow(
                     label = stringResource(type.label()),
                     checked = type in settings.enabled,
-                    onCheckedChange = { onAction(Action.OnNotificationChange(type, it)) },
+                    onCheckedChange = { onAction(Action.Notifications.Changed(type, it)) },
                 )
             }
             Hint(stringResource(Res.string.settings_notifications_hint))
         }
-        state.hasNotificationsFailed -> TextButton(
-            onClick = { onAction(Action.OnRetryNotifications) },
+        state.hasFailed -> TextButton(
+            onClick = { onAction(Action.Notifications.Retry) },
             modifier = Modifier.padding(horizontal = MaterialTheme.spacing.small),
         ) {
             Text(stringResource(Res.string.settings_retry))
@@ -310,7 +242,7 @@ private fun SwitchRow(label: String, checked: Boolean, onCheckedChange: (Boolean
 }
 
 @Composable
-private fun DataExportSection(state: State, onAction: (Action) -> Unit) {
+private fun DataExportSection(state: ExportState, onAction: (Action) -> Unit) {
     val export = state.export
     val uriHandler = LocalUriHandler.current
     Hint(
@@ -333,8 +265,8 @@ private fun DataExportSection(state: State, onAction: (Action) -> Unit) {
             )
         } else if (export?.status != DataExportStatus.PENDING) {
             OutlinedButton(
-                onClick = { onAction(Action.OnRequestExport) },
-                enabled = state.hasLoadedExport && !state.isRequestingExport,
+                onClick = { onAction(Action.RequestExport) },
+                enabled = state.hasLoaded && !state.isRequesting,
                 modifier = Modifier.fillMaxWidth(),
             ) {
                 Text(stringResource(Res.string.settings_export_request))
@@ -344,9 +276,9 @@ private fun DataExportSection(state: State, onAction: (Action) -> Unit) {
 }
 
 @Composable
-private fun About(state: State) {
+private fun About(legalDocuments: ImmutableList<LegalDocument>, appVersion: String) {
     val uriHandler = LocalUriHandler.current
-    state.legalDocuments.filter { it.type != LegalDocumentType.MARKETING }.forEach { document ->
+    legalDocuments.filter { it.type != LegalDocumentType.MARKETING }.forEach { document ->
         LinkRow(
             label = stringResource(if (document.type == LegalDocumentType.TERMS) Res.string.settings_terms else Res.string.settings_privacy_policy),
             onClick = { runCatching { uriHandler.openUri(document.url) } },
@@ -357,7 +289,7 @@ private fun About(state: State) {
     LinkRow(stringResource(Res.string.settings_credit_routes)) { runCatching { uriHandler.openUri(ROUTES_URL) } }
     LinkRow(stringResource(Res.string.settings_credit_photon)) { runCatching { uriHandler.openUri(PHOTON_URL) } }
     LinkRow(stringResource(Res.string.settings_credit_commons)) { runCatching { uriHandler.openUri(COMMONS_URL) } }
-    Hint(stringResource(Res.string.settings_version, state.appVersion))
+    Hint(stringResource(Res.string.settings_version, appVersion))
 }
 
 @Composable
@@ -397,19 +329,35 @@ private const val COMMONS_URL = "https://commons.wikimedia.org"
 
 @Preview
 @Composable
-private fun SettingsScreenPreview() {
+private fun SettingsScreenPreview(@PreviewParameter(SettingsPreviewStates::class) state: State) {
+    TripinglyTheme { SettingsScreen(state = state, onAction = {}, onBack = {}, onOpenPro = {}) }
+}
+
+@Preview(widthDp = 800, heightDp = 360)
+@Composable
+private fun SettingsScreenLandscapePreview() {
+    TripinglyTheme(darkTheme = true) { SettingsScreen(state = SettingsPreviewStates().values.first(), onAction = {}, onBack = {}, onOpenPro = {}) }
+}
+
+@Preview
+@Composable
+private fun NotificationsPreview(@PreviewParameter(NotificationsPreviewStates::class) state: NotificationsState) {
+    TripinglyTheme { Column(Modifier.background(MaterialTheme.colorScheme.surface)) { Notifications(state = state, onAction = {}) } }
+}
+
+@Preview
+@Composable
+private fun DataExportSectionPreview(@PreviewParameter(ExportPreviewStates::class) state: ExportState) {
+    TripinglyTheme { Column(Modifier.background(MaterialTheme.colorScheme.surface)) { DataExportSection(state = state, onAction = {}) } }
+}
+
+@Preview
+@Composable
+private fun AboutPreview() {
     TripinglyTheme {
-        SettingsScreen(
-            state = State(
-                appVersion = "1.0",
-                username = "jonas.k",
-                notifications = NotificationSettings(NotificationType.entries.toSet() - NotificationType.LIKES),
-                export = DataExport(DataExportStatus.PENDING, downloadUrl = null, expiresAt = null),
-                hasLoadedExport = true,
-            ),
-            onAction = {},
-            onBack = {},
-            onOpenPro = {},
-        )
+        Column(Modifier.background(MaterialTheme.colorScheme.surface)) {
+            Section("About")
+            About(legalDocuments = previewLegalDocuments, appVersion = "1.0 (42)")
+        }
     }
 }

@@ -62,12 +62,12 @@ internal class InMemoryTripLocalDataSource : TripLocalDataSource {
         recountMarkers()
     }
 
-    override suspend fun savePlaceOfMarker(markerId: String, placeId: String, name: String) {
+    override suspend fun savePlaceOfMarker(marker: TripMarker) = with(marker) {
         trips.update { all ->
             all.mapValues { (_, details) ->
                 details.copy(
                     days = details.days.map { day ->
-                        day.copy(markers = day.markers.map { if (it.id == markerId) it.copy(placeId = placeId, name = it.name.ifEmpty { name }) else it })
+                        day.copy(markers = day.markers.map { if (it.id == id) it.copy(placeId = placeId, name = it.name.ifEmpty { name }, coverPhotoId = coverPhotoId, coverThumbUrl = coverThumbUrl, hotCount = hotCount, hotByMe = hotByMe, canMarkHot = canMarkHot) else it })
                     },
                 )
             }
@@ -95,12 +95,12 @@ internal class InMemoryTripLocalDataSource : TripLocalDataSource {
     override suspend fun markerAtPlace(placeId: String): TripMarker? =
         trips.value.values.firstNotNullOfOrNull { details -> details.days.firstNotNullOfOrNull { day -> day.markers.firstOrNull { it.placeId == placeId } } }
 
-    override suspend fun savePlaceLike(placeId: String, likeCount: Int, likedByMe: Boolean?) =
+    override suspend fun savePlaceHot(placeId: String, hotCount: Int, hotByMe: Boolean?) =
         trips.update { all ->
             all.mapValues { (_, details) ->
                 details.copy(
                     days = details.days.map { day ->
-                        day.copy(markers = day.markers.map { if (it.placeId == placeId) it.copy(likeCount = likeCount, likedByMe = likedByMe ?: it.likedByMe) else it })
+                        day.copy(markers = day.markers.map { if (it.placeId == placeId) it.copy(hotCount = hotCount, hotByMe = hotByMe ?: it.hotByMe) else it })
                     },
                 )
             }

@@ -34,8 +34,9 @@ import kotlinx.coroutines.launch
 /**
  * The photos of a stop or a place in the sheet: the gallery, the photos picked on this device still going
  * up, and the full-screen viewer. The gallery loads when the sheet first opens. A stop's owners and editors
- * add photos (picked or taken with the in-app camera), pick the cover and delete; anyone adds photos to a
- * place and deletes their own. Everyone likes photos. The server checks all of it too.
+ * add photos (picked or taken with the in-app camera), pick any photo in its grid as the cover and delete the
+ * stop's own; anyone adds photos to a place and deletes their own. Everyone likes photos. The server checks
+ * all of it too.
  */
 class PhotosViewModel(
     private val owner: PhotoOwner,
@@ -82,6 +83,7 @@ class PhotosViewModel(
         val gallery = photos.orEmpty().filter { it.status != PhotoStatus.Uploading }
         val viewable = gallery.filter { it.status == PhotoStatus.Ready }
         return State(
+            owner = owner,
             photos = gallery.toImmutableList(),
             uploads = uploads.toImmutableList(),
             isLoading = photos == null && ui.isLoading,
@@ -181,7 +183,12 @@ class PhotosViewModel(
 
     @Immutable
     data class State(
-        /** The gallery: a stop's in order (processing and failed photos too, for trip members), a place's most liked first. */
+        /** Whose photos these are; null until the first state. */
+        val owner: PhotoOwner? = null,
+        /**
+         * The gallery as the server ranks it: a stop's photo grid (members' uploads in progress first, then its photos,
+         * the place's popular photos and Commons images by likes), a place's most liked first.
+         */
         val photos: ImmutableList<Photo> = persistentListOf(),
         /** Photos picked on this device that the server doesn't have yet. */
         val uploads: ImmutableList<PhotoUpload> = persistentListOf(),

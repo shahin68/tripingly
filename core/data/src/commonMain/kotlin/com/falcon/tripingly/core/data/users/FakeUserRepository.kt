@@ -8,6 +8,8 @@ import com.falcon.tripingly.core.model.social.PeopleList
 import com.falcon.tripingly.core.model.social.Profile
 import com.falcon.tripingly.core.model.trip.UserSummary
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.emptyFlow
 
 /** A few people for `-Ptripinly.useFakeApi=true` builds and tests; the first three are friends. */
@@ -27,6 +29,9 @@ class FakeUserRepository : UserRepository {
     private val blocked = mutableSetOf<String>()
 
     override val followChanges: Flow<FollowChange> = emptyFlow()
+
+    private val _blocks = MutableSharedFlow<String>(extraBufferCapacity = 8)
+    override val blocks: Flow<String> = _blocks.asSharedFlow()
 
     private fun visible() = people.filterNot { it.id in blocked }
 
@@ -77,6 +82,7 @@ class FakeUserRepository : UserRepository {
 
     override suspend fun setBlocked(userId: String, blocked: Boolean): AppResult<Unit, DataError.Network> {
         if (blocked) {
+            _blocks.emit(userId)
             this.blocked += userId
             following -= userId
             followers -= userId

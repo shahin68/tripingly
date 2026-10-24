@@ -3,7 +3,6 @@ package com.falcon.tripingly.core.data.social
 import com.falcon.tripingly.core.data.trips.toTrip
 import com.falcon.tripingly.core.data.trips.toUser
 import com.falcon.tripingly.core.model.social.Comment
-import com.falcon.tripingly.core.model.social.LikeState
 import com.falcon.tripingly.core.model.social.LikeTarget
 import com.falcon.tripingly.core.model.social.Profile
 import com.falcon.tripingly.core.model.social.PublicTrip
@@ -11,7 +10,6 @@ import com.falcon.tripingly.core.model.social.ReportReason
 import com.falcon.tripingly.core.model.social.ReportTarget
 import com.falcon.tripingly.core.network.model.CommentDto
 import com.falcon.tripingly.core.network.model.CreateReportDto
-import com.falcon.tripingly.core.network.model.LikeStateDto
 import com.falcon.tripingly.core.network.model.ProfileDto
 import com.falcon.tripingly.core.network.model.TripSummaryDto
 import kotlin.time.Instant
@@ -46,14 +44,11 @@ internal fun CommentDto.toComment() = Comment(
     createdAt = runCatching { Instant.parse(createdAt) }.getOrDefault(Instant.DISTANT_PAST),
 )
 
-internal fun LikeStateDto.toLikeState() = LikeState(liked = liked, likeCount = likeCount.toInt())
-
 /** The name in `/likes/{targetType}/…` and in `like.count_changed`. */
 internal val LikeTarget.wireName: String get() = when (this) {
     LikeTarget.Trip -> "trip"
     LikeTarget.Photo -> "photo"
     LikeTarget.Comment -> "comment"
-    LikeTarget.Place -> "place"
     LikeTarget.PlaceImage -> "place_image"
 }
 

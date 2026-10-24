@@ -1111,17 +1111,25 @@ class MapViewModelTest {
         displayUrl = displayUrl,
         width = width,
         height = height,
-        position = 0,
         likeCount = 0,
         likedByMe = false,
-        uploaderId = null,
+        uploader = null,
         credit = credit,
     )
 
     @Test
-    fun `a stop without a cover shows its place's first image, asked for once`() = runTest(testDispatcher) {
+    fun `a stop whose pin shows a Commons image credits it, its place asked for once`() = runTest(testDispatcher) {
         places.images["fake-louvre"] = listOf(COMMONS_IMAGE)
         backend.addMarker(trip.trip.id, trip.days[0].id, NewMarker("Louvre", LOUVRE, placeId = "fake-louvre"))
+        // The server sends the place's image as the cover of a stop without a picked one.
+        val withStop = (backend.refreshTrip(trip.trip.id) as AppResult.Success).data
+        backend.seed(
+            withStop.copy(
+                days = withStop.days.map { day ->
+                    day.copy(markers = day.markers.map { it.copy(coverPhotoId = COMMONS_IMAGE.id, coverThumbUrl = COMMONS_IMAGE.thumbUrl) })
+                },
+            ),
+        )
         val viewModel = viewModel()
         testScheduler.advanceUntilIdle()
 
@@ -1129,7 +1137,7 @@ class MapViewModelTest {
         viewModel.onAction(MapAction.MapView.MarkerClick(stop))
         restOnTarget(viewModel)
         testScheduler.advanceUntilIdle()
-        assertEquals(COMMONS_IMAGE, viewModel.uiState.value.stopCard?.placeImage)
+        assertEquals(COMMONS_IMAGE.credit, viewModel.uiState.value.stopCard?.coverCredit)
 
         viewModel.onAction(MapAction.MapView.MarkerClick(stop))
         testScheduler.advanceUntilIdle()
@@ -1435,7 +1443,7 @@ class MapViewModelTest {
     @Test
     fun `places along the way get pins of their own color`() = runTest(testDispatcher) {
         addStops(GeoPoint(48.2085, 16.3731), GeoPoint(48.2104, 16.3655))
-        val cafe = MapPlace("cafe", "Café Central", PlaceCategory.Cafe, GeoPoint(48.2101, 16.3654), isTripinly = false, likeCount = 0, prominence = 70)
+        val cafe = MapPlace("cafe", "Café Central", PlaceCategory.Cafe, GeoPoint(48.2101, 16.3654), isTripinly = false, hotCount = 0, prominence = 70)
         routes.alongTheWay = listOf(AlongTheWayPlace(cafe, distanceFromRouteMeters = 40, etaFromStartSeconds = 300))
         val viewModel = viewModel()
         testScheduler.advanceUntilIdle()
@@ -1463,7 +1471,7 @@ class MapViewModelTest {
             assertEquals(false, viewModel.uiState.value.stopsCard?.isRouteOn)
             viewModel.uiState.value.assertStopPath()
 
-            val place = MapPlace("a", "Oper", PlaceCategory.Attraction, GeoPoint(48.2031, 16.3691), isTripinly = false, likeCount = 0, prominence = 80)
+            val place = MapPlace("a", "Oper", PlaceCategory.Attraction, GeoPoint(48.2031, 16.3691), isTripinly = false, hotCount = 0, prominence = 80)
             viewModel.onAction(MapAction.MapView.PlacePinClick(place))
             viewModel.onAction(MapAction.PlaceCard.RouteFrom)
             testScheduler.advanceUntilIdle()
@@ -1479,8 +1487,8 @@ class MapViewModelTest {
         val viewModel = viewModel()
         viewModel.onAction(MapAction.Plan.ToggleRoute)
         testScheduler.advanceUntilIdle()
-        val from = MapPlace("a", "Oper", PlaceCategory.Attraction, GeoPoint(48.2031, 16.3691), isTripinly = false, likeCount = 0, prominence = 80)
-        val to = MapPlace("b", "Prater", PlaceCategory.Park, GeoPoint(48.2166, 16.3958), isTripinly = false, likeCount = 0, prominence = 80)
+        val from = MapPlace("a", "Oper", PlaceCategory.Attraction, GeoPoint(48.2031, 16.3691), isTripinly = false, hotCount = 0, prominence = 80)
+        val to = MapPlace("b", "Prater", PlaceCategory.Park, GeoPoint(48.2166, 16.3958), isTripinly = false, hotCount = 0, prominence = 80)
 
         viewModel.onAction(MapAction.MapView.PlacePinClick(from))
         viewModel.onAction(MapAction.PlaceCard.RouteFrom)

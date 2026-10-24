@@ -17,6 +17,8 @@ import io.ktor.client.request.HttpRequestData
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.headersOf
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -106,6 +108,7 @@ class UserRepositoryTest {
         assertTrue(profile.isFollowing)
         assertEquals("Vienna", profile.trips.single().trip.name)
         assertEquals(4, profile.trips.single().likeCount)
+        assertEquals("ph1", profile.trips.single().trip.coverPhotoId)
     }
 
     @Test
@@ -129,6 +132,21 @@ class UserRepositoryTest {
     }
 
     @Test
+    fun blocks_tellOnlyOfBlocksTheServerTook() = runTest {
+        val blocked = mutableListOf<String>()
+        val taken = repository("", HttpStatusCode.NoContent)
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { taken.blocks.collect { blocked += it } }
+        taken.setBlocked(ANNA_ID, blocked = true)
+        taken.setBlocked(ANNA_ID, blocked = false)
+
+        val refused = repository("""{"error":{"code":"RATE_LIMITED","message":"Slow down"}}""", HttpStatusCode.TooManyRequests)
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { refused.blocks.collect { blocked += it } }
+        refused.setBlocked(ANNA_ID, blocked = true)
+
+        assertEquals(listOf(ANNA_ID), blocked)
+    }
+
+    @Test
     fun people_asksForTheList_withTheCursor() = runTest {
         val repository = repository("""{"items":[$ANNA],"nextCursor":"c3"}""")
 
@@ -144,7 +162,7 @@ class UserRepositoryTest {
         const val ANNA_ID = "22222222-2222-4222-8222-222222222222"
         const val ANNA = """{"id":"$ANNA_ID","username":"anna","displayName":"Anna"}"""
         const val TRIP = """{"id":"t1","title":"Vienna","startDate":null,"endDate":null,"visibility":"public","owner":$ANNA,
-            "role":"viewer","coverThumbUrl":null,"dayCount":1,"markerCount":2,"editorCount":0,"likeCount":4,"likedByMe":false,
+            "role":"viewer","coverPhotoId":"ph1","coverThumbUrl":"https://r2.test/ph1/thumb?sig=1","dayCount":1,"markerCount":2,"editorCount":0,"likeCount":4,"likedByMe":false,
             "saveCount":1,"savedByMe":false,"createdAt":"2026-10-11T09:00:00Z","updatedAt":"2026-10-11T10:00:00Z"}"""
     }
 }

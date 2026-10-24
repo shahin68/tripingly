@@ -10,7 +10,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Directions
-import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.LocalFireDepartment
 import androidx.compose.material.icons.filled.PhotoLibrary
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -30,10 +30,16 @@ import com.falcon.tripingly.core.designsystem.theme.spacing
 import com.falcon.tripingly.core.model.place.MapPlace
 import com.falcon.tripingly.core.model.place.PlaceCategory
 import com.falcon.tripingly.core.model.place.PlaceDetails
+import com.falcon.tripingly.core.model.trip.UserSummary
 import com.falcon.tripingly.feature.map.generated.resources.Res
 import com.falcon.tripingly.feature.map.generated.resources.*
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
+import androidx.compose.ui.tooling.preview.Preview
+import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
+import androidx.compose.ui.tooling.preview.PreviewParameter
+import androidx.compose.ui.tooling.preview.PreviewParameterProvider
+import com.falcon.tripingly.core.designsystem.component.icon
 
 /**
  * A place tapped on the map, in a card that floats above its pin: what the pin knows at once, its images,
@@ -96,20 +102,27 @@ fun PlaceCard(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.weight(1f),
                 )
-                val likeCount = details?.likeCount ?: place.likeCount
-                if (likeCount > 0) {
+                val hotCount = details?.hotCount ?: place.hotCount
+                if (hotCount > 0) {
                     Icon(
-                        Icons.Default.Favorite,
-                        contentDescription = stringResource(Res.string.map_place_likes),
+                        Icons.Default.LocalFireDepartment,
+                        contentDescription = stringResource(Res.string.map_place_hot_count),
                         tint = MaterialTheme.colorScheme.tertiary,
                         modifier = Modifier.size(16.dp),
                     )
                     Text(
-                        text = likeCount.toString(),
+                        text = hotCount.toString(),
                         style = MaterialTheme.typography.bodyMedium,
                         modifier = Modifier.padding(start = 4.dp),
                     )
                 }
+            }
+            details?.addedBy?.let { creator ->
+                Text(
+                    text = stringResource(Res.string.map_place_added_by, creator.username),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
             }
             details?.openingHours?.let { hours ->
                 Column {
@@ -168,4 +181,49 @@ private fun PlaceCategory.label(): StringResource = when (this) {
     PlaceCategory.Nature -> Res.string.map_place_category_nature
     PlaceCategory.Landmark -> Res.string.map_place_category_landmark
     PlaceCategory.Other -> Res.string.map_place_category_other
+}
+
+/** A place loading, loaded with images, hours and website, an address from search, a viewer's offering "Route to here", and a custom spot crediting its creator. */
+internal class PlaceCardPreviewStates : PreviewParameterProvider<PlaceCardPreview> {
+    override val values = sequenceOf(
+        PlaceCardPreview(previewPlace, details = null, address = null, dayNumber = 2, canRouteTo = false),
+        PlaceCardPreview(previewPlace, previewPlaceDetails, address = null, dayNumber = 2, canRouteTo = false),
+        PlaceCardPreview(previewCafe.copy(name = "12 Rue de Rivoli"), details = null, address = "12 Rue de Rivoli, 75004 Paris, France", dayNumber = 1, canRouteTo = false),
+        PlaceCardPreview(previewCafe, previewPlaceDetails.copy(images = emptyList(), openingHours = null, website = null), address = null, dayNumber = null, canRouteTo = true),
+        PlaceCardPreview(previewCafe, previewPlaceDetails.copy(addedBy = UserSummary("u-1", "anna", "Anna")), address = null, dayNumber = 1, canRouteTo = false),
+    )
+}
+
+internal data class PlaceCardPreview(
+    val place: MapPlace,
+    val details: PlaceDetails?,
+    val address: String?,
+    val dayNumber: Int?,
+    val canRouteTo: Boolean,
+)
+
+@Preview
+@Composable
+private fun PlaceCardPreview(@PreviewParameter(PlaceCardPreviewStates::class) card: PlaceCardPreview) {
+    TripinglyTheme {
+        PlaceCard(
+            place = card.place,
+            details = card.details,
+            address = card.address,
+            dayNumber = card.dayNumber,
+            onAdd = {},
+            onOpenImage = {},
+            onOpenPhotos = {},
+            onRouteFrom = {},
+            onRouteTo = if (card.canRouteTo) ({}) else null,
+        )
+    }
+}
+
+@Preview
+@Composable
+private fun PlaceCardDarkPreview() {
+    TripinglyTheme(darkTheme = true) {
+        PlaceCard(previewPlace, previewPlaceDetails, address = null, dayNumber = 2, onAdd = {}, onOpenImage = {}, onOpenPhotos = {}, onRouteFrom = {}, onRouteTo = null)
+    }
 }

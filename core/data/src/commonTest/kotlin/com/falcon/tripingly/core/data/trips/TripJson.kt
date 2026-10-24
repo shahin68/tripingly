@@ -14,7 +14,7 @@ internal object TripJson {
         savedByMe: Boolean = false,
     ) = """
         {"id":"$id","title":"$title","startDate":"2026-06-01","endDate":"2026-06-03","visibility":"public",
-         "owner":$OWNER,"role":"$role","coverThumbUrl":null,"dayCount":3,"markerCount":0,"editorCount":$editorCount,
+         "owner":$OWNER,"role":"$role","coverPhotoId":null,"coverThumbUrl":null,"dayCount":3,"markerCount":0,"editorCount":$editorCount,
          "likeCount":0,"likedByMe":false,"saveCount":0,"savedByMe":$savedByMe,"createdAt":"2026-10-01T10:00:00.000Z","updatedAt":"$updatedAt"}
     """.trimIndent()
 
@@ -24,7 +24,7 @@ internal object TripJson {
     fun marker(id: String, tripId: String, dayId: String, position: Int, name: String = "Stop #${position + 1}") = """
         {"id":"$id","tripId":"$tripId","dayId":"$dayId","placeId":"99999999-9999-4999-8999-99999999999$position",
          "name":"$name","location":{"lat":48.8584,"lng":2.2945},"time":null,"position":$position,
-         "coverPhotoId":null,"coverThumbUrl":null,"photoCount":0,"likeCount":0,"likedByMe":false,"canLike":true,
+         "coverPhotoId":null,"coverThumbUrl":null,"photoCount":0,"hotCount":0,"hotByMe":false,"canMarkHot":true,
          "commentCount":0,"createdBy":$OWNER,"createdAt":"2026-10-04T10:00:00.000Z","updatedAt":"2026-10-04T10:00:00.000Z"}
     """.trimIndent()
 

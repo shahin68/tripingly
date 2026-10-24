@@ -1,6 +1,7 @@
 package com.falcon.tripingly.core.model.photo
 
 import com.falcon.tripingly.core.model.place.ImageCredit
+import com.falcon.tripingly.core.model.trip.UserSummary
 
 /** What a photo belongs to: a trip's stop, or a place (anyone may add those, without a trip). */
 sealed interface PhotoOwner {
@@ -23,11 +24,10 @@ data class Photo(
     val displayUrl: String?,
     val width: Int?,
     val height: Int?,
-    /** Gallery order, 0-based; 0 for place photos, which are ordered by likes. */
-    val position: Int,
     val likeCount: Int,
     val likedByMe: Boolean,
-    val uploaderId: String?,
+    /** Who uploaded it, credited with it; null for Commons images and for someone with a block either way. */
+    val uploader: UserSummary?,
     /** Set only on a place's Wikimedia Commons image, shown with it; nobody uploaded or deletes those. */
     val credit: ImageCredit?,
 )

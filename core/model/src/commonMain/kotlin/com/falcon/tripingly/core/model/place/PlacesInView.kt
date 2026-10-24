@@ -1,6 +1,7 @@
 package com.falcon.tripingly.core.model.place
 
 import com.falcon.tripingly.core.model.trip.GeoPoint
+import com.falcon.tripingly.core.model.trip.UserSummary
 import kotlin.math.ceil
 import kotlin.math.floor
 import kotlin.math.pow
@@ -21,15 +22,15 @@ data class GeoBounds(
 
 enum class PlaceCategory { Cafe, Restaurant, Bar, Attraction, Museum, Historic, Park, Nature, Landmark, Other }
 
-/** A place drawn on the map: one people liked on Tripinly, or one from OpenStreetMap when zoomed in. */
+/** A place drawn on the map: a hot spot on Tripinly, or one from OpenStreetMap when zoomed in. */
 data class MapPlace(
     val id: String,
     val name: String,
     val category: PlaceCategory,
     val location: GeoPoint,
-    /** Liked on Tripinly; drawn with the Tripinly pin. */
+    /** A hot spot on Tripinly; drawn with the Tripinly pin. */
     val isTripinly: Boolean,
-    val likeCount: Int,
+    val hotCount: Int,
     /** How well known the place is, 0–100 (Wikimedia page views and OpenStreetMap tags); 0 when unknown. */
     val prominence: Int,
     /** The place's image, a Tripinly photo or a Wikimedia Commons image, or null; cache it by this id. */
@@ -54,12 +55,14 @@ data class PlaceDetails(
     val id: String,
     val name: String,
     val category: PlaceCategory,
-    val likeCount: Int,
+    val hotCount: Int,
     /** OpenStreetMap `opening_hours`, e.g. "Mo-Su 08:00-21:00". */
     val openingHours: String?,
     val website: String?,
     /** For the card, the cover first: trip photos people liked here, then Wikimedia Commons images. */
     val images: List<PlaceImage>,
+    /** Who made this custom spot, credited as "Added by"; null for OSM places and when the server keeps it hidden. */
+    val addedBy: UserSummary? = null,
 )
 
 enum class PlaceImageSource { Trip, Commons }

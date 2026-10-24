@@ -245,9 +245,9 @@ internal class DefaultMarkerRepository(
             )
         }
         if (result is AppResult.Success) {
-            // The place the server matched (and the name it gave a stop added without one);
-            // the rest is already on the device.
-            (result.data as? MarkerDto)?.let { local.savePlaceOfMarker(it.id, it.placeId, it.name) }
+            // The place the server matched, with its hot marks and cover (and the name it gave a stop added
+            // without one); the rest is already on the device.
+            (result.data as? MarkerDto)?.let { local.savePlaceOfMarker(it.toMarker()) }
             return null
         }
         val error = (result as AppResult.Error).error

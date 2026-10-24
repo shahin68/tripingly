@@ -18,6 +18,11 @@ import com.falcon.tripingly.core.designsystem.generated.resources.*
 import com.falcon.tripingly.core.designsystem.generated.resources.Res
 import com.falcon.tripingly.core.designsystem.theme.spacing
 import org.jetbrains.compose.resources.stringResource
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Column
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.ui.tooling.preview.Preview
+import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
 
 @Composable
 fun FloatingSearchBar(
@@ -46,4 +51,29 @@ fun FloatingSearchBar(
             unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant
         )
     )
+}
+
+@Composable
+private fun FloatingSearchBarPreviewContent() {
+    Column(Modifier.background(MaterialTheme.colorScheme.surface)) {
+        FloatingSearchBar(query = "", onQueryChange = {})
+        FloatingSearchBar(
+            query = "Eiffel",
+            onQueryChange = {},
+            trailingIcon = { Icon(Icons.Default.Close, contentDescription = null) },
+        )
+        FloatingSearchBar(query = "A very long search for a museum somewhere in the centre of Paris", onQueryChange = {})
+    }
+}
+
+@Preview
+@Composable
+private fun FloatingSearchBarPreview() {
+    TripinglyTheme { FloatingSearchBarPreviewContent() }
+}
+
+@Preview
+@Composable
+private fun FloatingSearchBarDarkPreview() {
+    TripinglyTheme(darkTheme = true) { FloatingSearchBarPreviewContent() }
 }

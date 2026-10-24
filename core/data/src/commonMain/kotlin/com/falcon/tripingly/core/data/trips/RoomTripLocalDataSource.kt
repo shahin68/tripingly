@@ -70,8 +70,9 @@ internal class RoomTripLocalDataSource(
 
     override suspend fun saveMarkers(markers: List<TripMarker>) = dao.saveMarkers(markers.map { it.toEntity() })
 
-    override suspend fun savePlaceOfMarker(markerId: String, placeId: String, name: String) =
-        dao.updateMarkerPlace(markerId, placeId, name)
+    override suspend fun savePlaceOfMarker(marker: TripMarker) = with(marker) {
+        dao.updateMarkerPlace(id, placeId, name, coverPhotoId, coverThumbUrl, hotCount, hotByMe, canMarkHot)
+    }
 
     override suspend fun tripIdOfMarker(markerId: String): String? = dao.marker(markerId)?.tripId
 
@@ -79,8 +80,8 @@ internal class RoomTripLocalDataSource(
 
     override suspend fun markerAtPlace(placeId: String): TripMarker? = dao.markerAtPlace(placeId)?.toMarker()
 
-    override suspend fun savePlaceLike(placeId: String, likeCount: Int, likedByMe: Boolean?) {
-        if (likedByMe == null) dao.updatePlaceLikeCount(placeId, likeCount) else dao.updatePlaceLike(placeId, likeCount, likedByMe)
+    override suspend fun savePlaceHot(placeId: String, hotCount: Int, hotByMe: Boolean?) {
+        if (hotByMe == null) dao.updatePlaceHotCount(placeId, hotCount) else dao.updatePlaceHot(placeId, hotCount, hotByMe)
     }
 
     override suspend fun addToCommentCount(markerId: String, delta: Int) = dao.addToMarkerCommentCount(markerId, delta)
@@ -102,6 +103,7 @@ internal class RoomTripLocalDataSource(
         ownerId = owner.id,
         ownerUsername = owner.username,
         ownerDisplayName = owner.displayName,
+        coverPhotoId = coverPhotoId,
         coverThumbUrl = coverThumbUrl,
         dayCount = dayCount,
         markerCount = markerCount,
@@ -125,6 +127,7 @@ internal fun TripEntity.toTrip() = Trip(
     visibility = if (visibility == "private") TripVisibility.PRIVATE else TripVisibility.PUBLIC,
     role = tripRoleOf(role),
     owner = UserSummary(ownerId, ownerUsername, ownerDisplayName),
+    coverPhotoId = coverPhotoId,
     coverThumbUrl = coverThumbUrl,
     dayCount = dayCount,
     markerCount = markerCount,
@@ -170,9 +173,9 @@ private fun MarkerEntity.toMarker() = TripMarker(
     coverPhotoId = coverPhotoId,
     coverThumbUrl = coverThumbUrl,
     photoCount = photoCount,
-    likeCount = likeCount,
-    likedByMe = likedByMe,
-    canLike = canLike,
+    hotCount = hotCount,
+    hotByMe = hotByMe,
+    canMarkHot = canMarkHot,
     commentCount = commentCount,
     createdById = createdById,
 )
@@ -190,9 +193,9 @@ private fun TripMarker.toEntity() = MarkerEntity(
     coverPhotoId = coverPhotoId,
     coverThumbUrl = coverThumbUrl,
     photoCount = photoCount,
-    likeCount = likeCount,
-    likedByMe = likedByMe,
-    canLike = canLike,
+    hotCount = hotCount,
+    hotByMe = hotByMe,
+    canMarkHot = canMarkHot,
     commentCount = commentCount,
     createdById = createdById,
 )

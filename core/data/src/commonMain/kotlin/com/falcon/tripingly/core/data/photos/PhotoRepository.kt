@@ -14,8 +14,9 @@ import kotlinx.coroutines.flow.Flow
  */
 interface PhotoRepository {
     /**
-     * The gallery as the server last sent it, null until loaded. A stop's is in order (editors also get
-     * processing and failed photos); a place's is most liked first (with my own processing and failed ones).
+     * The gallery as the server last sent it, null until loaded. A stop's is its photo grid: members' uploads still
+     * processing or failed first, then its photos, the place's popular photos and Commons images ranked by likes; a
+     * place's is most liked first (with my own processing and failed ones). New uploads join at the top.
      */
     fun photos(owner: PhotoOwner): Flow<List<Photo>?>
 
@@ -37,9 +38,6 @@ interface PhotoRepository {
 
     /** Likes or unlikes; the heart and count change in the gallery at once and go back on a refusal. */
     suspend fun setLiked(photo: Photo, liked: Boolean): AppResult<Unit, DataError.Network>
-
-    /** [photoIds]: the marker's processing and ready photos in the new order. */
-    suspend fun reorderPhotos(markerId: String, photoIds: List<String>): AppResult<Unit, DataError.Network>
 }
 
 /** Turns a picked image into the JPEG that's uploaded; see [prepareJpeg]. */

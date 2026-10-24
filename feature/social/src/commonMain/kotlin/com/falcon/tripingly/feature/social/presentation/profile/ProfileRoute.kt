@@ -32,7 +32,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -80,6 +80,10 @@ import com.falcon.tripingly.feature.social.presentation.social.LoadMoreAtEnd
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel
 import org.koin.core.parameter.parametersOf
+import androidx.compose.ui.tooling.preview.Preview
+import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
+import androidx.compose.ui.tooling.preview.PreviewParameter
+import androidx.compose.foundation.background
 
 /** A person's profile; [username] null is my own. */
 @Composable
@@ -103,26 +107,26 @@ fun ProfileRoute(
 
     ProfileScreen(state = state, onAction = viewModel::onAction, onBack = onBack, onOpenSettings = onOpenSettings)
 
-    if (state.reporting != null) {
+    state.report?.let { report ->
         ReportDialog(
-            onReport = { reason, details -> viewModel.onAction(Action.OnSendReport(reason, details)) },
-            onDismiss = { viewModel.onAction(Action.OnDismissReport) },
-            isSending = state.isReporting,
+            onReport = { reason, details -> viewModel.onAction(Action.Report.Send(reason, details)) },
+            onDismiss = { viewModel.onAction(Action.Report.Dismiss) },
+            isSending = report.isSending,
         )
     }
     if (state.isConfirmingBlock) {
         val name = state.profile?.user?.username.orEmpty()
         AlertDialog(
-            onDismissRequest = { viewModel.onAction(Action.OnDismissBlock) },
+            onDismissRequest = { viewModel.onAction(Action.Person.DismissBlock) },
             title = { Text(stringResource(Res.string.social_block_title, name)) },
             text = { Text(stringResource(Res.string.social_block_message)) },
             confirmButton = {
-                TextButton(onClick = { viewModel.onAction(Action.OnConfirmBlock) }) {
+                TextButton(onClick = { viewModel.onAction(Action.Person.ConfirmBlock) }) {
                     Text(stringResource(Res.string.social_block_confirm), color = MaterialTheme.colorScheme.error)
                 }
             },
             dismissButton = {
-                TextButton(onClick = { viewModel.onAction(Action.OnDismissBlock) }) { Text(stringResource(Res.string.social_cancel)) }
+                TextButton(onClick = { viewModel.onAction(Action.Person.DismissBlock) }) { Text(stringResource(Res.string.social_cancel)) }
             },
         )
     }
@@ -155,7 +159,7 @@ internal fun ProfileScreen(state: State, onAction: (Action) -> Unit, onBack: () 
         Column(Modifier.fillMaxSize().padding(padding)) {
             ShowMessage(
                 message = state.message?.asString(),
-                onShown = { onAction(Action.OnDismissMessage) },
+                onShown = { onAction(Action.DismissMessage) },
                 isError = state.message !is UiText.Note,
             )
             val profile = state.profile
@@ -163,7 +167,7 @@ internal fun ProfileScreen(state: State, onAction: (Action) -> Unit, onBack: () 
                 profile != null -> ProfileContent(profile, state, onAction)
                 state.isLoading -> Centered { CircularProgressIndicator() }
                 state.isNotFound -> Centered { EmptyText(stringResource(Res.string.social_profile_not_found)) }
-                else -> Centered { TextButton(onClick = { onAction(Action.OnRetry) }) { Text(stringResource(Res.string.social_retry)) } }
+                else -> Centered { TextButton(onClick = { onAction(Action.Retry) }) { Text(stringResource(Res.string.social_retry)) } }
             }
         }
     }
@@ -171,7 +175,7 @@ internal fun ProfileScreen(state: State, onAction: (Action) -> Unit, onBack: () 
 
 @Composable
 private fun ProfileMenu(onAction: (Action) -> Unit) {
-    var expanded by remember { mutableStateOf(false) }
+    var expanded by rememberSaveable { mutableStateOf(false) }
     Box {
         IconButton(onClick = { expanded = true }) {
             Icon(Icons.Default.MoreVert, contentDescription = stringResource(Res.string.social_more))
@@ -180,8 +184,8 @@ private fun ProfileMenu(onAction: (Action) -> Unit) {
             expanded = expanded,
             onDismissRequest = { expanded = false },
             actions = listOf(
-                DropdownAction(stringResource(Res.string.social_report_user), isDestructive = true) { onAction(Action.OnReportUser) },
-                DropdownAction(stringResource(Res.string.social_block), isDestructive = true) { onAction(Action.OnBlock) },
+                DropdownAction(stringResource(Res.string.social_report_user), isDestructive = true) { onAction(Action.Person.Report) },
+                DropdownAction(stringResource(Res.string.social_block), isDestructive = true) { onAction(Action.Person.Block) },
             ),
         )
     }
@@ -190,7 +194,7 @@ private fun ProfileMenu(onAction: (Action) -> Unit) {
 @Composable
 private fun ProfileContent(profile: Profile, state: State, onAction: (Action) -> Unit) {
     val listState = rememberLazyListState()
-    LoadMoreAtEnd(listState) { onAction(Action.OnLoadMore) }
+    LoadMoreAtEnd(listState) { onAction(Action.Trips.LoadMore) }
     LazyColumn(
         state = listState,
         modifier = Modifier.fillMaxSize(),
@@ -209,12 +213,13 @@ private fun ProfileContent(profile: Profile, state: State, onAction: (Action) ->
         }
         items(state.trips, key = { it.trip.id }) { trip ->
             PublicTripCard(
+                modifier = Modifier.animateItem(),
                 trip = trip,
-                onOpen = { onAction(Action.OnTripClick(trip)) },
+                onOpen = { onAction(Action.Trips.Click(trip)) },
                 onOpenOwner = {},
-                onLike = { onAction(Action.OnLikeTrip(trip)) },
-                onToggleSave = { onAction(Action.OnToggleSaveTrip(trip)) },
-                onReport = { onAction(Action.OnReportTrip(trip)) },
+                onLike = { onAction(Action.Trips.Like(trip)) },
+                onToggleSave = { onAction(Action.Trips.ToggleSave(trip)) },
+                onReport = { onAction(Action.Trips.Report(trip)) },
                 showOwner = false,
             )
         }
@@ -243,17 +248,17 @@ private fun ProfileHeader(profile: Profile, isMe: Boolean, onAction: (Action) ->
             horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.large),
         ) {
             // Only my own lists can be opened: the server lists them for me alone.
-            Count(profile.followerCount, stringResource(Res.string.social_followers), onClick = if (isMe) ({ onAction(Action.OnOpenList(PeopleList.Followers)) }) else null)
-            Count(profile.followingCount, stringResource(Res.string.social_following), onClick = if (isMe) ({ onAction(Action.OnOpenList(PeopleList.Following)) }) else null)
+            Count(profile.followerCount, stringResource(Res.string.social_followers), onClick = if (isMe) ({ onAction(Action.OpenList(PeopleList.Followers)) }) else null)
+            Count(profile.followingCount, stringResource(Res.string.social_following), onClick = if (isMe) ({ onAction(Action.OpenList(PeopleList.Following)) }) else null)
         }
         if (isMe) {
-            OutlinedButton(onClick = { onAction(Action.OnOpenList(PeopleList.Friends)) }) {
+            OutlinedButton(onClick = { onAction(Action.OpenList(PeopleList.Friends)) }) {
                 Text(stringResource(Res.string.social_friends))
             }
         } else if (profile.isFollowing) {
-            OutlinedButton(onClick = { onAction(Action.OnToggleFollow) }) { Text(stringResource(Res.string.social_following_button)) }
+            OutlinedButton(onClick = { onAction(Action.Person.ToggleFollow) }) { Text(stringResource(Res.string.social_following_button)) }
         } else {
-            Button(onClick = { onAction(Action.OnToggleFollow) }) { Text(stringResource(Res.string.social_follow)) }
+            Button(onClick = { onAction(Action.Person.ToggleFollow) }) { Text(stringResource(Res.string.social_follow)) }
         }
     }
 }
@@ -269,5 +274,27 @@ private fun Count(count: Int, label: String, onClick: (() -> Unit)?) {
     ) {
         Text(count.toString(), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
         Text(label, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+}
+
+@Preview
+@Composable
+private fun ProfileScreenPreview(@PreviewParameter(ProfileScreenPreviewStates::class) state: State) {
+    TripinglyTheme { ProfileScreen(state = state, onAction = {}, onBack = {}, onOpenSettings = {}) }
+}
+
+@Preview(widthDp = 800, heightDp = 360)
+@Composable
+private fun ProfileScreenLandscapePreview() {
+    TripinglyTheme(darkTheme = true) {
+        ProfileScreen(state = ProfileScreenPreviewStates().values.first(), onAction = {}, onBack = {}, onOpenSettings = {})
+    }
+}
+
+@Preview
+@Composable
+private fun ProfileHeaderPreview(@PreviewParameter(ProfileHeaderPreviewStates::class) profile: Profile) {
+    TripinglyTheme {
+        Box(Modifier.background(MaterialTheme.colorScheme.surface)) { ProfileHeader(profile = profile, isMe = false, onAction = {}) }
     }
 }

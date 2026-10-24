@@ -9,7 +9,9 @@
     <string name="chip_remove">%1$s eltávolítása</string>
     <string name="common_cancel">Mégse</string>
     <string name="like">Tetszik</string>
+    <string name="mark_hot">Megjelölés hotspotként</string>
     <string name="photo_viewer_close">Bezárás</string>
+    <string name="photo_viewer_uploaded_by">Fotó: @%1$s</string>
 
     <!-- Report -->
     <string name="report_title">Miért jelented ezt?</string>

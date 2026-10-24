@@ -18,6 +18,13 @@ import com.falcon.tripingly.core.designsystem.generated.resources.image_credit_c
 import com.falcon.tripingly.core.designsystem.generated.resources.image_credit_public_domain
 import com.falcon.tripingly.core.model.place.ImageCredit
 import org.jetbrains.compose.resources.stringResource
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.padding
+import com.falcon.tripingly.core.designsystem.theme.spacing
+import androidx.compose.ui.tooling.preview.Preview
+import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
 
 /**
  * The credit a Wikimedia Commons image needs wherever it shows: "© author · licence · Wikimedia Commons",
@@ -66,4 +73,37 @@ fun CommonsCredit(
         overflow = TextOverflow.Ellipsis,
         modifier = modifier,
     )
+}
+
+@Composable
+private fun CommonsCreditPreviewContent() {
+    Column(
+        modifier = Modifier.background(MaterialTheme.colorScheme.surface).padding(MaterialTheme.spacing.medium),
+        verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
+    ) {
+        CommonsCredit(credit = previewCredit, cropped = false)
+        CommonsCredit(credit = previewCredit.copy(title = "Tour Eiffel at dusk"), cropped = true)
+        CommonsCredit(credit = previewCredit.copy(license = ImageCredit.PUBLIC_DOMAIN, licenseUrl = null), cropped = false)
+        CommonsCredit(credit = previewCredit.copy(author = "Jean-Baptiste Alexandre Durand-Montgolfier"), cropped = true, maxLines = 1)
+    }
+}
+
+private val previewCredit = ImageCredit(
+    author = "Benh Lieu Song",
+    title = null,
+    license = "CC BY-SA 3.0",
+    licenseUrl = "https://creativecommons.org/licenses/by-sa/3.0",
+    sourceUrl = "https://commons.wikimedia.org/wiki/File:Tour_Eiffel.jpg",
+)
+
+@Preview
+@Composable
+private fun CommonsCreditPreview() {
+    TripinglyTheme { CommonsCreditPreviewContent() }
+}
+
+@Preview
+@Composable
+private fun CommonsCreditDarkPreview() {
+    TripinglyTheme(darkTheme = true) { CommonsCreditPreviewContent() }
 }

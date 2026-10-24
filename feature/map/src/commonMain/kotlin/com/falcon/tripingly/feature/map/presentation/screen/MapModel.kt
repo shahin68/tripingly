@@ -30,8 +30,8 @@ internal data class MapModel(
     val activeDayIndex: Int = 0,
     val camera: CameraModel = CameraModel(),
     val selection: Selection? = null,
-    /** The first image of each stop's place, by place ID, for stops without a cover; null when it has none. */
-    val stopPlaceImages: Map<String, PlaceImage?> = emptyMap(),
+    /** The images of stops' places, by place ID, for the credit of a stop's Commons cover. */
+    val stopPlaceImages: Map<String, List<PlaceImage>> = emptyMap(),
     val search: SearchModel? = null,
     val route: RouteModel = RouteModel(),
     val location: LocationModel = LocationModel(),

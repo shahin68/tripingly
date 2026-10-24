@@ -24,6 +24,11 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.tooling.preview.Preview
+import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Row
+import com.falcon.tripingly.feature.map.domain.model.TripOwnerColor
 
 private val MarkerTipShape = GenericShape { size, _ ->
     moveTo(0f, 0f)
@@ -118,3 +123,16 @@ internal fun stopPinHeight(hasCover: Boolean): Dp = (if (hasCover) COVER_PIN_SIZ
 internal val COVER_PIN_SIZE = 44.dp
 internal val COVER_RING = 3.dp
 internal val COVER_BADGE_SIZE = 18.dp
+
+/** A stop's pin in the app's blue and in the trip owner's color, with one and two digits, and with a cover. */
+@Preview
+@Composable
+private fun TripMarkerIconPreview() {
+    TripinglyTheme {
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            TripMarkerIcon(orderNumber = 1, color = Color(0xFF2196F3))
+            TripMarkerIcon(orderNumber = 12, color = Color(TripOwnerColor))
+            TripMarkerIcon(orderNumber = 3, color = Color(0xFF2196F3), cover = ImageBitmap(64, 64))
+        }
+    }
+}

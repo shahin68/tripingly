@@ -47,7 +47,7 @@ REST over HTTPS, JSON, base path `/v1`.
 | GET | `/me/stats` | Trips, markers, photos counts |
 | GET | `/me/friends?cursor=&limit=` | The user's friends as user summaries, cursor paginated `{ items, nextCursor }`. The New trip sheet shows the first page (limit 50) as a row of avatars to add as members. Backend: tripinly-backend#32 (generated `UserPageDto`) |
 | GET | `/me/following?cursor=&limit=`, `/me/followers?cursor=&limit=` | Same shape; my profile's Following and Followers lists (pages of 50) |
-| GET | `/me/trips` | Owned, collaborating and saved (`role` `viewer`, `savedByMe` true), cursor paginated; each item has `role`, `saveCount`, `savedByMe`, `coverThumbUrl` (first cover photo in the trip, or null), `dayCount`, `markerCount`, `editorCount` (people it's shared with, owner not counted; backend#30), `createdAt` (cards show "3 days ago"; backend#48) |
+| GET | `/me/trips` | Owned, collaborating and saved (`role` `viewer`, `savedByMe` true), cursor paginated; each item has `role`, `saveCount`, `savedByMe`, `coverPhotoId` and `coverThumbUrl` (first cover photo in the trip, or null; cache the image by `coverPhotoId`, backend#57), `dayCount`, `markerCount`, `editorCount` (people it's shared with, owner not counted; backend#30), `createdAt` (cards show "3 days ago"; backend#48) |
 | PUT | `/me/devices/{fcmToken}` | Register/refresh push device. Body: `platform` (`android`\|`ios`), `locale` |
 | DELETE | `/me/devices/{fcmToken}` | |
 | POST | `/me/export` | Starts the GDPR export (202 **DataExport**); one at a time, one per 24 h (429 `RATE_LIMITED`) |
@@ -71,7 +71,7 @@ REST over HTTPS, JSON, base path `/v1`.
 | Method | Path | Notes |
 |---|---|---|
 | POST | `/trips` | Title, dates, visibility, optional `destination` `{ name, location }`, optional initial `memberUsernames` (≤ 20, joined as editors; unknown → `400 VALIDATION_FAILED` with `fields["memberUsernames.<i>"] = ["notFound"]`, blocked → `["blocked"]`) |
-| GET | `/trips/{id}` | Trip with days, markers (cover thumbnail URLs), members, save and join state |
+| GET | `/trips/{id}` | Trip with days, markers (cover thumbnail URLs), members, save and join state, and the trip card's `coverPhotoId`/`coverThumbUrl` (the first picked stop cover, else the trip's first photo; same as the list) |
 | PATCH | `/trips/{id}` | Owner: title, dates, visibility, `destination` (null removes it) |
 | DELETE | `/trips/{id}` | Owner |
 | PUT | `/trips/{id}/save` | Save someone else's public trip to My Trips (read-only, the live original). Idempotent, 204 |
@@ -119,8 +119,7 @@ REST over HTTPS, JSON, base path `/v1`.
 | POST | `/markers/{id}/photos/upload-url` | Body: mime type, size. Returns photo ID + pre-signed PUT URL + `uploadHeaders` (a string map the PUT must send; typed as a map since backend#29). The PUT goes to storage without our `Authorization` header |
 | POST | `/photos/{id}/complete` | Client confirms upload → processing job |
 | GET | `/markers/{id}/photos` | Ordered gallery |
-| PUT | `/markers/{id}/photo-order` | |
-| PUT | `/markers/{id}/cover` | Body: `photoId` |
+| PUT | `/markers/{id}/cover` | Body: `photoId`: any ready photo or Commons image of the stop's grid (`GET /markers/{id}/photos`: members' uploads in progress first, then the stop's photos, the place's popular photos and its Commons images ranked by likes, on a tie the stop's own first). A photo never becomes the cover by itself. There is no manual photo order any more (backend#59) |
 | DELETE | `/photos/{id}` | Uploader, trip owner or editor; a place photo only by its uploader |
 | POST | `/places/{id}/photos/upload-url` | Anyone adds a photo to a visible place (not an address from search). Same answer as for a stop; `422 DAILY_PHOTO_LIMIT_REACHED` (`details.max`) past the server's daily limit. Processing ends with `photo.ready`/`photo.failed` in my user room, without a `tripId` (backend#42) |
 | GET | `/places/{id}/photos` | The place's gallery: people's photos most liked first, then newest (my own processing or failed ones too), then the place's Wikimedia Commons images (`source: commons`, with `credit`), most liked first. People's photos always come first. A blocked uploader shows without a name (backend#47) |
@@ -131,7 +130,8 @@ REST over HTTPS, JSON, base path `/v1`.
 | GET | `/markers/{id}/comments` | Paginated, oldest first; the stop's comments sheet loads pages of 50 |
 | POST | `/markers/{id}/comments` | `{ body }` (≤ 1000), with an `Idempotency-Key`; the sheet adds the answer and the cached stop counts it |
 | DELETE | `/comments/{id}` | Author or trip owner |
-| PUT | `/likes/{targetType}/{targetId}` | `trip`, `photo`, `comment`, `place`, `place_image` (a Commons image in a place's gallery, backend#47) (`marker` answers `400`: a stop's heart likes its place, one like per person per place, backend#44); answers `{ liked, likeCount }`. The app shows a like at once and puts it back on a refusal (a place's on every cached stop at that place in Room, the others in the screen's state). A custom spot only in private trips can't be liked (`404`) |
+| PUT | `/likes/{targetType}/{targetId}` | `trip`, `photo`, `comment`, `place_image` (a Commons image in a place's gallery, backend#47) (`marker` and `place` answer `400`); answers `{ liked, likeCount }`. The app shows a like at once and puts it back on a refusal, in the screen's state |
+| PUT / DELETE | `/places/{id}/hot` | Marks a place hot (a flame, never a heart): a stop's flame marks its place, one mark per person per place (backend#59). Answers `{ placeId, hot, hotCount }`. The app shows it at once on every cached stop at that place in Room and puts it back on a refusal (`SocialRepository.setHot`). A custom spot only in private trips can't be marked (`404`) |
 | DELETE | `/likes/{targetType}/{targetId}` | |
 
 ### Discovery
@@ -176,7 +176,7 @@ Response shapes and behaviour: see `05-maps-places-routing.md`.
 ### Ops
 | Method | Path | Notes |
 |---|---|---|
-| GET | `/app-config` | Settings that tune the app, no auth, read once per launch: `{ placesRefreshSeconds, photoMaxEdgePx, photoJpegQuality, photoParallelUploads, pinLargeMinProminence, pinMediumMinProminence, mapMaxPins, photoPinMinProminence, photoPinMinLikes, mapMaxPhotoPins }` (how old a kept map square may get before it's reloaded in the background, default 300; the long edge a photo is shrunk to before upload, default 2560; its JPEG quality, default 85; uploads at a time, default 2; backend#29; the prominence from which a place pin is drawn large, default 95, or medium, default 60; most place pins on the map at once, default 150; backend#36; a pin shows its place's photo from prominence 90 or 3 likes, at most 100 photo pins at once (default raised 2026-10-18); backend#45). Values change on the server's env vars without an app update; feature flags come here after v1 (backend #27) |
+| GET | `/app-config` | Settings that tune the app, no auth, read once per launch: `{ placesRefreshSeconds, photoMaxEdgePx, photoJpegQuality, photoParallelUploads, pinLargeMinProminence, pinMediumMinProminence, mapMaxPins, photoPinMinProminence, photoPinMinHotCount, mapMaxPhotoPins }` (how old a kept map square may get before it's reloaded in the background, default 300; the long edge a photo is shrunk to before upload, default 2560; its JPEG quality, default 85; uploads at a time, default 2; backend#29; the prominence from which a place pin is drawn large, default 95, or medium, default 60; most place pins on the map at once, default 150; backend#36; a pin shows its place's photo from prominence 90 or 3 likes, at most 100 photo pins at once (default raised 2026-10-18); backend#45). Values change on the server's env vars without an app update; feature flags come here after v1 (backend #27) |
 | GET | `/health` | Liveness (no auth) |
 | GET | `/health/ready` | DB + Redis reachable |
 | GET | `/.well-known/assetlinks.json`, `/.well-known/apple-app-site-association` | Android App Links / iOS Universal Links for invite and share URLs (served on the app-link domain) |
@@ -186,11 +186,12 @@ Response shapes and behaviour: see `05-maps-places-routing.md`.
 Field names the client relies on (full schemas in OpenAPI):
 
 - **Trip** (`GET /trips/{id}`): `id`, `title`, `startDate`, `endDate`, `destination` (`{ name, location }` or null), `visibility`, `owner` (user summary), `myRole` (`owner`\|`editor`\|`viewer`), `members[]`, `likeCount`, `likedByMe`, `saveCount`, `savedByMe`, `myJoinRequest` (`pending`\|`declined`\|null), `pendingJoinRequestCount` (owner only, else 0), `days[]` → `{ id, position, date, markers[] }`.
-- **Marker**: `id`, `dayId`, `placeId`, `name`, `location`, `time` (`HH:mm` or null), `position`, `coverPhotoId`, `coverThumbUrl`, `photoCount`, `likeCount`, `likedByMe` (the stop's place: the same on every stop at it), `canLike` (false for a custom spot only in private trips: no heart), `commentCount`, `createdBy` (user summary or null).
+- **Marker**: `id`, `dayId`, `placeId`, `name`, `location`, `time` (`HH:mm` or null), `position`, `coverPhotoId` (the image the pin shows, cache key: the picked cover, else the place's image, a photo or Commons image id; in live `marker.*` events only a picked cover, so the app keeps the image it has), `coverThumbUrl`, `photoCount`, `hotCount`, `hotByMe` (the stop's place: the same on every stop at it), `canMarkHot` (false for a custom spot only in private trips: no flame), `commentCount`, `createdBy` (user summary or null).
 - **Photo**: `id`, `markerId`, `status` (`processing`\|`ready`\|`failed`), `thumbUrl`, `displayUrl` (signed, expire after ~1 h), `width`, `height`, `position`, `likeCount`, `likedByMe`, `uploader`, `source` (`user`, or `commons` for a place's Commons image), `credit` (Commons only; shown in the viewer with `CommonsCredit`).
 - **User summary**: `id`, `username`, `displayName`.
+- Places and search results carry `hotCount` and (in-view, nearby, detail) `hotByMe` instead of likes; `isTripinly` means a hot spot (backend#59).
 - **Place** (in-view/search/along-the-way): see `05-maps-places-routing.md`. Every Place shape (tiles, nearby, detail) has `coverImageId`, `coverSource` (`trip`\|`commons`\|null) and `coverThumbUrl`; `coverPhotoId` is set only for a Tripinly photo (`coverSource: trip`, a place photo or a public trip photo). The cover is the most liked photo that 3 people other than its uploader liked, else a Commons image (backend#45); it's also the pin's photo. Cache a cover by `coverImageId`.
-- **Place detail** (`GET /places/{id}`): adds `tags` (`openingHours`, `website`, …) and `images[]` → `{ id, source (trip|commons), thumbUrl, displayUrl, width, height, credit }`. The first image is the cover. `credit` is null for trip photos; for Commons it's `{ author, title, license, licenseUrl, sourceUrl }` and must show under the image (`CommonsCredit`). `photoThumbUrls` is deprecated (backend#38).
+- **Place detail** (`GET /places/{id}`): adds `tags` (`openingHours`, `website`, …) and `images[]` → `{ id, source (trip|commons), thumbUrl, displayUrl, width, height, credit }`. The first image is the cover. `credit` is null for trip photos; for Commons it's `{ author, title, license, licenseUrl, sourceUrl }` and must show under the image (`CommonsCredit`). `photoThumbUrls` is deprecated (backend#38). `addedBy` (a user summary or null) credits a custom spot's creator as "Added by @name" on the place card; the server sets it only while one of the creator's public trips has the spot and never across a block, and it's null for OSM places (backend#58).
 - **Me**: profile fields, `onboarding` state, `defaultTripVisibility`, `locale`, `entitlements[]` (e.g. `routes`: route lines, A→B and places along the way; 403 `PREMIUM_REQUIRED` without it). A purchase reaches the server through RevenueCat's webhook (`POST /billing/revenuecat/webhook`, backend#54; the app never calls it): after buying, the app re-reads `GET /me` until `entitlements` has Pro.
 
 ## Stable error codes (starter set)

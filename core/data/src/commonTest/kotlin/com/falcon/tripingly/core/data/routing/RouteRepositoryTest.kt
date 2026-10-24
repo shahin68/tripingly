@@ -178,7 +178,7 @@ class RouteRepositoryTest {
                 "place": {
                   "id": "p9", "name": "Café Central", "category": "cafe",
                   "location": {"lat": 48.2104, "lng": 16.3655},
-                  "isTripinly": false, "likeCount": 0, "prominence": 40, "likedByMe": false,
+                  "isTripinly": false, "hotCount": 0, "prominence": 40, "hotByMe": false,
                   "coverPhotoId": null, "coverImageId": null, "coverSource": null, "coverThumbUrl": null
                 },
                 "distanceFromRouteMeters": 80.2,

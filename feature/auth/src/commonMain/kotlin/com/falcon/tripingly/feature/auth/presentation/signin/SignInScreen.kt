@@ -49,6 +49,7 @@ import com.falcon.tripingly.feature.auth.generated.resources.signin_reason_under
 import com.falcon.tripingly.feature.auth.generated.resources.signin_tagline
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel
+import androidx.compose.ui.tooling.preview.PreviewParameter
 
 @Composable
 internal fun SignInRoute(reason: SignOutReason?) {
@@ -147,12 +148,19 @@ private fun SignOutReason.message() = when (this) {
 
 @Preview
 @Composable
-private fun SignInScreenPreview() {
-    TripinglyTheme {
-        SignInScreen(
-            state = SignInViewModel.State(appleAvailable = true, developerSignInAvailable = true),
-            reason = SignOutReason.SESSION_EXPIRED,
-            onAction = {},
-        )
-    }
+private fun SignInScreenPreview(@PreviewParameter(SignInScreenPreviewStates::class) state: SignInViewModel.State) {
+    TripinglyTheme { SignInScreen(state = state, reason = null, onAction = {}) }
+}
+
+/** Signed out because the session expired. */
+@Preview
+@Composable
+private fun SignInScreenReasonPreview() {
+    TripinglyTheme(darkTheme = true) { SignInScreen(state = SignInViewModel.State(appleAvailable = true), reason = SignOutReason.SESSION_EXPIRED, onAction = {}) }
+}
+
+@Preview(widthDp = 800, heightDp = 360)
+@Composable
+private fun SignInScreenLandscapePreview() {
+    TripinglyTheme { SignInScreen(state = SignInViewModel.State(appleAvailable = true, developerSignInAvailable = true), reason = null, onAction = {}) }
 }

@@ -7,6 +7,7 @@ import com.falcon.tripingly.core.model.social.Comment
 import com.falcon.tripingly.core.model.social.CommentChange
 import com.falcon.tripingly.core.model.social.ExploreFilter
 import com.falcon.tripingly.core.model.social.LikeState
+import com.falcon.tripingly.core.model.social.HotState
 import com.falcon.tripingly.core.model.social.LikeTarget
 import com.falcon.tripingly.core.model.social.PublicTrip
 import com.falcon.tripingly.core.model.social.ReportReason
@@ -24,6 +25,8 @@ class FakeSocialRepository(
     private val comments = mutableListOf<Comment>()
     private val likes = mutableMapOf<Pair<LikeTarget, String>, Int>()
     private val liked = mutableSetOf<Pair<LikeTarget, String>>()
+    private val hotCounts = mutableMapOf<String, Int>()
+    private val hotPlaces = mutableSetOf<String>()
     private var nextId = 0
 
     override suspend fun explore(filter: ExploreFilter, cursor: String?): AppResult<Page<PublicTrip>, DataError.Network> =
@@ -57,6 +60,12 @@ class FakeSocialRepository(
         val changed = if (liked) this.liked.add(key) else this.liked.remove(key)
         if (changed) likes[key] = (likes[key] ?: 0) + if (liked) 1 else -1
         return AppResult.Success(LikeState(liked, likes[key] ?: 0))
+    }
+
+    override suspend fun setHot(placeId: String, hot: Boolean): AppResult<HotState, DataError.Network> {
+        val changed = if (hot) hotPlaces.add(placeId) else hotPlaces.remove(placeId)
+        if (changed) hotCounts[placeId] = (hotCounts[placeId] ?: 0) + if (hot) 1 else -1
+        return AppResult.Success(HotState(hot, hotCounts[placeId] ?: 0))
     }
 
     override suspend fun report(

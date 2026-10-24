@@ -63,9 +63,17 @@ internal class RealtimeSync(
         when (event) {
             is RealtimeEvent.MarkerSaved -> if (!byMe) {
                 saveInCachedTrip(event.tripId) {
-                    // The event's likedByMe is always false; whether I like it stays as it was.
-                    val likedByMe = local.marker(event.marker.id)?.likedByMe ?: false
-                    local.saveMarkers(listOf(event.marker.toMarker().copy(likedByMe = likedByMe)))
+                    // The event's hotByMe is always false, and its cover is only a picked one: the place's image
+                    // depends on who looks. Both stay as they were; a new stop without a picked cover is loaded.
+                    val cached = local.marker(event.marker.id)
+                    val marker = event.marker.toMarker()
+                    local.saveMarkers(
+                        listOf(
+                            if (marker.coverPhotoId != null || cached == null) marker.copy(hotByMe = cached?.hotByMe ?: false)
+                            else marker.copy(hotByMe = cached.hotByMe, coverPhotoId = cached.coverPhotoId, coverThumbUrl = cached.coverThumbUrl),
+                        ),
+                    )
+                    if (cached == null && marker.coverPhotoId == null) photos.refreshStop(marker.id)
                 }
             }
             is RealtimeEvent.MarkerDeleted -> if (!byMe) saveInCachedTrip(event.tripId) { local.deleteMarkers(listOf(event.markerId)) }
@@ -75,12 +83,12 @@ internal class RealtimeSync(
             // My own comments were counted when the server took them.
             is RealtimeEvent.CommentAdded -> if (!byMe) local.addToCommentCount(event.comment.markerId, 1)
             is RealtimeEvent.CommentDeleted -> if (!byMe) local.addToCommentCount(event.markerId, -1)
-            is RealtimeEvent.LikeCountChanged ->
-                if (event.targetType == PLACE) local.savePlaceLike(event.targetId, event.count, likedByMe = null) else photos.applyLive(event, byMe)
+            // My own flame showed at once; an echo of an earlier tap would move it.
+            is RealtimeEvent.PlaceHotChanged -> if (!byMe) local.savePlaceHot(event.placeId, event.hotCount, hotByMe = null)
+            is RealtimeEvent.LikeCountChanged -> photos.applyLive(event, byMe)
             is RealtimeEvent.PhotoSaved,
             is RealtimeEvent.PhotoFailed,
             is RealtimeEvent.PhotoDeleted,
-            is RealtimeEvent.PhotosReordered,
             is RealtimeEvent.MarkerCoverChanged,
             -> photos.applyLive(event, byMe)
         }
@@ -109,6 +117,5 @@ internal class RealtimeSync(
 
     private companion object {
         const val MY_TRIPS = "myTrips"
-        const val PLACE = "place"
     }
 }

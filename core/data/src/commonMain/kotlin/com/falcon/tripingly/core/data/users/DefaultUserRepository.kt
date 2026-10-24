@@ -3,6 +3,7 @@ package com.falcon.tripingly.core.data.users
 import com.falcon.tripingly.core.common.error.DataError
 import com.falcon.tripingly.core.common.result.AppResult
 import com.falcon.tripingly.core.common.result.map
+import com.falcon.tripingly.core.common.result.onSuccess
 import com.falcon.tripingly.core.data.social.toProfile
 import com.falcon.tripingly.core.data.trips.toUser
 import com.falcon.tripingly.core.data.users.UserRepository.Companion.FRIENDS_PAGE_SIZE
@@ -15,6 +16,8 @@ import com.falcon.tripingly.core.network.realtime.RealtimeClient
 import com.falcon.tripingly.core.network.realtime.RealtimeEvent
 import com.falcon.tripingly.core.network.users.UsersApi
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.mapNotNull
 
 class DefaultUserRepository(private val api: UsersApi, realtime: RealtimeClient) : UserRepository {
@@ -47,11 +50,15 @@ class DefaultUserRepository(private val api: UsersApi, realtime: RealtimeClient)
     override suspend fun setFollowing(userId: String, following: Boolean): AppResult<Unit, DataError.Network> =
         if (following) api.follow(userId) else api.unfollow(userId)
 
+    private val _blocks = MutableSharedFlow<String>(extraBufferCapacity = BLOCKS_BUFFER)
+    override val blocks: Flow<String> = _blocks.asSharedFlow()
+
     override suspend fun setBlocked(userId: String, blocked: Boolean): AppResult<Unit, DataError.Network> =
-        if (blocked) api.block(userId) else api.unblock(userId)
+        (if (blocked) api.block(userId) else api.unblock(userId)).onSuccess { if (blocked) _blocks.emit(userId) }
 
     private companion object {
         const val PEOPLE_PAGE_SIZE = 50
+        const val BLOCKS_BUFFER = 8
         const val PROFILE_TRIPS_PAGE_SIZE = 20
     }
 }

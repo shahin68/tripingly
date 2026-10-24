@@ -76,17 +76,17 @@ class SocialRepositoryTest {
     private fun HttpRequestData.bodyText() = (body as TextContent).text
 
     @Test
-    fun likingAStop_likesItsPlace_andSavesTheServersCount_inTheCachedTrip() = runTest {
+    fun aStopsFlame_marksItsPlaceHot_atOnce_andTheServersAnswerDoesntMoveIt() = runTest {
         cacheTrip()
-        val repository = repository("""{"targetType":"place","targetId":"$PLACE","liked":true,"likeCount":3}""")
+        val repository = repository("""{"placeId":"$PLACE","hot":true,"hotCount":3}""")
 
-        val state = (repository.setLiked(LikeTarget.Place, PLACE, liked = true) as AppResult.Success).data
+        val state = (repository.setHot(PLACE, hot = true) as AppResult.Success).data
 
-        assertEquals(3, state.likeCount)
-        assertEquals("PUT /v1/likes/place/$PLACE", requests.single().let { "${it.method.value} ${it.url.encodedPath}" })
+        assertEquals(3, state.hotCount)
+        assertEquals("PUT /v1/places/$PLACE/hot", requests.single().let { "${it.method.value} ${it.url.encodedPath}" })
         val stop = local.marker("m0")!!
-        assertEquals(3, stop.likeCount)
-        assertTrue(stop.likedByMe)
+        assertEquals(1, stop.hotCount)
+        assertTrue(stop.hotByMe)
     }
 
     @Test
@@ -99,19 +99,19 @@ class SocialRepositoryTest {
     }
 
     @Test
-    fun likingAStop_refused_putsTheHeartBack() = runTest {
+    fun markingAStopHot_refused_putsTheFlameBack() = runTest {
         cacheTrip()
         val repository = repository(
             """{"error":{"code":"NOT_FOUND","message":"Gone","details":{}}}""",
             HttpStatusCode.NotFound,
         )
 
-        val result = repository.setLiked(LikeTarget.Place, PLACE, liked = true)
+        val result = repository.setHot(PLACE, hot = true)
 
         assertTrue(result is AppResult.Error)
         val stop = local.marker("m0")!!
-        assertEquals(0, stop.likeCount)
-        assertFalse(stop.likedByMe)
+        assertEquals(0, stop.hotCount)
+        assertFalse(stop.hotByMe)
     }
 
     @Test
@@ -149,7 +149,7 @@ class SocialRepositoryTest {
     }
 
     @Test
-    fun aFailedBurstOfTaps_putsTheHeartBackToBeforeTheBurst() = runTest {
+    fun aFailedBurstOfTaps_putsTheFlameBackToBeforeTheBurst() = runTest {
         cacheTrip()
         val firstSent = CompletableDeferred<Unit>()
         val release = CompletableDeferred<Unit>()
@@ -163,18 +163,18 @@ class SocialRepositoryTest {
             )
         }
 
-        val taps = mutableListOf(async { repository.setLiked(LikeTarget.Place, PLACE, liked = true) })
+        val taps = mutableListOf(async { repository.setHot(PLACE, hot = true) })
         firstSent.await()
-        taps += async { repository.setLiked(LikeTarget.Place, PLACE, liked = false) }
-        taps += async { repository.setLiked(LikeTarget.Place, PLACE, liked = true) }
+        taps += async { repository.setHot(PLACE, hot = false) }
+        taps += async { repository.setHot(PLACE, hot = true) }
         testScheduler.runCurrent()
         release.complete(Unit)
 
         taps.forEach { assertTrue(it.await() is AppResult.Error) }
         assertEquals(1, requests.size)
         val stop = local.marker("m0")!!
-        assertFalse(stop.likedByMe)
-        assertEquals(0, stop.likeCount)
+        assertFalse(stop.hotByMe)
+        assertEquals(0, stop.hotCount)
     }
 
     @Test

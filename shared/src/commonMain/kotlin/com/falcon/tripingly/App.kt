@@ -54,6 +54,8 @@ import com.falcon.tripingly.feature.trips.presentation.screen.HomeRoute
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
+import com.falcon.tripingly.feature.map.presentation.photos.PhotoViewerRoute
+import com.falcon.tripingly.core.model.photo.PhotoOwner
 
 @Composable
 fun App() {
@@ -137,6 +139,9 @@ private fun MainNavigation() {
                                 query = query,
                                 onOpenTrip = { backStack.add(TripMap(it)) },
                                 onOpenProfile = { backStack.add(Profile(it)) },
+                                placeImageContent = { placeId, imageId, onReport, onDismiss ->
+                                    PhotoViewerRoute(owner = PhotoOwner.Place(placeId), photoId = imageId, onReport = onReport, onDismiss = onDismiss)
+                                },
                             )
                         },
                     )

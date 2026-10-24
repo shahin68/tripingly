@@ -20,7 +20,6 @@ import com.falcon.tripingly.core.model.social.LikeTarget
 import com.falcon.tripingly.core.model.trip.TripMarker
 import com.falcon.tripingly.core.network.model.CoverDto
 import com.falcon.tripingly.core.network.model.PhotoDto
-import com.falcon.tripingly.core.network.model.PhotoOrderDto
 import com.falcon.tripingly.core.network.model.UploadUrlRequestDto
 import com.falcon.tripingly.core.network.photos.PhotosApi
 import com.falcon.tripingly.core.network.photos.StorageClient
@@ -40,6 +39,7 @@ import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
 import kotlin.time.Duration.Companion.seconds
 import kotlin.uuid.Uuid
+import com.falcon.tripingly.core.data.trips.toUser
 
 internal class DefaultPhotoRepository(
     private val api: PhotosApi,
@@ -76,10 +76,8 @@ internal class DefaultPhotoRepository(
             is PhotoOwner.Stop -> api.photos(owner.markerId)
             is PhotoOwner.Place -> api.placePhotos(owner.placeId)
         }
-        return result.map { photos ->
-            // A place's photos come most liked first and keep that order.
-            photos.map { it.toPhoto() }.sortedFor(owner).also { gallery -> galleries.update { it + (owner to gallery) } }
-        }
+        // Both come ranked by the server and keep that order.
+        return result.map { photos -> photos.map { it.toPhoto() }.also { gallery -> galleries.update { it + (owner to gallery) } } }
     }
 
     override fun upload(owner: PhotoOwner, images: List<PickedImage>) {
@@ -105,7 +103,7 @@ internal class DefaultPhotoRepository(
             removePhoto(photo.id)
             val stop = photo.owner as? PhotoOwner.Stop ?: return@map
             val marker = cachedMarker(stop.markerId)
-            // The server picks a new cover when the cover goes, so only then is the marker asked for again.
+            // When the cover goes, the pin goes back to the place's image, so only then is the marker asked for again.
             if (marker != null && marker.coverPhotoId != photo.id) {
                 local.saveMarkers(listOf(marker.copy(photoCount = (marker.photoCount - 1).coerceAtLeast(0))))
             } else {
@@ -132,11 +130,6 @@ internal class DefaultPhotoRepository(
             }
         }
     }
-
-    override suspend fun reorderPhotos(markerId: String, photoIds: List<String>): AppResult<Unit, DataError.Network> =
-        api.reorder(markerId, PhotoOrderDto(photoIds)).map { photos ->
-            galleries.update { it + (PhotoOwner.Stop(markerId) to photos.map { p -> p.toPhoto() }.sortedBy { p -> p.position }) }
-        }
 
     private suspend fun send(key: String) {
         val permits = sendPermits ?: Semaphore(config.config.value.photoParallelUploads.coerceAtLeast(1)).also { sendPermits = it }
@@ -201,7 +194,7 @@ internal class DefaultPhotoRepository(
             is RealtimeEvent.PhotoSaved -> {
                 val photo = event.photo.toPhoto()
                 savePhoto(photo, replace = true)
-                // A ready photo counts on the stop, and the first one becomes its cover.
+                // A ready photo counts on the stop.
                 val stop = photo.owner as? PhotoOwner.Stop
                 if (photo.status == PhotoStatus.Ready && stop != null) markerRefreshes.request(stop.markerId)
             }
@@ -212,13 +205,7 @@ internal class DefaultPhotoRepository(
                 // deletePhoto has updated the stop already.
                 if (!byMe) markerRefreshes.request(event.markerId)
             }
-            is RealtimeEvent.PhotosReordered -> galleries.update { all ->
-                val owner = PhotoOwner.Stop(event.markerId)
-                val gallery = all[owner] ?: return@update all
-                val order = event.photoIds.withIndex().associate { (index, id) -> id to index }
-                all + (owner to gallery.map { it.copy(position = order[it.id] ?: it.position) }.sortedBy { it.position })
-            }
-            // setCover has saved the stop already; a cover set by processing comes with photo.ready.
+            // setCover has saved the stop already.
             is RealtimeEvent.MarkerCoverChanged -> if (!byMe) markerRefreshes.request(event.markerId)
             // Other people's likes; mine came back with my own request (a late event could be older).
             is RealtimeEvent.LikeCountChanged ->
@@ -246,8 +233,11 @@ internal class DefaultPhotoRepository(
         }
     }
 
+    /** Loads the stop again, once per burst: a stop someone else added comes live without its place's image. */
+    internal fun refreshStop(markerId: String) = markerRefreshes.request(markerId)
+
     /**
-     * A new photo joins its own loaded gallery (a new place photo goes first); a known one is replaced
+     * A new photo joins its own loaded gallery at the top; a known one is replaced
      * ([replace]) in every gallery that shows it, or kept (it may be newer).
      * A photo can show in more than one: a liked trip photo is in its stop's gallery and its place's.
      */
@@ -256,7 +246,7 @@ internal class DefaultPhotoRepository(
             val withPhoto = if (replace) all.mapValues { (_, gallery) -> gallery.map { if (it.id == photo.id) photo else it } } else all
             val gallery = withPhoto[photo.owner] ?: return@update withPhoto
             if (gallery.any { it.id == photo.id }) withPhoto
-            else withPhoto + (photo.owner to (gallery + photo).sortedFor(photo.owner, newFirst = photo.id))
+            else withPhoto + (photo.owner to listOf(photo) + gallery)
         }
     }
 
@@ -298,12 +288,6 @@ internal class DefaultPhotoRepository(
     }
 }
 
-/** A stop's gallery goes by position; a place's keeps the server's order (most liked first), [newFirst] at the top. */
-private fun List<Photo>.sortedFor(owner: PhotoOwner, newFirst: String? = null): List<Photo> = when (owner) {
-    is PhotoOwner.Stop -> sortedBy { it.position }
-    is PhotoOwner.Place -> sortedByDescending { it.id == newFirst }
-}
-
 internal fun PhotoDto.toPhoto() = Photo(
     id = id,
     owner = markerId?.let { PhotoOwner.Stop(it) } ?: PhotoOwner.Place(requireNotNull(placeId) { "A photo has a marker or a place" }),
@@ -317,9 +301,8 @@ internal fun PhotoDto.toPhoto() = Photo(
     displayUrl = displayUrl,
     width = width?.toInt(),
     height = height?.toInt(),
-    position = position.toInt(),
     likeCount = likeCount.toInt(),
     likedByMe = likedByMe,
-    uploaderId = uploader?.id,
+    uploader = uploader?.toUser(),
     credit = credit?.let { ImageCredit(it.author, it.title, it.license, it.licenseUrl, it.sourceUrl) },
 )

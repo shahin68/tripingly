@@ -8,12 +8,17 @@ import com.falcon.tripingly.core.data.trips.FakeTripBackend
 import com.falcon.tripingly.core.data.users.FakeUserRepository
 import com.falcon.tripingly.core.data.users.FollowChange
 import com.falcon.tripingly.core.data.users.UserRepository
+import com.falcon.tripingly.core.model.Page
 import com.falcon.tripingly.core.model.social.PeopleList
 import com.falcon.tripingly.core.model.social.Profile
+import com.falcon.tripingly.core.model.social.ReportReason
+import com.falcon.tripingly.core.model.trip.UserSummary
+import com.falcon.tripingly.core.ui.UiText
 import com.falcon.tripingly.feature.social.presentation.people.PeopleViewModel
 import com.falcon.tripingly.feature.social.presentation.profile.ProfileViewModel
 import com.falcon.tripingly.feature.social.presentation.profile.ProfileViewModel.Action
 import com.falcon.tripingly.feature.social.presentation.profile.ProfileViewModel.Event
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
@@ -73,7 +78,7 @@ class ProfileViewModelTest {
         advanceUntilIdle()
         assertTrue(viewModel.uiState.value.profile!!.isFollowing)
 
-        viewModel.onAction(Action.OnToggleFollow)
+        viewModel.onAction(Action.Person.ToggleFollow)
 
         val profile = viewModel.uiState.value.profile!!
         assertFalse(profile.isFollowing)
@@ -86,7 +91,7 @@ class ProfileViewModelTest {
         val viewModel = viewModel("julia_t")
         advanceUntilIdle()
 
-        viewModel.onAction(Action.OnToggleFollow)
+        viewModel.onAction(Action.Person.ToggleFollow)
         advanceUntilIdle()
 
         assertFalse(viewModel.uiState.value.profile!!.isFollowing)
@@ -98,9 +103,9 @@ class ProfileViewModelTest {
         val viewModel = viewModel("anna")
         advanceUntilIdle()
 
-        viewModel.onAction(Action.OnBlock)
+        viewModel.onAction(Action.Person.Block)
         assertTrue(viewModel.uiState.value.isConfirmingBlock)
-        viewModel.onAction(Action.OnConfirmBlock)
+        viewModel.onAction(Action.Person.ConfirmBlock)
         advanceUntilIdle()
 
         assertEquals(Event.Close, viewModel.events.first())
@@ -124,7 +129,7 @@ class ProfileViewModelTest {
         advanceUntilIdle()
         val julia = viewModel.uiState.value.profile!!.user
 
-        viewModel.onAction(Action.OnToggleFollow)
+        viewModel.onAction(Action.Person.ToggleFollow)
         advanceUntilIdle()
         liveFollows.emit(FollowChange(followerId = ME, followeeId = julia.id, following = true))
         advanceUntilIdle()
@@ -146,6 +151,69 @@ class ProfileViewModelTest {
         advanceUntilIdle()
 
         assertEquals(listOf("anna", "jonas.k", "lena", "julia_t"), viewModel.uiState.value.people.map { it.username })
+    }
+
+    @Test
+    fun fastFollowTaps_theLatestWins_andARefusalPutsBackWhatTheServerConfirmed() = runTest {
+        val viewModel = viewModel("marton")
+        advanceUntilIdle()
+
+        followRefused = true
+        repeat(3) { viewModel.onAction(Action.Person.ToggleFollow) }
+        assertFalse(viewModel.uiState.value.profile!!.isFollowing, "the third tap shows at once")
+        advanceUntilIdle()
+
+        val profile = viewModel.uiState.value.profile!!
+        assertTrue(profile.isFollowing)
+        assertEquals(1, profile.followerCount)
+    }
+
+    @Test
+    fun reportingThePerson_closesTheDialogOnceSent() = runTest {
+        val viewModel = viewModel("anna")
+        advanceUntilIdle()
+
+        viewModel.onAction(Action.Person.Report)
+        viewModel.onAction(Action.Report.Send(ReportReason.Spam, ""))
+        advanceUntilIdle()
+
+        assertEquals(null, viewModel.uiState.value.report)
+        assertTrue(viewModel.uiState.value.message is UiText.Note)
+    }
+
+    @Test
+    fun peopleList_dropsSomeoneBlocked_atOnce() = runTest {
+        val repository = FakeUserRepository()
+        val viewModel = PeopleViewModel(PeopleList.Followers, repository)
+        advanceUntilIdle()
+        val anna = viewModel.uiState.value.people.first()
+
+        repository.setBlocked(anna.id, blocked = true)
+        advanceUntilIdle()
+
+        assertEquals(listOf("jonas.k", "lena", "julia_t"), viewModel.uiState.value.people.map { it.username })
+    }
+
+    @Test
+    fun peopleList_aFollowChangeDuringALoad_loadsAgain() = runTest {
+        val firstAnswer = CompletableDeferred<Unit>()
+        var calls = 0
+        val repository = object : UserRepository by FakeUserRepository() {
+            override val followChanges: Flow<FollowChange> = liveFollows
+            override suspend fun people(list: PeopleList, cursor: String?): AppResult<Page<UserSummary>, DataError.Network> {
+                val call = ++calls
+                if (call == 1) firstAnswer.await()
+                return AppResult.Success(Page(listOf(UserSummary("u$call", "before$call", "Before")), nextCursor = null))
+            }
+        }
+        val viewModel = PeopleViewModel(PeopleList.Following, repository)
+        advanceUntilIdle()
+
+        liveFollows.emit(FollowChange(ME, "u9", following = true))
+        firstAnswer.complete(Unit)
+        advanceUntilIdle()
+
+        assertEquals(listOf("before2"), viewModel.uiState.value.people.map { it.username })
     }
 
     private companion object {

@@ -24,6 +24,7 @@ import com.falcon.tripingly.core.designsystem.generated.resources.like
 import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
 import com.falcon.tripingly.core.designsystem.theme.spacing
 import org.jetbrains.compose.resources.stringResource
+import androidx.compose.foundation.background
 
 /** A heart with the like count; filled while I like it. */
 @Composable
@@ -61,6 +62,17 @@ private fun LikeButtonPreview() {
         Row {
             LikeButton(liked = true, count = 12, onToggle = {})
             LikeButton(liked = false, count = 0, onToggle = {})
+        }
+    }
+}
+
+@Preview
+@Composable
+private fun LikeButtonDarkPreview() {
+    TripinglyTheme(darkTheme = true) {
+        Row(Modifier.background(MaterialTheme.colorScheme.surface)) {
+            LikeButton(liked = true, count = 1_204, onToggle = {})
+            LikeButton(liked = false, count = 3, onToggle = {})
         }
     }
 }

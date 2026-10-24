@@ -228,12 +228,12 @@ internal fun MapScreen(
             ) { card ->
                 StopCard(
                     marker = card.stop,
-                    placeImage = card.placeImage,
+                    coverCredit = card.coverCredit,
                     canEdit = card.canEdit,
                     onOpen = { onAction(MapAction.StopCard.OpenPhotos) },
                     onAddPhotos = pickPhotos,
                     onTakePhoto = { onAction(MapAction.StopCard.OpenCamera) },
-                    onToggleLike = { onAction(MapAction.StopCard.ToggleLike(card.stop.id)) },
+                    onToggleHot = { onAction(MapAction.StopCard.ToggleHot(card.stop.id)) },
                     onOpenComments = { onAction(MapAction.StopCard.OpenComments) },
                     canReport = card.canReport,
                     onReport = { onAction(MapAction.StopCard.Report) },
