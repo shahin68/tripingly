@@ -31,8 +31,8 @@ interface RealtimeClient {
     fun unwatchTrip(tripId: String)
 }
 
-/** Who watches which trip, counted. */
-internal class TripWatches {
+/** Who watches which trip, counted (public for the test fake). */
+class TripWatches {
     private val counts = MutableStateFlow<Map<String, Int>>(emptyMap())
 
     val current: Set<String> get() = counts.value.keys

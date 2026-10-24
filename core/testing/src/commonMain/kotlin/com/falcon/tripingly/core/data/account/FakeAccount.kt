@@ -67,7 +67,7 @@ class FakeAccountBackend(
     override suspend fun signOut(reason: SignOutReason?) {
         account = null
         accepted.clear()
-        cleaners().clearAll()
+        cleaners().forEach { it.clear() }
         state.value = SessionState.SignedOut(reason)
     }
 
@@ -183,3 +183,6 @@ class FakeAccountBackend(
         return updated
     }
 }
+
+private fun Account.toSessionState(): SessionState =
+    if (onboarding.completed) SessionState.SignedIn(this) else SessionState.Onboarding(this)

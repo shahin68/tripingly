@@ -5,8 +5,8 @@ import com.falcon.tripingly.core.model.place.OsmRef
 import com.falcon.tripingly.core.model.trip.MarkerUpdate
 import com.falcon.tripingly.core.model.trip.TripMarker
 
-/** A marker change shown on the device before the server confirms it. */
-internal sealed interface MarkerChange {
+/** A marker change shown on the device before the server confirms it (public for the test fakes). */
+sealed interface MarkerChange {
     val tripId: String
     val markerId: String
     val markerName: String
@@ -57,12 +57,12 @@ internal sealed interface MarkerChange {
  * A marker change the server refused or that couldn't reach it. It has already
  * been undone on the device; [MarkerRepository.retry] tries it again.
  */
-class MarkerChangeFailure internal constructor(
+class MarkerChangeFailure(
     val tripId: String,
     /** The stop's name, empty for a reorder or a cleared day. */
     val markerName: String,
     val error: DataError.Network,
-    internal val change: MarkerChange,
+    val change: MarkerChange,
 ) {
     /** The connection failed, so trying again can help; a refusal by the server won't change. */
     val isConnectionProblem: Boolean get() = error.isConnectionProblem()
@@ -72,7 +72,7 @@ class MarkerChangeFailure internal constructor(
 }
 
 /** [change] once more, deleting other people's content too; null for a change that isn't a delete. */
-internal fun MarkerChange.confirmed(): MarkerChange? = when (this) {
+fun MarkerChange.confirmed(): MarkerChange? = when (this) {
     is MarkerChange.Delete -> copy(confirm = true)
     is MarkerChange.ClearDay -> copy(confirm = true)
     else -> null

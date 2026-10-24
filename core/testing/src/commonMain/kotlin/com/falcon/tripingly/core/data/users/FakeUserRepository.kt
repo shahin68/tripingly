@@ -36,7 +36,7 @@ class FakeUserRepository : UserRepository {
     private fun visible() = people.filterNot { it.id in blocked }
 
     override suspend fun search(query: String): AppResult<List<UserSummary>, DataError.Network> {
-        val trimmed = query.toUserQuery()
+        val trimmed = query.trim().removePrefix("@")
         if (trimmed.length < MIN_SEARCH_LENGTH) return AppResult.Success(emptyList())
         return AppResult.Success(
             visible().filter {
@@ -58,7 +58,7 @@ class FakeUserRepository : UserRepository {
     }
 
     override suspend fun profile(username: String, cursor: String?): AppResult<Profile, DataError.Network> {
-        val user = visible().firstOrNull { it.username == username.toUserQuery() }
+        val user = visible().firstOrNull { it.username == username.trim().removePrefix("@") }
             ?: return AppResult.Error(DataError.Network.Api(404, "NOT_FOUND", "Not found"))
         return AppResult.Success(
             Profile(
