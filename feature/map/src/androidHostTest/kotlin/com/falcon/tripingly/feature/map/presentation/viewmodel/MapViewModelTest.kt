@@ -1316,6 +1316,22 @@ class MapViewModelTest {
     }
 
     @Test
+    fun `a place picked in search is drawn as its pin, photo included`() = runTest(testDispatcher) {
+        val viewModel = viewModel()
+        testScheduler.advanceUntilIdle()
+        viewModel.onAction(MapAction.MapView.CameraRest(Coordinates(48.86, 2.32), 15f, PARIS_CENTER))
+        testScheduler.advanceUntilIdle()
+        val pin = viewModel.pin("Louvre")
+        // Search sends neither the cover image nor the prominence.
+        val searched = pin.copy(coverImageId = null, coverThumbUrl = null, prominence = 0)
+
+        viewModel.onAction(MapAction.Search.ResultClick(PlaceSearchResult("Louvre", null, pin.location, place = searched)))
+        testScheduler.advanceUntilIdle()
+
+        assertEquals(pin, viewModel.uiState.value.layers.selectedPlace)
+    }
+
+    @Test
     fun `an address picked in search opens its card, and adding it makes a stop named after it`() = runTest(testDispatcher) {
         val viewModel = viewModel()
         testScheduler.advanceUntilIdle()

@@ -1,6 +1,7 @@
 package com.falcon.tripingly
 
 import androidx.compose.ui.window.ComposeUIViewController
+import coil3.PlatformContext
 import com.falcon.tripingly.core.data.account.LocalDataCleaner
 import com.falcon.tripingly.core.data.billing.StorePurchases
 import com.falcon.tripingly.core.data.push.PushMessaging
@@ -34,6 +35,8 @@ fun MainViewController(
         initKoin {
             modules(
                 module {
+                    // Android's is its Context, from androidContext().
+                    single { PlatformContext.INSTANCE }
                     single<SocialSignIn> { NativeSocialSignIn(nativeSignIn) }
                     single(named("googleSignInState")) {
                         LocalDataCleaner { withContext(Dispatchers.Main) { nativeSignIn.signOut() } }
