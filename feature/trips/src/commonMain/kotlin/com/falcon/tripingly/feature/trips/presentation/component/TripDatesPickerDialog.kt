@@ -31,11 +31,18 @@ import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.atStartOfDayIn
 import kotlinx.datetime.toLocalDateTime
+import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
 import kotlin.time.Instant
+import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.tooling.preview.PreviewParameter
+import androidx.compose.ui.tooling.preview.PreviewParameterProvider
+import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
+import kotlinx.datetime.DateTimeUnit
+import kotlinx.datetime.plus
 
 /**
- * The New trip sheet's date range picker, from today on. OK hands back the picked range
+ * A trip's date range picker (New trip, Reschedule), from today on. OK hands back the picked range
  * (the end is null when only one day was tapped); Cancel keeps the dates as they were.
  */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -45,6 +52,8 @@ internal fun TripDatesPickerDialog(
     initialEndDate: LocalDate?,
     onDismiss: () -> Unit,
     onConfirm: (LocalDate?, LocalDate?) -> Unit,
+    title: StringResource = Res.string.create_trip_picker_title,
+    headline: StringResource = Res.string.create_trip_picker_headline,
 ) {
     val today = DateUtils.today()
     val state = rememberDateRangePickerState(
@@ -67,14 +76,14 @@ internal fun TripDatesPickerDialog(
                     modifier = Modifier.weight(1f),
                     title = {
                         Text(
-                            text = stringResource(Res.string.create_trip_picker_title),
+                            text = stringResource(title),
                             modifier = Modifier.padding(16.dp),
                             style = MaterialTheme.typography.titleMedium,
                         )
                     },
                     headline = {
                         Text(
-                            text = stringResource(Res.string.create_trip_picker_headline),
+                            text = stringResource(headline),
                             modifier = Modifier.padding(horizontal = 16.dp),
                             style = MaterialTheme.typography.bodySmall,
                         )
@@ -104,3 +113,24 @@ internal fun TripDatesPickerDialog(
 private fun LocalDate.toEpochMillis(): Long = atStartOfDayIn(TimeZone.UTC).toEpochMilliseconds()
 
 private fun Long.toLocalDate(): LocalDate = Instant.fromEpochMilliseconds(this).toLocalDateTime(TimeZone.UTC).date
+
+/** Nothing picked yet, and a long weekend from today. */
+internal class TripDatesPreviewStates : PreviewParameterProvider<Pair<LocalDate?, LocalDate?>> {
+    override val values = sequenceOf(null to null, DateUtils.today().let { it to it.plus(3, DateTimeUnit.DAY) })
+}
+
+@Preview
+@Composable
+private fun TripDatesPickerDialogPreview(@PreviewParameter(TripDatesPreviewStates::class) dates: Pair<LocalDate?, LocalDate?>) {
+    TripinglyTheme {
+        TripDatesPickerDialog(initialStartDate = dates.first, initialEndDate = dates.second, onDismiss = {}, onConfirm = { _, _ -> })
+    }
+}
+
+@Preview(widthDp = 800, heightDp = 360)
+@Composable
+private fun TripDatesPickerDialogLandscapePreview() {
+    TripinglyTheme(darkTheme = true) {
+        TripDatesPickerDialog(initialStartDate = null, initialEndDate = null, onDismiss = {}, onConfirm = { _, _ -> })
+    }
+}

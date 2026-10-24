@@ -17,9 +17,12 @@ import com.falcon.tripingly.core.model.Page
 import com.falcon.tripingly.core.model.account.TripVisibility
 import com.falcon.tripingly.core.model.social.ExploreFilter
 import com.falcon.tripingly.core.model.social.ExplorePeriod
+import com.falcon.tripingly.core.model.social.HotState
 import com.falcon.tripingly.core.model.social.LikeState
 import com.falcon.tripingly.core.model.social.LikeTarget
 import com.falcon.tripingly.core.model.social.PublicTrip
+import com.falcon.tripingly.core.model.social.ReportReason
+import com.falcon.tripingly.core.model.social.ReportTarget
 import com.falcon.tripingly.core.model.trip.GeoPoint
 import com.falcon.tripingly.core.model.trip.NewTrip
 import com.falcon.tripingly.core.model.trip.Trip
@@ -48,13 +51,22 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 import kotlin.time.Instant
+import com.falcon.tripingly.core.model.photo.Photo
+import com.falcon.tripingly.core.model.photo.PhotoOwner
+import com.falcon.tripingly.core.model.photo.PhotoStatus
+import com.falcon.tripingly.core.model.place.ImageCredit
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class SocialViewModelTest {
 
     private val backend = FakeTripBackend()
     private var explore = emptyList<PublicTrip>()
+
+    /** Explore's second page, after the cursor `page-2`. */
+    private var exploreMore = emptyList<PublicTrip>()
     private var likeRefused = false
+    private var reportRefused = false
+    private val reported = mutableListOf<Pair<ReportTarget, String>>()
 
     /** The filter of every first page of Explore asked for. */
     private val filters = mutableListOf<ExploreFilter>()
@@ -62,11 +74,19 @@ class SocialViewModelTest {
     private val social = object : SocialRepository by FakeSocialRepository() {
         override suspend fun explore(filter: ExploreFilter, cursor: String?): AppResult<Page<PublicTrip>, DataError.Network> {
             if (cursor == null) filters += filter
-            return Page(explore, nextCursor = null).asSuccess()
+            return if (cursor == null) Page(explore, nextCursor = "page-2".takeIf { exploreMore.isNotEmpty() }).asSuccess() else Page(exploreMore, null).asSuccess()
+        }
+
+        override suspend fun report(target: ReportTarget, targetId: String, reason: ReportReason, details: String?): AppResult<Unit, DataError.Network> {
+            reported += target to targetId
+            return if (reportRefused) AppResult.Error(DataError.Network.NoInternet) else Unit.asSuccess()
         }
 
         override suspend fun setLiked(target: LikeTarget, targetId: String, liked: Boolean): AppResult<LikeState, DataError.Network> =
             if (likeRefused) AppResult.Error(DataError.Network.NoInternet) else LikeState(liked, if (liked) 5 else 4).asSuccess()
+
+        override suspend fun setHot(placeId: String, hot: Boolean): AppResult<HotState, DataError.Network> =
+            if (likeRefused) AppResult.Error(DataError.Network.NoInternet) else HotState(hot, 99).asSuccess()
     }
 
     /** Counts what reaches the server. */
@@ -119,16 +139,16 @@ class SocialViewModelTest {
     }
 
     @Test
-    fun likingATrip_showsAtOnce_andKeepsTheServersCount() = runTest {
+    fun likingATrip_showsAtOnce_andKeepsIt() = runTest {
         explore = listOf(publicTrip())
         val viewModel = viewModel()
         advanceUntilIdle()
 
-        viewModel.onAction(Action.OnLikeTrip(viewModel.uiState.value.explore.single()))
-        assertTrue(viewModel.uiState.value.explore.single().likedByMe)
+        viewModel.onAction(Action.Explore.LikeTrip(viewModel.uiState.value.explore.trips.single()))
+        assertTrue(viewModel.uiState.value.explore.trips.single().likedByMe)
         advanceUntilIdle()
 
-        assertEquals(5, viewModel.uiState.value.explore.single().likeCount)
+        assertEquals(5, viewModel.uiState.value.explore.trips.single().likeCount)
     }
 
     @Test
@@ -138,10 +158,10 @@ class SocialViewModelTest {
         val viewModel = viewModel()
         advanceUntilIdle()
 
-        viewModel.onAction(Action.OnLikeTrip(viewModel.uiState.value.explore.single()))
+        viewModel.onAction(Action.Explore.LikeTrip(viewModel.uiState.value.explore.trips.single()))
         advanceUntilIdle()
 
-        val trip = viewModel.uiState.value.explore.single()
+        val trip = viewModel.uiState.value.explore.trips.single()
         assertFalse(trip.likedByMe)
         assertEquals(4, trip.likeCount)
         assertTrue(viewModel.uiState.value.message != null)
@@ -153,13 +173,13 @@ class SocialViewModelTest {
         advanceUntilIdle()
 
         listOf("a", "an", "ann").forEach {
-            viewModel.onAction(Action.OnQueryChanged(it))
+            viewModel.onAction(Action.People.QueryChanged(it))
             advanceTimeBy(100)
         }
         advanceUntilIdle()
 
         assertEquals(listOf("ann"), users.queries)
-        assertEquals("anna", viewModel.uiState.value.people.single().username)
+        assertEquals("anna", viewModel.uiState.value.people.results.single().username)
     }
 
     @Test
@@ -168,8 +188,8 @@ class SocialViewModelTest {
         val viewModel = viewModel()
         advanceUntilIdle()
 
-        viewModel.onAction(Action.OnToggleSaveTrip(viewModel.uiState.value.explore.single()))
-        val trip = viewModel.uiState.value.explore.single()
+        viewModel.onAction(Action.Explore.ToggleSaveTrip(viewModel.uiState.value.explore.trips.single()))
+        val trip = viewModel.uiState.value.explore.trips.single()
         assertTrue(trip.trip.savedByMe)
         assertEquals(3, trip.saveCount)
         advanceUntilIdle()
@@ -183,10 +203,10 @@ class SocialViewModelTest {
         val viewModel = viewModel()
         advanceUntilIdle()
 
-        viewModel.onAction(Action.OnToggleSaveTrip(viewModel.uiState.value.explore.single()))
+        viewModel.onAction(Action.Explore.ToggleSaveTrip(viewModel.uiState.value.explore.trips.single()))
         advanceUntilIdle()
 
-        val trip = viewModel.uiState.value.explore.single()
+        val trip = viewModel.uiState.value.explore.trips.single()
         assertFalse(trip.trip.savedByMe)
         assertEquals(0, trip.saveCount)
         assertTrue(viewModel.uiState.value.message != null)
@@ -197,12 +217,12 @@ class SocialViewModelTest {
         val viewModel = viewModel()
         advanceUntilIdle()
 
-        viewModel.onAction(Action.OnExplorePeriodSelected(ExplorePeriod.Week))
-        viewModel.onAction(Action.OnExplorePeriodSelected(ExplorePeriod.Week))
+        viewModel.onAction(Action.Explore.PeriodSelected(ExplorePeriod.Week))
+        viewModel.onAction(Action.Explore.PeriodSelected(ExplorePeriod.Week))
         advanceUntilIdle()
 
         assertEquals(listOf(ExploreFilter(ExplorePeriod.Month), ExploreFilter(ExplorePeriod.Week)), filters)
-        assertEquals(ExplorePeriod.Week, viewModel.uiState.value.explorePeriod)
+        assertEquals(ExplorePeriod.Week, viewModel.uiState.value.explore.period)
     }
 
     @Test
@@ -210,25 +230,25 @@ class SocialViewModelTest {
         val viewModel = viewModel()
         advanceUntilIdle()
 
-        viewModel.onAction(Action.OnToggleExploreNearby)
+        viewModel.onAction(Action.Explore.ToggleNearby)
         advanceUntilIdle()
         assertEquals(Event.CheckExploreLocation, viewModel.events.first())
 
-        viewModel.onAction(Action.OnExploreLocationChecked(LocationPermission.NotAsked))
+        viewModel.onAction(Action.Explore.LocationChecked(LocationPermission.NotAsked))
         advanceUntilIdle()
         assertEquals(Event.RequestPermission, viewModel.events.first())
 
-        viewModel.onAction(Action.OnPermissionResult(LocationPermission.Granted))
+        viewModel.onAction(Action.LocationPermissionResult(LocationPermission.Granted))
         advanceUntilIdle()
-        assertTrue(viewModel.uiState.value.isExploreNearby, "Nearby is on once allowed")
+        assertTrue(viewModel.uiState.value.explore.isNearbyFilter, "Nearby is on once allowed")
         val paris = GeoPoint(Coordinates.Paris.latitude, Coordinates.Paris.longitude)
         assertEquals(ExploreFilter(ExplorePeriod.Month, near = paris), filters.last(), "loads the trips near the user")
         // Places nearby load only on their own tab.
-        assertEquals(NearbyStatus.Unknown, viewModel.uiState.value.nearbyStatus, "places nearby don't load")
+        assertEquals(NearbyStatus.Unknown, viewModel.uiState.value.nearby.status, "places nearby don't load")
 
-        viewModel.onAction(Action.OnToggleExploreNearby)
+        viewModel.onAction(Action.Explore.ToggleNearby)
         advanceUntilIdle()
-        assertFalse(viewModel.uiState.value.isExploreNearby, "Nearby switches off")
+        assertFalse(viewModel.uiState.value.explore.isNearbyFilter, "Nearby switches off")
         assertEquals(ExploreFilter(ExplorePeriod.Month), filters.last(), "reloads without the location")
     }
 
@@ -237,16 +257,196 @@ class SocialViewModelTest {
         val viewModel = viewModel()
         advanceUntilIdle()
 
-        viewModel.onAction(Action.OnToggleExploreNearby)
-        viewModel.onAction(Action.OnExploreLocationChecked(LocationPermission.ShouldExplain))
-        viewModel.onAction(Action.OnPermissionResult(LocationPermission.ShouldExplain))
+        viewModel.onAction(Action.Explore.ToggleNearby)
+        viewModel.onAction(Action.Explore.LocationChecked(LocationPermission.ShouldExplain))
+        viewModel.onAction(Action.LocationPermissionResult(LocationPermission.ShouldExplain))
         advanceUntilIdle()
-        assertFalse(viewModel.uiState.value.isExploreNearby)
+        assertFalse(viewModel.uiState.value.explore.isNearbyFilter)
 
-        viewModel.onAction(Action.OnExploreLocationChecked(LocationPermission.Blocked))
+        viewModel.onAction(Action.Explore.LocationChecked(LocationPermission.Blocked))
         advanceUntilIdle()
-        assertFalse(viewModel.uiState.value.isExploreNearby)
+        assertFalse(viewModel.uiState.value.explore.isNearbyFilter)
         assertTrue(viewModel.uiState.value.message != null)
         assertEquals(1, filters.size)
+    }
+
+    @Test
+    fun fastTaps_theLatestWins_andARefusalPutsBackTheLastConfirmedHeart() = runTest {
+        explore = listOf(publicTrip())
+        val viewModel = viewModel()
+        advanceUntilIdle()
+        viewModel.onAction(Action.Explore.LikeTrip(viewModel.uiState.value.explore.trips.single()))
+        advanceUntilIdle()
+
+        likeRefused = true
+        repeat(3) { viewModel.onAction(Action.Explore.LikeTrip(viewModel.uiState.value.explore.trips.single())) }
+        assertFalse(viewModel.uiState.value.explore.trips.single().likedByMe, "the third tap shows at once")
+        advanceUntilIdle()
+
+        val trip = viewModel.uiState.value.explore.trips.single()
+        assertTrue(trip.likedByMe, "back to the heart the server confirmed")
+        assertEquals(5, trip.likeCount)
+    }
+
+    @Test
+    fun blockingSomeone_dropsTheirTripsAndTheirRow_atOnce() = runTest {
+        explore = listOf(othersTrip(), publicTrip())
+        val viewModel = viewModel()
+        advanceUntilIdle()
+        viewModel.onAction(Action.People.QueryChanged("an"))
+        advanceUntilIdle()
+        val anna = viewModel.uiState.value.people.results.single()
+
+        users.setBlocked("u-anna", blocked = true)
+        users.setBlocked(anna.id, blocked = true)
+        advanceUntilIdle()
+
+        assertEquals(listOf("Vienna"), viewModel.uiState.value.explore.trips.map { it.trip.name })
+        assertTrue(viewModel.uiState.value.people.results.isEmpty())
+    }
+
+    @Test
+    fun explore_loadsMoreAtTheEnd_withoutRepeats() = runTest {
+        val vienna = publicTrip()
+        explore = listOf(vienna)
+        exploreMore = listOf(vienna, othersTrip())
+        val viewModel = viewModel()
+        advanceUntilIdle()
+
+        viewModel.onAction(Action.Explore.LoadMore)
+        viewModel.onAction(Action.Explore.LoadMore)
+        advanceUntilIdle()
+
+        assertEquals(listOf("Vienna", "Budapest"), viewModel.uiState.value.explore.trips.map { it.trip.name })
+    }
+
+    @Test
+    fun reportingATrip_closesTheDialogOnceSent_andStaysOpenWhenRefused() = runTest {
+        explore = listOf(othersTrip())
+        val viewModel = viewModel()
+        advanceUntilIdle()
+        val trip = viewModel.uiState.value.explore.trips.single()
+
+        reportRefused = true
+        viewModel.onAction(Action.Explore.ReportTrip(trip))
+        viewModel.onAction(Action.Report.Send(ReportReason.Spam, ""))
+        advanceUntilIdle()
+        assertEquals(SocialViewModel.ReportState(ReportTarget.Trip, trip.trip.id), viewModel.uiState.value.report, "open again for another try")
+        assertTrue(viewModel.uiState.value.message != null)
+
+        reportRefused = false
+        viewModel.onAction(Action.Report.Send(ReportReason.Spam, ""))
+        advanceUntilIdle()
+        assertEquals(null, viewModel.uiState.value.report)
+    }
+
+    @Test
+    fun nearby_asksFirst_thenSettingsWhenBlocked_andListsPlacesOnceAllowed() = runTest {
+        val viewModel = viewModel()
+        advanceUntilIdle()
+        viewModel.onAction(Action.SectionSelected(SocialViewModel.Section.Nearby))
+
+        viewModel.onAction(Action.Nearby.PermissionChecked(LocationPermission.NotAsked))
+        assertEquals(NearbyStatus.NeedsPermission, viewModel.uiState.value.nearby.status)
+        viewModel.onAction(Action.Nearby.AllowLocation)
+        assertEquals(Event.RequestPermission, viewModel.events.first())
+
+        viewModel.onAction(Action.LocationPermissionResult(LocationPermission.Blocked))
+        assertEquals(NearbyStatus.Blocked, viewModel.uiState.value.nearby.status)
+        viewModel.onAction(Action.Nearby.AllowLocation)
+        assertEquals(Event.OpenAppSettings, viewModel.events.first())
+
+        viewModel.onAction(Action.Nearby.PermissionChecked(LocationPermission.Granted))
+        advanceUntilIdle()
+        assertEquals(NearbyStatus.Ready, viewModel.uiState.value.nearby.status)
+        assertTrue(viewModel.uiState.value.nearby.places.isNotEmpty())
+    }
+
+    @Test
+    fun aNearbyPlacesFlame_showsAtOnce_andARefusalPutsItBack() = runTest {
+        val viewModel = viewModel()
+        viewModel.onAction(Action.Nearby.PermissionChecked(LocationPermission.Granted))
+        advanceUntilIdle()
+        val place = viewModel.uiState.value.nearby.places.first()
+
+        likeRefused = true
+        viewModel.onAction(Action.Nearby.MarkHot(place))
+        val shown = viewModel.uiState.value.nearby.places.first()
+        assertTrue(shown.hotByMe, "the flame lights at once")
+        assertEquals(place.hotCount + 1, shown.hotCount)
+        advanceUntilIdle()
+        val back = viewModel.uiState.value.nearby.places.first()
+        assertFalse(back.hotByMe, "a refusal puts the flame back")
+        assertEquals(place.hotCount, back.hotCount)
+    }
+
+    @Test
+    fun aNearbyPlacesImages_openFromItsCover_andACommonsImageIsReportedAsAPlaceImage() = runTest {
+        val viewModel = viewModel()
+        viewModel.onAction(Action.Nearby.PermissionChecked(LocationPermission.Granted))
+        advanceUntilIdle()
+        val place = viewModel.uiState.value.nearby.places.first()
+
+        viewModel.onAction(Action.Nearby.OpenImage(place))
+        assertEquals(place, viewModel.uiState.value.nearby.openImage)
+
+        val commons = commonsImage("commons-1")
+        viewModel.onAction(Action.Nearby.ReportImage(commons))
+        viewModel.onAction(Action.Report.Send(ReportReason.Other, ""))
+        viewModel.onAction(Action.Nearby.ReportImage(commons.copy(id = "photo-1", credit = null)))
+        viewModel.onAction(Action.Report.Send(ReportReason.Other, ""))
+        advanceUntilIdle()
+        assertEquals(listOf(ReportTarget.PlaceImage to "commons-1", ReportTarget.Photo to "photo-1"), reported)
+
+        viewModel.onAction(Action.Nearby.CloseImage)
+        assertEquals(null, viewModel.uiState.value.nearby.openImage)
+    }
+
+    private fun commonsImage(id: String) = Photo(
+        id = id,
+        owner = PhotoOwner.Place("place"),
+        status = PhotoStatus.Ready,
+        thumbUrl = null,
+        displayUrl = null,
+        width = null,
+        height = null,
+        position = 0,
+        likeCount = 0,
+        likedByMe = false,
+        uploader = null,
+        credit = ImageCredit(author = "A", title = null, license = "CC BY-SA 4.0", licenseUrl = null, sourceUrl = "https://commons.wikimedia.org/wiki/File:A.jpg"),
+    )
+
+    @Test
+    fun addingAPlace_withoutTripsOfMine_says_so() = runTest {
+        val viewModel = viewModel()
+        viewModel.onAction(Action.Nearby.PermissionChecked(LocationPermission.Granted))
+        advanceUntilIdle()
+
+        viewModel.onAction(Action.Nearby.AddPlace(viewModel.uiState.value.nearby.places.first()))
+        advanceUntilIdle()
+
+        assertEquals(null, viewModel.uiState.value.addPlace)
+        assertTrue(viewModel.uiState.value.message != null)
+    }
+
+    @Test
+    fun addingAPlace_pickTripThenDay_addsTheStop_andOpensTheTrip() = runTest {
+        val vienna = publicTrip().trip.id
+        val viewModel = viewModel()
+        viewModel.onAction(Action.Nearby.PermissionChecked(LocationPermission.Granted))
+        advanceUntilIdle()
+        val place = viewModel.uiState.value.nearby.places.first()
+
+        viewModel.onAction(Action.Nearby.AddPlace(place))
+        advanceUntilIdle()
+        val trip = viewModel.uiState.value.addPlace!!.trips.single()
+        viewModel.onAction(Action.AddToTrip.PickTrip(trip))
+        advanceUntilIdle()
+        viewModel.onAction(Action.AddToTrip.PickDay(viewModel.uiState.value.addPlace!!.days.first()))
+        advanceUntilIdle()
+
+        assertEquals(Event.OpenTrip(vienna), viewModel.events.first())
+        assertEquals(listOf(place.name), backend.observeTrip(vienna).first()!!.days.first().markers.map { it.name })
     }
 }

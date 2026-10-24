@@ -32,7 +32,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.falcon.tripingly.core.designsystem.component.CommonsCredit
-import com.falcon.tripingly.core.designsystem.component.LikeButton
+import com.falcon.tripingly.core.designsystem.component.HotButton
 import com.falcon.tripingly.core.designsystem.component.PhotoImage
 import com.falcon.tripingly.core.designsystem.component.PhotoSize
 import com.falcon.tripingly.core.designsystem.theme.spacing
@@ -43,6 +43,11 @@ import com.falcon.tripingly.feature.map.generated.resources.Res
 import com.falcon.tripingly.feature.map.generated.resources.map_remove_my_content
 import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
+import androidx.compose.ui.tooling.preview.Preview
+import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
+import androidx.compose.ui.tooling.preview.PreviewParameter
+import androidx.compose.ui.tooling.preview.PreviewParameterProvider
+import com.falcon.tripingly.core.ui.UiText
 
 /**
  * A stop tapped on the map, in a card that floats above its pin like the place card: its cover (or, without
@@ -59,7 +64,7 @@ fun StopCard(
     onOpen: () -> Unit,
     onAddPhotos: () -> Unit,
     onTakePhoto: () -> Unit,
-    onToggleLike: () -> Unit,
+    onToggleHot: () -> Unit,
     onOpenComments: () -> Unit,
     canReport: Boolean,
     onReport: () -> Unit,
@@ -117,7 +122,7 @@ fun StopCard(
             }
             fallback?.credit?.let { credit -> CommonsCredit(credit = credit, cropped = true, maxLines = 2) }
             Row(verticalAlignment = Alignment.CenterVertically) {
-                if (marker.canLike) LikeButton(liked = marker.likedByMe, count = marker.likeCount, onToggle = onToggleLike)
+                if (marker.canMarkHot) HotButton(hot = marker.hotByMe, count = marker.hotCount, onToggle = onToggleHot)
                 TextButton(onClick = onOpenComments) {
                     Icon(Icons.AutoMirrored.Outlined.Comment, contentDescription = null, modifier = Modifier.size(18.dp))
                     Text(
@@ -157,5 +162,69 @@ fun StopCard(
                 }
             }
         }
+    }
+}
+
+/** An editor's stop, a viewer's (reportable), someone else's stop on a trip I edit, and one with a long name and no counts. */
+internal class StopCardPreviewStates : PreviewParameterProvider<StopCardPreview> {
+    override val values = sequenceOf(
+        StopCardPreview(previewStop, canEdit = true, canReport = false, canRemoveMyContent = false),
+        StopCardPreview(previewStop.copy(canDelete = false, isByTripOwner = true), canEdit = false, canReport = true, canRemoveMyContent = false),
+        StopCardPreview(previewStop.copy(canDelete = false), canEdit = true, canReport = false, canRemoveMyContent = true),
+        StopCardPreview(
+            previewStop.copy(
+                title = UiText.Server("Musée national des Arts asiatiques – Guimet, the long name of a museum"),
+                orderNumber = 12,
+                photoCount = 0,
+                hotCount = 0,
+                hotByMe = false,
+                commentCount = 0,
+            ),
+            canEdit = true,
+            canReport = false,
+            canRemoveMyContent = false,
+        ),
+    )
+}
+
+internal data class StopCardPreview(val stop: MapMarker, val canEdit: Boolean, val canReport: Boolean, val canRemoveMyContent: Boolean)
+
+@Preview
+@Composable
+private fun StopCardPreview(@PreviewParameter(StopCardPreviewStates::class) card: StopCardPreview) {
+    TripinglyTheme {
+        StopCard(
+            marker = card.stop,
+            placeImage = previewPlaceImages.first(),
+            canEdit = card.canEdit,
+            onOpen = {},
+            onAddPhotos = {},
+            onTakePhoto = {},
+            onToggleHot = {},
+            onOpenComments = {},
+            canReport = card.canReport,
+            onReport = {},
+            onRemoveMyContent = if (card.canRemoveMyContent) ({}) else null,
+        )
+    }
+}
+
+@Preview
+@Composable
+private fun StopCardDarkPreview() {
+    TripinglyTheme(darkTheme = true) {
+        StopCard(
+            marker = previewStop,
+            placeImage = null,
+            canEdit = true,
+            onOpen = {},
+            onAddPhotos = {},
+            onTakePhoto = {},
+            onToggleHot = {},
+            onOpenComments = {},
+            canReport = false,
+            onReport = {},
+            onRemoveMyContent = null,
+        )
     }
 }

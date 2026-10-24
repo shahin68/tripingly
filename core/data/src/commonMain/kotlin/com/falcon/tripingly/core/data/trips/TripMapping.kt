@@ -40,6 +40,7 @@ internal fun TripSummaryDto.toTrip() = Trip(
         TripSummaryDto.Role.VIEWER -> TripRole.VIEWER
     },
     owner = owner.toUser(),
+    coverPhotoId = coverPhotoId,
     coverThumbUrl = coverThumbUrl,
     dayCount = dayCount.toInt(),
     markerCount = markerCount.toInt(),
@@ -74,6 +75,7 @@ internal fun TripDto.toDetails(): TripDetails {
             },
             owner = owner.toUser(),
             // Like the list: the first cover photo in the trip.
+            coverPhotoId = markers.firstOrNull { it.coverThumbUrl != null }?.coverPhotoId,
             coverThumbUrl = markers.firstNotNullOfOrNull { it.coverThumbUrl },
             dayCount = days.size,
             markerCount = markers.size,
@@ -113,9 +115,9 @@ internal fun MarkerDto.toMarker() = TripMarker(
     coverPhotoId = coverPhotoId,
     coverThumbUrl = coverThumbUrl,
     photoCount = photoCount.toInt(),
-    likeCount = likeCount.toInt(),
-    likedByMe = likedByMe,
-    canLike = canLike,
+    hotCount = hotCount.toInt(),
+    hotByMe = hotByMe,
+    canMarkHot = canMarkHot,
     commentCount = commentCount.toInt(),
     createdById = createdBy?.id,
 )

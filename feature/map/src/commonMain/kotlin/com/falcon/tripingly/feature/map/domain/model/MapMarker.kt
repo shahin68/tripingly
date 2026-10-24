@@ -16,10 +16,10 @@ data class MapMarker(
     val coverPhotoId: String? = null,
     val coverThumbUrl: String? = null,
     val photoCount: Int = 0,
-    val likeCount: Int = 0,
-    val likedByMe: Boolean = false,
-    /** False for a custom spot that is only in private trips: no heart. */
-    val canLike: Boolean = true,
+    val hotCount: Int = 0,
+    val hotByMe: Boolean = false,
+    /** False for a custom spot that is only in private trips: no flame. */
+    val canMarkHot: Boolean = true,
     val commentCount: Int = 0,
     /** The place the stop is at; its images stand in for a missing cover. */
     val placeId: String? = null,

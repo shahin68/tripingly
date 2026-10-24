@@ -37,6 +37,10 @@ class PeopleViewModel(
         load(first = true)
         // A follow made or ended anywhere can change the list, so it loads again.
         viewModelScope.launch { userRepository.followChanges.collect { load(first = true) } }
+        // Someone blocked here leaves the list at once.
+        viewModelScope.launch {
+            userRepository.blocks.collect { userId -> _uiState.update { state -> state.copy(people = state.people.filterNot { it.id == userId }.toImmutableList()) } }
+        }
     }
 
     fun onAction(action: Action) {
@@ -47,8 +51,9 @@ class PeopleViewModel(
         }
     }
 
+    /** A first page replaces any load on its way (e.g. a follow changed during it); a next page waits for it. */
     private fun load(first: Boolean) {
-        if (loading?.isActive == true) return
+        if (first) loading?.cancel() else if (loading?.isActive == true) return
         loading = viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }
             when (val result = userRepository.people(list, if (first) null else cursor)) {

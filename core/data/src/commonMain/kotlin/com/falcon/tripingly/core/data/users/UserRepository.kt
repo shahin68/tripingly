@@ -36,6 +36,9 @@ interface UserRepository {
     /** Follows made or ended live, by me (on any device) or by someone following me. */
     val followChanges: Flow<FollowChange>
 
+    /** The id of each person I block here, once the server took it, so open screens drop their content at once. */
+    val blocks: Flow<String>
+
     companion object {
         /** The API's largest page. */
         const val FRIENDS_PAGE_SIZE = 50

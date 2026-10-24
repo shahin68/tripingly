@@ -7,6 +7,7 @@ import com.falcon.tripingly.core.network.model.CommentDto
 import com.falcon.tripingly.core.network.model.CommentPageDto
 import com.falcon.tripingly.core.network.model.CreateCommentDto
 import com.falcon.tripingly.core.network.model.CreateReportDto
+import com.falcon.tripingly.core.network.model.HotStateDto
 import com.falcon.tripingly.core.network.model.LikeStateDto
 import com.falcon.tripingly.core.network.model.ReportDto
 import com.falcon.tripingly.core.network.model.TripSummaryPageDto
@@ -55,7 +56,7 @@ interface SocialApi {
     @DELETE("comments/{id}")
     suspend fun deleteComment(@Path("id") commentId: String): AppResult<Unit, DataError.Network>
 
-    /** [targetType]: `trip`, `marker`, `photo`, `comment` or `place`. Idempotent. */
+    /** [targetType]: `trip`, `photo`, `comment` or `place_image`. Idempotent. */
     @PUT("likes/{targetType}/{targetId}")
     suspend fun like(
         @Path("targetType") targetType: String,
@@ -67,6 +68,13 @@ interface SocialApi {
         @Path("targetType") targetType: String,
         @Path("targetId") targetId: String,
     ): AppResult<LikeStateDto, DataError.Network>
+
+    /** A stop's flame marks its place. Idempotent. */
+    @PUT("places/{id}/hot")
+    suspend fun markHot(@Path("id") placeId: String): AppResult<HotStateDto, DataError.Network>
+
+    @DELETE("places/{id}/hot")
+    suspend fun unmarkHot(@Path("id") placeId: String): AppResult<HotStateDto, DataError.Network>
 
     /** An open report by me on the same target is answered again (200). 20 a day. */
     @POST("reports")

@@ -1114,7 +1114,7 @@ class MapViewModelTest {
         position = 0,
         likeCount = 0,
         likedByMe = false,
-        uploaderId = null,
+        uploader = null,
         credit = credit,
     )
 
@@ -1435,7 +1435,7 @@ class MapViewModelTest {
     @Test
     fun `places along the way get pins of their own color`() = runTest(testDispatcher) {
         addStops(GeoPoint(48.2085, 16.3731), GeoPoint(48.2104, 16.3655))
-        val cafe = MapPlace("cafe", "Café Central", PlaceCategory.Cafe, GeoPoint(48.2101, 16.3654), isTripinly = false, likeCount = 0, prominence = 70)
+        val cafe = MapPlace("cafe", "Café Central", PlaceCategory.Cafe, GeoPoint(48.2101, 16.3654), isTripinly = false, hotCount = 0, prominence = 70)
         routes.alongTheWay = listOf(AlongTheWayPlace(cafe, distanceFromRouteMeters = 40, etaFromStartSeconds = 300))
         val viewModel = viewModel()
         testScheduler.advanceUntilIdle()
@@ -1463,7 +1463,7 @@ class MapViewModelTest {
             assertEquals(false, viewModel.uiState.value.stopsCard?.isRouteOn)
             viewModel.uiState.value.assertStopPath()
 
-            val place = MapPlace("a", "Oper", PlaceCategory.Attraction, GeoPoint(48.2031, 16.3691), isTripinly = false, likeCount = 0, prominence = 80)
+            val place = MapPlace("a", "Oper", PlaceCategory.Attraction, GeoPoint(48.2031, 16.3691), isTripinly = false, hotCount = 0, prominence = 80)
             viewModel.onAction(MapAction.MapView.PlacePinClick(place))
             viewModel.onAction(MapAction.PlaceCard.RouteFrom)
             testScheduler.advanceUntilIdle()
@@ -1479,8 +1479,8 @@ class MapViewModelTest {
         val viewModel = viewModel()
         viewModel.onAction(MapAction.Plan.ToggleRoute)
         testScheduler.advanceUntilIdle()
-        val from = MapPlace("a", "Oper", PlaceCategory.Attraction, GeoPoint(48.2031, 16.3691), isTripinly = false, likeCount = 0, prominence = 80)
-        val to = MapPlace("b", "Prater", PlaceCategory.Park, GeoPoint(48.2166, 16.3958), isTripinly = false, likeCount = 0, prominence = 80)
+        val from = MapPlace("a", "Oper", PlaceCategory.Attraction, GeoPoint(48.2031, 16.3691), isTripinly = false, hotCount = 0, prominence = 80)
+        val to = MapPlace("b", "Prater", PlaceCategory.Park, GeoPoint(48.2166, 16.3958), isTripinly = false, hotCount = 0, prominence = 80)
 
         viewModel.onAction(MapAction.MapView.PlacePinClick(from))
         viewModel.onAction(MapAction.PlaceCard.RouteFrom)

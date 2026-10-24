@@ -37,11 +37,12 @@
     <string name="map_place_add_to_day">Hozzáadás a(z) %1$d. naphoz</string>
     <string name="map_place_opening_hours">Nyitvatartás</string>
     <string name="map_place_website">Weboldal</string>
+    <string name="map_place_added_by">Hozzáadta: @%1$s</string>
     <string name="map_place_image_position">%1$d / %2$d</string>
     <string name="map_place_image_report">Kép jelentése</string>
     <string name="map_photos_commons_note">Képek a Wikimedia Commonsról: nyiss meg egyet a szerző és a licenc megtekintéséhez.</string>
     <string name="map_place_images">A hely képei</string>
-    <string name="map_place_likes">Kedvelések a Tripinlyn</string>
+    <string name="map_place_hot_count">Hotspot a Tripinlyn</string>
     <string name="map_place_category_cafe">Kávézó</string>
     <string name="map_place_category_restaurant">Étterem</string>
     <string name="map_place_category_bar">Bár</string>
@@ -121,6 +122,7 @@
     <!-- Errors: what failed -->
     <string name="map_error_load_trip">Nem sikerült betölteni az utazást.</string>
     <string name="map_error_like">Nem sikerült menteni a kedvelést.</string>
+    <string name="map_error_hot">Nem sikerült hotspotként megjelölni a helyet.</string>
     <string name="map_error_save_trip">Nem sikerült elmenteni az utazást.</string>
     <string name="map_error_unsave_trip">Nem sikerült eltávolítani az utazást az utazásaid közül.</string>
     <string name="map_error_join">Nem sikerült elküldeni a csatlakozási kérést.</string>

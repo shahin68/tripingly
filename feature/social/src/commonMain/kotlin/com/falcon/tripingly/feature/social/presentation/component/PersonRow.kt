@@ -14,6 +14,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import com.falcon.tripingly.core.designsystem.component.AvatarCircle
 import com.falcon.tripingly.core.designsystem.theme.spacing
 import com.falcon.tripingly.core.model.trip.UserSummary
+import androidx.compose.ui.tooling.preview.Preview
+import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
+import androidx.compose.foundation.background
 
 /** A person in a list; tapping opens their profile. */
 @Composable
@@ -34,5 +37,23 @@ internal fun PersonRow(user: UserSummary, onClick: () -> Unit, modifier: Modifie
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
+    }
+}
+
+@Preview
+@Composable
+private fun PersonRowPreview() {
+    TripinglyTheme {
+        Column(Modifier.background(MaterialTheme.colorScheme.surface)) {
+            previewPeople.forEach { user -> PersonRow(user = user, onClick = {}) }
+        }
+    }
+}
+
+@Preview
+@Composable
+private fun PersonRowDarkPreview() {
+    TripinglyTheme(darkTheme = true) {
+        PersonRow(user = previewPeople.first(), onClick = {}, modifier = Modifier.background(MaterialTheme.colorScheme.surface))
     }
 }

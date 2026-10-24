@@ -63,6 +63,7 @@ import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
 import org.jetbrains.compose.resources.stringResource
+import androidx.compose.foundation.layout.Column
 
 /**
  * The app's one floating message. Screens hand it messages with [ShowMessage]; it shows one at a time,
@@ -266,5 +267,16 @@ private fun FloatingBannerPreview() {
             actionLabel = "Retry",
             onAction = {},
         )
+    }
+}
+
+@Preview
+@Composable
+private fun FloatingBannerDarkPreview() {
+    TripinglyTheme(darkTheme = true) {
+        Column {
+            FloatingBanner(text = "Saved to My Trips.", onDismiss = {}, isError = false)
+            FloatingBanner(text = "Couldn't save the stop.", onDismiss = {}, actionLabel = "Retry", onAction = {})
+        }
     }
 }

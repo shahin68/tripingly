@@ -15,6 +15,8 @@ data class Trip(
     /** The signed-in user's role in this trip. */
     val role: TripRole,
     val owner: UserSummary,
+    /** The photo shown as [coverThumbUrl]: images are cached by it, since the URL is re-signed. */
+    val coverPhotoId: String? = null,
     val coverThumbUrl: String? = null,
     val dayCount: Int,
     val markerCount: Int,

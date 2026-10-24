@@ -6,6 +6,7 @@ import com.falcon.tripingly.core.model.Page
 import com.falcon.tripingly.core.model.social.Comment
 import com.falcon.tripingly.core.model.social.CommentChange
 import com.falcon.tripingly.core.model.social.ExploreFilter
+import com.falcon.tripingly.core.model.social.HotState
 import com.falcon.tripingly.core.model.social.LikeState
 import com.falcon.tripingly.core.model.social.LikeTarget
 import com.falcon.tripingly.core.model.social.PublicTrip
@@ -27,11 +28,14 @@ interface SocialRepository {
 
     suspend fun deleteComment(comment: Comment): AppResult<Unit, DataError.Network>
 
-    /**
-     * Likes or unlikes; a stop's heart and count change at once in the cached trip, and go back on a refusal.
-     * Fast taps on one heart: the last one wins, and every call returns the server's final state.
-     */
+    /** Likes or unlikes. Fast taps on one heart: the last one wins, and every call returns the server's final state. */
     suspend fun setLiked(target: LikeTarget, targetId: String, liked: Boolean): AppResult<LikeState, DataError.Network>
+
+    /**
+     * Marks a place hot or not; its stops' flame and count change at once in the cached trips, and go back on a
+     * refusal. Fast taps: the last one wins, as for [setLiked].
+     */
+    suspend fun setHot(placeId: String, hot: Boolean): AppResult<HotState, DataError.Network>
 
     suspend fun report(
         target: ReportTarget,

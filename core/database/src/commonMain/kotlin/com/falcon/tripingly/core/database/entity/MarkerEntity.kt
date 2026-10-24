@@ -28,9 +28,9 @@ data class MarkerEntity(
     val coverThumbUrl: String?,
     val photoCount: Int,
     /** The place's likes, the same on every stop at that place. */
-    val likeCount: Int,
-    val likedByMe: Boolean,
-    val canLike: Boolean,
+    val hotCount: Int,
+    val hotByMe: Boolean,
+    val canMarkHot: Boolean,
     val commentCount: Int,
     val createdById: String?,
 )

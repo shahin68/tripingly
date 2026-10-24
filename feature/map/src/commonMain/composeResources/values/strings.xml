@@ -37,11 +37,12 @@
     <string name="map_place_add_to_day">Add to day %1$d</string>
     <string name="map_place_opening_hours">Opening hours</string>
     <string name="map_place_website">Website</string>
+    <string name="map_place_added_by">Added by @%1$s</string>
     <string name="map_place_image_position">%1$d / %2$d</string>
     <string name="map_place_image_report">Report image</string>
     <string name="map_photos_commons_note">Images from Wikimedia Commons: open one to see its author and licence.</string>
     <string name="map_place_images">Images of this place</string>
-    <string name="map_place_likes">Likes on Tripinly</string>
+    <string name="map_place_hot_count">Hot on Tripinly</string>
     <string name="map_place_category_cafe">Café</string>
     <string name="map_place_category_restaurant">Restaurant</string>
     <string name="map_place_category_bar">Bar</string>
@@ -121,6 +122,7 @@
     <!-- Errors: what failed -->
     <string name="map_error_load_trip">Couldn’t load the trip.</string>
     <string name="map_error_like">Couldn’t save your like.</string>
+    <string name="map_error_hot">Couldn’t mark this place as hot.</string>
     <string name="map_error_save_trip">Couldn’t save the trip.</string>
     <string name="map_error_unsave_trip">Couldn’t remove the trip from your trips.</string>
     <string name="map_error_join">Couldn’t send your request to join.</string>

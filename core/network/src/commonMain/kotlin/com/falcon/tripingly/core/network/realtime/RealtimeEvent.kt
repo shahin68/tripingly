@@ -62,13 +62,21 @@ sealed interface RealtimeEvent {
         val markerId: String,
     ) : InTrip
 
-    /** `like.count_changed` for a trip, marker, photo or comment: [targetType] as in `PUT /likes/{targetType}/…`. */
+    /** `like.count_changed` for a trip, photo or comment: [targetType] as in `PUT /likes/{targetType}/…`. */
     data class LikeCountChanged(
         override val tripId: String,
         override val actorId: String?,
         val targetType: String,
         val targetId: String,
         val count: Int,
+    ) : InTrip
+
+    /** `place.hot_changed`: a place's hot count, sent to every trip with a stop there. */
+    data class PlaceHotChanged(
+        override val tripId: String,
+        override val actorId: String?,
+        val placeId: String,
+        val hotCount: Int,
     ) : InTrip
 
     /** The trip itself, its days or its members changed (`trip.updated`, `day.*`, `member.*`). */
@@ -128,6 +136,9 @@ private data class CommentIdData(val commentId: String, val markerId: String)
 private data class LikeCountData(val targetType: String, val targetId: String, val count: Int)
 
 @Serializable
+private data class PlaceHotData(val placeId: String, val hotCount: Int)
+
+@Serializable
 private data class TripIdData(val tripId: String)
 
 @Serializable
@@ -178,6 +189,10 @@ internal fun parseRealtimeEvent(name: String, payload: JsonElement): RealtimeEve
         "like.count_changed" -> inTrip {
             val like = NetworkJson.decodeFromJsonElement<LikeCountData>(data)
             RealtimeEvent.LikeCountChanged(it, actorId, like.targetType, like.targetId, like.count)
+        }
+        "place.hot_changed" -> inTrip {
+            val hot = NetworkJson.decodeFromJsonElement<PlaceHotData>(data)
+            RealtimeEvent.PlaceHotChanged(it, actorId, hot.placeId, hot.hotCount)
         }
         "trip.updated", "day.created", "day.deleted", "member.added", "member.removed" ->
             inTrip { RealtimeEvent.TripChanged(it, actorId) }

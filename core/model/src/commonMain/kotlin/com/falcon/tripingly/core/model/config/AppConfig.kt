@@ -22,10 +22,10 @@ data class AppConfig(
     val pinMediumMinProminence: Int = 60,
     /** Most place pins drawn on the map at once: liked places first, then the best known. */
     val mapMaxPins: Int = 150,
-    /** A place's pin shows its photo when its prominence is at least this, or it has [photoPinMinLikes] likes. */
+    /** A place's pin shows its photo when its prominence is at least this, or its hot count reaches [photoPinMinHotCount]. */
     val photoPinMinProminence: Int = 90,
     /** A place's pin shows its photo when it has at least this many likes, or [photoPinMinProminence]. */
-    val photoPinMinLikes: Int = 3,
+    val photoPinMinHotCount: Int = 3,
     /** Most pins drawn with a photo at once, in pin order; the rest keep their icon. */
     val mapMaxPhotoPins: Int = 100,
     /** Below this camera zoom, place pins are drawn as small dots; they grow back to pins when zoomed in. */

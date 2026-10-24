@@ -42,10 +42,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.falcon.tripingly.core.common.util.DateUtils
 import com.falcon.tripingly.core.designsystem.component.ShowMessage
 import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
 import com.falcon.tripingly.core.designsystem.theme.spacing
-import com.falcon.tripingly.core.model.account.LegalDocument
 import com.falcon.tripingly.core.model.account.LegalDocumentType
 import com.falcon.tripingly.feature.auth.generated.resources.Res
 import com.falcon.tripingly.feature.auth.generated.resources.common_cancel
@@ -75,7 +75,6 @@ import com.falcon.tripingly.feature.auth.generated.resources.onboarding_username
 import com.falcon.tripingly.feature.auth.presentation.onboarding.OnboardingViewModel.Action
 import com.falcon.tripingly.feature.auth.presentation.onboarding.OnboardingViewModel.Step
 import com.falcon.tripingly.feature.auth.presentation.onboarding.OnboardingViewModel.UsernameStatus
-import kotlinx.collections.immutable.persistentListOf
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.atStartOfDayIn
@@ -84,6 +83,8 @@ import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel
 import kotlin.time.Clock
 import kotlin.time.Instant
+import androidx.compose.ui.tooling.preview.PreviewParameter
+import androidx.compose.foundation.background
 
 @Composable
 internal fun OnboardingRoute() {
@@ -184,7 +185,7 @@ private fun BirthDateField(date: LocalDate?, onClick: () -> Unit) {
         interactions.interactions.collect { if (it is PressInteraction.Release) onClick() }
     }
     OutlinedTextField(
-        value = date?.toString().orEmpty(),
+        value = date?.let(DateUtils::formatFormal).orEmpty(),
         onValueChange = {},
         readOnly = true,
         label = { Text(stringResource(Res.string.onboarding_birth_date)) },
@@ -322,38 +323,40 @@ private fun LegalDocumentType.acceptLabel() = when (this) {
 
 @Preview
 @Composable
-private fun ProfileStepPreview() {
+private fun OnboardingScreenPreview(@PreviewParameter(OnboardingScreenPreviewStates::class) state: OnboardingViewModel.State) {
+    TripinglyTheme { OnboardingScreen(state = state, onAction = {}) }
+}
+
+@Preview(widthDp = 800, heightDp = 360)
+@Composable
+private fun OnboardingScreenLandscapePreview() {
+    TripinglyTheme(darkTheme = true) { OnboardingScreen(state = OnboardingScreenPreviewStates().values.last(), onAction = {}) }
+}
+
+@Preview
+@Composable
+private fun BirthDateFieldPreview() {
     TripinglyTheme {
-        OnboardingScreen(
-            state = OnboardingViewModel.State(
-                displayName = "Jonas",
-                username = "jonas.k",
-                usernameStatus = UsernameStatus.AVAILABLE,
-            ),
-            onAction = {},
-        )
+        Column(Modifier.background(MaterialTheme.colorScheme.surface).padding(MaterialTheme.spacing.medium)) {
+            BirthDateField(date = null, onClick = {})
+            BirthDateField(date = LocalDate(1995, 4, 12), onClick = {})
+        }
     }
 }
 
 @Preview
 @Composable
-private fun ConsentStepPreview() {
+private fun BirthDatePickerPreview() {
+    TripinglyTheme { BirthDatePicker(initial = LocalDate(1995, 4, 12), onPicked = {}) }
+}
+
+@Preview
+@Composable
+private fun ConsentRowPreview() {
     TripinglyTheme {
-        OnboardingScreen(
-            state = OnboardingViewModel.State(
-                step = Step.CONSENT,
-                documents = persistentListOf(
-                    OnboardingViewModel.DocumentItem(
-                        LegalDocument(LegalDocumentType.TERMS, "2026-09-01", "en", "https://example.com/terms", true),
-                        accepted = true,
-                    ),
-                    OnboardingViewModel.DocumentItem(
-                        LegalDocument(LegalDocumentType.PRIVACY, "2026-09-01", "en", "https://example.com/privacy", true),
-                        accepted = false,
-                    ),
-                ),
-            ),
-            onAction = {},
-        )
+        Column(Modifier.background(MaterialTheme.colorScheme.surface)) {
+            ConsentRow(label = "I accept the Terms of Service and the Privacy Policy", checked = true, onCheckedChange = {})
+            ConsentRow(label = "Send me news and travel tips by email", checked = false, onCheckedChange = {})
+        }
     }
 }

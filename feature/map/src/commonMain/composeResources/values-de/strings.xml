@@ -37,11 +37,12 @@
     <string name="map_place_add_to_day">Zu Tag %1$d hinzufügen</string>
     <string name="map_place_opening_hours">Öffnungszeiten</string>
     <string name="map_place_website">Website</string>
+    <string name="map_place_added_by">Hinzugefügt von @%1$s</string>
     <string name="map_place_image_position">%1$d / %2$d</string>
     <string name="map_place_image_report">Bild melden</string>
     <string name="map_photos_commons_note">Bilder von Wikimedia Commons: Öffne eines, um Urheber und Lizenz zu sehen.</string>
     <string name="map_place_images">Bilder dieses Ortes</string>
-    <string name="map_place_likes">Likes auf Tripinly</string>
+    <string name="map_place_hot_count">Hotspot auf Tripinly</string>
     <string name="map_place_category_cafe">Café</string>
     <string name="map_place_category_restaurant">Restaurant</string>
     <string name="map_place_category_bar">Bar</string>
@@ -121,6 +122,7 @@
     <!-- Errors: what failed -->
     <string name="map_error_load_trip">Die Reise konnte nicht geladen werden.</string>
     <string name="map_error_like">Dein Like konnte nicht gespeichert werden.</string>
+    <string name="map_error_hot">Der Ort konnte nicht als Hotspot markiert werden.</string>
     <string name="map_error_save_trip">Die Reise konnte nicht gespeichert werden.</string>
     <string name="map_error_unsave_trip">Die Reise konnte nicht aus deinen Reisen entfernt werden.</string>
     <string name="map_error_join">Deine Beitrittsanfrage konnte nicht gesendet werden.</string>

@@ -7,6 +7,11 @@ import com.falcon.tripingly.core.model.trip.UserSummary
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.datetime.LocalDate
 import kotlin.time.Instant
+import androidx.compose.ui.tooling.preview.PreviewParameterProvider
+import com.falcon.tripingly.core.ui.UiText
+import com.falcon.tripingly.feature.trips.generated.resources.Res
+import com.falcon.tripingly.feature.trips.generated.resources.home_error_load_trips
+import com.falcon.tripingly.feature.trips.presentation.screen.HomeViewModel.State
 
 internal val tripsPreviewData = persistentListOf(
     Trip(
@@ -35,4 +40,28 @@ internal val tripsPreviewData = persistentListOf(
         createdAt = Instant.parse("2025-04-01T10:00:00Z"),
         updatedAt = Instant.parse("2025-04-01T10:00:00Z"),
     ),
+    Trip(
+        id = "3",
+        name = "A long weekend in Budapest with the whole family and friends",
+        startDate = null,
+        endDate = null,
+        visibility = TripVisibility.PUBLIC,
+        role = TripRole.VIEWER,
+        owner = UserSummary("u3", "jonas.k", "Jonas"),
+        dayCount = 1,
+        markerCount = 1,
+        createdAt = Instant.parse("2025-03-01T10:00:00Z"),
+        updatedAt = Instant.parse("2025-03-01T10:00:00Z"),
+    ),
 )
+
+/** Trips, the first load, no trips yet, a search without matches, and trips that couldn't load. */
+internal class HomeScreenPreviewStates : PreviewParameterProvider<State> {
+    override val values = sequenceOf(
+        State(trips = tripsPreviewData, hasTrips = true, hasLoaded = true),
+        State(),
+        State(hasLoaded = true),
+        State(searchQuery = "Rome", hasTrips = true, hasLoaded = true),
+        State(hasLoaded = true, message = UiText.Resource(Res.string.home_error_load_trips)),
+    )
+}

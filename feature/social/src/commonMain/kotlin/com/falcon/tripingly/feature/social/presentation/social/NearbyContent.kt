@@ -31,13 +31,14 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import com.falcon.tripingly.core.designsystem.component.LikeButton
+import com.falcon.tripingly.core.common.util.NumberUtils
+import com.falcon.tripingly.core.designsystem.component.HotButton
 import com.falcon.tripingly.core.designsystem.component.OsmAttribution
 import com.falcon.tripingly.core.designsystem.component.PhotoImage
 import com.falcon.tripingly.core.designsystem.component.PhotoSize
 import com.falcon.tripingly.core.designsystem.theme.spacing
-import com.falcon.tripingly.core.model.place.PlaceImageSource
 import com.falcon.tripingly.core.model.social.NearbyPlace
+import com.falcon.tripingly.core.ui.UiText
 import com.falcon.tripingly.feature.social.generated.resources.Res
 import com.falcon.tripingly.feature.social.generated.resources.social_add_place
 import com.falcon.tripingly.feature.social.generated.resources.social_nearby_allow
@@ -49,33 +50,42 @@ import com.falcon.tripingly.feature.social.generated.resources.social_nearby_emp
 import com.falcon.tripingly.feature.social.generated.resources.social_nearby_open_settings
 import com.falcon.tripingly.feature.social.presentation.social.SocialViewModel.Action
 import com.falcon.tripingly.feature.social.presentation.social.SocialViewModel.NearbyStatus
-import com.falcon.tripingly.feature.social.presentation.social.SocialViewModel.State
+import com.falcon.tripingly.feature.social.presentation.social.SocialViewModel.NearbyState
 import org.jetbrains.compose.resources.stringResource
-import kotlin.math.roundToInt
+import androidx.compose.ui.tooling.preview.Preview
+import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
+import androidx.compose.ui.tooling.preview.PreviewParameter
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import com.falcon.tripingly.core.designsystem.component.icon
+import androidx.compose.foundation.clickable
+import com.falcon.tripingly.feature.social.generated.resources.social_nearby_open_images
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-internal fun NearbyContent(state: State, onAction: (Action) -> Unit) {
-    when (state.nearbyStatus) {
+internal fun NearbyContent(state: NearbyState, onAction: (Action) -> Unit) {
+    when (state.status) {
         NearbyStatus.Unknown, NearbyStatus.Locating -> Centered { CircularProgressIndicator() }
-        NearbyStatus.NeedsPermission, NearbyStatus.Blocked, NearbyStatus.Unavailable -> LocationAsk(state.nearbyStatus, onAction)
+        NearbyStatus.NeedsPermission, NearbyStatus.Blocked, NearbyStatus.Unavailable -> LocationAsk(state.status, onAction)
         NearbyStatus.Ready -> {
             val listState = rememberLazyListState()
-            LoadMoreAtEnd(listState) { onAction(Action.OnLoadMore) }
+            LoadMoreAtEnd(listState) { onAction(Action.Nearby.LoadMore) }
             PullToRefreshBox(
-                isRefreshing = state.isLoadingNearby,
-                onRefresh = { onAction(Action.OnRefresh) },
+                isRefreshing = state.isLoading,
+                onRefresh = { onAction(Action.Nearby.Refresh) },
                 modifier = Modifier.fillMaxSize(),
             ) {
                 LazyColumn(state = listState, modifier = Modifier.fillMaxSize()) {
-                    if (state.nearby.isEmpty()) {
+                    if (state.places.isEmpty()) {
                         item { EmptyText(stringResource(Res.string.social_nearby_empty)) }
                     }
-                    items(state.nearby, key = { it.id }) { place ->
+                    items(state.places, key = { it.id }) { place ->
                         NearbyPlaceRow(
+                            modifier = Modifier.animateItem(),
                             place = place,
-                            onLike = { onAction(Action.OnLikePlace(place)) },
-                            onAdd = { onAction(Action.OnAddPlace(place)) },
+                            onOpenImage = { onAction(Action.Nearby.OpenImage(place)) },
+                            onMarkHot = { onAction(Action.Nearby.MarkHot(place)) },
+                            onAdd = { onAction(Action.Nearby.AddPlace(place)) },
                         )
                     }
                     // Nearby lists OpenStreetMap places.
@@ -100,7 +110,7 @@ private fun LocationAsk(status: NearbyStatus, onAction: (Action) -> Unit) {
             textAlign = TextAlign.Center,
             modifier = Modifier.padding(vertical = MaterialTheme.spacing.medium),
         )
-        Button(onClick = { onAction(Action.OnAllowLocation) }) {
+        Button(onClick = { onAction(Action.Nearby.AllowLocation) }) {
             Text(
                 stringResource(if (status == NearbyStatus.Blocked) Res.string.social_nearby_open_settings else Res.string.social_nearby_allow),
             )
@@ -109,32 +119,34 @@ private fun LocationAsk(status: NearbyStatus, onAction: (Action) -> Unit) {
 }
 
 @Composable
-private fun NearbyPlaceRow(place: NearbyPlace, onLike: () -> Unit, onAdd: () -> Unit) {
+private fun NearbyPlaceRow(place: NearbyPlace, onOpenImage: () -> Unit, onMarkHot: () -> Unit, onAdd: () -> Unit, modifier: Modifier = Modifier) {
+    val cover = place.coverImageId
     Row(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
+            // A tap opens the place's images, where a Wikimedia Commons image shows its credit.
+            .clickable(enabled = cover != null, onClickLabel = stringResource(Res.string.social_nearby_open_images), onClick = onOpenImage)
             .padding(horizontal = MaterialTheme.spacing.medium, vertical = MaterialTheme.spacing.small),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        // Only a trip photo: a Commons cover needs its credit, which this list doesn't have.
-        val tripCover = place.coverImageId?.takeIf { place.coverSource == PlaceImageSource.Trip }
-        PhotoImage(
-            photoId = tripCover ?: place.id,
-            url = place.coverThumbUrl?.takeIf { tripCover != null },
-            size = PhotoSize.Thumb,
-            contentDescription = null,
-            modifier = Modifier.size(56.dp).clip(RoundedCornerShape(8.dp)),
-        )
+        val thumbModifier = Modifier.size(56.dp).clip(RoundedCornerShape(8.dp))
+        if (cover != null) {
+            PhotoImage(photoId = cover, url = place.coverThumbUrl, size = PhotoSize.Thumb, contentDescription = null, modifier = thumbModifier)
+        } else {
+            Box(thumbModifier.background(MaterialTheme.colorScheme.surfaceVariant), contentAlignment = Alignment.Center) {
+                Icon(place.category.icon, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
         Spacer(Modifier.width(MaterialTheme.spacing.medium))
         Column(Modifier.weight(1f)) {
             Text(place.name, style = MaterialTheme.typography.titleMedium, maxLines = 2, overflow = TextOverflow.Ellipsis)
             Text(
-                text = distanceLabel(place.distanceMeters),
+                text = distanceText(place.distanceMeters).asString(),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             Row(verticalAlignment = Alignment.CenterVertically) {
-                LikeButton(liked = place.likedByMe, count = place.likeCount, onToggle = onLike)
+                HotButton(hot = place.hotByMe, count = place.hotCount, onToggle = onMarkHot)
                 TextButton(onClick = onAdd) {
                     Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(18.dp))
                     Text(stringResource(Res.string.social_add_place), modifier = Modifier.padding(start = 4.dp))
@@ -144,12 +156,27 @@ private fun NearbyPlaceRow(place: NearbyPlace, onLike: () -> Unit, onAdd: () -> 
     }
 }
 
-/** "350 m" up to a kilometre, then "2.4 km". */
-@Composable
-private fun distanceLabel(meters: Int): String =
+/** "350 m" up to a kilometre, then "2.4 km" ("2,4 km" in German and Hungarian). */
+internal fun distanceText(meters: Int): UiText =
     if (meters < 1000) {
-        stringResource(Res.string.social_nearby_distance_m, meters)
+        UiText.Resource(Res.string.social_nearby_distance_m, meters)
     } else {
-        val tenths = (meters / 100.0).roundToInt()
-        stringResource(Res.string.social_nearby_distance_km, "${tenths / 10}.${tenths % 10}")
+        UiText.Resource(Res.string.social_nearby_distance_km, NumberUtils.kilometers(meters))
     }
+
+@Preview
+@Composable
+private fun NearbyContentPreview(@PreviewParameter(NearbyPreviewStates::class) state: NearbyState) {
+    TripinglyTheme { Box(Modifier.background(MaterialTheme.colorScheme.surface)) { NearbyContent(state = state, onAction = {}) } }
+}
+
+/** A liked Tripinly place close by, and a long-named one further away. */
+@Preview
+@Composable
+private fun NearbyPlaceRowPreview() {
+    TripinglyTheme {
+        Column(Modifier.background(MaterialTheme.colorScheme.surface)) {
+            previewNearbyPlaces.forEach { place -> NearbyPlaceRow(place = place, onOpenImage = {}, onMarkHot = {}, onAdd = {}) }
+        }
+    }
+}

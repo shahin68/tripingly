@@ -32,6 +32,7 @@ import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.falcon.tripingly.core.common.util.NumberUtils
 import com.falcon.tripingly.core.designsystem.theme.spacing
 import com.falcon.tripingly.core.model.place.MapPlace
 import com.falcon.tripingly.core.model.route.AlongTheWayPlace
@@ -53,6 +54,12 @@ import kotlinx.collections.immutable.ImmutableList
 import com.falcon.tripingly.core.ui.UiText
 import org.jetbrains.compose.resources.stringResource
 import kotlin.math.roundToInt
+import androidx.compose.ui.tooling.preview.Preview
+import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
+import androidx.compose.ui.tooling.preview.PreviewParameter
+import androidx.compose.ui.tooling.preview.PreviewParameterProvider
+import androidx.compose.foundation.background
+import com.falcon.tripingly.core.designsystem.component.icon
 
 /** How to travel, and the route's time and length (or that routes aren't available right now). */
 @Composable
@@ -86,7 +93,7 @@ fun RouteSummary(
         }
         if (durationSeconds != null && distanceMeters != null) {
             Text(
-                text = stringResource(Res.string.map_route_total, durationLabel(durationSeconds), distanceLabel(distanceMeters)),
+                text = stringResource(Res.string.map_route_total, durationLabel(durationSeconds), distanceText(distanceMeters).asString()),
                 style = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.Bold,
             )
@@ -128,14 +135,14 @@ fun AlongTheWay(
                 Surface(
                     shape = RoundedCornerShape(12.dp),
                     color = MaterialTheme.colorScheme.surfaceVariant,
-                    modifier = Modifier.widthIn(max = 240.dp).clickable { onOpen(item.place) },
+                    modifier = Modifier.animateItem().widthIn(max = 240.dp).clickable { onOpen(item.place) },
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(start = 10.dp)) {
                         Icon(item.place.category.icon, contentDescription = null, tint = MaterialTheme.colorScheme.secondary, modifier = Modifier.size(18.dp))
                         Column(modifier = Modifier.padding(horizontal = MaterialTheme.spacing.small, vertical = 6.dp).weight(1f, fill = false)) {
                             Text(item.place.name, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Medium, maxLines = 1, overflow = TextOverflow.Ellipsis)
                             Text(
-                                text = stringResource(Res.string.map_along_the_way_item, durationLabel(item.etaFromStartSeconds), distanceLabel(item.distanceFromRouteMeters)),
+                                text = stringResource(Res.string.map_along_the_way_item, durationLabel(item.etaFromStartSeconds), distanceText(item.distanceFromRouteMeters).asString()),
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 maxLines = 1,
@@ -181,14 +188,12 @@ internal fun durationText(seconds: Int): UiText {
     }
 }
 
-/** "350 m" up to a kilometre, then "2.4 km", as on Nearby. */
-@Composable
-private fun distanceLabel(meters: Int): String =
+/** "350 m" up to a kilometre, then "2.4 km" ("2,4 km" in German and Hungarian), as on Nearby. */
+internal fun distanceText(meters: Int): UiText =
     if (meters < 1000) {
-        stringResource(Res.string.map_route_meters, meters)
+        UiText.Resource(Res.string.map_route_meters, meters)
     } else {
-        val tenths = (meters / 100.0).roundToInt()
-        stringResource(Res.string.map_route_km, "${tenths / 10}.${tenths % 10}")
+        UiText.Resource(Res.string.map_route_km, NumberUtils.kilometers(meters))
     }
 
 private fun TravelMode.label() = when (this) {
@@ -204,3 +209,60 @@ private fun TravelMode.icon() = when (this) {
 }
 
 private const val COPYRIGHT_URL = "https://www.openstreetmap.org/copyright"
+
+/** A loaded route, one loading, estimated times, and one over an hour by car. */
+internal class RouteSummaryPreviewStates : PreviewParameterProvider<RouteSummaryPreview> {
+    override val values = sequenceOf(
+        RouteSummaryPreview(TravelMode.Walking, durationSeconds = 2_700, distanceMeters = 3_400, isEstimated = false, isLoading = false),
+        RouteSummaryPreview(TravelMode.Cycling, durationSeconds = null, distanceMeters = null, isEstimated = false, isLoading = true),
+        RouteSummaryPreview(TravelMode.Walking, durationSeconds = 2_900, distanceMeters = 3_100, isEstimated = true, isLoading = false),
+        RouteSummaryPreview(TravelMode.Driving, durationSeconds = 4_800, distanceMeters = 86_000, isEstimated = false, isLoading = false),
+    )
+}
+
+internal data class RouteSummaryPreview(
+    val mode: TravelMode,
+    val durationSeconds: Int?,
+    val distanceMeters: Int?,
+    val isEstimated: Boolean,
+    val isLoading: Boolean,
+)
+
+@Preview
+@Composable
+private fun RouteSummaryPreview(@PreviewParameter(RouteSummaryPreviewStates::class) route: RouteSummaryPreview) {
+    TripinglyTheme {
+        RouteSummary(
+            mode = route.mode,
+            durationSeconds = route.durationSeconds,
+            distanceMeters = route.distanceMeters,
+            isEstimated = route.isEstimated,
+            isLoading = route.isLoading,
+            onModeSelected = {},
+            modifier = Modifier.background(MaterialTheme.colorScheme.surface),
+        )
+    }
+}
+
+@Preview
+@Composable
+private fun AlongTheWayPreview() {
+    TripinglyTheme {
+        Column(Modifier.background(MaterialTheme.colorScheme.surface).padding(MaterialTheme.spacing.medium)) {
+            // An owner's or editor's, with Add; a viewer's, without.
+            AlongTheWay(places = previewAlongTheWay, dayNumber = 2, onOpen = {}, onAdd = {})
+            AlongTheWay(places = previewAlongTheWay, dayNumber = null, onOpen = {}, onAdd = {})
+        }
+    }
+}
+
+@Preview
+@Composable
+private fun RouteAttributionPreview() {
+    TripinglyTheme {
+        RouteAttribution(
+            text = "© openrouteservice.org | © OpenStreetMap contributors",
+            modifier = Modifier.background(MaterialTheme.colorScheme.surface),
+        )
+    }
+}

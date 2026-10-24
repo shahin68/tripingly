@@ -42,6 +42,9 @@ import com.falcon.tripingly.feature.map.generated.resources.map_remove_my_conten
 import com.falcon.tripingly.feature.map.generated.resources.map_remove_my_content_title
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
+import androidx.compose.ui.tooling.preview.Preview
+import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
+import androidx.compose.ui.tooling.preview.PreviewParameter
 
 /** The map screen's dialogs, one at a time. */
 @Composable
@@ -213,3 +216,15 @@ private fun NamePinDialog(onAction: (MapAction) -> Unit) {
 
 /** The server's limit for a stop's name. */
 private const val MAX_PIN_NAME_LENGTH = 120
+
+@Preview
+@Composable
+private fun MapDialogsPreview(@PreviewParameter(MapDialogPreviewStates::class) dialog: MapDialog) {
+    TripinglyTheme { MapDialogs(dialog = dialog, onAction = {}) }
+}
+
+@Preview(widthDp = 800, heightDp = 360)
+@Composable
+private fun BestOrderDialogLandscapePreview() {
+    TripinglyTheme { MapDialogs(dialog = MapDialogPreviewStates().values.elementAt(8), onAction = {}) }
+}

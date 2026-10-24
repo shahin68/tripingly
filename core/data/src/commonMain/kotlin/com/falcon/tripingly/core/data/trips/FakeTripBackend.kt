@@ -458,6 +458,7 @@ class FakeTripBackend(
                 dayCount = details.days.size,
                 markerCount = markers.size,
                 editorCount = details.members.count { it.role == TripRole.EDITOR },
+                coverPhotoId = markers.firstOrNull { it.coverThumbUrl != null }?.coverPhotoId,
                 coverThumbUrl = markers.firstNotNullOfOrNull { it.coverThumbUrl },
                 updatedAt = now(),
             ),

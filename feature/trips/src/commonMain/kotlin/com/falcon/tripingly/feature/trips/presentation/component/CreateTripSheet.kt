@@ -87,7 +87,7 @@ internal fun CreateTripSheet(
         confirmValueChange = { it != SheetValue.Hidden || !saving },
     )
     ModalBottomSheet(
-        onDismissRequest = { onAction(Action.OnDismissDialog) },
+        onDismissRequest = { onAction(Action.TripDialog.Dismiss) },
         sheetState = sheetState,
     ) {
         Box {
@@ -114,7 +114,7 @@ internal fun CreateTripSheetContent(
             onDismiss = { showDatePicker = false },
             onConfirm = { start, end ->
                 showDatePicker = false
-                onAction(Action.OnCreateDatesChanged(start, end))
+                onAction(Action.CreateTrip.DatesChanged(start, end))
             },
         )
     }
@@ -131,7 +131,7 @@ internal fun CreateTripSheetContent(
             Text(text = stringResource(Res.string.create_trip_title), style = MaterialTheme.typography.titleLarge)
             RoundedTextField(
                 value = form.name,
-                onValueChange = { onAction(Action.OnCreateNameChanged(it)) },
+                onValueChange = { onAction(Action.CreateTrip.NameChanged(it)) },
                 placeholder = stringResource(Res.string.create_trip_name_label),
                 enabled = !isSaving,
                 textStyle = MaterialTheme.typography.titleMedium,
@@ -158,14 +158,14 @@ internal fun CreateTripSheetContent(
                     SegmentedToggleOption(
                         label = stringResource(Res.string.create_trip_visibility_public),
                         selected = form.visibility == TripVisibility.PUBLIC,
-                        onClick = { onAction(Action.OnCreateVisibilityChanged(TripVisibility.PUBLIC)) },
+                        onClick = { onAction(Action.CreateTrip.VisibilityChanged(TripVisibility.PUBLIC)) },
                         icon = Icons.Default.Public,
                         enabled = !isSaving,
                     )
                     SegmentedToggleOption(
                         label = stringResource(Res.string.create_trip_visibility_private),
                         selected = form.visibility == TripVisibility.PRIVATE,
-                        onClick = { onAction(Action.OnCreateVisibilityChanged(TripVisibility.PRIVATE)) },
+                        onClick = { onAction(Action.CreateTrip.VisibilityChanged(TripVisibility.PRIVATE)) },
                         icon = Icons.Default.Lock,
                         enabled = !isSaving,
                     )
@@ -177,7 +177,7 @@ internal fun CreateTripSheetContent(
         }
         PrimaryButton(
             text = stringResource(Res.string.create_trip_button_create),
-            onClick = { onAction(Action.OnConfirmCreateTrip) },
+            onClick = { onAction(Action.CreateTrip.Confirm) },
             enabled = form.canCreate,
             isLoading = isSaving,
             modifier = Modifier
@@ -192,14 +192,14 @@ private fun DestinationField(form: CreateTripForm, isSaving: Boolean, onAction: 
     Column {
         RoundedTextField(
             value = form.destinationQuery,
-            onValueChange = { onAction(Action.OnDestinationQueryChanged(it)) },
+            onValueChange = { onAction(Action.CreateTrip.DestinationQueryChanged(it)) },
             placeholder = stringResource(Res.string.create_trip_destination_placeholder),
             leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
             trailingIcon = {
                 when {
                     form.isSearchingDestination -> CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
                     form.destinationQuery.isNotEmpty() -> IconButton(
-                        onClick = { onAction(Action.OnDestinationQueryChanged("")) },
+                        onClick = { onAction(Action.CreateTrip.DestinationQueryChanged("")) },
                         enabled = !isSaving,
                     ) {
                         Icon(Icons.Default.Close, contentDescription = stringResource(Res.string.create_trip_destination_clear))
@@ -215,7 +215,7 @@ private fun DestinationField(form: CreateTripForm, isSaving: Boolean, onAction: 
                 SuggestionItem(
                     title = result.name,
                     subtitle = result.address,
-                    onClick = { onAction(Action.OnDestinationSelected(result)) },
+                    onClick = { onAction(Action.CreateTrip.DestinationSelected(result)) },
                 )
             }
             OsmAttribution()

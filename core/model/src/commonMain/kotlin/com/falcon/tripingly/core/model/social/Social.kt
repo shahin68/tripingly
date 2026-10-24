@@ -57,11 +57,14 @@ data class Comment(
     val createdAt: Instant,
 )
 
-/** A stop has no likes of its own: its heart likes its [Place]. [PlaceImage]: a place's Wikimedia Commons image. */
-enum class LikeTarget { Trip, Photo, Comment, Place, PlaceImage }
+/** [PlaceImage]: a place's Wikimedia Commons image. Places aren't liked but marked hot ([HotState]). */
+enum class LikeTarget { Trip, Photo, Comment, PlaceImage }
 
 /** A like as the server counted it. */
 data class LikeState(val liked: Boolean, val likeCount: Int)
+
+/** A place's hot mark as the server counted it; a stop's flame marks its place. */
+data class HotState(val hot: Boolean, val hotCount: Int)
 
 enum class ReportTarget { User, Trip, Marker, Photo, Comment, PlaceImage }
 
@@ -73,10 +76,10 @@ data class NearbyPlace(
     val name: String,
     val category: PlaceCategory,
     val location: GeoPoint,
-    /** Liked on Tripinly; the others are OpenStreetMap sights that top up a thin area. */
+    /** A hot spot on Tripinly; the others are OpenStreetMap sights that top up a thin area. */
     val isTripinly: Boolean,
-    val likeCount: Int,
-    val likedByMe: Boolean,
+    val hotCount: Int,
+    val hotByMe: Boolean,
     /** The cover's ID: a trip photo's or a Commons image's. */
     val coverImageId: String?,
     val coverSource: PlaceImageSource?,

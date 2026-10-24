@@ -24,14 +24,18 @@ import com.falcon.tripingly.feature.social.generated.resources.social_add_place_
 import com.falcon.tripingly.feature.social.generated.resources.social_add_place_pick_trip
 import com.falcon.tripingly.feature.social.generated.resources.social_day_number
 import com.falcon.tripingly.feature.social.presentation.social.SocialViewModel.Action
-import com.falcon.tripingly.feature.social.presentation.social.SocialViewModel.AddPlace
+import com.falcon.tripingly.feature.social.presentation.social.SocialViewModel.AddPlaceState
 import org.jetbrains.compose.resources.stringResource
+import androidx.compose.ui.tooling.preview.Preview
+import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
+import androidx.compose.ui.tooling.preview.PreviewParameter
+import androidx.compose.foundation.background
 
 /** Adds a Nearby place to a day: pick one of my trips, then the day. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-internal fun AddPlaceSheet(addPlace: AddPlace, onAction: (Action) -> Unit) {
-    ModalBottomSheet(onDismissRequest = { onAction(Action.OnDismissAddPlace) }) {
+internal fun AddPlaceSheet(addPlace: AddPlaceState, onAction: (Action) -> Unit) {
+    ModalBottomSheet(onDismissRequest = { onAction(Action.AddToTrip.Dismiss) }) {
         Box {
             Column(Modifier.padding(bottom = MaterialTheme.spacing.large)) {
                 val trip = addPlace.trip
@@ -48,9 +52,10 @@ internal fun AddPlaceSheet(addPlace: AddPlace, onAction: (Action) -> Unit) {
                     trip == null -> LazyColumn {
                         items(addPlace.trips, key = { it.id }) { option ->
                             SheetRow(
+                                modifier = Modifier.animateItem(),
                                 title = option.name,
                                 subtitle = DateUtils.formatRange(option.startDate, option.endDate),
-                                onClick = { onAction(Action.OnPickTrip(option)) },
+                                onClick = { onAction(Action.AddToTrip.PickTrip(option)) },
                             )
                         }
                     }
@@ -60,9 +65,10 @@ internal fun AddPlaceSheet(addPlace: AddPlace, onAction: (Action) -> Unit) {
                     else -> LazyColumn {
                         items(addPlace.days, key = { it.id }) { day ->
                             SheetRow(
+                                modifier = Modifier.animateItem(),
                                 title = stringResource(Res.string.social_day_number, day.position + 1),
                                 subtitle = day.date?.let(DateUtils::formatAbbreviated),
-                                onClick = { onAction(Action.OnPickDay(day)) },
+                                onClick = { onAction(Action.AddToTrip.PickDay(day)) },
                             )
                         }
                     }
@@ -74,9 +80,9 @@ internal fun AddPlaceSheet(addPlace: AddPlace, onAction: (Action) -> Unit) {
 }
 
 @Composable
-private fun SheetRow(title: String, subtitle: String?, onClick: () -> Unit) {
+private fun SheetRow(title: String, subtitle: String?, onClick: () -> Unit, modifier: Modifier = Modifier) {
     Column(
-        Modifier
+        modifier
             .fillMaxWidth()
             .clickable(onClick = onClick)
             .padding(horizontal = MaterialTheme.spacing.medium, vertical = MaterialTheme.spacing.small),
@@ -84,6 +90,23 @@ private fun SheetRow(title: String, subtitle: String?, onClick: () -> Unit) {
         Text(title, style = MaterialTheme.typography.bodyLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)
         subtitle?.let {
             Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+    }
+}
+
+@Preview
+@Composable
+private fun AddPlaceSheetPreview(@PreviewParameter(AddPlacePreviewStates::class) state: AddPlaceState) {
+    TripinglyTheme { AddPlaceSheet(addPlace = state, onAction = {}) }
+}
+
+@Preview
+@Composable
+private fun SheetRowPreview() {
+    TripinglyTheme {
+        Column(Modifier.background(MaterialTheme.colorScheme.surface)) {
+            SheetRow(title = "A week in Vienna", subtitle = "Jun 1 – Jun 7, 2026", onClick = {})
+            SheetRow(title = "A very long trip name that goes on and on and doesn't fit on one line", subtitle = null, onClick = {})
         }
     }
 }

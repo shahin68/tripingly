@@ -34,10 +34,11 @@ internal interface TripLocalDataSource {
     suspend fun saveMarkers(markers: List<TripMarker>)
 
     /**
-     * Sets the place the server matched to a marker, if the marker is still cached, and the name the
-     * server gave it when the app added it without one.
+     * Sets the place the server matched to a marker, if the marker is still cached, with the place's hearts
+     * (a stop added at a liked place shows them at once), and the name the server gave it when the app added
+     * it without one.
      */
-    suspend fun savePlaceOfMarker(markerId: String, placeId: String, name: String)
+    suspend fun savePlaceOfMarker(markerId: String, placeId: String, name: String, hotCount: Int, hotByMe: Boolean, canMarkHot: Boolean)
 
     /** The marker's trip, or null when it isn't cached. */
     suspend fun tripIdOfMarker(markerId: String): String?
@@ -47,8 +48,8 @@ internal interface TripLocalDataSource {
     /** A cached stop at the place, or null. */
     suspend fun markerAtPlace(placeId: String): TripMarker?
 
-    /** Sets the like count of every cached stop at the place, and whether I like it unless [likedByMe] is null. */
-    suspend fun savePlaceLike(placeId: String, likeCount: Int, likedByMe: Boolean?)
+    /** Sets the hot count of every cached stop at the place, and whether I marked it hot unless [hotByMe] is null. */
+    suspend fun savePlaceHot(placeId: String, hotCount: Int, hotByMe: Boolean?)
 
     /** Counts comments added to (positive [delta]) or deleted from a cached marker. */
     suspend fun addToCommentCount(markerId: String, delta: Int)

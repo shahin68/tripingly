@@ -73,6 +73,9 @@ import com.falcon.tripingly.feature.map.presentation.photos.PhotosViewModel.Stat
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel
 import org.koin.core.parameter.parametersOf
+import androidx.compose.ui.tooling.preview.Preview
+import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
+import androidx.compose.ui.tooling.preview.PreviewParameter
 
 /**
  * The photos of a stop or a place ([owner]) in a sheet over the map, under [title]. [canAdd]: may add photos
@@ -285,6 +288,7 @@ fun PhotosScreen(
         }
         items(state.photos, key = { it.id }) { photo ->
             GalleryPhoto(
+                modifier = Modifier.animateItem(),
                 photo = photo,
                 isCover = photo.id == coverPhotoId,
                 canDelete = state.canDelete(photo, canManage),
@@ -292,7 +296,7 @@ fun PhotosScreen(
             )
         }
         items(state.uploads, key = { it.key }) { upload ->
-            GalleryUpload(upload = upload, onAction = onAction)
+            GalleryUpload(upload = upload, onAction = onAction, modifier = Modifier.animateItem())
         }
         // Commons images are cropped in the grid; each shows its full credit in the viewer.
         if (state.photos.any { it.credit != null }) {
@@ -309,9 +313,9 @@ fun PhotosScreen(
 }
 
 @Composable
-private fun GalleryPhoto(photo: Photo, isCover: Boolean, canDelete: Boolean, onAction: (Action) -> Unit) {
+private fun GalleryPhoto(photo: Photo, isCover: Boolean, canDelete: Boolean, onAction: (Action) -> Unit, modifier: Modifier = Modifier) {
     Box(
-        modifier = Modifier
+        modifier = modifier
             .aspectRatio(1f)
             .clip(RoundedCornerShape(8.dp))
             .clickable(enabled = photo.status == PhotoStatus.Ready) { onAction(Action.OnOpenPhoto(photo.id)) },
@@ -363,12 +367,12 @@ private fun GalleryPhoto(photo: Photo, isCover: Boolean, canDelete: Boolean, onA
 
 /** A stop's owners and editors delete any photo; everyone deletes their own. */
 private fun State.canDelete(photo: Photo, canManage: Boolean): Boolean =
-    canManage || (myUserId != null && photo.uploaderId == myUserId)
+    canManage || (myUserId != null && photo.uploader?.id == myUserId)
 
 @Composable
-private fun GalleryUpload(upload: PhotoUpload, onAction: (Action) -> Unit) {
+private fun GalleryUpload(upload: PhotoUpload, onAction: (Action) -> Unit, modifier: Modifier = Modifier) {
     Box(
-        modifier = Modifier
+        modifier = modifier
             .aspectRatio(1f)
             .clip(RoundedCornerShape(8.dp))
             .background(MaterialTheme.colorScheme.surfaceVariant),
@@ -427,7 +431,7 @@ private fun GalleryViewer(
         onToggleLike = { onAction(Action.OnToggleLike(it)) },
         onDismiss = { onAction(Action.OnClosePhoto) },
     ) { current ->
-        if (state.myUserId == null || current.uploaderId != state.myUserId) {
+        if (state.myUserId == null || current.uploader?.id != state.myUserId) {
             IconButton(onClick = { onReport(current) }) {
                 Icon(Icons.Outlined.Flag, contentDescription = stringResource(Res.string.map_place_image_report), tint = Color.White)
             }
@@ -453,4 +457,62 @@ private fun GalleryViewer(
             }
         }
     }
+}
+
+@Preview
+@Composable
+private fun PhotosScreenPreview(@PreviewParameter(PhotosPreviewStates::class) state: State) {
+    TripinglyTheme {
+        PhotosScreen(
+            state = state,
+            title = "Eiffel Tower",
+            subtitle = "Day 1 · Stop 1",
+            canAdd = true,
+            canManage = true,
+            coverPhotoId = "ph1",
+            onAddPhotos = {},
+            onAction = {},
+            modifier = Modifier.background(MaterialTheme.colorScheme.surface),
+        )
+    }
+}
+
+/** A viewer's gallery of a place: no Add, nothing to manage. */
+@Preview(widthDp = 800, heightDp = 360)
+@Composable
+private fun PhotosScreenLandscapePreview() {
+    TripinglyTheme(darkTheme = true) {
+        PhotosScreen(
+            state = PhotosPreviewStates().values.first(),
+            title = "A very long place name that doesn't fit on one line of the gallery",
+            subtitle = "5 photos",
+            canAdd = false,
+            canManage = false,
+            coverPhotoId = null,
+            onAddPhotos = {},
+            onAction = {},
+            modifier = Modifier.background(MaterialTheme.colorScheme.surface),
+        )
+    }
+}
+
+/** A ready photo as the cover, one processing, one that failed (deletable), and each state of an upload. */
+@Preview
+@Composable
+private fun GalleryItemsPreview() {
+    TripinglyTheme {
+        Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+            val item = Modifier.size(104.dp)
+            Box(item) { GalleryPhoto(previewGalleryPhotos[0], isCover = true, canDelete = true, onAction = {}) }
+            Box(item) { GalleryPhoto(previewGalleryPhotos[2], isCover = false, canDelete = true, onAction = {}) }
+            Box(item) { GalleryPhoto(previewGalleryPhotos[3], isCover = false, canDelete = true, onAction = {}) }
+            previewUploads.forEach { upload -> Box(item) { GalleryUpload(upload, onAction = {}) } }
+        }
+    }
+}
+
+@Preview
+@Composable
+private fun DeletePhotoDialogPreview() {
+    TripinglyTheme { DeletePhotoDialog(onAction = {}) }
 }

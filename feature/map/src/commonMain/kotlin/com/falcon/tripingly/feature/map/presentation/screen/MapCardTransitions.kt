@@ -17,6 +17,11 @@ import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.unit.Dp
 import com.falcon.tripingly.core.designsystem.theme.spacing
+import androidx.compose.ui.tooling.preview.Preview
+import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
+import androidx.compose.ui.unit.dp
+import com.falcon.tripingly.feature.map.presentation.component.PlaceCard
+import com.falcon.tripingly.feature.map.presentation.component.previewPlace
 
 /*
  * How the map's pin cards come and go. Each shows what it last showed while it leaves and only updates while it
@@ -55,6 +60,17 @@ internal fun <T : Any> PinCard(
                 .then(modifier),
         ) { shown ->
             if (shown != null) content(shown)
+        }
+    }
+}
+
+/** A place's card over the middle, where its pin is. */
+@Preview(widthDp = 360, heightDp = 640)
+@Composable
+private fun PinCardPreview() {
+    TripinglyTheme {
+        PinCard(card = previewPlace, key = { it.id }, pinClearance = 24.dp) { place ->
+            PlaceCard(place, details = null, address = null, dayNumber = 1, onAdd = {}, onOpenImage = {}, onOpenPhotos = {}, onRouteFrom = {}, onRouteTo = null)
         }
     }
 }

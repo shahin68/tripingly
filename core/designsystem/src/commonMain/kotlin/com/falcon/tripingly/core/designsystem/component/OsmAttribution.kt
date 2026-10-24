@@ -13,6 +13,9 @@ import androidx.compose.ui.unit.dp
 import org.jetbrains.compose.resources.stringResource
 import com.falcon.tripingly.core.designsystem.generated.resources.Res
 import com.falcon.tripingly.core.designsystem.generated.resources.osm_attribution
+import androidx.compose.foundation.background
+import androidx.compose.ui.tooling.preview.Preview
+import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
 
 /**
  * "© OpenStreetMap contributors": required wherever our places, search results or routes show.
@@ -33,3 +36,15 @@ fun OsmAttribution(modifier: Modifier = Modifier) {
 }
 
 private const val COPYRIGHT_URL = "https://www.openstreetmap.org/copyright"
+
+@Preview
+@Composable
+private fun OsmAttributionPreview() {
+    TripinglyTheme { OsmAttribution(Modifier.background(MaterialTheme.colorScheme.surface)) }
+}
+
+@Preview
+@Composable
+private fun OsmAttributionDarkPreview() {
+    TripinglyTheme(darkTheme = true) { OsmAttribution(Modifier.background(MaterialTheme.colorScheme.surface)) }
+}

@@ -9,7 +9,9 @@
     <string name="chip_remove">Remove %1$s</string>
     <string name="common_cancel">Cancel</string>
     <string name="like">Like</string>
+    <string name="mark_hot">Mark as hot</string>
     <string name="photo_viewer_close">Close</string>
+    <string name="photo_viewer_uploaded_by">Photo by @%1$s</string>
 
     <!-- Report -->
     <string name="report_title">Why are you reporting this?</string>
