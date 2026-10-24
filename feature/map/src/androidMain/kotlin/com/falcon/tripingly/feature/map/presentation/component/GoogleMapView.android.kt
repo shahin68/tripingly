@@ -396,7 +396,7 @@ private const val PIN_FADE_MILLIS = 250
 
 /** Between 0 and 1, higher for a better place: liked places by their likes above the others by how well known. */
 private fun pinRank(place: MapPlace): Float =
-    if (place.likeCount > 0) 0.5f + minOf(place.likeCount, 1000) / 2500f else place.prominence / 250f
+    if (place.hotCount > 0) 0.5f + minOf(place.hotCount, 1000) / 2500f else place.prominence / 250f
 
 /** Place pins sit under this, the stops at 1 and the tapped place at 2. */
 private const val PLACE_PINS_Z = 0.5f

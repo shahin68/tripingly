@@ -60,8 +60,8 @@ abstract class TripDao {
     abstract suspend fun deleteMarkers(markerIds: List<String>)
 
     /** The place's hearts come with it; the name only fills a marker the app added without one. */
-    @Query("UPDATE markers SET placeId = :placeId, name = CASE WHEN name = '' THEN :name ELSE name END, likeCount = :likeCount, likedByMe = :likedByMe, canLike = :canLike WHERE id = :markerId")
-    abstract suspend fun updateMarkerPlace(markerId: String, placeId: String, name: String, likeCount: Int, likedByMe: Boolean, canLike: Boolean)
+    @Query("UPDATE markers SET placeId = :placeId, name = CASE WHEN name = '' THEN :name ELSE name END, hotCount = :hotCount, hotByMe = :hotByMe, canMarkHot = :canMarkHot WHERE id = :markerId")
+    abstract suspend fun updateMarkerPlace(markerId: String, placeId: String, name: String, hotCount: Int, hotByMe: Boolean, canMarkHot: Boolean)
 
     @Query("UPDATE markers SET position = :position WHERE id = :markerId")
     abstract suspend fun updateMarkerPosition(markerId: String, position: Int)
@@ -69,12 +69,12 @@ abstract class TripDao {
     @Query("SELECT * FROM markers WHERE placeId = :placeId LIMIT 1")
     abstract suspend fun markerAtPlace(placeId: String): MarkerEntity?
 
-    /** Likes belong to places, so every cached stop at the place shows them. */
-    @Query("UPDATE markers SET likeCount = :likeCount WHERE placeId = :placeId")
-    abstract suspend fun updatePlaceLikeCount(placeId: String, likeCount: Int)
+    /** Hot marks belong to places, so every cached stop at the place shows them. */
+    @Query("UPDATE markers SET hotCount = :hotCount WHERE placeId = :placeId")
+    abstract suspend fun updatePlaceHotCount(placeId: String, hotCount: Int)
 
-    @Query("UPDATE markers SET likeCount = :likeCount, likedByMe = :likedByMe WHERE placeId = :placeId")
-    abstract suspend fun updatePlaceLike(placeId: String, likeCount: Int, likedByMe: Boolean)
+    @Query("UPDATE markers SET hotCount = :hotCount, hotByMe = :hotByMe WHERE placeId = :placeId")
+    abstract suspend fun updatePlaceHot(placeId: String, hotCount: Int, hotByMe: Boolean)
 
     @Query("UPDATE markers SET commentCount = MAX(0, commentCount + :delta) WHERE id = :markerId")
     abstract suspend fun addToMarkerCommentCount(markerId: String, delta: Int)

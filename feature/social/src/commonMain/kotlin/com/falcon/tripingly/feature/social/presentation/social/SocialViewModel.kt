@@ -123,7 +123,7 @@ class SocialViewModel(
             )
             Action.Nearby.Refresh -> nearby.refresh()
             Action.Nearby.LoadMore -> nearby.loadMore()
-            is Action.Nearby.LikePlace -> nearby.toggleLike(action.place.id)
+            is Action.Nearby.MarkHot -> nearby.toggleHot(action.place.id)
             is Action.Nearby.AddPlace -> nearby.openAddPlace(action.place)
             is Action.Nearby.OpenImage -> _uiState.update { it.copy(nearby = it.nearby.copy(openImage = action.place)) }
             Action.Nearby.CloseImage -> _uiState.update { it.copy(nearby = it.nearby.copy(openImage = null)) }
@@ -299,7 +299,7 @@ class SocialViewModel(
             data object AllowLocation : Nearby
             data object Refresh : Nearby
             data object LoadMore : Nearby
-            data class LikePlace(val place: NearbyPlace) : Nearby
+            data class MarkHot(val place: NearbyPlace) : Nearby
             data class AddPlace(val place: NearbyPlace) : Nearby
             data class OpenImage(val place: NearbyPlace) : Nearby
             data object CloseImage : Nearby

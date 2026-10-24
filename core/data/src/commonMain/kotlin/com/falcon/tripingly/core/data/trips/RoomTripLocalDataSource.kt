@@ -70,8 +70,8 @@ internal class RoomTripLocalDataSource(
 
     override suspend fun saveMarkers(markers: List<TripMarker>) = dao.saveMarkers(markers.map { it.toEntity() })
 
-    override suspend fun savePlaceOfMarker(markerId: String, placeId: String, name: String, likeCount: Int, likedByMe: Boolean, canLike: Boolean) =
-        dao.updateMarkerPlace(markerId, placeId, name, likeCount, likedByMe, canLike)
+    override suspend fun savePlaceOfMarker(markerId: String, placeId: String, name: String, hotCount: Int, hotByMe: Boolean, canMarkHot: Boolean) =
+        dao.updateMarkerPlace(markerId, placeId, name, hotCount, hotByMe, canMarkHot)
 
     override suspend fun tripIdOfMarker(markerId: String): String? = dao.marker(markerId)?.tripId
 
@@ -79,8 +79,8 @@ internal class RoomTripLocalDataSource(
 
     override suspend fun markerAtPlace(placeId: String): TripMarker? = dao.markerAtPlace(placeId)?.toMarker()
 
-    override suspend fun savePlaceLike(placeId: String, likeCount: Int, likedByMe: Boolean?) {
-        if (likedByMe == null) dao.updatePlaceLikeCount(placeId, likeCount) else dao.updatePlaceLike(placeId, likeCount, likedByMe)
+    override suspend fun savePlaceHot(placeId: String, hotCount: Int, hotByMe: Boolean?) {
+        if (hotByMe == null) dao.updatePlaceHotCount(placeId, hotCount) else dao.updatePlaceHot(placeId, hotCount, hotByMe)
     }
 
     override suspend fun addToCommentCount(markerId: String, delta: Int) = dao.addToMarkerCommentCount(markerId, delta)
@@ -172,9 +172,9 @@ private fun MarkerEntity.toMarker() = TripMarker(
     coverPhotoId = coverPhotoId,
     coverThumbUrl = coverThumbUrl,
     photoCount = photoCount,
-    likeCount = likeCount,
-    likedByMe = likedByMe,
-    canLike = canLike,
+    hotCount = hotCount,
+    hotByMe = hotByMe,
+    canMarkHot = canMarkHot,
     commentCount = commentCount,
     createdById = createdById,
 )
@@ -192,9 +192,9 @@ private fun TripMarker.toEntity() = MarkerEntity(
     coverPhotoId = coverPhotoId,
     coverThumbUrl = coverThumbUrl,
     photoCount = photoCount,
-    likeCount = likeCount,
-    likedByMe = likedByMe,
-    canLike = canLike,
+    hotCount = hotCount,
+    hotByMe = hotByMe,
+    canMarkHot = canMarkHot,
     commentCount = commentCount,
     createdById = createdById,
 )

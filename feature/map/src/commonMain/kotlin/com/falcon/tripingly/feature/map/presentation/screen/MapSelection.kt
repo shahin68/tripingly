@@ -66,7 +66,7 @@ internal class MapSelection(
             category = PlaceCategory.Other,
             location = result.location,
             isTripinly = false,
-            likeCount = 0,
+            hotCount = 0,
             prominence = 0,
         )
         val zoom = result.type.zoom()

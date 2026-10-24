@@ -19,7 +19,7 @@ internal val previewPlace = MapPlace(
     category = PlaceCategory.Landmark,
     location = GeoPoint(48.8584, 2.2945),
     isTripinly = true,
-    likeCount = 24,
+    hotCount = 24,
     prominence = 98,
 )
 
@@ -29,7 +29,7 @@ internal val previewCafe = MapPlace(
     category = PlaceCategory.Cafe,
     location = GeoPoint(48.8541, 2.3326),
     isTripinly = false,
-    likeCount = 0,
+    hotCount = 0,
     prominence = 70,
 )
 
@@ -56,7 +56,7 @@ internal val previewPlaceDetails = PlaceDetails(
     id = previewPlace.id,
     name = previewPlace.name,
     category = previewPlace.category,
-    likeCount = previewPlace.likeCount,
+    hotCount = previewPlace.hotCount,
     openingHours = "Mo-Su 09:00-23:45",
     website = "https://www.toureiffel.paris",
     images = previewPlaceImages,
@@ -77,8 +77,8 @@ internal val previewStop = MapMarker(
     title = UiText.Server("Eiffel Tower"),
     orderNumber = 1,
     photoCount = 3,
-    likeCount = 5,
-    likedByMe = true,
+    hotCount = 5,
+    hotByMe = true,
     commentCount = 2,
     placeId = previewPlace.id,
     canDelete = true,

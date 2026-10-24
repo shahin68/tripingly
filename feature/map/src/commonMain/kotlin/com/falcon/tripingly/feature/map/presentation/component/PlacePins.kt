@@ -66,14 +66,14 @@ fun placePins(squares: Collection<PlacesInView>, area: GeoBounds, hiddenPlaceIds
 /** A place with a photo shows it on its pin once it's well known or liked enough (server values). */
 private fun MapPlace.showsPhoto(config: AppConfig): Boolean =
     coverImageId != null && coverThumbUrl != null &&
-        (prominence >= config.photoPinMinProminence || likeCount >= config.photoPinMinLikes)
+        (prominence >= config.photoPinMinProminence || hotCount >= config.photoPinMinHotCount)
 
 /** The clusters of liked places inside [area]. */
 fun placeClusters(squares: Collection<PlacesInView>, area: GeoBounds): List<PlaceCluster> =
     squares.flatMap { it.clusters }.filter { it.location in area }
 
 private val PinOrder = compareByDescending<MapPlace> { it.isTripinly }
-    .thenByDescending { it.likeCount }
+    .thenByDescending { it.hotCount }
     .thenByDescending { it.prominence }
     .thenBy { it.id }
 
@@ -87,13 +87,13 @@ fun placePinSize(place: MapPlace, config: AppConfig): Dp {
         place.prominence >= config.pinMediumMinProminence -> PinSizes[1]
         else -> PinSizes[0]
     }
-    return if (place.isTripinly) maxOf(byProminence, hotSpotSize(place.likeCount)) else byProminence
+    return if (place.isTripinly) maxOf(byProminence, hotSpotSize(place.hotCount)) else byProminence
 }
 
 /** Liked places in three sizes, so the most liked stand out. */
-fun hotSpotSize(likeCount: Int): Dp = when {
-    likeCount >= 20 -> HotSpotSizes[2]
-    likeCount >= 5 -> HotSpotSizes[1]
+fun hotSpotSize(hotCount: Int): Dp = when {
+    hotCount >= 20 -> HotSpotSizes[2]
+    hotCount >= 5 -> HotSpotSizes[1]
     else -> HotSpotSizes[0]
 }
 

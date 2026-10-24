@@ -15,8 +15,8 @@ class RealtimeEventTest {
 
     private val markerJson = """
         {"id":"m1","tripId":"t1","dayId":"d1","placeId":"p1","name":"Louvre","location":{"lat":48.86,"lng":2.33},
-         "time":null,"position":2,"coverPhotoId":null,"coverThumbUrl":null,"photoCount":0,"likeCount":0,
-         "likedByMe":false,"canLike":true,"commentCount":0,"createdBy":null,"createdAt":"2026-10-11T10:00:00Z","updatedAt":"2026-10-11T10:00:00Z"}
+         "time":null,"position":2,"coverPhotoId":null,"coverThumbUrl":null,"photoCount":0,"hotCount":0,
+         "hotByMe":false,"canMarkHot":true,"commentCount":0,"createdBy":null,"createdAt":"2026-10-11T10:00:00Z","updatedAt":"2026-10-11T10:00:00Z"}
     """.trimIndent()
 
     private val photoJson = """
@@ -59,8 +59,12 @@ class RealtimeEventTest {
             parse("comment.deleted", envelope("comment.deleted", """{"commentId":"c1","markerId":"m1"}""")),
         )
         assertEquals(
-            RealtimeEvent.LikeCountChanged("t1", "u2", "marker", "m1", 3),
-            parse("like.count_changed", envelope("like.count_changed", """{"targetType":"marker","targetId":"m1","count":3,"liked":true}""")),
+            RealtimeEvent.LikeCountChanged("t1", "u2", "photo", "ph1", 3),
+            parse("like.count_changed", envelope("like.count_changed", """{"targetType":"photo","targetId":"ph1","count":3,"liked":true}""")),
+        )
+        assertEquals(
+            RealtimeEvent.PlaceHotChanged("t1", "u2", "p1", 4),
+            parse("place.hot_changed", envelope("place.hot_changed", """{"placeId":"p1","hotCount":4}""")),
         )
     }
 

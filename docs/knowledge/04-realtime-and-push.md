@@ -23,6 +23,7 @@
 | `marker.cover_changed` | Update the pin thumbnail |
 | `comment.created` / `comment.deleted` | Update the thread and count |
 | `like.count_changed` | Update the count (keep your own `likedByMe`) |
+| `place.hot_changed` | `placeId`, `hotCount`: update every cached stop at that place (keep your own `hotByMe`) |
 | `member.added` / `member.removed` | Update members; if *you* were removed, close the trip |
 
 ### Personal room events
@@ -41,7 +42,7 @@
 - A trip is subscribed while `TripRepository.observeTrip` is collected (counted, so two screens on one trip share it), and every subscription is sent again after a reconnect.
 - `RealtimeSync` (`core:data`) applies events to the Room cache, never the screens: others' `marker.*` and `markers.reordered` are saved from the payload (if the trip has unsent changes of its own, the trip reloads once they're sent instead); `trip.updated`, `day.*` and `member.*` reload the trip, at most twice per burst; `trip.deleted` drops it; `trips.changed` reloads My Trips; photo events update open galleries, and a ready or deleted photo reloads its stop for the cover and count. Events this user caused are skipped where the app applied the change itself.
 - After every reconnect but the first since launch or sign-in: My Trips, the watched trips and galleries with processing photos are reloaded.
-- `comment.*` and `like.count_changed` from others change a stop's comment and like counts in Room (a `place` like count goes to every cached stop at that place; the server sends it to each trip with a stop there) (`RealtimeSync`), keeping my own `likedByMe`; an open comments sheet adds and drops comments and updates comment likes live (`SocialRepository.commentChanges`, `likeCounts`). Others' `photo` like counts update every open gallery showing the photo (`PhotoRepository`), keeping my own heart. My own comment and like echoes are skipped (the server's answer already counted them; a late echo could be older).
+- `comment.*` from others change a stop's comment count in Room, and `place.hot_changed` the hot count of every cached stop at that place (the server sends it to each trip with a stop there) (`RealtimeSync`), keeping my own `hotByMe`; an open comments sheet adds and drops comments and updates comment likes live (`SocialRepository.commentChanges`, `likeCounts`). Others' `photo` like counts update every open gallery showing the photo (`PhotoRepository`), keeping my own heart. My own comment and like echoes are skipped (the server's answer already counted them; a late echo could be older).
 - Not used yet: `notification.created` (stage 9 push).
 
 ### What is live, and what isn't (2026-10-18)

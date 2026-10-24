@@ -115,9 +115,9 @@ internal fun MarkerDto.toMarker() = TripMarker(
     coverPhotoId = coverPhotoId,
     coverThumbUrl = coverThumbUrl,
     photoCount = photoCount.toInt(),
-    likeCount = likeCount.toInt(),
-    likedByMe = likedByMe,
-    canLike = canLike,
+    hotCount = hotCount.toInt(),
+    hotByMe = hotByMe,
+    canMarkHot = canMarkHot,
     commentCount = commentCount.toInt(),
     createdById = createdBy?.id,
 )

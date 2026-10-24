@@ -17,6 +17,7 @@ import com.falcon.tripingly.core.model.Page
 import com.falcon.tripingly.core.model.account.TripVisibility
 import com.falcon.tripingly.core.model.social.ExploreFilter
 import com.falcon.tripingly.core.model.social.ExplorePeriod
+import com.falcon.tripingly.core.model.social.HotState
 import com.falcon.tripingly.core.model.social.LikeState
 import com.falcon.tripingly.core.model.social.LikeTarget
 import com.falcon.tripingly.core.model.social.PublicTrip
@@ -83,6 +84,9 @@ class SocialViewModelTest {
 
         override suspend fun setLiked(target: LikeTarget, targetId: String, liked: Boolean): AppResult<LikeState, DataError.Network> =
             if (likeRefused) AppResult.Error(DataError.Network.NoInternet) else LikeState(liked, if (liked) 5 else 4).asSuccess()
+
+        override suspend fun setHot(placeId: String, hot: Boolean): AppResult<HotState, DataError.Network> =
+            if (likeRefused) AppResult.Error(DataError.Network.NoInternet) else HotState(hot, 99).asSuccess()
     }
 
     /** Counts what reaches the server. */
@@ -356,6 +360,24 @@ class SocialViewModelTest {
         advanceUntilIdle()
         assertEquals(NearbyStatus.Ready, viewModel.uiState.value.nearby.status)
         assertTrue(viewModel.uiState.value.nearby.places.isNotEmpty())
+    }
+
+    @Test
+    fun aNearbyPlacesFlame_showsAtOnce_andARefusalPutsItBack() = runTest {
+        val viewModel = viewModel()
+        viewModel.onAction(Action.Nearby.PermissionChecked(LocationPermission.Granted))
+        advanceUntilIdle()
+        val place = viewModel.uiState.value.nearby.places.first()
+
+        likeRefused = true
+        viewModel.onAction(Action.Nearby.MarkHot(place))
+        val shown = viewModel.uiState.value.nearby.places.first()
+        assertTrue(shown.hotByMe, "the flame lights at once")
+        assertEquals(place.hotCount + 1, shown.hotCount)
+        advanceUntilIdle()
+        val back = viewModel.uiState.value.nearby.places.first()
+        assertFalse(back.hotByMe, "a refusal puts the flame back")
+        assertEquals(place.hotCount, back.hotCount)
     }
 
     @Test

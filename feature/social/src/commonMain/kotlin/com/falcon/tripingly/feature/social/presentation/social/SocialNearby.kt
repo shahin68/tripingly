@@ -7,8 +7,7 @@ import com.falcon.tripingly.core.data.trips.MarkerRepository
 import com.falcon.tripingly.core.data.trips.TripRepository
 import com.falcon.tripingly.core.location.GetCurrentLocationUseCase
 import com.falcon.tripingly.core.location.permission.LocationPermission
-import com.falcon.tripingly.core.model.social.LikeState
-import com.falcon.tripingly.core.model.social.LikeTarget
+import com.falcon.tripingly.core.model.social.HotState
 import com.falcon.tripingly.core.model.social.NearbyPlace
 import com.falcon.tripingly.core.model.trip.GeoPoint
 import com.falcon.tripingly.core.model.trip.NewMarker
@@ -18,7 +17,7 @@ import com.falcon.tripingly.core.ui.UiText
 import com.falcon.tripingly.core.ui.toUiText
 import com.falcon.tripingly.feature.social.generated.resources.Res
 import com.falcon.tripingly.feature.social.generated.resources.social_add_place_no_trips
-import com.falcon.tripingly.feature.social.generated.resources.social_error_like
+import com.falcon.tripingly.feature.social.generated.resources.social_error_hot
 import com.falcon.tripingly.feature.social.generated.resources.social_error_load_days
 import com.falcon.tripingly.feature.social.generated.resources.social_error_load_nearby
 import com.falcon.tripingly.feature.social.generated.resources.social_nearby_location_unavailable
@@ -54,10 +53,10 @@ internal class SocialNearby(
     private var cursor: String? = null
     private var point: GeoPoint? = null
     private var loadingMore: Job? = null
-    private val likeJobs = mutableMapOf<String, Job>()
+    private val hotJobs = mutableMapOf<String, Job>()
 
-    /** As the server last confirmed it: the heart before the first tap of a burst. */
-    private val confirmedLikes = mutableMapOf<String, LikeState>()
+    /** As the server last confirmed it: the flame before the first tap of a burst. */
+    private val confirmedHot = mutableMapOf<String, HotState>()
 
     private fun update(change: (NearbyState) -> NearbyState) = state.update { it.copy(nearby = change(it.nearby)) }
 
@@ -132,19 +131,19 @@ internal class SocialNearby(
         }
     }
 
-    /** Like a trip card's heart: shown at once and kept; a newer tap wins, and only a refusal puts it back. */
-    fun toggleLike(placeId: String) {
+    /** A place's flame: shown at once and kept; a newer tap wins, and only a refusal puts it back. */
+    fun toggleHot(placeId: String) {
         val shown = state.value.nearby.places.firstOrNull { it.id == placeId } ?: return
-        if (likeJobs[placeId]?.isActive != true) confirmedLikes[placeId] = LikeState(shown.likedByMe, shown.likeCount)
-        likeJobs[placeId]?.cancel()
-        val liked = !shown.likedByMe
-        updatePlace(placeId) { it.copy(likedByMe = liked, likeCount = (it.likeCount + if (liked) 1 else -1).coerceAtLeast(0)) }
-        likeJobs[placeId] = scope.launch {
-            val result = socialRepository.setLiked(LikeTarget.Place, placeId, liked)
+        if (hotJobs[placeId]?.isActive != true) confirmedHot[placeId] = HotState(shown.hotByMe, shown.hotCount)
+        hotJobs[placeId]?.cancel()
+        val hot = !shown.hotByMe
+        updatePlace(placeId) { it.copy(hotByMe = hot, hotCount = (it.hotCount + if (hot) 1 else -1).coerceAtLeast(0)) }
+        hotJobs[placeId] = scope.launch {
+            val result = socialRepository.setHot(placeId, hot)
             if (result is AppResult.Error) {
-                val before = confirmedLikes.getValue(placeId)
-                updatePlace(placeId) { it.copy(likedByMe = before.liked, likeCount = before.likeCount) }
-                showMessage(result.error.toUiText(Res.string.social_error_like))
+                val before = confirmedHot.getValue(placeId)
+                updatePlace(placeId) { it.copy(hotByMe = before.hot, hotCount = before.hotCount) }
+                showMessage(result.error.toUiText(Res.string.social_error_hot))
             }
         }
     }

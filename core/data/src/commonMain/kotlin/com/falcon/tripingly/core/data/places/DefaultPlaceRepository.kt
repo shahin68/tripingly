@@ -84,7 +84,7 @@ internal class DefaultPlaceRepository(
                             category = item.category?.let { PlaceItemDto.Category.valueOf(it.name).toCategory() } ?: PlaceCategory.Other,
                             location = location,
                             isTripinly = item.isTripinly,
-                            likeCount = item.likeCount.toInt(),
+                            hotCount = item.hotCount.toInt(),
                             // GET /places/search doesn't send prominence. It only sizes pins, and a picked place is drawn as the selected pin.
                             prominence = 0,
                         )
@@ -209,8 +209,8 @@ internal class DefaultPlaceRepository(
                         category = PlaceItemDto.Category.valueOf(item.category.name).toCategory(),
                         location = GeoPoint(item.location.lat, item.location.lng),
                         isTripinly = item.isTripinly,
-                        likeCount = item.likeCount.toInt(),
-                        likedByMe = item.likedByMe,
+                        hotCount = item.hotCount.toInt(),
+                        hotByMe = item.hotByMe,
                         coverImageId = item.coverImageId,
                         coverSource = when (item.coverSource) {
                             NearbyPlaceDto.CoverSource.TRIP -> PlaceImageSource.Trip
@@ -229,7 +229,7 @@ internal class DefaultPlaceRepository(
         id = id,
         name = name,
         category = PlaceItemDto.Category.valueOf(category.name).toCategory(),
-        likeCount = likeCount.toInt(),
+        hotCount = hotCount.toInt(),
         openingHours = tags.openingHours,
         website = tags.website,
         images = images.map { image ->

@@ -387,17 +387,17 @@ class TripRepositoryTest {
     }
 
     @Test
-    fun addMarker_atALikedPlace_takesThePlacesHeartsFromTheServersAnswer() = runTest {
+    fun addMarker_atAHotSpot_takesThePlacesHotCountFromTheServersAnswer() = runTest {
         val harness = Harness { request ->
-            val liked = TripJson.marker(request.sentId(), "t1", "d0", 0).replace(""""likeCount":0,"likedByMe":false""", """"likeCount":12,"likedByMe":true""")
+            val liked = TripJson.marker(request.sentId(), "t1", "d0", 0).replace(""""hotCount":0,"hotByMe":false""", """"hotCount":12,"hotByMe":true""")
             json(liked, HttpStatusCode.Created)
         }
         harness.local.saveTrip(details(TripJson.trip("t1")))
 
         harness.markers().addMarker("t1", "d0", NewMarker("Stephansdom", GeoPoint(48.2085, 16.3721), placeId = "p1"))
 
-        harness.awaitTrip { it.days[0].markers.singleOrNull()?.likeCount == 12 }
-        assertTrue(harness.local.trip("t1")!!.days[0].markers.single().likedByMe)
+        harness.awaitTrip { it.days[0].markers.singleOrNull()?.hotCount == 12 }
+        assertTrue(harness.local.trip("t1")!!.days[0].markers.single().hotByMe)
     }
 
     @Test

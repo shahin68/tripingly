@@ -10,7 +10,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Directions
-import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.LocalFireDepartment
 import androidx.compose.material.icons.filled.PhotoLibrary
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -102,16 +102,16 @@ fun PlaceCard(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.weight(1f),
                 )
-                val likeCount = details?.likeCount ?: place.likeCount
-                if (likeCount > 0) {
+                val hotCount = details?.hotCount ?: place.hotCount
+                if (hotCount > 0) {
                     Icon(
-                        Icons.Default.Favorite,
-                        contentDescription = stringResource(Res.string.map_place_likes),
+                        Icons.Default.LocalFireDepartment,
+                        contentDescription = stringResource(Res.string.map_place_hot_count),
                         tint = MaterialTheme.colorScheme.tertiary,
                         modifier = Modifier.size(16.dp),
                     )
                     Text(
-                        text = likeCount.toString(),
+                        text = hotCount.toString(),
                         style = MaterialTheme.typography.bodyMedium,
                         modifier = Modifier.padding(start = 4.dp),
                     )

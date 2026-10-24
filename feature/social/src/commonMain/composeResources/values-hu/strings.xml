@@ -63,6 +63,7 @@
     <string name="social_error_load_explore">Nem sikerült betölteni a Felfedezést.</string>
     <string name="social_error_search_people">Nem sikerült embereket keresni.</string>
     <string name="social_error_like">Nem sikerült menteni a kedvelést.</string>
+    <string name="social_error_hot">Nem sikerült hotspotként megjelölni a helyet.</string>
     <string name="social_error_save_trip">Nem sikerült elmenteni az utazást.</string>
     <string name="social_error_unsave_trip">Nem sikerült eltávolítani az utazást az utazásaid közül.</string>
     <string name="social_error_report">Nem sikerült elküldeni a bejelentést.</string>

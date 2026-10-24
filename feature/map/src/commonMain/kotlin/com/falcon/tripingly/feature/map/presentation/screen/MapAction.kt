@@ -86,7 +86,7 @@ sealed interface MapAction {
 
     /** The card over the selected stop. */
     sealed interface StopCard : MapAction {
-        data class ToggleLike(val markerId: String) : StopCard
+        data class ToggleHot(val markerId: String) : StopCard
         /** The stop's photos open in a sheet. */
         data object OpenPhotos : StopCard
         /** The stop's comments open in a sheet. */

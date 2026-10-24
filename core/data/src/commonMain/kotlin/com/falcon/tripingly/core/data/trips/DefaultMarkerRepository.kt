@@ -247,7 +247,7 @@ internal class DefaultMarkerRepository(
         if (result is AppResult.Success) {
             // The place the server matched, with its hearts (and the name it gave a stop added without one);
             // the rest is already on the device.
-            (result.data as? MarkerDto)?.let { local.savePlaceOfMarker(it.id, it.placeId, it.name, it.likeCount.toInt(), it.likedByMe, it.canLike) }
+            (result.data as? MarkerDto)?.let { local.savePlaceOfMarker(it.id, it.placeId, it.name, it.hotCount.toInt(), it.hotByMe, it.canMarkHot) }
             return null
         }
         val error = (result as AppResult.Error).error

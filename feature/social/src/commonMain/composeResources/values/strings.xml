@@ -63,6 +63,7 @@
     <string name="social_error_load_explore">Couldn’t load Explore.</string>
     <string name="social_error_search_people">Couldn’t search for people.</string>
     <string name="social_error_like">Couldn’t save your like.</string>
+    <string name="social_error_hot">Couldn’t mark this place as hot.</string>
     <string name="social_error_save_trip">Couldn’t save the trip.</string>
     <string name="social_error_unsave_trip">Couldn’t remove the trip from your trips.</string>
     <string name="social_error_report">Couldn’t send your report.</string>

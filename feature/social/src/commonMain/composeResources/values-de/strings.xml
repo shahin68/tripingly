@@ -63,6 +63,7 @@
     <string name="social_error_load_explore">Entdecken konnte nicht geladen werden.</string>
     <string name="social_error_search_people">Die Personensuche ist fehlgeschlagen.</string>
     <string name="social_error_like">Dein Like konnte nicht gespeichert werden.</string>
+    <string name="social_error_hot">Der Ort konnte nicht als Hotspot markiert werden.</string>
     <string name="social_error_save_trip">Die Reise konnte nicht gespeichert werden.</string>
     <string name="social_error_unsave_trip">Die Reise konnte nicht aus deinen Reisen entfernt werden.</string>
     <string name="social_error_report">Deine Meldung konnte nicht gesendet werden.</string>

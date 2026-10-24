@@ -249,9 +249,9 @@ class PlaceRepositoryTest {
             {
               "id": "p1", "name": "Stephansdom", "category": "attraction",
               "location": {"lat": 48.2085, "lng": 16.3731},
-              "isTripinly": true, "likeCount": 3, "prominence": 90,
+              "isTripinly": true, "hotCount": 3, "prominence": 90,
               "coverPhotoId": "ph1", "coverImageId": "ph1", "coverSource": "trip", "coverThumbUrl": "https://r2/ph1/thumb",
-              "likedByMe": false, "source": "osm", "isActive": true, "osmType": "way", "osmId": "1",
+              "hotByMe": false, "source": "osm", "isActive": true, "osmType": "way", "osmId": "1",
               "tags": {"openingHours": null, "website": null, "cuisine": null, "wikidata": null},
               "photoThumbUrls": ["https://r2/ph1/thumb"],
               "images": [
@@ -283,7 +283,7 @@ class PlaceRepositoryTest {
                   "places": [{
                     "id": "p-$tile", "name": "$placeName", "category": "attraction",
                     "location": {"lat": 48.2085, "lng": 16.3731},
-                    "isTripinly": true, "likeCount": 3, "prominence": 90, "likedByMe": false,
+                    "isTripinly": true, "hotCount": 3, "prominence": 90, "hotByMe": false,
                     "coverImageId": "img-$tile", "coverThumbUrl": "https://images.test/img-$tile?sig=$signature"
                   }],
                   "clusters": []

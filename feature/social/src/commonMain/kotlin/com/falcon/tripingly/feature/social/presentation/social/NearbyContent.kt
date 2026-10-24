@@ -32,7 +32,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.falcon.tripingly.core.common.util.NumberUtils
-import com.falcon.tripingly.core.designsystem.component.LikeButton
+import com.falcon.tripingly.core.designsystem.component.HotButton
 import com.falcon.tripingly.core.designsystem.component.OsmAttribution
 import com.falcon.tripingly.core.designsystem.component.PhotoImage
 import com.falcon.tripingly.core.designsystem.component.PhotoSize
@@ -84,7 +84,7 @@ internal fun NearbyContent(state: NearbyState, onAction: (Action) -> Unit) {
                             modifier = Modifier.animateItem(),
                             place = place,
                             onOpenImage = { onAction(Action.Nearby.OpenImage(place)) },
-                            onLike = { onAction(Action.Nearby.LikePlace(place)) },
+                            onMarkHot = { onAction(Action.Nearby.MarkHot(place)) },
                             onAdd = { onAction(Action.Nearby.AddPlace(place)) },
                         )
                     }
@@ -119,7 +119,7 @@ private fun LocationAsk(status: NearbyStatus, onAction: (Action) -> Unit) {
 }
 
 @Composable
-private fun NearbyPlaceRow(place: NearbyPlace, onOpenImage: () -> Unit, onLike: () -> Unit, onAdd: () -> Unit, modifier: Modifier = Modifier) {
+private fun NearbyPlaceRow(place: NearbyPlace, onOpenImage: () -> Unit, onMarkHot: () -> Unit, onAdd: () -> Unit, modifier: Modifier = Modifier) {
     val cover = place.coverImageId
     Row(
         modifier = modifier
@@ -146,7 +146,7 @@ private fun NearbyPlaceRow(place: NearbyPlace, onOpenImage: () -> Unit, onLike: 
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             Row(verticalAlignment = Alignment.CenterVertically) {
-                LikeButton(liked = place.likedByMe, count = place.likeCount, onToggle = onLike)
+                HotButton(hot = place.hotByMe, count = place.hotCount, onToggle = onMarkHot)
                 TextButton(onClick = onAdd) {
                     Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(18.dp))
                     Text(stringResource(Res.string.social_add_place), modifier = Modifier.padding(start = 4.dp))
@@ -176,7 +176,7 @@ private fun NearbyContentPreview(@PreviewParameter(NearbyPreviewStates::class) s
 private fun NearbyPlaceRowPreview() {
     TripinglyTheme {
         Column(Modifier.background(MaterialTheme.colorScheme.surface)) {
-            previewNearbyPlaces.forEach { place -> NearbyPlaceRow(place = place, onOpenImage = {}, onLike = {}, onAdd = {}) }
+            previewNearbyPlaces.forEach { place -> NearbyPlaceRow(place = place, onOpenImage = {}, onMarkHot = {}, onAdd = {}) }
         }
     }
 }

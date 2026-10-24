@@ -18,13 +18,12 @@ import com.falcon.tripingly.core.model.account.SessionState
 import com.falcon.tripingly.core.model.photo.PhotoOwner
 import com.falcon.tripingly.core.model.photo.PickedImage
 import com.falcon.tripingly.core.model.route.ROUTES_ENTITLEMENT
-import com.falcon.tripingly.core.model.social.LikeTarget
 import com.falcon.tripingly.core.model.social.ReportTarget
 import com.falcon.tripingly.core.model.trip.TripDetails
 import com.falcon.tripingly.core.ui.toUiText
 import com.falcon.tripingly.feature.map.domain.model.CameraCommand
 import com.falcon.tripingly.feature.map.generated.resources.Res
-import com.falcon.tripingly.feature.map.generated.resources.map_error_like
+import com.falcon.tripingly.feature.map.generated.resources.map_error_hot
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
@@ -179,7 +178,7 @@ class MapViewModel(
 
     private fun onStopCard(action: MapAction.StopCard) {
         when (action) {
-            is MapAction.StopCard.ToggleLike -> toggleStopLike(action.markerId)
+            is MapAction.StopCard.ToggleHot -> toggleStopHot(action.markerId)
             is MapAction.StopCard.OpenPhotos -> selection.selectedMarkerId?.let { openSheet(Sheet.StopPhotos(it)) }
             is MapAction.StopCard.OpenComments -> selection.selectedMarkerId?.let { openSheet(Sheet.StopComments(it)) }
             is MapAction.StopCard.AddPhotos -> addStopPhotos(action.images)
@@ -266,13 +265,13 @@ class MapViewModel(
         openSheet(Sheet.StopPhotos(markerId))
     }
 
-    /** A stop's heart likes its place; shows at once, see [SocialRepository.setLiked]. */
-    private fun toggleStopLike(markerId: String) {
+    /** A stop's flame marks its place hot; shows at once, see [SocialRepository.setHot]. */
+    private fun toggleStopHot(markerId: String) {
         val stop = context.days().firstNotNullOfOrNull { day -> day.markers.firstOrNull { it.id == markerId } } ?: return
-        if (!stop.canLike) return
+        if (!stop.canMarkHot) return
         viewModelScope.launch {
-            val result = socialRepository.setLiked(LikeTarget.Place, stop.placeId, liked = !stop.likedByMe)
-            if (result is AppResult.Error) context.showMessage(result.error.toUiText(Res.string.map_error_like))
+            val result = socialRepository.setHot(stop.placeId, hot = !stop.hotByMe)
+            if (result is AppResult.Error) context.showMessage(result.error.toUiText(Res.string.map_error_hot))
         }
     }
 

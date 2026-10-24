@@ -32,7 +32,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.falcon.tripingly.core.designsystem.component.CommonsCredit
-import com.falcon.tripingly.core.designsystem.component.LikeButton
+import com.falcon.tripingly.core.designsystem.component.HotButton
 import com.falcon.tripingly.core.designsystem.component.PhotoImage
 import com.falcon.tripingly.core.designsystem.component.PhotoSize
 import com.falcon.tripingly.core.designsystem.theme.spacing
@@ -64,7 +64,7 @@ fun StopCard(
     onOpen: () -> Unit,
     onAddPhotos: () -> Unit,
     onTakePhoto: () -> Unit,
-    onToggleLike: () -> Unit,
+    onToggleHot: () -> Unit,
     onOpenComments: () -> Unit,
     canReport: Boolean,
     onReport: () -> Unit,
@@ -122,7 +122,7 @@ fun StopCard(
             }
             fallback?.credit?.let { credit -> CommonsCredit(credit = credit, cropped = true, maxLines = 2) }
             Row(verticalAlignment = Alignment.CenterVertically) {
-                if (marker.canLike) LikeButton(liked = marker.likedByMe, count = marker.likeCount, onToggle = onToggleLike)
+                if (marker.canMarkHot) HotButton(hot = marker.hotByMe, count = marker.hotCount, onToggle = onToggleHot)
                 TextButton(onClick = onOpenComments) {
                     Icon(Icons.AutoMirrored.Outlined.Comment, contentDescription = null, modifier = Modifier.size(18.dp))
                     Text(
@@ -176,8 +176,8 @@ internal class StopCardPreviewStates : PreviewParameterProvider<StopCardPreview>
                 title = UiText.Server("Musée national des Arts asiatiques – Guimet, the long name of a museum"),
                 orderNumber = 12,
                 photoCount = 0,
-                likeCount = 0,
-                likedByMe = false,
+                hotCount = 0,
+                hotByMe = false,
                 commentCount = 0,
             ),
             canEdit = true,
@@ -200,7 +200,7 @@ private fun StopCardPreview(@PreviewParameter(StopCardPreviewStates::class) card
             onOpen = {},
             onAddPhotos = {},
             onTakePhoto = {},
-            onToggleLike = {},
+            onToggleHot = {},
             onOpenComments = {},
             canReport = card.canReport,
             onReport = {},
@@ -220,7 +220,7 @@ private fun StopCardDarkPreview() {
             onOpen = {},
             onAddPhotos = {},
             onTakePhoto = {},
-            onToggleLike = {},
+            onToggleHot = {},
             onOpenComments = {},
             canReport = false,
             onReport = {},
