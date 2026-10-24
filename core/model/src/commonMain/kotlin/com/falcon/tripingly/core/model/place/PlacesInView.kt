@@ -1,6 +1,7 @@
 package com.falcon.tripingly.core.model.place
 
 import com.falcon.tripingly.core.model.trip.GeoPoint
+import com.falcon.tripingly.core.model.trip.UserSummary
 import kotlin.math.ceil
 import kotlin.math.floor
 import kotlin.math.pow
@@ -60,6 +61,8 @@ data class PlaceDetails(
     val website: String?,
     /** For the card, the cover first: trip photos people liked here, then Wikimedia Commons images. */
     val images: List<PlaceImage>,
+    /** Who made this custom spot, credited as "Added by"; null for OSM places and when the server keeps it hidden. */
+    val addedBy: UserSummary? = null,
 )
 
 enum class PlaceImageSource { Trip, Commons }

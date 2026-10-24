@@ -4,6 +4,7 @@ import com.falcon.tripingly.core.common.error.DataError
 import com.falcon.tripingly.core.common.result.AppResult
 import com.falcon.tripingly.core.common.result.map
 import com.falcon.tripingly.core.data.config.AppConfigRepository
+import com.falcon.tripingly.core.data.trips.toUser
 import com.falcon.tripingly.core.model.Page
 import com.falcon.tripingly.core.model.place.MapPlace
 import com.falcon.tripingly.core.model.place.OsmRef
@@ -245,6 +246,7 @@ internal class DefaultPlaceRepository(
                 credit = image.credit?.let { ImageCredit(it.author, it.title, it.license, it.licenseUrl, it.sourceUrl) },
             )
         },
+        addedBy = addedBy?.toUser(),
     )
 
     private class LoadedSquare {

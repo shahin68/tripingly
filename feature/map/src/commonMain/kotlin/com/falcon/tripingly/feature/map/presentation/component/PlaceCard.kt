@@ -30,6 +30,7 @@ import com.falcon.tripingly.core.designsystem.theme.spacing
 import com.falcon.tripingly.core.model.place.MapPlace
 import com.falcon.tripingly.core.model.place.PlaceCategory
 import com.falcon.tripingly.core.model.place.PlaceDetails
+import com.falcon.tripingly.core.model.trip.UserSummary
 import com.falcon.tripingly.feature.map.generated.resources.Res
 import com.falcon.tripingly.feature.map.generated.resources.*
 import org.jetbrains.compose.resources.StringResource
@@ -116,6 +117,13 @@ fun PlaceCard(
                     )
                 }
             }
+            details?.addedBy?.let { creator ->
+                Text(
+                    text = stringResource(Res.string.map_place_added_by, creator.username),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
             details?.openingHours?.let { hours ->
                 Column {
                     Text(stringResource(Res.string.map_place_opening_hours), style = MaterialTheme.typography.labelMedium)
@@ -175,13 +183,14 @@ private fun PlaceCategory.label(): StringResource = when (this) {
     PlaceCategory.Other -> Res.string.map_place_category_other
 }
 
-/** A place loading, loaded with images, hours and website, an address from search, and a viewer's offering "Route to here". */
+/** A place loading, loaded with images, hours and website, an address from search, a viewer's offering "Route to here", and a custom spot crediting its creator. */
 internal class PlaceCardPreviewStates : PreviewParameterProvider<PlaceCardPreview> {
     override val values = sequenceOf(
         PlaceCardPreview(previewPlace, details = null, address = null, dayNumber = 2, canRouteTo = false),
         PlaceCardPreview(previewPlace, previewPlaceDetails, address = null, dayNumber = 2, canRouteTo = false),
         PlaceCardPreview(previewCafe.copy(name = "12 Rue de Rivoli"), details = null, address = "12 Rue de Rivoli, 75004 Paris, France", dayNumber = 1, canRouteTo = false),
         PlaceCardPreview(previewCafe, previewPlaceDetails.copy(images = emptyList(), openingHours = null, website = null), address = null, dayNumber = null, canRouteTo = true),
+        PlaceCardPreview(previewCafe, previewPlaceDetails.copy(addedBy = UserSummary("u-1", "anna", "Anna")), address = null, dayNumber = 1, canRouteTo = false),
     )
 }
 

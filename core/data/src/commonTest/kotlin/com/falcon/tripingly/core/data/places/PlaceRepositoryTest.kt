@@ -11,6 +11,7 @@ import com.falcon.tripingly.core.model.place.PlaceImageSource
 import com.falcon.tripingly.core.model.place.PlaceCategory
 import com.falcon.tripingly.core.model.place.PlaceSquare
 import com.falcon.tripingly.core.model.place.PlacesInView
+import com.falcon.tripingly.core.model.trip.UserSummary
 import com.falcon.tripingly.core.network.ApiConfig
 import com.falcon.tripingly.core.network.auth.InMemoryTokenStore
 import com.falcon.tripingly.core.network.auth.SessionEvents
@@ -62,6 +63,8 @@ class PlaceRepositoryTest {
                     """{"items":[],"attribution":"© OpenStreetMap contributors"}"""
                 } else if (request.url.encodedPath.endsWith("places/p1")) {
                     PLACE_DETAIL
+                } else if (request.url.encodedPath.endsWith("places/u1")) {
+                    USER_PLACE_DETAIL
                 } else {
                     // The photo's link is signed anew on every answer.
                     tilesAnswer(request.url.parameters["tiles"].orEmpty(), placeName, signature = count)
@@ -219,6 +222,14 @@ class PlaceRepositoryTest {
             ),
             details.images,
         )
+        assertNull(details.addedBy)
+    }
+
+    @Test
+    fun `a custom spot credits whoever added it`() = runTest {
+        val details = assertIs<AppResult.Success<PlaceDetails>>(repository().place("u1")).data
+
+        assertEquals(UserSummary(id = "u-anna", username = "anna", displayName = "Anna"), details.addedBy)
     }
 
     @Test
@@ -252,9 +263,15 @@ class PlaceRepositoryTest {
                             "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
                             "sourceUrl": "https://commons.wikimedia.org/wiki/File:Stephansdom_Wien.jpg"}}
               ],
+              "addedBy": null,
               "attribution": "© OpenStreetMap contributors"
             }
         """.trimIndent()
+
+        val USER_PLACE_DETAIL = PLACE_DETAIL
+            .replace("\"id\": \"p1\"", "\"id\": \"u1\"")
+            .replace("\"source\": \"osm\"", "\"source\": \"user\"")
+            .replace("\"addedBy\": null", "\"addedBy\": {\"id\": \"u-anna\", \"username\": \"anna\", \"displayName\": \"Anna\"}")
 
         fun tilesAnswer(tiles: String, placeName: String, signature: Int) = tiles.split(",").joinToString(
             prefix = "{\"tiles\": [",

@@ -37,6 +37,7 @@
     <string name="map_place_add_to_day">Add to day %1$d</string>
     <string name="map_place_opening_hours">Opening hours</string>
     <string name="map_place_website">Website</string>
+    <string name="map_place_added_by">Added by @%1$s</string>
     <string name="map_place_image_position">%1$d / %2$d</string>
     <string name="map_place_image_report">Report image</string>
     <string name="map_photos_commons_note">Images from Wikimedia Commons: open one to see its author and licence.</string>
