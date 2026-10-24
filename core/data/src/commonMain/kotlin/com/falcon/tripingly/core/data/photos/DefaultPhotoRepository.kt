@@ -40,6 +40,7 @@ import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
 import kotlin.time.Duration.Companion.seconds
 import kotlin.uuid.Uuid
+import com.falcon.tripingly.core.data.trips.toUser
 
 internal class DefaultPhotoRepository(
     private val api: PhotosApi,
@@ -320,6 +321,6 @@ internal fun PhotoDto.toPhoto() = Photo(
     position = position.toInt(),
     likeCount = likeCount.toInt(),
     likedByMe = likedByMe,
-    uploaderId = uploader?.id,
+    uploader = uploader?.toUser(),
     credit = credit?.let { ImageCredit(it.author, it.title, it.license, it.licenseUrl, it.sourceUrl) },
 )

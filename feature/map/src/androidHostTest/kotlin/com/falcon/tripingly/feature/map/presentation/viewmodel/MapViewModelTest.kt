@@ -1114,7 +1114,7 @@ class MapViewModelTest {
         position = 0,
         likeCount = 0,
         likedByMe = false,
-        uploaderId = null,
+        uploader = null,
         credit = credit,
     )
 

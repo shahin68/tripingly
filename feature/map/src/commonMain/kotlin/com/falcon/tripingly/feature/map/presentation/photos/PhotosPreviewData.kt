@@ -12,6 +12,7 @@ import com.falcon.tripingly.feature.map.presentation.photos.PhotosViewModel.Stat
 import kotlinx.collections.immutable.persistentListOf
 import com.falcon.tripingly.feature.map.generated.resources.Res
 import com.falcon.tripingly.feature.map.generated.resources.map_error_delete_photo
+import com.falcon.tripingly.core.model.trip.UserSummary
 
 private val owner = PhotoOwner.Stop("s1")
 
@@ -26,7 +27,7 @@ private fun previewPhoto(id: String, status: PhotoStatus = PhotoStatus.Ready, li
     position = 0,
     likeCount = likes,
     likedByMe = likes > 0,
-    uploaderId = "u1",
+    uploader = UserSummary(id = "u1", username = "anna", displayName = "Anna"),
     credit = credit,
 )
 

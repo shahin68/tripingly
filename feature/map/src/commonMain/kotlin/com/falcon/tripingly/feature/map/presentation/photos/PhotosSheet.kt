@@ -367,7 +367,7 @@ private fun GalleryPhoto(photo: Photo, isCover: Boolean, canDelete: Boolean, onA
 
 /** A stop's owners and editors delete any photo; everyone deletes their own. */
 private fun State.canDelete(photo: Photo, canManage: Boolean): Boolean =
-    canManage || (myUserId != null && photo.uploaderId == myUserId)
+    canManage || (myUserId != null && photo.uploader?.id == myUserId)
 
 @Composable
 private fun GalleryUpload(upload: PhotoUpload, onAction: (Action) -> Unit, modifier: Modifier = Modifier) {
@@ -431,7 +431,7 @@ private fun GalleryViewer(
         onToggleLike = { onAction(Action.OnToggleLike(it)) },
         onDismiss = { onAction(Action.OnClosePhoto) },
     ) { current ->
-        if (state.myUserId == null || current.uploaderId != state.myUserId) {
+        if (state.myUserId == null || current.uploader?.id != state.myUserId) {
             IconButton(onClick = { onReport(current) }) {
                 Icon(Icons.Outlined.Flag, contentDescription = stringResource(Res.string.map_place_image_report), tint = Color.White)
             }

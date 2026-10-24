@@ -10,6 +10,7 @@
     <string name="common_cancel">Abbrechen</string>
     <string name="like">Gefällt mir</string>
     <string name="photo_viewer_close">Schließen</string>
+    <string name="photo_viewer_uploaded_by">Foto von @%1$s</string>
 
     <!-- Report -->
     <string name="report_title">Warum meldest du das?</string>

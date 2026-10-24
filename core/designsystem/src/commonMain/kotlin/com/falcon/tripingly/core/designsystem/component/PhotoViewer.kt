@@ -36,6 +36,9 @@ import com.falcon.tripingly.core.model.photo.PhotoStatus
 import com.falcon.tripingly.core.model.place.ImageCredit
 import androidx.compose.ui.tooling.preview.Preview
 import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
+import androidx.compose.material3.Text
+import com.falcon.tripingly.core.designsystem.generated.resources.photo_viewer_uploaded_by
+import com.falcon.tripingly.core.model.trip.UserSummary
 
 /**
  * The app's one full-screen photo viewer: [photos] uncropped on black, swiped through from [initialIndex] (one
@@ -83,17 +86,27 @@ fun PhotoViewer(
                     actions(current)
                 }
             }
+            // A Commons image credits its author and licence; a photo, who uploaded it.
+            val bottom = Modifier
+                .align(Alignment.BottomCenter)
+                .fillMaxWidth()
+                .safeDrawingPadding()
+                .background(Color.Black.copy(alpha = 0.5f))
+                .padding(MaterialTheme.spacing.medium)
+            current?.uploader?.takeIf { current.credit == null }?.let { uploader ->
+                Text(
+                    text = stringResource(Res.string.photo_viewer_uploaded_by, uploader.username),
+                    color = Color.White,
+                    style = MaterialTheme.typography.bodySmall,
+                    modifier = bottom,
+                )
+            }
             current?.credit?.let { credit ->
                 CommonsCredit(
                     credit = credit,
                     cropped = false,
                     color = Color.White,
-                    modifier = Modifier
-                        .align(Alignment.BottomCenter)
-                        .fillMaxWidth()
-                        .safeDrawingPadding()
-                        .background(Color.Black.copy(alpha = 0.5f))
-                        .padding(MaterialTheme.spacing.medium),
+                    modifier = bottom,
                 )
             }
         }
@@ -108,7 +121,7 @@ fun PhotoLike(photo: Photo, onToggle: () -> Unit, modifier: Modifier = Modifier)
     }
 }
 
-private fun previewPhoto(id: String, likes: Int, liked: Boolean, credit: ImageCredit? = null) = Photo(
+private fun previewPhoto(id: String, likes: Int, liked: Boolean, credit: ImageCredit? = null, uploader: UserSummary? = null) = Photo(
     id = id,
     owner = PhotoOwner.Place("place"),
     status = PhotoStatus.Ready,
@@ -119,7 +132,7 @@ private fun previewPhoto(id: String, likes: Int, liked: Boolean, credit: ImageCr
     position = 0,
     likeCount = likes,
     likedByMe = liked,
-    uploaderId = null,
+    uploader = uploader,
     credit = credit,
 )
 
@@ -136,7 +149,7 @@ private val previewViewerPhotos = listOf(
             sourceUrl = "https://commons.wikimedia.org/wiki/File:Tour_Eiffel.jpg",
         ),
     ),
-    previewPhoto(id = "2", likes = 0, liked = false),
+    previewPhoto(id = "2", likes = 0, liked = false, uploader = UserSummary(id = "u1", username = "anna", displayName = "Anna")),
 )
 
 @Preview

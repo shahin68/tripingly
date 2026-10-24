@@ -391,7 +391,7 @@ class SocialViewModelTest {
         position = 0,
         likeCount = 0,
         likedByMe = false,
-        uploaderId = null,
+        uploader = null,
         credit = ImageCredit(author = "A", title = null, license = "CC BY-SA 4.0", licenseUrl = null, sourceUrl = "https://commons.wikimedia.org/wiki/File:A.jpg"),
     )
 
