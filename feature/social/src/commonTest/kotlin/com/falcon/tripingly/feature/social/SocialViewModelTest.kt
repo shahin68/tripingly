@@ -50,6 +50,10 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 import kotlin.time.Instant
+import com.falcon.tripingly.core.model.photo.Photo
+import com.falcon.tripingly.core.model.photo.PhotoOwner
+import com.falcon.tripingly.core.model.photo.PhotoStatus
+import com.falcon.tripingly.core.model.place.ImageCredit
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class SocialViewModelTest {
@@ -61,6 +65,7 @@ class SocialViewModelTest {
     private var exploreMore = emptyList<PublicTrip>()
     private var likeRefused = false
     private var reportRefused = false
+    private val reported = mutableListOf<Pair<ReportTarget, String>>()
 
     /** The filter of every first page of Explore asked for. */
     private val filters = mutableListOf<ExploreFilter>()
@@ -71,8 +76,10 @@ class SocialViewModelTest {
             return if (cursor == null) Page(explore, nextCursor = "page-2".takeIf { exploreMore.isNotEmpty() }).asSuccess() else Page(exploreMore, null).asSuccess()
         }
 
-        override suspend fun report(target: ReportTarget, targetId: String, reason: ReportReason, details: String?): AppResult<Unit, DataError.Network> =
-            if (reportRefused) AppResult.Error(DataError.Network.NoInternet) else Unit.asSuccess()
+        override suspend fun report(target: ReportTarget, targetId: String, reason: ReportReason, details: String?): AppResult<Unit, DataError.Network> {
+            reported += target to targetId
+            return if (reportRefused) AppResult.Error(DataError.Network.NoInternet) else Unit.asSuccess()
+        }
 
         override suspend fun setLiked(target: LikeTarget, targetId: String, liked: Boolean): AppResult<LikeState, DataError.Network> =
             if (likeRefused) AppResult.Error(DataError.Network.NoInternet) else LikeState(liked, if (liked) 5 else 4).asSuccess()
@@ -320,7 +327,7 @@ class SocialViewModelTest {
         viewModel.onAction(Action.Explore.ReportTrip(trip))
         viewModel.onAction(Action.Report.Send(ReportReason.Spam, ""))
         advanceUntilIdle()
-        assertEquals(SocialViewModel.ReportState(trip), viewModel.uiState.value.report, "open again for another try")
+        assertEquals(SocialViewModel.ReportState(ReportTarget.Trip, trip.trip.id), viewModel.uiState.value.report, "open again for another try")
         assertTrue(viewModel.uiState.value.message != null)
 
         reportRefused = false
@@ -350,6 +357,43 @@ class SocialViewModelTest {
         assertEquals(NearbyStatus.Ready, viewModel.uiState.value.nearby.status)
         assertTrue(viewModel.uiState.value.nearby.places.isNotEmpty())
     }
+
+    @Test
+    fun aNearbyPlacesImages_openFromItsCover_andACommonsImageIsReportedAsAPlaceImage() = runTest {
+        val viewModel = viewModel()
+        viewModel.onAction(Action.Nearby.PermissionChecked(LocationPermission.Granted))
+        advanceUntilIdle()
+        val place = viewModel.uiState.value.nearby.places.first()
+
+        viewModel.onAction(Action.Nearby.OpenImage(place))
+        assertEquals(place, viewModel.uiState.value.nearby.openImage)
+
+        val commons = commonsImage("commons-1")
+        viewModel.onAction(Action.Nearby.ReportImage(commons))
+        viewModel.onAction(Action.Report.Send(ReportReason.Other, ""))
+        viewModel.onAction(Action.Nearby.ReportImage(commons.copy(id = "photo-1", credit = null)))
+        viewModel.onAction(Action.Report.Send(ReportReason.Other, ""))
+        advanceUntilIdle()
+        assertEquals(listOf(ReportTarget.PlaceImage to "commons-1", ReportTarget.Photo to "photo-1"), reported)
+
+        viewModel.onAction(Action.Nearby.CloseImage)
+        assertEquals(null, viewModel.uiState.value.nearby.openImage)
+    }
+
+    private fun commonsImage(id: String) = Photo(
+        id = id,
+        owner = PhotoOwner.Place("place"),
+        status = PhotoStatus.Ready,
+        thumbUrl = null,
+        displayUrl = null,
+        width = null,
+        height = null,
+        position = 0,
+        likeCount = 0,
+        likedByMe = false,
+        uploaderId = null,
+        credit = ImageCredit(author = "A", title = null, license = "CC BY-SA 4.0", licenseUrl = null, sourceUrl = "https://commons.wikimedia.org/wiki/File:A.jpg"),
+    )
 
     @Test
     fun addingAPlace_withoutTripsOfMine_says_so() = runTest {

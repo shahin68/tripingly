@@ -37,7 +37,6 @@ import com.falcon.tripingly.core.designsystem.component.OsmAttribution
 import com.falcon.tripingly.core.designsystem.component.PhotoImage
 import com.falcon.tripingly.core.designsystem.component.PhotoSize
 import com.falcon.tripingly.core.designsystem.theme.spacing
-import com.falcon.tripingly.core.model.place.PlaceImageSource
 import com.falcon.tripingly.core.model.social.NearbyPlace
 import com.falcon.tripingly.core.ui.UiText
 import com.falcon.tripingly.feature.social.generated.resources.Res
@@ -58,6 +57,9 @@ import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
 import androidx.compose.ui.tooling.preview.PreviewParameter
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import com.falcon.tripingly.core.designsystem.component.icon
+import androidx.compose.foundation.clickable
+import com.falcon.tripingly.feature.social.generated.resources.social_nearby_open_images
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -81,6 +83,7 @@ internal fun NearbyContent(state: NearbyState, onAction: (Action) -> Unit) {
                         NearbyPlaceRow(
                             modifier = Modifier.animateItem(),
                             place = place,
+                            onOpenImage = { onAction(Action.Nearby.OpenImage(place)) },
                             onLike = { onAction(Action.Nearby.LikePlace(place)) },
                             onAdd = { onAction(Action.Nearby.AddPlace(place)) },
                         )
@@ -116,22 +119,24 @@ private fun LocationAsk(status: NearbyStatus, onAction: (Action) -> Unit) {
 }
 
 @Composable
-private fun NearbyPlaceRow(place: NearbyPlace, onLike: () -> Unit, onAdd: () -> Unit, modifier: Modifier = Modifier) {
+private fun NearbyPlaceRow(place: NearbyPlace, onOpenImage: () -> Unit, onLike: () -> Unit, onAdd: () -> Unit, modifier: Modifier = Modifier) {
+    val cover = place.coverImageId
     Row(
         modifier = modifier
             .fillMaxWidth()
+            // A tap opens the place's images, where a Wikimedia Commons image shows its credit.
+            .clickable(enabled = cover != null, onClickLabel = stringResource(Res.string.social_nearby_open_images), onClick = onOpenImage)
             .padding(horizontal = MaterialTheme.spacing.medium, vertical = MaterialTheme.spacing.small),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        // Only a trip photo: a Commons cover needs its credit, which this list doesn't have.
-        val tripCover = place.coverImageId?.takeIf { place.coverSource == PlaceImageSource.Trip }
-        PhotoImage(
-            photoId = tripCover ?: place.id,
-            url = place.coverThumbUrl?.takeIf { tripCover != null },
-            size = PhotoSize.Thumb,
-            contentDescription = null,
-            modifier = Modifier.size(56.dp).clip(RoundedCornerShape(8.dp)),
-        )
+        val thumbModifier = Modifier.size(56.dp).clip(RoundedCornerShape(8.dp))
+        if (cover != null) {
+            PhotoImage(photoId = cover, url = place.coverThumbUrl, size = PhotoSize.Thumb, contentDescription = null, modifier = thumbModifier)
+        } else {
+            Box(thumbModifier.background(MaterialTheme.colorScheme.surfaceVariant), contentAlignment = Alignment.Center) {
+                Icon(place.category.icon, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
         Spacer(Modifier.width(MaterialTheme.spacing.medium))
         Column(Modifier.weight(1f)) {
             Text(place.name, style = MaterialTheme.typography.titleMedium, maxLines = 2, overflow = TextOverflow.Ellipsis)
@@ -171,7 +176,7 @@ private fun NearbyContentPreview(@PreviewParameter(NearbyPreviewStates::class) s
 private fun NearbyPlaceRowPreview() {
     TripinglyTheme {
         Column(Modifier.background(MaterialTheme.colorScheme.surface)) {
-            previewNearbyPlaces.forEach { place -> NearbyPlaceRow(place = place, onLike = {}, onAdd = {}) }
+            previewNearbyPlaces.forEach { place -> NearbyPlaceRow(place = place, onOpenImage = {}, onLike = {}, onAdd = {}) }
         }
     }
 }

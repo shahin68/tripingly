@@ -33,6 +33,7 @@
     <string name="social_nearby_empty">Még nincs népszerű hely a közeledben.</string>
     <string name="social_nearby_distance_m">%1$d m-re</string>
     <string name="social_nearby_distance_km">%1$s km-re</string>
+    <string name="social_nearby_open_images">Fotók megtekintése</string>
     <string name="social_add_place">Utazáshoz adás</string>
     <string name="social_add_place_no_trips">Előbb hozz létre egy utazást, aztán adj hozzá helyeket.</string>
     <string name="social_add_place_pick_trip">Melyik utazáshoz add hozzá: %1$s?</string>

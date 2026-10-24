@@ -36,6 +36,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import platform.UIKit.UIColor
 import platform.UIKit.UIImage
+import com.falcon.tripingly.core.designsystem.component.icon
 
 /**
  * Google's map on iOS, driven like the Android one: place pins as markers that keep their size on

@@ -33,6 +33,7 @@
     <string name="social_nearby_empty">Noch keine beliebten Orte in deiner Nähe.</string>
     <string name="social_nearby_distance_m">%1$d m entfernt</string>
     <string name="social_nearby_distance_km">%1$s km entfernt</string>
+    <string name="social_nearby_open_images">Fotos anzeigen</string>
     <string name="social_add_place">Zur Reise</string>
     <string name="social_add_place_no_trips">Erstelle zuerst eine Reise und füge dann Orte hinzu.</string>
     <string name="social_add_place_pick_trip">%1$s zu welcher Reise hinzufügen?</string>

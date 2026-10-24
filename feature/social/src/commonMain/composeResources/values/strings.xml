@@ -33,6 +33,7 @@
     <string name="social_nearby_empty">No popular places around you yet.</string>
     <string name="social_nearby_distance_m">%1$d m away</string>
     <string name="social_nearby_distance_km">%1$s km away</string>
+    <string name="social_nearby_open_images">Show photos</string>
     <string name="social_add_place">Add to trip</string>
     <string name="social_add_place_no_trips">Create a trip first, then add places to it.</string>
     <string name="social_add_place_pick_trip">Add %1$s to which trip?</string>

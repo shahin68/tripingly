@@ -59,6 +59,7 @@ import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
 import androidx.compose.ui.tooling.preview.PreviewParameter
 import androidx.compose.ui.tooling.preview.PreviewParameterProvider
 import androidx.compose.foundation.background
+import com.falcon.tripingly.core.designsystem.component.icon
 
 /** How to travel, and the route's time and length (or that routes aren't available right now). */
 @Composable

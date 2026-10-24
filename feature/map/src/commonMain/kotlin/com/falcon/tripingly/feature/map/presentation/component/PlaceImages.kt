@@ -38,6 +38,7 @@ import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
 import androidx.compose.ui.tooling.preview.PreviewParameter
 import androidx.compose.ui.tooling.preview.PreviewParameterProvider
 import androidx.compose.foundation.layout.width
+import com.falcon.tripingly.core.designsystem.component.icon
 
 /**
  * The top of the place card: its images swiped through, cropped to the card, each Commons image with its

@@ -1,16 +1,6 @@
 package com.falcon.tripingly.feature.map.presentation.component
 
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AccountBalance
-import androidx.compose.material.icons.filled.Attractions
-import androidx.compose.material.icons.filled.Castle
-import androidx.compose.material.icons.filled.Landscape
-import androidx.compose.material.icons.filled.LocalBar
-import androidx.compose.material.icons.filled.LocalCafe
-import androidx.compose.material.icons.filled.Museum
-import androidx.compose.material.icons.filled.Park
 import androidx.compose.material.icons.filled.Place
-import androidx.compose.material.icons.filled.Restaurant
 import androidx.compose.runtime.Immutable
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
@@ -24,7 +14,6 @@ import androidx.compose.ui.graphics.drawscope.CanvasDrawScope
 import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.graphics.painter.Painter
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.TextMeasurer
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.drawText
@@ -44,21 +33,6 @@ import com.falcon.tripingly.core.model.place.PlaceCluster
 import com.falcon.tripingly.core.model.place.PlacesInView
 import kotlin.math.ceil
 import kotlin.math.roundToInt
-
-/** What a kind of place looks like, on its pin and in its card. */
-val PlaceCategory.icon: ImageVector
-    get() = when (this) {
-        PlaceCategory.Cafe -> Icons.Default.LocalCafe
-        PlaceCategory.Restaurant -> Icons.Default.Restaurant
-        PlaceCategory.Bar -> Icons.Default.LocalBar
-        PlaceCategory.Attraction -> Icons.Default.Attractions
-        PlaceCategory.Museum -> Icons.Default.Museum
-        PlaceCategory.Historic -> Icons.Default.Castle
-        PlaceCategory.Park -> Icons.Default.Park
-        PlaceCategory.Nature -> Icons.Default.Landscape
-        PlaceCategory.Landmark -> Icons.Default.AccountBalance
-        PlaceCategory.Other -> Icons.Default.Place
-    }
 
 /**
  * A place's pin on the map, how big it is drawn, whether it shows the place's photo and whether the place is

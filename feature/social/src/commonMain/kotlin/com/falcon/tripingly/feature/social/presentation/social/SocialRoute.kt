@@ -60,6 +60,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
 import androidx.compose.ui.tooling.preview.PreviewParameter
 import androidx.compose.foundation.background
+import com.falcon.tripingly.core.model.photo.Photo
 
 /**
  * The Social tab's content under Home's search bar: [query] (what's typed there) finds people; otherwise
@@ -70,6 +71,7 @@ fun SocialRoute(
     query: String,
     onOpenTrip: (tripId: String) -> Unit,
     onOpenProfile: (username: String) -> Unit,
+    placeImageContent: @Composable (placeId: String, imageId: String, onReport: (Photo) -> Unit, onDismiss: () -> Unit) -> Unit,
     viewModel: SocialViewModel = koinViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -96,6 +98,17 @@ fun SocialRoute(
 
     SocialScreen(state = state, onAction = viewModel::onAction)
 
+    // A Nearby place's images with their credits, opened from its cover.
+    state.nearby.openImage?.let { place ->
+        place.coverImageId?.let { imageId ->
+            placeImageContent(
+                place.id,
+                imageId,
+                { photo -> viewModel.onAction(Action.Nearby.ReportImage(photo)) },
+                { viewModel.onAction(Action.Nearby.CloseImage) },
+            )
+        }
+    }
     state.report?.let { report ->
         ReportDialog(
             onReport = { reason, details -> viewModel.onAction(Action.Report.Send(reason, details)) },

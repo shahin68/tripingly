@@ -38,6 +38,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
 import androidx.compose.ui.tooling.preview.PreviewParameter
 import androidx.compose.ui.tooling.preview.PreviewParameterProvider
+import com.falcon.tripingly.core.designsystem.component.icon
 
 /**
  * A place tapped on the map, in a card that floats above its pin: what the pin knows at once, its images,

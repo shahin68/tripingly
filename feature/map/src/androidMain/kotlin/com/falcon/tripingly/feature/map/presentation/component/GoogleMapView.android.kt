@@ -57,6 +57,7 @@ import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
+import com.falcon.tripingly.core.designsystem.component.icon
 
 @Composable
 actual fun GoogleMapView(

@@ -36,6 +36,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import com.falcon.tripingly.core.model.photo.Photo
 
 /**
  * The Social tab: Explore (public trips, most liked first, filtered by period and optionally near me; liked
@@ -110,7 +111,7 @@ class SocialViewModel(
             is Action.Explore.OwnerClick -> sendEvent(Event.OpenProfile(action.owner.username))
             is Action.Explore.LikeTrip -> tripActions.toggleLike(action.trip.trip.id)
             is Action.Explore.ToggleSaveTrip -> tripActions.toggleSave(action.trip.trip.id)
-            is Action.Explore.ReportTrip -> _uiState.update { it.copy(report = ReportState(action.trip)) }
+            is Action.Explore.ReportTrip -> _uiState.update { it.copy(report = ReportState(ReportTarget.Trip, action.trip.trip.id)) }
         }
     }
 
@@ -124,6 +125,12 @@ class SocialViewModel(
             Action.Nearby.LoadMore -> nearby.loadMore()
             is Action.Nearby.LikePlace -> nearby.toggleLike(action.place.id)
             is Action.Nearby.AddPlace -> nearby.openAddPlace(action.place)
+            is Action.Nearby.OpenImage -> _uiState.update { it.copy(nearby = it.nearby.copy(openImage = action.place)) }
+            Action.Nearby.CloseImage -> _uiState.update { it.copy(nearby = it.nearby.copy(openImage = null)) }
+            // A Wikimedia Commons image has a credit; a trip photo doesn't.
+            is Action.Nearby.ReportImage -> _uiState.update {
+                it.copy(report = ReportState(if (action.photo.credit != null) ReportTarget.PlaceImage else ReportTarget.Photo, action.photo.id))
+            }
         }
     }
 
@@ -178,7 +185,7 @@ class SocialViewModel(
         val report = _uiState.value.report?.takeUnless { it.isSending } ?: return
         _uiState.update { it.copy(report = report.copy(isSending = true)) }
         viewModelScope.launch {
-            val sent = tripActions.report(ReportTarget.Trip, report.trip.trip.id, reason, details)
+            val sent = tripActions.report(report.target, report.id, reason, details)
             _uiState.update { it.copy(report = if (sent) null else it.report?.copy(isSending = false)) }
         }
     }
@@ -225,6 +232,8 @@ class SocialViewModel(
         val status: NearbyStatus = NearbyStatus.Unknown,
         val places: ImmutableList<NearbyPlace> = persistentListOf(),
         val isLoading: Boolean = false,
+        /** The place whose images are open full screen, from its cover. */
+        val openImage: NearbyPlace? = null,
     )
 
     @Immutable
@@ -237,9 +246,9 @@ class SocialViewModel(
         val isSearchingByName: Boolean get() = query.trim().removePrefix("@").length >= UserRepository.MIN_SEARCH_LENGTH
     }
 
-    /** The report dialog, open for [trip]. */
+    /** The report dialog, open for a trip or a place image ([target] with [id]). */
     @Immutable
-    data class ReportState(val trip: PublicTrip, val isSending: Boolean = false)
+    data class ReportState(val target: ReportTarget, val id: String, val isSending: Boolean = false)
 
     /** Adding a Nearby place to a day: first the trip, then its day. */
     @Immutable
@@ -292,6 +301,9 @@ class SocialViewModel(
             data object LoadMore : Nearby
             data class LikePlace(val place: NearbyPlace) : Nearby
             data class AddPlace(val place: NearbyPlace) : Nearby
+            data class OpenImage(val place: NearbyPlace) : Nearby
+            data object CloseImage : Nearby
+            data class ReportImage(val photo: Photo) : Nearby
         }
 
         /** Finding people by the name typed in Home's search bar. */
