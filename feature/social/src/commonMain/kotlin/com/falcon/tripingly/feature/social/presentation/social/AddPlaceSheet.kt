@@ -52,6 +52,7 @@ internal fun AddPlaceSheet(addPlace: AddPlaceState, onAction: (Action) -> Unit) 
                     trip == null -> LazyColumn {
                         items(addPlace.trips, key = { it.id }) { option ->
                             SheetRow(
+                                modifier = Modifier.animateItem(),
                                 title = option.name,
                                 subtitle = DateUtils.formatRange(option.startDate, option.endDate),
                                 onClick = { onAction(Action.AddToTrip.PickTrip(option)) },
@@ -64,6 +65,7 @@ internal fun AddPlaceSheet(addPlace: AddPlaceState, onAction: (Action) -> Unit) 
                     else -> LazyColumn {
                         items(addPlace.days, key = { it.id }) { day ->
                             SheetRow(
+                                modifier = Modifier.animateItem(),
                                 title = stringResource(Res.string.social_day_number, day.position + 1),
                                 subtitle = day.date?.let(DateUtils::formatAbbreviated),
                                 onClick = { onAction(Action.AddToTrip.PickDay(day)) },
@@ -78,9 +80,9 @@ internal fun AddPlaceSheet(addPlace: AddPlaceState, onAction: (Action) -> Unit) 
 }
 
 @Composable
-private fun SheetRow(title: String, subtitle: String?, onClick: () -> Unit) {
+private fun SheetRow(title: String, subtitle: String?, onClick: () -> Unit, modifier: Modifier = Modifier) {
     Column(
-        Modifier
+        modifier
             .fillMaxWidth()
             .clickable(onClick = onClick)
             .padding(horizontal = MaterialTheme.spacing.medium, vertical = MaterialTheme.spacing.small),

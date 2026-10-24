@@ -14,7 +14,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CenterFocusStrong
 import androidx.compose.material.icons.filled.Close
@@ -58,6 +57,7 @@ import org.jetbrains.compose.resources.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
 import androidx.compose.ui.tooling.preview.PreviewParameter
+import androidx.compose.foundation.lazy.items
 
 @Composable
 internal fun DayTabs(
@@ -155,22 +155,24 @@ internal fun StopsCard(
         StopsCardTitle(stopCount = card.stops.size, canClear = card.canClear, isRouteOn = card.isRouteOn, onAction = onAction)
         Spacer(modifier = Modifier.height(6.dp))
         LazyRow(
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            contentPadding = PaddingValues(horizontal = 4.dp),
+            horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
+            contentPadding = PaddingValues(horizontal = MaterialTheme.spacing.extraSmall),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            card.stops.forEach { stop ->
-                // The time from the stop before.
-                card.legLabels[stop.id]?.let { leg ->
-                    item(key = "leg:${stop.id}") {
+            items(card.stops, key = { it.id }) { stop ->
+                Row(
+                    modifier = Modifier.animateItem(),
+                    horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    // The time from the stop before.
+                    card.legLabels[stop.id]?.let { leg ->
                         Text(
                             text = leg.asString(),
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
-                }
-                item(key = stop.id) {
                     StopChip(stop = stop, isSelected = stop.id == card.selectedStopId, onAction = onAction)
                 }
             }

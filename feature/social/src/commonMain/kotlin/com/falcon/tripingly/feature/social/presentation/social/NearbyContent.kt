@@ -79,6 +79,7 @@ internal fun NearbyContent(state: NearbyState, onAction: (Action) -> Unit) {
                     }
                     items(state.places, key = { it.id }) { place ->
                         NearbyPlaceRow(
+                            modifier = Modifier.animateItem(),
                             place = place,
                             onLike = { onAction(Action.Nearby.LikePlace(place)) },
                             onAdd = { onAction(Action.Nearby.AddPlace(place)) },
@@ -115,9 +116,9 @@ private fun LocationAsk(status: NearbyStatus, onAction: (Action) -> Unit) {
 }
 
 @Composable
-private fun NearbyPlaceRow(place: NearbyPlace, onLike: () -> Unit, onAdd: () -> Unit) {
+private fun NearbyPlaceRow(place: NearbyPlace, onLike: () -> Unit, onAdd: () -> Unit, modifier: Modifier = Modifier) {
     Row(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .padding(horizontal = MaterialTheme.spacing.medium, vertical = MaterialTheme.spacing.small),
         verticalAlignment = Alignment.CenterVertically,

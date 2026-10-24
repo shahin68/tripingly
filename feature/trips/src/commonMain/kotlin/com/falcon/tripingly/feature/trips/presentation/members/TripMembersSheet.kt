@@ -143,6 +143,7 @@ fun TripMembersScreen(
             }
             items(state.joinRequests.requests, key = { "request:${it.id}" }) { request ->
                 JoinRequestRow(
+                    modifier = Modifier.animateItem(),
                     request = request,
                     isAnswering = request.id in state.joinRequests.answeringIds,
                     onAccept = { onAction(Action.JoinRequests.Accept(request)) },
@@ -153,6 +154,7 @@ fun TripMembersScreen(
         }
         items(state.members, key = { it.user.id }) { member ->
             MemberRow(
+                modifier = Modifier.animateItem(),
                 member = member,
                 canRemove = state.canManage && member.role != TripRole.OWNER,
                 onRemove = { onAction(Action.RemoveMember(member.user.id)) },
@@ -197,6 +199,7 @@ fun TripMembersScreen(
             }
             items(state.invites.invites, key = { it.id }) { invite ->
                 InviteRow(
+                    modifier = Modifier.animateItem(),
                     invite = invite,
                     onShare = { onAction(Action.Invites.Share(invite)) },
                     onRevoke = { onAction(Action.Invites.Revoke(invite.id)) },
@@ -220,9 +223,9 @@ fun TripMembersScreen(
 }
 
 @Composable
-private fun MemberRow(member: TripMember, canRemove: Boolean, onRemove: () -> Unit) {
+private fun MemberRow(member: TripMember, canRemove: Boolean, onRemove: () -> Unit, modifier: Modifier = Modifier) {
     Row(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp),
+        modifier = modifier.fillMaxWidth().padding(horizontal = 24.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(Modifier.weight(1f)) {
@@ -244,9 +247,9 @@ private fun MemberRow(member: TripMember, canRemove: Boolean, onRemove: () -> Un
 }
 
 @Composable
-private fun JoinRequestRow(request: JoinRequest, isAnswering: Boolean, onAccept: () -> Unit, onDecline: () -> Unit) {
+private fun JoinRequestRow(request: JoinRequest, isAnswering: Boolean, onAccept: () -> Unit, onDecline: () -> Unit, modifier: Modifier = Modifier) {
     Row(
-        modifier = Modifier.fillMaxWidth().padding(start = 24.dp, end = 16.dp),
+        modifier = modifier.fillMaxWidth().padding(start = 24.dp, end = 16.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(Modifier.weight(1f)) {
@@ -301,9 +304,9 @@ private fun AddMemberField(state: AddState, onAction: (Action) -> Unit) {
 }
 
 @Composable
-private fun InviteRow(invite: TripInvite, onShare: () -> Unit, onRevoke: () -> Unit) {
+private fun InviteRow(invite: TripInvite, onShare: () -> Unit, onRevoke: () -> Unit, modifier: Modifier = Modifier) {
     Row(
-        modifier = Modifier.fillMaxWidth().padding(start = 24.dp, end = 16.dp),
+        modifier = modifier.fillMaxWidth().padding(start = 24.dp, end = 16.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(

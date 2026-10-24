@@ -198,7 +198,7 @@ private fun PeopleResults(state: PeopleSearchState, onAction: (Action) -> Unit) 
         state.results.isEmpty() -> Centered { EmptyText(stringResource(Res.string.social_people_none)) }
         else -> LazyColumn(Modifier.fillMaxSize()) {
             items(state.results, key = { it.id }) { user ->
-                PersonRow(user = user, onClick = { onAction(Action.People.PersonClick(user)) })
+                PersonRow(user = user, onClick = { onAction(Action.People.PersonClick(user)) }, modifier = Modifier.animateItem())
             }
         }
     }

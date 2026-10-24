@@ -177,7 +177,7 @@ fun StopCommentsScreen(
                 )
                 else -> LazyColumn(state = listState, modifier = Modifier.fillMaxWidth()) {
                     items(state.comments, key = { it.id }) { comment ->
-                        CommentRow(comment = comment, onOpenProfile = onOpenProfile, onAction = onAction)
+                        CommentRow(comment = comment, onOpenProfile = onOpenProfile, onAction = onAction, modifier = Modifier.animateItem())
                     }
                 }
             }
@@ -210,10 +210,11 @@ private fun CommentRow(
     comment: Comment,
     onOpenProfile: (String) -> Unit,
     onAction: (Action) -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     var menuExpanded by remember { mutableStateOf(false) }
     Row(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .padding(start = MaterialTheme.spacing.medium, top = MaterialTheme.spacing.small, bottom = MaterialTheme.spacing.small),
         horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),

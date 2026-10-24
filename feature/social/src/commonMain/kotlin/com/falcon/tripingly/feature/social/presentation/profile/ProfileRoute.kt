@@ -213,6 +213,7 @@ private fun ProfileContent(profile: Profile, state: State, onAction: (Action) ->
         }
         items(state.trips, key = { it.trip.id }) { trip ->
             PublicTripCard(
+                modifier = Modifier.animateItem(),
                 trip = trip,
                 onOpen = { onAction(Action.Trips.Click(trip)) },
                 onOpenOwner = {},

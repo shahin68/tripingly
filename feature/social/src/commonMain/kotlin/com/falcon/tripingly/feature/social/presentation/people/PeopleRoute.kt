@@ -113,7 +113,7 @@ private fun PeopleScreen(
                     LoadMoreAtEnd(listState) { onAction(Action.OnLoadMore) }
                     LazyColumn(state = listState, modifier = Modifier.fillMaxSize()) {
                         items(state.people, key = { it.id }) { user ->
-                            PersonRow(user = user, onClick = { onOpenProfile(user.username) })
+                            PersonRow(user = user, onClick = { onOpenProfile(user.username) }, modifier = Modifier.animateItem())
                         }
                     }
                 }

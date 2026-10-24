@@ -134,7 +134,7 @@ fun AlongTheWay(
                 Surface(
                     shape = RoundedCornerShape(12.dp),
                     color = MaterialTheme.colorScheme.surfaceVariant,
-                    modifier = Modifier.widthIn(max = 240.dp).clickable { onOpen(item.place) },
+                    modifier = Modifier.animateItem().widthIn(max = 240.dp).clickable { onOpen(item.place) },
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(start = 10.dp)) {
                         Icon(item.place.category.icon, contentDescription = null, tint = MaterialTheme.colorScheme.secondary, modifier = Modifier.size(18.dp))

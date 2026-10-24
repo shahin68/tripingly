@@ -288,6 +288,7 @@ fun PhotosScreen(
         }
         items(state.photos, key = { it.id }) { photo ->
             GalleryPhoto(
+                modifier = Modifier.animateItem(),
                 photo = photo,
                 isCover = photo.id == coverPhotoId,
                 canDelete = state.canDelete(photo, canManage),
@@ -295,7 +296,7 @@ fun PhotosScreen(
             )
         }
         items(state.uploads, key = { it.key }) { upload ->
-            GalleryUpload(upload = upload, onAction = onAction)
+            GalleryUpload(upload = upload, onAction = onAction, modifier = Modifier.animateItem())
         }
         // Commons images are cropped in the grid; each shows its full credit in the viewer.
         if (state.photos.any { it.credit != null }) {
@@ -312,9 +313,9 @@ fun PhotosScreen(
 }
 
 @Composable
-private fun GalleryPhoto(photo: Photo, isCover: Boolean, canDelete: Boolean, onAction: (Action) -> Unit) {
+private fun GalleryPhoto(photo: Photo, isCover: Boolean, canDelete: Boolean, onAction: (Action) -> Unit, modifier: Modifier = Modifier) {
     Box(
-        modifier = Modifier
+        modifier = modifier
             .aspectRatio(1f)
             .clip(RoundedCornerShape(8.dp))
             .clickable(enabled = photo.status == PhotoStatus.Ready) { onAction(Action.OnOpenPhoto(photo.id)) },
@@ -369,9 +370,9 @@ private fun State.canDelete(photo: Photo, canManage: Boolean): Boolean =
     canManage || (myUserId != null && photo.uploaderId == myUserId)
 
 @Composable
-private fun GalleryUpload(upload: PhotoUpload, onAction: (Action) -> Unit) {
+private fun GalleryUpload(upload: PhotoUpload, onAction: (Action) -> Unit, modifier: Modifier = Modifier) {
     Box(
-        modifier = Modifier
+        modifier = modifier
             .aspectRatio(1f)
             .clip(RoundedCornerShape(8.dp))
             .background(MaterialTheme.colorScheme.surfaceVariant),

@@ -138,6 +138,7 @@ internal fun FriendPickerRow(
     LazyRow(modifier = modifier, horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraSmall)) {
         items(friends, key = { it.id }) { friend ->
             AvatarChoice(
+                modifier = Modifier.animateItem(),
                 name = friend.displayName,
                 handle = friend.username,
                 key = friend.username,
