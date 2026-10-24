@@ -4,7 +4,6 @@ import com.falcon.tripingly.core.common.di.ApplicationScope
 import com.falcon.tripingly.core.data.account.AccountRepository
 import com.falcon.tripingly.core.data.account.AccountRepositoryImpl
 import com.falcon.tripingly.core.data.account.DeveloperSignIn
-import com.falcon.tripingly.core.data.account.FakeAccountBackend
 import com.falcon.tripingly.core.data.account.LocalDataCleaner
 import com.falcon.tripingly.core.data.account.SessionRepository
 import com.falcon.tripingly.core.data.account.SessionRepositoryImpl
@@ -13,13 +12,10 @@ import com.falcon.tripingly.core.data.billing.ProRepository
 import com.falcon.tripingly.core.data.billing.StorePurchases
 import com.falcon.tripingly.core.data.config.AppConfigRepository
 import com.falcon.tripingly.core.data.config.DefaultAppConfigRepository
-import com.falcon.tripingly.core.data.config.FakeAppConfigRepository
 import com.falcon.tripingly.core.data.photos.DefaultPhotoRepository
-import com.falcon.tripingly.core.data.photos.FakePhotoRepository
 import com.falcon.tripingly.core.data.photos.PhotoRepository
 import com.falcon.tripingly.core.data.photos.PlatformPhotoPreparer
 import com.falcon.tripingly.core.data.places.DefaultPlaceRepository
-import com.falcon.tripingly.core.data.places.FakePlaceRepository
 import com.falcon.tripingly.core.data.places.PlaceRepository
 import com.falcon.tripingly.core.data.push.PushMessaging
 import com.falcon.tripingly.core.data.push.PushNotifications
@@ -27,15 +23,12 @@ import com.falcon.tripingly.core.data.push.PushRegistration
 import com.falcon.tripingly.core.data.realtime.LiveUpdates
 import com.falcon.tripingly.core.data.realtime.RealtimeSync
 import com.falcon.tripingly.core.data.routing.DefaultRouteRepository
-import com.falcon.tripingly.core.data.routing.FakeRouteRepository
 import com.falcon.tripingly.core.data.routing.RouteRepository
 import com.falcon.tripingly.core.data.social.DefaultSocialRepository
-import com.falcon.tripingly.core.data.social.FakeSocialRepository
 import com.falcon.tripingly.core.data.social.SocialRepository
 import com.falcon.tripingly.core.data.trips.DataStoreTripMapViewRepository
 import com.falcon.tripingly.core.data.trips.DefaultMarkerRepository
 import com.falcon.tripingly.core.data.trips.DefaultTripInviteRepository
-import com.falcon.tripingly.core.data.trips.FakeTripBackend
 import com.falcon.tripingly.core.data.trips.MarkerRepository
 import com.falcon.tripingly.core.data.trips.OfflineFirstTripRepository
 import com.falcon.tripingly.core.data.trips.PendingTripWrites
@@ -45,71 +38,47 @@ import com.falcon.tripingly.core.data.trips.TripLocalDataSource
 import com.falcon.tripingly.core.data.trips.TripMapViewRepository
 import com.falcon.tripingly.core.data.trips.TripRepository
 import com.falcon.tripingly.core.data.users.DefaultUserRepository
-import com.falcon.tripingly.core.data.users.FakeUserRepository
 import com.falcon.tripingly.core.data.users.UserRepository
 import com.falcon.tripingly.core.model.account.SessionState
-import com.falcon.tripingly.core.model.route.ROUTES_ENTITLEMENT
 import com.falcon.tripingly.core.network.ApiConfig
-import kotlinx.datetime.TimeZone
-import kotlinx.datetime.todayIn
 import org.koin.core.qualifier.named
 import org.koin.dsl.module
-import kotlin.time.Clock
 
 val dataModule = module {
     single<TripLocalDataSource> { RoomTripLocalDataSource(get()) }
-    single { FakeTripBackend() }
     single { PendingTripWrites() }
     single<TripRepository> {
-        if (get<ApiConfig>().useFakeApi) {
-            get<FakeTripBackend>()
-        } else {
-            OfflineFirstTripRepository(
-                api = get(),
-                local = get(),
-                pending = get(),
-                realtime = get(),
-                mapViews = get(),
-                currentUserId = { get<SessionRepository>().currentUserId() },
-            )
-        }
+        OfflineFirstTripRepository(
+            api = get(),
+            local = get(),
+            pending = get(),
+            realtime = get(),
+            mapViews = get(),
+            currentUserId = { get<SessionRepository>().currentUserId() },
+        )
     }
     single<TripMapViewRepository> { DataStoreTripMapViewRepository(get()) }
     single<MarkerRepository> {
-        if (get<ApiConfig>().useFakeApi) {
-            get<FakeTripBackend>()
-        } else {
-            DefaultMarkerRepository(
-                api = get(),
-                trips = get(),
-                local = get(),
-                pending = get(),
-                scope = get(ApplicationScope),
-                currentUserId = { get<SessionRepository>().currentUserId() },
-            )
-        }
+        DefaultMarkerRepository(
+            api = get(),
+            trips = get(),
+            local = get(),
+            pending = get(),
+            scope = get(ApplicationScope),
+            currentUserId = { get<SessionRepository>().currentUserId() },
+        )
     }
-    single<TripInviteRepository> {
-        if (get<ApiConfig>().useFakeApi) get<FakeTripBackend>() else DefaultTripInviteRepository(get(), get())
-    }
-    single<UserRepository> {
-        if (get<ApiConfig>().useFakeApi) FakeUserRepository() else DefaultUserRepository(get(), get())
-    }
+    single<TripInviteRepository> { DefaultTripInviteRepository(get(), get()) }
+    single<UserRepository> { DefaultUserRepository(get(), get()) }
     single<SocialRepository> {
-        if (get<ApiConfig>().useFakeApi) {
-            FakeSocialRepository()
-        } else {
-            DefaultSocialRepository(
-                api = get(),
-                local = get(),
-                realtime = get(),
-                currentUserId = { get<SessionRepository>().currentUserId() },
-            )
-        }
+        DefaultSocialRepository(
+            api = get(),
+            local = get(),
+            realtime = get(),
+            currentUserId = { get<SessionRepository>().currentUserId() },
+        )
     }
-    single<AppConfigRepository> {
-        if (get<ApiConfig>().useFakeApi) FakeAppConfigRepository() else DefaultAppConfigRepository(get(), get(ApplicationScope))
-    }
+    single<AppConfigRepository> { DefaultAppConfigRepository(get(), get(ApplicationScope)) }
     single {
         DefaultPhotoRepository(
             api = get(),
@@ -122,16 +91,10 @@ val dataModule = module {
             scope = get(ApplicationScope),
         )
     }
-    single<PhotoRepository> {
-        if (get<ApiConfig>().useFakeApi) FakePhotoRepository() else get<DefaultPhotoRepository>()
-    }
-    single<PlaceRepository> {
-        if (get<ApiConfig>().useFakeApi) FakePlaceRepository() else DefaultPlaceRepository(get(), get(), get(ApplicationScope))
-    }
+    single<PhotoRepository> { get<DefaultPhotoRepository>() }
+    single<PlaceRepository> { DefaultPlaceRepository(get(), get(), get(ApplicationScope)) }
     single { DefaultRouteRepository(get(), get()) }
-    single<RouteRepository> {
-        if (get<ApiConfig>().useFakeApi) FakeRouteRepository() else get<DefaultRouteRepository>()
-    }
+    single<RouteRepository> { get<DefaultRouteRepository>() }
 
     single {
         RealtimeSync(
@@ -146,20 +109,8 @@ val dataModule = module {
     }
     single<LiveUpdates> { get<RealtimeSync>() }
 
-    single<SessionRepository> {
-        if (get<ApiConfig>().useFakeApi) {
-            get<FakeAccountBackend>()
-        } else {
-            get<SessionRepositoryImpl>()
-        }
-    }
-    single<AccountRepository> {
-        if (get<ApiConfig>().useFakeApi) {
-            get<FakeAccountBackend>()
-        } else {
-            AccountRepositoryImpl(api = get(), session = get())
-        }
-    }
+    single<SessionRepository> { get<SessionRepositoryImpl>() }
+    single<AccountRepository> { AccountRepositoryImpl(api = get(), session = get()) }
     single {
         val config = get<ApiConfig>()
         SessionRepositoryImpl(
@@ -176,8 +127,8 @@ val dataModule = module {
     single {
         val config = get<ApiConfig>()
         PushRegistration(
-            // The app binds the platform's push where it is set up; the fake API has none.
-            messaging = if (config.useFakeApi) null else getOrNull<PushMessaging>(),
+            // The app binds the platform's push where it is set up.
+            messaging = getOrNull<PushMessaging>(),
             api = get(),
             store = get(),
             config = config,
@@ -189,22 +140,13 @@ val dataModule = module {
     single<PushNotifications> { get<PushRegistration>() }
     single {
         DefaultProRepository(
-            // The app binds the store where a RevenueCat key is set; the fake API's accounts have Pro already.
-            store = if (get<ApiConfig>().useFakeApi) null else getOrNull<StorePurchases>(),
+            // The app binds the store where a RevenueCat key is set.
+            store = getOrNull<StorePurchases>(),
             session = get(),
             scope = get(ApplicationScope),
         )
     }
     single<ProRepository> { get<DefaultProRepository>() }
-    single {
-        FakeAccountBackend(
-            today = { Clock.System.todayIn(TimeZone.currentSystemDefault()) },
-            cleaners = { getAll<LocalDataCleaner>() },
-            // Like dev accounts on staging: Pro features to try out until the paywall exists.
-            entitlements = setOf(ROUTES_ENTITLEMENT),
-        )
-    }
-
     // Galleries and uploads in progress belong to whoever was signed in.
     single(named("photos")) {
         val photos = get<DefaultPhotoRepository>()

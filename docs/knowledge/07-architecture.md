@@ -14,7 +14,7 @@ iosApp ─────┴─> shared ──> feature:trips, feature:map, (auth, 
                                    core:navigation, core:location, (core:network, core:storage, core:ui, core:testing …)
 ```
 
-- **core** holds what several features share. `core:model` (pure domain types, no Compose), `core:common` (AppResult, errors, dispatchers, small platform services), `core:database` (Room), `core:data` (repositories shared by features), `core:designsystem` (theme tokens and stateless components), `core:navigation` (route keys), `core:network` (Ktor, auth, token refresh, error mapping), `core:storage` (secure token storage, settings, and the `DataStore<Preferences>` for small UI state such as each trip's last map view), `core:ui` (UiText, `ObserveAsEvents`, shared error strings), `core:location` (current location and the location permission, expect/actual; since 2026-10-11). Planned: `core:testing` (shared fakes, main-dispatcher rule). Create a planned module in the stage that first needs it.
+- **core** holds what several features share. `core:model` (pure domain types, no Compose), `core:common` (AppResult, errors, dispatchers, small platform services), `core:database` (Room), `core:data` (repositories shared by features), `core:designsystem` (theme tokens and stateless components), `core:navigation` (route keys), `core:network` (Ktor, auth, token refresh, error mapping), `core:storage` (secure token storage, settings, and the `DataStore<Preferences>` for small UI state such as each trip's last map view), `core:ui` (UiText, `ObserveAsEvents`, shared error strings), `core:location` (current location and the location permission, expect/actual; since 2026-10-11). `core:testing` (the in-memory fakes, for tests only: added to `commonTest`, never to an app build; since 2026-10-24).
 - **feature** modules, one per product area, each with `data`, `domain` and `presentation` packages. A feature never depends on another feature (the build fails if it does). Shared pieces move down to core; cross-feature navigation goes through keys in `core:navigation`, wired in `shared/App.kt`.
 - **shared** is the thin umbrella: `App()` with the nav graph, `initKoin()` listing every module's Koin module, and the iOS framework. No feature logic.
 - **build-logic** convention plugins keep build files short and identical:
@@ -133,7 +133,7 @@ Prefer what the project already has. New ones are confirmed with the user when t
 
 ## Testing
 
-- **ViewModels:** fakes (no mocking library, which also keeps tests running on iOS), Turbine, a test dispatcher set as Main. Every action and every error code the screen handles has a test.
+- **ViewModels:** fakes from the test-only `core:testing` module (no mocking library, which also keeps tests running on iOS; no app build contains them), Turbine, a test dispatcher set as Main. Every action and every error code the screen handles has a test.
 - **Repositories:** Ktor `MockEngine` serving JSON copied from real staging responses, so tests break when the contract drifts.
 - **Pure logic:** mappers, reducers and domain rules get plain unit tests in `commonTest`.
 - **UI:** screenshot tests for design-system components and key screens on Android, plus a few end-to-end flows; no exhaustive UI tests. Flows are Compose UI tests in the feature's `androidHostTest` on Robolectric (`runComposeUiTest`, see `MapFlowTest`): the real route and view model against the `Fake*Backend`, driven by visible text and content descriptions.

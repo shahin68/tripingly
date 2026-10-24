@@ -98,8 +98,6 @@ buildkonfig {
     defaultConfigs {
         buildConfigField(STRING, "ENVIRONMENT", "staging")
         buildConfigField(STRING, "BASE_URL", "https://api-staging-4ade.up.railway.app/v1")
-        // tripinly.useFakeApi=true: repositories use their fakes (demo before an endpoint exists).
-        buildConfigField(BOOLEAN, "USE_FAKE_API", localConfig("tripinly.useFakeApi", "false"))
         buildConfigField(STRING, "APP_VERSION", providers.gradleProperty("tripinly.appVersion").getOrElse("1.0"))
         // POST /auth/dev for testing before the Google/Apple keys exist. Staging needs its secret:
         // put tripinly.devAuthSecret in local.properties, never in a tracked file.
@@ -121,7 +119,6 @@ buildkonfig {
     defaultConfigs("production") {
         buildConfigField(STRING, "ENVIRONMENT", "production")
         buildConfigField(STRING, "BASE_URL", "")
-        buildConfigField(BOOLEAN, "USE_FAKE_API", "false")
         buildConfigField(BOOLEAN, "DEVELOPER_SIGN_IN", "false")
         buildConfigField(STRING, "DEV_AUTH_SECRET", "")
     }

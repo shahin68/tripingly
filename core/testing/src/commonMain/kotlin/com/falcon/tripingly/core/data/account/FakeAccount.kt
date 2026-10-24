@@ -26,8 +26,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.datetime.LocalDate
 
 /**
- * In-memory sign-in and onboarding for `-Ptripinly.useFakeApi=true` builds and
- * tests: any sign-in starts a new account that needs onboarding; the username
+ * In-memory sign-in and onboarding for tests: any sign-in starts a new account that needs onboarding; the username
  * `taken` is taken. Accounts have [entitlements] (Tripinly Pro features).
  */
 class FakeAccountBackend(

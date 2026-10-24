@@ -34,8 +34,7 @@ import kotlin.time.Duration.Companion.days
 import kotlin.time.Instant
 
 /**
- * In-memory trips, markers and invites for `-Ptripinly.useFakeApi=true` builds
- * and tests, following the server's rules: days follow the dates, only the owner
+ * In-memory trips, markers and invites for tests, following the server's rules: days follow the dates, only the owner
  * manages the trip, the last day can't be deleted, the username `unknown` doesn't
  * exist and `blocked` is blocked. Only other people's public trips can be saved or joined.
  * Set [nextError] to make the next call fail.

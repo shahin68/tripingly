@@ -12,7 +12,7 @@ import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.emptyFlow
 
-/** A few people for `-Ptripinly.useFakeApi=true` builds and tests; the first three are friends. */
+/** A few people for tests; the first three are friends. */
 class FakeUserRepository : UserRepository {
 
     private val people = listOf(
