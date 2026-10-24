@@ -62,12 +62,12 @@ internal class InMemoryTripLocalDataSource : TripLocalDataSource {
         recountMarkers()
     }
 
-    override suspend fun savePlaceOfMarker(markerId: String, placeId: String, name: String, hotCount: Int, hotByMe: Boolean, canMarkHot: Boolean) {
+    override suspend fun savePlaceOfMarker(marker: TripMarker) = with(marker) {
         trips.update { all ->
             all.mapValues { (_, details) ->
                 details.copy(
                     days = details.days.map { day ->
-                        day.copy(markers = day.markers.map { if (it.id == markerId) it.copy(placeId = placeId, name = it.name.ifEmpty { name }, hotCount = hotCount, hotByMe = hotByMe, canMarkHot = canMarkHot) else it })
+                        day.copy(markers = day.markers.map { if (it.id == id) it.copy(placeId = placeId, name = it.name.ifEmpty { name }, coverPhotoId = coverPhotoId, coverThumbUrl = coverThumbUrl, hotCount = hotCount, hotByMe = hotByMe, canMarkHot = canMarkHot) else it })
                     },
                 )
             }

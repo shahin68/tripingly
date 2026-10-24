@@ -59,9 +59,9 @@ abstract class TripDao {
     @Query("DELETE FROM markers WHERE id IN (:markerIds)")
     abstract suspend fun deleteMarkers(markerIds: List<String>)
 
-    /** The place's hearts come with it; the name only fills a marker the app added without one. */
-    @Query("UPDATE markers SET placeId = :placeId, name = CASE WHEN name = '' THEN :name ELSE name END, hotCount = :hotCount, hotByMe = :hotByMe, canMarkHot = :canMarkHot WHERE id = :markerId")
-    abstract suspend fun updateMarkerPlace(markerId: String, placeId: String, name: String, hotCount: Int, hotByMe: Boolean, canMarkHot: Boolean)
+    /** The place's hot marks and cover come with it; the name only fills a marker the app added without one. */
+    @Query("UPDATE markers SET placeId = :placeId, name = CASE WHEN name = '' THEN :name ELSE name END, coverPhotoId = :coverPhotoId, coverThumbUrl = :coverThumbUrl, hotCount = :hotCount, hotByMe = :hotByMe, canMarkHot = :canMarkHot WHERE id = :markerId")
+    abstract suspend fun updateMarkerPlace(markerId: String, placeId: String, name: String, coverPhotoId: String?, coverThumbUrl: String?, hotCount: Int, hotByMe: Boolean, canMarkHot: Boolean)
 
     @Query("UPDATE markers SET position = :position WHERE id = :markerId")
     abstract suspend fun updateMarkerPosition(markerId: String, position: Int)

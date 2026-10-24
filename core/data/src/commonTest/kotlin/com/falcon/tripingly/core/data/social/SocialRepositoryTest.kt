@@ -76,7 +76,7 @@ class SocialRepositoryTest {
     private fun HttpRequestData.bodyText() = (body as TextContent).text
 
     @Test
-    fun aStopsFlame_marksItsPlaceHot_andSavesTheServersCount_inTheCachedTrip() = runTest {
+    fun aStopsFlame_marksItsPlaceHot_atOnce_andTheServersAnswerDoesntMoveIt() = runTest {
         cacheTrip()
         val repository = repository("""{"placeId":"$PLACE","hot":true,"hotCount":3}""")
 
@@ -85,7 +85,7 @@ class SocialRepositoryTest {
         assertEquals(3, state.hotCount)
         assertEquals("PUT /v1/places/$PLACE/hot", requests.single().let { "${it.method.value} ${it.url.encodedPath}" })
         val stop = local.marker("m0")!!
-        assertEquals(3, stop.hotCount)
+        assertEquals(1, stop.hotCount)
         assertTrue(stop.hotByMe)
     }
 

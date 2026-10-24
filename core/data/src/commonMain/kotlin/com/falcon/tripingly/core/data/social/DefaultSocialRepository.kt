@@ -3,7 +3,6 @@ package com.falcon.tripingly.core.data.social
 import com.falcon.tripingly.core.common.error.DataError
 import com.falcon.tripingly.core.common.result.AppResult
 import com.falcon.tripingly.core.common.result.map
-import com.falcon.tripingly.core.common.result.onError
 import com.falcon.tripingly.core.common.result.onSuccess
 import com.falcon.tripingly.core.data.trips.TripLocalDataSource
 import com.falcon.tripingly.core.model.Page
@@ -73,18 +72,27 @@ internal class DefaultSocialRepository(
             (if (on) api.like(target.wireName, targetId) else api.unlike(target.wireName, targetId)).map { Toggle(it.liked, it.likeCount.toInt()) }
         }.map { LikeState(it.on, it.count) }
 
+    /** Per place, while taps on its flame are on their way: its stops' flame and count before the first tap. */
+    private val hotBeforeTaps = mutableMapOf<String, HotState>()
+    private val hotLock = Mutex()
+
     override suspend fun setHot(placeId: String, hot: Boolean): AppResult<HotState, DataError.Network> {
-        // A place's flame changes at once on its stops in the cached trips; a refusal puts it back.
-        val before = local.markerAtPlace(placeId)
-        if (before != null && before.hotByMe != hot) {
-            local.savePlaceHot(placeId, (before.hotCount + if (hot) 1 else -1).coerceAtLeast(0), hot)
+        // A place's flame changes at once on its stops in the cached trips and stays; the server's answer doesn't
+        // move it, and a refusal puts back what it was before the taps.
+        hotLock.withLock {
+            val shown = local.markerAtPlace(placeId) ?: return@withLock
+            hotBeforeTaps.getOrPut(placeId) { HotState(shown.hotByMe, shown.hotCount) }
+            if (shown.hotByMe != hot) local.savePlaceHot(placeId, (shown.hotCount + if (hot) 1 else -1).coerceAtLeast(0), hot)
         }
-        return setLatest("place:$placeId", hot) { on ->
+        val result = setLatest("place:$placeId", hot) { on ->
             (if (on) api.markHot(placeId) else api.unmarkHot(placeId)).map { Toggle(it.hot, it.hotCount.toInt()) }
         }
-            .onSuccess { local.savePlaceHot(placeId, it.count, it.on) }
-            .onError { if (before != null) local.savePlaceHot(placeId, before.hotCount, before.hotByMe) }
-            .map { HotState(it.on, it.count) }
+        hotLock.withLock {
+            // Every tap of a burst gets the same answer; the first one back settles it.
+            val before = hotBeforeTaps.remove(placeId)
+            if (before != null && result is AppResult.Error) local.savePlaceHot(placeId, before.hotCount, before.hot)
+        }
+        return result.map { HotState(it.on, it.count) }
     }
 
     private suspend fun setLatest(

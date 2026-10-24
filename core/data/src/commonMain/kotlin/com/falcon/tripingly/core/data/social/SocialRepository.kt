@@ -32,8 +32,8 @@ interface SocialRepository {
     suspend fun setLiked(target: LikeTarget, targetId: String, liked: Boolean): AppResult<LikeState, DataError.Network>
 
     /**
-     * Marks a place hot or not; its stops' flame and count change at once in the cached trips, and go back on a
-     * refusal. Fast taps: the last one wins, as for [setLiked].
+     * Marks a place hot or not; its stops' flame and count change at once in the cached trips and stay there,
+     * and only a refusal puts them back. Fast taps: the last one wins, as for [setLiked].
      */
     suspend fun setHot(placeId: String, hot: Boolean): AppResult<HotState, DataError.Network>
 

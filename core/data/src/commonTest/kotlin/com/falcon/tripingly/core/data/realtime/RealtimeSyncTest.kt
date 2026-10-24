@@ -158,6 +158,8 @@ class RealtimeSyncTest {
 
         sync.apply(RealtimeEvent.MarkerSaved("t1", OTHER, NetworkJson.decodeFromString<MarkerDto>(TripJson.marker("m0", "t1", "d0", 0, name = "Renamed"))))
         sync.apply(RealtimeEvent.PlaceHotChanged("t1", OTHER, PLACE, 2))
+        // An echo of my own earlier tap doesn't move the flame's count.
+        sync.apply(RealtimeEvent.PlaceHotChanged("t1", ME, PLACE, 5))
         sync.apply(RealtimeEvent.CommentAdded("t1", OTHER, comment))
         sync.apply(RealtimeEvent.CommentAdded("t1", ME, comment))
 

@@ -34,11 +34,11 @@ internal interface TripLocalDataSource {
     suspend fun saveMarkers(markers: List<TripMarker>)
 
     /**
-     * Sets the place the server matched to a marker, if the marker is still cached, with the place's hearts
-     * (a stop added at a liked place shows them at once), and the name the server gave it when the app added
-     * it without one.
+     * Sets the place the server matched to a marker, if the marker is still cached, with the place's hot marks
+     * and its image as the cover (a stop added at a hot place shows them at once), and the name the server gave
+     * it when the app added it without one.
      */
-    suspend fun savePlaceOfMarker(markerId: String, placeId: String, name: String, hotCount: Int, hotByMe: Boolean, canMarkHot: Boolean)
+    suspend fun savePlaceOfMarker(marker: TripMarker)
 
     /** The marker's trip, or null when it isn't cached. */
     suspend fun tripIdOfMarker(markerId: String): String?
