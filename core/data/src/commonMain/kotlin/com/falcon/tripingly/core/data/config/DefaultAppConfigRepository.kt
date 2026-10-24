@@ -38,8 +38,3 @@ internal class DefaultAppConfigRepository(
         }
     }
 }
-
-/** The defaults, for building and demoing without the server. */
-class FakeAppConfigRepository : AppConfigRepository {
-    override val config: StateFlow<AppConfig> = MutableStateFlow(AppConfig())
-}
