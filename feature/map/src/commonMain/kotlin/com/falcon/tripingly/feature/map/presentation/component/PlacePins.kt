@@ -39,7 +39,14 @@ import kotlin.math.roundToInt
  * along the shown route (drawn in [AlongTheWayPinColor]).
  */
 @Immutable
-data class PlacePin(val place: MapPlace, val size: Dp, val photo: Boolean = false, val isAlongTheWay: Boolean = false)
+data class PlacePin(
+    val place: MapPlace,
+    val size: Dp,
+    val photo: Boolean = false,
+    val isAlongTheWay: Boolean = false,
+    /** Drawn as its dot at any zoom, as every other pin is while a route shows. */
+    val isDot: Boolean = false,
+)
 
 /**
  * The place pins for the squares in view: places inside [area] that aren't stops of the trip ([hiddenPlaceIds]),
@@ -98,7 +105,7 @@ fun hotSpotSize(hotCount: Int): Dp = when {
 }
 
 /** Place pins by prominence: below medium, medium, large. */
-val PinSizes: List<Dp> = listOf(18.dp, 30.dp, 36.dp)
+val PinSizes: List<Dp> = listOf(18.dp, 24.dp, 36.dp)
 val HotSpotSizes: List<Dp> = listOf(24.dp, 30.dp, 36.dp)
 
 /** A pin with the place's photo. */

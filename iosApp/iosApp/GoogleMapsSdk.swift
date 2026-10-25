@@ -1,5 +1,6 @@
 import Shared
 import UIKit
+import UIKit.UIGestureRecognizerSubclass
 #if canImport(GoogleMaps)
 import GoogleMaps
 #endif
@@ -39,6 +40,7 @@ private final class AppGoogleMap: NSObject, GoogleMap, GMSMapViewDelegate {
     private var line: GMSPolyline?
     private var lineMarkers: [GMSMarker] = []
     private var lineSweep: GMSPolyline?
+    private let touches = TouchRecorder()
 
     var view: UIView { mapView }
 
@@ -49,6 +51,7 @@ private final class AppGoogleMap: NSObject, GoogleMap, GMSMapViewDelegate {
         mapView.settings.compassButton = true
         mapView.settings.myLocationButton = false
         mapView.settings.indoorPicker = false
+        mapView.addGestureRecognizer(touches)
     }
 
     func setStyle(json: String) {
@@ -191,9 +194,51 @@ private final class AppGoogleMap: NSObject, GoogleMap, GMSMapViewDelegate {
 
     func mapView(_ mapView: GMSMapView, didTap marker: GMSMarker) -> Bool {
         guard let item = marker.userData as? GoogleMapMarker else { return false }
-        listener.onMarkerTap(key: item.key)
+        listener.onMarkerTap(key: aimedMarker(tapped: item).key)
         // True: the map shows no info window and keeps its camera.
         return !item.showsInfoWindow
+    }
+
+    /**
+     * The map hands a tap on overlapping pins to the one on top. Among the pins of the tapped one's kind (the part of
+     * the key before ":", e.g. places), the one whose middle is nearest the finger is the one meant, as long as the
+     * finger is on it (4 pt of slop).
+     */
+    private func aimedMarker(tapped: GoogleMapMarker) -> GoogleMapMarker {
+        guard let touch = touches.point, let colon = tapped.key.firstIndex(of: ":") else { return tapped }
+        let kind = tapped.key[...colon]
+        var aimed = tapped
+        var nearest = CGFloat.greatestFiniteMagnitude
+        for marker in markers.values {
+            guard let item = marker.userData as? GoogleMapMarker, item.key.hasPrefix(kind), let size = marker.icon?.size else { continue }
+            let point = mapView.projection.point(for: marker.position)
+            let middle = CGPoint(
+                x: point.x + (0.5 - marker.groundAnchor.x) * size.width,
+                y: point.y + (0.5 - marker.groundAnchor.y) * size.height
+            )
+            let distance = hypot(middle.x - touch.x, middle.y - touch.y)
+            if distance <= size.width / 2 + 4 && distance < nearest {
+                aimed = item
+                nearest = distance
+            }
+        }
+        return aimed
+    }
+}
+
+/** Notes where the last touch on the map began, without taking part in any of the map's gestures. */
+private final class TouchRecorder: UIGestureRecognizer {
+    private(set) var point: CGPoint?
+
+    override init(target: Any? = nil, action: Selector? = nil) {
+        super.init(target: target, action: action)
+        cancelsTouchesInView = false
+        delaysTouchesEnded = false
+    }
+
+    override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent) {
+        point = touches.first?.location(in: view)
+        state = .failed
     }
 }
 

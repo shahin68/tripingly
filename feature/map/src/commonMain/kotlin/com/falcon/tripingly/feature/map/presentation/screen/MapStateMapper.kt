@@ -147,7 +147,16 @@ internal class MapStateMapper(
         val pinnedIds = pins.mapTo(HashSet()) { it.place.id }
         val alongIds = alongTheWay.mapTo(HashSet()) { it.place.id }
         // The places along the way show on the map too, also where the map's own pins leave them out, in their own color.
-        val placePins = pins.map { if (it.place.id in alongIds) it.copy(isAlongTheWay = true) else it } +
+        // While a route shows, the other pins are dots, so the route, its two ends, the stops and the places along it stand out.
+        val routeShows = routePoints.size > 1
+        val routeEndIds = route.between?.let { setOf(it.from.id, it.to.id) }.orEmpty()
+        val placePins = pins.map {
+            when {
+                it.place.id in alongIds -> it.copy(isAlongTheWay = true)
+                routeShows && it.place.id !in routeEndIds -> it.copy(isDot = true)
+                else -> it
+            }
+        } +
             alongTheWay.filter { it.place.id !in pinnedIds }.map { it.toPin() }
         val stopPath = stops.map { it.position }.takeIf { routePoints.isEmpty() && route.between == null }.orEmpty()
         return MapLayersState(

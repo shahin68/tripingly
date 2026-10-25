@@ -375,6 +375,26 @@ class MapViewModelTest {
     }
 
     @Test
+    fun `the second tap of a double tap adds no stop and opens no pin dialog`() = runTest(testDispatcher) {
+        val viewModel = viewModel()
+        testScheduler.advanceUntilIdle()
+
+        // Double tap and drag zooms: the map may report the held second tap as a tap or a long press.
+        viewModel.onAction(MapAction.MapView.TouchDown(isDoubleTap = true))
+        viewModel.onAction(MapAction.MapView.Click(Coordinates.Paris))
+        viewModel.onAction(MapAction.MapView.LongClick(Coordinates.Paris))
+        testScheduler.advanceUntilIdle()
+        assertTrue(viewModel.uiState.value.layers.stops.isEmpty())
+        assertNull(viewModel.uiState.value.dialog)
+
+        // The next single tap adds as always.
+        viewModel.onAction(MapAction.MapView.TouchDown(isDoubleTap = false))
+        viewModel.onAction(MapAction.MapView.Click(Coordinates.London))
+        testScheduler.advanceUntilIdle()
+        assertEquals(1, viewModel.uiState.value.layers.stops.size)
+    }
+
+    @Test
     fun `stops belong to their day`() = runTest(testDispatcher) {
         val viewModel = viewModel()
         testScheduler.advanceUntilIdle()
