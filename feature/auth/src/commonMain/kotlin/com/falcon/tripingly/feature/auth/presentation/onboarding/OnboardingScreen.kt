@@ -1,9 +1,8 @@
 package com.falcon.tripingly.feature.auth.presentation.onboarding
 
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.PressInteraction
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
@@ -34,7 +33,6 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -177,21 +175,22 @@ private fun ColumnScope.ProfileStep(state: OnboardingViewModel.State, onAction: 
     }
 }
 
-/** A read-only field that opens the date picker; no date is preselected, so no age is suggested. */
+/**
+ * A read-only field that opens the date picker; no date is preselected, so no age is suggested. A tap layer on
+ * top opens it: iOS text fields don't report presses through their interaction source.
+ */
 @Composable
 private fun BirthDateField(date: LocalDate?, onClick: () -> Unit) {
-    val interactions = remember { MutableInteractionSource() }
-    LaunchedEffect(interactions) {
-        interactions.interactions.collect { if (it is PressInteraction.Release) onClick() }
+    Box {
+        OutlinedTextField(
+            value = date?.let(DateUtils::formatFormal).orEmpty(),
+            onValueChange = {},
+            readOnly = true,
+            label = { Text(stringResource(Res.string.onboarding_birth_date)) },
+            modifier = Modifier.fillMaxWidth(),
+        )
+        Box(Modifier.matchParentSize().clickable(onClick = onClick))
     }
-    OutlinedTextField(
-        value = date?.let(DateUtils::formatFormal).orEmpty(),
-        onValueChange = {},
-        readOnly = true,
-        label = { Text(stringResource(Res.string.onboarding_birth_date)) },
-        interactionSource = interactions,
-        modifier = Modifier.fillMaxWidth(),
-    )
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
