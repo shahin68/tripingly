@@ -68,7 +68,7 @@ Follow `mvi-presentation`: Route (Koin, `collectAsStateWithLifecycle`, `ObserveA
 
 ## 6. Data
 
-Follow `api-integration`: generated API models stay in `data`, a repository maps them to domain models and errors to `DataError`, a fake implements the same interface for previews, tests and `USE_FAKE_API`.
+Follow `api-integration`: generated API models stay in `data`, a repository maps them to domain models and errors to `DataError`, a fake in `core:testing` implements the same interface for tests.
 
 ## 7. Tests (same PR)
 

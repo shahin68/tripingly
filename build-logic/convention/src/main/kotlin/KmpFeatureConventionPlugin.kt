@@ -30,6 +30,10 @@ class KmpFeatureConventionPlugin : Plugin<Project> {
                 implementation(libs.library("androidx-lifecycle-runtimeCompose"))
                 implementation(libs.library("compose-material-icons-extended"))
             }
+            // Tests run the ViewModels against the in-memory fakes; no app build contains them.
+            sourceSets.getByName("commonTest").dependencies {
+                implementation(project(":core:testing"))
+            }
         }
 
         configurations.configureEach {

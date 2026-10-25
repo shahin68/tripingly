@@ -17,7 +17,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emptyFlow
 import kotlin.time.Clock
 
-/** For `-Ptripinly.useFakeApi=true` builds and tests: comments and likes in memory, nothing to explore. */
+/** For tests: comments and likes in memory, nothing to explore. */
 class FakeSocialRepository(
     private val me: UserSummary = UserSummary("00000000-0000-4000-8000-000000000001", "me", "Me"),
 ) : SocialRepository {

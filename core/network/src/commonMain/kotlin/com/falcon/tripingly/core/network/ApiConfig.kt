@@ -7,8 +7,6 @@ data class ApiConfig(
     val environment: String,
     /** Sent as `X-Client`, e.g. `android/1.0`. */
     val client: String,
-    /** Repositories bind their fakes instead of the API (never in production). */
-    val useFakeApi: Boolean = false,
     /** The backend's developer sign-in (`POST /auth/dev`); never in production. */
     val developerSignIn: Boolean = false,
     /** Staging's `X-Dev-Auth-Secret`, from a local Gradle property; never committed. */
@@ -30,7 +28,6 @@ data class ApiConfig(
             baseUrl = NetworkBuildConfig.BASE_URL.trimEnd('/'),
             environment = NetworkBuildConfig.ENVIRONMENT,
             client = "$platform/${NetworkBuildConfig.APP_VERSION}",
-            useFakeApi = NetworkBuildConfig.USE_FAKE_API,
             developerSignIn = NetworkBuildConfig.DEVELOPER_SIGN_IN,
             devAuthSecret = NetworkBuildConfig.DEV_AUTH_SECRET.ifBlank { null },
             googleWebClientId = NetworkBuildConfig.GOOGLE_WEB_CLIENT_ID.ifBlank { null },

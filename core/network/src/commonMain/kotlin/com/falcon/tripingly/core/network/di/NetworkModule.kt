@@ -21,7 +21,6 @@ import com.falcon.tripingly.core.network.places.PlacesApi
 import com.falcon.tripingly.core.network.places.createPlacesApi
 import com.falcon.tripingly.core.network.push.PushApi
 import com.falcon.tripingly.core.network.push.createPushApi
-import com.falcon.tripingly.core.network.realtime.FakeRealtimeClient
 import com.falcon.tripingly.core.network.realtime.RealtimeClient
 import com.falcon.tripingly.core.network.realtime.SocketIoRealtimeClient
 import com.falcon.tripingly.core.network.routing.RoutingApi
@@ -88,19 +87,14 @@ val networkModule = module {
     single<PushApi> { get<Ktorfit>().createPushApi() }
     single { AppLanguage(get<NetworkPlatform>()::languageTag) }
     single<RealtimeClient> {
-        val config = get<ApiConfig>()
-        if (config.useFakeApi) {
-            FakeRealtimeClient()
-        } else {
-            SocketIoRealtimeClient(
-                engine = get<NetworkPlatform>().engine(),
-                config = config,
-                apiClient = get(),
-                tokenStore = get(),
-                sessionEvents = get(),
-                scope = get(ApplicationScope),
-            )
-        }
+        SocketIoRealtimeClient(
+            engine = get<NetworkPlatform>().engine(),
+            config = get(),
+            apiClient = get(),
+            tokenStore = get(),
+            sessionEvents = get(),
+            scope = get(ApplicationScope),
+        )
     }
 }
 

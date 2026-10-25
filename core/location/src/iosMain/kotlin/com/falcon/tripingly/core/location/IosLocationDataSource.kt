@@ -18,10 +18,10 @@ import platform.Foundation.NSError
 import platform.darwin.NSObject
 
 class IosLocationDataSource : LocationDataSource {
-    private val locationManager = CLLocationManager()
-
     @OptIn(ExperimentalForeignApi::class)
     override fun getLocationUpdatesStream(): Flow<AppResult<Coordinates, DataError.Location>> = callbackFlow {
+        // One manager per collector, so one stopping doesn't stop the others.
+        val locationManager = CLLocationManager()
         val status = locationManager.authorizationStatus
         if (status == kCLAuthorizationStatusDenied || status == kCLAuthorizationStatusRestricted) {
             trySend(AppResult.Error(DataError.Location.PermissionDenied))
@@ -48,9 +48,10 @@ class IosLocationDataSource : LocationDataSource {
         locationManager.delegate = delegate
         locationManager.startUpdatingLocation()
 
+        // The manager holds its delegate weakly; using it here keeps it alive until the flow ends.
         awaitClose {
             locationManager.stopUpdatingLocation()
-            locationManager.delegate = null
+            if (locationManager.delegate === delegate) locationManager.delegate = null
         }
     }
 }

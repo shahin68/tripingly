@@ -155,7 +155,8 @@ internal class MapStateMapper(
             placePins = placePins.toImmutableList(),
             pinDotBelowZoom = config.pinDotBelowZoom,
             placeClusters = model.pins.clusters.toImmutableList(),
-            selectedPlace = (model.selection as? Selection.Place)?.place,
+            // A place from search knows no cover image, so its pin's place draws it, photo included.
+            selectedPlace = (model.selection as? Selection.Place)?.place?.let { place -> placePins.firstOrNull { it.place.id == place.id }?.place ?: place },
             // A real route in its way of travelling's color, or else the stops joined in order.
             line = when {
                 routePoints.size > 1 -> routeLine(routePoints, route.planStops.map { Coordinates(it.lat, it.lng) }, route.planMode)

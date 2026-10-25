@@ -9,7 +9,7 @@ Event catalogue and deep links: `docs/knowledge/04-realtime-and-push.md`.
 
 ## Socket connection
 
-- One shared `RealtimeClient` (`core:network/realtime`): `start`/`stop`, counted `watchTrip`/`unwatchTrip`, `events: Flow<RealtimeEvent>`, `connections`. The implementation is our own Socket.IO client over Ktor WebSockets in common code (`SocketIoRealtimeClient`, decided 2026-10-11); `FakeRealtimeClient` for useFakeApi and tests. A new event = a `RealtimeEvent` subclass + a case in `parseRealtimeEvent` + its handling in `RealtimeSync`, with tests.
+- One shared `RealtimeClient` (`core:network/realtime`): `start`/`stop`, counted `watchTrip`/`unwatchTrip`, `events: Flow<RealtimeEvent>`, `connections`. The implementation is our own Socket.IO client over Ktor WebSockets in common code (`SocketIoRealtimeClient`, decided 2026-10-11); `FakeRealtimeClient` (`core:testing`) for tests. A new event = a `RealtimeEvent` subclass + a case in `parseRealtimeEvent` + its handling in `RealtimeSync`, with tests.
 - Connect when the app is in the foreground and signed in; disconnect in the background (push covers background).
 - Handshake `auth.token` = current access token. On `TOKEN_EXPIRED`: refresh through the API client's own refresher (`HttpClient.refreshExpiredToken`, never a second refresh path), reconnect, resubscribe watched trips.
 - Reconnect with backoff; after reconnect, repositories refetch open trips (events may have been missed).

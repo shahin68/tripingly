@@ -21,8 +21,6 @@ import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
 import androidx.navigation3.ui.NavDisplay
 import coil3.ImageLoader
 import coil3.compose.setSingletonImageLoaderFactory
-import coil3.network.ktor3.KtorNetworkFetcherFactory
-import coil3.request.crossfade
 import com.falcon.tripingly.core.common.result.AppResult
 import com.falcon.tripingly.core.data.billing.ProRepository
 import com.falcon.tripingly.core.data.push.PushNotifications
@@ -39,7 +37,6 @@ import com.falcon.tripingly.core.navigation.People
 import com.falcon.tripingly.core.navigation.Profile
 import com.falcon.tripingly.core.navigation.Settings
 import com.falcon.tripingly.core.navigation.TripMap
-import com.falcon.tripingly.core.network.photos.StorageClient
 import com.falcon.tripingly.deeplink.DeepLink
 import com.falcon.tripingly.deeplink.DeepLinks
 import com.falcon.tripingly.feature.auth.presentation.gate.AuthGate
@@ -59,15 +56,8 @@ import com.falcon.tripingly.core.model.photo.PhotoOwner
 
 @Composable
 fun App() {
-    val storage = koinInject<StorageClient>()
-    // Photos come from storage through signed URLs, so they're fetched without the API's token and headers.
-    // They're cached by photo ID, not URL (see PhotoImage), in Coil's default memory and disk caches.
-    setSingletonImageLoaderFactory { context ->
-        ImageLoader.Builder(context)
-            .components { add(KtorNetworkFetcherFactory(httpClient = { storage.httpClient })) }
-            .crossfade(true)
-            .build()
-    }
+    val imageLoader = koinInject<ImageLoader>()
+    setSingletonImageLoaderFactory { imageLoader }
     TripinglyTheme {
         // Links (legal documents and others) open in an in-app browser, not the external one.
         CompositionLocalProvider(LocalUriHandler provides rememberInAppUriHandler()) {
