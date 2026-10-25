@@ -191,6 +191,7 @@ class PlaceRepositoryTest {
         repository.placesIn(listOf(zoomedIn))
 
         // A new cover (here a new name) arrives with the zoomed-in square only.
+        changed.clear()
         placeName = "Stephansdom (new cover)"
         eventually {
             repository.placesIn(listOf(zoomedIn))
@@ -308,7 +309,7 @@ class PlaceRepositoryTest {
                     "id": "${placeId ?: "p-$tile"}", "name": "$placeName", "category": "attraction",
                     "location": {"lat": 48.2085, "lng": 16.3731},
                     "isTripinly": true, "hotCount": 3, "prominence": 90, "hotByMe": false,
-                    "coverImageId": "img-$tile", "coverThumbUrl": "https://images.test/img-$tile?sig=$signature"
+                    "coverImageId": "img-${placeId ?: tile}", "coverThumbUrl": "https://images.test/img-${placeId ?: tile}?sig=$signature"
                   }],
                   "clusters": []
                 }
