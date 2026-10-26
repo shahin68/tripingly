@@ -55,7 +55,7 @@ A modular KMP app: `androidApp` and `iosApp` shells, `shared` as the umbrella, `
 3. **Use the matching skill** from `.claude/skills/`.
 4. **Backend not ready?** Put a repository interface in front of every API use, with a fake implementation behind a build flag, so features can be built and demoed before the endpoint exists. Remove fakes from release builds.
 5. **Test** shared logic with unit tests (`commonTest`): repositories with a mocked HTTP engine, state holders, mapping, error handling.
-6. **Before saying you're done:** run the `verify` skill on the diff and fix what it confirms, then CI green on both platforms (Android build and tests, iOS framework and simulator tests), check both platforms visually where UI changed or tell the user exactly what to check, update `06-current-state.md` if structure changed.
+6. **Before saying you're done:** run the `verify` skill on the diff and fix what it confirms, then CI green on both platforms (Android build and tests, iOS framework and simulator tests), check both platforms visually where UI changed or tell the user exactly what to check, update `06-current-state.md` if structure changed. **Every decision made or built goes into all three decision logs in the same change**: this repo's `08-decision-log.md`, the backend's `docs/knowledge/08-decision-log.md` when it's affected, and the project story log (`/mnt/project-files/docs/decision-log.md`) (Shahin, 2026-10-24; missed again, repeated 2026-10-25).
 7. **Report briefly:** what changed, what to test on each platform, contract changes (and the backend PR that carries them), open follow-ups.
 
 ## Build order (from the current state)
@@ -72,7 +72,8 @@ A modular KMP app: `androidApp` and `iosApp` shells, `shared` as the umbrella, `
 10. Settings: privacy default, notification settings, data export, account deletion, legal/about with attribution.
 11. Paywall (once billing is decided).
 12. Redesign and full code review: looks, smoothness, accessibility, every screen size and landscape; Shahin hands over the review criteria at the start.
-13. Store release checklist.
+13. Documentation, legal pages and decision audit (before production, never skipped; Shahin, 2026-10-25): a full decision audit and report across code, knowledge files and the three decision logs; the product handbook; legal drafts (Terms of Service explaining how hot spots, likes, ranking and moderation work, Privacy Policy, Community Guidelines, Imprint, subscription terms, attributions and licences) set up at stable URLs as versioned legal documents and linked in onboarding, Settings and the paywall; Shahin's lawyer reviews every legal text before publishing. Details in the backend `CLAUDE.md`, build order stage 11.
+14. Store release checklist.
 
 Report to the user after each stage.
 

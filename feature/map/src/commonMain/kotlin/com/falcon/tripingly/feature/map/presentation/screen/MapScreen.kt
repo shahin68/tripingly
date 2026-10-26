@@ -94,11 +94,14 @@ internal fun MapScreen(
             .fillMaxSize()
             // Any touch outside the open card closes it, and still reaches the map and the controls.
             .pointerInput(Unit) {
+                var lastDownMillis = Long.MIN_VALUE / 2
                 awaitEachGesture {
                     val down = awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
                     val isOnCard = (isPlaceCardOpen && placeCardBounds.contains(down.position)) ||
                         (isStopCardOpen && stopCardBounds.contains(down.position))
                     if (!isOnCard) onAction(MapAction.MapView.ScreenTouch)
+                    onAction(MapAction.MapView.TouchDown(isDoubleTap = down.uptimeMillis - lastDownMillis < DOUBLE_TAP_MILLIS))
+                    lastDownMillis = down.uptimeMillis
                 }
             }
     ) {
@@ -322,3 +325,6 @@ private fun MapScreenPreview(@PreviewParameter(MapScreenPreviewStates::class) st
         )
     }
 }
+
+/** Two touches this close together are a double tap: the first tap's length plus the platforms' double tap time. */
+private const val DOUBLE_TAP_MILLIS = 500L

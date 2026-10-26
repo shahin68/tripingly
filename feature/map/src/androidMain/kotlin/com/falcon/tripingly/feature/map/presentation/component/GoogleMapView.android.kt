@@ -4,6 +4,8 @@ import android.graphics.Point
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
@@ -22,10 +24,13 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.graphics.vector.rememberVectorPainter
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.IntSize
+import androidx.compose.ui.unit.dp
 import com.falcon.tripingly.core.location.model.Coordinates
 import com.falcon.tripingly.core.model.place.GeoBounds
 import com.falcon.tripingly.core.model.place.MapPlace
@@ -57,6 +62,7 @@ import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
+import kotlin.math.hypot
 import com.falcon.tripingly.core.designsystem.component.icon
 
 @Composable
@@ -99,6 +105,9 @@ actual fun GoogleMapView(
             east = corners.maxOf { it.longitude },
         )
     }
+
+    // Where the last touch began on the map, to tell which of two overlapping pins the finger was aimed at.
+    var lastTouch by remember { mutableStateOf<Offset?>(null) }
 
     // A camera animation started before the map has loaded doesn't run (on a fresh start the trip's stops arrive
     // first), so until then the camera jumps instead.
@@ -156,7 +165,12 @@ actual fun GoogleMapView(
     }
 
     GoogleMap(
-        modifier = modifier.fillMaxSize().onSizeChanged { mapSize = it },
+        modifier = modifier
+            .fillMaxSize()
+            .onSizeChanged { mapSize = it }
+            .pointerInput(Unit) {
+                awaitEachGesture { lastTouch = awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial).position }
+            },
         cameraPositionState = cameraPositionState,
         properties = mapProperties,
         uiSettings = uiSettings,
@@ -225,8 +239,28 @@ actual fun GoogleMapView(
         // Zoomed out below pinDotBelowZoom, the pins turn into dots. Each pin has its dot marker from the start, hidden,
         // so the swap only shows one and hides the other, at once: no markers are made or dropped while the fingers move.
         val isDots by remember(pinDotBelowZoom) { derivedStateOf { cameraPositionState.position.zoom < pinDotBelowZoom } }
-        placePins.forEach { pin ->
-            if (pin.photo && pin.place.coverImageId !in pinPhotos) return@forEach
+        val shownPins = placePins.filter { !it.photo || it.place.coverImageId in pinPhotos }
+
+        // The map hands a tap on overlapping pins to the one on top; the pin whose middle is nearest the finger is the
+        // one meant, as long as the finger is on it.
+        fun aimedPin(tapped: PlacePin): PlacePin {
+            val touch = lastTouch ?: return tapped
+            val projection = cameraPositionState.projection ?: return tapped
+            val slop = with(density) { PIN_TAP_SLOP.toPx() }
+            return shownPins
+                .map { pin ->
+                    val point = projection.toScreenLocation(LatLng(pin.place.location.lat, pin.place.location.lng))
+                    pin to hypot(point.x - touch.x, point.y - touch.y)
+                }
+                .filter { (pin, distance) ->
+                    val size = if (isDots || pin.isDot) PlaceDotSize else pin.size
+                    distance <= with(density) { size.toPx() } / 2 + slop
+                }
+                .minByOrNull { (_, distance) -> distance }
+                ?.first ?: tapped
+        }
+
+        shownPins.forEach { pin ->
             val look = PlacePinLook(pin.place.category, pin.place.isTripinly, pin.size, photoId(pin.place, pin.photo), pin.isAlongTheWay)
             val dotLook = pin.dotLook()
             key(pin.place.id) {
@@ -238,7 +272,7 @@ actual fun GoogleMapView(
                 val zIndex = PLACE_PINS_Z * pinRank(pin.place)
                 // No info window and no camera move of the map's own: the card and the camera are ours.
                 fun onClick(): Boolean {
-                    onPlacePinClick(pin.place)
+                    onPlacePinClick(aimedPin(pin).place)
                     return true
                 }
                 key(look) {
@@ -248,7 +282,7 @@ actual fun GoogleMapView(
                         title = pin.place.name,
                         anchor = Offset(0.5f, 0.5f),
                         alpha = fadeIn.value,
-                        visible = !isDots,
+                        visible = !isDots && !pin.isDot,
                         zIndex = zIndex,
                         onClick = { onClick() },
                     )
@@ -260,7 +294,7 @@ actual fun GoogleMapView(
                         title = pin.place.name,
                         anchor = Offset(0.5f, 0.5f),
                         alpha = fadeIn.value,
-                        visible = isDots,
+                        visible = isDots || pin.isDot,
                         zIndex = zIndex,
                         onClick = { onClick() },
                     )
@@ -397,6 +431,9 @@ private const val PIN_FADE_MILLIS = 250
 /** Between 0 and 1, higher for a better place: liked places by their likes above the others by how well known. */
 private fun pinRank(place: MapPlace): Float =
     if (place.hotCount > 0) 0.5f + minOf(place.hotCount, 1000) / 2500f else place.prominence / 250f
+
+/** How far outside a pin's circle a touch still counts as aimed at it. */
+private val PIN_TAP_SLOP = 4.dp
 
 /** Place pins sit under this, the stops at 1 and the tapped place at 2. */
 private const val PLACE_PINS_Z = 0.5f

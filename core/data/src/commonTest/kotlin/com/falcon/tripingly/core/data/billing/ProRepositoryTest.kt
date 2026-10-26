@@ -11,7 +11,9 @@ import com.falcon.tripingly.core.model.account.SessionState
 import com.falcon.tripingly.core.model.account.SignOutReason
 import com.falcon.tripingly.core.model.account.TripVisibility
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.runTest
+import kotlin.time.Duration.Companion.minutes
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -97,6 +99,30 @@ class ProRepositoryTest {
         val pro = DefaultProRepository(Store(), session, backgroundScope)
 
         assertEquals(AppResult.Success(PurchaseOutcome.Confirming), pro.buy(yearly))
+        assertEquals(5, session.refreshes)
+    }
+
+    @Test
+    fun aLatePurchase_isCheckedAgainInTheBackground_untilTheServerHasPro() = runTest {
+        val session = Session(proAfter = 8)
+        val pro = DefaultProRepository(Store(), session, backgroundScope)
+
+        assertEquals(AppResult.Success(PurchaseOutcome.Confirming), pro.buy(yearly))
+        advanceTimeBy(10.minutes)
+
+        // Five quick checks, then the third later one finds Pro and the checks stop.
+        assertEquals(8, session.refreshes)
+    }
+
+    @Test
+    fun signingOut_stopsTheLaterChecks() = runTest {
+        val session = Session(proAfter = Int.MAX_VALUE)
+        val pro = DefaultProRepository(Store(), session, backgroundScope)
+
+        pro.buy(yearly)
+        pro.clear()
+        advanceTimeBy(10.minutes)
+
         assertEquals(5, session.refreshes)
     }
 

@@ -163,9 +163,9 @@ internal class DefaultPlaceRepository(
                                     null
                                 }
                             }
-                        }
+                        } + (result as? AppResult.Success)?.data?.values?.let(::updateOtherSquares).orEmpty()
                     }
-                    changed.forEach { _changedSquares.tryEmit(it) }
+                    changed.distinct().forEach { _changedSquares.tryEmit(it) }
                 }
             }
         }
@@ -173,6 +173,21 @@ internal class DefaultPlaceRepository(
 
     override suspend fun place(id: String): AppResult<PlaceDetails, DataError.Network> =
         api.place(id).map { it.toPlaceDetails() }
+
+    /**
+     * The same place also sits in the kept squares of other zooms, loaded earlier: they take its new look (a new
+     * cover, say) at once, so the pin doesn't switch between old and new as the zoom changes. Returns them.
+     */
+    private fun updateOtherSquares(answered: Collection<PlacesInView>): List<PlaceSquare> {
+        val fresh = answered.flatMap { it.places }.associateBy { it.id }
+        return squares.mapNotNull { (square, loaded) ->
+            val places = loaded.places ?: return@mapNotNull null
+            val updated = places.copy(places = places.places.map { fresh[it.id] ?: it })
+            if (updated.withoutPhotoLinks() == places.withoutPhotoLinks()) return@mapNotNull null
+            loaded.places = updated
+            square
+        }
+    }
 
     private fun PlacesInView.withoutPhotoLinks() = copy(places = places.map { it.copy(coverThumbUrl = null) })
 

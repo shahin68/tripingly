@@ -28,6 +28,11 @@ sealed interface MapAction {
         data class CameraRest(val coordinates: Coordinates, val zoom: Float, val bounds: GeoBounds? = null) : MapView
         /** A touch began anywhere outside the place card, on the map or on the screen's other controls. */
         data object ScreenTouch : MapView
+        /**
+         * A finger touched the screen; [isDoubleTap] when it came right after the one before, as the second tap
+         * of a double tap does (double tap, or double tap and drag to zoom). That touch never adds a stop.
+         */
+        data class TouchDown(val isDoubleTap: Boolean) : MapView
     }
 
     /** The top bar and its menu. */

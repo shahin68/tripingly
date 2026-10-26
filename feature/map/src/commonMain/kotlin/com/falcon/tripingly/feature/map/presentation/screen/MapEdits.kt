@@ -57,15 +57,19 @@ internal class MapEdits(
         context.scope.launch { failed.forEach { markerRepository.retry(it) } }
     }
 
-    /** A tap on the map itself (pins take their own taps) adds a stop, unless it only closed a card. */
+    /** The touch that's down is the second tap of a double tap: zooming, so it adds nothing. */
+    var isDoubleTap = false
+
+    /** A tap on the map itself (pins take their own taps) adds a stop, unless it only closed a card or was zooming. */
     fun onMapClick(coordinates: Coordinates) {
-        if (selection.isClosingTouch) return
+        if (selection.isClosingTouch || isDoubleTap) return
         // No name: the server names the stop after the place or address there.
         add(NewMarker("", GeoPoint(coordinates.latitude, coordinates.longitude)))
     }
 
     /** A long press drops a pin the user names. */
     fun onMapLongClick(coordinates: Coordinates) {
+        if (isDoubleTap) return
         if (context.canEdit() && context.activeDay() != null) context.update { it.copy(dialog = Dialog.NamePin(coordinates)) }
     }
 

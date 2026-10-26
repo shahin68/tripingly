@@ -54,6 +54,9 @@ class PlaceRepositoryTest {
     /** The name the server gives every place. */
     private var placeName = "Stephansdom"
 
+    /** The place every square holds, as when the squares of two zooms cover the same spot; by default one per square. */
+    private var placeId: String? = null
+
     private val placesApi = createKtorfit(
         createHttpClient(
             engine = MockEngine { request ->
@@ -67,7 +70,7 @@ class PlaceRepositoryTest {
                     USER_PLACE_DETAIL
                 } else {
                     // The photo's link is signed anew on every answer.
-                    tilesAnswer(request.url.parameters["tiles"].orEmpty(), placeName, signature = count)
+                    tilesAnswer(request.url.parameters["tiles"].orEmpty(), placeName, placeId, signature = count)
                 }
                 respond(body, status, headersOf(HttpHeaders.ContentType, "application/json"))
             },
@@ -177,6 +180,28 @@ class PlaceRepositoryTest {
     }
 
     @Test
+    fun `a place reloaded in one zoom's square takes its new look in the other zooms' squares too`() = runTest {
+        val repository = repository(placesRefresh = Duration.ZERO)
+        placeId = "p1"
+        val zoomedIn = PlaceSquare(16, 744, 2192)
+        val zoomedOut = PlaceSquare(15, 372, 1096)
+        val changed = mutableListOf<PlaceSquare>()
+        backgroundScope.launch { repository.changedSquares.collect { changed += it } }
+        repository.placesIn(listOf(zoomedOut))
+        repository.placesIn(listOf(zoomedIn))
+
+        // A new cover (here a new name) arrives with the zoomed-in square only.
+        changed.clear()
+        placeName = "Stephansdom (new cover)"
+        eventually {
+            repository.placesIn(listOf(zoomedIn))
+            zoomedOut in changed
+        }
+
+        assertEquals("Stephansdom (new cover)", repository.loadedPlacesIn(listOf(zoomedOut)).getValue(zoomedOut).places.single().name)
+    }
+
+    @Test
     fun `a failed reload keeps the places shown and is tried again next time`() = runTest {
         val repository = repository(placesRefresh = Duration.ZERO)
         val square = PlaceSquare(15, 372, 1096)
@@ -273,7 +298,7 @@ class PlaceRepositoryTest {
             .replace("\"source\": \"osm\"", "\"source\": \"user\"")
             .replace("\"addedBy\": null", "\"addedBy\": {\"id\": \"u-anna\", \"username\": \"anna\", \"displayName\": \"Anna\"}")
 
-        fun tilesAnswer(tiles: String, placeName: String, signature: Int) = tiles.split(",").joinToString(
+        fun tilesAnswer(tiles: String, placeName: String, placeId: String?, signature: Int) = tiles.split(",").joinToString(
             prefix = "{\"tiles\": [",
             postfix = "], \"attribution\": \"© OpenStreetMap contributors\"}",
         ) { tile ->
@@ -281,10 +306,10 @@ class PlaceRepositoryTest {
                 {
                   "tile": "$tile",
                   "places": [{
-                    "id": "p-$tile", "name": "$placeName", "category": "attraction",
+                    "id": "${placeId ?: "p-$tile"}", "name": "$placeName", "category": "attraction",
                     "location": {"lat": 48.2085, "lng": 16.3731},
                     "isTripinly": true, "hotCount": 3, "prominence": 90, "hotByMe": false,
-                    "coverImageId": "img-$tile", "coverThumbUrl": "https://images.test/img-$tile?sig=$signature"
+                    "coverImageId": "img-${placeId ?: tile}", "coverThumbUrl": "https://images.test/img-${placeId ?: tile}?sig=$signature"
                   }],
                   "clusters": []
                 }

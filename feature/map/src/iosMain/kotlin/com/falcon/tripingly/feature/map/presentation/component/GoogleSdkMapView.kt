@@ -265,7 +265,7 @@ internal fun GoogleSdkMapView(
         }
         // The first pins (the most liked, then the best known) on top. A photo pin waits for its photo. The tapped
         // place's pin stays as it is and a bigger copy is drawn over it below, as on Android. Zoomed out below
-        // pinDotBelowZoom, every pin is its dot; the map fades a pin into its new look.
+        // pinDotBelowZoom, or while a route shows ([PlacePin.isDot]), a pin is its dot; the map fades a pin into its new look.
         val pins = placePins.mapIndexedNotNull { index, pin ->
             if (pin.photo && pin.place.coverImageId !in pinPhotos) return@mapIndexedNotNull null
             GoogleMapMarker(
@@ -274,7 +274,7 @@ internal fun GoogleSdkMapView(
                 longitude = pin.place.location.lng,
                 title = pin.place.name,
                 icon = pinIcon(
-                    if (isDots) pin.dotLook() else PlacePinLook(pin.place.category, pin.place.isTripinly, pin.size, photoId(pin.place, pin.photo), pin.isAlongTheWay),
+                    if (isDots || pin.isDot) pin.dotLook() else PlacePinLook(pin.place.category, pin.place.isTripinly, pin.size, photoId(pin.place, pin.photo), pin.isAlongTheWay),
                 ),
                 anchorX = 0.5,
                 anchorY = 0.5,

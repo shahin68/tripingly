@@ -7,6 +7,7 @@ import com.falcon.tripingly.core.model.account.ProOffer
 import com.falcon.tripingly.core.model.account.SessionState
 import com.falcon.tripingly.core.model.account.hasPro
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
@@ -36,7 +37,7 @@ enum class PurchaseOutcome {
     /** The server has Pro on: `GET /me` says so. */
     Active,
 
-    /** Paid, but the server hasn't heard from the store yet; Pro turns on shortly. */
+    /** Paid, but the server hasn't heard from the store yet; checked again in the background until Pro turns on. */
     Confirming,
 
     /** The person closed the store's sheet. */
@@ -55,6 +56,7 @@ internal class DefaultProRepository(
 
     private val lock = Mutex()
     private var linkedUserId: String? = null
+    private var laterChecks: Job? = null
 
     override val isAvailable: Boolean get() = store != null
 
@@ -89,6 +91,7 @@ internal class DefaultProRepository(
 
     /** The next account starts as the store's anonymous customer. */
     suspend fun clear() = lock.withLock {
+        laterChecks?.cancel()
         if (linkedUserId == null) return@withLock
         store?.logOut()
         linkedUserId = null
@@ -101,15 +104,28 @@ internal class DefaultProRepository(
         linkedUserId = userId
     }
 
-    /** The webhook reaches the server within seconds; `GET /me` is asked a few times until it says Pro. */
+    /**
+     * The webhook usually reaches the server within seconds; `GET /me` is asked a few times until it says Pro.
+     * When it's late (RevenueCat retries a failed delivery), `GET /me` is asked less and less often in the
+     * background, and the session turns Pro on wherever it's shown.
+     */
     private suspend fun awaitPro(): PurchaseOutcome {
         repeat(PRO_CHECKS) { check ->
             if (check > 0) delay(PRO_CHECK_INTERVAL_MILLIS)
-            val account = session.refreshAccount()
-            if (account is AppResult.Success && account.data.hasPro) return PurchaseOutcome.Active
+            if (hasPro()) return PurchaseOutcome.Active
+        }
+        if (laterChecks?.isActive != true) {
+            laterChecks = scope.launch {
+                for (wait in LATER_CHECK_WAITS_MILLIS) {
+                    delay(wait)
+                    if (hasPro()) return@launch
+                }
+            }
         }
         return PurchaseOutcome.Confirming
     }
+
+    private suspend fun hasPro(): Boolean = (session.refreshAccount() as? AppResult.Success)?.data?.hasPro == true
 
     private fun currentUserId(): String? = when (val state = session.session.value) {
         is SessionState.SignedIn -> state.account.id
@@ -120,5 +136,8 @@ internal class DefaultProRepository(
     private companion object {
         const val PRO_CHECKS = 5
         const val PRO_CHECK_INTERVAL_MILLIS = 2_000L
+
+        /** About 10 minutes in all, which covers RevenueCat's first retries. */
+        val LATER_CHECK_WAITS_MILLIS = listOf(10_000L, 20_000L, 30_000L, 60_000L, 120_000L, 360_000L)
     }
 }

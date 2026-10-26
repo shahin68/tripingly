@@ -27,6 +27,9 @@ jobs:
           java-version: 21
 
       - uses: gradle/actions/setup-gradle@v4
+        with:
+          # The default branch (master) never runs CI, so the cache is saved from develop and read by PRs.
+          cache-read-only: ${{ github.ref != 'refs/heads/develop' }}
 
       - name: Assemble debug app
         run: ./gradlew :androidApp:assembleDebug
@@ -43,8 +46,8 @@ jobs:
 
   ios:
     name: iOS framework and tests
-    # macOS minutes count 10x on private repos, so this job only runs once Android is green.
-    needs: android
+    # Runs alongside Android while the repo is public (free minutes). If it goes private again, macOS
+    # minutes count 10x: add `needs: android` back so this job only runs once Android is green.
     runs-on: macos-latest
     timeout-minutes: 60
     steps:
@@ -56,6 +59,9 @@ jobs:
           java-version: 21
 
       - uses: gradle/actions/setup-gradle@v4
+        with:
+          # The default branch (master) never runs CI, so the cache is saved from develop and read by PRs.
+          cache-read-only: ${{ github.ref != 'refs/heads/develop' }}
 
       - name: Link the shared framework for the simulator
         run: ./gradlew :shared:linkDebugFrameworkIosSimulatorArm64
