@@ -102,7 +102,7 @@ internal fun CreateTripMembers(
                 PillChip(
                     label = "@${member.username}",
                     onRemove = { onAction(Action.CreateTrip.MemberRemoved(member.username)) },
-                    leading = { AvatarCircle(name = member.displayName, key = member.username, size = AvatarSize.Small) },
+                    leading = { AvatarCircle(name = member.displayName, size = AvatarSize.Small) },
                     error = form.memberErrors[member.username]?.asString(),
                     enabled = !isSaving,
                 )
@@ -141,7 +141,6 @@ internal fun FriendPickerRow(
                 modifier = Modifier.animateItem(),
                 name = friend.displayName,
                 handle = friend.username,
-                key = friend.username,
                 selected = isPicked(friend),
                 onToggle = { onToggle(friend) },
                 enabled = enabled,

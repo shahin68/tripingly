@@ -26,19 +26,13 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import com.falcon.tripingly.core.designsystem.theme.AvatarPastels
-import com.falcon.tripingly.core.designsystem.theme.OnAvatarPastel
 import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
 import com.falcon.tripingly.core.designsystem.theme.spacing
 
-/**
- * A person as a round avatar: the first letter of [name] on a pastel colour chosen by [key]
- * (e.g. the username), so the same person always gets the same colour.
- */
+/** A person as a round avatar: the first letter of [name] on a quiet neutral circle (people have no colours). */
 @Composable
 fun AvatarCircle(
     name: String,
-    key: String,
     modifier: Modifier = Modifier,
     size: Dp = AvatarSize.Medium,
 ) {
@@ -46,12 +40,12 @@ fun AvatarCircle(
         modifier = modifier
             .size(size)
             .clip(CircleShape)
-            .background(avatarColor(key)),
+            .background(MaterialTheme.colorScheme.surfaceContainerHighest),
         contentAlignment = Alignment.Center,
     ) {
         Text(
             text = name.trim().firstOrNull()?.uppercase().orEmpty(),
-            color = OnAvatarPastel,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
             style = if (size >= AvatarSize.Medium) MaterialTheme.typography.titleLarge else MaterialTheme.typography.labelLarge,
         )
     }
@@ -65,7 +59,6 @@ fun AvatarCircle(
 fun AvatarChoice(
     name: String,
     handle: String,
-    key: String,
     selected: Boolean,
     onToggle: () -> Unit,
     modifier: Modifier = Modifier,
@@ -83,9 +76,8 @@ fun AvatarChoice(
         Box {
             AvatarCircle(
                 name = name,
-                key = key,
                 modifier = if (selected) {
-                    Modifier.border(AvatarSize.Ring, MaterialTheme.colorScheme.onSurface, CircleShape)
+                    Modifier.border(AvatarSize.Ring, MaterialTheme.colorScheme.primary, CircleShape)
                 } else {
                     Modifier
                 },
@@ -94,11 +86,11 @@ fun AvatarChoice(
                 Icon(
                     imageVector = Icons.Default.Check,
                     contentDescription = null,
-                    tint = MaterialTheme.colorScheme.surface,
+                    tint = MaterialTheme.colorScheme.onPrimary,
                     modifier = Modifier
                         .align(Alignment.BottomEnd)
                         .size(AvatarSize.Badge)
-                        .background(MaterialTheme.colorScheme.onSurface, CircleShape)
+                        .background(MaterialTheme.colorScheme.primary, CircleShape)
                         .padding(AvatarSize.BadgePadding),
                 )
             }
@@ -126,6 +118,7 @@ fun AvatarChoice(
 
 object AvatarSize {
     val Small = 24.dp
+    val Row = 40.dp
     val Medium = 56.dp
     internal val ChoiceWidth = 72.dp
     internal val Ring = 2.dp
@@ -133,18 +126,15 @@ object AvatarSize {
     internal val BadgePadding = 3.dp
 }
 
-/** Stable on every platform (unlike relying on a platform hash). */
-private fun avatarColor(key: String) =
-    AvatarPastels[key.fold(0) { hash, char -> (hash * 31 + char.code) and Int.MAX_VALUE } % AvatarPastels.size]
 
 @Preview
 @Composable
 private fun AvatarChoicePreview() {
     TripinglyTheme {
         Row {
-            AvatarChoice(name = "Anna", handle = "anna", key = "anna", selected = true, onToggle = {})
-            AvatarChoice(name = "Jonas", handle = "jonas.k", key = "jonas.k", selected = false, onToggle = {})
-            AvatarChoice(name = "Maximilian-Alexander", handle = "max", key = "max", selected = false, onToggle = {})
+            AvatarChoice(name = "Anna", handle = "anna", selected = true, onToggle = {})
+            AvatarChoice(name = "Jonas", handle = "jonas.k", selected = false, onToggle = {})
+            AvatarChoice(name = "Maximilian-Alexander", handle = "max", selected = false, onToggle = {})
         }
     }
 }
@@ -154,8 +144,8 @@ private fun AvatarChoicePreview() {
 private fun AvatarChoiceDarkPreview() {
     TripinglyTheme(darkTheme = true) {
         Row(Modifier.background(MaterialTheme.colorScheme.surface)) {
-            AvatarChoice(name = "Anna", handle = "anna", key = "anna", selected = true, onToggle = {})
-            AvatarCircle(name = "Lena", key = "lena", size = AvatarSize.Small)
+            AvatarChoice(name = "Anna", handle = "anna", selected = true, onToggle = {})
+            AvatarCircle(name = "Lena", size = AvatarSize.Small)
         }
     }
 }

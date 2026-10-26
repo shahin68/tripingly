@@ -1,4 +1,4 @@
-package com.falcon.tripingly.feature.social.presentation.social
+package com.falcon.tripingly.feature.social.presentation.nearby
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
@@ -23,8 +23,9 @@ import com.falcon.tripingly.feature.social.generated.resources.Res
 import com.falcon.tripingly.feature.social.generated.resources.social_add_place_pick_day
 import com.falcon.tripingly.feature.social.generated.resources.social_add_place_pick_trip
 import com.falcon.tripingly.feature.social.generated.resources.social_day_number
-import com.falcon.tripingly.feature.social.presentation.social.SocialViewModel.Action
-import com.falcon.tripingly.feature.social.presentation.social.SocialViewModel.AddPlaceState
+import com.falcon.tripingly.feature.social.presentation.nearby.NearbyViewModel.Action
+import com.falcon.tripingly.feature.social.presentation.nearby.NearbyViewModel.AddPlaceState
+import com.falcon.tripingly.feature.social.presentation.component.AddPlacePreviewStates
 import org.jetbrains.compose.resources.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme

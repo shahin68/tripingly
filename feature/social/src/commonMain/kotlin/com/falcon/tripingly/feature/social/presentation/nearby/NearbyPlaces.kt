@@ -1,4 +1,4 @@
-package com.falcon.tripingly.feature.social.presentation.social
+package com.falcon.tripingly.feature.social.presentation.nearby
 
 import com.falcon.tripingly.core.common.result.AppResult
 import com.falcon.tripingly.core.data.places.PlaceRepository
@@ -21,11 +21,10 @@ import com.falcon.tripingly.feature.social.generated.resources.social_error_hot
 import com.falcon.tripingly.feature.social.generated.resources.social_error_load_days
 import com.falcon.tripingly.feature.social.generated.resources.social_error_load_nearby
 import com.falcon.tripingly.feature.social.generated.resources.social_nearby_location_unavailable
-import com.falcon.tripingly.feature.social.presentation.social.SocialViewModel.AddPlaceState
-import com.falcon.tripingly.feature.social.presentation.social.SocialViewModel.Event
-import com.falcon.tripingly.feature.social.presentation.social.SocialViewModel.NearbyState
-import com.falcon.tripingly.feature.social.presentation.social.SocialViewModel.NearbyStatus
-import com.falcon.tripingly.feature.social.presentation.social.SocialViewModel.State
+import com.falcon.tripingly.feature.social.presentation.nearby.NearbyViewModel.AddPlaceState
+import com.falcon.tripingly.feature.social.presentation.nearby.NearbyViewModel.Event
+import com.falcon.tripingly.feature.social.presentation.nearby.NearbyViewModel.State
+import com.falcon.tripingly.feature.social.presentation.nearby.NearbyViewModel.Status
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.CoroutineScope
@@ -36,10 +35,10 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 /**
- * The Nearby tab: popular places around me, liked and added to a day of one of my trips. It asks for the location
- * only once the tab is open; where it looked stays in memory only, for the next pages.
+ * Nearby's places: popular places around me, marked hot and added to a day of one of my trips. It asks for the
+ * location only once the tab is open; where it looked stays in memory only, for the next pages.
  */
-internal class SocialNearby(
+internal class NearbyPlaces(
     private val scope: CoroutineScope,
     private val state: MutableStateFlow<State>,
     private val placeRepository: PlaceRepository,
@@ -58,35 +57,35 @@ internal class SocialNearby(
     /** As the server last confirmed it: the flame before the first tap of a burst. */
     private val confirmedHot = mutableMapOf<String, HotState>()
 
-    private fun update(change: (NearbyState) -> NearbyState) = state.update { it.copy(nearby = change(it.nearby)) }
+    private fun update(change: (State) -> State) = state.update(change)
 
     /** A first check that finds nothing allowed yet shows the ask; an answer of no keeps it. */
     fun onPermission(permission: LocationPermission, isAnswer: Boolean) {
         val status = when (permission) {
             LocationPermission.Granted -> null
-            LocationPermission.Blocked -> NearbyStatus.Blocked
-            LocationPermission.NotAsked, LocationPermission.ShouldExplain -> NearbyStatus.NeedsPermission
+            LocationPermission.Blocked -> Status.Blocked
+            LocationPermission.NotAsked, LocationPermission.ShouldExplain -> Status.NeedsPermission
         }
-        val current = state.value.nearby.status
+        val current = state.value.status
         if (status != null) {
-            if (isAnswer || current != NearbyStatus.Ready) update { it.copy(status = status) }
+            if (isAnswer || current != Status.Ready) update { it.copy(status = status) }
             return
         }
-        if (current == NearbyStatus.Ready || current == NearbyStatus.Locating) return
+        if (current == Status.Ready || current == Status.Locating) return
         locate()
     }
 
     private fun locate() {
-        update { it.copy(status = NearbyStatus.Locating) }
+        update { it.copy(status = Status.Locating) }
         scope.launch {
             when (val location = getCurrentLocation().first()) {
                 is AppResult.Success -> {
                     val point = GeoPoint(location.data.latitude, location.data.longitude)
-                    this@SocialNearby.point = point
+                    this@NearbyPlaces.point = point
                     load(point)
                 }
                 is AppResult.Error -> {
-                    update { it.copy(status = NearbyStatus.Unavailable) }
+                    update { it.copy(status = Status.Unavailable) }
                     showMessage(UiText.Resource(Res.string.social_nearby_location_unavailable))
                 }
             }
@@ -104,11 +103,14 @@ internal class SocialNearby(
             when (val result = placeRepository.nearby(point, cursor = null)) {
                 is AppResult.Success -> {
                     cursor = result.data.nextCursor
-                    update { it.copy(places = result.data.items.toImmutableList(), isLoading = false, status = NearbyStatus.Ready) }
+                    update { it.copy(places = result.data.items.toImmutableList(), isLoading = false, status = Status.Ready, loadError = null) }
                 }
                 is AppResult.Error -> {
-                    update { it.copy(isLoading = false, status = NearbyStatus.Ready) }
-                    showMessage(result.error.toUiText(Res.string.social_error_load_nearby))
+                    // Nothing to show yet: the error screen; places already shown stay, with a banner.
+                    val message = result.error.toUiText(Res.string.social_error_load_nearby)
+                    val isEmpty = state.value.places.isEmpty()
+                    update { it.copy(isLoading = false, status = Status.Ready, loadError = message.takeIf { isEmpty }) }
+                    if (!isEmpty) showMessage(message)
                 }
             }
         }
@@ -122,7 +124,7 @@ internal class SocialNearby(
         loadingMore = scope.launch {
             val result = placeRepository.nearby(point, cursor)
             if (result is AppResult.Success) {
-                this@SocialNearby.cursor = result.data.nextCursor
+                this@NearbyPlaces.cursor = result.data.nextCursor
                 update { nearby ->
                     val known = nearby.places.map { it.id }.toSet()
                     nearby.copy(places = (nearby.places + result.data.items.filterNot { it.id in known }).toImmutableList())
@@ -133,7 +135,7 @@ internal class SocialNearby(
 
     /** A place's flame: shown at once and kept; a newer tap wins, and only a refusal puts it back. */
     fun toggleHot(placeId: String) {
-        val shown = state.value.nearby.places.firstOrNull { it.id == placeId } ?: return
+        val shown = state.value.places.firstOrNull { it.id == placeId } ?: return
         if (hotJobs[placeId]?.isActive != true) confirmedHot[placeId] = HotState(shown.hotByMe, shown.hotCount)
         hotJobs[placeId]?.cancel()
         val hot = !shown.hotByMe

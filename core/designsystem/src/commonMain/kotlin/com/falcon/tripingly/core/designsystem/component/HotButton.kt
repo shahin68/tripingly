@@ -26,7 +26,7 @@ import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
 import com.falcon.tripingly.core.designsystem.theme.spacing
 import org.jetbrains.compose.resources.stringResource
 
-/** A flame with a place's hot count; filled, in the hot spots' color, while I marked it hot. Never a like. */
+/** A flame with a place's hot count, in the same quiet color as every count; filled while I marked it hot. Never a like. */
 @Composable
 fun HotButton(
     hot: Boolean,
@@ -45,11 +45,11 @@ fun HotButton(
         Icon(
             imageVector = if (hot) Icons.Filled.LocalFireDepartment else Icons.Outlined.LocalFireDepartment,
             contentDescription = stringResource(Res.string.mark_hot),
-            tint = if (hot) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.onSurfaceVariant,
+            tint = if (hot) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.size(20.dp),
         )
         if (count > 0) {
-            Text(text = count.toString(), style = MaterialTheme.typography.labelLarge)
+            Text(text = compactCount(count), style = MaterialTheme.typography.labelLarge)
         }
     }
 }

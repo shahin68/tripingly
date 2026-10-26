@@ -46,6 +46,7 @@ kotlin {
             implementation(libs.androidx.lifecycle.runtimeCompose)
             implementation(libs.androidx.lifecycle.viewmodelNavigation3)
             implementation(libs.coil.network.ktor3)
+            implementation(libs.compose.material.icons.extended)
         }
     }
 }

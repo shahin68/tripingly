@@ -1,4 +1,4 @@
-package com.falcon.tripingly.feature.social.presentation.social
+package com.falcon.tripingly.feature.social.presentation.explore
 
 import com.falcon.tripingly.core.common.result.AppResult
 import com.falcon.tripingly.core.data.social.SocialRepository
@@ -13,9 +13,8 @@ import com.falcon.tripingly.feature.social.generated.resources.Res
 import com.falcon.tripingly.feature.social.generated.resources.social_error_load_explore
 import com.falcon.tripingly.feature.social.generated.resources.social_explore_nearby_blocked
 import com.falcon.tripingly.feature.social.generated.resources.social_nearby_location_unavailable
-import com.falcon.tripingly.feature.social.presentation.social.SocialViewModel.Event
-import com.falcon.tripingly.feature.social.presentation.social.SocialViewModel.ExploreState
-import com.falcon.tripingly.feature.social.presentation.social.SocialViewModel.State
+import com.falcon.tripingly.feature.social.presentation.explore.ExploreViewModel.Event
+import com.falcon.tripingly.feature.social.presentation.explore.ExploreViewModel.State
 import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
@@ -28,7 +27,7 @@ import kotlinx.coroutines.launch
  * Explore's list: public trips for the period, a page at a time. Its Nearby filter asks for the location only
  * when it's switched on, and keeps it in memory only while it's on.
  */
-internal class SocialExplore(
+internal class ExploreFeed(
     private val scope: CoroutineScope,
     private val state: MutableStateFlow<State>,
     private val socialRepository: SocialRepository,
@@ -44,7 +43,7 @@ internal class SocialExplore(
     private var loading: Job? = null
     private var loadingMore: Job? = null
 
-    private fun update(change: (ExploreState) -> ExploreState) = state.update { it.copy(explore = change(it.explore)) }
+    private fun update(change: (State) -> State) = state.update(change)
 
     /** The first page for the current filters; replaces a load still on its way, and stops loading more of the old list. */
     fun load() {
@@ -55,11 +54,14 @@ internal class SocialExplore(
             when (val result = socialRepository.explore(filter(), cursor = null)) {
                 is AppResult.Success -> {
                     cursor = result.data.nextCursor
-                    update { it.copy(trips = result.data.items.toImmutableList(), isLoading = false, hasLoaded = true) }
+                    update { it.copy(trips = result.data.items.toImmutableList(), isLoading = false, hasLoaded = true, loadError = null) }
                 }
                 is AppResult.Error -> {
-                    update { it.copy(isLoading = false) }
-                    showMessage(result.error.toUiText(Res.string.social_error_load_explore))
+                    // Nothing to show yet: the error screen; trips already shown stay, with a banner.
+                    val message = result.error.toUiText(Res.string.social_error_load_explore)
+                    val isEmpty = state.value.trips.isEmpty()
+                    update { it.copy(isLoading = false, hasLoaded = true, loadError = message.takeIf { isEmpty }) }
+                    if (!isEmpty) showMessage(message)
                 }
             }
         }
@@ -72,7 +74,7 @@ internal class SocialExplore(
         loadingMore = scope.launch {
             val result = socialRepository.explore(filter(), cursor)
             if (result is AppResult.Success) {
-                this@SocialExplore.cursor = result.data.nextCursor
+                this@ExploreFeed.cursor = result.data.nextCursor
                 update { explore ->
                     val known = explore.trips.map { it.trip.id }.toSet()
                     explore.copy(trips = (explore.trips + result.data.items.filterNot { it.trip.id in known }).toImmutableList())
@@ -81,22 +83,22 @@ internal class SocialExplore(
         }
     }
 
-    private fun filter() = ExploreFilter(period = state.value.explore.period, near = point.takeIf { state.value.explore.isNearbyFilter })
+    private fun filter() = ExploreFilter(period = state.value.period, near = point.takeIf { state.value.isNearbyFilter })
 
     fun selectPeriod(period: ExplorePeriod) {
-        if (period == state.value.explore.period) return
+        if (period == state.value.period) return
         update { it.copy(period = period) }
         load()
     }
 
     /** Off at once; on only once the location is known, asked for right then if it isn't allowed yet. */
     fun toggleNearby() {
-        if (state.value.explore.isNearbyFilter) {
+        if (state.value.isNearbyFilter) {
             point = null
             update { it.copy(isNearbyFilter = false) }
             load()
         } else {
-            sendEvent(Event.CheckExploreLocation)
+            sendEvent(Event.CheckLocation)
         }
     }
 
@@ -111,12 +113,11 @@ internal class SocialExplore(
         }
     }
 
-    /** True when the answer was to the Nearby filter's prompt; a no leaves the filter off. */
-    fun onPermissionAnswer(permission: LocationPermission): Boolean {
-        if (!isAskingForLocation) return false
+    /** The answer to the prompt the Near me filter asked for; a no leaves the filter off. */
+    fun onPermissionAnswer(permission: LocationPermission) {
+        if (!isAskingForLocation) return
         isAskingForLocation = false
         if (permission == LocationPermission.Granted) locate()
-        return true
     }
 
     private fun locate() {

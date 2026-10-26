@@ -5,10 +5,7 @@
 
     <!-- Home -->
     <string name="home_tab_my_trips">Utazásaim</string>
-    <string name="home_tab_social">Közösség</string>
     <string name="home_search_placeholder_trips">Utazások keresése...</string>
-    <string name="home_search_placeholder_social">Emberek keresése…</string>
-    <string name="home_my_profile">Profilod</string>
     <string name="home_fab_add_trip">Utazás hozzáadása</string>
     <string name="home_list_empty">Még nincs utazásod. Koppints a + gombra, és hozz létre egyet!</string>
     <string name="home_list_no_matches">Egy utazás sem felel meg a keresésnek.</string>
@@ -122,4 +119,41 @@
     <string name="members_error_revoke_invite">Nem sikerült kikapcsolni a meghívó linket.</string>
     <string name="members_error_remove">Nem sikerült eltávolítani őket az utazásból.</string>
     <string name="trip_created">Létrehozva %1$s</string>
+
+    <!-- Trips timeline (redesign) -->
+    <string name="home_today">Ma · %1$s</string>
+    <string name="home_trip_more">Továbbiak: %1$s</string>
+    <string name="home_no_dates_short">Nincs dátum</string>
+    <string name="trip_when_now">Most</string>
+    <string name="trip_when_today">Ma</string>
+    <string name="trip_when_tomorrow">Holnap</string>
+    <string name="trip_when_yesterday">Tegnap</string>
+    <plurals name="home_past_count">
+        <item quantity="one">Korábbi · %1$d utazás</item>
+        <item quantity="other">Korábbi · %1$d utazás</item>
+    </plurals>
+    <plurals name="trip_when_in_days">
+        <item quantity="one">%1$d nap múlva</item>
+        <item quantity="other">%1$d nap múlva</item>
+    </plurals>
+    <plurals name="trip_when_in_weeks">
+        <item quantity="one">%1$d hét múlva</item>
+        <item quantity="other">%1$d hét múlva</item>
+    </plurals>
+    <plurals name="trip_when_in_months">
+        <item quantity="one">%1$d hónap múlva</item>
+        <item quantity="other">%1$d hónap múlva</item>
+    </plurals>
+    <plurals name="trip_when_days_ago">
+        <item quantity="one">%1$d napja</item>
+        <item quantity="other">%1$d napja</item>
+    </plurals>
+    <plurals name="trip_when_weeks_ago">
+        <item quantity="one">Múlt héten</item>
+        <item quantity="other">%1$d hete</item>
+    </plurals>
+    <plurals name="trip_when_months_ago">
+        <item quantity="one">Múlt hónapban</item>
+        <item quantity="other">%1$d hónapja</item>
+    </plurals>
 </resources>

@@ -21,7 +21,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
-/** My friends, the people I follow, or my followers, a page at a time. */
+/** My friends, the people I follow, or my followers, a page at a time: one segment of the Profile tab. */
 class PeopleViewModel(
     val list: PeopleList,
     private val userRepository: UserRepository,
@@ -55,7 +55,7 @@ class PeopleViewModel(
     private fun load(first: Boolean) {
         if (first) loading?.cancel() else if (loading?.isActive == true) return
         loading = viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true) }
+            _uiState.update { it.copy(isLoading = true, loadError = null) }
             when (val result = userRepository.people(list, if (first) null else cursor)) {
                 is AppResult.Success -> {
                     cursor = result.data.nextCursor
@@ -64,7 +64,11 @@ class PeopleViewModel(
                         state.copy(people = people.toImmutableList(), isLoading = false, hasLoaded = true)
                     }
                 }
-                is AppResult.Error -> _uiState.update { it.copy(isLoading = false, message = result.error.toUiText(Res.string.social_error_load_people)) }
+                is AppResult.Error -> _uiState.update {
+                    // Nobody shown yet: the error screen; people already shown stay, with a banner.
+                    val message = result.error.toUiText(Res.string.social_error_load_people)
+                    if (it.people.isEmpty()) it.copy(isLoading = false, loadError = message) else it.copy(isLoading = false, message = message)
+                }
             }
         }
     }
@@ -74,6 +78,8 @@ class PeopleViewModel(
         val people: ImmutableList<UserSummary> = persistentListOf(),
         val isLoading: Boolean = false,
         val hasLoaded: Boolean = false,
+        /** Why the list couldn't load when nobody is shown: the error screen with a retry. */
+        val loadError: UiText? = null,
         val message: UiText? = null,
     )
 

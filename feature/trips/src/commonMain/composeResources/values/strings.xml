@@ -5,10 +5,7 @@
 
     <!-- Home -->
     <string name="home_tab_my_trips">My Trips</string>
-    <string name="home_tab_social">Social</string>
     <string name="home_search_placeholder_trips">Search trips...</string>
-    <string name="home_search_placeholder_social">Search people…</string>
-    <string name="home_my_profile">Your profile</string>
     <string name="home_fab_add_trip">Add Trip</string>
     <string name="home_list_empty">No trips yet. Tap + to create one!</string>
     <string name="home_list_no_matches">No trips match your search.</string>
@@ -122,4 +119,41 @@
     <string name="members_error_revoke_invite">Couldn’t turn off the invite link.</string>
     <string name="members_error_remove">Couldn’t remove them from the trip.</string>
     <string name="trip_created">Created %1$s</string>
+
+    <!-- Trips timeline (redesign) -->
+    <string name="home_today">Today · %1$s</string>
+    <string name="home_trip_more">More for %1$s</string>
+    <string name="home_no_dates_short">No dates</string>
+    <string name="trip_when_now">Now</string>
+    <string name="trip_when_today">Today</string>
+    <string name="trip_when_tomorrow">Tomorrow</string>
+    <string name="trip_when_yesterday">Yesterday</string>
+    <plurals name="home_past_count">
+        <item quantity="one">Past · %1$d trip</item>
+        <item quantity="other">Past · %1$d trips</item>
+    </plurals>
+    <plurals name="trip_when_in_days">
+        <item quantity="one">In %1$d day</item>
+        <item quantity="other">In %1$d days</item>
+    </plurals>
+    <plurals name="trip_when_in_weeks">
+        <item quantity="one">In %1$d week</item>
+        <item quantity="other">In %1$d weeks</item>
+    </plurals>
+    <plurals name="trip_when_in_months">
+        <item quantity="one">In %1$d month</item>
+        <item quantity="other">In %1$d months</item>
+    </plurals>
+    <plurals name="trip_when_days_ago">
+        <item quantity="one">%1$d day ago</item>
+        <item quantity="other">%1$d days ago</item>
+    </plurals>
+    <plurals name="trip_when_weeks_ago">
+        <item quantity="one">Last week</item>
+        <item quantity="other">%1$d weeks ago</item>
+    </plurals>
+    <plurals name="trip_when_months_ago">
+        <item quantity="one">Last month</item>
+        <item quantity="other">%1$d months ago</item>
+    </plurals>
 </resources>

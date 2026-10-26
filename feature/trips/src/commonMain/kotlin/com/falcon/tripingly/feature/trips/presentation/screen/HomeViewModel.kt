@@ -41,24 +41,29 @@ import kotlinx.coroutines.launch
 import kotlinx.datetime.LocalDate
 
 /**
- * My Trips. The list comes from the cache and is reloaded from the server on start and on pull-to-refresh;
- * changes wait for the server's answer. The New trip sheet's form is its own part ([HomeCreateTrip]).
+ * My Trips, the Trips tab. The list comes from the cache and is reloaded from the server on start and on
+ * pull-to-refresh; changes wait for the server's answer. The trips are shown as a [TripTimeline] around
+ * [today]. The New trip sheet's form is its own part ([HomeCreateTrip]).
  */
 class HomeViewModel(
     private val tripRepository: TripRepository,
     placeRepository: PlaceRepository,
     userRepository: UserRepository,
     sessionRepository: SessionRepository,
+    private val today: () -> LocalDate,
 ) : ViewModel() {
 
     /** Everything but the trips, which come from the cache and are filled in below. */
     private val ui = MutableStateFlow(State())
 
     val uiState: StateFlow<State> = combine(tripRepository.observeMyTrips(), ui) { trips, ui ->
+        val matching = trips.filter { it.matches(ui.searchQuery) }
         ui.copy(
-            trips = trips.filter { it.matches(ui.searchQuery) }.toImmutableList(),
+            trips = matching.toImmutableList(),
+            timeline = matching.toTimeline(today()),
             hasTrips = trips.isNotEmpty(),
             hasLoaded = ui.hasLoaded || trips.isNotEmpty(),
+            loadError = ui.loadError.takeIf { trips.isEmpty() },
             dialog = ui.dialog?.let { state -> state.dialog.withTrip(trips)?.let { state.copy(dialog = it) } },
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), State())
@@ -74,9 +79,7 @@ class HomeViewModel(
 
     fun onAction(action: Action) {
         when (action) {
-            is Action.TabSelected -> ui.update { it.copy(selectedTab = action.tab) }
             is Action.SearchQueryChanged -> ui.update { it.copy(searchQuery = action.query) }
-            is Action.PeopleQueryChanged -> ui.update { it.copy(peopleQuery = action.query) }
             Action.DismissMessage -> ui.update { it.copy(message = null) }
             is Action.Trips -> onTrips(action)
             is Action.TripDialog -> onTripDialog(action)
@@ -120,12 +123,15 @@ class HomeViewModel(
         if (ui.value.isRefreshing) return
         ui.update { it.copy(isRefreshing = true) }
         viewModelScope.launch {
-            val result = tripRepository.refreshMyTrips()
+            val error = (tripRepository.refreshMyTrips() as? AppResult.Error)?.error
+            // With trips on screen a failed refresh is a banner; with nothing to show it's the error screen.
+            val hasTrips = uiState.value.hasTrips
             ui.update {
                 it.copy(
                     isRefreshing = false,
                     hasLoaded = true,
-                    message = (result as? AppResult.Error)?.error?.let(::refreshMessage),
+                    loadError = error?.takeUnless { hasTrips }?.toUiText(Res.string.home_error_load_trips),
+                    message = error?.takeIf { hasTrips }?.let(::refreshMessage),
                 )
             }
         }
@@ -184,17 +190,18 @@ class HomeViewModel(
 
     @Immutable
     data class State(
-        val selectedTab: Tab = Tab.MyTrips,
         val searchQuery: String = "",
-        /** What's typed in the search bar on the Social tab: people by name. */
-        val peopleQuery: String = "",
         /** My Trips matching [searchQuery]. */
         val trips: ImmutableList<Trip> = persistentListOf(),
+        /** [trips] as the screen shows them: coming up, then past. */
+        val timeline: TripTimeline = TripTimeline(),
         /** False only when the user has no trips at all (not just none matching the search). */
         val hasTrips: Boolean = false,
         val isRefreshing: Boolean = false,
-        /** False until the first load answered or cached trips exist; shows a spinner instead of "no trips". */
+        /** False until the first load answered or cached trips exist; shows the loading skeleton instead of "no trips". */
         val hasLoaded: Boolean = false,
+        /** Why the trips couldn't load when there are none to show: the error screen with a retry. */
+        val loadError: UiText? = null,
         /** A banner, e.g. offline or an error the user should see. */
         val message: UiText? = null,
         /** The open dialog or New trip sheet. */
@@ -210,8 +217,6 @@ class HomeViewModel(
         val isSaving: Boolean = false,
         val error: UiText? = null,
     )
-
-    enum class Tab { MyTrips, Social }
 
     @Immutable
     sealed interface Dialog {
@@ -230,9 +235,7 @@ class HomeViewModel(
 
     /** Grouped by the part of the screen they come from. */
     sealed interface Action {
-        data class TabSelected(val tab: Tab) : Action
         data class SearchQueryChanged(val query: String) : Action
-        data class PeopleQueryChanged(val query: String) : Action
         data object DismissMessage : Action
 
         /** The My Trips list, its New trip button and each trip's long-press menu. */

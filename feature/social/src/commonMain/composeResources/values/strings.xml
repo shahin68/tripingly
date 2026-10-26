@@ -88,4 +88,13 @@
     <string name="social_explore_empty_filtered">No trips match these filters yet.</string>
     <string name="social_explore_nearby_blocked">Location is off for Tripinly. Turn it on in Settings to see trips near you.</string>
     <string name="social_trip_created">Created %1$s</string>
+
+    <!-- Tabs (redesign) -->
+    <string name="social_profile">Profile</string>
+    <string name="social_search_people">Search people…</string>
+    <string name="social_near_me">Near me</string>
+    <string name="social_location_note">Your location is only used to find places and is never saved.</string>
+    <string name="social_trips">Trips</string>
+    <string name="social_public_trips_label">Public trips</string>
+    <string name="social_explore_period">Explore period: %1$s</string>
 </resources>

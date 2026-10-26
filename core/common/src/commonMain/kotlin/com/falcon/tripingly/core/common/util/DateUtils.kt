@@ -19,6 +19,12 @@ object DateUtils {
     /** Day and month name in the device's locale, e.g. "Oct 4", "4. Okt.", "okt. 4.". */
     fun formatAbbreviated(date: LocalDate): String = formatLocalized(date, "MMMd")
 
+    /** The month's short name in the device's locale, e.g. "Oct", "Okt.", "okt."; the timeline's date column. */
+    fun formatMonthShort(date: LocalDate): String = formatLocalized(date, "MMM")
+
+    /** Weekday, day and month in the device's locale, e.g. "Mon, Oct 26", "Mo., 26. Okt.", "okt. 26., h". */
+    fun formatWeekday(date: LocalDate): String = formatLocalized(date, "MMMEd")
+
     /** "Jun 1, 2025 - Jun 15, 2025", or null for a trip without dates. */
     fun formatRange(start: LocalDate?, end: LocalDate?): String? = when {
         start == null -> null

@@ -88,4 +88,13 @@
     <string name="social_explore_empty_filtered">Noch keine Reisen für diese Filter.</string>
     <string name="social_explore_nearby_blocked">Der Standort ist für Tripinly aus. Schalte ihn in den Einstellungen ein, um Reisen in deiner Nähe zu sehen.</string>
     <string name="social_trip_created">Erstellt %1$s</string>
+
+    <!-- Tabs (redesign) -->
+    <string name="social_profile">Profil</string>
+    <string name="social_search_people">Personen suchen …</string>
+    <string name="social_near_me">In meiner Nähe</string>
+    <string name="social_location_note">Dein Standort wird nur zum Finden von Orten genutzt und nie gespeichert.</string>
+    <string name="social_trips">Reisen</string>
+    <string name="social_public_trips_label">Öffentliche Reisen</string>
+    <string name="social_explore_period">Zeitraum: %1$s</string>
 </resources>

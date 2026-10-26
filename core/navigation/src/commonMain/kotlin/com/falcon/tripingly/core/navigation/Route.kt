@@ -9,19 +9,16 @@ import kotlinx.serialization.modules.polymorphic
 @Serializable
 sealed interface Route : NavKey
 
+/** The tab shell: Trips, Explore, Nearby and Profile. */
 @Serializable
 data object Home : Route
 
 @Serializable
 data class TripMap(val tripId: String) : Route
 
-/** A person's profile; null [username] is my own. */
+/** Someone else's profile (my own is the Profile tab). */
 @Serializable
-data class Profile(val username: String?) : Route
-
-/** One of my people lists, by its `PeopleList` name. */
-@Serializable
-data class People(val list: String) : Route
+data class Profile(val username: String) : Route
 
 @Serializable
 data object Settings : Route
@@ -36,7 +33,6 @@ val NavConfig = SavedStateConfiguration {
             subclass(Home::class, Home.serializer())
             subclass(TripMap::class, TripMap.serializer())
             subclass(Profile::class, Profile.serializer())
-            subclass(People::class, People.serializer())
             subclass(Settings::class, Settings.serializer())
             subclass(Paywall::class, Paywall.serializer())
         }

@@ -24,4 +24,13 @@
     <string name="report_reason_other">Valami más</string>
     <string name="report_details">Részletek (nem kötelező)</string>
     <string name="report_send">Jelentés</string>
+
+    <!-- Shell and states -->
+    <string name="common_settings">Beállítások</string>
+    <string name="common_clear_search">Keresés törlése</string>
+    <string name="common_back">Vissza</string>
+    <string name="error_title">Valami hiba történt</string>
+    <string name="error_message">Ezt nem sikerült betölteni. Kérjük, próbáld újra.</string>
+    <string name="error_retry">Újrapróbálás</string>
+    <string name="loading">Betöltés</string>
 </resources>

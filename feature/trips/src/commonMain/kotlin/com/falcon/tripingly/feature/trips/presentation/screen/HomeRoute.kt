@@ -1,5 +1,6 @@
 package com.falcon.tripingly.feature.trips.presentation.screen
 
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -31,9 +32,9 @@ import org.koin.compose.viewmodel.koinViewModel
 @Composable
 fun HomeRoute(
     onNavigateToMap: (String) -> Unit,
-    onOpenMyProfile: () -> Unit,
-    /** The Social tab's content, given what's typed in the search bar there. */
-    socialContent: @Composable (query: String) -> Unit,
+    onOpenSettings: () -> Unit,
+    /** The tab shell's floating bottom bar, which the list scrolls behind. */
+    bottomBarPadding: PaddingValues = PaddingValues(),
     viewModel: HomeViewModel = koinViewModel(),
     shareManager: ShareManager = koinInject(),
 ) {
@@ -68,8 +69,8 @@ fun HomeRoute(
     HomeScreen(
         state = state,
         onAction = viewModel::onAction,
-        onOpenMyProfile = onOpenMyProfile,
-        socialContent = socialContent,
+        onOpenSettings = onOpenSettings,
+        bottomBarPadding = bottomBarPadding,
     )
 
     state.dialog?.let { TripDialog(it, viewModel::onAction) }

@@ -35,7 +35,8 @@ import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
 import com.falcon.tripingly.core.designsystem.theme.spacing
 
 /**
- * A pill-shaped control for picking one of a few options, e.g. Public / Private.
+ * A pill-shaped control for picking one of a few options, e.g. Public / Private: a quiet track with the
+ * picked option lifted out as a white (dark: deepest surface) pill.
  * Put one [SegmentedToggleOption] per option in [content].
  */
 @Composable
@@ -65,10 +66,10 @@ fun RowScope.SegmentedToggleOption(
     enabled: Boolean = true,
 ) {
     val container by animateColorAsState(
-        if (selected) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.surfaceVariant,
+        if (selected) MaterialTheme.colorScheme.surfaceContainerLowest else MaterialTheme.colorScheme.surfaceVariant,
     )
     val content by animateColorAsState(
-        if (selected) MaterialTheme.colorScheme.surface else MaterialTheme.colorScheme.onSurfaceVariant,
+        if (selected) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant,
     )
     Box(
         modifier = modifier
@@ -112,6 +113,6 @@ private fun SegmentedTogglePreview() {
 @Composable
 private fun SegmentedToggleDarkPreview() {
     TripinglyTheme(darkTheme = true) {
-        Box(Modifier.background(MaterialTheme.colorScheme.surface)) { VisibilityTogglePreviewContent(publicSelected = false) }
+        Box(Modifier.background(MaterialTheme.colorScheme.surfaceContainerLowest)) { VisibilityTogglePreviewContent(publicSelected = false) }
     }
 }

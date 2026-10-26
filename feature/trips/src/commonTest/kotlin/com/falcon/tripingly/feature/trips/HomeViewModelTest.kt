@@ -114,7 +114,7 @@ class HomeViewModelTest {
     fun tearDown() = Dispatchers.resetMain()
 
     /** A view model whose state is collected, as the screen does. */
-    private fun TestScope.viewModel(): HomeViewModel = HomeViewModel(backend, places, users, session).also { viewModel ->
+    private fun TestScope.viewModel(): HomeViewModel = HomeViewModel(backend, places, users, session, today = { LocalDate(2026, 10, 26) }).also { viewModel ->
         backgroundScope.launch { viewModel.uiState.collect {} }
     }
 

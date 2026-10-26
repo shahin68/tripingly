@@ -221,7 +221,6 @@ private fun CommentRow(
     ) {
         AvatarCircle(
             name = comment.author.displayName,
-            key = comment.author.username,
             size = AvatarSize.Small,
             modifier = Modifier
                 .padding(top = 2.dp)

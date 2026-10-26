@@ -6,41 +6,71 @@ import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import com.falcon.tripingly.core.designsystem.component.LocalGlass
 import com.falcon.tripingly.core.designsystem.component.LocalMessageBanner
 import com.falcon.tripingly.core.designsystem.component.rememberMessageBanner
+import dev.chrisbanes.haze.rememberHazeState
 
 private val LightColorScheme = lightColorScheme(
-    primary = PrimaryLight,
-    onPrimary = OnPrimaryLight,
-    primaryContainer = PrimaryContainerLight,
-    onPrimaryContainer = OnPrimaryContainerLight,
+    primary = IvyLight,
+    onPrimary = OnIvyLight,
+    primaryContainer = IvyContainerLight,
+    onPrimaryContainer = OnIvyContainerLight,
     secondary = SecondaryLight,
-    onSecondary = OnSecondaryLight,
+    onSecondary = OnIvyLight,
     secondaryContainer = SecondaryContainerLight,
     onSecondaryContainer = OnSecondaryContainerLight,
-    surface = SurfaceLight,
-    onSurface = OnSurfaceLight,
-    surfaceVariant = SurfaceVariantLight,
+    tertiary = SecondaryLight,
+    onTertiary = OnIvyLight,
+    background = BackgroundLight,
+    onBackground = OnBackgroundLight,
+    surface = BackgroundLight,
+    onSurface = OnBackgroundLight,
+    surfaceVariant = SurfaceContainerHighLight,
     onSurfaceVariant = OnSurfaceVariantLight,
+    surfaceContainerLowest = SurfaceContainerLowestLight,
+    surfaceContainerLow = SurfaceContainerLowLight,
+    surfaceContainer = SurfaceContainerLight,
+    surfaceContainerHigh = SurfaceContainerHighLight,
+    surfaceContainerHighest = SurfaceContainerHighestLight,
+    surfaceBright = SurfaceContainerLowestLight,
+    outline = OutlineLight,
+    outlineVariant = OutlineVariantLight,
     error = ErrorLight,
-    onError = OnErrorLight,
+    onError = OnIvyLight,
+    errorContainer = ErrorContainerLight,
+    onErrorContainer = OnErrorContainerLight,
 )
 
 private val DarkColorScheme = darkColorScheme(
-    primary = PrimaryDark,
-    onPrimary = OnPrimaryDark,
-    primaryContainer = PrimaryContainerDark,
-    onPrimaryContainer = OnPrimaryContainerDark,
+    primary = IvyDark,
+    onPrimary = OnIvyDark,
+    primaryContainer = IvyContainerDark,
+    onPrimaryContainer = OnIvyContainerDark,
     secondary = SecondaryDark,
-    onSecondary = OnSecondaryDark,
+    onSecondary = OnIvyDark,
     secondaryContainer = SecondaryContainerDark,
     onSecondaryContainer = OnSecondaryContainerDark,
-    surface = SurfaceDark,
-    onSurface = OnSurfaceDark,
-    surfaceVariant = SurfaceVariantDark,
+    tertiary = SecondaryDark,
+    onTertiary = OnIvyDark,
+    background = BackgroundDark,
+    onBackground = OnBackgroundDark,
+    surface = BackgroundDark,
+    onSurface = OnBackgroundDark,
+    surfaceVariant = SurfaceContainerHighDark,
     onSurfaceVariant = OnSurfaceVariantDark,
+    surfaceContainerLowest = SurfaceContainerLowestDark,
+    surfaceContainerLow = SurfaceContainerLowDark,
+    surfaceContainer = SurfaceContainerDark,
+    surfaceContainerHigh = SurfaceContainerHighDark,
+    surfaceContainerHighest = SurfaceContainerHighestDark,
+    surfaceBright = SurfaceContainerHighestDark,
+    outline = OutlineDark,
+    outlineVariant = OutlineVariantDark,
     error = ErrorDark,
-    onError = OnErrorDark,
+    onError = OnErrorContainerLight,
+    errorContainer = ErrorContainerDark,
+    onErrorContainer = OnErrorContainerDark,
 )
 
 @Composable
@@ -48,15 +78,16 @@ fun TripinglyTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
     content: @Composable () -> Unit,
 ) {
-    val colorScheme = if (darkTheme) DarkColorScheme else LightColorScheme
-
     CompositionLocalProvider(
         LocalSpacing provides Spacing(),
+        LocalExtendedColors provides if (darkTheme) DarkExtendedColors else LightExtendedColors,
+        // One backdrop for the whole app: content marked as a glass source shows blurred behind glass surfaces.
+        LocalGlass provides rememberHazeState(),
         LocalMessageBanner provides rememberMessageBanner(),
     ) {
         MaterialTheme(
-            colorScheme = colorScheme,
-            typography = AppTypography,
+            colorScheme = if (darkTheme) DarkColorScheme else LightColorScheme,
+            typography = appTypography(),
             shapes = AppShapes,
             content = content,
         )

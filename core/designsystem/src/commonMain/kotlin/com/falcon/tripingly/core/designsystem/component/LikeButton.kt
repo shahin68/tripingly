@@ -50,7 +50,7 @@ fun LikeButton(
             modifier = Modifier.size(20.dp),
         )
         if (count > 0) {
-            Text(text = count.toString(), style = MaterialTheme.typography.labelLarge)
+            Text(text = compactCount(count), style = MaterialTheme.typography.labelLarge)
         }
     }
 }
