@@ -33,6 +33,8 @@ sealed interface MapAction {
     /** The top bar and its menu. */
     sealed interface Header : MapAction {
         data object Back : Header
+        /** Loads the trip again from the error screen. */
+        data object Retry : Header
         data object AddDay : Header
         data object DeleteDay : Header
         /** Saves someone else's trip to My Trips, or removes it. */

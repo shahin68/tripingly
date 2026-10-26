@@ -143,6 +143,7 @@ class MapViewModel(
     private fun onHeader(action: MapAction.Header) {
         when (action) {
             is MapAction.Header.Back -> sendEvent(MapEvent.NavigateBack)
+            is MapAction.Header.Retry -> opening.retry()
             is MapAction.Header.AddDay -> edits.addDay()
             is MapAction.Header.DeleteDay -> openDialog(Dialog.DeleteDay)
             is MapAction.Header.ToggleSave -> sharing.toggleSave()

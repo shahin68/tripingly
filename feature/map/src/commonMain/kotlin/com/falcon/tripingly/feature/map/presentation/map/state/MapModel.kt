@@ -24,6 +24,8 @@ import com.falcon.tripingly.feature.map.presentation.map.LocationPrompt
  */
 internal data class MapModel(
     val isLoadingTrip: Boolean = true,
+    /** The trip couldn't load and there's none on the device: the screen shows the error instead of the map. */
+    val loadError: UiText? = null,
     /** A day change is waiting for the server. Stop changes don't wait. */
     val isSaving: Boolean = false,
     /** Saving or joining the trip is waiting for the server. */

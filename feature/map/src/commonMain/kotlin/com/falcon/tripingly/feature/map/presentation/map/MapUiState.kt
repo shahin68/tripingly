@@ -24,6 +24,8 @@ import kotlinx.collections.immutable.persistentMapOf
  */
 @Immutable
 data class MapUiState(
+    /** The trip couldn't load and there's nothing to show: an error screen with Retry instead of the map. */
+    val loadError: UiText? = null,
     val header: HeaderState = HeaderState(),
     /** The header shows the search field instead of the trip's name. */
     val search: SearchState? = null,

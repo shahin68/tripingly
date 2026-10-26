@@ -1,5 +1,6 @@
 package com.falcon.tripingly.feature.map.presentation.map
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.AnchoredDraggableState
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
@@ -12,8 +13,12 @@ import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -24,6 +29,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.boundsInRoot
@@ -34,12 +40,16 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.tooling.preview.PreviewParameter
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.falcon.tripingly.core.designsystem.component.ErrorScreen
+import com.falcon.tripingly.core.designsystem.component.GlassIconButton
 import com.falcon.tripingly.core.designsystem.component.ShowMessage
+import com.falcon.tripingly.core.designsystem.component.SkeletonBox
 import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
 import com.falcon.tripingly.core.designsystem.theme.spacing
 import com.falcon.tripingly.core.model.place.GeoBounds
 import com.falcon.tripingly.core.ui.UiText
 import com.falcon.tripingly.feature.map.generated.resources.Res
+import com.falcon.tripingly.feature.map.generated.resources.map_back
 import com.falcon.tripingly.feature.map.generated.resources.map_retry
 import com.falcon.tripingly.feature.map.presentation.component.CameraCommand
 import com.falcon.tripingly.feature.map.presentation.component.GoogleMapView
@@ -74,6 +84,7 @@ internal fun MapScreen(
     onAction: (MapAction) -> Unit,
     planSheet: AnchoredDraggableState<PlanSheetValue> = rememberPlanSheetState(),
 ) {
+    state.loadError?.let { error -> return MapLoadError(error.asString(), onAction) }
     val density = LocalDensity.current
     // Layout only: what the header, the day tabs and the credits cover of the map, handed to it as its padding. Each is
     // measured when its size changes; the map waits for all three, so it opens already fitted to what's left.
@@ -121,7 +132,10 @@ internal fun MapScreen(
                 }
             }
         }
-        if (state.camera.isReady && headerHeight != null && tabsHeight?.first == hasDays && creditsHeight != null) {
+        val isMapShown = state.camera.isReady && headerHeight != null && tabsHeight?.first == hasDays && creditsHeight != null
+        // The map's place while the trip loads: no flash of an empty default map before it opens on the trip.
+        if (!isMapShown) SkeletonBox(Modifier.fillMaxSize(), shape = RectangleShape)
+        if (isMapShown) {
             // Only where the map starts: worked out once, when it first shows.
             val (target, zoom) = remember { state.camera.let { it.openingBounds?.let(fit) ?: (it.target to it.zoom) } }
             GoogleMapView(
@@ -224,6 +238,20 @@ internal fun MapScreen(
                     onRemoveMyContent = { onAction(MapAction.StopCard.RemoveMyContent) }.takeIf { card.canRemoveMyContent },
                 )
             }
+        }
+    }
+}
+
+/** The trip couldn't load: the error with Retry, and the back button where the header has it. */
+@Composable
+private fun MapLoadError(message: String, onAction: (MapAction) -> Unit) {
+    Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
+        ErrorScreen(onRetry = { onAction(MapAction.Header.Retry) }, message = message, modifier = Modifier.safeDrawingPadding())
+        GlassIconButton(
+            onClick = { onAction(MapAction.Header.Back) },
+            modifier = Modifier.statusBarsPadding().padding(MaterialTheme.spacing.medium),
+        ) {
+            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(Res.string.map_back))
         }
     }
 }

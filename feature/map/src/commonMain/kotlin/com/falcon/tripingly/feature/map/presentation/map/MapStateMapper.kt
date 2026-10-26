@@ -56,6 +56,7 @@ internal class MapStateMapper(
 
     /** [layers] can be ones built before from the same trip and model; see [MapViewModel]. */
     fun map(layers: MapLayersState = layers()): MapUiState = MapUiState(
+        loadError = model.loadError,
         header = header(),
         search = model.search?.let { SearchState(it.query, it.results.toImmutableList(), it.isSearching) },
         dayTabs = DayTabsState(days.map { DayTab(it.id, it.position + 1, it.date?.let(DateUtils::formatAbbreviated)) }.toImmutableList(), activeIndex),
