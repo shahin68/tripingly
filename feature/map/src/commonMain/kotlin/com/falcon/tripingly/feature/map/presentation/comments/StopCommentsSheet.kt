@@ -19,16 +19,15 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -39,12 +38,12 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.tooling.preview.PreviewParameter
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.falcon.tripingly.core.common.util.DateUtils
+import com.falcon.tripingly.core.designsystem.component.AppDialog
 import com.falcon.tripingly.core.designsystem.component.AppDropdownMenu
 import com.falcon.tripingly.core.designsystem.component.AvatarCircle
 import com.falcon.tripingly.core.designsystem.component.AvatarSize
@@ -52,13 +51,18 @@ import com.falcon.tripingly.core.designsystem.component.DropdownAction
 import com.falcon.tripingly.core.designsystem.component.LikeButton
 import com.falcon.tripingly.core.designsystem.component.MessageBannerHost
 import com.falcon.tripingly.core.designsystem.component.ReportDialog
+import com.falcon.tripingly.core.designsystem.component.RoundedTextField
+import com.falcon.tripingly.core.designsystem.component.SheetHeader
 import com.falcon.tripingly.core.designsystem.component.ShowMessage
+import com.falcon.tripingly.core.designsystem.component.SkeletonBox
+import com.falcon.tripingly.core.designsystem.component.SkeletonDefaults
+import com.falcon.tripingly.core.designsystem.component.SkeletonLine
+import com.falcon.tripingly.core.designsystem.component.SkeletonList
 import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
 import com.falcon.tripingly.core.designsystem.theme.spacing
 import com.falcon.tripingly.core.model.social.Comment
 import com.falcon.tripingly.core.ui.UiText
 import com.falcon.tripingly.feature.map.generated.resources.Res
-import com.falcon.tripingly.feature.map.generated.resources.map_cancel
 import com.falcon.tripingly.feature.map.generated.resources.map_comment_delete
 import com.falcon.tripingly.feature.map.generated.resources.map_comment_delete_message
 import com.falcon.tripingly.feature.map.generated.resources.map_comment_delete_title
@@ -66,8 +70,8 @@ import com.falcon.tripingly.feature.map.generated.resources.map_comment_menu
 import com.falcon.tripingly.feature.map.generated.resources.map_comment_placeholder
 import com.falcon.tripingly.feature.map.generated.resources.map_comment_report
 import com.falcon.tripingly.feature.map.generated.resources.map_comment_send
+import com.falcon.tripingly.feature.map.generated.resources.map_comments
 import com.falcon.tripingly.feature.map.generated.resources.map_comments_empty
-import com.falcon.tripingly.feature.map.generated.resources.map_comments_title
 import com.falcon.tripingly.feature.map.generated.resources.map_confirm_delete
 import com.falcon.tripingly.feature.map.presentation.comments.StopCommentsViewModel.Action
 import com.falcon.tripingly.feature.map.presentation.comments.StopCommentsViewModel.State
@@ -99,6 +103,7 @@ fun StopCommentsRoute(
                 marker = marker,
                 onOpenProfile = onOpenProfile,
                 onAction = viewModel::onAction,
+                onClose = onDismiss,
             )
             MessageBannerHost(Modifier.align(Alignment.TopCenter))
         }
@@ -112,21 +117,14 @@ fun StopCommentsRoute(
         )
     }
 
-    state.commentToDelete?.let {
-        AlertDialog(
-            onDismissRequest = { viewModel.onAction(Action.OnDismissDelete) },
-            title = { Text(stringResource(Res.string.map_comment_delete_title)) },
-            text = { Text(stringResource(Res.string.map_comment_delete_message)) },
-            confirmButton = {
-                TextButton(onClick = { viewModel.onAction(Action.OnConfirmDelete) }) {
-                    Text(stringResource(Res.string.map_confirm_delete), color = MaterialTheme.colorScheme.error)
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { viewModel.onAction(Action.OnDismissDelete) }) {
-                    Text(stringResource(Res.string.map_cancel))
-                }
-            },
+    if (state.commentToDelete != null) {
+        AppDialog(
+            title = stringResource(Res.string.map_comment_delete_title),
+            message = stringResource(Res.string.map_comment_delete_message),
+            confirmLabel = stringResource(Res.string.map_confirm_delete),
+            isDestructive = true,
+            onConfirm = { viewModel.onAction(Action.OnConfirmDelete) },
+            onDismiss = { viewModel.onAction(Action.OnDismissDelete) },
         )
     }
 }
@@ -137,6 +135,7 @@ fun StopCommentsScreen(
     marker: MapMarker,
     onOpenProfile: (String) -> Unit,
     onAction: (Action) -> Unit,
+    onClose: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val listState = rememberLazyListState()
@@ -156,12 +155,7 @@ fun StopCommentsScreen(
             .navigationBarsPadding()
             .imePadding(),
     ) {
-        Text(
-            text = stringResource(Res.string.map_comments_title, marker.title.asString()),
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier.padding(horizontal = MaterialTheme.spacing.medium),
-        )
+        SheetHeader(title = stringResource(Res.string.map_comments), subtitle = marker.title.asString(), onClose = onClose)
         ShowMessage(
             message = state.message?.asString(),
             onShown = { onAction(Action.OnDismissMessage) },
@@ -169,7 +163,7 @@ fun StopCommentsScreen(
         )
         Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
             when {
-                state.comments.isEmpty() && state.isLoading -> CircularProgressIndicator(Modifier.align(Alignment.Center))
+                state.comments.isEmpty() && state.isLoading -> SkeletonList(count = SKELETON_COUNT, item = { CommentSkeleton() })
                 state.comments.isEmpty() -> Text(
                     text = stringResource(Res.string.map_comments_empty),
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -184,20 +178,21 @@ fun StopCommentsScreen(
         }
         Row(
             modifier = Modifier.fillMaxWidth().padding(MaterialTheme.spacing.medium),
+            horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            OutlinedTextField(
+            RoundedTextField(
                 value = state.draft,
                 onValueChange = { onAction(Action.OnDraftChanged(it)) },
-                placeholder = { Text(stringResource(Res.string.map_comment_placeholder)) },
-                maxLines = 4,
+                placeholder = stringResource(Res.string.map_comment_placeholder),
+                maxLines = MAX_DRAFT_LINES,
                 enabled = !state.isSending,
                 modifier = Modifier.weight(1f),
             )
-            if (state.isSending) {
-                CircularProgressIndicator(modifier = Modifier.padding(MaterialTheme.spacing.small).size(24.dp), strokeWidth = 2.dp)
-            } else {
-                IconButton(onClick = { onAction(Action.OnSend) }, enabled = state.draft.isNotBlank()) {
+            FilledIconButton(onClick = { onAction(Action.OnSend) }, enabled = state.draft.isNotBlank() && !state.isSending) {
+                if (state.isSending) {
+                    CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp, color = LocalContentColor.current)
+                } else {
                     Icon(Icons.AutoMirrored.Filled.Send, contentDescription = stringResource(Res.string.map_comment_send))
                 }
             }
@@ -269,8 +264,23 @@ private fun CommentRow(
     }
 }
 
+/** A comment that's still loading: an avatar, a name and a line. */
+@Composable
+private fun CommentSkeleton() {
+    Row(horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small), verticalAlignment = Alignment.CenterVertically) {
+        SkeletonBox(Modifier.size(AvatarSize.Small), shape = CircleShape)
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small)) {
+            SkeletonLine(Modifier.fillMaxWidth(0.3f), height = SkeletonDefaults.SmallLineHeight)
+            SkeletonLine(Modifier.fillMaxWidth(0.8f))
+        }
+    }
+}
+
 /** The sheet opens tall enough to read a conversation with the keyboard up. */
 private const val SHEET_HEIGHT_FRACTION = 0.85f
+
+private const val SKELETON_COUNT = 6
+private const val MAX_DRAFT_LINES = 4
 
 /** Comments from the end at which the next page loads. */
 private const val LOAD_MORE_THRESHOLD = 5
@@ -284,6 +294,7 @@ private fun StopCommentsScreenPreview(@PreviewParameter(StopCommentsPreviewState
             marker = previewStop,
             onOpenProfile = {},
             onAction = {},
+            onClose = {},
             modifier = Modifier.background(MaterialTheme.colorScheme.surface),
         )
     }
@@ -298,6 +309,7 @@ private fun StopCommentsScreenLandscapePreview() {
             marker = previewStop,
             onOpenProfile = {},
             onAction = {},
+            onClose = {},
             modifier = Modifier.background(MaterialTheme.colorScheme.surface),
         )
     }
@@ -307,7 +319,7 @@ private fun StopCommentsScreenLandscapePreview() {
 @Preview
 @Composable
 private fun CommentRowPreview() {
-    TripinglyTheme {
+    TripinglyTheme(darkTheme = true) {
         Column(Modifier.background(MaterialTheme.colorScheme.surface)) {
             StopCommentsPreviewStates().values.first().comments.forEach { comment ->
                 CommentRow(comment = comment, onOpenProfile = {}, onAction = {})

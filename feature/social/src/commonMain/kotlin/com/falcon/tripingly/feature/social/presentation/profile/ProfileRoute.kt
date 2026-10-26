@@ -11,13 +11,11 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.outlined.Block
 import androidx.compose.material.icons.outlined.Flag
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -27,6 +25,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.tooling.preview.PreviewParameter
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.falcon.tripingly.core.designsystem.component.AppDialog
 import com.falcon.tripingly.core.designsystem.component.AppDropdownMenu
 import com.falcon.tripingly.core.designsystem.component.BackAction
 import com.falcon.tripingly.core.designsystem.component.DropdownAction
@@ -47,7 +46,6 @@ import com.falcon.tripingly.feature.social.generated.resources.social_block
 import com.falcon.tripingly.feature.social.generated.resources.social_block_confirm
 import com.falcon.tripingly.feature.social.generated.resources.social_block_message
 import com.falcon.tripingly.feature.social.generated.resources.social_block_title
-import com.falcon.tripingly.feature.social.generated.resources.social_cancel
 import com.falcon.tripingly.feature.social.generated.resources.social_more
 import com.falcon.tripingly.feature.social.generated.resources.social_profile_no_trips
 import com.falcon.tripingly.feature.social.generated.resources.social_profile_not_found
@@ -187,18 +185,13 @@ private fun ProfileMenu(onAction: (Action) -> Unit) {
 
 @Composable
 private fun BlockDialog(username: String, onAction: (Action) -> Unit) {
-    AlertDialog(
-        onDismissRequest = { onAction(Action.Person.DismissBlock) },
-        title = { Text(stringResource(Res.string.social_block_title, username)) },
-        text = { Text(stringResource(Res.string.social_block_message)) },
-        confirmButton = {
-            TextButton(onClick = { onAction(Action.Person.ConfirmBlock) }) {
-                Text(stringResource(Res.string.social_block_confirm), color = MaterialTheme.colorScheme.error)
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = { onAction(Action.Person.DismissBlock) }) { Text(stringResource(Res.string.social_cancel)) }
-        },
+    AppDialog(
+        title = stringResource(Res.string.social_block_title, username),
+        message = stringResource(Res.string.social_block_message),
+        confirmLabel = stringResource(Res.string.social_block_confirm),
+        isDestructive = true,
+        onConfirm = { onAction(Action.Person.ConfirmBlock) },
+        onDismiss = { onAction(Action.Person.DismissBlock) },
     )
 }
 

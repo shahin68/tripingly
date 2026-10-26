@@ -33,4 +33,7 @@
     <string name="error_message">Das konnten wir nicht laden. Bitte versuch es noch einmal.</string>
     <string name="error_retry">Erneut versuchen</string>
     <string name="loading">Wird geladen</string>
+
+    <!-- Redesign -->
+    <string name="common_close">Schließen</string>
 </resources>

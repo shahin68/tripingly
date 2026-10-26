@@ -100,7 +100,6 @@
     <string name="map_report_trip">Report trip</string>
     <string name="map_stop_comment">Comment</string>
     <string name="map_stop_report">Report stop</string>
-    <string name="map_comments_title">Comments on %1$s</string>
     <string name="map_comments_empty">No comments yet. Say something!</string>
     <string name="map_comment_placeholder">Add a comment…</string>
     <string name="map_comment_send">Send</string>
@@ -189,4 +188,7 @@
     <string name="map_stop_number">Stop %1$d</string>
     <string name="map_stop_more">More for this stop</string>
     <string name="map_place_more">More for this place</string>
+
+    <!-- Redesign -->
+    <string name="map_comments">Comments</string>
 </resources>

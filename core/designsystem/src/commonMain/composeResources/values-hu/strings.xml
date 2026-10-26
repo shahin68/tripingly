@@ -33,4 +33,7 @@
     <string name="error_message">Ezt nem sikerült betölteni. Kérjük, próbáld újra.</string>
     <string name="error_retry">Újrapróbálás</string>
     <string name="loading">Betöltés</string>
+
+    <!-- Redesign -->
+    <string name="common_close">Bezárás</string>
 </resources>

@@ -30,7 +30,10 @@ import androidx.compose.ui.unit.dp
 import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
 import com.falcon.tripingly.core.designsystem.theme.spacing
 
-/** A large, filled, rounded one-line text field without an underline, its hint inside as a placeholder. */
+/**
+ * A large, filled, rounded text field without an underline, its hint inside as a placeholder; one line unless
+ * [maxLines] lets it grow (a comment).
+ */
 @Composable
 fun RoundedTextField(
     value: String,
@@ -44,6 +47,7 @@ fun RoundedTextField(
     textStyle: TextStyle = MaterialTheme.typography.bodyLarge,
     keyboardOptions: KeyboardOptions = KeyboardOptions.Default,
     keyboardActions: KeyboardActions = KeyboardActions.Default,
+    maxLines: Int = 1,
 ) {
     TextField(
         value = value,
@@ -53,7 +57,8 @@ fun RoundedTextField(
         trailingIcon = trailingIcon,
         enabled = enabled,
         isError = isError,
-        singleLine = true,
+        singleLine = maxLines == 1,
+        maxLines = maxLines,
         textStyle = textStyle,
         keyboardOptions = keyboardOptions,
         keyboardActions = keyboardActions,

@@ -4,7 +4,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
@@ -20,7 +19,6 @@ import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.Public
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -49,6 +47,7 @@ import com.falcon.tripingly.core.designsystem.component.PrimaryButton
 import com.falcon.tripingly.core.designsystem.component.RoundedTextField
 import com.falcon.tripingly.core.designsystem.component.SegmentedToggle
 import com.falcon.tripingly.core.designsystem.component.SegmentedToggleOption
+import com.falcon.tripingly.core.designsystem.component.SheetHeader
 import com.falcon.tripingly.core.designsystem.component.SuggestionItem
 import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
 import com.falcon.tripingly.core.designsystem.theme.spacing
@@ -56,7 +55,6 @@ import com.falcon.tripingly.core.model.account.TripVisibility
 import com.falcon.tripingly.core.ui.UiText
 import com.falcon.tripingly.feature.trips.generated.resources.Res
 import com.falcon.tripingly.feature.trips.generated.resources.create_trip_button_create
-import com.falcon.tripingly.feature.trips.generated.resources.create_trip_close
 import com.falcon.tripingly.feature.trips.generated.resources.create_trip_dates_add
 import com.falcon.tripingly.feature.trips.generated.resources.create_trip_dates_label
 import com.falcon.tripingly.feature.trips.generated.resources.create_trip_destination_clear
@@ -128,7 +126,7 @@ internal fun CreateTripSheetContent(
 
     // The fields scroll (landscape, keyboard open) while the Create button stays at the bottom.
     Column(modifier = modifier.fillMaxWidth().imePadding()) {
-        SheetHeader(isSaving = isSaving, onClose = { onAction(Action.TripDialog.Dismiss) })
+        SheetHeader(title = stringResource(Res.string.create_trip_title), onClose = { onAction(Action.TripDialog.Dismiss) }, closeEnabled = !isSaving)
         Column(
             modifier = Modifier
                 .weight(1f, fill = false)
@@ -186,7 +184,7 @@ internal fun CreateTripSheetContent(
             FormField(stringResource(Res.string.create_trip_members_label)) {
                 CreateTripMembers(form = form, isSaving = isSaving, onAction = onAction)
             }
-            DialogError(error?.asString())
+            error?.let { Text(it.asString(), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error) }
         }
         PrimaryButton(
             text = stringResource(Res.string.create_trip_button_create),
@@ -197,20 +195,6 @@ internal fun CreateTripSheetContent(
                 .fillMaxWidth()
                 .padding(horizontal = MaterialTheme.spacing.large, vertical = MaterialTheme.spacing.medium),
         )
-    }
-}
-
-/** "New trip" with a round close button; closing waits while the trip is being saved. */
-@Composable
-private fun SheetHeader(isSaving: Boolean, onClose: () -> Unit) {
-    Row(
-        modifier = Modifier.fillMaxWidth().padding(start = MaterialTheme.spacing.large, end = MaterialTheme.spacing.medium, bottom = MaterialTheme.spacing.small),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Text(stringResource(Res.string.create_trip_title), style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f))
-        FilledTonalIconButton(onClick = onClose, enabled = !isSaving) {
-            Icon(Icons.Default.Close, contentDescription = stringResource(Res.string.create_trip_close))
-        }
     }
 }
 

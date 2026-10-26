@@ -1,14 +1,9 @@
 package com.falcon.tripingly.feature.trips.presentation.component
 
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.DateRange
-import androidx.compose.material3.AlertDialog
+import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material3.Icon
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -17,9 +12,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import com.falcon.tripingly.core.common.util.DateUtils
+import com.falcon.tripingly.core.designsystem.component.AppDialog
+import com.falcon.tripingly.core.designsystem.component.FieldButton
 import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
 import com.falcon.tripingly.feature.trips.generated.resources.Res
-import com.falcon.tripingly.feature.trips.generated.resources.common_cancel
 import com.falcon.tripingly.feature.trips.generated.resources.reschedule_trip_button_reschedule
 import com.falcon.tripingly.feature.trips.generated.resources.reschedule_trip_dates_label
 import com.falcon.tripingly.feature.trips.generated.resources.reschedule_trip_picker_headline
@@ -59,41 +55,24 @@ fun RescheduleTripDialog(
         )
     }
 
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(stringResource(Res.string.reschedule_trip_title)) },
-        text = {
-            Column {
-                OutlinedTextField(
-                    value = DateUtils.formatRange(startDate, endDate).orEmpty(),
-                    onValueChange = {},
-                    label = { Text(stringResource(Res.string.reschedule_trip_dates_label)) },
-                    modifier = Modifier.fillMaxWidth(),
-                    readOnly = true,
-                    trailingIcon = {
-                        TextButton(onClick = { showDatePicker = true }, enabled = !isSaving) {
-                            Icon(Icons.Default.DateRange, contentDescription = null)
-                        }
-                    },
-                )
-                DialogError(error)
-            }
-        },
-        confirmButton = {
-            TextButton(
-                onClick = { if (startDate != null && endDate != null) onConfirm(startDate, endDate) },
-                enabled = !isSaving && startDate != null && endDate != null &&
-                    (startDate != initialStartDate || endDate != initialEndDate),
-            ) {
-                SavingLabel(isSaving, stringResource(Res.string.reschedule_trip_button_reschedule))
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss, enabled = !isSaving) {
-                Text(stringResource(Res.string.common_cancel))
-            }
-        },
-    )
+    AppDialog(
+        title = stringResource(Res.string.reschedule_trip_title),
+        confirmLabel = stringResource(Res.string.reschedule_trip_button_reschedule),
+        onConfirm = { if (startDate != null && endDate != null) onConfirm(startDate, endDate) },
+        onDismiss = onDismiss,
+        error = error,
+        isBusy = isSaving,
+        confirmEnabled = startDate != null && endDate != null && (startDate != initialStartDate || endDate != initialEndDate),
+    ) {
+        FieldButton(
+            text = DateUtils.formatRange(startDate, endDate),
+            placeholder = stringResource(Res.string.reschedule_trip_dates_label),
+            onClick = { showDatePicker = true },
+            leadingIcon = { Icon(Icons.Default.CalendarMonth, contentDescription = null) },
+            enabled = !isSaving,
+            modifier = Modifier.fillMaxWidth(),
+        )
+    }
 }
 
 @Preview
@@ -106,5 +85,13 @@ private fun RescheduleTripDialogPreview() {
             onDismiss = {},
             onConfirm = { _, _ -> },
         )
+    }
+}
+
+@Preview
+@Composable
+private fun RescheduleTripDialogDarkPreview() {
+    TripinglyTheme(darkTheme = true) {
+        RescheduleTripDialog(initialStartDate = null, initialEndDate = null, onDismiss = {}, onConfirm = { _, _ -> }, isSaving = true)
     }
 }

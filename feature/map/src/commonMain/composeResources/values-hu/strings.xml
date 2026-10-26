@@ -100,7 +100,6 @@
     <string name="map_report_trip">Utazás jelentése</string>
     <string name="map_stop_comment">Hozzászólás</string>
     <string name="map_stop_report">Megálló jelentése</string>
-    <string name="map_comments_title">Hozzászólások: %1$s</string>
     <string name="map_comments_empty">Még nincs hozzászólás. Írj valamit!</string>
     <string name="map_comment_placeholder">Írj hozzászólást…</string>
     <string name="map_comment_send">Küldés</string>
@@ -189,4 +188,7 @@
     <string name="map_stop_number">%1$d. megálló</string>
     <string name="map_stop_more">Továbbiak ehhez a megállóhoz</string>
     <string name="map_place_more">Továbbiak ehhez a helyhez</string>
+
+    <!-- Redesign -->
+    <string name="map_comments">Hozzászólások</string>
 </resources>
