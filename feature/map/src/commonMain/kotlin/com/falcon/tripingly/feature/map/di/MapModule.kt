@@ -1,8 +1,8 @@
 package com.falcon.tripingly.feature.map.di
 
 import com.falcon.tripingly.feature.map.presentation.comments.StopCommentsViewModel
+import com.falcon.tripingly.feature.map.presentation.map.MapViewModel
 import com.falcon.tripingly.feature.map.presentation.photos.PhotosViewModel
-import com.falcon.tripingly.feature.map.presentation.screen.MapViewModel
 import org.koin.core.module.dsl.viewModel
 import org.koin.dsl.module
 

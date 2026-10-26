@@ -8,8 +8,6 @@ import com.falcon.tripingly.core.location.model.Coordinates
 import com.falcon.tripingly.core.model.place.GeoBounds
 import com.falcon.tripingly.core.model.place.MapPlace
 import com.falcon.tripingly.core.model.place.PlaceCluster
-import com.falcon.tripingly.feature.map.domain.model.CameraCommand
-import com.falcon.tripingly.feature.map.domain.model.MapMarker
 import kotlinx.coroutines.flow.Flow
 import org.koin.compose.getKoin
 
@@ -21,13 +19,7 @@ actual fun GoogleMapView(
     initialZoom: Float,
     cameraCommands: Flow<CameraCommand.MoveTo>,
     contentPadding: PaddingValues,
-    markers: List<MapMarker>,
-    placePins: List<PlacePin>,
-    pinDotBelowZoom: Float,
-    placeClusters: List<PlaceCluster>,
-    selectedPlace: MapPlace?,
-    line: MapLine?,
-    isMyLocationEnabled: Boolean,
+    layers: MapLayersState,
     onCameraMove: (Coordinates, Float, GeoBounds?) -> Unit,
     onMapTouch: () -> Unit,
     onMapClick: (Coordinates) -> Unit,
@@ -46,13 +38,13 @@ actual fun GoogleMapView(
             initialZoom = initialZoom,
             cameraCommands = cameraCommands,
             contentPadding = contentPadding,
-            markers = markers,
-            placePins = placePins,
-            pinDotBelowZoom = pinDotBelowZoom,
-            placeClusters = placeClusters,
-            selectedPlace = selectedPlace,
-            line = line,
-            isMyLocationEnabled = isMyLocationEnabled,
+            markers = layers.stops,
+            placePins = layers.placePins,
+            pinDotBelowZoom = layers.pinDotBelowZoom,
+            placeClusters = layers.placeClusters,
+            selectedPlace = layers.selectedPlace,
+            line = layers.line,
+            isMyLocationEnabled = layers.isMyLocationEnabled,
             onCameraMove = onCameraMove,
             onMapTouch = onMapTouch,
             onMapClick = onMapClick,
@@ -67,11 +59,11 @@ actual fun GoogleMapView(
             initialTarget = initialTarget,
             initialZoom = initialZoom,
             cameraCommands = cameraCommands,
-            markers = markers,
-            placePins = placePins,
-            placeClusters = placeClusters,
-            selectedPlace = selectedPlace,
-            isMyLocationEnabled = isMyLocationEnabled,
+            markers = layers.stops,
+            placePins = layers.placePins,
+            placeClusters = layers.placeClusters,
+            selectedPlace = layers.selectedPlace,
+            isMyLocationEnabled = layers.isMyLocationEnabled,
             onCameraMove = onCameraMove,
             onMapClick = onMapClick,
             onMapLongClick = onMapLongClick,

@@ -143,6 +143,6 @@ Prefer what the project already has. New ones are confirmed with the user when t
 
 ## Packaging and naming
 
-- Package by module, then layer: `com.falcon.tripingly.feature.trips.presentation.detail`. The package root matches the module path.
+- Package by module, then layer: `com.falcon.tripingly.feature.trips.presentation.detail`. The package root matches the module path. A screen's package is named after the screen, not `screen` (the trips feature's `screen` package follows when its review comes). A big screen splits its package by role (2026-10-26, the trip map): the contract and view model at its root, the view model's holders in `state/`, its sections and cards in `ui/`, preview data in `preview/`; the feature's `component/` holds only pieces several screens or the map view share.
 - Names: `XRoute`, `XScreen`, `XViewModel`, `XUiState`, `XAction`, `XEffect`; `XDto`, `XEntity`, plain domain names; `XRepository` interface with `DefaultXRepository` or `OfflineFirstXRepository`.
 - One public type per file, files under about 300 lines, no comments that restate code.

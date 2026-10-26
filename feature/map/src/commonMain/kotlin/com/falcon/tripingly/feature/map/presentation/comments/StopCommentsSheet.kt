@@ -1,5 +1,6 @@
 package com.falcon.tripingly.feature.map.presentation.comments
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -39,6 +40,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.tooling.preview.PreviewParameter
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.falcon.tripingly.core.common.util.DateUtils
@@ -46,14 +49,14 @@ import com.falcon.tripingly.core.designsystem.component.AppDropdownMenu
 import com.falcon.tripingly.core.designsystem.component.AvatarCircle
 import com.falcon.tripingly.core.designsystem.component.AvatarSize
 import com.falcon.tripingly.core.designsystem.component.DropdownAction
-import com.falcon.tripingly.core.designsystem.component.MessageBannerHost
-import com.falcon.tripingly.core.designsystem.component.ShowMessage
 import com.falcon.tripingly.core.designsystem.component.LikeButton
+import com.falcon.tripingly.core.designsystem.component.MessageBannerHost
 import com.falcon.tripingly.core.designsystem.component.ReportDialog
+import com.falcon.tripingly.core.designsystem.component.ShowMessage
+import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
 import com.falcon.tripingly.core.designsystem.theme.spacing
 import com.falcon.tripingly.core.model.social.Comment
 import com.falcon.tripingly.core.ui.UiText
-import com.falcon.tripingly.feature.map.domain.model.MapMarker
 import com.falcon.tripingly.feature.map.generated.resources.Res
 import com.falcon.tripingly.feature.map.generated.resources.map_cancel
 import com.falcon.tripingly.feature.map.generated.resources.map_comment_delete
@@ -68,6 +71,8 @@ import com.falcon.tripingly.feature.map.generated.resources.map_comments_title
 import com.falcon.tripingly.feature.map.generated.resources.map_confirm_delete
 import com.falcon.tripingly.feature.map.presentation.comments.StopCommentsViewModel.Action
 import com.falcon.tripingly.feature.map.presentation.comments.StopCommentsViewModel.State
+import com.falcon.tripingly.feature.map.presentation.component.MapMarker
+import com.falcon.tripingly.feature.map.presentation.map.preview.previewStop
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filter
 import kotlinx.datetime.TimeZone
@@ -75,11 +80,6 @@ import kotlinx.datetime.toLocalDateTime
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel
 import org.koin.core.parameter.parametersOf
-import androidx.compose.ui.tooling.preview.Preview
-import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
-import androidx.compose.ui.tooling.preview.PreviewParameter
-import androidx.compose.foundation.background
-import com.falcon.tripingly.feature.map.presentation.component.previewStop
 
 /** The comments on [marker] in a sheet over the map; tapping an author opens their profile. */
 @OptIn(ExperimentalMaterial3Api::class)

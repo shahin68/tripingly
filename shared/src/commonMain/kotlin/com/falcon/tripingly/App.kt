@@ -40,7 +40,7 @@ import com.falcon.tripingly.core.navigation.TripMap
 import com.falcon.tripingly.deeplink.DeepLink
 import com.falcon.tripingly.deeplink.DeepLinks
 import com.falcon.tripingly.feature.auth.presentation.gate.AuthGate
-import com.falcon.tripingly.feature.map.presentation.screen.MapRoute
+import com.falcon.tripingly.feature.map.presentation.map.MapRoute
 import com.falcon.tripingly.feature.paywall.presentation.PaywallRoute
 import com.falcon.tripingly.feature.settings.presentation.SettingsRoute
 import com.falcon.tripingly.feature.social.presentation.people.PeopleRoute
