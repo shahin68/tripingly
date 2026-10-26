@@ -29,11 +29,10 @@ import androidx.compose.ui.unit.dp
 import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
 import com.falcon.tripingly.core.designsystem.theme.extendedColors
 import com.falcon.tripingly.core.designsystem.theme.spacing
-import dev.chrisbanes.haze.HazeInput
+import dev.chrisbanes.haze.HazeDefaults
 import dev.chrisbanes.haze.HazeState
-import dev.chrisbanes.haze.blur.HazeBlurDefaults
-import dev.chrisbanes.haze.blur.HazeBlurStyle
-import dev.chrisbanes.haze.blur.hazeBlur
+import dev.chrisbanes.haze.HazeStyle
+import dev.chrisbanes.haze.hazeEffect
 import dev.chrisbanes.haze.hazeSource
 
 /** The app's one backdrop, provided by `TripinglyTheme`: what [glassSource] marks shows blurred behind [GlassSurface]s. */
@@ -64,12 +63,12 @@ fun GlassSurface(
 ) {
     val glass = LocalGlass.current?.takeIf { blur }
     val colors = MaterialTheme.extendedColors
-    val tint = if (glass != null && HazeBlurDefaults.isBlurEnabledByDefault()) colors.glass else colors.glass.copy(alpha = OPAQUE_TINT)
+    val tint = if (glass != null && HazeDefaults.blurEnabled()) colors.glass else colors.glass.copy(alpha = OPAQUE_TINT)
     Box(
         modifier = modifier
             .shadow(shadowElevation, shape, ambientColor = GlassDefaults.Shadow, spotColor = GlassDefaults.Shadow)
             .clip(shape)
-            .then(if (glass != null) Modifier.hazeBlur(HazeInput.Sources(glass), GlassDefaults.Blur) else Modifier)
+            .then(if (glass != null) Modifier.hazeEffect(glass, HazeStyle(backgroundColor = MaterialTheme.colorScheme.background, tints = emptyList(), blurRadius = GlassDefaults.BlurRadius, noiseFactor = 0f)) else Modifier)
             .background(tint)
             .border(GlassDefaults.Edge, colors.glassEdge, shape)
             .then(if (onClick != null) Modifier.clickable(role = Role.Button, onClick = onClick) else Modifier),
@@ -82,7 +81,7 @@ object GlassDefaults {
     val ShadowElevation = 8.dp
     internal val Shadow = Color.Black.copy(alpha = 0.18f)
     internal val Edge = 1.dp
-    internal val Blur = HazeBlurStyle { blurRadius(24.dp) }
+    internal val BlurRadius = 24.dp
 }
 
 private const val OPAQUE_TINT = 0.94f

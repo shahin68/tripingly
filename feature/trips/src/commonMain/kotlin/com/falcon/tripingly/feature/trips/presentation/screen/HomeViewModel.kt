@@ -34,6 +34,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
@@ -125,7 +126,7 @@ class HomeViewModel(
         viewModelScope.launch {
             val error = (tripRepository.refreshMyTrips() as? AppResult.Error)?.error
             // With trips on screen a failed refresh is a banner; with nothing to show it's the error screen.
-            val hasTrips = uiState.value.hasTrips
+            val hasTrips = tripRepository.observeMyTrips().first().isNotEmpty()
             ui.update {
                 it.copy(
                     isRefreshing = false,
