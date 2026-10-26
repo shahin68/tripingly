@@ -40,8 +40,8 @@ sealed interface MapAction {
         /** Asks the owner to let me edit their trip with them. */
         data object RequestToJoin : Header
         data object CancelJoinRequest : Header
-        /** The owner opens the members sheet to answer requests to join. */
-        data object OpenJoinRequests : Header
+        /** "Trip members" in the ⋮ menu opens the members sheet (where the owner answers requests to join). */
+        data object OpenMembers : Header
         data object OpenOwnerProfile : Header
         data object ReportTrip : Header
     }
@@ -118,7 +118,7 @@ sealed interface MapAction {
         data object CloseStopPhotos : Sheet
         data object ClosePlacePhotos : Sheet
         data object CloseStopComments : Sheet
-        data object CloseJoinRequests : Sheet
+        data object CloseMembers : Sheet
         data object ClosePlaceImage : Sheet
         data object CloseCamera : Sheet
         /** Reports the photo open in a viewer: a Commons image as the place's image, anything else as a photo. */

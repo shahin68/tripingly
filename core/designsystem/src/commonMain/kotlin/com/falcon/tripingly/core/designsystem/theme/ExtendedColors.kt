@@ -7,16 +7,13 @@ import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
 
-/** Colors Material's scheme has no role for: the glass tint and the route colors. */
+/** Colors Material's scheme has no role for: the glass tint and its edge (the map's own are [MapColors]). */
 @Immutable
 data class ExtendedColors(
     /** What glass surfaces are tinted with over the blurred content behind them. */
     val glass: Color,
     /** The thin light edge that sets glass apart from what's behind it. */
     val glassEdge: Color,
-    val routeWalk: Color = RouteWalk,
-    val routeBike: Color = RouteBike,
-    val routeCar: Color = RouteCar,
 )
 
 internal val LightExtendedColors = ExtendedColors(glass = GlassLight, glassEdge = GlassEdgeLight)

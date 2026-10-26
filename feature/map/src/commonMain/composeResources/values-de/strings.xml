@@ -1,8 +1,6 @@
 <resources>
     <!-- Map -->
-    <string name="map_day_label">Tag %1$d (%2$s)</string>
     <string name="map_day_label_no_date">Tag %1$d</string>
-    <string name="map_itinerary_title">Reiseplan (%1$d Stopps)</string>
     <string name="map_fit_day">Ganzen Tag zeigen</string>
     <string name="map_plan_handle">Ganzen Plan zeigen oder ausblenden</string>
     <string name="map_itinerary_clear_all">Alle löschen</string>
@@ -98,10 +96,6 @@
     <string name="map_join_requested">Anfrage gesendet. Die Besitzerin oder der Besitzer entscheidet.</string>
     <string name="map_join_withdrawn">Anfrage zurückgezogen.</string>
     <string name="map_join_declined">Deine Anfrage zum Mitmachen wurde abgelehnt.</string>
-    <plurals name="map_join_request_count">
-        <item quantity="one">%1$d Person möchte mitmachen</item>
-        <item quantity="other">%1$d Personen möchten mitmachen</item>
-    </plurals>
     <string name="map_owner_profile">Profil von @%1$s</string>
     <string name="map_report_trip">Reise melden</string>
     <string name="map_stop_comment">Kommentieren</string>
@@ -150,7 +144,6 @@
     <string name="map_confirm_remove">Entfernen</string>
     <string name="map_my_content_removed">Deine Fotos, Kommentare und Likes auf diesem Stopp wurden entfernt.</string>
     <string name="map_error_remove_my_content">Deine Fotos, Kommentare und Likes konnten nicht entfernt werden.</string>
-    <string name="map_trip_created">Erstellt am %1$s</string>
     <string name="map_trip_owner">von %1$s</string>
 
     <!-- Routes -->
@@ -181,4 +174,19 @@
     <string name="map_best_order_already">Deine Stopps sind schon in der besten Reihenfolge.</string>
     <string name="map_error_route">Die Route konnte nicht geladen werden.</string>
     <string name="map_error_best_order">Die beste Reihenfolge konnte nicht ermittelt werden.</string>
+
+    <!-- Redesign: map -->
+    <plurals name="map_stop_count">
+        <item quantity="one">%1$d Stopp</item>
+        <item quantity="other">%1$d Stopps</item>
+    </plurals>
+    <string name="map_trip_members">Mitglieder · %1$d</string>
+    <string name="map_clear_day">Tag %1$d leeren</string>
+    <string name="map_my_location">Meinen Standort zeigen</string>
+    <string name="map_stop_expand">Mehr zeigen</string>
+    <string name="map_stop_collapse">Weniger zeigen</string>
+    <string name="map_stop_number_day">Stopp %1$d · Tag %2$d</string>
+    <string name="map_stop_number">Stopp %1$d</string>
+    <string name="map_stop_more">Mehr zu diesem Stopp</string>
+    <string name="map_place_more">Mehr zu diesem Ort</string>
 </resources>

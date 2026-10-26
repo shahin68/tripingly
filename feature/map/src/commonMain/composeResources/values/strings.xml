@@ -1,8 +1,6 @@
 <resources>
     <!-- Map -->
-    <string name="map_day_label">Day %1$d (%2$s)</string>
     <string name="map_day_label_no_date">Day %1$d</string>
-    <string name="map_itinerary_title">Trip Plan (%1$d stops)</string>
     <string name="map_fit_day">Show the whole day</string>
     <string name="map_plan_handle">Show or hide the whole plan</string>
     <string name="map_itinerary_clear_all">Clear All</string>
@@ -98,10 +96,6 @@
     <string name="map_join_requested">Request sent. The owner decides.</string>
     <string name="map_join_withdrawn">Request withdrawn.</string>
     <string name="map_join_declined">The owner declined your request to join.</string>
-    <plurals name="map_join_request_count">
-        <item quantity="one">%1$d person wants to join</item>
-        <item quantity="other">%1$d people want to join</item>
-    </plurals>
     <string name="map_owner_profile">@%1$s’s profile</string>
     <string name="map_report_trip">Report trip</string>
     <string name="map_stop_comment">Comment</string>
@@ -150,7 +144,6 @@
     <string name="map_confirm_remove">Remove</string>
     <string name="map_my_content_removed">Your photos, comments and likes on this stop were removed.</string>
     <string name="map_error_remove_my_content">Couldn’t remove your photos, comments and likes.</string>
-    <string name="map_trip_created">Created %1$s</string>
     <string name="map_trip_owner">by %1$s</string>
 
     <!-- Routes -->
@@ -181,4 +174,19 @@
     <string name="map_best_order_already">Your stops are already in the best order.</string>
     <string name="map_error_route">Couldn’t load the route.</string>
     <string name="map_error_best_order">Couldn’t find the best order.</string>
+
+    <!-- Redesign: map -->
+    <plurals name="map_stop_count">
+        <item quantity="one">%1$d stop</item>
+        <item quantity="other">%1$d stops</item>
+    </plurals>
+    <string name="map_trip_members">Trip members · %1$d</string>
+    <string name="map_clear_day">Clear day %1$d</string>
+    <string name="map_my_location">Show my location</string>
+    <string name="map_stop_expand">Show more</string>
+    <string name="map_stop_collapse">Show less</string>
+    <string name="map_stop_number_day">Stop %1$d · Day %2$d</string>
+    <string name="map_stop_number">Stop %1$d</string>
+    <string name="map_stop_more">More for this stop</string>
+    <string name="map_place_more">More for this place</string>
 </resources>

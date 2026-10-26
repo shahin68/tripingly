@@ -6,6 +6,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.interop.UIKitView
+import com.falcon.tripingly.core.designsystem.theme.MapColors
 import com.falcon.tripingly.core.location.model.Coordinates
 import com.falcon.tripingly.core.model.place.GeoBounds
 import com.falcon.tripingly.core.model.place.MapPlace
@@ -102,13 +103,9 @@ internal fun AppleMapView(
 
                     marker?.let { 
                         annotationView.glyphText = it.orderNumber.toString()
-                        val color = it.color
-                        annotationView.markerTintColor = UIColor(
-                            red = ((color shr 16) and 0xFF) / 255.0,
-                            green = ((color shr 8) and 0xFF) / 255.0,
-                            blue = (color and 0xFF) / 255.0,
-                            alpha = ((color shr 24) and 0xFF) / 255.0
-                        )
+                        annotationView.markerTintColor = MapColors.Stop.let { color ->
+                            UIColor(red = color.red.toDouble(), green = color.green.toDouble(), blue = color.blue.toDouble(), alpha = 1.0)
+                        }
                     }
 
                     return annotationView

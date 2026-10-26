@@ -148,7 +148,7 @@ class MapViewModel(
             is MapAction.Header.ToggleSave -> sharing.toggleSave()
             is MapAction.Header.RequestToJoin -> sharing.requestToJoin()
             is MapAction.Header.CancelJoinRequest -> sharing.cancelJoinRequest()
-            is MapAction.Header.OpenJoinRequests -> openSheet(Sheet.Members)
+            is MapAction.Header.OpenMembers -> openSheet(Sheet.Members)
             is MapAction.Header.OpenOwnerProfile -> trip.value?.trip?.owner?.let { sendEvent(MapEvent.OpenProfile(it.username)) }
             is MapAction.Header.ReportTrip -> sharing.report(ReportTarget.Trip, context.tripId)
         }
@@ -224,7 +224,7 @@ class MapViewModel(
             is MapAction.Sheet.CloseStopPhotos,
             is MapAction.Sheet.ClosePlacePhotos,
             is MapAction.Sheet.CloseStopComments,
-            is MapAction.Sheet.CloseJoinRequests,
+            is MapAction.Sheet.CloseMembers,
             is MapAction.Sheet.CloseCamera -> closeSheet()
         }
     }

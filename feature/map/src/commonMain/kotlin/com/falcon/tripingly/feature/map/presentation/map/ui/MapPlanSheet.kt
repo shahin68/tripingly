@@ -24,9 +24,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.shape.ZeroCornerSize
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
@@ -45,6 +45,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
+import com.falcon.tripingly.core.designsystem.component.GlassSurface
 import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
 import com.falcon.tripingly.core.designsystem.theme.spacing
 import com.falcon.tripingly.feature.map.generated.resources.Res
@@ -102,17 +103,18 @@ internal fun <T : Any> PlanSheet(
             // A sheet that comes in (not one shown again after a rotation) comes in all the way up.
             val isComingIn = transition.currentState == EnterExitState.PreEnter
             LaunchedEffect(Unit) { if (isComingIn) state.snapTo(PlanSheetValue.Expanded) }
-            Surface(
+            val corner = MaterialTheme.shapes.extraLarge.topStart
+            // Glass over the native map, which can't be blurred; the day tabs below are its bottom part.
+            GlassSurface(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .padding(horizontal = SheetMargin)
                     // Dragging anywhere on the sheet pulls it; the plan scrolls only once it's pulled all the way up.
                     .nestedScroll(remember(state) { state.pullFirst() })
                     .anchoredDraggable(state, Orientation.Vertical)
                     .pulledDown(state),
-                shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp),
-                color = MaterialTheme.colorScheme.surface,
-                contentColor = MaterialTheme.colorScheme.onSurface,
-                shadowElevation = 4.dp,
+                shape = RoundedCornerShape(topStart = corner, topEnd = corner, bottomStart = ZeroCornerSize, bottomEnd = ZeroCornerSize),
+                blur = false,
             ) {
                 Column {
                     Box(
@@ -191,13 +193,22 @@ private fun AnchoredDraggableState<PlanSheetValue>.pullFirst() = object : Nested
 @Preview(heightDp = 400)
 @Composable
 private fun PlanSheetPreview() {
-    TripinglyTheme {
-        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.BottomCenter) {
-            PlanSheet(
-                plan = StopsCardPreviewStates().values.elementAt(1),
-                state = rememberPlanSheetState(),
-                above = { LocationFab(LocationState(), onAction = {}, modifier = Modifier.align(Alignment.End).padding(MaterialTheme.spacing.medium)) },
-            ) { card -> StopsCard(card = card, onAction = {}) }
-        }
+    TripinglyTheme { PlanSheetPreviewContent() }
+}
+
+@Preview(heightDp = 400)
+@Composable
+private fun PlanSheetDarkPreview() {
+    TripinglyTheme(darkTheme = true) { PlanSheetPreviewContent() }
+}
+
+@Composable
+private fun PlanSheetPreviewContent() {
+    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.BottomCenter) {
+        PlanSheet(
+            plan = StopsCardPreviewStates().values.elementAt(1),
+            state = rememberPlanSheetState(),
+            above = { MapButtons(LocationState(), onAction = {}, modifier = Modifier.align(Alignment.End).padding(MaterialTheme.spacing.medium)) },
+        ) { card -> StopsCard(card = card, dayNumber = 1, editorMenu = null, onAction = {}) }
     }
 }

@@ -4,39 +4,36 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.DirectionsBike
 import androidx.compose.material.icons.automirrored.filled.DirectionsWalk
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.DirectionsCar
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.FilterChip
-import androidx.compose.material3.FilterChipDefaults
+import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalUriHandler
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.tooling.preview.PreviewParameter
 import androidx.compose.ui.tooling.preview.PreviewParameterProvider
 import androidx.compose.ui.unit.dp
 import com.falcon.tripingly.core.common.util.NumberUtils
+import com.falcon.tripingly.core.designsystem.component.SegmentedToggle
+import com.falcon.tripingly.core.designsystem.component.SegmentedToggleOption
 import com.falcon.tripingly.core.designsystem.component.icon
 import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
 import com.falcon.tripingly.core.designsystem.theme.spacing
@@ -57,53 +54,53 @@ import com.falcon.tripingly.feature.map.generated.resources.map_route_km
 import com.falcon.tripingly.feature.map.generated.resources.map_route_meters
 import com.falcon.tripingly.feature.map.generated.resources.map_route_minutes
 import com.falcon.tripingly.feature.map.generated.resources.map_route_total
-import com.falcon.tripingly.feature.map.presentation.component.lineColor
 import com.falcon.tripingly.feature.map.presentation.map.preview.previewAlongTheWay
 import kotlin.math.roundToInt
 import kotlinx.collections.immutable.ImmutableList
 import org.jetbrains.compose.resources.stringResource
 
-/** How to travel, and the route's time and length (or that routes aren't available right now). */
+/** How to travel: walk, bike or car, uncolored, the picked one named. */
 @Composable
-fun RouteSummary(
+internal fun TravelModeToggle(
     mode: TravelMode,
+    onModeSelected: (TravelMode) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    SegmentedToggle(modifier) {
+        TravelMode.entries.forEach { entry ->
+            SegmentedToggleOption(
+                label = stringResource(entry.label()),
+                selected = entry == mode,
+                onClick = { onModeSelected(entry) },
+                icon = entry.icon(),
+                showLabel = entry == mode,
+            )
+        }
+    }
+}
+
+/** The route's time and length ("2 h 34 min · 12.8 km"), a spinner while it loads, or that times are estimated. */
+@Composable
+internal fun RouteTotals(
     durationSeconds: Int?,
     distanceMeters: Int?,
     isEstimated: Boolean,
     isLoading: Boolean,
-    onModeSelected: (TravelMode) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraSmall)) {
-        Row(horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small), verticalAlignment = Alignment.CenterVertically) {
-            TravelMode.entries.forEach { entry ->
-                FilterChip(
-                    selected = entry == mode,
-                    onClick = { onModeSelected(entry) },
-                    label = { Text(stringResource(entry.label())) },
-                    leadingIcon = { Icon(entry.icon(), contentDescription = null, modifier = Modifier.size(18.dp)) },
-                    // The same color as this way's route line on the map.
-                    colors = FilterChipDefaults.filterChipColors(
-                        iconColor = entry.lineColor,
-                        selectedContainerColor = entry.lineColor,
-                        selectedLabelColor = Color.White,
-                        selectedLeadingIconColor = Color.White,
-                    ),
-                )
-            }
-            if (isLoading) CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+    Row(modifier = modifier, verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small)) {
+        when {
+            isLoading -> CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+            isEstimated -> Text(
+                text = stringResource(Res.string.map_route_estimated),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
         if (durationSeconds != null && distanceMeters != null) {
             Text(
                 text = stringResource(Res.string.map_route_total, durationLabel(durationSeconds), distanceText(distanceMeters).asString()),
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.Bold,
-            )
-        }
-        if (isEstimated && !isLoading) {
-            Text(
-                text = stringResource(Res.string.map_route_estimated),
-                style = MaterialTheme.typography.bodySmall,
+                style = MaterialTheme.typography.labelLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
@@ -111,56 +108,74 @@ fun RouteSummary(
 }
 
 /**
- * Places near the route, in the order the route passes them: when the route gets there and how far off it
- * they are. A tap opens the place; owners and editors add it to the open day ([dayNumber] is null otherwise).
+ * "Along the way" with the route's [totals] beside it, then the places near the route in the order the route passes
+ * them: when the route gets there and how far off it they are. A tap opens the place; owners and editors add it to
+ * the open day with + ([dayNumber] is null otherwise). Without places, only the totals show.
  */
 @Composable
-fun AlongTheWay(
+internal fun AlongTheWay(
     places: ImmutableList<AlongTheWayPlace>,
     dayNumber: Int?,
     onOpen: (MapPlace) -> Unit,
     onAdd: (MapPlace) -> Unit,
     modifier: Modifier = Modifier,
+    totals: @Composable () -> Unit = {},
 ) {
-    if (places.isEmpty()) return
-    Column(modifier = modifier) {
-        Text(
-            text = stringResource(Res.string.map_along_the_way),
-            style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        LazyRow(
-            horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
-            contentPadding = PaddingValues(vertical = MaterialTheme.spacing.extraSmall),
-        ) {
+    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            if (places.isNotEmpty()) {
+                Text(
+                    text = stringResource(Res.string.map_along_the_way),
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.weight(1f),
+                )
+            }
+            totals()
+        }
+        if (places.isEmpty()) return@Column
+        LazyRow(horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small)) {
             items(places, key = { it.place.id }) { item ->
-                Surface(
-                    shape = RoundedCornerShape(12.dp),
-                    color = MaterialTheme.colorScheme.surfaceVariant,
-                    modifier = Modifier.animateItem().widthIn(max = 240.dp).clickable { onOpen(item.place) },
-                ) {
-                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(start = 10.dp)) {
-                        Icon(item.place.category.icon, contentDescription = null, tint = MaterialTheme.colorScheme.secondary, modifier = Modifier.size(18.dp))
-                        Column(modifier = Modifier.padding(horizontal = MaterialTheme.spacing.small, vertical = 6.dp).weight(1f, fill = false)) {
-                            Text(item.place.name, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Medium, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                            Text(
-                                text = stringResource(Res.string.map_along_the_way_item, durationLabel(item.etaFromStartSeconds), distanceText(item.distanceFromRouteMeters).asString()),
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                maxLines = 1,
-                            )
-                        }
-                        if (dayNumber != null) {
-                            IconButton(onClick = { onAdd(item.place) }, modifier = Modifier.size(36.dp)) {
-                                Icon(Icons.Default.Add, contentDescription = stringResource(Res.string.map_along_add, dayNumber), modifier = Modifier.size(18.dp))
-                            }
-                        }
-                    }
+                AlongTheWayCard(item, dayNumber, onOpen, onAdd, Modifier.animateItem())
+            }
+        }
+    }
+}
+
+@Composable
+private fun AlongTheWayCard(item: AlongTheWayPlace, dayNumber: Int?, onOpen: (MapPlace) -> Unit, onAdd: (MapPlace) -> Unit, modifier: Modifier = Modifier) {
+    Surface(
+        onClick = { onOpen(item.place) },
+        shape = MaterialTheme.shapes.medium,
+        color = MaterialTheme.colorScheme.surfaceVariant,
+        modifier = modifier.widthIn(max = AlongCardMaxWidth),
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small + MaterialTheme.spacing.extraSmall),
+            modifier = Modifier.padding(start = MaterialTheme.spacing.small + MaterialTheme.spacing.extraSmall, end = MaterialTheme.spacing.small),
+        ) {
+            Icon(item.place.category.icon, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(20.dp))
+            Column(modifier = Modifier.padding(vertical = MaterialTheme.spacing.small).weight(1f, fill = false)) {
+                Text(item.place.name, style = MaterialTheme.typography.labelLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(
+                    text = stringResource(Res.string.map_along_the_way_item, durationLabel(item.etaFromStartSeconds), distanceText(item.distanceFromRouteMeters).asString()),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                )
+            }
+            if (dayNumber != null) {
+                FilledIconButton(onClick = { onAdd(item.place) }, modifier = Modifier.size(AddButtonSize)) {
+                    Icon(Icons.Default.Add, contentDescription = stringResource(Res.string.map_along_add, dayNumber), modifier = Modifier.size(18.dp))
                 }
             }
         }
     }
 }
+
+private val AlongCardMaxWidth = 240.dp
+private val AddButtonSize = 36.dp
 
 /** The routes' credits ("© openrouteservice.org | © OpenStreetMap contributors"), tappable like the map's. */
 @Composable
@@ -234,28 +249,32 @@ internal data class RouteSummaryPreview(
 @Composable
 private fun RouteSummaryPreview(@PreviewParameter(RouteSummaryPreviewStates::class) route: RouteSummaryPreview) {
     TripinglyTheme {
-        RouteSummary(
-            mode = route.mode,
-            durationSeconds = route.durationSeconds,
-            distanceMeters = route.distanceMeters,
-            isEstimated = route.isEstimated,
-            isLoading = route.isLoading,
-            onModeSelected = {},
-            modifier = Modifier.background(MaterialTheme.colorScheme.surface),
-        )
+        Column(Modifier.background(MaterialTheme.colorScheme.surface).padding(MaterialTheme.spacing.medium), verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small)) {
+            TravelModeToggle(mode = route.mode, onModeSelected = {}, modifier = Modifier.width(220.dp))
+            RouteTotals(route.durationSeconds, route.distanceMeters, route.isEstimated, route.isLoading)
+        }
+    }
+}
+
+@Composable
+private fun AlongTheWayPreviewContent() {
+    Column(Modifier.background(MaterialTheme.colorScheme.surface).padding(MaterialTheme.spacing.medium), verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium)) {
+        // An owner's or editor's, with Add; a viewer's, without.
+        AlongTheWay(places = previewAlongTheWay, dayNumber = 2, onOpen = {}, onAdd = {}, totals = { RouteTotals(9_240, 12_800, isEstimated = false, isLoading = false) })
+        AlongTheWay(places = previewAlongTheWay, dayNumber = null, onOpen = {}, onAdd = {})
     }
 }
 
 @Preview
 @Composable
 private fun AlongTheWayPreview() {
-    TripinglyTheme {
-        Column(Modifier.background(MaterialTheme.colorScheme.surface).padding(MaterialTheme.spacing.medium)) {
-            // An owner's or editor's, with Add; a viewer's, without.
-            AlongTheWay(places = previewAlongTheWay, dayNumber = 2, onOpen = {}, onAdd = {})
-            AlongTheWay(places = previewAlongTheWay, dayNumber = null, onOpen = {}, onAdd = {})
-        }
-    }
+    TripinglyTheme { AlongTheWayPreviewContent() }
+}
+
+@Preview
+@Composable
+private fun AlongTheWayDarkPreview() {
+    TripinglyTheme(darkTheme = true) { AlongTheWayPreviewContent() }
 }
 
 @Preview

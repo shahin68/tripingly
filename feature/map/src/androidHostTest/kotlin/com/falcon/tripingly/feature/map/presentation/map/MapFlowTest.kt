@@ -85,7 +85,7 @@ class MapFlowTest {
         setContent { TripinglyTheme { MapRoute(trip.trip.id, onNavigateBack = {}, onOpenProfile = {}, onOpenPaywall = {}, membersContent = { _, _ -> }, viewModel = viewModel()) } }
 
         onNodeWithText("Vienna weekend").assertExists()
-        onNodeWithText("Trip Plan (3 stops)").assertExists()
+        onNodeWithText("3 stops").assertExists()
         // Each chip shows the stop's number next to its name.
         listOf("1", "2", "3").forEach { onNodeWithText(it).assertExists() }
         listOf("Stephansdom", "Hofburg", "Hotel Sacher").forEach { onNodeWithText(it).assertExists() }
@@ -98,11 +98,11 @@ class MapFlowTest {
         onAllNodesWithContentDescription("Remove stop")[0].assertIsDisplayed()
 
         // Dragged by its title, not its handle.
-        onNodeWithText("Trip Plan (3 stops)").performTouchInput { swipeDown() }
+        onNodeWithText("3 stops").performTouchInput { swipeDown() }
         waitForIdle()
         onAllNodesWithContentDescription("Remove stop")[0].assertIsNotDisplayed()
 
-        onNodeWithText("Trip Plan (3 stops)").performTouchInput { swipeUp() }
+        onNodeWithText("3 stops").performTouchInput { swipeUp() }
         waitForIdle()
         onAllNodesWithContentDescription("Remove stop")[0].assertIsDisplayed()
     }
@@ -117,7 +117,7 @@ class MapFlowTest {
 
         viewModel.onAction(MapAction.MapView.Click(Coordinates(48.21, 16.37)))
         waitForIdle()
-        onNodeWithText("Trip Plan (4 stops)").assertIsDisplayed()
+        onNodeWithText("4 stops").assertIsDisplayed()
         onAllNodesWithContentDescription("Remove stop")[0].assertIsDisplayed()
 
         // The first stop of an empty day: the sheet comes up whole, though it was pulled down before.
@@ -127,7 +127,7 @@ class MapFlowTest {
         waitForIdle()
         viewModel.onAction(MapAction.MapView.Click(Coordinates(48.21, 16.37)))
         waitForIdle()
-        onNodeWithText("Trip Plan (1 stops)").assertIsDisplayed()
+        onNodeWithText("1 stop").assertIsDisplayed()
         onAllNodesWithContentDescription("Remove stop")[0].assertIsDisplayed()
     }
 
@@ -154,7 +154,7 @@ class MapFlowTest {
 
         onAllNodesWithContentDescription("Remove stop")[1].performClick()
 
-        onNodeWithText("Trip Plan (2 stops)").assertExists()
+        onNodeWithText("2 stops").assertExists()
         onNodeWithText("Hofburg").assertDoesNotExist()
         onNodeWithText("3").assertDoesNotExist()
         assertEquals(2, dayOneStops())
@@ -164,12 +164,13 @@ class MapFlowTest {
     fun `clear all asks first and cancel keeps the stops`() = runComposeUiTest {
         setContent { TripinglyTheme { MapRoute(trip.trip.id, onNavigateBack = {}, onOpenProfile = {}, onOpenPaywall = {}, membersContent = { _, _ -> }, viewModel = viewModel()) } }
 
-        onNodeWithText("Clear All").performClick()
+        onNodeWithContentDescription("Day options").performClick()
+        onNodeWithText("Clear day 1").performClick()
         onNodeWithText("Clear day 1?").assertExists()
         onNodeWithText("Cancel").performClick()
 
         onNodeWithText("Clear day 1?").assertDoesNotExist()
-        onNodeWithText("Trip Plan (3 stops)").assertExists()
+        onNodeWithText("3 stops").assertExists()
         assertEquals(3, dayOneStops())
     }
 
@@ -177,7 +178,8 @@ class MapFlowTest {
     fun `clear all empties the day once confirmed`() = runComposeUiTest {
         setContent { TripinglyTheme { MapRoute(trip.trip.id, onNavigateBack = {}, onOpenProfile = {}, onOpenPaywall = {}, membersContent = { _, _ -> }, viewModel = viewModel()) } }
 
-        onNodeWithText("Clear All").performClick()
+        onNodeWithContentDescription("Day options").performClick()
+        onNodeWithText("Clear day 1").performClick()
         onNodeWithText("Delete").performClick()
 
         waitUntil { dayOneStops() == 0 }
@@ -191,7 +193,7 @@ class MapFlowTest {
         setContent { TripinglyTheme { MapRoute(trip.trip.id, onNavigateBack = {}, onOpenProfile = {}, onOpenPaywall = {}, membersContent = { _, _ -> }, viewModel = viewModel()) } }
 
         onNodeWithText("Stephansdom").assertExists()
-        onNodeWithText("Clear All").assertDoesNotExist()
+        onNodeWithContentDescription("Day options").assertDoesNotExist()
         onAllNodesWithContentDescription("Remove stop").assertCountEquals(0)
         assertEquals(3, dayOneStops())
     }

@@ -4,6 +4,7 @@ import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
@@ -55,7 +56,10 @@ fun SegmentedToggle(
     )
 }
 
-/** One option of a [SegmentedToggle]; the options share the width equally. */
+/**
+ * One option of a [SegmentedToggle]; the options share the width equally. With [showLabel] off only the [icon]
+ * shows, the label being its description (e.g. the ways of travelling, where only the picked one is named).
+ */
 @Composable
 fun RowScope.SegmentedToggleOption(
     label: String,
@@ -64,6 +68,7 @@ fun RowScope.SegmentedToggleOption(
     modifier: Modifier = Modifier,
     icon: ImageVector? = null,
     enabled: Boolean = true,
+    showLabel: Boolean = true,
 ) {
     val container by animateColorAsState(
         if (selected) MaterialTheme.colorScheme.surfaceContainerLowest else MaterialTheme.colorScheme.surfaceVariant,
@@ -83,10 +88,12 @@ fun RowScope.SegmentedToggleOption(
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             if (icon != null) {
-                Icon(icon, contentDescription = null, tint = content, modifier = Modifier.size(SegmentIconSize))
-                Spacer(Modifier.width(MaterialTheme.spacing.extraSmall))
+                Icon(icon, contentDescription = label.takeUnless { showLabel }, tint = content, modifier = Modifier.size(SegmentIconSize))
             }
-            Text(text = label, color = content, style = MaterialTheme.typography.labelLarge, textAlign = TextAlign.Center)
+            if (showLabel) {
+                if (icon != null) Spacer(Modifier.width(MaterialTheme.spacing.extraSmall))
+                Text(text = label, color = content, style = MaterialTheme.typography.labelLarge, textAlign = TextAlign.Center)
+            }
         }
     }
 }
@@ -96,10 +103,14 @@ private val SegmentHeight = 40.dp
 private val SegmentIconSize = 18.dp
 
 @Composable
-private fun VisibilityTogglePreviewContent(publicSelected: Boolean) {
+private fun VisibilityTogglePreviewContent(publicSelected: Boolean) = Column {
     SegmentedToggle(Modifier.fillMaxWidth().padding(16.dp)) {
         SegmentedToggleOption("Public", publicSelected, {}, icon = Icons.Default.Public)
         SegmentedToggleOption("Private", !publicSelected, {}, icon = Icons.Default.Lock)
+    }
+    SegmentedToggle(Modifier.padding(16.dp)) {
+        SegmentedToggleOption("Walk", true, {}, icon = Icons.Default.Public)
+        SegmentedToggleOption("Car", false, {}, icon = Icons.Default.Lock, showLabel = false)
     }
 }
 

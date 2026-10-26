@@ -14,9 +14,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.statusBarsPadding
-import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -42,13 +40,12 @@ import com.falcon.tripingly.core.designsystem.theme.spacing
 import com.falcon.tripingly.core.model.place.GeoBounds
 import com.falcon.tripingly.core.ui.UiText
 import com.falcon.tripingly.feature.map.generated.resources.Res
-import com.falcon.tripingly.feature.map.generated.resources.map_join_request_count
 import com.falcon.tripingly.feature.map.generated.resources.map_retry
 import com.falcon.tripingly.feature.map.presentation.component.CameraCommand
 import com.falcon.tripingly.feature.map.presentation.component.GoogleMapView
 import com.falcon.tripingly.feature.map.presentation.component.SelectedPinSize
 import com.falcon.tripingly.feature.map.presentation.component.fittedCamera
-import com.falcon.tripingly.feature.map.presentation.component.stopPinHeight
+import com.falcon.tripingly.feature.map.presentation.component.stopPinRadius
 import com.falcon.tripingly.feature.map.presentation.map.preview.MapScreenPreviewStates
 import com.falcon.tripingly.feature.map.presentation.map.ui.BottomCards
 import com.falcon.tripingly.feature.map.presentation.map.ui.MapHeader
@@ -64,7 +61,6 @@ import com.falcon.tripingly.feature.map.presentation.photos.rememberPhotoPicker
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.map
-import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
 
 /**
@@ -154,17 +150,10 @@ internal fun MapScreen(
             MapHeader(
                 header = state.header,
                 search = state.search,
+                showDayActions = plan == null,
                 onAction = onAction,
                 modifier = Modifier.onSizeChanged { headerHeight = with(density) { it.height.toDp() } },
             )
-            state.joinRequestCount?.let { count ->
-                FilledTonalButton(
-                    onClick = { onAction(MapAction.Header.OpenJoinRequests) },
-                    modifier = Modifier.padding(horizontal = MaterialTheme.spacing.medium),
-                ) {
-                    Text(pluralStringResource(Res.plurals.map_join_request_count, count, count))
-                }
-            }
             state.search?.results?.takeIf { it.isNotEmpty() }?.let { results ->
                 SearchResults(results = results, onAction = onAction, modifier = Modifier.padding(horizontal = MaterialTheme.spacing.medium))
             }
@@ -186,6 +175,7 @@ internal fun MapScreen(
             routeStartName = state.routeStartName,
             dayTabs = state.dayTabs,
             plan = plan,
+            editorMenu = state.header.editorMenu,
             planSheet = planSheet,
             onAction = onAction,
             onTabsHeight = { tabsHeight = hasDays to with(density) { it.toDp() } },
@@ -217,7 +207,7 @@ internal fun MapScreen(
             PinCard(
                 card = state.stopCard,
                 key = { it.stop.id },
-                pinClearance = stopPinHeight(hasCover = state.stopCard?.stop?.coverPhotoId != null) + MaterialTheme.spacing.small,
+                pinClearance = stopPinRadius(hasCover = state.stopCard?.stop?.coverPhotoId != null) + MaterialTheme.spacing.small,
                 modifier = Modifier.onGloballyPositioned { stopCardBounds = it.boundsInRoot() },
             ) { card ->
                 StopCard(

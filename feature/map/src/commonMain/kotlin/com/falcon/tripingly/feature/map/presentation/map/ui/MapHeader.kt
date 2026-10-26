@@ -1,5 +1,6 @@
 package com.falcon.tripingly.feature.map.presentation.map.ui
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -9,40 +10,50 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.icons.filled.Search
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
+import androidx.compose.material.icons.outlined.Add
+import androidx.compose.material.icons.outlined.Bookmark
+import androidx.compose.material.icons.outlined.BookmarkBorder
+import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material.icons.outlined.Flag
+import androidx.compose.material.icons.outlined.Group
+import androidx.compose.material.icons.outlined.Person
+import androidx.compose.material.icons.outlined.PersonAdd
+import androidx.compose.material.icons.outlined.PersonRemove
+import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextField
-import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.tooling.preview.PreviewParameter
 import androidx.compose.ui.unit.dp
 import com.falcon.tripingly.core.designsystem.component.AppDropdownMenu
 import com.falcon.tripingly.core.designsystem.component.DropdownAction
+import com.falcon.tripingly.core.designsystem.component.GlassButtonDefaults
+import com.falcon.tripingly.core.designsystem.component.GlassButtonDivider
+import com.falcon.tripingly.core.designsystem.component.GlassButtonRow
+import com.falcon.tripingly.core.designsystem.component.GlassIconButton
+import com.falcon.tripingly.core.designsystem.component.GlassSurface
 import com.falcon.tripingly.core.designsystem.component.OsmAttribution
 import com.falcon.tripingly.core.designsystem.component.SuggestionItem
 import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
@@ -53,7 +64,6 @@ import com.falcon.tripingly.feature.map.generated.resources.Res
 import com.falcon.tripingly.feature.map.generated.resources.map_add_day
 import com.falcon.tripingly.feature.map.generated.resources.map_back
 import com.falcon.tripingly.feature.map.generated.resources.map_cancel_join
-import com.falcon.tripingly.feature.map.generated.resources.map_day_menu
 import com.falcon.tripingly.feature.map.generated.resources.map_delete_day
 import com.falcon.tripingly.feature.map.generated.resources.map_join_trip
 import com.falcon.tripingly.feature.map.generated.resources.map_owner_profile
@@ -62,159 +72,169 @@ import com.falcon.tripingly.feature.map.generated.resources.map_save_trip
 import com.falcon.tripingly.feature.map.generated.resources.map_search
 import com.falcon.tripingly.feature.map.generated.resources.map_search_clear
 import com.falcon.tripingly.feature.map.generated.resources.map_search_placeholder
+import com.falcon.tripingly.feature.map.generated.resources.map_stop_count
+import com.falcon.tripingly.feature.map.generated.resources.map_trip_members
 import com.falcon.tripingly.feature.map.generated.resources.map_trip_menu
 import com.falcon.tripingly.feature.map.generated.resources.map_unsave_trip
-import com.falcon.tripingly.feature.map.presentation.component.TripOwnerColor
-import com.falcon.tripingly.feature.map.presentation.map.EditorMenu
 import com.falcon.tripingly.feature.map.presentation.map.HeaderState
 import com.falcon.tripingly.feature.map.presentation.map.MapAction
 import com.falcon.tripingly.feature.map.presentation.map.SearchState
-import com.falcon.tripingly.feature.map.presentation.map.ViewerMenu
 import com.falcon.tripingly.feature.map.presentation.map.preview.MapHeaderPreview
 import com.falcon.tripingly.feature.map.presentation.map.preview.MapHeaderPreviewStates
 import kotlinx.collections.immutable.ImmutableList
+import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
 
-/** The trip's name with back, search and the trip's menu; the search field while searching. */
+/**
+ * The map's header, three glass pills: back, the trip's name over its dates and stops, and search joined to the
+ * trip's ⋮ menu. While searching, one pill: the search field, still joined to ⋮. Over the native map, so no blur.
+ * [showDayActions]: the day has no plan sheet, so its day actions are in ⋮ instead.
+ */
 @Composable
 internal fun MapHeader(
     header: HeaderState,
     search: SearchState?,
+    showDayActions: Boolean,
     onAction: (MapAction) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Card(
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(MaterialTheme.spacing.medium),
-        // A see-through surface doesn't get a content color of its own, so it's set here.
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f),
-            contentColor = MaterialTheme.colorScheme.onSurface,
-        ),
-        shape = RoundedCornerShape(16.dp),
+    Row(
+        modifier = modifier.fillMaxWidth().padding(horizontal = MaterialTheme.spacing.medium, vertical = MaterialTheme.spacing.small),
+        horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        if (search != null) {
-            SearchField(search = search, onAction = onAction)
-        } else {
-            TripTitle(header = header, onAction = onAction)
+        if (search == null) {
+            GlassIconButton(onClick = { onAction(MapAction.Header.Back) }, blur = false) {
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(Res.string.map_back))
+            }
+            TripTitle(header, Modifier.weight(1f))
         }
-    }
-}
-
-@Composable
-private fun TripTitle(header: HeaderState, onAction: (MapAction) -> Unit) {
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        IconButton(onClick = { onAction(MapAction.Header.Back) }) {
-            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(Res.string.map_back))
-        }
-        Column(Modifier.weight(1f).padding(vertical = if (header.createdLabel == null) 16.dp else 8.dp)) {
-            Text(
-                text = header.tripName,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-            )
-            header.createdLabel?.let { created ->
-                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Text(
-                        text = created.asString(),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                    header.ownerLabel?.let { owner ->
-                        Text(
-                            text = owner.asString(),
-                            style = MaterialTheme.typography.bodySmall,
-                            fontWeight = FontWeight.Medium,
-                            color = Color(TripOwnerColor),
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                        )
-                    }
+        GlassButtonRow(modifier = if (search != null) Modifier.weight(1f) else Modifier, blur = false) {
+            if (search != null) {
+                SearchField(search, onAction, Modifier.weight(1f))
+            } else {
+                IconButton(onClick = { onAction(MapAction.Search.Open) }) {
+                    Icon(Icons.Outlined.Search, contentDescription = stringResource(Res.string.map_search))
                 }
             }
+            val actions = tripMenuActions(header, showDayActions, onAction)
+            if (actions.isNotEmpty()) {
+                GlassButtonDivider()
+                TripMenuButton(actions)
+            }
         }
-        if (header.isBusy) {
-            CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
-        }
-        IconButton(onClick = { onAction(MapAction.Search.Open) }) {
-            Icon(Icons.Default.Search, contentDescription = stringResource(Res.string.map_search))
-        }
-        header.viewerMenu?.let { ViewerMenuButton(it, onAction) }
-        header.editorMenu?.let { EditorMenuButton(it, onAction) }
     }
 }
 
+/** The trip's name, and its dates, stop count and (someone else's trip) owner under it. */
 @Composable
-private fun ViewerMenuButton(menu: ViewerMenu, onAction: (MapAction) -> Unit) {
-    MenuButton(
-        contentDescription = stringResource(Res.string.map_trip_menu),
-        actions = listOfNotNull(
-            DropdownAction(stringResource(if (menu.isSavedByMe) Res.string.map_unsave_trip else Res.string.map_save_trip)) {
-                onAction(MapAction.Header.ToggleSave)
-            },
+private fun TripTitle(header: HeaderState, modifier: Modifier = Modifier) {
+    GlassSurface(modifier = modifier.heightIn(min = GlassButtonDefaults.Size), shape = MaterialTheme.shapes.extraLarge, blur = false) {
+        Row(
+            modifier = Modifier.padding(horizontal = MaterialTheme.spacing.medium, vertical = MaterialTheme.spacing.small - 2.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(Modifier.weight(1f)) {
+                Text(header.tripName, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                val subtitle = listOfNotNull(
+                    header.dates,
+                    pluralStringResource(Res.plurals.map_stop_count, header.stopCount, header.stopCount),
+                    header.ownerLabel?.asString(),
+                ).joinToString(" · ")
+                Text(subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            }
+            if (header.isBusy) CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
+        }
+    }
+}
+
+/**
+ * The trip's ⋮ menu: the members first (with the requests to join as a badge), then a viewer's save, join, owner and
+ * report, or an editor's day actions while the day has no plan sheet.
+ */
+@Composable
+private fun tripMenuActions(header: HeaderState, showDayActions: Boolean, onAction: (MapAction) -> Unit): List<DropdownAction> {
+    val members = header.members?.let {
+        DropdownAction(
+            label = stringResource(Res.string.map_trip_members, it.count),
+            icon = Icons.Outlined.Group,
+            badge = it.requestCount.takeIf { count -> count > 0 }?.toString(),
+        ) { onAction(MapAction.Header.OpenMembers) }
+    }
+    val viewer = header.viewerMenu?.let { menu ->
+        listOfNotNull(
+            DropdownAction(
+                label = stringResource(if (menu.isSavedByMe) Res.string.map_unsave_trip else Res.string.map_save_trip),
+                icon = if (menu.isSavedByMe) Icons.Outlined.Bookmark else Icons.Outlined.BookmarkBorder,
+            ) { onAction(MapAction.Header.ToggleSave) },
             // Once the owner declined, there's nothing more to ask.
             when (menu.myJoinRequest) {
-                null -> DropdownAction(stringResource(Res.string.map_join_trip)) { onAction(MapAction.Header.RequestToJoin) }
-                JoinRequestStatus.PENDING -> DropdownAction(stringResource(Res.string.map_cancel_join)) { onAction(MapAction.Header.CancelJoinRequest) }
+                null -> DropdownAction(stringResource(Res.string.map_join_trip), icon = Icons.Outlined.PersonAdd) { onAction(MapAction.Header.RequestToJoin) }
+                JoinRequestStatus.PENDING -> DropdownAction(stringResource(Res.string.map_cancel_join), icon = Icons.Outlined.PersonRemove) {
+                    onAction(MapAction.Header.CancelJoinRequest)
+                }
                 JoinRequestStatus.DECLINED -> null
             },
             menu.ownerUsername?.let { owner ->
-                DropdownAction(stringResource(Res.string.map_owner_profile, owner)) { onAction(MapAction.Header.OpenOwnerProfile) }
+                DropdownAction(stringResource(Res.string.map_owner_profile, owner), icon = Icons.Outlined.Person) { onAction(MapAction.Header.OpenOwnerProfile) }
             },
-            DropdownAction(stringResource(Res.string.map_report_trip)) { onAction(MapAction.Header.ReportTrip) },
-        ),
-    )
-}
-
-@Composable
-private fun EditorMenuButton(menu: EditorMenu, onAction: (MapAction) -> Unit) {
-    MenuButton(
-        contentDescription = stringResource(Res.string.map_day_menu),
-        actions = listOfNotNull(
-            DropdownAction(stringResource(Res.string.map_add_day)) { onAction(MapAction.Header.AddDay) },
-            DropdownAction(stringResource(Res.string.map_delete_day), isDestructive = true) { onAction(MapAction.Header.DeleteDay) }
+            DropdownAction(stringResource(Res.string.map_report_trip), isDestructive = true, icon = Icons.Outlined.Flag) { onAction(MapAction.Header.ReportTrip) },
+        )
+    }.orEmpty()
+    val days = header.editorMenu?.takeIf { showDayActions }?.let { menu ->
+        listOfNotNull(
+            DropdownAction(stringResource(Res.string.map_add_day), icon = Icons.Outlined.Add) { onAction(MapAction.Header.AddDay) },
+            DropdownAction(stringResource(Res.string.map_delete_day), isDestructive = true, icon = Icons.Outlined.Delete) { onAction(MapAction.Header.DeleteDay) }
                 .takeIf { menu.canDeleteDay },
-        ),
-    )
+        )
+    }.orEmpty()
+    return listOfNotNull(members) + viewer + days
 }
 
 @Composable
-private fun MenuButton(contentDescription: String, actions: List<DropdownAction>) {
-    var isExpanded by remember { mutableStateOf(false) }
+private fun TripMenuButton(actions: List<DropdownAction>) {
+    var isExpanded by rememberSaveable { mutableStateOf(false) }
     Box {
         IconButton(onClick = { isExpanded = true }) {
-            Icon(Icons.Default.MoreVert, contentDescription = contentDescription)
+            Icon(Icons.Default.MoreVert, contentDescription = stringResource(Res.string.map_trip_menu))
         }
         AppDropdownMenu(expanded = isExpanded, onDismissRequest = { isExpanded = false }, actions = actions)
     }
 }
 
-/** Replaces the trip name while searching; back closes the search. */
+/** Replaces the back button and the trip's name while searching; back closes the search. */
 @Composable
-private fun SearchField(search: SearchState, onAction: (MapAction) -> Unit) {
+private fun SearchField(search: SearchState, onAction: (MapAction) -> Unit, modifier: Modifier = Modifier) {
     val focusRequester = remember { FocusRequester() }
     LaunchedEffect(Unit) { focusRequester.requestFocus() }
-    Row(verticalAlignment = Alignment.CenterVertically) {
+    Row(modifier = modifier, verticalAlignment = Alignment.CenterVertically) {
         IconButton(onClick = { onAction(MapAction.Search.Close) }) {
             Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(Res.string.map_back))
         }
-        TextField(
+        BasicTextField(
             value = search.query,
             onValueChange = { onAction(MapAction.Search.QueryChanged(it)) },
-            placeholder = { Text(stringResource(Res.string.map_search_placeholder)) },
             singleLine = true,
-            colors = TextFieldDefaults.colors(
-                focusedContainerColor = Color.Transparent,
-                unfocusedContainerColor = Color.Transparent,
-                focusedIndicatorColor = Color.Transparent,
-                unfocusedIndicatorColor = Color.Transparent,
-            ),
+            textStyle = MaterialTheme.typography.bodyLarge.copy(color = MaterialTheme.colorScheme.onSurface),
+            cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
             modifier = Modifier.weight(1f).focusRequester(focusRequester),
+            decorationBox = { field ->
+                Box(contentAlignment = Alignment.CenterStart) {
+                    if (search.query.isEmpty()) {
+                        Text(
+                            stringResource(Res.string.map_search_placeholder),
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                        )
+                    }
+                    field()
+                }
+            },
         )
         when {
             search.isSearching -> CircularProgressIndicator(
-                modifier = Modifier.padding(horizontal = 14.dp).size(20.dp),
+                modifier = Modifier.padding(horizontal = MaterialTheme.spacing.small + MaterialTheme.spacing.extraSmall).size(20.dp),
                 strokeWidth = 2.dp,
             )
             search.query.isNotEmpty() -> IconButton(onClick = { onAction(MapAction.Search.QueryChanged("")) }) {
@@ -224,21 +244,15 @@ private fun SearchField(search: SearchState, onAction: (MapAction) -> Unit) {
     }
 }
 
+/** The search's results under the header, with the credits for OpenStreetMap and Photon. */
 @Composable
 internal fun SearchResults(
     results: ImmutableList<PlaceSearchResult>,
     onAction: (MapAction) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Card(
-        modifier = modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface,
-            contentColor = MaterialTheme.colorScheme.onSurface,
-        ),
-        shape = RoundedCornerShape(16.dp),
-    ) {
-        Column(modifier = Modifier.heightIn(max = 360.dp).verticalScroll(rememberScrollState())) {
+    GlassSurface(modifier = modifier.fillMaxWidth(), shape = MaterialTheme.shapes.large, blur = false) {
+        Column(modifier = Modifier.heightIn(max = SearchResultsMaxHeight).verticalScroll(rememberScrollState()).padding(vertical = MaterialTheme.spacing.small)) {
             results.forEach { result ->
                 SuggestionItem(
                     title = result.name,
@@ -246,15 +260,21 @@ internal fun SearchResults(
                     onClick = { onAction(MapAction.Search.ResultClick(result)) },
                 )
             }
-            OsmAttribution(modifier = Modifier.padding(MaterialTheme.spacing.medium))
+            OsmAttribution(modifier = Modifier.padding(horizontal = MaterialTheme.spacing.medium, vertical = MaterialTheme.spacing.small))
         }
     }
 }
 
+private val SearchResultsMaxHeight = 360.dp
+
 @Preview
 @Composable
 private fun MapHeaderPreview(@PreviewParameter(MapHeaderPreviewStates::class) preview: MapHeaderPreview) {
-    TripinglyTheme { MapHeader(header = preview.header, search = preview.search, onAction = {}) }
+    TripinglyTheme {
+        Box(Modifier.background(MaterialTheme.colorScheme.surfaceContainerHigh)) {
+            MapHeader(header = preview.header, search = preview.search, showDayActions = false, onAction = {})
+        }
+    }
 }
 
 @Preview
@@ -262,9 +282,9 @@ private fun MapHeaderPreview(@PreviewParameter(MapHeaderPreviewStates::class) pr
 private fun MapHeaderDarkPreview() {
     TripinglyTheme(darkTheme = true) {
         val preview = MapHeaderPreviewStates().values.last()
-        Column {
-            MapHeader(header = preview.header, search = null, onAction = {})
-            SearchResults(results = preview.search!!.results, onAction = {})
+        Column(Modifier.background(MaterialTheme.colorScheme.surfaceContainerHigh)) {
+            MapHeader(header = preview.header, search = null, showDayActions = false, onAction = {})
+            SearchResults(results = preview.search!!.results, onAction = {}, modifier = Modifier.padding(horizontal = MaterialTheme.spacing.medium))
         }
     }
 }
@@ -272,5 +292,9 @@ private fun MapHeaderDarkPreview() {
 @Preview
 @Composable
 private fun SearchResultsPreview() {
-    TripinglyTheme { SearchResults(results = MapHeaderPreviewStates().values.last().search!!.results, onAction = {}) }
+    TripinglyTheme {
+        Box(Modifier.background(MaterialTheme.colorScheme.surfaceContainerHigh).padding(MaterialTheme.spacing.medium)) {
+            SearchResults(results = MapHeaderPreviewStates().values.last().search!!.results, onAction = {})
+        }
+    }
 }

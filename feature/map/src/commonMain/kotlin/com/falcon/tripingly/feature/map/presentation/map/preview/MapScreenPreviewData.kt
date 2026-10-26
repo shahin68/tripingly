@@ -8,7 +8,6 @@ import com.falcon.tripingly.core.model.route.TravelMode
 import com.falcon.tripingly.core.model.trip.GeoPoint
 import com.falcon.tripingly.core.ui.UiText
 import com.falcon.tripingly.feature.map.generated.resources.Res
-import com.falcon.tripingly.feature.map.generated.resources.map_day_label_no_date
 import com.falcon.tripingly.feature.map.generated.resources.map_error_load_trip
 import com.falcon.tripingly.feature.map.generated.resources.map_route_minutes
 import com.falcon.tripingly.feature.map.presentation.component.MapLayersState
@@ -22,6 +21,7 @@ import com.falcon.tripingly.feature.map.presentation.map.HeaderState
 import com.falcon.tripingly.feature.map.presentation.map.LocationPrompt
 import com.falcon.tripingly.feature.map.presentation.map.MapDialog
 import com.falcon.tripingly.feature.map.presentation.map.MapUiState
+import com.falcon.tripingly.feature.map.presentation.map.MembersEntry
 import com.falcon.tripingly.feature.map.presentation.map.MessageState
 import com.falcon.tripingly.feature.map.presentation.map.PointRouteCardState
 import com.falcon.tripingly.feature.map.presentation.map.RouteSummaryState
@@ -51,12 +51,18 @@ private val previewStops = persistentListOf(
 
 private val previewDays = DayTabsState(
     days = persistentListOf(1, 2, 3).let { numbers ->
-        persistentListOf(*numbers.map { DayTab("d$it", it, UiText.Resource(Res.string.map_day_label_no_date, it)) }.toTypedArray())
+        persistentListOf(*numbers.map { DayTab("d$it", it, date = "${18 + it} Oct") }.toTypedArray())
     },
 )
 
 private val withStops = MapUiState(
-    header = HeaderState(tripName = "Summer Vacation in Paris", editorMenu = EditorMenu(canDeleteDay = true)),
+    header = HeaderState(
+        tripName = "Summer Vacation in Paris",
+        dates = "19 – 23 Oct 2026",
+        stopCount = 6,
+        members = MembersEntry(count = 4, requestCount = 1),
+        editorMenu = EditorMenu(canDeleteDay = true),
+    ),
     dayTabs = previewDays,
     plan = StopsCardState(
         stops = previewStops,
@@ -75,7 +81,6 @@ private val withStops = MapUiState(
 internal class MapScreenPreviewStates : PreviewParameterProvider<MapUiState> {
     override val values = sequenceOf(
         withStops,
-        withStops.copy(joinRequestCount = 2),
         MapUiState(header = HeaderState(isBusy = true)),
         withStops.copy(plan = null, layers = MapLayersState()),
         MapUiState(message = MessageState(UiText.Resource(Res.string.map_error_load_trip), canRetry = false)),
@@ -110,7 +115,7 @@ internal class StopsCardPreviewStates : PreviewParameterProvider<StopsCardState>
             isFindingBestOrder = true,
         ),
         previewStopsCard.copy(
-            stops = previewStops.map { it.copy(canDelete = false, isByTripOwner = true) }.toPersistentList(),
+            stops = previewStops.map { it.copy(canDelete = false) }.toPersistentList(),
             canClear = false,
             isRouteOn = null,
         ),
@@ -130,7 +135,7 @@ internal class PointRouteCardPreviewStates : PreviewParameterProvider<PointRoute
 internal class DayTabsPreviewStates : PreviewParameterProvider<DayTabsState> {
     override val values = sequenceOf(
         previewDays.copy(activeIndex = 1),
-        DayTabsState(persistentListOf(DayTab("d1", 1, UiText.Resource(Res.string.map_day_label_no_date, 1)))),
+        DayTabsState(persistentListOf(DayTab("d1", 1, date = null))),
     )
 }
 

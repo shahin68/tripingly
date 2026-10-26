@@ -4,25 +4,23 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
-import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.DateRange
-import androidx.compose.material.icons.filled.Lock
-import androidx.compose.material.icons.filled.Public
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.outlined.CalendarMonth
+import androidx.compose.material.icons.outlined.Lock
+import androidx.compose.material.icons.outlined.Public
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -43,9 +41,10 @@ import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.falcon.tripingly.core.common.util.DateUtils
+import com.falcon.tripingly.core.designsystem.component.FieldButton
+import com.falcon.tripingly.core.designsystem.component.FormField
 import com.falcon.tripingly.core.designsystem.component.MessageBannerHost
 import com.falcon.tripingly.core.designsystem.component.OsmAttribution
-import com.falcon.tripingly.core.designsystem.component.PillChip
 import com.falcon.tripingly.core.designsystem.component.PrimaryButton
 import com.falcon.tripingly.core.designsystem.component.RoundedTextField
 import com.falcon.tripingly.core.designsystem.component.SegmentedToggle
@@ -57,15 +56,24 @@ import com.falcon.tripingly.core.model.account.TripVisibility
 import com.falcon.tripingly.core.ui.UiText
 import com.falcon.tripingly.feature.trips.generated.resources.Res
 import com.falcon.tripingly.feature.trips.generated.resources.create_trip_button_create
+import com.falcon.tripingly.feature.trips.generated.resources.create_trip_close
 import com.falcon.tripingly.feature.trips.generated.resources.create_trip_dates_add
+import com.falcon.tripingly.feature.trips.generated.resources.create_trip_dates_label
 import com.falcon.tripingly.feature.trips.generated.resources.create_trip_destination_clear
+import com.falcon.tripingly.feature.trips.generated.resources.create_trip_destination_label
 import com.falcon.tripingly.feature.trips.generated.resources.create_trip_destination_placeholder
+import com.falcon.tripingly.feature.trips.generated.resources.create_trip_members_label
 import com.falcon.tripingly.feature.trips.generated.resources.create_trip_name_label
+import com.falcon.tripingly.feature.trips.generated.resources.create_trip_name_placeholder
 import com.falcon.tripingly.feature.trips.generated.resources.create_trip_title
+import com.falcon.tripingly.feature.trips.generated.resources.create_trip_visibility_label
 import com.falcon.tripingly.feature.trips.generated.resources.create_trip_visibility_private
 import com.falcon.tripingly.feature.trips.generated.resources.create_trip_visibility_public
+import com.falcon.tripingly.feature.trips.generated.resources.trip_day_count
 import com.falcon.tripingly.feature.trips.presentation.screen.CreateTripForm
 import com.falcon.tripingly.feature.trips.presentation.screen.HomeViewModel.Action
+import kotlinx.datetime.daysUntil
+import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
 
 /**
@@ -97,7 +105,6 @@ internal fun CreateTripSheet(
     }
 }
 
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
 internal fun CreateTripSheetContent(
     form: CreateTripForm,
@@ -121,6 +128,7 @@ internal fun CreateTripSheetContent(
 
     // The fields scroll (landscape, keyboard open) while the Create button stays at the bottom.
     Column(modifier = modifier.fillMaxWidth().imePadding()) {
+        SheetHeader(isSaving = isSaving, onClose = { onAction(Action.TripDialog.Dismiss) })
         Column(
             modifier = Modifier
                 .weight(1f, fill = false)
@@ -128,51 +136,56 @@ internal fun CreateTripSheetContent(
                 .padding(horizontal = MaterialTheme.spacing.large),
             verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium),
         ) {
-            Text(text = stringResource(Res.string.create_trip_title), style = MaterialTheme.typography.titleLarge)
-            RoundedTextField(
-                value = form.name,
-                onValueChange = { onAction(Action.CreateTrip.NameChanged(it)) },
-                placeholder = stringResource(Res.string.create_trip_name_label),
-                enabled = !isSaving,
-                textStyle = MaterialTheme.typography.titleMedium,
-                keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences, imeAction = ImeAction.Next),
-                modifier = Modifier.fillMaxWidth(),
-            )
-            DestinationField(form = form, isSaving = isSaving, onAction = onAction)
-
-            // Dates and visibility share one row to keep the sheet short; on a narrow phone with a
-            // long date range the toggle wraps below.
-            FlowRow(
-                horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
-                verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
-                itemVerticalAlignment = Alignment.CenterVertically,
-            ) {
-                val dates = DateUtils.formatRange(form.startDate, form.endDate ?: form.startDate)
-                PillChip(
-                    label = dates ?: stringResource(Res.string.create_trip_dates_add),
+            FormField(stringResource(Res.string.create_trip_name_label)) {
+                RoundedTextField(
+                    value = form.name,
+                    onValueChange = { onAction(Action.CreateTrip.NameChanged(it)) },
+                    placeholder = stringResource(Res.string.create_trip_name_placeholder),
+                    enabled = !isSaving,
+                    keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences, imeAction = ImeAction.Next),
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+            FormField(stringResource(Res.string.create_trip_destination_label)) {
+                DestinationField(form = form, isSaving = isSaving, onAction = onAction)
+            }
+            FormField(stringResource(Res.string.create_trip_dates_label)) {
+                val end = form.endDate ?: form.startDate
+                FieldButton(
+                    text = DateUtils.formatRange(form.startDate, end),
+                    placeholder = stringResource(Res.string.create_trip_dates_add),
                     onClick = { showDatePicker = true },
-                    leading = { Icon(Icons.Default.DateRange, contentDescription = null, modifier = Modifier.padding(start = MaterialTheme.spacing.small)) },
+                    leadingIcon = { Icon(Icons.Outlined.CalendarMonth, contentDescription = null) },
+                    trailing = {
+                        if (form.startDate != null && end != null) {
+                            val days = form.startDate.daysUntil(end) + 1
+                            Text(pluralStringResource(Res.plurals.trip_day_count, days, days), style = MaterialTheme.typography.labelMedium)
+                        }
+                    },
                     enabled = !isSaving,
                 )
-                SegmentedToggle(Modifier.width(IntrinsicSize.Max)) {
+            }
+            FormField(stringResource(Res.string.create_trip_visibility_label)) {
+                SegmentedToggle(Modifier.fillMaxWidth()) {
                     SegmentedToggleOption(
                         label = stringResource(Res.string.create_trip_visibility_public),
                         selected = form.visibility == TripVisibility.PUBLIC,
                         onClick = { onAction(Action.CreateTrip.VisibilityChanged(TripVisibility.PUBLIC)) },
-                        icon = Icons.Default.Public,
+                        icon = Icons.Outlined.Public,
                         enabled = !isSaving,
                     )
                     SegmentedToggleOption(
                         label = stringResource(Res.string.create_trip_visibility_private),
                         selected = form.visibility == TripVisibility.PRIVATE,
                         onClick = { onAction(Action.CreateTrip.VisibilityChanged(TripVisibility.PRIVATE)) },
-                        icon = Icons.Default.Lock,
+                        icon = Icons.Outlined.Lock,
                         enabled = !isSaving,
                     )
                 }
             }
-
-            CreateTripMembers(form = form, isSaving = isSaving, onAction = onAction)
+            FormField(stringResource(Res.string.create_trip_members_label)) {
+                CreateTripMembers(form = form, isSaving = isSaving, onAction = onAction)
+            }
             DialogError(error?.asString())
         }
         PrimaryButton(
@@ -184,6 +197,20 @@ internal fun CreateTripSheetContent(
                 .fillMaxWidth()
                 .padding(horizontal = MaterialTheme.spacing.large, vertical = MaterialTheme.spacing.medium),
         )
+    }
+}
+
+/** "New trip" with a round close button; closing waits while the trip is being saved. */
+@Composable
+private fun SheetHeader(isSaving: Boolean, onClose: () -> Unit) {
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(start = MaterialTheme.spacing.large, end = MaterialTheme.spacing.medium, bottom = MaterialTheme.spacing.small),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(stringResource(Res.string.create_trip_title), style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f))
+        FilledTonalIconButton(onClick = onClose, enabled = !isSaving) {
+            Icon(Icons.Default.Close, contentDescription = stringResource(Res.string.create_trip_close))
+        }
     }
 }
 

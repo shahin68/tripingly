@@ -1,8 +1,6 @@
 <resources>
     <!-- Map -->
-    <string name="map_day_label">%1$d. nap (%2$s)</string>
     <string name="map_day_label_no_date">%1$d. nap</string>
-    <string name="map_itinerary_title">Útiterv (%1$d megálló)</string>
     <string name="map_fit_day">Az egész nap megjelenítése</string>
     <string name="map_plan_handle">A teljes terv megjelenítése vagy elrejtése</string>
     <string name="map_itinerary_clear_all">Összes törlése</string>
@@ -98,10 +96,6 @@
     <string name="map_join_requested">Kérés elküldve. A tulajdonos dönt.</string>
     <string name="map_join_withdrawn">Kérés visszavonva.</string>
     <string name="map_join_declined">A tulajdonos elutasította a csatlakozási kérésedet.</string>
-    <plurals name="map_join_request_count">
-        <item quantity="one">%1$d személy szeretne csatlakozni</item>
-        <item quantity="other">%1$d személy szeretne csatlakozni</item>
-    </plurals>
     <string name="map_owner_profile">@%1$s profilja</string>
     <string name="map_report_trip">Utazás jelentése</string>
     <string name="map_stop_comment">Hozzászólás</string>
@@ -150,7 +144,6 @@
     <string name="map_confirm_remove">Eltávolítás</string>
     <string name="map_my_content_removed">A fotóid, hozzászólásaid és kedveléseid eltávolítva erről a megállóról.</string>
     <string name="map_error_remove_my_content">Nem sikerült eltávolítani a fotóidat, hozzászólásaidat és kedveléseidet.</string>
-    <string name="map_trip_created">Létrehozva: %1$s</string>
     <string name="map_trip_owner">· készítette: %1$s</string>
 
     <!-- Routes -->
@@ -181,4 +174,19 @@
     <string name="map_best_order_already">A megállóid már a legjobb sorrendben vannak.</string>
     <string name="map_error_route">Nem sikerült betölteni az útvonalat.</string>
     <string name="map_error_best_order">Nem sikerült megtalálni a legjobb sorrendet.</string>
+
+    <!-- Redesign: map -->
+    <plurals name="map_stop_count">
+        <item quantity="one">%1$d megálló</item>
+        <item quantity="other">%1$d megálló</item>
+    </plurals>
+    <string name="map_trip_members">Tagok · %1$d</string>
+    <string name="map_clear_day">%1$d. nap ürítése</string>
+    <string name="map_my_location">Saját hely mutatása</string>
+    <string name="map_stop_expand">Több</string>
+    <string name="map_stop_collapse">Kevesebb</string>
+    <string name="map_stop_number_day">%1$d. megálló · %2$d. nap</string>
+    <string name="map_stop_number">%1$d. megálló</string>
+    <string name="map_stop_more">Továbbiak ehhez a megállóhoz</string>
+    <string name="map_place_more">Továbbiak ehhez a helyhez</string>
 </resources>

@@ -54,7 +54,18 @@ internal val GlassDark = Color(0x99181A19)
 internal val GlassEdgeLight = Color(0x99FFFFFF)
 internal val GlassEdgeDark = Color(0x14FFFFFF)
 
-// Routes on the map: one soft, pastel color per way of travelling, readable on the light and the night map.
-internal val RouteWalk = Color(0xFF7CC49A)
-internal val RouteBike = Color(0xFFF2A86B)
-internal val RouteCar = Color(0xFF7FA8E6)
+/**
+ * What the map draws: stop pins, the day's plan line and the routes. The same in light and dark: the map
+ * brings its own day and night style, and these read on both.
+ */
+object MapColors {
+    /** A stop's pin: near-black ivy, with a white ring and number. */
+    val Stop = Color(0xFF1C2620)
+    val OnStop = Color.White
+    /** The straight line joining a day's stops while no route shows: the brand's green. */
+    val Plan = Color(0xFF2E5E3E)
+    /** Routes: one soft, pastel color per way of travelling. */
+    val Walk = Color(0xFF7CC49A)
+    val Bike = Color(0xFFF2A86B)
+    val Car = Color(0xFF7FA8E6)
+}

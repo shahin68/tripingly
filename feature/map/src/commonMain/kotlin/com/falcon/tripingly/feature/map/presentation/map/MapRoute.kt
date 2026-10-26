@@ -89,7 +89,7 @@ fun MapRoute(
             onOpenProfile = onOpenProfile,
             onDismiss = { onAction(MapAction.Sheet.CloseStopComments) },
         )
-        MapSheet.Members -> membersContent(tripId) { onAction(MapAction.Sheet.CloseJoinRequests) }
+        MapSheet.Members -> membersContent(tripId) { onAction(MapAction.Sheet.CloseMembers) }
         is MapSheet.PlaceImage -> PhotoViewerRoute(
             owner = PhotoOwner.Place(sheet.placeId),
             photoId = sheet.photoId,

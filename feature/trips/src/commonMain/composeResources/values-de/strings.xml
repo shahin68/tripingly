@@ -54,7 +54,6 @@
     <string name="create_trip_dates_add">Daten hinzufügen</string>
     <string name="create_trip_visibility_public">Öffentlich</string>
     <string name="create_trip_visibility_private">Privat</string>
-    <string name="create_trip_member_placeholder">Benutzername eingeben</string>
     <string name="create_trip_add_by_username">Per Benutzername hinzufügen</string>
     <string name="create_trip_member_not_found">Niemand hat diesen Benutzernamen.</string>
     <string name="create_trip_member_blocked">Diese Person kannst du nicht hinzufügen.</string>
@@ -156,4 +155,12 @@
         <item quantity="one">Letzten Monat</item>
         <item quantity="other">Vor %1$d Monaten</item>
     </plurals>
+
+    <!-- Redesign: New trip sheet -->
+    <string name="create_trip_name_placeholder">Gib ihr einen Namen</string>
+    <string name="create_trip_destination_label">Ziel (optional)</string>
+    <string name="create_trip_dates_label">Reisedaten</string>
+    <string name="create_trip_visibility_label">Wer sie sehen kann</string>
+    <string name="create_trip_members_label">Mitreisende</string>
+    <string name="create_trip_close">Schließen</string>
 </resources>
