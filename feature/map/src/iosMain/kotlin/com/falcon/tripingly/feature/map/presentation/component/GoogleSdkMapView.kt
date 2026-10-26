@@ -25,18 +25,16 @@ import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.viewinterop.UIKitInteropInteractionMode
 import androidx.compose.ui.viewinterop.UIKitInteropProperties
 import androidx.compose.ui.viewinterop.UIKitView
+import com.falcon.tripingly.core.designsystem.component.icon
 import com.falcon.tripingly.core.location.model.Coordinates
 import com.falcon.tripingly.core.model.place.GeoBounds
 import com.falcon.tripingly.core.model.place.MapPlace
 import com.falcon.tripingly.core.model.place.PlaceCategory
 import com.falcon.tripingly.core.model.place.PlaceCluster
-import com.falcon.tripingly.feature.map.domain.model.CameraCommand
-import com.falcon.tripingly.feature.map.domain.model.MapMarker
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import platform.UIKit.UIColor
 import platform.UIKit.UIImage
-import com.falcon.tripingly.core.designsystem.component.icon
 
 /**
  * Google's map on iOS, driven like the Android one: place pins as markers that keep their size on

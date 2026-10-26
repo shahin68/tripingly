@@ -19,25 +19,24 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
+import com.falcon.tripingly.core.designsystem.component.icon
 import com.falcon.tripingly.core.location.model.Coordinates
 import com.falcon.tripingly.core.model.place.GeoBounds
 import com.falcon.tripingly.core.model.place.MapPlace
-import com.falcon.tripingly.core.model.place.PlaceCluster
 import com.falcon.tripingly.core.model.place.PlaceCategory
-import com.falcon.tripingly.feature.map.domain.model.CameraCommand
-import com.falcon.tripingly.feature.map.domain.model.MapMarker
+import com.falcon.tripingly.core.model.place.PlaceCluster
 import com.google.android.gms.maps.CameraUpdate
 import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.model.BitmapDescriptor
@@ -57,13 +56,12 @@ import com.google.maps.android.compose.MarkerComposable
 import com.google.maps.android.compose.Polyline
 import com.google.maps.android.compose.rememberCameraPositionState
 import com.google.maps.android.compose.rememberUpdatedMarkerState
+import kotlin.math.hypot
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
-import kotlin.math.hypot
-import com.falcon.tripingly.core.designsystem.component.icon
 
 @Composable
 actual fun GoogleMapView(
@@ -72,13 +70,7 @@ actual fun GoogleMapView(
     initialZoom: Float,
     cameraCommands: Flow<CameraCommand.MoveTo>,
     contentPadding: PaddingValues,
-    markers: List<MapMarker>,
-    placePins: List<PlacePin>,
-    pinDotBelowZoom: Float,
-    placeClusters: List<PlaceCluster>,
-    selectedPlace: MapPlace?,
-    line: MapLine?,
-    isMyLocationEnabled: Boolean,
+    layers: MapLayersState,
     onCameraMove: (Coordinates, Float, GeoBounds?) -> Unit,
     onMapTouch: () -> Unit,
     onMapClick: (Coordinates) -> Unit,
@@ -87,6 +79,7 @@ actual fun GoogleMapView(
     onMapLongClick: (Coordinates) -> Unit,
     onMarkerClick: (MapMarker) -> Unit,
 ) {
+    val (markers, placePins, pinDotBelowZoom, placeClusters, selectedPlace, line, isMyLocationEnabled) = layers
     val cameraPositionState = rememberCameraPositionState {
         position = CameraPosition.fromLatLngZoom(LatLng(initialTarget.latitude, initialTarget.longitude), initialZoom)
     }
@@ -108,6 +101,8 @@ actual fun GoogleMapView(
 
     // Where the last touch began on the map, to tell which of two overlapping pins the finger was aimed at.
     var lastTouch by remember { mutableStateOf<Offset?>(null) }
+    // The second tap of a double tap (double tap and drag zooms) is no tap or long press of its own.
+    var isDoubleTap by remember { mutableStateOf(false) }
 
     // A camera animation started before the map has loaded doesn't run (on a fresh start the trip's stops arrive
     // first), so until then the camera jumps instead.
@@ -169,7 +164,13 @@ actual fun GoogleMapView(
             .fillMaxSize()
             .onSizeChanged { mapSize = it }
             .pointerInput(Unit) {
-                awaitEachGesture { lastTouch = awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial).position }
+                var lastDownMillis = Long.MIN_VALUE / 2
+                awaitEachGesture {
+                    val down = awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
+                    lastTouch = down.position
+                    isDoubleTap = down.uptimeMillis - lastDownMillis < DOUBLE_TAP_MILLIS
+                    lastDownMillis = down.uptimeMillis
+                }
             },
         cameraPositionState = cameraPositionState,
         properties = mapProperties,
@@ -178,10 +179,10 @@ actual fun GoogleMapView(
         // Dark map in dark mode, so the light status bar icons stay readable.
         mapColorScheme = ComposeMapColorScheme.FOLLOW_SYSTEM,
         onMapClick = { latLng ->
-            onMapClick(Coordinates(latitude = latLng.latitude, longitude = latLng.longitude))
+            if (!isDoubleTap) onMapClick(Coordinates(latitude = latLng.latitude, longitude = latLng.longitude))
         },
         onMapLongClick = { latLng ->
-            onMapLongClick(Coordinates(latitude = latLng.latitude, longitude = latLng.longitude))
+            if (!isDoubleTap) onMapLongClick(Coordinates(latitude = latLng.latitude, longitude = latLng.longitude))
         },
         // The first camera report comes before the map can tell its bounds, so the squares around the view load from here.
         onMapLoaded = {
@@ -426,11 +427,12 @@ private fun MapLineView(line: MapLine) {
 /** A new place pin fades in, as Google's own pins do. */
 private const val PIN_FADE_MILLIS = 250
 
-/** The pin-to-dot fade in a few steps, each one redrawing every pin. */
-
 /** Between 0 and 1, higher for a better place: liked places by their likes above the others by how well known. */
 private fun pinRank(place: MapPlace): Float =
     if (place.hotCount > 0) 0.5f + minOf(place.hotCount, 1000) / 2500f else place.prominence / 250f
+
+/** Two touches this close together are a double tap: the first tap's length plus the platform's double tap time. */
+private const val DOUBLE_TAP_MILLIS = 500L
 
 /** How far outside a pin's circle a touch still counts as aimed at it. */
 private val PIN_TAP_SLOP = 4.dp

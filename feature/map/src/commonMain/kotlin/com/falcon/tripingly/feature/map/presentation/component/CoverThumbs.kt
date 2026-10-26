@@ -13,7 +13,6 @@ import coil3.compose.LocalPlatformContext
 import com.falcon.tripingly.core.designsystem.component.PhotoSize
 import com.falcon.tripingly.core.designsystem.component.photoRequest
 import com.falcon.tripingly.core.model.place.MapPlace
-import com.falcon.tripingly.feature.map.domain.model.MapMarker
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope

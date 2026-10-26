@@ -2,6 +2,7 @@ package com.falcon.tripingly.feature.map.presentation.component
 
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.Immutable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -9,9 +10,6 @@ import com.falcon.tripingly.core.location.model.Coordinates
 import com.falcon.tripingly.core.model.place.GeoBounds
 import com.falcon.tripingly.core.model.place.MapPlace
 import com.falcon.tripingly.core.model.place.PlaceCluster
-import com.falcon.tripingly.feature.map.domain.model.CameraCommand
-import com.falcon.tripingly.feature.map.domain.model.MapMarker
-import kotlinx.coroutines.flow.Flow
 import kotlin.math.PI
 import kotlin.math.atan
 import kotlin.math.ln
@@ -20,6 +18,9 @@ import kotlin.math.min
 import kotlin.math.pow
 import kotlin.math.sinh
 import kotlin.math.tan
+import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.persistentListOf
+import kotlinx.coroutines.flow.Flow
 
 @Composable
 expect fun GoogleMapView(
@@ -34,21 +35,7 @@ expect fun GoogleMapView(
      * logo stays clear of them.
      */
     contentPadding: PaddingValues,
-    markers: List<MapMarker>,
-    /**
-     * Our places and OpenStreetMap places, drawn under the stops as markers that keep their size on screen,
-     * the first ones on top.
-     */
-    placePins: List<PlacePin>,
-    /** Below this camera zoom the place pins turn into small dots, and grow back when zoomed in. */
-    pinDotBelowZoom: Float,
-    /** Bubbles of liked places, drawn while zoomed out. */
-    placeClusters: List<PlaceCluster>,
-    /** The tapped place, drawn bigger on top. */
-    selectedPlace: MapPlace?,
-    /** The line under the pins: a real route, or the stops joined in order; null for none. */
-    line: MapLine?,
-    isMyLocationEnabled: Boolean,
+    layers: MapLayersState,
     /** The camera's center, zoom and visible area (null while the map can't tell yet). */
     onCameraMove: (Coordinates, Float, GeoBounds?) -> Unit,
     /**
@@ -63,6 +50,27 @@ expect fun GoogleMapView(
     onClusterClick: (PlaceCluster) -> Unit,
     onMapLongClick: (Coordinates) -> Unit,
     onMarkerClick: (MapMarker) -> Unit,
+)
+
+/** What the map draws. */
+@Immutable
+data class MapLayersState(
+    /** The open day's stops, numbered. */
+    val stops: ImmutableList<MapMarker> = persistentListOf(),
+    /**
+     * Place pins in view, the most liked and best known first, and the places along a route: our places and
+     * OpenStreetMap places, drawn under the stops as markers that keep their size on screen, the first ones on top.
+     */
+    val placePins: ImmutableList<PlacePin> = persistentListOf(),
+    /** Below this camera zoom the place pins turn into small dots, and grow back when zoomed in (server value). */
+    val pinDotBelowZoom: Float = 14f,
+    /** Bubbles of liked places when zoomed out. */
+    val placeClusters: ImmutableList<PlaceCluster> = persistentListOf(),
+    /** The tapped place, drawn bigger on top. */
+    val selectedPlace: MapPlace? = null,
+    /** A real route, or the day's stops joined in order; null for none. */
+    val line: MapLine? = null,
+    val isMyLocationEnabled: Boolean = false,
 )
 
 /** Room kept free around the points of a fit, inside the content padding. */

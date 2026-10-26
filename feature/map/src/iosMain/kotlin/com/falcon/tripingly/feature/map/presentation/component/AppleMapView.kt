@@ -10,25 +10,23 @@ import com.falcon.tripingly.core.location.model.Coordinates
 import com.falcon.tripingly.core.model.place.GeoBounds
 import com.falcon.tripingly.core.model.place.MapPlace
 import com.falcon.tripingly.core.model.place.PlaceCluster
-import com.falcon.tripingly.feature.map.domain.model.CameraCommand
-import com.falcon.tripingly.feature.map.domain.model.MapMarker
-import kotlinx.coroutines.flow.Flow
+import kotlin.math.log2
+import kotlin.math.pow
 import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.cinterop.useContents
+import kotlinx.coroutines.flow.Flow
 import platform.CoreLocation.CLLocationCoordinate2DMake
-import platform.MapKit.MKCoordinateRegionMakeWithDistance
 import platform.MapKit.MKAnnotationProtocol
 import platform.MapKit.MKAnnotationView
+import platform.MapKit.MKCoordinateRegionMakeWithDistance
 import platform.MapKit.MKFeatureDisplayPriorityDefaultLow
-import platform.MapKit.MKMarkerAnnotationView
 import platform.MapKit.MKMapView
 import platform.MapKit.MKMapViewDelegateProtocol
+import platform.MapKit.MKMarkerAnnotationView
 import platform.MapKit.MKPointAnnotation
 import platform.MapKit.MKPointOfInterestFilter
 import platform.UIKit.UIColor
 import platform.darwin.NSObject
-import kotlin.math.log2
-import kotlin.math.pow
 
 /**
  * Apple's map, shown when the app has no Google Maps key (`MAPS_API_KEY_IOS` in local.properties)

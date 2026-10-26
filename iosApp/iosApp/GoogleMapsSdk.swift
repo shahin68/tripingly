@@ -184,11 +184,14 @@ private final class AppGoogleMap: NSObject, GoogleMap, GMSMapViewDelegate {
         if gesture { listener.onGestureStart() }
     }
 
+    // The second tap of a double tap (double tap and drag zooms) is no tap or long press of its own.
     func mapView(_ mapView: GMSMapView, didTapAt coordinate: CLLocationCoordinate2D) {
+        if touches.isDoubleTap { return }
         listener.onTap(latitude: coordinate.latitude, longitude: coordinate.longitude)
     }
 
     func mapView(_ mapView: GMSMapView, didLongPressAt coordinate: CLLocationCoordinate2D) {
+        if touches.isDoubleTap { return }
         listener.onLongPress(latitude: coordinate.latitude, longitude: coordinate.longitude)
     }
 
@@ -226,9 +229,14 @@ private final class AppGoogleMap: NSObject, GoogleMap, GMSMapViewDelegate {
     }
 }
 
-/** Notes where the last touch on the map began, without taking part in any of the map's gestures. */
+/**
+ * Notes where the last touch on the map began, and whether it came this soon after the one before (a double tap),
+ * without taking part in any of the map's gestures.
+ */
 private final class TouchRecorder: UIGestureRecognizer {
     private(set) var point: CGPoint?
+    private(set) var isDoubleTap = false
+    private var lastBegan: TimeInterval = -.infinity
 
     override init(target: Any? = nil, action: Selector? = nil) {
         super.init(target: target, action: action)
@@ -238,8 +246,13 @@ private final class TouchRecorder: UIGestureRecognizer {
 
     override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent) {
         point = touches.first?.location(in: view)
+        isDoubleTap = event.timestamp - lastBegan < Self.doubleTapSeconds
+        lastBegan = event.timestamp
         state = .failed
     }
+
+    /** The first tap's length plus the platform's double tap time. */
+    private static let doubleTapSeconds: TimeInterval = 0.5
 }
 
 #endif
