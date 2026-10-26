@@ -6,9 +6,11 @@ import com.falcon.tripingly.core.common.result.asSuccess
 import com.falcon.tripingly.core.location.model.Coordinates
 import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.cinterop.useContents
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.flow.flowOn
 import platform.CoreLocation.CLLocation
 import platform.CoreLocation.CLLocationManager
 import platform.CoreLocation.CLLocationManagerDelegateProtocol
@@ -20,7 +22,8 @@ import platform.darwin.NSObject
 class IosLocationDataSource : LocationDataSource {
     @OptIn(ExperimentalForeignApi::class)
     override fun getLocationUpdatesStream(): Flow<AppResult<Coordinates, DataError.Location>> = callbackFlow {
-        // One manager per collector, so one stopping doesn't stop the others.
+        // One manager per collector, so one stopping doesn't stop the others. It's made on the main thread (flowOn below):
+        // Core Location calls the delegate on the run loop of the thread that made the manager, and only main has one.
         val locationManager = CLLocationManager()
         val status = locationManager.authorizationStatus
         if (status == kCLAuthorizationStatusDenied || status == kCLAuthorizationStatusRestricted) {
@@ -53,5 +56,5 @@ class IosLocationDataSource : LocationDataSource {
             locationManager.stopUpdatingLocation()
             if (locationManager.delegate === delegate) locationManager.delegate = null
         }
-    }
+    }.flowOn(Dispatchers.Main)
 }
