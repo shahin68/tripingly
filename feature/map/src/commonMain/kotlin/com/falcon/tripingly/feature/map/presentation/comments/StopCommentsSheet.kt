@@ -32,7 +32,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -63,13 +62,13 @@ import com.falcon.tripingly.core.designsystem.component.MessageBannerHost
 import com.falcon.tripingly.core.designsystem.component.ReportDialog
 import com.falcon.tripingly.core.designsystem.component.SheetHeader
 import com.falcon.tripingly.core.designsystem.component.ShowMessage
-import com.falcon.tripingly.core.designsystem.component.SkeletonBox
-import com.falcon.tripingly.core.designsystem.component.SkeletonDefaults
-import com.falcon.tripingly.core.designsystem.component.SkeletonLine
-import com.falcon.tripingly.core.designsystem.component.SkeletonList
+import com.falcon.tripingly.core.designsystem.component.Skeleton
+import com.falcon.tripingly.core.designsystem.component.skeleton
+import com.falcon.tripingly.core.designsystem.component.skeletonText
 import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
 import com.falcon.tripingly.core.designsystem.theme.spacing
 import com.falcon.tripingly.core.model.social.Comment
+import com.falcon.tripingly.core.model.trip.UserSummary
 import com.falcon.tripingly.core.ui.UiText
 import com.falcon.tripingly.feature.map.generated.resources.Res
 import com.falcon.tripingly.feature.map.generated.resources.map_comment_delete
@@ -86,6 +85,7 @@ import com.falcon.tripingly.feature.map.presentation.comments.StopCommentsViewMo
 import com.falcon.tripingly.feature.map.presentation.comments.StopCommentsViewModel.State
 import com.falcon.tripingly.feature.map.presentation.component.MapMarker
 import com.falcon.tripingly.feature.map.presentation.map.preview.previewStop
+import kotlin.time.Instant
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filter
 import kotlinx.datetime.TimeZone
@@ -105,18 +105,16 @@ fun StopCommentsRoute(
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
 
-    ModalBottomSheet(onDismissRequest = onDismiss) {
-        Box {
-            StopCommentsScreen(
-                state = state,
-                draft = viewModel.draft,
-                marker = marker,
-                onOpenProfile = onOpenProfile,
-                onAction = viewModel::onAction,
-                onClose = onDismiss,
-            )
-            MessageBannerHost(Modifier.align(Alignment.TopCenter))
-        }
+    Box {
+        StopCommentsScreen(
+            state = state,
+            draft = viewModel.draft,
+            marker = marker,
+            onOpenProfile = onOpenProfile,
+            onAction = viewModel::onAction,
+            onClose = onDismiss,
+        )
+        MessageBannerHost(Modifier.align(Alignment.TopCenter))
     }
 
     if (state.reporting != null) {
@@ -176,7 +174,9 @@ fun StopCommentsScreen(
         )
         Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
             when {
-                state.comments.isEmpty() && state.isLoading -> SkeletonList(count = SKELETON_COUNT, item = { CommentSkeleton() })
+                state.comments.isEmpty() && state.isLoading -> Skeleton {
+                    Column { PlaceholderComments.forEach { CommentRow(comment = it, onOpenProfile = {}, onAction = {}) } }
+                }
                 state.comments.isEmpty() -> Text(
                     text = stringResource(Res.string.map_comments_empty),
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -243,6 +243,7 @@ private fun CommentRow(
                     text = comment.author.displayName,
                     style = MaterialTheme.typography.labelLarge,
                     modifier = Modifier
+                        .skeletonText()
                         .clip(MaterialTheme.shapes.small)
                         .clickable { onOpenProfile(comment.author.username) },
                 )
@@ -250,9 +251,10 @@ private fun CommentRow(
                     text = DateUtils.formatAbbreviated(comment.createdAt.toLocalDateTime(TimeZone.currentSystemDefault()).date),
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.skeletonText(),
                 )
             }
-            Text(text = comment.body, style = MaterialTheme.typography.bodyMedium)
+            Text(text = comment.body, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.skeletonText())
         }
         LikeButton(
             liked = comment.likedByMe,
@@ -261,7 +263,7 @@ private fun CommentRow(
         )
         Box {
             IconButton(onClick = { menuExpanded = true }) {
-                Icon(Icons.Default.MoreVert, contentDescription = stringResource(Res.string.map_comment_menu))
+                Icon(Icons.Default.MoreVert, contentDescription = stringResource(Res.string.map_comment_menu), modifier = Modifier.skeleton(CircleShape))
             }
             AppDropdownMenu(
                 expanded = menuExpanded,
@@ -279,22 +281,23 @@ private fun CommentRow(
     }
 }
 
-/** A comment that's still loading: an avatar, a name and a line. */
-@Composable
-private fun CommentSkeleton() {
-    Row(horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small), verticalAlignment = Alignment.CenterVertically) {
-        SkeletonBox(Modifier.size(AvatarSize.Small), shape = CircleShape)
-        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small)) {
-            SkeletonLine(Modifier.fillMaxWidth(0.3f), height = SkeletonDefaults.SmallLineHeight)
-            SkeletonLine(Modifier.fillMaxWidth(0.8f))
-        }
-    }
+/** Placeholder comments of typical lengths: the rows' own skeleton while the first page loads. */
+private val PlaceholderComments = listOf("Lovely place, we spent the whole afternoon here", "Go early", "The view from the top is worth it").mapIndexed { index, body ->
+    Comment(
+        id = "placeholder$index",
+        markerId = "",
+        body = body,
+        author = UserSummary("placeholder", "traveller", "Traveller"),
+        likeCount = 0,
+        likedByMe = false,
+        canDelete = false,
+        createdAt = Instant.fromEpochSeconds(0),
+    )
 }
 
 /** The sheet opens tall enough to read a conversation with the keyboard up. */
 private const val SHEET_HEIGHT_FRACTION = 0.85f
 
-private const val SKELETON_COUNT = 6
 private const val MAX_DRAFT_LINES = 4
 
 /** Comments from the end at which the next page loads. */

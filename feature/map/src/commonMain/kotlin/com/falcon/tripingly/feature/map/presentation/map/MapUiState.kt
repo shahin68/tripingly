@@ -58,7 +58,9 @@ data class HeaderState(
     val stopCount: Int = 0,
     /** "by Anna" after them, on someone else's trip. */
     val ownerLabel: UiText? = null,
-    /** The trip is loading, or a day change, a save or a request to join waits for the server. */
+    /** The trip is loading for the first time: the title shows as its skeleton. */
+    val isLoading: Boolean = false,
+    /** A day change, a save or a request to join waits for the server. */
     val isBusy: Boolean = false,
     /** "Trip members · 4" at the top of the ⋮ menu, which opens the members sheet. */
     val members: MembersEntry? = null,

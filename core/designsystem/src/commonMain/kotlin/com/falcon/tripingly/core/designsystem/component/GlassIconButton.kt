@@ -8,6 +8,9 @@ import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -27,6 +30,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
 import com.falcon.tripingly.core.designsystem.theme.spacing
@@ -40,10 +44,11 @@ fun GlassIconButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     blur: Boolean = true,
+    size: Dp = GlassButtonDefaults.Size,
     content: @Composable () -> Unit,
 ) {
-    GlassSurface(modifier = modifier.size(GlassButtonDefaults.Size), shape = CircleShape, onClick = onClick, blur = blur) {
-        Box(contentAlignment = Alignment.Center) { content() }
+    GlassSurface(modifier = modifier.size(size), shape = CircleShape, onClick = onClick, blur = blur) {
+        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { content() }
     }
 }
 
@@ -52,11 +57,12 @@ fun GlassIconButton(
 fun GlassButtonRow(
     modifier: Modifier = Modifier,
     blur: Boolean = true,
+    height: Dp = GlassButtonDefaults.Size,
     content: @Composable RowScope.() -> Unit,
 ) {
-    GlassSurface(modifier = modifier.height(GlassButtonDefaults.Size), shape = CircleShape, blur = blur) {
+    GlassSurface(modifier = modifier.height(height), shape = CircleShape, blur = blur) {
         Row(
-            modifier = Modifier.padding(horizontal = MaterialTheme.spacing.extraSmall),
+            modifier = Modifier.fillMaxHeight().padding(horizontal = MaterialTheme.spacing.extraSmall),
             verticalAlignment = Alignment.CenterVertically,
         ) { content() }
     }
@@ -71,7 +77,7 @@ fun GlassButtonColumn(
 ) {
     GlassSurface(modifier = modifier.width(GlassButtonDefaults.Size), shape = CircleShape, blur = blur) {
         Column(
-            modifier = Modifier.padding(vertical = MaterialTheme.spacing.extraSmall),
+            modifier = Modifier.fillMaxWidth().padding(vertical = MaterialTheme.spacing.extraSmall),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) { content() }
     }
@@ -92,6 +98,9 @@ fun GlassButtonColumnDivider() {
 object GlassButtonDefaults {
     /** Every floating glass control is this tall (or wide): the header pills, the map buttons. */
     val Size = 48.dp
+
+    /** A screen header's pills over the map (back, title, search and ⋮): one height, room for a two-line title. */
+    val HeaderSize = 56.dp
     internal val DividerLength = 20.dp
 }
 

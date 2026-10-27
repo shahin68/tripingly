@@ -16,6 +16,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.Icon
@@ -39,11 +41,14 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.tooling.preview.PreviewParameter
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import com.falcon.tripingly.core.designsystem.component.ErrorScreen
 import com.falcon.tripingly.core.designsystem.component.GlassIconButton
 import com.falcon.tripingly.core.designsystem.component.ShowMessage
 import com.falcon.tripingly.core.designsystem.component.SkeletonBox
+import com.falcon.tripingly.core.designsystem.component.safeSides
+import com.falcon.tripingly.core.designsystem.component.safeTopAndSides
 import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
 import com.falcon.tripingly.core.designsystem.theme.spacing
 import com.falcon.tripingly.core.model.place.GeoBounds
@@ -76,6 +81,8 @@ import org.jetbrains.compose.resources.stringResource
 /**
  * The trip's map with the header on top and the day's cards at the bottom. What they cover is the map's content
  * padding: the camera centers and fits within the rest, and the tapped pin's card opens just above its middle.
+ * In landscape the header and the cards take the right half and the map's free part is the left half (the other
+ * way round from Google Maps), so the camera fits the stops there.
  */
 @Composable
 internal fun MapScreen(
@@ -117,12 +124,25 @@ internal fun MapScreen(
         // The pulled-up sheet doesn't count: only the part that always shows.
         val hasDays = state.dayTabs.days.isNotEmpty()
         val coveredBottom = (tabsHeight?.second ?: 0.dp) + (if (plan != null) PlanSheetPeek else 0.dp) + (creditsHeight ?: 0.dp)
+        val isWide = maxWidth > maxHeight
+        val side = WindowInsets.safeSides.asPaddingValues().calculateLeftPadding(LayoutDirection.Ltr)
+        val panelWidth = (maxWidth - side * 2) / 2
+        // What the header and the cards cover: the top and the bottom, or in landscape the right half.
+        val covered = if (isWide) {
+            PaddingValues(start = side, top = statusBar, end = side + panelWidth)
+        } else {
+            PaddingValues(top = coveredTop, bottom = coveredBottom)
+        }
+        // The header and the cards: full width, or the right half in landscape; never under the camera cutout.
+        val panel = Modifier.windowInsetsPadding(WindowInsets.safeSides).then(if (isWide) Modifier.width(panelWidth) else Modifier.fillMaxWidth())
         // Not before the camera knows where the trip is: the map opens there, fitted to the open day, instead of
         // starting somewhere and then fitting.
         // A fit frames the bounds in the map that shows right now: above the sheet as far as it's pulled up.
         val fit by rememberUpdatedState { bounds: GeoBounds ->
-            val pulledUp = if (plan != null) with(density) { planSheet.pulledUp().toDp() } else 0.dp
-            fittedCamera(bounds, maxWidth, maxHeight - coveredTop - coveredBottom - pulledUp, raise = pulledUp / 2)
+            val pulledUp = if (plan != null && !isWide) with(density) { planSheet.pulledUp().toDp() } else 0.dp
+            val width = maxWidth - covered.calculateLeftPadding(LayoutDirection.Ltr) - covered.calculateRightPadding(LayoutDirection.Ltr)
+            val height = maxHeight - covered.calculateTopPadding() - covered.calculateBottomPadding() - pulledUp
+            fittedCamera(bounds, width, height, raise = pulledUp / 2)
         }
         val moves = remember(cameraCommands) {
             cameraCommands.map { command ->
@@ -143,7 +163,7 @@ internal fun MapScreen(
                 initialTarget = target,
                 initialZoom = zoom,
                 cameraCommands = moves,
-                contentPadding = PaddingValues(top = coveredTop, bottom = coveredBottom),
+                contentPadding = covered,
                 layers = state.layers,
                 onCameraMove = { coords, zoom, bounds -> onAction(MapAction.MapView.CameraRest(coords, zoom, bounds)) },
                 onMapTouch = { onAction(MapAction.MapView.ScreenTouch) },
@@ -157,9 +177,9 @@ internal fun MapScreen(
 
         Column(
             modifier = Modifier
-                .align(Alignment.TopCenter)
+                .align(Alignment.TopEnd)
                 .statusBarsPadding()
-                .fillMaxWidth()
+                .then(panel)
         ) {
             MapHeader(
                 header = state.header,
@@ -194,11 +214,11 @@ internal fun MapScreen(
             onAction = onAction,
             onTabsHeight = { tabsHeight = hasDays to with(density) { it.toDp() } },
             onCreditsHeight = { creditsHeight = with(density) { it.toDp() } },
-            modifier = Modifier.align(Alignment.BottomCenter).padding(top = coveredTop),
+            modifier = Modifier.align(Alignment.BottomEnd).then(panel).padding(top = coveredTop),
         )
 
         // The part of the map nothing covers: its middle is where the camera puts a tapped pin.
-        Box(modifier = Modifier.fillMaxSize().padding(top = coveredTop, bottom = coveredBottom)) {
+        Box(modifier = Modifier.fillMaxSize().padding(covered)) {
             PinCard(
                 card = state.placeCard,
                 key = { it.place.id to it.place.location },
@@ -249,7 +269,7 @@ private fun MapLoadError(message: String, onAction: (MapAction) -> Unit) {
         ErrorScreen(onRetry = { onAction(MapAction.Header.Retry) }, message = message, modifier = Modifier.safeDrawingPadding())
         GlassIconButton(
             onClick = { onAction(MapAction.Header.Back) },
-            modifier = Modifier.statusBarsPadding().padding(MaterialTheme.spacing.medium),
+            modifier = Modifier.windowInsetsPadding(WindowInsets.safeTopAndSides).padding(MaterialTheme.spacing.medium),
         ) {
             Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(Res.string.map_back))
         }

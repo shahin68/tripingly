@@ -108,7 +108,7 @@ internal fun <T : Any> PlanSheet(
             GlassSurface(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = SheetMargin)
+                    .padding(horizontal = MaterialTheme.spacing.medium)
                     // Dragging anywhere on the sheet pulls it; the plan scrolls only once it's pulled all the way up.
                     .nestedScroll(remember(state) { state.pullFirst() })
                     .anchoredDraggable(state, Orientation.Vertical)

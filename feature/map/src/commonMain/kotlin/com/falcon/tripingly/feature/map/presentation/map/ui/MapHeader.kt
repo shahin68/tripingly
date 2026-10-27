@@ -1,11 +1,14 @@
 package com.falcon.tripingly.feature.map.presentation.map.ui
 
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -29,7 +32,6 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -39,12 +41,16 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.tooling.preview.PreviewParameter
+import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.util.lerp
 import com.falcon.tripingly.core.designsystem.component.AppDropdownMenu
 import com.falcon.tripingly.core.designsystem.component.AppTextField
 import com.falcon.tripingly.core.designsystem.component.AppTextFieldStyle
@@ -72,7 +78,6 @@ import com.falcon.tripingly.feature.map.generated.resources.map_report_trip
 import com.falcon.tripingly.feature.map.generated.resources.map_save_trip
 import com.falcon.tripingly.feature.map.generated.resources.map_search
 import com.falcon.tripingly.feature.map.generated.resources.map_search_placeholder
-import com.falcon.tripingly.feature.map.generated.resources.map_stop_count
 import com.falcon.tripingly.feature.map.generated.resources.map_trip_members
 import com.falcon.tripingly.feature.map.generated.resources.map_trip_menu
 import com.falcon.tripingly.feature.map.generated.resources.map_unsave_trip
@@ -82,13 +87,13 @@ import com.falcon.tripingly.feature.map.presentation.map.SearchState
 import com.falcon.tripingly.feature.map.presentation.map.preview.MapHeaderPreview
 import com.falcon.tripingly.feature.map.presentation.map.preview.MapHeaderPreviewStates
 import kotlinx.collections.immutable.ImmutableList
-import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
 
 /**
- * The map's header, three glass pills: back, the trip's name over its dates and stops, and search joined to the
- * trip's ⋮ menu. While searching, one pill: the search field, still joined to ⋮. Over the native map, so no blur.
- * [showDayActions]: the day has no plan sheet, so its day actions are in ⋮ instead.
+ * The map's header, one row of glass pills of the same height: a round back button, the trip's name over its
+ * dates and stops, and search joined to the trip's ⋮ menu. Tapping search grows that pill to the left over the whole
+ * row, pushing the back button and the title away while ⋮ stays put, as on the design canvas; closing it shrinks
+ * back. Over the native map, so no blur. [showDayActions]: the day has no plan sheet, so its day actions are in ⋮.
  */
 @Composable
 internal fun MapHeader(
@@ -98,55 +103,55 @@ internal fun MapHeader(
     onAction: (MapAction) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Row(
-        modifier = modifier.fillMaxWidth().padding(horizontal = MaterialTheme.spacing.medium, vertical = MaterialTheme.spacing.small),
-        horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        if (search == null) {
-            GlassIconButton(onClick = { onAction(MapAction.Header.Back) }, blur = false) {
-                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(Res.string.map_back))
+    val progress by animateFloatAsState(if (search != null) 1f else 0f, tween(SEARCH_MOTION_MILLIS))
+    val actions = tripMenuActions(header, showDayActions, onAction)
+    val gap = MaterialTheme.spacing.small
+    // The search pill's width with just its buttons, kept while the field is open.
+    val collapsedWidth = remember { intArrayOf(0) }
+    Layout(
+        modifier = modifier.fillMaxWidth().padding(horizontal = MaterialTheme.spacing.medium, vertical = MaterialTheme.spacing.small).height(GlassButtonDefaults.HeaderSize),
+        content = {
+            Row(
+                modifier = Modifier.graphicsLayer { alpha = 1f - progress }.clipToBounds(),
+                horizontalArrangement = Arrangement.spacedBy(gap),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                GlassIconButton(onClick = { onAction(MapAction.Header.Back) }, blur = false, size = GlassButtonDefaults.HeaderSize) {
+                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(Res.string.map_back))
+                }
+                TripTitle(header, Modifier.weight(1f))
             }
-            TripTitle(header, Modifier.weight(1f))
-        }
-        GlassButtonRow(modifier = if (search != null) Modifier.weight(1f) else Modifier, blur = false) {
-            if (search != null) {
-                SearchField(search, onAction, Modifier.weight(1f))
-            } else {
-                IconButton(onClick = { onAction(MapAction.Search.Open) }) {
-                    Icon(Icons.Outlined.Search, contentDescription = stringResource(Res.string.map_search))
+            GlassButtonRow(blur = false, height = GlassButtonDefaults.HeaderSize) {
+                if (search != null) {
+                    SearchField(search, onAction, Modifier.weight(1f))
+                } else {
+                    IconButton(onClick = { onAction(MapAction.Search.Open) }) {
+                        Icon(Icons.Outlined.Search, contentDescription = stringResource(Res.string.map_search))
+                    }
+                }
+                if (actions.isNotEmpty()) {
+                    GlassButtonDivider()
+                    TripMenuButton(actions)
                 }
             }
-            val actions = tripMenuActions(header, showDayActions, onAction)
-            if (actions.isNotEmpty()) {
-                GlassButtonDivider()
-                TripMenuButton(actions)
-            }
+        },
+    ) { (title, pill), constraints ->
+        val width = constraints.maxWidth
+        val height = GlassButtonDefaults.HeaderSize.roundToPx()
+        if (search == null) collapsedWidth[0] = pill.maxIntrinsicWidth(height)
+        val pillWidth = lerp(collapsedWidth[0], width, progress)
+        val titleWidth = (width - pillWidth - gap.roundToPx()).coerceAtLeast(0)
+        val titlePlaceable = title.measure(Constraints.fixed(titleWidth, height))
+        val pillPlaceable = pill.measure(Constraints.fixed(pillWidth, height))
+        layout(width, height) {
+            titlePlaceable.place(0, 0)
+            pillPlaceable.place(width - pillWidth, 0)
         }
     }
 }
 
-/** The trip's name, and its dates, stop count and (someone else's trip) owner under it. */
-@Composable
-private fun TripTitle(header: HeaderState, modifier: Modifier = Modifier) {
-    GlassSurface(modifier = modifier.heightIn(min = GlassButtonDefaults.Size), shape = MaterialTheme.shapes.extraLarge, blur = false) {
-        Row(
-            modifier = Modifier.padding(horizontal = MaterialTheme.spacing.medium, vertical = MaterialTheme.spacing.small - 2.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Column(Modifier.weight(1f)) {
-                Text(header.tripName, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                val subtitle = listOfNotNull(
-                    header.dates,
-                    pluralStringResource(Res.plurals.map_stop_count, header.stopCount, header.stopCount),
-                    header.ownerLabel?.asString(),
-                ).joinToString(" · ")
-                Text(subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            }
-            if (header.isBusy) CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
-        }
-    }
-}
+/** How long the search pill takes to grow over the header or shrink back. */
+private const val SEARCH_MOTION_MILLIS = 300
 
 /**
  * The trip's ⋮ menu: the members first (with the requests to join as a badge), then a viewer's save, join, owner and

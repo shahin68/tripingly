@@ -60,6 +60,7 @@ fun HomeScreen(
             errorMessage = state.loadError?.asString(),
             onRetry = { onAction(Action.Trips.Refresh) },
             contentPadding = contentPadding,
+            loading = { TimelineSkeleton(contentPadding) },
         ) {
             if (state.timeline.isEmpty) {
                 EmptyTrips(hasTrips = state.hasTrips, contentPadding = contentPadding)

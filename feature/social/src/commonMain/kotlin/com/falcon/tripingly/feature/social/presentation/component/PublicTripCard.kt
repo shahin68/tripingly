@@ -1,5 +1,8 @@
 package com.falcon.tripingly.feature.social.presentation.component
 
+import androidx.compose.foundation.shape.CircleShape
+import com.falcon.tripingly.core.designsystem.component.skeletonText
+import com.falcon.tripingly.core.designsystem.component.skeleton
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
@@ -87,9 +90,9 @@ internal fun PublicTripCard(
         ) {
             TripCover(trip)
             Column(Modifier.weight(1f)) {
-                Text(trip.trip.name, style = MaterialTheme.typography.titleMedium, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                Text(trip.trip.name, style = MaterialTheme.typography.titleMedium, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.skeletonText())
                 DateUtils.formatRange(trip.trip.startDate, trip.trip.endDate)?.let {
-                    Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.skeletonText())
                 }
                 Text(
                     text = buildList {
@@ -99,6 +102,7 @@ internal fun PublicTripCard(
                     }.joinToString(" · "),
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.skeletonText(),
                 )
             }
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -106,7 +110,7 @@ internal fun PublicTripCard(
                 if (!isMine) {
                     Box {
                         IconButton(onClick = { menuOpen = true }) {
-                            Icon(Icons.Default.MoreVert, contentDescription = stringResource(Res.string.social_more))
+                            Icon(Icons.Default.MoreVert, contentDescription = stringResource(Res.string.social_more), modifier = Modifier.skeleton(CircleShape))
                         }
                         AppDropdownMenu(
                             expanded = menuOpen,
@@ -130,7 +134,7 @@ internal fun PublicTripCard(
 
 @Composable
 private fun TripCover(trip: PublicTrip) {
-    val cover = Modifier.size(CoverSize).clip(MaterialTheme.shapes.medium)
+    val cover = Modifier.size(CoverSize).skeleton(MaterialTheme.shapes.medium).clip(MaterialTheme.shapes.medium)
     val coverId = trip.trip.coverPhotoId
     val coverUrl = trip.trip.coverThumbUrl
     if (coverId != null && coverUrl != null) {

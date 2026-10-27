@@ -3,6 +3,7 @@ package com.falcon.tripingly.feature.social.presentation.nearby
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -29,11 +30,13 @@ import androidx.compose.ui.tooling.preview.PreviewParameter
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.falcon.tripingly.core.designsystem.component.AppBottomSheet
 import com.falcon.tripingly.core.designsystem.component.ErrorScreen
 import com.falcon.tripingly.core.designsystem.component.LoadStateContent
 import com.falcon.tripingly.core.designsystem.component.OsmAttribution
 import com.falcon.tripingly.core.designsystem.component.ReportDialog
 import com.falcon.tripingly.core.designsystem.component.ShowMessage
+import com.falcon.tripingly.core.designsystem.component.Skeleton
 import com.falcon.tripingly.core.designsystem.component.glassSource
 import com.falcon.tripingly.core.designsystem.component.screenContentPadding
 import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
@@ -53,6 +56,7 @@ import com.falcon.tripingly.feature.social.generated.resources.social_nearby_ope
 import com.falcon.tripingly.feature.social.presentation.component.EmptyText
 import com.falcon.tripingly.feature.social.presentation.component.LoadMoreAtEnd
 import com.falcon.tripingly.feature.social.presentation.component.NearbyPreviewStates
+import com.falcon.tripingly.feature.social.presentation.component.placeholderNearbyPlaces
 import com.falcon.tripingly.feature.social.presentation.nearby.NearbyViewModel.Action
 import com.falcon.tripingly.feature.social.presentation.nearby.NearbyViewModel.Event
 import com.falcon.tripingly.feature.social.presentation.nearby.NearbyViewModel.State
@@ -99,7 +103,9 @@ fun NearbyRoute(
             isSending = report.isSending,
         )
     }
-    state.addPlace?.let { AddPlaceSheet(addPlace = it, onAction = viewModel::onAction) }
+    AppBottomSheet(value = state.addPlace, onDismiss = { viewModel.onAction(Action.AddToTrip.Dismiss) }) { addPlace, close ->
+        AddPlaceSheet(addPlace = addPlace, onAction = viewModel::onAction, onClose = close)
+    }
 }
 
 @Composable
@@ -119,6 +125,7 @@ internal fun NearbyScreen(
                 errorMessage = state.loadError?.asString(),
                 onRetry = { onAction(Action.Refresh) },
                 contentPadding = contentPadding,
+                loading = { NearbySkeleton(contentPadding) },
             ) {
                 NearbyList(state, onAction, contentPadding)
             }
@@ -131,7 +138,7 @@ internal fun NearbyScreen(
 private fun NearbyList(state: State, onAction: (Action) -> Unit, contentPadding: PaddingValues) {
     val listState = rememberLazyListState()
     LoadMoreAtEnd(listState) { onAction(Action.LoadMore) }
-    PullToRefreshBox(isRefreshing = state.isLoading, onRefresh = { onAction(Action.Refresh) }, modifier = Modifier.fillMaxSize()) {
+    PullToRefreshBox(isRefreshing = state.isLoading && state.places.isNotEmpty(), onRefresh = { onAction(Action.Refresh) }, modifier = Modifier.fillMaxSize()) {
         LazyColumn(
             state = listState,
             modifier = Modifier.fillMaxSize().glassSource(),
@@ -153,6 +160,17 @@ private fun NearbyList(state: State, onAction: (Action) -> Unit, contentPadding:
             }
             // Nearby lists OpenStreetMap places.
             item(key = "osm") { OsmAttribution(Modifier.padding(vertical = MaterialTheme.spacing.small).animateItem()) }
+        }
+    }
+}
+
+/** The list's own cards, drawn from placeholders as a [Skeleton], while the location and the places load. */
+@Composable
+private fun NearbySkeleton(contentPadding: PaddingValues) {
+    Skeleton(Modifier.fillMaxSize()) {
+        Column(Modifier.padding(contentPadding), verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small)) {
+            LocationNote()
+            placeholderNearbyPlaces.forEach { NearbyPlaceCard(place = it, onOpenImage = {}, onMarkHot = {}, onAdd = {}) }
         }
     }
 }

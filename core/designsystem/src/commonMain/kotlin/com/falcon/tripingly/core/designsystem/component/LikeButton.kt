@@ -47,10 +47,10 @@ fun LikeButton(
             imageVector = if (liked) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
             contentDescription = stringResource(Res.string.like),
             tint = if (liked) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.size(20.dp),
+            modifier = Modifier.size(20.dp).skeleton(CircleShape),
         )
         if (count > 0) {
-            Text(text = compactCount(count), style = MaterialTheme.typography.labelLarge)
+            Text(text = compactCount(count), style = MaterialTheme.typography.labelLarge, modifier = Modifier.skeletonText())
         }
     }
 }

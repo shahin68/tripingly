@@ -1,5 +1,6 @@
 package com.falcon.tripingly.feature.social.presentation.component
 
+import com.falcon.tripingly.core.designsystem.component.skeletonText
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -37,13 +38,14 @@ internal fun PersonRow(user: UserSummary, onClick: () -> Unit, modifier: Modifie
         ) {
             AvatarCircle(name = user.displayName, size = AvatarSize.Row)
             Column(Modifier.weight(1f)) {
-                Text(user.displayName, style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(user.displayName, style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.skeletonText())
                 Text(
                     text = "@${user.username}",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.skeletonText(),
                 )
             }
         }

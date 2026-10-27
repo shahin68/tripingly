@@ -1,5 +1,8 @@
 package com.falcon.tripingly.core.designsystem.component
 
+import androidx.compose.ui.state.ToggleableState
+import androidx.compose.ui.semantics.toggleableState
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -61,7 +64,7 @@ fun PrimaryButton(
         enabled = enabled && !isLoading,
         shape = CircleShape,
         contentPadding = size.padding,
-        modifier = modifier.heightIn(min = size.height),
+        modifier = modifier.heightIn(min = size.height).skeleton(CircleShape),
     ) {
         ButtonContent(text, isLoading, size, icon)
     }
@@ -87,9 +90,30 @@ fun SecondaryButton(
             containerColor = MaterialTheme.colorScheme.surfaceVariant,
             contentColor = MaterialTheme.colorScheme.onSurface,
         ),
-        modifier = modifier.heightIn(min = size.height),
+        modifier = modifier.heightIn(min = size.height).skeleton(CircleShape),
     ) {
         ButtonContent(text, isLoading, size, icon)
+    }
+}
+
+/**
+ * A button that switches something on and off (the plan's Route): neutral like [SecondaryButton] while off, filled
+ * with the brand colour like [PrimaryButton] while on. Its [icon] stays the same either way; the colour says it's on.
+ */
+@Composable
+fun ToggleButton(
+    text: String,
+    checked: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    size: ButtonSize = ButtonSize.Small,
+    icon: ImageVector? = null,
+) {
+    val toggle = modifier.semantics { toggleableState = ToggleableState(checked) }
+    if (checked) {
+        PrimaryButton(text, onClick, toggle, size = size, icon = icon)
+    } else {
+        SecondaryButton(text, onClick, toggle, size = size, icon = icon)
     }
 }
 
@@ -131,6 +155,8 @@ private fun ButtonsPreviewContent() {
         SecondaryButton("Edit profile", {}, size = ButtonSize.Medium)
         PrimaryButton("Add photos", {}, size = ButtonSize.Small, icon = Icons.Outlined.AddPhotoAlternate)
         SecondaryButton("Best order", {}, size = ButtonSize.Small, icon = Icons.Outlined.AutoAwesome)
+        ToggleButton("Route", checked = false, onClick = {}, icon = Icons.Outlined.AutoAwesome)
+        ToggleButton("Route", checked = true, onClick = {}, icon = Icons.Outlined.AutoAwesome)
     }
 }
 

@@ -1,5 +1,6 @@
 package com.falcon.tripingly.feature.social.presentation.explore
 
+import com.falcon.tripingly.core.designsystem.component.skeleton
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -82,6 +83,8 @@ internal fun ExploreTripCard(
         modifier = modifier
             .fillMaxWidth()
             .height(ExploreCardHeight)
+            // A photo card: while loading, the whole card is one shimmering block.
+            .skeleton(MaterialTheme.shapes.extraLarge)
             .clip(MaterialTheme.shapes.extraLarge)
             .background(MaterialTheme.colorScheme.surfaceVariant)
             .combinedClickable(onClick = onOpen, onLongClick = { if (!isMine) menuOpen = true }),

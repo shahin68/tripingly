@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
@@ -28,7 +29,7 @@ import com.falcon.tripingly.core.designsystem.component.SecondaryButton
 import com.falcon.tripingly.core.designsystem.component.SegmentedToggle
 import com.falcon.tripingly.core.designsystem.component.SegmentedToggleOption
 import com.falcon.tripingly.core.designsystem.component.ShowMessage
-import com.falcon.tripingly.core.designsystem.component.SkeletonCard
+import com.falcon.tripingly.core.designsystem.component.Skeleton
 import com.falcon.tripingly.core.designsystem.component.glassSource
 import com.falcon.tripingly.core.designsystem.component.screenContentPadding
 import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
@@ -52,6 +53,9 @@ import com.falcon.tripingly.feature.social.presentation.component.EmptyText
 import com.falcon.tripingly.feature.social.presentation.component.LoadMoreAtEnd
 import com.falcon.tripingly.feature.social.presentation.component.PersonRow
 import com.falcon.tripingly.feature.social.presentation.component.PublicTripCard
+import com.falcon.tripingly.feature.social.presentation.component.placeholderPeople
+import com.falcon.tripingly.feature.social.presentation.component.placeholderProfile
+import com.falcon.tripingly.feature.social.presentation.component.placeholderTrips
 import com.falcon.tripingly.feature.social.presentation.component.previewPeople
 import com.falcon.tripingly.feature.social.presentation.component.previewTrip
 import com.falcon.tripingly.feature.social.presentation.people.PeopleSearchViewModel
@@ -139,6 +143,7 @@ internal fun MyProfileScreen(
         errorMessage = state.loadError?.asString(),
         onRetry = { onAction(Action.Retry) },
         contentPadding = contentPadding,
+        loading = { MyProfileSkeleton(segment, contentPadding) },
     ) {
         val listState = rememberLazyListState()
         LoadMoreAtEnd(listState) { if (segment.list == null) onAction(Action.Trips.LoadMore) else onPeopleAction(PeopleViewModel.Action.OnLoadMore) }
@@ -190,6 +195,22 @@ private fun Segments(segment: ProfileSegment, onSegment: (ProfileSegment) -> Uni
     }
 }
 
+/** The tab while my profile loads: my header, the segments and my trips, drawn from placeholders as a [Skeleton]. */
+@Composable
+private fun MyProfileSkeleton(segment: ProfileSegment, contentPadding: PaddingValues) {
+    Skeleton(Modifier.fillMaxSize()) {
+        Column(Modifier.padding(contentPadding), verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small)) {
+            MyProfileHeader(placeholderProfile)
+            Segments(segment, onSegment = {})
+            if (segment.list == null) {
+                placeholderTrips.forEach { PublicTripCard(trip = it, onOpen = {}, onLike = {}, onToggleSave = {}, onReport = {}) }
+            } else {
+                placeholderPeople.forEach { PersonRow(user = it, onClick = {}) }
+            }
+        }
+    }
+}
+
 private fun LazyListScope.tripItems(state: State, onAction: (Action) -> Unit) {
     if (state.trips.isEmpty()) {
         item(key = "trips-empty") { EmptyText(stringResource(Res.string.social_profile_no_trips), Modifier.animateItem()) }
@@ -206,7 +227,7 @@ private fun LazyListScope.tripItems(state: State, onAction: (Action) -> Unit) {
     }
 }
 
-/** People as cards; grey cards while the first page loads, why it failed with a retry, and [empty] when there's nobody. */
+/** People as cards; their skeleton while the first page loads, why it failed with a retry, and [empty] when there's nobody. */
 private fun LazyListScope.peopleItems(
     people: List<UserSummary>,
     isLoading: Boolean,
@@ -222,7 +243,7 @@ private fun LazyListScope.peopleItems(
                 SecondaryButton(stringResource(Res.string.social_retry), onRetry, size = ButtonSize.Medium)
             }
         }
-        people.isEmpty() && isLoading -> items(SKELETON_ROWS) { SkeletonCard() }
+        people.isEmpty() && isLoading -> items(placeholderPeople, key = { "skeleton-${it.id}" }) { Skeleton { PersonRow(user = it, onClick = {}) } }
         people.isEmpty() -> item(key = "people-empty") { EmptyText(stringResource(empty), Modifier.animateItem()) }
         else -> items(people, key = { it.id }) { user ->
             PersonRow(user = user, onClick = { onOpenProfile(user.username) }, modifier = Modifier.animateItem())
@@ -236,8 +257,6 @@ private val PeopleList.empty: StringResource
         PeopleList.Following -> Res.string.social_following_empty
         PeopleList.Followers -> Res.string.social_followers_empty
     }
-
-private const val SKELETON_ROWS = 3
 
 @Composable
 private fun MyProfilePreview(segment: ProfileSegment, darkTheme: Boolean = false, query: String = "") {

@@ -2,10 +2,7 @@ package com.falcon.tripingly
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.only
-import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -28,6 +25,7 @@ import com.falcon.tripingly.core.data.realtime.LiveUpdates
 import com.falcon.tripingly.core.data.trips.MarkerRepository
 import com.falcon.tripingly.core.designsystem.browser.rememberInAppUriHandler
 import com.falcon.tripingly.core.designsystem.component.MessageBannerHost
+import com.falcon.tripingly.core.designsystem.component.safeTopAndSides
 import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
 import com.falcon.tripingly.core.navigation.Home
 import com.falcon.tripingly.core.navigation.NavConfig
@@ -61,7 +59,7 @@ fun App() {
                 MessageBannerHost(
                     Modifier
                         .align(Alignment.TopCenter)
-                        .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal)),
+                        .windowInsetsPadding(WindowInsets.safeTopAndSides),
                 )
             }
         }

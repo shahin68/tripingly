@@ -39,6 +39,7 @@ fun AvatarCircle(
     Box(
         modifier = modifier
             .size(size)
+            .skeleton(CircleShape)
             .clip(CircleShape)
             .background(MaterialTheme.colorScheme.surfaceContainerHighest),
         contentAlignment = Alignment.Center,

@@ -3,7 +3,6 @@ package com.falcon.tripingly.feature.settings.presentation
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
@@ -39,7 +38,8 @@ import com.falcon.tripingly.core.designsystem.component.OsmAttribution
 import com.falcon.tripingly.core.designsystem.component.PrimaryButton
 import com.falcon.tripingly.core.designsystem.component.SecondaryButton
 import com.falcon.tripingly.core.designsystem.component.SectionLabel
-import com.falcon.tripingly.core.designsystem.component.SkeletonLine
+import com.falcon.tripingly.core.designsystem.component.Skeleton
+import com.falcon.tripingly.core.designsystem.component.skeleton
 import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
 import com.falcon.tripingly.core.designsystem.theme.spacing
 import com.falcon.tripingly.core.model.account.DataExportStatus
@@ -98,11 +98,10 @@ internal fun Notifications(state: NotificationsState, onAction: (Action) -> Unit
         state.hasFailed -> TextButton(onClick = { onAction(Action.Notifications.Retry) }) {
             Text(stringResource(Res.string.settings_retry))
         }
-        else -> SettingsCard {
-            repeat(NotificationType.entries.size) {
-                Box(Modifier.fillMaxWidth().heightIn(min = RowHeight).padding(horizontal = MaterialTheme.spacing.medium), contentAlignment = Alignment.CenterStart) {
-                    SkeletonLine(Modifier.fillMaxWidth(0.5f))
-                }
+        // The labels are known; only the switches wait for the server.
+        else -> Skeleton {
+            SettingsCard {
+                NotificationType.entries.forEach { type -> SwitchRow(label = stringResource(type.label()), checked = false, onCheckedChange = {}) }
             }
         }
     }
@@ -218,7 +217,7 @@ private fun SwitchRow(label: String, checked: Boolean, onCheckedChange: (Boolean
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(label, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
-        Switch(checked = checked, onCheckedChange = null)
+        Switch(checked = checked, onCheckedChange = null, modifier = Modifier.skeleton(CircleShape))
     }
 }
 

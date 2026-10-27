@@ -3,13 +3,14 @@ package com.falcon.tripingly.feature.auth.presentation.onboarding
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material3.Checkbox
@@ -26,7 +27,9 @@ import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.falcon.tripingly.core.designsystem.component.PrimaryButton
-import com.falcon.tripingly.core.designsystem.component.SkeletonLine
+import com.falcon.tripingly.core.designsystem.component.Skeleton
+import com.falcon.tripingly.core.designsystem.component.skeleton
+import com.falcon.tripingly.core.designsystem.component.skeletonText
 import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
 import com.falcon.tripingly.core.designsystem.theme.spacing
 import com.falcon.tripingly.core.model.account.LegalDocumentType
@@ -51,26 +54,35 @@ internal fun ConsentStep(state: OnboardingViewModel.State) {
     Surface(shape = MaterialTheme.shapes.large, color = MaterialTheme.colorScheme.surfaceContainerLowest, modifier = Modifier.fillMaxWidth()) {
         Column(Modifier.padding(vertical = MaterialTheme.spacing.extraSmall)) {
             if (state.isLoadingDocuments) {
-                repeat(SKELETON_ROWS) {
-                    Box(Modifier.fillMaxWidth().heightIn(min = RowHeight).padding(horizontal = MaterialTheme.spacing.medium), contentAlignment = Alignment.CenterStart) {
-                        SkeletonLine(Modifier.fillMaxWidth(0.5f))
-                    }
-                }
+                // Placeholder titles only: drawn as the rows' shimmering bars, never as text.
+                Skeleton { Column { listOf("Terms of Service", "Privacy Policy", "Marketing").forEach { DocumentRow(it, onClick = {}) } } }
             }
             state.documents.forEach { item ->
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .heightIn(min = RowHeight)
-                        .clickable { runCatching { uriHandler.openUri(item.document.url) } }
-                        .padding(horizontal = MaterialTheme.spacing.medium),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Text(stringResource(item.document.type.title()), style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
-                    Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
+                DocumentRow(stringResource(item.document.type.title()), onClick = { runCatching { uriHandler.openUri(item.document.url) } })
             }
         }
+    }
+}
+
+/** A legal document to read: its title and an arrow; tapping opens it. */
+@Composable
+private fun DocumentRow(title: String, onClick: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(min = RowHeight)
+            .clickable(onClick = onClick)
+            .padding(horizontal = MaterialTheme.spacing.medium),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(title, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f, fill = false).skeletonText())
+        Spacer(Modifier.weight(1f))
+        Icon(
+            Icons.AutoMirrored.Filled.KeyboardArrowRight,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.skeleton(CircleShape),
+        )
     }
 }
 
@@ -142,7 +154,6 @@ private fun LegalDocumentType.acceptLabel() = when (this) {
 }
 
 private val RowHeight = 56.dp
-private const val SKELETON_ROWS = 2
 
 @Preview
 @Composable

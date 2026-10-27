@@ -1,5 +1,10 @@
 package com.falcon.tripingly.feature.social.presentation.profile
 
+import kotlinx.collections.immutable.toImmutableList
+import com.falcon.tripingly.feature.social.presentation.component.placeholderTrips
+import com.falcon.tripingly.feature.social.presentation.component.placeholderProfile
+import com.falcon.tripingly.core.designsystem.component.skeletonText
+import com.falcon.tripingly.core.designsystem.component.Skeleton
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
@@ -125,6 +130,10 @@ internal fun PersonProfileScreen(state: State, onAction: (Action) -> Unit, onBac
             errorMessage = state.loadError?.asString(),
             onRetry = { onAction(Action.Retry) },
             contentPadding = contentPadding,
+            // The profile's own layout, drawn from placeholders.
+            loading = {
+                Skeleton { PersonProfileContent(placeholderProfile, State(isMe = true, trips = placeholderTrips.toImmutableList()), onAction = {}, contentPadding) }
+            },
         ) {
             state.profile?.let { PersonProfileContent(it, state, onAction, contentPadding) }
         }
@@ -146,7 +155,7 @@ private fun PersonProfileContent(profile: Profile, state: State, onAction: (Acti
             Text(
                 text = stringResource(Res.string.social_public_trips, profile.publicTripCount),
                 style = MaterialTheme.typography.titleMedium,
-                modifier = Modifier.animateItem(),
+                modifier = Modifier.animateItem().skeletonText(),
             )
         }
         if (state.trips.isEmpty()) {

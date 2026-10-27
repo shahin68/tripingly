@@ -2,6 +2,7 @@ package com.falcon.tripingly.shell
 
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material.icons.Icons
@@ -11,7 +12,6 @@ import androidx.compose.material.icons.outlined.NearMe
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -19,6 +19,7 @@ import com.falcon.tripingly.core.designsystem.component.AnimatedTopBar
 import com.falcon.tripingly.core.designsystem.component.FloatingNavigationBar
 import com.falcon.tripingly.core.designsystem.component.NavBarItem
 import com.falcon.tripingly.core.designsystem.component.SettingsAction
+import com.falcon.tripingly.core.designsystem.component.safeSides
 import com.falcon.tripingly.core.model.photo.PhotoOwner
 import com.falcon.tripingly.feature.map.presentation.photos.PhotoViewerRoute
 import com.falcon.tripingly.feature.social.presentation.explore.ExplorePeriodAction
@@ -35,7 +36,6 @@ import com.falcon.tripingly.shared.generated.resources.tab_nearby
 import com.falcon.tripingly.shared.generated.resources.tab_profile
 import com.falcon.tripingly.shared.generated.resources.tab_trips
 import com.falcon.tripingly.shared.generated.resources.tab_trips_title
-import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
 
@@ -49,7 +49,7 @@ internal enum class MainTab(val label: StringResource, val icon: ImageVector, va
 
 /**
  * The tab shell: one floating top bar and one floating bottom bar over the tabs, which the user swipes between
- * like pages or picks in the bottom bar (tap, or drag its selection). The top bar animates to the page shown: its
+ * like pages or picks in the bottom bar (tap, or drag its selection; a tap on a far tab jumps there without passing the tabs in between). The top bar animates to the page shown: its
  * title, the page's own action (Explore's period) and its search field (Trips, Profile). The Add Trip button
  * shrinks away off the Trips tab. Every tab keeps its scroll position and view models while another is shown
  * (they live as long as this screen); content scrolls behind both bars.
@@ -63,7 +63,6 @@ internal fun MainTabs(
 ) {
     val tabs = MainTab.entries
     val pagerState = rememberPagerState { tabs.size }
-    val scope = rememberCoroutineScope()
     val tabStates = rememberSaveableStateHolder()
     val items = tabs.map { NavBarItem(stringResource(it.label), it.icon) }
     val shown = tabs[pagerState.currentPage]
@@ -86,9 +85,9 @@ internal fun MainTabs(
             )
         },
         bottomBar = {
-            FloatingNavigationBar(items = items, pagerState = pagerState, onSelect = { scope.launch { pagerState.animateScrollToPage(it) } })
+            FloatingNavigationBar(items = items, pagerState = pagerState)
         },
-        floatingActionButton = { AddTripButton(visible = shown == MainTab.Trips) },
+        floatingActionButton = { AddTripButton(visible = shown == MainTab.Trips, Modifier.windowInsetsPadding(WindowInsets.safeSides)) },
     ) { barsPadding ->
         HorizontalPager(state = pagerState, key = { tabs[it].name }) { page ->
             val tab = tabs[page]

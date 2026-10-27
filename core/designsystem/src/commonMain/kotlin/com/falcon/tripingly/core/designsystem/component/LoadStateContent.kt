@@ -15,8 +15,8 @@ import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
 import com.falcon.tripingly.core.designsystem.theme.spacing
 
 /**
- * The three faces of every screen that loads: a shimmering [loading] skeleton until the first answer, the
- * [ErrorScreen] when that answer is an error and there's nothing to show ([errorMessage] not null), otherwise
+ * The three faces of every screen that loads: its [loading] [Skeleton] (the screen's own composables drawn from
+ * placeholders) until the first answer, the [ErrorScreen] when that answer is an error and there's nothing to show ([errorMessage] not null), otherwise
  * the [content]. Errors after something is shown go to the message banner instead, so content never vanishes.
  * Switches with a short crossfade.
  */
@@ -25,9 +25,9 @@ fun LoadStateContent(
     isLoading: Boolean,
     errorMessage: String?,
     onRetry: (() -> Unit)?,
+    loading: @Composable () -> Unit,
     modifier: Modifier = Modifier,
     contentPadding: PaddingValues = PaddingValues(),
-    loading: @Composable () -> Unit = { SkeletonList(contentPadding = contentPadding) },
     error: @Composable (message: String) -> Unit = { ErrorScreen(onRetry = onRetry, message = it, contentPadding = contentPadding) },
     content: @Composable () -> Unit,
 ) {
@@ -54,6 +54,7 @@ private fun LoadStatePreviewContent(face: Int) {
             isLoading = face == 0,
             errorMessage = if (face == 1) "Couldn't load your trips. No internet connection." else null,
             onRetry = {},
+            loading = { Skeleton { Text("Content", Modifier.padding(MaterialTheme.spacing.medium).skeletonText()) } },
         ) {
             Text("Content", Modifier.padding(MaterialTheme.spacing.medium))
         }

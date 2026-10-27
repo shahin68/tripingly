@@ -1,5 +1,7 @@
 package com.falcon.tripingly.feature.social.presentation.profile
 
+import com.falcon.tripingly.core.designsystem.component.skeletonText
+import com.falcon.tripingly.core.designsystem.component.skeleton
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -42,8 +44,8 @@ internal fun MyProfileHeader(profile: Profile, modifier: Modifier = Modifier) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium)) {
                 AvatarCircle(name = profile.user.displayName, size = AvatarSize.Medium)
                 Column {
-                    Text(profile.user.displayName, style = MaterialTheme.typography.titleLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    Text("@${profile.user.username}", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(profile.user.displayName, style = MaterialTheme.typography.titleLarge, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.skeletonText())
+                    Text("@${profile.user.username}", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.skeletonText())
                 }
             }
             Row(horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small)) {
@@ -67,7 +69,7 @@ internal fun PersonProfileHeader(profile: Profile, onToggleFollow: (() -> Unit)?
         verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
     ) {
         AvatarCircle(name = profile.user.displayName, size = LargeAvatar)
-        Text(profile.user.displayName, style = MaterialTheme.typography.headlineSmall, maxLines = 2, overflow = TextOverflow.Ellipsis)
+        Text(profile.user.displayName, style = MaterialTheme.typography.headlineSmall, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.skeletonText())
         if (profile.followsMe) {
             Text(stringResource(Res.string.social_follows_you), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
@@ -88,6 +90,7 @@ internal fun PersonProfileHeader(profile: Profile, onToggleFollow: (() -> Unit)?
 private fun StatTile(count: Int, label: String, modifier: Modifier = Modifier) {
     Column(
         modifier
+            .skeleton(MaterialTheme.shapes.medium)
             .background(MaterialTheme.colorScheme.surfaceVariant, MaterialTheme.shapes.medium)
             .padding(horizontal = MaterialTheme.spacing.small + MaterialTheme.spacing.extraSmall, vertical = MaterialTheme.spacing.small),
     ) {
@@ -99,8 +102,8 @@ private fun StatTile(count: Int, label: String, modifier: Modifier = Modifier) {
 @Composable
 private fun Count(count: Int, label: String) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(compactCount(count), style = MaterialTheme.typography.titleMedium)
-        Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(compactCount(count), style = MaterialTheme.typography.titleMedium, modifier = Modifier.skeletonText())
+        Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.skeletonText())
     }
 }
 

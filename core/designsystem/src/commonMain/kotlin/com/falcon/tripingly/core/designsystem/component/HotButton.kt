@@ -46,10 +46,10 @@ fun HotButton(
             imageVector = if (hot) Icons.Filled.LocalFireDepartment else Icons.Outlined.LocalFireDepartment,
             contentDescription = stringResource(Res.string.mark_hot),
             tint = if (hot) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.size(20.dp),
+            modifier = Modifier.size(20.dp).skeleton(CircleShape),
         )
         if (count > 0) {
-            Text(text = compactCount(count), style = MaterialTheme.typography.labelLarge)
+            Text(text = compactCount(count), style = MaterialTheme.typography.labelLarge, modifier = Modifier.skeletonText())
         }
     }
 }

@@ -17,7 +17,6 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.MoreHoriz
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.AutoAwesome
-import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.CleaningServices
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Directions
@@ -42,8 +41,8 @@ import androidx.compose.ui.unit.dp
 import com.falcon.tripingly.core.designsystem.component.AppDropdownMenu
 import com.falcon.tripingly.core.designsystem.component.ButtonSize
 import com.falcon.tripingly.core.designsystem.component.DropdownAction
-import com.falcon.tripingly.core.designsystem.component.PrimaryButton
 import com.falcon.tripingly.core.designsystem.component.SecondaryButton
+import com.falcon.tripingly.core.designsystem.component.ToggleButton
 import com.falcon.tripingly.core.designsystem.theme.MapColors
 import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
 import com.falcon.tripingly.core.designsystem.theme.spacing
@@ -89,12 +88,12 @@ internal fun StopsCard(
                 modifier = Modifier.weight(1f),
             )
             card.isRouteOn?.let { isOn ->
-                // Filled either way, as the sheet's main action; the check says it's on.
-                PrimaryButton(
+                // Neutral like ⋯ while off; green once on.
+                ToggleButton(
                     text = stringResource(Res.string.map_route),
+                    checked = isOn,
                     onClick = { onAction(MapAction.Plan.ToggleRoute) },
-                    size = ButtonSize.Small,
-                    icon = if (isOn) Icons.Outlined.Check else Icons.Outlined.Directions,
+                    icon = Icons.Outlined.Directions,
                 )
             }
             DayMenuButton(dayNumber, canClear = card.canClear, editorMenu = editorMenu, onAction = onAction)
@@ -165,7 +164,8 @@ internal fun PointRouteCard(
 @Composable
 private fun PlanCardColumn(modifier: Modifier, content: @Composable () -> Unit) {
     Column(
-        modifier = modifier.fillMaxWidth().padding(start = MaterialTheme.spacing.medium, end = MaterialTheme.spacing.small, bottom = MaterialTheme.spacing.small),
+        // The ⋯ button's touch area makes up the rest of the end, so its circle sits as far in as the text.
+        modifier = modifier.fillMaxWidth().padding(start = MaterialTheme.spacing.medium, end = MaterialTheme.spacing.small + MaterialTheme.spacing.extraSmall, bottom = MaterialTheme.spacing.small),
         verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small + MaterialTheme.spacing.extraSmall),
     ) { content() }
 }

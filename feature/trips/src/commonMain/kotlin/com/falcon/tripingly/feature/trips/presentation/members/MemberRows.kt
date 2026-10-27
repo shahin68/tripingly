@@ -9,7 +9,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.material.icons.Icons
@@ -35,15 +34,15 @@ import com.falcon.tripingly.core.designsystem.component.AvatarSize
 import com.falcon.tripingly.core.designsystem.component.ButtonSize
 import com.falcon.tripingly.core.designsystem.component.PrimaryButton
 import com.falcon.tripingly.core.designsystem.component.SecondaryButton
-import com.falcon.tripingly.core.designsystem.component.SkeletonBox
-import com.falcon.tripingly.core.designsystem.component.SkeletonDefaults
-import com.falcon.tripingly.core.designsystem.component.SkeletonLine
+import com.falcon.tripingly.core.designsystem.component.Skeleton
+import com.falcon.tripingly.core.designsystem.component.skeletonText
 import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
 import com.falcon.tripingly.core.designsystem.theme.spacing
 import com.falcon.tripingly.core.model.trip.JoinRequest
 import com.falcon.tripingly.core.model.trip.TripInvite
 import com.falcon.tripingly.core.model.trip.TripMember
 import com.falcon.tripingly.core.model.trip.TripRole
+import com.falcon.tripingly.core.model.trip.UserSummary
 import com.falcon.tripingly.feature.trips.generated.resources.Res
 import com.falcon.tripingly.feature.trips.generated.resources.members_add_button
 import com.falcon.tripingly.feature.trips.generated.resources.members_add_label
@@ -70,34 +69,26 @@ private fun PersonRow(
     actions: @Composable RowScope.() -> Unit = {},
 ) {
     Row(
-        modifier = modifier.fillMaxWidth().heightIn(min = PersonRowHeight).padding(start = MaterialTheme.spacing.large, end = MaterialTheme.spacing.medium),
+        modifier = modifier.fillMaxWidth().heightIn(min = PersonRowHeight).padding(horizontal = MaterialTheme.spacing.large),
         horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small + MaterialTheme.spacing.extraSmall),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         AvatarCircle(name = name, size = AvatarSize.Small)
         Column(Modifier.weight(1f)) {
-            Text(name, style = MaterialTheme.typography.bodyLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            Text(detail, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(name, style = MaterialTheme.typography.bodyLarge, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.skeletonText())
+            Text(detail, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.skeletonText())
         }
         actions()
     }
 }
 
-/** A person row that's still loading. */
+/** A member row that's still loading: the row itself with a placeholder person, as a [Skeleton]. */
 @Composable
-internal fun PersonSkeleton(modifier: Modifier = Modifier) {
-    Row(
-        modifier = modifier.fillMaxWidth().heightIn(min = PersonRowHeight),
-        horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small + MaterialTheme.spacing.extraSmall),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        SkeletonBox(Modifier.size(AvatarSize.Small), shape = CircleShape)
-        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small)) {
-            SkeletonLine(Modifier.fillMaxWidth(0.5f))
-            SkeletonLine(Modifier.fillMaxWidth(0.3f), height = SkeletonDefaults.SmallLineHeight)
-        }
-    }
+internal fun MemberSkeleton(modifier: Modifier = Modifier) {
+    Skeleton(modifier) { MemberRow(PlaceholderMember, canRemove = false, onRemove = {}) }
 }
+
+private val PlaceholderMember = TripMember(UserSummary("placeholder", "traveller", "Alex Traveller"), TripRole.EDITOR)
 
 @Composable
 internal fun MemberRow(member: TripMember, canRemove: Boolean, onRemove: () -> Unit, modifier: Modifier = Modifier) {
@@ -155,7 +146,8 @@ internal fun AddMemberField(state: AddState, onAction: (Action) -> Unit) {
 @Composable
 internal fun InviteRow(invite: TripInvite, onShare: () -> Unit, onRevoke: () -> Unit, modifier: Modifier = Modifier) {
     Row(
-        modifier = modifier.fillMaxWidth().padding(start = MaterialTheme.spacing.large, end = MaterialTheme.spacing.medium),
+        // The text buttons' own padding makes up the end, so their labels line up with the text at the start.
+        modifier = modifier.fillMaxWidth().padding(start = MaterialTheme.spacing.large, end = MaterialTheme.spacing.small + MaterialTheme.spacing.extraSmall),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(
@@ -222,7 +214,7 @@ private fun MembersRowsDarkPreview() {
         Column(Modifier.background(MaterialTheme.colorScheme.surface)) {
             JoinRequestRow(previewJoinRequest, isAnswering = false, onAccept = {}, onDecline = {})
             previewMembers.forEach { member -> MemberRow(member = member, canRemove = member.role != TripRole.OWNER, onRemove = {}) }
-            PersonSkeleton(Modifier.padding(horizontal = MaterialTheme.spacing.large))
+            MemberSkeleton()
             AddMemberField(state = AddState(username = TextFieldState("jonas.k")), onAction = {})
             InviteRow(invite = previewInvite, onShare = {}, onRevoke = {})
         }

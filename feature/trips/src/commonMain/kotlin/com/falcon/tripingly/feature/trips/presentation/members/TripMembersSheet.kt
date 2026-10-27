@@ -16,7 +16,6 @@ import androidx.compose.material.icons.filled.Link
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -81,11 +80,9 @@ fun TripMembersRoute(
         }
     }
 
-    ModalBottomSheet(onDismissRequest = onDismiss) {
-        Box {
-            TripMembersScreen(state = state, onAction = viewModel::onAction, onClose = onDismiss)
-            MessageBannerHost(Modifier.align(Alignment.TopCenter))
-        }
+    Box {
+        TripMembersScreen(state = state, onAction = viewModel::onAction, onClose = onDismiss)
+        MessageBannerHost(Modifier.align(Alignment.TopCenter))
     }
 }
 
@@ -109,7 +106,7 @@ fun TripMembersScreen(
     ) {
         item { SheetHeader(title = stringResource(Res.string.members_title), onClose = onClose) }
         if (state.isLoading) {
-            items(SKELETON_ROWS, key = { "skeleton$it" }) { PersonSkeleton(rowPadding) }
+            items(SKELETON_ROWS, key = { "skeleton$it" }) { MemberSkeleton() }
         }
         if (state.joinRequests.requests.isNotEmpty()) {
             item { SectionLabel(stringResource(Res.string.members_join_requests_title), rowPadding) }

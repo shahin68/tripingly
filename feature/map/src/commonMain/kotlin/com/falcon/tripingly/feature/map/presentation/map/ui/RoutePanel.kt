@@ -59,7 +59,7 @@ import kotlin.math.roundToInt
 import kotlinx.collections.immutable.ImmutableList
 import org.jetbrains.compose.resources.stringResource
 
-/** How to travel: walk, bike or car, uncolored, the picked one named. */
+/** How to travel: walk, bike or car as icons, uncolored; the names are their descriptions. */
 @Composable
 internal fun TravelModeToggle(
     mode: TravelMode,
@@ -73,7 +73,7 @@ internal fun TravelModeToggle(
                 selected = entry == mode,
                 onClick = { onModeSelected(entry) },
                 icon = entry.icon(),
-                showLabel = entry == mode,
+                showLabel = false,
             )
         }
     }

@@ -81,7 +81,8 @@ internal class MapStateMapper(
             stopCount = days.sumOf { it.markers.size },
             ownerLabel = trip?.owner?.takeIf { otherOwnerId != null }?.let { UiText.Resource(Res.string.map_trip_owner, it.displayName) },
             members = details?.members?.takeIf { it.isNotEmpty() }?.let { MembersEntry(it.size, details.pendingJoinRequestCount) },
-            isBusy = model.isSaving || model.isUpdatingSharing || (days.isEmpty() && model.isLoadingTrip),
+            isLoading = days.isEmpty() && model.isLoadingTrip,
+            isBusy = model.isSaving || model.isUpdatingSharing,
             viewerMenu = trip?.takeIf { role == TripRole.VIEWER }?.let {
                 ViewerMenu(isSavedByMe = it.savedByMe, myJoinRequest = details.myJoinRequest, ownerUsername = it.owner.username)
             },

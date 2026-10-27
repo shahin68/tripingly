@@ -47,6 +47,8 @@ import com.falcon.tripingly.core.designsystem.component.AppDropdownMenu
 import com.falcon.tripingly.core.designsystem.component.AvatarCircle
 import com.falcon.tripingly.core.designsystem.component.AvatarSize
 import com.falcon.tripingly.core.designsystem.component.DropdownAction
+import com.falcon.tripingly.core.designsystem.component.skeleton
+import com.falcon.tripingly.core.designsystem.component.skeletonText
 import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
 import com.falcon.tripingly.core.designsystem.theme.spacing
 import com.falcon.tripingly.core.model.account.TripVisibility
@@ -85,6 +87,7 @@ internal fun TimelineTripItem(
                     .padding(top = CardTopToDate)
                     .align(Alignment.TopCenter)
                     .size(TimelineDefaults.Dot)
+                    .skeleton(CircleShape)
                     .background(railColor, CircleShape)
                     .border(TimelineDefaults.DotRing, MaterialTheme.colorScheme.background, CircleShape),
             )
@@ -138,12 +141,13 @@ internal fun PastHeader(count: Int, modifier: Modifier = Modifier) {
 private fun DateColumn(date: LocalDate?, modifier: Modifier = Modifier) {
     Column(modifier.width(TimelineDefaults.DateWidth), horizontalAlignment = Alignment.End) {
         if (date != null) {
-            Text(date.day.toString(), style = MaterialTheme.typography.titleMedium)
+            Text(date.day.toString(), style = MaterialTheme.typography.titleMedium, modifier = Modifier.skeletonText())
             Text(
                 DateUtils.formatMonthShort(date).uppercase(),
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 1,
+                modifier = Modifier.skeletonText(),
             )
         }
     }
@@ -189,15 +193,16 @@ private fun TripCard(
                         text = whenLabel.uppercase(),
                         style = MaterialTheme.typography.labelSmall,
                         color = if (past) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.skeletonText(),
                     )
                 }
-                Text(trip.name, style = MaterialTheme.typography.titleMedium, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                Text(trip.name, style = MaterialTheme.typography.titleMedium, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.skeletonText())
                 TripCardDetails(trip)
             }
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Box {
                     IconButton(onClick = { menuOpen = true }) {
-                        Icon(Icons.Default.MoreVert, contentDescription = stringResource(Res.string.home_trip_more, trip.name))
+                        Icon(Icons.Default.MoreVert, contentDescription = stringResource(Res.string.home_trip_more, trip.name), modifier = Modifier.skeleton(CircleShape))
                     }
                     AppDropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }, actions = tripActions(trip, onAction))
                 }
@@ -205,7 +210,7 @@ private fun TripCard(
                     imageVector = if (trip.visibility == TripVisibility.PRIVATE) Icons.Outlined.Lock else Icons.Outlined.Public,
                     contentDescription = if (trip.visibility == TripVisibility.PRIVATE) stringResource(Res.string.trip_private) else null,
                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.size(TimelineDefaults.VisibilityIcon),
+                    modifier = Modifier.size(TimelineDefaults.VisibilityIcon).skeleton(CircleShape),
                 )
             }
         }
@@ -220,12 +225,14 @@ private fun TripCardDetails(trip: Trip) {
         text = "$dates · ${pluralStringResource(Res.plurals.trip_day_count, trip.dayCount, trip.dayCount)}",
         style = MaterialTheme.typography.bodySmall,
         color = muted,
+        modifier = Modifier.skeletonText(),
     )
     Text(
         text = pluralStringResource(Res.plurals.trip_stop_count, trip.markerCount, trip.markerCount) + " · " +
             stringResource(Res.string.trip_created, timeAgo(trip.createdAt)),
         style = MaterialTheme.typography.bodySmall,
         color = muted,
+        modifier = Modifier.skeletonText(),
     )
     val sharing = when {
         trip.role == TripRole.EDITOR -> stringResource(Res.string.trip_shared_by, trip.owner.username)
@@ -240,7 +247,7 @@ private fun TripCardDetails(trip: Trip) {
             horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
         ) {
             if (trip.role != TripRole.OWNER) AvatarCircle(trip.owner.displayName, size = AvatarSize.Small)
-            Text(sharing, style = MaterialTheme.typography.labelMedium, color = muted, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(sharing, style = MaterialTheme.typography.labelMedium, color = muted, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.skeletonText())
         }
     }
 }

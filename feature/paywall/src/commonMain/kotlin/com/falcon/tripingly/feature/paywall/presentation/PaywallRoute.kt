@@ -8,7 +8,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -16,6 +15,7 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
@@ -43,8 +43,10 @@ import com.falcon.tripingly.core.designsystem.component.FloatingTopBar
 import com.falcon.tripingly.core.designsystem.component.PrimaryButton
 import com.falcon.tripingly.core.designsystem.component.SecondaryButton
 import com.falcon.tripingly.core.designsystem.component.ShowMessage
-import com.falcon.tripingly.core.designsystem.component.SkeletonBox
+import com.falcon.tripingly.core.designsystem.component.Skeleton
 import com.falcon.tripingly.core.designsystem.component.screenContentPadding
+import com.falcon.tripingly.core.designsystem.component.skeleton
+import com.falcon.tripingly.core.designsystem.component.skeletonText
 import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
 import com.falcon.tripingly.core.designsystem.theme.spacing
 import com.falcon.tripingly.core.model.account.LegalDocumentType
@@ -169,7 +171,10 @@ private fun Offers(state: State, onAction: (Action) -> Unit) {
             SecondaryButton(text = stringResource(Res.string.paywall_retry), onClick = { onAction(Action.OnRetryOffers) }, modifier = Modifier.fillMaxWidth())
         }
         state.isLoadingOffers -> Column(verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small)) {
-            repeat(ProPeriod.entries.size) { SkeletonBox(Modifier.fillMaxWidth().height(OfferHeight), shape = MaterialTheme.shapes.large) }
+            // The offers' own rows; the prices are placeholders, drawn as shimmering bars.
+            Skeleton { Column(verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small)) {
+                ProPeriod.entries.forEach { OfferRow(ProOffer(id = it.name, period = it, price = "€9.99"), selected = false, enabled = false, onSelect = {}) }
+            } }
         }
         else -> Hint(stringResource(Res.string.paywall_offers_failed))
     }
@@ -202,13 +207,14 @@ private fun OfferRow(offer: ProOffer, selected: Boolean, enabled: Boolean, onSel
             horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            RadioButton(selected = selected, onClick = null, enabled = enabled)
+            RadioButton(selected = selected, onClick = null, enabled = enabled, modifier = Modifier.skeleton(CircleShape))
             Column(Modifier.weight(1f)) {
-                Text(stringResource(name), style = MaterialTheme.typography.titleMedium)
+                Text(stringResource(name), style = MaterialTheme.typography.titleMedium, modifier = Modifier.skeletonText())
                 Text(
                     text = stringResource(price, offer.price),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.skeletonText(),
                 )
             }
         }

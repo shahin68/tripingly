@@ -1,5 +1,8 @@
 package com.falcon.tripingly.feature.social.presentation.nearby
 
+import androidx.compose.foundation.shape.CircleShape
+import com.falcon.tripingly.core.designsystem.component.skeletonText
+import com.falcon.tripingly.core.designsystem.component.skeleton
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -71,7 +74,7 @@ internal fun NearbyPlaceCard(
             horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small + MaterialTheme.spacing.extraSmall),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            val thumb = Modifier.size(CoverSize).clip(MaterialTheme.shapes.medium)
+            val thumb = Modifier.size(CoverSize).skeleton(MaterialTheme.shapes.medium).clip(MaterialTheme.shapes.medium)
             if (cover != null) {
                 PhotoImage(photoId = cover, url = place.coverThumbUrl, size = PhotoSize.Thumb, contentDescription = null, modifier = thumb)
             } else {
@@ -80,11 +83,12 @@ internal fun NearbyPlaceCard(
                 }
             }
             Column(Modifier.weight(1f)) {
-                Text(place.name, style = MaterialTheme.typography.titleMedium, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                Text(place.name, style = MaterialTheme.typography.titleMedium, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.skeletonText())
                 Text(
                     text = distanceText(place.distanceMeters).asString(),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.skeletonText(),
                 )
                 HotButton(hot = place.hotByMe, count = place.hotCount, onToggle = onMarkHot, modifier = Modifier.padding(top = 2.dp))
             }
@@ -97,7 +101,7 @@ internal fun NearbyPlaceCard(
                         Icon(Icons.Outlined.PhotoLibrary, contentDescription = openImages, modifier = Modifier.size(ActionIconSize))
                     }
                 }
-                FilledIconButton(onClick = onAdd) {
+                FilledIconButton(onClick = onAdd, modifier = Modifier.skeleton(CircleShape)) {
                     Icon(Icons.Default.Add, contentDescription = stringResource(Res.string.social_add_place), modifier = Modifier.size(ActionIconSize))
                 }
             }

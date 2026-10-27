@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -19,8 +20,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.shape.ZeroCornerSize
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Add
+import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -68,7 +70,7 @@ internal fun DayTabs(
     GlassSurface(
         modifier = modifier
             .navigationBarsPadding()
-            .padding(start = SheetMargin, end = SheetMargin, bottom = SheetMargin)
+            .padding(start = MaterialTheme.spacing.medium, end = MaterialTheme.spacing.medium, bottom = MaterialTheme.spacing.medium)
             .fillMaxWidth(),
         shape = if (isJoined) RoundedCornerShape(topStart = ZeroCornerSize, topEnd = ZeroCornerSize, bottomStart = corner, bottomEnd = corner) else MaterialTheme.shapes.extraLarge,
         shadowElevation = if (isJoined) 0.dp else GlassDefaults.ShadowElevation,
@@ -84,7 +86,12 @@ internal fun DayTabs(
                 }
             }
             if (canAddDay) {
-                IconButton(onClick = { onAction(MapAction.Header.AddDay) }) {
+                // A round button as tall as the day pills, so it sits as far in from the end as they do from the start.
+                FilledTonalIconButton(
+                    onClick = { onAction(MapAction.Header.AddDay) },
+                    modifier = Modifier.padding(start = MaterialTheme.spacing.extraSmall).size(DayPillHeight),
+                    colors = IconButtonDefaults.filledTonalIconButtonColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+                ) {
                     Icon(Icons.Outlined.Add, contentDescription = stringResource(Res.string.map_add_day))
                 }
             }
@@ -113,8 +120,6 @@ private fun DayPill(day: DayTab, selected: Boolean, onClick: () -> Unit, modifie
     }
 }
 
-/** Space around the floating plan sheet and day tabs, to the screen's edges. */
-internal val SheetMargin = 12.dp
 private val DayPillHeight = 48.dp
 
 @Preview

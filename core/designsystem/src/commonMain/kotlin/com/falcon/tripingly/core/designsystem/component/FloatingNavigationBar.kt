@@ -1,6 +1,7 @@
 package com.falcon.tripingly.core.designsystem.component
 
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.Orientation
@@ -12,20 +13,16 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.WindowInsetsSides
-import androidx.compose.foundation.layout.displayCutout
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.navigationBars
-import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.union
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.selection.selectable
@@ -58,6 +55,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
 import com.falcon.tripingly.core.designsystem.theme.spacing
+import kotlin.math.abs
 import kotlin.math.ceil
 import kotlin.math.floor
 import kotlin.math.roundToInt
@@ -70,24 +68,44 @@ data class NavBarItem(val label: String, val icon: ImageVector)
 /**
  * The app's bottom bar: a floating rounded glass bar whose selected tab sits in a filled accent pill. The bar
  * follows [pagerState]: while the pages are swiped the pill slides along with them, and the pill can be dragged
- * like on iOS, moving the pages with it and settling on the nearest tab when let go. A tap calls [onSelect].
+ * like on iOS, moving the pages with it and settling on the nearest tab when let go. A tap on the next tab slides
+ * the pages over; a tap further away shows that page straight away, without the ones in between passing by, while
+ * the pill still slides there.
  */
 @Composable
 fun FloatingNavigationBar(
     items: List<NavBarItem>,
     pagerState: PagerState,
-    onSelect: (Int) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val scope = rememberCoroutineScope()
     var isDragging by remember { mutableStateOf(false) }
     val lift by animateFloatAsState(if (isDragging) NavBarDefaults.DragScale else 1f)
-    val position = { pagerState.currentPage + pagerState.currentPageOffsetFraction }
+    // While a tap jumps over tabs the pill slides on its own; otherwise it follows the pages.
+    val jump = remember { Animatable(0f) }
+    var isJumping by remember { mutableStateOf(false) }
+    val pagerPosition = { pagerState.currentPage + pagerState.currentPageOffsetFraction }
+    val position = { if (isJumping) jump.value else pagerPosition() }
+    val select: (Int) -> Unit = { index ->
+        scope.launch {
+            if (abs(index - pagerState.currentPage) <= 1) {
+                pagerState.animateScrollToPage(index)
+            } else {
+                isJumping = true
+                jump.snapTo(pagerPosition())
+                pagerState.scrollToPage(index)
+                jump.animateTo(index.toFloat())
+                isJumping = false
+            }
+        }
+    }
     GlassSurface(
         modifier = modifier
-            .windowInsetsPadding(WindowInsets.navigationBars.union(WindowInsets.displayCutout).only(WindowInsetsSides.Bottom + WindowInsetsSides.Horizontal))
+            .windowInsetsPadding(WindowInsets.safeBottomAndSides)
             .padding(horizontal = MaterialTheme.spacing.medium, vertical = MaterialTheme.spacing.small)
-            // In landscape the bar stays a comfortable width instead of stretching across the screen.
+            // In landscape the bar stays a comfortable width, centred, instead of stretching across the screen.
+            .fillMaxWidth()
+            .wrapContentWidth()
             .widthIn(max = NavBarDefaults.MaxWidth)
             .fillMaxWidth()
             .height(NavBarDefaults.Height),
@@ -131,7 +149,7 @@ fun FloatingNavigationBar(
             ) {
                 val selected = pagerState.currentPage
                 items.forEachIndexed { index, item ->
-                    NavBarTab(item, selected = index == selected, onClick = { onSelect(index) }, Modifier.weight(1f))
+                    NavBarTab(item, selected = index == selected, onClick = { select(index) }, Modifier.weight(1f))
                 }
             }
         }
@@ -195,8 +213,8 @@ private val PreviewTabs = listOf(
 @Composable
 private fun FloatingNavigationBarPreviewContent() {
     Column(Modifier.background(MaterialTheme.colorScheme.background)) {
-        FloatingNavigationBar(PreviewTabs, rememberPagerState { PreviewTabs.size }, onSelect = {})
-        FloatingNavigationBar(PreviewTabs, rememberPagerState(initialPage = 2) { PreviewTabs.size }, onSelect = {})
+        FloatingNavigationBar(PreviewTabs, rememberPagerState { PreviewTabs.size })
+        FloatingNavigationBar(PreviewTabs, rememberPagerState(initialPage = 2) { PreviewTabs.size })
     }
 }
 

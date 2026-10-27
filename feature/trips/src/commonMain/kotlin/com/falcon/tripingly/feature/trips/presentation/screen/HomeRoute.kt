@@ -1,5 +1,6 @@
 package com.falcon.tripingly.feature.trips.presentation.screen
 
+import com.falcon.tripingly.core.designsystem.component.AppBottomSheet
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -67,13 +68,19 @@ fun HomeRoute(
 
     HomeScreen(state = state, onAction = viewModel::onAction, barsPadding = barsPadding)
 
-    state.dialog?.let { TripDialog(it, viewModel::onAction) }
+    state.dialog?.takeUnless { it.dialog is Dialog.Create }?.let { TripDialog(it, viewModel::onAction) }
 
-    state.membersTripId?.let { tripId ->
-        TripMembersRoute(
-            tripId = tripId,
-            onDismiss = { viewModel.onAction(Action.Trips.DismissMembers) },
-        )
+    AppBottomSheet(
+        value = state.dialog?.takeIf { it.dialog is Dialog.Create },
+        onDismiss = { viewModel.onAction(Action.TripDialog.Dismiss) },
+        dismissEnabled = state.dialog?.isSaving != true,
+    ) { dialog, close ->
+        val form = (dialog.dialog as Dialog.Create).form
+        CreateTripSheet(form = form, isSaving = dialog.isSaving, error = dialog.error, onAction = viewModel::onAction, onClose = close)
+    }
+
+    AppBottomSheet(value = state.membersTripId, onDismiss = { viewModel.onAction(Action.Trips.DismissMembers) }) { tripId, close ->
+        TripMembersRoute(tripId = tripId, onDismiss = close)
     }
 }
 
@@ -82,7 +89,7 @@ private fun TripDialog(state: DialogState, onAction: (Action) -> Unit) {
     val onDismiss = { onAction(Action.TripDialog.Dismiss) }
     val error = state.error?.asString()
     when (val dialog = state.dialog) {
-        is Dialog.Create -> CreateTripSheet(form = dialog.form, isSaving = state.isSaving, error = state.error, onAction = onAction)
+        is Dialog.Create -> Unit
         is Dialog.Rename -> RenameTripDialog(
             name = dialog.name,
             currentName = dialog.trip.name,

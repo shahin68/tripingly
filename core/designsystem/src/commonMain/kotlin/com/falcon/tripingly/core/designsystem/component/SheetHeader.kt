@@ -35,7 +35,8 @@ fun SheetHeader(
     closeEnabled: Boolean = true,
 ) {
     Row(
-        modifier = modifier.fillMaxWidth().padding(start = MaterialTheme.spacing.large, end = MaterialTheme.spacing.medium, bottom = MaterialTheme.spacing.small),
+        // The close button's touch area makes up the rest of the end, so its circle sits as far in as the title.
+        modifier = modifier.fillMaxWidth().padding(start = MaterialTheme.spacing.large, end = MaterialTheme.spacing.medium + MaterialTheme.spacing.extraSmall, bottom = MaterialTheme.spacing.small),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(Modifier.weight(1f)) {

@@ -82,7 +82,7 @@ private val withStops = MapUiState(
 internal class MapScreenPreviewStates : PreviewParameterProvider<MapUiState> {
     override val values = sequenceOf(
         withStops,
-        MapUiState(header = HeaderState(isBusy = true)),
+        MapUiState(header = HeaderState(isLoading = true)),
         withStops.copy(plan = null, layers = MapLayersState()),
         MapUiState(message = MessageState(UiText.Resource(Res.string.map_error_load_trip), canRetry = false)),
     )

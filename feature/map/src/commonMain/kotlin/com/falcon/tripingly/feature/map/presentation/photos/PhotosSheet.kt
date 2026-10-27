@@ -20,10 +20,8 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AddPhotoAlternate
 import androidx.compose.material.icons.filled.PhotoCamera
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -33,6 +31,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.tooling.preview.PreviewParameter
 import androidx.compose.ui.unit.dp
@@ -81,21 +80,19 @@ fun PhotosRoute(
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val pickPhotos = rememberPhotoPicker { images -> viewModel.onAction(Action.OnAddPhotos(images)) }
 
-    ModalBottomSheet(onDismissRequest = onDismiss) {
-        Box {
-            PhotosScreen(
-                state = state,
-                title = title,
-                subtitle = stringResource(if (owner is PhotoOwner.Place) Res.string.map_place_photos else Res.string.map_stop_photos),
-                canAdd = canAdd,
-                canManage = canManage,
-                coverPhotoId = coverPhotoId,
-                onAddPhotos = pickPhotos,
-                onAction = viewModel::onAction,
-                onClose = onDismiss,
-            )
-            MessageBannerHost(Modifier.align(Alignment.TopCenter))
-        }
+    Box {
+        PhotosScreen(
+            state = state,
+            title = title,
+            subtitle = stringResource(if (owner is PhotoOwner.Place) Res.string.map_place_photos else Res.string.map_stop_photos),
+            canAdd = canAdd,
+            canManage = canManage,
+            coverPhotoId = coverPhotoId,
+            onAddPhotos = pickPhotos,
+            onAction = viewModel::onAction,
+            onClose = onDismiss,
+        )
+        MessageBannerHost(Modifier.align(Alignment.TopCenter))
     }
 
     state.openPhotoIndex?.let { index ->
@@ -157,8 +154,9 @@ fun PhotoViewerRoute(
             onDismissRequest = { onAction(Action.OnClosePhoto) },
             properties = DialogProperties(usePlatformDefaultWidth = false),
         ) {
+            // The photo's place in the viewer, shimmering until it's found.
             Box(Modifier.fillMaxSize().background(Color.Black), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator()
+                SkeletonBox(Modifier.fillMaxWidth().aspectRatio(1f), shape = RectangleShape)
             }
         }
         // Not there even after a fresh look (deleted, hidden, or the gallery didn't load): say why, then close.

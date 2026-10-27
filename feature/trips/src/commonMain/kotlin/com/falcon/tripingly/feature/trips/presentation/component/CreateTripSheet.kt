@@ -20,14 +20,10 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.SheetValue
 import androidx.compose.material3.Text
-import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -83,20 +79,11 @@ internal fun CreateTripSheet(
     isSaving: Boolean,
     error: UiText?,
     onAction: (Action) -> Unit,
+    onClose: () -> Unit,
 ) {
-    val saving by rememberUpdatedState(isSaving)
-    val sheetState = rememberModalBottomSheetState(
-        skipPartiallyExpanded = true,
-        confirmValueChange = { it != SheetValue.Hidden || !saving },
-    )
-    ModalBottomSheet(
-        onDismissRequest = { onAction(Action.TripDialog.Dismiss) },
-        sheetState = sheetState,
-    ) {
-        Box {
-            CreateTripSheetContent(form = form, isSaving = isSaving, error = error, onAction = onAction)
-            MessageBannerHost(Modifier.align(Alignment.TopCenter))
-        }
+    Box {
+        CreateTripSheetContent(form = form, isSaving = isSaving, error = error, onAction = onAction, onClose = onClose)
+        MessageBannerHost(Modifier.align(Alignment.TopCenter))
     }
 }
 
@@ -107,6 +94,7 @@ internal fun CreateTripSheetContent(
     error: UiText?,
     onAction: (Action) -> Unit,
     modifier: Modifier = Modifier,
+    onClose: () -> Unit = { onAction(Action.TripDialog.Dismiss) },
 ) {
     var showDatePicker by rememberSaveable { mutableStateOf(false) }
     if (showDatePicker) {
@@ -123,7 +111,7 @@ internal fun CreateTripSheetContent(
 
     // The fields scroll (landscape, keyboard open) while the Create button stays at the bottom.
     Column(modifier = modifier.fillMaxWidth().imePadding()) {
-        SheetHeader(title = stringResource(Res.string.create_trip_title), onClose = { onAction(Action.TripDialog.Dismiss) }, closeEnabled = !isSaving)
+        SheetHeader(title = stringResource(Res.string.create_trip_title), onClose = onClose, closeEnabled = !isSaving)
         Column(
             modifier = Modifier
                 .weight(1f, fill = false)

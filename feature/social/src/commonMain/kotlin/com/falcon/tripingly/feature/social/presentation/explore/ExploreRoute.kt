@@ -3,15 +3,12 @@ package com.falcon.tripingly.feature.social.presentation.explore
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -23,7 +20,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.falcon.tripingly.core.designsystem.component.LoadStateContent
 import com.falcon.tripingly.core.designsystem.component.ReportDialog
 import com.falcon.tripingly.core.designsystem.component.ShowMessage
-import com.falcon.tripingly.core.designsystem.component.SkeletonBox
+import com.falcon.tripingly.core.designsystem.component.Skeleton
 import com.falcon.tripingly.core.designsystem.component.glassSource
 import com.falcon.tripingly.core.designsystem.component.screenContentPadding
 import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
@@ -36,6 +33,7 @@ import com.falcon.tripingly.feature.social.generated.resources.social_explore_em
 import com.falcon.tripingly.feature.social.presentation.component.EmptyText
 import com.falcon.tripingly.feature.social.presentation.component.ExplorePreviewStates
 import com.falcon.tripingly.feature.social.presentation.component.LoadMoreAtEnd
+import com.falcon.tripingly.feature.social.presentation.component.placeholderTrips
 import com.falcon.tripingly.feature.social.presentation.explore.ExploreViewModel.Action
 import com.falcon.tripingly.feature.social.presentation.explore.ExploreViewModel.Event
 import com.falcon.tripingly.feature.social.presentation.explore.ExploreViewModel.State
@@ -108,7 +106,7 @@ fun ExplorePeriodAction(viewModel: ExploreViewModel = koinViewModel()) {
 private fun ExploreGrid(state: State, onAction: (Action) -> Unit, contentPadding: PaddingValues) {
     val gridState = rememberLazyGridState()
     LoadMoreAtEnd(gridState) { onAction(Action.LoadMore) }
-    PullToRefreshBox(isRefreshing = state.isLoading, onRefresh = { onAction(Action.Refresh) }, modifier = Modifier.fillMaxSize()) {
+    PullToRefreshBox(isRefreshing = state.isLoading && state.hasLoaded, onRefresh = { onAction(Action.Refresh) }, modifier = Modifier.fillMaxSize()) {
         LazyVerticalGrid(
             state = gridState,
             columns = GridCells.Adaptive(GridCellMinWidth),
@@ -140,24 +138,25 @@ private fun ExploreGrid(state: State, onAction: (Action) -> Unit, contentPadding
     }
 }
 
-/** Four grey cards in the grid's shape while the first page loads. */
+/** The grid's own cards, drawn from placeholders as a [Skeleton], while the first page loads. */
 @Composable
 private fun ExploreSkeleton(contentPadding: PaddingValues) {
-    LazyVerticalGrid(
-        columns = GridCells.Adaptive(GridCellMinWidth),
-        modifier = Modifier.fillMaxSize(),
-        contentPadding = contentPadding,
-        horizontalArrangement = Arrangement.spacedBy(GridGap),
-        verticalArrangement = Arrangement.spacedBy(GridGap),
-        userScrollEnabled = false,
-    ) {
-        items(SKELETON_CARDS) { SkeletonBox(Modifier.fillMaxWidth().height(ExploreCardHeight), shape = MaterialTheme.shapes.extraLarge) }
+    Skeleton {
+        LazyVerticalGrid(
+            columns = GridCells.Adaptive(GridCellMinWidth),
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = contentPadding,
+            horizontalArrangement = Arrangement.spacedBy(GridGap),
+            verticalArrangement = Arrangement.spacedBy(GridGap),
+            userScrollEnabled = false,
+        ) {
+            items(placeholderTrips + placeholderTrips) { ExploreTripCard(it, {}, {}, {}, {}, {}) }
+        }
     }
 }
 
 private val GridCellMinWidth = 150.dp
 private val GridGap = 12.dp
-private const val SKELETON_CARDS = 4
 
 @Preview
 @Composable
