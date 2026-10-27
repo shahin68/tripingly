@@ -122,7 +122,6 @@
     <!-- Trips timeline (redesign) -->
     <string name="home_today">Heute · %1$s</string>
     <string name="home_trip_more">Mehr zu %1$s</string>
-    <string name="home_no_dates_short">Ohne Daten</string>
     <string name="trip_when_now">Jetzt</string>
     <string name="trip_when_today">Heute</string>
     <string name="trip_when_tomorrow">Morgen</string>
@@ -162,5 +161,4 @@
     <string name="create_trip_dates_label">Reisedaten</string>
     <string name="create_trip_visibility_label">Wer sie sehen kann</string>
     <string name="create_trip_members_label">Mitreisende</string>
-    <string name="create_trip_close">Schließen</string>
 </resources>

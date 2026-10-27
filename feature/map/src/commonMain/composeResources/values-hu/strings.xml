@@ -3,7 +3,6 @@
     <string name="map_day_label_no_date">%1$d. nap</string>
     <string name="map_fit_day">Az egész nap megjelenítése</string>
     <string name="map_plan_handle">A teljes terv megjelenítése vagy elrejtése</string>
-    <string name="map_itinerary_clear_all">Összes törlése</string>
     <string name="map_stop_title_format">%1$d. megálló</string>
     <string name="map_remove_stop">Megálló eltávolítása</string>
     <string name="map_back">Vissza</string>
@@ -15,7 +14,6 @@
     <string name="map_delete_day_title">Törlöd a(z) %1$d. napot?</string>
     <string name="map_delete_day_message">A nap és a(z) %1$d megállója mindenki számára törlődik; a későbbi napok előrébb kerülnek.</string>
     <string name="map_confirm_delete">Törlés</string>
-    <string name="map_cancel">Mégse</string>
 
     <!-- Location errors -->
     <string name="error_location_permission_required">A helyzeted meghatározásához helymeghatározási engedély kell.</string>
@@ -40,7 +38,6 @@
     <string name="map_place_image_report">Kép jelentése</string>
     <string name="map_photos_commons_note">Képek a Wikimedia Commonsról: nyiss meg egyet a szerző és a licenc megtekintéséhez.</string>
     <string name="map_place_images">A hely képei</string>
-    <string name="map_place_hot_count">Hotspot a Tripinlyn</string>
     <string name="map_place_category_cafe">Kávézó</string>
     <string name="map_place_category_restaurant">Étterem</string>
     <string name="map_place_category_bar">Bár</string>
@@ -70,7 +67,6 @@
     <string name="map_photo_delete">Fotó törlése</string>
     <string name="map_photo_delete_title">Törlöd ezt a fotót?</string>
     <string name="map_photo_delete_message">A fotó mindenki számára törlődik az utazásban.</string>
-    <string name="map_photo_processing">Feldolgozás…</string>
     <string name="map_photo_failed">Ezt a fotót nem sikerült feldolgozni</string>
     <string name="map_photo_not_uploaded">Nincs feltöltve</string>
     <string name="map_photo_unreadable">Ez a fotó nem olvasható</string>
@@ -184,10 +180,8 @@
     <string name="map_my_location">Saját hely mutatása</string>
     <string name="map_stop_expand">Több</string>
     <string name="map_stop_collapse">Kevesebb</string>
-    <string name="map_stop_number_day">%1$d. megálló · %2$d. nap</string>
     <string name="map_stop_number">%1$d. megálló</string>
     <string name="map_stop_more">Továbbiak ehhez a megállóhoz</string>
-    <string name="map_place_more">Továbbiak ehhez a helyhez</string>
 
     <!-- Redesign -->
     <string name="map_comments">Hozzászólások</string>

@@ -1,6 +1,5 @@
 <resources>
     <string name="app_name">Tripinly</string>
-    <string name="common_retry">Újra</string>
     <string name="common_cancel">Mégse</string>
     <string name="common_ok">OK</string>
     <string name="common_continue">Tovább</string>
@@ -49,4 +48,9 @@
     <string name="onboarding_error_save_profile">Nem sikerült menteni a profilodat.</string>
     <string name="onboarding_error_load_documents">Nem sikerült betölteni a felhasználási feltételeket és az adatvédelmi tájékoztatót.</string>
     <string name="onboarding_error_accept">Nem sikerült menteni a hozzájárulásodat.</string>
+
+    <!-- Redesign -->
+    <string name="onboarding_display_name_placeholder">Így látnak mások</string>
+    <string name="onboarding_username_placeholder">neved</string>
+    <string name="onboarding_birth_date_placeholder">Válaszd ki a születési dátumod</string>
 </resources>

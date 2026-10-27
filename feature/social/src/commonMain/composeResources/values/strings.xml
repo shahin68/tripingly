@@ -1,8 +1,5 @@
 <resources>
     <!-- Common -->
-    <string name="social_back">Back</string>
-    <string name="social_settings">Settings</string>
-    <string name="social_cancel">Cancel</string>
     <string name="social_more">More</string>
     <string name="social_retry">Try again</string>
     <string name="social_report">Report</string>
@@ -84,7 +81,6 @@
     <string name="social_explore_fall">This fall</string>
     <string name="social_explore_winter">This winter</string>
     <string name="social_explore_all">All time</string>
-    <string name="social_explore_filters">Explore filters</string>
     <string name="social_explore_empty_filtered">No trips match these filters yet.</string>
     <string name="social_explore_nearby_blocked">Location is off for Tripinly. Turn it on in Settings to see trips near you.</string>
     <string name="social_trip_created">Created %1$s</string>

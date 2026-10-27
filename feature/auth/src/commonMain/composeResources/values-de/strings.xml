@@ -1,6 +1,5 @@
 <resources>
     <string name="app_name">Tripinly</string>
-    <string name="common_retry">Erneut versuchen</string>
     <string name="common_cancel">Abbrechen</string>
     <string name="common_ok">OK</string>
     <string name="common_continue">Weiter</string>
@@ -49,4 +48,9 @@
     <string name="onboarding_error_save_profile">Dein Profil konnte nicht gespeichert werden.</string>
     <string name="onboarding_error_load_documents">Die Nutzungsbedingungen und die Datenschutzerklärung konnten nicht geladen werden.</string>
     <string name="onboarding_error_accept">Deine Zustimmung konnte nicht gespeichert werden.</string>
+
+    <!-- Redesign -->
+    <string name="onboarding_display_name_placeholder">So sehen dich andere</string>
+    <string name="onboarding_username_placeholder">deinname</string>
+    <string name="onboarding_birth_date_placeholder">Geburtsdatum wählen</string>
 </resources>

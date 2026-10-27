@@ -3,7 +3,6 @@
     <string name="map_day_label_no_date">Day %1$d</string>
     <string name="map_fit_day">Show the whole day</string>
     <string name="map_plan_handle">Show or hide the whole plan</string>
-    <string name="map_itinerary_clear_all">Clear All</string>
     <string name="map_stop_title_format">Stop #%1$d</string>
     <string name="map_remove_stop">Remove stop</string>
     <string name="map_back">Back</string>
@@ -15,7 +14,6 @@
     <string name="map_delete_day_title">Delete day %1$d?</string>
     <string name="map_delete_day_message">The day and its %1$d stops will be deleted for everyone in the trip; later days move up.</string>
     <string name="map_confirm_delete">Delete</string>
-    <string name="map_cancel">Cancel</string>
 
     <!-- Location errors -->
     <string name="error_location_permission_required">Location permission required to detect your location.</string>
@@ -40,7 +38,6 @@
     <string name="map_place_image_report">Report image</string>
     <string name="map_photos_commons_note">Images from Wikimedia Commons: open one to see its author and licence.</string>
     <string name="map_place_images">Images of this place</string>
-    <string name="map_place_hot_count">Hot on Tripinly</string>
     <string name="map_place_category_cafe">Café</string>
     <string name="map_place_category_restaurant">Restaurant</string>
     <string name="map_place_category_bar">Bar</string>
@@ -70,7 +67,6 @@
     <string name="map_photo_delete">Delete photo</string>
     <string name="map_photo_delete_title">Delete this photo?</string>
     <string name="map_photo_delete_message">The photo will be deleted for everyone in the trip.</string>
-    <string name="map_photo_processing">Processing…</string>
     <string name="map_photo_failed">This photo couldn't be processed</string>
     <string name="map_photo_not_uploaded">Not uploaded</string>
     <string name="map_photo_unreadable">This photo can't be read</string>
@@ -184,10 +180,8 @@
     <string name="map_my_location">Show my location</string>
     <string name="map_stop_expand">Show more</string>
     <string name="map_stop_collapse">Show less</string>
-    <string name="map_stop_number_day">Stop %1$d · Day %2$d</string>
     <string name="map_stop_number">Stop %1$d</string>
     <string name="map_stop_more">More for this stop</string>
-    <string name="map_place_more">More for this place</string>
 
     <!-- Redesign -->
     <string name="map_comments">Comments</string>

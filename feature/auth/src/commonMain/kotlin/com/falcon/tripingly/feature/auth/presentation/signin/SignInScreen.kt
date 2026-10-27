@@ -1,6 +1,7 @@
 package com.falcon.tripingly.feature.auth.presentation.signin
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -8,16 +9,19 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Explore
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -30,7 +34,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.tooling.preview.PreviewParameter
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.falcon.tripingly.core.designsystem.component.FormField
+import com.falcon.tripingly.core.designsystem.component.PrimaryButton
+import com.falcon.tripingly.core.designsystem.component.RoundedTextField
+import com.falcon.tripingly.core.designsystem.component.SecondaryButton
 import com.falcon.tripingly.core.designsystem.component.ShowMessage
 import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
 import com.falcon.tripingly.core.designsystem.theme.spacing
@@ -49,7 +59,6 @@ import com.falcon.tripingly.feature.auth.generated.resources.signin_reason_under
 import com.falcon.tripingly.feature.auth.generated.resources.signin_tagline
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel
-import androidx.compose.ui.tooling.preview.PreviewParameter
 
 @Composable
 internal fun SignInRoute(reason: SignOutReason?) {
@@ -58,6 +67,7 @@ internal fun SignInRoute(reason: SignOutReason?) {
     SignInScreen(state = state, reason = reason, onAction = viewModel::onAction)
 }
 
+/** The app's mark, name and tagline, with the sign-in buttons under them; one centred column in landscape too. */
 @Composable
 internal fun SignInScreen(
     state: SignInViewModel.State,
@@ -65,51 +75,46 @@ internal fun SignInScreen(
     onAction: (SignInViewModel.Action) -> Unit,
 ) {
     var reasonDismissed by rememberSaveable(reason) { mutableStateOf(false) }
-    Surface(modifier = Modifier.fillMaxSize()) {
-        Column(
-            modifier = Modifier
-                .safeDrawingPadding()
-                .verticalScroll(rememberScrollState())
-                .padding(MaterialTheme.spacing.large),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium),
-        ) {
-            Spacer(Modifier.height(MaterialTheme.spacing.huge))
-            Text(stringResource(Res.string.app_name), style = MaterialTheme.typography.displaySmall)
-            Text(
-                text = stringResource(Res.string.signin_tagline),
-                style = MaterialTheme.typography.bodyLarge,
-                textAlign = TextAlign.Center,
-            )
-            Spacer(Modifier.height(MaterialTheme.spacing.large))
-
-            ShowMessage(
-                message = reason?.takeUnless { reasonDismissed }?.let { stringResource(it.message()) },
-                onShown = { reasonDismissed = true },
-            )
-            ShowMessage(message = state.error?.asString(), onShown = { onAction(SignInViewModel.Action.OnDismissError) })
-
-            Button(
-                onClick = { onAction(SignInViewModel.Action.OnGoogleClick) },
-                enabled = !state.isLoading,
-                modifier = Modifier.fillMaxWidth(),
+    ShowMessage(
+        message = reason?.takeUnless { reasonDismissed }?.let { stringResource(it.message()) },
+        onShown = { reasonDismissed = true },
+    )
+    ShowMessage(message = state.error?.asString(), onShown = { onAction(SignInViewModel.Action.OnDismissError) })
+    Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
+        Box(Modifier.fillMaxSize().safeDrawingPadding().verticalScroll(rememberScrollState()), contentAlignment = Alignment.Center) {
+            Column(
+                modifier = Modifier.widthIn(max = ContentMaxWidth).fillMaxWidth().padding(MaterialTheme.spacing.large),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium),
             ) {
-                Text(stringResource(Res.string.signin_google))
-            }
-            if (state.appleAvailable) {
-                // Apple's guidelines: Sign in with Apple is at least as prominent as other options.
-                Button(
-                    onClick = { onAction(SignInViewModel.Action.OnAppleClick) },
+                Surface(shape = CircleShape, color = MaterialTheme.colorScheme.primary, contentColor = MaterialTheme.colorScheme.onPrimary) {
+                    Icon(Icons.Outlined.Explore, contentDescription = null, modifier = Modifier.padding(MaterialTheme.spacing.medium).size(MarkSize))
+                }
+                Text(stringResource(Res.string.app_name), style = MaterialTheme.typography.displaySmall)
+                Text(
+                    text = stringResource(Res.string.signin_tagline),
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.Center,
+                )
+                Spacer(Modifier.height(MaterialTheme.spacing.large))
+                PrimaryButton(
+                    text = stringResource(Res.string.signin_google),
+                    onClick = { onAction(SignInViewModel.Action.OnGoogleClick) },
                     enabled = !state.isLoading,
                     modifier = Modifier.fillMaxWidth(),
-                ) {
-                    Text(stringResource(Res.string.signin_apple))
+                )
+                if (state.appleAvailable) {
+                    // Apple's guidelines: Sign in with Apple is at least as prominent as other options.
+                    PrimaryButton(
+                        text = stringResource(Res.string.signin_apple),
+                        onClick = { onAction(SignInViewModel.Action.OnAppleClick) },
+                        enabled = !state.isLoading,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
                 }
-            }
-            if (state.isLoading) CircularProgressIndicator()
-
-            if (state.developerSignInAvailable) {
-                DeveloperSignIn(state = state, onAction = onAction)
+                if (state.isLoading) CircularProgressIndicator(Modifier.size(SpinnerSize), strokeWidth = 2.dp)
+                if (state.developerSignInAvailable) DeveloperSignIn(state = state, onAction = onAction)
             }
         }
     }
@@ -118,26 +123,28 @@ internal fun SignInScreen(
 /** Local and staging builds only: signs in with any test subject, no Google or Apple account needed. */
 @Composable
 private fun DeveloperSignIn(state: SignInViewModel.State, onAction: (SignInViewModel.Action) -> Unit) {
-    Spacer(Modifier.height(MaterialTheme.spacing.large))
-    HorizontalDivider()
-    Text(stringResource(Res.string.signin_developer_title), style = MaterialTheme.typography.titleSmall)
-    OutlinedTextField(
-        value = state.developerSubject,
-        onValueChange = { onAction(SignInViewModel.Action.OnDeveloperSubjectChange(it)) },
-        label = { Text(stringResource(Res.string.signin_developer_subject)) },
-        singleLine = true,
-        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Go),
-        keyboardActions = KeyboardActions(onGo = { onAction(SignInViewModel.Action.OnDeveloperSignInClick) }),
-        modifier = Modifier.fillMaxWidth(),
-    )
-    OutlinedButton(
-        onClick = { onAction(SignInViewModel.Action.OnDeveloperSignInClick) },
-        enabled = !state.isLoading && state.developerSubject.isNotBlank(),
-        modifier = Modifier.fillMaxWidth(),
-    ) {
-        Text(stringResource(Res.string.signin_developer_button))
+    HorizontalDivider(Modifier.padding(vertical = MaterialTheme.spacing.small))
+    FormField(stringResource(Res.string.signin_developer_title)) {
+        RoundedTextField(
+            value = state.developerSubject,
+            onValueChange = { onAction(SignInViewModel.Action.OnDeveloperSubjectChange(it)) },
+            placeholder = stringResource(Res.string.signin_developer_subject),
+            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Go),
+            keyboardActions = KeyboardActions(onGo = { onAction(SignInViewModel.Action.OnDeveloperSignInClick) }),
+            modifier = Modifier.fillMaxWidth(),
+        )
+        SecondaryButton(
+            text = stringResource(Res.string.signin_developer_button),
+            onClick = { onAction(SignInViewModel.Action.OnDeveloperSignInClick) },
+            enabled = !state.isLoading && state.developerSubject.isNotBlank(),
+            modifier = Modifier.fillMaxWidth(),
+        )
     }
 }
+
+private val ContentMaxWidth = 480.dp
+private val MarkSize = 40.dp
+private val SpinnerSize = 24.dp
 
 private fun SignOutReason.message() = when (this) {
     SignOutReason.SESSION_EXPIRED -> Res.string.signin_reason_session_expired
@@ -162,5 +169,5 @@ private fun SignInScreenReasonPreview() {
 @Preview(widthDp = 800, heightDp = 360)
 @Composable
 private fun SignInScreenLandscapePreview() {
-    TripinglyTheme { SignInScreen(state = SignInViewModel.State(appleAvailable = true, developerSignInAvailable = true), reason = null, onAction = {}) }
+    TripinglyTheme(darkTheme = true) { SignInScreen(state = SignInViewModel.State(appleAvailable = true, developerSignInAvailable = true), reason = null, onAction = {}) }
 }

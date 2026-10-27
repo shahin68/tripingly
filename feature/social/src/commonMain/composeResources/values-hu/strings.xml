@@ -1,8 +1,5 @@
 <resources>
     <!-- Common -->
-    <string name="social_back">Vissza</string>
-    <string name="social_settings">Beállítások</string>
-    <string name="social_cancel">Mégse</string>
     <string name="social_more">Továbbiak</string>
     <string name="social_retry">Újra</string>
     <string name="social_report">Jelentés</string>
@@ -84,7 +81,6 @@
     <string name="social_explore_fall">Idén ősszel</string>
     <string name="social_explore_winter">Idén télen</string>
     <string name="social_explore_all">Minden idők</string>
-    <string name="social_explore_filters">Felfedezés szűrői</string>
     <string name="social_explore_empty_filtered">Még nincs utazás ezekkel a szűrőkkel.</string>
     <string name="social_explore_nearby_blocked">A Tripinly nem fér hozzá a helyadatokhoz. Kapcsold be a Beállításokban, hogy lásd a közeli utakat.</string>
     <string name="social_trip_created">Létrehozva %1$s</string>

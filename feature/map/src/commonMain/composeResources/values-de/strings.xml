@@ -3,7 +3,6 @@
     <string name="map_day_label_no_date">Tag %1$d</string>
     <string name="map_fit_day">Ganzen Tag zeigen</string>
     <string name="map_plan_handle">Ganzen Plan zeigen oder ausblenden</string>
-    <string name="map_itinerary_clear_all">Alle löschen</string>
     <string name="map_stop_title_format">Stopp %1$d</string>
     <string name="map_remove_stop">Stopp entfernen</string>
     <string name="map_back">Zurück</string>
@@ -15,7 +14,6 @@
     <string name="map_delete_day_title">Tag %1$d löschen?</string>
     <string name="map_delete_day_message">Der Tag und seine %1$d Stopps werden für alle Mitglieder gelöscht; spätere Tage rücken nach.</string>
     <string name="map_confirm_delete">Löschen</string>
-    <string name="map_cancel">Abbrechen</string>
 
     <!-- Location errors -->
     <string name="error_location_permission_required">Für deinen Standort wird die Standortberechtigung benötigt.</string>
@@ -40,7 +38,6 @@
     <string name="map_place_image_report">Bild melden</string>
     <string name="map_photos_commons_note">Bilder von Wikimedia Commons: Öffne eines, um Urheber und Lizenz zu sehen.</string>
     <string name="map_place_images">Bilder dieses Ortes</string>
-    <string name="map_place_hot_count">Hotspot auf Tripinly</string>
     <string name="map_place_category_cafe">Café</string>
     <string name="map_place_category_restaurant">Restaurant</string>
     <string name="map_place_category_bar">Bar</string>
@@ -70,7 +67,6 @@
     <string name="map_photo_delete">Foto löschen</string>
     <string name="map_photo_delete_title">Dieses Foto löschen?</string>
     <string name="map_photo_delete_message">Das Foto wird für alle in der Reise gelöscht.</string>
-    <string name="map_photo_processing">Wird verarbeitet…</string>
     <string name="map_photo_failed">Dieses Foto konnte nicht verarbeitet werden</string>
     <string name="map_photo_not_uploaded">Nicht hochgeladen</string>
     <string name="map_photo_unreadable">Dieses Foto kann nicht gelesen werden</string>
@@ -184,10 +180,8 @@
     <string name="map_my_location">Meinen Standort zeigen</string>
     <string name="map_stop_expand">Mehr zeigen</string>
     <string name="map_stop_collapse">Weniger zeigen</string>
-    <string name="map_stop_number_day">Stopp %1$d · Tag %2$d</string>
     <string name="map_stop_number">Stopp %1$d</string>
     <string name="map_stop_more">Mehr zu diesem Stopp</string>
-    <string name="map_place_more">Mehr zu diesem Ort</string>
 
     <!-- Redesign -->
     <string name="map_comments">Kommentare</string>

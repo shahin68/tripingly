@@ -1,5 +1,4 @@
 <resources>
-    <string name="paywall_back">Vissza</string>
     <string name="paywall_title">Tripinly Pro</string>
     <string name="paywall_intro">Tervezd a napjaidat valódi útvonalakkal, ne csak vonalakkal a megállók között.</string>
     <string name="paywall_benefit_routes">Utcákon vezető útvonalak gyalog, kerékpárral és autóval</string>
