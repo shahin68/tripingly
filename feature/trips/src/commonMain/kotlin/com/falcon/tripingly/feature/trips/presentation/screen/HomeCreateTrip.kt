@@ -1,5 +1,7 @@
 package com.falcon.tripingly.feature.trips.presentation.screen
 
+import androidx.compose.foundation.text.input.clearText
+import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
 import com.falcon.tripingly.core.common.error.DataError
 import com.falcon.tripingly.core.common.result.AppResult
 import com.falcon.tripingly.core.data.account.SessionRepository
@@ -56,7 +58,6 @@ internal class HomeCreateTrip(
 
     fun onAction(action: Action.CreateTrip) {
         when (action) {
-            is Action.CreateTrip.NameChanged -> update { it.copy(name = action.name) }
             is Action.CreateTrip.DatesChanged -> update { it.copy(startDate = action.startDate, endDate = action.endDate) }
             is Action.CreateTrip.DestinationQueryChanged -> searchDestination(action.query)
             is Action.CreateTrip.DestinationSelected -> selectDestination(action.result)
@@ -95,8 +96,10 @@ internal class HomeCreateTrip(
 
     /** Asks the server only once typing pauses; every keystroke before that cancels the pending search. A cleared field clears the results at once. */
     private fun searchDestination(query: String) {
+        // Picking a result puts its name in the field; that change isn't a new search.
+        if (query == form?.destination?.name) return
         destinationSearch?.cancel()
-        update { it.copy(destinationQuery = query, destination = null) }
+        update { it.copy(destination = null) }
         if (query.isBlank()) {
             update { it.copy(destinationResults = persistentListOf(), isSearchingDestination = false) }
             return
@@ -114,17 +117,16 @@ internal class HomeCreateTrip(
         update {
             it.copy(
                 destination = Destination(result.name, result.location),
-                destinationQuery = result.name,
                 destinationResults = persistentListOf(),
                 isSearchingDestination = false,
             )
         }
+        form?.destinationQuery?.setTextAndPlaceCursorAtEnd(result.name)
     }
 
     /** Debounced like [searchDestination]. */
     private fun searchMembers(query: String) {
         memberSearch?.cancel()
-        update { it.copy(memberQuery = query) }
         if (query.isBlank()) {
             update { it.copy(memberResults = persistentListOf(), isSearchingMembers = false) }
             return
@@ -142,11 +144,11 @@ internal class HomeCreateTrip(
         update { form ->
             form.copy(
                 members = (if (form.isMember(user)) form.members else form.members + user).toImmutableList(),
-                memberQuery = "",
                 memberResults = persistentListOf(),
                 isSearchingMembers = false,
             )
         }
+        form?.memberQuery?.clearText()
     }
 
     /** Removing the last person the server refused also clears the message about them. */
@@ -186,7 +188,7 @@ internal class HomeCreateTrip(
         ) {
             tripRepository.createTrip(
                 NewTrip(
-                    name = form.name,
+                    name = form.name.text.toString().trim(),
                     startDate = form.startDate,
                     endDate = form.endDate ?: form.startDate,
                     visibility = form.visibility,

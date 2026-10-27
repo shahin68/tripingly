@@ -4,7 +4,6 @@
     <string name="common_cancel">Mégse</string>
 
     <!-- Home -->
-    <string name="home_tab_my_trips">Utazásaim</string>
     <string name="home_search_placeholder_trips">Utazások keresése...</string>
     <string name="home_fab_add_trip">Utazás hozzáadása</string>
     <string name="home_list_empty">Még nincs utazásod. Koppints a + gombra, és hozz létre egyet!</string>
@@ -58,7 +57,6 @@
     <string name="create_trip_member_not_found">Senkinek nincs ilyen felhasználóneve.</string>
     <string name="create_trip_member_blocked">Ezt a személyt nem adhatod hozzá.</string>
     <string name="create_trip_error_members">Néhány ember nem adható hozzá. Távolítsd el őket, és próbáld újra.</string>
-    <string name="create_trip_destination_clear">Úti cél törlése</string>
 
     <!-- Rename trip dialog -->
     <string name="rename_trip_title">Utazás átnevezése</string>

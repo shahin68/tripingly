@@ -10,6 +10,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.text.input.InputTransformation
+import androidx.compose.foundation.text.input.TextFieldState
+import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.AlternateEmail
@@ -37,12 +40,12 @@ import androidx.compose.ui.tooling.preview.PreviewParameter
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.falcon.tripingly.core.common.util.DateUtils
+import com.falcon.tripingly.core.designsystem.component.AppTextField
 import com.falcon.tripingly.core.designsystem.component.ErrorScreen
 import com.falcon.tripingly.core.designsystem.component.FieldButton
 import com.falcon.tripingly.core.designsystem.component.FloatingTopBar
 import com.falcon.tripingly.core.designsystem.component.FormField
 import com.falcon.tripingly.core.designsystem.component.PrimaryButton
-import com.falcon.tripingly.core.designsystem.component.RoundedTextField
 import com.falcon.tripingly.core.designsystem.component.ShowMessage
 import com.falcon.tripingly.core.designsystem.component.screenContentPadding
 import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
@@ -84,13 +87,15 @@ import org.koin.compose.viewmodel.koinViewModel
 internal fun OnboardingRoute() {
     val viewModel: OnboardingViewModel = koinViewModel()
     val state by viewModel.uiState.collectAsStateWithLifecycle()
-    OnboardingScreen(state = state, onAction = viewModel::onAction)
+    OnboardingScreen(state = state, displayName = viewModel.displayNameField, username = viewModel.usernameField, onAction = viewModel::onAction)
 }
 
 /** The profile (name, username, birth date), then the terms and privacy to accept; both under the floating top bar. */
 @Composable
 internal fun OnboardingScreen(
     state: OnboardingViewModel.State,
+    displayName: TextFieldState,
+    username: TextFieldState,
     onAction: (Action) -> Unit,
 ) {
     val consentFailed = state.step == Step.CONSENT && !state.isLoadingDocuments && state.documents.isEmpty()
@@ -126,7 +131,7 @@ internal fun OnboardingScreen(
                 verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium),
             ) {
                 when (state.step) {
-                    Step.PROFILE -> ProfileStep(state, onAction)
+                    Step.PROFILE -> ProfileStep(state, displayName, username, onAction)
                     Step.CONSENT -> ConsentStep(state)
                 }
             }
@@ -138,11 +143,11 @@ internal fun OnboardingScreen(
 }
 
 @Composable
-private fun ColumnScope.ProfileStep(state: OnboardingViewModel.State, onAction: (Action) -> Unit) {
+private fun ColumnScope.ProfileStep(state: OnboardingViewModel.State, displayName: TextFieldState, username: TextFieldState, onAction: (Action) -> Unit) {
     FormField(stringResource(Res.string.onboarding_display_name)) {
-        RoundedTextField(
-            value = state.displayName,
-            onValueChange = { onAction(Action.OnDisplayNameChange(it)) },
+        AppTextField(
+            state = displayName,
+            onTextChange = { onAction(Action.OnDisplayNameChange(it)) },
             placeholder = stringResource(Res.string.onboarding_display_name_placeholder),
             keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Words, imeAction = ImeAction.Next),
             modifier = Modifier.fillMaxWidth(),
@@ -150,11 +155,12 @@ private fun ColumnScope.ProfileStep(state: OnboardingViewModel.State, onAction: 
     }
     FormField(stringResource(Res.string.onboarding_username)) {
         val isError = state.usernameStatus == UsernameStatus.TAKEN || state.usernameStatus == UsernameStatus.INVALID
-        RoundedTextField(
-            value = state.username,
-            onValueChange = { onAction(Action.OnUsernameChange(it)) },
+        AppTextField(
+            state = username,
+            onTextChange = { onAction(Action.OnUsernameChange(it)) },
             placeholder = stringResource(Res.string.onboarding_username_placeholder),
-            leadingIcon = { Icon(Icons.Outlined.AlternateEmail, contentDescription = null) },
+            leadingIcon = Icons.Outlined.AlternateEmail,
+            inputTransformation = UsernameInput,
             isError = isError,
             keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.None, autoCorrectEnabled = false, keyboardType = KeyboardType.Ascii),
             modifier = Modifier.fillMaxWidth(),
@@ -232,22 +238,34 @@ private fun usernameHint(status: UsernameStatus) = when (status) {
 
 private val ContentMaxWidth = 600.dp
 
+/** Usernames are lower case without spaces, shown that way as they're typed. */
+private val UsernameInput = InputTransformation {
+    val typed = asCharSequence().toString()
+    val clean = typed.lowercase().filterNot(Char::isWhitespace)
+    if (clean != typed) replace(0, length, clean)
+}
+
+@Composable
+private fun OnboardingPreview(state: OnboardingViewModel.State) {
+    OnboardingScreen(state, rememberTextFieldState(state.displayName), rememberTextFieldState(state.username), onAction = {})
+}
+
 @Preview
 @Composable
 private fun OnboardingScreenPreview(@PreviewParameter(OnboardingScreenPreviewStates::class) state: OnboardingViewModel.State) {
-    TripinglyTheme { OnboardingScreen(state = state, onAction = {}) }
+    TripinglyTheme { OnboardingPreview(state) }
 }
 
 @Preview
 @Composable
 private fun OnboardingScreenDarkPreview() {
-    TripinglyTheme(darkTheme = true) { OnboardingScreen(state = OnboardingScreenPreviewStates().values.first(), onAction = {}) }
+    TripinglyTheme(darkTheme = true) { OnboardingPreview(OnboardingScreenPreviewStates().values.first()) }
 }
 
 @Preview(widthDp = 800, heightDp = 360)
 @Composable
 private fun OnboardingScreenLandscapePreview() {
-    TripinglyTheme(darkTheme = true) { OnboardingScreen(state = OnboardingScreenPreviewStates().values.last(), onAction = {}) }
+    TripinglyTheme(darkTheme = true) { OnboardingPreview(OnboardingScreenPreviewStates().values.last()) }
 }
 
 @Preview

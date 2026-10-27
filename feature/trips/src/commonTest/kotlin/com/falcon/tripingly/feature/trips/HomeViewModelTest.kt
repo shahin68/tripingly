@@ -1,5 +1,6 @@
 package com.falcon.tripingly.feature.trips
 
+import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
 import com.falcon.tripingly.core.common.error.DataError
 import com.falcon.tripingly.core.common.result.AppResult
 import com.falcon.tripingly.core.data.account.FakeAccountBackend
@@ -159,7 +160,7 @@ class HomeViewModelTest {
         val viewModel = viewModel()
         advanceUntilIdle()
 
-        viewModel.createTrip("Rome", LocalDate(2026, 7, 1), LocalDate(2026, 7, 2))
+        createTrip(viewModel, "Rome", LocalDate(2026, 7, 1), LocalDate(2026, 7, 2))
         advanceUntilIdle()
 
         val state = viewModel.uiState.value
@@ -175,7 +176,7 @@ class HomeViewModelTest {
         advanceUntilIdle()
         backend.nextError = DataError.Network.Api(422, "LIMIT_REACHED", "You've reached the trip limit.")
 
-        viewModel.createTrip("Rome", LocalDate(2026, 7, 1), LocalDate(2026, 7, 2))
+        createTrip(viewModel, "Rome", LocalDate(2026, 7, 1), LocalDate(2026, 7, 2))
         advanceUntilIdle()
 
         val state = viewModel.uiState.value
@@ -207,7 +208,9 @@ class HomeViewModelTest {
         advanceUntilIdle()
 
         viewModel.onAction(Action.Trips.Rename(trip.trip.id))
-        viewModel.onAction(Action.TripDialog.ConfirmRename(trip.trip.id, "Paris in June"))
+        advanceUntilIdle()
+        assertIs<Dialog.Rename>(viewModel.uiState.value.dialog?.dialog).name.setTextAndPlaceCursorAtEnd("Paris in June")
+        viewModel.onAction(Action.TripDialog.ConfirmRename(trip.trip.id))
         advanceUntilIdle()
 
         assertNull(viewModel.uiState.value.dialog)
@@ -354,7 +357,8 @@ class HomeViewModelTest {
         val paris = Destination("Paris", GeoPoint(48.8566, 2.3522))
 
         viewModel.onAction(Action.Trips.Add)
-        viewModel.onAction(Action.CreateTrip.NameChanged("Spring"))
+        advanceUntilIdle()
+        viewModel.uiState.value.form.name.setTextAndPlaceCursorAtEnd("Spring")
         viewModel.onAction(Action.CreateTrip.DatesChanged(LocalDate(2026, 7, 1), LocalDate(2026, 7, 2)))
         viewModel.onAction(Action.CreateTrip.DestinationQueryChanged("Par"))
         advanceUntilIdle()
@@ -371,7 +375,7 @@ class HomeViewModelTest {
         val viewModel = viewModel()
         advanceUntilIdle()
 
-        viewModel.createTrip("Someday", start = null, end = null)
+        createTrip(viewModel, "Someday", start = null, end = null)
         advanceUntilIdle()
 
         assertFalse(viewModel.uiState.value.form.canCreate)
@@ -384,7 +388,7 @@ class HomeViewModelTest {
         val viewModel = viewModel()
         advanceUntilIdle()
 
-        viewModel.createTrip("  ", LocalDate(2026, 7, 1), LocalDate(2026, 7, 2))
+        createTrip(viewModel, "  ", LocalDate(2026, 7, 1), LocalDate(2026, 7, 2))
         advanceUntilIdle()
 
         assertFalse(viewModel.uiState.value.form.canCreate)
@@ -411,7 +415,8 @@ class HomeViewModelTest {
 
         viewModel.onAction(Action.Trips.Add)
         advanceUntilIdle()
-        viewModel.onAction(Action.CreateTrip.NameChanged("Rome"))
+        advanceUntilIdle()
+        viewModel.uiState.value.form.name.setTextAndPlaceCursorAtEnd("Rome")
         viewModel.onAction(Action.CreateTrip.DatesChanged(LocalDate(2026, 7, 1), LocalDate(2026, 7, 2)))
         viewModel.onAction(Action.CreateTrip.VisibilityChanged(TripVisibility.PRIVATE))
         viewModel.onAction(Action.CreateTrip.FriendToggled(anna))
@@ -453,7 +458,8 @@ class HomeViewModelTest {
         val viewModel = viewModel()
         advanceUntilIdle()
         viewModel.onAction(Action.Trips.Add)
-        viewModel.onAction(Action.CreateTrip.NameChanged("Rome"))
+        advanceUntilIdle()
+        viewModel.uiState.value.form.name.setTextAndPlaceCursorAtEnd("Rome")
         viewModel.onAction(Action.CreateTrip.DatesChanged(LocalDate(2026, 7, 1), LocalDate(2026, 7, 2)))
         viewModel.onAction(Action.CreateTrip.FriendToggled(anna))
 
@@ -462,7 +468,7 @@ class HomeViewModelTest {
         advanceUntilIdle()
 
         val form = viewModel.uiState.value.form
-        assertEquals("", form.name)
+        assertEquals("", form.name.text.toString())
         assertTrue(form.members.isEmpty())
     }
 
@@ -474,7 +480,8 @@ class HomeViewModelTest {
         val blocked = UserSummary("u9", "blocked", "Blocked")
 
         viewModel.onAction(Action.Trips.Add)
-        viewModel.onAction(Action.CreateTrip.NameChanged("Rome"))
+        advanceUntilIdle()
+        viewModel.uiState.value.form.name.setTextAndPlaceCursorAtEnd("Rome")
         viewModel.onAction(Action.CreateTrip.DatesChanged(LocalDate(2026, 7, 1), LocalDate(2026, 7, 2)))
         listOf(anna, unknown, blocked).forEach { viewModel.onAction(Action.CreateTrip.MemberAdded(it)) }
         viewModel.onAction(Action.CreateTrip.Confirm)
@@ -545,11 +552,12 @@ class HomeViewModelTest {
     }
 
     /** Opens the sheet, fills in the name and dates and taps Create trip. */
-    private fun HomeViewModel.createTrip(name: String, start: LocalDate?, end: LocalDate?) {
-        onAction(Action.Trips.Add)
-        onAction(Action.CreateTrip.NameChanged(name))
-        onAction(Action.CreateTrip.DatesChanged(start, end))
-        onAction(Action.CreateTrip.Confirm)
+    private fun TestScope.createTrip(viewModel: HomeViewModel, name: String, start: LocalDate?, end: LocalDate?) {
+        viewModel.onAction(Action.Trips.Add)
+        advanceUntilIdle()
+        viewModel.uiState.value.form.name.setTextAndPlaceCursorAtEnd(name)
+        viewModel.onAction(Action.CreateTrip.DatesChanged(start, end))
+        viewModel.onAction(Action.CreateTrip.Confirm)
     }
 }
 

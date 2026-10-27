@@ -205,8 +205,8 @@ internal class MapStateMapper(
         Dialog.DeleteDay -> MapDialog.DeleteDay(dayNumber ?: 1, stops.size)
         Dialog.RemoveMyContent -> MapDialog.RemoveMyContent
         is Dialog.OthersContent -> MapDialog.DeleteOthersContent(dialog.message)
-        is Dialog.Report -> MapDialog.Report(dialog.isSending)
-        is Dialog.NamePin -> MapDialog.NamePin
+        is Dialog.Report -> MapDialog.Report(dialog.isSending, dialog.details)
+        is Dialog.NamePin -> MapDialog.NamePin(dialog.name)
         is Dialog.Location -> MapDialog.Location(dialog.prompt)
         is Dialog.BestOrder -> MapDialog.BestOrder(
             BestOrderPreview(

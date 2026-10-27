@@ -1,5 +1,6 @@
 package com.falcon.tripingly.feature.trips.presentation.screen
 
+import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.runtime.Immutable
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -53,6 +54,9 @@ class HomeViewModel(
     sessionRepository: SessionRepository,
     private val today: () -> LocalDate,
 ) : ViewModel() {
+
+    /** The search field in the top bar; each change comes back as [Action.SearchQueryChanged]. */
+    val searchField = TextFieldState()
 
     /** Everything but the trips, which come from the cache and are filled in below. */
     private val ui = MutableStateFlow(State())
@@ -111,7 +115,7 @@ class HomeViewModel(
                 createTrip.clearSearches()
                 ui.update { it.copy(dialog = null) }
             }
-            is Action.TripDialog.ConfirmRename -> save { tripRepository.updateTrip(action.tripId, TripUpdate(name = action.newName)) }
+            is Action.TripDialog.ConfirmRename -> renameName()?.let { name -> save { tripRepository.updateTrip(action.tripId, TripUpdate(name = name)) } }
             is Action.TripDialog.ConfirmReschedule -> save {
                 tripRepository.updateTrip(action.tripId, TripUpdate(dates = TripDates(action.startDate, action.endDate)))
             }
@@ -119,6 +123,9 @@ class HomeViewModel(
             is Action.TripDialog.ConfirmLeave -> save { tripRepository.leaveTrip(action.tripId) }
         }
     }
+
+    private fun renameName(): String? =
+        (ui.value.dialog?.dialog as? Dialog.Rename)?.name?.text?.toString()?.trim()?.takeIf { it.isNotEmpty() }
 
     private fun refresh() {
         if (ui.value.isRefreshing) return
@@ -223,7 +230,8 @@ class HomeViewModel(
     sealed interface Dialog {
         /** The New trip sheet. */
         data class Create(val form: CreateTripForm) : Dialog
-        data class Rename(val trip: Trip) : Dialog
+        /** [name] is the dialog's field, starting at the trip's name. */
+        data class Rename(val trip: Trip, val name: TextFieldState = TextFieldState(trip.name)) : Dialog
         data class Reschedule(val trip: Trip) : Dialog
         data class ConfirmDelete(val trip: Trip) : Dialog
         data class ConfirmLeave(val trip: Trip) : Dialog
@@ -258,7 +266,7 @@ class HomeViewModel(
         /** The rename, reschedule, delete and leave dialogs (and closing the New trip sheet). */
         sealed interface TripDialog : Action {
             data object Dismiss : TripDialog
-            data class ConfirmRename(val tripId: String, val newName: String) : TripDialog
+            data class ConfirmRename(val tripId: String) : TripDialog
             data class ConfirmReschedule(val tripId: String, val startDate: LocalDate, val endDate: LocalDate) : TripDialog
             data class ConfirmDelete(val tripId: String) : TripDialog
             data class ConfirmLeave(val tripId: String) : TripDialog
@@ -266,7 +274,6 @@ class HomeViewModel(
 
         /** The New trip sheet's fields. */
         sealed interface CreateTrip : Action {
-            data class NameChanged(val name: String) : CreateTrip
             data class DatesChanged(val startDate: LocalDate?, val endDate: LocalDate?) : CreateTrip
             data class DestinationQueryChanged(val query: String) : CreateTrip
             data class DestinationSelected(val result: PlaceSearchResult) : CreateTrip

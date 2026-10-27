@@ -7,8 +7,8 @@ import com.falcon.tripingly.core.ui.UiText
 import com.falcon.tripingly.feature.map.generated.resources.Res
 import com.falcon.tripingly.feature.map.generated.resources.map_error_send_comment
 import com.falcon.tripingly.feature.map.presentation.comments.StopCommentsViewModel.State
-import kotlinx.collections.immutable.persistentListOf
 import kotlin.time.Instant
+import kotlinx.collections.immutable.persistentListOf
 
 private val previewComments = persistentListOf(
     Comment(
@@ -33,12 +33,12 @@ private val previewComments = persistentListOf(
     ),
 )
 
-/** Comments with a draft, loading, no comments yet, and an error while sending. */
+/** Comments, loading, no comments yet, and an error while sending. */
 internal class StopCommentsPreviewStates : PreviewParameterProvider<State> {
     override val values = sequenceOf(
-        State(comments = previewComments, isLoading = false, draft = "Thanks, good to know!"),
+        State(comments = previewComments, isLoading = false),
         State(),
         State(isLoading = false),
-        State(comments = previewComments, isLoading = false, draft = "Thanks!", isSending = true, message = UiText.Resource(Res.string.map_error_send_comment)),
+        State(comments = previewComments, isLoading = false, isSending = true, message = UiText.Resource(Res.string.map_error_send_comment)),
     )
 }

@@ -1,5 +1,6 @@
 package com.falcon.tripingly.feature.social.presentation.people
 
+import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.runtime.Immutable
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -23,6 +24,9 @@ import kotlinx.coroutines.launch
 
 /** Finding people by name from the Profile tab's search field; the results replace the profile while it's in use. */
 class PeopleSearchViewModel(private val userRepository: UserRepository) : ViewModel() {
+
+    /** The search field under the Profile tab's top bar; each change comes back as [Action.QueryChanged]. */
+    val queryField = TextFieldState()
 
     private val _uiState = MutableStateFlow(State())
     val uiState: StateFlow<State> = _uiState.asStateFlow()

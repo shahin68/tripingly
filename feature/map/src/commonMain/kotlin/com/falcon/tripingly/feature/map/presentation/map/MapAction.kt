@@ -128,14 +128,14 @@ sealed interface MapAction {
     }
 
     sealed interface Dialog : MapAction {
-        data class ConfirmPinName(val name: String) : Dialog
+        data object ConfirmPinName : Dialog
         data object DismissPinName : Dialog
         data object Confirm : Dialog
         data object DismissConfirm : Dialog
         /** Deletes the stop or day although other people's content goes with it. */
         data object DeleteAnyway : Dialog
         data object DismissDeleteAnyway : Dialog
-        data class SendReport(val reason: ReportReason, val details: String) : Dialog
+        data class SendReport(val reason: ReportReason) : Dialog
         data object DismissReport : Dialog
         data object ApplyBestOrder : Dialog
         data object DismissBestOrder : Dialog

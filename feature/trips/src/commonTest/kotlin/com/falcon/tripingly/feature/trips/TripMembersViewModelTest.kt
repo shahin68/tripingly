@@ -1,5 +1,6 @@
 package com.falcon.tripingly.feature.trips
 
+import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
 import com.falcon.tripingly.core.common.error.DataError
 import com.falcon.tripingly.core.common.result.AppResult
 import com.falcon.tripingly.core.data.trips.FakeTripBackend
@@ -130,7 +131,7 @@ class TripMembersViewModelTest {
         backgroundScope.launch { viewModel.uiState.collect {} }
         viewModel.onAction(Action.Opened)
         advanceUntilIdle()
-        viewModel.onAction(Action.Add.UsernameChanged("som"))
+        viewModel.uiState.value.add.username.setTextAndPlaceCursorAtEnd("som")
         viewModel.onAction(Action.Add.FriendToggled(viewModel.uiState.value.add.friends.first()))
         backend.seedJoinRequest(JoinRequest("r1", trip.id, UserSummary("u-mia", "mia", "Mia"), Instant.parse("2026-10-16T10:00:00Z")))
 
@@ -139,7 +140,7 @@ class TripMembersViewModelTest {
 
         val state = viewModel.uiState.value
         assertEquals(listOf("mia"), state.joinRequests.requests.map { it.user.username })
-        assertEquals("", state.add.username)
+        assertEquals("", state.add.username.text.toString())
         assertTrue(state.add.pickedFriends.isEmpty())
     }
 
@@ -148,7 +149,7 @@ class TripMembersViewModelTest {
         val viewModel = viewModel()
         advanceUntilIdle()
 
-        viewModel.onAction(Action.Add.UsernameChanged("@Anna"))
+        viewModel.uiState.value.add.username.setTextAndPlaceCursorAtEnd("@Anna")
         viewModel.onAction(Action.Add.ByUsername)
         advanceUntilIdle()
 
@@ -156,7 +157,7 @@ class TripMembersViewModelTest {
         assertTrue(state.canManage)
         assertEquals(listOf(TripRole.OWNER, TripRole.EDITOR), state.members.map { it.role })
         assertEquals("anna", state.members[1].user.username)
-        assertEquals("", state.add.username)
+        assertEquals("", state.add.username.text.toString())
     }
 
     @Test
@@ -164,20 +165,20 @@ class TripMembersViewModelTest {
         val viewModel = viewModel()
         advanceUntilIdle()
 
-        viewModel.onAction(Action.Add.UsernameChanged("unknown"))
+        viewModel.uiState.value.add.username.setTextAndPlaceCursorAtEnd("unknown")
         viewModel.onAction(Action.Add.ByUsername)
         advanceUntilIdle()
 
         val message = assertIs<UiText.Resource>(viewModel.uiState.value.message)
         assertEquals(Res.string.members_error_user_not_found, message.resource)
-        assertEquals("unknown", viewModel.uiState.value.add.username)
+        assertEquals("unknown", viewModel.uiState.value.add.username.text.toString())
     }
 
     @Test
     fun removeMember_removesTheEditor() = runTest {
         val viewModel = viewModel()
         advanceUntilIdle()
-        viewModel.onAction(Action.Add.UsernameChanged("anna"))
+        viewModel.uiState.value.add.username.setTextAndPlaceCursorAtEnd("anna")
         viewModel.onAction(Action.Add.ByUsername)
         advanceUntilIdle()
 

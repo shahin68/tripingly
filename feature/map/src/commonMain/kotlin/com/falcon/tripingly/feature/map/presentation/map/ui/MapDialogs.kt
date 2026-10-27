@@ -4,21 +4,23 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.text.input.InputTransformation
+import androidx.compose.foundation.text.input.TextFieldState
+import androidx.compose.foundation.text.input.maxLength
+import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.tooling.preview.PreviewParameter
 import com.falcon.tripingly.core.designsystem.component.AppDialog
+import com.falcon.tripingly.core.designsystem.component.AppTextField
 import com.falcon.tripingly.core.designsystem.component.ReportDialog
-import com.falcon.tripingly.core.designsystem.component.RoundedTextField
 import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
 import com.falcon.tripingly.core.designsystem.theme.spacing
 import com.falcon.tripingly.feature.map.generated.resources.Res
@@ -83,11 +85,12 @@ internal fun MapDialogs(dialog: MapDialog, onAction: (MapAction) -> Unit) {
             onDismiss = { onAction(MapAction.Dialog.DismissDeleteAnyway) },
         )
         is MapDialog.Report -> ReportDialog(
-            onReport = { reason, details -> onAction(MapAction.Dialog.SendReport(reason, details)) },
+            details = dialog.details,
+            onReport = { reason -> onAction(MapAction.Dialog.SendReport(reason)) },
             onDismiss = { onAction(MapAction.Dialog.DismissReport) },
             isSending = dialog.isSending,
         )
-        MapDialog.NamePin -> NamePinDialog(onAction)
+        is MapDialog.NamePin -> NamePinDialog(dialog.name, onAction)
         is MapDialog.Location -> AppDialog(
             title = stringResource(
                 when (dialog.prompt) {
@@ -150,22 +153,23 @@ private fun BestOrderDialog(order: BestOrderPreview, onAction: (MapAction) -> Un
     }
 }
 
+/** Names a dropped pin; [name] is the view model's field. Done on the keyboard adds the stop. */
 @Composable
-private fun NamePinDialog(onAction: (MapAction) -> Unit) {
-    // What the user typed: the text field's own state, kept across a rotation.
-    var name by rememberSaveable { mutableStateOf("") }
+private fun NamePinDialog(name: TextFieldState, onAction: (MapAction) -> Unit) {
+    val canAdd = name.text.isNotBlank()
     AppDialog(
         title = stringResource(Res.string.map_pin_name_title),
         confirmLabel = stringResource(Res.string.map_pin_add),
-        confirmEnabled = name.isNotBlank(),
-        onConfirm = { onAction(MapAction.Dialog.ConfirmPinName(name)) },
+        confirmEnabled = canAdd,
+        onConfirm = { onAction(MapAction.Dialog.ConfirmPinName) },
         onDismiss = { onAction(MapAction.Dialog.DismissPinName) },
     ) {
-        RoundedTextField(
-            value = name,
-            onValueChange = { name = it.take(MAX_PIN_NAME_LENGTH) },
+        AppTextField(
+            state = name,
             placeholder = stringResource(Res.string.map_pin_name_label),
+            onImeAction = { if (canAdd) onAction(MapAction.Dialog.ConfirmPinName) },
             keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Words),
+            inputTransformation = InputTransformation.maxLength(MAX_PIN_NAME_LENGTH),
         )
     }
 }
@@ -182,7 +186,7 @@ private fun MapDialogsPreview(@PreviewParameter(MapDialogPreviewStates::class) d
 @Preview
 @Composable
 private fun MapDialogsDarkPreview() {
-    TripinglyTheme(darkTheme = true) { MapDialogs(dialog = MapDialog.NamePin, onAction = {}) }
+    TripinglyTheme(darkTheme = true) { MapDialogs(dialog = MapDialog.NamePin(rememberTextFieldState("Our hotel")), onAction = {}) }
 }
 
 @Preview(widthDp = 800, heightDp = 360)

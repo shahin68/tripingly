@@ -5,4 +5,7 @@
     <string name="tab_explore">Explore</string>
     <string name="tab_nearby">Nearby</string>
     <string name="tab_profile">Profile</string>
+
+    <!-- Shared top bar -->
+    <string name="tab_trips_title">My Trips</string>
 </resources>

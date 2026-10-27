@@ -32,9 +32,8 @@ import org.koin.compose.viewmodel.koinViewModel
 @Composable
 fun HomeRoute(
     onNavigateToMap: (String) -> Unit,
-    onOpenSettings: () -> Unit,
-    /** The tab shell's floating bottom bar, which the list scrolls behind. */
-    bottomBarPadding: PaddingValues = PaddingValues(),
+    /** The tab shell's floating top and bottom bars, which the list scrolls behind. */
+    barsPadding: PaddingValues = PaddingValues(),
     viewModel: HomeViewModel = koinViewModel(),
     shareManager: ShareManager = koinInject(),
 ) {
@@ -66,12 +65,7 @@ fun HomeRoute(
         }
     }
 
-    HomeScreen(
-        state = state,
-        onAction = viewModel::onAction,
-        onOpenSettings = onOpenSettings,
-        bottomBarPadding = bottomBarPadding,
-    )
+    HomeScreen(state = state, onAction = viewModel::onAction, barsPadding = barsPadding)
 
     state.dialog?.let { TripDialog(it, viewModel::onAction) }
 
@@ -90,11 +84,12 @@ private fun TripDialog(state: DialogState, onAction: (Action) -> Unit) {
     when (val dialog = state.dialog) {
         is Dialog.Create -> CreateTripSheet(form = dialog.form, isSaving = state.isSaving, error = state.error, onAction = onAction)
         is Dialog.Rename -> RenameTripDialog(
-            initialName = dialog.trip.name,
+            name = dialog.name,
+            currentName = dialog.trip.name,
             isSaving = state.isSaving,
             error = error,
             onDismiss = onDismiss,
-            onConfirm = { onAction(Action.TripDialog.ConfirmRename(dialog.trip.id, it)) },
+            onConfirm = { onAction(Action.TripDialog.ConfirmRename(dialog.trip.id)) },
         )
         is Dialog.Reschedule -> RescheduleTripDialog(
             initialStartDate = dialog.trip.startDate,

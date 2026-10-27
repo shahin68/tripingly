@@ -1,5 +1,6 @@
 package com.falcon.tripingly.feature.trips.presentation.component
 
+import androidx.compose.foundation.text.input.TextFieldState
 import com.falcon.tripingly.core.model.account.TripVisibility
 import com.falcon.tripingly.core.model.place.PlaceSearchResult
 import com.falcon.tripingly.core.model.trip.GeoPoint
@@ -15,10 +16,10 @@ private val jonas = UserSummary("u2", "jonas.k", "Jonas")
 private val lena = UserSummary("u3", "lena", "Lena")
 
 internal val createTripFormPreviewData = CreateTripForm(
-    name = "Summer in Vienna",
+    name = TextFieldState("Summer in Vienna"),
     startDate = LocalDate(2026, 7, 1),
     endDate = LocalDate(2026, 7, 4),
-    destinationQuery = "Vie",
+    destinationQuery = TextFieldState("Vie"),
     destinationResults = persistentListOf(PlaceSearchResult("Vienna", "Austria", GeoPoint(48.2082, 16.3738))),
     visibility = TripVisibility.PUBLIC,
     members = persistentListOf(anna),
@@ -26,7 +27,7 @@ internal val createTripFormPreviewData = CreateTripForm(
 )
 
 internal val createTripFormWithErrorsPreviewData = createTripFormPreviewData.copy(
-    destinationQuery = "Vienna",
+    destinationQuery = TextFieldState("Vienna"),
     destinationResults = persistentListOf(),
     visibility = TripVisibility.PRIVATE,
     members = persistentListOf(anna, UserSummary("u9", "nobody", "Nobody")),

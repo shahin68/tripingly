@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -47,7 +48,7 @@ fun FormField(
 private fun SectionLabelPreviewContent() {
     Column(Modifier.background(MaterialTheme.colorScheme.surface).padding(MaterialTheme.spacing.medium)) {
         SectionLabel("Who can see it")
-        FormField("Trip name") { RoundedTextField("Autumn in Vienna", {}, "Give it a name", Modifier.fillMaxWidth()) }
+        FormField("Trip name") { AppTextField(rememberTextFieldState("Autumn in Vienna"), "Give it a name", Modifier.fillMaxWidth()) }
     }
 }
 

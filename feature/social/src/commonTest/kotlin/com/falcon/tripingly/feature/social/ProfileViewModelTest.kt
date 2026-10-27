@@ -174,7 +174,7 @@ class ProfileViewModelTest {
         advanceUntilIdle()
 
         viewModel.onAction(Action.Person.Report)
-        viewModel.onAction(Action.Report.Send(ReportReason.Spam, ""))
+        viewModel.onAction(Action.Report.Send(ReportReason.Spam))
         advanceUntilIdle()
 
         assertEquals(null, viewModel.uiState.value.report)

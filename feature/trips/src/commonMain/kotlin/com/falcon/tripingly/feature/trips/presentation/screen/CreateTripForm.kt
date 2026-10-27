@@ -1,5 +1,6 @@
 package com.falcon.tripingly.feature.trips.presentation.screen
 
+import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.runtime.Immutable
 import com.falcon.tripingly.core.model.account.TripVisibility
 import com.falcon.tripingly.core.model.place.PlaceSearchResult
@@ -12,22 +13,25 @@ import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.persistentMapOf
 import kotlinx.datetime.LocalDate
 
-/** What the New trip sheet shows; kept in [HomeViewModel] so it survives a rotation. */
+/**
+ * What the New trip sheet shows; kept in [HomeViewModel] so it survives a rotation. The text fields' states are part
+ * of the form, so a new sheet starts with empty fields.
+ */
 @Immutable
 data class CreateTripForm(
-    val name: String = "",
+    val name: TextFieldState = TextFieldState(),
     /** Required to create the trip (Shahin, 2026-10-11); with only a start date the trip is one day long. */
     val startDate: LocalDate? = null,
     val endDate: LocalDate? = null,
     /** What is typed into the destination field; the picked place's name once [destination] is set. */
-    val destinationQuery: String = "",
+    val destinationQuery: TextFieldState = TextFieldState(),
     val destination: Destination? = null,
     val destinationResults: ImmutableList<PlaceSearchResult> = persistentListOf(),
     val isSearchingDestination: Boolean = false,
     /** Starts at the user's `defaultTripVisibility`. */
     val visibility: TripVisibility = TripVisibility.PUBLIC,
     /** What is typed into the username field. */
-    val memberQuery: String = "",
+    val memberQuery: TextFieldState = TextFieldState(),
     val memberResults: ImmutableList<UserSummary> = persistentListOf(),
     val isSearchingMembers: Boolean = false,
     /** People who join as editors when the trip is created, in the order they were picked. */
@@ -37,7 +41,7 @@ data class CreateTripForm(
     /** The user's friends, to pick with one tap; empty hides the row. */
     val friends: ImmutableList<UserSummary> = persistentListOf(),
 ) {
-    val canCreate: Boolean get() = name.isNotBlank() && startDate != null
+    val canCreate: Boolean get() = name.text.isNotBlank() && startDate != null
 
     fun isMember(user: UserSummary): Boolean = members.any { it.username == user.username }
 }

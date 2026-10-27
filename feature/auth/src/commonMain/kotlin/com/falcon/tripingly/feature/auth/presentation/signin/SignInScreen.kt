@@ -13,8 +13,9 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.text.input.TextFieldState
+import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Explore
@@ -32,14 +33,15 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.tooling.preview.PreviewParameter
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.falcon.tripingly.core.designsystem.component.AppTextField
 import com.falcon.tripingly.core.designsystem.component.FormField
 import com.falcon.tripingly.core.designsystem.component.PrimaryButton
-import com.falcon.tripingly.core.designsystem.component.RoundedTextField
 import com.falcon.tripingly.core.designsystem.component.SecondaryButton
 import com.falcon.tripingly.core.designsystem.component.ShowMessage
 import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
@@ -64,13 +66,14 @@ import org.koin.compose.viewmodel.koinViewModel
 internal fun SignInRoute(reason: SignOutReason?) {
     val viewModel: SignInViewModel = koinViewModel()
     val state by viewModel.uiState.collectAsStateWithLifecycle()
-    SignInScreen(state = state, reason = reason, onAction = viewModel::onAction)
+    SignInScreen(state = state, developerSubject = viewModel.developerSubject, reason = reason, onAction = viewModel::onAction)
 }
 
 /** The app's mark, name and tagline, with the sign-in buttons under them; one centred column in landscape too. */
 @Composable
 internal fun SignInScreen(
     state: SignInViewModel.State,
+    developerSubject: TextFieldState,
     reason: SignOutReason?,
     onAction: (SignInViewModel.Action) -> Unit,
 ) {
@@ -114,7 +117,7 @@ internal fun SignInScreen(
                     )
                 }
                 if (state.isLoading) CircularProgressIndicator(Modifier.size(SpinnerSize), strokeWidth = 2.dp)
-                if (state.developerSignInAvailable) DeveloperSignIn(state = state, onAction = onAction)
+                if (state.developerSignInAvailable) DeveloperSignIn(state = state, subject = developerSubject, onAction = onAction)
             }
         }
     }
@@ -122,21 +125,20 @@ internal fun SignInScreen(
 
 /** Local and staging builds only: signs in with any test subject, no Google or Apple account needed. */
 @Composable
-private fun DeveloperSignIn(state: SignInViewModel.State, onAction: (SignInViewModel.Action) -> Unit) {
+private fun DeveloperSignIn(state: SignInViewModel.State, subject: TextFieldState, onAction: (SignInViewModel.Action) -> Unit) {
     HorizontalDivider(Modifier.padding(vertical = MaterialTheme.spacing.small))
     FormField(stringResource(Res.string.signin_developer_title)) {
-        RoundedTextField(
-            value = state.developerSubject,
-            onValueChange = { onAction(SignInViewModel.Action.OnDeveloperSubjectChange(it)) },
+        AppTextField(
+            state = subject,
             placeholder = stringResource(Res.string.signin_developer_subject),
-            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Go),
-            keyboardActions = KeyboardActions(onGo = { onAction(SignInViewModel.Action.OnDeveloperSignInClick) }),
+            onImeAction = { onAction(SignInViewModel.Action.OnDeveloperSignInClick) },
+            keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.None, autoCorrectEnabled = false, imeAction = ImeAction.Go),
             modifier = Modifier.fillMaxWidth(),
         )
         SecondaryButton(
             text = stringResource(Res.string.signin_developer_button),
             onClick = { onAction(SignInViewModel.Action.OnDeveloperSignInClick) },
-            enabled = !state.isLoading && state.developerSubject.isNotBlank(),
+            enabled = !state.isLoading && subject.text.isNotBlank(),
             modifier = Modifier.fillMaxWidth(),
         )
     }
@@ -156,18 +158,18 @@ private fun SignOutReason.message() = when (this) {
 @Preview
 @Composable
 private fun SignInScreenPreview(@PreviewParameter(SignInScreenPreviewStates::class) state: SignInViewModel.State) {
-    TripinglyTheme { SignInScreen(state = state, reason = null, onAction = {}) }
+    TripinglyTheme { SignInScreen(state = state, developerSubject = rememberTextFieldState("tester"), reason = null, onAction = {}) }
 }
 
 /** Signed out because the session expired. */
 @Preview
 @Composable
 private fun SignInScreenReasonPreview() {
-    TripinglyTheme(darkTheme = true) { SignInScreen(state = SignInViewModel.State(appleAvailable = true), reason = SignOutReason.SESSION_EXPIRED, onAction = {}) }
+    TripinglyTheme(darkTheme = true) { SignInScreen(state = SignInViewModel.State(appleAvailable = true), developerSubject = rememberTextFieldState(), reason = SignOutReason.SESSION_EXPIRED, onAction = {}) }
 }
 
 @Preview(widthDp = 800, heightDp = 360)
 @Composable
 private fun SignInScreenLandscapePreview() {
-    TripinglyTheme(darkTheme = true) { SignInScreen(state = SignInViewModel.State(appleAvailable = true, developerSignInAvailable = true), reason = null, onAction = {}) }
+    TripinglyTheme(darkTheme = true) { SignInScreen(state = SignInViewModel.State(appleAvailable = true, developerSignInAvailable = true), developerSubject = rememberTextFieldState(), reason = null, onAction = {}) }
 }

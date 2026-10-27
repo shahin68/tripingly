@@ -102,7 +102,7 @@ class ProfileViewModel(
                 Action.Trips.LoadMore -> loadMore()
             }
             is Action.Report -> when (action) {
-                is Action.Report.Send -> sendReport(action.reason, action.details)
+                is Action.Report.Send -> sendReport(action.reason)
                 Action.Report.Dismiss -> _uiState.update { it.copy(report = null) }
             }
         }
@@ -213,11 +213,11 @@ class ProfileViewModel(
         }
     }
 
-    private fun sendReport(reason: ReportReason, details: String) {
+    private fun sendReport(reason: ReportReason) {
         val report = _uiState.value.report?.takeUnless { it.isSending } ?: return
         _uiState.update { it.copy(report = report.copy(isSending = true)) }
         viewModelScope.launch {
-            val sent = socialRepository.sendReport(report, reason, details, ::showMessage)
+            val sent = socialRepository.sendReport(report, reason, ::showMessage)
             _uiState.update { state -> state.copy(report = state.report?.copy(isSending = false)?.takeUnless { sent }) }
         }
     }
@@ -266,7 +266,7 @@ class ProfileViewModel(
         }
 
         sealed interface Report : Action {
-            data class Send(val reason: ReportReason, val details: String) : Report
+            data class Send(val reason: ReportReason) : Report
             data object Dismiss : Report
         }
     }

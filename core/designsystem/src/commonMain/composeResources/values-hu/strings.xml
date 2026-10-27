@@ -1,7 +1,6 @@
 <resources>
     <!-- Common -->
     <string name="common_dismiss">Bezárás</string>
-    <string name="common_search_placeholder">Keresés…</string>
     <string name="osm_attribution">© OpenStreetMap közreműködők</string>
     <string name="image_credit_commons">Wikimedia Commons</string>
     <string name="image_credit_public_domain">Közkincs</string>
@@ -27,7 +26,6 @@
 
     <!-- Shell and states -->
     <string name="common_settings">Beállítások</string>
-    <string name="common_clear_search">Keresés törlése</string>
     <string name="common_back">Vissza</string>
     <string name="error_title">Valami hiba történt</string>
     <string name="error_message">Ezt nem sikerült betölteni. Kérjük, próbáld újra.</string>
@@ -36,4 +34,5 @@
 
     <!-- Redesign -->
     <string name="common_close">Bezárás</string>
+    <string name="common_clear">Törlés</string>
 </resources>

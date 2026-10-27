@@ -65,7 +65,7 @@ class NearbyViewModel(
             is Action.ReportImage -> _uiState.update {
                 it.copy(report = ReportState(if (action.photo.credit != null) ReportTarget.PlaceImage else ReportTarget.Photo, action.photo.id))
             }
-            is Action.SendReport -> sendReport(action.reason, action.details)
+            is Action.SendReport -> sendReport(action.reason)
             Action.DismissReport -> _uiState.update { it.copy(report = null) }
             is Action.AddToTrip -> onAddToTrip(action)
             Action.DismissMessage -> _uiState.update { it.copy(message = null) }
@@ -80,11 +80,11 @@ class NearbyViewModel(
         }
     }
 
-    private fun sendReport(reason: ReportReason, details: String) {
+    private fun sendReport(reason: ReportReason) {
         val report = _uiState.value.report?.takeUnless { it.isSending } ?: return
         _uiState.update { it.copy(report = report.copy(isSending = true)) }
         viewModelScope.launch {
-            val sent = socialRepository.sendReport(report, reason, details, ::showMessage)
+            val sent = socialRepository.sendReport(report, reason, ::showMessage)
             _uiState.update { it.copy(report = if (sent) null else it.report?.copy(isSending = false)) }
         }
     }
@@ -145,7 +145,7 @@ class NearbyViewModel(
         data class OpenImage(val place: NearbyPlace) : Action
         data object CloseImage : Action
         data class ReportImage(val photo: Photo) : Action
-        data class SendReport(val reason: ReportReason, val details: String) : Action
+        data class SendReport(val reason: ReportReason) : Action
         data object DismissReport : Action
         data object DismissMessage : Action
 

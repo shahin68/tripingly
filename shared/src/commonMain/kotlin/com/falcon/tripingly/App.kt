@@ -131,7 +131,6 @@ private fun MainNavigation() {
                     onBack = { goBack() },
                     onOpenTrip = { backStack.add(TripMap(it)) },
                     onOpenProfile = { backStack.add(Profile(it)) },
-                    onOpenSettings = { backStack.add(Settings) },
                 )
                 is Settings -> SettingsRoute(onBack = { goBack() }, onOpenPro = { backStack.add(Paywall) })
                 is Paywall -> PaywallRoute(onBack = { goBack() })

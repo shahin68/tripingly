@@ -5,7 +5,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -19,7 +18,6 @@ import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
@@ -32,11 +30,9 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.falcon.tripingly.core.designsystem.component.ErrorScreen
-import com.falcon.tripingly.core.designsystem.component.FloatingTopBar
 import com.falcon.tripingly.core.designsystem.component.LoadStateContent
 import com.falcon.tripingly.core.designsystem.component.OsmAttribution
 import com.falcon.tripingly.core.designsystem.component.ReportDialog
-import com.falcon.tripingly.core.designsystem.component.SettingsAction
 import com.falcon.tripingly.core.designsystem.component.ShowMessage
 import com.falcon.tripingly.core.designsystem.component.glassSource
 import com.falcon.tripingly.core.designsystem.component.screenContentPadding
@@ -64,13 +60,12 @@ import com.falcon.tripingly.feature.social.presentation.nearby.NearbyViewModel.S
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel
 
-/** The Nearby tab. [bottomBarPadding] is the tab shell's floating bottom bar, which the list scrolls behind. */
+/** The Nearby tab. [barsPadding] is the tab shell's floating top and bottom bars, which the list scrolls behind. */
 @Composable
 fun NearbyRoute(
     onOpenTrip: (tripId: String) -> Unit,
-    onOpenSettings: () -> Unit,
     placeImageContent: @Composable (placeId: String, imageId: String, onReport: (Photo) -> Unit, onDismiss: () -> Unit) -> Unit,
-    bottomBarPadding: PaddingValues = PaddingValues(),
+    barsPadding: PaddingValues = PaddingValues(),
     viewModel: NearbyViewModel = koinViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -88,7 +83,7 @@ fun NearbyRoute(
         }
     }
 
-    NearbyScreen(state = state, onAction = viewModel::onAction, onOpenSettings = onOpenSettings, bottomBarPadding = bottomBarPadding)
+    NearbyScreen(state = state, onAction = viewModel::onAction, barsPadding = barsPadding)
 
     // A place's images with their credits, opened from its cover.
     state.openImage?.let { place ->
@@ -98,7 +93,8 @@ fun NearbyRoute(
     }
     state.report?.let { report ->
         ReportDialog(
-            onReport = { reason, details -> viewModel.onAction(Action.SendReport(reason, details)) },
+            details = report.details,
+            onReport = { reason -> viewModel.onAction(Action.SendReport(reason)) },
             onDismiss = { viewModel.onAction(Action.DismissReport) },
             isSending = report.isSending,
         )
@@ -110,17 +106,12 @@ fun NearbyRoute(
 internal fun NearbyScreen(
     state: State,
     onAction: (Action) -> Unit,
-    onOpenSettings: () -> Unit,
     modifier: Modifier = Modifier,
-    bottomBarPadding: PaddingValues = PaddingValues(),
+    barsPadding: PaddingValues = PaddingValues(),
 ) {
-    Scaffold(
-        modifier = modifier.fillMaxSize(),
-        contentWindowInsets = WindowInsets(0),
-        topBar = { FloatingTopBar(title = stringResource(Res.string.social_nearby), actions = { SettingsAction(onOpenSettings) }) },
-    ) { padding ->
-        val contentPadding = screenContentPadding(padding, bottomBarPadding)
-        ShowMessage(message = state.message?.asString(), onShown = { onAction(Action.DismissMessage) }, isError = state.message !is UiText.Note)
+    val contentPadding = screenContentPadding(barsPadding)
+    ShowMessage(message = state.message?.asString(), onShown = { onAction(Action.DismissMessage) }, isError = state.message !is UiText.Note)
+    Box(modifier.fillMaxSize()) {
         when (state.status) {
             Status.NeedsPermission, Status.Blocked, Status.Unavailable -> LocationAsk(state.status, onAction, contentPadding)
             else -> LoadStateContent(
@@ -206,17 +197,17 @@ private val NoteIconSize = 14.dp
 @Preview
 @Composable
 private fun NearbyScreenPreview(@PreviewParameter(NearbyPreviewStates::class) state: State) {
-    TripinglyTheme { NearbyScreen(state = state, onAction = {}, onOpenSettings = {}) }
+    TripinglyTheme { NearbyScreen(state = state, onAction = {}) }
 }
 
 @Preview
 @Composable
 private fun NearbyScreenDarkPreview() {
-    TripinglyTheme(darkTheme = true) { NearbyScreen(state = NearbyPreviewStates().values.elementAt(3), onAction = {}, onOpenSettings = {}) }
+    TripinglyTheme(darkTheme = true) { NearbyScreen(state = NearbyPreviewStates().values.elementAt(3), onAction = {}) }
 }
 
 @Preview(widthDp = 800, heightDp = 360)
 @Composable
 private fun NearbyScreenLandscapePreview() {
-    TripinglyTheme { NearbyScreen(state = NearbyPreviewStates().values.elementAt(3), onAction = {}, onOpenSettings = {}) }
+    TripinglyTheme { NearbyScreen(state = NearbyPreviewStates().values.elementAt(3), onAction = {}) }
 }

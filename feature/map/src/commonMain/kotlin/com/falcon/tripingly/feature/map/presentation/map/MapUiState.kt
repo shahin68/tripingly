@@ -1,5 +1,6 @@
 package com.falcon.tripingly.feature.map.presentation.map
 
+import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.runtime.Immutable
 import com.falcon.tripingly.core.location.model.Coordinates
 import com.falcon.tripingly.core.model.place.GeoBounds
@@ -87,7 +88,7 @@ data class EditorMenu(val canDeleteDay: Boolean)
 
 @Immutable
 data class SearchState(
-    val query: String = "",
+    val query: TextFieldState = TextFieldState(),
     val results: ImmutableList<PlaceSearchResult> = persistentListOf(),
     /** A search is waiting for the server. */
     val isSearching: Boolean = false,
@@ -221,10 +222,10 @@ sealed interface MapDialog {
     data object RemoveMyContent : MapDialog
     /** Deleting would delete other people's photos, comments or likes too; the server's [message] says so. */
     data class DeleteOthersContent(val message: UiText) : MapDialog
-    /** Reports the trip, a stop or a photo; [isSending] while the server answers. */
-    data class Report(val isSending: Boolean) : MapDialog
-    /** A long press dropped a pin, waiting for its name. */
-    data object NamePin : MapDialog
+    /** Reports the trip, a stop or a photo; [isSending] while the server answers; [details] is the text field. */
+    data class Report(val isSending: Boolean, val details: TextFieldState) : MapDialog
+    /** A long press dropped a pin, waiting for its [name] (the text field). */
+    data class NamePin(val name: TextFieldState) : MapDialog
     /** The location button can't simply ask: explain first (Android), or send the user to Settings. */
     data class Location(val prompt: LocationPrompt) : MapDialog
     /** The best order for the open day, waiting for Apply. */

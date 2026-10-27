@@ -6,7 +6,6 @@
     <string name="social_reported">Thanks. We’ll take a look.</string>
 
     <!-- Social tab -->
-    <string name="social_explore">Explore</string>
     <string name="social_nearby">Nearby</string>
     <string name="social_explore_empty">No public trips to explore yet.</string>
     <string name="social_people_none">No one found with that name.</string>
@@ -86,7 +85,6 @@
     <string name="social_trip_created">Created %1$s</string>
 
     <!-- Tabs (redesign) -->
-    <string name="social_profile">Profile</string>
     <string name="social_search_people">Search people…</string>
     <string name="social_near_me">Near me</string>
     <string name="social_location_note">Your location is only used to find places and is never saved.</string>

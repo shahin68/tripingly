@@ -12,7 +12,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.Lock
@@ -20,7 +19,6 @@ import androidx.compose.material.icons.outlined.Public
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.SheetValue
@@ -39,12 +37,12 @@ import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.falcon.tripingly.core.common.util.DateUtils
+import com.falcon.tripingly.core.designsystem.component.AppTextField
 import com.falcon.tripingly.core.designsystem.component.FieldButton
 import com.falcon.tripingly.core.designsystem.component.FormField
 import com.falcon.tripingly.core.designsystem.component.MessageBannerHost
 import com.falcon.tripingly.core.designsystem.component.OsmAttribution
 import com.falcon.tripingly.core.designsystem.component.PrimaryButton
-import com.falcon.tripingly.core.designsystem.component.RoundedTextField
 import com.falcon.tripingly.core.designsystem.component.SegmentedToggle
 import com.falcon.tripingly.core.designsystem.component.SegmentedToggleOption
 import com.falcon.tripingly.core.designsystem.component.SheetHeader
@@ -57,7 +55,6 @@ import com.falcon.tripingly.feature.trips.generated.resources.Res
 import com.falcon.tripingly.feature.trips.generated.resources.create_trip_button_create
 import com.falcon.tripingly.feature.trips.generated.resources.create_trip_dates_add
 import com.falcon.tripingly.feature.trips.generated.resources.create_trip_dates_label
-import com.falcon.tripingly.feature.trips.generated.resources.create_trip_destination_clear
 import com.falcon.tripingly.feature.trips.generated.resources.create_trip_destination_label
 import com.falcon.tripingly.feature.trips.generated.resources.create_trip_destination_placeholder
 import com.falcon.tripingly.feature.trips.generated.resources.create_trip_members_label
@@ -135,9 +132,8 @@ internal fun CreateTripSheetContent(
             verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium),
         ) {
             FormField(stringResource(Res.string.create_trip_name_label)) {
-                RoundedTextField(
-                    value = form.name,
-                    onValueChange = { onAction(Action.CreateTrip.NameChanged(it)) },
+                AppTextField(
+                    state = form.name,
                     placeholder = stringResource(Res.string.create_trip_name_placeholder),
                     enabled = !isSaving,
                     keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences, imeAction = ImeAction.Next),
@@ -201,21 +197,15 @@ internal fun CreateTripSheetContent(
 @Composable
 private fun DestinationField(form: CreateTripForm, isSaving: Boolean, onAction: (Action) -> Unit) {
     Column {
-        RoundedTextField(
-            value = form.destinationQuery,
-            onValueChange = { onAction(Action.CreateTrip.DestinationQueryChanged(it)) },
+        AppTextField(
+            state = form.destinationQuery,
             placeholder = stringResource(Res.string.create_trip_destination_placeholder),
-            leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
-            trailingIcon = {
-                when {
-                    form.isSearchingDestination -> CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
-                    form.destinationQuery.isNotEmpty() -> IconButton(
-                        onClick = { onAction(Action.CreateTrip.DestinationQueryChanged("")) },
-                        enabled = !isSaving,
-                    ) {
-                        Icon(Icons.Default.Close, contentDescription = stringResource(Res.string.create_trip_destination_clear))
-                    }
-                }
+            onTextChange = { onAction(Action.CreateTrip.DestinationQueryChanged(it)) },
+            leadingIcon = Icons.Default.Search,
+            trailing = if (form.isSearchingDestination) {
+                { CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp) }
+            } else {
+                null
             },
             enabled = !isSaving,
             keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Words, imeAction = ImeAction.Search),

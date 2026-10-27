@@ -3,7 +3,6 @@ package com.falcon.tripingly.feature.social.presentation.profile
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.lazy.LazyColumn
@@ -11,7 +10,6 @@ import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
@@ -22,16 +20,15 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.falcon.tripingly.core.designsystem.component.AppTextField
+import com.falcon.tripingly.core.designsystem.component.AppTextFieldStyle
 import com.falcon.tripingly.core.designsystem.component.ButtonSize
-import com.falcon.tripingly.core.designsystem.component.FloatingTopBar
-import com.falcon.tripingly.core.designsystem.component.SecondaryButton
 import com.falcon.tripingly.core.designsystem.component.LoadStateContent
+import com.falcon.tripingly.core.designsystem.component.SecondaryButton
 import com.falcon.tripingly.core.designsystem.component.SegmentedToggle
 import com.falcon.tripingly.core.designsystem.component.SegmentedToggleOption
-import com.falcon.tripingly.core.designsystem.component.SettingsAction
 import com.falcon.tripingly.core.designsystem.component.ShowMessage
 import com.falcon.tripingly.core.designsystem.component.SkeletonCard
-import com.falcon.tripingly.core.designsystem.component.TopBarSearchField
 import com.falcon.tripingly.core.designsystem.component.glassSource
 import com.falcon.tripingly.core.designsystem.component.screenContentPadding
 import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
@@ -47,7 +44,6 @@ import com.falcon.tripingly.feature.social.generated.resources.social_following_
 import com.falcon.tripingly.feature.social.generated.resources.social_friends
 import com.falcon.tripingly.feature.social.generated.resources.social_friends_empty
 import com.falcon.tripingly.feature.social.generated.resources.social_people_none
-import com.falcon.tripingly.feature.social.generated.resources.social_profile
 import com.falcon.tripingly.feature.social.generated.resources.social_profile_no_trips
 import com.falcon.tripingly.feature.social.generated.resources.social_retry
 import com.falcon.tripingly.feature.social.generated.resources.social_search_people
@@ -78,16 +74,15 @@ internal enum class ProfileSegment(val label: StringResource, val list: PeopleLi
 }
 
 /**
- * The Profile tab: a floating top bar with people search and Settings; my header and counts; then my public trips
- * or my friends, the people I follow or my followers. While a name is typed, the people found replace it all.
+ * The Profile tab: my header and counts, then my public trips or my friends, the people I follow or my followers.
+ * While a name is typed in the shell's top bar ([PeopleSearchField]), the people found replace it all.
  */
 @Composable
 internal fun MyProfileTab(
     state: State,
     onAction: (Action) -> Unit,
     onOpenProfile: (username: String) -> Unit,
-    onOpenSettings: () -> Unit,
-    bottomBarPadding: PaddingValues,
+    barsPadding: PaddingValues,
     searchViewModel: PeopleSearchViewModel = koinViewModel(),
 ) {
     val search by searchViewModel.uiState.collectAsStateWithLifecycle()
@@ -105,13 +100,11 @@ internal fun MyProfileTab(
         segment = segment,
         people = people?.first,
         onAction = onAction,
-        onSearch = { searchViewModel.onAction(PeopleSearchViewModel.Action.QueryChanged(it)) },
         onDismissSearchMessage = { searchViewModel.onAction(PeopleSearchViewModel.Action.DismissMessage) },
         onSegment = { segment = it },
         onPeopleAction = { action -> people?.second?.invoke(action) },
         onOpenProfile = onOpenProfile,
-        onOpenSettings = onOpenSettings,
-        bottomBarPadding = bottomBarPadding,
+        barsPadding = barsPadding,
     )
 }
 
@@ -122,71 +115,70 @@ internal fun MyProfileScreen(
     segment: ProfileSegment,
     people: PeopleViewModel.State?,
     onAction: (Action) -> Unit,
-    onSearch: (String) -> Unit,
     onDismissSearchMessage: () -> Unit,
     onSegment: (ProfileSegment) -> Unit,
     onPeopleAction: (PeopleViewModel.Action) -> Unit,
     onOpenProfile: (username: String) -> Unit,
-    onOpenSettings: () -> Unit,
-    bottomBarPadding: PaddingValues = PaddingValues(),
+    barsPadding: PaddingValues = PaddingValues(),
 ) {
-    Scaffold(
-        contentWindowInsets = WindowInsets(0),
-        topBar = {
-            FloatingTopBar(
-                title = stringResource(Res.string.social_profile),
-                actions = { SettingsAction(onOpenSettings) },
-                search = { TopBarSearchField(query = search.query, onQueryChange = onSearch, placeholder = stringResource(Res.string.social_search_people)) },
-            )
+    val contentPadding = screenContentPadding(barsPadding)
+    val message = state.message ?: search.message ?: people?.message
+    ShowMessage(
+        message = message?.asString(),
+        onShown = {
+            when (message) {
+                state.message -> onAction(Action.DismissMessage)
+                search.message -> onDismissSearchMessage()
+                else -> onPeopleAction(PeopleViewModel.Action.OnDismissMessage)
+            }
         },
-    ) { padding ->
-        val contentPadding = screenContentPadding(padding, bottomBarPadding)
-        val message = state.message ?: search.message ?: people?.message
-        ShowMessage(
-            message = message?.asString(),
-            onShown = {
-                when (message) {
-                    state.message -> onAction(Action.DismissMessage)
-                    search.message -> onDismissSearchMessage()
-                    else -> onPeopleAction(PeopleViewModel.Action.OnDismissMessage)
-                }
-            },
-            isError = message !is UiText.Note,
-        )
-        LoadStateContent(
-            isLoading = state.profile == null && state.isLoading,
-            errorMessage = state.loadError?.asString(),
-            onRetry = { onAction(Action.Retry) },
+        isError = message !is UiText.Note,
+    )
+    LoadStateContent(
+        isLoading = state.profile == null && state.isLoading,
+        errorMessage = state.loadError?.asString(),
+        onRetry = { onAction(Action.Retry) },
+        contentPadding = contentPadding,
+    ) {
+        val listState = rememberLazyListState()
+        LoadMoreAtEnd(listState) { if (segment.list == null) onAction(Action.Trips.LoadMore) else onPeopleAction(PeopleViewModel.Action.OnLoadMore) }
+        LazyColumn(
+            state = listState,
+            modifier = Modifier.fillMaxSize().glassSource(),
             contentPadding = contentPadding,
+            verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
         ) {
-            val listState = rememberLazyListState()
-            LoadMoreAtEnd(listState) { if (segment.list == null) onAction(Action.Trips.LoadMore) else onPeopleAction(PeopleViewModel.Action.OnLoadMore) }
-            LazyColumn(
-                state = listState,
-                modifier = Modifier.fillMaxSize().glassSource(),
-                contentPadding = contentPadding,
-                verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
-            ) {
-                if (search.isSearching) {
-                    peopleItems(search.results, isLoading = search.isLoading, loadError = null, empty = Res.string.social_people_none, onRetry = {}, onOpenProfile)
-                    return@LazyColumn
-                }
-                state.profile?.let { item(key = "header") { MyProfileHeader(it, Modifier.animateItem()) } }
-                item(key = "segments") { Segments(segment, onSegment, Modifier.animateItem()) }
-                when (val list = segment.list) {
-                    null -> tripItems(state, onAction)
-                    else -> peopleItems(
-                        people = people?.people.orEmpty(),
-                        isLoading = people?.hasLoaded != true,
-                        loadError = people?.loadError,
-                        empty = list.empty,
-                        onRetry = { onPeopleAction(PeopleViewModel.Action.OnRetry) },
-                        onOpenProfile = onOpenProfile,
-                    )
-                }
+            if (search.isSearching) {
+                peopleItems(search.results, isLoading = search.isLoading, loadError = null, empty = Res.string.social_people_none, onRetry = {}, onOpenProfile)
+                return@LazyColumn
+            }
+            state.profile?.let { item(key = "header") { MyProfileHeader(it, Modifier.animateItem()) } }
+            item(key = "segments") { Segments(segment, onSegment, Modifier.animateItem()) }
+            when (val list = segment.list) {
+                null -> tripItems(state, onAction)
+                else -> peopleItems(
+                    people = people?.people.orEmpty(),
+                    isLoading = people?.hasLoaded != true,
+                    loadError = people?.loadError,
+                    empty = list.empty,
+                    onRetry = { onPeopleAction(PeopleViewModel.Action.OnRetry) },
+                    onOpenProfile = onOpenProfile,
+                )
             }
         }
     }
+}
+
+/** The Profile tab's part of the shell's top bar: people search, on the tab's own [PeopleSearchViewModel]. */
+@Composable
+fun PeopleSearchField(viewModel: PeopleSearchViewModel = koinViewModel()) {
+    AppTextField(
+        state = viewModel.queryField,
+        placeholder = stringResource(Res.string.social_search_people),
+        onTextChange = { viewModel.onAction(PeopleSearchViewModel.Action.QueryChanged(it)) },
+        modifier = Modifier.fillMaxWidth(),
+        style = AppTextFieldStyle.Search,
+    )
 }
 
 @Composable
@@ -255,7 +247,7 @@ private fun MyProfilePreview(segment: ProfileSegment, darkTheme: Boolean = false
             search = PeopleSearchViewModel.State(query = query, results = previewPeople.toImmutableList()),
             segment = segment,
             people = PeopleViewModel.State(people = previewPeople.toImmutableList(), hasLoaded = true),
-            onAction = {}, onSearch = {}, onDismissSearchMessage = {}, onSegment = {}, onPeopleAction = {}, onOpenProfile = {}, onOpenSettings = {},
+            onAction = {}, onDismissSearchMessage = {}, onSegment = {}, onPeopleAction = {}, onOpenProfile = {},
         )
     }
 }

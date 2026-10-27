@@ -1,5 +1,8 @@
 package com.falcon.tripingly.feature.auth.presentation.onboarding
 
+import androidx.compose.foundation.text.input.TextFieldState
+import androidx.compose.foundation.text.input.clearText
+import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.falcon.tripingly.core.common.error.DataError
@@ -93,6 +96,10 @@ internal class OnboardingViewModel(
     private var account: Account? = null
     private var usernameCheck: Job? = null
 
+    /** The profile step's fields; each change comes back as [Action.OnDisplayNameChange] or [Action.OnUsernameChange]. */
+    val displayNameField = TextFieldState()
+    val usernameField = TextFieldState()
+
     init {
         viewModelScope.launch {
             sessionRepository.session.collect { session ->
@@ -144,6 +151,8 @@ internal class OnboardingViewModel(
     private fun forgetAccount() {
         usernameCheck?.cancel()
         account = null
+        displayNameField.clearText()
+        usernameField.clearText()
         _uiState.value = State()
     }
 
@@ -161,6 +170,8 @@ internal class OnboardingViewModel(
                 usernameStatus = if (account.username != null) UsernameStatus.AVAILABLE else UsernameStatus.IDLE,
                 birthDate = account.birthDate,
             )
+            displayNameField.setTextAndPlaceCursorAtEnd(account.displayName.orEmpty())
+            usernameField.setTextAndPlaceCursorAtEnd(account.username.orEmpty())
         } else {
             _uiState.update { it.copy(step = step) }
         }

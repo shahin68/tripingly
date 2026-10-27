@@ -78,17 +78,17 @@ class ExploreViewModel(
             is Action.LikeTrip -> tripActions.toggleLike(action.trip.trip.id)
             is Action.ToggleSaveTrip -> tripActions.toggleSave(action.trip.trip.id)
             is Action.ReportTrip -> _uiState.update { it.copy(report = ReportState(ReportTarget.Trip, action.trip.trip.id)) }
-            is Action.SendReport -> sendReport(action.reason, action.details)
+            is Action.SendReport -> sendReport(action.reason)
             Action.DismissReport -> _uiState.update { it.copy(report = null) }
             Action.DismissMessage -> _uiState.update { it.copy(message = null) }
         }
     }
 
-    private fun sendReport(reason: ReportReason, details: String) {
+    private fun sendReport(reason: ReportReason) {
         val report = _uiState.value.report?.takeUnless { it.isSending } ?: return
         _uiState.update { it.copy(report = report.copy(isSending = true)) }
         viewModelScope.launch {
-            val sent = socialRepository.sendReport(report, reason, details, ::showMessage)
+            val sent = socialRepository.sendReport(report, reason, ::showMessage)
             _uiState.update { it.copy(report = if (sent) null else it.report?.copy(isSending = false)) }
         }
     }
@@ -136,7 +136,7 @@ class ExploreViewModel(
         data class LikeTrip(val trip: PublicTrip) : Action
         data class ToggleSaveTrip(val trip: PublicTrip) : Action
         data class ReportTrip(val trip: PublicTrip) : Action
-        data class SendReport(val reason: ReportReason, val details: String) : Action
+        data class SendReport(val reason: ReportReason) : Action
         data object DismissReport : Action
         data object DismissMessage : Action
     }

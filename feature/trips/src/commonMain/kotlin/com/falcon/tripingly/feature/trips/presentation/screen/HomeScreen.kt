@@ -3,18 +3,12 @@ package com.falcon.tripingly.feature.trips.presentation.screen
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExtendedFloatingActionButton
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
@@ -24,89 +18,53 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.tooling.preview.PreviewParameter
 import androidx.compose.ui.unit.dp
-import com.falcon.tripingly.core.designsystem.component.FloatingTopBar
 import com.falcon.tripingly.core.designsystem.component.LoadStateContent
-import com.falcon.tripingly.core.designsystem.component.SettingsAction
 import com.falcon.tripingly.core.designsystem.component.ShowMessage
-import com.falcon.tripingly.core.designsystem.component.TopBarSearchField
 import com.falcon.tripingly.core.designsystem.component.glassSource
 import com.falcon.tripingly.core.designsystem.component.screenContentPadding
 import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
 import com.falcon.tripingly.core.designsystem.theme.spacing
 import com.falcon.tripingly.core.ui.UiText
 import com.falcon.tripingly.feature.trips.generated.resources.Res
-import com.falcon.tripingly.feature.trips.generated.resources.home_fab_add_trip
 import com.falcon.tripingly.feature.trips.generated.resources.home_list_empty
 import com.falcon.tripingly.feature.trips.generated.resources.home_list_no_matches
-import com.falcon.tripingly.feature.trips.generated.resources.home_search_placeholder_trips
-import com.falcon.tripingly.feature.trips.generated.resources.home_tab_my_trips
 import com.falcon.tripingly.feature.trips.presentation.screen.HomeViewModel.Action
 import com.falcon.tripingly.feature.trips.presentation.screen.HomeViewModel.State
 import org.jetbrains.compose.resources.stringResource
 
 /**
- * The Trips tab: a floating top bar with search and Settings, the trips as a timeline under it, and the Add Trip
- * button. [bottomBarPadding] is the tab shell's floating bottom bar, which the list scrolls behind.
+ * The Trips tab: the trips as a timeline. The tab shell draws the shared top bar (with [TripsSearchField]), the
+ * bottom bar and the [AddTripButton] over it; [barsPadding] is their room, which the list scrolls behind.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
     state: State,
     onAction: (Action) -> Unit,
-    onOpenSettings: () -> Unit,
     modifier: Modifier = Modifier,
-    bottomBarPadding: PaddingValues = PaddingValues(),
+    barsPadding: PaddingValues = PaddingValues(),
 ) {
-    Scaffold(
+    val contentPadding = screenContentPadding(barsPadding, extraBottom = FabClearance)
+    ShowMessage(
+        message = state.message?.asString(),
+        onShown = { onAction(Action.DismissMessage) },
+        isError = state.message !is UiText.Note,
+    )
+    PullToRefreshBox(
+        isRefreshing = state.isRefreshing && state.hasLoaded,
+        onRefresh = { onAction(Action.Trips.Refresh) },
         modifier = modifier.fillMaxSize(),
-        contentWindowInsets = WindowInsets(0),
-        topBar = {
-            FloatingTopBar(
-                title = stringResource(Res.string.home_tab_my_trips),
-                actions = { SettingsAction(onOpenSettings) },
-                search = {
-                    TopBarSearchField(
-                        query = state.searchQuery,
-                        onQueryChange = { onAction(Action.SearchQueryChanged(it)) },
-                        placeholder = stringResource(Res.string.home_search_placeholder_trips),
-                    )
-                },
-            )
-        },
-        floatingActionButton = {
-            ExtendedFloatingActionButton(
-                text = { Text(stringResource(Res.string.home_fab_add_trip)) },
-                icon = { Icon(Icons.Default.Add, contentDescription = null) },
-                onClick = { onAction(Action.Trips.Add) },
-                containerColor = MaterialTheme.colorScheme.primary,
-                contentColor = MaterialTheme.colorScheme.onPrimary,
-                shape = MaterialTheme.shapes.extraLarge,
-                modifier = Modifier.padding(bottom = bottomBarPadding.calculateBottomPadding()),
-            )
-        },
-    ) { padding ->
-        val contentPadding = screenContentPadding(padding, bottomBarPadding, extraBottom = FabClearance)
-        ShowMessage(
-            message = state.message?.asString(),
-            onShown = { onAction(Action.DismissMessage) },
-            isError = state.message !is UiText.Note,
-        )
-        PullToRefreshBox(
-            isRefreshing = state.isRefreshing && state.hasLoaded,
-            onRefresh = { onAction(Action.Trips.Refresh) },
-            modifier = Modifier.fillMaxSize(),
+    ) {
+        LoadStateContent(
+            isLoading = !state.hasLoaded,
+            errorMessage = state.loadError?.asString(),
+            onRetry = { onAction(Action.Trips.Refresh) },
+            contentPadding = contentPadding,
         ) {
-            LoadStateContent(
-                isLoading = !state.hasLoaded,
-                errorMessage = state.loadError?.asString(),
-                onRetry = { onAction(Action.Trips.Refresh) },
-                contentPadding = contentPadding,
-            ) {
-                if (state.timeline.isEmpty) {
-                    EmptyTrips(hasTrips = state.hasTrips, contentPadding = contentPadding)
-                } else {
-                    TripTimelineList(state.timeline, onAction, contentPadding)
-                }
+            if (state.timeline.isEmpty) {
+                EmptyTrips(hasTrips = state.hasTrips, contentPadding = contentPadding)
+            } else {
+                TripTimelineList(state.timeline, onAction, contentPadding)
             }
         }
     }
@@ -160,14 +118,14 @@ private val FabClearance = 72.dp
 @Preview
 @Composable
 private fun HomeScreenPreview(@PreviewParameter(HomeScreenPreviewStates::class) state: State) {
-    TripinglyTheme { HomeScreen(state = state, onAction = {}, onOpenSettings = {}) }
+    TripinglyTheme { HomeScreen(state = state, onAction = {}) }
 }
 
 @Preview
 @Composable
 private fun HomeScreenDarkPreview() {
     TripinglyTheme(darkTheme = true) {
-        HomeScreen(state = HomeScreenPreviewStates().values.first(), onAction = {}, onOpenSettings = {})
+        HomeScreen(state = HomeScreenPreviewStates().values.first(), onAction = {})
     }
 }
 
@@ -175,6 +133,6 @@ private fun HomeScreenDarkPreview() {
 @Composable
 private fun HomeScreenLandscapePreview() {
     TripinglyTheme(darkTheme = true) {
-        Box { HomeScreen(state = HomeScreenPreviewStates().values.first(), onAction = {}, onOpenSettings = {}) }
+        Box { HomeScreen(state = HomeScreenPreviewStates().values.first(), onAction = {}) }
     }
 }

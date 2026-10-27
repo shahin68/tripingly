@@ -6,7 +6,6 @@
     <string name="social_reported">Köszönjük. Megnézzük.</string>
 
     <!-- Social tab -->
-    <string name="social_explore">Felfedezés</string>
     <string name="social_nearby">A közelben</string>
     <string name="social_explore_empty">Még nincs felfedezhető nyilvános utazás.</string>
     <string name="social_people_none">Nincs ilyen nevű felhasználó.</string>
@@ -86,7 +85,6 @@
     <string name="social_trip_created">Létrehozva %1$s</string>
 
     <!-- Tabs (redesign) -->
-    <string name="social_profile">Profil</string>
     <string name="social_search_people">Emberek keresése…</string>
     <string name="social_near_me">A közelemben</string>
     <string name="social_location_note">A helyzetedet csak helyek kereséséhez használjuk, és soha nem mentjük.</string>

@@ -10,11 +10,10 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.PersonAdd
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -30,11 +29,11 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.falcon.tripingly.core.common.util.DateUtils
+import com.falcon.tripingly.core.designsystem.component.AppTextField
 import com.falcon.tripingly.core.designsystem.component.AvatarCircle
 import com.falcon.tripingly.core.designsystem.component.AvatarSize
 import com.falcon.tripingly.core.designsystem.component.ButtonSize
 import com.falcon.tripingly.core.designsystem.component.PrimaryButton
-import com.falcon.tripingly.core.designsystem.component.RoundedTextField
 import com.falcon.tripingly.core.designsystem.component.SecondaryButton
 import com.falcon.tripingly.core.designsystem.component.SkeletonBox
 import com.falcon.tripingly.core.designsystem.component.SkeletonDefaults
@@ -129,11 +128,11 @@ internal fun AddMemberField(state: AddState, onAction: (Action) -> Unit) {
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
     ) {
-        RoundedTextField(
-            value = state.username,
-            onValueChange = { onAction(Action.Add.UsernameChanged(it)) },
+        AppTextField(
+            state = state.username,
             placeholder = stringResource(Res.string.members_add_label),
-            leadingIcon = { Icon(Icons.Default.PersonAdd, contentDescription = null) },
+            onImeAction = { onAction(Action.Add.ByUsername) },
+            leadingIcon = Icons.Default.PersonAdd,
             enabled = !state.isAdding,
             keyboardOptions = KeyboardOptions(
                 capitalization = KeyboardCapitalization.None,
@@ -141,13 +140,12 @@ internal fun AddMemberField(state: AddState, onAction: (Action) -> Unit) {
                 keyboardType = KeyboardType.Ascii,
                 imeAction = ImeAction.Done,
             ),
-            keyboardActions = KeyboardActions(onDone = { onAction(Action.Add.ByUsername) }),
             modifier = Modifier.weight(1f),
         )
         SecondaryButton(
             text = stringResource(Res.string.members_add_button),
             onClick = { onAction(Action.Add.ByUsername) },
-            enabled = state.username.isNotBlank(),
+            enabled = state.username.text.isNotBlank(),
             isLoading = state.isAdding,
             size = ButtonSize.Small,
         )
@@ -204,7 +202,7 @@ private fun AddMemberFieldPreview() {
     TripinglyTheme {
         Column(Modifier.background(MaterialTheme.colorScheme.surface)) {
             AddMemberField(state = AddState(), onAction = {})
-            AddMemberField(state = AddState(username = "jonas.k", isAdding = true), onAction = {})
+            AddMemberField(state = AddState(username = TextFieldState("jonas.k"), isAdding = true), onAction = {})
         }
     }
 }
@@ -225,7 +223,7 @@ private fun MembersRowsDarkPreview() {
             JoinRequestRow(previewJoinRequest, isAnswering = false, onAccept = {}, onDecline = {})
             previewMembers.forEach { member -> MemberRow(member = member, canRemove = member.role != TripRole.OWNER, onRemove = {}) }
             PersonSkeleton(Modifier.padding(horizontal = MaterialTheme.spacing.large))
-            AddMemberField(state = AddState(username = "jonas.k"), onAction = {})
+            AddMemberField(state = AddState(username = TextFieldState("jonas.k")), onAction = {})
             InviteRow(invite = previewInvite, onShare = {}, onRevoke = {})
         }
     }

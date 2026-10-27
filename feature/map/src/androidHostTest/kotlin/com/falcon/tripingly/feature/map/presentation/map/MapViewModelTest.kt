@@ -1,5 +1,6 @@
 package com.falcon.tripingly.feature.map.presentation.map
 
+import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
 import app.cash.turbine.test
 import com.falcon.tripingly.core.common.error.DataError
 import com.falcon.tripingly.core.common.result.AppResult
@@ -1108,10 +1109,10 @@ class MapViewModelTest {
         testScheduler.advanceUntilIdle()
         assertEquals(MapSheet.PlaceImage("fake-louvre", "pi1"), viewModel.uiState.value.sheet)
         viewModel.onAction(MapAction.Sheet.ReportPhoto(COMMONS_IMAGE.asPhoto()))
-        viewModel.onAction(MapAction.Dialog.SendReport(ReportReason.Copyright, ""))
+        viewModel.onAction(MapAction.Dialog.SendReport(ReportReason.Copyright))
         testScheduler.advanceUntilIdle()
         viewModel.onAction(MapAction.Sheet.ReportPhoto(TRIP_PHOTO.asPhoto()))
-        viewModel.onAction(MapAction.Dialog.SendReport(ReportReason.Spam, ""))
+        viewModel.onAction(MapAction.Dialog.SendReport(ReportReason.Spam))
         testScheduler.advanceUntilIdle()
         assertEquals(listOf(ReportTarget.PlaceImage to "pi1", ReportTarget.Photo to "ph1"), social.reports)
 
@@ -1388,8 +1389,8 @@ class MapViewModelTest {
 
         viewModel.onAction(MapAction.MapView.LongClick(Coordinates(48.85, 2.35)))
         testScheduler.runCurrent()
-        assertEquals(MapDialog.NamePin, viewModel.uiState.value.dialog)
-        viewModel.onAction(MapAction.Dialog.ConfirmPinName("Our hotel"))
+        assertIs<MapDialog.NamePin>(viewModel.uiState.value.dialog).name.setTextAndPlaceCursorAtEnd("Our hotel")
+        viewModel.onAction(MapAction.Dialog.ConfirmPinName)
         testScheduler.advanceUntilIdle()
 
         assertNull(viewModel.uiState.value.dialog)

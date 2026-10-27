@@ -78,9 +78,9 @@ class NearbyViewModelTest : SocialTestBase() {
 
         val commons = commonsImage("commons-1")
         viewModel.onAction(Action.ReportImage(commons))
-        viewModel.onAction(Action.SendReport(ReportReason.Other, ""))
+        viewModel.onAction(Action.SendReport(ReportReason.Other))
         viewModel.onAction(Action.ReportImage(commons.copy(id = "photo-1", credit = null)))
-        viewModel.onAction(Action.SendReport(ReportReason.Other, ""))
+        viewModel.onAction(Action.SendReport(ReportReason.Other))
         advanceUntilIdle()
         assertEquals(listOf(ReportTarget.PlaceImage to "commons-1", ReportTarget.Photo to "photo-1"), reported)
 

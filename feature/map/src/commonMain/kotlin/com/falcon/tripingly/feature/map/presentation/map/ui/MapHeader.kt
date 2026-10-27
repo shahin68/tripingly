@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -42,12 +41,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.tooling.preview.PreviewParameter
 import androidx.compose.ui.unit.dp
 import com.falcon.tripingly.core.designsystem.component.AppDropdownMenu
+import com.falcon.tripingly.core.designsystem.component.AppTextField
+import com.falcon.tripingly.core.designsystem.component.AppTextFieldStyle
 import com.falcon.tripingly.core.designsystem.component.DropdownAction
 import com.falcon.tripingly.core.designsystem.component.GlassButtonDefaults
 import com.falcon.tripingly.core.designsystem.component.GlassButtonDivider
@@ -55,6 +55,7 @@ import com.falcon.tripingly.core.designsystem.component.GlassButtonRow
 import com.falcon.tripingly.core.designsystem.component.GlassIconButton
 import com.falcon.tripingly.core.designsystem.component.GlassSurface
 import com.falcon.tripingly.core.designsystem.component.OsmAttribution
+import com.falcon.tripingly.core.designsystem.component.SearchKeyboard
 import com.falcon.tripingly.core.designsystem.component.SuggestionItem
 import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
 import com.falcon.tripingly.core.designsystem.theme.spacing
@@ -70,7 +71,6 @@ import com.falcon.tripingly.feature.map.generated.resources.map_owner_profile
 import com.falcon.tripingly.feature.map.generated.resources.map_report_trip
 import com.falcon.tripingly.feature.map.generated.resources.map_save_trip
 import com.falcon.tripingly.feature.map.generated.resources.map_search
-import com.falcon.tripingly.feature.map.generated.resources.map_search_clear
 import com.falcon.tripingly.feature.map.generated.resources.map_search_placeholder
 import com.falcon.tripingly.feature.map.generated.resources.map_stop_count
 import com.falcon.tripingly.feature.map.generated.resources.map_trip_members
@@ -211,36 +211,19 @@ private fun SearchField(search: SearchState, onAction: (MapAction) -> Unit, modi
         IconButton(onClick = { onAction(MapAction.Search.Close) }) {
             Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(Res.string.map_back))
         }
-        BasicTextField(
-            value = search.query,
-            onValueChange = { onAction(MapAction.Search.QueryChanged(it)) },
-            singleLine = true,
-            textStyle = MaterialTheme.typography.bodyLarge.copy(color = MaterialTheme.colorScheme.onSurface),
-            cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
+        AppTextField(
+            state = search.query,
+            placeholder = stringResource(Res.string.map_search_placeholder),
+            onTextChange = { onAction(MapAction.Search.QueryChanged(it)) },
             modifier = Modifier.weight(1f).focusRequester(focusRequester),
-            decorationBox = { field ->
-                Box(contentAlignment = Alignment.CenterStart) {
-                    if (search.query.isEmpty()) {
-                        Text(
-                            stringResource(Res.string.map_search_placeholder),
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            maxLines = 1,
-                        )
-                    }
-                    field()
-                }
+            style = AppTextFieldStyle.Inline,
+            trailing = if (search.isSearching) {
+                { CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp) }
+            } else {
+                null
             },
+            keyboardOptions = SearchKeyboard,
         )
-        when {
-            search.isSearching -> CircularProgressIndicator(
-                modifier = Modifier.padding(horizontal = MaterialTheme.spacing.small + MaterialTheme.spacing.extraSmall).size(20.dp),
-                strokeWidth = 2.dp,
-            )
-            search.query.isNotEmpty() -> IconButton(onClick = { onAction(MapAction.Search.QueryChanged("")) }) {
-                Icon(Icons.Default.Close, contentDescription = stringResource(Res.string.map_search_clear))
-            }
-        }
     }
 }
 

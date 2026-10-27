@@ -6,7 +6,6 @@
     <string name="social_reported">Danke. Wir sehen es uns an.</string>
 
     <!-- Social tab -->
-    <string name="social_explore">Entdecken</string>
     <string name="social_nearby">In der Nähe</string>
     <string name="social_explore_empty">Noch keine öffentlichen Reisen zum Entdecken.</string>
     <string name="social_people_none">Niemand mit diesem Namen gefunden.</string>
@@ -86,7 +85,6 @@
     <string name="social_trip_created">Erstellt %1$s</string>
 
     <!-- Tabs (redesign) -->
-    <string name="social_profile">Profil</string>
     <string name="social_search_people">Personen suchen …</string>
     <string name="social_near_me">In meiner Nähe</string>
     <string name="social_location_note">Dein Standort wird nur zum Finden von Orten genutzt und nie gespeichert.</string>

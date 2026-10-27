@@ -1,5 +1,6 @@
 package com.falcon.tripingly.feature.social.presentation.component
 
+import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.runtime.Immutable
 import com.falcon.tripingly.core.common.result.AppResult
 import com.falcon.tripingly.core.data.social.SocialRepository
@@ -11,18 +12,17 @@ import com.falcon.tripingly.feature.social.generated.resources.Res
 import com.falcon.tripingly.feature.social.generated.resources.social_error_report
 import com.falcon.tripingly.feature.social.generated.resources.social_reported
 
-/** The report dialog, open for a trip, a person or an image ([target] with [id]). */
+/** The report dialog, open for a trip, a person or an image ([target] with [id]); [details] is its text field. */
 @Immutable
-data class ReportState(val target: ReportTarget, val id: String, val isSending: Boolean = false)
+data class ReportState(val target: ReportTarget, val id: String, val isSending: Boolean = false, val details: TextFieldState = TextFieldState())
 
 /** Sends [report]; either way the outcome is shown as a message. True once the server took it. */
 internal suspend fun SocialRepository.sendReport(
     report: ReportState,
     reason: ReportReason,
-    details: String,
     showMessage: (UiText) -> Unit,
 ): Boolean {
-    val result = report(report.target, report.id, reason, details)
+    val result = report(report.target, report.id, reason, report.details.text.toString().trim())
     showMessage(
         when (result) {
             is AppResult.Success -> UiText.Note(UiText.Resource(Res.string.social_reported))

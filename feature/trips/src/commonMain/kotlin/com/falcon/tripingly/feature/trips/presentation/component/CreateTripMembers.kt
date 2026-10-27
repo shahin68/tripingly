@@ -6,7 +6,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -14,7 +13,6 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.PersonAdd
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -25,11 +23,11 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.tooling.preview.PreviewParameter
 import androidx.compose.ui.tooling.preview.PreviewParameterProvider
 import androidx.compose.ui.unit.dp
+import com.falcon.tripingly.core.designsystem.component.AppTextField
 import com.falcon.tripingly.core.designsystem.component.AvatarChoice
 import com.falcon.tripingly.core.designsystem.component.AvatarCircle
 import com.falcon.tripingly.core.designsystem.component.AvatarSize
 import com.falcon.tripingly.core.designsystem.component.PillChip
-import com.falcon.tripingly.core.designsystem.component.RoundedTextField
 import com.falcon.tripingly.core.designsystem.component.SuggestionItem
 import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
 import com.falcon.tripingly.core.designsystem.theme.spacing
@@ -57,12 +55,12 @@ internal fun CreateTripMembers(
             onToggle = { onAction(Action.CreateTrip.FriendToggled(it)) },
             enabled = !isSaving,
         )
-        RoundedTextField(
-            value = form.memberQuery,
-            onValueChange = { onAction(Action.CreateTrip.MemberQueryChanged(it)) },
+        AppTextField(
+            state = form.memberQuery,
             placeholder = stringResource(Res.string.create_trip_add_by_username),
-            leadingIcon = { Icon(Icons.Default.PersonAdd, contentDescription = null) },
-            trailingIcon = if (form.isSearchingMembers) {
+            onTextChange = { onAction(Action.CreateTrip.MemberQueryChanged(it)) },
+            leadingIcon = Icons.Default.PersonAdd,
+            trailing = if (form.isSearchingMembers) {
                 { CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp) }
             } else {
                 null

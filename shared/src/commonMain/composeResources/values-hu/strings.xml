@@ -5,4 +5,7 @@
     <string name="tab_explore">Felfedezés</string>
     <string name="tab_nearby">A közelben</string>
     <string name="tab_profile">Profil</string>
+
+    <!-- Shared top bar -->
+    <string name="tab_trips_title">Utazásaim</string>
 </resources>

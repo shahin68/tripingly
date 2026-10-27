@@ -7,19 +7,17 @@ import com.falcon.tripingly.core.model.social.ExplorePeriod
 import com.falcon.tripingly.core.model.social.ReportReason
 import com.falcon.tripingly.core.model.social.ReportTarget
 import com.falcon.tripingly.core.model.trip.GeoPoint
-import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.test.advanceTimeBy
-import kotlinx.coroutines.test.advanceUntilIdle
-import kotlinx.coroutines.test.runTest
+import com.falcon.tripingly.feature.social.presentation.explore.ExploreViewModel
+import com.falcon.tripingly.feature.social.presentation.explore.ExploreViewModel.Action
+import com.falcon.tripingly.feature.social.presentation.explore.ExploreViewModel.Event
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
-import com.falcon.tripingly.feature.social.presentation.component.ReportState
-import com.falcon.tripingly.feature.social.presentation.explore.ExploreViewModel
-import com.falcon.tripingly.feature.social.presentation.explore.ExploreViewModel.Action
-import com.falcon.tripingly.feature.social.presentation.explore.ExploreViewModel.Event
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.test.advanceUntilIdle
+import kotlinx.coroutines.test.runTest
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class ExploreViewModelTest : SocialTestBase() {
@@ -183,13 +181,13 @@ class ExploreViewModelTest : SocialTestBase() {
 
         reportRefused = true
         viewModel.onAction(Action.ReportTrip(trip))
-        viewModel.onAction(Action.SendReport(ReportReason.Spam, ""))
+        viewModel.onAction(Action.SendReport(ReportReason.Spam))
         advanceUntilIdle()
-        assertEquals(ReportState(ReportTarget.Trip, trip.trip.id), viewModel.uiState.value.report, "open again for another try")
+        assertEquals(ReportTarget.Trip to trip.trip.id, viewModel.uiState.value.report?.let { it.target to it.id }, "open again for another try")
         assertTrue(viewModel.uiState.value.message != null)
 
         reportRefused = false
-        viewModel.onAction(Action.SendReport(ReportReason.Spam, ""))
+        viewModel.onAction(Action.SendReport(ReportReason.Spam))
         advanceUntilIdle()
         assertEquals(null, viewModel.uiState.value.report)
     }

@@ -63,7 +63,7 @@ import org.koin.core.parameter.parametersOf
 
 /**
  * A person's profile; [username] null is my own, shown as the Profile tab (with people search and my lists, see
- * [MyProfileTab]). [bottomBarPadding] is the tab shell's floating bottom bar there.
+ * [MyProfileTab]). [barsPadding] is the tab shell's floating top and bottom bars there.
  */
 @Composable
 fun ProfileRoute(
@@ -71,8 +71,7 @@ fun ProfileRoute(
     onBack: () -> Unit,
     onOpenTrip: (tripId: String) -> Unit,
     onOpenProfile: (username: String) -> Unit,
-    onOpenSettings: () -> Unit,
-    bottomBarPadding: PaddingValues = PaddingValues(),
+    barsPadding: PaddingValues = PaddingValues(),
     // Keyed by person, like the trip map: the class alone would hand everyone the first profile's view model.
     viewModel: ProfileViewModel = koinViewModel(key = "profile:${username.orEmpty()}") { parametersOf(username) },
 ) {
@@ -85,14 +84,15 @@ fun ProfileRoute(
     }
 
     if (username == null) {
-        MyProfileTab(state = state, onAction = viewModel::onAction, onOpenProfile = onOpenProfile, onOpenSettings = onOpenSettings, bottomBarPadding = bottomBarPadding)
+        MyProfileTab(state = state, onAction = viewModel::onAction, onOpenProfile = onOpenProfile, barsPadding = barsPadding)
     } else {
         PersonProfileScreen(state = state, onAction = viewModel::onAction, onBack = onBack)
     }
 
     state.report?.let { report ->
         ReportDialog(
-            onReport = { reason, details -> viewModel.onAction(Action.Report.Send(reason, details)) },
+            details = report.details,
+            onReport = { reason -> viewModel.onAction(Action.Report.Send(reason)) },
             onDismiss = { viewModel.onAction(Action.Report.Dismiss) },
             isSending = report.isSending,
         )

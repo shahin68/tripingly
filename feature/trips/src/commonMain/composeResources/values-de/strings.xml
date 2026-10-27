@@ -4,7 +4,6 @@
     <string name="common_cancel">Abbrechen</string>
 
     <!-- Home -->
-    <string name="home_tab_my_trips">Meine Reisen</string>
     <string name="home_search_placeholder_trips">Reisen suchen...</string>
     <string name="home_fab_add_trip">Reise hinzufügen</string>
     <string name="home_list_empty">Noch keine Reisen. Tippe auf +, um eine zu erstellen!</string>
@@ -58,7 +57,6 @@
     <string name="create_trip_member_not_found">Niemand hat diesen Benutzernamen.</string>
     <string name="create_trip_member_blocked">Diese Person kannst du nicht hinzufügen.</string>
     <string name="create_trip_error_members">Einige Personen können nicht hinzugefügt werden. Entferne sie und versuche es erneut.</string>
-    <string name="create_trip_destination_clear">Reiseziel entfernen</string>
 
     <!-- Rename trip dialog -->
     <string name="rename_trip_title">Reise umbenennen</string>

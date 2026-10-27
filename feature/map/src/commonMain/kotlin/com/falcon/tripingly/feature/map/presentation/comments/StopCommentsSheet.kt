@@ -16,6 +16,12 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.text.input.InputTransformation
+import androidx.compose.foundation.text.input.TextFieldLineLimits
+import androidx.compose.foundation.text.input.TextFieldState
+import androidx.compose.foundation.text.input.maxLength
+import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.MoreVert
@@ -38,20 +44,23 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.tooling.preview.PreviewParameter
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.falcon.tripingly.core.common.util.DateUtils
+import com.falcon.tripingly.core.data.social.SocialRepository
 import com.falcon.tripingly.core.designsystem.component.AppDialog
 import com.falcon.tripingly.core.designsystem.component.AppDropdownMenu
+import com.falcon.tripingly.core.designsystem.component.AppTextField
 import com.falcon.tripingly.core.designsystem.component.AvatarCircle
 import com.falcon.tripingly.core.designsystem.component.AvatarSize
 import com.falcon.tripingly.core.designsystem.component.DropdownAction
 import com.falcon.tripingly.core.designsystem.component.LikeButton
 import com.falcon.tripingly.core.designsystem.component.MessageBannerHost
 import com.falcon.tripingly.core.designsystem.component.ReportDialog
-import com.falcon.tripingly.core.designsystem.component.RoundedTextField
 import com.falcon.tripingly.core.designsystem.component.SheetHeader
 import com.falcon.tripingly.core.designsystem.component.ShowMessage
 import com.falcon.tripingly.core.designsystem.component.SkeletonBox
@@ -100,6 +109,7 @@ fun StopCommentsRoute(
         Box {
             StopCommentsScreen(
                 state = state,
+                draft = viewModel.draft,
                 marker = marker,
                 onOpenProfile = onOpenProfile,
                 onAction = viewModel::onAction,
@@ -111,7 +121,8 @@ fun StopCommentsRoute(
 
     if (state.reporting != null) {
         ReportDialog(
-            onReport = { reason, details -> viewModel.onAction(Action.OnSendReport(reason, details)) },
+            details = viewModel.reportDetails,
+            onReport = { reason -> viewModel.onAction(Action.OnSendReport(reason)) },
             onDismiss = { viewModel.onAction(Action.OnDismissReport) },
             isSending = state.isReporting,
         )
@@ -132,6 +143,8 @@ fun StopCommentsRoute(
 @Composable
 fun StopCommentsScreen(
     state: State,
+    /** The view model's comment field. */
+    draft: TextFieldState,
     marker: MapMarker,
     onOpenProfile: (String) -> Unit,
     onAction: (Action) -> Unit,
@@ -181,15 +194,17 @@ fun StopCommentsScreen(
             horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            RoundedTextField(
-                value = state.draft,
-                onValueChange = { onAction(Action.OnDraftChanged(it)) },
+            AppTextField(
+                state = draft,
                 placeholder = stringResource(Res.string.map_comment_placeholder),
-                maxLines = MAX_DRAFT_LINES,
+                onImeAction = { onAction(Action.OnSend) },
                 enabled = !state.isSending,
+                keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences, imeAction = ImeAction.Send),
+                lineLimits = TextFieldLineLimits.MultiLine(maxHeightInLines = MAX_DRAFT_LINES),
+                inputTransformation = InputTransformation.maxLength(SocialRepository.MAX_COMMENT_LENGTH),
                 modifier = Modifier.weight(1f),
             )
-            FilledIconButton(onClick = { onAction(Action.OnSend) }, enabled = state.draft.isNotBlank() && !state.isSending) {
+            FilledIconButton(onClick = { onAction(Action.OnSend) }, enabled = draft.text.isNotBlank() && !state.isSending) {
                 if (state.isSending) {
                     CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp, color = LocalContentColor.current)
                 } else {
@@ -291,6 +306,7 @@ private fun StopCommentsScreenPreview(@PreviewParameter(StopCommentsPreviewState
     TripinglyTheme {
         StopCommentsScreen(
             state = state,
+            draft = rememberTextFieldState(),
             marker = previewStop,
             onOpenProfile = {},
             onAction = {},
@@ -306,6 +322,7 @@ private fun StopCommentsScreenLandscapePreview() {
     TripinglyTheme(darkTheme = true) {
         StopCommentsScreen(
             state = StopCommentsPreviewStates().values.first(),
+            draft = rememberTextFieldState("Great view from the top!"),
             marker = previewStop,
             onOpenProfile = {},
             onAction = {},

@@ -232,10 +232,10 @@ class MapViewModel(
 
     private fun onDialog(action: MapAction.Dialog) {
         when (action) {
-            is MapAction.Dialog.ConfirmPinName -> edits.addNamedPin(action.name)
+            MapAction.Dialog.ConfirmPinName -> edits.addNamedPin()
             is MapAction.Dialog.Confirm -> edits.confirm()
             is MapAction.Dialog.DeleteAnyway -> edits.deleteAnyway()
-            is MapAction.Dialog.SendReport -> sharing.sendReport(action.reason, action.details)
+            is MapAction.Dialog.SendReport -> sharing.sendReport(action.reason)
             is MapAction.Dialog.ApplyBestOrder -> routes.applyBestOrder()
             is MapAction.Dialog.DismissPinName,
             is MapAction.Dialog.DismissConfirm,

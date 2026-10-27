@@ -50,7 +50,6 @@
     <string name="map_place_category_other">Place</string>
     <string name="map_search">Search places</string>
     <string name="map_search_placeholder">Places, addresses, cities</string>
-    <string name="map_search_clear">Clear search</string>
     <string name="map_pin_name_title">Name this place</string>
     <string name="map_pin_name_label">Name</string>
     <string name="map_pin_add">Add</string>

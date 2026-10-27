@@ -1,5 +1,6 @@
 package com.falcon.tripingly.feature.map.presentation.map.preview
 
+import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.ui.tooling.preview.PreviewParameterProvider
 import com.falcon.tripingly.core.location.model.Coordinates
 import com.falcon.tripingly.core.model.place.PlaceSearchResult
@@ -157,7 +158,7 @@ internal class MapHeaderPreviewStates : PreviewParameterProvider<MapHeaderPrevie
             ),
         ),
         MapHeaderPreview(withStops.header.copy(isBusy = true)),
-        MapHeaderPreview(withStops.header, SearchState(query = "Eiff", results = previewSearchResults, isSearching = true)),
+        MapHeaderPreview(withStops.header, SearchState(query = TextFieldState("Eiff"), results = previewSearchResults, isSearching = true)),
     )
 }
 
@@ -170,8 +171,8 @@ internal class MapDialogPreviewStates : PreviewParameterProvider<MapDialog> {
         MapDialog.DeleteDay(dayNumber = 3, stopCount = 1),
         MapDialog.RemoveMyContent,
         MapDialog.DeleteOthersContent(UiText.Server("This stop has 3 photos and 2 comments by other people.")),
-        MapDialog.Report(isSending = true),
-        MapDialog.NamePin,
+        MapDialog.Report(isSending = true, details = TextFieldState()),
+        MapDialog.NamePin(TextFieldState()),
         MapDialog.Location(LocationPrompt.Explain),
         MapDialog.Location(LocationPrompt.OpenSettings),
         MapDialog.BestOrder(BestOrderPreview(previewStops.reversed().toPersistentList(), byTravelTime = true, savedMinutes = 18)),

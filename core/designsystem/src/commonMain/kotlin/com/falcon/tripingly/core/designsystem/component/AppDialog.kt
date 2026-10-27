@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -85,7 +86,7 @@ private fun AppDialogPreview() {
 private fun AppDialogDarkPreview() {
     TripinglyTheme(darkTheme = true) {
         AppDialog(title = "Rename trip", confirmLabel = "Save", isBusy = true, onConfirm = {}, onDismiss = {}) {
-            RoundedTextField(value = "Summer in Vienna", onValueChange = {}, placeholder = "Trip name")
+            AppTextField(rememberTextFieldState("Summer in Vienna"), "Trip name")
         }
     }
 }
