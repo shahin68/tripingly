@@ -267,3 +267,20 @@ private fun MapScreenPreview(@PreviewParameter(MapScreenPreviewStates::class) st
         )
     }
 }
+
+@Preview
+@Composable
+private fun MapScreenDarkPreview() {
+    TripinglyTheme(darkTheme = true) {
+        MapScreen(state = MapScreenPreviewStates().values.first(), cameraCommands = emptyFlow(), onAction = {})
+    }
+}
+
+/** The trip couldn't load and there's none on the device. */
+@Preview
+@Composable
+private fun MapScreenLoadErrorPreview() {
+    TripinglyTheme(darkTheme = true) {
+        MapScreen(state = MapUiState(loadError = UiText.Server("No internet connection.")), cameraCommands = emptyFlow(), onAction = {})
+    }
+}

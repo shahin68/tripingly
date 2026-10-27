@@ -2,14 +2,14 @@
 
 The map of the existing code. Keep it factual and short, and update it whenever structure changes.
 
-Last audit: 2026-10-03, on `develop` at `7cfb1ab` plus the foundation PR (module split). Updated 2026-10-04 for stage 4 (trips on the API) and 2026-10-11 for stage 7 (Social). Repo: `shahin68/tripingly`, package `com.falcon.tripingly`.
+Last audit: 2026-10-03, on `develop` at `7cfb1ab` plus the foundation PR (module split). Updated 2026-10-04 for stage 4 (trips on the API), 2026-10-11 for stage 7 (Social) and 2026-10-27 for the Ivy redesign (tab shell, glass design system, loading and error states). Repo: `shahin68/tripingly`, package `com.falcon.tripingly`.
 
 ## Project structure
 
 ```
 androidApp/            Android shell: MainActivity, TripinglyApplication (starts Koin), manifest with MAPS_API_KEY
 iosApp/                Xcode project; calls MainViewController() from the Shared framework
-shared/                Umbrella: App() with Navigation 3, initKoin(), iOS framework "Shared" (static)
+shared/                Umbrella: App() with Navigation 3, the tab shell (`shell/MainTabs.kt`: floating bottom bar with Trips, Explore, Nearby, Profile), initKoin(), iOS framework "Shared" (static)
 build-logic/           Convention plugins: tripinly.kmp.library, tripinly.kmp.compose, tripinly.kmp.feature
 core/common            AppResult, RootError/DataError, CoroutineDispatchers, DateUtils (dates in the device's locale via platform skeleton formats), ShareManager (expect/actual via Koin)
 core/model             Domain models shared across features (account, trip: Trip, TripDetails, TripDay, TripMarker, TripMember, TripInvite, changes; social: PublicTrip, Profile, Comment, NearbyPlace, likes and reports; `Page<T>`). No Compose dependency
@@ -18,14 +18,14 @@ core/data              trips/: TripRepository, MarkerRepository, TripInviteRepos
 core/storage           SecureStore: iOS Keychain (cleared on a fresh install), Android Keystore AES-GCM key + encrypted SharedPreferences
 core/ui                UiText (resource or server text) with DataError.Network.toUiText(), ObserveAsEvents, shared error strings (en/de/hu)
 core/location          Current location (fused location on Android, `CLLocationManager` on iOS) behind `LocationRepository` and `GetCurrentLocationUseCase`, and the location permission (`LocationPermissionController`, expect/actual); used by the trip map and Nearby
-core/designsystem      TripinglyTheme (colors incl. avatar pastels, typography, shapes, spacing), AppDropdownMenu, LikeButton, HotButton (a place's flame, never a like), ReportDialog (one report dialog for every kind of content), MessageBanner (the app's one floating message banner: `ShowMessage`, `MessageBannerHost`), FloatingSearchBar, PhotoImage (Coil, cached by photo ID + size), CommonsCredit (the credit under a Wikimedia Commons image), AvatarCircle + AvatarChoice, SegmentedToggle, PillChip, PrimaryButton, RoundedTextField, SectionLabel
+core/designsystem      TripinglyTheme (Ivy colours light and dark, Manrope typography, shapes, spacing; MapColors for pins and routes), glass (GlassSurface, glassSource, GlassIconButton/Row/Column over Haze), FloatingTopBar (BackAction, SettingsAction, TopBarSearchField), FloatingNavigationBar, SheetHeader, AppDialog, ErrorScreen + ErrorIllustration, Skeleton* (shimmer), LoadStateContent, PrimaryButton/SecondaryButton (ButtonSize), RoundedTextField, FieldButton, SectionLabel/FormField, SegmentedToggle, PillChip, AvatarCircle + AvatarChoice, CountLabel/compactCount, AppDropdownMenu, LikeButton, HotButton (a place's flame, never a like), ReportDialog, MessageBanner (`ShowMessage`, `MessageBannerHost`), PhotoImage (Coil, cached by photo ID + size), PhotoViewer, CommonsCredit, OsmAttribution, SuggestionItem; light and dark previews for each
 core/navigation        Route keys (Home, TripMap, Profile, People) and the saved-state serializers config
 core/network           Ktor HttpClient (auth, refresh, headers), Ktorfit with an AppResult converter (error mapping), AuthApi, AccountApi, TripsApi, MarkersApi, InvitesApi, PhotosApi, UsersApi, SocialApi, PlacesApi, RoutingApi, StorageClient (plain client for signed storage URLs), realtime/: RealtimeClient (`SocketIoRealtimeClient`: Socket.IO over Ktor WebSockets, reconnects with backoff, refreshes an expired token through the API client's refresher, counted trip subscriptions) and RealtimeEvent, TokenStore (in memory), SessionEvents, CursorPaginator, idempotency keys, API models generated from openapi.json, environments via BuildKonfig
 core/testing           Test-only (commonTest of core:data and every feature, never an app build): in-memory fakes in their original packages: FakeTripBackend (trips, markers, invites with the server's rules), FakeAccountBackend, FakeUserRepository, FakeSocialRepository, FakePlaceRepository, FakePhotoRepository, FakeRouteRepository (straight lines), FakeAppConfigRepository, FakeRealtimeClient
 feature/auth           AuthGate (launch / sign-in / onboarding until signed in), SignIn, Onboarding (profile, consents), SocialSignIn (interface in core:data account, so Settings can confirm deletion too): Credential Manager on Android; on iOS the Swift NativeSignIn (iosApp/NativeSignIn.swift) handed to MainViewController
-feature/trips          Home screen (My Trips + the Social tab's slot, filled by `shared` with `SocialRoute`; the profile button in the search bar), New trip sheet, rename/reschedule/delete/leave dialogs, members sheet (members, invites)
+feature/trips          Trips tab (My Trips as a timeline: upcoming and past, floating top bar with search and Settings), New trip bottom sheet, rename/reschedule/delete/leave dialogs (AppDialog), members sheet (members, join requests, add by friend or username, invites)
 feature/map            Trip map: day tabs (add/delete day), markers, Google Maps (Android, and iOS when `MAPS_API_KEY_IOS` is set; else MapKit); stop card (like its place, hidden when it can't be liked; comments, report), comments sheet, photo sheet and viewer for stops and places (`PhotosViewModel`/`PhotosSheet` by `PhotoOwner`, like on every photo; a stop's sheet shows the server's ranked grid as is, with the device's uploads first and a "This trip" tag when other photos share it; the owner or an editor picks any grid photo as the pin's cover), photo picker and in-app camera (expect/actual); for someone else's trip: Save / Remove from my trips, Ask to join / Withdraw, the owner's profile, Report; for the owner, "N people want to join" opens the members sheet (a slot the app fills from `feature:trips`)
-feature/social         Social tab (Explore and Nearby with people search on top), Add a nearby place to a trip, profiles (mine and others': counts, Follow, Report, Block, public trips), Friends / Following / Followers lists
+feature/social         Explore tab (period menu, ranked public trips), Nearby tab (places and trips near me, add a place to a trip), Profile tab (my profile with People segments: friends, following, followers, people search), others' profiles (counts, Follow, Report, Block, public trips)
 feature/paywall        Tripinly Pro paywall (from a free user's Route tap and Settings): what Pro unlocks, the store's monthly/yearly/lifetime offers, Continue, Restore purchases, fine print, Terms and Privacy; Pro accounts see it active with Manage subscription
 feature/settings       Settings (from the gear on my own profile): default visibility of new trips, push switches per type, my data (request a copy, Download while ready), Terms, Privacy and credits, version, sign-out, account deletion
 ```
@@ -53,6 +53,8 @@ Every module has `commonMain`, plus `androidMain`/`iosMain` only where platform 
 | API models | OpenAPI Generator (`kotlin`, `multiplatform`), build time only | 7.14.0 |
 | Build config | BuildKonfig (base URL per environment) | 0.23.0 |
 | State collections | kotlinx-collections-immutable (in feature modules) | 0.5.2 |
+| Glass blur | Haze (`dev.chrisbanes.haze:haze`) in core:designsystem | 1.7.2 (2.x needs Compose 1.12, compileSdk 37) |
+| Font | Manrope (SIL OFL), bundled in core:designsystem resources | 5 weights |
 | Images | Coil 3 (`coil-compose`, `coil-network-ktor3` on the app's Ktor engine); singleton loader set in `App.kt` | 3.5.0 (3.6 needs compileSdk 37 and Compose 1.12) |
 | Camera (Android) | CameraX (`camera-camera2`, `camera-lifecycle`, `camera-compose` viewfinder) in `feature:map`; iOS uses AVFoundation directly | 1.6.2 |
 | Tests | kotlin-test, coroutines-test, Turbine, JUnit 4, Robolectric, Ktor MockEngine, Compose `ui-test` (+ androidx `ui-test-manifest` 1.11.2) | 1.2.0 Turbine, 4.17 Robolectric |
