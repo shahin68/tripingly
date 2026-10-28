@@ -20,7 +20,6 @@ import androidx.compose.ui.tooling.preview.PreviewParameter
 import androidx.compose.ui.unit.dp
 import com.falcon.tripingly.core.designsystem.component.LoadStateContent
 import com.falcon.tripingly.core.designsystem.component.ShowMessage
-import com.falcon.tripingly.core.designsystem.component.glassSource
 import com.falcon.tripingly.core.designsystem.component.screenContentPadding
 import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
 import com.falcon.tripingly.core.designsystem.theme.spacing
@@ -78,7 +77,7 @@ private fun TripTimelineList(
     contentPadding: PaddingValues,
 ) {
     val today = timeline.today
-    LazyColumn(modifier = Modifier.fillMaxSize().glassSource(), contentPadding = contentPadding) {
+    LazyColumn(modifier = Modifier.fillMaxSize(), contentPadding = contentPadding) {
         if (today != null) item(key = "today") { TodayHeader(today, Modifier.animateItem()) }
         items(timeline.upcoming, key = { it.id }) { trip ->
             TimelineTripItem(trip, today, past = false, onAction = onAction, modifier = Modifier.animateItem())

@@ -93,7 +93,7 @@ import org.jetbrains.compose.resources.stringResource
  * The map's header, one row of glass pills of the same height: a round back button, the trip's name over its
  * dates and stops, and search joined to the trip's ⋮ menu. Tapping search grows that pill to the left over the whole
  * row, pushing the back button and the title away while ⋮ stays put, as on the design canvas; closing it shrinks
- * back. Over the native map, so no blur. [showDayActions]: the day has no plan sheet, so its day actions are in ⋮.
+ * back. [showDayActions]: the day has no plan sheet, so its day actions are in ⋮.
  */
 @Composable
 internal fun MapHeader(
@@ -116,12 +116,12 @@ internal fun MapHeader(
                 horizontalArrangement = Arrangement.spacedBy(gap),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                GlassIconButton(onClick = { onAction(MapAction.Header.Back) }, blur = false, size = GlassButtonDefaults.HeaderSize) {
+                GlassIconButton(onClick = { onAction(MapAction.Header.Back) }, size = GlassButtonDefaults.HeaderSize) {
                     Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(Res.string.map_back))
                 }
                 TripTitle(header, Modifier.weight(1f))
             }
-            GlassButtonRow(blur = false, height = GlassButtonDefaults.HeaderSize) {
+            GlassButtonRow(height = GlassButtonDefaults.HeaderSize) {
                 if (search != null) {
                     SearchField(search, onAction, Modifier.weight(1f))
                 } else {
@@ -239,7 +239,7 @@ internal fun SearchResults(
     onAction: (MapAction) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    GlassSurface(modifier = modifier.fillMaxWidth(), shape = MaterialTheme.shapes.large, blur = false) {
+    GlassSurface(modifier = modifier.fillMaxWidth(), shape = MaterialTheme.shapes.large) {
         Column(modifier = Modifier.heightIn(max = SearchResultsMaxHeight).verticalScroll(rememberScrollState()).padding(vertical = MaterialTheme.spacing.small)) {
             results.forEach { result ->
                 SuggestionItem(

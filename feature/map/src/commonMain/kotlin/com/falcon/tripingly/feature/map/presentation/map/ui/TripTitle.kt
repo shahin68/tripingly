@@ -30,7 +30,7 @@ import org.jetbrains.compose.resources.pluralStringResource
 /** The trip's name, and its dates, stop count and (someone else's trip) owner under it. */
 @Composable
 internal fun TripTitle(header: HeaderState, modifier: Modifier = Modifier) {
-    GlassSurface(modifier = modifier.height(GlassButtonDefaults.HeaderSize), shape = CircleShape, blur = false) {
+    GlassSurface(modifier = modifier.height(GlassButtonDefaults.HeaderSize), shape = CircleShape) {
         Row(
             modifier = Modifier.fillMaxHeight().padding(horizontal = MaterialTheme.spacing.medium + MaterialTheme.spacing.extraSmall),
             verticalAlignment = Alignment.CenterVertically,

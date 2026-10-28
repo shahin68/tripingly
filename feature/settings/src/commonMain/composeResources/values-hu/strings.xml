@@ -51,6 +51,5 @@
 
     <!-- Redesign -->
     <string name="settings_credit_manrope">Manrope betűtípus (SIL Open Font License)</string>
-    <string name="settings_credit_haze">Haze, Chris Banes (Apache License 2.0)</string>
     <string name="settings_credits">Források és licencek</string>
 </resources>

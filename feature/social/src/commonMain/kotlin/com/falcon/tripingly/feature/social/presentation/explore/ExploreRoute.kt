@@ -21,7 +21,6 @@ import com.falcon.tripingly.core.designsystem.component.LoadStateContent
 import com.falcon.tripingly.core.designsystem.component.ReportDialog
 import com.falcon.tripingly.core.designsystem.component.ShowMessage
 import com.falcon.tripingly.core.designsystem.component.Skeleton
-import com.falcon.tripingly.core.designsystem.component.glassSource
 import com.falcon.tripingly.core.designsystem.component.screenContentPadding
 import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
 import com.falcon.tripingly.core.location.permission.rememberLocationPermissionController
@@ -110,7 +109,7 @@ private fun ExploreGrid(state: State, onAction: (Action) -> Unit, contentPadding
         LazyVerticalGrid(
             state = gridState,
             columns = GridCells.Adaptive(GridCellMinWidth),
-            modifier = Modifier.fillMaxSize().glassSource(),
+            modifier = Modifier.fillMaxSize(),
             contentPadding = contentPadding,
             horizontalArrangement = Arrangement.spacedBy(GridGap),
             verticalArrangement = Arrangement.spacedBy(GridGap),

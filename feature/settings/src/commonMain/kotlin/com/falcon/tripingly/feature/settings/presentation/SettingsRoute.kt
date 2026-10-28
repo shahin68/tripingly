@@ -31,6 +31,7 @@ import com.falcon.tripingly.core.designsystem.component.SecondaryButton
 import com.falcon.tripingly.core.designsystem.component.SegmentedToggle
 import com.falcon.tripingly.core.designsystem.component.SegmentedToggleOption
 import com.falcon.tripingly.core.designsystem.component.ShowMessage
+import com.falcon.tripingly.core.designsystem.component.glassSource
 import com.falcon.tripingly.core.designsystem.component.screenContentPadding
 import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
 import com.falcon.tripingly.core.designsystem.theme.spacing
@@ -80,7 +81,7 @@ internal fun SettingsScreen(state: State, onAction: (Action) -> Unit, onBack: ()
             onShown = { onAction(Action.DismissMessage) },
             isError = state.message !is UiText.Note,
         )
-        Box(Modifier.fillMaxSize().verticalScroll(rememberScrollState()), contentAlignment = Alignment.TopCenter) {
+        Box(Modifier.fillMaxSize().glassSource().verticalScroll(rememberScrollState()), contentAlignment = Alignment.TopCenter) {
             Column(
                 modifier = Modifier.widthIn(max = ContentMaxWidth).fillMaxWidth().padding(screenContentPadding(padding)),
                 verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),

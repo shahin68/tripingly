@@ -47,6 +47,7 @@ import com.falcon.tripingly.core.designsystem.component.FloatingTopBar
 import com.falcon.tripingly.core.designsystem.component.FormField
 import com.falcon.tripingly.core.designsystem.component.PrimaryButton
 import com.falcon.tripingly.core.designsystem.component.ShowMessage
+import com.falcon.tripingly.core.designsystem.component.glassSource
 import com.falcon.tripingly.core.designsystem.component.screenContentPadding
 import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
 import com.falcon.tripingly.core.designsystem.theme.spacing
@@ -125,7 +126,7 @@ internal fun OnboardingScreen(
             return@Scaffold
         }
         // One readable column, also on tablets and in landscape.
-        Box(Modifier.fillMaxSize().verticalScroll(rememberScrollState()), contentAlignment = Alignment.TopCenter) {
+        Box(Modifier.fillMaxSize().glassSource().verticalScroll(rememberScrollState()), contentAlignment = Alignment.TopCenter) {
             Column(
                 modifier = Modifier.widthIn(max = ContentMaxWidth).fillMaxWidth().padding(screenContentPadding(padding)),
                 verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium),

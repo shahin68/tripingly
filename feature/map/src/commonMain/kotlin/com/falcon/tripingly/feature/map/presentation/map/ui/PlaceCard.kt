@@ -65,7 +65,7 @@ fun PlaceCard(
     onRouteTo: (() -> Unit)?,
     modifier: Modifier = Modifier,
 ) {
-    GlassSurface(modifier = modifier.widthIn(max = MapCardMaxWidth), shape = MaterialTheme.shapes.extraLarge, blur = false) {
+    GlassSurface(modifier = modifier.widthIn(max = MapCardMaxWidth), shape = MaterialTheme.shapes.extraLarge) {
         Column(
             modifier = Modifier.padding(MaterialTheme.spacing.small),
             verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),

@@ -7,10 +7,10 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -36,18 +36,16 @@ import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
 import com.falcon.tripingly.core.designsystem.theme.spacing
 
 /**
- * A round glass button floating over content: back over the map, the location button. [blur] off over the native
- * map, which can't be blurred (see [GlassSurface]).
+ * A round glass button floating over content: back over the map, the location button.
  */
 @Composable
 fun GlassIconButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
-    blur: Boolean = true,
     size: Dp = GlassButtonDefaults.Size,
     content: @Composable () -> Unit,
 ) {
-    GlassSurface(modifier = modifier.size(size), shape = CircleShape, onClick = onClick, blur = blur) {
+    GlassSurface(modifier = modifier.size(size), shape = CircleShape, onClick = onClick) {
         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { content() }
     }
 }
@@ -56,11 +54,10 @@ fun GlassIconButton(
 @Composable
 fun GlassButtonRow(
     modifier: Modifier = Modifier,
-    blur: Boolean = true,
     height: Dp = GlassButtonDefaults.Size,
     content: @Composable RowScope.() -> Unit,
 ) {
-    GlassSurface(modifier = modifier.height(height), shape = CircleShape, blur = blur) {
+    GlassSurface(modifier = modifier.height(height), shape = CircleShape) {
         Row(
             modifier = Modifier.fillMaxHeight().padding(horizontal = MaterialTheme.spacing.extraSmall),
             verticalAlignment = Alignment.CenterVertically,
@@ -72,10 +69,9 @@ fun GlassButtonRow(
 @Composable
 fun GlassButtonColumn(
     modifier: Modifier = Modifier,
-    blur: Boolean = true,
     content: @Composable ColumnScope.() -> Unit,
 ) {
-    GlassSurface(modifier = modifier.width(GlassButtonDefaults.Size), shape = CircleShape, blur = blur) {
+    GlassSurface(modifier = modifier.width(GlassButtonDefaults.Size), shape = CircleShape) {
         Column(
             modifier = Modifier.fillMaxWidth().padding(vertical = MaterialTheme.spacing.extraSmall),
             horizontalAlignment = Alignment.CenterHorizontally,

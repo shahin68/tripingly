@@ -48,7 +48,6 @@ import com.falcon.tripingly.core.model.account.LegalDocumentType
 import com.falcon.tripingly.core.model.account.NotificationType
 import com.falcon.tripingly.feature.settings.generated.resources.Res
 import com.falcon.tripingly.feature.settings.generated.resources.settings_credit_commons
-import com.falcon.tripingly.feature.settings.generated.resources.settings_credit_haze
 import com.falcon.tripingly.feature.settings.generated.resources.settings_credit_manrope
 import com.falcon.tripingly.feature.settings.generated.resources.settings_credit_photon
 import com.falcon.tripingly.feature.settings.generated.resources.settings_credit_routes
@@ -162,7 +161,6 @@ internal fun About(legalDocuments: ImmutableList<LegalDocument>, appVersion: Str
         LinkRow(stringResource(Res.string.settings_credit_photon), onClick = open(PHOTON_URL))
         LinkRow(stringResource(Res.string.settings_credit_commons), onClick = open(COMMONS_URL))
         LinkRow(stringResource(Res.string.settings_credit_manrope), onClick = open(MANROPE_URL))
-        LinkRow(stringResource(Res.string.settings_credit_haze), onClick = open(HAZE_URL))
     }
     Hint(stringResource(Res.string.settings_version, appVersion))
 }
@@ -249,7 +247,6 @@ private const val ROUTES_URL = "https://openrouteservice.org"
 private const val PHOTON_URL = "https://photon.komoot.io"
 private const val COMMONS_URL = "https://commons.wikimedia.org"
 private const val MANROPE_URL = "https://github.com/sharanda/manrope"
-private const val HAZE_URL = "https://github.com/chrisbanes/haze"
 
 @Preview
 @Composable

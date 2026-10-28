@@ -19,6 +19,7 @@ import com.falcon.tripingly.core.designsystem.component.AnimatedTopBar
 import com.falcon.tripingly.core.designsystem.component.FloatingNavigationBar
 import com.falcon.tripingly.core.designsystem.component.NavBarItem
 import com.falcon.tripingly.core.designsystem.component.SettingsAction
+import com.falcon.tripingly.core.designsystem.component.glassSource
 import com.falcon.tripingly.core.designsystem.component.safeSides
 import com.falcon.tripingly.core.model.photo.PhotoOwner
 import com.falcon.tripingly.feature.map.presentation.photos.PhotoViewerRoute
@@ -89,7 +90,8 @@ internal fun MainTabs(
         },
         floatingActionButton = { AddTripButton(visible = shown == MainTab.Trips, Modifier.windowInsetsPadding(WindowInsets.safeSides)) },
     ) { barsPadding ->
-        HorizontalPager(state = pagerState, key = { tabs[it].name }) { page ->
+        // The pages are what the glass bars blur behind them.
+        HorizontalPager(state = pagerState, modifier = Modifier.glassSource(), key = { tabs[it].name }) { page ->
             val tab = tabs[page]
             tabStates.SaveableStateProvider(tab.name) {
                 when (tab) {

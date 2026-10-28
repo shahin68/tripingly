@@ -74,7 +74,6 @@ internal fun DayTabs(
             .fillMaxWidth(),
         shape = if (isJoined) RoundedCornerShape(topStart = ZeroCornerSize, topEnd = ZeroCornerSize, bottomStart = corner, bottomEnd = corner) else MaterialTheme.shapes.extraLarge,
         shadowElevation = if (isJoined) 0.dp else GlassDefaults.ShadowElevation,
-        blur = false,
     ) {
         Row(
             modifier = Modifier.padding(MaterialTheme.spacing.small),
