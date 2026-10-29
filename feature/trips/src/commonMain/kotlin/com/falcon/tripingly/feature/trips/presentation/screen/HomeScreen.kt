@@ -79,9 +79,10 @@ private fun TripTimelineList(
 ) {
     val today = timeline.today
     LazyColumn(modifier = Modifier.fillMaxSize().glassSource(), contentPadding = contentPadding) {
-        if (today != null) item(key = "today") { TodayHeader(today, Modifier.animateItem()) }
-        items(timeline.upcoming, key = { it.id }) { trip ->
-            TimelineTripItem(trip, today, past = false, onAction = onAction, modifier = Modifier.animateItem())
+        // Without a trip on today, a "Today" row stands above what's coming; otherwise those trips carry today's ring.
+        if (today != null && timeline.showsTodayRow) item(key = "today") { TodayHeader(today, Modifier.animateItem()) }
+        items(timeline.upcoming, key = { it.trip.id }) { entry ->
+            TimelineTripItem(entry.trip, today, past = false, onAction = onAction, modifier = Modifier.animateItem(), mark = entry.mark)
         }
         if (timeline.past.isNotEmpty()) {
             item(key = "past") { PastHeader(timeline.past.size, Modifier.animateItem()) }

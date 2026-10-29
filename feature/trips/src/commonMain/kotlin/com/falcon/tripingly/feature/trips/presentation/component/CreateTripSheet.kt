@@ -53,7 +53,7 @@ import com.falcon.tripingly.feature.trips.generated.resources.create_trip_dates_
 import com.falcon.tripingly.feature.trips.generated.resources.create_trip_dates_label
 import com.falcon.tripingly.feature.trips.generated.resources.create_trip_destination_label
 import com.falcon.tripingly.feature.trips.generated.resources.create_trip_destination_placeholder
-import com.falcon.tripingly.feature.trips.generated.resources.create_trip_members_label
+import com.falcon.tripingly.feature.trips.generated.resources.create_trip_friends_label
 import com.falcon.tripingly.feature.trips.generated.resources.create_trip_name_label
 import com.falcon.tripingly.feature.trips.generated.resources.create_trip_name_placeholder
 import com.falcon.tripingly.feature.trips.generated.resources.create_trip_title
@@ -165,7 +165,7 @@ internal fun CreateTripSheetContent(
                     )
                 }
             }
-            FormField(stringResource(Res.string.create_trip_members_label)) {
+            FormField(stringResource(Res.string.create_trip_friends_label)) {
                 CreateTripMembers(form = form, isSaving = isSaving, onAction = onAction)
             }
             error?.let { Text(it.asString(), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error) }

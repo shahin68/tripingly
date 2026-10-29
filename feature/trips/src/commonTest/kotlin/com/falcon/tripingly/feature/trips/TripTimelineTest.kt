@@ -4,12 +4,15 @@ import com.falcon.tripingly.core.model.account.TripVisibility
 import com.falcon.tripingly.core.model.trip.Trip
 import com.falcon.tripingly.core.model.trip.TripRole
 import com.falcon.tripingly.core.model.trip.UserSummary
+import com.falcon.tripingly.feature.trips.presentation.screen.TimelineMark
 import com.falcon.tripingly.feature.trips.presentation.screen.TripWhen
 import com.falcon.tripingly.feature.trips.presentation.screen.toTimeline
 import com.falcon.tripingly.feature.trips.presentation.screen.whenRelativeTo
 import kotlinx.datetime.LocalDate
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
+import kotlin.test.assertTrue
 import kotlin.test.assertNull
 import kotlin.time.Instant
 
@@ -41,7 +44,7 @@ class TripTimelineTest {
             trip("Recent", LocalDate(2026, 9, 1)),
         ).toTimeline(today)
 
-        assertEquals(listOf("Now", "Rome", "Dateless"), timeline.upcoming.map { it.name })
+        assertEquals(listOf("Now", "Rome", "Dateless"), timeline.upcoming.map { it.trip.name })
         assertEquals(listOf("Recent", "Old"), timeline.past.map { it.name })
     }
 
@@ -50,6 +53,36 @@ class TripTimelineTest {
         val timeline = listOf(trip("Ends today", LocalDate(2026, 10, 24), today)).toTimeline(today)
 
         assertEquals(1, timeline.upcoming.size)
+    }
+
+    @Test
+    fun tripsOnToday_shareTodaysMark_andHideTheTodayRow() {
+        val timeline = listOf(
+            trip("Week", LocalDate(2026, 10, 24), LocalDate(2026, 10, 28)),
+            trip("Day", today),
+            trip("Next", LocalDate(2026, 10, 27), LocalDate(2026, 10, 29)),
+        ).toTimeline(today)
+
+        assertEquals(
+            listOf(TimelineMark(isNow = true, isFirst = true, isLast = false), TimelineMark(isNow = true, isFirst = false, isLast = true), TimelineMark()),
+            timeline.upcoming.map { it.mark },
+        )
+        assertFalse(timeline.showsTodayRow)
+    }
+
+    @Test
+    fun overlappingTrips_shareOneMark_andTouchingOnesToo_butNotLaterOnes() {
+        val timeline = listOf(
+            trip("A", LocalDate(2026, 11, 1), LocalDate(2026, 11, 5)),
+            trip("B", LocalDate(2026, 11, 3), LocalDate(2026, 11, 10)),
+            trip("C", LocalDate(2026, 11, 10)),
+            trip("D", LocalDate(2026, 11, 11)),
+            trip("Dateless", null),
+        ).toTimeline(today)
+
+        assertEquals(listOf(true, false, false, true, true), timeline.upcoming.map { it.mark.isFirst })
+        assertEquals(listOf(false, false, true, true, true), timeline.upcoming.map { it.mark.isLast })
+        assertTrue(timeline.showsTodayRow)
     }
 
     @Test

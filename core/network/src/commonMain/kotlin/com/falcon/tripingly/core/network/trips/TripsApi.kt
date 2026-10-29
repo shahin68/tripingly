@@ -3,7 +3,6 @@ package com.falcon.tripingly.core.network.trips
 import com.falcon.tripingly.core.common.error.DataError
 import com.falcon.tripingly.core.common.result.AppResult
 import com.falcon.tripingly.core.network.IDEMPOTENCY_KEY_HEADER
-import com.falcon.tripingly.core.network.model.AddMemberDto
 import com.falcon.tripingly.core.network.model.AddMembersDto
 import com.falcon.tripingly.core.network.model.CreateTripDto
 import com.falcon.tripingly.core.network.model.JoinRequestDto
@@ -92,14 +91,7 @@ interface TripsApi {
     @DELETE("days/{id}")
     suspend fun deleteDay(@Path("id") dayId: String, @Query("confirm") confirm: Boolean): AppResult<Unit, DataError.Network>
 
-    @POST("trips/{id}/members")
-    @Headers("Content-Type: application/json")
-    suspend fun addMember(
-        @Path("id") tripId: String,
-        @Body body: AddMemberDto,
-    ): AppResult<TripMemberDto, DataError.Network>
-
-    /** The owner adds several editors at once; all or nothing. */
+    /** The owner adds friends as editors, several at once; all or nothing. */
     @POST("trips/{id}/members/batch")
     @Headers("Content-Type: application/json")
     suspend fun addMembers(

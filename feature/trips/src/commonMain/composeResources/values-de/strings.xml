@@ -53,9 +53,10 @@
     <string name="create_trip_dates_add">Daten hinzufügen</string>
     <string name="create_trip_visibility_public">Öffentlich</string>
     <string name="create_trip_visibility_private">Privat</string>
-    <string name="create_trip_add_by_username">Per Benutzername hinzufügen</string>
     <string name="create_trip_member_not_found">Niemand hat diesen Benutzernamen.</string>
     <string name="create_trip_member_blocked">Diese Person kannst du nicht hinzufügen.</string>
+    <string name="create_trip_member_not_friend">Nur Freunde können hinzugefügt werden.</string>
+    <string name="trip_friends_only_hint">Hinzufügen kannst du nur Freunde: Leute, denen du folgst und die dir zurückfolgen. Alle anderen können über einen Einladungslink beitreten.</string>
     <string name="create_trip_error_members">Einige Personen können nicht hinzugefügt werden. Entferne sie und versuche es erneut.</string>
 
     <!-- Rename trip dialog -->
@@ -86,9 +87,6 @@
     <string name="members_role_owner">Besitzer</string>
     <string name="members_role_editor">Bearbeiter</string>
     <string name="members_remove">Entfernen</string>
-    <string name="members_add_label">Per Benutzername hinzufügen</string>
-    <string name="members_add_button">Hinzufügen</string>
-    <string name="members_error_user_not_found">Niemand hat diesen Benutzernamen.</string>
     <string name="members_error_some_not_added">Einige dieser Personen können nicht hinzugefügt werden. Wähle sie ab und versuche es erneut.</string>
     <string name="members_add_friends">%1$d hinzufügen</string>
     <string name="members_join_requests_title">Möchten mitmachen</string>
@@ -158,5 +156,5 @@
     <string name="create_trip_destination_label">Ziel (optional)</string>
     <string name="create_trip_dates_label">Reisedaten</string>
     <string name="create_trip_visibility_label">Wer sie sehen kann</string>
-    <string name="create_trip_members_label">Mitreisende</string>
+    <string name="create_trip_friends_label">Freunde hinzufügen</string>
 </resources>

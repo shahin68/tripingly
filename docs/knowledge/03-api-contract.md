@@ -70,7 +70,7 @@ REST over HTTPS, JSON, base path `/v1`.
 ### Trips
 | Method | Path | Notes |
 |---|---|---|
-| POST | `/trips` | Title, dates, visibility, optional `destination` `{ name, location }`, optional initial `memberUsernames` (≤ 20, joined as editors; unknown → `400 VALIDATION_FAILED` with `fields["memberUsernames.<i>"] = ["notFound"]`, blocked → `["blocked"]`) |
+| POST | `/trips` | Title, dates, visibility, optional `destination` `{ name, location }`, optional initial `memberUsernames` (≤ 20, joined as editors; friends only; unknown → `400 VALIDATION_FAILED` with `fields["memberUsernames.<i>"] = ["notFound"]`, blocked → `["blocked"]`, not a friend → `["notFriend"]`) |
 | GET | `/trips/{id}` | Trip with days, markers (cover thumbnail URLs), members, save and join state, and the trip card's `coverPhotoId`/`coverThumbUrl` (the first picked stop cover, else the trip's first photo; same as the list) |
 | PATCH | `/trips/{id}` | Owner: title, dates, visibility, `destination` (null removes it) |
 | DELETE | `/trips/{id}` | Owner |
@@ -95,8 +95,7 @@ REST over HTTPS, JSON, base path `/v1`.
 ### Members and invites
 | Method | Path | Notes |
 |---|---|---|
-| POST | `/trips/{id}/members` | Owner adds by username |
-| POST | `/trips/{id}/members/batch` | Owner adds several people at once (`{ usernames }`, all or nothing; refused ones as `fields.usernames.<i>` = `notFound`/`blocked`). The Members sheet uses it for the friends picked in its avatar row. Backend: tripinly-backend#33 |
+| POST | `/trips/{id}/members/batch` | Owner adds friends, several at once (`{ usernames }`, all or nothing; refused ones as `fields.usernames.<i>` = `notFound`/`blocked`/`notFriend`). The only way to add someone directly: adding by username (`POST /trips/{id}/members`) was removed (Shahin, 2026-10-29, tripinly-backend#64). The Members sheet uses it for the friends picked in its avatar row. Backend: tripinly-backend#33 |
 | DELETE | `/trips/{id}/members/{userId}` | Owner removes, or editor removes self (leave) |
 | POST | `/trips/{id}/invites` | Owner creates invite link → `{ url, expiresAt }` |
 | DELETE | `/trips/{id}/invites/{inviteId}` | Revoke |

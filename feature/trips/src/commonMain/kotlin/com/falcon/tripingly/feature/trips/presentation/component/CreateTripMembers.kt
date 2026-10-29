@@ -5,41 +5,31 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.PersonAdd
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.input.ImeAction
-import androidx.compose.ui.text.input.KeyboardCapitalization
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.tooling.preview.PreviewParameter
 import androidx.compose.ui.tooling.preview.PreviewParameterProvider
-import androidx.compose.ui.unit.dp
-import com.falcon.tripingly.core.designsystem.component.AppTextField
 import com.falcon.tripingly.core.designsystem.component.AvatarChoice
 import com.falcon.tripingly.core.designsystem.component.AvatarCircle
 import com.falcon.tripingly.core.designsystem.component.AvatarSize
 import com.falcon.tripingly.core.designsystem.component.PillChip
-import com.falcon.tripingly.core.designsystem.component.SuggestionItem
 import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
 import com.falcon.tripingly.core.designsystem.theme.spacing
 import com.falcon.tripingly.core.model.trip.UserSummary
 import com.falcon.tripingly.feature.trips.generated.resources.Res
-import com.falcon.tripingly.feature.trips.generated.resources.create_trip_add_by_username
+import com.falcon.tripingly.feature.trips.generated.resources.trip_friends_only_hint
 import com.falcon.tripingly.feature.trips.presentation.screen.CreateTripForm
 import com.falcon.tripingly.feature.trips.presentation.screen.HomeViewModel.Action
 import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.persistentListOf
 import org.jetbrains.compose.resources.stringResource
 
-/** People to add: a row of friends to tap, an "Add by username" search, and the picked people as chips. */
+/** Friends to add (the only people an owner can add): a row to tap, or a hint without friends, and the picked ones as chips. */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 internal fun CreateTripMembers(
@@ -49,36 +39,14 @@ internal fun CreateTripMembers(
     modifier: Modifier = Modifier,
 ) {
     Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small)) {
-        FriendPickerRow(
-            friends = form.friends,
-            isPicked = form::isMember,
-            onToggle = { onAction(Action.CreateTrip.FriendToggled(it)) },
-            enabled = !isSaving,
-        )
-        AppTextField(
-            state = form.memberQuery,
-            placeholder = stringResource(Res.string.create_trip_add_by_username),
-            onTextChange = { onAction(Action.CreateTrip.MemberQueryChanged(it)) },
-            leadingIcon = Icons.Default.PersonAdd,
-            trailing = if (form.isSearchingMembers) {
-                { CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp) }
-            } else {
-                null
-            },
-            enabled = !isSaving,
-            keyboardOptions = KeyboardOptions(
-                capitalization = KeyboardCapitalization.None,
-                autoCorrectEnabled = false,
-                keyboardType = KeyboardType.Ascii,
-                imeAction = ImeAction.Done,
-            ),
-            modifier = Modifier.fillMaxWidth(),
-        )
-        form.memberResults.filterNot(form::isMember).forEach { user ->
-            SuggestionItem(
-                title = user.displayName,
-                subtitle = "@${user.username}",
-                onClick = { onAction(Action.CreateTrip.MemberAdded(user)) },
+        when {
+            form.friends == null -> Unit
+            form.friends.isEmpty() -> FriendsOnlyHint()
+            else -> FriendPickerRow(
+                friends = form.friends,
+                isPicked = form::isMember,
+                onToggle = { onAction(Action.CreateTrip.FriendToggled(it)) },
+                enabled = !isSaving,
             )
         }
         FlowRow(
@@ -96,6 +64,17 @@ internal fun CreateTripMembers(
             }
         }
     }
+}
+
+/** Who can be added, and how everyone else joins; shown where there are no friends to pick. */
+@Composable
+internal fun FriendsOnlyHint(modifier: Modifier = Modifier) {
+    Text(
+        text = stringResource(Res.string.trip_friends_only_hint),
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = modifier,
+    )
 }
 
 /** Friends as avatars with their handle; tapping one picks or unpicks them. Hidden without friends. */
@@ -122,9 +101,9 @@ internal fun FriendPickerRow(
     }
 }
 
-/** Friends with one picked and a person added by username, and a username that doesn't exist. */
+/** Friends with one picked, a picked person who's no longer a friend, and no friends yet. */
 internal class CreateTripMembersPreviewStates : PreviewParameterProvider<CreateTripForm> {
-    override val values = sequenceOf(createTripFormPreviewData, createTripFormWithErrorsPreviewData)
+    override val values = sequenceOf(createTripFormPreviewData, createTripFormWithErrorsPreviewData, createTripFormPreviewData.copy(members = persistentListOf(), friends = persistentListOf()))
 }
 
 @Preview
@@ -148,7 +127,7 @@ private fun CreateTripMembersSavingPreview() {
 private fun FriendPickerRowPreview() {
     TripinglyTheme {
         FriendPickerRow(
-            friends = createTripFormPreviewData.friends,
+            friends = friendsPreviewData,
             isPicked = { it.username == "anna" },
             onToggle = {},
             enabled = true,

@@ -15,6 +15,8 @@ private val anna = UserSummary("u1", "anna", "Anna")
 private val jonas = UserSummary("u2", "jonas.k", "Jonas")
 private val lena = UserSummary("u3", "lena", "Lena")
 
+internal val friendsPreviewData = persistentListOf(anna, jonas, lena)
+
 internal val createTripFormPreviewData = CreateTripForm(
     name = TextFieldState("Summer in Vienna"),
     startDate = LocalDate(2026, 7, 1),
@@ -23,7 +25,7 @@ internal val createTripFormPreviewData = CreateTripForm(
     destinationResults = persistentListOf(PlaceSearchResult("Vienna", "Austria", GeoPoint(48.2082, 16.3738))),
     visibility = TripVisibility.PUBLIC,
     members = persistentListOf(anna),
-    friends = persistentListOf(anna, jonas, lena),
+    friends = friendsPreviewData,
 )
 
 internal val createTripFormWithErrorsPreviewData = createTripFormPreviewData.copy(
@@ -31,5 +33,5 @@ internal val createTripFormWithErrorsPreviewData = createTripFormPreviewData.cop
     destinationResults = persistentListOf(),
     visibility = TripVisibility.PRIVATE,
     members = persistentListOf(anna, UserSummary("u9", "nobody", "Nobody")),
-    memberErrors = persistentMapOf("nobody" to UiText.Server("No one has this username.")),
+    memberErrors = persistentMapOf("nobody" to UiText.Server("Only friends can be added.")),
 )

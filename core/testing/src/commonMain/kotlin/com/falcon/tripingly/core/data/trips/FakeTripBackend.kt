@@ -82,6 +82,7 @@ class FakeTripBackend(
             when (username) {
                 "unknown" -> "fields.memberUsernames.$index" to TripErrorCodes.MEMBER_NOT_FOUND
                 "blocked" -> "fields.memberUsernames.$index" to TripErrorCodes.MEMBER_BLOCKED
+                "stranger" -> "fields.memberUsernames.$index" to TripErrorCodes.MEMBER_NOT_FRIEND
                 else -> null
             }
         }
@@ -230,15 +231,6 @@ class FakeTripBackend(
         save(details.copy(trip = details.trip.copy(endDate = details.trip.startDate?.plusDays(days.size - 1)), days = days))
     }
 
-    override suspend fun addMember(tripId: String, username: String): AppResult<TripDetails, DataError.Network> = call {
-        val details = trips.value[tripId] ?: return notFound()
-        if (!details.trip.role.canManage) return forbidden()
-        val name = username.trim().removePrefix("@").lowercase()
-        if (name == "unknown") return notFound()
-        if (details.members.any { it.user.username == name }) return AppResult.Success(details)
-        save(details.copy(members = details.members + TripMember(UserSummary(nextId(), name, name), TripRole.EDITOR)))
-    }
-
     override suspend fun addMembers(tripId: String, usernames: List<String>): AppResult<TripDetails, DataError.Network> = call {
         val details = trips.value[tripId] ?: return notFound()
         if (!details.trip.role.canManage) return forbidden()
@@ -246,6 +238,7 @@ class FakeTripBackend(
             when (username) {
                 "unknown" -> "fields.usernames.$index" to TripErrorCodes.MEMBER_NOT_FOUND
                 "blocked" -> "fields.usernames.$index" to TripErrorCodes.MEMBER_BLOCKED
+                "stranger" -> "fields.usernames.$index" to TripErrorCodes.MEMBER_NOT_FRIEND
                 else -> null
             }
         }

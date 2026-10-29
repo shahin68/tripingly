@@ -1,6 +1,5 @@
 package com.falcon.tripingly.feature.trips.presentation.screen
 
-import androidx.compose.foundation.text.input.clearText
 import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
 import com.falcon.tripingly.core.common.error.DataError
 import com.falcon.tripingly.core.common.result.AppResult
@@ -21,6 +20,7 @@ import com.falcon.tripingly.feature.trips.generated.resources.Res
 import com.falcon.tripingly.feature.trips.generated.resources.create_trip_error_members
 import com.falcon.tripingly.feature.trips.generated.resources.create_trip_member_blocked
 import com.falcon.tripingly.feature.trips.generated.resources.create_trip_member_not_found
+import com.falcon.tripingly.feature.trips.generated.resources.create_trip_member_not_friend
 import com.falcon.tripingly.feature.trips.presentation.screen.HomeViewModel.Action
 import com.falcon.tripingly.feature.trips.presentation.screen.HomeViewModel.Dialog
 import com.falcon.tripingly.feature.trips.presentation.screen.HomeViewModel.DialogState
@@ -38,7 +38,7 @@ import kotlinx.coroutines.launch
 
 /**
  * The New trip sheet's form ([CreateTripForm], kept in the view model so it survives a rotation): the fields, the
- * debounced destination and member searches, the friends row, and creating the trip.
+ * debounced destination search, the friends to add, and creating the trip.
  */
 internal class HomeCreateTrip(
     private val scope: CoroutineScope,
@@ -51,7 +51,6 @@ internal class HomeCreateTrip(
     private val save: (refused: (DialogState, DataError.Network) -> DialogState, change: suspend () -> AppResult<*, DataError.Network>) -> Unit,
 ) {
     private var destinationSearch: Job? = null
-    private var memberSearch: Job? = null
     private var friendsLoad: Job? = null
 
     private val form: CreateTripForm? get() = (ui.value.dialog?.dialog as? Dialog.Create)?.form
@@ -62,8 +61,6 @@ internal class HomeCreateTrip(
             is Action.CreateTrip.DestinationQueryChanged -> searchDestination(action.query)
             is Action.CreateTrip.DestinationSelected -> selectDestination(action.result)
             is Action.CreateTrip.VisibilityChanged -> update { it.copy(visibility = action.visibility) }
-            is Action.CreateTrip.MemberQueryChanged -> searchMembers(action.query)
-            is Action.CreateTrip.MemberAdded -> addMember(action.user)
             is Action.CreateTrip.FriendToggled -> if (form?.isMember(action.user) == true) removeMember(action.user.username) else addMember(action.user)
             is Action.CreateTrip.MemberRemoved -> removeMember(action.username)
             Action.CreateTrip.Confirm -> create()
@@ -76,6 +73,7 @@ internal class HomeCreateTrip(
         ui.update { it.copy(dialog = DialogState(Dialog.Create(CreateTripForm(visibility = defaultVisibility())))) }
         friendsLoad?.cancel()
         friendsLoad = scope.launch {
+            // A failed load shows the same hint as having no friends; adding people is optional here.
             val friends = (userRepository.friends() as? AppResult.Success)?.data.orEmpty()
             update { it.copy(friends = friends.toImmutableList()) }
         }
@@ -124,31 +122,8 @@ internal class HomeCreateTrip(
         form?.destinationQuery?.setTextAndPlaceCursorAtEnd(result.name)
     }
 
-    /** Debounced like [searchDestination]. */
-    private fun searchMembers(query: String) {
-        memberSearch?.cancel()
-        if (query.isBlank()) {
-            update { it.copy(memberResults = persistentListOf(), isSearchingMembers = false) }
-            return
-        }
-        memberSearch = scope.launch {
-            delay(SEARCH_DEBOUNCE_MILLIS)
-            update { it.copy(isSearchingMembers = true) }
-            val results = (userRepository.search(query) as? AppResult.Success)?.data.orEmpty()
-            update { it.copy(memberResults = results.toImmutableList(), isSearchingMembers = false) }
-        }
-    }
-
-    private fun addMember(user: UserSummary) {
-        memberSearch?.cancel()
-        update { form ->
-            form.copy(
-                members = (if (form.isMember(user)) form.members else form.members + user).toImmutableList(),
-                memberResults = persistentListOf(),
-                isSearchingMembers = false,
-            )
-        }
-        form?.memberQuery?.clearText()
+    private fun addMember(user: UserSummary) = update { form ->
+        form.copy(members = (if (form.isMember(user)) form.members else form.members + user).toImmutableList())
     }
 
     /** Removing the last person the server refused also clears the message about them. */
@@ -159,13 +134,10 @@ internal class HomeCreateTrip(
         if (form.memberErrors.isNotEmpty() && errors.isEmpty()) ui.update { it.copy(dialog = it.dialog?.copy(error = null)) }
     }
 
-    /** Stops the searches and hides their results, e.g. when another dialog opens or the sheet closes. */
+    /** Stops the destination search and hides its results, e.g. when another dialog opens or the sheet closes. */
     fun clearSearches() {
         destinationSearch?.cancel()
-        memberSearch?.cancel()
-        update {
-            it.copy(destinationResults = persistentListOf(), isSearchingDestination = false, memberResults = persistentListOf(), isSearchingMembers = false)
-        }
+        update { it.copy(destinationResults = persistentListOf(), isSearchingDestination = false) }
     }
 
     private fun create() {
@@ -206,6 +178,7 @@ internal class HomeCreateTrip(
             when {
                 error.hasFieldError(field, TripErrorCodes.MEMBER_NOT_FOUND) -> username to UiText.Resource(Res.string.create_trip_member_not_found)
                 error.hasFieldError(field, TripErrorCodes.MEMBER_BLOCKED) -> username to UiText.Resource(Res.string.create_trip_member_blocked)
+                error.hasFieldError(field, TripErrorCodes.MEMBER_NOT_FRIEND) -> username to UiText.Resource(Res.string.create_trip_member_not_friend)
                 else -> null
             }
         }.toMap()

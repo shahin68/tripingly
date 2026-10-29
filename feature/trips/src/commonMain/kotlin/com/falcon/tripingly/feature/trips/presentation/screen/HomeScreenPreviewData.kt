@@ -5,6 +5,7 @@ import com.falcon.tripingly.core.model.trip.Trip
 import com.falcon.tripingly.core.model.trip.TripRole
 import com.falcon.tripingly.core.model.trip.UserSummary
 import kotlinx.collections.immutable.persistentListOf
+import kotlinx.collections.immutable.toImmutableList
 import kotlinx.datetime.LocalDate
 import kotlin.time.Instant
 import androidx.compose.ui.tooling.preview.PreviewParameterProvider
@@ -57,10 +58,18 @@ internal val tripsPreviewData = persistentListOf(
 
 internal val PreviewToday = LocalDate(2026, 10, 26)
 
-/** Trips, the first load, no trips yet, a search without matches, and trips that couldn't load. */
+/** Two trips on today (one lit-up ring over both) and Paris overlapping a fourth trip (one stretched dot). */
+internal val tripsOnNowPreviewData = tripsPreviewData + listOf(
+    tripsPreviewData[0].copy(id = "4", name = "Vienna", startDate = LocalDate(2026, 10, 24), endDate = LocalDate(2026, 10, 27)),
+    tripsPreviewData[0].copy(id = "5", name = "A day in Graz", startDate = PreviewToday, endDate = PreviewToday, editorCount = 2),
+    tripsPreviewData[1].copy(id = "6", name = "Salzburg", startDate = LocalDate(2026, 10, 28), endDate = LocalDate(2026, 10, 30)),
+)
+
+/** Trips, trips on now and overlapping, the first load, no trips yet, a search without matches, and trips that couldn't load. */
 internal class HomeScreenPreviewStates : PreviewParameterProvider<State> {
     override val values = sequenceOf(
         State(trips = tripsPreviewData, timeline = tripsPreviewData.toTimeline(PreviewToday), hasTrips = true, hasLoaded = true),
+        State(trips = tripsOnNowPreviewData.toImmutableList(), timeline = tripsOnNowPreviewData.toTimeline(PreviewToday), hasTrips = true, hasLoaded = true),
         State(),
         State(hasLoaded = true),
         State(searchQuery = "Rome", hasTrips = true, hasLoaded = true),

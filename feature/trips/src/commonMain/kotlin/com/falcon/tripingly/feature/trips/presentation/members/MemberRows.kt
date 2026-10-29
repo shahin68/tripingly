@@ -9,10 +9,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.foundation.text.input.TextFieldState
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.PersonAdd
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -21,19 +17,14 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.input.ImeAction
-import androidx.compose.ui.text.input.KeyboardCapitalization
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.falcon.tripingly.core.common.util.DateUtils
-import com.falcon.tripingly.core.designsystem.component.AppTextField
 import com.falcon.tripingly.core.designsystem.component.AvatarCircle
 import com.falcon.tripingly.core.designsystem.component.AvatarSize
 import com.falcon.tripingly.core.designsystem.component.ButtonSize
 import com.falcon.tripingly.core.designsystem.component.PrimaryButton
-import com.falcon.tripingly.core.designsystem.component.SecondaryButton
 import com.falcon.tripingly.core.designsystem.component.Skeleton
 import com.falcon.tripingly.core.designsystem.component.skeletonText
 import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
@@ -44,8 +35,6 @@ import com.falcon.tripingly.core.model.trip.TripMember
 import com.falcon.tripingly.core.model.trip.TripRole
 import com.falcon.tripingly.core.model.trip.UserSummary
 import com.falcon.tripingly.feature.trips.generated.resources.Res
-import com.falcon.tripingly.feature.trips.generated.resources.members_add_button
-import com.falcon.tripingly.feature.trips.generated.resources.members_add_label
 import com.falcon.tripingly.feature.trips.generated.resources.members_invite_expires
 import com.falcon.tripingly.feature.trips.generated.resources.members_invite_revoke
 import com.falcon.tripingly.feature.trips.generated.resources.members_invite_share
@@ -54,8 +43,6 @@ import com.falcon.tripingly.feature.trips.generated.resources.members_join_decli
 import com.falcon.tripingly.feature.trips.generated.resources.members_remove
 import com.falcon.tripingly.feature.trips.generated.resources.members_role_editor
 import com.falcon.tripingly.feature.trips.generated.resources.members_role_owner
-import com.falcon.tripingly.feature.trips.presentation.members.TripMembersViewModel.Action
-import com.falcon.tripingly.feature.trips.presentation.members.TripMembersViewModel.AddState
 import org.jetbrains.compose.resources.stringResource
 
 /* The members sheet's rows: people, the username field and invite links. */
@@ -113,37 +100,6 @@ internal fun JoinRequestRow(request: JoinRequest, isAnswering: Boolean, onAccept
 }
 
 @Composable
-internal fun AddMemberField(state: AddState, onAction: (Action) -> Unit) {
-    Row(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = MaterialTheme.spacing.large),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
-    ) {
-        AppTextField(
-            state = state.username,
-            placeholder = stringResource(Res.string.members_add_label),
-            onImeAction = { onAction(Action.Add.ByUsername) },
-            leadingIcon = Icons.Default.PersonAdd,
-            enabled = !state.isAdding,
-            keyboardOptions = KeyboardOptions(
-                capitalization = KeyboardCapitalization.None,
-                autoCorrectEnabled = false,
-                keyboardType = KeyboardType.Ascii,
-                imeAction = ImeAction.Done,
-            ),
-            modifier = Modifier.weight(1f),
-        )
-        SecondaryButton(
-            text = stringResource(Res.string.members_add_button),
-            onClick = { onAction(Action.Add.ByUsername) },
-            enabled = state.username.text.isNotBlank(),
-            isLoading = state.isAdding,
-            size = ButtonSize.Small,
-        )
-    }
-}
-
-@Composable
 internal fun InviteRow(invite: TripInvite, onShare: () -> Unit, onRevoke: () -> Unit, modifier: Modifier = Modifier) {
     Row(
         // The text buttons' own padding makes up the end, so their labels line up with the text at the start.
@@ -187,18 +143,6 @@ private fun JoinRequestRowPreview() {
     }
 }
 
-/** Empty, and a username typed while it's being added. */
-@Preview
-@Composable
-private fun AddMemberFieldPreview() {
-    TripinglyTheme {
-        Column(Modifier.background(MaterialTheme.colorScheme.surface)) {
-            AddMemberField(state = AddState(), onAction = {})
-            AddMemberField(state = AddState(username = TextFieldState("jonas.k"), isAdding = true), onAction = {})
-        }
-    }
-}
-
 @Preview
 @Composable
 private fun InviteRowPreview() {
@@ -215,7 +159,6 @@ private fun MembersRowsDarkPreview() {
             JoinRequestRow(previewJoinRequest, isAnswering = false, onAccept = {}, onDecline = {})
             previewMembers.forEach { member -> MemberRow(member = member, canRemove = member.role != TripRole.OWNER, onRemove = {}) }
             MemberSkeleton()
-            AddMemberField(state = AddState(username = TextFieldState("jonas.k")), onAction = {})
             InviteRow(invite = previewInvite, onShare = {}, onRevoke = {})
         }
     }

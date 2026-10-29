@@ -53,9 +53,10 @@
     <string name="create_trip_dates_add">Add dates</string>
     <string name="create_trip_visibility_public">Public</string>
     <string name="create_trip_visibility_private">Private</string>
-    <string name="create_trip_add_by_username">Add by username</string>
     <string name="create_trip_member_not_found">No one has this username.</string>
     <string name="create_trip_member_blocked">You can’t add this person.</string>
+    <string name="create_trip_member_not_friend">Only friends can be added.</string>
+    <string name="trip_friends_only_hint">Only friends can be added: people you follow who follow you back. Anyone else can join with an invite link.</string>
     <string name="create_trip_error_members">Some people can’t be added. Remove them and try again.</string>
 
     <!-- Rename trip dialog -->
@@ -86,9 +87,6 @@
     <string name="members_role_owner">Owner</string>
     <string name="members_role_editor">Editor</string>
     <string name="members_remove">Remove</string>
-    <string name="members_add_label">Add by username</string>
-    <string name="members_add_button">Add</string>
-    <string name="members_error_user_not_found">No one has that username.</string>
     <string name="members_error_some_not_added">Some of these people can’t be added. Unpick them and try again.</string>
     <string name="members_add_friends">Add %1$d</string>
     <string name="members_join_requests_title">Asking to join</string>
@@ -158,5 +156,5 @@
     <string name="create_trip_destination_label">Destination (optional)</string>
     <string name="create_trip_dates_label">Dates</string>
     <string name="create_trip_visibility_label">Who can see it</string>
-    <string name="create_trip_members_label">Members</string>
+    <string name="create_trip_friends_label">Add Friends</string>
 </resources>

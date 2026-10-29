@@ -1,7 +1,5 @@
 package com.falcon.tripingly.feature.trips.presentation.members
 
-import androidx.compose.foundation.text.input.TextFieldState
-import androidx.compose.foundation.text.input.clearText
 import androidx.compose.runtime.Immutable
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -28,7 +26,6 @@ import com.falcon.tripingly.feature.trips.generated.resources.members_error_load
 import com.falcon.tripingly.feature.trips.generated.resources.members_error_remove
 import com.falcon.tripingly.feature.trips.generated.resources.members_error_revoke_invite
 import com.falcon.tripingly.feature.trips.generated.resources.members_error_some_not_added
-import com.falcon.tripingly.feature.trips.generated.resources.members_error_user_not_found
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.ImmutableSet
 import kotlinx.collections.immutable.persistentListOf
@@ -48,8 +45,8 @@ import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.StringResource
 
 /**
- * Who is in a trip; the owner adds editors (by username, or several friends at once) and removes
- * them, answers requests to join, and manages invite links.
+ * Who is in a trip; the owner adds friends as editors (only friends, Shahin 2026-10-29) and removes
+ * them, answers requests to join, and manages invite links for everyone else.
  */
 class TripMembersViewModel(
     private val tripId: String,
@@ -68,7 +65,7 @@ class TripMembersViewModel(
             canManage = details?.trip?.role?.canManage == true,
             members = details?.members.orEmpty().toImmutableList(),
             add = ui.add.copy(
-                friends = ui.add.friends.filterNot { it.username in members }.toImmutableList(),
+                friends = ui.add.friends?.filterNot { it.username in members }?.toImmutableList(),
                 pickedFriends = (ui.add.pickedFriends - members).toImmutableSet(),
             ),
             isLoading = ui.isLoading && (details == null || details.days.isEmpty()),
@@ -102,7 +99,6 @@ class TripMembersViewModel(
 
     private fun onAddAction(action: Action.Add) {
         when (action) {
-            Action.Add.ByUsername -> addMember()
             is Action.Add.FriendToggled -> ui.update {
                 val username = action.friend.username
                 val picked = it.add.pickedFriends.let { picked -> if (username in picked) picked - username else picked + username }
@@ -170,22 +166,6 @@ class TripMembersViewModel(
         }
     }
 
-    private fun addMember() {
-        val field = ui.value.add.username
-        val username = field.text.trim().toString()
-        if (username.isEmpty() || ui.value.add.isAdding) return
-        ui.update { it.copy(add = it.add.copy(isAdding = true), message = null) }
-        viewModelScope.launch {
-            when (val result = tripRepository.addMember(tripId, username)) {
-                is AppResult.Success -> {
-                    field.clearText()
-                    updateAdd { it.copy(isAdding = false) }
-                }
-                is AppResult.Error -> ui.update { it.copy(add = it.add.copy(isAdding = false), message = addMemberError(result.error)) }
-            }
-        }
-    }
-
     /** Friends who became members another way meanwhile aren't sent again. */
     private fun addPickedFriends() {
         if (ui.value.add.pickedFriends.isEmpty() || ui.value.add.isAdding) return
@@ -208,9 +188,6 @@ class TripMembersViewModel(
         } else {
             error.toUiText(Res.string.members_error_add)
         }
-
-    private fun addMemberError(error: DataError.Network): UiText =
-        if (error.hasCode(TripErrorCodes.NOT_FOUND)) UiText.Resource(Res.string.members_error_user_not_found) else error.toUiText(Res.string.members_error_add)
 
     private fun createInvite() {
         if (ui.value.invites.isCreating) return
@@ -262,14 +239,13 @@ class TripMembersViewModel(
         val message: UiText? = null,
     )
 
-    /** Adding editors: friends picked from the avatar row, or one username. */
+    /** Adding editors: friends picked from the avatar row. */
     @Immutable
     data class AddState(
-        /** The owner's friends who aren't in the trip yet. */
-        val friends: ImmutableList<UserSummary> = persistentListOf(),
+        /** The owner's friends who aren't in the trip yet; null until they've loaded. */
+        val friends: ImmutableList<UserSummary>? = null,
         /** Usernames of the friends picked to add together. */
         val pickedFriends: ImmutableSet<String> = persistentSetOf(),
-        val username: TextFieldState = TextFieldState(),
         val isAdding: Boolean = false,
     )
 
@@ -294,7 +270,6 @@ class TripMembersViewModel(
         data object DismissMessage : Action
 
         sealed interface Add : Action {
-            data object ByUsername : Add
             data class FriendToggled(val friend: UserSummary) : Add
             data object PickedFriends : Add
         }

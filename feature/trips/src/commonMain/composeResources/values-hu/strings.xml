@@ -53,9 +53,10 @@
     <string name="create_trip_dates_add">Dátumok megadása</string>
     <string name="create_trip_visibility_public">Nyilvános</string>
     <string name="create_trip_visibility_private">Privát</string>
-    <string name="create_trip_add_by_username">Hozzáadás felhasználónévvel</string>
     <string name="create_trip_member_not_found">Senkinek nincs ilyen felhasználóneve.</string>
     <string name="create_trip_member_blocked">Ezt a személyt nem adhatod hozzá.</string>
+    <string name="create_trip_member_not_friend">Csak barátokat lehet hozzáadni.</string>
+    <string name="trip_friends_only_hint">Csak barátokat adhatsz hozzá: akiket követsz, és ők is követnek téged. Bárki más meghívólinkkel csatlakozhat.</string>
     <string name="create_trip_error_members">Néhány ember nem adható hozzá. Távolítsd el őket, és próbáld újra.</string>
 
     <!-- Rename trip dialog -->
@@ -86,9 +87,6 @@
     <string name="members_role_owner">Tulajdonos</string>
     <string name="members_role_editor">Szerkesztő</string>
     <string name="members_remove">Eltávolítás</string>
-    <string name="members_add_label">Hozzáadás felhasználónévvel</string>
-    <string name="members_add_button">Hozzáadás</string>
-    <string name="members_error_user_not_found">Nincs ilyen felhasználónév.</string>
     <string name="members_error_some_not_added">Néhány embert nem lehet hozzáadni. Vedd ki őket, és próbáld újra.</string>
     <string name="members_add_friends">%1$d hozzáadása</string>
     <string name="members_join_requests_title">Csatlakozni szeretnének</string>
@@ -158,5 +156,5 @@
     <string name="create_trip_destination_label">Úti cél (nem kötelező)</string>
     <string name="create_trip_dates_label">Dátumok</string>
     <string name="create_trip_visibility_label">Ki láthatja</string>
-    <string name="create_trip_members_label">Tagok</string>
+    <string name="create_trip_friends_label">Barátok hozzáadása</string>
 </resources>

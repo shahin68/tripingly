@@ -278,8 +278,6 @@ class HomeViewModel(
             data class DestinationQueryChanged(val query: String) : CreateTrip
             data class DestinationSelected(val result: PlaceSearchResult) : CreateTrip
             data class VisibilityChanged(val visibility: TripVisibility) : CreateTrip
-            data class MemberQueryChanged(val query: String) : CreateTrip
-            data class MemberAdded(val user: UserSummary) : CreateTrip
             data class FriendToggled(val user: UserSummary) : CreateTrip
             data class MemberRemoved(val username: String) : CreateTrip
             data object Confirm : CreateTrip

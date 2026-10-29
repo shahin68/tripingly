@@ -28,21 +28,67 @@ import org.jetbrains.compose.resources.stringResource
  */
 @Immutable
 data class TripTimeline(
-    /** The day the timeline was made for; the "Today" header and the "In 3 days" labels count from it. */
+    /** The day the timeline was made for; the "Today" row and the "In 3 days" labels count from it. */
     val today: LocalDate? = null,
-    val upcoming: ImmutableList<Trip> = persistentListOf(),
+    val upcoming: ImmutableList<TimelineEntry> = persistentListOf(),
     val past: ImmutableList<Trip> = persistentListOf(),
 ) {
     val isEmpty: Boolean get() = upcoming.isEmpty() && past.isEmpty()
+
+    /** No trip is on today, so a "Today" row stands above what's coming; otherwise today's mark is on those trips. */
+    val showsTodayRow: Boolean get() = today != null && upcoming.none { it.mark.isNow }
 }
+
+/** A coming trip and its mark on the timeline's rail. */
+@Immutable
+data class TimelineEntry(val trip: Trip, val mark: TimelineMark = TimelineMark())
+
+/**
+ * A trip's mark on the rail. Trips whose dates overlap share one mark that stretches from the first one's dot to the
+ * last one's ([isFirst], [isLast]); only the first shows its date. [isNow]: the trips on today, which share today's
+ * ring and light up.
+ */
+@Immutable
+data class TimelineMark(val isNow: Boolean = false, val isFirst: Boolean = true, val isLast: Boolean = true)
 
 internal fun List<Trip>.toTimeline(today: LocalDate): TripTimeline {
     val (past, upcoming) = partition { trip -> trip.endDate?.let { it < today } ?: false }
     return TripTimeline(
         today = today,
-        upcoming = upcoming.sortedWith(compareBy(nullsLast()) { it.startDate }).toImmutableList(),
+        upcoming = upcoming.sortedWith(compareBy(nullsLast()) { it.startDate }).marked(today).toImmutableList(),
         past = past.sortedByDescending { it.endDate }.toImmutableList(),
     )
+}
+
+/**
+ * Groups trips (sorted by start) whose dates overlap into one mark: the trips on today together, then each run of
+ * coming trips that starts before the run so far has ended. Trips without dates stand alone.
+ */
+private fun List<Trip>.marked(today: LocalDate): List<TimelineEntry> {
+    val groups = mutableListOf<MutableList<Trip>>()
+    var groupEnd: LocalDate? = null
+    var groupIsNow = false
+    for (trip in this) {
+        val start = trip.startDate
+        val end = trip.endDate ?: start
+        val isNow = trip.isOn(today)
+        val runEnd = groupEnd
+        val joins = start != null && end != null && runEnd != null && isNow == groupIsNow && start <= runEnd
+        if (joins) groups.last() += trip else groups += mutableListOf(trip)
+        groupEnd = if (joins) maxOf(runEnd, end) else end
+        groupIsNow = isNow
+    }
+    return groups.flatMap { group ->
+        group.mapIndexed { index, trip ->
+            TimelineEntry(trip, TimelineMark(isNow = trip.isOn(today), isFirst = index == 0, isLast = index == group.lastIndex))
+        }
+    }
+}
+
+/** The trip's dates include [day]. */
+private fun Trip.isOn(day: LocalDate): Boolean {
+    val start = startDate ?: return false
+    return start <= day && day <= (endDate ?: start)
 }
 
 /** When a trip is, said relative to [today]: "Now", "Tomorrow", "In 3 weeks", "Last week". Null without dates. */

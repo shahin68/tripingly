@@ -8,9 +8,9 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.IntrinsicSize
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -36,9 +36,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -62,8 +66,10 @@ import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
 
 /**
- * One trip on the timeline: its start date in the left column, a dot on the rail (solid for what's coming,
- * grey and dashed for the past) and the trip's card. Tapping opens the trip; ⋮ or a long press opens its menu.
+ * One trip on the timeline: its start date in the left column, its [mark] on the rail (a solid dot for what's
+ * coming, grey and dashed for the past, today's ring for trips on now, stretched over trips that overlap) and the
+ * trip's card, lit up in the brand colour while the trip is on. Tapping opens the trip; ⋮ or a long press opens
+ * its menu.
  */
 @Composable
 internal fun TimelineTripItem(
@@ -72,31 +78,26 @@ internal fun TimelineTripItem(
     past: Boolean,
     onAction: (Action) -> Unit,
     modifier: Modifier = Modifier,
+    mark: TimelineMark = TimelineMark(),
 ) {
-    val railColor = if (past) MaterialTheme.colorScheme.outline else MaterialTheme.colorScheme.primary
+    val colors = MaterialTheme.colorScheme
+    val railColor = if (past) colors.outline else colors.primary
     Row(modifier = modifier.fillMaxWidth().height(IntrinsicSize.Min)) {
-        DateColumn(trip.startDate, Modifier.padding(top = CardTopToDate))
+        // Overlapping trips share the first one's date.
+        DateColumn(trip.startDate.takeIf { mark.isFirst }, Modifier.padding(top = CardTopToDate))
         Box(
             modifier = Modifier
                 .width(TimelineDefaults.RailWidth)
                 .fillMaxHeight()
-                .rail(railColor, dashed = past),
-        ) {
-            Box(
-                Modifier
-                    .padding(top = CardTopToDate)
-                    .align(Alignment.TopCenter)
-                    .size(TimelineDefaults.Dot)
-                    .skeleton(CircleShape)
-                    .background(railColor, CircleShape)
-                    .border(TimelineDefaults.DotRing, MaterialTheme.colorScheme.background, CircleShape),
-            )
-        }
+                .rail(railColor, dashed = past)
+                .mark(mark, fill = if (mark.isNow) colors.background else railColor, edge = if (mark.isNow) colors.primary else colors.background),
+        )
         Spacer(Modifier.width(TimelineDefaults.CardGap))
         TripCard(
             trip = trip,
             whenLabel = today?.let { trip.whenRelativeTo(it) }?.label(),
             past = past,
+            isOn = mark.isNow,
             onAction = onAction,
             modifier = Modifier.weight(1f).padding(vertical = TimelineDefaults.RowGap / 2),
         )
@@ -153,6 +154,26 @@ private fun DateColumn(date: LocalDate?, modifier: Modifier = Modifier) {
     }
 }
 
+/**
+ * The trip's dot, [fill]ed and ringed with [edge]: a circle, or for trips that overlap one rounded bar from the
+ * first trip's dot to the last one's, each row drawing its part of it.
+ */
+private fun Modifier.mark(mark: TimelineMark, fill: Color, edge: Color) = drawBehind {
+    val radius = TimelineDefaults.Dot.toPx() / 2
+    val stroke = TimelineDefaults.DotRing.toPx()
+    val center = CardTopToDate.toPx() + radius
+    // A bar that goes on past the row's edge is cut there, where the next row's part carries on.
+    val top = if (mark.isFirst) center - radius else -size.height
+    val bottom = if (mark.isLast) center + radius else size.height * 2
+    val topLeft = Offset(size.width / 2 - radius + stroke / 2, top + stroke / 2)
+    val barSize = Size(radius * 2 - stroke, bottom - top - stroke)
+    val corner = CornerRadius(radius - stroke / 2)
+    clipRect {
+        drawRoundRect(fill, topLeft, barSize, corner)
+        drawRoundRect(edge, topLeft, barSize, corner, style = Stroke(stroke))
+    }
+}
+
 /** The rail through the whole row, so rows join into one line. */
 private fun Modifier.rail(color: Color, dashed: Boolean) = drawBehind {
     val x = size.width / 2
@@ -171,17 +192,23 @@ private fun TripCard(
     trip: Trip,
     whenLabel: String?,
     past: Boolean,
+    isOn: Boolean,
     onAction: (Action) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     var menuOpen by rememberSaveable { mutableStateOf(false) }
+    val colors = MaterialTheme.colorScheme
+    // A trip on now is lit up like the brand's buttons, its text in their dark content colour.
+    val content = if (isOn) colors.onPrimary else colors.onSurface
+    val muted = if (isOn) colors.onPrimary.copy(alpha = ON_MUTED_ALPHA) else colors.onSurfaceVariant
     Surface(
         modifier = modifier
             // Keeps the ripple inside the card's rounded corners.
             .clip(MaterialTheme.shapes.large)
             .combinedClickable(onClick = { onAction(Action.Trips.Click(trip.id)) }, onLongClick = { menuOpen = true }),
         shape = MaterialTheme.shapes.large,
-        color = MaterialTheme.colorScheme.surfaceContainerLowest,
+        color = if (isOn) colors.primary else colors.surfaceContainerLowest,
+        contentColor = content,
     ) {
         Row(Modifier.padding(start = TimelineDefaults.CardPadding, top = TimelineDefaults.CardPadding, bottom = TimelineDefaults.CardPadding)) {
             Column(
@@ -192,12 +219,16 @@ private fun TripCard(
                     Text(
                         text = whenLabel.uppercase(),
                         style = MaterialTheme.typography.labelSmall,
-                        color = if (past) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.primary,
+                        color = when {
+                            isOn -> content
+                            past -> muted
+                            else -> colors.primary
+                        },
                         modifier = Modifier.skeletonText(),
                     )
                 }
                 Text(trip.name, style = MaterialTheme.typography.titleMedium, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.skeletonText())
-                TripCardDetails(trip)
+                TripCardDetails(trip, muted)
             }
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Box {
@@ -209,7 +240,7 @@ private fun TripCard(
                 Icon(
                     imageVector = if (trip.visibility == TripVisibility.PRIVATE) Icons.Outlined.Lock else Icons.Outlined.Public,
                     contentDescription = if (trip.visibility == TripVisibility.PRIVATE) stringResource(Res.string.trip_private) else null,
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    tint = muted,
                     modifier = Modifier.size(TimelineDefaults.VisibilityIcon).skeleton(CircleShape),
                 )
             }
@@ -218,8 +249,7 @@ private fun TripCard(
 }
 
 @Composable
-private fun TripCardDetails(trip: Trip) {
-    val muted = MaterialTheme.colorScheme.onSurfaceVariant
+private fun TripCardDetails(trip: Trip, muted: Color) {
     val dates = DateUtils.formatRange(trip.startDate, trip.endDate) ?: stringResource(Res.string.trip_no_dates)
     Text(
         text = "$dates · ${pluralStringResource(Res.plurals.trip_day_count, trip.dayCount, trip.dayCount)}",
@@ -286,13 +316,16 @@ private object TimelineDefaults {
 private val CardTopToDate = 20.dp
 private const val RAIL_ALPHA = 0.45f
 private const val PAST_ALPHA = 0.75f
+/** Secondary text on a lit-up card. */
+private const val ON_MUTED_ALPHA = 0.75f
 
 @Composable
 private fun TimelinePreviewContent() {
-    val today = LocalDate(2026, 10, 26)
+    val today = PreviewToday
     Column(Modifier.background(MaterialTheme.colorScheme.background).padding(MaterialTheme.spacing.medium)) {
-        TodayHeader(today)
-        tripsPreviewData.forEach { TimelineTripItem(it, today, past = false, onAction = {}) }
+        val timeline = tripsOnNowPreviewData.toTimeline(today)
+        if (timeline.showsTodayRow) TodayHeader(today)
+        timeline.upcoming.forEach { TimelineTripItem(it.trip, today, past = false, onAction = {}, mark = it.mark) }
         PastHeader(1)
         TimelineTripItem(tripsPreviewData.first(), today, past = true, onAction = {})
     }
