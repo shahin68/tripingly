@@ -82,7 +82,6 @@ class FakeTripBackend(
             when (username) {
                 "unknown" -> "fields.memberUsernames.$index" to TripErrorCodes.MEMBER_NOT_FOUND
                 "blocked" -> "fields.memberUsernames.$index" to TripErrorCodes.MEMBER_BLOCKED
-                "stranger" -> "fields.memberUsernames.$index" to TripErrorCodes.MEMBER_NOT_FRIEND
                 else -> null
             }
         }
@@ -238,7 +237,6 @@ class FakeTripBackend(
             when (username) {
                 "unknown" -> "fields.usernames.$index" to TripErrorCodes.MEMBER_NOT_FOUND
                 "blocked" -> "fields.usernames.$index" to TripErrorCodes.MEMBER_BLOCKED
-                "stranger" -> "fields.usernames.$index" to TripErrorCodes.MEMBER_NOT_FRIEND
                 else -> null
             }
         }

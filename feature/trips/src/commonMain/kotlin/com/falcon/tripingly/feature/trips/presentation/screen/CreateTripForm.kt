@@ -6,11 +6,8 @@ import com.falcon.tripingly.core.model.account.TripVisibility
 import com.falcon.tripingly.core.model.place.PlaceSearchResult
 import com.falcon.tripingly.core.model.trip.Destination
 import com.falcon.tripingly.core.model.trip.UserSummary
-import com.falcon.tripingly.core.ui.UiText
 import kotlinx.collections.immutable.ImmutableList
-import kotlinx.collections.immutable.ImmutableMap
 import kotlinx.collections.immutable.persistentListOf
-import kotlinx.collections.immutable.persistentMapOf
 import kotlinx.datetime.LocalDate
 
 /**
@@ -30,10 +27,8 @@ data class CreateTripForm(
     val isSearchingDestination: Boolean = false,
     /** Starts at the user's `defaultTripVisibility`. */
     val visibility: TripVisibility = TripVisibility.PUBLIC,
-    /** People who join as editors when the trip is created, in the order they were picked. */
+    /** Friends checked in the row; they join as editors when the trip is created, in the order they were picked. */
     val members: ImmutableList<UserSummary> = persistentListOf(),
-    /** Why the server refused a member, by username; shown on that member's chip. */
-    val memberErrors: ImmutableMap<String, UiText> = persistentMapOf(),
     /** The user's friends, the only people they can add (Shahin, 2026-10-29); null until they've loaded. */
     val friends: ImmutableList<UserSummary>? = null,
 ) {

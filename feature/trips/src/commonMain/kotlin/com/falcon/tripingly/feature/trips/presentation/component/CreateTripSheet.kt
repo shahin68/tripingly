@@ -63,6 +63,7 @@ import com.falcon.tripingly.feature.trips.generated.resources.create_trip_visibi
 import com.falcon.tripingly.feature.trips.generated.resources.trip_day_count
 import com.falcon.tripingly.feature.trips.presentation.screen.CreateTripForm
 import com.falcon.tripingly.feature.trips.presentation.screen.HomeViewModel.Action
+import kotlinx.collections.immutable.persistentListOf
 import kotlinx.datetime.daysUntil
 import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
@@ -233,9 +234,9 @@ private fun CreateTripSheetPreview() {
 private fun CreateTripSheetDarkErrorPreview() {
     TripinglyTheme(darkTheme = true) {
         CreateTripSheetContent(
-            form = createTripFormWithErrorsPreviewData,
+            form = createTripFormPreviewData.copy(destinationResults = persistentListOf()),
             isSaving = false,
-            error = UiText.Server("Some people can’t be added. Remove them and try again."),
+            error = UiText.Server("Some friends can’t be added anymore, so they were unchecked. Try again."),
             onAction = {},
             modifier = Modifier.background(MaterialTheme.colorScheme.surface),
         )

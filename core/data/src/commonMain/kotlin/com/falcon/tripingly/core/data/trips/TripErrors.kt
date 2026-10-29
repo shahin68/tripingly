@@ -28,9 +28,6 @@ object TripErrorCodes {
     /** Like [MEMBER_NOT_FOUND], when the user blocked that person. */
     const val MEMBER_BLOCKED = "blocked"
 
-    /** Like [MEMBER_NOT_FOUND], when that person isn't the user's friend (they don't follow each other); owners add only friends. */
-    const val MEMBER_NOT_FRIEND = "notFriend"
-
     /** `fields.id` when deleting a trip's only day. */
     const val LAST_DAY = "lastDay"
 }

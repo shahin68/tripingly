@@ -25,9 +25,6 @@ import com.falcon.tripingly.core.model.trip.UserSummary
 import com.falcon.tripingly.core.ui.UiText
 import com.falcon.tripingly.feature.trips.generated.resources.Res
 import com.falcon.tripingly.feature.trips.generated.resources.create_trip_error_members
-import com.falcon.tripingly.feature.trips.generated.resources.create_trip_member_blocked
-import com.falcon.tripingly.feature.trips.generated.resources.create_trip_member_not_found
-import com.falcon.tripingly.feature.trips.generated.resources.create_trip_member_not_friend
 import com.falcon.tripingly.feature.trips.generated.resources.home_error_make_private
 import com.falcon.tripingly.feature.trips.generated.resources.home_offline_cached
 import com.falcon.tripingly.feature.trips.generated.resources.reschedule_error_days_not_empty
@@ -463,44 +460,25 @@ class HomeViewModelTest {
     }
 
     @Test
-    fun createTrip_refusedMembers_showTheReasonOnTheirChips() = runTest {
+    fun createTrip_refusedFriends_areUnchecked_andTheNextTryCreatesIt() = runTest {
         val viewModel = viewModel()
         advanceUntilIdle()
         val unknown = UserSummary("u8", "unknown", "Unknown")
         val blocked = UserSummary("u9", "blocked", "Blocked")
-        val stranger = UserSummary("u10", "stranger", "Stranger")
 
         viewModel.onAction(Action.Trips.Add)
         advanceUntilIdle()
         viewModel.uiState.value.form.name.setTextAndPlaceCursorAtEnd("Rome")
         viewModel.onAction(Action.CreateTrip.DatesChanged(LocalDate(2026, 7, 1), LocalDate(2026, 7, 2)))
-        listOf(anna, unknown, blocked, stranger).forEach { viewModel.onAction(Action.CreateTrip.FriendToggled(it)) }
+        listOf(anna, unknown, blocked).forEach { viewModel.onAction(Action.CreateTrip.FriendToggled(it)) }
         viewModel.onAction(Action.CreateTrip.Confirm)
         advanceUntilIdle()
 
         val state = viewModel.uiState.value
         assertIs<Dialog.Create>(state.dialog?.dialog)
         assertEquals(UiText.Resource(Res.string.create_trip_error_members), state.dialog?.error)
-        assertEquals(
-            mapOf<String, UiText>(
-                "unknown" to UiText.Resource(Res.string.create_trip_member_not_found),
-                "blocked" to UiText.Resource(Res.string.create_trip_member_blocked),
-                "stranger" to UiText.Resource(Res.string.create_trip_member_not_friend),
-            ),
-            state.form.memberErrors.toMap(),
-        )
+        assertEquals(listOf(anna), state.form.members)
         assertTrue(state.trips.isEmpty())
-
-        viewModel.onAction(Action.CreateTrip.MemberRemoved("unknown"))
-        advanceUntilIdle()
-        assertEquals(setOf("blocked", "stranger"), viewModel.uiState.value.form.memberErrors.keys)
-        assertEquals(UiText.Resource(Res.string.create_trip_error_members), viewModel.uiState.value.dialog?.error)
-
-        viewModel.onAction(Action.CreateTrip.MemberRemoved("blocked"))
-        viewModel.onAction(Action.CreateTrip.MemberRemoved("stranger"))
-        advanceUntilIdle()
-        assertTrue(viewModel.uiState.value.form.memberErrors.isEmpty())
-        assertNull(viewModel.uiState.value.dialog?.error)
 
         viewModel.onAction(Action.CreateTrip.Confirm)
         advanceUntilIdle()

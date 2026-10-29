@@ -56,32 +56,40 @@ class TripTimelineTest {
     }
 
     @Test
-    fun tripsOnToday_shareTodaysMark_andHideTheTodayRow() {
+    fun ongoingTrips_getAFilledDot_tripsStartingToday_shareTodaysRing_andTheTodayRowHides() {
         val timeline = listOf(
             trip("Week", LocalDate(2026, 10, 24), LocalDate(2026, 10, 28)),
+            trip("Weekend", LocalDate(2026, 10, 25), LocalDate(2026, 10, 26)),
             trip("Day", today),
+            trip("Two days", today, LocalDate(2026, 10, 27)),
             trip("Next", LocalDate(2026, 10, 27), LocalDate(2026, 10, 29)),
         ).toTimeline(today)
 
         assertEquals(
-            listOf(TimelineMark(isNow = true, isFirst = true, isLast = false), TimelineMark(isNow = true, isFirst = false, isLast = true), TimelineMark()),
+            listOf(
+                TimelineMark(TimelineMark.Kind.Ongoing),
+                TimelineMark(TimelineMark.Kind.Ongoing),
+                TimelineMark(TimelineMark.Kind.StartsToday, isFirst = true, isLast = false),
+                TimelineMark(TimelineMark.Kind.StartsToday, isFirst = false, isLast = true),
+                TimelineMark(),
+            ),
             timeline.upcoming.map { it.mark },
         )
         assertFalse(timeline.showsTodayRow)
     }
 
     @Test
-    fun overlappingTrips_shareOneMark_andTouchingOnesToo_butNotLaterOnes() {
+    fun onlyTripsStartingTheSameDay_shareAMark_overlappingOnesDont() {
         val timeline = listOf(
             trip("A", LocalDate(2026, 11, 1), LocalDate(2026, 11, 5)),
             trip("B", LocalDate(2026, 11, 3), LocalDate(2026, 11, 10)),
-            trip("C", LocalDate(2026, 11, 10)),
-            trip("D", LocalDate(2026, 11, 11)),
+            trip("C", LocalDate(2026, 11, 3)),
             trip("Dateless", null),
+            trip("Dateless 2", null),
         ).toTimeline(today)
 
-        assertEquals(listOf(true, false, false, true, true), timeline.upcoming.map { it.mark.isFirst })
-        assertEquals(listOf(false, false, true, true, true), timeline.upcoming.map { it.mark.isLast })
+        assertEquals(listOf(true, true, false, true, true), timeline.upcoming.map { it.mark.isFirst })
+        assertEquals(listOf(true, false, true, true, true), timeline.upcoming.map { it.mark.isLast })
         assertTrue(timeline.showsTodayRow)
     }
 

@@ -58,14 +58,15 @@ internal val tripsPreviewData = persistentListOf(
 
 internal val PreviewToday = LocalDate(2026, 10, 26)
 
-/** Two trips on today (one lit-up ring over both) and Paris overlapping a fourth trip (one stretched dot). */
+/** Vienna on since before today (filled dot), two trips starting today (one stretched ring), two starting the same coming day. */
 internal val tripsOnNowPreviewData = tripsPreviewData + listOf(
     tripsPreviewData[0].copy(id = "4", name = "Vienna", startDate = LocalDate(2026, 10, 24), endDate = LocalDate(2026, 10, 27)),
     tripsPreviewData[0].copy(id = "5", name = "A day in Graz", startDate = PreviewToday, endDate = PreviewToday, editorCount = 2),
-    tripsPreviewData[1].copy(id = "6", name = "Salzburg", startDate = LocalDate(2026, 10, 28), endDate = LocalDate(2026, 10, 30)),
+    tripsPreviewData[1].copy(id = "6", name = "Linz", startDate = PreviewToday, endDate = LocalDate(2026, 10, 28)),
+    tripsPreviewData[1].copy(id = "7", name = "Salzburg", startDate = LocalDate(2026, 10, 27), endDate = LocalDate(2026, 10, 30)),
 )
 
-/** Trips, trips on now and overlapping, the first load, no trips yet, a search without matches, and trips that couldn't load. */
+/** Trips, trips on now and sharing a start day, the first load, no trips yet, a search without matches, and trips that couldn't load. */
 internal class HomeScreenPreviewStates : PreviewParameterProvider<State> {
     override val values = sequenceOf(
         State(trips = tripsPreviewData, timeline = tripsPreviewData.toTimeline(PreviewToday), hasTrips = true, hasLoaded = true),

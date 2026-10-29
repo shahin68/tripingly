@@ -35,7 +35,7 @@ data class TripTimeline(
 ) {
     val isEmpty: Boolean get() = upcoming.isEmpty() && past.isEmpty()
 
-    /** No trip is on today, so a "Today" row stands above what's coming; otherwise today's mark is on those trips. */
+    /** No trip is on today, so a "Today" row stands above what's coming; otherwise those trips carry today's marks. */
     val showsTodayRow: Boolean get() = today != null && upcoming.none { it.mark.isNow }
 }
 
@@ -44,12 +44,17 @@ data class TripTimeline(
 data class TimelineEntry(val trip: Trip, val mark: TimelineMark = TimelineMark())
 
 /**
- * A trip's mark on the rail. Trips whose dates overlap share one mark that stretches from the first one's dot to the
- * last one's ([isFirst], [isLast]); only the first shows its date. [isNow]: the trips on today, which share today's
- * ring and light up.
+ * A trip's mark on the rail (Shahin, 2026-10-29): a small dot for a coming trip, a big filled dot for one that started
+ * before today and is still on, today's ring for one that starts today. Trips starting on the same day share one mark
+ * that stretches from the first one's dot to the last one's ([isFirst], [isLast]); only the first shows its date.
  */
 @Immutable
-data class TimelineMark(val isNow: Boolean = false, val isFirst: Boolean = true, val isLast: Boolean = true)
+data class TimelineMark(val kind: Kind = Kind.Coming, val isFirst: Boolean = true, val isLast: Boolean = true) {
+    /** The trip is on today, so its card lights up. */
+    val isNow: Boolean get() = kind != Kind.Coming
+
+    enum class Kind { Coming, Ongoing, StartsToday }
+}
 
 internal fun List<Trip>.toTimeline(today: LocalDate): TripTimeline {
     val (past, upcoming) = partition { trip -> trip.endDate?.let { it < today } ?: false }
@@ -60,35 +65,26 @@ internal fun List<Trip>.toTimeline(today: LocalDate): TripTimeline {
     )
 }
 
-/**
- * Groups trips (sorted by start) whose dates overlap into one mark: the trips on today together, then each run of
- * coming trips that starts before the run so far has ended. Trips without dates stand alone.
- */
+/** Gives trips (sorted by start) their marks; trips starting on the same day share one. Trips without dates stand alone. */
 private fun List<Trip>.marked(today: LocalDate): List<TimelineEntry> {
     val groups = mutableListOf<MutableList<Trip>>()
-    var groupEnd: LocalDate? = null
-    var groupIsNow = false
     for (trip in this) {
-        val start = trip.startDate
-        val end = trip.endDate ?: start
-        val isNow = trip.isOn(today)
-        val runEnd = groupEnd
-        val joins = start != null && end != null && runEnd != null && isNow == groupIsNow && start <= runEnd
-        if (joins) groups.last() += trip else groups += mutableListOf(trip)
-        groupEnd = if (joins) maxOf(runEnd, end) else end
-        groupIsNow = isNow
+        val previous = groups.lastOrNull()?.last()
+        if (trip.startDate != null && trip.startDate == previous?.startDate) groups.last() += trip else groups += mutableListOf(trip)
     }
     return groups.flatMap { group ->
-        group.mapIndexed { index, trip ->
-            TimelineEntry(trip, TimelineMark(isNow = trip.isOn(today), isFirst = index == 0, isLast = index == group.lastIndex))
-        }
+        val kind = group.first().markKind(today)
+        group.mapIndexed { index, trip -> TimelineEntry(trip, TimelineMark(kind, isFirst = index == 0, isLast = index == group.lastIndex)) }
     }
 }
 
-/** The trip's dates include [day]. */
-private fun Trip.isOn(day: LocalDate): Boolean {
-    val start = startDate ?: return false
-    return start <= day && day <= (endDate ?: start)
+private fun Trip.markKind(today: LocalDate): TimelineMark.Kind {
+    val start = startDate ?: return TimelineMark.Kind.Coming
+    return when {
+        start == today -> TimelineMark.Kind.StartsToday
+        start < today && today <= (endDate ?: start) -> TimelineMark.Kind.Ongoing
+        else -> TimelineMark.Kind.Coming
+    }
 }
 
 /** When a trip is, said relative to [today]: "Now", "Tomorrow", "In 3 weeks", "Last week". Null without dates. */

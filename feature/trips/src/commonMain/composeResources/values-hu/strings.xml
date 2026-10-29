@@ -53,11 +53,8 @@
     <string name="create_trip_dates_add">Dátumok megadása</string>
     <string name="create_trip_visibility_public">Nyilvános</string>
     <string name="create_trip_visibility_private">Privát</string>
-    <string name="create_trip_member_not_found">Senkinek nincs ilyen felhasználóneve.</string>
-    <string name="create_trip_member_blocked">Ezt a személyt nem adhatod hozzá.</string>
-    <string name="create_trip_member_not_friend">Csak barátokat lehet hozzáadni.</string>
     <string name="trip_friends_only_hint">Csak barátokat adhatsz hozzá: akiket követsz, és ők is követnek téged. Bárki más meghívólinkkel csatlakozhat.</string>
-    <string name="create_trip_error_members">Néhány ember nem adható hozzá. Távolítsd el őket, és próbáld újra.</string>
+    <string name="create_trip_error_members">Néhány barátot már nem lehet hozzáadni, ezért kivettük a pipát. Próbáld újra.</string>
 
     <!-- Rename trip dialog -->
     <string name="rename_trip_title">Utazás átnevezése</string>

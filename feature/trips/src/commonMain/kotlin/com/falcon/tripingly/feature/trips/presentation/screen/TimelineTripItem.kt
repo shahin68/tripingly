@@ -66,9 +66,8 @@ import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
 
 /**
- * One trip on the timeline: its start date in the left column, its [mark] on the rail (a solid dot for what's
- * coming, grey and dashed for the past, today's ring for trips on now, stretched over trips that overlap) and the
- * trip's card, lit up in the brand colour while the trip is on. Tapping opens the trip; ⋮ or a long press opens
+ * One trip on the timeline: its start date in the left column, its [mark] on the rail (see [TimelineMark]; grey and
+ * dashed for the past) and the trip's card, lit up in the brand colour while the trip is on. Tapping opens the trip; ⋮ or a long press opens
  * its menu.
  */
 @Composable
@@ -83,14 +82,22 @@ internal fun TimelineTripItem(
     val colors = MaterialTheme.colorScheme
     val railColor = if (past) colors.outline else colors.primary
     Row(modifier = modifier.fillMaxWidth().height(IntrinsicSize.Min)) {
-        // Overlapping trips share the first one's date.
+        // Trips starting the same day share the first one's date.
         DateColumn(trip.startDate.takeIf { mark.isFirst }, Modifier.padding(top = CardTopToDate))
         Box(
             modifier = Modifier
                 .width(TimelineDefaults.RailWidth)
                 .fillMaxHeight()
                 .rail(railColor, dashed = past)
-                .mark(mark, fill = if (mark.isNow) colors.background else railColor, edge = if (mark.isNow) colors.primary else colors.background),
+                .mark(
+                    mark,
+                    fill = when (mark.kind) {
+                        TimelineMark.Kind.Coming -> railColor
+                        TimelineMark.Kind.Ongoing -> colors.primary
+                        TimelineMark.Kind.StartsToday -> colors.background
+                    },
+                    edge = if (mark.isNow) colors.primary else colors.background,
+                ),
         )
         Spacer(Modifier.width(TimelineDefaults.CardGap))
         TripCard(
@@ -155,8 +162,8 @@ private fun DateColumn(date: LocalDate?, modifier: Modifier = Modifier) {
 }
 
 /**
- * The trip's dot, [fill]ed and ringed with [edge]: a circle, or for trips that overlap one rounded bar from the
- * first trip's dot to the last one's, each row drawing its part of it.
+ * The trip's dot, [fill]ed and ringed with [edge]: a circle, or for trips starting the same day one rounded bar from
+ * the first trip's dot to the last one's, each row drawing its part of it.
  */
 private fun Modifier.mark(mark: TimelineMark, fill: Color, edge: Color) = drawBehind {
     val radius = TimelineDefaults.Dot.toPx() / 2

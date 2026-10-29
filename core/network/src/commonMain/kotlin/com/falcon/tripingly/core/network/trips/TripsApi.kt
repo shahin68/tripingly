@@ -91,7 +91,7 @@ interface TripsApi {
     @DELETE("days/{id}")
     suspend fun deleteDay(@Path("id") dayId: String, @Query("confirm") confirm: Boolean): AppResult<Unit, DataError.Network>
 
-    /** The owner adds friends as editors, several at once; all or nothing. */
+    /** The owner adds several editors at once; all or nothing. The app adds only friends, so it uses no other add call. */
     @POST("trips/{id}/members/batch")
     @Headers("Content-Type: application/json")
     suspend fun addMembers(
