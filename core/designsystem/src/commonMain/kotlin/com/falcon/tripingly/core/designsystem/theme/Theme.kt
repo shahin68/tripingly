@@ -8,8 +8,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import com.falcon.tripingly.core.designsystem.component.LocalGlass
 import com.falcon.tripingly.core.designsystem.component.LocalMessageBanner
-import com.falcon.tripingly.core.designsystem.component.rememberGlassBackdrop
 import com.falcon.tripingly.core.designsystem.component.rememberMessageBanner
+import dev.chrisbanes.haze.rememberHazeState
 
 private val LightColorScheme = lightColorScheme(
     primary = IvyLight,
@@ -82,7 +82,7 @@ fun TripinglyTheme(
         LocalSpacing provides Spacing(),
         LocalExtendedColors provides if (darkTheme) DarkExtendedColors else LightExtendedColors,
         // One backdrop for the whole app: content marked as a glass source shows blurred behind glass surfaces.
-        LocalGlass provides rememberGlassBackdrop(),
+        LocalGlass provides rememberHazeState(),
         LocalMessageBanner provides rememberMessageBanner(),
     ) {
         MaterialTheme(

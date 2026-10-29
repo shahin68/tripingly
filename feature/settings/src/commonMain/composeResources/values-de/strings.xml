@@ -51,5 +51,6 @@
 
     <!-- Redesign -->
     <string name="settings_credit_manrope">Schrift Manrope (SIL Open Font License)</string>
+    <string name="settings_credit_haze">Haze von Chris Banes (Apache License 2.0)</string>
     <string name="settings_credits">Quellen und Lizenzen</string>
 </resources>

@@ -118,7 +118,7 @@ internal fun BottomCards(
 /** OpenStreetMap's credit, or the route's while one shows, on a small glass label. */
 @Composable
 private fun MapCredits(routeAttribution: String?, modifier: Modifier = Modifier) {
-    GlassSurface(modifier = modifier, shape = MaterialTheme.shapes.extraSmall, shadowElevation = 0.dp) {
+    GlassSurface(modifier = modifier, shape = MaterialTheme.shapes.extraSmall, shadowElevation = 0.dp, blur = false) {
         if (routeAttribution != null) RouteAttribution(routeAttribution) else OsmAttribution()
     }
 }
@@ -126,7 +126,7 @@ private fun MapCredits(routeAttribution: String?, modifier: Modifier = Modifier)
 /** Fits the camera to the open day (its stops, else the whole trip's, else the destination), over the location button. */
 @Composable
 internal fun MapButtons(location: LocationState, onAction: (MapAction) -> Unit, modifier: Modifier = Modifier) {
-    GlassButtonColumn(modifier = modifier) {
+    GlassButtonColumn(modifier = modifier, blur = false) {
         IconButton(onClick = { onAction(MapAction.Days.FitDay) }) {
             Icon(Icons.Outlined.CenterFocusStrong, contentDescription = stringResource(Res.string.map_fit_day))
         }
@@ -148,6 +148,7 @@ internal fun RouteStartChip(placeName: String, onAction: (MapAction) -> Unit, mo
         modifier = modifier.padding(bottom = MaterialTheme.spacing.small),
         shape = CircleShape,
         onClick = { onAction(MapAction.Plan.CancelRouteStart) },
+        blur = false,
     ) {
         Row(
             modifier = Modifier.padding(start = MaterialTheme.spacing.small + MaterialTheme.spacing.extraSmall, end = MaterialTheme.spacing.small),

@@ -104,7 +104,7 @@ fun StopCard(
         onRemoveMyContent?.let { DropdownAction(stringResource(Res.string.map_remove_my_content), icon = Icons.Outlined.DeleteSweep, onClick = it) },
         DropdownAction(stringResource(Res.string.map_stop_report), isDestructive = true, icon = Icons.Outlined.Flag, onClick = onReport).takeIf { canReport },
     )
-    GlassSurface(modifier = modifier.widthIn(max = MapCardMaxWidth), shape = MaterialTheme.shapes.extraLarge, onClick = onOpen) {
+    GlassSurface(modifier = modifier.widthIn(max = MapCardMaxWidth), shape = MaterialTheme.shapes.extraLarge, onClick = onOpen, blur = false) {
         AnimatedContent(targetState = isExpanded) { expanded ->
             if (expanded) {
                 Column(Modifier.padding(MaterialTheme.spacing.small), verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small)) {

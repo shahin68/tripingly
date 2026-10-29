@@ -114,6 +114,7 @@ internal fun <T : Any> PlanSheet(
                     .anchoredDraggable(state, Orientation.Vertical)
                     .pulledDown(state),
                 shape = RoundedCornerShape(topStart = corner, topEnd = corner, bottomStart = ZeroCornerSize, bottomEnd = ZeroCornerSize),
+                blur = false,
             ) {
                 Column {
                     Box(

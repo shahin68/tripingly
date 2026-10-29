@@ -33,6 +33,8 @@ kotlinx-datetime = "0.8.0"
 ktor = "3.6.0"
 coil = "3.5.0"
 # Glass: blurs what scrolls behind the floating bars, sheets and cards (Android 12+ and iOS; a tint elsewhere).
+# 1.7.x, not 2.x: Haze 2 brings Compose 1.12, which needs compileSdk 37 (AGP 9.0 stops at 36).
+haze = "1.7.2"
 firebase-bom = "34.19.0"
 revenuecat = "10.24.2"
 camerax = "1.6.2"
@@ -87,6 +89,7 @@ navigation3-ui = { module = "org.jetbrains.androidx.navigation3:navigation3-ui",
 kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinx-serialization" }
 kotlinx-datetime = { module = "org.jetbrains.kotlinx:kotlinx-datetime", version.ref = "kotlinx-datetime" }
 kotlinx-collections-immutable = { module = "org.jetbrains.kotlinx:kotlinx-collections-immutable", version.ref = "kotlinx-collections-immutable" }
+haze = { module = "dev.chrisbanes.haze:haze", version.ref = "haze" }
 coil-compose = { module = "io.coil-kt.coil3:coil-compose", version.ref = "coil" }
 coil-network-ktor3 = { module = "io.coil-kt.coil3:coil-network-ktor3", version.ref = "coil" }
 firebase-bom = { module = "com.google.firebase:firebase-bom", version.ref = "firebase-bom" }

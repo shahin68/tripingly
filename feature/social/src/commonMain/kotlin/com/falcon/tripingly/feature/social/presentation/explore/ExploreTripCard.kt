@@ -1,5 +1,6 @@
 package com.falcon.tripingly.feature.social.presentation.explore
 
+import com.falcon.tripingly.core.designsystem.component.skeleton
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -46,7 +47,6 @@ import com.falcon.tripingly.core.designsystem.component.GlassSurface
 import com.falcon.tripingly.core.designsystem.component.LikeButton
 import com.falcon.tripingly.core.designsystem.component.PhotoImage
 import com.falcon.tripingly.core.designsystem.component.PhotoSize
-import com.falcon.tripingly.core.designsystem.component.skeleton
 import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
 import com.falcon.tripingly.core.designsystem.theme.spacing
 import com.falcon.tripingly.core.model.social.PublicTrip
@@ -110,7 +110,7 @@ internal fun ExploreTripCard(
                 .clip(CircleShape)
                 .clickable(onClick = onOpenOwner),
         )
-        GlassSurface(modifier = Modifier.align(Alignment.TopEnd).padding(CardInset), shape = CircleShape, shadowElevation = 0.dp) {
+        GlassSurface(modifier = Modifier.align(Alignment.TopEnd).padding(CardInset), shape = CircleShape, shadowElevation = 0.dp, blur = false) {
             LikeButton(liked = trip.likedByMe, count = trip.likeCount, onToggle = onLike)
         }
         CardFooter(trip, isMine, onMore = { menuOpen = true }, modifier = Modifier.align(Alignment.BottomStart))
