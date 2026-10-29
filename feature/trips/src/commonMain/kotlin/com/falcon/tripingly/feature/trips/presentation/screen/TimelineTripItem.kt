@@ -78,6 +78,8 @@ internal fun TimelineTripItem(
     onAction: (Action) -> Unit,
     modifier: Modifier = Modifier,
     mark: TimelineMark = TimelineMark(),
+    /** The first row with nothing above it: the rail starts at its mark. */
+    railFromMark: Boolean = false,
 ) {
     val colors = MaterialTheme.colorScheme
     val railColor = if (past) colors.outline else colors.primary
@@ -88,7 +90,7 @@ internal fun TimelineTripItem(
             modifier = Modifier
                 .width(TimelineDefaults.RailWidth)
                 .fillMaxHeight()
-                .rail(railColor, dashed = past)
+                .rail(railColor, dashed = past, fromMark = railFromMark)
                 .mark(
                     mark,
                     fill = when (mark.kind) {
@@ -181,12 +183,12 @@ private fun Modifier.mark(mark: TimelineMark, fill: Color, edge: Color) = drawBe
     }
 }
 
-/** The rail through the whole row, so rows join into one line. */
-private fun Modifier.rail(color: Color, dashed: Boolean) = drawBehind {
+/** The rail through the whole row, so rows join into one line; [fromMark] starts it at the row's mark. */
+private fun Modifier.rail(color: Color, dashed: Boolean, fromMark: Boolean) = drawBehind {
     val x = size.width / 2
     drawLine(
         color = color.copy(alpha = RAIL_ALPHA),
-        start = Offset(x, 0f),
+        start = Offset(x, if (fromMark) (CardTopToDate + TimelineDefaults.Dot / 2).toPx() else 0f),
         end = Offset(x, size.height),
         strokeWidth = TimelineDefaults.RailStroke.toPx(),
         pathEffect = if (dashed) PathEffect.dashPathEffect(floatArrayOf(4.dp.toPx(), 5.dp.toPx())) else null,
@@ -332,7 +334,9 @@ private fun TimelinePreviewContent() {
     Column(Modifier.background(MaterialTheme.colorScheme.background).padding(MaterialTheme.spacing.medium)) {
         val timeline = tripsOnNowPreviewData.toTimeline(today)
         if (timeline.showsTodayRow) TodayHeader(today)
-        timeline.upcoming.forEach { TimelineTripItem(it.trip, today, past = false, onAction = {}, mark = it.mark) }
+        timeline.upcoming.forEach {
+            TimelineTripItem(it.trip, today, past = false, onAction = {}, mark = it.mark, railFromMark = it.trip.id == timeline.railStartTripId)
+        }
         PastHeader(1)
         TimelineTripItem(tripsPreviewData.first(), today, past = true, onAction = {})
     }

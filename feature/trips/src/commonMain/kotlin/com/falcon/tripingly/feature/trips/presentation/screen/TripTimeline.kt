@@ -37,6 +37,9 @@ data class TripTimeline(
 
     /** No trip is on today, so a "Today" row stands above what's coming; otherwise those trips carry today's marks. */
     val showsTodayRow: Boolean get() = today != null && upcoming.none { it.mark.isNow }
+
+    /** The trip whose mark the rail starts at, as nothing stands above it; with the "Today" row it starts there. */
+    val railStartTripId: String? get() = upcoming.firstOrNull()?.takeUnless { showsTodayRow }?.trip?.id
 }
 
 /** A coming trip and its mark on the timeline's rail. */

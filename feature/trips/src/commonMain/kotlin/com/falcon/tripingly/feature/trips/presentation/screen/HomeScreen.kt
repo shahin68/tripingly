@@ -82,7 +82,15 @@ private fun TripTimelineList(
         // Without a trip on today, a "Today" row stands above what's coming; otherwise those trips carry today's ring.
         if (today != null && timeline.showsTodayRow) item(key = "today") { TodayHeader(today, Modifier.animateItem()) }
         items(timeline.upcoming, key = { it.trip.id }) { entry ->
-            TimelineTripItem(entry.trip, today, past = false, onAction = onAction, modifier = Modifier.animateItem(), mark = entry.mark)
+            TimelineTripItem(
+                entry.trip,
+                today,
+                past = false,
+                onAction = onAction,
+                modifier = Modifier.animateItem(),
+                mark = entry.mark,
+                railFromMark = entry.trip.id == timeline.railStartTripId,
+            )
         }
         if (timeline.past.isNotEmpty()) {
             item(key = "past") { PastHeader(timeline.past.size, Modifier.animateItem()) }

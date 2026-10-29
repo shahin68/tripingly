@@ -76,6 +76,7 @@ class TripTimelineTest {
             timeline.upcoming.map { it.mark },
         )
         assertFalse(timeline.showsTodayRow)
+        assertEquals("Week", timeline.railStartTripId)
     }
 
     @Test
@@ -91,6 +92,7 @@ class TripTimelineTest {
         assertEquals(listOf(true, true, false, true, true), timeline.upcoming.map { it.mark.isFirst })
         assertEquals(listOf(true, false, true, true, true), timeline.upcoming.map { it.mark.isLast })
         assertTrue(timeline.showsTodayRow)
+        assertNull(timeline.railStartTripId)
     }
 
     @Test
