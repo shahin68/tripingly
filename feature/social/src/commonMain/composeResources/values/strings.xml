@@ -48,6 +48,7 @@
     <string name="social_profile_not_found">This profile isn’t available.</string>
     <string name="social_report_user">Report</string>
     <string name="social_block">Block</string>
+    <string name="social_unfollow">Unfollow</string>
     <string name="social_block_title">Block @%1$s?</string>
     <string name="social_block_message">You won’t see each other’s trips, stops or comments, you stop following each other, and you leave each other’s trips.</string>
     <string name="social_block_confirm">Block</string>

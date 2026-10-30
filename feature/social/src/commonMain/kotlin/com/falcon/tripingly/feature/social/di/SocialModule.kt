@@ -22,5 +22,5 @@ val socialModule = module {
             sessionRepository = get(),
         )
     }
-    viewModel { params -> PeopleViewModel(list = params.get(), userRepository = get()) }
+    viewModel { params -> PeopleViewModel(list = params.get(), userRepository = get(), socialRepository = get()) }
 }

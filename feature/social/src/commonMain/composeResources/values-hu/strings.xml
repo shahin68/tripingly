@@ -48,6 +48,7 @@
     <string name="social_profile_not_found">Ez a profil nem érhető el.</string>
     <string name="social_report_user">Jelentés</string>
     <string name="social_block">Letiltás</string>
+    <string name="social_unfollow">Követés leállítása</string>
     <string name="social_block_title">Letiltod: @%1$s?</string>
     <string name="social_block_message">Nem látjátok egymás utazásait, megállóit és hozzászólásait, megszűnik a kölcsönös követés, és kiléptek egymás utazásaiból.</string>
     <string name="social_block_confirm">Letiltás</string>

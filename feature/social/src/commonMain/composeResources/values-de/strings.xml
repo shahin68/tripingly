@@ -48,6 +48,7 @@
     <string name="social_profile_not_found">Dieses Profil ist nicht verfügbar.</string>
     <string name="social_report_user">Melden</string>
     <string name="social_block">Blockieren</string>
+    <string name="social_unfollow">Entfolgen</string>
     <string name="social_block_title">@%1$s blockieren?</string>
     <string name="social_block_message">Ihr seht die Reisen, Stopps und Kommentare des anderen nicht mehr, folgt einander nicht mehr und verlasst die Reisen des anderen.</string>
     <string name="social_block_confirm">Blockieren</string>

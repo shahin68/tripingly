@@ -14,8 +14,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.icons.outlined.Block
-import androidx.compose.material.icons.outlined.Flag
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -30,10 +28,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.tooling.preview.PreviewParameter
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.falcon.tripingly.core.designsystem.component.AppDialog
 import com.falcon.tripingly.core.designsystem.component.AppDropdownMenu
 import com.falcon.tripingly.core.designsystem.component.BackAction
-import com.falcon.tripingly.core.designsystem.component.DropdownAction
 import com.falcon.tripingly.core.designsystem.component.ErrorScreen
 import com.falcon.tripingly.core.designsystem.component.FloatingTopBar
 import com.falcon.tripingly.core.designsystem.component.LoadStateContent
@@ -47,17 +43,14 @@ import com.falcon.tripingly.core.model.social.Profile
 import com.falcon.tripingly.core.ui.ObserveAsEvents
 import com.falcon.tripingly.core.ui.UiText
 import com.falcon.tripingly.feature.social.generated.resources.Res
-import com.falcon.tripingly.feature.social.generated.resources.social_block
-import com.falcon.tripingly.feature.social.generated.resources.social_block_confirm
-import com.falcon.tripingly.feature.social.generated.resources.social_block_message
-import com.falcon.tripingly.feature.social.generated.resources.social_block_title
 import com.falcon.tripingly.feature.social.generated.resources.social_more
 import com.falcon.tripingly.feature.social.generated.resources.social_profile_no_trips
 import com.falcon.tripingly.feature.social.generated.resources.social_profile_not_found
 import com.falcon.tripingly.feature.social.generated.resources.social_public_trips
-import com.falcon.tripingly.feature.social.generated.resources.social_report_user
 import com.falcon.tripingly.feature.social.presentation.component.EmptyText
+import com.falcon.tripingly.feature.social.presentation.component.BlockDialog
 import com.falcon.tripingly.feature.social.presentation.component.LoadMoreAtEnd
+import com.falcon.tripingly.feature.social.presentation.component.personActions
 import com.falcon.tripingly.feature.social.presentation.component.PublicTripCard
 import com.falcon.tripingly.feature.social.presentation.profile.ProfileViewModel.Action
 import com.falcon.tripingly.feature.social.presentation.profile.ProfileViewModel.Event
@@ -103,7 +96,11 @@ fun ProfileRoute(
         )
     }
     if (state.isConfirmingBlock) {
-        BlockDialog(state.profile?.user?.username.orEmpty(), viewModel::onAction)
+        BlockDialog(
+            username = state.profile?.user?.username.orEmpty(),
+            onConfirm = { viewModel.onAction(Action.Person.ConfirmBlock) },
+            onDismiss = { viewModel.onAction(Action.Person.DismissBlock) },
+        )
     }
 }
 
@@ -185,24 +182,10 @@ private fun ProfileMenu(onAction: (Action) -> Unit) {
         AppDropdownMenu(
             expanded = expanded,
             onDismissRequest = { expanded = false },
-            actions = listOf(
-                DropdownAction(stringResource(Res.string.social_report_user), isDestructive = true, icon = Icons.Outlined.Flag) { onAction(Action.Person.Report) },
-                DropdownAction(stringResource(Res.string.social_block), isDestructive = true, icon = Icons.Outlined.Block) { onAction(Action.Person.Block) },
-            ),
+            // Unfollow is the header's Following button here.
+            actions = personActions(onUnfollow = null, onReport = { onAction(Action.Person.Report) }, onBlock = { onAction(Action.Person.Block) }),
         )
     }
-}
-
-@Composable
-private fun BlockDialog(username: String, onAction: (Action) -> Unit) {
-    AppDialog(
-        title = stringResource(Res.string.social_block_title, username),
-        message = stringResource(Res.string.social_block_message),
-        confirmLabel = stringResource(Res.string.social_block_confirm),
-        isDestructive = true,
-        onConfirm = { onAction(Action.Person.ConfirmBlock) },
-        onDismiss = { onAction(Action.Person.DismissBlock) },
-    )
 }
 
 @Preview
@@ -221,10 +204,4 @@ private fun PersonProfileScreenDarkPreview() {
 @Composable
 private fun PersonProfileScreenLandscapePreview() {
     TripinglyTheme { PersonProfileScreen(state = ProfileScreenPreviewStates().values.first(), onAction = {}, onBack = {}) }
-}
-
-@Preview
-@Composable
-private fun BlockDialogPreview() {
-    TripinglyTheme { BlockDialog("anna", onAction = {}) }
 }
