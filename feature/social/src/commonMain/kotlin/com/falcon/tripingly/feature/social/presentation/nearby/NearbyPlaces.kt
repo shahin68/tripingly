@@ -57,6 +57,17 @@ internal class NearbyPlaces(
     /** As the server last confirmed it: the flame before the first tap of a burst. */
     private val confirmedHot = mutableMapOf<String, HotState>()
 
+    init {
+        // A flame changed on another screen (a stop on the trip map), or a count the server sends live, shows here too; a tap still on its way here wins.
+        scope.launch {
+            socialRepository.hotChanges.collect { change ->
+                if (hotJobs[change.placeId]?.isActive != true) {
+                    updatePlace(change.placeId) { it.copy(hotByMe = change.hotByMe ?: it.hotByMe, hotCount = change.hotCount) }
+                }
+            }
+        }
+    }
+
     private fun update(change: (State) -> State) = state.update(change)
 
     /** A first check that finds nothing allowed yet shows the ask; an answer of no keeps it. */

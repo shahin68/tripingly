@@ -67,7 +67,7 @@ class FakeSocialRepository(
     override suspend fun setHot(placeId: String, hot: Boolean): AppResult<HotState, DataError.Network> {
         val changed = if (hot) hotPlaces.add(placeId) else hotPlaces.remove(placeId)
         if (changed) hotCounts[placeId] = (hotCounts[placeId] ?: 0) + if (hot) 1 else -1
-        return AppResult.Success(HotState(hot, hotCounts[placeId] ?: 0))
+        return AppResult.Success(HotState(hot, hotCounts[placeId] ?: 0)).also { _hotChanges.emit(HotChange(placeId, hot, it.data.hotCount)) }
     }
 
     override suspend fun report(
@@ -83,4 +83,7 @@ class FakeSocialRepository(
 
     private val _myLikes = MutableSharedFlow<LikeChange>(extraBufferCapacity = 16)
     override val myLikes: Flow<LikeChange> = _myLikes.asSharedFlow()
+
+    private val _hotChanges = MutableSharedFlow<HotChange>(extraBufferCapacity = 16)
+    override val hotChanges: Flow<HotChange> = _hotChanges.asSharedFlow()
 }

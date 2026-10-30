@@ -27,6 +27,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.mapNotNull
+import kotlinx.coroutines.flow.merge
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.flow.updateAndGet
 import kotlinx.coroutines.sync.Mutex
@@ -99,6 +100,7 @@ internal class DefaultSocialRepository(
             if (before != null && result is AppResult.Error) local.savePlaceHot(placeId, before.hotCount, before.hot)
         }
         return result.map { HotState(it.on, it.count) }
+            .also { if (it is AppResult.Success) _myHot.emit(HotChange(placeId, it.data.hot, it.data.hotCount)) }
     }
 
     private suspend fun setLatest(
@@ -176,6 +178,14 @@ internal class DefaultSocialRepository(
         val target = LikeTarget.entries.firstOrNull { it.wireName == event.targetType } ?: return@mapNotNull null
         LikeCount(target, event.targetId, event.count)
     }
+
+    private val _myHot = MutableSharedFlow<HotChange>(extraBufferCapacity = LIKE_BUFFER)
+    override val hotChanges: Flow<HotChange> = merge(
+        _myHot,
+        realtime.events.mapNotNull { event ->
+            if (event is RealtimeEvent.PlaceHotChanged && !event.byMe()) HotChange(event.placeId, hotByMe = null, event.hotCount) else null
+        },
+    )
 
     private fun RealtimeEvent.InTrip.byMe() = actorId != null && actorId == currentUserId()
 

@@ -67,6 +67,22 @@ class NearbyViewModelTest : SocialTestBase() {
     }
 
     @Test
+    fun aFlameMarkedElsewhere_showsInNearby_withoutAReload() = runTest {
+        val viewModel = viewModel()
+        viewModel.onAction(Action.PermissionChecked(LocationPermission.Granted))
+        advanceUntilIdle()
+        val place = viewModel.uiState.value.places.first()
+
+        // As the trip map does for a stop at this place.
+        social.setHot(place.id, hot = true)
+        advanceUntilIdle()
+
+        val shown = viewModel.uiState.value.places.first()
+        assertTrue(shown.hotByMe)
+        assertEquals(99, shown.hotCount)
+    }
+
+    @Test
     fun aNearbyPlacesImages_openFromItsCover_andACommonsImageIsReportedAsAPlaceImage() = runTest {
         val viewModel = viewModel()
         viewModel.onAction(Action.PermissionChecked(LocationPermission.Granted))

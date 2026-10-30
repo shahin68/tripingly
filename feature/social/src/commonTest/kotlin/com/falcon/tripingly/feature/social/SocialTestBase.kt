@@ -5,6 +5,7 @@ import com.falcon.tripingly.core.common.result.AppResult
 import com.falcon.tripingly.core.common.result.asSuccess
 import com.falcon.tripingly.core.data.places.FakePlaceRepository
 import com.falcon.tripingly.core.data.social.FakeSocialRepository
+import com.falcon.tripingly.core.data.social.HotChange
 import com.falcon.tripingly.core.data.social.LikeChange
 import com.falcon.tripingly.core.data.social.SocialRepository
 import com.falcon.tripingly.core.data.trips.FakeTripBackend
@@ -89,8 +90,14 @@ abstract class SocialTestBase {
                 LikeState(liked, if (liked) 5 else 4).also { myLikes.emit(LikeChange(target, targetId, it)) }.asSuccess()
             }
 
+        override val hotChanges = MutableSharedFlow<HotChange>(extraBufferCapacity = 16)
+
         override suspend fun setHot(placeId: String, hot: Boolean): AppResult<HotState, DataError.Network> =
-            if (likeRefused) AppResult.Error(DataError.Network.NoInternet) else HotState(hot, 99).asSuccess()
+            if (likeRefused) {
+                AppResult.Error(DataError.Network.NoInternet)
+            } else {
+                HotState(hot, 99).also { hotChanges.emit(HotChange(placeId, it.hot, it.hotCount)) }.asSuccess()
+            }
     }
 
     /** Counts the searches that reach the server. */
