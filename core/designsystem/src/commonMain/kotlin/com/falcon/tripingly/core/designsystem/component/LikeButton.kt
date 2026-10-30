@@ -2,6 +2,7 @@ package com.falcon.tripingly.core.designsystem.component
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.selection.toggleable
@@ -39,7 +40,8 @@ fun LikeButton(
         modifier = modifier
             .clip(CircleShape)
             .toggleable(value = liked, enabled = enabled, role = Role.Checkbox, onValueChange = { onToggle() })
-            .padding(horizontal = MaterialTheme.spacing.small, vertical = 6.dp),
+            .height(LikeButtonHeight)
+            .padding(horizontal = MaterialTheme.spacing.small),
         horizontalArrangement = Arrangement.spacedBy(4.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -54,6 +56,9 @@ fun LikeButton(
         }
     }
 }
+
+/** The like button's height, so things beside it (e.g. an avatar on an Explore card) can match it. */
+val LikeButtonHeight = 32.dp
 
 @Preview
 @Composable

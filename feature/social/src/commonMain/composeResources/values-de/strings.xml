@@ -91,4 +91,8 @@
     <string name="social_trips">Reisen</string>
     <string name="social_public_trips_label">Öffentliche Reisen</string>
     <string name="social_explore_period">Zeitraum: %1$s</string>
+    <string name="social_ask_to_join">Mitmachen anfragen</string>
+    <string name="social_join_requested">Anfrage gesendet. Die Besitzerin oder der Besitzer entscheidet.</string>
+    <string name="social_join_declined">Deine Anfrage zum Mitmachen wurde abgelehnt.</string>
+    <string name="social_error_join">Deine Beitrittsanfrage konnte nicht gesendet werden.</string>
 </resources>

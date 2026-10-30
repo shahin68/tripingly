@@ -115,37 +115,9 @@
     <!-- Trips timeline (redesign) -->
     <string name="home_today">Ma · %1$s</string>
     <string name="home_trip_more">Továbbiak: %1$s</string>
-    <string name="trip_when_now">Most</string>
-    <string name="trip_when_today">Ma</string>
-    <string name="trip_when_tomorrow">Holnap</string>
-    <string name="trip_when_yesterday">Tegnap</string>
     <plurals name="home_past_count">
         <item quantity="one">Korábbi · %1$d utazás</item>
         <item quantity="other">Korábbi · %1$d utazás</item>
-    </plurals>
-    <plurals name="trip_when_in_days">
-        <item quantity="one">%1$d nap múlva</item>
-        <item quantity="other">%1$d nap múlva</item>
-    </plurals>
-    <plurals name="trip_when_in_weeks">
-        <item quantity="one">%1$d hét múlva</item>
-        <item quantity="other">%1$d hét múlva</item>
-    </plurals>
-    <plurals name="trip_when_in_months">
-        <item quantity="one">%1$d hónap múlva</item>
-        <item quantity="other">%1$d hónap múlva</item>
-    </plurals>
-    <plurals name="trip_when_days_ago">
-        <item quantity="one">%1$d napja</item>
-        <item quantity="other">%1$d napja</item>
-    </plurals>
-    <plurals name="trip_when_weeks_ago">
-        <item quantity="one">Múlt héten</item>
-        <item quantity="other">%1$d hete</item>
-    </plurals>
-    <plurals name="trip_when_months_ago">
-        <item quantity="one">Múlt hónapban</item>
-        <item quantity="other">%1$d hónapja</item>
     </plurals>
 
     <!-- Redesign: New trip sheet -->

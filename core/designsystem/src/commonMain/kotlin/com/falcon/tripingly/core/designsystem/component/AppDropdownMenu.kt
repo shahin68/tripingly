@@ -1,7 +1,6 @@
 package com.falcon.tripingly.core.designsystem.component
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
@@ -42,7 +41,8 @@ data class DropdownAction(
 
 /**
  * The app's overflow menu (⋮, long press): solid rounded card, one row per [DropdownAction], destructive ones
- * in red. Popups open in their own window, where glass blur can't reach, so the menu is opaque.
+ * in red. Popups open in their own window, where glass blur can't reach, so the menu is opaque. It opens from
+ * the layout it's placed in, so put it in a `Box` together with the button that opens it.
  */
 @Composable
 fun AppDropdownMenu(
@@ -51,39 +51,37 @@ fun AppDropdownMenu(
     actions: List<DropdownAction>,
     modifier: Modifier = Modifier,
 ) {
-    Box(modifier = modifier) {
-        DropdownMenu(
-            expanded = expanded,
-            onDismissRequest = onDismissRequest,
-            shape = MaterialTheme.shapes.large,
-            containerColor = MaterialTheme.colorScheme.surfaceContainerLowest,
-            shadowElevation = GlassDefaults.ShadowElevation,
-            modifier = Modifier.widthIn(min = MenuMinWidth),
-        ) {
-            actions.forEach { action ->
-                val color = if (action.isDestructive) MaterialTheme.colorScheme.error else Color.Unspecified
-                DropdownMenuItem(
-                    text = { Text(text = action.label, color = color, style = MaterialTheme.typography.bodyLarge) },
-                    leadingIcon = action.icon?.let { icon ->
-                        {
-                            Icon(
-                                icon,
-                                contentDescription = null,
-                                tint = if (action.isDestructive) color else MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        }
-                    },
-                    trailingIcon = when {
-                        action.badge != null -> ({ MenuBadge(action.badge) })
-                        action.selected -> ({ Icon(Icons.Default.Check, contentDescription = null, tint = MaterialTheme.colorScheme.primary) })
-                        else -> null
-                    },
-                    onClick = {
-                        action.onClick()
-                        onDismissRequest()
-                    },
-                )
-            }
+    DropdownMenu(
+        expanded = expanded,
+        onDismissRequest = onDismissRequest,
+        shape = MaterialTheme.shapes.large,
+        containerColor = MaterialTheme.colorScheme.surfaceContainerLowest,
+        shadowElevation = GlassDefaults.ShadowElevation,
+        modifier = modifier.widthIn(min = MenuMinWidth),
+    ) {
+        actions.forEach { action ->
+            val color = if (action.isDestructive) MaterialTheme.colorScheme.error else Color.Unspecified
+            DropdownMenuItem(
+                text = { Text(text = action.label, color = color, style = MaterialTheme.typography.bodyLarge) },
+                leadingIcon = action.icon?.let { icon ->
+                    {
+                        Icon(
+                            icon,
+                            contentDescription = null,
+                            tint = if (action.isDestructive) color else MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                },
+                trailingIcon = when {
+                    action.badge != null -> ({ MenuBadge(action.badge) })
+                    action.selected -> ({ Icon(Icons.Default.Check, contentDescription = null, tint = MaterialTheme.colorScheme.primary) })
+                    else -> null
+                },
+                onClick = {
+                    action.onClick()
+                    onDismissRequest()
+                },
+            )
         }
     }
 }

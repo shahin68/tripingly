@@ -167,6 +167,7 @@ private fun PersonProfileContent(profile: Profile, state: State, onAction: (Acti
                 onOpen = { onAction(Action.Trips.Click(trip)) },
                 onLike = { onAction(Action.Trips.Like(trip)) },
                 onToggleSave = { onAction(Action.Trips.ToggleSave(trip)) },
+                onAskToJoin = { onAction(Action.Trips.AskToJoin(trip)) },
                 onReport = { onAction(Action.Trips.Report(trip)) },
                 modifier = Modifier.animateItem(),
             )

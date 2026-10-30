@@ -77,6 +77,7 @@ class ExploreViewModel(
             is Action.OwnerClick -> sendEvent(Event.OpenProfile(action.owner.username))
             is Action.LikeTrip -> tripActions.toggleLike(action.trip.trip.id)
             is Action.ToggleSaveTrip -> tripActions.toggleSave(action.trip.trip.id)
+            is Action.AskToJoin -> tripActions.requestToJoin(action.trip.trip.id)
             is Action.ReportTrip -> _uiState.update { it.copy(report = ReportState(ReportTarget.Trip, action.trip.trip.id)) }
             is Action.SendReport -> sendReport(action.reason)
             Action.DismissReport -> _uiState.update { it.copy(report = null) }
@@ -135,6 +136,7 @@ class ExploreViewModel(
         data class OwnerClick(val owner: UserSummary) : Action
         data class LikeTrip(val trip: PublicTrip) : Action
         data class ToggleSaveTrip(val trip: PublicTrip) : Action
+        data class AskToJoin(val trip: PublicTrip) : Action
         data class ReportTrip(val trip: PublicTrip) : Action
         data class SendReport(val reason: ReportReason) : Action
         data object DismissReport : Action

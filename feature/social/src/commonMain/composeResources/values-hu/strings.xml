@@ -91,4 +91,8 @@
     <string name="social_trips">Utazások</string>
     <string name="social_public_trips_label">Nyilvános utazások</string>
     <string name="social_explore_period">Időszak: %1$s</string>
+    <string name="social_ask_to_join">Csatlakozás kérése</string>
+    <string name="social_join_requested">Kérés elküldve. A tulajdonos dönt.</string>
+    <string name="social_join_declined">A tulajdonos elutasította a csatlakozási kérésedet.</string>
+    <string name="social_error_join">Nem sikerült elküldeni a csatlakozási kérést.</string>
 </resources>

@@ -1,9 +1,7 @@
 package com.falcon.tripingly.feature.social.presentation.explore
 
-import com.falcon.tripingly.core.designsystem.component.skeleton
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -18,9 +16,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.icons.outlined.Bookmark
-import androidx.compose.material.icons.outlined.BookmarkBorder
-import androidx.compose.material.icons.outlined.Flag
 import androidx.compose.material.icons.outlined.Map
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -29,6 +24,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -39,32 +35,32 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.falcon.tripingly.core.common.util.DateUtils
 import com.falcon.tripingly.core.designsystem.component.AppDropdownMenu
 import com.falcon.tripingly.core.designsystem.component.AvatarCircle
-import com.falcon.tripingly.core.designsystem.component.AvatarSize
-import com.falcon.tripingly.core.designsystem.component.DropdownAction
 import com.falcon.tripingly.core.designsystem.component.GlassSurface
 import com.falcon.tripingly.core.designsystem.component.LikeButton
+import com.falcon.tripingly.core.designsystem.component.LikeButtonHeight
 import com.falcon.tripingly.core.designsystem.component.PhotoImage
 import com.falcon.tripingly.core.designsystem.component.PhotoSize
+import com.falcon.tripingly.core.designsystem.component.skeleton
 import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
 import com.falcon.tripingly.core.designsystem.theme.spacing
 import com.falcon.tripingly.core.model.social.PublicTrip
 import com.falcon.tripingly.core.model.trip.TripRole
+import com.falcon.tripingly.core.model.trip.UserSummary
+import com.falcon.tripingly.core.ui.label
+import com.falcon.tripingly.core.ui.tripWhen
 import com.falcon.tripingly.feature.social.generated.resources.Res
 import com.falcon.tripingly.feature.social.generated.resources.social_more
-import com.falcon.tripingly.feature.social.generated.resources.social_report
-import com.falcon.tripingly.feature.social.generated.resources.social_save_trip
-import com.falcon.tripingly.feature.social.generated.resources.social_saved_trip
-import com.falcon.tripingly.feature.social.generated.resources.social_trip_stop_count
 import com.falcon.tripingly.feature.social.presentation.component.previewTrip
-import org.jetbrains.compose.resources.pluralStringResource
+import com.falcon.tripingly.feature.social.presentation.component.publicTripActions
 import org.jetbrains.compose.resources.stringResource
 
 /**
- * A public trip in Explore's grid: its cover filling the card, the owner's avatar (their profile) and the likes on
- * top, the name and "@owner · 6 stops" over the bottom. ⋮ or a long press saves it to My Trips or reports it;
- * trips of my own have nothing to save or report.
+ * A public trip in Explore's grid: its cover filling the card, the owner (avatar and @username, opens their profile)
+ * and the likes on top, the name and when it is ("In a week", "This winter") over the bottom. ⋮ or a long press opens
+ * the trip's menu (save, ask to join, report); trips of my own have no menu.
  */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -74,6 +70,7 @@ internal fun ExploreTripCard(
     onOpenOwner: () -> Unit,
     onLike: () -> Unit,
     onToggleSave: () -> Unit,
+    onAskToJoin: () -> Unit,
     onReport: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -84,8 +81,8 @@ internal fun ExploreTripCard(
             .fillMaxWidth()
             .height(ExploreCardHeight)
             // A photo card: while loading, the whole card is one shimmering block.
-            .skeleton(MaterialTheme.shapes.extraLarge)
-            .clip(MaterialTheme.shapes.extraLarge)
+            .skeleton(MaterialTheme.shapes.large)
+            .clip(MaterialTheme.shapes.large)
             .background(MaterialTheme.colorScheme.surfaceVariant)
             .combinedClickable(onClick = onOpen, onLongClick = { if (!isMine) menuOpen = true }),
     ) {
@@ -101,41 +98,60 @@ internal fun ExploreTripCard(
                 modifier = Modifier.align(Alignment.Center).size(PlaceholderIcon),
             )
         }
-        AvatarCircle(
-            name = trip.trip.owner.displayName,
-            size = AvatarSize.Small,
-            modifier = Modifier
-                .align(Alignment.TopStart)
-                .padding(CardInset)
-                .clip(CircleShape)
-                .clickable(onClick = onOpenOwner),
-        )
-        GlassSurface(modifier = Modifier.align(Alignment.TopEnd).padding(CardInset), shape = CircleShape, shadowElevation = 0.dp, blur = false) {
-            LikeButton(liked = trip.likedByMe, count = trip.likeCount, onToggle = onLike)
+        Row(
+            modifier = Modifier.align(Alignment.TopStart).fillMaxWidth().padding(CardInset),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            OwnerChip(trip.trip.owner, onOpenOwner, Modifier.weight(1f, fill = false).padding(end = MaterialTheme.spacing.small))
+            GlassSurface(shape = CircleShape, shadowElevation = 0.dp, blur = false) {
+                LikeButton(liked = trip.likedByMe, count = trip.likeCount, onToggle = onLike)
+            }
         }
-        CardFooter(trip, isMine, onMore = { menuOpen = true }, modifier = Modifier.align(Alignment.BottomStart))
-        if (!isMine) {
-            AppDropdownMenu(
-                expanded = menuOpen,
-                onDismissRequest = { menuOpen = false },
-                modifier = Modifier.align(Alignment.BottomEnd),
-                actions = listOf(
-                    DropdownAction(
-                        label = stringResource(if (trip.trip.savedByMe) Res.string.social_saved_trip else Res.string.social_save_trip),
-                        icon = if (trip.trip.savedByMe) Icons.Outlined.Bookmark else Icons.Outlined.BookmarkBorder,
-                        selected = trip.trip.savedByMe,
-                        onClick = onToggleSave,
-                    ),
-                    DropdownAction(stringResource(Res.string.social_report), isDestructive = true, icon = Icons.Outlined.Flag, onClick = onReport),
-                ),
+        CardFooter(
+            trip = trip,
+            modifier = Modifier.align(Alignment.BottomStart),
+            menu = if (isMine) {
+                null
+            } else {
+                {
+                    Box {
+                        IconButton(onClick = { menuOpen = true }) {
+                            Icon(Icons.Default.MoreVert, contentDescription = stringResource(Res.string.social_more), tint = Color.White)
+                        }
+                        AppDropdownMenu(
+                            expanded = menuOpen,
+                            onDismissRequest = { menuOpen = false },
+                            actions = publicTripActions(trip, onToggleSave, onAskToJoin, onReport),
+                        )
+                    }
+                }
+            },
+        )
+    }
+}
+
+/** The owner's avatar, as tall as the like button, and @username on one line; opens their profile. */
+@Composable
+private fun OwnerChip(owner: UserSummary, onClick: () -> Unit, modifier: Modifier = Modifier) {
+    GlassSurface(modifier = modifier, shape = CircleShape, onClick = onClick, shadowElevation = 0.dp, blur = false) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            AvatarCircle(name = owner.displayName, size = LikeButtonHeight)
+            Text(
+                text = "@${owner.username}",
+                style = MaterialTheme.typography.labelLarge,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.padding(start = MaterialTheme.spacing.extraSmall + 2.dp, end = MaterialTheme.spacing.small + 2.dp),
             )
         }
     }
 }
 
-/** The name and owner over a dark fade, so they read on any photo. */
+/** The name and when the trip is over a dark fade, so they read on any photo; [menu] (the ⋮) at the end. */
 @Composable
-private fun CardFooter(trip: PublicTrip, isMine: Boolean, onMore: () -> Unit, modifier: Modifier = Modifier) {
+private fun CardFooter(trip: PublicTrip, modifier: Modifier = Modifier, menu: (@Composable () -> Unit)?) {
+    val whenLabel = tripWhen(trip.trip.startDate, trip.trip.endDate, remember { DateUtils.today() })?.label()
     Row(
         modifier = modifier
             .fillMaxWidth()
@@ -145,22 +161,17 @@ private fun CardFooter(trip: PublicTrip, isMine: Boolean, onMore: () -> Unit, mo
     ) {
         Column(Modifier.weight(1f).padding(bottom = MaterialTheme.spacing.small + MaterialTheme.spacing.extraSmall)) {
             Text(trip.trip.name, style = MaterialTheme.typography.titleSmall, color = Color.White, maxLines = 2, overflow = TextOverflow.Ellipsis)
-            Text(
-                text = "@${trip.trip.owner.username} · " +
-                    pluralStringResource(Res.plurals.social_trip_stop_count, trip.trip.markerCount, trip.trip.markerCount),
-                style = MaterialTheme.typography.labelSmall,
-                color = Color.White.copy(alpha = MUTED_ALPHA),
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-        }
-        if (!isMine) {
-            IconButton(onClick = onMore) {
-                Icon(Icons.Default.MoreVert, contentDescription = stringResource(Res.string.social_more), tint = Color.White)
+            if (whenLabel != null) {
+                Text(
+                    text = whenLabel,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = Color.White.copy(alpha = MUTED_ALPHA),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
             }
-        } else {
-            Box(Modifier.width(MaterialTheme.spacing.small))
         }
+        if (menu != null) menu() else Box(Modifier.width(MaterialTheme.spacing.small))
     }
 }
 
@@ -176,8 +187,8 @@ private fun ExploreTripCardPreviewContent() {
         Modifier.background(MaterialTheme.colorScheme.background).padding(MaterialTheme.spacing.medium),
         horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small + MaterialTheme.spacing.extraSmall),
     ) {
-        ExploreTripCard(previewTrip, {}, {}, {}, {}, {}, Modifier.weight(1f))
-        ExploreTripCard(previewTrip.copy(likeCount = 12_400, likedByMe = false), {}, {}, {}, {}, {}, Modifier.weight(1f))
+        ExploreTripCard(previewTrip, {}, {}, {}, {}, {}, {}, Modifier.weight(1f))
+        ExploreTripCard(previewTrip.copy(likeCount = 12_400, likedByMe = false), {}, {}, {}, {}, {}, {}, Modifier.weight(1f))
     }
 }
 

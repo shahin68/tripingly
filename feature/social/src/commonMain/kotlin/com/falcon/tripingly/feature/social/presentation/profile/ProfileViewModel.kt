@@ -98,6 +98,7 @@ class ProfileViewModel(
                 is Action.Trips.Click -> sendEvent(Event.OpenTrip(action.trip.trip.id))
                 is Action.Trips.Like -> tripActions.toggleLike(action.trip.trip.id)
                 is Action.Trips.ToggleSave -> tripActions.toggleSave(action.trip.trip.id)
+                is Action.Trips.AskToJoin -> tripActions.requestToJoin(action.trip.trip.id)
                 is Action.Trips.Report -> _uiState.update { it.copy(report = ReportState(ReportTarget.Trip, action.trip.trip.id)) }
                 Action.Trips.LoadMore -> loadMore()
             }
@@ -261,6 +262,7 @@ class ProfileViewModel(
             data class Click(val trip: PublicTrip) : Trips
             data class Like(val trip: PublicTrip) : Trips
             data class ToggleSave(val trip: PublicTrip) : Trips
+            data class AskToJoin(val trip: PublicTrip) : Trips
             data class Report(val trip: PublicTrip) : Trips
             data object LoadMore : Trips
         }

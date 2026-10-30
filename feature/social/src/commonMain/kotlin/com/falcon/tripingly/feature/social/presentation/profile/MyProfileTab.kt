@@ -203,7 +203,7 @@ private fun MyProfileSkeleton(segment: ProfileSegment, contentPadding: PaddingVa
             MyProfileHeader(placeholderProfile)
             Segments(segment, onSegment = {})
             if (segment.list == null) {
-                placeholderTrips.forEach { PublicTripCard(trip = it, onOpen = {}, onLike = {}, onToggleSave = {}, onReport = {}) }
+                placeholderTrips.forEach { PublicTripCard(trip = it, onOpen = {}, onLike = {}, onToggleSave = {}, onAskToJoin = {}, onReport = {}) }
             } else {
                 placeholderPeople.forEach { PersonRow(user = it, onClick = {}) }
             }
@@ -221,6 +221,7 @@ private fun LazyListScope.tripItems(state: State, onAction: (Action) -> Unit) {
             onOpen = { onAction(Action.Trips.Click(trip)) },
             onLike = { onAction(Action.Trips.Like(trip)) },
             onToggleSave = { onAction(Action.Trips.ToggleSave(trip)) },
+            onAskToJoin = { onAction(Action.Trips.AskToJoin(trip)) },
             onReport = { onAction(Action.Trips.Report(trip)) },
             modifier = Modifier.animateItem(),
         )

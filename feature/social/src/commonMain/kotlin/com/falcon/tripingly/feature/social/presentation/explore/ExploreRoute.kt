@@ -130,6 +130,7 @@ private fun ExploreGrid(state: State, onAction: (Action) -> Unit, contentPadding
                     onOpenOwner = { onAction(Action.OwnerClick(trip.trip.owner)) },
                     onLike = { onAction(Action.LikeTrip(trip)) },
                     onToggleSave = { onAction(Action.ToggleSaveTrip(trip)) },
+                    onAskToJoin = { onAction(Action.AskToJoin(trip)) },
                     onReport = { onAction(Action.ReportTrip(trip)) },
                     modifier = Modifier.animateItem(),
                 )
@@ -150,7 +151,7 @@ private fun ExploreSkeleton(contentPadding: PaddingValues) {
             verticalArrangement = Arrangement.spacedBy(GridGap),
             userScrollEnabled = false,
         ) {
-            items(placeholderTrips + placeholderTrips) { ExploreTripCard(it, {}, {}, {}, {}, {}) }
+            items(placeholderTrips + placeholderTrips) { ExploreTripCard(it, {}, {}, {}, {}, {}, {}) }
         }
     }
 }

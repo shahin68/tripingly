@@ -33,4 +33,43 @@
         <item quantity="one">egy éve</item>
         <item quantity="other">%1$d éve</item>
     </plurals>
+    <!-- When a trip is (My Trips, Explore) -->
+    <string name="trip_when_now">Most</string>
+    <string name="trip_when_today">Ma</string>
+    <string name="trip_when_tomorrow">Holnap</string>
+    <string name="trip_when_yesterday">Tegnap</string>
+    <string name="trip_when_next_month">Jövő hónapban</string>
+    <string name="trip_when_in_year">%1$s</string>
+    <string name="trip_when_this_winter">Ezen a télen</string>
+    <string name="trip_when_this_spring">Idén tavasszal</string>
+    <string name="trip_when_this_summer">Idén nyáron</string>
+    <string name="trip_when_this_fall">Idén ősszel</string>
+    <string name="trip_when_next_winter">Jövő télen</string>
+    <string name="trip_when_next_spring">Jövő tavasszal</string>
+    <string name="trip_when_next_summer">Jövő nyáron</string>
+    <string name="trip_when_next_fall">Jövő ősszel</string>
+    <plurals name="trip_when_in_days">
+        <item quantity="one">%1$d nap múlva</item>
+        <item quantity="other">%1$d nap múlva</item>
+    </plurals>
+    <plurals name="trip_when_in_weeks">
+        <item quantity="one">Egy hét múlva</item>
+        <item quantity="other">%1$d hét múlva</item>
+    </plurals>
+    <plurals name="trip_when_days_ago">
+        <item quantity="one">%1$d napja</item>
+        <item quantity="other">%1$d napja</item>
+    </plurals>
+    <plurals name="trip_when_weeks_ago">
+        <item quantity="one">Múlt héten</item>
+        <item quantity="other">%1$d hete</item>
+    </plurals>
+    <plurals name="trip_when_months_ago">
+        <item quantity="one">Múlt hónapban</item>
+        <item quantity="other">%1$d hónapja</item>
+    </plurals>
+    <plurals name="trip_when_years_ago">
+        <item quantity="one">Tavaly</item>
+        <item quantity="other">%1$d éve</item>
+    </plurals>
 </resources>

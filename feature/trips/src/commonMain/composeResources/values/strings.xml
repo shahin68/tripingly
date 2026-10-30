@@ -115,37 +115,9 @@
     <!-- Trips timeline (redesign) -->
     <string name="home_today">Today · %1$s</string>
     <string name="home_trip_more">More for %1$s</string>
-    <string name="trip_when_now">Now</string>
-    <string name="trip_when_today">Today</string>
-    <string name="trip_when_tomorrow">Tomorrow</string>
-    <string name="trip_when_yesterday">Yesterday</string>
     <plurals name="home_past_count">
         <item quantity="one">Past · %1$d trip</item>
         <item quantity="other">Past · %1$d trips</item>
-    </plurals>
-    <plurals name="trip_when_in_days">
-        <item quantity="one">In %1$d day</item>
-        <item quantity="other">In %1$d days</item>
-    </plurals>
-    <plurals name="trip_when_in_weeks">
-        <item quantity="one">In %1$d week</item>
-        <item quantity="other">In %1$d weeks</item>
-    </plurals>
-    <plurals name="trip_when_in_months">
-        <item quantity="one">In %1$d month</item>
-        <item quantity="other">In %1$d months</item>
-    </plurals>
-    <plurals name="trip_when_days_ago">
-        <item quantity="one">%1$d day ago</item>
-        <item quantity="other">%1$d days ago</item>
-    </plurals>
-    <plurals name="trip_when_weeks_ago">
-        <item quantity="one">Last week</item>
-        <item quantity="other">%1$d weeks ago</item>
-    </plurals>
-    <plurals name="trip_when_months_ago">
-        <item quantity="one">Last month</item>
-        <item quantity="other">%1$d months ago</item>
     </plurals>
 
     <!-- Redesign: New trip sheet -->

@@ -18,6 +18,7 @@ import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.outlined.Bookmark
 import androidx.compose.material.icons.outlined.BookmarkBorder
 import androidx.compose.material.icons.outlined.Flag
+import androidx.compose.material.icons.outlined.PersonAdd
 import androidx.compose.material.icons.outlined.Map
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -48,6 +49,7 @@ import com.falcon.tripingly.core.model.social.PublicTrip
 import com.falcon.tripingly.core.model.trip.TripRole
 import com.falcon.tripingly.core.ui.timeAgo
 import com.falcon.tripingly.feature.social.generated.resources.Res
+import com.falcon.tripingly.feature.social.generated.resources.social_ask_to_join
 import com.falcon.tripingly.feature.social.generated.resources.social_more
 import com.falcon.tripingly.feature.social.generated.resources.social_report
 import com.falcon.tripingly.feature.social.generated.resources.social_save_trip
@@ -69,6 +71,7 @@ internal fun PublicTripCard(
     onOpen: () -> Unit,
     onLike: () -> Unit,
     onToggleSave: () -> Unit,
+    onAskToJoin: () -> Unit,
     onReport: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -115,15 +118,7 @@ internal fun PublicTripCard(
                         AppDropdownMenu(
                             expanded = menuOpen,
                             onDismissRequest = { menuOpen = false },
-                            actions = listOf(
-                                DropdownAction(
-                                    label = stringResource(if (trip.trip.savedByMe) Res.string.social_saved_trip else Res.string.social_save_trip),
-                                    icon = if (trip.trip.savedByMe) Icons.Outlined.Bookmark else Icons.Outlined.BookmarkBorder,
-                                    selected = trip.trip.savedByMe,
-                                    onClick = onToggleSave,
-                                ),
-                                DropdownAction(stringResource(Res.string.social_report), isDestructive = true, icon = Icons.Outlined.Flag, onClick = onReport),
-                            ),
+                            actions = publicTripActions(trip, onToggleSave, onAskToJoin, onReport),
                         )
                     }
                 }
@@ -131,6 +126,19 @@ internal fun PublicTripCard(
         }
     }
 }
+
+/** Someone else's public trip's ⋮ menu, on every card that shows one: save, ask to join, report. */
+@Composable
+internal fun publicTripActions(trip: PublicTrip, onToggleSave: () -> Unit, onAskToJoin: () -> Unit, onReport: () -> Unit): List<DropdownAction> = listOf(
+    DropdownAction(
+        label = stringResource(if (trip.trip.savedByMe) Res.string.social_saved_trip else Res.string.social_save_trip),
+        icon = if (trip.trip.savedByMe) Icons.Outlined.Bookmark else Icons.Outlined.BookmarkBorder,
+        selected = trip.trip.savedByMe,
+        onClick = onToggleSave,
+    ),
+    DropdownAction(stringResource(Res.string.social_ask_to_join), icon = Icons.Outlined.PersonAdd, onClick = onAskToJoin),
+    DropdownAction(stringResource(Res.string.social_report), isDestructive = true, icon = Icons.Outlined.Flag, onClick = onReport),
+)
 
 @Composable
 private fun TripCover(trip: PublicTrip) {
@@ -153,7 +161,7 @@ private val CoverSize = 56.dp
 private fun PublicTripCardPreview(@PreviewParameter(PublicTripCardPreviewStates::class) trip: PublicTrip) {
     TripinglyTheme {
         Box(Modifier.background(MaterialTheme.colorScheme.background).padding(MaterialTheme.spacing.medium)) {
-            PublicTripCard(trip = trip, onOpen = {}, onLike = {}, onToggleSave = {}, onReport = {})
+            PublicTripCard(trip = trip, onOpen = {}, onLike = {}, onToggleSave = {}, onAskToJoin = {}, onReport = {})
         }
     }
 }
@@ -163,7 +171,7 @@ private fun PublicTripCardPreview(@PreviewParameter(PublicTripCardPreviewStates:
 private fun PublicTripCardDarkPreview() {
     TripinglyTheme(darkTheme = true) {
         Box(Modifier.background(MaterialTheme.colorScheme.background).padding(MaterialTheme.spacing.medium)) {
-            PublicTripCard(trip = previewTrip, onOpen = {}, onLike = {}, onToggleSave = {}, onReport = {})
+            PublicTripCard(trip = previewTrip, onOpen = {}, onLike = {}, onToggleSave = {}, onAskToJoin = {}, onReport = {})
         }
     }
 }

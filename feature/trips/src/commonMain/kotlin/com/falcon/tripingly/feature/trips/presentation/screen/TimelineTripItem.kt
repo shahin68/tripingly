@@ -58,7 +58,9 @@ import com.falcon.tripingly.core.designsystem.theme.spacing
 import com.falcon.tripingly.core.model.account.TripVisibility
 import com.falcon.tripingly.core.model.trip.Trip
 import com.falcon.tripingly.core.model.trip.TripRole
+import com.falcon.tripingly.core.ui.label
 import com.falcon.tripingly.core.ui.timeAgo
+import com.falcon.tripingly.core.ui.tripWhen
 import com.falcon.tripingly.feature.trips.generated.resources.*
 import com.falcon.tripingly.feature.trips.presentation.screen.HomeViewModel.Action
 import kotlinx.datetime.LocalDate
@@ -104,7 +106,7 @@ internal fun TimelineTripItem(
         Spacer(Modifier.width(TimelineDefaults.CardGap))
         TripCard(
             trip = trip,
-            whenLabel = today?.let { trip.whenRelativeTo(it) }?.label(),
+            whenLabel = today?.let { tripWhen(trip.startDate, trip.endDate, it) }?.label(),
             past = past,
             isOn = mark.isNow,
             onAction = onAction,

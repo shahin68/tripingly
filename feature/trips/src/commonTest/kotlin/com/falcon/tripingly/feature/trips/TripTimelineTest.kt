@@ -5,9 +5,9 @@ import com.falcon.tripingly.core.model.trip.Trip
 import com.falcon.tripingly.core.model.trip.TripRole
 import com.falcon.tripingly.core.model.trip.UserSummary
 import com.falcon.tripingly.feature.trips.presentation.screen.TimelineMark
-import com.falcon.tripingly.feature.trips.presentation.screen.TripWhen
+import com.falcon.tripingly.core.ui.TripWhen
 import com.falcon.tripingly.feature.trips.presentation.screen.toTimeline
-import com.falcon.tripingly.feature.trips.presentation.screen.whenRelativeTo
+import com.falcon.tripingly.core.ui.tripWhen
 import kotlinx.datetime.LocalDate
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -96,15 +96,23 @@ class TripTimelineTest {
     }
 
     @Test
-    fun when_countsInDays_thenWeeks_thenMonths() {
-        assertEquals(TripWhen.Now, trip("a", LocalDate(2026, 10, 25), LocalDate(2026, 10, 27)).whenRelativeTo(today))
-        assertEquals(TripWhen.Today, trip("a", today).whenRelativeTo(today))
-        assertEquals(TripWhen.Tomorrow, trip("a", LocalDate(2026, 10, 27)).whenRelativeTo(today))
-        assertEquals(TripWhen.InDays(3), trip("a", LocalDate(2026, 10, 29)).whenRelativeTo(today))
-        assertEquals(TripWhen.InWeeks(3), trip("a", LocalDate(2026, 11, 16)).whenRelativeTo(today))
-        assertEquals(TripWhen.InMonths(4), trip("a", LocalDate(2027, 3, 1)).whenRelativeTo(today))
-        assertEquals(TripWhen.Yesterday, trip("a", LocalDate(2026, 10, 25)).whenRelativeTo(today))
-        assertEquals(TripWhen.WeeksAgo(2), trip("a", LocalDate(2026, 10, 10)).whenRelativeTo(today))
-        assertNull(trip("a", null).whenRelativeTo(today))
+    fun when_countsInDays_thenWeeks_thenNextMonth_seasons_andYears() {
+        fun on(start: LocalDate?, end: LocalDate? = start) = tripWhen(start, end, today)
+        assertEquals(TripWhen.Now, on(LocalDate(2026, 10, 25), LocalDate(2026, 10, 27)))
+        assertEquals(TripWhen.Today, on(today))
+        assertEquals(TripWhen.Tomorrow, on(LocalDate(2026, 10, 27)))
+        assertEquals(TripWhen.InDays(3), on(LocalDate(2026, 10, 29)))
+        assertEquals(TripWhen.InWeeks(1), on(LocalDate(2026, 11, 2)))
+        assertEquals(TripWhen.InWeeks(3), on(LocalDate(2026, 11, 16)))
+        assertEquals(TripWhen.NextMonth, on(LocalDate(2026, 11, 30)))
+        assertEquals(TripWhen.InSeason(TripWhen.Season.Winter, next = false), on(LocalDate(2026, 12, 20)))
+        assertEquals(TripWhen.InSeason(TripWhen.Season.Spring, next = false), on(LocalDate(2027, 3, 1)))
+        assertEquals(TripWhen.InSeason(TripWhen.Season.Fall, next = true), on(LocalDate(2027, 10, 1)))
+        assertEquals(TripWhen.InYear(2029), on(LocalDate(2029, 1, 10)))
+        assertEquals(TripWhen.Yesterday, on(LocalDate(2026, 10, 25)))
+        assertEquals(TripWhen.WeeksAgo(2), on(LocalDate(2026, 10, 10)))
+        assertEquals(TripWhen.MonthsAgo(3), on(LocalDate(2026, 7, 20)))
+        assertEquals(TripWhen.YearsAgo(1), on(LocalDate(2025, 9, 1)))
+        assertNull(on(null))
     }
 }
