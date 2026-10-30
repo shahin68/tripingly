@@ -50,6 +50,9 @@ interface SocialRepository {
     /** New like counts in the trips being watched live; whether I like something stays as it was. */
     val likeCounts: Flow<LikeCount>
 
+    /** My likes as the server confirmed them ([setLiked]), so every screen showing the same thing agrees without a reload. */
+    val myLikes: Flow<LikeChange>
+
     companion object {
         /** The server's longest comment. */
         const val MAX_COMMENT_LENGTH = 1000
@@ -60,3 +63,5 @@ interface SocialRepository {
 }
 
 data class LikeCount(val target: LikeTarget, val targetId: String, val count: Int)
+
+data class LikeChange(val target: LikeTarget, val targetId: String, val state: LikeState)

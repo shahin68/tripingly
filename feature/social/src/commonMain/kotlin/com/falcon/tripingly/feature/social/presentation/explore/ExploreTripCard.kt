@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.outlined.Map
 import androidx.compose.material3.Icon
@@ -40,6 +41,7 @@ import androidx.compose.ui.unit.dp
 import com.falcon.tripingly.core.common.util.DateUtils
 import com.falcon.tripingly.core.designsystem.component.AppDropdownMenu
 import com.falcon.tripingly.core.designsystem.component.AvatarCircle
+import com.falcon.tripingly.core.designsystem.component.CountLabel
 import com.falcon.tripingly.core.designsystem.component.GlassSurface
 import com.falcon.tripingly.core.designsystem.component.LikeButton
 import com.falcon.tripingly.core.designsystem.component.LikeButtonHeight
@@ -107,7 +109,17 @@ internal fun ExploreTripCard(
         ) {
             OwnerChip(trip.trip.owner, onOpenOwner, Modifier.weight(1f, fill = false).padding(end = MaterialTheme.spacing.small))
             GlassSurface(shape = CircleShape, shadowElevation = 0.dp, blur = false) {
-                LikeButton(liked = trip.likedByMe, count = trip.likeCount, onToggle = onLike)
+                if (isMine) {
+                    // My own trip: its likes are something to read, not to give.
+                    CountLabel(
+                        icon = Icons.Outlined.FavoriteBorder,
+                        count = trip.likeCount,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.height(LikeButtonHeight).padding(horizontal = MaterialTheme.spacing.small),
+                    )
+                } else {
+                    LikeButton(liked = trip.likedByMe, count = trip.likeCount, onToggle = onLike)
+                }
             }
         }
         CardFooter(

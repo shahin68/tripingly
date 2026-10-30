@@ -19,6 +19,8 @@ import com.falcon.tripingly.feature.social.generated.resources.social_join_decli
 import com.falcon.tripingly.feature.social.generated.resources.social_join_requested
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.mapNotNull
+import kotlinx.coroutines.flow.merge
 import kotlinx.coroutines.launch
 
 /**
@@ -43,6 +45,21 @@ internal class PublicTripActions(
     private val confirmedSaves = mutableMapOf<String, Saved>()
 
     private data class Saved(val saved: Boolean, val count: Int)
+
+    /** [byMe] is null when only the count changed. */
+    private data class Liked(val tripId: String, val byMe: Boolean?, val count: Int)
+
+    init {
+        // A like from another screen, or a count the server sends live, shows here too; a tap still on its way here wins.
+        scope.launch {
+            merge(
+                socialRepository.myLikes.mapNotNull { if (it.target == LikeTarget.Trip) Liked(it.targetId, it.state.liked, it.state.likeCount) else null },
+                socialRepository.likeCounts.mapNotNull { if (it.target == LikeTarget.Trip) Liked(it.targetId, byMe = null, it.count) else null },
+            ).collect { (tripId, byMe, count) ->
+                if (likeJobs[tripId]?.isActive != true) updateTrip(tripId) { it.copy(likedByMe = byMe ?: it.likedByMe, likeCount = count) }
+            }
+        }
+    }
 
     fun toggleLike(tripId: String) {
         val shown = trip(tripId) ?: return

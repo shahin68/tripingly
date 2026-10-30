@@ -17,6 +17,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.outlined.Bookmark
 import androidx.compose.material.icons.outlined.BookmarkBorder
+import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material.icons.outlined.Flag
 import androidx.compose.material.icons.outlined.PersonAdd
 import androidx.compose.material.icons.outlined.Map
@@ -39,6 +40,7 @@ import androidx.compose.ui.tooling.preview.PreviewParameter
 import androidx.compose.ui.unit.dp
 import com.falcon.tripingly.core.common.util.DateUtils
 import com.falcon.tripingly.core.designsystem.component.AppDropdownMenu
+import com.falcon.tripingly.core.designsystem.component.CountLabel
 import com.falcon.tripingly.core.designsystem.component.DropdownAction
 import com.falcon.tripingly.core.designsystem.component.LikeButton
 import com.falcon.tripingly.core.designsystem.component.PhotoImage
@@ -62,7 +64,7 @@ import org.jetbrains.compose.resources.stringResource
 
 /**
  * A public trip on a profile: its cover, name, dates and counts, and its likes. ⋮ or a long press saves it to My
- * Trips (read-only) or reports it; trips of my own have nothing to save or report.
+ * Trips (read-only) or reports it; trips of my own only show their like count, with nothing to like, save or report.
  */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -108,9 +110,17 @@ internal fun PublicTripCard(
                     modifier = Modifier.skeletonText(),
                 )
             }
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                LikeButton(liked = trip.likedByMe, count = trip.likeCount, onToggle = onLike)
-                if (!isMine) {
+            if (isMine) {
+                // My own trip: its likes are something to read, not to give.
+                CountLabel(
+                    icon = Icons.Outlined.FavoriteBorder,
+                    count = trip.likeCount,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(end = MaterialTheme.spacing.medium).skeletonText(),
+                )
+            } else {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    LikeButton(liked = trip.likedByMe, count = trip.likeCount, onToggle = onLike)
                     Box {
                         IconButton(onClick = { menuOpen = true }) {
                             Icon(Icons.Default.MoreVert, contentDescription = stringResource(Res.string.social_more), modifier = Modifier.skeleton(CircleShape))

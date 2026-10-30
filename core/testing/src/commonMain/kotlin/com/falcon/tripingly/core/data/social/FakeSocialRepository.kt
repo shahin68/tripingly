@@ -14,6 +14,8 @@ import com.falcon.tripingly.core.model.social.ReportReason
 import com.falcon.tripingly.core.model.social.ReportTarget
 import com.falcon.tripingly.core.model.trip.UserSummary
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.emptyFlow
 import kotlin.time.Clock
 
@@ -59,7 +61,7 @@ class FakeSocialRepository(
         val key = target to targetId
         val changed = if (liked) this.liked.add(key) else this.liked.remove(key)
         if (changed) likes[key] = (likes[key] ?: 0) + if (liked) 1 else -1
-        return AppResult.Success(LikeState(liked, likes[key] ?: 0))
+        return AppResult.Success(LikeState(liked, likes[key] ?: 0)).also { _myLikes.emit(LikeChange(target, targetId, it.data)) }
     }
 
     override suspend fun setHot(placeId: String, hot: Boolean): AppResult<HotState, DataError.Network> {
@@ -78,4 +80,7 @@ class FakeSocialRepository(
     override val commentChanges: Flow<CommentChange> = emptyFlow()
 
     override val likeCounts: Flow<LikeCount> = emptyFlow()
+
+    private val _myLikes = MutableSharedFlow<LikeChange>(extraBufferCapacity = 16)
+    override val myLikes: Flow<LikeChange> = _myLikes.asSharedFlow()
 }

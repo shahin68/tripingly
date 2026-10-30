@@ -5,6 +5,7 @@ import com.falcon.tripingly.core.common.result.AppResult
 import com.falcon.tripingly.core.common.result.asSuccess
 import com.falcon.tripingly.core.data.places.FakePlaceRepository
 import com.falcon.tripingly.core.data.social.FakeSocialRepository
+import com.falcon.tripingly.core.data.social.LikeChange
 import com.falcon.tripingly.core.data.social.SocialRepository
 import com.falcon.tripingly.core.data.trips.FakeTripBackend
 import com.falcon.tripingly.core.data.users.FakeUserRepository
@@ -31,6 +32,7 @@ import com.falcon.tripingly.core.model.trip.TripRole
 import com.falcon.tripingly.core.model.trip.UserSummary
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.StandardTestDispatcher
@@ -78,8 +80,14 @@ abstract class SocialTestBase {
             return if (reportRefused) AppResult.Error(DataError.Network.NoInternet) else Unit.asSuccess()
         }
 
+        override val myLikes = MutableSharedFlow<LikeChange>(extraBufferCapacity = 16)
+
         override suspend fun setLiked(target: LikeTarget, targetId: String, liked: Boolean): AppResult<LikeState, DataError.Network> =
-            if (likeRefused) AppResult.Error(DataError.Network.NoInternet) else LikeState(liked, if (liked) 5 else 4).asSuccess()
+            if (likeRefused) {
+                AppResult.Error(DataError.Network.NoInternet)
+            } else {
+                LikeState(liked, if (liked) 5 else 4).also { myLikes.emit(LikeChange(target, targetId, it)) }.asSuccess()
+            }
 
         override suspend fun setHot(placeId: String, hot: Boolean): AppResult<HotState, DataError.Network> =
             if (likeRefused) AppResult.Error(DataError.Network.NoInternet) else HotState(hot, 99).asSuccess()

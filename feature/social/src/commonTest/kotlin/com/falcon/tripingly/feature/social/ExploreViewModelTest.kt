@@ -38,6 +38,21 @@ class ExploreViewModelTest : SocialTestBase() {
     }
 
     @Test
+    fun likingATrip_showsOnEveryScreen_withoutAReload() = runTest {
+        explore = listOf(publicTrip())
+        val here = viewModel()
+        val elsewhere = viewModel()
+        advanceUntilIdle()
+
+        here.onAction(Action.LikeTrip(here.uiState.value.trips.single()))
+        advanceUntilIdle()
+
+        val trip = elsewhere.uiState.value.trips.single()
+        assertTrue(trip.likedByMe)
+        assertEquals(5, trip.likeCount)
+    }
+
+    @Test
     fun likingATrip_refused_putsItBack() = runTest {
         explore = listOf(publicTrip())
         likeRefused = true
