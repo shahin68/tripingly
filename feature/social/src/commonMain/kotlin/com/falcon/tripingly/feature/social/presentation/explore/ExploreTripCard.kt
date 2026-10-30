@@ -2,6 +2,7 @@ package com.falcon.tripingly.feature.social.presentation.explore
 
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -32,6 +33,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -131,20 +133,19 @@ internal fun ExploreTripCard(
     }
 }
 
-/** The owner's avatar, as tall as the like button, and @username on one line; opens their profile. */
+/** The owner's avatar, as tall as the like button, and @username on one line; the whole row opens their profile. */
 @Composable
 private fun OwnerChip(owner: UserSummary, onClick: () -> Unit, modifier: Modifier = Modifier) {
-    GlassSurface(modifier = modifier, shape = CircleShape, onClick = onClick, shadowElevation = 0.dp, blur = false) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            AvatarCircle(name = owner.displayName, size = LikeButtonHeight)
-            Text(
-                text = "@${owner.username}",
-                style = MaterialTheme.typography.labelLarge,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.padding(start = MaterialTheme.spacing.extraSmall + 2.dp, end = MaterialTheme.spacing.small + 2.dp),
-            )
-        }
+    Row(modifier = modifier.clip(CircleShape).clickable(onClick = onClick), verticalAlignment = Alignment.CenterVertically) {
+        AvatarCircle(name = owner.displayName, size = LikeButtonHeight)
+        Text(
+            text = "@${owner.username}",
+            style = MaterialTheme.typography.labelLarge.copy(shadow = Shadow(Color.Black.copy(alpha = SCRIM_ALPHA), blurRadius = 6f)),
+            color = Color.White,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.padding(start = MaterialTheme.spacing.extraSmall + 2.dp, end = MaterialTheme.spacing.small + 2.dp),
+        )
     }
 }
 
