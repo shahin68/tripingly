@@ -106,18 +106,13 @@ internal fun PublicTripCard(
                 DateUtils.formatRange(trip.trip.startDate, trip.trip.endDate)?.let {
                     Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, modifier = Modifier.skeletonText())
                 }
-                Text(
-                    text = buildList {
+                DetailLine(
+                    buildList {
                         add(pluralStringResource(Res.plurals.social_trip_stop_count, trip.trip.markerCount, trip.trip.markerCount))
                         if (trip.saveCount > 0) add(pluralStringResource(Res.plurals.social_trip_save_count, trip.saveCount, trip.saveCount))
-                        add(stringResource(Res.string.social_trip_created, timeAgo(trip.trip.createdAt)))
                     }.joinToString(" · "),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.skeletonText(),
                 )
+                DetailLine(stringResource(Res.string.social_trip_created, timeAgo(trip.trip.createdAt)))
             }
             Column(Modifier.height(CoverSize), horizontalAlignment = Alignment.End) {
                 if (!isMine) {
@@ -161,6 +156,19 @@ internal fun publicTripActions(trip: PublicTrip, onToggleSave: () -> Unit, onAsk
     DropdownAction(stringResource(Res.string.social_ask_to_join), icon = Icons.Outlined.PersonAdd, onClick = onAskToJoin),
     DropdownAction(stringResource(Res.string.social_report), isDestructive = true, icon = Icons.Outlined.Flag, onClick = onReport),
 )
+
+/** One small detail line under the dates: counts, or when the trip was created. */
+@Composable
+private fun DetailLine(text: String) {
+    Text(
+        text = text,
+        style = MaterialTheme.typography.labelSmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        maxLines = 1,
+        overflow = TextOverflow.Ellipsis,
+        modifier = Modifier.skeletonText(),
+    )
+}
 
 @Composable
 private fun TripCover(trip: PublicTrip) {
