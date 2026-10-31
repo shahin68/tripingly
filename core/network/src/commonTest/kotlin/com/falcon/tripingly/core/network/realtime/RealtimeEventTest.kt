@@ -96,6 +96,14 @@ class RealtimeEventTest {
     }
 
     @Test
+    fun profilePhotoEvents_areSkipped() {
+        // Neither a stop nor a place: saving the profile photo waits for the server itself.
+        val profilePhoto = photoJson.replace("\"markerId\":\"m1\"", "\"markerId\":null,\"placeId\":null")
+        assertNull(parse("photo.ready", envelope("photo.ready", """{"photo":$profilePhoto}""", tripId = null)))
+        assertNull(parse("photo.failed", envelope("photo.failed", """{"photoId":"ph1"}""", tripId = null)))
+    }
+
+    @Test
     fun tripAndUserEvents() {
         listOf("trip.updated", "day.created", "day.deleted", "member.added", "member.removed").forEach {
             assertEquals(RealtimeEvent.TripChanged("t1", "u2"), parse(it, envelope(it, "{}")))

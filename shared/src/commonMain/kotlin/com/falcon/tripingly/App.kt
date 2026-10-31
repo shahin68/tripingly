@@ -2,10 +2,7 @@ package com.falcon.tripingly
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.only
-import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -28,12 +25,11 @@ import com.falcon.tripingly.core.data.realtime.LiveUpdates
 import com.falcon.tripingly.core.data.trips.MarkerRepository
 import com.falcon.tripingly.core.designsystem.browser.rememberInAppUriHandler
 import com.falcon.tripingly.core.designsystem.component.MessageBannerHost
+import com.falcon.tripingly.core.designsystem.component.safeTopAndSides
 import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
-import com.falcon.tripingly.core.model.social.PeopleList
 import com.falcon.tripingly.core.navigation.Home
 import com.falcon.tripingly.core.navigation.NavConfig
 import com.falcon.tripingly.core.navigation.Paywall
-import com.falcon.tripingly.core.navigation.People
 import com.falcon.tripingly.core.navigation.Profile
 import com.falcon.tripingly.core.navigation.Settings
 import com.falcon.tripingly.core.navigation.TripMap
@@ -43,16 +39,12 @@ import com.falcon.tripingly.feature.auth.presentation.gate.AuthGate
 import com.falcon.tripingly.feature.map.presentation.map.MapRoute
 import com.falcon.tripingly.feature.paywall.presentation.PaywallRoute
 import com.falcon.tripingly.feature.settings.presentation.SettingsRoute
-import com.falcon.tripingly.feature.social.presentation.people.PeopleRoute
 import com.falcon.tripingly.feature.social.presentation.profile.ProfileRoute
-import com.falcon.tripingly.feature.social.presentation.social.SocialRoute
 import com.falcon.tripingly.feature.trips.presentation.members.TripMembersRoute
-import com.falcon.tripingly.feature.trips.presentation.screen.HomeRoute
+import com.falcon.tripingly.shell.MainTabs
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
-import com.falcon.tripingly.feature.map.presentation.photos.PhotoViewerRoute
-import com.falcon.tripingly.core.model.photo.PhotoOwner
 
 @Composable
 fun App() {
@@ -67,7 +59,7 @@ fun App() {
                 MessageBannerHost(
                     Modifier
                         .align(Alignment.TopCenter)
-                        .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal)),
+                        .windowInsetsPadding(WindowInsets.safeTopAndSides),
                 )
             }
         }
@@ -118,24 +110,11 @@ private fun MainNavigation() {
     ) { route ->
         NavEntry(route) { key ->
             when (key) {
-                is Home -> {
-                    HomeRoute(
-                        onNavigateToMap = { tripId ->
-                            backStack.add(TripMap(tripId))
-                        },
-                        onOpenMyProfile = { backStack.add(Profile(username = null)) },
-                        socialContent = { query ->
-                            SocialRoute(
-                                query = query,
-                                onOpenTrip = { backStack.add(TripMap(it)) },
-                                onOpenProfile = { backStack.add(Profile(it)) },
-                                placeImageContent = { placeId, imageId, onReport, onDismiss ->
-                                    PhotoViewerRoute(owner = PhotoOwner.Place(placeId), photoId = imageId, onReport = onReport, onDismiss = onDismiss)
-                                },
-                            )
-                        },
-                    )
-                }
+                is Home -> MainTabs(
+                    onOpenTrip = { backStack.add(TripMap(it)) },
+                    onOpenProfile = { backStack.add(Profile(it)) },
+                    onOpenSettings = { backStack.add(Settings) },
+                )
                 is TripMap -> {
                     MapRoute(
                         tripId = key.tripId,
@@ -145,22 +124,12 @@ private fun MainNavigation() {
                         membersContent = { tripId, onDismiss -> TripMembersRoute(tripId = tripId, onDismiss = onDismiss) },
                     )
                 }
-                is Profile -> {
-                    ProfileRoute(
-                        username = key.username,
-                        onBack = { goBack() },
-                        onOpenTrip = { backStack.add(TripMap(it)) },
-                        onOpenList = { backStack.add(People(it.name)) },
-                        onOpenSettings = { backStack.add(Settings) },
-                    )
-                }
-                is People -> {
-                    PeopleRoute(
-                        list = PeopleList.valueOf(key.list),
-                        onBack = { goBack() },
-                        onOpenProfile = { backStack.add(Profile(it)) },
-                    )
-                }
+                is Profile -> ProfileRoute(
+                    username = key.username,
+                    onBack = { goBack() },
+                    onOpenTrip = { backStack.add(TripMap(it)) },
+                    onOpenProfile = { backStack.add(Profile(it)) },
+                )
                 is Settings -> SettingsRoute(onBack = { goBack() }, onOpenPro = { backStack.add(Paywall) })
                 is Paywall -> PaywallRoute(onBack = { goBack() })
             }

@@ -20,6 +20,8 @@ import com.falcon.tripingly.core.model.account.TripVisibility
 import com.falcon.tripingly.core.model.account.UsernameAvailability
 import com.falcon.tripingly.core.model.account.isAtLeast
 import com.falcon.tripingly.core.model.account.isUsernameFormatValid
+import com.falcon.tripingly.core.model.photo.PickedImage
+import com.falcon.tripingly.core.model.trip.ProfilePhoto
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -98,6 +100,20 @@ class FakeAccountBackend(
                 ),
             ),
         )
+    }
+
+    /** The next profile photo's number: photo-1, photo-2 … */
+    private var photos = 0
+
+    override suspend fun setProfilePhoto(image: PickedImage): AppResult<Account, DataError.Network> {
+        val current = account ?: return AppResult.Error(DataError.Network.Unauthorized)
+        val id = "photo-${++photos}"
+        return AppResult.Success(publish(current.copy(photo = ProfilePhoto(id, "https://example.com/$id/thumb.webp"))))
+    }
+
+    override suspend fun removeProfilePhoto(): AppResult<Account, DataError.Network> {
+        val current = account ?: return AppResult.Error(DataError.Network.Unauthorized)
+        return AppResult.Success(publish(current.copy(photo = null)))
     }
 
     override suspend fun legalDocuments(locale: String): AppResult<List<LegalDocument>, DataError.Network> =

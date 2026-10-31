@@ -1,5 +1,7 @@
 package com.falcon.tripingly.feature.trips.presentation.screen
 
+import com.falcon.tripingly.core.designsystem.component.AppBottomSheet
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -31,9 +33,8 @@ import org.koin.compose.viewmodel.koinViewModel
 @Composable
 fun HomeRoute(
     onNavigateToMap: (String) -> Unit,
-    onOpenMyProfile: () -> Unit,
-    /** The Social tab's content, given what's typed in the search bar there. */
-    socialContent: @Composable (query: String) -> Unit,
+    /** The tab shell's floating top and bottom bars, which the list scrolls behind. */
+    barsPadding: PaddingValues = PaddingValues(),
     viewModel: HomeViewModel = koinViewModel(),
     shareManager: ShareManager = koinInject(),
 ) {
@@ -65,20 +66,21 @@ fun HomeRoute(
         }
     }
 
-    HomeScreen(
-        state = state,
-        onAction = viewModel::onAction,
-        onOpenMyProfile = onOpenMyProfile,
-        socialContent = socialContent,
-    )
+    HomeScreen(state = state, onAction = viewModel::onAction, barsPadding = barsPadding)
 
-    state.dialog?.let { TripDialog(it, viewModel::onAction) }
+    state.dialog?.takeUnless { it.dialog is Dialog.Create }?.let { TripDialog(it, viewModel::onAction) }
 
-    state.membersTripId?.let { tripId ->
-        TripMembersRoute(
-            tripId = tripId,
-            onDismiss = { viewModel.onAction(Action.Trips.DismissMembers) },
-        )
+    AppBottomSheet(
+        value = state.dialog?.takeIf { it.dialog is Dialog.Create },
+        onDismiss = { viewModel.onAction(Action.TripDialog.Dismiss) },
+        dismissEnabled = state.dialog?.isSaving != true,
+    ) { dialog, close ->
+        val form = (dialog.dialog as Dialog.Create).form
+        CreateTripSheet(form = form, isSaving = dialog.isSaving, error = dialog.error, onAction = viewModel::onAction, onClose = close)
+    }
+
+    AppBottomSheet(value = state.membersTripId, onDismiss = { viewModel.onAction(Action.Trips.DismissMembers) }) { tripId, close ->
+        TripMembersRoute(tripId = tripId, onDismiss = close)
     }
 }
 
@@ -87,13 +89,14 @@ private fun TripDialog(state: DialogState, onAction: (Action) -> Unit) {
     val onDismiss = { onAction(Action.TripDialog.Dismiss) }
     val error = state.error?.asString()
     when (val dialog = state.dialog) {
-        is Dialog.Create -> CreateTripSheet(form = dialog.form, isSaving = state.isSaving, error = state.error, onAction = onAction)
+        is Dialog.Create -> Unit
         is Dialog.Rename -> RenameTripDialog(
-            initialName = dialog.trip.name,
+            name = dialog.name,
+            currentName = dialog.trip.name,
             isSaving = state.isSaving,
             error = error,
             onDismiss = onDismiss,
-            onConfirm = { onAction(Action.TripDialog.ConfirmRename(dialog.trip.id, it)) },
+            onConfirm = { onAction(Action.TripDialog.ConfirmRename(dialog.trip.id)) },
         )
         is Dialog.Reschedule -> RescheduleTripDialog(
             initialStartDate = dialog.trip.startDate,

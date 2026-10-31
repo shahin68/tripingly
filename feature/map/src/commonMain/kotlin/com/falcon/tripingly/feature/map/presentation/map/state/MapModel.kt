@@ -1,5 +1,6 @@
 package com.falcon.tripingly.feature.map.presentation.map.state
 
+import androidx.compose.foundation.text.input.TextFieldState
 import com.falcon.tripingly.core.data.trips.MarkerChangeFailure
 import com.falcon.tripingly.core.location.model.Coordinates
 import com.falcon.tripingly.core.location.permission.LocationPermission
@@ -24,6 +25,8 @@ import com.falcon.tripingly.feature.map.presentation.map.LocationPrompt
  */
 internal data class MapModel(
     val isLoadingTrip: Boolean = true,
+    /** The trip couldn't load and there's none on the device: the screen shows the error instead of the map. */
+    val loadError: UiText? = null,
     /** A day change is waiting for the server. Stop changes don't wait. */
     val isSaving: Boolean = false,
     /** Saving or joining the trip is waiting for the server. */
@@ -71,7 +74,8 @@ internal sealed interface Selection {
 }
 
 internal data class SearchModel(
-    val query: String = "",
+    /** The search field; a new search starts empty. */
+    val query: TextFieldState = TextFieldState(),
     val results: List<PlaceSearchResult> = emptyList(),
     val isSearching: Boolean = false,
 )
@@ -137,9 +141,10 @@ internal sealed interface Dialog {
         data class Change(override val message: UiText, val failure: MarkerChangeFailure) : OthersContent
         data class Day(override val message: UiText, val dayId: String) : OthersContent
     }
-    data class Report(val target: ReportTarget, val id: String, val isSending: Boolean = false) : Dialog
-    /** Where a long press dropped a pin that waits for its name. */
-    data class NamePin(val location: Coordinates) : Dialog
+    /** [details] is the report dialog's text field. */
+    data class Report(val target: ReportTarget, val id: String, val isSending: Boolean = false, val details: TextFieldState = TextFieldState()) : Dialog
+    /** Where a long press dropped a pin that waits for its [name], the dialog's text field. */
+    data class NamePin(val location: Coordinates, val name: TextFieldState = TextFieldState()) : Dialog
     data class Location(val prompt: LocationPrompt) : Dialog
     data class BestOrder(val order: com.falcon.tripingly.core.model.route.BestOrder) : Dialog
 }

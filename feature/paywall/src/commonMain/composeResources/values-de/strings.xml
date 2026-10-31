@@ -1,5 +1,4 @@
 <resources>
-    <string name="paywall_back">Zurück</string>
     <string name="paywall_title">Tripinly Pro</string>
     <string name="paywall_intro">Plane deine Tage mit echten Routen statt nur Linien zwischen den Stopps.</string>
     <string name="paywall_benefit_routes">Routen entlang der Straßen zu Fuß, mit dem Rad und mit dem Auto</string>

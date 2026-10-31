@@ -9,6 +9,9 @@ import com.falcon.tripingly.core.data.users.FakeUserRepository
 import com.falcon.tripingly.core.data.users.FollowChange
 import com.falcon.tripingly.core.data.users.UserRepository
 import com.falcon.tripingly.core.model.Page
+import com.falcon.tripingly.core.model.account.ProfileUpdate
+import com.falcon.tripingly.core.model.account.TripVisibility
+import com.falcon.tripingly.core.model.trip.NewTrip
 import com.falcon.tripingly.core.model.social.PeopleList
 import com.falcon.tripingly.core.model.social.Profile
 import com.falcon.tripingly.core.model.social.ReportReason
@@ -70,6 +73,30 @@ class ProfileViewModelTest {
         tripRepository = FakeTripBackend(),
         sessionRepository = FakeAccountBackend(today = { LocalDate(2026, 10, 11) }),
     )
+
+    @Test
+    fun myProfile_reloadsWhenICreateATrip() = runTest {
+        val session = FakeAccountBackend(today = { LocalDate(2026, 10, 31) }).apply {
+            signInForDevelopment("me", "Me")
+            updateProfile(ProfileUpdate(username = "me", birthDate = LocalDate(1990, 1, 1)))
+            accept((legalDocuments("en") as AppResult.Success).data)
+        }
+        val trips = FakeTripBackend()
+        ProfileViewModel(
+            username = null,
+            userRepository = users,
+            socialRepository = FakeSocialRepository(),
+            tripRepository = trips,
+            sessionRepository = session,
+        )
+        advanceUntilIdle()
+        assertEquals(listOf("me"), users.profileCalls)
+
+        trips.createTrip(NewTrip("Secret weekend", null, null, visibility = TripVisibility.PRIVATE))
+        advanceUntilIdle()
+
+        assertEquals(listOf("me", "me"), users.profileCalls)
+    }
 
     @Test
     fun unfollowing_showsAtOnce() = runTest {
@@ -174,7 +201,7 @@ class ProfileViewModelTest {
         advanceUntilIdle()
 
         viewModel.onAction(Action.Person.Report)
-        viewModel.onAction(Action.Report.Send(ReportReason.Spam, ""))
+        viewModel.onAction(Action.Report.Send(ReportReason.Spam))
         advanceUntilIdle()
 
         assertEquals(null, viewModel.uiState.value.report)
@@ -214,6 +241,21 @@ class ProfileViewModelTest {
         advanceUntilIdle()
 
         assertEquals(listOf("before2"), viewModel.uiState.value.people.map { it.username })
+    }
+
+    @Test
+    fun peopleList_unfollow_leavesAtOnce_andARefusalPutsThemBack() = runTest {
+        val viewModel = PeopleViewModel(PeopleList.Following, users)
+        advanceUntilIdle()
+        val anna = viewModel.uiState.value.people.first()
+
+        followRefused = true
+        viewModel.onAction(PeopleViewModel.Action.Unfollow(anna))
+        assertFalse(anna in viewModel.uiState.value.people, "gone at once")
+        advanceUntilIdle()
+
+        assertTrue(anna in viewModel.uiState.value.people)
+        assertTrue(viewModel.uiState.value.message != null)
     }
 
     private companion object {

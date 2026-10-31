@@ -1,6 +1,5 @@
 <resources>
     <string name="app_name">Tripinly</string>
-    <string name="common_retry">Try again</string>
     <string name="common_cancel">Cancel</string>
     <string name="common_ok">OK</string>
     <string name="common_continue">Continue</string>
@@ -49,4 +48,12 @@
     <string name="onboarding_error_save_profile">Couldn’t save your profile.</string>
     <string name="onboarding_error_load_documents">Couldn’t load the terms and privacy policy.</string>
     <string name="onboarding_error_accept">Couldn’t save your consent.</string>
+
+    <!-- Redesign -->
+    <string name="onboarding_display_name_placeholder">How others see you</string>
+    <string name="onboarding_username_placeholder">yourname</string>
+    <string name="onboarding_birth_date_placeholder">Pick your birth date</string>
+    <string name="onboarding_add_photo">Add a profile photo (optional)</string>
+    <string name="onboarding_error_photo">Couldn’t save your profile photo.</string>
+    <string name="onboarding_error_photo_remove">Couldn’t remove your profile photo.</string>
 </resources>

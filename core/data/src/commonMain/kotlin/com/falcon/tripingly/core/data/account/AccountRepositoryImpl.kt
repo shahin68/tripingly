@@ -3,6 +3,8 @@ package com.falcon.tripingly.core.data.account
 import com.falcon.tripingly.core.common.error.DataError
 import com.falcon.tripingly.core.common.result.AppResult
 import com.falcon.tripingly.core.common.result.map
+import com.falcon.tripingly.core.data.config.AppConfigRepository
+import com.falcon.tripingly.core.data.photos.PhotoPreparer
 import com.falcon.tripingly.core.model.account.Account
 import com.falcon.tripingly.core.model.account.DataExport
 import com.falcon.tripingly.core.model.account.IdentityProof
@@ -13,16 +15,28 @@ import com.falcon.tripingly.core.model.account.ProfileUpdate
 import com.falcon.tripingly.core.model.account.SignOutReason
 import com.falcon.tripingly.core.model.account.TripVisibility
 import com.falcon.tripingly.core.model.account.UsernameAvailability
+import com.falcon.tripingly.core.model.photo.PickedImage
 import com.falcon.tripingly.core.network.account.AccountApi
+import com.falcon.tripingly.core.network.model.UploadUrlRequestDto
+import com.falcon.tripingly.core.network.photos.PhotosApi
+import com.falcon.tripingly.core.network.photos.StorageClient
 import com.falcon.tripingly.core.network.baseLanguageTag
 import com.falcon.tripingly.core.network.model.ConfirmedDeletionDto
 import com.falcon.tripingly.core.network.model.RecordConsentDto
 import com.falcon.tripingly.core.network.model.UpdateMeDto
 import com.falcon.tripingly.core.network.model.UpdateNotificationSettingsDto
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.withContext
+import kotlin.time.Duration.Companion.seconds
 
 internal class AccountRepositoryImpl(
     private val api: AccountApi,
     private val session: SessionRepositoryImpl,
+    private val photosApi: PhotosApi,
+    private val storage: StorageClient,
+    private val config: AppConfigRepository,
+    private val preparer: PhotoPreparer,
 ) : AccountRepository {
 
     override suspend fun checkUsername(username: String): AppResult<UsernameAvailability, DataError.Network> =
@@ -48,6 +62,34 @@ internal class AccountRepositoryImpl(
         }
         return result
     }
+
+    override suspend fun setProfilePhoto(image: PickedImage): AppResult<Account, DataError.Network> {
+        val settings = config.config.value
+        val jpeg = withContext(Dispatchers.Default) {
+            image.bytes()?.let { preparer.prepare(it, settings.photoMaxEdgePx, settings.photoJpegQuality) }
+        } ?: return AppResult.Error(DataError.Network.Unknown("The picked image can't be read"))
+        val request = UploadUrlRequestDto(UploadUrlRequestDto.MimeType.IMAGE_SLASH_JPEG, jpeg.size.toDouble())
+        val ticket = when (val result = photosApi.profilePhotoUploadUrl(request)) {
+            is AppResult.Error -> return result
+            is AppResult.Success -> result.data
+        }
+        storage.upload(ticket.uploadUrl, ticket.uploadHeaders, jpeg, onProgress = {}).let { if (it is AppResult.Error) return it }
+        photosApi.complete(ticket.photo.id).let { if (it is AppResult.Error) return it }
+        // The server makes it my avatar once processed, usually within a second or two.
+        var account = session.refreshAccount()
+        for (wait in PROFILE_PHOTO_CHECKS) {
+            if (account !is AppResult.Success || account.data.photo?.id == ticket.photo.id) break
+            delay(wait)
+            account = session.refreshAccount()
+        }
+        return account
+    }
+
+    override suspend fun removeProfilePhoto(): AppResult<Account, DataError.Network> =
+        when (val result = photosApi.removeProfilePhoto()) {
+            is AppResult.Error -> result
+            is AppResult.Success -> session.refreshAccount()
+        }
 
     override suspend fun legalDocuments(locale: String): AppResult<List<LegalDocument>, DataError.Network> =
         // Compose and platform locales can carry extensions (en-US-u-mu-celsius) the API rejects.
@@ -125,5 +167,8 @@ internal class AccountRepositoryImpl(
 
     private companion object {
         const val AGE_REQUIREMENT_NOT_MET = "AGE_REQUIREMENT_NOT_MET"
+
+        /** Waits between checks for a new profile photo; after them it shows on the next refresh. */
+        val PROFILE_PHOTO_CHECKS = listOf(1.seconds, 1.seconds, 2.seconds, 3.seconds)
     }
 }

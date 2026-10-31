@@ -1,5 +1,6 @@
 package com.falcon.tripingly.feature.map.presentation.comments
 
+import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
 import com.falcon.tripingly.core.common.error.DataError
 import com.falcon.tripingly.core.common.result.AppResult
 import com.falcon.tripingly.core.data.social.FakeSocialRepository
@@ -64,13 +65,13 @@ class StopCommentsViewModelTest {
         val viewModel = StopCommentsViewModel(MARKER_ID, social)
         testScheduler.advanceUntilIdle()
 
-        viewModel.onAction(Action.OnDraftChanged("  Great view  "))
+        viewModel.draft.setTextAndPlaceCursorAtEnd("  Great view  ")
         viewModel.onAction(Action.OnSend)
         testScheduler.advanceUntilIdle()
 
         val state = viewModel.uiState.value
         assertEquals("Great view", state.comments.single().body)
-        assertEquals("", state.draft)
+        assertEquals("", viewModel.draft.text.toString())
     }
 
     @Test

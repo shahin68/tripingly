@@ -11,6 +11,7 @@ import com.falcon.tripingly.core.model.account.NotificationType
 import com.falcon.tripingly.core.model.account.ProfileUpdate
 import com.falcon.tripingly.core.model.account.TripVisibility
 import com.falcon.tripingly.core.model.account.UsernameAvailability
+import com.falcon.tripingly.core.model.photo.PickedImage
 
 /**
  * The account calls: onboarding (profile, username check, legal documents, consents) and
@@ -25,6 +26,16 @@ interface AccountRepository {
      * and the session is signed out with [com.falcon.tripingly.core.model.account.SignOutReason.UNDER_AGE].
      */
     suspend fun updateProfile(update: ProfileUpdate): AppResult<Account, DataError.Network>
+
+    /**
+     * Makes [image] my profile photo: shrunk and stripped on the phone like any photo, uploaded, then waited for
+     * (a few seconds) until the server made it my avatar. The session's account has it then. Optional, also
+     * during onboarding.
+     */
+    suspend fun setProfilePhoto(image: PickedImage): AppResult<Account, DataError.Network>
+
+    /** Back to the letter avatar; updates the session. */
+    suspend fun removeProfilePhoto(): AppResult<Account, DataError.Network>
 
     /** The current documents in [locale] (the server falls back to English). */
     suspend fun legalDocuments(locale: String): AppResult<List<LegalDocument>, DataError.Network>

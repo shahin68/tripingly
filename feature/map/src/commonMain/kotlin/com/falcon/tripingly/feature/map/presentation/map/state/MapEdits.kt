@@ -69,10 +69,11 @@ internal class MapEdits(
         if (context.canEdit() && context.activeDay() != null) context.update { it.copy(dialog = Dialog.NamePin(coordinates)) }
     }
 
-    fun addNamedPin(name: String) {
-        val location = (context.model.value.dialog as? Dialog.NamePin)?.location ?: return
+    fun addNamedPin() {
+        val pin = context.model.value.dialog as? Dialog.NamePin ?: return
+        val name = pin.name.text.toString().trim()
         context.update { it.copy(dialog = null) }
-        if (name.isNotBlank()) add(NewMarker(name, GeoPoint(location.latitude, location.longitude)))
+        if (name.isNotEmpty()) add(NewMarker(name, GeoPoint(pin.location.latitude, pin.location.longitude)))
     }
 
     /** A stop at the open place or address, named after it. */

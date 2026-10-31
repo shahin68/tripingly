@@ -11,7 +11,6 @@ import com.falcon.tripingly.core.data.trips.TripRepository
 import com.falcon.tripingly.core.data.trips.hasCode
 import com.falcon.tripingly.core.data.users.UserRepository
 import com.falcon.tripingly.core.model.account.SessionState
-import com.falcon.tripingly.core.model.social.PeopleList
 import com.falcon.tripingly.core.model.social.Profile
 import com.falcon.tripingly.core.model.social.PublicTrip
 import com.falcon.tripingly.core.model.social.ReportReason
@@ -24,6 +23,9 @@ import com.falcon.tripingly.feature.social.generated.resources.social_error_foll
 import com.falcon.tripingly.feature.social.generated.resources.social_error_load_profile
 import com.falcon.tripingly.feature.social.generated.resources.social_error_unfollow
 import com.falcon.tripingly.feature.social.presentation.component.PublicTripActions
+import com.falcon.tripingly.feature.social.presentation.component.ReportState
+import com.falcon.tripingly.feature.social.presentation.component.sendReport
+import com.falcon.tripingly.core.model.trip.TripRole
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.toImmutableList
@@ -32,13 +34,17 @@ import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.drop
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 /**
- * A person's profile: counts, follow, their public trips, report and block. [username] null is my own
- * profile, which also leads to my friends, the people I follow and my followers.
+ * A person's profile: counts, follow, their public trips (on mine, all my trips), report and block. [username] null is my own
+ * profile, the Profile tab, which also shows my friends, the people I follow and my followers (each a
+ * [com.falcon.tripingly.feature.social.presentation.people.PeopleViewModel]).
  */
 class ProfileViewModel(
     username: String?,
@@ -73,18 +79,18 @@ class ProfileViewModel(
         tripRepository = tripRepository,
         trip = { id -> _uiState.value.trips.firstOrNull { it.trip.id == id } },
         updateTrip = { id, change -> _uiState.update { state -> state.copy(trips = state.trips.map { if (it.trip.id == id) change(it) else it }.toImmutableList()) } },
-        showMessage = { message -> _uiState.update { it.copy(message = message) } },
+        showMessage = ::showMessage,
     )
 
     init {
         load()
         watchFollows()
+        if (_uiState.value.isMe) watchMyTrips()
     }
 
     fun onAction(action: Action) {
         when (action) {
             Action.Retry -> load()
-            is Action.OpenList -> sendEvent(Event.OpenList(action.list))
             Action.DismissMessage -> _uiState.update { it.copy(message = null) }
             is Action.Person -> when (action) {
                 Action.Person.ToggleFollow -> toggleFollow()
@@ -97,11 +103,12 @@ class ProfileViewModel(
                 is Action.Trips.Click -> sendEvent(Event.OpenTrip(action.trip.trip.id))
                 is Action.Trips.Like -> tripActions.toggleLike(action.trip.trip.id)
                 is Action.Trips.ToggleSave -> tripActions.toggleSave(action.trip.trip.id)
+                is Action.Trips.AskToJoin -> tripActions.requestToJoin(action.trip.trip.id)
                 is Action.Trips.Report -> _uiState.update { it.copy(report = ReportState(ReportTarget.Trip, action.trip.trip.id)) }
                 Action.Trips.LoadMore -> loadMore()
             }
             is Action.Report -> when (action) {
-                is Action.Report.Send -> sendReport(action.reason, action.details)
+                is Action.Report.Send -> sendReport(action.reason)
                 Action.Report.Dismiss -> _uiState.update { it.copy(report = null) }
             }
         }
@@ -109,7 +116,7 @@ class ProfileViewModel(
 
     private fun load() {
         val username = username ?: return
-        _uiState.update { it.copy(isLoading = true, isNotFound = false) }
+        _uiState.update { it.copy(isLoading = true, isNotFound = false, loadError = null) }
         viewModelScope.launch {
             when (val result = userRepository.profile(username)) {
                 is AppResult.Success -> {
@@ -122,7 +129,9 @@ class ProfileViewModel(
                     if (result.error.hasCode(TripErrorCodes.NOT_FOUND)) {
                         it.copy(isLoading = false, isNotFound = true)
                     } else {
-                        it.copy(isLoading = false, message = result.error.toUiText(Res.string.social_error_load_profile))
+                        // Nothing shown yet: the error screen; a profile already shown stays, with a banner.
+                        val message = result.error.toUiText(Res.string.social_error_load_profile)
+                        if (it.profile == null) it.copy(isLoading = false, loadError = message) else it.copy(isLoading = false, message = message)
                     }
                 }
             }
@@ -145,11 +154,27 @@ class ProfileViewModel(
         }
     }
 
-    /** The profile's counts and follow state again; the trips list stays as it is. */
-    private suspend fun refreshProfile() {
+    /**
+     * My own profile follows My Trips: a trip I create, change or delete there (private ones too) shows here at once,
+     * without a refresh.
+     */
+    private fun watchMyTrips() {
+        viewModelScope.launch {
+            tripRepository.observeMyTrips()
+                .map { trips -> trips.filter { it.role == TripRole.OWNER }.associate { it.id to it.updatedAt } }
+                .distinctUntilChanged()
+                .drop(1)
+                .collect { refreshProfile(withTrips = true) }
+        }
+    }
+
+    /** The profile's counts and follow state again; the trips list stays as it is, unless [withTrips] (its first page then). */
+    private suspend fun refreshProfile(withTrips: Boolean = false) {
         val username = username ?: return
         val result = userRepository.profile(username)
-        if (result is AppResult.Success) _uiState.update { it.copy(profile = result.data) }
+        if (result !is AppResult.Success) return
+        if (withTrips) tripsCursor = result.data.nextCursor
+        _uiState.update { it.copy(profile = result.data, trips = if (withTrips) result.data.trips.toImmutableList() else it.trips) }
     }
 
     private fun loadMore() {
@@ -210,22 +235,21 @@ class ProfileViewModel(
         }
     }
 
-    private fun sendReport(reason: ReportReason, details: String) {
+    private fun sendReport(reason: ReportReason) {
         val report = _uiState.value.report?.takeUnless { it.isSending } ?: return
         _uiState.update { it.copy(report = report.copy(isSending = true)) }
         viewModelScope.launch {
-            val sent = tripActions.report(report.target, report.id, reason, details)
+            val sent = socialRepository.sendReport(report, reason, ::showMessage)
             _uiState.update { state -> state.copy(report = state.report?.copy(isSending = false)?.takeUnless { sent }) }
         }
     }
+
+    private fun showMessage(message: UiText) = _uiState.update { it.copy(message = message) }
 
     private fun sendEvent(event: Event) {
         viewModelScope.launch { _events.send(event) }
     }
 
-    /** The report dialog for the person or one of their trips. */
-    @Immutable
-    data class ReportState(val target: ReportTarget, val id: String, val isSending: Boolean = false)
 
     @Immutable
     data class State(
@@ -235,6 +259,8 @@ class ProfileViewModel(
         val isLoading: Boolean = true,
         /** Unknown, or a block either way. */
         val isNotFound: Boolean = false,
+        /** Why the profile couldn't load: the error screen with a retry. */
+        val loadError: UiText? = null,
         val isConfirmingBlock: Boolean = false,
         val report: ReportState? = null,
         val message: UiText? = null,
@@ -242,7 +268,6 @@ class ProfileViewModel(
 
     sealed interface Action {
         data object Retry : Action
-        data class OpenList(val list: PeopleList) : Action
         data object DismissMessage : Action
 
         /** The person: follow, block and report. */
@@ -258,19 +283,19 @@ class ProfileViewModel(
             data class Click(val trip: PublicTrip) : Trips
             data class Like(val trip: PublicTrip) : Trips
             data class ToggleSave(val trip: PublicTrip) : Trips
+            data class AskToJoin(val trip: PublicTrip) : Trips
             data class Report(val trip: PublicTrip) : Trips
             data object LoadMore : Trips
         }
 
         sealed interface Report : Action {
-            data class Send(val reason: ReportReason, val details: String) : Report
+            data class Send(val reason: ReportReason) : Report
             data object Dismiss : Report
         }
     }
 
     sealed interface Event {
         data class OpenTrip(val tripId: String) : Event
-        data class OpenList(val list: PeopleList) : Event
         data object Close : Event
     }
 }

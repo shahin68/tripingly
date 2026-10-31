@@ -22,9 +22,12 @@ import com.falcon.tripingly.core.network.realtime.RealtimeClient
 import com.falcon.tripingly.core.network.realtime.RealtimeEvent
 import com.falcon.tripingly.core.network.social.SocialApi
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.mapNotNull
+import kotlinx.coroutines.flow.merge
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.flow.updateAndGet
 import kotlinx.coroutines.sync.Mutex
@@ -67,10 +70,14 @@ internal class DefaultSocialRepository(
     private val syncs = mutableMapOf<String, Sync>()
     private val syncsLock = Mutex()
 
+    private val _myLikes = MutableSharedFlow<LikeChange>(extraBufferCapacity = LIKE_BUFFER)
+    override val myLikes: Flow<LikeChange> = _myLikes.asSharedFlow()
+
     override suspend fun setLiked(target: LikeTarget, targetId: String, liked: Boolean): AppResult<LikeState, DataError.Network> =
         setLatest("${target.wireName}:$targetId", liked) { on ->
             (if (on) api.like(target.wireName, targetId) else api.unlike(target.wireName, targetId)).map { Toggle(it.liked, it.likeCount.toInt()) }
         }.map { LikeState(it.on, it.count) }
+            .also { if (it is AppResult.Success) _myLikes.emit(LikeChange(target, targetId, it.data)) }
 
     /** Per place, while taps on its flame are on their way: its stops' flame and count before the first tap. */
     private val hotBeforeTaps = mutableMapOf<String, HotState>()
@@ -93,6 +100,7 @@ internal class DefaultSocialRepository(
             if (before != null && result is AppResult.Error) local.savePlaceHot(placeId, before.hotCount, before.hot)
         }
         return result.map { HotState(it.on, it.count) }
+            .also { if (it is AppResult.Success) _myHot.emit(HotChange(placeId, it.data.hot, it.data.hotCount)) }
     }
 
     private suspend fun setLatest(
@@ -171,10 +179,19 @@ internal class DefaultSocialRepository(
         LikeCount(target, event.targetId, event.count)
     }
 
+    private val _myHot = MutableSharedFlow<HotChange>(extraBufferCapacity = LIKE_BUFFER)
+    override val hotChanges: Flow<HotChange> = merge(
+        _myHot,
+        realtime.events.mapNotNull { event ->
+            if (event is RealtimeEvent.PlaceHotChanged && !event.byMe()) HotChange(event.placeId, hotByMe = null, event.hotCount) else null
+        },
+    )
+
     private fun RealtimeEvent.InTrip.byMe() = actorId != null && actorId == currentUserId()
 
     private companion object {
         const val EXPLORE_PAGE_SIZE = 20
+        const val LIKE_BUFFER = 16
         // The API's largest page.
         const val COMMENTS_PAGE_SIZE = 50
     }

@@ -1,5 +1,6 @@
 package com.falcon.tripingly.feature.auth.presentation.signin
 
+import androidx.compose.foundation.text.input.TextFieldState
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.falcon.tripingly.core.common.error.DataError
@@ -32,13 +33,11 @@ internal class SignInViewModel(
         val appleAvailable: Boolean = false,
         val developerSignInAvailable: Boolean = false,
         /** Any stable text: the same subject signs in to the same test account. */
-        val developerSubject: String = "",
     )
 
     sealed interface Action {
         data object OnGoogleClick : Action
         data object OnAppleClick : Action
-        data class OnDeveloperSubjectChange(val subject: String) : Action
         data object OnDeveloperSignInClick : Action
         data object OnDismissError : Action
     }
@@ -51,13 +50,15 @@ internal class SignInViewModel(
     )
     val uiState: StateFlow<State> = _uiState.asStateFlow()
 
+    /** The developer sign-in's test subject field. */
+    val developerSubject = TextFieldState()
+
     fun onAction(action: Action) {
         when (action) {
             Action.OnGoogleClick -> signIn { exchange(socialSignIn.google()) }
             Action.OnAppleClick -> signIn { exchange(socialSignIn.apple()) }
-            is Action.OnDeveloperSubjectChange -> _uiState.update { it.copy(developerSubject = action.subject) }
             Action.OnDeveloperSignInClick -> {
-                val subject = _uiState.value.developerSubject.trim()
+                val subject = developerSubject.text.toString().trim()
                 if (subject.isNotEmpty()) {
                     signIn { sessionRepository.signInForDevelopment(subject, name = null).toDeveloperOutcome() }
                 }

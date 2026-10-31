@@ -4,11 +4,7 @@
     <string name="common_cancel">Abbrechen</string>
 
     <!-- Home -->
-    <string name="home_tab_my_trips">Meine Reisen</string>
-    <string name="home_tab_social">Social</string>
     <string name="home_search_placeholder_trips">Reisen suchen...</string>
-    <string name="home_search_placeholder_social">Leute suchen …</string>
-    <string name="home_my_profile">Dein Profil</string>
     <string name="home_fab_add_trip">Reise hinzufügen</string>
     <string name="home_list_empty">Noch keine Reisen. Tippe auf +, um eine zu erstellen!</string>
     <string name="home_list_no_matches">Keine Reise passt zu deiner Suche.</string>
@@ -57,12 +53,8 @@
     <string name="create_trip_dates_add">Daten hinzufügen</string>
     <string name="create_trip_visibility_public">Öffentlich</string>
     <string name="create_trip_visibility_private">Privat</string>
-    <string name="create_trip_member_placeholder">Benutzername eingeben</string>
-    <string name="create_trip_add_by_username">Per Benutzername hinzufügen</string>
-    <string name="create_trip_member_not_found">Niemand hat diesen Benutzernamen.</string>
-    <string name="create_trip_member_blocked">Diese Person kannst du nicht hinzufügen.</string>
-    <string name="create_trip_error_members">Einige Personen können nicht hinzugefügt werden. Entferne sie und versuche es erneut.</string>
-    <string name="create_trip_destination_clear">Reiseziel entfernen</string>
+    <string name="create_trip_find_friends_hint">Mit Freunden macht Reisen mehr Spaß! Such Leute, die du kennst, in deinem Profil-Tab und folge ihnen. Sobald sie dir zurückfolgen, kannst du sie zu deinen Reisen hinzufügen.</string>
+    <string name="create_trip_error_members">Manche Freunde können nicht mehr hinzugefügt werden und wurden abgewählt. Versuch es noch einmal.</string>
 
     <!-- Rename trip dialog -->
     <string name="rename_trip_title">Reise umbenennen</string>
@@ -122,4 +114,19 @@
     <string name="members_error_revoke_invite">Der Einladungslink konnte nicht deaktiviert werden.</string>
     <string name="members_error_remove">Sie konnten nicht aus der Reise entfernt werden.</string>
     <string name="trip_created">Erstellt %1$s</string>
+
+    <!-- Trips timeline (redesign) -->
+    <string name="home_today">Heute · %1$s</string>
+    <string name="home_trip_more">Mehr zu %1$s</string>
+    <plurals name="home_past_count">
+        <item quantity="one">Vergangen · %1$d Reise</item>
+        <item quantity="other">Vergangen · %1$d Reisen</item>
+    </plurals>
+
+    <!-- Redesign: New trip sheet -->
+    <string name="create_trip_name_placeholder">Gib ihr einen Namen</string>
+    <string name="create_trip_destination_label">Ziel (optional)</string>
+    <string name="create_trip_dates_label">Reisedaten</string>
+    <string name="create_trip_visibility_label">Wer sie sehen kann</string>
+    <string name="create_trip_friends_label">Freunde hinzufügen</string>
 </resources>

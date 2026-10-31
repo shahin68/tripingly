@@ -10,10 +10,7 @@ import com.falcon.tripingly.core.model.trip.TripMarker
 import com.falcon.tripingly.core.model.trip.TripRole
 import com.falcon.tripingly.core.ui.UiText
 import com.falcon.tripingly.feature.map.generated.resources.Res
-import com.falcon.tripingly.feature.map.generated.resources.map_day_label
-import com.falcon.tripingly.feature.map.generated.resources.map_day_label_no_date
 import com.falcon.tripingly.feature.map.generated.resources.map_stop_title_format
-import com.falcon.tripingly.feature.map.generated.resources.map_trip_created
 import com.falcon.tripingly.feature.map.generated.resources.map_trip_owner
 import com.falcon.tripingly.feature.map.presentation.component.MapLayersState
 import com.falcon.tripingly.feature.map.presentation.component.MapMarker
@@ -30,7 +27,6 @@ import com.falcon.tripingly.feature.map.presentation.map.state.stopPlaceIds
 import com.falcon.tripingly.feature.map.presentation.map.ui.durationText
 import kotlinx.collections.immutable.toImmutableList
 import kotlinx.collections.immutable.toImmutableMap
-import kotlinx.datetime.LocalDate
 
 /** Builds [MapUiState] from the trip and the screen's [MapModel], one part per thing on screen. */
 internal class MapStateMapper(
@@ -43,7 +39,7 @@ internal class MapStateMapper(
     private val activeIndex = activeDayIndex(days.size, model.activeDayIndex)
     private val role = details?.trip?.role
     private val canEdit = role?.canEdit == true
-    /** Someone else's trip: the owner's name and stops show in the owner's colour. */
+    /** Someone else's trip: the header says whose. */
     private val otherOwnerId = details?.trip?.owner?.id?.takeIf { role != TripRole.OWNER }
     private val stops = days.getOrNull(activeIndex)?.markers.orEmpty().mapIndexed { index, it -> it.toMapMarker(index + 1) }
     private val dayNumber = days.getOrNull(activeIndex)?.let { it.position + 1 }
@@ -60,11 +56,11 @@ internal class MapStateMapper(
 
     /** [layers] can be ones built before from the same trip and model; see [MapViewModel]. */
     fun map(layers: MapLayersState = layers()): MapUiState = MapUiState(
+        loadError = model.loadError,
         header = header(),
         search = model.search?.let { SearchState(it.query, it.results.toImmutableList(), it.isSearching) },
-        dayTabs = DayTabsState(days.map { DayTab(it.id, it.position + 1, dayLabel(it.position + 1, it.date)) }.toImmutableList(), activeIndex),
+        dayTabs = DayTabsState(days.map { DayTab(it.id, it.position + 1, it.date?.let(DateUtils::formatAbbreviated)) }.toImmutableList(), activeIndex),
         plan = route.between?.let { PointRouteCardState(it.from, it.to, routeSummary()) } ?: stopsCard(),
-        joinRequestCount = details?.pendingJoinRequestCount?.takeIf { it > 0 && model.search == null },
         routeStartName = route.start?.name,
         placeCard = placeCard(),
         stopCard = stopCard(),
@@ -81,11 +77,14 @@ internal class MapStateMapper(
         val trip = details?.trip
         return HeaderState(
             tripName = trip?.name.orEmpty(),
-            createdLabel = trip?.createdAt?.let { UiText.Resource(Res.string.map_trip_created, DateUtils.formatFormal(it)) },
+            dates = trip?.let { DateUtils.formatRange(it.startDate, it.endDate) },
+            stopCount = days.sumOf { it.markers.size },
             ownerLabel = trip?.owner?.takeIf { otherOwnerId != null }?.let { UiText.Resource(Res.string.map_trip_owner, it.displayName) },
-            isBusy = model.isSaving || model.isUpdatingSharing || (days.isEmpty() && model.isLoadingTrip),
+            members = details?.members?.takeIf { it.isNotEmpty() }?.let { MembersEntry(it.size, details.pendingJoinRequestCount) },
+            isLoading = days.isEmpty() && model.isLoadingTrip,
+            isBusy = model.isSaving || model.isUpdatingSharing,
             viewerMenu = trip?.takeIf { role == TripRole.VIEWER }?.let {
-                ViewerMenu(isSavedByMe = it.savedByMe, myJoinRequest = details?.myJoinRequest, ownerUsername = it.owner?.username)
+                ViewerMenu(isSavedByMe = it.savedByMe, myJoinRequest = details.myJoinRequest, ownerUsername = it.owner.username)
             },
             editorMenu = EditorMenu(canDeleteDay = days.size > 1 && canDeleteDay()).takeIf { canEdit },
         )
@@ -207,8 +206,8 @@ internal class MapStateMapper(
         Dialog.DeleteDay -> MapDialog.DeleteDay(dayNumber ?: 1, stops.size)
         Dialog.RemoveMyContent -> MapDialog.RemoveMyContent
         is Dialog.OthersContent -> MapDialog.DeleteOthersContent(dialog.message)
-        is Dialog.Report -> MapDialog.Report(dialog.isSending)
-        is Dialog.NamePin -> MapDialog.NamePin
+        is Dialog.Report -> MapDialog.Report(dialog.isSending, dialog.details)
+        is Dialog.NamePin -> MapDialog.NamePin(dialog.name)
         is Dialog.Location -> MapDialog.Location(dialog.prompt)
         is Dialog.BestOrder -> MapDialog.BestOrder(
             BestOrderPreview(
@@ -239,15 +238,7 @@ internal class MapStateMapper(
         commentCount = commentCount,
         placeId = placeId,
         canDelete = role == TripRole.OWNER || (canEdit && myUserId != null && createdById == myUserId),
-        isByTripOwner = otherOwnerId != null && createdById == otherOwnerId,
     )
-
-    private fun dayLabel(number: Int, date: LocalDate?): UiText =
-        if (date != null) {
-            UiText.Resource(Res.string.map_day_label, number, DateUtils.formatAbbreviated(date))
-        } else {
-            UiText.Resource(Res.string.map_day_label_no_date, number)
-        }
 
     private companion object {
         /** With two stops there's only one order (the first stays first); the server orders up to 25. */

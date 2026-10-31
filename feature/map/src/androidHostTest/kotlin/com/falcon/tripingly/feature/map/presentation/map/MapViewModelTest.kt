@@ -1,5 +1,6 @@
 package com.falcon.tripingly.feature.map.presentation.map
 
+import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
 import app.cash.turbine.test
 import com.falcon.tripingly.core.common.error.DataError
 import com.falcon.tripingly.core.common.result.AppResult
@@ -63,7 +64,6 @@ import com.falcon.tripingly.feature.map.generated.resources.error_location_denie
 import com.falcon.tripingly.feature.map.generated.resources.error_location_permission_required
 import com.falcon.tripingly.feature.map.generated.resources.map_best_order_already
 import com.falcon.tripingly.feature.map.generated.resources.map_change_not_saved
-import com.falcon.tripingly.feature.map.generated.resources.map_day_label
 import com.falcon.tripingly.feature.map.generated.resources.map_error_load_trip
 import com.falcon.tripingly.feature.map.generated.resources.map_error_stop_change
 import com.falcon.tripingly.feature.map.generated.resources.map_join_requested
@@ -72,7 +72,6 @@ import com.falcon.tripingly.feature.map.generated.resources.map_trip_owner
 import com.falcon.tripingly.feature.map.presentation.FakeTripMapViewRepository
 import com.falcon.tripingly.feature.map.presentation.component.CameraCommand
 import com.falcon.tripingly.feature.map.presentation.component.PinSizes
-import com.falcon.tripingly.feature.map.presentation.component.TripOwnerColor
 import com.falcon.tripingly.feature.map.presentation.component.routeLine
 import com.falcon.tripingly.feature.map.presentation.component.stopPathShape
 import kotlin.test.AfterTest
@@ -269,22 +268,35 @@ class MapViewModelTest {
         val state = viewModel.uiState.value
         assertEquals("Test Trip", state.header.tripName)
         assertEquals(listOf(1, 2, 3), state.dayTabs.days.map { it.number })
-        assertEquals(UiText.Resource(Res.string.map_day_label, 2, DateUtils.formatAbbreviated(LocalDate(2024, 1, 2))), state.dayTabs.days[1].label)
+        assertEquals(DateUtils.formatAbbreviated(LocalDate(2024, 1, 2)), state.dayTabs.days[1].date)
         assertNotNull(state.header.editorMenu)
         assertFalse(state.header.isBusy)
         assertTrue(state.layers.stops.isEmpty())
     }
 
     @Test
-    fun `a trip that is gone says it isn't available`() = runTest(testDispatcher) {
+    fun `a trip that is gone shows the error screen saying it isn't available`() = runTest(testDispatcher) {
         val viewModel = viewModel(tripId = "missing")
         testScheduler.advanceUntilIdle()
 
-        val message = assertIs<UiText.Joined>(viewModel.uiState.value.message?.text)
+        val error = assertIs<UiText.Joined>(viewModel.uiState.value.loadError)
+        assertNull(viewModel.uiState.value.message)
         assertTrue(viewModel.uiState.value.dayTabs.days.isEmpty())
         assertNull(viewModel.uiState.value.header.editorMenu)
-        assertEquals(Res.string.map_error_load_trip, assertIs<UiText.Resource>(message.first).resource)
-        assertTrue(assertIs<UiText.Resource>(message.second).resource.key.contains("not_available"))
+        assertEquals(Res.string.map_error_load_trip, assertIs<UiText.Resource>(error.first).resource)
+        assertTrue(assertIs<UiText.Resource>(error.second).resource.key.contains("not_available"))
+    }
+
+    @Test
+    fun `retry on the error screen loads the trip again`() = runTest(testDispatcher) {
+        val viewModel = viewModel(tripId = "missing")
+        testScheduler.advanceUntilIdle()
+
+        viewModel.onAction(MapAction.Header.Retry)
+        testScheduler.advanceUntilIdle()
+
+        assertNotNull(viewModel.uiState.value.loadError)
+        assertFalse(viewModel.uiState.value.header.isBusy)
     }
 
     @Test
@@ -749,13 +761,13 @@ class MapViewModelTest {
     }
 
     @Test
-    fun `on someone else's trip the owner's name and stops show in the owner's colour, others' stops stay blue`() = runTest(testDispatcher) {
+    fun `on someone else's trip the header says whose it is, with its dates, stops and members`() = runTest(testDispatcher) {
         backend.addMarker(trip.trip.id, trip.days[0].id, NewMarker("Owner's", GeoPoint(48.85, 2.35)))
         backend.addMarker(trip.trip.id, trip.days[0].id, NewMarker("Another editor's", GeoPoint(41.9, 12.49)))
         val own = viewModel()
         testScheduler.advanceUntilIdle()
-        assertEquals(listOf(false, false), own.uiState.value.layers.stops.map { it.isByTripOwner })
         assertNull(own.uiState.value.header.ownerLabel)
+        assertEquals(2, own.uiState.value.header.stopCount)
 
         val shared = backend.observeTrip(trip.trip.id).first()!!
         backend.seed(
@@ -769,10 +781,9 @@ class MapViewModelTest {
         val viewModel = viewModel()
         testScheduler.advanceUntilIdle()
 
-        val stops = viewModel.uiState.value.layers.stops
-        assertEquals(listOf(true, false), stops.map { it.isByTripOwner })
-        assertEquals(listOf(TripOwnerColor, 0xFF2196F3), stops.map { it.color })
-        assertEquals(stops, viewModel.uiState.value.stopsCard?.stops)
+        val header = viewModel.uiState.value.header
+        assertEquals(shared.members.size, header.members?.count)
+        assertEquals(0, header.members?.requestCount)
         val owner = assertIs<UiText.Resource>(viewModel.uiState.value.header.ownerLabel)
         assertEquals(Res.string.map_trip_owner, owner.resource)
     }
@@ -1098,10 +1109,10 @@ class MapViewModelTest {
         testScheduler.advanceUntilIdle()
         assertEquals(MapSheet.PlaceImage("fake-louvre", "pi1"), viewModel.uiState.value.sheet)
         viewModel.onAction(MapAction.Sheet.ReportPhoto(COMMONS_IMAGE.asPhoto()))
-        viewModel.onAction(MapAction.Dialog.SendReport(ReportReason.Copyright, ""))
+        viewModel.onAction(MapAction.Dialog.SendReport(ReportReason.Copyright))
         testScheduler.advanceUntilIdle()
         viewModel.onAction(MapAction.Sheet.ReportPhoto(TRIP_PHOTO.asPhoto()))
-        viewModel.onAction(MapAction.Dialog.SendReport(ReportReason.Spam, ""))
+        viewModel.onAction(MapAction.Dialog.SendReport(ReportReason.Spam))
         testScheduler.advanceUntilIdle()
         assertEquals(listOf(ReportTarget.PlaceImage to "pi1", ReportTarget.Photo to "ph1"), social.reports)
 
@@ -1378,8 +1389,8 @@ class MapViewModelTest {
 
         viewModel.onAction(MapAction.MapView.LongClick(Coordinates(48.85, 2.35)))
         testScheduler.runCurrent()
-        assertEquals(MapDialog.NamePin, viewModel.uiState.value.dialog)
-        viewModel.onAction(MapAction.Dialog.ConfirmPinName("Our hotel"))
+        assertIs<MapDialog.NamePin>(viewModel.uiState.value.dialog).name.setTextAndPlaceCursorAtEnd("Our hotel")
+        viewModel.onAction(MapAction.Dialog.ConfirmPinName)
         testScheduler.advanceUntilIdle()
 
         assertNull(viewModel.uiState.value.dialog)

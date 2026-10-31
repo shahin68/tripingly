@@ -33,4 +33,43 @@
         <item quantity="one">a year ago</item>
         <item quantity="other">%1$d years ago</item>
     </plurals>
+    <!-- When a trip is (My Trips, Explore) -->
+    <string name="trip_when_now">Now</string>
+    <string name="trip_when_today">Today</string>
+    <string name="trip_when_tomorrow">Tomorrow</string>
+    <string name="trip_when_yesterday">Yesterday</string>
+    <string name="trip_when_next_month">Next month</string>
+    <string name="trip_when_in_year">In %1$s</string>
+    <string name="trip_when_this_winter">This winter</string>
+    <string name="trip_when_this_spring">This spring</string>
+    <string name="trip_when_this_summer">This summer</string>
+    <string name="trip_when_this_fall">This fall</string>
+    <string name="trip_when_next_winter">Next winter</string>
+    <string name="trip_when_next_spring">Next spring</string>
+    <string name="trip_when_next_summer">Next summer</string>
+    <string name="trip_when_next_fall">Next fall</string>
+    <plurals name="trip_when_in_days">
+        <item quantity="one">In %1$d day</item>
+        <item quantity="other">In %1$d days</item>
+    </plurals>
+    <plurals name="trip_when_in_weeks">
+        <item quantity="one">In a week</item>
+        <item quantity="other">In %1$d weeks</item>
+    </plurals>
+    <plurals name="trip_when_days_ago">
+        <item quantity="one">%1$d day ago</item>
+        <item quantity="other">%1$d days ago</item>
+    </plurals>
+    <plurals name="trip_when_weeks_ago">
+        <item quantity="one">Last week</item>
+        <item quantity="other">%1$d weeks ago</item>
+    </plurals>
+    <plurals name="trip_when_months_ago">
+        <item quantity="one">Last month</item>
+        <item quantity="other">%1$d months ago</item>
+    </plurals>
+    <plurals name="trip_when_years_ago">
+        <item quantity="one">Last year</item>
+        <item quantity="other">%1$d years ago</item>
+    </plurals>
 </resources>

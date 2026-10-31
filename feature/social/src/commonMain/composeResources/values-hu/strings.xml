@@ -1,15 +1,11 @@
 <resources>
     <!-- Common -->
-    <string name="social_back">Vissza</string>
-    <string name="social_settings">Beállítások</string>
-    <string name="social_cancel">Mégse</string>
     <string name="social_more">Továbbiak</string>
     <string name="social_retry">Újra</string>
     <string name="social_report">Jelentés</string>
     <string name="social_reported">Köszönjük. Megnézzük.</string>
 
     <!-- Social tab -->
-    <string name="social_explore">Felfedezés</string>
     <string name="social_nearby">A közelben</string>
     <string name="social_explore_empty">Még nincs felfedezhető nyilvános utazás.</string>
     <string name="social_people_none">Nincs ilyen nevű felhasználó.</string>
@@ -52,6 +48,7 @@
     <string name="social_profile_not_found">Ez a profil nem érhető el.</string>
     <string name="social_report_user">Jelentés</string>
     <string name="social_block">Letiltás</string>
+    <string name="social_unfollow">Követés leállítása</string>
     <string name="social_block_title">Letiltod: @%1$s?</string>
     <string name="social_block_message">Nem látjátok egymás utazásait, megállóit és hozzászólásait, megszűnik a kölcsönös követés, és kiléptek egymás utazásaiból.</string>
     <string name="social_block_confirm">Letiltás</string>
@@ -84,8 +81,24 @@
     <string name="social_explore_fall">Idén ősszel</string>
     <string name="social_explore_winter">Idén télen</string>
     <string name="social_explore_all">Minden idők</string>
-    <string name="social_explore_filters">Felfedezés szűrői</string>
     <string name="social_explore_empty_filtered">Még nincs utazás ezekkel a szűrőkkel.</string>
     <string name="social_explore_nearby_blocked">A Tripinly nem fér hozzá a helyadatokhoz. Kapcsold be a Beállításokban, hogy lásd a közeli utakat.</string>
     <string name="social_trip_created">Létrehozva %1$s</string>
+
+    <!-- Tabs (redesign) -->
+    <string name="social_search_people">Emberek keresése…</string>
+    <string name="social_near_me">A közelemben</string>
+    <string name="social_location_note">A helyzetedet csak helyek kereséséhez használjuk, és soha nem mentjük.</string>
+    <string name="social_trips">Utazások</string>
+    <string name="social_public_trips_label">Nyilvános utazások</string>
+    <string name="social_explore_period">Időszak: %1$s</string>
+    <string name="social_ask_to_join">Csatlakozás kérése</string>
+    <string name="social_join_requested">Kérés elküldve. A tulajdonos dönt.</string>
+    <string name="social_join_declined">A tulajdonos elutasította a csatlakozási kérésedet.</string>
+    <string name="social_error_join">Nem sikerült elküldeni a csatlakozási kérést.</string>
+    <string name="social_error_profile_photo">Nem sikerült menteni a profilképedet.</string>
+    <string name="social_error_profile_photo_remove">Nem sikerült eltávolítani a profilképedet.</string>
+    <string name="social_trip_private">Privát</string>
+    <string name="social_trip_member">Benne vagy</string>
+    <string name="social_trip_own">A te utad</string>
 </resources>

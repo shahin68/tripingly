@@ -1,5 +1,6 @@
 package com.falcon.tripingly.feature.map.presentation.map
 
+import com.falcon.tripingly.core.designsystem.component.AppBottomSheet
 import androidx.compose.foundation.gestures.animateTo
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -65,31 +66,34 @@ fun MapRoute(
         onAction = onAction,
     )
 
-    when (val sheet = state.sheet) {
-        is MapSheet.StopPhotos -> PhotosRoute(
-            owner = PhotoOwner.Stop(sheet.stop.id),
-            title = sheet.stop.title.asString(),
-            canAdd = sheet.canEdit,
-            canManage = sheet.canEdit,
-            coverPhotoId = sheet.stop.coverPhotoId,
-            onReport = { photo -> onAction(MapAction.Sheet.ReportPhoto(photo)) },
-            onDismiss = { onAction(MapAction.Sheet.CloseStopPhotos) },
-        )
-        is MapSheet.PlacePhotos -> PhotosRoute(
-            owner = PhotoOwner.Place(sheet.place.id),
-            title = sheet.place.name,
-            canAdd = true,
-            canManage = false,
-            coverPhotoId = null,
-            onReport = { photo -> onAction(MapAction.Sheet.ReportPhoto(photo)) },
-            onDismiss = { onAction(MapAction.Sheet.ClosePlacePhotos) },
-        )
-        is MapSheet.StopComments -> StopCommentsRoute(
-            marker = sheet.stop,
-            onOpenProfile = onOpenProfile,
-            onDismiss = { onAction(MapAction.Sheet.CloseStopComments) },
-        )
-        MapSheet.Members -> membersContent(tripId) { onAction(MapAction.Sheet.CloseJoinRequests) }
+    // Photos, comments and members slide up as sheets; the image viewer and the camera are full screen.
+    val sheet = state.sheet
+    AppBottomSheet(value = sheet?.takeUnless { it is MapSheet.PlaceImage || it is MapSheet.PhotoCamera }, onDismiss = { sheet?.let { onAction(it.closeAction()) } }) { shown, close ->
+        when (shown) {
+            is MapSheet.StopPhotos -> PhotosRoute(
+                owner = PhotoOwner.Stop(shown.stop.id),
+                title = shown.stop.title.asString(),
+                canAdd = shown.canEdit,
+                canManage = shown.canEdit,
+                coverPhotoId = shown.stop.coverPhotoId,
+                onReport = { photo -> onAction(MapAction.Sheet.ReportPhoto(photo)) },
+                onDismiss = close,
+            )
+            is MapSheet.PlacePhotos -> PhotosRoute(
+                owner = PhotoOwner.Place(shown.place.id),
+                title = shown.place.name,
+                canAdd = true,
+                canManage = false,
+                coverPhotoId = null,
+                onReport = { photo -> onAction(MapAction.Sheet.ReportPhoto(photo)) },
+                onDismiss = close,
+            )
+            is MapSheet.StopComments -> StopCommentsRoute(marker = shown.stop, onOpenProfile = onOpenProfile, onDismiss = close)
+            MapSheet.Members -> membersContent(tripId, close)
+            is MapSheet.PlaceImage, MapSheet.PhotoCamera -> Unit
+        }
+    }
+    when (sheet) {
         is MapSheet.PlaceImage -> PhotoViewerRoute(
             owner = PhotoOwner.Place(sheet.placeId),
             photoId = sheet.photoId,
@@ -100,8 +104,17 @@ fun MapRoute(
             onPhoto = { onAction(MapAction.StopCard.AddPhotos(listOf(it))) },
             onDismiss = { onAction(MapAction.Sheet.CloseCamera) },
         )
-        null -> Unit
+        else -> Unit
     }
 
     state.dialog?.let { dialog -> MapDialogs(dialog, onAction) }
+}
+
+private fun MapSheet.closeAction(): MapAction = when (this) {
+    is MapSheet.StopPhotos -> MapAction.Sheet.CloseStopPhotos
+    is MapSheet.PlacePhotos -> MapAction.Sheet.ClosePlacePhotos
+    is MapSheet.StopComments -> MapAction.Sheet.CloseStopComments
+    MapSheet.Members -> MapAction.Sheet.CloseMembers
+    is MapSheet.PlaceImage -> MapAction.Sheet.ClosePlaceImage
+    MapSheet.PhotoCamera -> MapAction.Sheet.CloseCamera
 }

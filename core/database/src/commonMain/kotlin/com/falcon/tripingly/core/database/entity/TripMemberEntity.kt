@@ -15,6 +15,8 @@ data class TripMemberEntity(
     val userId: String,
     val username: String,
     val displayName: String,
+    val photoId: String? = null,
+    val photoUrl: String? = null,
     /** `owner` or `editor`. */
     val role: String,
     /** Members are listed owner first, then in the order they joined. */

@@ -22,7 +22,7 @@ Tripinly is a social travel-planning app. People plan trips day by day as marker
 | Nearby | Popular places around the user's current location, from Tripinly's own data ranked by likes |
 | Popular spot sheet | Place details, like, add to a trip/day |
 | New trip | Name, length/dates, public/private, invite friends |
-| Travel together | Add/remove collaborators by username search or invite link |
+| Travel together | Owners add their friends (people who follow each other) or share an invite link; anyone else can ask to join |
 | Profile / Me | Stats, default privacy for new trips, notifications, activity, delete account |
 | Delete account | Explain what is deleted and what survives (copies others made), confirm |
 

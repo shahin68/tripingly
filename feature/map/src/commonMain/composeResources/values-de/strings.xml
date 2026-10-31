@@ -1,11 +1,8 @@
 <resources>
     <!-- Map -->
-    <string name="map_day_label">Tag %1$d (%2$s)</string>
     <string name="map_day_label_no_date">Tag %1$d</string>
-    <string name="map_itinerary_title">Reiseplan (%1$d Stopps)</string>
     <string name="map_fit_day">Ganzen Tag zeigen</string>
     <string name="map_plan_handle">Ganzen Plan zeigen oder ausblenden</string>
-    <string name="map_itinerary_clear_all">Alle löschen</string>
     <string name="map_stop_title_format">Stopp %1$d</string>
     <string name="map_remove_stop">Stopp entfernen</string>
     <string name="map_back">Zurück</string>
@@ -17,7 +14,6 @@
     <string name="map_delete_day_title">Tag %1$d löschen?</string>
     <string name="map_delete_day_message">Der Tag und seine %1$d Stopps werden für alle Mitglieder gelöscht; spätere Tage rücken nach.</string>
     <string name="map_confirm_delete">Löschen</string>
-    <string name="map_cancel">Abbrechen</string>
 
     <!-- Location errors -->
     <string name="error_location_permission_required">Für deinen Standort wird die Standortberechtigung benötigt.</string>
@@ -42,7 +38,6 @@
     <string name="map_place_image_report">Bild melden</string>
     <string name="map_photos_commons_note">Bilder von Wikimedia Commons: Öffne eines, um Urheber und Lizenz zu sehen.</string>
     <string name="map_place_images">Bilder dieses Ortes</string>
-    <string name="map_place_hot_count">Hotspot auf Tripinly</string>
     <string name="map_place_category_cafe">Café</string>
     <string name="map_place_category_restaurant">Restaurant</string>
     <string name="map_place_category_bar">Bar</string>
@@ -55,7 +50,6 @@
     <string name="map_place_category_other">Ort</string>
     <string name="map_search">Orte suchen</string>
     <string name="map_search_placeholder">Orte, Adressen, Städte</string>
-    <string name="map_search_clear">Suche löschen</string>
     <string name="map_pin_name_title">Ort benennen</string>
     <string name="map_pin_name_label">Name</string>
     <string name="map_pin_add">Hinzufügen</string>
@@ -72,7 +66,6 @@
     <string name="map_photo_delete">Foto löschen</string>
     <string name="map_photo_delete_title">Dieses Foto löschen?</string>
     <string name="map_photo_delete_message">Das Foto wird für alle in der Reise gelöscht.</string>
-    <string name="map_photo_processing">Wird verarbeitet…</string>
     <string name="map_photo_failed">Dieses Foto konnte nicht verarbeitet werden</string>
     <string name="map_photo_not_uploaded">Nicht hochgeladen</string>
     <string name="map_photo_unreadable">Dieses Foto kann nicht gelesen werden</string>
@@ -98,15 +91,10 @@
     <string name="map_join_requested">Anfrage gesendet. Die Besitzerin oder der Besitzer entscheidet.</string>
     <string name="map_join_withdrawn">Anfrage zurückgezogen.</string>
     <string name="map_join_declined">Deine Anfrage zum Mitmachen wurde abgelehnt.</string>
-    <plurals name="map_join_request_count">
-        <item quantity="one">%1$d Person möchte mitmachen</item>
-        <item quantity="other">%1$d Personen möchten mitmachen</item>
-    </plurals>
     <string name="map_owner_profile">Profil von @%1$s</string>
     <string name="map_report_trip">Reise melden</string>
     <string name="map_stop_comment">Kommentieren</string>
     <string name="map_stop_report">Stopp melden</string>
-    <string name="map_comments_title">Kommentare zu %1$s</string>
     <string name="map_comments_empty">Noch keine Kommentare. Schreib etwas!</string>
     <string name="map_comment_placeholder">Kommentar schreiben …</string>
     <string name="map_comment_send">Senden</string>
@@ -150,7 +138,6 @@
     <string name="map_confirm_remove">Entfernen</string>
     <string name="map_my_content_removed">Deine Fotos, Kommentare und Likes auf diesem Stopp wurden entfernt.</string>
     <string name="map_error_remove_my_content">Deine Fotos, Kommentare und Likes konnten nicht entfernt werden.</string>
-    <string name="map_trip_created">Erstellt am %1$s</string>
     <string name="map_trip_owner">von %1$s</string>
 
     <!-- Routes -->
@@ -181,4 +168,20 @@
     <string name="map_best_order_already">Deine Stopps sind schon in der besten Reihenfolge.</string>
     <string name="map_error_route">Die Route konnte nicht geladen werden.</string>
     <string name="map_error_best_order">Die beste Reihenfolge konnte nicht ermittelt werden.</string>
+
+    <!-- Redesign: map -->
+    <plurals name="map_stop_count">
+        <item quantity="one">%1$d Stopp</item>
+        <item quantity="other">%1$d Stopps</item>
+    </plurals>
+    <string name="map_trip_members">Mitglieder · %1$d</string>
+    <string name="map_clear_day">Tag %1$d leeren</string>
+    <string name="map_my_location">Meinen Standort zeigen</string>
+    <string name="map_stop_expand">Mehr zeigen</string>
+    <string name="map_stop_collapse">Weniger zeigen</string>
+    <string name="map_stop_number">Stopp %1$d</string>
+    <string name="map_stop_more">Mehr zu diesem Stopp</string>
+
+    <!-- Redesign -->
+    <string name="map_comments">Kommentare</string>
 </resources>

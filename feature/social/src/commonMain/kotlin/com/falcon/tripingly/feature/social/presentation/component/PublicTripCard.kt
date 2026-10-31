@@ -1,26 +1,32 @@
 package com.falcon.tripingly.feature.social.presentation.component
 
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.shape.CircleShape
+import com.falcon.tripingly.core.designsystem.component.skeletonText
+import com.falcon.tripingly.core.designsystem.component.skeleton
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.background
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.outlined.Bookmark
 import androidx.compose.material.icons.outlined.BookmarkBorder
-import androidx.compose.material3.Card
+import androidx.compose.material.icons.outlined.Flag
+import androidx.compose.material.icons.outlined.PersonAdd
+import androidx.compose.material.icons.outlined.Map
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -35,139 +41,183 @@ import androidx.compose.ui.tooling.preview.PreviewParameter
 import androidx.compose.ui.unit.dp
 import com.falcon.tripingly.core.common.util.DateUtils
 import com.falcon.tripingly.core.designsystem.component.AppDropdownMenu
-import com.falcon.tripingly.core.designsystem.component.AvatarCircle
-import com.falcon.tripingly.core.designsystem.component.AvatarSize
 import com.falcon.tripingly.core.designsystem.component.DropdownAction
 import com.falcon.tripingly.core.designsystem.component.LikeButton
+import com.falcon.tripingly.core.designsystem.component.LikeCount
+import com.falcon.tripingly.core.designsystem.component.CountLabelSize
+import com.falcon.tripingly.core.designsystem.component.LikeButtonHeight
 import com.falcon.tripingly.core.designsystem.component.PhotoImage
 import com.falcon.tripingly.core.designsystem.component.PhotoSize
 import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
 import com.falcon.tripingly.core.designsystem.theme.spacing
 import com.falcon.tripingly.core.model.social.PublicTrip
 import com.falcon.tripingly.core.model.trip.TripRole
+import com.falcon.tripingly.core.model.account.TripVisibility
 import com.falcon.tripingly.core.ui.timeAgo
 import com.falcon.tripingly.feature.social.generated.resources.Res
+import com.falcon.tripingly.feature.social.generated.resources.social_ask_to_join
 import com.falcon.tripingly.feature.social.generated.resources.social_more
 import com.falcon.tripingly.feature.social.generated.resources.social_report
 import com.falcon.tripingly.feature.social.generated.resources.social_save_trip
 import com.falcon.tripingly.feature.social.generated.resources.social_saved_trip
 import com.falcon.tripingly.feature.social.generated.resources.social_trip_created
+import com.falcon.tripingly.feature.social.generated.resources.social_trip_member
+import com.falcon.tripingly.feature.social.generated.resources.social_trip_own
+import com.falcon.tripingly.feature.social.generated.resources.social_trip_private
 import com.falcon.tripingly.feature.social.generated.resources.social_trip_save_count
 import com.falcon.tripingly.feature.social.generated.resources.social_trip_stop_count
 import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
 
-/** Someone's public trip: who made it, its cover, likes and Save (to My Trips, read-only). */
+/**
+ * A public trip on a profile: its cover, name, dates and counts, and its likes. ⋮ or a long press saves it to My
+ * Trips (read-only) or reports it; trips of my own have no ⋮ and only show their like count, quieter than a heart to
+ * tap. The same card for both, as tall either way.
+ */
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 internal fun PublicTripCard(
     trip: PublicTrip,
     onOpen: () -> Unit,
-    onOpenOwner: () -> Unit,
     onLike: () -> Unit,
     onToggleSave: () -> Unit,
+    onAskToJoin: () -> Unit,
     onReport: () -> Unit,
     modifier: Modifier = Modifier,
-    showOwner: Boolean = true,
+    isOnMyProfile: Boolean = false,
 ) {
-    // A trip I own or edit (Explore lists those too): nothing to save or report.
     val isMine = trip.trip.role != TripRole.VIEWER
-    var menuExpanded by rememberSaveable { mutableStateOf(false) }
-    Card(
-        onClick = onOpen,
-        modifier = modifier.fillMaxWidth(),
+    var menuOpen by rememberSaveable { mutableStateOf(false) }
+    Surface(
+        modifier = modifier
+            .fillMaxWidth()
+            // Keeps the ripple inside the card's rounded corners.
+            .clip(MaterialTheme.shapes.large)
+            .combinedClickable(onClick = onOpen, onLongClick = { if (!isMine) menuOpen = true }),
+        shape = MaterialTheme.shapes.large,
+        color = MaterialTheme.colorScheme.surfaceContainerLowest,
     ) {
-        Column(Modifier.padding(MaterialTheme.spacing.medium)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                if (showOwner) {
-                    Row(
-                        modifier = Modifier
-                            .weight(1f)
-                            .clip(RoundedCornerShape(8.dp))
-                            .clickable(onClick = onOpenOwner)
-                            .padding(vertical = 4.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        AvatarCircle(name = trip.trip.owner.displayName, key = trip.trip.owner.username, size = AvatarSize.Small)
-                        Text(
-                            text = "@${trip.trip.owner.username}",
-                            style = MaterialTheme.typography.labelLarge,
-                            modifier = Modifier.padding(start = MaterialTheme.spacing.small),
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
+        // Symmetric: the cover sits 8 dp from the top, bottom and start. The end column is as tall as the cover: ⋮ at the
+        // top (someone else's trips only), the heart at the bottom, so every card is as tall, mine or not.
+        val inset = MaterialTheme.spacing.small
+        Row(
+            modifier = Modifier.padding(start = inset, top = inset, bottom = inset),
+            horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small + MaterialTheme.spacing.extraSmall),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            TripCover(trip)
+            Column(Modifier.weight(1f)) {
+                Text(trip.trip.name, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.skeletonText())
+                DateUtils.formatRange(trip.trip.startDate, trip.trip.endDate)?.let {
+                    Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, modifier = Modifier.skeletonText())
+                }
+                DetailLine(
+                    buildList {
+                        add(pluralStringResource(Res.plurals.social_trip_stop_count, trip.trip.markerCount, trip.trip.markerCount))
+                        if (trip.saveCount > 0) add(pluralStringResource(Res.plurals.social_trip_save_count, trip.saveCount, trip.saveCount))
+                        if (trip.trip.visibility == TripVisibility.PRIVATE) add(stringResource(Res.string.social_trip_private))
+                        // Not on my own profile, where every trip is mine: it has no ⋮ and its heart is read-only.
+                        if (!isOnMyProfile) trip.trip.role.ownershipLabel()?.let(::add)
+                    }.joinToString(" · "),
+                )
+                DetailLine(stringResource(Res.string.social_trip_created, timeAgo(trip.trip.createdAt)))
+            }
+            Column(Modifier.height(CoverSize), horizontalAlignment = Alignment.End) {
+                if (!isMine) {
+                    Box {
+                        IconButton(onClick = { menuOpen = true }) {
+                            Icon(Icons.Default.MoreVert, contentDescription = stringResource(Res.string.social_more), modifier = Modifier.skeleton(CircleShape))
+                        }
+                        AppDropdownMenu(
+                            expanded = menuOpen,
+                            onDismissRequest = { menuOpen = false },
+                            actions = publicTripActions(trip, onToggleSave, onAskToJoin, onReport),
                         )
                     }
+                }
+                Spacer(Modifier.weight(1f))
+                if (isMine) {
+                    // My own trip: its likes are something to read, not to give; small on my own profile.
+                    LikeCount(
+                        count = trip.likeCount,
+                        size = if (isOnMyProfile) CountLabelSize.Small else CountLabelSize.Large,
+                        modifier = Modifier.height(LikeButtonHeight).padding(horizontal = MaterialTheme.spacing.small + MaterialTheme.spacing.extraSmall),
+                    )
                 } else {
-                    Spacer(Modifier.weight(1f))
-                }
-                if (!isMine) Box {
-                    IconButton(onClick = { menuExpanded = true }) {
-                        Icon(Icons.Default.MoreVert, contentDescription = stringResource(Res.string.social_more))
-                    }
-                    AppDropdownMenu(
-                        expanded = menuExpanded,
-                        onDismissRequest = { menuExpanded = false },
-                        actions = listOf(DropdownAction(stringResource(Res.string.social_report), isDestructive = true, onClick = onReport)),
-                    )
-                }
-            }
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                val coverId = trip.trip.coverPhotoId
-                val coverUrl = trip.trip.coverThumbUrl
-                if (coverId != null && coverUrl != null) {
-                    PhotoImage(
-                        photoId = coverId,
-                        url = coverUrl,
-                        size = PhotoSize.Thumb,
-                        contentDescription = null,
-                        modifier = Modifier.size(64.dp).clip(RoundedCornerShape(8.dp)),
-                    )
-                    Spacer(Modifier.width(MaterialTheme.spacing.medium))
-                }
-                Column(Modifier.weight(1f)) {
-                    Text(trip.trip.name, style = MaterialTheme.typography.titleLarge, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                    DateUtils.formatRange(trip.trip.startDate, trip.trip.endDate)?.let {
-                        Text(it, style = MaterialTheme.typography.bodyMedium)
-                    }
-                    Text(
-                        text = buildList {
-                            add(pluralStringResource(Res.plurals.social_trip_stop_count, trip.trip.markerCount, trip.trip.markerCount))
-                            if (trip.saveCount > 0) {
-                                add(pluralStringResource(Res.plurals.social_trip_save_count, trip.saveCount, trip.saveCount))
-                            }
-                            add(stringResource(Res.string.social_trip_created, timeAgo(trip.trip.createdAt)))
-                        }.joinToString(" · "),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-            }
-            Row(
-                modifier = Modifier.fillMaxWidth().padding(top = MaterialTheme.spacing.small),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                LikeButton(liked = trip.likedByMe, count = trip.likeCount, onToggle = onLike)
-                if (!isMine) TextButton(onClick = onToggleSave) {
-                    val saved = trip.trip.savedByMe
-                    Icon(
-                        imageVector = if (saved) Icons.Filled.Bookmark else Icons.Outlined.BookmarkBorder,
-                        contentDescription = null,
-                        modifier = Modifier.size(18.dp),
-                    )
-                    Text(
-                        text = stringResource(if (saved) Res.string.social_saved_trip else Res.string.social_save_trip),
-                        modifier = Modifier.padding(start = MaterialTheme.spacing.small),
-                    )
+                    LikeButton(liked = trip.likedByMe, count = trip.likeCount, onToggle = onLike, modifier = Modifier.padding(end = MaterialTheme.spacing.small + MaterialTheme.spacing.extraSmall))
                 }
             }
         }
     }
 }
 
+/** Someone else's public trip's ⋮ menu, on every card that shows one: save, ask to join, report. */
+@Composable
+internal fun publicTripActions(trip: PublicTrip, onToggleSave: () -> Unit, onAskToJoin: () -> Unit, onReport: () -> Unit): List<DropdownAction> = listOf(
+    DropdownAction(
+        label = stringResource(if (trip.trip.savedByMe) Res.string.social_saved_trip else Res.string.social_save_trip),
+        icon = if (trip.trip.savedByMe) Icons.Outlined.Bookmark else Icons.Outlined.BookmarkBorder,
+        selected = trip.trip.savedByMe,
+        onClick = onToggleSave,
+    ),
+    DropdownAction(stringResource(Res.string.social_ask_to_join), icon = Icons.Outlined.PersonAdd, onClick = onAskToJoin),
+    DropdownAction(stringResource(Res.string.social_report), isDestructive = true, icon = Icons.Outlined.Flag, onClick = onReport),
+)
+
+/** One small detail line under the dates: counts, or when the trip was created. */
+@Composable
+private fun DetailLine(text: String) {
+    Text(
+        text = text,
+        style = MaterialTheme.typography.labelSmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        maxLines = 1,
+        overflow = TextOverflow.Ellipsis,
+        modifier = Modifier.skeletonText(),
+    )
+}
+
+@Composable
+private fun TripCover(trip: PublicTrip) {
+    val cover = Modifier.size(CoverSize).skeleton(MaterialTheme.shapes.medium).clip(MaterialTheme.shapes.medium)
+    val coverId = trip.trip.coverPhotoId
+    val coverUrl = trip.trip.coverThumbUrl
+    if (coverId != null && coverUrl != null) {
+        PhotoImage(photoId = coverId, url = coverUrl, size = PhotoSize.Thumb, contentDescription = null, modifier = cover)
+    } else {
+        Box(cover.background(MaterialTheme.colorScheme.surfaceVariant), contentAlignment = Alignment.Center) {
+            Icon(Icons.Outlined.Map, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+    }
+}
+
+/** As tall as ⋮ (48 dp) above the heart (32 dp). */
+private val CoverSize = 80.dp
+
 @Preview
 @Composable
 private fun PublicTripCardPreview(@PreviewParameter(PublicTripCardPreviewStates::class) trip: PublicTrip) {
     TripinglyTheme {
-        PublicTripCard(trip = trip, onOpen = {}, onOpenOwner = {}, onLike = {}, onToggleSave = {}, onReport = {})
+        Box(Modifier.background(MaterialTheme.colorScheme.background).padding(MaterialTheme.spacing.medium)) {
+            PublicTripCard(trip = trip, onOpen = {}, onLike = {}, onToggleSave = {}, onAskToJoin = {}, onReport = {})
+        }
     }
+}
+
+@Preview
+@Composable
+private fun PublicTripCardDarkPreview() {
+    TripinglyTheme(darkTheme = true) {
+        Box(Modifier.background(MaterialTheme.colorScheme.background).padding(MaterialTheme.spacing.medium)) {
+            PublicTripCard(trip = previewTrip, onOpen = {}, onLike = {}, onToggleSave = {}, onAskToJoin = {}, onReport = {})
+        }
+    }
+}
+
+/** "Your trip" or "You’re in it" for a trip I own or am in, which has no ⋮ and a heart I can't tap; null otherwise. */
+@Composable
+internal fun TripRole.ownershipLabel(): String? = when (this) {
+    TripRole.OWNER -> stringResource(Res.string.social_trip_own)
+    TripRole.EDITOR -> stringResource(Res.string.social_trip_member)
+    TripRole.VIEWER -> null
 }

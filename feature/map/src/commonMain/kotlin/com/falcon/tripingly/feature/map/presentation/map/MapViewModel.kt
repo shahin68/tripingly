@@ -143,12 +143,13 @@ class MapViewModel(
     private fun onHeader(action: MapAction.Header) {
         when (action) {
             is MapAction.Header.Back -> sendEvent(MapEvent.NavigateBack)
+            is MapAction.Header.Retry -> opening.retry()
             is MapAction.Header.AddDay -> edits.addDay()
             is MapAction.Header.DeleteDay -> openDialog(Dialog.DeleteDay)
             is MapAction.Header.ToggleSave -> sharing.toggleSave()
             is MapAction.Header.RequestToJoin -> sharing.requestToJoin()
             is MapAction.Header.CancelJoinRequest -> sharing.cancelJoinRequest()
-            is MapAction.Header.OpenJoinRequests -> openSheet(Sheet.Members)
+            is MapAction.Header.OpenMembers -> openSheet(Sheet.Members)
             is MapAction.Header.OpenOwnerProfile -> trip.value?.trip?.owner?.let { sendEvent(MapEvent.OpenProfile(it.username)) }
             is MapAction.Header.ReportTrip -> sharing.report(ReportTarget.Trip, context.tripId)
         }
@@ -224,17 +225,17 @@ class MapViewModel(
             is MapAction.Sheet.CloseStopPhotos,
             is MapAction.Sheet.ClosePlacePhotos,
             is MapAction.Sheet.CloseStopComments,
-            is MapAction.Sheet.CloseJoinRequests,
+            is MapAction.Sheet.CloseMembers,
             is MapAction.Sheet.CloseCamera -> closeSheet()
         }
     }
 
     private fun onDialog(action: MapAction.Dialog) {
         when (action) {
-            is MapAction.Dialog.ConfirmPinName -> edits.addNamedPin(action.name)
+            MapAction.Dialog.ConfirmPinName -> edits.addNamedPin()
             is MapAction.Dialog.Confirm -> edits.confirm()
             is MapAction.Dialog.DeleteAnyway -> edits.deleteAnyway()
-            is MapAction.Dialog.SendReport -> sharing.sendReport(action.reason, action.details)
+            is MapAction.Dialog.SendReport -> sharing.sendReport(action.reason)
             is MapAction.Dialog.ApplyBestOrder -> routes.applyBestOrder()
             is MapAction.Dialog.DismissPinName,
             is MapAction.Dialog.DismissConfirm,

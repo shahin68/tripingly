@@ -1,5 +1,7 @@
 package com.falcon.tripingly.feature.trips.presentation.members
 
+import androidx.compose.foundation.text.input.TextFieldState
+import androidx.compose.foundation.text.input.clearText
 import androidx.compose.runtime.Immutable
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -46,7 +48,7 @@ import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.StringResource
 
 /**
- * Who is in a trip; the owner adds editors (by username, or several friends at once) and removes
+ * Who is in a trip; the owner adds editors (several friends at once, or anyone by username) and removes
  * them, answers requests to join, and manages invite links.
  */
 class TripMembersViewModel(
@@ -66,7 +68,7 @@ class TripMembersViewModel(
             canManage = details?.trip?.role?.canManage == true,
             members = details?.members.orEmpty().toImmutableList(),
             add = ui.add.copy(
-                friends = ui.add.friends.filterNot { it.username in members }.toImmutableList(),
+                friends = ui.add.friends?.filterNot { it.username in members }?.toImmutableList(),
                 pickedFriends = (ui.add.pickedFriends - members).toImmutableSet(),
             ),
             isLoading = ui.isLoading && (details == null || details.days.isEmpty()),
@@ -100,7 +102,6 @@ class TripMembersViewModel(
 
     private fun onAddAction(action: Action.Add) {
         when (action) {
-            is Action.Add.UsernameChanged -> ui.update { it.copy(add = it.add.copy(username = action.username), message = null) }
             Action.Add.ByUsername -> addMember()
             is Action.Add.FriendToggled -> ui.update {
                 val username = action.friend.username
@@ -170,12 +171,16 @@ class TripMembersViewModel(
     }
 
     private fun addMember() {
-        val username = ui.value.add.username.trim()
+        val field = ui.value.add.username
+        val username = field.text.trim().toString()
         if (username.isEmpty() || ui.value.add.isAdding) return
         ui.update { it.copy(add = it.add.copy(isAdding = true), message = null) }
         viewModelScope.launch {
             when (val result = tripRepository.addMember(tripId, username)) {
-                is AppResult.Success -> updateAdd { it.copy(isAdding = false, username = "") }
+                is AppResult.Success -> {
+                    field.clearText()
+                    updateAdd { it.copy(isAdding = false) }
+                }
                 is AppResult.Error -> ui.update { it.copy(add = it.add.copy(isAdding = false), message = addMemberError(result.error)) }
             }
         }
@@ -260,11 +265,12 @@ class TripMembersViewModel(
     /** Adding editors: friends picked from the avatar row, or one username. */
     @Immutable
     data class AddState(
-        /** The owner's friends who aren't in the trip yet. */
-        val friends: ImmutableList<UserSummary> = persistentListOf(),
+        /** The owner's friends who aren't in the trip yet; null until they've loaded. */
+        val friends: ImmutableList<UserSummary>? = null,
         /** Usernames of the friends picked to add together. */
         val pickedFriends: ImmutableSet<String> = persistentSetOf(),
-        val username: String = "",
+        /** Anyone else, by username (the members sheet only; the New trip sheet adds friends only). */
+        val username: TextFieldState = TextFieldState(),
         val isAdding: Boolean = false,
     )
 
@@ -289,7 +295,6 @@ class TripMembersViewModel(
         data object DismissMessage : Action
 
         sealed interface Add : Action {
-            data class UsernameChanged(val username: String) : Add
             data object ByUsername : Add
             data class FriendToggled(val friend: UserSummary) : Add
             data object PickedFriends : Add

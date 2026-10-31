@@ -26,13 +26,13 @@ import androidx.compose.ui.viewinterop.UIKitInteropInteractionMode
 import androidx.compose.ui.viewinterop.UIKitInteropProperties
 import androidx.compose.ui.viewinterop.UIKitView
 import com.falcon.tripingly.core.designsystem.component.icon
+import com.falcon.tripingly.core.designsystem.theme.MapColors
 import com.falcon.tripingly.core.location.model.Coordinates
 import com.falcon.tripingly.core.model.place.GeoBounds
 import com.falcon.tripingly.core.model.place.MapPlace
 import com.falcon.tripingly.core.model.place.PlaceCategory
 import com.falcon.tripingly.core.model.place.PlaceCluster
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.first
 import platform.UIKit.UIColor
 import platform.UIKit.UIImage
 
@@ -176,7 +176,7 @@ internal fun GoogleSdkMapView(
     // The line under every pin, with its arrows, as on Android.
     LaunchedEffect(line) {
         if (line == null || line.points.size < 2) {
-            map.setLine(emptyList(), StopPathColor.toUIColor(), 0.0, emptyList(), null, null)
+            map.setLine(emptyList(), MapColors.Plan.toUIColor(), 0.0, emptyList(), null, null)
             map.setLineSweep(emptyList(), MapLineSweepColor.toUIColor(), 0.0)
             return@LaunchedEffect
         }
@@ -233,7 +233,7 @@ internal fun GoogleSdkMapView(
 
     // A stop's pin is drawn once per number and color.
     // By number, color and cover photo (once its thumbnail has loaded).
-    val stopIcons = remember(density) { mutableMapOf<Triple<Int, Long, String?>, UIImage>() }
+    val stopIcons = remember(density) { mutableMapOf<Pair<Int, String?>, UIImage>() }
     val coverThumbs = rememberCoverThumbs(markers)
     val stopTitles = markers.map { it.title.asString() }
     LaunchedEffect(markers, stopTitles, coverThumbs, pinPhotos, selectedPlace, placePins, placeClusters, pinIcons, clusterIcons, isDots) {
@@ -244,16 +244,17 @@ internal fun GoogleSdkMapView(
                 longitude = marker.position.longitude,
                 title = stopTitles[index],
                 icon = marker.coverPhotoId?.let { coverThumbs[it] }.let { cover ->
-                    stopIcons.getOrPut(Triple(marker.orderNumber, marker.color, marker.coverPhotoId.takeIf { cover != null })) {
+                    stopIcons.getOrPut(marker.orderNumber to marker.coverPhotoId.takeIf { cover != null }) {
                         if (cover == null) {
-                            drawTripPin(marker.orderNumber, marker.color.toInt(), density.density, density.fontScale)
+                            drawTripPin(marker.orderNumber, density.density, density.fontScale)
                         } else {
-                            drawCoverPin(marker.orderNumber, marker.color.toInt(), cover, density.density, density.fontScale)
+                            drawCoverPin(marker.orderNumber, cover, density.density, density.fontScale)
                         }
                     }
                 },
+                // The pin is a circle centered on the stop.
                 anchorX = 0.5,
-                anchorY = 1.0,
+                anchorY = 0.5,
                 // Above the places.
                 zIndex = 1,
                 // The stop's card shows instead.

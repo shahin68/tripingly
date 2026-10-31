@@ -39,7 +39,7 @@ private val ownersView = State(
     invites = InvitesState(persistentListOf(previewInvite)),
 )
 
-/** The owner's sheet with requests and invites, loading, an editor's (nothing to manage), and an error adding people. */
+/** The owner's sheet with requests and invites, loading, an editor's (nothing to manage), an error adding people, and an owner without friends (only the username field). */
 internal class TripMembersPreviewStates : PreviewParameterProvider<State> {
     override val values = sequenceOf(
         ownersView,
@@ -51,5 +51,6 @@ internal class TripMembersPreviewStates : PreviewParameterProvider<State> {
             invites = InvitesState(isCreating = true),
             message = UiText.Resource(Res.string.members_error_some_not_added),
         ),
+        ownersView.copy(add = AddState(friends = persistentListOf())),
     )
 }

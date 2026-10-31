@@ -1,5 +1,6 @@
 package com.falcon.tripingly.feature.trips.presentation.screen
 
+import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.runtime.Immutable
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -34,6 +35,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
@@ -41,24 +43,32 @@ import kotlinx.coroutines.launch
 import kotlinx.datetime.LocalDate
 
 /**
- * My Trips. The list comes from the cache and is reloaded from the server on start and on pull-to-refresh;
- * changes wait for the server's answer. The New trip sheet's form is its own part ([HomeCreateTrip]).
+ * My Trips, the Trips tab. The list comes from the cache and is reloaded from the server on start and on
+ * pull-to-refresh; changes wait for the server's answer. The trips are shown as a [TripTimeline] around
+ * [today]. The New trip sheet's form is its own part ([HomeCreateTrip]).
  */
 class HomeViewModel(
     private val tripRepository: TripRepository,
     placeRepository: PlaceRepository,
     userRepository: UserRepository,
     sessionRepository: SessionRepository,
+    private val today: () -> LocalDate,
 ) : ViewModel() {
+
+    /** The search field in the top bar; each change comes back as [Action.SearchQueryChanged]. */
+    val searchField = TextFieldState()
 
     /** Everything but the trips, which come from the cache and are filled in below. */
     private val ui = MutableStateFlow(State())
 
     val uiState: StateFlow<State> = combine(tripRepository.observeMyTrips(), ui) { trips, ui ->
+        val matching = trips.filter { it.matches(ui.searchQuery) }
         ui.copy(
-            trips = trips.filter { it.matches(ui.searchQuery) }.toImmutableList(),
+            trips = matching.toImmutableList(),
+            timeline = matching.toTimeline(today()),
             hasTrips = trips.isNotEmpty(),
             hasLoaded = ui.hasLoaded || trips.isNotEmpty(),
+            loadError = ui.loadError.takeIf { trips.isEmpty() },
             dialog = ui.dialog?.let { state -> state.dialog.withTrip(trips)?.let { state.copy(dialog = it) } },
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), State())
@@ -74,9 +84,7 @@ class HomeViewModel(
 
     fun onAction(action: Action) {
         when (action) {
-            is Action.TabSelected -> ui.update { it.copy(selectedTab = action.tab) }
             is Action.SearchQueryChanged -> ui.update { it.copy(searchQuery = action.query) }
-            is Action.PeopleQueryChanged -> ui.update { it.copy(peopleQuery = action.query) }
             Action.DismissMessage -> ui.update { it.copy(message = null) }
             is Action.Trips -> onTrips(action)
             is Action.TripDialog -> onTripDialog(action)
@@ -107,7 +115,7 @@ class HomeViewModel(
                 createTrip.clearSearches()
                 ui.update { it.copy(dialog = null) }
             }
-            is Action.TripDialog.ConfirmRename -> save { tripRepository.updateTrip(action.tripId, TripUpdate(name = action.newName)) }
+            is Action.TripDialog.ConfirmRename -> renameName()?.let { name -> save { tripRepository.updateTrip(action.tripId, TripUpdate(name = name)) } }
             is Action.TripDialog.ConfirmReschedule -> save {
                 tripRepository.updateTrip(action.tripId, TripUpdate(dates = TripDates(action.startDate, action.endDate)))
             }
@@ -116,16 +124,22 @@ class HomeViewModel(
         }
     }
 
+    private fun renameName(): String? =
+        (ui.value.dialog?.dialog as? Dialog.Rename)?.name?.text?.toString()?.trim()?.takeIf { it.isNotEmpty() }
+
     private fun refresh() {
         if (ui.value.isRefreshing) return
         ui.update { it.copy(isRefreshing = true) }
         viewModelScope.launch {
-            val result = tripRepository.refreshMyTrips()
+            val error = (tripRepository.refreshMyTrips() as? AppResult.Error)?.error
+            // With trips on screen a failed refresh is a banner; with nothing to show it's the error screen.
+            val hasTrips = tripRepository.observeMyTrips().first().isNotEmpty()
             ui.update {
                 it.copy(
                     isRefreshing = false,
                     hasLoaded = true,
-                    message = (result as? AppResult.Error)?.error?.let(::refreshMessage),
+                    loadError = error?.takeUnless { hasTrips }?.toUiText(Res.string.home_error_load_trips),
+                    message = error?.takeIf { hasTrips }?.let(::refreshMessage),
                 )
             }
         }
@@ -184,17 +198,18 @@ class HomeViewModel(
 
     @Immutable
     data class State(
-        val selectedTab: Tab = Tab.MyTrips,
         val searchQuery: String = "",
-        /** What's typed in the search bar on the Social tab: people by name. */
-        val peopleQuery: String = "",
         /** My Trips matching [searchQuery]. */
         val trips: ImmutableList<Trip> = persistentListOf(),
+        /** [trips] as the screen shows them: coming up, then past. */
+        val timeline: TripTimeline = TripTimeline(),
         /** False only when the user has no trips at all (not just none matching the search). */
         val hasTrips: Boolean = false,
         val isRefreshing: Boolean = false,
-        /** False until the first load answered or cached trips exist; shows a spinner instead of "no trips". */
+        /** False until the first load answered or cached trips exist; shows the loading skeleton instead of "no trips". */
         val hasLoaded: Boolean = false,
+        /** Why the trips couldn't load when there are none to show: the error screen with a retry. */
+        val loadError: UiText? = null,
         /** A banner, e.g. offline or an error the user should see. */
         val message: UiText? = null,
         /** The open dialog or New trip sheet. */
@@ -211,13 +226,12 @@ class HomeViewModel(
         val error: UiText? = null,
     )
 
-    enum class Tab { MyTrips, Social }
-
     @Immutable
     sealed interface Dialog {
         /** The New trip sheet. */
         data class Create(val form: CreateTripForm) : Dialog
-        data class Rename(val trip: Trip) : Dialog
+        /** [name] is the dialog's field, starting at the trip's name. */
+        data class Rename(val trip: Trip, val name: TextFieldState = TextFieldState(trip.name)) : Dialog
         data class Reschedule(val trip: Trip) : Dialog
         data class ConfirmDelete(val trip: Trip) : Dialog
         data class ConfirmLeave(val trip: Trip) : Dialog
@@ -230,9 +244,7 @@ class HomeViewModel(
 
     /** Grouped by the part of the screen they come from. */
     sealed interface Action {
-        data class TabSelected(val tab: Tab) : Action
         data class SearchQueryChanged(val query: String) : Action
-        data class PeopleQueryChanged(val query: String) : Action
         data object DismissMessage : Action
 
         /** The My Trips list, its New trip button and each trip's long-press menu. */
@@ -254,7 +266,7 @@ class HomeViewModel(
         /** The rename, reschedule, delete and leave dialogs (and closing the New trip sheet). */
         sealed interface TripDialog : Action {
             data object Dismiss : TripDialog
-            data class ConfirmRename(val tripId: String, val newName: String) : TripDialog
+            data class ConfirmRename(val tripId: String) : TripDialog
             data class ConfirmReschedule(val tripId: String, val startDate: LocalDate, val endDate: LocalDate) : TripDialog
             data class ConfirmDelete(val tripId: String) : TripDialog
             data class ConfirmLeave(val tripId: String) : TripDialog
@@ -262,15 +274,11 @@ class HomeViewModel(
 
         /** The New trip sheet's fields. */
         sealed interface CreateTrip : Action {
-            data class NameChanged(val name: String) : CreateTrip
             data class DatesChanged(val startDate: LocalDate?, val endDate: LocalDate?) : CreateTrip
             data class DestinationQueryChanged(val query: String) : CreateTrip
             data class DestinationSelected(val result: PlaceSearchResult) : CreateTrip
             data class VisibilityChanged(val visibility: TripVisibility) : CreateTrip
-            data class MemberQueryChanged(val query: String) : CreateTrip
-            data class MemberAdded(val user: UserSummary) : CreateTrip
             data class FriendToggled(val user: UserSummary) : CreateTrip
-            data class MemberRemoved(val username: String) : CreateTrip
             data object Confirm : CreateTrip
         }
     }

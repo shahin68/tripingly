@@ -2,26 +2,29 @@ package com.falcon.tripingly.feature.social.presentation.component
 
 import com.falcon.tripingly.core.common.result.AppResult
 import com.falcon.tripingly.core.data.social.SocialRepository
+import com.falcon.tripingly.core.data.trips.TripErrorCodes
 import com.falcon.tripingly.core.data.trips.TripRepository
+import com.falcon.tripingly.core.data.trips.hasCode
 import com.falcon.tripingly.core.model.social.LikeState
 import com.falcon.tripingly.core.model.social.LikeTarget
 import com.falcon.tripingly.core.model.social.PublicTrip
-import com.falcon.tripingly.core.model.social.ReportReason
-import com.falcon.tripingly.core.model.social.ReportTarget
 import com.falcon.tripingly.core.ui.UiText
 import com.falcon.tripingly.core.ui.toUiText
 import com.falcon.tripingly.feature.social.generated.resources.Res
+import com.falcon.tripingly.feature.social.generated.resources.social_error_join
 import com.falcon.tripingly.feature.social.generated.resources.social_error_like
-import com.falcon.tripingly.feature.social.generated.resources.social_error_report
 import com.falcon.tripingly.feature.social.generated.resources.social_error_save_trip
 import com.falcon.tripingly.feature.social.generated.resources.social_error_unsave_trip
-import com.falcon.tripingly.feature.social.generated.resources.social_reported
+import com.falcon.tripingly.feature.social.generated.resources.social_join_declined
+import com.falcon.tripingly.feature.social.generated.resources.social_join_requested
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.mapNotNull
+import kotlinx.coroutines.flow.merge
 import kotlinx.coroutines.launch
 
 /**
- * Likes, saves and reports on public trip cards, the same in Explore and on a profile. A like or a save shows at
+ * Likes, saves and requests to join on public trip cards, the same in Explore and on a profile. A like or a save shows at
  * once and stays: a newer tap on the same card cancels the change on its way, and only a refusal puts back what
  * the server last confirmed, with a message.
  */
@@ -42,6 +45,21 @@ internal class PublicTripActions(
     private val confirmedSaves = mutableMapOf<String, Saved>()
 
     private data class Saved(val saved: Boolean, val count: Int)
+
+    /** [byMe] is null when only the count changed. */
+    private data class Liked(val tripId: String, val byMe: Boolean?, val count: Int)
+
+    init {
+        // A like from another screen, or a count the server sends live, shows here too; a tap still on its way here wins.
+        scope.launch {
+            merge(
+                socialRepository.myLikes.mapNotNull { if (it.target == LikeTarget.Trip) Liked(it.targetId, it.state.liked, it.state.likeCount) else null },
+                socialRepository.likeCounts.mapNotNull { if (it.target == LikeTarget.Trip) Liked(it.targetId, byMe = null, it.count) else null },
+            ).collect { (tripId, byMe, count) ->
+                if (likeJobs[tripId]?.isActive != true) updateTrip(tripId) { it.copy(likedByMe = byMe ?: it.likedByMe, likeCount = count) }
+            }
+        }
+    }
 
     fun toggleLike(tripId: String) {
         val shown = trip(tripId) ?: return
@@ -78,15 +96,19 @@ internal class PublicTripActions(
         }
     }
 
-    /** True once the server took the report; either way the outcome is shown as a message. */
-    suspend fun report(target: ReportTarget, targetId: String, reason: ReportReason, details: String): Boolean {
-        val result = socialRepository.report(target, targetId, reason, details)
-        showMessage(
-            when (result) {
-                is AppResult.Success -> UiText.Note(UiText.Resource(Res.string.social_reported))
-                is AppResult.Error -> result.error.toUiText(Res.string.social_error_report)
-            },
-        )
-        return result is AppResult.Success
+    /** Asks the owner to let me join; the answer is a note (sent, or declined before) or the server's reason. */
+    fun requestToJoin(tripId: String) {
+        scope.launch {
+            showMessage(
+                when (val result = tripRepository.requestToJoin(tripId)) {
+                    is AppResult.Success -> UiText.Note(UiText.Resource(Res.string.social_join_requested))
+                    is AppResult.Error -> if (result.error.hasCode(TripErrorCodes.JOIN_REQUEST_DECLINED)) {
+                        UiText.Resource(Res.string.social_join_declined)
+                    } else {
+                        result.error.toUiText(Res.string.social_error_join)
+                    }
+                },
+            )
+        }
     }
 }

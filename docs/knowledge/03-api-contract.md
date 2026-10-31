@@ -50,6 +50,8 @@ REST over HTTPS, JSON, base path `/v1`.
 | GET | `/me/trips` | Owned, collaborating and saved (`role` `viewer`, `savedByMe` true), cursor paginated; each item has `role`, `saveCount`, `savedByMe`, `coverPhotoId` and `coverThumbUrl` (first cover photo in the trip, or null; cache the image by `coverPhotoId`, backend#57), `dayCount`, `markerCount`, `editorCount` (people it's shared with, owner not counted; backend#30), `createdAt` (cards show "3 days ago"; backend#48) |
 | PUT | `/me/devices/{fcmToken}` | Register/refresh push device. Body: `platform` (`android`\|`ios`), `locale` |
 | DELETE | `/me/devices/{fcmToken}` | |
+| POST | `/me/avatar/upload-url` | My profile photo (optional, also during onboarding): same body and upload flow as stop photos, then `POST /photos/{id}/complete`. The app then reads `GET /me` (at once, then 1, 1, 2 and 3 s apart) until `avatarPhotoId` is the new photo. The pen on my Profile tab avatar and the onboarding profile step |
+| DELETE | `/me/avatar` | Back to the letter avatar (204) |
 | POST | `/me/export` | Starts the GDPR export (202 **DataExport**); one at a time, one per 24 h (429 `RATE_LIMITED`) |
 | GET | `/me/export` | Latest **DataExport** (404 when none): `status` (`pending`\|`ready`\|`failed`\|`expired`), `expiresAt`, `downloadUrl` (signed, only while ready; never log it). Settings shows Download from it, so the copy doesn't depend on email |
 | DELETE | `/me` | Starts account deletion (returns 202; requires a sign-in within the last 10 minutes, else `REAUTH_REQUIRED`) |
@@ -60,17 +62,17 @@ REST over HTTPS, JSON, base path `/v1`.
 |---|---|---|
 | GET | `/users/check-username?username=` | Availability during onboarding |
 | GET | `/users/search?q=` | Prefix search on username and display name; `q` 2–50 characters, up to 20 results `{ items: [UserSummary] }` |
-| GET | `/users/{username}?cursor=&limit=` | Profile: `user`, `followerCount`, `followingCount`, `isFollowing`, `followsMe`, `isFriend`, `publicTripCount`, `trips[]` (trip summaries with `likeCount`, `likedByMe`, `saveCount`, `savedByMe`), `nextCursor`. The app asks without `@`, pages of 20; `404 NOT_FOUND` for unknown or blocked either way |
+| GET | `/users/{username}?cursor=&limit=` | Profile: `user`, `followerCount`, `followingCount`, `isFollowing`, `followsMe`, `isFriend`, `publicTripCount`, `trips[]` (trip summaries with `likeCount`, `likedByMe`, `saveCount`, `savedByMe`), `nextCursor`. The app asks without `@`, pages of 20; `404 NOT_FOUND` for unknown or blocked either way. On my own profile `trips` has my private trips too (`publicTripCount` stays public); the Profile tab reloads it when My Trips changes (backend#67) |
 | PUT | `/users/{id}/follow` | Follow (idempotent); the profile's Follow button, shown at once |
 | DELETE | `/users/{id}/follow` | Unfollow |
 | POST | `/users/{id}/block` | From a profile's menu, after a confirmation; the profile then closes |
-| DELETE | `/users/{id}/block` | |
-| GET | `/me/blocks` | |
+| DELETE | `/users/{id}/block` | Settings' Blocked people sheet (Unblock), the person leaves the list at once |
+| GET | `/me/blocks?cursor=&limit=` | Settings › Privacy › Blocked people: user summaries, pages of 50 `{ items, nextCursor }` |
 
 ### Trips
 | Method | Path | Notes |
 |---|---|---|
-| POST | `/trips` | Title, dates, visibility, optional `destination` `{ name, location }`, optional initial `memberUsernames` (≤ 20, joined as editors; unknown → `400 VALIDATION_FAILED` with `fields["memberUsernames.<i>"] = ["notFound"]`, blocked → `["blocked"]`) |
+| POST | `/trips` | Title, dates, visibility, optional `destination` `{ name, location }`, optional initial `memberUsernames` (≤ 20, joined as editors; the app sends only friends; unknown → `400 VALIDATION_FAILED` with `fields["memberUsernames.<i>"] = ["notFound"]`, blocked → `["blocked"]`) |
 | GET | `/trips/{id}` | Trip with days, markers (cover thumbnail URLs), members, save and join state, and the trip card's `coverPhotoId`/`coverThumbUrl` (the first picked stop cover, else the trip's first photo; same as the list) |
 | PATCH | `/trips/{id}` | Owner: title, dates, visibility, `destination` (null removes it) |
 | DELETE | `/trips/{id}` | Owner |
@@ -95,8 +97,8 @@ REST over HTTPS, JSON, base path `/v1`.
 ### Members and invites
 | Method | Path | Notes |
 |---|---|---|
-| POST | `/trips/{id}/members` | Owner adds by username |
-| POST | `/trips/{id}/members/batch` | Owner adds several people at once (`{ usernames }`, all or nothing; refused ones as `fields.usernames.<i>` = `notFound`/`blocked`). The Members sheet uses it for the friends picked in its avatar row. Backend: tripinly-backend#33 |
+| POST | `/trips/{id}/members/batch` | Owner adds several people at once (`{ usernames }`, all or nothing; refused ones as `fields.usernames.<i>` = `notFound`/`blocked`). The Members sheet uses it for the friends picked in its avatar row. |
+| POST | `/trips/{id}/members` | Owner adds one editor by username (`{ username }`, idempotent; unknown → `404 NOT_FOUND`, blocked → `USER_BLOCKED`). Only the Members sheet's "Add by username" field uses it; the New trip sheet adds only friends (Shahin, 2026-10-31). Backend: tripinly-backend#33 |
 | DELETE | `/trips/{id}/members/{userId}` | Owner removes, or editor removes self (leave) |
 | POST | `/trips/{id}/invites` | Owner creates invite link → `{ url, expiresAt }` |
 | DELETE | `/trips/{id}/invites/{inviteId}` | Revoke |
@@ -188,7 +190,7 @@ Field names the client relies on (full schemas in OpenAPI):
 - **Trip** (`GET /trips/{id}`): `id`, `title`, `startDate`, `endDate`, `destination` (`{ name, location }` or null), `visibility`, `owner` (user summary), `myRole` (`owner`\|`editor`\|`viewer`), `members[]`, `likeCount`, `likedByMe`, `saveCount`, `savedByMe`, `myJoinRequest` (`pending`\|`declined`\|null), `pendingJoinRequestCount` (owner only, else 0), `days[]` → `{ id, position, date, markers[] }`.
 - **Marker**: `id`, `dayId`, `placeId`, `name`, `location`, `time` (`HH:mm` or null), `position`, `coverPhotoId` (the image the pin shows, cache key: the picked cover, else the place's image, a photo or Commons image id; in live `marker.*` events only a picked cover, so the app keeps the image it has), `coverThumbUrl`, `photoCount`, `hotCount`, `hotByMe` (the stop's place: the same on every stop at it), `canMarkHot` (false for a custom spot only in private trips: no flame), `commentCount`, `createdBy` (user summary or null).
 - **Photo**: `id`, `markerId`, `status` (`processing`\|`ready`\|`failed`), `thumbUrl`, `displayUrl` (signed, expire after ~1 h), `width`, `height`, `position`, `likeCount`, `likedByMe`, `uploader`, `source` (`user`, or `commons` for a place's Commons image), `credit` (Commons only; shown in the viewer with `CommonsCredit`).
-- **User summary**: `id`, `username`, `displayName`.
+- **User summary** (the one person shape everywhere; the app's `UserSummary`): `id`, `username`, `displayName`, `avatarPhotoId` and `avatarThumbUrl` (the profile photo, 256 px square, cached by its id; both null shows the first-letter avatar). `GET /me` carries the same two fields
 - Places and search results carry `hotCount` and (in-view, nearby, detail) `hotByMe` instead of likes; `isTripinly` means a hot spot (backend#59).
 - **Place** (in-view/search/along-the-way): see `05-maps-places-routing.md`. Every Place shape (tiles, nearby, detail) has `coverImageId`, `coverSource` (`trip`\|`commons`\|null) and `coverThumbUrl`; `coverPhotoId` is set only for a Tripinly photo (`coverSource: trip`, a place photo or a public trip photo). The cover is the most liked photo that 3 people other than its uploader liked, else a Commons image (backend#45); it's also the pin's photo. Cache a cover by `coverImageId`.
 - **Place detail** (`GET /places/{id}`): adds `tags` (`openingHours`, `website`, …) and `images[]` → `{ id, source (trip|commons), thumbUrl, displayUrl, width, height, credit }`. The first image is the cover. `credit` is null for trip photos; for Commons it's `{ author, title, license, licenseUrl, sourceUrl }` and must show under the image (`CommonsCredit`). `photoThumbUrls` is deprecated (backend#38). `addedBy` (a user summary or null) credits a custom spot's creator as "Added by @name" on the place card; the server sets it only while one of the creator's public trips has the spot and never across a block, and it's null for OSM places (backend#58).

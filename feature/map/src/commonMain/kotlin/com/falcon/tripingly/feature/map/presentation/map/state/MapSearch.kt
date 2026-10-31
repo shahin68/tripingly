@@ -30,7 +30,6 @@ internal class MapSearch(
 
     /** A cleared field clears the results at once. */
     fun onQueryChanged(query: String) {
-        update { it.copy(query = query) }
         searchJob?.cancel()
         if (query.isBlank()) {
             update { it.copy(results = emptyList(), isSearching = false) }

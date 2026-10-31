@@ -1,0 +1,11 @@
+<resources>
+
+    <!-- Tab shell -->
+    <string name="tab_trips">Reisen</string>
+    <string name="tab_explore">Entdecken</string>
+    <string name="tab_nearby">In der Nähe</string>
+    <string name="tab_profile">Profil</string>
+
+    <!-- Shared top bar -->
+    <string name="tab_trips_title">Meine Reisen</string>
+</resources>

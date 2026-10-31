@@ -4,11 +4,7 @@
     <string name="common_cancel">Mégse</string>
 
     <!-- Home -->
-    <string name="home_tab_my_trips">Utazásaim</string>
-    <string name="home_tab_social">Közösség</string>
     <string name="home_search_placeholder_trips">Utazások keresése...</string>
-    <string name="home_search_placeholder_social">Emberek keresése…</string>
-    <string name="home_my_profile">Profilod</string>
     <string name="home_fab_add_trip">Utazás hozzáadása</string>
     <string name="home_list_empty">Még nincs utazásod. Koppints a + gombra, és hozz létre egyet!</string>
     <string name="home_list_no_matches">Egy utazás sem felel meg a keresésnek.</string>
@@ -57,12 +53,8 @@
     <string name="create_trip_dates_add">Dátumok megadása</string>
     <string name="create_trip_visibility_public">Nyilvános</string>
     <string name="create_trip_visibility_private">Privát</string>
-    <string name="create_trip_member_placeholder">Írj be egy felhasználónevet</string>
-    <string name="create_trip_add_by_username">Hozzáadás felhasználónévvel</string>
-    <string name="create_trip_member_not_found">Senkinek nincs ilyen felhasználóneve.</string>
-    <string name="create_trip_member_blocked">Ezt a személyt nem adhatod hozzá.</string>
-    <string name="create_trip_error_members">Néhány ember nem adható hozzá. Távolítsd el őket, és próbáld újra.</string>
-    <string name="create_trip_destination_clear">Úti cél törlése</string>
+    <string name="create_trip_find_friends_hint">Barátokkal jobb utazni! Keresd meg az ismerőseidet a Profil fülön, és kövesd őket. Ha visszakövetnek, hozzáadhatod őket az utazásaidhoz.</string>
+    <string name="create_trip_error_members">Néhány barátot már nem lehet hozzáadni, ezért kivettük a pipát. Próbáld újra.</string>
 
     <!-- Rename trip dialog -->
     <string name="rename_trip_title">Utazás átnevezése</string>
@@ -122,4 +114,19 @@
     <string name="members_error_revoke_invite">Nem sikerült kikapcsolni a meghívó linket.</string>
     <string name="members_error_remove">Nem sikerült eltávolítani őket az utazásból.</string>
     <string name="trip_created">Létrehozva %1$s</string>
+
+    <!-- Trips timeline (redesign) -->
+    <string name="home_today">Ma · %1$s</string>
+    <string name="home_trip_more">Továbbiak: %1$s</string>
+    <plurals name="home_past_count">
+        <item quantity="one">Korábbi · %1$d utazás</item>
+        <item quantity="other">Korábbi · %1$d utazás</item>
+    </plurals>
+
+    <!-- Redesign: New trip sheet -->
+    <string name="create_trip_name_placeholder">Adj neki nevet</string>
+    <string name="create_trip_destination_label">Úti cél (nem kötelező)</string>
+    <string name="create_trip_dates_label">Dátumok</string>
+    <string name="create_trip_visibility_label">Ki láthatja</string>
+    <string name="create_trip_friends_label">Barátok hozzáadása</string>
 </resources>

@@ -4,11 +4,7 @@
     <string name="common_cancel">Cancel</string>
 
     <!-- Home -->
-    <string name="home_tab_my_trips">My Trips</string>
-    <string name="home_tab_social">Social</string>
     <string name="home_search_placeholder_trips">Search trips...</string>
-    <string name="home_search_placeholder_social">Search people…</string>
-    <string name="home_my_profile">Your profile</string>
     <string name="home_fab_add_trip">Add Trip</string>
     <string name="home_list_empty">No trips yet. Tap + to create one!</string>
     <string name="home_list_no_matches">No trips match your search.</string>
@@ -49,7 +45,7 @@
 
     <!-- Create trip sheet -->
     <string name="create_trip_title">New trip</string>
-    <string name="create_trip_name_label">Trip Name</string>
+    <string name="create_trip_name_label">Trip name</string>
     <string name="create_trip_button_create">Create trip</string>
     <string name="create_trip_picker_title">Select Trip Dates</string>
     <string name="create_trip_picker_headline">Choose the range</string>
@@ -57,12 +53,8 @@
     <string name="create_trip_dates_add">Add dates</string>
     <string name="create_trip_visibility_public">Public</string>
     <string name="create_trip_visibility_private">Private</string>
-    <string name="create_trip_member_placeholder">Type a username</string>
-    <string name="create_trip_add_by_username">Add by username</string>
-    <string name="create_trip_member_not_found">No one has this username.</string>
-    <string name="create_trip_member_blocked">You can’t add this person.</string>
-    <string name="create_trip_error_members">Some people can’t be added. Remove them and try again.</string>
-    <string name="create_trip_destination_clear">Remove destination</string>
+    <string name="create_trip_find_friends_hint">Trips are more fun with friends! Find people you know on your Profile tab and follow them. Once they follow you back, you can add them to your trips.</string>
+    <string name="create_trip_error_members">Some friends can’t be added anymore, so they were unchecked. Try again.</string>
 
     <!-- Rename trip dialog -->
     <string name="rename_trip_title">Rename Trip</string>
@@ -122,4 +114,19 @@
     <string name="members_error_revoke_invite">Couldn’t turn off the invite link.</string>
     <string name="members_error_remove">Couldn’t remove them from the trip.</string>
     <string name="trip_created">Created %1$s</string>
+
+    <!-- Trips timeline (redesign) -->
+    <string name="home_today">Today · %1$s</string>
+    <string name="home_trip_more">More for %1$s</string>
+    <plurals name="home_past_count">
+        <item quantity="one">Past · %1$d trip</item>
+        <item quantity="other">Past · %1$d trips</item>
+    </plurals>
+
+    <!-- Redesign: New trip sheet -->
+    <string name="create_trip_name_placeholder">Give it a name</string>
+    <string name="create_trip_destination_label">Destination (optional)</string>
+    <string name="create_trip_dates_label">Dates</string>
+    <string name="create_trip_visibility_label">Who can see it</string>
+    <string name="create_trip_friends_label">Add Friends</string>
 </resources>

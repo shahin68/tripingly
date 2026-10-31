@@ -1,7 +1,7 @@
 package com.falcon.tripingly.feature.map.presentation.photos
 
+import com.falcon.tripingly.core.ui.photos.rememberPhotoPicker
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -18,28 +18,12 @@ import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyGridItemSpanScope
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AddPhotoAlternate
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.ErrorOutline
 import androidx.compose.material.icons.filled.PhotoCamera
-import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.filled.Star
-import androidx.compose.material.icons.outlined.Flag
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilledTonalButton
-import androidx.compose.material3.FilledTonalIconButton
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -47,35 +31,34 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.graphics.RectangleShape
+import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.tooling.preview.PreviewParameter
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.falcon.tripingly.core.data.photos.PhotoUpload
+import com.falcon.tripingly.core.designsystem.component.AppDialog
+import com.falcon.tripingly.core.designsystem.component.ButtonSize
 import com.falcon.tripingly.core.designsystem.component.MessageBannerHost
+import com.falcon.tripingly.core.designsystem.component.PrimaryButton
+import com.falcon.tripingly.core.designsystem.component.SecondaryButton
+import com.falcon.tripingly.core.designsystem.component.SheetHeader
 import com.falcon.tripingly.core.designsystem.component.ShowMessage
-import com.falcon.tripingly.core.designsystem.component.PhotoImage
-import com.falcon.tripingly.core.designsystem.component.PhotoLike
-import com.falcon.tripingly.core.designsystem.component.PhotoViewer
-import com.falcon.tripingly.core.designsystem.component.PhotoSize
+import com.falcon.tripingly.core.designsystem.component.SkeletonBox
+import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
 import com.falcon.tripingly.core.designsystem.theme.spacing
 import com.falcon.tripingly.core.model.photo.Photo
 import com.falcon.tripingly.core.model.photo.PhotoOwner
-import com.falcon.tripingly.core.model.photo.PhotoStatus
 import com.falcon.tripingly.core.ui.UiText
-import com.falcon.tripingly.feature.map.generated.resources.Res
 import com.falcon.tripingly.feature.map.generated.resources.*
+import com.falcon.tripingly.feature.map.generated.resources.Res
 import com.falcon.tripingly.feature.map.presentation.photos.PhotosViewModel.Action
 import com.falcon.tripingly.feature.map.presentation.photos.PhotosViewModel.State
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel
 import org.koin.core.parameter.parametersOf
-import androidx.compose.ui.tooling.preview.Preview
-import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
-import androidx.compose.ui.tooling.preview.PreviewParameter
 
 /**
  * The photos of a stop or a place ([owner]) in a sheet over the map, under [title]. [canAdd]: may add photos
@@ -98,20 +81,19 @@ fun PhotosRoute(
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val pickPhotos = rememberPhotoPicker { images -> viewModel.onAction(Action.OnAddPhotos(images)) }
 
-    ModalBottomSheet(onDismissRequest = onDismiss) {
-        Box {
-            PhotosScreen(
-                state = state,
-                title = title,
-                subtitle = stringResource(if (owner is PhotoOwner.Place) Res.string.map_place_photos else Res.string.map_stop_photos),
-                canAdd = canAdd,
-                canManage = canManage,
-                coverPhotoId = coverPhotoId,
-                onAddPhotos = pickPhotos,
-                onAction = viewModel::onAction,
-            )
-            MessageBannerHost(Modifier.align(Alignment.TopCenter))
-        }
+    Box {
+        PhotosScreen(
+            state = state,
+            title = title,
+            subtitle = stringResource(if (owner is PhotoOwner.Place) Res.string.map_place_photos else Res.string.map_stop_photos),
+            canAdd = canAdd,
+            canManage = canManage,
+            coverPhotoId = coverPhotoId,
+            onAddPhotos = pickPhotos,
+            onAction = viewModel::onAction,
+            onClose = onDismiss,
+        )
+        MessageBannerHost(Modifier.align(Alignment.TopCenter))
     }
 
     state.openPhotoIndex?.let { index ->
@@ -173,8 +155,9 @@ fun PhotoViewerRoute(
             onDismissRequest = { onAction(Action.OnClosePhoto) },
             properties = DialogProperties(usePlatformDefaultWidth = false),
         ) {
+            // The photo's place in the viewer, shimmering until it's found.
             Box(Modifier.fillMaxSize().background(Color.Black), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator()
+                SkeletonBox(Modifier.fillMaxWidth().aspectRatio(1f), shape = RectangleShape)
             }
         }
         // Not there even after a fresh look (deleted, hidden, or the gallery didn't load): say why, then close.
@@ -200,23 +183,17 @@ fun PhotoViewerRoute(
 
 @Composable
 private fun DeletePhotoDialog(onAction: (Action) -> Unit) {
-    AlertDialog(
-        onDismissRequest = { onAction(Action.OnDismissDelete) },
-        title = { Text(stringResource(Res.string.map_photo_delete_title)) },
-        text = { Text(stringResource(Res.string.map_photo_delete_message)) },
-        confirmButton = {
-            TextButton(onClick = { onAction(Action.OnConfirmDelete) }) {
-                Text(stringResource(Res.string.map_confirm_delete))
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = { onAction(Action.OnDismissDelete) }) {
-                Text(stringResource(Res.string.map_cancel))
-            }
-        },
+    AppDialog(
+        title = stringResource(Res.string.map_photo_delete_title),
+        message = stringResource(Res.string.map_photo_delete_message),
+        confirmLabel = stringResource(Res.string.map_confirm_delete),
+        isDestructive = true,
+        onConfirm = { onAction(Action.OnConfirmDelete) },
+        onDismiss = { onAction(Action.OnDismissDelete) },
     )
 }
 
+/** The sheet's content: the header with Add photos and the camera, then the uploads and photos in a grid. */
 @Composable
 fun PhotosScreen(
     state: State,
@@ -227,260 +204,84 @@ fun PhotosScreen(
     coverPhotoId: String?,
     onAddPhotos: () -> Unit,
     onAction: (Action) -> Unit,
+    onClose: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     ShowMessage(message = state.message?.asString(), onShown = { onAction(Action.OnDismissMessage) }, isError = state.message !is UiText.Note)
     val fullWidth: LazyGridItemSpanScope.() -> GridItemSpan = { GridItemSpan(maxLineSpan) }
-    LazyVerticalGrid(
-        columns = GridCells.Adaptive(minSize = 104.dp),
-        modifier = modifier.fillMaxWidth().navigationBarsPadding(),
-        contentPadding = PaddingValues(horizontal = MaterialTheme.spacing.medium),
-        horizontalArrangement = Arrangement.spacedBy(4.dp),
-        verticalArrangement = Arrangement.spacedBy(4.dp),
-    ) {
-        item(span = fullWidth) {
+    Column(modifier.fillMaxWidth().navigationBarsPadding()) {
+        SheetHeader(title = title, subtitle = subtitle, onClose = onClose)
+        if (canAdd) {
             Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.padding(bottom = MaterialTheme.spacing.small),
+                modifier = Modifier.padding(horizontal = MaterialTheme.spacing.medium).padding(bottom = MaterialTheme.spacing.medium),
+                horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
             ) {
-                Column(modifier = Modifier.weight(1f)) {
+                PrimaryButton(
+                    text = stringResource(Res.string.map_stop_add_photos),
+                    onClick = onAddPhotos,
+                    size = ButtonSize.Small,
+                    icon = Icons.Default.AddPhotoAlternate,
+                )
+                SecondaryButton(
+                    text = stringResource(Res.string.map_camera_take_photo),
+                    onClick = { onAction(Action.OnOpenCamera) },
+                    size = ButtonSize.Small,
+                    icon = Icons.Default.PhotoCamera,
+                )
+            }
+        }
+        LazyVerticalGrid(
+            columns = GridCells.Adaptive(minSize = GalleryTileMinSize),
+            modifier = Modifier.fillMaxWidth(),
+            contentPadding = PaddingValues(start = MaterialTheme.spacing.medium, end = MaterialTheme.spacing.medium, bottom = MaterialTheme.spacing.medium),
+            horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraSmall),
+            verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraSmall),
+        ) {
+            if (state.isLoading && state.uploads.isEmpty()) {
+                items(SKELETON_TILES, key = { "skeleton$it" }) { SkeletonBox(Modifier.aspectRatio(1f)) }
+            } else if (state.photos.isEmpty() && state.uploads.isEmpty()) {
+                item(span = fullWidth) {
                     Text(
-                        text = title,
-                        style = MaterialTheme.typography.titleLarge,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                    Text(
-                        text = subtitle,
-                        style = MaterialTheme.typography.bodyMedium,
+                        text = stringResource(Res.string.map_stop_no_photos),
+                        style = MaterialTheme.typography.bodyLarge,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(vertical = MaterialTheme.spacing.large),
                     )
                 }
-                if (canAdd) {
-                    FilledTonalButton(onClick = onAddPhotos) {
-                        Icon(Icons.Default.AddPhotoAlternate, contentDescription = null, modifier = Modifier.size(18.dp))
-                        Text(stringResource(Res.string.map_stop_add_photos), modifier = Modifier.padding(start = MaterialTheme.spacing.small))
-                    }
-                    FilledTonalIconButton(
-                        onClick = { onAction(Action.OnOpenCamera) },
-                        modifier = Modifier.padding(start = MaterialTheme.spacing.small),
-                    ) {
-                        Icon(Icons.Default.PhotoCamera, contentDescription = stringResource(Res.string.map_camera_take_photo))
-                    }
-                }
             }
-        }
-        if (state.isLoading && state.uploads.isEmpty()) {
-            item(span = fullWidth) {
-                Box(Modifier.fillMaxWidth().padding(MaterialTheme.spacing.large), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator()
-                }
+            // My uploads first, as the server puts the ones it is processing.
+            items(state.uploads, key = { it.key }) { upload ->
+                GalleryUpload(upload = upload, onAction = onAction, modifier = Modifier.animateItem())
             }
-        } else if (state.photos.isEmpty() && state.uploads.isEmpty()) {
-            item(span = fullWidth) {
-                Text(
-                    text = stringResource(Res.string.map_stop_no_photos),
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(vertical = MaterialTheme.spacing.large),
+            // A stop's own photos are tagged once others' photos share its grid.
+            val tagsTrip = state.owner is PhotoOwner.Stop && state.photos.any { it.owner != state.owner }
+            items(state.photos, key = { it.id }) { photo ->
+                GalleryPhoto(
+                    modifier = Modifier.animateItem(),
+                    photo = photo,
+                    isCover = photo.id == coverPhotoId,
+                    isThisTrip = tagsTrip && photo.owner == state.owner,
+                    canDelete = state.canDelete(photo, canManage),
+                    onAction = onAction,
                 )
             }
-        }
-        // My uploads first, as the server puts the ones it is processing.
-        items(state.uploads, key = { it.key }) { upload ->
-            GalleryUpload(upload = upload, onAction = onAction, modifier = Modifier.animateItem())
-        }
-        // A stop's own photos are tagged once others' photos share its grid.
-        val tagsTrip = state.owner is PhotoOwner.Stop && state.photos.any { it.owner != state.owner }
-        items(state.photos, key = { it.id }) { photo ->
-            GalleryPhoto(
-                modifier = Modifier.animateItem(),
-                photo = photo,
-                isCover = photo.id == coverPhotoId,
-                isThisTrip = tagsTrip && photo.owner == state.owner,
-                canDelete = state.canDelete(photo, canManage),
-                onAction = onAction,
-            )
-        }
-        // Commons images are cropped in the grid; each shows its full credit in the viewer.
-        if (state.photos.any { it.credit != null }) {
-            item(span = fullWidth) {
-                Text(
-                    text = stringResource(Res.string.map_photos_commons_note),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(vertical = MaterialTheme.spacing.small),
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun GalleryPhoto(
-    photo: Photo,
-    isCover: Boolean,
-    isThisTrip: Boolean,
-    canDelete: Boolean,
-    onAction: (Action) -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    Box(
-        modifier = modifier
-            .aspectRatio(1f)
-            .clip(RoundedCornerShape(8.dp))
-            .clickable(enabled = photo.status == PhotoStatus.Ready) { onAction(Action.OnOpenPhoto(photo.id)) },
-    ) {
-        PhotoImage(
-            photoId = photo.id,
-            url = photo.thumbUrl,
-            size = PhotoSize.Thumb,
-            contentDescription = null,
-            modifier = Modifier.fillMaxSize(),
-        )
-        when (photo.status) {
-            PhotoStatus.Processing, PhotoStatus.Uploading -> CircularProgressIndicator(
-                modifier = Modifier.align(Alignment.Center).size(24.dp),
-                strokeWidth = 2.dp,
-            )
-            PhotoStatus.Failed -> {
-                Icon(
-                    Icons.Default.ErrorOutline,
-                    contentDescription = stringResource(Res.string.map_photo_failed),
-                    tint = MaterialTheme.colorScheme.error,
-                    modifier = Modifier.align(Alignment.Center),
-                )
-                if (canDelete) {
-                    IconButton(onClick = { onAction(Action.OnDeletePhoto(photo)) }, modifier = Modifier.align(Alignment.TopEnd)) {
-                        Icon(Icons.Default.Delete, contentDescription = stringResource(Res.string.map_photo_delete))
-                    }
-                }
-            }
-            PhotoStatus.Ready -> {
-                if (isCover) {
-                    Icon(
-                        Icons.Default.Star,
-                        contentDescription = stringResource(Res.string.map_photo_cover),
-                        tint = Color.White,
-                        modifier = Modifier
-                            .align(Alignment.TopStart)
-                            .padding(4.dp)
-                            .background(Color.Black.copy(alpha = 0.4f), CircleShape)
-                            .padding(2.dp)
-                            .size(16.dp),
-                    )
-                }
-                if (isThisTrip) {
+            // Commons images are cropped in the grid; each shows its full credit in the viewer.
+            if (state.photos.any { it.credit != null }) {
+                item(span = fullWidth) {
                     Text(
-                        text = stringResource(Res.string.map_photo_this_trip),
-                        color = Color.White,
-                        style = MaterialTheme.typography.labelSmall,
-                        modifier = Modifier
-                            .align(Alignment.BottomStart)
-                            .padding(4.dp)
-                            .background(Color.Black.copy(alpha = 0.4f), RoundedCornerShape(4.dp))
-                            .padding(horizontal = 4.dp, vertical = 2.dp),
+                        text = stringResource(Res.string.map_photos_commons_note),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(vertical = MaterialTheme.spacing.small),
                     )
                 }
-                PhotoLike(photo = photo, onToggle = { onAction(Action.OnToggleLike(photo)) }, modifier = Modifier.align(Alignment.BottomEnd).padding(4.dp))
             }
         }
     }
 }
 
-/** A stop's owners and editors delete any of the stop's own photos; everyone deletes their own. */
-private fun State.canDelete(photo: Photo, canManage: Boolean): Boolean =
-    (canManage && photo.owner == owner) || (myUserId != null && photo.uploader?.id == myUserId)
-
-@Composable
-private fun GalleryUpload(upload: PhotoUpload, onAction: (Action) -> Unit, modifier: Modifier = Modifier) {
-    Box(
-        modifier = modifier
-            .aspectRatio(1f)
-            .clip(RoundedCornerShape(8.dp))
-            .background(MaterialTheme.colorScheme.surfaceVariant),
-        contentAlignment = Alignment.Center,
-    ) {
-        when (val uploadState = upload.state) {
-            PhotoUpload.State.Queued -> CircularProgressIndicator(modifier = Modifier.size(24.dp), strokeWidth = 2.dp)
-            is PhotoUpload.State.Sending -> CircularProgressIndicator(
-                progress = { uploadState.progress },
-                modifier = Modifier.size(24.dp),
-                strokeWidth = 2.dp,
-            )
-            is PhotoUpload.State.Failed -> Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text(
-                    text = stringResource(
-                        if (uploadState.error == null) Res.string.map_photo_unreadable else Res.string.map_photo_not_uploaded,
-                    ),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.error,
-                    modifier = Modifier.padding(horizontal = 4.dp),
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                Row {
-                    // An unreadable file stays unreadable, so only a lost connection or a refusal gets Retry.
-                    if (uploadState.error != null) {
-                        IconButton(onClick = { onAction(Action.OnRetryUpload(upload.key)) }) {
-                            Icon(Icons.Default.Refresh, contentDescription = stringResource(Res.string.map_retry))
-                        }
-                    }
-                    IconButton(onClick = { onAction(Action.OnRemoveUpload(upload.key)) }) {
-                        Icon(Icons.Default.Close, contentDescription = stringResource(Res.string.map_photo_remove))
-                    }
-                }
-            }
-        }
-    }
-}
-
-/**
- * The ready photos in the app's [PhotoViewer], with what this gallery adds for the photo on show: report
- * (not one's own), make it the cover (a stop's owners and editors, any photo of its grid), and delete (whoever may).
- */
-@Composable
-private fun GalleryViewer(
-    state: State,
-    initialIndex: Int,
-    coverPhotoId: String?,
-    canManage: Boolean,
-    onReport: (Photo) -> Unit,
-    onAction: (Action) -> Unit,
-) {
-    PhotoViewer(
-        photos = state.viewable,
-        initialIndex = initialIndex,
-        onToggleLike = { onAction(Action.OnToggleLike(it)) },
-        onDismiss = { onAction(Action.OnClosePhoto) },
-    ) { current ->
-        if (state.myUserId == null || current.uploader?.id != state.myUserId) {
-            IconButton(onClick = { onReport(current) }) {
-                Icon(Icons.Outlined.Flag, contentDescription = stringResource(Res.string.map_place_image_report), tint = Color.White)
-            }
-        }
-        // Only a stop's owners and editors manage, and only a stop has a cover.
-        if (canManage) {
-            if (current.id == coverPhotoId) {
-                Text(
-                    text = stringResource(Res.string.map_photo_cover),
-                    color = Color.White,
-                    style = MaterialTheme.typography.labelLarge,
-                    modifier = Modifier.padding(horizontal = MaterialTheme.spacing.medium),
-                )
-            } else {
-                TextButton(onClick = { onAction(Action.OnMakeCover(current.id)) }, enabled = !state.isSaving) {
-                    Text(stringResource(Res.string.map_photo_make_cover), color = Color.White)
-                }
-            }
-        }
-        if (state.canDelete(current, canManage)) {
-            IconButton(onClick = { onAction(Action.OnDeletePhoto(current)) }, enabled = !state.isSaving) {
-                Icon(Icons.Default.Delete, contentDescription = stringResource(Res.string.map_photo_delete), tint = Color.White)
-            }
-        }
-    }
-}
+private val GalleryTileMinSize = 104.dp
+private const val SKELETON_TILES = 6
 
 @Preview
 @Composable
@@ -495,6 +296,7 @@ private fun PhotosScreenPreview(@PreviewParameter(PhotosPreviewStates::class) st
             coverPhotoId = "ph1",
             onAddPhotos = {},
             onAction = {},
+            onClose = {},
             modifier = Modifier.background(MaterialTheme.colorScheme.surface),
         )
     }
@@ -514,23 +316,9 @@ private fun PhotosScreenLandscapePreview() {
             coverPhotoId = null,
             onAddPhotos = {},
             onAction = {},
+            onClose = {},
             modifier = Modifier.background(MaterialTheme.colorScheme.surface),
         )
-    }
-}
-
-/** A ready photo of this trip as the cover, one processing, one that failed (deletable), and each state of an upload. */
-@Preview
-@Composable
-private fun GalleryItemsPreview() {
-    TripinglyTheme {
-        Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-            val item = Modifier.size(104.dp)
-            Box(item) { GalleryPhoto(previewGalleryPhotos[0], isCover = true, isThisTrip = true, canDelete = true, onAction = {}) }
-            Box(item) { GalleryPhoto(previewGalleryPhotos[2], isCover = false, isThisTrip = false, canDelete = true, onAction = {}) }
-            Box(item) { GalleryPhoto(previewGalleryPhotos[3], isCover = false, isThisTrip = false, canDelete = true, onAction = {}) }
-            previewUploads.forEach { upload -> Box(item) { GalleryUpload(upload, onAction = {}) } }
-        }
     }
 }
 
@@ -538,4 +326,10 @@ private fun GalleryItemsPreview() {
 @Composable
 private fun DeletePhotoDialogPreview() {
     TripinglyTheme { DeletePhotoDialog(onAction = {}) }
+}
+
+@Preview
+@Composable
+private fun DeletePhotoDialogDarkPreview() {
+    TripinglyTheme(darkTheme = true) { DeletePhotoDialog(onAction = {}) }
 }

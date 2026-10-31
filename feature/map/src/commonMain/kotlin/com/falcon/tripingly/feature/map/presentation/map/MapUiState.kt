@@ -1,5 +1,6 @@
 package com.falcon.tripingly.feature.map.presentation.map
 
+import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.runtime.Immutable
 import com.falcon.tripingly.core.location.model.Coordinates
 import com.falcon.tripingly.core.model.place.GeoBounds
@@ -24,14 +25,14 @@ import kotlinx.collections.immutable.persistentMapOf
  */
 @Immutable
 data class MapUiState(
+    /** The trip couldn't load and there's nothing to show: an error screen with Retry instead of the map. */
+    val loadError: UiText? = null,
     val header: HeaderState = HeaderState(),
     /** The header shows the search field instead of the trip's name. */
     val search: SearchState? = null,
     val dayTabs: DayTabsState = DayTabsState(),
     /** The plan sheet's card: a route from A to B, else the open day's stops; closed while the day has none. */
     val plan: PlanCardState? = null,
-    /** The owner's button to the people waiting for an answer to join; closed with none waiting or while searching. */
-    val joinRequestCount: Int? = null,
     /** "Route from here" was tapped on this place: the chip that cancels it. */
     val routeStartName: String? = null,
     /** The card over the tapped place's pin, once the camera has centered it. */
@@ -51,17 +52,30 @@ data class MapUiState(
 @Immutable
 data class HeaderState(
     val tripName: String = "",
-    /** "Created …" under the trip's name. */
-    val createdLabel: UiText? = null,
-    /** "by Anna" after it, on someone else's trip. */
+    /** "19 – 23 Oct 2026" under the trip's name; null without dates. */
+    val dates: String? = null,
+    /** All the trip's stops, after the dates. */
+    val stopCount: Int = 0,
+    /** "by Anna" after them, on someone else's trip. */
     val ownerLabel: UiText? = null,
-    /** The trip is loading, or a day change, a save or a request to join waits for the server. */
+    /** The trip is loading for the first time: the title shows as its skeleton. */
+    val isLoading: Boolean = false,
+    /** A day change, a save or a request to join waits for the server. */
     val isBusy: Boolean = false,
+    /** "Trip members · 4" at the top of the ⋮ menu, which opens the members sheet. */
+    val members: MembersEntry? = null,
     /** Someone else's public trip: save it, ask to join, see its owner, report it. */
     val viewerMenu: ViewerMenu? = null,
-    /** An owner's or editor's: add a day, delete the open one. */
+    /**
+     * An owner's or editor's day actions: add a day, clear and delete the open one. They're in the plan sheet's ⋯,
+     * and in the ⋮ menu while the day has no stops (and so no sheet).
+     */
     val editorMenu: EditorMenu? = null,
 )
+
+/** [requestCount]: people waiting for the owner's answer to join, as a badge; 0 for everyone else. */
+@Immutable
+data class MembersEntry(val count: Int, val requestCount: Int)
 
 @Immutable
 data class ViewerMenu(
@@ -76,7 +90,7 @@ data class EditorMenu(val canDeleteDay: Boolean)
 
 @Immutable
 data class SearchState(
-    val query: String = "",
+    val query: TextFieldState = TextFieldState(),
     val results: ImmutableList<PlaceSearchResult> = persistentListOf(),
     /** A search is waiting for the server. */
     val isSearching: Boolean = false,
@@ -88,9 +102,9 @@ data class DayTabsState(
     val activeIndex: Int = 0,
 )
 
-/** A day tab: [number] counts from 1; [label] is "Day 2 · Jun 2", or "Day 2" when the trip has no dates. */
+/** A day tab: "Day 2" ([number] counts from 1) over its [date] ("Jun 2"), null when the trip has no dates. */
 @Immutable
-data class DayTab(val id: String, val number: Int, val label: UiText)
+data class DayTab(val id: String, val number: Int, val date: String?)
 
 /** What the plan sheet shows. */
 @Immutable
@@ -210,10 +224,10 @@ sealed interface MapDialog {
     data object RemoveMyContent : MapDialog
     /** Deleting would delete other people's photos, comments or likes too; the server's [message] says so. */
     data class DeleteOthersContent(val message: UiText) : MapDialog
-    /** Reports the trip, a stop or a photo; [isSending] while the server answers. */
-    data class Report(val isSending: Boolean) : MapDialog
-    /** A long press dropped a pin, waiting for its name. */
-    data object NamePin : MapDialog
+    /** Reports the trip, a stop or a photo; [isSending] while the server answers; [details] is the text field. */
+    data class Report(val isSending: Boolean, val details: TextFieldState) : MapDialog
+    /** A long press dropped a pin, waiting for its [name] (the text field). */
+    data class NamePin(val name: TextFieldState) : MapDialog
     /** The location button can't simply ask: explain first (Android), or send the user to Settings. */
     data class Location(val prompt: LocationPrompt) : MapDialog
     /** The best order for the open day, waiting for Apply. */

@@ -31,19 +31,35 @@ internal class MapOpening(
         rememberView()
     }
 
+    /** Loads the trip again after it failed with nothing to show ([MapModel.loadError]). */
+    fun retry() {
+        context.update { it.copy(isLoadingTrip = true, loadError = null) }
+        refresh()
+    }
+
     private fun load() {
-        context.scope.launch {
-            val result = tripRepository.refreshTrip(context.tripId)
-            context.update { it.copy(isLoadingTrip = false) }
-            context.showMessage((result as? AppResult.Error)?.error?.toUiText(Res.string.map_error_load_trip))
-            // Without the trip, or a trip without days, there's nothing to show first: the map opens on the default.
-            if (result is AppResult.Error || (result as? AppResult.Success)?.data?.days?.isEmpty() == true) camera.showAsItIs()
-        }
+        refresh()
         context.scope.launch {
             val left = mapViews.get(context.tripId)
             val details = context.trip.first { it != null && it.days.isNotEmpty() } ?: return@launch
             if (left != null) restoreView(left, details)
             camera.showOpenDay()
+        }
+    }
+
+    /**
+     * A failure with the trip already on the device is a message over its map; with nothing to show, the whole screen
+     * is the error ([MapModel.loadError]).
+     */
+    private fun refresh() {
+        context.scope.launch {
+            val result = tripRepository.refreshTrip(context.tripId)
+            val error = (result as? AppResult.Error)?.error?.toUiText(Res.string.map_error_load_trip)
+            val hasTrip = context.trip.value != null
+            context.update { it.copy(isLoadingTrip = false, loadError = error.takeUnless { hasTrip }) }
+            if (hasTrip) context.showMessage(error)
+            // Without the trip, or a trip without days, there's nothing to show first: the map opens on the default.
+            if ((result is AppResult.Error && hasTrip) || (result as? AppResult.Success)?.data?.days?.isEmpty() == true) camera.showAsItIs()
         }
     }
 

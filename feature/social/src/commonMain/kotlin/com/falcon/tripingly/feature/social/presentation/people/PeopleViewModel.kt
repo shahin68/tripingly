@@ -11,6 +11,7 @@ import com.falcon.tripingly.core.ui.UiText
 import com.falcon.tripingly.core.ui.toUiText
 import com.falcon.tripingly.feature.social.generated.resources.Res
 import com.falcon.tripingly.feature.social.generated.resources.social_error_load_people
+import com.falcon.tripingly.feature.social.generated.resources.social_error_unfollow
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.toImmutableList
@@ -21,7 +22,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
-/** My friends, the people I follow, or my followers, a page at a time. */
+/** My friends, the people I follow, or my followers, a page at a time: one segment of the Profile tab. Friends and people I follow can be unfollowed from the list. */
 class PeopleViewModel(
     val list: PeopleList,
     private val userRepository: UserRepository,
@@ -48,6 +49,19 @@ class PeopleViewModel(
             Action.OnLoadMore -> if (cursor != null) load(first = false)
             Action.OnRetry -> load(first = true)
             Action.OnDismissMessage -> _uiState.update { it.copy(message = null) }
+            is Action.Unfollow -> unfollow(action.user)
+        }
+    }
+
+    /** Leaves the list at once; a refusal loads it again (the person back) with a message. */
+    private fun unfollow(user: UserSummary) {
+        _uiState.update { state -> state.copy(people = state.people.filterNot { it.id == user.id }.toImmutableList()) }
+        viewModelScope.launch {
+            val result = userRepository.setFollowing(user.id, following = false)
+            if (result is AppResult.Error) {
+                _uiState.update { it.copy(message = result.error.toUiText(Res.string.social_error_unfollow)) }
+                load(first = true)
+            }
         }
     }
 
@@ -55,7 +69,7 @@ class PeopleViewModel(
     private fun load(first: Boolean) {
         if (first) loading?.cancel() else if (loading?.isActive == true) return
         loading = viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true) }
+            _uiState.update { it.copy(isLoading = true, loadError = null) }
             when (val result = userRepository.people(list, if (first) null else cursor)) {
                 is AppResult.Success -> {
                     cursor = result.data.nextCursor
@@ -64,7 +78,11 @@ class PeopleViewModel(
                         state.copy(people = people.toImmutableList(), isLoading = false, hasLoaded = true)
                     }
                 }
-                is AppResult.Error -> _uiState.update { it.copy(isLoading = false, message = result.error.toUiText(Res.string.social_error_load_people)) }
+                is AppResult.Error -> _uiState.update {
+                    // Nobody shown yet: the error screen; people already shown stay, with a banner.
+                    val message = result.error.toUiText(Res.string.social_error_load_people)
+                    if (it.people.isEmpty()) it.copy(isLoading = false, loadError = message) else it.copy(isLoading = false, message = message)
+                }
             }
         }
     }
@@ -74,6 +92,8 @@ class PeopleViewModel(
         val people: ImmutableList<UserSummary> = persistentListOf(),
         val isLoading: Boolean = false,
         val hasLoaded: Boolean = false,
+        /** Why the list couldn't load when nobody is shown: the error screen with a retry. */
+        val loadError: UiText? = null,
         val message: UiText? = null,
     )
 
@@ -81,5 +101,6 @@ class PeopleViewModel(
         data object OnLoadMore : Action
         data object OnRetry : Action
         data object OnDismissMessage : Action
+        data class Unfollow(val user: UserSummary) : Action
     }
 }
