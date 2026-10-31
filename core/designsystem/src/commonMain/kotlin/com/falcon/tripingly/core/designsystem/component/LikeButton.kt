@@ -10,13 +10,16 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.outlined.FavoriteBorder
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.getValue
+import androidx.compose.material3.ripple
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -27,7 +30,11 @@ import com.falcon.tripingly.core.designsystem.theme.spacing
 import org.jetbrains.compose.resources.stringResource
 import androidx.compose.foundation.background
 
-/** A heart to tap with the like count; filled while I like it. Darker than a read-only [CountLabel] heart, so it reads as a button. */
+/**
+ * A heart to tap with the like count; filled while I like it, and liking it pops the heart with a burst of dots. No
+ * padding at the start, so the heart lines up with the text above it. Darker than a read-only [CountLabel] heart, so
+ * it reads as a button.
+ */
 @Composable
 fun LikeButton(
     liked: Boolean,
@@ -36,19 +43,29 @@ fun LikeButton(
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
 ) {
+    var burst by remember { mutableIntStateOf(0) }
     Row(
         modifier = modifier
-            .clip(CircleShape)
-            .toggleable(value = liked, enabled = enabled, role = Role.Checkbox, onValueChange = { onToggle() })
-            .height(LikeButtonHeight)
-            .padding(horizontal = MaterialTheme.spacing.small),
+            .toggleable(
+                value = liked,
+                interactionSource = null,
+                indication = ripple(bounded = false),
+                enabled = enabled,
+                role = Role.Checkbox,
+                onValueChange = { like ->
+                    if (like) burst++
+                    onToggle()
+                },
+            )
+            .height(LikeButtonHeight),
         horizontalArrangement = Arrangement.spacedBy(4.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Icon(
-            imageVector = if (liked) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
+        BurstIcon(
+            icon = if (liked) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
             contentDescription = stringResource(Res.string.like),
             tint = if (liked) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface,
+            burst = burst,
             modifier = Modifier.size(20.dp).skeleton(CircleShape),
         )
         if (count > 0) {

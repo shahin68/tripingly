@@ -117,7 +117,7 @@ fun PhotoViewer(
 @Composable
 fun PhotoLike(photo: Photo, onToggle: () -> Unit, modifier: Modifier = Modifier) {
     Surface(shape = CircleShape, color = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f), modifier = modifier) {
-        LikeButton(liked = photo.likedByMe, count = photo.likeCount, onToggle = onToggle)
+        LikeButton(liked = photo.likedByMe, count = photo.likeCount, onToggle = onToggle, modifier = Modifier.padding(horizontal = MaterialTheme.spacing.small))
     }
 }
 

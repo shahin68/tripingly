@@ -137,7 +137,7 @@ internal fun PublicTripCard(
                         modifier = Modifier.height(LikeButtonHeight).padding(horizontal = MaterialTheme.spacing.small + MaterialTheme.spacing.extraSmall).skeletonText(),
                     )
                 } else {
-                    LikeButton(liked = trip.likedByMe, count = trip.likeCount, onToggle = onLike, modifier = Modifier.padding(end = MaterialTheme.spacing.extraSmall))
+                    LikeButton(liked = trip.likedByMe, count = trip.likeCount, onToggle = onLike, modifier = Modifier.padding(end = MaterialTheme.spacing.small + MaterialTheme.spacing.extraSmall))
                 }
             }
         }

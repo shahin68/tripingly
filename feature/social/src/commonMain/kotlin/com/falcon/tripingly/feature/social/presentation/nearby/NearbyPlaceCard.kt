@@ -70,11 +70,11 @@ internal fun NearbyPlaceCard(
         shape = MaterialTheme.shapes.large,
         color = MaterialTheme.colorScheme.surfaceContainerLowest,
     ) {
-        // Symmetric: the cover sits the same distance from the top, bottom and start, and the end button's circle as far
-        // from the end (its 48 dp touch area reaches past it). Title, distance and the button row are as tall as the cover.
+        // Symmetric: the cover sits the same distance from the top, bottom and start. Title, distance and the button row
+        // are as tall as the cover.
         val inset = MaterialTheme.spacing.small
         Row(
-            modifier = Modifier.padding(start = inset, top = inset, bottom = inset, end = inset - TouchInset),
+            modifier = Modifier.padding(inset),
             horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small + MaterialTheme.spacing.extraSmall),
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -95,7 +95,7 @@ internal fun NearbyPlaceCard(
                     maxLines = 1,
                     modifier = Modifier.skeletonText(),
                 )
-                Row(verticalAlignment = Alignment.CenterVertically) {
+                Row(verticalAlignment = Alignment.Bottom) {
                     HotButton(hot = place.hotByMe, count = place.hotCount, onToggle = onMarkHot)
                     Spacer(Modifier.weight(1f))
                     if (cover != null) {
@@ -124,9 +124,6 @@ internal fun distanceText(meters: Int): UiText =
     }
 
 private val CoverSize = 88.dp
-
-/** Between an icon button's 48 dp touch area and its 40 dp circle. */
-private val TouchInset = 4.dp
 private val ActionIconSize = 20.dp
 
 /** A hot Tripinly place close by, and a long-named one further away. */

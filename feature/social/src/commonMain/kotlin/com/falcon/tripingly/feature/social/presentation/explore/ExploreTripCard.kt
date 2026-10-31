@@ -121,7 +121,7 @@ internal fun ExploreTripCard(
                         modifier = Modifier.height(LikeButtonHeight).padding(horizontal = MaterialTheme.spacing.small),
                     )
                 } else {
-                    LikeButton(liked = trip.likedByMe, count = trip.likeCount, onToggle = onLike)
+                    LikeButton(liked = trip.likedByMe, count = trip.likeCount, onToggle = onLike, modifier = Modifier.padding(horizontal = MaterialTheme.spacing.small))
                 }
             }
         }
