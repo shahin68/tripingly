@@ -32,6 +32,9 @@ class BlockedPeopleViewModel(private val userRepository: UserRepository) : ViewM
     private var cursor: String? = null
     private var loading: Job? = null
 
+    /** Ids in the order the server listed them, so a refused unblock goes back to its place. */
+    private var order: List<String> = emptyList()
+
     fun onAction(action: Action) {
         when (action) {
             Action.Open -> {
@@ -56,6 +59,8 @@ class BlockedPeopleViewModel(private val userRepository: UserRepository) : ViewM
             when (val result = userRepository.blocked(cursor)) {
                 is AppResult.Success -> {
                     cursor = result.data.nextCursor
+                    val page = result.data.items.map { it.id }
+                    order = if (next) (order + page).distinct() else page
                     _uiState.update { state ->
                         val people = if (next) state.people.orEmpty() + result.data.items else result.data.items
                         state.copy(people = people.distinctBy { it.id }.toImmutableList(), hasMore = cursor != null)
@@ -70,15 +75,16 @@ class BlockedPeopleViewModel(private val userRepository: UserRepository) : ViewM
     }
 
     private fun unblock(user: UserSummary) {
-        val before = _uiState.value.people ?: return
-        _uiState.update { state -> state.copy(people = before.filterNot { it.id == user.id }.toImmutableList()) }
+        _uiState.update { state -> state.copy(people = state.people?.filterNot { it.id == user.id }?.toImmutableList()) }
         viewModelScope.launch {
             val result = userRepository.setBlocked(user.id, blocked = false)
             if (result is AppResult.Error) {
                 _uiState.update { state ->
-                    // Back in its place among the people still shown.
-                    val people = state.people?.let { shown -> before.filter { it == user || it in shown } }
-                    state.copy(people = people?.toImmutableList(), message = result.error.toUiText(Res.string.settings_error_unblock))
+                    // Back in its loaded place; whatever else is shown stays.
+                    val people = state.people?.let { shown ->
+                        (shown + user).distinctBy { it.id }.sortedBy { order.indexOf(it.id) }.toImmutableList()
+                    }
+                    state.copy(people = people, message = result.error.toUiText(Res.string.settings_error_unblock))
                 }
             }
         }

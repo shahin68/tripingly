@@ -82,4 +82,24 @@ class BlockedPeopleViewModelTest {
         assertEquals(listOf(anna, jonas), viewModel.uiState.value.people?.map { it.id })
         assertNotNull(viewModel.uiState.value.message)
     }
+
+    @Test
+    fun twoRefusedUnblocks_putBothPeopleBack() = runTest {
+        val users = users()
+        val refusing = object : UserRepository by users {
+            override suspend fun setBlocked(userId: String, blocked: Boolean): AppResult<Unit, DataError.Network> =
+                AppResult.Error(DataError.Network.NoInternet)
+        }
+        val viewModel = BlockedPeopleViewModel(refusing)
+        viewModel.onAction(Action.Open)
+        advanceUntilIdle()
+
+        val (first, second) = viewModel.uiState.value.people!!
+        viewModel.onAction(Action.Unblock(first))
+        viewModel.onAction(Action.Unblock(second))
+        assertEquals(emptyList(), viewModel.uiState.value.people?.map { it.id })
+        advanceUntilIdle()
+
+        assertEquals(listOf(anna, jonas), viewModel.uiState.value.people?.map { it.id })
+    }
 }
