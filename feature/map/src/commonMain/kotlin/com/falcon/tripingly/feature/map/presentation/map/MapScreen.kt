@@ -345,4 +345,4 @@ private fun MapScreenLoadErrorPreview() {
 }
 
 /** How long the trip name card takes to morph out of the title pill or back. */
-private const val TITLE_MOTION_MILLIS = 350
+private const val TITLE_MOTION_MILLIS = 400

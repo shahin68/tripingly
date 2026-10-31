@@ -1,7 +1,6 @@
 package com.falcon.tripingly.feature.map.presentation.map.ui
 
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -20,8 +19,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentWidth
-import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.EaseOutCubic
+import androidx.compose.animation.core.CubicBezierEasing
+import androidx.compose.animation.core.EaseOutBack
 import kotlin.math.roundToInt
 import androidx.compose.ui.util.lerp
 import androidx.compose.ui.unit.Constraints
@@ -67,7 +66,8 @@ internal fun TripTitle(header: HeaderState, onClick: () -> Unit, modifier: Modif
 /**
  * The whole trip name and its details, for names too long for the title pill. It morphs out of the pill ([from]) into
  * a card below the header's buttons ([to]: its left, top and right; the height is the name's) as [progress] goes to 1,
- * and back ([progress] runs linearly; the card eases it). Solid, and it takes the touches on it, so the map
+ * and back ([progress] runs linearly; the card eases it): one motion in which it first drops below the buttons and,
+ * nearly there, starts to widen, both settling with a small bounce. Solid, and it takes the touches on it, so the map
  * underneath gets none. Fills the screen to place itself.
  */
 @Composable
@@ -84,12 +84,12 @@ internal fun TripTitleCard(header: HeaderState, from: Rect, to: Rect, progress: 
                 // Laid out once at the card's final width and only uncovered as the card grows, so the text never
                 // reflows while it moves.
                 val finalWidth = with(LocalDensity.current) { to.width.toDp() }
+                // The pill's padding and line spacing, so the lines start exactly where the pill's were.
                 Column(
                     modifier = Modifier
                         .wrapContentWidth(Alignment.Start, unbounded = true)
                         .width(finalWidth)
                         .padding(horizontal = MaterialTheme.spacing.medium + MaterialTheme.spacing.extraSmall, vertical = MaterialTheme.spacing.small),
-                    verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraSmall),
                 ) {
                     Text(header.tripName, style = MaterialTheme.typography.titleMedium)
                     Text(subtitle(header), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -97,10 +97,11 @@ internal fun TripTitleCard(header: HeaderState, from: Rect, to: Rect, progress: 
             }
         },
     ) { (card), constraints ->
-        // Width and place settle first and ease out, the height follows: the pill morphs rather than scales.
+        // One motion, so nothing runs back to back: the card drops below the buttons in the first part, and widens
+        // from when it is nearly there (so it never grows over the buttons); both overshoot a little and settle.
         val p = progress()
-        val across = EaseOutCubic.transform(p)
-        val down = FastOutSlowInEasing.transform(p)
+        val down = EaseOutBack.transform((p / DropShare).coerceIn(0f, 1f))
+        val across = WidenEasing.transform(((p - WidenStart) / (1f - WidenStart)).coerceIn(0f, 1f))
         val fullHeight = card.minIntrinsicHeight(to.width.roundToInt()).toFloat().coerceAtLeast(from.height)
         val placeable = card.measure(
             Constraints.fixed(lerp(from.width, to.width, across).roundToInt(), lerp(from.height, fullHeight, down).roundToInt()),
@@ -110,6 +111,15 @@ internal fun TripTitleCard(header: HeaderState, from: Rect, to: Rect, progress: 
         }
     }
 }
+
+/** Share of the motion in which the card drops below the buttons. */
+private const val DropShare = 0.6f
+
+/** When the card starts to widen: it has nearly reached its place below the buttons by then. */
+private const val WidenStart = 0.2f
+
+/** Ease out with a slight overshoot: a gentler bounce than [EaseOutBack], as the width travels further. */
+private val WidenEasing = CubicBezierEasing(0.34f, 1.25f, 0.64f, 1f)
 
 @Composable
 private fun subtitle(header: HeaderState): String = listOfNotNull(
