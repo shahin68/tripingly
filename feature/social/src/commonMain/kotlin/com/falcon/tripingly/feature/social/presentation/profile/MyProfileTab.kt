@@ -249,6 +249,7 @@ private fun LazyListScope.tripItems(state: State, onAction: (Action) -> Unit) {
             onAskToJoin = { onAction(Action.Trips.AskToJoin(trip)) },
             onReport = { onAction(Action.Trips.Report(trip)) },
             modifier = Modifier.animateItem(),
+            isOnMyProfile = true,
         )
     }
 }

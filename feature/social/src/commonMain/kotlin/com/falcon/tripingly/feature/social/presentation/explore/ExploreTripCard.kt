@@ -16,7 +16,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.outlined.Map
 import androidx.compose.material3.Icon
@@ -44,8 +43,7 @@ import androidx.compose.ui.unit.dp
 import com.falcon.tripingly.core.common.util.DateUtils
 import com.falcon.tripingly.core.designsystem.component.AppDropdownMenu
 import com.falcon.tripingly.core.designsystem.component.AvatarCircle
-import com.falcon.tripingly.core.designsystem.component.CountLabel
-import com.falcon.tripingly.core.designsystem.component.CountLabelSize
+import com.falcon.tripingly.core.designsystem.component.LikeCount
 import com.falcon.tripingly.core.designsystem.component.GlassSurface
 import com.falcon.tripingly.core.designsystem.component.LikeButton
 import com.falcon.tripingly.core.designsystem.component.LikeButtonHeight
@@ -112,17 +110,12 @@ internal fun ExploreTripCard(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             OwnerChip(trip.trip.owner, onOpenOwner, Modifier.weight(1f, fill = false).padding(end = MaterialTheme.spacing.small))
-            if (isMine) {
-                // My own trip: its likes are something to read, not to give, so no button pill; as big as the heart I can tap.
-                CountLabel(
-                    icon = Icons.Outlined.FavoriteBorder,
-                    count = trip.likeCount,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    size = CountLabelSize.Large,
-                    modifier = Modifier.height(LikeButtonHeight).padding(horizontal = MaterialTheme.spacing.small),
-                )
-            } else {
-                GlassSurface(shape = CircleShape, shadowElevation = 0.dp, blur = false) {
+            // On a pill, so it reads on any photo.
+            GlassSurface(shape = CircleShape, shadowElevation = 0.dp, blur = false) {
+                if (isMine) {
+                    // My own trip: its likes are something to read, not to give.
+                    LikeCount(count = trip.likeCount, modifier = Modifier.height(LikeButtonHeight).padding(horizontal = MaterialTheme.spacing.small))
+                } else {
                     LikeButton(liked = trip.likedByMe, count = trip.likeCount, onToggle = onLike, modifier = Modifier.padding(horizontal = MaterialTheme.spacing.small))
                 }
             }

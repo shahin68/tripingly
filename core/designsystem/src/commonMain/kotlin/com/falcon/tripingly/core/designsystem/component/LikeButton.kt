@@ -74,6 +74,15 @@ fun LikeButton(
     }
 }
 
+/**
+ * A like count I can't give (e.g. on my own trip): a filled grey heart, so it reads neither as a button (outline)
+ * nor as liked (red). As big as a [LikeButton] unless [size] says otherwise.
+ */
+@Composable
+fun LikeCount(count: Int, modifier: Modifier = Modifier, size: CountLabelSize = CountLabelSize.Large) {
+    CountLabel(icon = Icons.Filled.Favorite, count = count, color = MaterialTheme.colorScheme.onSurfaceVariant, size = size, modifier = modifier.skeletonText())
+}
+
 /** The like button's height, so things beside it (e.g. an avatar on an Explore card) can match it. */
 val LikeButtonHeight = 32.dp
 
@@ -84,6 +93,7 @@ private fun LikeButtonPreview() {
         Row {
             LikeButton(liked = true, count = 12, onToggle = {})
             LikeButton(liked = false, count = 0, onToggle = {})
+            LikeCount(count = 3)
         }
     }
 }
