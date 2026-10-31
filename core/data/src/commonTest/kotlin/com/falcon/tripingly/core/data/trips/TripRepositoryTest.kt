@@ -275,6 +275,22 @@ class TripRepositoryTest {
     }
 
     @Test
+    fun addMember_sendsTheUsernameWithoutAt_thenReloadsTheTrip() = runTest {
+        val harness = Harness { request ->
+            when (request.method) {
+                HttpMethod.Post -> json("""{"user":${TripJson.EDITOR},"role":"editor"}""")
+                else -> json(TripJson.trip("t1"))
+            }
+        }
+
+        val result = harness.trips.addMember("t1", " @Anna ")
+
+        assertIs<AppResult.Success<*>>(result)
+        assertEquals("""{"username":"anna"}""", harness.requests[0].bodyText())
+        assertEquals("/v1/trips/t1", harness.requests[1].url.encodedPath)
+    }
+
+    @Test
     fun setSaved_putsSomeoneElsesTripInMyTrips_andUnsavingTakesItOut() = runTest {
         val harness = Harness { respond("", HttpStatusCode.NoContent) }
         val trip = details(TripJson.trip("t1", myRole = "viewer")).trip

@@ -19,15 +19,13 @@ import com.falcon.tripingly.core.model.trip.UserSummary
 import com.falcon.tripingly.feature.trips.generated.resources.Res
 import com.falcon.tripingly.feature.trips.generated.resources.create_trip_find_friends_hint
 import com.falcon.tripingly.feature.trips.generated.resources.create_trip_friends_label
-import com.falcon.tripingly.feature.trips.generated.resources.trip_friends_only_hint
 import com.falcon.tripingly.feature.trips.presentation.screen.CreateTripForm
 import com.falcon.tripingly.feature.trips.presentation.screen.HomeViewModel.Action
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
-import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
 
-/** Friends to add (the only people an owner can add) under their label: one row of avatars, tapping checks or unchecks; without friends only a nudge to find some, no label. */
+/** Friends to add (the New trip sheet adds only friends; the members sheet also takes a username) under their label: one row of avatars, tapping checks or unchecks; without friends only a nudge to find some, no label. */
 @Composable
 internal fun CreateTripMembers(
     form: CreateTripForm,
@@ -37,7 +35,12 @@ internal fun CreateTripMembers(
 ) {
     when {
         form.friends == null -> Unit
-        form.friends.isEmpty() -> FriendsOnlyHint(modifier, text = Res.string.create_trip_find_friends_hint)
+        form.friends.isEmpty() -> Text(
+            text = stringResource(Res.string.create_trip_find_friends_hint),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = modifier,
+        )
         else -> FormField(stringResource(Res.string.create_trip_friends_label), modifier) {
             FriendPickerRow(
                 friends = form.friends,
@@ -47,17 +50,6 @@ internal fun CreateTripMembers(
             )
         }
     }
-}
-
-/** Shown where there are no friends to pick: by default who can be added and how everyone else joins. */
-@Composable
-internal fun FriendsOnlyHint(modifier: Modifier = Modifier, text: StringResource = Res.string.trip_friends_only_hint) {
-    Text(
-        text = stringResource(text),
-        style = MaterialTheme.typography.bodySmall,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-        modifier = modifier,
-    )
 }
 
 /** Friends as avatars with their handle; tapping one picks or unpicks them. Hidden without friends. */

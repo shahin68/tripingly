@@ -97,7 +97,8 @@ REST over HTTPS, JSON, base path `/v1`.
 ### Members and invites
 | Method | Path | Notes |
 |---|---|---|
-| POST | `/trips/{id}/members/batch` | Owner adds several people at once (`{ usernames }`, all or nothing; refused ones as `fields.usernames.<i>` = `notFound`/`blocked`). The app offers only friends and doesn't use the server's single add by username (`POST /trips/{id}/members`), which still exists (Shahin, 2026-10-29). The Members sheet uses it for the friends picked in its avatar row. Backend: tripinly-backend#33 |
+| POST | `/trips/{id}/members/batch` | Owner adds several people at once (`{ usernames }`, all or nothing; refused ones as `fields.usernames.<i>` = `notFound`/`blocked`). The Members sheet uses it for the friends picked in its avatar row. |
+| POST | `/trips/{id}/members` | Owner adds one editor by username (`{ username }`, idempotent; unknown → `404 NOT_FOUND`, blocked → `USER_BLOCKED`). Only the Members sheet's "Add by username" field uses it; the New trip sheet adds only friends (Shahin, 2026-10-31). Backend: tripinly-backend#33 |
 | DELETE | `/trips/{id}/members/{userId}` | Owner removes, or editor removes self (leave) |
 | POST | `/trips/{id}/invites` | Owner creates invite link → `{ url, expiresAt }` |
 | DELETE | `/trips/{id}/invites/{inviteId}` | Revoke |

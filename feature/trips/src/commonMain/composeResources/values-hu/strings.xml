@@ -53,7 +53,6 @@
     <string name="create_trip_dates_add">Dátumok megadása</string>
     <string name="create_trip_visibility_public">Nyilvános</string>
     <string name="create_trip_visibility_private">Privát</string>
-    <string name="trip_friends_only_hint">Csak barátokat adhatsz hozzá: akiket követsz, és ők is követnek téged. Bárki más meghívólinkkel csatlakozhat.</string>
     <string name="create_trip_find_friends_hint">Barátokkal jobb utazni! Keresd meg az ismerőseidet a Profil fülön, és kövesd őket. Ha visszakövetnek, hozzáadhatod őket az utazásaidhoz.</string>
     <string name="create_trip_error_members">Néhány barátot már nem lehet hozzáadni, ezért kivettük a pipát. Próbáld újra.</string>
 
@@ -85,6 +84,9 @@
     <string name="members_role_owner">Tulajdonos</string>
     <string name="members_role_editor">Szerkesztő</string>
     <string name="members_remove">Eltávolítás</string>
+    <string name="members_add_label">Hozzáadás felhasználónévvel</string>
+    <string name="members_add_button">Hozzáadás</string>
+    <string name="members_error_user_not_found">Nincs ilyen felhasználónév.</string>
     <string name="members_error_some_not_added">Néhány embert nem lehet hozzáadni. Vedd ki őket, és próbáld újra.</string>
     <string name="members_add_friends">%1$d hozzáadása</string>
     <string name="members_join_requests_title">Csatlakozni szeretnének</string>

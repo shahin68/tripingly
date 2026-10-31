@@ -53,7 +53,6 @@
     <string name="create_trip_dates_add">Add dates</string>
     <string name="create_trip_visibility_public">Public</string>
     <string name="create_trip_visibility_private">Private</string>
-    <string name="trip_friends_only_hint">Only friends can be added: people you follow who follow you back. Anyone else can join with an invite link.</string>
     <string name="create_trip_find_friends_hint">Trips are more fun with friends! Find people you know on your Profile tab and follow them. Once they follow you back, you can add them to your trips.</string>
     <string name="create_trip_error_members">Some friends can’t be added anymore, so they were unchecked. Try again.</string>
 
@@ -85,6 +84,9 @@
     <string name="members_role_owner">Owner</string>
     <string name="members_role_editor">Editor</string>
     <string name="members_remove">Remove</string>
+    <string name="members_add_label">Add by username</string>
+    <string name="members_add_button">Add</string>
+    <string name="members_error_user_not_found">No one has that username.</string>
     <string name="members_error_some_not_added">Some of these people can’t be added. Unpick them and try again.</string>
     <string name="members_add_friends">Add %1$d</string>
     <string name="members_join_requests_title">Asking to join</string>

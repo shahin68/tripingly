@@ -1,5 +1,6 @@
 package com.falcon.tripingly.feature.trips
 
+import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
 import com.falcon.tripingly.core.common.error.DataError
 import com.falcon.tripingly.core.common.result.AppResult
 import com.falcon.tripingly.core.data.trips.FakeTripBackend
@@ -10,6 +11,9 @@ import com.falcon.tripingly.core.model.trip.NewTrip
 import com.falcon.tripingly.core.model.trip.TripDetails
 import com.falcon.tripingly.core.model.trip.TripRole
 import com.falcon.tripingly.core.model.trip.UserSummary
+import com.falcon.tripingly.core.ui.UiText
+import com.falcon.tripingly.feature.trips.generated.resources.Res
+import com.falcon.tripingly.feature.trips.generated.resources.members_error_user_not_found
 import com.falcon.tripingly.feature.trips.presentation.members.TripMembersViewModel
 import com.falcon.tripingly.feature.trips.presentation.members.TripMembersViewModel.Action
 import com.falcon.tripingly.feature.trips.presentation.members.TripMembersViewModel.Event
@@ -27,6 +31,7 @@ import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertIs
 import kotlin.test.assertTrue
 import kotlin.time.Instant
 
@@ -86,7 +91,7 @@ class TripMembersViewModelTest {
 
         viewModel.onAction(Action.Add.FriendToggled(anna))
         viewModel.onAction(Action.Add.FriendToggled(jonas))
-        backend.addMembers(trip.trip.id, listOf("anna"))
+        backend.addMember(trip.trip.id, "anna")
         advanceUntilIdle()
         assertEquals(setOf("jonas.k"), viewModel.uiState.value.add.pickedFriends)
         viewModel.onAction(Action.Add.PickedFriends)
@@ -126,6 +131,7 @@ class TripMembersViewModelTest {
         backgroundScope.launch { viewModel.uiState.collect {} }
         viewModel.onAction(Action.Opened)
         advanceUntilIdle()
+        viewModel.uiState.value.add.username.setTextAndPlaceCursorAtEnd("som")
         viewModel.onAction(Action.Add.FriendToggled(viewModel.uiState.value.add.friends!!.first()))
         backend.seedJoinRequest(JoinRequest("r1", trip.id, UserSummary("u-mia", "mia", "Mia"), Instant.parse("2026-10-16T10:00:00Z")))
 
@@ -134,15 +140,46 @@ class TripMembersViewModelTest {
 
         val state = viewModel.uiState.value
         assertEquals(listOf("mia"), state.joinRequests.requests.map { it.user.username })
+        assertEquals("", state.add.username.text.toString())
         assertTrue(state.add.pickedFriends.isEmpty())
+    }
+
+    @Test
+    fun addMember_byUsername_addsAnEditor_andClearsTheField() = runTest {
+        val viewModel = viewModel()
+        advanceUntilIdle()
+
+        viewModel.uiState.value.add.username.setTextAndPlaceCursorAtEnd("@Anna")
+        viewModel.onAction(Action.Add.ByUsername)
+        advanceUntilIdle()
+
+        val state = viewModel.uiState.value
+        assertTrue(state.canManage)
+        assertEquals(listOf(TripRole.OWNER, TripRole.EDITOR), state.members.map { it.role })
+        assertEquals("anna", state.members[1].user.username)
+        assertEquals("", state.add.username.text.toString())
+    }
+
+    @Test
+    fun addMember_unknownUsername_saysNoOneHasIt() = runTest {
+        val viewModel = viewModel()
+        advanceUntilIdle()
+
+        viewModel.uiState.value.add.username.setTextAndPlaceCursorAtEnd("unknown")
+        viewModel.onAction(Action.Add.ByUsername)
+        advanceUntilIdle()
+
+        val message = assertIs<UiText.Resource>(viewModel.uiState.value.message)
+        assertEquals(Res.string.members_error_user_not_found, message.resource)
+        assertEquals("unknown", viewModel.uiState.value.add.username.text.toString())
     }
 
     @Test
     fun removeMember_removesTheEditor() = runTest {
         val viewModel = viewModel()
         advanceUntilIdle()
-        viewModel.onAction(Action.Add.FriendToggled(viewModel.uiState.value.add.friends!!.first()))
-        viewModel.onAction(Action.Add.PickedFriends)
+        viewModel.uiState.value.add.username.setTextAndPlaceCursorAtEnd("anna")
+        viewModel.onAction(Action.Add.ByUsername)
         advanceUntilIdle()
 
         viewModel.onAction(Action.RemoveMember(viewModel.uiState.value.members[1].user.id))

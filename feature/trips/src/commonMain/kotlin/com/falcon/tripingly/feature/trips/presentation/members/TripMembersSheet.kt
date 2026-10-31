@@ -50,7 +50,6 @@ import com.falcon.tripingly.feature.trips.generated.resources.members_invites_ti
 import com.falcon.tripingly.feature.trips.generated.resources.members_join_requests_title
 import com.falcon.tripingly.feature.trips.generated.resources.members_title
 import com.falcon.tripingly.feature.trips.presentation.component.FriendPickerRow
-import com.falcon.tripingly.feature.trips.presentation.component.FriendsOnlyHint
 import com.falcon.tripingly.feature.trips.presentation.members.TripMembersViewModel.Action
 import com.falcon.tripingly.feature.trips.presentation.members.TripMembersViewModel.Event
 import com.falcon.tripingly.feature.trips.presentation.members.TripMembersViewModel.State
@@ -132,9 +131,9 @@ fun TripMembersScreen(
         }
         if (state.canManage) {
             val friends = state.add.friends
-            if (friends != null) {
+            if (!friends.isNullOrEmpty()) {
                 item {
-                    if (friends.isEmpty()) FriendsOnlyHint(rowPadding) else FriendPickerRow(
+                    FriendPickerRow(
                         friends = friends,
                         isPicked = { it.username in state.add.pickedFriends },
                         onToggle = { onAction(Action.Add.FriendToggled(it)) },
@@ -153,6 +152,7 @@ fun TripMembersScreen(
                     )
                 }
             }
+            item { AddMemberField(state.add, onAction) }
             item {
                 HorizontalDivider(Modifier.padding(vertical = MaterialTheme.spacing.small))
                 Column(rowPadding, verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraSmall)) {

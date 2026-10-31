@@ -10,6 +10,7 @@ import com.falcon.tripingly.core.model.trip.NewTrip
 import com.falcon.tripingly.core.model.trip.Trip
 import com.falcon.tripingly.core.model.trip.TripDetails
 import com.falcon.tripingly.core.model.trip.TripUpdate
+import com.falcon.tripingly.core.network.model.AddMemberDto
 import com.falcon.tripingly.core.network.model.AddMembersDto
 import com.falcon.tripingly.core.network.model.CreateTripDto
 import com.falcon.tripingly.core.network.model.TripDto
@@ -157,6 +158,12 @@ internal class OfflineFirstTripRepository(
 
     override suspend fun deleteDay(tripId: String, dayId: String, confirm: Boolean): AppResult<TripDetails, DataError.Network> =
         when (val result = api.deleteDay(dayId, confirm)) {
+            is AppResult.Success -> refreshTrip(tripId)
+            is AppResult.Error -> result
+        }
+
+    override suspend fun addMember(tripId: String, username: String): AppResult<TripDetails, DataError.Network> =
+        when (val result = api.addMember(tripId, AddMemberDto(username = username.trim().removePrefix("@").lowercase()))) {
             is AppResult.Success -> refreshTrip(tripId)
             is AppResult.Error -> result
         }

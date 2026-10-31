@@ -73,8 +73,11 @@ interface TripRepository {
      */
     suspend fun deleteDay(tripId: String, dayId: String, confirm: Boolean = false): AppResult<TripDetails, DataError.Network>
 
+    /** Owner only: adds an editor by username, from the members sheet (`NOT_FOUND` when no such user, `USER_BLOCKED` when blocked). */
+    suspend fun addMember(tripId: String, username: String): AppResult<TripDetails, DataError.Network>
+
     /**
-     * Owner only: adds editors (the app offers only friends), several at once, all or nothing. Refused usernames come back as
+     * Owner only: adds editors (friends picked in a row), several at once, all or nothing. Refused usernames come back as
      * `VALIDATION_FAILED` with `fields.usernames.<index>` = [TripErrorCodes.MEMBER_NOT_FOUND] or
      * [TripErrorCodes.MEMBER_BLOCKED]; a full trip as `LIMIT_REACHED`.
      */
