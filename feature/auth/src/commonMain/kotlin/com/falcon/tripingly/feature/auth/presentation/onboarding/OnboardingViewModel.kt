@@ -18,9 +18,13 @@ import com.falcon.tripingly.core.model.account.SessionState
 import com.falcon.tripingly.core.model.account.UsernameAvailability
 import com.falcon.tripingly.core.model.account.isAtLeast
 import com.falcon.tripingly.core.model.account.isUsernameFormatValid
+import com.falcon.tripingly.core.model.photo.PickedImage
+import com.falcon.tripingly.core.model.trip.ProfilePhoto
 import com.falcon.tripingly.feature.auth.generated.resources.Res
 import com.falcon.tripingly.feature.auth.generated.resources.onboarding_error_accept
 import com.falcon.tripingly.feature.auth.generated.resources.onboarding_error_load_documents
+import com.falcon.tripingly.feature.auth.generated.resources.onboarding_error_photo
+import com.falcon.tripingly.feature.auth.generated.resources.onboarding_error_photo_remove
 import com.falcon.tripingly.feature.auth.generated.resources.onboarding_error_save_profile
 import com.falcon.tripingly.feature.auth.presentation.common.UiMessage
 import com.falcon.tripingly.feature.auth.presentation.common.toUiMessage
@@ -35,9 +39,10 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.datetime.LocalDate
+import org.jetbrains.compose.resources.StringResource
 
 /**
- * Profile (display name, username, birth date), then the required legal documents.
+ * Profile (an optional photo, display name, username, birth date), then the required legal documents.
  * The step follows the account's onboarding state, so an interrupted onboarding
  * resumes where it stopped.
  */
@@ -56,6 +61,9 @@ internal class OnboardingViewModel(
 
     data class State(
         val step: Step = Step.PROFILE,
+        /** Optional; the account's, so it stays when onboarding resumes. */
+        val photo: ProfilePhoto? = null,
+        val isSavingPhoto: Boolean = false,
         val displayName: String = "",
         val username: String = "",
         val usernameStatus: UsernameStatus = UsernameStatus.IDLE,
@@ -82,6 +90,8 @@ internal class OnboardingViewModel(
         data object OnBirthDateClick : Action
         data class OnBirthDatePicked(val date: LocalDate?) : Action
         data object OnSaveProfileClick : Action
+        data class OnPhotoPicked(val image: PickedImage) : Action
+        data object OnRemovePhotoClick : Action
         data class OnDocumentAcceptedChange(val document: LegalDocument, val accepted: Boolean) : Action
         data class OnRequiredDocumentsAcceptedChange(val accepted: Boolean) : Action
         data object OnAcceptClick : Action
@@ -127,6 +137,8 @@ internal class OnboardingViewModel(
                 )
             }
             Action.OnSaveProfileClick -> saveProfile()
+            is Action.OnPhotoPicked -> savePhoto(Res.string.onboarding_error_photo) { accountRepository.setProfilePhoto(action.image) }
+            Action.OnRemovePhotoClick -> savePhoto(Res.string.onboarding_error_photo_remove) { accountRepository.removeProfilePhoto() }
             is Action.OnDocumentAcceptedChange -> _uiState.update { state ->
                 state.copy(
                     documents = state.documents.map {
@@ -165,6 +177,7 @@ internal class OnboardingViewModel(
             usernameCheck?.cancel()
             _uiState.value = State(
                 step = step,
+                photo = account.photo,
                 displayName = account.displayName.orEmpty(),
                 username = account.username.orEmpty(),
                 usernameStatus = if (account.username != null) UsernameStatus.AVAILABLE else UsernameStatus.IDLE,
@@ -173,7 +186,7 @@ internal class OnboardingViewModel(
             displayNameField.setTextAndPlaceCursorAtEnd(account.displayName.orEmpty())
             usernameField.setTextAndPlaceCursorAtEnd(account.username.orEmpty())
         } else {
-            _uiState.update { it.copy(step = step) }
+            _uiState.update { it.copy(step = step, photo = account.photo) }
         }
         if (step == Step.CONSENT && _uiState.value.documents.isEmpty()) loadDocuments()
     }
@@ -202,6 +215,16 @@ internal class OnboardingViewModel(
                     _uiState.update { if (it.username == username) it.copy(usernameStatus = status) else it }
                 }
             }
+        }
+    }
+
+    /** The photo is saved on its own, before the rest of the profile; the session brings it back as [State.photo]. */
+    private fun savePhoto(failed: StringResource, call: suspend () -> AppResult<Account, DataError.Network>) {
+        if (_uiState.value.isSavingPhoto) return
+        _uiState.update { it.copy(isSavingPhoto = true) }
+        viewModelScope.launch {
+            val result = call()
+            _uiState.update { it.copy(isSavingPhoto = false, error = (result as? AppResult.Error)?.error?.toUiMessage(failed)) }
         }
     }
 

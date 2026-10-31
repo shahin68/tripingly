@@ -60,7 +60,7 @@ internal fun PersonRow(user: UserSummary, onClick: () -> Unit, modifier: Modifie
             horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small + MaterialTheme.spacing.extraSmall),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            AvatarCircle(name = user.displayName, size = AvatarSize.Row)
+            AvatarCircle(user, size = AvatarSize.Row)
             Column(Modifier.weight(1f)) {
                 Text(user.displayName, style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.skeletonText())
                 Text(

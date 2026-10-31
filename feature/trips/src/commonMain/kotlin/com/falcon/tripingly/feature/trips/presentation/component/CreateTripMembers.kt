@@ -69,8 +69,7 @@ internal fun FriendPickerRow(
         items(friends, key = { it.id }) { friend ->
             AvatarChoice(
                 modifier = Modifier.animateItem(),
-                name = friend.displayName,
-                handle = friend.username,
+                user = friend,
                 selected = isPicked(friend),
                 onToggle = { onToggle(friend) },
                 enabled = enabled,

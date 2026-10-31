@@ -1,4 +1,4 @@
-package com.falcon.tripingly.feature.map.presentation.photos
+package com.falcon.tripingly.core.ui.photos
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -22,16 +22,16 @@ import platform.posix.memcpy
 import kotlin.coroutines.resume
 
 @Composable
-internal actual fun rememberPhotoPicker(onPicked: (List<PickedImage>) -> Unit): () -> Unit {
+actual fun rememberPhotoPicker(single: Boolean, onPicked: (List<PickedImage>) -> Unit): () -> Unit {
     val controller = LocalUIViewController.current
     val currentOnPicked by rememberUpdatedState(onPicked)
     // The picker holds its delegate weakly, so it's kept here.
     val delegate = remember { PickerDelegate { currentOnPicked(it) } }
-    return remember(controller, delegate) {
+    return remember(controller, delegate, single) {
         {
             val configuration = PHPickerConfiguration().apply {
-                // No limit.
-                selectionLimit = 0
+                // 0 is no limit.
+                selectionLimit = if (single) 1 else 0
                 filter = PHPickerFilter.imagesFilter
             }
             val picker = PHPickerViewController(configuration = configuration)
@@ -59,7 +59,7 @@ private suspend fun NSItemProvider.imageData(): ByteArray? = suspendCancellableC
 }
 
 @OptIn(ExperimentalForeignApi::class)
-internal fun NSData.toByteArray(): ByteArray {
+fun NSData.toByteArray(): ByteArray {
     val size = length.toInt()
     if (size == 0) return ByteArray(0)
     return ByteArray(size).apply { usePinned { memcpy(it.addressOf(0), bytes, length) } }

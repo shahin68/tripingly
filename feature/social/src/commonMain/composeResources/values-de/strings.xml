@@ -96,4 +96,6 @@
     <string name="social_join_requested">Anfrage gesendet. Die Besitzerin oder der Besitzer entscheidet.</string>
     <string name="social_join_declined">Deine Anfrage zum Mitmachen wurde abgelehnt.</string>
     <string name="social_error_join">Deine Beitrittsanfrage konnte nicht gesendet werden.</string>
+    <string name="social_error_profile_photo">Dein Profilbild konnte nicht gespeichert werden.</string>
+    <string name="social_error_profile_photo_remove">Dein Profilbild konnte nicht entfernt werden.</string>
 </resources>

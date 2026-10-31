@@ -230,7 +230,7 @@ private fun CommentRow(
         horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
     ) {
         AvatarCircle(
-            name = comment.author.displayName,
+            user = comment.author,
             size = AvatarSize.Small,
             modifier = Modifier
                 .padding(top = 2.dp)

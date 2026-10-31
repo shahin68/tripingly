@@ -53,4 +53,13 @@
     <string name="settings_credit_manrope">Manrope font (SIL Open Font License)</string>
     <string name="settings_credit_haze">Haze by Chris Banes (Apache License 2.0)</string>
     <string name="settings_credits">Credits and licences</string>
+
+    <!-- Blocked people -->
+    <string name="settings_privacy">Privacy</string>
+    <string name="settings_blocked">Blocked people</string>
+    <string name="settings_blocked_hint">They can’t see your trips, comments or profile, and you don’t see theirs.</string>
+    <string name="settings_blocked_empty">You haven’t blocked anyone.</string>
+    <string name="settings_unblock">Unblock</string>
+    <string name="settings_error_blocked">Couldn’t load the people you blocked.</string>
+    <string name="settings_error_unblock">Couldn’t unblock them.</string>
 </resources>

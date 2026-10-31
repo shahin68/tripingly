@@ -152,7 +152,12 @@ internal fun parseRealtimeEvent(name: String, payload: JsonElement): RealtimeEve
             inTrip { RealtimeEvent.MarkerCoverChanged(it, actorId, NetworkJson.decodeFromJsonElement<MarkerIdData>(data).markerId) }
         "photo.processing", "photo.ready" -> {
             val photo = NetworkJson.decodeFromJsonElement<PhotoData>(data).photo
-            if (tripId != null) RealtimeEvent.PhotoSaved(tripId, actorId, photo) else RealtimeEvent.PlacePhotoSaved(photo)
+            when {
+                tripId != null -> RealtimeEvent.PhotoSaved(tripId, actorId, photo)
+                photo.placeId != null -> RealtimeEvent.PlacePhotoSaved(photo)
+                // My profile photo: saving it waits for the server itself.
+                else -> null
+            }
         }
         "photo.failed" -> {
             val ids = NetworkJson.decodeFromJsonElement<PhotoIdData>(data)

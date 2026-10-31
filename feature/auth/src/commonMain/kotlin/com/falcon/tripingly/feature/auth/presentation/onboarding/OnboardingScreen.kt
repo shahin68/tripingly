@@ -79,6 +79,9 @@ import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.atStartOfDayIn
 import kotlinx.datetime.toLocalDateTime
+import com.falcon.tripingly.core.designsystem.component.EditableAvatar
+import com.falcon.tripingly.core.ui.photos.rememberPhotoPicker
+import com.falcon.tripingly.feature.auth.generated.resources.onboarding_add_photo
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel
 
@@ -87,16 +90,27 @@ import org.koin.compose.viewmodel.koinViewModel
 internal fun OnboardingRoute() {
     val viewModel: OnboardingViewModel = koinViewModel()
     val state by viewModel.uiState.collectAsStateWithLifecycle()
-    OnboardingScreen(state = state, displayName = viewModel.displayNameField, username = viewModel.usernameField, onAction = viewModel::onAction)
+    val choosePhoto = rememberPhotoPicker(single = true) { images -> viewModel.onAction(Action.OnPhotoPicked(images.first())) }
+    OnboardingScreen(
+        state = state,
+        displayName = viewModel.displayNameField,
+        username = viewModel.usernameField,
+        onAction = viewModel::onAction,
+        onChoosePhoto = choosePhoto,
+    )
 }
 
-/** The profile (name, username, birth date), then the terms and privacy to accept; both under the floating top bar. */
+/**
+ * The profile (an optional photo, name, username, birth date), then the terms and privacy to accept; both under
+ * the floating top bar.
+ */
 @Composable
 internal fun OnboardingScreen(
     state: OnboardingViewModel.State,
     displayName: TextFieldState,
     username: TextFieldState,
     onAction: (Action) -> Unit,
+    onChoosePhoto: () -> Unit,
 ) {
     val consentFailed = state.step == Step.CONSENT && !state.isLoadingDocuments && state.documents.isEmpty()
     Scaffold(
@@ -131,7 +145,7 @@ internal fun OnboardingScreen(
                 verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium),
             ) {
                 when (state.step) {
-                    Step.PROFILE -> ProfileStep(state, displayName, username, onAction)
+                    Step.PROFILE -> ProfileStep(state, displayName, username, onAction, onChoosePhoto)
                     Step.CONSENT -> ConsentStep(state)
                 }
             }
@@ -143,7 +157,26 @@ internal fun OnboardingScreen(
 }
 
 @Composable
-private fun ColumnScope.ProfileStep(state: OnboardingViewModel.State, displayName: TextFieldState, username: TextFieldState, onAction: (Action) -> Unit) {
+private fun ColumnScope.ProfileStep(
+    state: OnboardingViewModel.State,
+    displayName: TextFieldState,
+    username: TextFieldState,
+    onAction: (Action) -> Unit,
+    onChoosePhoto: () -> Unit,
+) {
+    Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small)) {
+        EditableAvatar(
+            name = state.displayName,
+            photo = state.photo,
+            isSaving = state.isSavingPhoto,
+            onChoose = onChoosePhoto,
+            onRemove = { onAction(Action.OnRemovePhotoClick) },
+            size = PhotoSize,
+        )
+        if (state.photo == null) {
+            TextButton(onClick = onChoosePhoto, enabled = !state.isSavingPhoto) { Text(stringResource(Res.string.onboarding_add_photo)) }
+        }
+    }
     FormField(stringResource(Res.string.onboarding_display_name)) {
         AppTextField(
             state = displayName,
@@ -236,6 +269,7 @@ private fun usernameHint(status: UsernameStatus) = when (status) {
     UsernameStatus.INVALID -> Res.string.onboarding_username_invalid
 }
 
+private val PhotoSize = 84.dp
 private val ContentMaxWidth = 600.dp
 
 /** Usernames are lower case without spaces, shown that way as they're typed. */
@@ -247,7 +281,7 @@ private val UsernameInput = InputTransformation {
 
 @Composable
 private fun OnboardingPreview(state: OnboardingViewModel.State) {
-    OnboardingScreen(state, rememberTextFieldState(state.displayName), rememberTextFieldState(state.username), onAction = {})
+    OnboardingScreen(state, rememberTextFieldState(state.displayName), rememberTextFieldState(state.username), onAction = {}, onChoosePhoto = {})
 }
 
 @Preview

@@ -23,6 +23,7 @@ import com.falcon.tripingly.core.designsystem.component.AvatarSize
 import com.falcon.tripingly.core.designsystem.component.ButtonSize
 import com.falcon.tripingly.core.designsystem.component.PrimaryButton
 import com.falcon.tripingly.core.designsystem.component.SecondaryButton
+import com.falcon.tripingly.core.designsystem.component.EditableAvatar
 import com.falcon.tripingly.core.designsystem.component.compactCount
 import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
 import com.falcon.tripingly.core.designsystem.theme.spacing
@@ -36,13 +37,22 @@ import com.falcon.tripingly.feature.social.generated.resources.social_follows_yo
 import com.falcon.tripingly.feature.social.generated.resources.social_public_trips_label
 import org.jetbrains.compose.resources.stringResource
 
-/** My profile at the top of the Profile tab: avatar, name and handle, then my counts as three tiles. */
+/**
+ * My profile at the top of the Profile tab: my avatar with the pen that changes my [photo], name and handle,
+ * then my counts as three tiles.
+ */
 @Composable
-internal fun MyProfileHeader(profile: Profile, modifier: Modifier = Modifier) {
+internal fun MyProfileHeader(profile: Profile, photo: MyProfilePhotoViewModel.State, onChoosePhoto: () -> Unit, onRemovePhoto: () -> Unit, modifier: Modifier = Modifier) {
     Surface(modifier = modifier.fillMaxWidth(), shape = MaterialTheme.shapes.extraLarge, color = MaterialTheme.colorScheme.surfaceContainerLowest) {
         Column(Modifier.padding(HeaderPadding), verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small + MaterialTheme.spacing.extraSmall)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium)) {
-                AvatarCircle(name = profile.user.displayName, size = AvatarSize.Medium)
+                EditableAvatar(
+                    name = profile.user.displayName,
+                    photo = photo.photo,
+                    isSaving = photo.isSaving,
+                    onChoose = onChoosePhoto,
+                    onRemove = onRemovePhoto,
+                )
                 Column {
                     Text(profile.user.displayName, style = MaterialTheme.typography.titleLarge, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.skeletonText())
                     Text("@${profile.user.username}", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.skeletonText())
@@ -68,7 +78,7 @@ internal fun PersonProfileHeader(profile: Profile, onToggleFollow: (() -> Unit)?
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
     ) {
-        AvatarCircle(name = profile.user.displayName, size = LargeAvatar)
+        AvatarCircle(profile.user, size = LargeAvatar)
         Text(profile.user.displayName, style = MaterialTheme.typography.headlineSmall, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.skeletonText())
         if (profile.followsMe) {
             Text(stringResource(Res.string.social_follows_you), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -114,7 +124,7 @@ private val LargeAvatar = 84.dp
 @Composable
 private fun MyProfileHeaderPreview() {
     TripinglyTheme {
-        Column(Modifier.background(MaterialTheme.colorScheme.background).padding(MaterialTheme.spacing.medium)) { MyProfileHeader(previewProfile) }
+        Column(Modifier.background(MaterialTheme.colorScheme.background).padding(MaterialTheme.spacing.medium)) { MyProfileHeader(previewProfile, MyProfilePhotoViewModel.State(), onChoosePhoto = {}, onRemovePhoto = {}) }
     }
 }
 
@@ -122,7 +132,7 @@ private fun MyProfileHeaderPreview() {
 @Composable
 private fun MyProfileHeaderDarkPreview() {
     TripinglyTheme(darkTheme = true) {
-        Column(Modifier.background(MaterialTheme.colorScheme.background).padding(MaterialTheme.spacing.medium)) { MyProfileHeader(previewProfile) }
+        Column(Modifier.background(MaterialTheme.colorScheme.background).padding(MaterialTheme.spacing.medium)) { MyProfileHeader(previewProfile, MyProfilePhotoViewModel.State(), onChoosePhoto = {}, onRemovePhoto = {}) }
     }
 }
 

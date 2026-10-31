@@ -1,5 +1,6 @@
 package com.falcon.tripingly.feature.map.presentation.photos
 
+import com.falcon.tripingly.core.ui.photos.toByteArray
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue

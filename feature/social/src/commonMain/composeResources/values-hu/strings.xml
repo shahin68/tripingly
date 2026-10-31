@@ -96,4 +96,6 @@
     <string name="social_join_requested">Kérés elküldve. A tulajdonos dönt.</string>
     <string name="social_join_declined">A tulajdonos elutasította a csatlakozási kérésedet.</string>
     <string name="social_error_join">Nem sikerült elküldeni a csatlakozási kérést.</string>
+    <string name="social_error_profile_photo">Nem sikerült menteni a profilképedet.</string>
+    <string name="social_error_profile_photo_remove">Nem sikerült eltávolítani a profilképedet.</string>
 </resources>

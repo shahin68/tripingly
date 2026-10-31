@@ -13,6 +13,7 @@ import com.falcon.tripingly.core.model.trip.TripInvite
 import com.falcon.tripingly.core.model.trip.TripMarker
 import com.falcon.tripingly.core.model.trip.TripMember
 import com.falcon.tripingly.core.model.trip.TripRole
+import com.falcon.tripingly.core.model.trip.ProfilePhoto
 import com.falcon.tripingly.core.model.trip.UserSummary
 import com.falcon.tripingly.core.network.model.DestinationDto
 import com.falcon.tripingly.core.network.model.InviteDto
@@ -141,7 +142,12 @@ internal fun JoinRequestDto.toJoinRequest() = JoinRequest(
     createdAt = createdAt.toInstant(),
 )
 
-internal fun UserSummaryDto.toUser() = UserSummary(id = id, username = username, displayName = displayName)
+internal fun UserSummaryDto.toUser() =
+    UserSummary(id = id, username = username, displayName = displayName, photo = profilePhotoOf(avatarPhotoId, avatarThumbUrl))
+
+/** Both or nothing: a photo id without its URL can't be shown. */
+internal fun profilePhotoOf(id: String?, thumbUrl: String?): ProfilePhoto? =
+    if (id != null && thumbUrl != null) ProfilePhoto(id, thumbUrl) else null
 
 internal fun InviteDto.toInvite() = TripInvite(id = id, url = url, expiresAt = expiresAt.toInstant())
 

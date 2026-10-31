@@ -35,4 +35,9 @@
     <!-- Redesign -->
     <string name="common_close">Bezárás</string>
     <string name="common_clear">Törlés</string>
+
+    <!-- Profile photo -->
+    <string name="profile_photo_edit">Profilkép módosítása</string>
+    <string name="profile_photo_choose">Fotó kiválasztása</string>
+    <string name="profile_photo_remove">Fotó eltávolítása</string>
 </resources>

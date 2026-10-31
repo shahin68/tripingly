@@ -50,7 +50,7 @@ import org.jetbrains.compose.resources.stringResource
 /** A person in the list: their avatar, name and [detail] ("@lena · Owner"), and [actions] at the end. */
 @Composable
 private fun PersonRow(
-    name: String,
+    user: UserSummary,
     detail: String,
     modifier: Modifier = Modifier,
     actions: @Composable RowScope.() -> Unit = {},
@@ -60,9 +60,9 @@ private fun PersonRow(
         horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small + MaterialTheme.spacing.extraSmall),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        AvatarCircle(name = name, size = AvatarSize.Small)
+        AvatarCircle(user, size = AvatarSize.Small)
         Column(Modifier.weight(1f)) {
-            Text(name, style = MaterialTheme.typography.bodyLarge, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.skeletonText())
+            Text(user.displayName, style = MaterialTheme.typography.bodyLarge, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.skeletonText())
             Text(detail, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.skeletonText())
         }
         actions()
@@ -80,7 +80,7 @@ private val PlaceholderMember = TripMember(UserSummary("placeholder", "traveller
 @Composable
 internal fun MemberRow(member: TripMember, canRemove: Boolean, onRemove: () -> Unit, modifier: Modifier = Modifier) {
     val role = stringResource(if (member.role == TripRole.OWNER) Res.string.members_role_owner else Res.string.members_role_editor)
-    PersonRow(name = member.user.displayName, detail = "@${member.user.username} · $role", modifier = modifier) {
+    PersonRow(user = member.user, detail = "@${member.user.username} · $role", modifier = modifier) {
         if (canRemove) {
             TextButton(onClick = onRemove) {
                 Text(stringResource(Res.string.members_remove), color = MaterialTheme.colorScheme.error)
@@ -91,7 +91,7 @@ internal fun MemberRow(member: TripMember, canRemove: Boolean, onRemove: () -> U
 
 @Composable
 internal fun JoinRequestRow(request: JoinRequest, isAnswering: Boolean, onAccept: () -> Unit, onDecline: () -> Unit, modifier: Modifier = Modifier) {
-    PersonRow(name = request.user.displayName, detail = "@${request.user.username}", modifier = modifier) {
+    PersonRow(user = request.user, detail = "@${request.user.username}", modifier = modifier) {
         TextButton(onClick = onDecline, enabled = !isAnswering) {
             Text(stringResource(Res.string.members_join_decline), color = MaterialTheme.colorScheme.error)
         }

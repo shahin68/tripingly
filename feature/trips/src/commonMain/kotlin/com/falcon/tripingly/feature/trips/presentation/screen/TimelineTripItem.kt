@@ -287,7 +287,7 @@ private fun TripCardDetails(trip: Trip, muted: Color) {
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
         ) {
-            if (trip.role != TripRole.OWNER) AvatarCircle(trip.owner.displayName, size = AvatarSize.Small)
+            if (trip.role != TripRole.OWNER) AvatarCircle(trip.owner, size = AvatarSize.Small)
             Text(sharing, style = MaterialTheme.typography.labelMedium, color = muted, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.skeletonText())
         }
     }

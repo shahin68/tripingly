@@ -35,4 +35,9 @@
     <!-- Redesign -->
     <string name="common_close">Schließen</string>
     <string name="common_clear">Leeren</string>
+
+    <!-- Profile photo -->
+    <string name="profile_photo_edit">Profilbild ändern</string>
+    <string name="profile_photo_choose">Foto auswählen</string>
+    <string name="profile_photo_remove">Foto entfernen</string>
 </resources>

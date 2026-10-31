@@ -53,4 +53,7 @@
     <string name="onboarding_display_name_placeholder">Így látnak mások</string>
     <string name="onboarding_username_placeholder">neved</string>
     <string name="onboarding_birth_date_placeholder">Válaszd ki a születési dátumod</string>
+    <string name="onboarding_add_photo">Profilkép hozzáadása (nem kötelező)</string>
+    <string name="onboarding_error_photo">Nem sikerült menteni a profilképedet.</string>
+    <string name="onboarding_error_photo_remove">Nem sikerült eltávolítani a profilképedet.</string>
 </resources>

@@ -110,7 +110,9 @@ val dataModule = module {
     single<LiveUpdates> { get<RealtimeSync>() }
 
     single<SessionRepository> { get<SessionRepositoryImpl>() }
-    single<AccountRepository> { AccountRepositoryImpl(api = get(), session = get()) }
+    single<AccountRepository> {
+        AccountRepositoryImpl(api = get(), session = get(), photosApi = get(), storage = get(), config = get(), preparer = PlatformPhotoPreparer)
+    }
     single {
         val config = get<ApiConfig>()
         SessionRepositoryImpl(

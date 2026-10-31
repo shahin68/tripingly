@@ -35,6 +35,9 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shadow
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -145,20 +148,17 @@ internal fun ExploreTripCard(
     }
 }
 
-/** The owner's avatar, as tall as the like button, and @username on one line; the whole row opens their profile. */
+/** The owner's avatar, as tall as the like button (just the avatar: the card stays calm); it opens their profile. */
 @Composable
 private fun OwnerChip(owner: UserSummary, onClick: () -> Unit, modifier: Modifier = Modifier) {
-    Row(modifier = modifier.clip(CircleShape).clickable(onClick = onClick), verticalAlignment = Alignment.CenterVertically) {
-        AvatarCircle(name = owner.displayName, size = LikeButtonHeight)
-        Text(
-            text = "@${owner.username}",
-            style = MaterialTheme.typography.labelLarge.copy(shadow = Shadow(Color.Black.copy(alpha = SCRIM_ALPHA), blurRadius = 6f)),
-            color = Color.White,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.padding(start = MaterialTheme.spacing.extraSmall + 2.dp, end = MaterialTheme.spacing.small + 2.dp),
-        )
-    }
+    AvatarCircle(
+        owner,
+        size = LikeButtonHeight,
+        modifier = modifier
+            .clip(CircleShape)
+            .clickable(onClickLabel = "@${owner.username}", role = Role.Button, onClick = onClick)
+            .semantics { contentDescription = "@${owner.username}" },
+    )
 }
 
 /** The name and when the trip is over a dark fade, so they read on any photo; [menu] (the ⋮) at the end. */

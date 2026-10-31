@@ -38,6 +38,7 @@ import com.falcon.tripingly.core.designsystem.theme.spacing
 import com.falcon.tripingly.core.model.social.PeopleList
 import com.falcon.tripingly.core.model.trip.UserSummary
 import com.falcon.tripingly.core.ui.UiText
+import com.falcon.tripingly.core.ui.photos.rememberPhotoPicker
 import com.falcon.tripingly.feature.social.generated.resources.Res
 import com.falcon.tripingly.feature.social.generated.resources.social_followers
 import com.falcon.tripingly.feature.social.generated.resources.social_followers_empty
@@ -90,8 +91,11 @@ internal fun MyProfileTab(
     onOpenProfile: (username: String) -> Unit,
     barsPadding: PaddingValues,
     searchViewModel: PeopleSearchViewModel = koinViewModel(),
+    photoViewModel: MyProfilePhotoViewModel = koinViewModel(),
 ) {
     val search by searchViewModel.uiState.collectAsStateWithLifecycle()
+    val photo by photoViewModel.uiState.collectAsStateWithLifecycle()
+    val choosePhoto = rememberPhotoPicker(single = true) { images -> photoViewModel.onAction(MyProfilePhotoViewModel.Action.Choose(images.first())) }
     var segment by rememberSaveable { mutableStateOf(ProfileSegment.Trips) }
     // One list per segment, each loaded the first time its segment is picked and kept while the tab lives.
     val people = segment.list?.let { list ->
@@ -105,7 +109,10 @@ internal fun MyProfileTab(
         search = search,
         segment = segment,
         people = people?.first,
+        photo = photo,
         onAction = onAction,
+        onChoosePhoto = choosePhoto,
+        onPhotoAction = photoViewModel::onAction,
         onDismissSearchMessage = { searchViewModel.onAction(PeopleSearchViewModel.Action.DismissMessage) },
         onSegment = { segment = it },
         onPeopleAction = { action -> people?.second?.invoke(action) },
@@ -120,7 +127,10 @@ internal fun MyProfileScreen(
     search: PeopleSearchViewModel.State,
     segment: ProfileSegment,
     people: PeopleViewModel.State?,
+    photo: MyProfilePhotoViewModel.State,
     onAction: (Action) -> Unit,
+    onChoosePhoto: () -> Unit,
+    onPhotoAction: (MyProfilePhotoViewModel.Action) -> Unit,
     onDismissSearchMessage: () -> Unit,
     onSegment: (ProfileSegment) -> Unit,
     onPeopleAction: (PeopleViewModel.Action) -> Unit,
@@ -128,13 +138,14 @@ internal fun MyProfileScreen(
     barsPadding: PaddingValues = PaddingValues(),
 ) {
     val contentPadding = screenContentPadding(barsPadding)
-    val message = state.message ?: search.message ?: people?.message
+    val message = state.message ?: search.message ?: people?.message ?: photo.message
     ShowMessage(
         message = message?.asString(),
         onShown = {
             when (message) {
                 state.message -> onAction(Action.DismissMessage)
                 search.message -> onDismissSearchMessage()
+                photo.message -> onPhotoAction(MyProfilePhotoViewModel.Action.DismissMessage)
                 else -> onPeopleAction(PeopleViewModel.Action.OnDismissMessage)
             }
         },
@@ -159,7 +170,17 @@ internal fun MyProfileScreen(
                 peopleItems(search.results, isLoading = search.isLoading, loadError = null, empty = Res.string.social_people_none, onRetry = {}, onOpenProfile)
                 return@LazyColumn
             }
-            state.profile?.let { item(key = "header") { MyProfileHeader(it, Modifier.animateItem()) } }
+            state.profile?.let {
+                item(key = "header") {
+                    MyProfileHeader(
+                        profile = it,
+                        photo = photo,
+                        onChoosePhoto = onChoosePhoto,
+                        onRemovePhoto = { onPhotoAction(MyProfilePhotoViewModel.Action.Remove) },
+                        modifier = Modifier.animateItem(),
+                    )
+                }
+            }
             item(key = "segments") { Segments(segment, onSegment, Modifier.animateItem()) }
             when (val list = segment.list) {
                 null -> tripItems(state, onAction)
@@ -204,7 +225,7 @@ private fun Segments(segment: ProfileSegment, onSegment: (ProfileSegment) -> Uni
 private fun MyProfileSkeleton(segment: ProfileSegment, contentPadding: PaddingValues) {
     Skeleton(Modifier.fillMaxSize()) {
         Column(Modifier.padding(contentPadding), verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small)) {
-            MyProfileHeader(placeholderProfile)
+            MyProfileHeader(placeholderProfile, MyProfilePhotoViewModel.State(), onChoosePhoto = {}, onRemovePhoto = {})
             Segments(segment, onSegment = {})
             if (segment.list == null) {
                 placeholderTrips.forEach { PublicTripCard(trip = it, onOpen = {}, onLike = {}, onToggleSave = {}, onAskToJoin = {}, onReport = {}) }
@@ -272,7 +293,8 @@ private fun MyProfilePreview(segment: ProfileSegment, darkTheme: Boolean = false
             search = PeopleSearchViewModel.State(query = query, results = previewPeople.toImmutableList()),
             segment = segment,
             people = PeopleViewModel.State(people = previewPeople.toImmutableList(), hasLoaded = true),
-            onAction = {}, onDismissSearchMessage = {}, onSegment = {}, onPeopleAction = {}, onOpenProfile = {},
+            photo = MyProfilePhotoViewModel.State(),
+            onAction = {}, onChoosePhoto = {}, onPhotoAction = {}, onDismissSearchMessage = {}, onSegment = {}, onPeopleAction = {}, onOpenProfile = {},
         )
     }
 }

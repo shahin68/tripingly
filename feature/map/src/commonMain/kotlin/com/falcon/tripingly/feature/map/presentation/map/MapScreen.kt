@@ -72,7 +72,7 @@ import com.falcon.tripingly.feature.map.presentation.map.ui.SearchResults
 import com.falcon.tripingly.feature.map.presentation.map.ui.StopCard
 import com.falcon.tripingly.feature.map.presentation.map.ui.pulledUp
 import com.falcon.tripingly.feature.map.presentation.map.ui.rememberPlanSheetState
-import com.falcon.tripingly.feature.map.presentation.photos.rememberPhotoPicker
+import com.falcon.tripingly.core.ui.photos.rememberPhotoPicker
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.map

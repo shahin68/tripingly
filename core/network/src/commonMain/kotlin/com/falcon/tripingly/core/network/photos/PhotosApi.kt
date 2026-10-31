@@ -15,7 +15,7 @@ import de.jensklingenberg.ktorfit.http.POST
 import de.jensklingenberg.ktorfit.http.PUT
 import de.jensklingenberg.ktorfit.http.Path
 
-/** Photos on markers and places. The file itself goes straight to storage, see [StorageClient]. */
+/** Photos on markers, places and my profile. The file itself goes straight to storage, see [StorageClient]. */
 interface PhotosApi {
     /** A new photo, waiting for its upload, and the signed URL to `PUT` the file to (10 minutes). */
     @POST("markers/{id}/photos/upload-url")
@@ -32,6 +32,15 @@ interface PhotosApi {
         @Path("id") placeId: String,
         @Body body: UploadUrlRequestDto,
     ): AppResult<UploadUrlResponseDto, DataError.Network>
+
+    /** Like [uploadUrl], for my profile photo; it becomes my avatar once processed (also during onboarding). */
+    @POST("me/avatar/upload-url")
+    @Headers("Content-Type: application/json")
+    suspend fun profilePhotoUploadUrl(@Body body: UploadUrlRequestDto): AppResult<UploadUrlResponseDto, DataError.Network>
+
+    /** Back to the letter avatar. */
+    @DELETE("me/avatar")
+    suspend fun removeProfilePhoto(): AppResult<Unit, DataError.Network>
 
     /** The file is in storage: the server makes the thumbnail and display sizes. */
     @POST("photos/{id}/complete")

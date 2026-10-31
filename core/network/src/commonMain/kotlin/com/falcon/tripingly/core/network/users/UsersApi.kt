@@ -2,6 +2,7 @@ package com.falcon.tripingly.core.network.users
 
 import com.falcon.tripingly.core.common.error.DataError
 import com.falcon.tripingly.core.common.result.AppResult
+import com.falcon.tripingly.core.network.model.BlockedUsersDto
 import com.falcon.tripingly.core.network.model.ProfileDto
 import com.falcon.tripingly.core.network.model.UserPageDto
 import com.falcon.tripingly.core.network.model.UserSearchResultDto
@@ -40,6 +41,13 @@ interface UsersApi {
 
     @DELETE("users/{id}/block")
     suspend fun unblock(@Path("id") userId: String): AppResult<Unit, DataError.Network>
+
+    /** People I blocked, most recently blocked first. */
+    @GET("me/blocks")
+    suspend fun blocked(
+        @Query("cursor") cursor: String?,
+        @Query("limit") limit: Int,
+    ): AppResult<BlockedUsersDto, DataError.Network>
 
     /** People I follow who follow me back. */
     @GET("me/friends")

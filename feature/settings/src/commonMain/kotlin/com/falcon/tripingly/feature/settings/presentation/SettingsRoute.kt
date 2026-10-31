@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Block
 import androidx.compose.material.icons.filled.Directions
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Public
@@ -25,6 +26,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.tooling.preview.PreviewParameter
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.falcon.tripingly.core.designsystem.component.AppBottomSheet
 import com.falcon.tripingly.core.designsystem.component.BackAction
 import com.falcon.tripingly.core.designsystem.component.FloatingTopBar
 import com.falcon.tripingly.core.designsystem.component.SecondaryButton
@@ -38,6 +40,7 @@ import com.falcon.tripingly.core.model.account.TripVisibility
 import com.falcon.tripingly.core.ui.UiText
 import com.falcon.tripingly.feature.settings.generated.resources.Res
 import com.falcon.tripingly.feature.settings.generated.resources.settings_about
+import com.falcon.tripingly.feature.settings.generated.resources.settings_blocked
 import com.falcon.tripingly.feature.settings.generated.resources.settings_data
 import com.falcon.tripingly.feature.settings.generated.resources.settings_delete_account
 import com.falcon.tripingly.feature.settings.generated.resources.settings_new_trips
@@ -46,6 +49,7 @@ import com.falcon.tripingly.feature.settings.generated.resources.settings_notifi
 import com.falcon.tripingly.feature.settings.generated.resources.settings_pro
 import com.falcon.tripingly.feature.settings.generated.resources.settings_pro_active
 import com.falcon.tripingly.feature.settings.generated.resources.settings_pro_get
+import com.falcon.tripingly.feature.settings.generated.resources.settings_privacy
 import com.falcon.tripingly.feature.settings.generated.resources.settings_sign_out
 import com.falcon.tripingly.feature.settings.generated.resources.settings_signed_in_as
 import com.falcon.tripingly.feature.settings.generated.resources.settings_title
@@ -62,16 +66,28 @@ fun SettingsRoute(
     /** Tripinly Pro's paywall: buying, restoring and managing the subscription. */
     onOpenPro: () -> Unit,
     viewModel: SettingsViewModel = koinViewModel(),
+    blockedViewModel: BlockedPeopleViewModel = koinViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
-    SettingsScreen(state = state, onAction = viewModel::onAction, onBack = onBack, onOpenPro = onOpenPro)
+    val blocked by blockedViewModel.uiState.collectAsStateWithLifecycle()
+    SettingsScreen(
+        state = state,
+        onAction = viewModel::onAction,
+        onBack = onBack,
+        onOpenPro = onOpenPro,
+        onOpenBlocked = { blockedViewModel.onAction(BlockedPeopleViewModel.Action.Open) },
+    )
+    ShowMessage(message = blocked.message?.asString(), onShown = { blockedViewModel.onAction(BlockedPeopleViewModel.Action.DismissMessage) }, isError = true)
+    AppBottomSheet(value = blocked.takeIf { it.isOpen }, onDismiss = { blockedViewModel.onAction(BlockedPeopleViewModel.Action.Close) }) { shown, close ->
+        BlockedPeopleSheet(shown, blockedViewModel::onAction, onClose = close)
+    }
 
     state.account?.let { AccountConfirmation(it, appleAvailable = state.appleAvailable, onAction = viewModel::onAction) }
 }
 
 /** Settings in groups of rows on cards, under the floating top bar; one readable column on tablets and in landscape. */
 @Composable
-internal fun SettingsScreen(state: State, onAction: (Action) -> Unit, onBack: () -> Unit, onOpenPro: () -> Unit) {
+internal fun SettingsScreen(state: State, onAction: (Action) -> Unit, onBack: () -> Unit, onOpenPro: () -> Unit, onOpenBlocked: () -> Unit) {
     Scaffold(
         topBar = { FloatingTopBar(title = stringResource(Res.string.settings_title), navigationIcon = { BackAction(onBack) }) },
     ) { padding ->
@@ -115,6 +131,11 @@ internal fun SettingsScreen(state: State, onAction: (Action) -> Unit, onBack: ()
                 SettingsSection(stringResource(Res.string.settings_notifications))
                 Notifications(state.notifications, onAction)
 
+                SettingsSection(stringResource(Res.string.settings_privacy))
+                SettingsCard {
+                    LinkRow(stringResource(Res.string.settings_blocked), icon = Icons.Default.Block, onClick = onOpenBlocked)
+                }
+
                 SettingsSection(stringResource(Res.string.settings_data))
                 DataExportSection(state.export, onAction)
 
@@ -144,17 +165,17 @@ private val ContentMaxWidth = 600.dp
 @Preview
 @Composable
 private fun SettingsScreenPreview(@PreviewParameter(SettingsPreviewStates::class) state: State) {
-    TripinglyTheme { SettingsScreen(state = state, onAction = {}, onBack = {}, onOpenPro = {}) }
+    TripinglyTheme { SettingsScreen(state = state, onAction = {}, onBack = {}, onOpenPro = {}, onOpenBlocked = {}) }
 }
 
 @Preview
 @Composable
 private fun SettingsScreenDarkPreview() {
-    TripinglyTheme(darkTheme = true) { SettingsScreen(state = SettingsPreviewStates().values.first(), onAction = {}, onBack = {}, onOpenPro = {}) }
+    TripinglyTheme(darkTheme = true) { SettingsScreen(state = SettingsPreviewStates().values.first(), onAction = {}, onBack = {}, onOpenPro = {}, onOpenBlocked = {}) }
 }
 
 @Preview(widthDp = 800, heightDp = 360)
 @Composable
 private fun SettingsScreenLandscapePreview() {
-    TripinglyTheme(darkTheme = true) { SettingsScreen(state = SettingsPreviewStates().values.first(), onAction = {}, onBack = {}, onOpenPro = {}) }
+    TripinglyTheme(darkTheme = true) { SettingsScreen(state = SettingsPreviewStates().values.first(), onAction = {}, onBack = {}, onOpenPro = {}, onOpenBlocked = {}) }
 }

@@ -1,5 +1,6 @@
 package com.falcon.tripingly.core.model.account
 
+import com.falcon.tripingly.core.model.trip.ProfilePhoto
 import kotlinx.datetime.LocalDate
 
 /** The signed-in user as `GET /me` describes them. */
@@ -7,6 +8,8 @@ data class Account(
     val id: String,
     val username: String?,
     val displayName: String?,
+    /** My profile photo, optional; null shows my initial. */
+    val photo: ProfilePhoto? = null,
     /** Never shown to other users. */
     val birthDate: LocalDate?,
     val locale: String,

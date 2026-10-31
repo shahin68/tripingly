@@ -96,4 +96,6 @@
     <string name="social_join_requested">Request sent. The owner decides.</string>
     <string name="social_join_declined">The owner declined your request to join.</string>
     <string name="social_error_join">Couldn’t send your request to join.</string>
+    <string name="social_error_profile_photo">Couldn’t save your profile photo.</string>
+    <string name="social_error_profile_photo_remove">Couldn’t remove your profile photo.</string>
 </resources>

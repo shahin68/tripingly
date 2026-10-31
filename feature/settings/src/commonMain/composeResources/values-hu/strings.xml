@@ -53,4 +53,13 @@
     <string name="settings_credit_manrope">Manrope betűtípus (SIL Open Font License)</string>
     <string name="settings_credit_haze">Haze, Chris Banes (Apache License 2.0)</string>
     <string name="settings_credits">Források és licencek</string>
+
+    <!-- Blocked people -->
+    <string name="settings_privacy">Adatvédelem</string>
+    <string name="settings_blocked">Letiltott emberek</string>
+    <string name="settings_blocked_hint">Nem látják az útjaidat, hozzászólásaidat és a profilodat, és te sem az övéiket.</string>
+    <string name="settings_blocked_empty">Még senkit sem tiltottál le.</string>
+    <string name="settings_unblock">Feloldás</string>
+    <string name="settings_error_blocked">Nem sikerült betölteni a letiltott embereket.</string>
+    <string name="settings_error_unblock">Nem sikerült feloldani a letiltást.</string>
 </resources>

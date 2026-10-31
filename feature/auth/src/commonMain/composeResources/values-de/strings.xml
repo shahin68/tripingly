@@ -53,4 +53,7 @@
     <string name="onboarding_display_name_placeholder">So sehen dich andere</string>
     <string name="onboarding_username_placeholder">deinname</string>
     <string name="onboarding_birth_date_placeholder">Geburtsdatum wählen</string>
+    <string name="onboarding_add_photo">Profilbild hinzufügen (optional)</string>
+    <string name="onboarding_error_photo">Dein Profilbild konnte nicht gespeichert werden.</string>
+    <string name="onboarding_error_photo_remove">Dein Profilbild konnte nicht entfernt werden.</string>
 </resources>

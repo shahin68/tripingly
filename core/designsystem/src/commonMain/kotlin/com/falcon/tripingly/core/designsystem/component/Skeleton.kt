@@ -168,7 +168,7 @@ private fun SkeletonPreviewContent() {
                 horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small + MaterialTheme.spacing.extraSmall),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                AvatarCircle(name = "Alex Traveller")
+                AvatarCircle(name = "Alex Traveller", photo = null)
                 Column {
                     Text("Alex Traveller", style = MaterialTheme.typography.titleSmall, modifier = Modifier.skeletonText())
                     Text("@traveller", style = MaterialTheme.typography.bodySmall, modifier = Modifier.skeletonText())
