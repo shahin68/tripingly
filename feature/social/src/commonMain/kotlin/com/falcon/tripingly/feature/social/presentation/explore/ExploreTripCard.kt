@@ -59,8 +59,7 @@ import com.falcon.tripingly.core.ui.label
 import com.falcon.tripingly.core.ui.tripWhen
 import com.falcon.tripingly.feature.social.generated.resources.Res
 import com.falcon.tripingly.feature.social.generated.resources.social_more
-import com.falcon.tripingly.feature.social.generated.resources.social_trip_member
-import com.falcon.tripingly.feature.social.generated.resources.social_trip_own
+import com.falcon.tripingly.feature.social.presentation.component.ownershipLabel
 import com.falcon.tripingly.feature.social.presentation.component.previewTrip
 import com.falcon.tripingly.feature.social.presentation.component.publicTripActions
 import org.jetbrains.compose.resources.stringResource
@@ -162,11 +161,7 @@ private fun OwnerChip(owner: UserSummary, onClick: () -> Unit, modifier: Modifie
 @Composable
 private fun CardFooter(trip: PublicTrip, modifier: Modifier = Modifier, menu: (@Composable () -> Unit)?) {
     // Under the date, say when the trip is mine or one I'm in: such cards have no ⋮ and a heart I can't tap.
-    val ownership = when (trip.trip.role) {
-        TripRole.OWNER -> stringResource(Res.string.social_trip_own)
-        TripRole.EDITOR -> stringResource(Res.string.social_trip_member)
-        TripRole.VIEWER -> null
-    }
+    val ownership = trip.trip.role.ownershipLabel()
     val whenLabel = listOfNotNull(tripWhen(trip.trip.startDate, trip.trip.endDate, remember { DateUtils.today() })?.label(), ownership)
         .joinToString(" · ")
         .ifEmpty { null }

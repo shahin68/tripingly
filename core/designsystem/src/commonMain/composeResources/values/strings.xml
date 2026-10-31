@@ -28,7 +28,7 @@
     <string name="common_settings">Settings</string>
     <string name="common_back">Back</string>
     <string name="error_title">Something went wrong</string>
-    <string name="error_message">We couldn\'t load this. Please try again.</string>
+    <string name="error_message">We couldn’t load this. Please try again.</string>
     <string name="error_retry">Try again</string>
     <string name="loading">Loading</string>
 

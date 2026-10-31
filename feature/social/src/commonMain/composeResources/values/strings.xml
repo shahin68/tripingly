@@ -99,6 +99,6 @@
     <string name="social_error_profile_photo">Couldn’t save your profile photo.</string>
     <string name="social_error_profile_photo_remove">Couldn’t remove your profile photo.</string>
     <string name="social_trip_private">Private</string>
-    <string name="social_trip_member">You\'re in it</string>
+    <string name="social_trip_member">You’re in it</string>
     <string name="social_trip_own">Your trip</string>
 </resources>
