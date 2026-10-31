@@ -100,4 +100,5 @@
     <string name="social_error_profile_photo_remove">Dein Profilbild konnte nicht entfernt werden.</string>
     <string name="social_trip_private">Privat</string>
     <string name="social_trip_member">Du bist dabei</string>
+    <string name="social_trip_own">Deine Reise</string>
 </resources>

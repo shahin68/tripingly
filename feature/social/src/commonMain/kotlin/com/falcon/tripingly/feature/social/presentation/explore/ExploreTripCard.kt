@@ -59,6 +59,8 @@ import com.falcon.tripingly.core.ui.label
 import com.falcon.tripingly.core.ui.tripWhen
 import com.falcon.tripingly.feature.social.generated.resources.Res
 import com.falcon.tripingly.feature.social.generated.resources.social_more
+import com.falcon.tripingly.feature.social.generated.resources.social_trip_member
+import com.falcon.tripingly.feature.social.generated.resources.social_trip_own
 import com.falcon.tripingly.feature.social.presentation.component.previewTrip
 import com.falcon.tripingly.feature.social.presentation.component.publicTripActions
 import org.jetbrains.compose.resources.stringResource
@@ -159,7 +161,15 @@ private fun OwnerChip(owner: UserSummary, onClick: () -> Unit, modifier: Modifie
 /** The name and when the trip is over a dark fade, so they read on any photo; [menu] (the ⋮) at the end. */
 @Composable
 private fun CardFooter(trip: PublicTrip, modifier: Modifier = Modifier, menu: (@Composable () -> Unit)?) {
-    val whenLabel = tripWhen(trip.trip.startDate, trip.trip.endDate, remember { DateUtils.today() })?.label()
+    // Under the date, say when the trip is mine or one I'm in: such cards have no ⋮ and a heart I can't tap.
+    val ownership = when (trip.trip.role) {
+        TripRole.OWNER -> stringResource(Res.string.social_trip_own)
+        TripRole.EDITOR -> stringResource(Res.string.social_trip_member)
+        TripRole.VIEWER -> null
+    }
+    val whenLabel = listOfNotNull(tripWhen(trip.trip.startDate, trip.trip.endDate, remember { DateUtils.today() })?.label(), ownership)
+        .joinToString(" · ")
+        .ifEmpty { null }
     Row(
         modifier = modifier
             .fillMaxWidth()
@@ -196,7 +206,7 @@ private fun ExploreTripCardPreviewContent() {
         horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small + MaterialTheme.spacing.extraSmall),
     ) {
         ExploreTripCard(previewTrip, {}, {}, {}, {}, {}, {}, Modifier.weight(1f))
-        ExploreTripCard(previewTrip.copy(likeCount = 12_400, likedByMe = false), {}, {}, {}, {}, {}, {}, Modifier.weight(1f))
+        ExploreTripCard(previewTrip.copy(likeCount = 0, likedByMe = false, trip = previewTrip.trip.copy(role = TripRole.EDITOR)), {}, {}, {}, {}, {}, {}, Modifier.weight(1f))
     }
 }
 

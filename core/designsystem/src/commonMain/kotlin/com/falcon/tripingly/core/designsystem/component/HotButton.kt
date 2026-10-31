@@ -66,9 +66,8 @@ fun HotButton(
             burst = burst,
             modifier = Modifier.size(20.dp).skeleton(CircleShape),
         )
-        if (count > 0) {
-            Text(text = compactCount(count), style = MaterialTheme.typography.labelLarge, modifier = Modifier.skeletonText())
-        }
+        // Always shown, 0 too: every count reads the same, tappable or not.
+        Text(text = compactCount(count), style = MaterialTheme.typography.labelLarge, modifier = Modifier.skeletonText())
     }
 }
 
