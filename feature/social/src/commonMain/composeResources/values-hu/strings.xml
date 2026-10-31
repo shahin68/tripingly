@@ -98,4 +98,5 @@
     <string name="social_error_join">Nem sikerült elküldeni a csatlakozási kérést.</string>
     <string name="social_error_profile_photo">Nem sikerült menteni a profilképedet.</string>
     <string name="social_error_profile_photo_remove">Nem sikerült eltávolítani a profilképedet.</string>
+    <string name="social_trip_private">Privát</string>
 </resources>

@@ -62,7 +62,7 @@ REST over HTTPS, JSON, base path `/v1`.
 |---|---|---|
 | GET | `/users/check-username?username=` | Availability during onboarding |
 | GET | `/users/search?q=` | Prefix search on username and display name; `q` 2–50 characters, up to 20 results `{ items: [UserSummary] }` |
-| GET | `/users/{username}?cursor=&limit=` | Profile: `user`, `followerCount`, `followingCount`, `isFollowing`, `followsMe`, `isFriend`, `publicTripCount`, `trips[]` (trip summaries with `likeCount`, `likedByMe`, `saveCount`, `savedByMe`), `nextCursor`. The app asks without `@`, pages of 20; `404 NOT_FOUND` for unknown or blocked either way |
+| GET | `/users/{username}?cursor=&limit=` | Profile: `user`, `followerCount`, `followingCount`, `isFollowing`, `followsMe`, `isFriend`, `publicTripCount`, `trips[]` (trip summaries with `likeCount`, `likedByMe`, `saveCount`, `savedByMe`), `nextCursor`. The app asks without `@`, pages of 20; `404 NOT_FOUND` for unknown or blocked either way. On my own profile `trips` has my private trips too (`publicTripCount` stays public); the Profile tab reloads it when My Trips changes (backend#67) |
 | PUT | `/users/{id}/follow` | Follow (idempotent); the profile's Follow button, shown at once |
 | DELETE | `/users/{id}/follow` | Unfollow |
 | POST | `/users/{id}/block` | From a profile's menu, after a confirmation; the profile then closes |

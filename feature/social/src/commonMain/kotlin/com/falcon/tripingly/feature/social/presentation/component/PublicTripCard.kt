@@ -52,6 +52,7 @@ import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
 import com.falcon.tripingly.core.designsystem.theme.spacing
 import com.falcon.tripingly.core.model.social.PublicTrip
 import com.falcon.tripingly.core.model.trip.TripRole
+import com.falcon.tripingly.core.model.account.TripVisibility
 import com.falcon.tripingly.core.ui.timeAgo
 import com.falcon.tripingly.feature.social.generated.resources.Res
 import com.falcon.tripingly.feature.social.generated.resources.social_ask_to_join
@@ -60,6 +61,7 @@ import com.falcon.tripingly.feature.social.generated.resources.social_report
 import com.falcon.tripingly.feature.social.generated.resources.social_save_trip
 import com.falcon.tripingly.feature.social.generated.resources.social_saved_trip
 import com.falcon.tripingly.feature.social.generated.resources.social_trip_created
+import com.falcon.tripingly.feature.social.generated.resources.social_trip_private
 import com.falcon.tripingly.feature.social.generated.resources.social_trip_save_count
 import com.falcon.tripingly.feature.social.generated.resources.social_trip_stop_count
 import org.jetbrains.compose.resources.pluralStringResource
@@ -102,7 +104,7 @@ internal fun PublicTripCard(
         ) {
             TripCover(trip)
             Column(Modifier.weight(1f)) {
-                Text(trip.trip.name, style = MaterialTheme.typography.titleMedium, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.skeletonText())
+                Text(trip.trip.name, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.skeletonText())
                 DateUtils.formatRange(trip.trip.startDate, trip.trip.endDate)?.let {
                     Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, modifier = Modifier.skeletonText())
                 }
@@ -110,6 +112,7 @@ internal fun PublicTripCard(
                     buildList {
                         add(pluralStringResource(Res.plurals.social_trip_stop_count, trip.trip.markerCount, trip.trip.markerCount))
                         if (trip.saveCount > 0) add(pluralStringResource(Res.plurals.social_trip_save_count, trip.saveCount, trip.saveCount))
+                        if (trip.trip.visibility == TripVisibility.PRIVATE) add(stringResource(Res.string.social_trip_private))
                     }.joinToString(" · "),
                 )
                 DetailLine(stringResource(Res.string.social_trip_created, timeAgo(trip.trip.createdAt)))

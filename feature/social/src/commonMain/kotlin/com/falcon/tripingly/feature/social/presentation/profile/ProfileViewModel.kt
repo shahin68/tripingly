@@ -25,6 +25,7 @@ import com.falcon.tripingly.feature.social.generated.resources.social_error_unfo
 import com.falcon.tripingly.feature.social.presentation.component.PublicTripActions
 import com.falcon.tripingly.feature.social.presentation.component.ReportState
 import com.falcon.tripingly.feature.social.presentation.component.sendReport
+import com.falcon.tripingly.core.model.trip.TripRole
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.toImmutableList
@@ -33,12 +34,15 @@ import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.drop
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 /**
- * A person's profile: counts, follow, their public trips, report and block. [username] null is my own
+ * A person's profile: counts, follow, their public trips (on mine, all my trips), report and block. [username] null is my own
  * profile, the Profile tab, which also shows my friends, the people I follow and my followers (each a
  * [com.falcon.tripingly.feature.social.presentation.people.PeopleViewModel]).
  */
@@ -81,6 +85,7 @@ class ProfileViewModel(
     init {
         load()
         watchFollows()
+        if (_uiState.value.isMe) watchMyTrips()
     }
 
     fun onAction(action: Action) {
@@ -149,11 +154,27 @@ class ProfileViewModel(
         }
     }
 
-    /** The profile's counts and follow state again; the trips list stays as it is. */
-    private suspend fun refreshProfile() {
+    /**
+     * My own profile follows My Trips: a trip I create, change or delete there (private ones too) shows here at once,
+     * without a refresh.
+     */
+    private fun watchMyTrips() {
+        viewModelScope.launch {
+            tripRepository.observeMyTrips()
+                .map { trips -> trips.filter { it.role == TripRole.OWNER }.associate { it.id to it.updatedAt } }
+                .distinctUntilChanged()
+                .drop(1)
+                .collect { refreshProfile(withTrips = true) }
+        }
+    }
+
+    /** The profile's counts and follow state again; the trips list stays as it is, unless [withTrips] (its first page then). */
+    private suspend fun refreshProfile(withTrips: Boolean = false) {
         val username = username ?: return
         val result = userRepository.profile(username)
-        if (result is AppResult.Success) _uiState.update { it.copy(profile = result.data) }
+        if (result !is AppResult.Success) return
+        if (withTrips) tripsCursor = result.data.nextCursor
+        _uiState.update { it.copy(profile = result.data, trips = if (withTrips) result.data.trips.toImmutableList() else it.trips) }
     }
 
     private fun loadMore() {
