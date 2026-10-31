@@ -5,19 +5,17 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.outlined.PersonRemove
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import com.falcon.tripingly.core.designsystem.component.AppDropdownMenu
+import com.falcon.tripingly.core.designsystem.component.CompactIconButton
+import com.falcon.tripingly.core.designsystem.component.CompactIconInset
 import com.falcon.tripingly.core.designsystem.component.DropdownAction
-import com.falcon.tripingly.core.designsystem.component.skeleton
 import com.falcon.tripingly.feature.social.generated.resources.Res
 import com.falcon.tripingly.feature.social.generated.resources.social_more
 import com.falcon.tripingly.feature.social.generated.resources.social_unfollow
@@ -55,8 +53,11 @@ internal fun PersonRow(user: UserSummary, onClick: () -> Unit, modifier: Modifie
         shape = MaterialTheme.shapes.large,
         color = MaterialTheme.colorScheme.surfaceContainerLowest,
     ) {
+        // Symmetric, and as tall with ⋮ as without: the avatar sits the same distance from the top, bottom and start,
+        // and the compact ⋮ is no taller than the avatar; its glyph lines up with the inset at the end.
+        val inset = MaterialTheme.spacing.small + MaterialTheme.spacing.extraSmall
         Row(
-            modifier = Modifier.padding(MaterialTheme.spacing.small + MaterialTheme.spacing.extraSmall),
+            modifier = Modifier.padding(start = inset, top = inset, bottom = inset, end = if (actions.isEmpty()) inset else inset - CompactIconInset),
             horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small + MaterialTheme.spacing.extraSmall),
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -74,9 +75,7 @@ internal fun PersonRow(user: UserSummary, onClick: () -> Unit, modifier: Modifie
             }
             if (actions.isNotEmpty()) {
                 Box {
-                    IconButton(onClick = { menuOpen = true }) {
-                        Icon(Icons.Default.MoreVert, contentDescription = stringResource(Res.string.social_more), modifier = Modifier.skeleton(CircleShape))
-                    }
+                    CompactIconButton(Icons.Default.MoreVert, contentDescription = stringResource(Res.string.social_more), onClick = { menuOpen = true })
                     AppDropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }, actions = actions)
                 }
             }
