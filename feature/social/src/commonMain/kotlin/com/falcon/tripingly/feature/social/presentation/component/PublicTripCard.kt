@@ -61,6 +61,7 @@ import com.falcon.tripingly.feature.social.generated.resources.social_report
 import com.falcon.tripingly.feature.social.generated.resources.social_save_trip
 import com.falcon.tripingly.feature.social.generated.resources.social_saved_trip
 import com.falcon.tripingly.feature.social.generated.resources.social_trip_created
+import com.falcon.tripingly.feature.social.generated.resources.social_trip_member
 import com.falcon.tripingly.feature.social.generated.resources.social_trip_private
 import com.falcon.tripingly.feature.social.generated.resources.social_trip_save_count
 import com.falcon.tripingly.feature.social.generated.resources.social_trip_stop_count
@@ -114,6 +115,8 @@ internal fun PublicTripCard(
                         add(pluralStringResource(Res.plurals.social_trip_stop_count, trip.trip.markerCount, trip.trip.markerCount))
                         if (trip.saveCount > 0) add(pluralStringResource(Res.plurals.social_trip_save_count, trip.saveCount, trip.saveCount))
                         if (trip.trip.visibility == TripVisibility.PRIVATE) add(stringResource(Res.string.social_trip_private))
+                        // Someone else's trip that I'm in: say so, since it has no ⋮ and its heart is read-only.
+                        if (isMine && !isOnMyProfile) add(stringResource(Res.string.social_trip_member))
                     }.joinToString(" · "),
                 )
                 DetailLine(stringResource(Res.string.social_trip_created, timeAgo(trip.trip.createdAt)))
