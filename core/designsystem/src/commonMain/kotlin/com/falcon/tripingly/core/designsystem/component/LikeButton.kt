@@ -27,7 +27,7 @@ import com.falcon.tripingly.core.designsystem.theme.spacing
 import org.jetbrains.compose.resources.stringResource
 import androidx.compose.foundation.background
 
-/** A heart with the like count; filled while I like it. */
+/** A heart to tap with the like count; filled while I like it. Darker than a read-only [CountLabel] heart, so it reads as a button. */
 @Composable
 fun LikeButton(
     liked: Boolean,
@@ -48,7 +48,7 @@ fun LikeButton(
         Icon(
             imageVector = if (liked) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
             contentDescription = stringResource(Res.string.like),
-            tint = if (liked) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
+            tint = if (liked) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface,
             modifier = Modifier.size(20.dp).skeleton(CircleShape),
         )
         if (count > 0) {

@@ -13,8 +13,11 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import com.falcon.tripingly.core.designsystem.component.AppDropdownMenu
-import com.falcon.tripingly.core.designsystem.component.CompactIconButton
-import com.falcon.tripingly.core.designsystem.component.CompactIconInset
+import com.falcon.tripingly.core.designsystem.component.skeleton
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.ui.unit.dp
 import com.falcon.tripingly.core.designsystem.component.DropdownAction
 import com.falcon.tripingly.feature.social.generated.resources.Res
 import com.falcon.tripingly.feature.social.generated.resources.social_more
@@ -53,11 +56,12 @@ internal fun PersonRow(user: UserSummary, onClick: () -> Unit, modifier: Modifie
         shape = MaterialTheme.shapes.large,
         color = MaterialTheme.colorScheme.surfaceContainerLowest,
     ) {
-        // Symmetric, and as tall with ⋮ as without: the avatar sits the same distance from the top, bottom and start,
-        // and the compact ⋮ is no taller than the avatar; its glyph lines up with the inset at the end.
+        // As tall with ⋮ as without, and symmetric: the avatar sits 12 dp from the top, bottom and start either way. A row
+        // with ⋮ (48 dp touch area) pads less above and below to stay as tall, and its glyph sits 12 dp from the end.
         val inset = MaterialTheme.spacing.small + MaterialTheme.spacing.extraSmall
+        val vertical = if (actions.isEmpty()) inset else inset - (MenuTouchSize - AvatarSize.Row) / 2
         Row(
-            modifier = Modifier.padding(start = inset, top = inset, bottom = inset, end = if (actions.isEmpty()) inset else inset - CompactIconInset),
+            modifier = Modifier.padding(start = inset, top = vertical, bottom = vertical, end = if (actions.isEmpty()) inset else 0.dp),
             horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small + MaterialTheme.spacing.extraSmall),
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -75,13 +79,18 @@ internal fun PersonRow(user: UserSummary, onClick: () -> Unit, modifier: Modifie
             }
             if (actions.isNotEmpty()) {
                 Box {
-                    CompactIconButton(Icons.Default.MoreVert, contentDescription = stringResource(Res.string.social_more), onClick = { menuOpen = true })
+                    IconButton(onClick = { menuOpen = true }) {
+                        Icon(Icons.Default.MoreVert, contentDescription = stringResource(Res.string.social_more), modifier = Modifier.skeleton(CircleShape))
+                    }
                     AppDropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }, actions = actions)
                 }
             }
         }
     }
 }
+
+/** An icon button's touch area. */
+private val MenuTouchSize = 48.dp
 
 /** One of my people lists' ⋮: unfollow (friends and people I follow). */
 @Composable
