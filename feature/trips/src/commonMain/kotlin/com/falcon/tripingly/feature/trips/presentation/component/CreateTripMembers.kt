@@ -12,10 +12,12 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.tooling.preview.PreviewParameter
 import androidx.compose.ui.tooling.preview.PreviewParameterProvider
 import com.falcon.tripingly.core.designsystem.component.AvatarChoice
+import com.falcon.tripingly.core.designsystem.component.FormField
 import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
 import com.falcon.tripingly.core.designsystem.theme.spacing
 import com.falcon.tripingly.core.model.trip.UserSummary
 import com.falcon.tripingly.feature.trips.generated.resources.Res
+import com.falcon.tripingly.feature.trips.generated.resources.create_trip_friends_label
 import com.falcon.tripingly.feature.trips.generated.resources.trip_friends_only_hint
 import com.falcon.tripingly.feature.trips.presentation.screen.CreateTripForm
 import com.falcon.tripingly.feature.trips.presentation.screen.HomeViewModel.Action
@@ -23,7 +25,7 @@ import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
 import org.jetbrains.compose.resources.stringResource
 
-/** Friends to add (the only people an owner can add): one row of avatars, tapping checks or unchecks; a hint without friends. */
+/** Friends to add (the only people an owner can add) under their label: one row of avatars, tapping checks or unchecks; without friends only a hint, no label. */
 @Composable
 internal fun CreateTripMembers(
     form: CreateTripForm,
@@ -34,17 +36,18 @@ internal fun CreateTripMembers(
     when {
         form.friends == null -> Unit
         form.friends.isEmpty() -> FriendsOnlyHint(modifier)
-        else -> FriendPickerRow(
-            friends = form.friends,
-            isPicked = form::isMember,
-            onToggle = { onAction(Action.CreateTrip.FriendToggled(it)) },
-            enabled = !isSaving,
-            modifier = modifier,
-        )
+        else -> FormField(stringResource(Res.string.create_trip_friends_label), modifier) {
+            FriendPickerRow(
+                friends = form.friends,
+                isPicked = form::isMember,
+                onToggle = { onAction(Action.CreateTrip.FriendToggled(it)) },
+                enabled = !isSaving,
+            )
+        }
     }
 }
 
-/** Who can be added, and how everyone else joins; shown where there are no friends to pick. */
+/** A nudge to find friends, shown where there are no friends to pick. */
 @Composable
 internal fun FriendsOnlyHint(modifier: Modifier = Modifier) {
     Text(

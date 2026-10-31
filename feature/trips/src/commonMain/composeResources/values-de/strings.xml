@@ -53,7 +53,7 @@
     <string name="create_trip_dates_add">Daten hinzufügen</string>
     <string name="create_trip_visibility_public">Öffentlich</string>
     <string name="create_trip_visibility_private">Privat</string>
-    <string name="trip_friends_only_hint">Hinzufügen kannst du nur Freunde: Leute, denen du folgst und die dir zurückfolgen. Alle anderen können über einen Einladungslink beitreten.</string>
+    <string name="trip_friends_only_hint">Mit Freunden macht Reisen mehr Spaß! Such Leute, die du kennst, in deinem Profil-Tab und folge ihnen. Sobald sie dir zurückfolgen, kannst du sie zu deinen Reisen hinzufügen.</string>
     <string name="create_trip_error_members">Manche Freunde können nicht mehr hinzugefügt werden und wurden abgewählt. Versuch es noch einmal.</string>
 
     <!-- Rename trip dialog -->
