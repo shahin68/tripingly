@@ -8,8 +8,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.icons.outlined.Block
-import androidx.compose.material.icons.outlined.Flag
 import androidx.compose.material.icons.outlined.PersonRemove
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -17,17 +15,11 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import com.falcon.tripingly.core.designsystem.component.AppDialog
 import com.falcon.tripingly.core.designsystem.component.AppDropdownMenu
 import com.falcon.tripingly.core.designsystem.component.DropdownAction
 import com.falcon.tripingly.core.designsystem.component.skeleton
 import com.falcon.tripingly.feature.social.generated.resources.Res
-import com.falcon.tripingly.feature.social.generated.resources.social_block
-import com.falcon.tripingly.feature.social.generated.resources.social_block_confirm
-import com.falcon.tripingly.feature.social.generated.resources.social_block_message
-import com.falcon.tripingly.feature.social.generated.resources.social_block_title
 import com.falcon.tripingly.feature.social.generated.resources.social_more
-import com.falcon.tripingly.feature.social.generated.resources.social_report_user
 import com.falcon.tripingly.feature.social.generated.resources.social_unfollow
 import org.jetbrains.compose.resources.stringResource
 import androidx.compose.foundation.layout.Arrangement
@@ -92,26 +84,10 @@ internal fun PersonRow(user: UserSummary, onClick: () -> Unit, modifier: Modifie
     }
 }
 
-/** One of my people lists' ⋮: unfollow (when I follow them), report, block. */
+/** One of my people lists' ⋮: unfollow (friends and people I follow). */
 @Composable
-internal fun personActions(onUnfollow: (() -> Unit)?, onReport: () -> Unit, onBlock: () -> Unit): List<DropdownAction> = listOfNotNull(
-    onUnfollow?.let { DropdownAction(stringResource(Res.string.social_unfollow), icon = Icons.Outlined.PersonRemove, onClick = it) },
-    DropdownAction(stringResource(Res.string.social_report_user), isDestructive = true, icon = Icons.Outlined.Flag, onClick = onReport),
-    DropdownAction(stringResource(Res.string.social_block), isDestructive = true, icon = Icons.Outlined.Block, onClick = onBlock),
-)
-
-/** Asks before blocking @[username], saying what blocking does. */
-@Composable
-internal fun BlockDialog(username: String, onConfirm: () -> Unit, onDismiss: () -> Unit) {
-    AppDialog(
-        title = stringResource(Res.string.social_block_title, username),
-        message = stringResource(Res.string.social_block_message),
-        confirmLabel = stringResource(Res.string.social_block_confirm),
-        isDestructive = true,
-        onConfirm = onConfirm,
-        onDismiss = onDismiss,
-    )
-}
+internal fun unfollowAction(onUnfollow: () -> Unit) =
+    DropdownAction(stringResource(Res.string.social_unfollow), icon = Icons.Outlined.PersonRemove, onClick = onUnfollow)
 
 @Composable
 private fun PersonRowPreviewContent() {
@@ -119,14 +95,8 @@ private fun PersonRowPreviewContent() {
         Modifier.background(MaterialTheme.colorScheme.background).padding(MaterialTheme.spacing.medium),
         verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
     ) {
-        previewPeople.forEach { user -> PersonRow(user = user, onClick = {}, actions = personActions(onUnfollow = {}, onReport = {}, onBlock = {})) }
+        previewPeople.forEach { user -> PersonRow(user = user, onClick = {}, actions = listOf(unfollowAction {})) }
     }
-}
-
-@Preview
-@Composable
-private fun BlockDialogPreview() {
-    TripinglyTheme { BlockDialog("anna", onConfirm = {}, onDismiss = {}) }
 }
 
 @Preview

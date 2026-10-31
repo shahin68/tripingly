@@ -4,20 +4,14 @@ import androidx.compose.runtime.Immutable
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.falcon.tripingly.core.common.result.AppResult
-import com.falcon.tripingly.core.data.social.SocialRepository
 import com.falcon.tripingly.core.data.users.UserRepository
 import com.falcon.tripingly.core.model.social.PeopleList
-import com.falcon.tripingly.core.model.social.ReportReason
-import com.falcon.tripingly.core.model.social.ReportTarget
 import com.falcon.tripingly.core.model.trip.UserSummary
 import com.falcon.tripingly.core.ui.UiText
 import com.falcon.tripingly.core.ui.toUiText
 import com.falcon.tripingly.feature.social.generated.resources.Res
-import com.falcon.tripingly.feature.social.generated.resources.social_error_block
 import com.falcon.tripingly.feature.social.generated.resources.social_error_load_people
 import com.falcon.tripingly.feature.social.generated.resources.social_error_unfollow
-import com.falcon.tripingly.feature.social.presentation.component.ReportState
-import com.falcon.tripingly.feature.social.presentation.component.sendReport
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.toImmutableList
@@ -28,14 +22,10 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
-/**
- * My friends, the people I follow, or my followers, a page at a time: one segment of the Profile tab. Each card's ⋮
- * unfollows (friends and following), reports or blocks the person.
- */
+/** My friends, the people I follow, or my followers, a page at a time: one segment of the Profile tab. Friends and people I follow can be unfollowed from the list. */
 class PeopleViewModel(
     val list: PeopleList,
     private val userRepository: UserRepository,
-    private val socialRepository: SocialRepository,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(State())
@@ -60,12 +50,6 @@ class PeopleViewModel(
             Action.OnRetry -> load(first = true)
             Action.OnDismissMessage -> _uiState.update { it.copy(message = null) }
             is Action.Unfollow -> unfollow(action.user)
-            is Action.Block -> _uiState.update { it.copy(blocking = action.user) }
-            Action.ConfirmBlock -> block()
-            Action.DismissBlock -> _uiState.update { it.copy(blocking = null) }
-            is Action.Report -> _uiState.update { it.copy(report = ReportState(ReportTarget.User, action.user.id)) }
-            is Action.SendReport -> sendReport(action.reason)
-            Action.DismissReport -> _uiState.update { it.copy(report = null) }
         }
     }
 
@@ -78,25 +62,6 @@ class PeopleViewModel(
                 _uiState.update { it.copy(message = result.error.toUiText(Res.string.social_error_unfollow)) }
                 load(first = true)
             }
-        }
-    }
-
-    /** The person leaves the list once the server took it ([UserRepository.blocks]). */
-    private fun block() {
-        val user = _uiState.value.blocking ?: return
-        _uiState.update { it.copy(blocking = null) }
-        viewModelScope.launch {
-            val result = userRepository.setBlocked(user.id, blocked = true)
-            if (result is AppResult.Error) _uiState.update { it.copy(message = result.error.toUiText(Res.string.social_error_block)) }
-        }
-    }
-
-    private fun sendReport(reason: ReportReason) {
-        val report = _uiState.value.report?.takeUnless { it.isSending } ?: return
-        _uiState.update { it.copy(report = report.copy(isSending = true)) }
-        viewModelScope.launch {
-            val sent = socialRepository.sendReport(report, reason) { message -> _uiState.update { it.copy(message = message) } }
-            _uiState.update { it.copy(report = if (sent) null else it.report?.copy(isSending = false)) }
         }
     }
 
@@ -130,9 +95,6 @@ class PeopleViewModel(
         /** Why the list couldn't load when nobody is shown: the error screen with a retry. */
         val loadError: UiText? = null,
         val message: UiText? = null,
-        /** Asked to confirm blocking this person. */
-        val blocking: UserSummary? = null,
-        val report: ReportState? = null,
     )
 
     sealed interface Action {
@@ -140,11 +102,5 @@ class PeopleViewModel(
         data object OnRetry : Action
         data object OnDismissMessage : Action
         data class Unfollow(val user: UserSummary) : Action
-        data class Block(val user: UserSummary) : Action
-        data object ConfirmBlock : Action
-        data object DismissBlock : Action
-        data class Report(val user: UserSummary) : Action
-        data class SendReport(val reason: ReportReason) : Action
-        data object DismissReport : Action
     }
 }

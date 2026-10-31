@@ -147,7 +147,7 @@ class ProfileViewModelTest {
 
     @Test
     fun peopleList_loadsTheList() = runTest {
-        val viewModel = PeopleViewModel(PeopleList.Followers, FakeUserRepository(), FakeSocialRepository())
+        val viewModel = PeopleViewModel(PeopleList.Followers, FakeUserRepository())
         advanceUntilIdle()
 
         assertEquals(listOf("anna", "jonas.k", "lena", "julia_t"), viewModel.uiState.value.people.map { it.username })
@@ -184,7 +184,7 @@ class ProfileViewModelTest {
     @Test
     fun peopleList_dropsSomeoneBlocked_atOnce() = runTest {
         val repository = FakeUserRepository()
-        val viewModel = PeopleViewModel(PeopleList.Followers, repository, FakeSocialRepository())
+        val viewModel = PeopleViewModel(PeopleList.Followers, repository)
         advanceUntilIdle()
         val anna = viewModel.uiState.value.people.first()
 
@@ -206,7 +206,7 @@ class ProfileViewModelTest {
                 return AppResult.Success(Page(listOf(UserSummary("u$call", "before$call", "Before")), nextCursor = null))
             }
         }
-        val viewModel = PeopleViewModel(PeopleList.Following, repository, FakeSocialRepository())
+        val viewModel = PeopleViewModel(PeopleList.Following, repository)
         advanceUntilIdle()
 
         liveFollows.emit(FollowChange(ME, "u9", following = true))
@@ -218,7 +218,7 @@ class ProfileViewModelTest {
 
     @Test
     fun peopleList_unfollow_leavesAtOnce_andARefusalPutsThemBack() = runTest {
-        val viewModel = PeopleViewModel(PeopleList.Following, users, FakeSocialRepository())
+        val viewModel = PeopleViewModel(PeopleList.Following, users)
         advanceUntilIdle()
         val anna = viewModel.uiState.value.people.first()
 
@@ -229,34 +229,6 @@ class ProfileViewModelTest {
 
         assertTrue(anna in viewModel.uiState.value.people)
         assertTrue(viewModel.uiState.value.message != null)
-    }
-
-    @Test
-    fun peopleList_block_asksFirst_thenTheyLeave() = runTest {
-        val viewModel = PeopleViewModel(PeopleList.Followers, FakeUserRepository(), FakeSocialRepository())
-        advanceUntilIdle()
-        val anna = viewModel.uiState.value.people.first()
-
-        viewModel.onAction(PeopleViewModel.Action.Block(anna))
-        assertEquals(anna, viewModel.uiState.value.blocking)
-        viewModel.onAction(PeopleViewModel.Action.ConfirmBlock)
-        advanceUntilIdle()
-
-        assertEquals(null, viewModel.uiState.value.blocking)
-        assertFalse(anna in viewModel.uiState.value.people)
-    }
-
-    @Test
-    fun peopleList_reportingSomeone_closesTheDialogOnceSent() = runTest {
-        val viewModel = PeopleViewModel(PeopleList.Friends, FakeUserRepository(), FakeSocialRepository())
-        advanceUntilIdle()
-
-        viewModel.onAction(PeopleViewModel.Action.Report(viewModel.uiState.value.people.first()))
-        viewModel.onAction(PeopleViewModel.Action.SendReport(ReportReason.Spam))
-        advanceUntilIdle()
-
-        assertEquals(null, viewModel.uiState.value.report)
-        assertTrue(viewModel.uiState.value.message is UiText.Note)
     }
 
     private companion object {

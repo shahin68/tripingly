@@ -21,7 +21,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.falcon.tripingly.core.designsystem.component.ReportDialog
 import com.falcon.tripingly.core.designsystem.component.DropdownAction
 import com.falcon.tripingly.core.designsystem.component.AppTextField
 import com.falcon.tripingly.core.designsystem.component.AppTextFieldStyle
@@ -53,9 +52,8 @@ import com.falcon.tripingly.feature.social.generated.resources.social_search_peo
 import com.falcon.tripingly.feature.social.generated.resources.social_trips
 import com.falcon.tripingly.feature.social.presentation.component.EmptyText
 import com.falcon.tripingly.feature.social.presentation.component.LoadMoreAtEnd
-import com.falcon.tripingly.feature.social.presentation.component.BlockDialog
 import com.falcon.tripingly.feature.social.presentation.component.PersonRow
-import com.falcon.tripingly.feature.social.presentation.component.personActions
+import com.falcon.tripingly.feature.social.presentation.component.unfollowAction
 import com.falcon.tripingly.feature.social.presentation.component.PublicTripCard
 import com.falcon.tripingly.feature.social.presentation.component.placeholderPeople
 import com.falcon.tripingly.feature.social.presentation.component.placeholderProfile
@@ -114,22 +112,6 @@ internal fun MyProfileTab(
         onOpenProfile = onOpenProfile,
         barsPadding = barsPadding,
     )
-    val onPeopleAction = people?.second ?: return
-    people.first.report?.let { report ->
-        ReportDialog(
-            details = report.details,
-            onReport = { reason -> onPeopleAction(PeopleViewModel.Action.SendReport(reason)) },
-            onDismiss = { onPeopleAction(PeopleViewModel.Action.DismissReport) },
-            isSending = report.isSending,
-        )
-    }
-    people.first.blocking?.let { user ->
-        BlockDialog(
-            username = user.username,
-            onConfirm = { onPeopleAction(PeopleViewModel.Action.ConfirmBlock) },
-            onDismiss = { onPeopleAction(PeopleViewModel.Action.DismissBlock) },
-        )
-    }
 }
 
 @Composable
@@ -188,14 +170,8 @@ internal fun MyProfileScreen(
                     empty = list.empty,
                     onRetry = { onPeopleAction(PeopleViewModel.Action.OnRetry) },
                     onOpenProfile = onOpenProfile,
-                    actions = { user ->
-                        personActions(
-                            // Followers may be people I don't follow: unfollowing is for my friends and those I follow.
-                            onUnfollow = { onPeopleAction(PeopleViewModel.Action.Unfollow(user)) }.takeIf { list != PeopleList.Followers },
-                            onReport = { onPeopleAction(PeopleViewModel.Action.Report(user)) },
-                            onBlock = { onPeopleAction(PeopleViewModel.Action.Block(user)) },
-                        )
-                    },
+                    // Followers may be people I don't follow; reporting and blocking stay on their profile.
+                    actions = { user -> if (list == PeopleList.Followers) emptyList() else listOf(unfollowAction { onPeopleAction(PeopleViewModel.Action.Unfollow(user)) }) },
                 )
             }
         }
