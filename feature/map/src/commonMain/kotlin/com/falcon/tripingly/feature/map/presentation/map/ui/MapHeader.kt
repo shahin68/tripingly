@@ -303,7 +303,7 @@ private fun MapHeaderTitleOpenPreviewContent() {
     val header = MapHeaderPreviewStates().values.first().header.copy(tripName = "Autumn in Vienna, Budapest and Bratislava with the whole family")
     Box(Modifier.background(MaterialTheme.colorScheme.surfaceContainerHigh).height(200.dp)) {
         MapHeader(header = header, search = null, showDayActions = false, onAction = {}, isTitleHidden = true)
-        TripTitleCard(header, from = Rect(72f, 8f, 260f, 64f), to = Rect(16f, 72f, 344f, 72f), progress = { 1f })
+        TripTitleCard(header, from = Rect(72f, 8f, 260f, 64f), to = Rect(16f, 72f, 344f, 72f), opening = true, progress = { 1f })
     }
 }
 

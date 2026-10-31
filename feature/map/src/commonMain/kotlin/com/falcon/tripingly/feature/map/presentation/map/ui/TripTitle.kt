@@ -67,11 +67,12 @@ internal fun TripTitle(header: HeaderState, onClick: () -> Unit, modifier: Modif
  * The whole trip name and its details, for names too long for the title pill. It morphs out of the pill ([from]) into
  * a card below the header's buttons ([to]: its left, top and right; the height is the name's) as [progress] goes to 1,
  * and back ([progress] runs linearly; the card eases it): one motion in which it first drops below the buttons and,
- * nearly there, starts to widen, both settling with a small bounce. Solid, and it takes the touches on it, so the map
+ * nearly there, starts to widen, both settling with a small bounce. Closing ([opening] false) runs it backwards with
+ * the bounce at its end, as the card lands on the pill. Solid, and it takes the touches on it, so the map
  * underneath gets none. Fills the screen to place itself.
  */
 @Composable
-internal fun TripTitleCard(header: HeaderState, from: Rect, to: Rect, progress: () -> Float, modifier: Modifier = Modifier) {
+internal fun TripTitleCard(header: HeaderState, from: Rect, to: Rect, opening: Boolean, progress: () -> Float, modifier: Modifier = Modifier) {
     Layout(
         modifier = modifier.fillMaxSize(),
         content = {
@@ -100,8 +101,17 @@ internal fun TripTitleCard(header: HeaderState, from: Rect, to: Rect, progress: 
         // One motion, so nothing runs back to back: the card drops below the buttons in the first part, and widens
         // from when it is nearly there (so it never grows over the buttons); both overshoot a little and settle.
         val p = progress()
-        val down = EaseOutBack.transform((p / DropShare).coerceIn(0f, 1f))
-        val across = WidenEasing.transform(((p - WidenStart) / (1f - WidenStart)).coerceIn(0f, 1f))
+        val down: Float
+        val across: Float
+        if (opening) {
+            down = EaseOutBack.transform((p / DropShare).coerceIn(0f, 1f))
+            across = WidenEasing.transform(((p - WidenStart) / (1f - WidenStart)).coerceIn(0f, 1f))
+        } else {
+            // The same steps backwards (narrow, then rise), each easing out so the bounce comes where it lands.
+            val closed = 1f - p
+            across = 1f - WidenEasing.transform((closed / (1f - WidenStart)).coerceIn(0f, 1f))
+            down = 1f - EaseOutBack.transform(((closed - (1f - DropShare)) / DropShare).coerceIn(0f, 1f))
+        }
         val fullHeight = card.minIntrinsicHeight(to.width.roundToInt()).toFloat().coerceAtLeast(from.height)
         val placeable = card.measure(
             Constraints.fixed(lerp(from.width, to.width, across).roundToInt(), lerp(from.height, fullHeight, down).roundToInt()),

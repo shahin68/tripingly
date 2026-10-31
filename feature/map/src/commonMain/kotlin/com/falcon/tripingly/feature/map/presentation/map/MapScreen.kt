@@ -228,6 +228,7 @@ internal fun MapScreen(
                 header = state.header,
                 from = titleBounds.translate(-rootOrigin),
                 to = titleTarget.translate(-rootOrigin),
+                opening = isTitleOpen,
                 progress = { titleProgress },
             )
         }
@@ -345,4 +346,4 @@ private fun MapScreenLoadErrorPreview() {
 }
 
 /** How long the trip name card takes to morph out of the title pill or back. */
-private const val TITLE_MOTION_MILLIS = 400
+private const val TITLE_MOTION_MILLIS = 320
