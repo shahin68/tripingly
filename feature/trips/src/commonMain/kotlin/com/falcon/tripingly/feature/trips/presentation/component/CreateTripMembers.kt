@@ -17,15 +17,17 @@ import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
 import com.falcon.tripingly.core.designsystem.theme.spacing
 import com.falcon.tripingly.core.model.trip.UserSummary
 import com.falcon.tripingly.feature.trips.generated.resources.Res
+import com.falcon.tripingly.feature.trips.generated.resources.create_trip_find_friends_hint
 import com.falcon.tripingly.feature.trips.generated.resources.create_trip_friends_label
 import com.falcon.tripingly.feature.trips.generated.resources.trip_friends_only_hint
 import com.falcon.tripingly.feature.trips.presentation.screen.CreateTripForm
 import com.falcon.tripingly.feature.trips.presentation.screen.HomeViewModel.Action
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
+import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
 
-/** Friends to add (the only people an owner can add) under their label: one row of avatars, tapping checks or unchecks; without friends only a hint, no label. */
+/** Friends to add (the only people an owner can add) under their label: one row of avatars, tapping checks or unchecks; without friends only a nudge to find some, no label. */
 @Composable
 internal fun CreateTripMembers(
     form: CreateTripForm,
@@ -35,7 +37,7 @@ internal fun CreateTripMembers(
 ) {
     when {
         form.friends == null -> Unit
-        form.friends.isEmpty() -> FriendsOnlyHint(modifier)
+        form.friends.isEmpty() -> FriendsOnlyHint(modifier, text = Res.string.create_trip_find_friends_hint)
         else -> FormField(stringResource(Res.string.create_trip_friends_label), modifier) {
             FriendPickerRow(
                 friends = form.friends,
@@ -47,11 +49,11 @@ internal fun CreateTripMembers(
     }
 }
 
-/** A nudge to find friends, shown where there are no friends to pick. */
+/** Shown where there are no friends to pick: by default who can be added and how everyone else joins. */
 @Composable
-internal fun FriendsOnlyHint(modifier: Modifier = Modifier) {
+internal fun FriendsOnlyHint(modifier: Modifier = Modifier, text: StringResource = Res.string.trip_friends_only_hint) {
     Text(
-        text = stringResource(Res.string.trip_friends_only_hint),
+        text = stringResource(text),
         style = MaterialTheme.typography.bodySmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
         modifier = modifier,
