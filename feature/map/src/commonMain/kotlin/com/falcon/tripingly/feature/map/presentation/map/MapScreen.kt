@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import com.falcon.tripingly.feature.map.presentation.map.ui.TripTitleCard
 import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.runtime.LaunchedEffect
@@ -194,7 +195,7 @@ internal fun MapScreen(
 
         val isSearching = state.search != null
         LaunchedEffect(isSearching) { if (isSearching) isTitleOpen = false }
-        val titleProgress by animateFloatAsState(if (isTitleOpen) 1f else 0f, tween(TITLE_MOTION_MILLIS))
+        val titleProgress by animateFloatAsState(if (isTitleOpen) 1f else 0f, tween(TITLE_MOTION_MILLIS, easing = LinearEasing))
         val titleGap = with(density) { MaterialTheme.spacing.small.toPx() }
         Column(
             modifier = Modifier
@@ -344,4 +345,4 @@ private fun MapScreenLoadErrorPreview() {
 }
 
 /** How long the trip name card takes to morph out of the title pill or back. */
-private const val TITLE_MOTION_MILLIS = 300
+private const val TITLE_MOTION_MILLIS = 350

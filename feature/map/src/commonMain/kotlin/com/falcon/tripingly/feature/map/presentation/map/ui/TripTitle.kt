@@ -17,6 +17,11 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentWidth
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.EaseOutCubic
 import kotlin.math.roundToInt
 import androidx.compose.ui.util.lerp
 import androidx.compose.ui.unit.Constraints
@@ -62,7 +67,8 @@ internal fun TripTitle(header: HeaderState, onClick: () -> Unit, modifier: Modif
 /**
  * The whole trip name and its details, for names too long for the title pill. It morphs out of the pill ([from]) into
  * a card below the header's buttons ([to]: its left, top and right; the height is the name's) as [progress] goes to 1,
- * and back. Solid, and it takes the touches on it, so the map underneath gets none. Fills the screen to place itself.
+ * and back ([progress] runs linearly; the card eases it). Solid, and it takes the touches on it, so the map
+ * underneath gets none. Fills the screen to place itself.
  */
 @Composable
 internal fun TripTitleCard(header: HeaderState, from: Rect, to: Rect, progress: () -> Float, modifier: Modifier = Modifier) {
@@ -73,11 +79,16 @@ internal fun TripTitleCard(header: HeaderState, from: Rect, to: Rect, progress: 
                 // Holds the touches on the card; the screen closes it on any touch.
                 modifier = Modifier.pointerInput(Unit) { awaitEachGesture { awaitFirstDown() } },
                 shape = MaterialTheme.shapes.extraLarge,
-                color = MaterialTheme.colorScheme.surface,
-                shadowElevation = 4.dp,
+                color = MaterialTheme.colorScheme.surfaceContainerLowest,
             ) {
+                // Laid out once at the card's final width and only uncovered as the card grows, so the text never
+                // reflows while it moves.
+                val finalWidth = with(LocalDensity.current) { to.width.toDp() }
                 Column(
-                    modifier = Modifier.padding(horizontal = MaterialTheme.spacing.medium + MaterialTheme.spacing.extraSmall, vertical = MaterialTheme.spacing.small),
+                    modifier = Modifier
+                        .wrapContentWidth(Alignment.Start, unbounded = true)
+                        .width(finalWidth)
+                        .padding(horizontal = MaterialTheme.spacing.medium + MaterialTheme.spacing.extraSmall, vertical = MaterialTheme.spacing.small),
                     verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraSmall),
                 ) {
                     Text(header.tripName, style = MaterialTheme.typography.titleMedium)
@@ -86,13 +97,16 @@ internal fun TripTitleCard(header: HeaderState, from: Rect, to: Rect, progress: 
             }
         },
     ) { (card), constraints ->
+        // Width and place settle first and ease out, the height follows: the pill morphs rather than scales.
         val p = progress()
+        val across = EaseOutCubic.transform(p)
+        val down = FastOutSlowInEasing.transform(p)
         val fullHeight = card.minIntrinsicHeight(to.width.roundToInt()).toFloat().coerceAtLeast(from.height)
         val placeable = card.measure(
-            Constraints.fixed(lerp(from.width, to.width, p).roundToInt(), lerp(from.height, fullHeight, p).roundToInt()),
+            Constraints.fixed(lerp(from.width, to.width, across).roundToInt(), lerp(from.height, fullHeight, down).roundToInt()),
         )
         layout(constraints.maxWidth, constraints.maxHeight) {
-            placeable.place(lerp(from.left, to.left, p).roundToInt(), lerp(from.top, to.top, p).roundToInt())
+            placeable.place(lerp(from.left, to.left, across).roundToInt(), lerp(from.top, to.top, down).roundToInt())
         }
     }
 }
