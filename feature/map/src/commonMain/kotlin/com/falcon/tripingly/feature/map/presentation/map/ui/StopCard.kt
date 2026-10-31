@@ -175,7 +175,8 @@ private fun StopActions(
                 hot = marker.hotByMe,
                 count = marker.hotCount,
                 onToggle = onToggleHot,
-                modifier = Modifier.heightIn(min = ActionHeight).background(MaterialTheme.colorScheme.surfaceVariant, CircleShape).padding(horizontal = MaterialTheme.spacing.small),
+                // Clipped, so the tap ripple stays inside the pill.
+                modifier = Modifier.heightIn(min = ActionHeight).clip(CircleShape).background(MaterialTheme.colorScheme.surfaceVariant).padding(horizontal = MaterialTheme.spacing.small),
             )
         }
         CountPill(Icons.AutoMirrored.Outlined.Comment, marker.commentCount, stringResource(Res.string.map_stop_comment), onOpenComments)

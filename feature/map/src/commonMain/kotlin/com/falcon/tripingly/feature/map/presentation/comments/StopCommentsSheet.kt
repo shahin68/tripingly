@@ -58,6 +58,7 @@ import com.falcon.tripingly.core.designsystem.component.AvatarCircle
 import com.falcon.tripingly.core.designsystem.component.AvatarSize
 import com.falcon.tripingly.core.designsystem.component.DropdownAction
 import com.falcon.tripingly.core.designsystem.component.LikeButton
+import com.falcon.tripingly.core.designsystem.component.LikeButtonHeight
 import com.falcon.tripingly.core.designsystem.component.MessageBannerHost
 import com.falcon.tripingly.core.designsystem.component.ReportDialog
 import com.falcon.tripingly.core.designsystem.component.SheetHeader
@@ -256,10 +257,12 @@ private fun CommentRow(
             }
             Text(text = comment.body, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.skeletonText())
         }
+        // Centred on the ⋮ beside it.
         LikeButton(
             liked = comment.likedByMe,
             count = comment.likeCount,
             onToggle = { onAction(Action.OnToggleLike(comment)) },
+            modifier = Modifier.padding(top = (MenuTouchSize - LikeButtonHeight) / 2),
         )
         Box {
             IconButton(onClick = { menuExpanded = true }) {
@@ -347,3 +350,6 @@ private fun CommentRowPreview() {
         }
     }
 }
+
+/** An icon button's touch area, the ⋮ beside a comment's like. */
+private val MenuTouchSize = 48.dp

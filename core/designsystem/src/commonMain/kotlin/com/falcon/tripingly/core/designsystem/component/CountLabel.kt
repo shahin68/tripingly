@@ -34,14 +34,16 @@ fun CountLabel(
     count: Int,
     modifier: Modifier = Modifier,
     color: Color = LocalContentColor.current,
+    size: CountLabelSize = CountLabelSize.Small,
 ) {
     Row(
         modifier = modifier,
         horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraSmall),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Icon(icon, contentDescription = null, tint = color, modifier = Modifier.size(CountIconSize))
-        Text(text = compactCount(count), color = color, style = MaterialTheme.typography.labelMedium)
+        val isLarge = size == CountLabelSize.Large
+        Icon(icon, contentDescription = null, tint = color, modifier = Modifier.size(if (isLarge) LargeCountIconSize else CountIconSize))
+        Text(text = compactCount(count), color = color, style = if (isLarge) MaterialTheme.typography.labelLarge else MaterialTheme.typography.labelMedium)
     }
 }
 
@@ -60,7 +62,11 @@ fun compactCount(count: Int): String {
     }
 }
 
+/** Small for counts among other details; Large as big as a [LikeButton] or [HotButton], where it stands for one (e.g. my own trip's likes). */
+enum class CountLabelSize { Small, Large }
+
 private val CountIconSize = 16.dp
+private val LargeCountIconSize = 20.dp
 
 @Composable
 private fun CountLabelPreviewContent() {
@@ -73,6 +79,7 @@ private fun CountLabelPreviewContent() {
         CountLabel(Icons.Outlined.FavoriteBorder, 87, color = muted)
         CountLabel(Icons.Outlined.ChatBubbleOutline, 12_480, color = muted)
         CountLabel(Icons.Outlined.PhotoCamera, 1_250_000, color = muted)
+        CountLabel(Icons.Outlined.FavoriteBorder, 3, color = muted, size = CountLabelSize.Large)
     }
 }
 

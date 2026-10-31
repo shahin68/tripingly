@@ -45,6 +45,7 @@ import com.falcon.tripingly.core.common.util.DateUtils
 import com.falcon.tripingly.core.designsystem.component.AppDropdownMenu
 import com.falcon.tripingly.core.designsystem.component.AvatarCircle
 import com.falcon.tripingly.core.designsystem.component.CountLabel
+import com.falcon.tripingly.core.designsystem.component.CountLabelSize
 import com.falcon.tripingly.core.designsystem.component.GlassSurface
 import com.falcon.tripingly.core.designsystem.component.LikeButton
 import com.falcon.tripingly.core.designsystem.component.LikeButtonHeight
@@ -111,16 +112,17 @@ internal fun ExploreTripCard(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             OwnerChip(trip.trip.owner, onOpenOwner, Modifier.weight(1f, fill = false).padding(end = MaterialTheme.spacing.small))
-            GlassSurface(shape = CircleShape, shadowElevation = 0.dp, blur = false) {
-                if (isMine) {
-                    // My own trip: its likes are something to read, not to give.
-                    CountLabel(
-                        icon = Icons.Outlined.FavoriteBorder,
-                        count = trip.likeCount,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.height(LikeButtonHeight).padding(horizontal = MaterialTheme.spacing.small),
-                    )
-                } else {
+            if (isMine) {
+                // My own trip: its likes are something to read, not to give, so no button pill; as big as the heart I can tap.
+                CountLabel(
+                    icon = Icons.Outlined.FavoriteBorder,
+                    count = trip.likeCount,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    size = CountLabelSize.Large,
+                    modifier = Modifier.height(LikeButtonHeight).padding(horizontal = MaterialTheme.spacing.small),
+                )
+            } else {
+                GlassSurface(shape = CircleShape, shadowElevation = 0.dp, blur = false) {
                     LikeButton(liked = trip.likedByMe, count = trip.likeCount, onToggle = onLike, modifier = Modifier.padding(horizontal = MaterialTheme.spacing.small))
                 }
             }
