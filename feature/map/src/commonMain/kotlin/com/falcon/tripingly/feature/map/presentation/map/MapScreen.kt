@@ -1,6 +1,8 @@
 package com.falcon.tripingly.feature.map.presentation.map
 
 import androidx.compose.foundation.background
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.foundation.gestures.AnchoredDraggableState
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
@@ -104,14 +106,20 @@ internal fun MapScreen(
     var stopCardBounds by remember { mutableStateOf(Rect.Zero) }
     val isPlaceCardOpen by rememberUpdatedState(state.placeCard != null)
     val isStopCardOpen by rememberUpdatedState(state.stopCard != null)
+    // The trip's whole name, open under the header's buttons; any touch closes it, a touch on the title too.
+    var isTitleOpen by rememberSaveable { mutableStateOf(false) }
+    var wasTitleOpen by remember { mutableStateOf(false) }
 
     BoxWithConstraints(
         modifier = Modifier
             .fillMaxSize()
-            // Any touch outside the open card closes it, and still reaches the map and the controls.
+            // Any touch outside the open card closes it, and still reaches the map and the controls; any touch closes
+            // the open trip name.
             .pointerInput(Unit) {
                 awaitEachGesture {
                     val down = awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
+                    wasTitleOpen = isTitleOpen
+                    isTitleOpen = false
                     val isOnCard = (isPlaceCardOpen && placeCardBounds.contains(down.position)) ||
                         (isStopCardOpen && stopCardBounds.contains(down.position))
                     if (!isOnCard) onAction(MapAction.MapView.ScreenTouch)
@@ -175,6 +183,8 @@ internal fun MapScreen(
             )
         }
 
+        val isSearching = state.search != null
+        LaunchedEffect(isSearching) { if (isSearching) isTitleOpen = false }
         Column(
             modifier = Modifier
                 .align(Alignment.TopEnd)
@@ -187,6 +197,9 @@ internal fun MapScreen(
                 showDayActions = plan == null,
                 onAction = onAction,
                 modifier = Modifier.onSizeChanged { headerHeight = with(density) { it.height.toDp() } },
+                isTitleOpen = isTitleOpen,
+                // The touch that taps the open title already closed it.
+                onTitleClick = { if (!wasTitleOpen) isTitleOpen = true },
             )
             state.search?.results?.takeIf { it.isNotEmpty() }?.let { results ->
                 SearchResults(results = results, onAction = onAction, modifier = Modifier.padding(horizontal = MaterialTheme.spacing.medium))
