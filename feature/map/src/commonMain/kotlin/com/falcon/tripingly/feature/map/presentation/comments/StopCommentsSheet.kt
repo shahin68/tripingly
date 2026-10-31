@@ -58,7 +58,6 @@ import com.falcon.tripingly.core.designsystem.component.AvatarCircle
 import com.falcon.tripingly.core.designsystem.component.AvatarSize
 import com.falcon.tripingly.core.designsystem.component.DropdownAction
 import com.falcon.tripingly.core.designsystem.component.LikeButton
-import com.falcon.tripingly.core.designsystem.component.LikeButtonHeight
 import com.falcon.tripingly.core.designsystem.component.MessageBannerHost
 import com.falcon.tripingly.core.designsystem.component.ReportDialog
 import com.falcon.tripingly.core.designsystem.component.SheetHeader
@@ -257,29 +256,30 @@ private fun CommentRow(
             }
             Text(text = comment.body, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.skeletonText())
         }
-        // Centred on the ⋮ beside it.
-        LikeButton(
-            liked = comment.likedByMe,
-            count = comment.likeCount,
-            onToggle = { onAction(Action.OnToggleLike(comment)) },
-            modifier = Modifier.padding(top = (MenuTouchSize - LikeButtonHeight) / 2),
-        )
-        Box {
-            IconButton(onClick = { menuExpanded = true }) {
-                Icon(Icons.Default.MoreVert, contentDescription = stringResource(Res.string.map_comment_menu), modifier = Modifier.skeleton(CircleShape))
-            }
-            AppDropdownMenu(
-                expanded = menuExpanded,
-                onDismissRequest = { menuExpanded = false },
-                // Mine, or on my trip: deleted rather than reported.
-                actions = listOf(
-                    if (comment.canDelete) {
-                        DropdownAction(stringResource(Res.string.map_comment_delete), isDestructive = true) { onAction(Action.OnDelete(comment)) }
-                    } else {
-                        DropdownAction(stringResource(Res.string.map_comment_report)) { onAction(Action.OnReport(comment)) }
-                    },
-                ),
+        // The heart and ⋮ together, centred on each other by the row.
+        Row(horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small), verticalAlignment = Alignment.CenterVertically) {
+            LikeButton(
+                liked = comment.likedByMe,
+                count = comment.likeCount,
+                onToggle = { onAction(Action.OnToggleLike(comment)) },
             )
+            Box {
+                IconButton(onClick = { menuExpanded = true }) {
+                    Icon(Icons.Default.MoreVert, contentDescription = stringResource(Res.string.map_comment_menu), modifier = Modifier.skeleton(CircleShape))
+                }
+                AppDropdownMenu(
+                    expanded = menuExpanded,
+                    onDismissRequest = { menuExpanded = false },
+                    // Mine, or on my trip: deleted rather than reported.
+                    actions = listOf(
+                        if (comment.canDelete) {
+                            DropdownAction(stringResource(Res.string.map_comment_delete), isDestructive = true) { onAction(Action.OnDelete(comment)) }
+                        } else {
+                            DropdownAction(stringResource(Res.string.map_comment_report)) { onAction(Action.OnReport(comment)) }
+                        },
+                    ),
+                )
+            }
         }
     }
 }
@@ -352,4 +352,3 @@ private fun CommentRowPreview() {
 }
 
 /** An icon button's touch area, the ⋮ beside a comment's like. */
-private val MenuTouchSize = 48.dp
