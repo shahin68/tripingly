@@ -1,6 +1,11 @@
 package com.falcon.tripingly.feature.map.presentation.map
 
 import androidx.compose.foundation.background
+import com.falcon.tripingly.feature.map.presentation.map.ui.TripTitleCard
+import androidx.compose.ui.layout.positionInRoot
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.foundation.gestures.AnchoredDraggableState
@@ -109,10 +114,14 @@ internal fun MapScreen(
     // The trip's whole name, open under the header's buttons; any touch closes it, a touch on the title too.
     var isTitleOpen by rememberSaveable { mutableStateOf(false) }
     var wasTitleOpen by remember { mutableStateOf(false) }
+    var titleBounds by remember { mutableStateOf(Rect.Zero) }
+    var titleTarget by remember { mutableStateOf(Rect.Zero) }
+    var rootOrigin by remember { mutableStateOf(Offset.Zero) }
 
     BoxWithConstraints(
         modifier = Modifier
             .fillMaxSize()
+            .onGloballyPositioned { rootOrigin = it.positionInRoot() }
             // Any touch outside the open card closes it, and still reaches the map and the controls; any touch closes
             // the open trip name.
             .pointerInput(Unit) {
@@ -185,6 +194,8 @@ internal fun MapScreen(
 
         val isSearching = state.search != null
         LaunchedEffect(isSearching) { if (isSearching) isTitleOpen = false }
+        val titleProgress by animateFloatAsState(if (isTitleOpen) 1f else 0f, tween(TITLE_MOTION_MILLIS))
+        val titleGap = with(density) { MaterialTheme.spacing.small.toPx() }
         Column(
             modifier = Modifier
                 .align(Alignment.TopEnd)
@@ -197,13 +208,27 @@ internal fun MapScreen(
                 showDayActions = plan == null,
                 onAction = onAction,
                 modifier = Modifier.onSizeChanged { headerHeight = with(density) { it.height.toDp() } },
-                isTitleOpen = isTitleOpen,
+                isTitleHidden = titleProgress > 0f,
                 // The touch that taps the open title already closed it.
                 onTitleClick = { if (!wasTitleOpen) isTitleOpen = true },
+                onTitlePlaced = { title, row ->
+                    titleBounds = title
+                    titleTarget = Rect(row.left, row.bottom + titleGap, row.right, row.bottom + titleGap)
+                },
             )
             state.search?.results?.takeIf { it.isNotEmpty() }?.let { results ->
                 SearchResults(results = results, onAction = onAction, modifier = Modifier.padding(horizontal = MaterialTheme.spacing.medium))
             }
+        }
+
+        // The whole trip name: morphs out of the title pill into a card just below the header, over everything else.
+        if (titleProgress > 0f) {
+            TripTitleCard(
+                header = state.header,
+                from = titleBounds.translate(-rootOrigin),
+                to = titleTarget.translate(-rootOrigin),
+                progress = { titleProgress },
+            )
         }
 
         // Retry sends every stop change that failed for a connection problem, earlier ones too.
@@ -317,3 +342,6 @@ private fun MapScreenLoadErrorPreview() {
         MapScreen(state = MapUiState(loadError = UiText.Server("No internet connection.")), cameraCommands = emptyFlow(), onAction = {})
     }
 }
+
+/** How long the trip name card takes to morph out of the title pill or back. */
+private const val TITLE_MOTION_MILLIS = 300

@@ -17,6 +17,16 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import kotlin.math.roundToInt
+import androidx.compose.ui.util.lerp
+import androidx.compose.ui.unit.Constraints
+import androidx.compose.ui.layout.Layout
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.material3.Surface
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -50,23 +60,39 @@ internal fun TripTitle(header: HeaderState, onClick: () -> Unit, modifier: Modif
 }
 
 /**
- * The whole trip name and its details, for names too long for the title pill: a card across the header that the
- * header's buttons sit on, the name below them in full.
+ * The whole trip name and its details, for names too long for the title pill. It morphs out of the pill ([from]) into
+ * a card below the header's buttons ([to]: its left, top and right; the height is the name's) as [progress] goes to 1,
+ * and back. Solid, and it takes the touches on it, so the map underneath gets none. Fills the screen to place itself.
  */
 @Composable
-internal fun TripTitleCard(header: HeaderState, modifier: Modifier = Modifier) {
-    GlassSurface(modifier = modifier, shape = MaterialTheme.shapes.extraLarge, blur = false) {
-        Column(
-            modifier = Modifier.padding(
-                start = MaterialTheme.spacing.medium + MaterialTheme.spacing.extraSmall,
-                end = MaterialTheme.spacing.medium + MaterialTheme.spacing.extraSmall,
-                top = GlassButtonDefaults.HeaderSize + MaterialTheme.spacing.small,
-                bottom = MaterialTheme.spacing.medium,
-            ),
-            verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraSmall),
-        ) {
-            Text(header.tripName, style = MaterialTheme.typography.titleMedium)
-            Text(subtitle(header), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+internal fun TripTitleCard(header: HeaderState, from: Rect, to: Rect, progress: () -> Float, modifier: Modifier = Modifier) {
+    Layout(
+        modifier = modifier.fillMaxSize(),
+        content = {
+            Surface(
+                // Holds the touches on the card; the screen closes it on any touch.
+                modifier = Modifier.pointerInput(Unit) { awaitEachGesture { awaitFirstDown() } },
+                shape = MaterialTheme.shapes.extraLarge,
+                color = MaterialTheme.colorScheme.surface,
+                shadowElevation = 4.dp,
+            ) {
+                Column(
+                    modifier = Modifier.padding(horizontal = MaterialTheme.spacing.medium + MaterialTheme.spacing.extraSmall, vertical = MaterialTheme.spacing.small),
+                    verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraSmall),
+                ) {
+                    Text(header.tripName, style = MaterialTheme.typography.titleMedium)
+                    Text(subtitle(header), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
+        },
+    ) { (card), constraints ->
+        val p = progress()
+        val fullHeight = card.minIntrinsicHeight(to.width.roundToInt()).toFloat().coerceAtLeast(from.height)
+        val placeable = card.measure(
+            Constraints.fixed(lerp(from.width, to.width, p).roundToInt(), lerp(from.height, fullHeight, p).roundToInt()),
+        )
+        layout(constraints.maxWidth, constraints.maxHeight) {
+            placeable.place(lerp(from.left, to.left, p).roundToInt(), lerp(from.top, to.top, p).roundToInt())
         }
     }
 }

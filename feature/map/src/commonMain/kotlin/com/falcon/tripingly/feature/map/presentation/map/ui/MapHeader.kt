@@ -41,6 +41,9 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.boundsInRoot
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
@@ -93,8 +96,8 @@ import org.jetbrains.compose.resources.stringResource
  * The map's header, one row of glass pills of the same height: a round back button, the trip's name over its
  * dates and stops, and search joined to the trip's ⋮ menu. Tapping search grows that pill to the left over the whole
  * row, pushing the back button and the title away while ⋮ stays put, as on the design canvas; closing it shrinks
- * back. Tapping the title opens the whole name ([isTitleOpen]): a card grows from the title pill to the header's width
- * and the name's height, under the buttons; it closes on any other touch. Over the native map, so no blur.
+ * back. Tapping the title opens the whole name ([TripTitleCard], drawn by the screen from [onTitlePlaced]'s bounds;
+ * the pill hides meanwhile, [isTitleHidden]). Over the native map, so no blur.
  * [showDayActions]: the day has no plan sheet, so its day actions are in ⋮.
  */
 @Composable
@@ -104,17 +107,22 @@ internal fun MapHeader(
     showDayActions: Boolean,
     onAction: (MapAction) -> Unit,
     modifier: Modifier = Modifier,
-    isTitleOpen: Boolean = false,
+    isTitleHidden: Boolean = false,
     onTitleClick: () -> Unit = {},
+    onTitlePlaced: (title: Rect, row: Rect) -> Unit = { _, _ -> },
 ) {
     val progress by animateFloatAsState(if (search != null) 1f else 0f, tween(SEARCH_MOTION_MILLIS))
-    val titleProgress by animateFloatAsState(if (isTitleOpen && search == null) 1f else 0f, tween(SEARCH_MOTION_MILLIS))
+    var rowBounds by remember { mutableStateOf(Rect.Zero) }
     val actions = tripMenuActions(header, showDayActions, onAction)
     val gap = MaterialTheme.spacing.small
     // The search pill's width with just its buttons, kept while the field is open.
     val collapsedWidth = remember { intArrayOf(0) }
     Layout(
-        modifier = modifier.fillMaxWidth().padding(horizontal = MaterialTheme.spacing.medium, vertical = MaterialTheme.spacing.small).height(GlassButtonDefaults.HeaderSize),
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = MaterialTheme.spacing.medium, vertical = MaterialTheme.spacing.small)
+            .height(GlassButtonDefaults.HeaderSize)
+            .onGloballyPositioned { rowBounds = it.boundsInRoot() },
         content = {
             Row(
                 modifier = Modifier.graphicsLayer { alpha = 1f - progress }.clipToBounds(),
@@ -124,7 +132,14 @@ internal fun MapHeader(
                 GlassIconButton(onClick = { onAction(MapAction.Header.Back) }, blur = false, size = GlassButtonDefaults.HeaderSize) {
                     Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(Res.string.map_back))
                 }
-                TripTitle(header, onClick = onTitleClick, modifier = Modifier.weight(1f).graphicsLayer { alpha = 1f - titleProgress })
+                TripTitle(
+                    header,
+                    onClick = onTitleClick,
+                    modifier = Modifier
+                        .weight(1f)
+                        .graphicsLayer { alpha = if (isTitleHidden) 0f else 1f }
+                        .onGloballyPositioned { onTitlePlaced(it.boundsInRoot(), rowBounds) },
+                )
             }
             GlassButtonRow(blur = false, height = GlassButtonDefaults.HeaderSize) {
                 if (search != null) {
@@ -139,11 +154,8 @@ internal fun MapHeader(
                     TripMenuButton(actions)
                 }
             }
-            if (titleProgress > 0f) TripTitleCard(header, Modifier.graphicsLayer { alpha = titleProgress })
         },
-    ) { measurables, constraints ->
-        val (title, pill) = measurables
-        val card = measurables.getOrNull(2)
+    ) { (title, pill), constraints ->
         val width = constraints.maxWidth
         val height = GlassButtonDefaults.HeaderSize.roundToPx()
         if (search == null) collapsedWidth[0] = pill.maxIntrinsicWidth(height)
@@ -151,18 +163,7 @@ internal fun MapHeader(
         val titleWidth = (width - pillWidth - gap.roundToPx()).coerceAtLeast(0)
         val titlePlaceable = title.measure(Constraints.fixed(titleWidth, height))
         val pillPlaceable = pill.measure(Constraints.fixed(pillWidth, height))
-        // The title card grows from the title pill (after the back button) to the header's width and the full name's
-        // height, under the buttons and over the map below the header, which keeps its own size.
-        val titleStart = height + gap.roundToPx()
-        val cardPlaceable = if (card != null) {
-            val fullHeight = card.minIntrinsicHeight(width).coerceAtLeast(height)
-            card.measure(Constraints.fixed(lerp(titleWidth - titleStart, width, titleProgress).coerceAtLeast(0), lerp(height, fullHeight, titleProgress)))
-        } else {
-            null
-        }
         layout(width, height) {
-            // Placed first, so it draws under the buttons.
-            cardPlaceable?.place(lerp(titleStart, 0, titleProgress), 0)
             titlePlaceable.place(0, 0)
             pillPlaceable.place(width - pillWidth, 0)
         }
@@ -296,12 +297,13 @@ private fun MapHeaderDarkPreview() {
     }
 }
 
-/** A long trip name, opened: the card under the buttons with the whole name. */
+/** A long trip name, opened: the card below the buttons with the whole name. */
 @Composable
 private fun MapHeaderTitleOpenPreviewContent() {
     val header = MapHeaderPreviewStates().values.first().header.copy(tripName = "Autumn in Vienna, Budapest and Bratislava with the whole family")
     Box(Modifier.background(MaterialTheme.colorScheme.surfaceContainerHigh).height(200.dp)) {
-        MapHeader(header = header, search = null, showDayActions = false, onAction = {}, isTitleOpen = true)
+        MapHeader(header = header, search = null, showDayActions = false, onAction = {}, isTitleHidden = true)
+        TripTitleCard(header, from = Rect(72f, 8f, 260f, 64f), to = Rect(16f, 72f, 344f, 72f), progress = { 1f })
     }
 }
 
