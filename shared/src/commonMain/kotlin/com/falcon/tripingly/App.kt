@@ -90,12 +90,19 @@ private fun MainNavigation() {
         deepLinks.next.filterNotNull().collect {
             val link = deepLinks.take() ?: return@collect
             link.notificationId?.let { launch { push.opened(it) } }
-            val tripId = when (link) {
-                is DeepLink.Trip -> link.tripId
-                is DeepLink.Marker -> (markers.tripIdOfMarker(link.markerId) as? AppResult.Success)?.data
+            val route = when (link) {
+                is DeepLink.Trip -> TripMap(link.tripId)
+                is DeepLink.Marker ->
+                    (markers.tripIdOfMarker(link.markerId) as? AppResult.Success)?.data?.let { TripMap(it, stopId = link.markerId) }
+                is DeepLink.Members -> TripMap(link.tripId, showMembers = true)
+                is DeepLink.User -> Profile(link.username)
                 is DeepLink.Home -> null
             }
-            if (tripId != null && backStack.lastOrNull() != TripMap(tripId)) backStack.add(TripMap(tripId))
+            if (route != null && backStack.lastOrNull() != route) {
+                // The same trip already open opens again on what this push is about.
+                if (route is TripMap && (backStack.lastOrNull() as? TripMap)?.tripId == route.tripId) backStack.removeAt(backStack.lastIndex)
+                backStack.add(route)
+            }
         }
     }
 
@@ -121,6 +128,8 @@ private fun MainNavigation() {
                     is TripMap -> {
                         MapRoute(
                             tripId = key.tripId,
+                            stopId = key.stopId,
+                            showMembers = key.showMembers,
                             onNavigateBack = { goBack() },
                             onOpenProfile = { backStack.add(Profile(it)) },
                             onOpenPaywall = { backStack.add(Paywall) },

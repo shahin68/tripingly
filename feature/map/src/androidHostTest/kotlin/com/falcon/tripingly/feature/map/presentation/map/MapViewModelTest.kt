@@ -13,6 +13,7 @@ import com.falcon.tripingly.core.data.config.FakeAppConfigRepository
 import com.falcon.tripingly.core.data.photos.FakePhotoRepository
 import com.falcon.tripingly.core.data.places.FakePlaceRepository
 import com.falcon.tripingly.core.data.places.PlaceRepository
+import com.falcon.tripingly.core.data.push.FakeNewActivityRepository
 import com.falcon.tripingly.core.data.routing.FakeRouteRepository
 import com.falcon.tripingly.core.data.routing.RouteErrorCodes
 import com.falcon.tripingly.core.data.routing.RouteRepository
@@ -116,6 +117,7 @@ class MapViewModelTest {
     /** Signed in as the trips backend's `me`. */
     private lateinit var session: FakeAccountBackend
     private lateinit var mapViews: FakeTripMapViewRepository
+    private lateinit var newActivity: FakeNewActivityRepository
 
     /** The fake's sights (Eiffel Tower, Louvre …), counting the squares asked for. */
     private class CountingPlaceRepository(
@@ -204,6 +206,7 @@ class MapViewModelTest {
         social = RecordingSocialRepository()
         routes = RecordingRouteRepository()
         mapViews = FakeTripMapViewRepository()
+        newActivity = FakeNewActivityRepository()
         // With Tripinly Pro, for the routes.
         session = signedIn(setOf(ROUTES_ENTITLEMENT))
         trip = (backend.createTrip(NewTrip("Test Trip", LocalDate(2024, 1, 1), LocalDate(2024, 1, 3))) as AppResult.Success).data
@@ -222,8 +225,10 @@ class MapViewModelTest {
             it.accept((it.legalDocuments("en") as AppResult.Success).data)
         }
 
-    private fun TestScope.viewModel(tripId: String = trip.trip.id) = MapViewModel(
+    private fun TestScope.viewModel(tripId: String = trip.trip.id, stopId: String? = null, showMembers: Boolean = false) = MapViewModel(
         tripId = tripId,
+        stopId = stopId,
+        showMembers = showMembers,
         tripRepository = backend,
         markerRepository = backend,
         placeRepository = places,
@@ -234,6 +239,7 @@ class MapViewModelTest {
         mapViews = mapViews,
         sessionRepository = session,
         getCurrentLocationUseCase = GetCurrentLocationUseCase(fakeLocationRepository),
+        newActivityRepository = newActivity,
     ).also { viewModel -> backgroundScope.launch { viewModel.uiState.collect {} } }
 
     /** The place of the pin named [name] on the map. */
@@ -594,6 +600,64 @@ class MapViewModelTest {
         assertTrue(state.camera.isReady)
         assertEquals(true, state.stopsCard?.isRouteOn)
         assertEquals(TravelMode.Cycling, state.stopsCard?.route?.mode)
+    }
+
+    @Test
+    fun `a push opens the trip on its stop's day, the camera on the stop and its new mark showing`() = runTest(testDispatcher) {
+        backend.addMarker(trip.trip.id, trip.days[0].id, NewMarker("Stop #1", GeoPoint(48.85, 2.35)))
+        val pushed = backend.addMarker(trip.trip.id, trip.days[1].id, NewMarker("Colosseum", GeoPoint(41.89, 12.49)))
+        val viewModel = viewModel(stopId = pushed.id)
+        viewModel.cameraCommands.test {
+            testScheduler.advanceUntilIdle()
+            assertEquals(CameraCommand.MoveTo(Coordinates(41.89, 12.49), 16f), expectMostRecentItem())
+        }
+        val state = viewModel.uiState.value
+        assertEquals(1, state.dayTabs.activeIndex)
+        // The card stays closed, so the mark shows until the stop is opened.
+        assertNull(state.stopCard)
+        assertTrue(state.layers.stops.single().isNew)
+        assertEquals(listOf(false, true, false), state.dayTabs.days.map { it.hasNew })
+    }
+
+    @Test
+    fun `a push about a stop that is gone opens the trip as usual`() = runTest(testDispatcher) {
+        backend.addMarker(trip.trip.id, trip.days[0].id, NewMarker("Stop #1", GeoPoint(48.85, 2.35)))
+        val viewModel = viewModel(stopId = "gone")
+        testScheduler.advanceUntilIdle()
+        val state = viewModel.uiState.value
+        assertEquals(0, state.dayTabs.activeIndex)
+        assertEquals(CameraCommand.fit(listOf(Coordinates(48.85, 2.35))).bounds, state.camera.openingBounds)
+    }
+
+    @Test
+    fun `a push about a request to join opens the trip with its members`() = runTest(testDispatcher) {
+        val viewModel = viewModel(showMembers = true)
+        testScheduler.advanceUntilIdle()
+        assertEquals(MapSheet.Members, viewModel.uiState.value.sheet)
+    }
+
+    @Test
+    fun `stops with new activity carry a mark until they are opened, and new ones come live`() = runTest(testDispatcher) {
+        val first = backend.addMarker(trip.trip.id, trip.days[0].id, NewMarker("Stop #1", GeoPoint(48.85, 2.35)))
+        val second = backend.addMarker(trip.trip.id, trip.days[0].id, NewMarker("Stop #2", GeoPoint(48.86, 2.29)))
+        newActivity.marked[trip.trip.id] = setOf(first.id)
+        val viewModel = viewModel()
+        testScheduler.advanceUntilIdle()
+        assertEquals(listOf(true, false), viewModel.uiState.value.layers.stops.map { it.isNew })
+
+        // Opening the stop clears its mark, on the server too.
+        viewModel.onAction(MapAction.MapView.MarkerClick(viewModel.uiState.value.layers.stops[0]))
+        testScheduler.advanceUntilIdle()
+        assertEquals(listOf(false, false), viewModel.uiState.value.layers.stops.map { it.isNew })
+        assertEquals(listOf(first.id), newActivity.seen)
+
+        // A comment on the open stop is seen at once; one on another stop marks it.
+        newActivity.arrive(trip.trip.id, first.id)
+        newActivity.arrive(trip.trip.id, second.id)
+        testScheduler.advanceUntilIdle()
+        assertEquals(listOf(false, true), viewModel.uiState.value.layers.stops.map { it.isNew })
+        assertEquals(listOf(first.id, first.id), newActivity.seen)
+        assertTrue(viewModel.uiState.value.dayTabs.days[0].hasNew)
     }
 
     @Test

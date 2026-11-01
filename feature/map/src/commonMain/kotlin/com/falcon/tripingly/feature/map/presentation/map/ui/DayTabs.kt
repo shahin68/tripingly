@@ -16,6 +16,7 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.shape.ZeroCornerSize
 import androidx.compose.material.icons.Icons
@@ -99,7 +100,7 @@ internal fun DayTabs(
     }
 }
 
-/** "Day 2" over its date; filled with the brand's green while open. */
+/** "Day 2" over its date; filled with the brand's green while open. A dot at the top end: a stop has a "new" mark. */
 @Composable
 private fun DayPill(day: DayTab, selected: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier) {
     val container by animateColorAsState(if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.primary.copy(alpha = 0f))
@@ -117,8 +118,19 @@ private fun DayPill(day: DayTab, selected: Boolean, onClick: () -> Unit, modifie
             Text(stringResource(Res.string.map_day_label_no_date, day.number), style = MaterialTheme.typography.labelLarge, color = content)
             day.date?.let { Text(it, style = MaterialTheme.typography.labelSmall, color = content) }
         }
+        if (day.hasNew) {
+            Box(
+                Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(top = MaterialTheme.spacing.small, end = MaterialTheme.spacing.small)
+                    .size(NewDotSize)
+                    .background(if (selected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.primary, CircleShape),
+            )
+        }
     }
 }
+
+private val NewDotSize = 6.dp
 
 private val DayPillHeight = 48.dp
 

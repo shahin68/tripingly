@@ -102,9 +102,12 @@ data class DayTabsState(
     val activeIndex: Int = 0,
 )
 
-/** A day tab: "Day 2" ([number] counts from 1) over its [date] ("Jun 2"), null when the trip has no dates. */
+/**
+ * A day tab: "Day 2" ([number] counts from 1) over its [date] ("Jun 2"), null when the trip has no dates. [hasNew]: one
+ * of its stops has a "new" mark.
+ */
 @Immutable
-data class DayTab(val id: String, val number: Int, val date: String?)
+data class DayTab(val id: String, val number: Int, val date: String?, val hasNew: Boolean = false)
 
 /** What the plan sheet shows. */
 @Immutable

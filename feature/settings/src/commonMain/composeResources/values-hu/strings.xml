@@ -13,6 +13,7 @@
     <string name="settings_notification_changes">Mások módosításai az utaimon</string>
     <string name="settings_notification_likes">Kedvelések</string>
     <string name="settings_notification_join">Csatlakozási kérések az utaimhoz</string>
+    <string name="settings_notification_followers">Új követők</string>
     <string name="settings_notifications_hint">Kikapcsolva is megjelennek az alkalmazásban, csak push nélkül.</string>
     <string name="settings_data">Az adataim</string>
     <string name="settings_export_intro">Kérj másolatot mindenről, amit a Tripinlyhez hozzáadtál, ZIP-fájlként. Az elkészítése néhány percig tarthat.</string>

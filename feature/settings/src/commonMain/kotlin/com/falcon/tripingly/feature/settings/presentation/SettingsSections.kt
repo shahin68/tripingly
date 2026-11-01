@@ -63,6 +63,7 @@ import com.falcon.tripingly.feature.settings.generated.resources.settings_export
 import com.falcon.tripingly.feature.settings.generated.resources.settings_notification_added
 import com.falcon.tripingly.feature.settings.generated.resources.settings_notification_changes
 import com.falcon.tripingly.feature.settings.generated.resources.settings_notification_comments
+import com.falcon.tripingly.feature.settings.generated.resources.settings_notification_followers
 import com.falcon.tripingly.feature.settings.generated.resources.settings_notification_join
 import com.falcon.tripingly.feature.settings.generated.resources.settings_notification_likes
 import com.falcon.tripingly.feature.settings.generated.resources.settings_notifications_hint
@@ -242,6 +243,7 @@ private fun NotificationType.label(): StringResource = when (this) {
     NotificationType.TRIP_CHANGES -> Res.string.settings_notification_changes
     NotificationType.LIKES -> Res.string.settings_notification_likes
     NotificationType.JOIN_REQUESTS -> Res.string.settings_notification_join
+    NotificationType.NEW_FOLLOWERS -> Res.string.settings_notification_followers
 }
 
 private val RowHeight = 56.dp

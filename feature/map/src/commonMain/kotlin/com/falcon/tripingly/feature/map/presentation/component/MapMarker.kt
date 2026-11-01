@@ -25,4 +25,6 @@ data class MapMarker(
     val placeId: String? = null,
     /** I added it, or the trip is mine. */
     val canDelete: Boolean = false,
+    /** Something happened here I haven't seen (a comment, a like, a change): the pin carries a dot. */
+    val isNew: Boolean = false,
 )

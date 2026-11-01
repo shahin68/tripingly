@@ -13,6 +13,7 @@
     <string name="settings_notification_changes">Änderungen anderer an meinen Reisen</string>
     <string name="settings_notification_likes">Likes</string>
     <string name="settings_notification_join">Beitrittsanfragen zu meinen Reisen</string>
+    <string name="settings_notification_followers">Neue Follower</string>
     <string name="settings_notifications_hint">Ausgeschaltet erscheinen sie weiterhin in der App, nur ohne Push.</string>
     <string name="settings_data">Meine Daten</string>
     <string name="settings_export_intro">Erhalte eine Kopie von allem, was du in Tripinly hinzugefügt hast, als ZIP-Datei. Die Vorbereitung kann einige Minuten dauern.</string>

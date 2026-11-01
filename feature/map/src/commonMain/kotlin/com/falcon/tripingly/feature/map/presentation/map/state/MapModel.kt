@@ -45,6 +45,8 @@ internal data class MapModel(
     val message: UiText? = null,
     /** Stop changes undone because the connection failed; Retry sends them again. */
     val failedChanges: List<MarkerChangeFailure> = emptyList(),
+    /** Stops with notifications I haven't seen: their pins and days carry a "new" mark ([MapNewActivity]). */
+    val newStopIds: Set<String> = emptySet(),
 )
 
 /** Where the camera rests, as the map last reported it, or where it was last sent. */

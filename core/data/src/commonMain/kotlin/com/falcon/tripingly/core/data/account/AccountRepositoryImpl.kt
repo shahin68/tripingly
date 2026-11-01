@@ -133,6 +133,7 @@ internal class AccountRepositoryImpl(
                 NotificationType.TRIP_CHANGES -> UpdateNotificationSettingsDto(tripChangedByCollaborator = enabled)
                 NotificationType.LIKES -> UpdateNotificationSettingsDto(likesGrouped = enabled)
                 NotificationType.JOIN_REQUESTS -> UpdateNotificationSettingsDto(joinRequested = enabled)
+                NotificationType.NEW_FOLLOWERS -> UpdateNotificationSettingsDto(newFollowers = enabled)
             },
         ).map { it.toNotificationSettings() }
 

@@ -91,6 +91,9 @@ sealed interface RealtimeEvent {
 
     /** `follows.changed`, to both people: [followerId] started ([following]) or stopped following [followeeId]. */
     data class FollowsChanged(val followerId: String, val followeeId: String, val following: Boolean) : RealtimeEvent
+
+    /** `notification.created` about a stop: it gets a "new" mark on my map of [tripId]. */
+    data class NewActivity(val tripId: String, val markerId: String) : RealtimeEvent
 }
 
 /** What every event carries on the wire. */
@@ -130,6 +133,9 @@ private data class PlaceHotData(val placeId: String, val hotCount: Int)
 
 @Serializable
 private data class TripIdData(val tripId: String)
+
+@Serializable
+private data class NotificationData(val markerId: String? = null)
 
 @Serializable
 private data class FollowData(val followerId: String, val followeeId: String, val following: Boolean)
@@ -189,6 +195,9 @@ internal fun parseRealtimeEvent(name: String, payload: JsonElement): RealtimeEve
             inTrip { RealtimeEvent.TripChanged(it, actorId) }
         "trip.deleted" -> inTrip { RealtimeEvent.TripDeleted(it, actorId) }
         "trips.changed" -> RealtimeEvent.MyTripsChanged(NetworkJson.decodeFromJsonElement<TripIdData>(data).tripId)
+        "notification.created" -> NetworkJson.decodeFromJsonElement<NotificationData>(data).markerId?.let { markerId ->
+            inTrip { RealtimeEvent.NewActivity(it, markerId) }
+        }
         "follows.changed" -> NetworkJson.decodeFromJsonElement<FollowData>(data).let {
             RealtimeEvent.FollowsChanged(it.followerId, it.followeeId, it.following)
         }

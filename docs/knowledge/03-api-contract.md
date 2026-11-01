@@ -165,8 +165,9 @@ Response shapes and behaviour: see `05-maps-places-routing.md`.
 | Method | Path | Notes |
 |---|---|---|
 | GET | `/notifications` | Paginated, newest first |
-| POST | `/notifications/read` | Body: IDs or `all` |
-| GET/PATCH | `/me/notification-settings` | Per-type push on/off: `commentOnMarker`, `addedToTrip`, `tripChangedByCollaborator`, `likesGrouped`, `joinRequested`; PATCH sends only the one that changed |
+| POST | `/notifications/read` | Body: IDs, `markerId` (everything about one stop: clears its "new" mark) or `all` |
+| GET | `/trips/{id}/new-activity` | `{ markerIds }`: the trip's stops with unread notifications for me, drawn as "new" marks |
+| GET/PATCH | `/me/notification-settings` | Per-type push on/off: `commentOnMarker`, `addedToTrip`, `tripChangedByCollaborator`, `likesGrouped` (likes, saves and hot-spot milestones), `joinRequested`, `newFollowers` (follows and new friends); PATCH sends only the one that changed |
 
 ### Moderation
 | Method | Path | Notes |

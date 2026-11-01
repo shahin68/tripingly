@@ -90,6 +90,7 @@ internal fun NotificationSettingsDto.toNotificationSettings() = NotificationSett
         if (tripChangedByCollaborator) add(NotificationType.TRIP_CHANGES)
         if (likesGrouped) add(NotificationType.LIKES)
         if (joinRequested) add(NotificationType.JOIN_REQUESTS)
+        if (newFollowers) add(NotificationType.NEW_FOLLOWERS)
     },
 )
 

@@ -123,6 +123,17 @@ class RealtimeEventTest {
     }
 
     @Test
+    fun notificationsAboutAStop_markIt() {
+        assertEquals(
+            RealtimeEvent.NewActivity("t1", "m1"),
+            parse("notification.created", envelope("notification.created", """{"id":"n1","type":"comment_on_marker","markerId":"m1"}""")),
+        )
+        // About a whole trip or a person: no mark.
+        assertNull(parse("notification.created", envelope("notification.created", """{"id":"n2","type":"added_to_trip","markerId":null}""")))
+        assertNull(parse("notification.created", envelope("notification.created", """{"id":"n3","type":"followed"}""", tripId = null)))
+    }
+
+    @Test
     fun unknownOrBrokenEvents_areSkipped() {
         assertNull(parse("comment.created", envelope("comment.created", "{}")))
         assertNull(parse("marker.deleted", envelope("marker.deleted", "{}")))

@@ -356,6 +356,7 @@ actual fun GoogleMapView(
                     marker.orderNumber,
                     // Empty until the cover's thumbnail has loaded.
                     marker.coverPhotoId.takeIf { cover != null }.orEmpty(),
+                    marker.isNew,
                     state = markerState,
                     title = marker.title.asString(),
                     // The pin is a circle centered on the stop.
@@ -371,6 +372,7 @@ actual fun GoogleMapView(
                     TripMarkerIcon(
                         orderNumber = marker.orderNumber,
                         cover = cover,
+                        isNew = marker.isNew,
                     )
                 }
             }

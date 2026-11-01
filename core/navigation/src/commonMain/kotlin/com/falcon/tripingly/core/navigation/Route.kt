@@ -13,8 +13,12 @@ sealed interface Route : NavKey
 @Serializable
 data object Home : Route
 
+/**
+ * One trip on the map. A push opens it on [stopId] (its day, centred on it), or with its Members sheet open
+ * ([showMembers], for join requests).
+ */
 @Serializable
-data class TripMap(val tripId: String) : Route
+data class TripMap(val tripId: String, val stopId: String? = null, val showMembers: Boolean = false) : Route
 
 /** Someone else's profile (my own is the Profile tab). */
 @Serializable

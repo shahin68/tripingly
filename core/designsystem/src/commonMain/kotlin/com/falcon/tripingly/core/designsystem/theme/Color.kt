@@ -62,6 +62,8 @@ object MapColors {
     /** A stop's pin: near-black ivy, with a white ring and number. */
     val Stop = Color(0xFF1C2620)
     val OnStop = Color.White
+    /** The dot on a stop with something I haven't seen: light ivy in a white ring, bright on the dark pin. */
+    val NewActivity = Color(0xFF86C79A)
     /** The straight line joining a day's stops while no route shows: the brand's green. */
     val Plan = Color(0xFF2E5E3E)
     /** Routes: one soft, pastel color per way of travelling. */

@@ -11,6 +11,8 @@ class DeepLinkTest {
         assertEquals(DeepLink.Trip("t1", "n1"), DeepLink.parse("tripinly://trips/t1", "n1"))
         assertEquals(DeepLink.Marker("m1"), DeepLink.parse("tripinly://markers/m1/"))
         assertEquals(DeepLink.Home("n2"), DeepLink.parse("tripinly://notifications", "n2"))
+        assertEquals(DeepLink.Members("t1", "n3"), DeepLink.parse("tripinly://trips/t1/members", "n3"))
+        assertEquals(DeepLink.User("anna"), DeepLink.parse("tripinly://users/anna"))
     }
 
     @Test
@@ -19,6 +21,8 @@ class DeepLinkTest {
         assertEquals(DeepLink.Home(), DeepLink.parse("tripinly://trips/"))
         assertEquals(DeepLink.Home(), DeepLink.parse("tripinly://trips/t1/extra"))
         assertEquals(DeepLink.Home(), DeepLink.parse("tripinly://places/p1"))
+        assertEquals(DeepLink.Home(), DeepLink.parse("tripinly://users/"))
+        assertEquals(DeepLink.Home(), DeepLink.parse("tripinly://markers/m1/members"))
     }
 
     @Test

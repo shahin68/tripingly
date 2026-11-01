@@ -232,8 +232,8 @@ internal fun GoogleSdkMapView(
     val clusterIcons = remember(hotSpotColor, density) { mutableMapOf<Int, UIImage>() }
 
     // A stop's pin is drawn once per number and color.
-    // By number, color and cover photo (once its thumbnail has loaded).
-    val stopIcons = remember(density) { mutableMapOf<Pair<Int, String?>, UIImage>() }
+    // By number, cover photo (once its thumbnail has loaded) and "new" dot.
+    val stopIcons = remember(density) { mutableMapOf<Triple<Int, String?, Boolean>, UIImage>() }
     val coverThumbs = rememberCoverThumbs(markers)
     val stopTitles = markers.map { it.title.asString() }
     LaunchedEffect(markers, stopTitles, coverThumbs, pinPhotos, selectedPlace, placePins, placeClusters, pinIcons, clusterIcons, isDots) {
@@ -244,11 +244,11 @@ internal fun GoogleSdkMapView(
                 longitude = marker.position.longitude,
                 title = stopTitles[index],
                 icon = marker.coverPhotoId?.let { coverThumbs[it] }.let { cover ->
-                    stopIcons.getOrPut(marker.orderNumber to marker.coverPhotoId.takeIf { cover != null }) {
+                    stopIcons.getOrPut(Triple(marker.orderNumber, marker.coverPhotoId.takeIf { cover != null }, marker.isNew)) {
                         if (cover == null) {
-                            drawTripPin(marker.orderNumber, density.density, density.fontScale)
+                            drawTripPin(marker.orderNumber, marker.isNew, density.density, density.fontScale)
                         } else {
-                            drawCoverPin(marker.orderNumber, cover, density.density, density.fontScale)
+                            drawCoverPin(marker.orderNumber, cover, marker.isNew, density.density, density.fontScale)
                         }
                     }
                 },

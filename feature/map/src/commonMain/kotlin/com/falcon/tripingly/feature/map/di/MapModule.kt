@@ -9,7 +9,9 @@ import org.koin.dsl.module
 val mapModule = module {
     viewModel { params ->
         MapViewModel(
-            tripId = params.get(),
+            tripId = params[0],
+            stopId = params[1],
+            showMembers = params[2],
             tripRepository = get(),
             markerRepository = get(),
             placeRepository = get(),
@@ -20,6 +22,7 @@ val mapModule = module {
             mapViews = get(),
             sessionRepository = get(),
             getCurrentLocationUseCase = get(),
+            newActivityRepository = get(),
         )
     }
     viewModel { params -> PhotosViewModel(owner = params.get(), photoRepository = get(), sessionRepository = get()) }

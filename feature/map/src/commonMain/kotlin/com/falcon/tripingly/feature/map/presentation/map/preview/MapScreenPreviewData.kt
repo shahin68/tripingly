@@ -52,7 +52,7 @@ private val previewStops = persistentListOf(
 
 private val previewDays = DayTabsState(
     days = persistentListOf(1, 2, 3).let { numbers ->
-        persistentListOf(*numbers.map { DayTab("d$it", it, date = "${18 + it} Oct") }.toTypedArray())
+        persistentListOf(*numbers.map { DayTab("d$it", it, date = "${18 + it} Oct", hasNew = it == 2) }.toTypedArray())
     },
 )
 

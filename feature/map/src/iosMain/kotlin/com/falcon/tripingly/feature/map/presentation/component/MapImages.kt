@@ -38,23 +38,27 @@ internal fun ByteArray.toNSData(): NSData =
  */
 internal fun boldFont(points: Float): Font = Font(FontMgr.default.legacyMakeTypeface("", FontStyle.BOLD), points)
 
-/** A stop's pin: its number on near-black ivy in a white ring, centered on the stop, as `TripMarkerIcon` draws it on Android. */
-internal fun drawTripPin(orderNumber: Int, density: Float, fontScale: Float): UIImage {
+/**
+ * A stop's pin: its number on near-black ivy in a white ring, centered on the stop, with the "new" dot when [isNew],
+ * as `TripMarkerIcon` draws it on Android.
+ */
+internal fun drawTripPin(orderNumber: Int, isNew: Boolean, density: Float, fontScale: Float): UIImage {
     val pin = PIN_SIZE.value * density
     val surface = Surface.makeRasterN32Premul(pin.toInt(), pin.toInt())
     surface.canvas.apply {
         drawCircle(pin / 2, pin / 2, pin / 2, fill(WHITE))
         drawCircle(pin / 2, pin / 2, pin / 2 - PIN_RING.value * density, fill(STOP))
         drawNumber(orderNumber, pin / 2, pin / 2, boldFont(13 * density * fontScale))
+        if (isNew) drawNewDot(density)
     }
     return UIImage(data = surface.makeImageSnapshot().png(), scale = density.toDouble())
 }
 
 /**
- * A stop's pin with its cover photo: the photo in a white ring with the number in a small badge on it, as
- * `TripMarkerIcon` draws it on Android.
+ * A stop's pin with its cover photo: the photo in a white ring with the number in a small badge on it, and the "new"
+ * dot when [isNew], as `TripMarkerIcon` draws it on Android.
  */
-internal fun drawCoverPin(orderNumber: Int, cover: ImageBitmap, density: Float, fontScale: Float): UIImage {
+internal fun drawCoverPin(orderNumber: Int, cover: ImageBitmap, isNew: Boolean, density: Float, fontScale: Float): UIImage {
     val pin = COVER_PIN_SIZE.value * density
     val ring = COVER_RING.value * density
     val badge = COVER_BADGE_SIZE.value * density
@@ -73,8 +77,16 @@ internal fun drawCoverPin(orderNumber: Int, cover: ImageBitmap, density: Float, 
         drawCircle(pin - badge / 2, badge / 2, badge / 2, fill(WHITE))
         drawCircle(pin - badge / 2, badge / 2, badge / 2 - PIN_RING.value / 2 * density, fill(STOP))
         drawNumber(orderNumber, pin - badge / 2, badge / 2, boldFont(10 * density * fontScale))
+        if (isNew) drawNewDot(density)
     }
     return UIImage(data = surface.makeImageSnapshot().png(), scale = density.toDouble())
+}
+
+/** The "new" dot in the pin's top left corner: light ivy in a white ring. */
+private fun org.jetbrains.skia.Canvas.drawNewDot(density: Float) {
+    val radius = NEW_DOT_SIZE.value * density / 2
+    drawCircle(radius, radius, radius, fill(WHITE))
+    drawCircle(radius, radius, radius - PIN_RING.value * density, fill(NEW_ACTIVITY))
 }
 
 private fun fill(color: Int) = Paint().apply {
@@ -90,5 +102,6 @@ private fun org.jetbrains.skia.Canvas.drawNumber(orderNumber: Int, x: Float, y: 
 }
 
 private val STOP = MapColors.Stop.toArgb()
+private val NEW_ACTIVITY = MapColors.NewActivity.toArgb()
 
 internal const val WHITE = 0xFFFFFFFF.toInt()

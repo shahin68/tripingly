@@ -7,6 +7,7 @@ import com.falcon.tripingly.core.data.account.SessionRepository
 import com.falcon.tripingly.core.data.config.AppConfigRepository
 import com.falcon.tripingly.core.data.photos.PhotoRepository
 import com.falcon.tripingly.core.data.places.PlaceRepository
+import com.falcon.tripingly.core.data.push.NewActivityRepository
 import com.falcon.tripingly.core.data.routing.RouteRepository
 import com.falcon.tripingly.core.data.social.SocialRepository
 import com.falcon.tripingly.core.data.trips.MarkerRepository
@@ -31,6 +32,7 @@ import com.falcon.tripingly.feature.map.presentation.map.state.MapContext
 import com.falcon.tripingly.feature.map.presentation.map.state.MapEdits
 import com.falcon.tripingly.feature.map.presentation.map.state.MapLocation
 import com.falcon.tripingly.feature.map.presentation.map.state.MapModel
+import com.falcon.tripingly.feature.map.presentation.map.state.MapNewActivity
 import com.falcon.tripingly.feature.map.presentation.map.state.MapOpening
 import com.falcon.tripingly.feature.map.presentation.map.state.MapPins
 import com.falcon.tripingly.feature.map.presentation.map.state.MapRouting
@@ -52,11 +54,15 @@ import kotlinx.coroutines.launch
  * One trip on the map. Days and stops come from the cached trip, reloaded from the server on open. The work is
  * split by what it's about: the tapped stop or place ([MapSelection]), stop and day changes ([MapEdits]),
  * place pins ([MapPins]), search ([MapSearch]), routes and the best order ([MapRouting]), the user's location
- * ([MapLocation]), the camera ([MapCamera]), opening the trip as it was left ([MapOpening]), and saving, joining
- * or reporting someone else's trip ([MapSharing]). Here: the day tabs, the sheets and likes.
+ * ([MapLocation]), the camera ([MapCamera]), opening the trip as it was left ([MapOpening]), "new" marks on stops
+ * ([MapNewActivity]), and saving, joining or reporting someone else's trip ([MapSharing]). Here: the day tabs, the sheets and likes.
  */
 class MapViewModel(
     tripId: String,
+    /** The stop a push opened the trip on; see [MapOpening]. */
+    stopId: String?,
+    /** A push about a request to join opened the trip: the Members sheet shows. */
+    showMembers: Boolean,
     tripRepository: TripRepository,
     markerRepository: MarkerRepository,
     placeRepository: PlaceRepository,
@@ -68,6 +74,7 @@ class MapViewModel(
     mapViews: TripMapViewRepository,
     sessionRepository: SessionRepository,
     getCurrentLocationUseCase: GetCurrentLocationUseCase,
+    newActivityRepository: NewActivityRepository,
 ) : ViewModel() {
 
     private val session = sessionRepository.session
@@ -97,7 +104,8 @@ class MapViewModel(
     )
     private val location = MapLocation(context, camera, getCurrentLocationUseCase, ::sendEvent)
     private val sharing = MapSharing(context, tripRepository, socialRepository)
-    private val opening = MapOpening(context, camera, tripRepository, mapViews, ::hasRoutes)
+    private val opening = MapOpening(context, camera, tripRepository, mapViews, ::hasRoutes, stopId, showMembers)
+    private val newActivity = MapNewActivity(context, newActivityRepository, pushedStopId = stopId)
 
     /** The map's layers and what they were built from, kept until one of those changes. */
     private var layers: Pair<List<Any?>, MapLayersState>? = null
@@ -107,6 +115,7 @@ class MapViewModel(
 
     init {
         opening.start()
+        newActivity.start()
     }
 
     fun onAction(action: MapAction) {
@@ -256,7 +265,7 @@ class MapViewModel(
         val config = appConfigRepository.config.value
         val mapper = MapStateMapper(details, model, config, myUserId)
         // Most changes (a search keystroke, a message, a sheet) don't touch the map: its ~150 pins aren't built again.
-        val inputs = listOf(details, model.activeDayIndex, model.route, model.pins, model.selection, model.location.permission, config)
+        val inputs = listOf(details, model.activeDayIndex, model.route, model.pins, model.selection, model.location.permission, model.newStopIds, config)
         val layers = layers?.takeIf { it.first == inputs }?.second ?: mapper.layers().also { layers = inputs to it }
         return mapper.map(layers)
     }

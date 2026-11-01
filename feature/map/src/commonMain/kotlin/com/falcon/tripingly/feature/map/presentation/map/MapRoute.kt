@@ -30,9 +30,13 @@ fun MapRoute(
     onOpenPaywall: () -> Unit,
     /** The trip's members sheet (from the trips feature), where the owner answers requests to join. */
     membersContent: @Composable (tripId: String, onDismiss: () -> Unit) -> Unit,
+    /** The stop a push opened the trip on, if any. */
+    stopId: String? = null,
+    /** A push about a request to join: the Members sheet opens. */
+    showMembers: Boolean = false,
     // Keyed by trip: the view model store is shared across screens, and the class alone would
     // hand every trip the first trip's view model.
-    viewModel: MapViewModel = koinViewModel(key = "map:$tripId") { parametersOf(tripId) }
+    viewModel: MapViewModel = koinViewModel(key = "map:$tripId") { parametersOf(tripId, stopId, showMembers) }
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val onAction = viewModel::onAction

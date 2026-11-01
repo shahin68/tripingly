@@ -59,7 +59,7 @@ internal class MapStateMapper(
         loadError = model.loadError,
         header = header(),
         search = model.search?.let { SearchState(it.query, it.results.toImmutableList(), it.isSearching) },
-        dayTabs = DayTabsState(days.map { DayTab(it.id, it.position + 1, it.date?.let(DateUtils::formatAbbreviated)) }.toImmutableList(), activeIndex),
+        dayTabs = DayTabsState(days.map { day -> DayTab(day.id, day.position + 1, day.date?.let(DateUtils::formatAbbreviated), hasNew = day.markers.any { it.id in model.newStopIds }) }.toImmutableList(), activeIndex),
         plan = route.between?.let { PointRouteCardState(it.from, it.to, routeSummary()) } ?: stopsCard(),
         routeStartName = route.start?.name,
         placeCard = placeCard(),
@@ -238,6 +238,7 @@ internal class MapStateMapper(
         commentCount = commentCount,
         placeId = placeId,
         canDelete = role == TripRole.OWNER || (canEdit && myUserId != null && createdById == myUserId),
+        isNew = id in model.newStopIds,
     )
 
     private companion object {

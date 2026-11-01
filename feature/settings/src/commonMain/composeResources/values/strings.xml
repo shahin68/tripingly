@@ -13,6 +13,7 @@
     <string name="settings_notification_changes">Changes to my trips by others</string>
     <string name="settings_notification_likes">Likes</string>
     <string name="settings_notification_join">Requests to join my trips</string>
+    <string name="settings_notification_followers">New followers</string>
     <string name="settings_notifications_hint">Turned off, they still show in the app, just without a push.</string>
     <string name="settings_data">My data</string>
     <string name="settings_export_intro">Get a copy of everything you've added to Tripinly, as a ZIP file. It can take a few minutes to prepare.</string>

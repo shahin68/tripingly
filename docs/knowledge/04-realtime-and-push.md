@@ -53,7 +53,7 @@
 
 ## Push (Firebase Cloud Messaging)
 
-**Push rule (Shahin, 2026-11-01, replaces the 2026-10-18 cost rule):** every notification pushes at once, one per like or change; the same one again from the same person within `NOTIFICATION_REPEAT_COOLDOWN_SECONDS` (backend worker, default 5) is dropped, so like, unlike, like pushes once. Unlikes, own likes and place flames never push. Live like counts I caused are ignored by the app (my tap already shows them).
+**Push rule (Shahin, 2026-11-01, replaces the 2026-10-18 cost rule):** every notification pushes at once, one per like or change; the same one again from the same person within `NOTIFICATION_REPEAT_COOLDOWN_SECONDS` (backend worker, default 5) is dropped, so like, unlike, like pushes once. Unlikes, own likes and single flames never push (a spot's creator gets one push per hot milestone). Live like counts I caused are ignored by the app (my tap already shows them).
 
 
 - Android: FCM directly. iOS: Firebase Messaging with APNs (APNs key uploaded to Firebase by the user).
@@ -61,7 +61,9 @@
 - Ask for notification permission as Home first opens (after sign-in and onboarding), before the user taps anything; once per visit to Home, rotation included (Shahin, 2026-10-11).
 - Push arrives already localized from the server. Data payload: `{ type, notificationId, deepLink }`.
 - Tapping a push opens the `deepLink`. Mark it read via `POST /notifications/read`.
-- `join_requested` (someone asks to join the owner's trip) links to `tripinly://trips/{id}`: the map opens with "N people want to join", which opens the members sheet with Accept and Decline.
+- `join_requested` (someone asks to join the owner's trip) links to `tripinly://trips/{id}/members`: the map opens with the members sheet open, with Accept and Decline.
+- What pushes (Shahin, 2026-11-01; texts and the full table in the backend's `05-realtime-and-notifications.md`): likes on my trip, photo or comment ("Anna liked your photo"), saves of my trip, follows and new friends, join requests and accepted requests, being added to a trip, comments, collaborators' changes, and a spot I made getting hot (only its creator, at 5, 25, 100, 500, 1000 and 5000 flames). A single flame never pushes. Each Settings switch turns off its whole group; flames and saves are under Likes, follows under New followers.
+- **New-activity marks:** pins of stops with notifications I haven't seen carry a light-ivy dot (`TripMarkerIcon(isNew)`, iOS `drawTripPin`/`drawCoverPin`), and their day tab a small dot. They load with `GET /trips/{id}/new-activity` when the map opens, come live with `notification.created` events that carry a `markerId` (`RealtimeEvent.NewActivity`), and clear when the stop is opened (`POST /notifications/read { markerId }`; `NewActivityRepository`, `MapNewActivity`). The stop a push opened the map on is marked even though opening the push read that notification.
 
 ### In the app
 
@@ -69,14 +71,16 @@
 - iOS uses the same project and sender plus its own `firebase.ios.appId` and `firebase.ios.apiKey` (`GOOGLE_APP_ID` and `API_KEY` from `GoogleService-Info.plist`, which stays out of the repo too). It also needs a paid Apple Developer account, the APNs key uploaded to Firebase and the Push Notifications capability on the app; without them the app runs, only without a token.
 - `PushRegistration` registers the device when the signed-in app starts and when FCM issues a new token, but asks the server only when the account, token or language changed since the last registration. Sign-out unregisters before `POST /auth/logout`.
 - The permission (Android 13+, and iOS) is asked as Home opens. Pushes that arrive while the app is open are shown too: on Android by the app, in the same channel the system uses for the others; on iOS as a banner.
-- A tap opens the `deepLink` (`tripinly://trips/{id}`, `tripinly://markers/{id}` opens the stop's trip; `tripinly://notifications` just opens the app until there's an Activity screen) and marks the notification read.
+- A tap opens the `deepLink` (see Deep links; `tripinly://notifications` just opens the app until there's an Activity screen) and marks the notification read. The same trip already on top opens again on what the push is about.
 
 ## Deep links
 
 | Link | Opens |
 |---|---|
 | `tripinly://trips/{id}` | Trip screen |
-| `tripinly://markers/{id}` | Trip screen with that marker's sheet open |
+| `tripinly://trips/{id}/members` | Trip screen with the Members sheet open (join requests) |
+| `tripinly://markers/{id}` | Trip screen on the stop's day, the camera on the stop (zoom 16), its card closed so its "new" mark shows; a stop that is gone opens the trip as usual |
+| `tripinly://users/{username}` | That person's profile (follows, new friends) |
 | `https://<APP_LINK_BASE_URL>/invite/{token}` | Invite preview → accept (sign in first if needed) |
 | `https://<APP_LINK_BASE_URL>/trips/{id}` and `/markers/{id}` | Shared links (same as above) |
 

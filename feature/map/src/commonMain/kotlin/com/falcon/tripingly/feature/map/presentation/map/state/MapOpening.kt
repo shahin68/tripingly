@@ -3,6 +3,7 @@ package com.falcon.tripingly.feature.map.presentation.map.state
 import com.falcon.tripingly.core.common.result.AppResult
 import com.falcon.tripingly.core.data.trips.TripMapViewRepository
 import com.falcon.tripingly.core.data.trips.TripRepository
+import com.falcon.tripingly.core.location.model.Coordinates
 import com.falcon.tripingly.core.model.trip.TripDetails
 import com.falcon.tripingly.core.model.trip.TripMapView
 import com.falcon.tripingly.core.ui.toUiText
@@ -18,6 +19,8 @@ import kotlinx.coroutines.launch
 /**
  * Loads the trip and opens it on the day and Route button it was left with ([mapViews]), framed like a tap on that
  * day's tab ([MapCamera.showOpenDay]). Saves them when they change, so they're there after the app is closed too.
+ * A push opens it on its stop instead ([stopId]: that day, the camera on the stop, its card closed so the stop's
+ * "new" mark shows), or with the Members sheet open ([showMembers]).
  */
 internal class MapOpening(
     private val context: MapContext,
@@ -25,8 +28,11 @@ internal class MapOpening(
     private val tripRepository: TripRepository,
     private val mapViews: TripMapViewRepository,
     private val hasRoutes: () -> Boolean,
+    private val stopId: String? = null,
+    private val showMembers: Boolean = false,
 ) {
     fun start() {
+        if (showMembers) context.update { it.copy(sheet = Sheet.Members) }
         load()
         rememberView()
     }
@@ -43,8 +49,16 @@ internal class MapOpening(
             val left = mapViews.get(context.tripId)
             val details = context.trip.first { it != null && it.days.isNotEmpty() } ?: return@launch
             if (left != null) restoreView(left, details)
-            camera.showOpenDay()
+            val stop = stopId?.let { id -> findStop(id) ?: context.model.first { !it.isLoadingTrip }.let { findStop(id) } }
+            if (stop == null) return@launch camera.showOpenDay()
+            context.update { it.copy(activeDayIndex = stop.first) }
+            camera.moveTo(stop.second, STOP_ZOOM)
         }
+    }
+
+    /** The day [markerId] is on and where it is; a stop added since the trip was cached shows once it reloaded. */
+    private fun findStop(markerId: String): Pair<Int, Coordinates>? = context.days().withIndex().firstNotNullOfOrNull { (index, day) ->
+        day.markers.firstOrNull { it.id == markerId }?.let { index to Coordinates(it.location.lat, it.location.lng) }
     }
 
     /**
@@ -99,5 +113,7 @@ internal class MapOpening(
     private companion object {
         /** How long the view stays the same before it's saved. */
         const val SAVE_VIEW_DELAY_MILLIS = 500L
+        /** A stop with its street around it. */
+        const val STOP_ZOOM = 16f
     }
 }

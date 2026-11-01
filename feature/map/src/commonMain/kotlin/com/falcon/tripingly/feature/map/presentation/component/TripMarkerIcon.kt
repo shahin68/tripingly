@@ -29,17 +29,35 @@ import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
 
 /**
  * A stop's pin, a circle centered on the stop: its number on near-black ivy in a white ring, or, once the stop
- * has a cover photo, the photo in the white ring with the number in a small badge.
+ * has a cover photo, the photo in the white ring with the number in a small badge. [isNew]: a dot at the top left
+ * says something happened here I haven't seen.
  */
 @Composable
 fun TripMarkerIcon(
     orderNumber: Int,
     modifier: Modifier = Modifier,
     cover: ImageBitmap? = null,
+    isNew: Boolean = false,
 ) {
+    Box(modifier) {
+        PinBody(orderNumber, cover)
+        if (isNew) {
+            Box(
+                Modifier
+                    .size(NEW_DOT_SIZE)
+                    .background(MapColors.OnStop, CircleShape)
+                    .padding(PIN_RING)
+                    .background(MapColors.NewActivity, CircleShape),
+            )
+        }
+    }
+}
+
+@Composable
+private fun PinBody(orderNumber: Int, cover: ImageBitmap?) {
     if (cover == null) {
         Box(
-            modifier = modifier
+            modifier = Modifier
                 .size(PIN_SIZE)
                 .background(MapColors.OnStop, CircleShape)
                 .padding(PIN_RING)
@@ -49,7 +67,7 @@ fun TripMarkerIcon(
             PinNumber(orderNumber, fontSize = 13)
         }
     } else {
-        Box(modifier = modifier.size(COVER_PIN_SIZE)) {
+        Box(modifier = Modifier.size(COVER_PIN_SIZE)) {
             Image(
                 bitmap = cover,
                 contentDescription = null,
@@ -102,7 +120,10 @@ internal val COVER_PIN_SIZE = 44.dp
 internal val COVER_RING = 3.dp
 internal val COVER_BADGE_SIZE = 18.dp
 
-/** A stop's pin with one and two digits, and with a cover. */
+/** The "new" dot, in the pin's top left corner where it meets the ring. */
+internal val NEW_DOT_SIZE = 12.dp
+
+/** A stop's pin with one and two digits, with a cover, and with the "new" dot. */
 @Preview
 @Composable
 private fun TripMarkerIconPreview() {
@@ -111,6 +132,8 @@ private fun TripMarkerIconPreview() {
             TripMarkerIcon(orderNumber = 1)
             TripMarkerIcon(orderNumber = 12)
             TripMarkerIcon(orderNumber = 3, cover = ImageBitmap(64, 64))
+            TripMarkerIcon(orderNumber = 2, isNew = true)
+            TripMarkerIcon(orderNumber = 6, cover = ImageBitmap(64, 64), isNew = true)
         }
     }
 }
@@ -122,6 +145,8 @@ private fun TripMarkerIconDarkPreview() {
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.background(MapColors.Stop.copy(alpha = 0.6f)).padding(8.dp)) {
             TripMarkerIcon(orderNumber = 4)
             TripMarkerIcon(orderNumber = 5, cover = ImageBitmap(64, 64))
+            TripMarkerIcon(orderNumber = 7, isNew = true)
+            TripMarkerIcon(orderNumber = 8, cover = ImageBitmap(64, 64), isNew = true)
         }
     }
 }

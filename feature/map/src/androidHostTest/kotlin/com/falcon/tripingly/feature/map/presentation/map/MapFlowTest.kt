@@ -24,6 +24,7 @@ import com.falcon.tripingly.core.data.account.FakeAccountBackend
 import com.falcon.tripingly.core.data.config.FakeAppConfigRepository
 import com.falcon.tripingly.core.data.photos.FakePhotoRepository
 import com.falcon.tripingly.core.data.places.FakePlaceRepository
+import com.falcon.tripingly.core.data.push.FakeNewActivityRepository
 import com.falcon.tripingly.core.data.routing.FakeRouteRepository
 import com.falcon.tripingly.core.data.social.FakeSocialRepository
 import com.falcon.tripingly.core.data.trips.FakeTripBackend
@@ -66,6 +67,8 @@ class MapFlowTest {
 
     private fun viewModel() = MapViewModel(
         tripId = trip.trip.id,
+        stopId = null,
+        showMembers = false,
         tripRepository = backend,
         markerRepository = backend,
         placeRepository = FakePlaceRepository(),
@@ -80,6 +83,7 @@ class MapFlowTest {
                 override fun getLocationStream() = flowOf(Coordinates.Paris.asSuccess())
             },
         ),
+        newActivityRepository = FakeNewActivityRepository(),
     )
 
     private fun dayOneStops() = runBlocking {
