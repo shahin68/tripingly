@@ -229,6 +229,27 @@ class SocialRepositoryTest {
         assertEquals(CommentChange.Deleted("m0", "c1"), changes[1])
     }
 
+    @Test
+    fun liveLikeCounts_leaveOutMyOwn_soAnEarlierTapsEchoDoesntPutAnOldCountBack() = runTest {
+        val realtime = FakeRealtimeClient()
+        val repository = DefaultSocialRepository(
+            api = createKtorfit(createHttpClient(MockEngine { error("no request") }, config, InMemoryTokenStore(), SessionEvents(), languageTag = { "en" }), config).createSocialApi(),
+            local = local,
+            realtime = realtime,
+            currentUserId = { ME },
+        )
+        val counts = mutableListOf<LikeCount>()
+        val collecting = backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+            repository.likeCounts.collect { counts += it }
+        }
+
+        realtime.send(RealtimeEvent.LikeCountChanged("t1", ME, "comment", "c1", 2))
+        realtime.send(RealtimeEvent.LikeCountChanged("t1", OTHER, "comment", "c1", 3))
+        collecting.cancel()
+
+        assertEquals(listOf(LikeCount(LikeTarget.Comment, "c1", 3)), counts)
+    }
+
     private fun comment(author: String, canDelete: Boolean = false) =
         """{"id":"c1","markerId":"m0","body":"Lovely","author":{"id":"$author","username":"u","displayName":"U"},
             "likeCount":0,"likedByMe":false,"canDelete":$canDelete,"createdAt":"2026-10-11T10:00:00Z"}"""

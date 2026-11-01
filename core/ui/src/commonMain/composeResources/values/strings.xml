@@ -72,4 +72,11 @@
         <item quantity="one">Last year</item>
         <item quantity="other">%1$d years ago</item>
     </plurals>
+    <!-- Instagram-style comment times: now, 5m, 2h, 3d, 4w, 1y -->
+    <string name="time_short_now">now</string>
+    <string name="time_short_minutes">%1$dm</string>
+    <string name="time_short_hours">%1$dh</string>
+    <string name="time_short_days">%1$dd</string>
+    <string name="time_short_weeks">%1$dw</string>
+    <string name="time_short_years">%1$dy</string>
 </resources>

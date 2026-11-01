@@ -173,8 +173,10 @@ internal class DefaultSocialRepository(
         }
     }
 
+    // My own likes are already shown from my taps and the server's answer; the live echo of an earlier tap would
+    // put an old count back (like, then unlike: 2 → 1 → 2).
     override val likeCounts: Flow<LikeCount> = realtime.events.mapNotNull { event ->
-        if (event !is RealtimeEvent.LikeCountChanged) return@mapNotNull null
+        if (event !is RealtimeEvent.LikeCountChanged || event.byMe()) return@mapNotNull null
         val target = LikeTarget.entries.firstOrNull { it.wireName == event.targetType } ?: return@mapNotNull null
         LikeCount(target, event.targetId, event.count)
     }

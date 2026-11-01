@@ -49,7 +49,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.tooling.preview.PreviewParameter
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.falcon.tripingly.core.common.util.DateUtils
+import com.falcon.tripingly.core.ui.shortTimeAgo
 import com.falcon.tripingly.core.data.social.SocialRepository
 import com.falcon.tripingly.core.designsystem.component.AppDialog
 import com.falcon.tripingly.core.designsystem.component.AppDropdownMenu
@@ -88,8 +88,6 @@ import com.falcon.tripingly.feature.map.presentation.map.preview.previewStop
 import kotlin.time.Instant
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filter
-import kotlinx.datetime.TimeZone
-import kotlinx.datetime.toLocalDateTime
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel
 import org.koin.core.parameter.parametersOf
@@ -248,7 +246,7 @@ private fun CommentRow(
                         .clickable { onOpenProfile(comment.author.username) },
                 )
                 Text(
-                    text = DateUtils.formatAbbreviated(comment.createdAt.toLocalDateTime(TimeZone.currentSystemDefault()).date),
+                    text = shortTimeAgo(comment.createdAt),
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.skeletonText(),

@@ -48,12 +48,12 @@
 ### What is live, and what isn't (2026-10-18)
 
 - **Live (socket, as it happens):** an open trip's stops, days, members, trip details, trip deletion; photos ready/failed/deleted and covers; comments; My Trips list changes; follows; my own place photos finishing.
-- **Near live:** like counts on stops (their place), comments and trip photos (at most one update per item every 2 s); in-app notifications appear at once, but their pushes are batched (collaborator changes, 10 min) or grouped (likes, at most one push per hour); map places in view refresh every `placesRefreshSeconds` (default 300 s).
+- **Near live:** like counts on stops (their place), comments and trip photos (at most one update per item every 2 s); in-app notifications and their pushes come at once (the same one again within a few seconds is dropped); map places in view refresh every `placesRefreshSeconds` (default 300 s).
 - **Not live (loaded when the screen opens, pulled to refresh, or scrolled):** Explore, Nearby, profiles and Friends lists, search, place details and place pins, likes on place photos and Wikimedia images (no trip room), trip likes on Explore cards. Wikimedia images sync once a day.
 
 ## Push (Firebase Cloud Messaging)
 
-**Push cost rule (Shahin, 2026-10-18):** be conservative with pushes. Likes never push one by one: one grouped push per person per hour, counting people, not likes, so someone tapping a heart over and over counts once; unlikes, own likes and place likes never push. New push types need the same care (batch or group anything that can repeat).
+**Push rule (Shahin, 2026-11-01, replaces the 2026-10-18 cost rule):** every notification pushes at once, one per like or change; the same one again from the same person within `NOTIFICATION_REPEAT_COOLDOWN_SECONDS` (backend worker, default 5) is dropped, so like, unlike, like pushes once. Unlikes, own likes and place flames never push. Live like counts I caused are ignored by the app (my tap already shows them).
 
 
 - Android: FCM directly. iOS: Firebase Messaging with APNs (APNs key uploaded to Firebase by the user).
