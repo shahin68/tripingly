@@ -10,6 +10,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
@@ -19,7 +20,8 @@ import kotlinx.coroutines.launch
  * The app's bottom sheet: it slides up when [value] arrives and slides down before it leaves, however it closes —
  * a swipe, a tap outside, back, the `close` handed to [content] (for [SheetHeader]'s button), or the view model
  * clearing [value] (e.g. once a trip is created). [onDismiss] tells the view model the user closed it; while
- * [dismissEnabled] is false (saving) the user can't.
+ * [dismissEnabled] is false (saving) the user can't. It hides while its screen isn't on top (see [LocalScreenOnTop]) and
+ * comes back when it is, still open in the view model.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -32,25 +34,31 @@ fun <T : Any> AppBottomSheet(
 ) {
     val canDismiss by rememberUpdatedState(dismissEnabled)
     val currentOnDismiss by rememberUpdatedState(onDismiss)
+    // A sheet is a window over everything: shown under another screen (e.g. the screen a back swipe goes back to), it
+    // would cover that screen and take its back gesture.
+    val visible = value.takeIf { LocalScreenOnTop.current }
     val sheetState = rememberModalBottomSheetState(
         skipPartiallyExpanded = true,
         confirmValueChange = { it != SheetValue.Hidden || canDismiss },
     )
     // The last value stays on screen while the sheet slides away.
-    var shown by remember { mutableStateOf(value) }
-    LaunchedEffect(value) {
-        if (value != null) {
-            shown = value
+    var shown by remember { mutableStateOf(visible) }
+    LaunchedEffect(visible) {
+        if (visible != null) {
+            shown = visible
             if (sheetState.targetValue == SheetValue.Hidden && sheetState.isVisible) sheetState.show()
         } else if (shown != null) {
             sheetState.hide()
             shown = null
         }
     }
-    val current = value ?: shown ?: return
+    val current = visible ?: shown ?: return
     val scope = rememberCoroutineScope()
     val close: () -> Unit = { scope.launch { sheetState.hide() }.invokeOnCompletion { currentOnDismiss() } }
     ModalBottomSheet(onDismissRequest = { currentOnDismiss() }, sheetState = sheetState, modifier = modifier) {
         content(current, close)
     }
 }
+
+/** False while this screen is under another one on the back stack, so its [AppBottomSheet]s stay hidden. */
+val LocalScreenOnTop = compositionLocalOf { true }

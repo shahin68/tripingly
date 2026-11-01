@@ -28,12 +28,14 @@ import com.falcon.tripingly.core.designsystem.generated.resources.like
 import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
 import com.falcon.tripingly.core.designsystem.theme.spacing
 import org.jetbrains.compose.resources.stringResource
+import androidx.compose.foundation.Indication
 import androidx.compose.foundation.background
 
 /**
  * A heart to tap with the like count; filled while I like it, and liking it pops the heart with a burst of dots. No
- * padding at the start, so the heart lines up with the text above it. Darker than a read-only [CountLabel] heart, so
- * it reads as a button.
+ * padding around it, so the heart lines up with what is above it; [countFirst] puts the count before the heart (for a
+ * heart at the end of a row). [indication] is the tap's ripple, `null` for none. Darker than a read-only [CountLabel]
+ * heart, so it reads as a button.
  */
 @Composable
 fun LikeButton(
@@ -42,6 +44,8 @@ fun LikeButton(
     onToggle: () -> Unit,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
+    countFirst: Boolean = false,
+    indication: Indication? = ripple(bounded = false),
 ) {
     var burst by remember { mutableIntStateOf(0) }
     Row(
@@ -49,7 +53,7 @@ fun LikeButton(
             .toggleable(
                 value = liked,
                 interactionSource = null,
-                indication = ripple(bounded = false),
+                indication = indication,
                 enabled = enabled,
                 role = Role.Checkbox,
                 onValueChange = { like ->
@@ -61,15 +65,17 @@ fun LikeButton(
         horizontalArrangement = Arrangement.spacedBy(4.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
+        // Always shown, 0 too: every count reads the same, tappable or not.
+        val label = @Composable { Text(text = compactCount(count), style = MaterialTheme.typography.labelLarge, modifier = Modifier.skeletonText()) }
+        if (countFirst) label()
         BurstIcon(
             icon = if (liked) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
             contentDescription = stringResource(Res.string.like),
             tint = if (liked) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface,
             burst = burst,
-            modifier = Modifier.size(20.dp).skeleton(CircleShape),
+            modifier = Modifier.size(CountLabelSize.Large.iconSize).skeleton(CircleShape),
         )
-        // Always shown, 0 too: every count reads the same, tappable or not.
-        Text(text = compactCount(count), style = MaterialTheme.typography.labelLarge, modifier = Modifier.skeletonText())
+        if (!countFirst) label()
     }
 }
 
@@ -78,8 +84,15 @@ fun LikeButton(
  * nor as liked (red). As big as a [LikeButton] unless [size] says otherwise.
  */
 @Composable
-fun LikeCount(count: Int, modifier: Modifier = Modifier, size: CountLabelSize = CountLabelSize.Large) {
-    CountLabel(icon = Icons.Filled.Favorite, count = count, color = MaterialTheme.colorScheme.onSurfaceVariant, size = size, modifier = modifier.skeletonText())
+fun LikeCount(count: Int, modifier: Modifier = Modifier, size: CountLabelSize = CountLabelSize.Large, countFirst: Boolean = false) {
+    CountLabel(
+        icon = Icons.Filled.Favorite,
+        count = count,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        size = size,
+        countFirst = countFirst,
+        modifier = modifier.skeletonText(),
+    )
 }
 
 /** The like button's height, so things beside it (e.g. an avatar on an Explore card) can match it. */
@@ -103,7 +116,7 @@ private fun LikeButtonDarkPreview() {
     TripinglyTheme(darkTheme = true) {
         Row(Modifier.background(MaterialTheme.colorScheme.surface)) {
             LikeButton(liked = true, count = 1_204, onToggle = {})
-            LikeButton(liked = false, count = 3, onToggle = {})
+            LikeButton(liked = false, count = 3, onToggle = {}, countFirst = true)
         }
     }
 }

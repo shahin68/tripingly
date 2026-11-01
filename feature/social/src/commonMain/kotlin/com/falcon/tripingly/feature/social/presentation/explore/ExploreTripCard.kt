@@ -21,6 +21,7 @@ import androidx.compose.material.icons.outlined.Map
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -44,7 +45,6 @@ import com.falcon.tripingly.core.common.util.DateUtils
 import com.falcon.tripingly.core.designsystem.component.AppDropdownMenu
 import com.falcon.tripingly.core.designsystem.component.AvatarCircle
 import com.falcon.tripingly.core.designsystem.component.LikeCount
-import com.falcon.tripingly.core.designsystem.component.GlassSurface
 import com.falcon.tripingly.core.designsystem.component.LikeButton
 import com.falcon.tripingly.core.designsystem.component.LikeButtonHeight
 import com.falcon.tripingly.core.designsystem.component.PhotoImage
@@ -111,8 +111,8 @@ internal fun ExploreTripCard(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             OwnerChip(trip.trip.owner, onOpenOwner, Modifier.weight(1f, fill = false).padding(end = MaterialTheme.spacing.small))
-            // On a pill, so it reads on any photo.
-            GlassSurface(shape = CircleShape, shadowElevation = 0.dp, blur = false) {
+            // On a see-through pill, so it reads on any photo without hiding it.
+            Surface(shape = CircleShape, color = MaterialTheme.colorScheme.surface.copy(alpha = PILL_ALPHA), contentColor = MaterialTheme.colorScheme.onSurface) {
                 if (isMine) {
                     // My own trip: its likes are something to read, not to give.
                     LikeCount(count = trip.likeCount, modifier = Modifier.height(LikeButtonHeight).padding(horizontal = MaterialTheme.spacing.small))
@@ -192,6 +192,7 @@ internal val ExploreCardHeight = 220.dp
 private val CardInset = 8.dp
 private val PlaceholderIcon = 40.dp
 private const val SCRIM_ALPHA = 0.6f
+private const val PILL_ALPHA = 0.75f
 private const val MUTED_ALPHA = 0.8f
 
 @Composable

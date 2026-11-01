@@ -20,6 +20,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
 import com.falcon.tripingly.core.designsystem.theme.spacing
@@ -35,15 +36,19 @@ fun CountLabel(
     modifier: Modifier = Modifier,
     color: Color = LocalContentColor.current,
     size: CountLabelSize = CountLabelSize.Small,
+    /** The count before the icon, for an icon at the end of a row. */
+    countFirst: Boolean = false,
 ) {
     Row(
         modifier = modifier,
         horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraSmall),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        val isLarge = size == CountLabelSize.Large
-        Icon(icon, contentDescription = null, tint = color, modifier = Modifier.size(if (isLarge) LargeCountIconSize else CountIconSize))
-        Text(text = compactCount(count), color = color, style = if (isLarge) MaterialTheme.typography.labelLarge else MaterialTheme.typography.labelMedium)
+        val style = if (size == CountLabelSize.Large) MaterialTheme.typography.labelLarge else MaterialTheme.typography.labelMedium
+        val label = @Composable { Text(text = compactCount(count), color = color, style = style) }
+        if (countFirst) label()
+        Icon(icon, contentDescription = null, tint = color, modifier = Modifier.size(size.iconSize))
+        if (!countFirst) label()
     }
 }
 
@@ -63,10 +68,7 @@ fun compactCount(count: Int): String {
 }
 
 /** Small for counts among other details; Large as big as a [LikeButton] or [HotButton], where it stands for one (e.g. my own trip's likes). */
-enum class CountLabelSize { Small, Large }
-
-private val CountIconSize = 16.dp
-private val LargeCountIconSize = 20.dp
+enum class CountLabelSize(val iconSize: Dp) { Small(16.dp), Large(20.dp) }
 
 @Composable
 private fun CountLabelPreviewContent() {

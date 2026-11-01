@@ -136,15 +136,24 @@ internal fun PublicTripCard(
                     }
                 }
                 Spacer(Modifier.weight(1f))
+                // The count before the heart, and every heart centred under where ⋮ is, mine or not.
                 if (isMine) {
                     // My own trip: its likes are something to read, not to give; small on my own profile.
+                    val size = if (isOnMyProfile) CountLabelSize.Small else CountLabelSize.Large
                     LikeCount(
                         count = trip.likeCount,
-                        size = if (isOnMyProfile) CountLabelSize.Small else CountLabelSize.Large,
-                        modifier = Modifier.height(LikeButtonHeight).padding(horizontal = MaterialTheme.spacing.small + MaterialTheme.spacing.extraSmall),
+                        size = size,
+                        countFirst = true,
+                        modifier = Modifier.height(LikeButtonHeight).padding(end = heartEndInset(size)),
                     )
                 } else {
-                    LikeButton(liked = trip.likedByMe, count = trip.likeCount, onToggle = onLike, modifier = Modifier.padding(end = MaterialTheme.spacing.small + MaterialTheme.spacing.extraSmall))
+                    LikeButton(
+                        liked = trip.likedByMe,
+                        count = trip.likeCount,
+                        onToggle = onLike,
+                        countFirst = true,
+                        modifier = Modifier.padding(end = heartEndInset(CountLabelSize.Large)),
+                    )
                 }
             }
         }
@@ -191,8 +200,14 @@ private fun TripCover(trip: PublicTrip) {
     }
 }
 
-/** As tall as ⋮ (48 dp) above the heart (32 dp). */
-private val CoverSize = 80.dp
+/** ⋮, an [IconButton] at the card's end. */
+private val MenuButtonSize = 48.dp
+
+/** As tall as ⋮ above the heart (32 dp). */
+private val CoverSize = MenuButtonSize + 32.dp
+
+/** Puts a heart of [size] centred under ⋮. */
+private fun heartEndInset(size: CountLabelSize) = (MenuButtonSize - size.iconSize) / 2
 
 @Preview
 @Composable

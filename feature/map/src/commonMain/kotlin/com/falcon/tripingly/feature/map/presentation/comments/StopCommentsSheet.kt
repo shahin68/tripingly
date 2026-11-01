@@ -253,31 +253,30 @@ private fun CommentRow(
                 )
             }
             Text(text = comment.body, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.skeletonText())
-        }
-        // The heart and ⋮ together, centred on each other by the row.
-        Row(horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small), verticalAlignment = Alignment.CenterVertically) {
+            // Under the text, with no ripple: just the heart reacts.
             LikeButton(
                 liked = comment.likedByMe,
                 count = comment.likeCount,
                 onToggle = { onAction(Action.OnToggleLike(comment)) },
+                indication = null,
             )
-            Box {
-                IconButton(onClick = { menuExpanded = true }) {
-                    Icon(Icons.Default.MoreVert, contentDescription = stringResource(Res.string.map_comment_menu), modifier = Modifier.skeleton(CircleShape))
-                }
-                AppDropdownMenu(
-                    expanded = menuExpanded,
-                    onDismissRequest = { menuExpanded = false },
-                    // Mine, or on my trip: deleted rather than reported.
-                    actions = listOf(
-                        if (comment.canDelete) {
-                            DropdownAction(stringResource(Res.string.map_comment_delete), isDestructive = true) { onAction(Action.OnDelete(comment)) }
-                        } else {
-                            DropdownAction(stringResource(Res.string.map_comment_report)) { onAction(Action.OnReport(comment)) }
-                        },
-                    ),
-                )
+        }
+        Box {
+            IconButton(onClick = { menuExpanded = true }) {
+                Icon(Icons.Default.MoreVert, contentDescription = stringResource(Res.string.map_comment_menu), modifier = Modifier.skeleton(CircleShape))
             }
+            AppDropdownMenu(
+                expanded = menuExpanded,
+                onDismissRequest = { menuExpanded = false },
+                // Mine, or on my trip: deleted rather than reported.
+                actions = listOf(
+                    if (comment.canDelete) {
+                        DropdownAction(stringResource(Res.string.map_comment_delete), isDestructive = true) { onAction(Action.OnDelete(comment)) }
+                    } else {
+                        DropdownAction(stringResource(Res.string.map_comment_report)) { onAction(Action.OnReport(comment)) }
+                    },
+                ),
+            )
         }
     }
 }

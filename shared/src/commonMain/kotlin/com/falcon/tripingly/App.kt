@@ -24,6 +24,7 @@ import com.falcon.tripingly.core.data.push.PushNotifications
 import com.falcon.tripingly.core.data.realtime.LiveUpdates
 import com.falcon.tripingly.core.data.trips.MarkerRepository
 import com.falcon.tripingly.core.designsystem.browser.rememberInAppUriHandler
+import com.falcon.tripingly.core.designsystem.component.LocalScreenOnTop
 import com.falcon.tripingly.core.designsystem.component.MessageBannerHost
 import com.falcon.tripingly.core.designsystem.component.safeTopAndSides
 import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
@@ -109,29 +110,32 @@ private fun MainNavigation() {
         ),
     ) { route ->
         NavEntry(route) { key ->
-            when (key) {
-                is Home -> MainTabs(
-                    onOpenTrip = { backStack.add(TripMap(it)) },
-                    onOpenProfile = { backStack.add(Profile(it)) },
-                    onOpenSettings = { backStack.add(Settings) },
-                )
-                is TripMap -> {
-                    MapRoute(
-                        tripId = key.tripId,
-                        onNavigateBack = { goBack() },
+            // Only the top screen shows its sheets: under the screen a back swipe leaves, they'd cover it.
+            CompositionLocalProvider(LocalScreenOnTop provides (key == backStack.lastOrNull())) {
+                when (key) {
+                    is Home -> MainTabs(
+                        onOpenTrip = { backStack.add(TripMap(it)) },
                         onOpenProfile = { backStack.add(Profile(it)) },
-                        onOpenPaywall = { backStack.add(Paywall) },
-                        membersContent = { tripId, onDismiss -> TripMembersRoute(tripId = tripId, onDismiss = onDismiss) },
+                        onOpenSettings = { backStack.add(Settings) },
                     )
+                    is TripMap -> {
+                        MapRoute(
+                            tripId = key.tripId,
+                            onNavigateBack = { goBack() },
+                            onOpenProfile = { backStack.add(Profile(it)) },
+                            onOpenPaywall = { backStack.add(Paywall) },
+                            membersContent = { tripId, onDismiss -> TripMembersRoute(tripId = tripId, onDismiss = onDismiss) },
+                        )
+                    }
+                    is Profile -> ProfileRoute(
+                        username = key.username,
+                        onBack = { goBack() },
+                        onOpenTrip = { backStack.add(TripMap(it)) },
+                        onOpenProfile = { backStack.add(Profile(it)) },
+                    )
+                    is Settings -> SettingsRoute(onBack = { goBack() }, onOpenPro = { backStack.add(Paywall) })
+                    is Paywall -> PaywallRoute(onBack = { goBack() })
                 }
-                is Profile -> ProfileRoute(
-                    username = key.username,
-                    onBack = { goBack() },
-                    onOpenTrip = { backStack.add(TripMap(it)) },
-                    onOpenProfile = { backStack.add(Profile(it)) },
-                )
-                is Settings -> SettingsRoute(onBack = { goBack() }, onOpenPro = { backStack.add(Paywall) })
-                is Paywall -> PaywallRoute(onBack = { goBack() })
             }
         }
     }
