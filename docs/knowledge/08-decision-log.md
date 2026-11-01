@@ -196,3 +196,4 @@ Append-only. Newest at the bottom.
 | 2026-11-01 | Live like counts caused by me are ignored (my taps and the server's answer already show them), so an earlier tap's echo never puts an old count back (like, unlike showed 1 → 2 → 1). Flames and photo likes already worked this way | Shahin found it on comment hearts |
 | 2026-11-01 | Comment times are Instagram-style: now, 5m, 2h, 3d, 4w, 1y (`shortTimeAgo` in `core:ui`; weeks up to a year, no months). Trips keep `timeAgo` ("2 weeks ago") | Shahin |
 | 2026-11-01 | Every notification pushes at once; the same one again within `NOTIFICATION_REPEAT_COOLDOWN_SECONDS` (worker, default 5) is dropped (tripinly-backend#68). No app change | Shahin |
+| 2026-11-01 | Like and flame counts in an open trip arrive live at once (the backend's 2 s throttle is gone, tripinly-backend#68). No app change | Shahin |
