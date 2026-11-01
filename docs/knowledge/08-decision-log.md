@@ -197,3 +197,4 @@ Append-only. Newest at the bottom.
 | 2026-11-01 | Comment times are Instagram-style: now, 5m, 2h, 3d, 4w, 1y (`shortTimeAgo` in `core:ui`; weeks up to a year, no months). Trips keep `timeAgo` ("2 weeks ago") | Shahin |
 | 2026-11-01 | Every notification pushes at once; the same one again within `NOTIFICATION_REPEAT_COOLDOWN_SECONDS` (worker, default 5) is dropped (tripinly-backend#68). No app change | Shahin |
 | 2026-11-01 | Like and flame counts in an open trip arrive live at once (the backend's 2 s throttle is gone, tripinly-backend#68). No app change | Shahin |
+| 2026-11-01 | Like counts on Explore and profile trip cards, Nearby flames and place photo likes update on refresh, not live (my own taps still show on every screen at once) | Shahin chose "Keep as is" |
