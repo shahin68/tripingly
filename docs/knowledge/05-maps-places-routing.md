@@ -149,3 +149,7 @@ The Best order button sits on the stops card whether or not the route shows (own
 Free for everyone, by real travel times (product owner, 2026-10-18).
 - `mode: "travel_time"`: show "N min shorter" from `savedMinutes`.
 - `mode: "straight_line"` (`degraded`): travel times weren't available; say it's ordered by distance.
+
+## Hiding places
+
+The top map button (above fit day) hides every place pin and cluster; the trip's stops, the places along a route and the two ends of an A→B route stay, and the Route button still turns what is left into dots. While hidden, no place squares load (moving the map asks the server nothing); showing them again loads the view the camera rests on. Every map opens with places shown (Shahin, 2026-11-02).

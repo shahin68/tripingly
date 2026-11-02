@@ -246,6 +246,7 @@ internal fun MapScreen(
         BottomCards(
             routeAttribution = state.routeAttribution,
             location = state.location,
+            arePlacesHidden = state.arePlacesHidden,
             routeStartName = state.routeStartName,
             dayTabs = state.dayTabs,
             plan = plan,

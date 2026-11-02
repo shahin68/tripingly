@@ -1,6 +1,8 @@
 <resources>
     <!-- Map -->
     <string name="map_day_label_no_date">%1$d. nap</string>
+    <string name="map_hide_places">Helyek elrejtése</string>
+    <string name="map_show_places">Helyek mutatása</string>
     <string name="map_fit_day">Az egész nap megjelenítése</string>
     <string name="map_plan_handle">A teljes terv megjelenítése vagy elrejtése</string>
     <string name="map_stop_title_format">%1$d. megálló</string>

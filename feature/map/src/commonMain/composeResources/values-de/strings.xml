@@ -1,6 +1,8 @@
 <resources>
     <!-- Map -->
     <string name="map_day_label_no_date">Tag %1$d</string>
+    <string name="map_hide_places">Orte ausblenden</string>
+    <string name="map_show_places">Orte einblenden</string>
     <string name="map_fit_day">Ganzen Tag zeigen</string>
     <string name="map_plan_handle">Ganzen Plan zeigen oder ausblenden</string>
     <string name="map_stop_title_format">Stopp %1$d</string>

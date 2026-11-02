@@ -208,7 +208,7 @@ private fun PlanSheetPreviewContent() {
         PlanSheet(
             plan = StopsCardPreviewStates().values.elementAt(1),
             state = rememberPlanSheetState(),
-            above = { MapButtons(LocationState(), onAction = {}, modifier = Modifier.align(Alignment.End).padding(MaterialTheme.spacing.medium)) },
+            above = { MapButtons(LocationState(), arePlacesHidden = false, onAction = {}, modifier = Modifier.align(Alignment.End).padding(MaterialTheme.spacing.medium)) },
         ) { card -> StopsCard(card = card, dayNumber = 1, editorMenu = null, onAction = {}) }
     }
 }

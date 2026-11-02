@@ -67,6 +67,7 @@ internal class MapStateMapper(
         layers = layers,
         camera = CameraState(model.camera.isReady, model.camera.target, model.camera.zoom, model.camera.openingBounds),
         location = LocationState(isLoading = model.location.isLoading),
+        arePlacesHidden = model.arePlacesHidden,
         routeAttribution = plan?.attribution?.takeIf { routePoints.isNotEmpty() },
         sheet = sheet(),
         dialog = dialog(),
@@ -156,7 +157,9 @@ internal class MapStateMapper(
         // While a route shows, the other pins are dots, so the route, its two ends, the stops and the places along it stand out.
         val routeShows = routePoints.size > 1
         val routeEndIds = route.between?.let { setOf(it.from.id, it.to.id) }.orEmpty()
-        val placePins = pins.map {
+        // Hidden places come first: only the route's places stay, then the route makes the rest dots as always.
+        val visible = if (model.arePlacesHidden) pins.filter { it.place.id in alongIds || it.place.id in routeEndIds } else pins
+        val placePins = visible.map {
             when {
                 it.place.id in alongIds -> it.copy(isAlongTheWay = true)
                 routeShows && it.place.id !in routeEndIds -> it.copy(isDot = true)
@@ -169,7 +172,7 @@ internal class MapStateMapper(
             stops = stops.toImmutableList(),
             placePins = placePins.toImmutableList(),
             pinDotBelowZoom = config.pinDotBelowZoom,
-            placeClusters = model.pins.clusters.toImmutableList(),
+            placeClusters = model.pins.clusters.takeUnless { model.arePlacesHidden }.orEmpty().toImmutableList(),
             // A place from search knows no cover image, so its pin's place draws it, photo included.
             selectedPlace = (model.selection as? Selection.Place)?.place?.let { place -> placePins.firstOrNull { it.place.id == place.id }?.place ?: place },
             // A real route in its way of travelling's color, or else the stops joined in order.

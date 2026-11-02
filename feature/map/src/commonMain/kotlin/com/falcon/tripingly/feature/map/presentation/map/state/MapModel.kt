@@ -47,6 +47,8 @@ internal data class MapModel(
     val failedChanges: List<MarkerChangeFailure> = emptyList(),
     /** Stops with notifications I haven't seen: their pins and days carry a "new" mark ([MapNewActivity]). */
     val newStopIds: Set<String> = emptySet(),
+    /** The places button: only the trip's stops and its route's places show, nothing loads ([MapPins]). Every map opens with them shown. */
+    val arePlacesHidden: Boolean = false,
 )
 
 /** Where the camera rests, as the map last reported it, or where it was last sent. */

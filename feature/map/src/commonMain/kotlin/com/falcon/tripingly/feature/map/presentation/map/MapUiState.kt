@@ -42,6 +42,8 @@ data class MapUiState(
     val layers: MapLayersState = MapLayersState(),
     val camera: CameraState = CameraState(),
     val location: LocationState = LocationState(),
+    /** The places button is off: only the trip's stops and its route's places show. */
+    val arePlacesHidden: Boolean = false,
     /** Shown over the map with a route, instead of the OpenStreetMap credit. */
     val routeAttribution: String? = null,
     val sheet: MapSheet? = null,

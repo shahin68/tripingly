@@ -69,6 +69,8 @@ sealed interface MapAction {
         data class Select(val dayIndex: Int) : Days
         /** The button above the location button: fits the camera to the open day. */
         data object FitDay : Days
+        /** The top map button: hides or shows the places that aren't the trip's stops or its route's. */
+        data object TogglePlaces : Days
     }
 
     /** The open day's plan in its sheet: the stops card, or a route from A to B. */

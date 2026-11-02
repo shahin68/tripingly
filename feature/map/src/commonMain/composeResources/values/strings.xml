@@ -1,6 +1,8 @@
 <resources>
     <!-- Map -->
     <string name="map_day_label_no_date">Day %1$d</string>
+    <string name="map_hide_places">Hide places</string>
+    <string name="map_show_places">Show places</string>
     <string name="map_fit_day">Show the whole day</string>
     <string name="map_plan_handle">Show or hide the whole plan</string>
     <string name="map_stop_title_format">Stop #%1$d</string>

@@ -15,6 +15,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.outlined.CenterFocusStrong
 import androidx.compose.material.icons.outlined.Directions
+import androidx.compose.material.icons.outlined.Layers
+import androidx.compose.material.icons.outlined.LayersClear
 import androidx.compose.material.icons.outlined.NearMe
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
@@ -36,9 +38,11 @@ import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
 import com.falcon.tripingly.core.designsystem.theme.spacing
 import com.falcon.tripingly.feature.map.generated.resources.Res
 import com.falcon.tripingly.feature.map.generated.resources.map_fit_day
+import com.falcon.tripingly.feature.map.generated.resources.map_hide_places
 import com.falcon.tripingly.feature.map.generated.resources.map_my_location
 import com.falcon.tripingly.feature.map.generated.resources.map_route_close
 import com.falcon.tripingly.feature.map.generated.resources.map_route_start
+import com.falcon.tripingly.feature.map.generated.resources.map_show_places
 import com.falcon.tripingly.feature.map.presentation.map.DayTabsState
 import com.falcon.tripingly.feature.map.presentation.map.EditorMenu
 import com.falcon.tripingly.feature.map.presentation.map.LocationState
@@ -58,6 +62,7 @@ import org.jetbrains.compose.resources.stringResource
 internal fun BottomCards(
     routeAttribution: String?,
     location: LocationState,
+    arePlacesHidden: Boolean,
     routeStartName: String?,
     dayTabs: DayTabsState,
     plan: PlanCardState?,
@@ -93,7 +98,7 @@ internal fun BottomCards(
                             .padding(bottom = MaterialTheme.spacing.small),
                     )
                     Spacer(modifier = Modifier.weight(1f))
-                    MapButtons(location, onAction, Modifier.padding(bottom = MaterialTheme.spacing.small))
+                    MapButtons(location, arePlacesHidden, onAction, Modifier.padding(bottom = MaterialTheme.spacing.small))
                 }
             },
             modifier = Modifier.weight(1f, fill = false),
@@ -123,10 +128,21 @@ private fun MapCredits(routeAttribution: String?, modifier: Modifier = Modifier)
     }
 }
 
-/** Fits the camera to the open day (its stops, else the whole trip's, else the destination), over the location button. */
+/**
+ * Hides or shows the places (crossed out while hidden), over the button that fits the camera to the open day (its
+ * stops, else the whole trip's, else the destination), over the location button.
+ */
 @Composable
-internal fun MapButtons(location: LocationState, onAction: (MapAction) -> Unit, modifier: Modifier = Modifier) {
+internal fun MapButtons(location: LocationState, arePlacesHidden: Boolean, onAction: (MapAction) -> Unit, modifier: Modifier = Modifier) {
     GlassButtonColumn(modifier = modifier, blur = false) {
+        IconButton(onClick = { onAction(MapAction.Days.TogglePlaces) }) {
+            if (arePlacesHidden) {
+                Icon(Icons.Outlined.LayersClear, contentDescription = stringResource(Res.string.map_show_places))
+            } else {
+                Icon(Icons.Outlined.Layers, contentDescription = stringResource(Res.string.map_hide_places))
+            }
+        }
+        GlassButtonColumnDivider()
         IconButton(onClick = { onAction(MapAction.Days.FitDay) }) {
             Icon(Icons.Outlined.CenterFocusStrong, contentDescription = stringResource(Res.string.map_fit_day))
         }
@@ -178,8 +194,8 @@ private fun MapControlsPreviewContent() {
             MapCredits(routeAttribution = "© openrouteservice.org | © OpenStreetMap contributors")
         }
         Row(Modifier.align(Alignment.BottomEnd), horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small)) {
-            MapButtons(location = LocationState(), onAction = {})
-            MapButtons(location = LocationState(isLoading = true), onAction = {})
+            MapButtons(location = LocationState(), arePlacesHidden = false, onAction = {})
+            MapButtons(location = LocationState(isLoading = true), arePlacesHidden = true, onAction = {})
         }
     }
 }
