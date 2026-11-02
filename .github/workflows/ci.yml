@@ -37,6 +37,11 @@ jobs:
       - name: Unit tests (common + Android host)
         run: ./gradlew allTests
 
+      # TEMPORARY (removed before merge): full stack traces of failing tests in the log.
+      - name: Print failing test traces
+        if: failure()
+        run: grep -l '<failure' $(find . -path '*test-results*' -name 'TEST-*.xml') | head -1 | xargs sed -n '/<failure/,/<\/failure>/p' | head -150
+
       - name: Upload test reports
         if: failure()
         uses: actions/upload-artifact@v4
