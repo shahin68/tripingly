@@ -1,7 +1,7 @@
 package com.falcon.tripingly.feature.map.presentation.component
 
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import com.falcon.tripingly.core.designsystem.theme.MapColors
 import com.falcon.tripingly.core.location.model.Coordinates
 
 /*
@@ -10,10 +10,8 @@ import com.falcon.tripingly.core.location.model.Coordinates
  * MapLine.kt) by the app alone: no routing call.
  */
 
-/** Calm slate blue: a plan, quieter than a real route's colors. */
-internal val StopPathColor = Color(0xFF3D5A80)
-
-internal val StopPathStyle = MapLineStyle(StopPathColor, 3.dp)
+/** The brand's green, thinner than a real route: a plan. */
+internal val StopPathStyle = MapLineStyle(MapColors.Plan, 3.dp)
 
 /** Points on each stretch, so the streak glides instead of jumping from stop to stop. */
 private const val STEPS_PER_LEG = 24

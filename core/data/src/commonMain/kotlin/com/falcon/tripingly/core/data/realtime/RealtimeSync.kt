@@ -54,7 +54,7 @@ internal class RealtimeSync(
             is RealtimeEvent.ToMe -> photos.applyLive(event)
             is RealtimeEvent.MyTripsChanged -> myTripsRefreshes.request(MY_TRIPS)
             // For the screens showing people; nothing cached changes.
-            is RealtimeEvent.FollowsChanged -> Unit
+            is RealtimeEvent.FollowsChanged, is RealtimeEvent.NewActivity -> Unit
         }
     }
 

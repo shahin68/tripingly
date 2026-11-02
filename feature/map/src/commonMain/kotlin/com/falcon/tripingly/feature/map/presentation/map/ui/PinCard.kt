@@ -73,3 +73,13 @@ private fun PinCardPreview() {
         }
     }
 }
+
+@Preview(widthDp = 360, heightDp = 640)
+@Composable
+private fun PinCardDarkPreview() {
+    TripinglyTheme(darkTheme = true) {
+        PinCard(card = previewPlace, key = { it.id }, pinClearance = 24.dp) { place ->
+            PlaceCard(place, details = null, address = null, dayNumber = null, onAdd = {}, onOpenImage = {}, onOpenPhotos = {}, onRouteFrom = {}, onRouteTo = {})
+        }
+    }
+}

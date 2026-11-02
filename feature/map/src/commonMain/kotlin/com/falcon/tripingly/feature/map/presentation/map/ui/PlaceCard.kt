@@ -2,33 +2,33 @@ package com.falcon.tripingly.feature.map.presentation.map.ui
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Directions
-import androidx.compose.material.icons.filled.LocalFireDepartment
 import androidx.compose.material.icons.filled.PhotoLibrary
-import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.Icon
+import androidx.compose.material.icons.outlined.Add
+import androidx.compose.material.icons.outlined.Directions
+import androidx.compose.material.icons.outlined.Flag
+import androidx.compose.material.icons.outlined.Language
+import androidx.compose.material.icons.outlined.PhotoLibrary
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalUriHandler
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.tooling.preview.PreviewParameter
 import androidx.compose.ui.tooling.preview.PreviewParameterProvider
-import androidx.compose.ui.unit.dp
+import com.falcon.tripingly.core.designsystem.component.ButtonSize
+import com.falcon.tripingly.core.designsystem.component.GlassSurface
 import com.falcon.tripingly.core.designsystem.component.OsmAttribution
+import com.falcon.tripingly.core.designsystem.component.PrimaryButton
+import com.falcon.tripingly.core.designsystem.component.SecondaryButton
 import com.falcon.tripingly.core.designsystem.component.icon
 import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
 import com.falcon.tripingly.core.designsystem.theme.spacing
@@ -65,110 +65,72 @@ fun PlaceCard(
     onRouteTo: (() -> Unit)?,
     modifier: Modifier = Modifier,
 ) {
-    Card(
-        modifier = modifier.widthIn(max = 320.dp),
-        shape = RoundedCornerShape(16.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface,
-            contentColor = MaterialTheme.colorScheme.onSurface,
-        ),
-    ) {
+    GlassSurface(modifier = modifier.widthIn(max = MapCardMaxWidth), shape = MaterialTheme.shapes.extraLarge, blur = false) {
         Column(
-            modifier = Modifier.padding(MaterialTheme.spacing.medium),
+            modifier = Modifier.padding(MaterialTheme.spacing.small),
             verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
         ) {
-            PlaceImageStrip(
+            PlaceBanner(
+                name = place.name,
+                subtitle = address ?: stringResource(place.category.label()),
+                hotCount = details?.hotCount ?: place.hotCount,
                 // An address from search is no place of ours, so it has no images to wait for.
                 images = if (address != null) emptyList() else details?.images,
                 category = place.category,
                 onOpen = onOpenImage,
             )
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(
-                    place.category.icon,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.secondary,
-                    modifier = Modifier.size(24.dp),
-                )
-                Text(
-                    text = place.name,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(start = MaterialTheme.spacing.small),
-                )
+            val notes = listOfNotNull(
+                details?.addedBy?.let { stringResource(Res.string.map_place_added_by, it.username) },
+                details?.openingHours?.let { "${stringResource(Res.string.map_place_opening_hours)}: $it" },
+            )
+            notes.forEach { note ->
+                Text(note, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(horizontal = MaterialTheme.spacing.extraSmall))
             }
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    text = address ?: stringResource(place.category.label()),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.weight(1f),
-                )
-                val hotCount = details?.hotCount ?: place.hotCount
-                if (hotCount > 0) {
-                    Icon(
-                        Icons.Default.LocalFireDepartment,
-                        contentDescription = stringResource(Res.string.map_place_hot_count),
-                        tint = MaterialTheme.colorScheme.tertiary,
-                        modifier = Modifier.size(16.dp),
-                    )
-                    Text(
-                        text = hotCount.toString(),
-                        style = MaterialTheme.typography.bodyMedium,
-                        modifier = Modifier.padding(start = 4.dp),
-                    )
-                }
-            }
-            details?.addedBy?.let { creator ->
-                Text(
-                    text = stringResource(Res.string.map_place_added_by, creator.username),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-            details?.openingHours?.let { hours ->
-                Column {
-                    Text(stringResource(Res.string.map_place_opening_hours), style = MaterialTheme.typography.labelMedium)
-                    Text(hours, style = MaterialTheme.typography.bodyMedium)
-                }
-            }
-            // An address from search is no place of ours, so it has no photos.
-            if (address == null) {
-                TextButton(onClick = onOpenPhotos) {
-                    Icon(Icons.Default.PhotoLibrary, contentDescription = null, modifier = Modifier.size(18.dp))
-                    Text(stringResource(Res.string.map_place_photos), modifier = Modifier.padding(start = MaterialTheme.spacing.small))
-                }
-            }
-            Row {
-                TextButton(onClick = onRouteFrom) {
-                    Icon(Icons.Default.Directions, contentDescription = null, modifier = Modifier.size(18.dp))
-                    Text(stringResource(Res.string.map_route_from_here), modifier = Modifier.padding(start = MaterialTheme.spacing.small))
-                }
-                if (onRouteTo != null) {
-                    TextButton(onClick = onRouteTo) {
-                        Text(stringResource(Res.string.map_route_to_here))
-                    }
-                }
-            }
-            details?.website?.let { website ->
-                val uriHandler = LocalUriHandler.current
-                TextButton(
-                    onClick = {
-                        val url = if ("://" in website) website else "https://$website"
-                        // OpenStreetMap's value may not be a link a browser takes.
-                        runCatching { uriHandler.openUri(url) }
-                    },
-                ) {
-                    Text(stringResource(Res.string.map_place_website))
-                }
-            }
-            if (dayNumber != null) {
-                Button(onClick = onAdd, modifier = Modifier.fillMaxWidth()) {
-                    Text(stringResource(Res.string.map_place_add_to_day, dayNumber))
-                }
-            }
-            OsmAttribution()
+            PlaceActions(address == null, details?.website, dayNumber, onAdd, onOpenPhotos, onRouteFrom, onRouteTo)
+            OsmAttribution(modifier = Modifier.padding(horizontal = MaterialTheme.spacing.extraSmall))
+        }
+    }
+}
+
+/**
+ * Photos (not for an address from search, which is no place of ours), route from here, route to here once another
+ * place was picked, the website, and Add to the open day.
+ */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun PlaceActions(
+    hasPhotos: Boolean,
+    website: String?,
+    dayNumber: Int?,
+    onAdd: () -> Unit,
+    onOpenPhotos: () -> Unit,
+    onRouteFrom: () -> Unit,
+    onRouteTo: (() -> Unit)?,
+) {
+    val uriHandler = LocalUriHandler.current
+    FlowRow(
+        horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
+        verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
+        itemVerticalAlignment = Alignment.CenterVertically,
+    ) {
+        if (hasPhotos) ActionIconButton(onOpenPhotos, Icons.Outlined.PhotoLibrary, stringResource(Res.string.map_place_photos))
+        ActionIconButton(onRouteFrom, Icons.Outlined.Directions, stringResource(Res.string.map_route_from_here))
+        if (onRouteTo != null) {
+            SecondaryButton(stringResource(Res.string.map_route_to_here), onRouteTo, size = ButtonSize.Small, icon = Icons.Outlined.Flag)
+        }
+        website?.let {
+            ActionIconButton(
+                onClick = {
+                    val url = if ("://" in it) it else "https://$it"
+                    // OpenStreetMap's value may not be a link a browser takes.
+                    runCatching { uriHandler.openUri(url) }
+                },
+                icon = Icons.Outlined.Language,
+                contentDescription = stringResource(Res.string.map_place_website),
+            )
+        }
+        if (dayNumber != null) {
+            PrimaryButton(stringResource(Res.string.map_place_add_to_day, dayNumber), onAdd, size = ButtonSize.Small, icon = Icons.Outlined.Add)
         }
     }
 }

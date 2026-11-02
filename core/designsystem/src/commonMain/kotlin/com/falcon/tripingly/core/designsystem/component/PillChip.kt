@@ -129,7 +129,7 @@ private fun PillChipPreviewContent() {
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         PillChip(label = "Add dates", onClick = {}, leading = { Icon(Icons.Default.DateRange, null, Modifier.padding(start = 8.dp)) })
-        PillChip(label = "@anna", onRemove = {}, leading = { AvatarCircle("Anna", "anna", size = AvatarSize.Small) })
+        PillChip(label = "@anna", onRemove = {}, leading = { AvatarCircle("Anna", photo = null, size = AvatarSize.Small) })
         PillChip(label = "@nobody", onRemove = {}, error = "No one has that username.")
         PillChip(label = "This month", onClick = {}, selected = true)
     }

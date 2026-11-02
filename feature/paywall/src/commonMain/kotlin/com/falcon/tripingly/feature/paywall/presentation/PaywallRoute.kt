@@ -1,47 +1,52 @@
 package com.falcon.tripingly.feature.paywall.presentation
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.semantics.heading
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.tooling.preview.PreviewParameter
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.falcon.tripingly.core.designsystem.component.BackAction
+import com.falcon.tripingly.core.designsystem.component.FloatingTopBar
 import com.falcon.tripingly.core.designsystem.component.PrimaryButton
+import com.falcon.tripingly.core.designsystem.component.SecondaryButton
 import com.falcon.tripingly.core.designsystem.component.ShowMessage
+import com.falcon.tripingly.core.designsystem.component.Skeleton
+import com.falcon.tripingly.core.designsystem.component.screenContentPadding
+import com.falcon.tripingly.core.designsystem.component.skeleton
+import com.falcon.tripingly.core.designsystem.component.skeletonText
 import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
 import com.falcon.tripingly.core.designsystem.theme.spacing
 import com.falcon.tripingly.core.model.account.LegalDocumentType
@@ -51,7 +56,6 @@ import com.falcon.tripingly.core.ui.UiText
 import com.falcon.tripingly.feature.paywall.generated.resources.Res
 import com.falcon.tripingly.feature.paywall.generated.resources.paywall_active
 import com.falcon.tripingly.feature.paywall.generated.resources.paywall_active_hint
-import com.falcon.tripingly.feature.paywall.generated.resources.paywall_back
 import com.falcon.tripingly.feature.paywall.generated.resources.paywall_benefit_along
 import com.falcon.tripingly.feature.paywall.generated.resources.paywall_benefit_between
 import com.falcon.tripingly.feature.paywall.generated.resources.paywall_benefit_routes
@@ -78,8 +82,6 @@ import com.falcon.tripingly.feature.paywall.presentation.PaywallViewModel.State
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel
-import androidx.compose.ui.tooling.preview.PreviewParameter
-import androidx.compose.foundation.background
 
 @Composable
 fun PaywallRoute(
@@ -90,20 +92,11 @@ fun PaywallRoute(
     PaywallScreen(state = state, onAction = viewModel::onAction, onBack = onBack)
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+/** Tripinly Pro: what it adds, the offers to pick from (or that it's active), restore, and the fine print. */
 @Composable
 internal fun PaywallScreen(state: State, onAction: (Action) -> Unit, onBack: () -> Unit) {
     Scaffold(
-        topBar = {
-            TopAppBar(
-                title = {},
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(Res.string.paywall_back))
-                    }
-                },
-            )
-        },
+        topBar = { FloatingTopBar(title = stringResource(Res.string.paywall_title), navigationIcon = { BackAction(onBack) }) },
     ) { padding ->
         ShowMessage(
             message = state.message?.asString(),
@@ -111,19 +104,16 @@ internal fun PaywallScreen(state: State, onAction: (Action) -> Unit, onBack: () 
             isError = state.message !is UiText.Note,
         )
         // One readable column, also on tablets and in landscape.
-        Box(Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState()), contentAlignment = Alignment.TopCenter) {
+        Box(Modifier.fillMaxSize().verticalScroll(rememberScrollState()), contentAlignment = Alignment.TopCenter) {
             Column(
-                modifier = Modifier.widthIn(max = ContentMaxWidth).fillMaxWidth().padding(MaterialTheme.spacing.medium),
+                modifier = Modifier.widthIn(max = ContentMaxWidth).fillMaxWidth().padding(screenContentPadding(padding)),
                 verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium),
             ) {
-                Text(
-                    text = stringResource(Res.string.paywall_title),
-                    style = MaterialTheme.typography.headlineMedium,
-                    modifier = Modifier.semantics { heading() },
-                )
                 Text(stringResource(Res.string.paywall_intro), style = MaterialTheme.typography.bodyLarge)
-                Column(verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small)) {
-                    Benefits.forEach { Benefit(stringResource(it)) }
+                Surface(shape = MaterialTheme.shapes.large, color = MaterialTheme.colorScheme.surfaceContainerLowest, modifier = Modifier.fillMaxWidth()) {
+                    Column(Modifier.padding(MaterialTheme.spacing.medium), verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small + MaterialTheme.spacing.extraSmall)) {
+                        Benefits.forEach { Benefit(stringResource(it)) }
+                    }
                 }
                 when {
                     state.hasPro -> Active(state)
@@ -150,9 +140,7 @@ private fun Active(state: State) {
     Text(stringResource(Res.string.paywall_active), style = MaterialTheme.typography.titleMedium)
     Hint(stringResource(Res.string.paywall_active_hint))
     state.managementUrl?.let { url ->
-        OutlinedButton(onClick = { runCatching { uriHandler.openUri(url) } }, modifier = Modifier.fillMaxWidth()) {
-            Text(stringResource(Res.string.paywall_manage))
-        }
+        SecondaryButton(text = stringResource(Res.string.paywall_manage), onClick = { runCatching { uriHandler.openUri(url) } }, modifier = Modifier.fillMaxWidth())
     }
 }
 
@@ -180,12 +168,13 @@ private fun Offers(state: State, onAction: (Action) -> Unit) {
         }
         state.hasOffersFailed -> {
             Hint(stringResource(Res.string.paywall_offers_failed))
-            OutlinedButton(onClick = { onAction(Action.OnRetryOffers) }, modifier = Modifier.fillMaxWidth()) {
-                Text(stringResource(Res.string.paywall_retry))
-            }
+            SecondaryButton(text = stringResource(Res.string.paywall_retry), onClick = { onAction(Action.OnRetryOffers) }, modifier = Modifier.fillMaxWidth())
         }
-        state.isLoadingOffers -> Box(Modifier.fillMaxWidth().padding(MaterialTheme.spacing.medium), contentAlignment = Alignment.Center) {
-            CircularProgressIndicator(Modifier.size(24.dp))
+        state.isLoadingOffers -> Column(verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small)) {
+            // The offers' own rows; the prices are placeholders, drawn as shimmering bars.
+            Skeleton { Column(verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small)) {
+                ProPeriod.entries.forEach { OfferRow(ProOffer(id = it.name, period = it, price = "€9.99"), selected = false, enabled = false, onSelect = {}) }
+            } }
         }
         else -> Hint(stringResource(Res.string.paywall_offers_failed))
     }
@@ -207,25 +196,25 @@ private fun OfferRow(offer: ProOffer, selected: Boolean, enabled: Boolean, onSel
         ProPeriod.Yearly -> Res.string.paywall_yearly to Res.string.paywall_yearly_price
         ProPeriod.Lifetime -> Res.string.paywall_lifetime to Res.string.paywall_lifetime_price
     }
-    OutlinedCard(
-        border = BorderStroke(
-            width = if (selected) 2.dp else 1.dp,
-            color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant,
-        ),
-        modifier = Modifier.fillMaxWidth().selectable(selected = selected, enabled = enabled, role = Role.RadioButton, onClick = onSelect),
+    Surface(
+        shape = MaterialTheme.shapes.large,
+        color = if (selected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainerLowest,
+        border = if (selected) BorderStroke(2.dp, MaterialTheme.colorScheme.primary) else null,
+        modifier = Modifier.fillMaxWidth().clip(MaterialTheme.shapes.large).selectable(selected = selected, enabled = enabled, role = Role.RadioButton, onClick = onSelect),
     ) {
         Row(
-            modifier = Modifier.padding(MaterialTheme.spacing.medium),
+            modifier = Modifier.heightIn(min = OfferHeight).padding(horizontal = MaterialTheme.spacing.medium),
             horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            RadioButton(selected = selected, onClick = null, enabled = enabled)
+            RadioButton(selected = selected, onClick = null, enabled = enabled, modifier = Modifier.skeleton(CircleShape))
             Column(Modifier.weight(1f)) {
-                Text(stringResource(name), style = MaterialTheme.typography.titleMedium)
+                Text(stringResource(name), style = MaterialTheme.typography.titleMedium, modifier = Modifier.skeletonText())
                 Text(
                     text = stringResource(price, offer.price),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.skeletonText(),
                 )
             }
         }
@@ -261,6 +250,7 @@ private val Benefits: List<StringResource> = listOf(
 )
 
 private val ContentMaxWidth = 600.dp
+private val OfferHeight = 72.dp
 
 @Preview
 @Composable
@@ -293,6 +283,17 @@ private fun BenefitPreview() {
     TripinglyTheme {
         Column(Modifier.background(MaterialTheme.colorScheme.surface).padding(MaterialTheme.spacing.medium)) {
             Benefits.forEach { Benefit(stringResource(it)) }
+        }
+    }
+}
+
+@Preview
+@Composable
+private fun OfferRowDarkPreview() {
+    TripinglyTheme(darkTheme = true) {
+        Column(Modifier.background(MaterialTheme.colorScheme.background).padding(MaterialTheme.spacing.medium), verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small)) {
+            OfferRow(previewOffers[1], selected = true, enabled = true, onSelect = {})
+            OfferRow(previewOffers[0], selected = false, enabled = true, onSelect = {})
         }
     }
 }

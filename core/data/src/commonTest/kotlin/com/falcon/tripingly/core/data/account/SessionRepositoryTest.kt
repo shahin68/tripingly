@@ -2,11 +2,15 @@ package com.falcon.tripingly.core.data.account
 
 import com.falcon.tripingly.core.common.error.DataError
 import com.falcon.tripingly.core.common.result.AppResult
+import com.falcon.tripingly.core.data.config.FakeAppConfigRepository
+import com.falcon.tripingly.core.data.photos.PhotoPreparer
+import com.falcon.tripingly.core.model.account.Account
 import com.falcon.tripingly.core.model.account.LegalDocument
 import com.falcon.tripingly.core.model.account.LegalDocumentType
 import com.falcon.tripingly.core.model.account.ProfileUpdate
 import com.falcon.tripingly.core.model.account.SessionState
 import com.falcon.tripingly.core.model.account.SignOutReason
+import com.falcon.tripingly.core.model.trip.ProfilePhoto
 import com.falcon.tripingly.core.network.ApiConfig
 import com.falcon.tripingly.core.network.account.createAccountApi
 import com.falcon.tripingly.core.network.auth.AuthTokens
@@ -15,6 +19,8 @@ import com.falcon.tripingly.core.network.auth.SessionEvents
 import com.falcon.tripingly.core.network.auth.createAuthApi
 import com.falcon.tripingly.core.network.createHttpClient
 import com.falcon.tripingly.core.network.createKtorfit
+import com.falcon.tripingly.core.network.photos.StorageClient
+import com.falcon.tripingly.core.network.photos.createPhotosApi
 import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.MockRequestHandleScope
 import io.ktor.client.engine.mock.respond
@@ -54,8 +60,10 @@ class SessionRepositoryTest {
          "onboardingRequired":true}
     """.trimIndent()
 
-    private fun meJson(completed: Boolean, missingFields: String = "[]", missingConsents: String = "[]") = """
+    private fun meJson(completed: Boolean, missingFields: String = "[]", missingConsents: String = "[]", avatar: String? = null) = """
         {"id":"u1","username":${if (completed) "\"jonas.k\"" else "null"},"displayName":"Jonas",
+         "avatarPhotoId":${avatar?.let { "\"$it\"" } ?: "null"},
+         "avatarThumbUrl":${avatar?.let { "\"https://cdn.test/$it/thumb.webp\"" } ?: "null"},
          "birthDate":${if (completed) "\"1995-04-12\"" else "null"},"locale":"de-AT",
          "defaultTripVisibility":"public","role":"user",
          "onboarding":{"completed":$completed,"missingProfileFields":$missingFields,"missingConsents":$missingConsents},
@@ -72,12 +80,13 @@ class SessionRepositoryTest {
         private val recorded = mutableListOf<HttpRequestData>()
         val requests: List<HttpRequestData> get() = recorded.toList()
         private val sessionEvents = SessionEvents()
+        private val engine = MockEngine { request ->
+            lock.withLock { recorded += request }
+            handler(request)
+        }
         private val ktorfit = createKtorfit(
             createHttpClient(
-                engine = MockEngine { request ->
-                    lock.withLock { recorded += request }
-                    handler(request)
-                },
+                engine = engine,
                 config = config,
                 tokenStore = tokenStore,
                 sessionEvents = sessionEvents,
@@ -101,7 +110,15 @@ class SessionRepositoryTest {
             scope = scope.backgroundScope,
         )
         var pushUnregisteredAfterRequests: Int? = null
-        val account = AccountRepositoryImpl(ktorfit.createAccountApi(), session)
+        val account = AccountRepositoryImpl(
+            api = ktorfit.createAccountApi(),
+            session = session,
+            photosApi = ktorfit.createPhotosApi(),
+            storage = StorageClient(engine),
+            config = FakeAppConfigRepository(),
+            // The picked bytes as they are.
+            preparer = PhotoPreparer { image, _, _ -> image },
+        )
 
         fun paths(method: HttpMethod) = requests.filter { it.method == method }.map { it.url.encodedPath }
     }
@@ -111,6 +128,56 @@ class SessionRepositoryTest {
 
     private fun MockRequestHandleScope.apiError(status: HttpStatusCode, code: String) =
         json("""{"error":{"code":"$code","message":"Localized text","details":{}}}""", status)
+
+    @Test
+    fun profilePhoto_isUploaded_andShowsOnceTheServerMadeItMyAvatar() = runTest {
+        var meCalls = 0
+        val harness = Harness(this) { request ->
+            when (request.url.encodedPath) {
+                "/v1/me/avatar/upload-url" -> json(
+                    """{"photo":{"id":"p1","markerId":null,"placeId":null,"status":"pending_upload","thumbUrl":null,
+                       "displayUrl":null,"width":null,"height":null,"position":0,"likeCount":0,"likedByMe":false,
+                       "uploader":null,"createdAt":"2026-10-31T12:00:00Z","source":"user","credit":null},
+                       "uploadUrl":"https://storage.test/p1","uploadHeaders":{"Content-Type":"image/jpeg"},
+                       "expiresAt":"2026-10-31T12:10:00Z"}""",
+                    HttpStatusCode.Created,
+                )
+                "/p1" -> respond("", HttpStatusCode.OK)
+                "/v1/photos/p1/complete" -> json(
+                    """{"id":"p1","markerId":null,"placeId":null,"status":"processing","thumbUrl":null,"displayUrl":null,
+                       "width":null,"height":null,"position":0,"likeCount":0,"likedByMe":false,"uploader":null,
+                       "createdAt":"2026-10-31T12:00:00Z","source":"user","credit":null}""",
+                    HttpStatusCode.Accepted,
+                )
+                // Still processing at the first look.
+                "/v1/me" -> json(meJson(completed = true, avatar = if (++meCalls > 1) "p1" else null))
+                else -> error("unexpected ${request.url}")
+            }
+        }
+
+        val result = harness.account.setProfilePhoto { byteArrayOf(1, 2, 3) }
+
+        val account = assertIs<AppResult.Success<Account>>(result).data
+        assertEquals(ProfilePhoto("p1", "https://cdn.test/p1/thumb.webp"), account.photo)
+        assertEquals(ProfilePhoto("p1", "https://cdn.test/p1/thumb.webp"), assertIs<SessionState.SignedIn>(harness.session.session.value).account.photo)
+        assertEquals(2, meCalls)
+    }
+
+    @Test
+    fun removingTheProfilePhoto_bringsBackTheLetter() = runTest {
+        val harness = Harness(this) { request ->
+            when (request.url.encodedPath) {
+                "/v1/me/avatar" -> respond("", HttpStatusCode.NoContent)
+                "/v1/me" -> json(meJson(completed = true))
+                else -> error("unexpected ${request.url}")
+            }
+        }
+
+        val account = assertIs<AppResult.Success<Account>>(harness.account.removeProfilePhoto()).data
+
+        assertNull(account.photo)
+        assertEquals(listOf("/v1/me/avatar"), harness.paths(HttpMethod.Delete))
+    }
 
     @Test
     fun restore_withoutTokens_isSignedOut() = runTest {

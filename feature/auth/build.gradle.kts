@@ -6,6 +6,8 @@ kotlin {
     sourceSets {
         commonMain.dependencies {
             implementation(projects.core.data)
+            // The system photo picker, for the optional profile photo.
+            implementation(projects.core.ui)
         }
         androidMain.dependencies {
             implementation(projects.core.network)

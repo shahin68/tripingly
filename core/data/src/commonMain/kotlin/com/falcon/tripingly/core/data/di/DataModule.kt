@@ -17,6 +17,8 @@ import com.falcon.tripingly.core.data.photos.PhotoRepository
 import com.falcon.tripingly.core.data.photos.PlatformPhotoPreparer
 import com.falcon.tripingly.core.data.places.DefaultPlaceRepository
 import com.falcon.tripingly.core.data.places.PlaceRepository
+import com.falcon.tripingly.core.data.push.DefaultNewActivityRepository
+import com.falcon.tripingly.core.data.push.NewActivityRepository
 import com.falcon.tripingly.core.data.push.PushMessaging
 import com.falcon.tripingly.core.data.push.PushNotifications
 import com.falcon.tripingly.core.data.push.PushRegistration
@@ -110,7 +112,9 @@ val dataModule = module {
     single<LiveUpdates> { get<RealtimeSync>() }
 
     single<SessionRepository> { get<SessionRepositoryImpl>() }
-    single<AccountRepository> { AccountRepositoryImpl(api = get(), session = get()) }
+    single<AccountRepository> {
+        AccountRepositoryImpl(api = get(), session = get(), photosApi = get(), storage = get(), config = get(), preparer = PlatformPhotoPreparer)
+    }
     single {
         val config = get<ApiConfig>()
         SessionRepositoryImpl(
@@ -138,6 +142,7 @@ val dataModule = module {
         )
     }
     single<PushNotifications> { get<PushRegistration>() }
+    single<NewActivityRepository> { DefaultNewActivityRepository(get(), get()) }
     single {
         DefaultProRepository(
             // The app binds the store where a RevenueCat key is set.

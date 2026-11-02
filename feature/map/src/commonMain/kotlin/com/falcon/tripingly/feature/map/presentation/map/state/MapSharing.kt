@@ -55,12 +55,12 @@ internal class MapSharing(
     /** A place's Commons image is reported as the place's image, every other photo as a photo. */
     fun reportPhoto(photo: Photo) = report(if (photo.credit != null) ReportTarget.PlaceImage else ReportTarget.Photo, photo.id)
 
-    fun sendReport(reason: ReportReason, details: String) {
+    fun sendReport(reason: ReportReason) {
         val report = context.model.value.dialog as? Dialog.Report ?: return
         if (report.isSending) return
         context.update { it.copy(dialog = report.copy(isSending = true)) }
         context.scope.launch {
-            val result = socialRepository.report(report.target, report.id, reason, details)
+            val result = socialRepository.report(report.target, report.id, reason, report.details.text.toString().trim())
             context.update {
                 when (result) {
                     is AppResult.Success -> it.copy(dialog = null, message = UiText.Note(UiText.Resource(Res.string.map_reported)))

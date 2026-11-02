@@ -22,6 +22,8 @@ data class TripEntity(
     val ownerId: String,
     val ownerUsername: String,
     val ownerDisplayName: String,
+    val ownerPhotoId: String? = null,
+    val ownerPhotoUrl: String? = null,
     val coverPhotoId: String?,
     val coverThumbUrl: String?,
     val dayCount: Int,

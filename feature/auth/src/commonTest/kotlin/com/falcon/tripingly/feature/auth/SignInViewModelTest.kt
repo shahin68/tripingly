@@ -1,5 +1,6 @@
 package com.falcon.tripingly.feature.auth
 
+import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
 import com.falcon.tripingly.core.common.error.DataError
 import com.falcon.tripingly.core.common.result.AppResult
 import com.falcon.tripingly.core.data.account.FakeAccountBackend
@@ -90,7 +91,7 @@ class SignInViewModelTest {
         advanceUntilIdle()
         assertIs<SessionState.Restoring>(backend.session.value)
 
-        viewModel.onAction(Action.OnDeveloperSubjectChange("tester-1"))
+        viewModel.developerSubject.setTextAndPlaceCursorAtEnd("tester-1")
         viewModel.onAction(Action.OnDeveloperSignInClick)
         advanceUntilIdle()
         assertIs<SessionState.Onboarding>(backend.session.value)
@@ -104,7 +105,7 @@ class SignInViewModelTest {
         }
         val viewModel = SignInViewModel(refusing, social)
 
-        viewModel.onAction(Action.OnDeveloperSubjectChange("tester-1"))
+        viewModel.developerSubject.setTextAndPlaceCursorAtEnd("tester-1")
         viewModel.onAction(Action.OnDeveloperSignInClick)
         advanceUntilIdle()
 

@@ -45,8 +45,14 @@ enum class TripRole {
     val canManage: Boolean get() = this == OWNER
 }
 
+/** A person, the same everywhere they appear (owners, members, authors, uploaders, people lists, profiles). */
 data class UserSummary(
     val id: String,
     val username: String,
     val displayName: String,
+    /** Their profile photo; null shows the first letter of [displayName]. */
+    val photo: ProfilePhoto? = null,
 )
+
+/** A profile photo: cached by [id], since the signed [thumbUrl] (256 px square) changes about every hour. */
+data class ProfilePhoto(val id: String, val thumbUrl: String)

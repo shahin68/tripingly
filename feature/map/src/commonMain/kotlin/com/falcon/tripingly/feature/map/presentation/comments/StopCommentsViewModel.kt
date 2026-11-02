@@ -1,5 +1,7 @@
 package com.falcon.tripingly.feature.map.presentation.comments
 
+import androidx.compose.foundation.text.input.TextFieldState
+import androidx.compose.foundation.text.input.clearText
 import androidx.compose.runtime.Immutable
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -38,6 +40,12 @@ class StopCommentsViewModel(
     private val socialRepository: SocialRepository,
 ) : ViewModel() {
 
+    /** The comment being written; sending clears it. */
+    val draft = TextFieldState()
+
+    /** The report dialog's details, cleared each time it opens. */
+    val reportDetails = TextFieldState()
+
     private val _uiState = MutableStateFlow(State())
     val uiState: StateFlow<State> = _uiState.asStateFlow()
 
@@ -48,15 +56,17 @@ class StopCommentsViewModel(
 
     fun onAction(action: Action) {
         when (action) {
-            is Action.OnDraftChanged -> _uiState.update { it.copy(draft = action.text.take(SocialRepository.MAX_COMMENT_LENGTH)) }
             is Action.OnSend -> send()
             is Action.OnLoadMore -> _uiState.value.nextCursor?.takeUnless { _uiState.value.isLoading }?.let { load(it) }
             is Action.OnToggleLike -> toggleLike(action.comment)
             is Action.OnDelete -> _uiState.update { it.copy(commentToDelete = action.comment) }
             is Action.OnConfirmDelete -> delete()
             is Action.OnDismissDelete -> _uiState.update { it.copy(commentToDelete = null) }
-            is Action.OnReport -> _uiState.update { it.copy(reporting = action.comment) }
-            is Action.OnSendReport -> sendReport(action.reason, action.details)
+            is Action.OnReport -> {
+                reportDetails.clearText()
+                _uiState.update { it.copy(reporting = action.comment) }
+            }
+            is Action.OnSendReport -> sendReport(action.reason, reportDetails.text.toString().trim())
             is Action.OnDismissReport -> _uiState.update { it.copy(reporting = null) }
             is Action.OnDismissMessage -> _uiState.update { it.copy(message = null) }
         }
@@ -100,14 +110,14 @@ class StopCommentsViewModel(
     }
 
     private fun send() {
-        val body = _uiState.value.draft.trim()
+        val body = draft.text.toString().trim()
         if (body.isEmpty() || _uiState.value.isSending) return
         _uiState.update { it.copy(isSending = true) }
         viewModelScope.launch {
             when (val result = socialRepository.addComment(markerId, body)) {
                 is AppResult.Success -> _uiState.update { state ->
+                    draft.clearText()
                     state.copy(
-                        draft = "",
                         isSending = false,
                         comments = (state.comments.filterNot { it.id == result.data.id } + result.data).toImmutableList(),
                     )
@@ -175,7 +185,6 @@ class StopCommentsViewModel(
         /** More (newer) comments wait on the server. */
         val nextCursor: String? = null,
         val isLoading: Boolean = true,
-        val draft: String = "",
         /** The draft is waiting for the server. */
         val isSending: Boolean = false,
         /** Waiting for the user to confirm. */
@@ -187,7 +196,6 @@ class StopCommentsViewModel(
     )
 
     sealed interface Action {
-        data class OnDraftChanged(val text: String) : Action
         data object OnSend : Action
         data object OnLoadMore : Action
         data class OnToggleLike(val comment: Comment) : Action
@@ -196,7 +204,7 @@ class StopCommentsViewModel(
         data object OnConfirmDelete : Action
         data object OnDismissDelete : Action
         data class OnReport(val comment: Comment) : Action
-        data class OnSendReport(val reason: ReportReason, val details: String) : Action
+        data class OnSendReport(val reason: ReportReason) : Action
         data object OnDismissReport : Action
         data object OnDismissMessage : Action
     }

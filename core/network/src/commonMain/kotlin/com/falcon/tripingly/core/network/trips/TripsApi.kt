@@ -92,6 +92,7 @@ interface TripsApi {
     @DELETE("days/{id}")
     suspend fun deleteDay(@Path("id") dayId: String, @Query("confirm") confirm: Boolean): AppResult<Unit, DataError.Network>
 
+    /** The owner adds one editor by username (the members sheet). */
     @POST("trips/{id}/members")
     @Headers("Content-Type: application/json")
     suspend fun addMember(
@@ -99,7 +100,7 @@ interface TripsApi {
         @Body body: AddMemberDto,
     ): AppResult<TripMemberDto, DataError.Network>
 
-    /** The owner adds several editors at once; all or nothing. */
+    /** The owner adds several editors at once (friends picked in a row); all or nothing. */
     @POST("trips/{id}/members/batch")
     @Headers("Content-Type: application/json")
     suspend fun addMembers(

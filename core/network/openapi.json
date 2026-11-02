@@ -608,7 +608,7 @@
     },
     "/v1/users/{username}": {
       "get": {
-        "description": "Trips are paginated with cursor and limit. Unknown users and users with a block either way: 404.",
+        "description": "Trips are paginated with cursor and limit, most recently updated first. On your own profile the trips include your private ones (publicTripCount still counts public trips only). Unknown users and users with a block either way: 404.",
         "operationId": "Users_profile",
         "parameters": [
           {
@@ -2805,6 +2805,67 @@
         ]
       }
     },
+    "/v1/me/avatar/upload-url": {
+      "post": {
+        "description": "Optional, also during onboarding. Same upload flow and file rules as marker photos: PUT the file, then POST /photos/{id}/complete. Once processed (photo.ready in your own user room, markerId and placeId null) it becomes your avatar on every UserSummary and on GET /me; the previous profile photo is deleted. A newer upload always wins over an older one finishing later.",
+        "operationId": "Photos_avatarUploadUrl",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UploadUrlRequestDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UploadUrlResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Start a profile photo upload",
+        "tags": [
+          "photos",
+          "me"
+        ]
+      }
+    },
+    "/v1/me/avatar": {
+      "delete": {
+        "description": "Back to the letter avatar; the photo and its files are deleted. 204 also without a profile photo.",
+        "operationId": "Photos_removeAvatar",
+        "parameters": [],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Remove the profile photo",
+        "tags": [
+          "photos",
+          "me"
+        ]
+      }
+    },
     "/v1/places/{id}/photos": {
       "get": {
         "description": "Ready place photos, plus photos on stops here in public trips that APP_PLACE_PHOTO_PIN_MIN_LIKES (3) people other than the uploader liked (the same photos, not copies; markerId set), most liked first, then newest; at most 100. Your own place photos still processing or failed are included. A place photo by someone you blocked (or who blocked you) shows without its uploader; their trip photos don't show.",
@@ -2848,7 +2909,7 @@
     },
     "/v1/photos/{id}/complete": {
       "post": {
-        "description": "The uploader confirms the file is uploaded; processing starts (photo.ready follows). Calling it again returns the photo as it is.",
+        "description": "The uploader confirms the file is uploaded; processing starts (photo.ready follows). Calling it again returns the photo as it is. Allowed during onboarding (for a profile photo).",
         "operationId": "Photos_complete",
         "parameters": [
           {
@@ -3707,6 +3768,44 @@
         ]
       }
     },
+    "/v1/trips/{id}/new-activity": {
+      "get": {
+        "description": "The pins with a \"new\" mark. Opening a stop sends POST /notifications/read with its markerId, which clears its mark. Trips I can't see: 404.",
+        "operationId": "Notifications_newActivity",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NewActivityDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Stops of a trip with unread notifications for me",
+        "tags": [
+          "notifications"
+        ]
+      }
+    },
     "/v1/me/notification-settings": {
       "get": {
         "description": "All on by default. Off stops the push only; the in-app notification is still created.",
@@ -4542,6 +4641,17 @@
             "nullable": true,
             "example": "Jonas"
           },
+          "avatarPhotoId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true,
+            "description": "The profile photo (optional; null → letter avatar). Same fields as on every UserSummary."
+          },
+          "avatarThumbUrl": {
+            "type": "string",
+            "nullable": true,
+            "description": "Signed 256 px square thumbnail of the profile photo"
+          },
           "birthDate": {
             "type": "string",
             "nullable": true,
@@ -4584,6 +4694,8 @@
           "id",
           "username",
           "displayName",
+          "avatarPhotoId",
+          "avatarThumbUrl",
           "birthDate",
           "locale",
           "defaultTripVisibility",
@@ -4779,12 +4891,25 @@
           "displayName": {
             "type": "string",
             "example": "Jonas"
+          },
+          "avatarPhotoId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true,
+            "description": "The profile photo, the image cache key; null when there is none (apps show the letter avatar)"
+          },
+          "avatarThumbUrl": {
+            "type": "string",
+            "nullable": true,
+            "description": "Signed 256 px square thumb of the profile photo, or null"
           }
         },
         "required": [
           "id",
           "username",
-          "displayName"
+          "displayName",
+          "avatarPhotoId",
+          "avatarThumbUrl"
         ]
       },
       "UserSearchResultDto": {
@@ -6548,13 +6673,13 @@
             "type": "string",
             "format": "uuid",
             "nullable": true,
-            "description": "The stop of a trip photo; null for a place photo"
+            "description": "The stop of a trip photo; null for a place photo or a profile photo"
           },
           "placeId": {
             "type": "string",
             "format": "uuid",
             "nullable": true,
-            "description": "The place of a place photo; null for a trip photo"
+            "description": "The place of a place photo; null for a trip photo or a profile photo"
           },
           "status": {
             "type": "string",
@@ -7012,7 +7137,12 @@
               "added_to_trip",
               "trip_changed_by_collaborator",
               "likes_grouped",
-              "join_requested"
+              "join_requested",
+              "followed",
+              "became_friends",
+              "join_accepted",
+              "trip_saved",
+              "place_hot"
             ]
           },
           "actor": {
@@ -7109,12 +7239,17 @@
         "properties": {
           "ids": {
             "maxItems": 100,
-            "description": "Mark these as read. Send either ids or all.",
+            "description": "Mark these as read. Send ids, markerId or all.",
             "type": "array",
             "items": {
               "type": "string",
               "format": "uuid"
             }
+          },
+          "markerId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Mark everything about this stop as read (sent when I open it, which clears its \"new\" mark)"
           },
           "all": {
             "type": "boolean",
@@ -7125,6 +7260,22 @@
           }
         }
       },
+      "NewActivityDto": {
+        "type": "object",
+        "properties": {
+          "markerIds": {
+            "description": "Stops of this trip with unread notifications for me (the pins' \"new\" marks)",
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        },
+        "required": [
+          "markerIds"
+        ]
+      },
       "NotificationSettingsDto": {
         "type": "object",
         "properties": {
@@ -7134,19 +7285,23 @@
           },
           "addedToTrip": {
             "type": "boolean",
-            "description": "Push when someone adds me to a trip"
+            "description": "Push when someone adds me to a trip or accepts my request to join"
           },
           "tripChangedByCollaborator": {
             "type": "boolean",
-            "description": "Push for collaborator changes (batched per 10 minutes)"
+            "description": "Push for collaborator changes"
           },
           "likesGrouped": {
             "type": "boolean",
-            "description": "Push for likes (at most one per hour)"
+            "description": "Push for likes on my trips, photos and comments, saves of my trips, and my spots getting hot"
           },
           "joinRequested": {
             "type": "boolean",
             "description": "Push when someone asks to join my trip"
+          },
+          "newFollowers": {
+            "type": "boolean",
+            "description": "Push when someone follows me or we become friends"
           }
         },
         "required": [
@@ -7154,7 +7309,8 @@
           "addedToTrip",
           "tripChangedByCollaborator",
           "likesGrouped",
-          "joinRequested"
+          "joinRequested",
+          "newFollowers"
         ]
       },
       "UpdateNotificationSettingsDto": {
@@ -7173,6 +7329,9 @@
             "type": "boolean"
           },
           "joinRequested": {
+            "type": "boolean"
+          },
+          "newFollowers": {
             "type": "boolean"
           }
         }

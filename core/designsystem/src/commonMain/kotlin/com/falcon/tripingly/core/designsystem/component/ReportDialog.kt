@@ -7,10 +7,15 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.text.input.InputTransformation
+import androidx.compose.foundation.text.input.TextFieldLineLimits
+import androidx.compose.foundation.text.input.TextFieldState
+import androidx.compose.foundation.text.input.maxLength
+import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -23,6 +28,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.falcon.tripingly.core.designsystem.generated.resources.Res
@@ -38,21 +44,25 @@ import com.falcon.tripingly.core.designsystem.generated.resources.report_reason_
 import com.falcon.tripingly.core.designsystem.generated.resources.report_send
 import com.falcon.tripingly.core.designsystem.generated.resources.report_title
 import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
+import com.falcon.tripingly.core.designsystem.theme.spacing
 import com.falcon.tripingly.core.model.social.ReportReason
 import org.jetbrains.compose.resources.stringResource
 
 /** The server's longest report details. */
 private const val MAX_DETAILS_LENGTH = 1000
 
-/** Asks why something (a person, trip, stop, photo or comment) is being reported. */
+/**
+ * Asks why something (a person, trip, stop, photo or comment) is being reported. The optional [details] text is held
+ * by the screen's view model, which reads it when [onReport] sends the report and clears it when the dialog closes.
+ */
 @Composable
 fun ReportDialog(
-    onReport: (reason: ReportReason, details: String) -> Unit,
+    details: TextFieldState,
+    onReport: (reason: ReportReason) -> Unit,
     onDismiss: () -> Unit,
     isSending: Boolean = false,
 ) {
     var reason by rememberSaveable { mutableStateOf<ReportReason?>(null) }
-    var details by rememberSaveable { mutableStateOf("") }
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(Res.string.report_title)) },
@@ -71,19 +81,19 @@ fun ReportDialog(
                         Text(option.label(), modifier = Modifier.padding(start = 8.dp))
                     }
                 }
-                OutlinedTextField(
-                    value = details,
-                    onValueChange = { details = it.take(MAX_DETAILS_LENGTH) },
-                    label = { Text(stringResource(Res.string.report_details)) },
-                    modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
-                    minLines = 2,
-                    maxLines = 4,
+                AppTextField(
+                    state = details,
+                    placeholder = stringResource(Res.string.report_details),
+                    modifier = Modifier.fillMaxWidth().padding(top = MaterialTheme.spacing.small),
+                    keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),
+                    lineLimits = TextFieldLineLimits.MultiLine(minHeightInLines = 2, maxHeightInLines = 4),
+                    inputTransformation = InputTransformation.maxLength(MAX_DETAILS_LENGTH),
                 )
             }
         },
         confirmButton = {
             TextButton(
-                onClick = { reason?.let { onReport(it, details) } },
+                onClick = { reason?.let(onReport) },
                 enabled = reason != null && !isSending,
             ) {
                 Text(stringResource(Res.string.report_send))
@@ -111,17 +121,17 @@ private fun ReportReason.label(): String = stringResource(
 @Preview
 @Composable
 private fun ReportDialogPreview() {
-    TripinglyTheme { ReportDialog(onReport = { _, _ -> }, onDismiss = {}) }
+    TripinglyTheme { ReportDialog(details = rememberTextFieldState(), onReport = {}, onDismiss = {}) }
 }
 
 @Preview
 @Composable
 private fun ReportDialogDarkPreview() {
-    TripinglyTheme(darkTheme = true) { ReportDialog(onReport = { _, _ -> }, onDismiss = {}) }
+    TripinglyTheme(darkTheme = true) { ReportDialog(details = rememberTextFieldState(), onReport = {}, onDismiss = {}) }
 }
 
 @Preview(widthDp = 800, heightDp = 360)
 @Composable
 private fun ReportDialogLandscapePreview() {
-    TripinglyTheme { ReportDialog(onReport = { _, _ -> }, onDismiss = {}) }
+    TripinglyTheme { ReportDialog(details = rememberTextFieldState(), onReport = {}, onDismiss = {}) }
 }

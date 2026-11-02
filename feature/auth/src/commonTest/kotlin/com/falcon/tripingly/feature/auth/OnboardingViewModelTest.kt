@@ -22,6 +22,7 @@ import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNull
 import kotlin.test.assertFalse
 import kotlin.test.assertIs
 import kotlin.test.assertTrue
@@ -52,6 +53,23 @@ class OnboardingViewModelTest {
 
         assertEquals(Step.PROFILE, viewModel.uiState.value.step)
         assertEquals("Jonas", viewModel.uiState.value.displayName)
+    }
+
+    @Test
+    fun profilePhoto_isOptional_andCanBeAddedAndRemoved() = runTest(dispatcher) {
+        val viewModel = signedInViewModel()
+        assertNull(viewModel.uiState.value.photo)
+
+        viewModel.onAction(Action.OnPhotoPicked { byteArrayOf(1) })
+        assertTrue(viewModel.uiState.value.isSavingPhoto)
+        advanceUntilIdle()
+        assertEquals("photo-1", viewModel.uiState.value.photo?.id)
+        assertFalse(viewModel.uiState.value.isSavingPhoto)
+        assertEquals(Step.PROFILE, viewModel.uiState.value.step)
+
+        viewModel.onAction(Action.OnRemovePhotoClick)
+        advanceUntilIdle()
+        assertNull(viewModel.uiState.value.photo)
     }
 
     @Test

@@ -57,6 +57,9 @@ class FakeUserRepository : UserRepository {
         return AppResult.Success(Page(items, nextCursor = null))
     }
 
+    override suspend fun blocked(cursor: String?): AppResult<Page<UserSummary>, DataError.Network> =
+        AppResult.Success(Page(people.filter { it.id in blocked }, nextCursor = null))
+
     override suspend fun profile(username: String, cursor: String?): AppResult<Profile, DataError.Network> {
         val user = visible().firstOrNull { it.username == username.trim().removePrefix("@") }
             ?: return AppResult.Error(DataError.Network.Api(404, "NOT_FOUND", "Not found"))

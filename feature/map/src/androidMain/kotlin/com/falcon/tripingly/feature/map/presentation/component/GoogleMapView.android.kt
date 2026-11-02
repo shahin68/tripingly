@@ -350,16 +350,17 @@ actual fun GoogleMapView(
             key(marker.id) {
                 val position = LatLng(marker.position.latitude, marker.position.longitude)
                 val markerState = rememberUpdatedMarkerState(position = position)
-                // The icon is drawn once and redrawn only when its number, color or cover changes.
+                // The icon is drawn once and redrawn only when its number or cover changes.
                 val cover = marker.coverPhotoId?.let { coverThumbs[it] }
                 MarkerComposable(
                     marker.orderNumber,
-                    marker.color,
                     // Empty until the cover's thumbnail has loaded.
                     marker.coverPhotoId.takeIf { cover != null }.orEmpty(),
+                    marker.isNew,
                     state = markerState,
                     title = marker.title.asString(),
-                    anchor = Offset(0.5f, 1f),
+                    // The pin is a circle centered on the stop.
+                    anchor = Offset(0.5f, 0.5f),
                     // Above the places.
                     zIndex = 1f,
                     onClick = {
@@ -370,8 +371,8 @@ actual fun GoogleMapView(
                 ) {
                     TripMarkerIcon(
                         orderNumber = marker.orderNumber,
-                        color = Color(marker.color),
                         cover = cover,
+                        isNew = marker.isNew,
                     )
                 }
             }

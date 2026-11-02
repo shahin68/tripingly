@@ -1,13 +1,21 @@
 package com.falcon.tripingly.feature.trips.di
 
+import com.falcon.tripingly.core.common.util.DateUtils
 import com.falcon.tripingly.feature.trips.presentation.members.TripMembersViewModel
 import com.falcon.tripingly.feature.trips.presentation.screen.HomeViewModel
 import org.koin.core.module.dsl.viewModel
-import org.koin.core.module.dsl.viewModelOf
 import org.koin.dsl.module
 
 val tripsModule = module {
-    viewModelOf(::HomeViewModel)
+    viewModel {
+        HomeViewModel(
+            tripRepository = get(),
+            placeRepository = get(),
+            userRepository = get(),
+            sessionRepository = get(),
+            today = DateUtils::today,
+        )
+    }
     viewModel { params ->
         TripMembersViewModel(
             tripId = params.get(),

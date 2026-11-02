@@ -1,15 +1,11 @@
 <resources>
     <!-- Common -->
-    <string name="social_back">Back</string>
-    <string name="social_settings">Settings</string>
-    <string name="social_cancel">Cancel</string>
     <string name="social_more">More</string>
     <string name="social_retry">Try again</string>
     <string name="social_report">Report</string>
     <string name="social_reported">Thanks. We’ll take a look.</string>
 
     <!-- Social tab -->
-    <string name="social_explore">Explore</string>
     <string name="social_nearby">Nearby</string>
     <string name="social_explore_empty">No public trips to explore yet.</string>
     <string name="social_people_none">No one found with that name.</string>
@@ -52,6 +48,7 @@
     <string name="social_profile_not_found">This profile isn’t available.</string>
     <string name="social_report_user">Report</string>
     <string name="social_block">Block</string>
+    <string name="social_unfollow">Unfollow</string>
     <string name="social_block_title">Block @%1$s?</string>
     <string name="social_block_message">You won’t see each other’s trips, stops or comments, you stop following each other, and you leave each other’s trips.</string>
     <string name="social_block_confirm">Block</string>
@@ -84,8 +81,24 @@
     <string name="social_explore_fall">This fall</string>
     <string name="social_explore_winter">This winter</string>
     <string name="social_explore_all">All time</string>
-    <string name="social_explore_filters">Explore filters</string>
     <string name="social_explore_empty_filtered">No trips match these filters yet.</string>
     <string name="social_explore_nearby_blocked">Location is off for Tripinly. Turn it on in Settings to see trips near you.</string>
     <string name="social_trip_created">Created %1$s</string>
+
+    <!-- Tabs (redesign) -->
+    <string name="social_search_people">Search people…</string>
+    <string name="social_near_me">Near me</string>
+    <string name="social_location_note">Your location is only used to find places and is never saved.</string>
+    <string name="social_trips">Trips</string>
+    <string name="social_public_trips_label">Public trips</string>
+    <string name="social_explore_period">Explore period: %1$s</string>
+    <string name="social_ask_to_join">Ask to join</string>
+    <string name="social_join_requested">Request sent. The owner decides.</string>
+    <string name="social_join_declined">The owner declined your request to join.</string>
+    <string name="social_error_join">Couldn’t send your request to join.</string>
+    <string name="social_error_profile_photo">Couldn’t save your profile photo.</string>
+    <string name="social_error_profile_photo_remove">Couldn’t remove your profile photo.</string>
+    <string name="social_trip_private">Private</string>
+    <string name="social_trip_member">You’re in it</string>
+    <string name="social_trip_own">Your trip</string>
 </resources>

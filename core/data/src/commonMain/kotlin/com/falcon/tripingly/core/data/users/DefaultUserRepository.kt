@@ -44,6 +44,9 @@ class DefaultUserRepository(private val api: UsersApi, realtime: RealtimeClient)
         return page.map { Page(it.items.map { user -> user.toUser() }, it.nextCursor) }
     }
 
+    override suspend fun blocked(cursor: String?): AppResult<Page<UserSummary>, DataError.Network> =
+        api.blocked(cursor, PEOPLE_PAGE_SIZE).map { Page(it.items.map { user -> user.toUser() }, it.nextCursor) }
+
     override suspend fun profile(username: String, cursor: String?): AppResult<Profile, DataError.Network> =
         api.profile(username.toUserQuery(), cursor, PROFILE_TRIPS_PAGE_SIZE).map { it.toProfile() }
 

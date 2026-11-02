@@ -96,6 +96,14 @@ class RealtimeEventTest {
     }
 
     @Test
+    fun profilePhotoEvents_areSkipped() {
+        // Neither a stop nor a place: saving the profile photo waits for the server itself.
+        val profilePhoto = photoJson.replace("\"markerId\":\"m1\"", "\"markerId\":null,\"placeId\":null")
+        assertNull(parse("photo.ready", envelope("photo.ready", """{"photo":$profilePhoto}""", tripId = null)))
+        assertNull(parse("photo.failed", envelope("photo.failed", """{"photoId":"ph1"}""", tripId = null)))
+    }
+
+    @Test
     fun tripAndUserEvents() {
         listOf("trip.updated", "day.created", "day.deleted", "member.added", "member.removed").forEach {
             assertEquals(RealtimeEvent.TripChanged("t1", "u2"), parse(it, envelope(it, "{}")))
@@ -112,6 +120,17 @@ class RealtimeEventTest {
                 envelope("follows.changed", """{"followerId":"u1","followeeId":"u2","following":true}""", tripId = null, actorId = "u1"),
             ),
         )
+    }
+
+    @Test
+    fun notificationsAboutAStop_markIt() {
+        assertEquals(
+            RealtimeEvent.NewActivity("t1", "m1"),
+            parse("notification.created", envelope("notification.created", """{"id":"n1","type":"comment_on_marker","markerId":"m1"}""")),
+        )
+        // About a whole trip or a person: no mark.
+        assertNull(parse("notification.created", envelope("notification.created", """{"id":"n2","type":"added_to_trip","markerId":null}""")))
+        assertNull(parse("notification.created", envelope("notification.created", """{"id":"n3","type":"followed"}""", tripId = null)))
     }
 
     @Test

@@ -12,6 +12,6 @@ internal class SignInScreenPreviewStates : PreviewParameterProvider<SignInViewMo
         SignInViewModel.State(appleAvailable = true),
         SignInViewModel.State(appleAvailable = true, isLoading = true),
         SignInViewModel.State(error = UiMessage.Resource(Res.string.signin_error_failed)),
-        SignInViewModel.State(developerSignInAvailable = true, developerSubject = "tester"),
+        SignInViewModel.State(developerSignInAvailable = true),
     )
 }

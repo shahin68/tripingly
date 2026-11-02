@@ -1,5 +1,6 @@
 package com.falcon.tripingly.feature.map.presentation.map
 
+import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
 import app.cash.turbine.test
 import com.falcon.tripingly.core.common.error.DataError
 import com.falcon.tripingly.core.common.result.AppResult
@@ -12,6 +13,7 @@ import com.falcon.tripingly.core.data.config.FakeAppConfigRepository
 import com.falcon.tripingly.core.data.photos.FakePhotoRepository
 import com.falcon.tripingly.core.data.places.FakePlaceRepository
 import com.falcon.tripingly.core.data.places.PlaceRepository
+import com.falcon.tripingly.core.data.push.FakeNewActivityRepository
 import com.falcon.tripingly.core.data.routing.FakeRouteRepository
 import com.falcon.tripingly.core.data.routing.RouteErrorCodes
 import com.falcon.tripingly.core.data.routing.RouteRepository
@@ -63,7 +65,6 @@ import com.falcon.tripingly.feature.map.generated.resources.error_location_denie
 import com.falcon.tripingly.feature.map.generated.resources.error_location_permission_required
 import com.falcon.tripingly.feature.map.generated.resources.map_best_order_already
 import com.falcon.tripingly.feature.map.generated.resources.map_change_not_saved
-import com.falcon.tripingly.feature.map.generated.resources.map_day_label
 import com.falcon.tripingly.feature.map.generated.resources.map_error_load_trip
 import com.falcon.tripingly.feature.map.generated.resources.map_error_stop_change
 import com.falcon.tripingly.feature.map.generated.resources.map_join_requested
@@ -72,7 +73,6 @@ import com.falcon.tripingly.feature.map.generated.resources.map_trip_owner
 import com.falcon.tripingly.feature.map.presentation.FakeTripMapViewRepository
 import com.falcon.tripingly.feature.map.presentation.component.CameraCommand
 import com.falcon.tripingly.feature.map.presentation.component.PinSizes
-import com.falcon.tripingly.feature.map.presentation.component.TripOwnerColor
 import com.falcon.tripingly.feature.map.presentation.component.routeLine
 import com.falcon.tripingly.feature.map.presentation.component.stopPathShape
 import kotlin.test.AfterTest
@@ -117,6 +117,7 @@ class MapViewModelTest {
     /** Signed in as the trips backend's `me`. */
     private lateinit var session: FakeAccountBackend
     private lateinit var mapViews: FakeTripMapViewRepository
+    private lateinit var newActivity: FakeNewActivityRepository
 
     /** The fake's sights (Eiffel Tower, Louvre …), counting the squares asked for. */
     private class CountingPlaceRepository(
@@ -205,6 +206,7 @@ class MapViewModelTest {
         social = RecordingSocialRepository()
         routes = RecordingRouteRepository()
         mapViews = FakeTripMapViewRepository()
+        newActivity = FakeNewActivityRepository()
         // With Tripinly Pro, for the routes.
         session = signedIn(setOf(ROUTES_ENTITLEMENT))
         trip = (backend.createTrip(NewTrip("Test Trip", LocalDate(2024, 1, 1), LocalDate(2024, 1, 3))) as AppResult.Success).data
@@ -223,8 +225,10 @@ class MapViewModelTest {
             it.accept((it.legalDocuments("en") as AppResult.Success).data)
         }
 
-    private fun TestScope.viewModel(tripId: String = trip.trip.id) = MapViewModel(
+    private fun TestScope.viewModel(tripId: String = trip.trip.id, stopId: String? = null, showMembers: Boolean = false) = MapViewModel(
         tripId = tripId,
+        stopId = stopId,
+        showMembers = showMembers,
         tripRepository = backend,
         markerRepository = backend,
         placeRepository = places,
@@ -235,6 +239,7 @@ class MapViewModelTest {
         mapViews = mapViews,
         sessionRepository = session,
         getCurrentLocationUseCase = GetCurrentLocationUseCase(fakeLocationRepository),
+        newActivityRepository = newActivity,
     ).also { viewModel -> backgroundScope.launch { viewModel.uiState.collect {} } }
 
     /** The place of the pin named [name] on the map. */
@@ -269,22 +274,35 @@ class MapViewModelTest {
         val state = viewModel.uiState.value
         assertEquals("Test Trip", state.header.tripName)
         assertEquals(listOf(1, 2, 3), state.dayTabs.days.map { it.number })
-        assertEquals(UiText.Resource(Res.string.map_day_label, 2, DateUtils.formatAbbreviated(LocalDate(2024, 1, 2))), state.dayTabs.days[1].label)
+        assertEquals(DateUtils.formatAbbreviated(LocalDate(2024, 1, 2)), state.dayTabs.days[1].date)
         assertNotNull(state.header.editorMenu)
         assertFalse(state.header.isBusy)
         assertTrue(state.layers.stops.isEmpty())
     }
 
     @Test
-    fun `a trip that is gone says it isn't available`() = runTest(testDispatcher) {
+    fun `a trip that is gone shows the error screen saying it isn't available`() = runTest(testDispatcher) {
         val viewModel = viewModel(tripId = "missing")
         testScheduler.advanceUntilIdle()
 
-        val message = assertIs<UiText.Joined>(viewModel.uiState.value.message?.text)
+        val error = assertIs<UiText.Joined>(viewModel.uiState.value.loadError)
+        assertNull(viewModel.uiState.value.message)
         assertTrue(viewModel.uiState.value.dayTabs.days.isEmpty())
         assertNull(viewModel.uiState.value.header.editorMenu)
-        assertEquals(Res.string.map_error_load_trip, assertIs<UiText.Resource>(message.first).resource)
-        assertTrue(assertIs<UiText.Resource>(message.second).resource.key.contains("not_available"))
+        assertEquals(Res.string.map_error_load_trip, assertIs<UiText.Resource>(error.first).resource)
+        assertTrue(assertIs<UiText.Resource>(error.second).resource.key.contains("not_available"))
+    }
+
+    @Test
+    fun `retry on the error screen loads the trip again`() = runTest(testDispatcher) {
+        val viewModel = viewModel(tripId = "missing")
+        testScheduler.advanceUntilIdle()
+
+        viewModel.onAction(MapAction.Header.Retry)
+        testScheduler.advanceUntilIdle()
+
+        assertNotNull(viewModel.uiState.value.loadError)
+        assertFalse(viewModel.uiState.value.header.isBusy)
     }
 
     @Test
@@ -585,6 +603,64 @@ class MapViewModelTest {
     }
 
     @Test
+    fun `a push opens the trip on its stop's day, the camera on the stop and its new mark showing`() = runTest(testDispatcher) {
+        backend.addMarker(trip.trip.id, trip.days[0].id, NewMarker("Stop #1", GeoPoint(48.85, 2.35)))
+        val pushed = backend.addMarker(trip.trip.id, trip.days[1].id, NewMarker("Colosseum", GeoPoint(41.89, 12.49)))
+        val viewModel = viewModel(stopId = pushed.id)
+        viewModel.cameraCommands.test {
+            testScheduler.advanceUntilIdle()
+            assertEquals(CameraCommand.MoveTo(Coordinates(41.89, 12.49), 16f), expectMostRecentItem())
+        }
+        val state = viewModel.uiState.value
+        assertEquals(1, state.dayTabs.activeIndex)
+        // The card stays closed, so the mark shows until the stop is opened.
+        assertNull(state.stopCard)
+        assertTrue(state.layers.stops.single().isNew)
+        assertEquals(listOf(false, true, false), state.dayTabs.days.map { it.hasNew })
+    }
+
+    @Test
+    fun `a push about a stop that is gone opens the trip as usual`() = runTest(testDispatcher) {
+        backend.addMarker(trip.trip.id, trip.days[0].id, NewMarker("Stop #1", GeoPoint(48.85, 2.35)))
+        val viewModel = viewModel(stopId = "gone")
+        testScheduler.advanceUntilIdle()
+        val state = viewModel.uiState.value
+        assertEquals(0, state.dayTabs.activeIndex)
+        assertEquals(CameraCommand.fit(listOf(Coordinates(48.85, 2.35))).bounds, state.camera.openingBounds)
+    }
+
+    @Test
+    fun `a push about a request to join opens the trip with its members`() = runTest(testDispatcher) {
+        val viewModel = viewModel(showMembers = true)
+        testScheduler.advanceUntilIdle()
+        assertEquals(MapSheet.Members, viewModel.uiState.value.sheet)
+    }
+
+    @Test
+    fun `stops with new activity carry a mark until they are opened, and new ones come live`() = runTest(testDispatcher) {
+        val first = backend.addMarker(trip.trip.id, trip.days[0].id, NewMarker("Stop #1", GeoPoint(48.85, 2.35)))
+        val second = backend.addMarker(trip.trip.id, trip.days[0].id, NewMarker("Stop #2", GeoPoint(48.86, 2.29)))
+        newActivity.marked[trip.trip.id] = setOf(first.id)
+        val viewModel = viewModel()
+        testScheduler.advanceUntilIdle()
+        assertEquals(listOf(true, false), viewModel.uiState.value.layers.stops.map { it.isNew })
+
+        // Opening the stop clears its mark, on the server too.
+        viewModel.onAction(MapAction.MapView.MarkerClick(viewModel.uiState.value.layers.stops[0]))
+        testScheduler.advanceUntilIdle()
+        assertEquals(listOf(false, false), viewModel.uiState.value.layers.stops.map { it.isNew })
+        assertEquals(listOf(first.id), newActivity.seen)
+
+        // A comment on the open stop is seen at once; one on another stop marks it.
+        newActivity.arrive(trip.trip.id, first.id)
+        newActivity.arrive(trip.trip.id, second.id)
+        testScheduler.advanceUntilIdle()
+        assertEquals(listOf(false, true), viewModel.uiState.value.layers.stops.map { it.isNew })
+        assertEquals(listOf(first.id, first.id), newActivity.seen)
+        assertTrue(viewModel.uiState.value.dayTabs.days[0].hasNew)
+    }
+
+    @Test
     fun `a day without stops shows the whole trip, as when a trip opens on it`() = runTest(testDispatcher) {
         backend.addMarker(trip.trip.id, trip.days[0].id, NewMarker("Stop #1", GeoPoint(48.85, 2.35)))
         val viewModel = viewModel()
@@ -749,13 +825,13 @@ class MapViewModelTest {
     }
 
     @Test
-    fun `on someone else's trip the owner's name and stops show in the owner's colour, others' stops stay blue`() = runTest(testDispatcher) {
+    fun `on someone else's trip the header says whose it is, with its dates, stops and members`() = runTest(testDispatcher) {
         backend.addMarker(trip.trip.id, trip.days[0].id, NewMarker("Owner's", GeoPoint(48.85, 2.35)))
         backend.addMarker(trip.trip.id, trip.days[0].id, NewMarker("Another editor's", GeoPoint(41.9, 12.49)))
         val own = viewModel()
         testScheduler.advanceUntilIdle()
-        assertEquals(listOf(false, false), own.uiState.value.layers.stops.map { it.isByTripOwner })
         assertNull(own.uiState.value.header.ownerLabel)
+        assertEquals(2, own.uiState.value.header.stopCount)
 
         val shared = backend.observeTrip(trip.trip.id).first()!!
         backend.seed(
@@ -769,10 +845,9 @@ class MapViewModelTest {
         val viewModel = viewModel()
         testScheduler.advanceUntilIdle()
 
-        val stops = viewModel.uiState.value.layers.stops
-        assertEquals(listOf(true, false), stops.map { it.isByTripOwner })
-        assertEquals(listOf(TripOwnerColor, 0xFF2196F3), stops.map { it.color })
-        assertEquals(stops, viewModel.uiState.value.stopsCard?.stops)
+        val header = viewModel.uiState.value.header
+        assertEquals(shared.members.size, header.members?.count)
+        assertEquals(0, header.members?.requestCount)
         val owner = assertIs<UiText.Resource>(viewModel.uiState.value.header.ownerLabel)
         assertEquals(Res.string.map_trip_owner, owner.resource)
     }
@@ -1098,10 +1173,10 @@ class MapViewModelTest {
         testScheduler.advanceUntilIdle()
         assertEquals(MapSheet.PlaceImage("fake-louvre", "pi1"), viewModel.uiState.value.sheet)
         viewModel.onAction(MapAction.Sheet.ReportPhoto(COMMONS_IMAGE.asPhoto()))
-        viewModel.onAction(MapAction.Dialog.SendReport(ReportReason.Copyright, ""))
+        viewModel.onAction(MapAction.Dialog.SendReport(ReportReason.Copyright))
         testScheduler.advanceUntilIdle()
         viewModel.onAction(MapAction.Sheet.ReportPhoto(TRIP_PHOTO.asPhoto()))
-        viewModel.onAction(MapAction.Dialog.SendReport(ReportReason.Spam, ""))
+        viewModel.onAction(MapAction.Dialog.SendReport(ReportReason.Spam))
         testScheduler.advanceUntilIdle()
         assertEquals(listOf(ReportTarget.PlaceImage to "pi1", ReportTarget.Photo to "ph1"), social.reports)
 
@@ -1286,6 +1361,55 @@ class MapViewModelTest {
     }
 
     @Test
+    fun `hidden places leave only the stops, load nothing while hidden and load the view once shown again`() = runTest(testDispatcher) {
+        val viewModel = viewModel()
+        testScheduler.advanceUntilIdle()
+        viewModel.onAction(MapAction.MapView.CameraRest(Coordinates(48.86, 2.32), 15f, PARIS_CENTER))
+        testScheduler.advanceUntilIdle()
+        assertTrue(viewModel.uiState.value.layers.placePins.isNotEmpty())
+
+        viewModel.onAction(MapAction.Days.TogglePlaces)
+        testScheduler.advanceUntilIdle()
+        assertTrue(viewModel.uiState.value.arePlacesHidden)
+        assertTrue(viewModel.uiState.value.layers.placePins.isEmpty())
+        assertTrue(viewModel.uiState.value.layers.placeClusters.isEmpty())
+
+        // Moving the map while they're hidden asks the server for nothing.
+        val requests = places.requests.size
+        val elsewhere = GeoBounds(47.9, 1.9, 48.1, 2.1)
+        viewModel.onAction(MapAction.MapView.CameraRest(Coordinates(48.0, 2.0), 15f, elsewhere))
+        testScheduler.advanceUntilIdle()
+        assertEquals(requests, places.requests.size)
+
+        // Shown again: the view the camera rests on loads.
+        viewModel.onAction(MapAction.Days.TogglePlaces)
+        testScheduler.advanceUntilIdle()
+        assertEquals(PlaceSquare.covering(elsewhere, 15), places.requests[requests])
+        assertTrue(viewModel.uiState.value.layers.placePins.all { it.place.location in elsewhere })
+    }
+
+    @Test
+    fun `hidden places keep the route's places along the way, and the route still makes nothing else a dot`() = runTest(testDispatcher) {
+        addStops(GeoPoint(48.2085, 16.3731), GeoPoint(48.2104, 16.3655))
+        val cafe = MapPlace("cafe", "Café Central", PlaceCategory.Cafe, GeoPoint(48.2101, 16.3654), isTripinly = false, hotCount = 0, prominence = 70)
+        routes.alongTheWay = listOf(AlongTheWayPlace(cafe, distanceFromRouteMeters = 40, etaFromStartSeconds = 300))
+        val viewModel = viewModel()
+        testScheduler.advanceUntilIdle()
+
+        viewModel.onAction(MapAction.Days.TogglePlaces)
+        viewModel.onAction(MapAction.Plan.ToggleRoute)
+        testScheduler.advanceUntilIdle()
+        assertEquals(listOf("cafe"), viewModel.uiState.value.layers.placePins.map { it.place.id })
+        assertTrue(viewModel.uiState.value.layers.placePins.single().isAlongTheWay)
+
+        // The route off again: the stops alone.
+        viewModel.onAction(MapAction.Plan.ToggleRoute)
+        testScheduler.advanceUntilIdle()
+        assertTrue(viewModel.uiState.value.layers.placePins.isEmpty())
+        assertEquals(2, viewModel.uiState.value.layers.stops.size)
+    }
+
+    @Test
     fun `a viewer can't add a place`() = runTest(testDispatcher) {
         backend.seed(trip.copy(trip = trip.trip.copy(role = TripRole.VIEWER)))
         val viewModel = viewModel()
@@ -1378,8 +1502,8 @@ class MapViewModelTest {
 
         viewModel.onAction(MapAction.MapView.LongClick(Coordinates(48.85, 2.35)))
         testScheduler.runCurrent()
-        assertEquals(MapDialog.NamePin, viewModel.uiState.value.dialog)
-        viewModel.onAction(MapAction.Dialog.ConfirmPinName("Our hotel"))
+        assertIs<MapDialog.NamePin>(viewModel.uiState.value.dialog).name.setTextAndPlaceCursorAtEnd("Our hotel")
+        viewModel.onAction(MapAction.Dialog.ConfirmPinName)
         testScheduler.advanceUntilIdle()
 
         assertNull(viewModel.uiState.value.dialog)

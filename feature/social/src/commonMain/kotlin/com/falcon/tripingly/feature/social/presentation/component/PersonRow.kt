@@ -1,59 +1,120 @@
 package com.falcon.tripingly.feature.social.presentation.component
 
-import androidx.compose.foundation.clickable
+import com.falcon.tripingly.core.designsystem.component.skeletonText
+import androidx.compose.foundation.background
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.layout.Box
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.outlined.PersonRemove
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
+import com.falcon.tripingly.core.designsystem.component.AppDropdownMenu
+import com.falcon.tripingly.core.designsystem.component.skeleton
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.ui.unit.dp
+import com.falcon.tripingly.core.designsystem.component.DropdownAction
+import com.falcon.tripingly.feature.social.generated.resources.Res
+import com.falcon.tripingly.feature.social.generated.resources.social_more
+import com.falcon.tripingly.feature.social.generated.resources.social_unfollow
+import org.jetbrains.compose.resources.stringResource
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.tooling.preview.Preview
 import com.falcon.tripingly.core.designsystem.component.AvatarCircle
+import com.falcon.tripingly.core.designsystem.component.AvatarSize
+import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
 import com.falcon.tripingly.core.designsystem.theme.spacing
 import com.falcon.tripingly.core.model.trip.UserSummary
-import androidx.compose.ui.tooling.preview.Preview
-import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
-import androidx.compose.foundation.background
 
-/** A person in a list; tapping opens their profile. */
+/** A person in a list, on a card; tapping opens their profile, and ⋮ or a long press opens [actions] when there are any. */
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
-internal fun PersonRow(user: UserSummary, onClick: () -> Unit, modifier: Modifier = Modifier) {
-    Row(
+internal fun PersonRow(user: UserSummary, onClick: () -> Unit, modifier: Modifier = Modifier, actions: List<DropdownAction> = emptyList()) {
+    var menuOpen by rememberSaveable { mutableStateOf(false) }
+    Surface(
         modifier = modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick)
-            .padding(horizontal = MaterialTheme.spacing.medium, vertical = MaterialTheme.spacing.small),
-        verticalAlignment = Alignment.CenterVertically,
+            .clip(MaterialTheme.shapes.large)
+            .combinedClickable(onClick = onClick, onLongClick = if (actions.isEmpty()) null else ({ menuOpen = true })),
+        shape = MaterialTheme.shapes.large,
+        color = MaterialTheme.colorScheme.surfaceContainerLowest,
     ) {
-        AvatarCircle(name = user.displayName, key = user.username)
-        Column(Modifier.padding(start = MaterialTheme.spacing.medium)) {
-            Text(user.displayName, style = MaterialTheme.typography.bodyLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            Text(
-                text = "@${user.username}",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
+        // As tall with ⋮ as without, and symmetric: the avatar sits 12 dp from the top, bottom and start either way. A row
+        // with ⋮ (48 dp touch area) pads less above and below to stay as tall, and its glyph sits 12 dp from the end.
+        val inset = MaterialTheme.spacing.small + MaterialTheme.spacing.extraSmall
+        val vertical = if (actions.isEmpty()) inset else inset - (MenuTouchSize - AvatarSize.Row) / 2
+        Row(
+            modifier = Modifier.padding(start = inset, top = vertical, bottom = vertical, end = if (actions.isEmpty()) inset else 0.dp),
+            horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small + MaterialTheme.spacing.extraSmall),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            AvatarCircle(user, size = AvatarSize.Row)
+            Column(Modifier.weight(1f)) {
+                Text(user.displayName, style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.skeletonText())
+                Text(
+                    text = "@${user.username}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.skeletonText(),
+                )
+            }
+            if (actions.isNotEmpty()) {
+                Box {
+                    IconButton(onClick = { menuOpen = true }) {
+                        Icon(Icons.Default.MoreVert, contentDescription = stringResource(Res.string.social_more), modifier = Modifier.skeleton(CircleShape))
+                    }
+                    AppDropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }, actions = actions)
+                }
+            }
         }
+    }
+}
+
+/** An icon button's touch area. */
+private val MenuTouchSize = 48.dp
+
+/** One of my people lists' ⋮: unfollow (friends and people I follow). */
+@Composable
+internal fun unfollowAction(onUnfollow: () -> Unit) =
+    DropdownAction(stringResource(Res.string.social_unfollow), icon = Icons.Outlined.PersonRemove, onClick = onUnfollow)
+
+@Composable
+private fun PersonRowPreviewContent() {
+    Column(
+        Modifier.background(MaterialTheme.colorScheme.background).padding(MaterialTheme.spacing.medium),
+        verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
+    ) {
+        previewPeople.forEach { user -> PersonRow(user = user, onClick = {}, actions = listOf(unfollowAction {})) }
     }
 }
 
 @Preview
 @Composable
 private fun PersonRowPreview() {
-    TripinglyTheme {
-        Column(Modifier.background(MaterialTheme.colorScheme.surface)) {
-            previewPeople.forEach { user -> PersonRow(user = user, onClick = {}) }
-        }
-    }
+    TripinglyTheme { PersonRowPreviewContent() }
 }
 
 @Preview
 @Composable
 private fun PersonRowDarkPreview() {
-    TripinglyTheme(darkTheme = true) {
-        PersonRow(user = previewPeople.first(), onClick = {}, modifier = Modifier.background(MaterialTheme.colorScheme.surface))
-    }
+    TripinglyTheme(darkTheme = true) { PersonRowPreviewContent() }
 }

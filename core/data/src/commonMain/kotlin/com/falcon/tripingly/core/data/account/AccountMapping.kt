@@ -12,6 +12,7 @@ import com.falcon.tripingly.core.model.account.ProfileField
 import com.falcon.tripingly.core.model.account.SessionState
 import com.falcon.tripingly.core.model.account.TripVisibility
 import com.falcon.tripingly.core.model.account.UsernameAvailability
+import com.falcon.tripingly.core.data.trips.profilePhotoOf
 import com.falcon.tripingly.core.network.model.DataExportDto
 import com.falcon.tripingly.core.network.model.LegalDocumentDto
 import com.falcon.tripingly.core.network.model.MeDto
@@ -25,6 +26,7 @@ internal fun MeDto.toAccount() = Account(
     id = id,
     username = username,
     displayName = displayName,
+    photo = profilePhotoOf(avatarPhotoId, avatarThumbUrl),
     birthDate = birthDate?.let { runCatching { LocalDate.parse(it) }.getOrNull() },
     locale = locale,
     defaultTripVisibility = when (defaultTripVisibility) {
@@ -88,6 +90,7 @@ internal fun NotificationSettingsDto.toNotificationSettings() = NotificationSett
         if (tripChangedByCollaborator) add(NotificationType.TRIP_CHANGES)
         if (likesGrouped) add(NotificationType.LIKES)
         if (joinRequested) add(NotificationType.JOIN_REQUESTS)
+        if (newFollowers) add(NotificationType.NEW_FOLLOWERS)
     },
 )
 

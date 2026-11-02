@@ -33,6 +33,9 @@ interface UserRepository {
     /** Blocking also ends follows both ways and takes each of us out of the other's trips. */
     suspend fun setBlocked(userId: String, blocked: Boolean): AppResult<Unit, DataError.Network>
 
+    /** The people I blocked, a page at a time (Settings, where they can be unblocked). */
+    suspend fun blocked(cursor: String?): AppResult<Page<UserSummary>, DataError.Network>
+
     /** Follows made or ended live, by me (on any device) or by someone following me. */
     val followChanges: Flow<FollowChange>
 

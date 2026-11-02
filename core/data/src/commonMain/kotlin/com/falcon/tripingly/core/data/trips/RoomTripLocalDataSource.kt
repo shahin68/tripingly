@@ -52,6 +52,8 @@ internal class RoomTripLocalDataSource(
                     userId = member.user.id,
                     username = member.user.username,
                     displayName = member.user.displayName,
+                    photoId = member.user.photo?.id,
+                    photoUrl = member.user.photo?.thumbUrl,
                     role = member.role.wireName,
                     position = index,
                 )
@@ -103,6 +105,8 @@ internal class RoomTripLocalDataSource(
         ownerId = owner.id,
         ownerUsername = owner.username,
         ownerDisplayName = owner.displayName,
+        ownerPhotoId = owner.photo?.id,
+        ownerPhotoUrl = owner.photo?.thumbUrl,
         coverPhotoId = coverPhotoId,
         coverThumbUrl = coverThumbUrl,
         dayCount = dayCount,
@@ -126,7 +130,7 @@ internal fun TripEntity.toTrip() = Trip(
     endDate = endDate?.let(LocalDate::parse),
     visibility = if (visibility == "private") TripVisibility.PRIVATE else TripVisibility.PUBLIC,
     role = tripRoleOf(role),
-    owner = UserSummary(ownerId, ownerUsername, ownerDisplayName),
+    owner = UserSummary(ownerId, ownerUsername, ownerDisplayName, profilePhotoOf(ownerPhotoId, ownerPhotoUrl)),
     coverPhotoId = coverPhotoId,
     coverThumbUrl = coverThumbUrl,
     dayCount = dayCount,
@@ -141,7 +145,7 @@ private fun TripWithDetails.toDetails() = TripDetails(
     trip = trip.toTrip(),
     days = days.sortedBy { it.day.position }.map { it.toDay() },
     members = members.sortedBy { it.position }.map {
-        TripMember(UserSummary(it.userId, it.username, it.displayName), tripRoleOf(it.role))
+        TripMember(UserSummary(it.userId, it.username, it.displayName, profilePhotoOf(it.photoId, it.photoUrl)), tripRoleOf(it.role))
     },
     myJoinRequest = when (trip.myJoinRequest) {
         "pending" -> JoinRequestStatus.PENDING

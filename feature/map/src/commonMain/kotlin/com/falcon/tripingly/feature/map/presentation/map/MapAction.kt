@@ -33,6 +33,8 @@ sealed interface MapAction {
     /** The top bar and its menu. */
     sealed interface Header : MapAction {
         data object Back : Header
+        /** Loads the trip again from the error screen. */
+        data object Retry : Header
         data object AddDay : Header
         data object DeleteDay : Header
         /** Saves someone else's trip to My Trips, or removes it. */
@@ -40,8 +42,8 @@ sealed interface MapAction {
         /** Asks the owner to let me edit their trip with them. */
         data object RequestToJoin : Header
         data object CancelJoinRequest : Header
-        /** The owner opens the members sheet to answer requests to join. */
-        data object OpenJoinRequests : Header
+        /** "Trip members" in the ⋮ menu opens the members sheet (where the owner answers requests to join). */
+        data object OpenMembers : Header
         data object OpenOwnerProfile : Header
         data object ReportTrip : Header
     }
@@ -67,6 +69,8 @@ sealed interface MapAction {
         data class Select(val dayIndex: Int) : Days
         /** The button above the location button: fits the camera to the open day. */
         data object FitDay : Days
+        /** The top map button: hides or shows the places that aren't the trip's stops or its route's. */
+        data object TogglePlaces : Days
     }
 
     /** The open day's plan in its sheet: the stops card, or a route from A to B. */
@@ -118,7 +122,7 @@ sealed interface MapAction {
         data object CloseStopPhotos : Sheet
         data object ClosePlacePhotos : Sheet
         data object CloseStopComments : Sheet
-        data object CloseJoinRequests : Sheet
+        data object CloseMembers : Sheet
         data object ClosePlaceImage : Sheet
         data object CloseCamera : Sheet
         /** Reports the photo open in a viewer: a Commons image as the place's image, anything else as a photo. */
@@ -126,14 +130,14 @@ sealed interface MapAction {
     }
 
     sealed interface Dialog : MapAction {
-        data class ConfirmPinName(val name: String) : Dialog
+        data object ConfirmPinName : Dialog
         data object DismissPinName : Dialog
         data object Confirm : Dialog
         data object DismissConfirm : Dialog
         /** Deletes the stop or day although other people's content goes with it. */
         data object DeleteAnyway : Dialog
         data object DismissDeleteAnyway : Dialog
-        data class SendReport(val reason: ReportReason, val details: String) : Dialog
+        data class SendReport(val reason: ReportReason) : Dialog
         data object DismissReport : Dialog
         data object ApplyBestOrder : Dialog
         data object DismissBestOrder : Dialog

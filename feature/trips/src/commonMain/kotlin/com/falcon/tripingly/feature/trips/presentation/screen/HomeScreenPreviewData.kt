@@ -5,6 +5,7 @@ import com.falcon.tripingly.core.model.trip.Trip
 import com.falcon.tripingly.core.model.trip.TripRole
 import com.falcon.tripingly.core.model.trip.UserSummary
 import kotlinx.collections.immutable.persistentListOf
+import kotlinx.collections.immutable.toImmutableList
 import kotlinx.datetime.LocalDate
 import kotlin.time.Instant
 import androidx.compose.ui.tooling.preview.PreviewParameterProvider
@@ -17,12 +18,12 @@ internal val tripsPreviewData = persistentListOf(
     Trip(
         id = "1",
         name = "Summer Vacation in Paris",
-        startDate = LocalDate(2025, 6, 1),
-        endDate = LocalDate(2025, 6, 15),
+        startDate = LocalDate(2026, 10, 27),
+        endDate = LocalDate(2026, 10, 29),
         visibility = TripVisibility.PUBLIC,
         role = TripRole.OWNER,
         owner = UserSummary("u1", "shahin", "Shahin"),
-        dayCount = 15,
+        dayCount = 3,
         markerCount = 4,
         createdAt = Instant.parse("2025-05-01T10:00:00Z"),
         updatedAt = Instant.parse("2025-05-01T10:00:00Z"),
@@ -30,8 +31,8 @@ internal val tripsPreviewData = persistentListOf(
     Trip(
         id = "2",
         name = "Tokyo Adventure",
-        startDate = LocalDate(2025, 10, 10),
-        endDate = LocalDate(2025, 10, 20),
+        startDate = LocalDate(2026, 10, 10),
+        endDate = LocalDate(2026, 10, 20),
         visibility = TripVisibility.PRIVATE,
         role = TripRole.EDITOR,
         owner = UserSummary("u2", "anna", "Anna"),
@@ -55,13 +56,24 @@ internal val tripsPreviewData = persistentListOf(
     ),
 )
 
-/** Trips, the first load, no trips yet, a search without matches, and trips that couldn't load. */
+internal val PreviewToday = LocalDate(2026, 10, 26)
+
+/** Vienna on since before today (filled dot), two trips starting today (one stretched ring), two starting the same coming day. */
+internal val tripsOnNowPreviewData = tripsPreviewData + listOf(
+    tripsPreviewData[0].copy(id = "4", name = "Vienna", startDate = LocalDate(2026, 10, 24), endDate = LocalDate(2026, 10, 27)),
+    tripsPreviewData[0].copy(id = "5", name = "A day in Graz", startDate = PreviewToday, endDate = PreviewToday, editorCount = 2),
+    tripsPreviewData[1].copy(id = "6", name = "Linz", startDate = PreviewToday, endDate = LocalDate(2026, 10, 28)),
+    tripsPreviewData[1].copy(id = "7", name = "Salzburg", startDate = LocalDate(2026, 10, 27), endDate = LocalDate(2026, 10, 30)),
+)
+
+/** Trips, trips on now and sharing a start day, the first load, no trips yet, a search without matches, and trips that couldn't load. */
 internal class HomeScreenPreviewStates : PreviewParameterProvider<State> {
     override val values = sequenceOf(
-        State(trips = tripsPreviewData, hasTrips = true, hasLoaded = true),
+        State(trips = tripsPreviewData, timeline = tripsPreviewData.toTimeline(PreviewToday), hasTrips = true, hasLoaded = true),
+        State(trips = tripsOnNowPreviewData.toImmutableList(), timeline = tripsOnNowPreviewData.toTimeline(PreviewToday), hasTrips = true, hasLoaded = true),
         State(),
         State(hasLoaded = true),
         State(searchQuery = "Rome", hasTrips = true, hasLoaded = true),
-        State(hasLoaded = true, message = UiText.Resource(Res.string.home_error_load_trips)),
+        State(hasLoaded = true, loadError = UiText.Resource(Res.string.home_error_load_trips)),
     )
 }

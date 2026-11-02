@@ -13,6 +13,7 @@ import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
+import com.falcon.tripingly.core.designsystem.theme.MapColors
 import com.falcon.tripingly.core.location.model.Coordinates
 import com.falcon.tripingly.core.model.route.TravelMode
 import kotlin.math.PI
@@ -38,12 +39,12 @@ data class MapLine(val points: List<Coordinates>, val arrows: List<PathArrow>, v
 /** [bearing] in degrees clockwise from north, the way the line runs here. */
 data class PathArrow(val position: Coordinates, val bearing: Float)
 
-/** A real route along streets: one color per way of travelling, the same on the line and on its button. */
+/** A real route along streets: one soft, pastel color per way of travelling. */
 internal val TravelMode.lineColor: Color
     get() = when (this) {
-        TravelMode.Walking -> Color(0xFF2E7D32)
-        TravelMode.Cycling -> Color(0xFFEF6C00)
-        TravelMode.Driving -> Color(0xFF1E88E5)
+        TravelMode.Walking -> MapColors.Walk
+        TravelMode.Cycling -> MapColors.Bike
+        TravelMode.Driving -> MapColors.Car
     }
 
 internal val RouteWidth = 5.dp

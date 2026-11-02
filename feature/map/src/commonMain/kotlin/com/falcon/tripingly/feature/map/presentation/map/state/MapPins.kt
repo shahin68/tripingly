@@ -27,6 +27,8 @@ internal class MapPins(
 ) {
     private var pinsJob: Job? = null
     private var prefetchJob: Job? = null
+    /** Where the camera last rested, loaded when hidden places show again. */
+    private var lastRest: Pair<GeoBounds, Float>? = null
 
     init {
         // Pins change when a square in view reloads with new places, and when stops come or go (a stop hides its place).
@@ -40,7 +42,15 @@ internal class MapPins(
         }
     }
 
+    /** While places are hidden nothing loads; the camera's last rest loads once they show again. */
+    fun setHidden(hidden: Boolean) {
+        context.update { it.copy(arePlacesHidden = hidden) }
+        if (!hidden) lastRest?.let { (bounds, zoom) -> onCameraRest(bounds, zoom) }
+    }
+
     fun onCameraRest(bounds: GeoBounds, zoom: Float) {
+        lastRest = bounds to zoom
+        if (context.model.value.arePlacesHidden) return
         val squares = PlaceSquare.covering(bounds, floor(zoom).toInt())
         pinsJob?.cancel()
         pinsJob = context.scope.launch {
