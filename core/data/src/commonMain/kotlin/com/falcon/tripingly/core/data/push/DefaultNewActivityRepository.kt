@@ -17,14 +17,14 @@ internal class DefaultNewActivityRepository(
     private val realtime: RealtimeClient,
 ) : NewActivityRepository {
 
-    override suspend fun stopsWithNewActivity(tripId: String): AppResult<Set<String>, DataError.Network> =
-        api.newActivity(tripId).map { it.markerIds.toSet() }
+    override suspend fun stopsWithNewActivity(tripId: String): AppResult<NewActivity, DataError.Network> =
+        api.newActivity(tripId).map { NewActivity(it.markerIds.toSet(), it.commentMarkerIds.toSet()) }
 
-    override fun newActivity(tripId: String): Flow<String> =
-        realtime.events.filterIsInstance<RealtimeEvent.NewActivity>().filter { it.tripId == tripId }.map { it.markerId }
+    override fun newActivity(tripId: String): Flow<StopNews> =
+        realtime.events.filterIsInstance<RealtimeEvent.NewActivity>().filter { it.tripId == tripId }.map { StopNews(it.markerId, it.aboutComments) }
 
     // Best effort: offline, the mark comes back the next time the trip opens.
-    override suspend fun markSeen(markerId: String) {
-        api.markRead(MarkReadDto(markerId = markerId))
+    override suspend fun markSeen(markerId: String, comments: Boolean) {
+        api.markRead(MarkReadDto(markerId = markerId, kind = if (comments) MarkReadDto.Kind.COMMENTS else MarkReadDto.Kind.OTHER))
     }
 }

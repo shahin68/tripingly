@@ -14,6 +14,7 @@ import com.falcon.tripingly.core.data.photos.FakePhotoRepository
 import com.falcon.tripingly.core.data.places.FakePlaceRepository
 import com.falcon.tripingly.core.data.places.PlaceRepository
 import com.falcon.tripingly.core.data.push.FakeNewActivityRepository
+import com.falcon.tripingly.core.data.push.StopNews
 import com.falcon.tripingly.core.data.routing.FakeRouteRepository
 import com.falcon.tripingly.core.data.routing.RouteErrorCodes
 import com.falcon.tripingly.core.data.routing.RouteRepository
@@ -648,15 +649,40 @@ class MapViewModelTest {
         viewModel.onAction(MapAction.MapView.MarkerClick(viewModel.uiState.value.layers.stops[0]))
         testScheduler.advanceUntilIdle()
         assertEquals(listOf(false, false), viewModel.uiState.value.layers.stops.map { it.isNew })
-        assertEquals(listOf(first.id), newActivity.seen)
+        assertEquals(listOf(StopNews(first.id, false)), newActivity.seen)
 
-        // A comment on the open stop is seen at once; one on another stop marks it.
+        // A like on the open stop is seen at once; one on another stop marks it.
         newActivity.arrive(trip.trip.id, first.id)
         newActivity.arrive(trip.trip.id, second.id)
         testScheduler.advanceUntilIdle()
         assertEquals(listOf(false, true), viewModel.uiState.value.layers.stops.map { it.isNew })
-        assertEquals(listOf(first.id, first.id), newActivity.seen)
+        assertEquals(listOf(StopNews(first.id, false), StopNews(first.id, false)), newActivity.seen)
         assertTrue(viewModel.uiState.value.dayTabs.days[0].hasNew)
+    }
+
+    @Test
+    fun `a stop with new comments keeps its mark until its comments are seen`() = runTest(testDispatcher) {
+        val first = backend.addMarker(trip.trip.id, trip.days[0].id, NewMarker("Stop #1", GeoPoint(48.85, 2.35)))
+        newActivity.commentMarked[trip.trip.id] = setOf(first.id)
+        val viewModel = viewModel()
+        testScheduler.advanceUntilIdle()
+
+        // Opening the stop card doesn't read its comments.
+        viewModel.onAction(MapAction.MapView.MarkerClick(viewModel.uiState.value.layers.stops[0]))
+        testScheduler.advanceUntilIdle()
+        assertTrue(viewModel.uiState.value.layers.stops[0].isNew)
+        assertTrue(newActivity.seen.isEmpty())
+
+        viewModel.onAction(MapAction.StopCard.OpenComments)
+        testScheduler.advanceUntilIdle()
+        assertFalse(viewModel.uiState.value.layers.stops[0].isNew)
+        assertEquals(listOf(StopNews(first.id, true)), newActivity.seen)
+
+        // A new comment while they're open is seen at once.
+        newActivity.arrive(trip.trip.id, first.id, aboutComments = true)
+        testScheduler.advanceUntilIdle()
+        assertFalse(viewModel.uiState.value.layers.stops[0].isNew)
+        assertEquals(listOf(StopNews(first.id, true), StopNews(first.id, true)), newActivity.seen)
     }
 
     @Test

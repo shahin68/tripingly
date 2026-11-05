@@ -126,7 +126,14 @@ class RealtimeEventTest {
     fun notificationsAboutAStop_markIt() {
         assertEquals(
             RealtimeEvent.NewActivity("t1", "m1"),
-            parse("notification.created", envelope("notification.created", """{"id":"n1","type":"comment_on_marker","markerId":"m1"}""")),
+            parse("notification.created", envelope("notification.created", """{"id":"n1","type":"photo_liked","markerId":"m1"}""")),
+        )
+        assertEquals(
+            RealtimeEvent.NewActivity("t1", "m1", aboutComments = true),
+            parse(
+                "notification.created",
+                envelope("notification.created", """{"id":"n4","type":"comment_on_marker","markerId":"m1","aboutComments":true}"""),
+            ),
         )
         // About a whole trip or a person: no mark.
         assertNull(parse("notification.created", envelope("notification.created", """{"id":"n2","type":"added_to_trip","markerId":null}""")))
