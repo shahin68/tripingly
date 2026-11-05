@@ -39,7 +39,7 @@ Every module has `commonMain`, plus `androidMain`/`iosMain` only where platform 
 | Area | Library | Version |
 |---|---|---|
 | Kotlin | Kotlin Multiplatform | 2.4.10 |
-| UI | Compose Multiplatform (shared UI on both platforms) | 1.11.1, Material 3 1.11.0-alpha07 |
+| UI | Compose Multiplatform (shared UI on both platforms) | 1.12.2, Material 3 1.12.0-alpha03 (compileSdk 37, AGP 9.1.1, Gradle 9.3.1) |
 | Build | AGP (KMP library plugin), Gradle | 9.0.1, 9.1.0 |
 | Navigation | JetBrains Navigation 3 | 1.1.1 |
 | DI | Koin (core, compose, compose-viewmodel, android) | 4.2.2 |

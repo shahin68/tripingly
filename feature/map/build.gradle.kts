@@ -22,6 +22,8 @@ kotlin {
             implementation(libs.robolectric)
             implementation(libs.compose.uiTest)
             implementation(libs.androidx.compose.uiTestManifest)
+            // ui-test brings Espresso 3.5, which reflects on InputManager.getInstance(), gone in SDK 37; 3.7 fixed it.
+            implementation(libs.androidx.espresso.core)
         }
     }
 }
