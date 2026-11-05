@@ -140,7 +140,6 @@
     <string name="map_confirm_remove">Eltávolítás</string>
     <string name="map_my_content_removed">A fotóid, hozzászólásaid és kedveléseid eltávolítva erről a megállóról.</string>
     <string name="map_error_remove_my_content">Nem sikerült eltávolítani a fotóidat, hozzászólásaidat és kedveléseidet.</string>
-    <string name="map_trip_owner">· készítette: %1$s</string>
 
     <!-- Routes -->
     <string name="map_route">Útvonal</string>
@@ -186,4 +185,19 @@
 
     <!-- Redesign -->
     <string name="map_comments">Hozzászólások</string>
+    <string name="map_trip_card_brand">Tripinly</string>
+    <string name="map_trip_card_title">Utazási engedély</string>
+    <string name="map_trip_card_name">Név</string>
+    <string name="map_trip_card_holder">Tulajdonos</string>
+    <string name="map_trip_card_dates">Érvényes</string>
+    <string name="map_trip_card_no_dates">Nincs dátum</string>
+    <string name="map_trip_card_issued">Kiállítva</string>
+    <string name="map_trip_card_days">Napok</string>
+    <string name="map_trip_card_stops">Megállók</string>
+    <string name="map_trip_card_members">Tagok</string>
+    <string name="map_trip_card_likes">Kedvelések</string>
+    <string name="map_trip_card_saves">Mentések</string>
+    <string name="map_trip_card_visibility">Láthatóság</string>
+    <string name="map_trip_card_public">Nyilvános</string>
+    <string name="map_trip_card_private">Privát</string>
 </resources>

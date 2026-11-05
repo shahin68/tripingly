@@ -140,7 +140,6 @@
     <string name="map_confirm_remove">Entfernen</string>
     <string name="map_my_content_removed">Deine Fotos, Kommentare und Likes auf diesem Stopp wurden entfernt.</string>
     <string name="map_error_remove_my_content">Deine Fotos, Kommentare und Likes konnten nicht entfernt werden.</string>
-    <string name="map_trip_owner">von %1$s</string>
 
     <!-- Routes -->
     <string name="map_route">Route</string>
@@ -186,4 +185,19 @@
 
     <!-- Redesign -->
     <string name="map_comments">Kommentare</string>
+    <string name="map_trip_card_brand">Tripinly</string>
+    <string name="map_trip_card_title">Reiseerlaubnis</string>
+    <string name="map_trip_card_name">Name</string>
+    <string name="map_trip_card_holder">Inhaber</string>
+    <string name="map_trip_card_dates">Gültig</string>
+    <string name="map_trip_card_no_dates">Ohne Daten</string>
+    <string name="map_trip_card_issued">Ausgestellt</string>
+    <string name="map_trip_card_days">Tage</string>
+    <string name="map_trip_card_stops">Stopps</string>
+    <string name="map_trip_card_members">Mitglieder</string>
+    <string name="map_trip_card_likes">Likes</string>
+    <string name="map_trip_card_saves">Gespeichert</string>
+    <string name="map_trip_card_visibility">Sichtbarkeit</string>
+    <string name="map_trip_card_public">Öffentlich</string>
+    <string name="map_trip_card_private">Privat</string>
 </resources>

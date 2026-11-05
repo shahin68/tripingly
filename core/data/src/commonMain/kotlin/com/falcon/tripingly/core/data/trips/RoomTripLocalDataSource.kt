@@ -120,6 +120,8 @@ internal class RoomTripLocalDataSource(
         destinationName = details?.destination?.name,
         destinationLat = details?.destination?.location?.lat,
         destinationLng = details?.destination?.location?.lng,
+        likeCount = details?.likeCount ?: 0,
+        saveCount = details?.saveCount ?: 0,
     )
 }
 
@@ -156,6 +158,8 @@ private fun TripWithDetails.toDetails() = TripDetails(
     destination = trip.destinationName?.let { name ->
         Destination(name, GeoPoint(trip.destinationLat ?: 0.0, trip.destinationLng ?: 0.0))
     },
+    likeCount = trip.likeCount,
+    saveCount = trip.saveCount,
 )
 
 private fun DayWithMarkers.toDay() = TripDay(

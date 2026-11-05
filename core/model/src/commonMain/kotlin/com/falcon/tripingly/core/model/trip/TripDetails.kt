@@ -15,6 +15,10 @@ data class TripDetails(
     val pendingJoinRequestCount: Int = 0,
     /** Where the trip goes, if the owner picked a place; the map opens there while the trip has no stops. */
     val destination: Destination? = null,
+    /** People who liked the trip, shown on its trip card. */
+    val likeCount: Int = 0,
+    /** People who saved it to their trips. */
+    val saveCount: Int = 0,
 )
 
 data class TripDay(

@@ -3,6 +3,7 @@ package com.falcon.tripingly.feature.map.presentation.map
 import com.falcon.tripingly.core.common.util.DateUtils
 import com.falcon.tripingly.core.location.model.Coordinates
 import com.falcon.tripingly.core.location.permission.LocationPermission
+import com.falcon.tripingly.core.model.account.TripVisibility
 import com.falcon.tripingly.core.model.config.AppConfig
 import com.falcon.tripingly.core.model.route.AlongTheWayPlace
 import com.falcon.tripingly.core.model.trip.TripDetails
@@ -11,7 +12,6 @@ import com.falcon.tripingly.core.model.trip.TripRole
 import com.falcon.tripingly.core.ui.UiText
 import com.falcon.tripingly.feature.map.generated.resources.Res
 import com.falcon.tripingly.feature.map.generated.resources.map_stop_title_format
-import com.falcon.tripingly.feature.map.generated.resources.map_trip_owner
 import com.falcon.tripingly.feature.map.presentation.component.MapLayersState
 import com.falcon.tripingly.feature.map.presentation.component.MapMarker
 import com.falcon.tripingly.feature.map.presentation.component.PlacePin
@@ -78,9 +78,17 @@ internal class MapStateMapper(
         val trip = details?.trip
         return HeaderState(
             tripName = trip?.name.orEmpty(),
-            dates = trip?.let { DateUtils.formatRange(it.startDate, it.endDate) },
-            stopCount = days.sumOf { it.markers.size },
-            ownerLabel = trip?.owner?.takeIf { otherOwnerId != null }?.let { UiText.Resource(Res.string.map_trip_owner, it.displayName) },
+            owner = trip?.owner,
+            card = TripCardState(
+                dates = trip?.let { DateUtils.formatRange(it.startDate, it.endDate) },
+                dayCount = days.size,
+                stopCount = days.sumOf { it.markers.size },
+                memberCount = details?.members?.size ?: 0,
+                likeCount = details?.likeCount ?: 0,
+                saveCount = details?.saveCount ?: 0,
+                isPublic = trip?.visibility != TripVisibility.PRIVATE,
+                created = trip?.createdAt?.let(DateUtils::formatFormal).orEmpty(),
+            ),
             members = details?.members?.takeIf { it.isNotEmpty() }?.let { MembersEntry(it.size, details.pendingJoinRequestCount) },
             isLoading = days.isEmpty() && model.isLoadingTrip,
             isBusy = model.isSaving || model.isUpdatingSharing,

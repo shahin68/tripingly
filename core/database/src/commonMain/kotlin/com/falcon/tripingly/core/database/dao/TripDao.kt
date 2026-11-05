@@ -111,6 +111,8 @@ abstract class TripDao {
                     destinationName = cached.destinationName,
                     destinationLat = cached.destinationLat,
                     destinationLng = cached.destinationLng,
+                    likeCount = cached.likeCount,
+                    saveCount = cached.saveCount,
                 )
             },
         )

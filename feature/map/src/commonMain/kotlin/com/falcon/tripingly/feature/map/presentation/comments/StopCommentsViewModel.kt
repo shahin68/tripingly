@@ -120,6 +120,7 @@ class StopCommentsViewModel(
                     state.copy(
                         isSending = false,
                         comments = (state.comments.filterNot { it.id == result.data.id } + result.data).toImmutableList(),
+                        sentCommentId = result.data.id,
                     )
                 }
                 is AppResult.Error -> _uiState.update { it.copy(isSending = false, message = result.error.toUiText(Res.string.map_error_send_comment)) }
@@ -187,6 +188,8 @@ class StopCommentsViewModel(
         val isLoading: Boolean = true,
         /** The draft is waiting for the server. */
         val isSending: Boolean = false,
+        /** The comment I sent last: the list glides down to it at the end. */
+        val sentCommentId: String? = null,
         /** Waiting for the user to confirm. */
         val commentToDelete: Comment? = null,
         /** The comment the report dialog is about. */

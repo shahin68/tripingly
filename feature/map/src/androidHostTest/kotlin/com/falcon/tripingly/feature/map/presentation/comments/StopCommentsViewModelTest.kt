@@ -72,6 +72,8 @@ class StopCommentsViewModelTest {
         val state = viewModel.uiState.value
         assertEquals("Great view", state.comments.single().body)
         assertEquals("", viewModel.draft.text.toString())
+        // The list scrolls down to it.
+        assertEquals(state.comments.single().id, state.sentCommentId)
     }
 
     @Test

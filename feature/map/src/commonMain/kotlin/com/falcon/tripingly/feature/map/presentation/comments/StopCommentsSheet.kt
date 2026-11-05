@@ -156,6 +156,11 @@ fun StopCommentsScreen(
             info.totalItemsCount > 0 && last >= info.totalItemsCount - LOAD_MORE_THRESHOLD
         }.distinctUntilChanged().filter { it }.collect { onAction(Action.OnLoadMore) }
     }
+    // My new comment goes to the end of the list: it scrolls smoothly down to it.
+    LaunchedEffect(state.sentCommentId) {
+        val index = state.comments.indexOfFirst { it.id == state.sentCommentId }
+        if (index >= 0) listState.animateScrollToItem(index)
+    }
 
     Column(
         modifier = modifier

@@ -7,6 +7,7 @@ import com.falcon.tripingly.core.model.place.PlaceSearchResult
 import com.falcon.tripingly.core.model.place.SearchResultType
 import com.falcon.tripingly.core.model.route.TravelMode
 import com.falcon.tripingly.core.model.trip.GeoPoint
+import com.falcon.tripingly.core.model.trip.UserSummary
 import com.falcon.tripingly.core.ui.UiText
 import com.falcon.tripingly.feature.map.generated.resources.Res
 import com.falcon.tripingly.feature.map.generated.resources.map_error_load_trip
@@ -28,6 +29,7 @@ import com.falcon.tripingly.feature.map.presentation.map.PointRouteCardState
 import com.falcon.tripingly.feature.map.presentation.map.RouteSummaryState
 import com.falcon.tripingly.feature.map.presentation.map.SearchState
 import com.falcon.tripingly.feature.map.presentation.map.StopsCardState
+import com.falcon.tripingly.feature.map.presentation.map.TripCardState
 import com.falcon.tripingly.feature.map.presentation.map.ViewerMenu
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.persistentMapOf
@@ -59,8 +61,8 @@ private val previewDays = DayTabsState(
 private val withStops = MapUiState(
     header = HeaderState(
         tripName = "Summer Vacation in Paris",
-        dates = "19 – 23 Oct 2026",
-        stopCount = 6,
+        owner = UserSummary(id = "u1", username = "shahin", displayName = "Shahin"),
+        card = TripCardState(dates = "19 – 23 Oct 2026", dayCount = 5, stopCount = 6, memberCount = 4, likeCount = 12, saveCount = 3, created = "2 Oct 2026"),
         members = MembersEntry(count = 4, requestCount = 1),
         editorMenu = EditorMenu(canDeleteDay = true),
     ),
@@ -153,7 +155,8 @@ internal class MapHeaderPreviewStates : PreviewParameterProvider<MapHeaderPrevie
         MapHeaderPreview(
             HeaderState(
                 tripName = "A long weekend in Budapest with the whole family",
-                ownerLabel = UiText.Server("by anna"),
+                owner = UserSummary(id = "u2", username = "anna", displayName = "Anna Kovács"),
+                card = TripCardState(dates = "4 – 9 Nov 2026", dayCount = 6, stopCount = 23, memberCount = 2, likeCount = 1480, saveCount = 96, created = "12 Oct 2026"),
                 viewerMenu = ViewerMenu(isSavedByMe = true, myJoinRequest = null, ownerUsername = "anna"),
             ),
         ),

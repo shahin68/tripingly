@@ -69,7 +69,6 @@ import com.falcon.tripingly.feature.map.generated.resources.map_error_load_trip
 import com.falcon.tripingly.feature.map.generated.resources.map_error_stop_change
 import com.falcon.tripingly.feature.map.generated.resources.map_join_requested
 import com.falcon.tripingly.feature.map.generated.resources.map_my_content_removed
-import com.falcon.tripingly.feature.map.generated.resources.map_trip_owner
 import com.falcon.tripingly.feature.map.presentation.FakeTripMapViewRepository
 import com.falcon.tripingly.feature.map.presentation.component.CameraCommand
 import com.falcon.tripingly.feature.map.presentation.component.PinSizes
@@ -825,13 +824,14 @@ class MapViewModelTest {
     }
 
     @Test
-    fun `on someone else's trip the header says whose it is, with its dates, stops and members`() = runTest(testDispatcher) {
+    fun `the header shows the owner, and the trip card the stops, members and whether it's public`() = runTest(testDispatcher) {
         backend.addMarker(trip.trip.id, trip.days[0].id, NewMarker("Owner's", GeoPoint(48.85, 2.35)))
         backend.addMarker(trip.trip.id, trip.days[0].id, NewMarker("Another editor's", GeoPoint(41.9, 12.49)))
         val own = viewModel()
         testScheduler.advanceUntilIdle()
-        assertNull(own.uiState.value.header.ownerLabel)
-        assertEquals(2, own.uiState.value.header.stopCount)
+        assertEquals(trip.trip.owner, own.uiState.value.header.owner)
+        assertEquals(2, own.uiState.value.header.card.stopCount)
+        assertEquals(trip.days.size, own.uiState.value.header.card.dayCount)
 
         val shared = backend.observeTrip(trip.trip.id).first()!!
         backend.seed(
@@ -848,8 +848,9 @@ class MapViewModelTest {
         val header = viewModel.uiState.value.header
         assertEquals(shared.members.size, header.members?.count)
         assertEquals(0, header.members?.requestCount)
-        val owner = assertIs<UiText.Resource>(viewModel.uiState.value.header.ownerLabel)
-        assertEquals(Res.string.map_trip_owner, owner.resource)
+        assertEquals(shared.trip.owner, header.owner)
+        assertEquals(shared.members.size, header.card.memberCount)
+        assertTrue(header.card.isPublic)
     }
 
     @Test

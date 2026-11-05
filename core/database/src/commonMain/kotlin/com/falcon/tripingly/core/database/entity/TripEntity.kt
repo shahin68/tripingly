@@ -39,4 +39,7 @@ data class TripEntity(
     val destinationName: String? = null,
     val destinationLat: Double? = null,
     val destinationLng: Double? = null,
+    /** Likes and saves as the trip itself last said; the trip card shows them. */
+    val likeCount: Int = 0,
+    val saveCount: Int = 0,
 )
