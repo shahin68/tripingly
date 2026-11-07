@@ -64,6 +64,7 @@ class MapFlowTest {
         tripId = trip.trip.id,
         stopId = null,
         showMembers = false,
+        showComments = false,
         tripRepository = backend,
         markerRepository = backend,
         placeRepository = FakePlaceRepository(),

@@ -93,9 +93,10 @@ internal enum class ProfileSegment(val label: StringResource, val list: PeopleLi
 
 /**
  * The notification center, from its own module: a list that starts with the Profile tab's [header] items, padded
- * by [contentPadding].
+ * by [contentPadding]. A tap on several new followers switches to my Followers ([onOpenFollowers]).
  */
-typealias NotificationCenterSlot = @Composable (header: LazyListScope.() -> Unit, contentPadding: PaddingValues, modifier: Modifier) -> Unit
+typealias NotificationCenterSlot =
+    @Composable (header: LazyListScope.() -> Unit, contentPadding: PaddingValues, modifier: Modifier, onOpenFollowers: () -> Unit) -> Unit
 
 /**
  * The Profile tab: my header and counts, then my public trips, my friends, the people I follow, my followers or my
@@ -158,7 +159,7 @@ internal fun MyProfileScreen(
     onPeopleAction: (PeopleViewModel.Action) -> Unit,
     onOpenProfile: (username: String) -> Unit,
     barsPadding: PaddingValues = PaddingValues(),
-    notificationCenter: NotificationCenterSlot = { _, _, _ -> },
+    notificationCenter: NotificationCenterSlot = { _, _, _, _ -> },
     hasUnseenNotifications: Boolean = false,
 ) {
     val contentPadding = screenContentPadding(barsPadding)
@@ -203,7 +204,7 @@ internal fun MyProfileScreen(
             item(key = "segments") { Segments(segment, onSegment, Modifier.animateItem()) }
         }
         if (segment == ProfileSegment.Notifications && !search.isSearching) {
-            notificationCenter(header, contentPadding, Modifier.glassSource())
+            notificationCenter(header, contentPadding, Modifier.glassSource()) { onSegment(ProfileSegment.Followers) }
         } else {
             val listState = rememberLazyListState()
             LoadMoreAtEnd(listState) { if (segment.list == null) onAction(Action.Trips.LoadMore) else onPeopleAction(PeopleViewModel.Action.OnLoadMore) }

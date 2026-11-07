@@ -12,6 +12,7 @@ val mapModule = module {
             tripId = params[0],
             stopId = params[1],
             showMembers = params[2],
+            showComments = params[3],
             tripRepository = get(),
             markerRepository = get(),
             placeRepository = get(),

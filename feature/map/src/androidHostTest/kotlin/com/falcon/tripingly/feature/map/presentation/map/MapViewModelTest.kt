@@ -225,10 +225,11 @@ class MapViewModelTest {
             it.accept((it.legalDocuments("en") as AppResult.Success).data)
         }
 
-    private fun TestScope.viewModel(tripId: String = trip.trip.id, stopId: String? = null, showMembers: Boolean = false) = MapViewModel(
+    private fun TestScope.viewModel(tripId: String = trip.trip.id, stopId: String? = null, showMembers: Boolean = false, showComments: Boolean = false) = MapViewModel(
         tripId = tripId,
         stopId = stopId,
         showMembers = showMembers,
+        showComments = showComments,
         tripRepository = backend,
         markerRepository = backend,
         placeRepository = places,
@@ -634,6 +635,14 @@ class MapViewModelTest {
         val viewModel = viewModel(showMembers = true)
         testScheduler.advanceUntilIdle()
         assertEquals(MapSheet.Members, viewModel.uiState.value.sheet)
+    }
+
+    @Test
+    fun `a push about a stop's comments opens them`() = runTest(testDispatcher) {
+        val stop = backend.addMarker(trip.trip.id, trip.days[0].id, NewMarker("Stop #1", GeoPoint(48.85, 2.35)))
+        val viewModel = viewModel(stopId = stop.id, showComments = true)
+        testScheduler.advanceUntilIdle()
+        assertEquals(stop.id, (viewModel.uiState.value.sheet as MapSheet.StopComments).stop.id)
     }
 
     @Test

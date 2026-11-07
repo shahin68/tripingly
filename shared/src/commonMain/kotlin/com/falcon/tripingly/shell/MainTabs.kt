@@ -120,10 +120,15 @@ internal fun MainTabs(
                         onOpenProfile = onOpenProfile,
                         barsPadding = barsPadding,
                         // A tap opens what it's about the way a tapped push does.
-                        notificationCenter = { header, contentPadding, modifier ->
+                        notificationCenter = { header, contentPadding, modifier, onOpenFollowers ->
                             NotificationCenterRoute(
                                 header = header,
-                                onOpen = { link, id -> deepLinks.open(DeepLink.parse(link, id)) },
+                                onOpen = { link, id ->
+                                    val opened = DeepLink.parse(link, id)
+                                    // Marked read like any link; my Followers are on this tab.
+                                    deepLinks.open(opened)
+                                    if (opened is DeepLink.Followers) onOpenFollowers()
+                                },
                                 contentPadding = contentPadding,
                                 modifier = modifier,
                             )

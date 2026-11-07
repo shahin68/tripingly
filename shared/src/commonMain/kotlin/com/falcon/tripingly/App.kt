@@ -97,10 +97,11 @@ private fun MainNavigation() {
             val route = when (link) {
                 is DeepLink.Trip -> TripMap(link.tripId)
                 is DeepLink.Marker ->
-                    (markers.tripIdOfMarker(link.markerId) as? AppResult.Success)?.data?.let { TripMap(it, stopId = link.markerId) }
+                    (markers.tripIdOfMarker(link.markerId) as? AppResult.Success)?.data?.let { TripMap(it, stopId = link.markerId, showComments = link.showComments) }
                 is DeepLink.Members -> TripMap(link.tripId, showMembers = true)
                 is DeepLink.User -> Profile(link.username)
-                is DeepLink.Home -> null
+                // The notification center opens my Followers itself (MainTabs); a push opens the app.
+                is DeepLink.Followers, is DeepLink.Home -> null
             }
             if (route != null && backStack.lastOrNull() != route) {
                 // The same trip already open opens again on what this push is about.
@@ -134,6 +135,7 @@ private fun MainNavigation() {
                             tripId = key.tripId,
                             stopId = key.stopId,
                             showMembers = key.showMembers,
+                            showComments = key.showComments,
                             onNavigateBack = { goBack() },
                             onOpenProfile = { backStack.add(Profile(it)) },
                             onOpenPaywall = { backStack.add(Paywall) },

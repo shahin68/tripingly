@@ -1,6 +1,7 @@
 package com.falcon.tripingly.feature.notifications.presentation
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -9,6 +10,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
@@ -47,6 +49,7 @@ import com.falcon.tripingly.core.designsystem.component.skeletonText
 import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
 import com.falcon.tripingly.core.designsystem.theme.spacing
 import com.falcon.tripingly.core.model.notification.NotificationEntry
+import com.falcon.tripingly.core.model.trip.UserSummary
 import com.falcon.tripingly.core.ui.timeAgo
 import com.falcon.tripingly.feature.notifications.generated.resources.Res
 import com.falcon.tripingly.feature.notifications.generated.resources.notifications_empty
@@ -147,9 +150,9 @@ private fun NotificationRow(entry: NotificationEntry, onClick: () -> Unit, modif
             horizontalArrangement = Arrangement.spacedBy(inset),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            val actor = entry.actor
-            if (actor != null) {
-                AvatarCircle(actor, size = AvatarSize.Row)
+            val people = entry.actors.ifEmpty { listOfNotNull(entry.actor) }
+            if (people.isNotEmpty()) {
+                Faces(people)
             } else {
                 Box(
                     modifier = Modifier.size(AvatarSize.Row).skeleton(CircleShape).clip(CircleShape).background(MaterialTheme.colorScheme.surfaceVariant),
@@ -191,6 +194,25 @@ private fun NotificationRow(entry: NotificationEntry, onClick: () -> Unit, modif
     }
 }
 
+/** One person's avatar, or a group's first few overlapping, the latest in front at the top left. */
+@Composable
+private fun Faces(people: List<UserSummary>) {
+    if (people.size == 1) return AvatarCircle(people.single(), size = AvatarSize.Row)
+    val shown = people.take(MAX_FACES)
+    Box(Modifier.size(AvatarSize.Row)) {
+        shown.asReversed().forEachIndexed { index, user ->
+            val step = FaceStep * (shown.lastIndex - index)
+            AvatarCircle(
+                user = user,
+                size = AvatarSize.Row - FaceStep * (MAX_FACES - 1),
+                modifier = Modifier
+                    .offset(x = step, y = step)
+                    .border(FaceRing, MaterialTheme.colorScheme.surfaceContainerLowest, CircleShape),
+            )
+        }
+    }
+}
+
 @Composable
 private fun QuietText(text: String, modifier: Modifier = Modifier) {
     Text(
@@ -203,6 +225,10 @@ private fun QuietText(text: String, modifier: Modifier = Modifier) {
 }
 
 private val UnreadDotSize = 8.dp
+private const val MAX_FACES = 3
+/** How far each face of a group sits from the one in front of it. */
+private val FaceStep = 6.dp
+private val FaceRing = 2.dp
 
 /** Entries from the end at which the next page loads. */
 private const val LOAD_MORE_THRESHOLD = 3

@@ -78,7 +78,7 @@ fun ProfileRoute(
     onOpenProfile: (username: String) -> Unit,
     barsPadding: PaddingValues = PaddingValues(),
     /** On my own profile: the notification center under my header, and whether something new waits there. */
-    notificationCenter: NotificationCenterSlot = { _, _, _ -> },
+    notificationCenter: NotificationCenterSlot = { _, _, _, _ -> },
     hasUnseenNotifications: Boolean = false,
     // Keyed by person, like the trip map: the class alone would hand everyone the first profile's view model.
     viewModel: ProfileViewModel = koinViewModel(key = "profile:${username.orEmpty()}") { parametersOf(username) },

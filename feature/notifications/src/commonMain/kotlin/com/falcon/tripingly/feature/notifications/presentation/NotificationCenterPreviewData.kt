@@ -20,6 +20,7 @@ internal val previewCenter = State(
         NotificationEntry(
             id = "n1",
             actor = UserSummary("u1", "anna", "Anna Berg"),
+            actors = listOf(UserSummary("u1", "anna", "Anna Berg"), UserSummary("u2", "jonas.k", "Jonas Krüger"), UserSummary("u4", "mia", "Mia Lang")),
             title = "Anna and 4 others liked your photo",
             body = "Albertina · Vienna",
             deepLink = "tripinly://markers/m1",
@@ -29,9 +30,10 @@ internal val previewCenter = State(
         NotificationEntry(
             id = "n2",
             actor = UserSummary("u2", "jonas.k", "Jonas Krüger"),
-            title = "Jonas replied on Naschmarkt",
+            actors = listOf(UserSummary("u2", "jonas.k", "Jonas Krüger")),
+            title = "Jonas commented 3 times on Naschmarkt",
             body = "@anna before ten is fine.",
-            deepLink = "tripinly://markers/m2",
+            deepLink = "tripinly://markers/m2/comments",
             isRead = false,
             at = now - 3.hours,
         ),

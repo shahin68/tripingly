@@ -20,6 +20,8 @@ data class NotificationCenterPageDto(
 data class NotificationEntryDto(
     val id: String,
     val actor: UserSummaryDto? = null,
+    /** The people of a group, latest first, at most three. */
+    val actors: List<UserSummaryDto> = emptyList(),
     val title: String,
     val body: String,
     val deepLink: String,

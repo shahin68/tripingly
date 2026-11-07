@@ -74,6 +74,7 @@ internal class DefaultNotificationCenterRepository(
 private fun NotificationEntryDto.toEntry() = NotificationEntry(
     id = id,
     actor = actor?.toUser(),
+    actors = actors.map { it.toUser() },
     title = title,
     body = body,
     deepLink = deepLink,
