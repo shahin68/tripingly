@@ -165,4 +165,4 @@ internal fun InvitePreviewDto.toPreview() = InvitePreview(
 
 private fun String?.toLocalDateOrNull(): LocalDate? = this?.let { runCatching { LocalDate.parse(it) }.getOrNull() }
 
-private fun String.toInstant(): Instant = runCatching { Instant.parse(this) }.getOrDefault(Instant.DISTANT_PAST)
+internal fun String.toInstant(): Instant = runCatching { Instant.parse(this) }.getOrDefault(Instant.DISTANT_PAST)

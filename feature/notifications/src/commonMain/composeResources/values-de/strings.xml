@@ -1,0 +1,7 @@
+<resources>
+    <string name="notifications_title">Benachrichtigungen</string>
+    <string name="notifications_empty">Noch nichts da. Likes, Kommentare und Einladungen erscheinen hier.</string>
+    <string name="notifications_error_load">Deine Benachrichtigungen konnten nicht geladen werden.</string>
+    <string name="notifications_retry">Erneut versuchen</string>
+    <string name="notifications_unread">Ungelesen</string>
+</resources>

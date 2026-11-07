@@ -20,6 +20,7 @@ import coil3.ImageLoader
 import coil3.compose.setSingletonImageLoaderFactory
 import com.falcon.tripingly.core.common.result.AppResult
 import com.falcon.tripingly.core.data.billing.ProRepository
+import com.falcon.tripingly.core.data.push.NotificationCenterRepository
 import com.falcon.tripingly.core.data.push.PushNotifications
 import com.falcon.tripingly.core.data.realtime.LiveUpdates
 import com.falcon.tripingly.core.data.trips.MarkerRepository
@@ -80,6 +81,9 @@ private fun MainNavigation() {
     // Purchases made from here on belong to this account.
     val pro = koinInject<ProRepository>()
     LaunchedEffect(pro) { pro.start() }
+    // The notification center's indicator follows the server from here on.
+    val notificationCenter = koinInject<NotificationCenterRepository>()
+    LaunchedEffect(notificationCenter) { notificationCenter.start() }
     val backStack = rememberNavBackStack(NavConfig, Home)
     val goBack = { if (backStack.size > 1) backStack.removeAt(backStack.size - 1) }
 

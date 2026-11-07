@@ -101,4 +101,5 @@
     <string name="social_trip_private">Privat</string>
     <string name="social_trip_member">Du bist dabei</string>
     <string name="social_trip_own">Deine Reise</string>
+    <string name="social_notifications">Benachrichtigungen</string>
 </resources>

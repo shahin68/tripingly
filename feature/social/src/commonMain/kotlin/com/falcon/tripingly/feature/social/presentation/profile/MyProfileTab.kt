@@ -10,6 +10,8 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -19,6 +21,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.falcon.tripingly.core.designsystem.component.DropdownAction
@@ -44,6 +47,7 @@ import com.falcon.tripingly.feature.social.generated.resources.social_followers
 import com.falcon.tripingly.feature.social.generated.resources.social_followers_empty
 import com.falcon.tripingly.feature.social.generated.resources.social_following
 import com.falcon.tripingly.feature.social.generated.resources.social_following_empty
+import com.falcon.tripingly.feature.social.generated.resources.social_notifications
 import com.falcon.tripingly.feature.social.generated.resources.social_friends
 import com.falcon.tripingly.feature.social.generated.resources.social_friends_empty
 import com.falcon.tripingly.feature.social.generated.resources.social_people_none
@@ -72,17 +76,28 @@ import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel
 import org.koin.core.parameter.parametersOf
 
-/** What the Profile tab lists under my header: my public trips, or one of my people lists. */
-internal enum class ProfileSegment(val label: StringResource, val list: PeopleList?) {
+/**
+ * What the Profile tab lists under my header: my public trips, one of my people lists, or the notification center
+ * (shown by its [icon] alone, [label] being its description).
+ */
+internal enum class ProfileSegment(val label: StringResource, val list: PeopleList?, val icon: ImageVector? = null) {
     Trips(Res.string.social_trips, null),
     Friends(Res.string.social_friends, PeopleList.Friends),
     Following(Res.string.social_following, PeopleList.Following),
     Followers(Res.string.social_followers, PeopleList.Followers),
+    Notifications(Res.string.social_notifications, null, Icons.Outlined.Notifications),
 }
 
 /**
- * The Profile tab: my header and counts, then my public trips or my friends, the people I follow or my followers.
- * While a name is typed in the shell's top bar ([PeopleSearchField]), the people found replace it all.
+ * The notification center, from its own module: a list that starts with the Profile tab's [header] items, padded
+ * by [contentPadding].
+ */
+typealias NotificationCenterSlot = @Composable (header: LazyListScope.() -> Unit, contentPadding: PaddingValues, modifier: Modifier) -> Unit
+
+/**
+ * The Profile tab: my header and counts, then my public trips, my friends, the people I follow, my followers or my
+ * notifications ([notificationCenter]; its segment has a red dot while [hasUnseenNotifications]). While a name is
+ * typed in the shell's top bar ([PeopleSearchField]), the people found replace it all.
  */
 @Composable
 internal fun MyProfileTab(
@@ -90,6 +105,8 @@ internal fun MyProfileTab(
     onAction: (Action) -> Unit,
     onOpenProfile: (username: String) -> Unit,
     barsPadding: PaddingValues,
+    notificationCenter: NotificationCenterSlot,
+    hasUnseenNotifications: Boolean,
     searchViewModel: PeopleSearchViewModel = koinViewModel(),
     photoViewModel: MyProfilePhotoViewModel = koinViewModel(),
 ) {
@@ -118,6 +135,8 @@ internal fun MyProfileTab(
         onPeopleAction = { action -> people?.second?.invoke(action) },
         onOpenProfile = onOpenProfile,
         barsPadding = barsPadding,
+        notificationCenter = notificationCenter,
+        hasUnseenNotifications = hasUnseenNotifications,
     )
 }
 
@@ -136,6 +155,8 @@ internal fun MyProfileScreen(
     onPeopleAction: (PeopleViewModel.Action) -> Unit,
     onOpenProfile: (username: String) -> Unit,
     barsPadding: PaddingValues = PaddingValues(),
+    notificationCenter: NotificationCenterSlot = { _, _, _ -> },
+    hasUnseenNotifications: Boolean = false,
 ) {
     val contentPadding = screenContentPadding(barsPadding)
     val message = state.message ?: search.message ?: people?.message ?: photo.message
@@ -158,18 +179,7 @@ internal fun MyProfileScreen(
         contentPadding = contentPadding,
         loading = { MyProfileSkeleton(segment, contentPadding) },
     ) {
-        val listState = rememberLazyListState()
-        LoadMoreAtEnd(listState) { if (segment.list == null) onAction(Action.Trips.LoadMore) else onPeopleAction(PeopleViewModel.Action.OnLoadMore) }
-        LazyColumn(
-            state = listState,
-            modifier = Modifier.fillMaxSize().glassSource(),
-            contentPadding = contentPadding,
-            verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
-        ) {
-            if (search.isSearching) {
-                peopleItems(search.results, isLoading = search.isLoading, loadError = null, empty = Res.string.social_people_none, onRetry = {}, onOpenProfile)
-                return@LazyColumn
-            }
+        val header: LazyListScope.() -> Unit = {
             state.profile?.let {
                 item(key = "header") {
                     MyProfileHeader(
@@ -181,19 +191,37 @@ internal fun MyProfileScreen(
                     )
                 }
             }
-            item(key = "segments") { Segments(segment, onSegment, Modifier.animateItem()) }
-            when (val list = segment.list) {
-                null -> tripItems(state, onAction)
-                else -> peopleItems(
-                    people = people?.people.orEmpty(),
-                    isLoading = people?.hasLoaded != true,
-                    loadError = people?.loadError,
-                    empty = list.empty,
-                    onRetry = { onPeopleAction(PeopleViewModel.Action.OnRetry) },
-                    onOpenProfile = onOpenProfile,
-                    // Followers may be people I don't follow; reporting and blocking stay on their profile.
-                    actions = { user -> if (list == PeopleList.Followers) emptyList() else listOf(unfollowAction { onPeopleAction(PeopleViewModel.Action.Unfollow(user)) }) },
-                )
+            item(key = "segments") { Segments(segment, hasUnseenNotifications, onSegment, Modifier.animateItem()) }
+        }
+        if (segment == ProfileSegment.Notifications && !search.isSearching) {
+            notificationCenter(header, contentPadding, Modifier.glassSource())
+        } else {
+            val listState = rememberLazyListState()
+            LoadMoreAtEnd(listState) { if (segment.list == null) onAction(Action.Trips.LoadMore) else onPeopleAction(PeopleViewModel.Action.OnLoadMore) }
+            LazyColumn(
+                state = listState,
+                modifier = Modifier.fillMaxSize().glassSource(),
+                contentPadding = contentPadding,
+                verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
+            ) {
+                if (search.isSearching) {
+                    peopleItems(search.results, isLoading = search.isLoading, loadError = null, empty = Res.string.social_people_none, onRetry = {}, onOpenProfile)
+                    return@LazyColumn
+                }
+                header()
+                when (val list = segment.list) {
+                    null -> tripItems(state, onAction)
+                    else -> peopleItems(
+                        people = people?.people.orEmpty(),
+                        isLoading = people?.hasLoaded != true,
+                        loadError = people?.loadError,
+                        empty = list.empty,
+                        onRetry = { onPeopleAction(PeopleViewModel.Action.OnRetry) },
+                        onOpenProfile = onOpenProfile,
+                        // Followers may be people I don't follow; reporting and blocking stay on their profile.
+                        actions = { user -> if (list == PeopleList.Followers) emptyList() else listOf(unfollowAction { onPeopleAction(PeopleViewModel.Action.Unfollow(user)) }) },
+                    )
+                }
             }
         }
     }
@@ -212,10 +240,17 @@ fun PeopleSearchField(viewModel: PeopleSearchViewModel = koinViewModel()) {
 }
 
 @Composable
-private fun Segments(segment: ProfileSegment, onSegment: (ProfileSegment) -> Unit, modifier: Modifier = Modifier) {
+private fun Segments(segment: ProfileSegment, hasUnseenNotifications: Boolean, onSegment: (ProfileSegment) -> Unit, modifier: Modifier = Modifier) {
     SegmentedToggle(modifier.fillMaxWidth()) {
         ProfileSegment.entries.forEach { entry ->
-            SegmentedToggleOption(label = stringResource(entry.label), selected = entry == segment, onClick = { onSegment(entry) })
+            SegmentedToggleOption(
+                label = stringResource(entry.label),
+                selected = entry == segment,
+                onClick = { onSegment(entry) },
+                icon = entry.icon,
+                showLabel = entry.icon == null,
+                hasBadge = entry == ProfileSegment.Notifications && hasUnseenNotifications,
+            )
         }
     }
 }
@@ -226,11 +261,11 @@ private fun MyProfileSkeleton(segment: ProfileSegment, contentPadding: PaddingVa
     Skeleton(Modifier.fillMaxSize()) {
         Column(Modifier.padding(contentPadding), verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small)) {
             MyProfileHeader(placeholderProfile, MyProfilePhotoViewModel.State(), onChoosePhoto = {}, onRemovePhoto = {})
-            Segments(segment, onSegment = {})
-            if (segment.list == null) {
-                placeholderTrips.forEach { PublicTripCard(trip = it, onOpen = {}, onLike = {}, onToggleSave = {}, onAskToJoin = {}, onReport = {}) }
-            } else {
-                placeholderPeople.forEach { PersonRow(user = it, onClick = {}) }
+            Segments(segment, hasUnseenNotifications = false, onSegment = {})
+            when {
+                segment == ProfileSegment.Trips ->
+                    placeholderTrips.forEach { PublicTripCard(trip = it, onOpen = {}, onLike = {}, onToggleSave = {}, onAskToJoin = {}, onReport = {}) }
+                segment.list != null -> placeholderPeople.forEach { PersonRow(user = it, onClick = {}) }
             }
         }
     }
@@ -287,7 +322,7 @@ private val PeopleList.empty: StringResource
     }
 
 @Composable
-private fun MyProfilePreview(segment: ProfileSegment, darkTheme: Boolean = false, query: String = "") {
+private fun MyProfilePreview(segment: ProfileSegment, darkTheme: Boolean = false, query: String = "", hasUnseenNotifications: Boolean = false) {
     TripinglyTheme(darkTheme = darkTheme) {
         MyProfileScreen(
             state = State(isMe = true, profile = previewProfile, trips = persistentListOf(previewTrip), isLoading = false),
@@ -296,13 +331,14 @@ private fun MyProfilePreview(segment: ProfileSegment, darkTheme: Boolean = false
             people = PeopleViewModel.State(people = previewPeople.toImmutableList(), hasLoaded = true),
             photo = MyProfilePhotoViewModel.State(),
             onAction = {}, onChoosePhoto = {}, onPhotoAction = {}, onDismissSearchMessage = {}, onSegment = {}, onPeopleAction = {}, onOpenProfile = {},
+            hasUnseenNotifications = hasUnseenNotifications,
         )
     }
 }
 
 @Preview
 @Composable
-private fun MyProfileTripsPreview() = MyProfilePreview(ProfileSegment.Trips)
+private fun MyProfileTripsPreview() = MyProfilePreview(ProfileSegment.Trips, hasUnseenNotifications = true)
 
 @Preview
 @Composable

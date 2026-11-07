@@ -8,9 +8,8 @@ import com.falcon.tripingly.core.network.push.PushApi
 import com.falcon.tripingly.core.network.realtime.RealtimeClient
 import com.falcon.tripingly.core.network.realtime.RealtimeEvent
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.filterIsInstance
-import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.mapNotNull
 
 internal class DefaultNewActivityRepository(
     private val api: PushApi,
@@ -21,7 +20,8 @@ internal class DefaultNewActivityRepository(
         api.newActivity(tripId).map { NewActivity(it.markerIds.toSet(), it.commentMarkerIds.toSet()) }
 
     override fun newActivity(tripId: String): Flow<StopNews> =
-        realtime.events.filterIsInstance<RealtimeEvent.NewActivity>().filter { it.tripId == tripId }.map { StopNews(it.markerId, it.aboutComments) }
+        realtime.events.filterIsInstance<RealtimeEvent.NotificationCreated>()
+            .mapNotNull { news -> news.markerId?.takeIf { news.tripId == tripId }?.let { StopNews(it, news.aboutComments) } }
 
     // Best effort: offline, the mark comes back the next time the trip opens.
     override suspend fun markSeen(markerId: String, comments: Boolean) {

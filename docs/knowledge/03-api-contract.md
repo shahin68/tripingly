@@ -165,7 +165,8 @@ Response shapes and behaviour: see `05-maps-places-routing.md`.
 ### Notifications
 | Method | Path | Notes |
 |---|---|---|
-| GET | `/notifications` | Paginated, newest first |
+| GET | `/notifications` | The notification center, paginated, newest first → `{ items, nextCursor, unreadCount, unseenCount }`. The app reads each entry's server-rendered `title`, `body`, `deepLink`, `actor`, `read`, `createdAt` and ignores `type`, so new kinds never break it (`NotificationCenterPageDto`, hand-written). Likes and flames have one entry per item that comes back on top with each new one. `unseenCount` > 0 lights the red dots on the Profile tab and the center's segment (2026-11-07) |
+| POST | `/notifications/seen` | The center is on screen: everything in it counts as seen → 204 (2026-11-07) |
 | POST | `/notifications/read` | Body: IDs, `markerId` (everything about one stop: clears its "new" mark; with `kind` `comments` only the news about its comments, `other` the rest) or `all` |
 | GET | `/trips/{id}/new-activity` | `{ markerIds, commentMarkerIds }`: the trip's stops with unread notifications for me, drawn as "new" marks; `commentMarkerIds` those with unread news about their comments (a new comment or a like on one; `aboutComments` on each notification) |
 | GET/PATCH | `/me/notification-settings` | Per-type push on/off: `commentOnMarker`, `addedToTrip`, `tripChangedByCollaborator`, `likesGrouped` (likes, saves and hot-spot milestones), `joinRequested`, `newFollowers` (follows and new friends); PATCH sends only the one that changed |

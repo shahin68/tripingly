@@ -39,6 +39,7 @@ kotlin {
             implementation(projects.feature.social)
             implementation(projects.feature.settings)
             implementation(projects.feature.paywall)
+            implementation(projects.feature.notifications)
 
             implementation(libs.koin.core)
             implementation(libs.kotlinx.coroutines.core)
