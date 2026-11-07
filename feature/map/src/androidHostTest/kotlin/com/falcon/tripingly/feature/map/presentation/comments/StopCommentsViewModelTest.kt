@@ -8,6 +8,7 @@ import com.falcon.tripingly.core.data.account.FakeAccountBackend
 import com.falcon.tripingly.core.data.social.FakeSocialRepository
 import com.falcon.tripingly.core.data.social.LikeCount
 import com.falcon.tripingly.core.data.social.SocialRepository
+import com.falcon.tripingly.core.model.account.ProfileUpdate
 import com.falcon.tripingly.core.model.social.Comment
 import com.falcon.tripingly.core.model.social.CommentChange
 import com.falcon.tripingly.core.model.social.LikeState
@@ -22,6 +23,7 @@ import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
+import kotlinx.datetime.LocalDate
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
@@ -48,7 +50,7 @@ class StopCommentsViewModelTest {
 
     private val people = listOf(UserSummary("u2", "anna", "Anna Berg"), UserSummary("u3", "jonas.k", "Jonas Krüger"))
 
-    private val account = FakeAccountBackend(today = { error("not used") })
+    private val account = FakeAccountBackend(today = { LocalDate(2026, 11, 7) })
 
     private fun viewModel() = StopCommentsViewModel(MARKER_ID, people, social, account)
 
@@ -132,7 +134,9 @@ class StopCommentsViewModelTest {
     @Test
     fun `a reply goes under its main comment and opens the thread`() = runTest(testDispatcher) {
         // The first fake account is the fake social repository's "me".
-        account.signInForDevelopment("me", null)
+        account.signInForDevelopment("me", "Me")
+        account.updateProfile(ProfileUpdate(username = "me", birthDate = LocalDate(1990, 1, 1)))
+        account.accept((account.legalDocuments("en") as AppResult.Success).data)
         val viewModel = viewModel()
         testScheduler.advanceUntilIdle()
         viewModel.draft.setTextAndPlaceCursorAtEnd("First")
