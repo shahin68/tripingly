@@ -18,7 +18,9 @@ import com.falcon.tripingly.core.data.photos.PlatformPhotoPreparer
 import com.falcon.tripingly.core.data.places.DefaultPlaceRepository
 import com.falcon.tripingly.core.data.places.PlaceRepository
 import com.falcon.tripingly.core.data.push.DefaultNewActivityRepository
+import com.falcon.tripingly.core.data.push.DefaultNotificationCenterRepository
 import com.falcon.tripingly.core.data.push.NewActivityRepository
+import com.falcon.tripingly.core.data.push.NotificationCenterRepository
 import com.falcon.tripingly.core.data.push.PushMessaging
 import com.falcon.tripingly.core.data.push.PushNotifications
 import com.falcon.tripingly.core.data.push.PushRegistration
@@ -143,6 +145,8 @@ val dataModule = module {
     }
     single<PushNotifications> { get<PushRegistration>() }
     single<NewActivityRepository> { DefaultNewActivityRepository(get(), get()) }
+    single { DefaultNotificationCenterRepository(get(), get(), get(ApplicationScope)) }
+    single<NotificationCenterRepository> { get<DefaultNotificationCenterRepository>() }
     single {
         DefaultProRepository(
             // The app binds the store where a RevenueCat key is set.
@@ -186,6 +190,12 @@ val dataModule = module {
     single(named("purchases")) {
         val pro = get<DefaultProRepository>()
         LocalDataCleaner { pro.clear() }
+    }
+
+    // The notification center's indicator was about whoever was signed in.
+    single(named("notificationCenter")) {
+        val center = get<DefaultNotificationCenterRepository>()
+        LocalDataCleaner { center.clear() }
     }
 
     // The cached trips belong to whoever was signed in.

@@ -121,7 +121,7 @@ internal val COVER_RING = 3.dp
 internal val COVER_BADGE_SIZE = 18.dp
 
 /** The "new" dot, in the pin's top left corner where it meets the ring. */
-internal val NEW_DOT_SIZE = 12.dp
+internal val NEW_DOT_SIZE = 16.dp
 
 /** A stop's pin with one and two digits, with a cover, and with the "new" dot. */
 @Preview

@@ -63,6 +63,8 @@ class MapViewModel(
     stopId: String?,
     /** A push about a request to join opened the trip: the Members sheet shows. */
     showMembers: Boolean,
+    /** A push about the stop's comments opened the trip: they show. */
+    showComments: Boolean,
     tripRepository: TripRepository,
     markerRepository: MarkerRepository,
     placeRepository: PlaceRepository,
@@ -104,7 +106,7 @@ class MapViewModel(
     )
     private val location = MapLocation(context, camera, getCurrentLocationUseCase, ::sendEvent)
     private val sharing = MapSharing(context, tripRepository, socialRepository)
-    private val opening = MapOpening(context, camera, tripRepository, mapViews, ::hasRoutes, stopId, showMembers)
+    private val opening = MapOpening(context, camera, tripRepository, mapViews, ::hasRoutes, stopId, showMembers, showComments)
     private val newActivity = MapNewActivity(context, newActivityRepository, pushedStopId = stopId)
 
     /** The map's layers and what they were built from, kept until one of those changes. */
@@ -266,7 +268,7 @@ class MapViewModel(
         val config = appConfigRepository.config.value
         val mapper = MapStateMapper(details, model, config, myUserId)
         // Most changes (a search keystroke, a message, a sheet) don't touch the map: its ~150 pins aren't built again.
-        val inputs = listOf(details, model.activeDayIndex, model.route, model.pins, model.selection, model.location.permission, model.newStopIds, model.arePlacesHidden, config)
+        val inputs = listOf(details, model.activeDayIndex, model.route, model.pins, model.selection, model.location.permission, model.newStopIds, model.newCommentStopIds, model.arePlacesHidden, config)
         val layers = layers?.takeIf { it.first == inputs }?.second ?: mapper.layers().also { layers = inputs to it }
         return mapper.map(layers)
     }

@@ -20,12 +20,16 @@ interface SocialRepository {
     /** Most liked first, by [filter]; [cursor] continues the list with the same filter. */
     suspend fun explore(filter: ExploreFilter, cursor: String?): AppResult<Page<PublicTrip>, DataError.Network>
 
-    /** A stop's comments, oldest first. */
+    /** A stop's main comments, most liked first, then newest first; each says how many replies it has. */
     suspend fun comments(markerId: String, cursor: String?): AppResult<Page<Comment>, DataError.Network>
 
-    /** Counts the comment in the cached stop too. */
-    suspend fun addComment(markerId: String, body: String): AppResult<Comment, DataError.Network>
+    /** A main comment's replies, oldest first. */
+    suspend fun replies(commentId: String, cursor: String?): AppResult<Page<Comment>, DataError.Network>
 
+    /** A main comment, or with [parentId] a reply to it. Counts the comment in the cached stop too. */
+    suspend fun addComment(markerId: String, body: String, parentId: String? = null): AppResult<Comment, DataError.Network>
+
+    /** A main comment takes its replies with it. */
     suspend fun deleteComment(comment: Comment): AppResult<Unit, DataError.Network>
 
     /** Likes or unlikes. Fast taps on one heart: the last one wins, and every call returns the server's final state. */
@@ -44,8 +48,11 @@ interface SocialRepository {
         details: String?,
     ): AppResult<Unit, DataError.Network>
 
-    /** Comments others add or delete in the trips being watched live (the open trip map). */
-    val commentChanges: Flow<CommentChange>
+    /**
+     * Comments others add or delete on a stop, while collected. Collecting also tells the server the stop's
+     * comments are open, so it sends no pushes about them.
+     */
+    fun commentChanges(markerId: String): Flow<CommentChange>
 
     /** New like counts in the trips being watched live; whether I like something stays as it was. */
     val likeCounts: Flow<LikeCount>

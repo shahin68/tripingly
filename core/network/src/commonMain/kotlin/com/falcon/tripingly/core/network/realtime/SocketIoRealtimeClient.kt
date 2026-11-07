@@ -22,6 +22,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.BufferOverflow
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -51,6 +52,7 @@ internal class SocketIoRealtimeClient(
     private val http = HttpClient(engine) { install(WebSockets) }
     private val url = socketUrl(config.baseUrl)
     private val watches = TripWatches()
+    private val commentWatches = TripWatches()
     private val _events = MutableSharedFlow<RealtimeEvent>(extraBufferCapacity = EVENT_BUFFER)
     private val _connections = MutableSharedFlow<Unit>(extraBufferCapacity = 1, onBufferOverflow = BufferOverflow.DROP_OLDEST)
     private var connection: Job? = null
@@ -71,6 +73,10 @@ internal class SocketIoRealtimeClient(
     override fun watchTrip(tripId: String) = watches.watch(tripId)
 
     override fun unwatchTrip(tripId: String) = watches.unwatch(tripId)
+
+    override fun watchComments(markerId: String) = commentWatches.watch(markerId)
+
+    override fun unwatchComments(markerId: String) = commentWatches.unwatch(markerId)
 
     private enum class Outcome { Dropped, TokenExpired, Refused }
 
@@ -142,13 +148,23 @@ internal class SocketIoRealtimeClient(
         }
     }
 
-    /** Subscribes to the watched trips, and follows them while connected. */
-    private suspend fun DefaultClientWebSocketSession.keepSubscribed() {
+    /** Subscribes to the watched trips and tells which stops' comments are open, and follows both while connected. */
+    private suspend fun DefaultClientWebSocketSession.keepSubscribed() = coroutineScope {
+        launch { follow(watches, "trip.subscribe", "trip.unsubscribe", ::tripPayload) }
+        follow(commentWatches, "comments.watch", "comments.unwatch") { markerId -> buildJsonObject { put("markerId", markerId) } }
+    }
+
+    private suspend fun DefaultClientWebSocketSession.follow(
+        watches: TripWatches,
+        start: String,
+        stop: String,
+        payload: (String) -> JsonObject,
+    ) {
         var subscribed = emptySet<String>()
-        watches.trips.collect { trips ->
-            (trips - subscribed).forEach { send(SocketIoPacket.event(NAMESPACE, "trip.subscribe", tripPayload(it))) }
-            (subscribed - trips).forEach { send(SocketIoPacket.event(NAMESPACE, "trip.unsubscribe", tripPayload(it))) }
-            subscribed = trips
+        watches.trips.collect { ids ->
+            (ids - subscribed).forEach { send(SocketIoPacket.event(NAMESPACE, start, payload(it))) }
+            (subscribed - ids).forEach { send(SocketIoPacket.event(NAMESPACE, stop, payload(it))) }
+            subscribed = ids
         }
     }
 

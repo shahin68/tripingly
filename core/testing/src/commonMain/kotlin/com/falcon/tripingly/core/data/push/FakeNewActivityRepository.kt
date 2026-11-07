@@ -7,26 +7,35 @@ import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.map
 
-/** Marks kept in memory; [arrive] sends one as the server would. */
-class FakeNewActivityRepository(marked: Map<String, Set<String>> = emptyMap()) : NewActivityRepository {
-    /** Marked stops by trip. */
+/** Marks kept in memory ([commentMarked]: news about the stop's comments); [arrive] sends one as the server would. */
+class FakeNewActivityRepository(
+    marked: Map<String, Set<String>> = emptyMap(),
+    commentMarked: Map<String, Set<String>> = emptyMap(),
+) : NewActivityRepository {
+    /** Stops with other news, by trip. */
     val marked = marked.toMutableMap()
-    /** Stops sent as seen, in order. */
-    val seen = mutableListOf<String>()
-    private val live = MutableSharedFlow<Pair<String, String>>(extraBufferCapacity = 16)
+    /** Stops with news about their comments, by trip. */
+    val commentMarked = commentMarked.toMutableMap()
+    /** Stops sent as seen, in order, with whether it was their comments. */
+    val seen = mutableListOf<StopNews>()
+    private val live = MutableSharedFlow<Pair<String, StopNews>>(extraBufferCapacity = 16)
 
-    override suspend fun stopsWithNewActivity(tripId: String): AppResult<Set<String>, DataError.Network> =
-        AppResult.Success(marked[tripId].orEmpty())
-
-    override fun newActivity(tripId: String): Flow<String> = live.filter { it.first == tripId }.map { it.second }
-
-    override suspend fun markSeen(markerId: String) {
-        seen += markerId
-        marked.keys.forEach { marked[it] = marked.getValue(it) - markerId }
+    override suspend fun stopsWithNewActivity(tripId: String): AppResult<NewActivity, DataError.Network> {
+        val comments = commentMarked[tripId].orEmpty()
+        return AppResult.Success(NewActivity(marked[tripId].orEmpty() + comments, comments))
     }
 
-    fun arrive(tripId: String, markerId: String) {
-        marked[tripId] = marked[tripId].orEmpty() + markerId
-        live.tryEmit(tripId to markerId)
+    override fun newActivity(tripId: String): Flow<StopNews> = live.filter { it.first == tripId }.map { it.second }
+
+    override suspend fun markSeen(markerId: String, comments: Boolean) {
+        seen += StopNews(markerId, comments)
+        val from = if (comments) commentMarked else marked
+        from.keys.forEach { from[it] = from.getValue(it) - markerId }
+    }
+
+    fun arrive(tripId: String, markerId: String, aboutComments: Boolean = false) {
+        val to = if (aboutComments) commentMarked else marked
+        to[tripId] = to[tripId].orEmpty() + markerId
+        live.tryEmit(tripId to StopNews(markerId, aboutComments))
     }
 }

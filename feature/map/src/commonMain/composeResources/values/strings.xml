@@ -105,6 +105,16 @@
     <string name="map_comment_delete_title">Delete this comment?</string>
     <string name="map_comment_delete_message">The comment will be deleted for everyone.</string>
     <string name="map_comment_report">Report comment</string>
+    <string name="map_comment_reply">Reply</string>
+    <plurals name="map_comment_view_replies">
+        <item quantity="one">View %1$d reply</item>
+        <item quantity="other">View %1$d replies</item>
+    </plurals>
+    <string name="map_comment_hide_replies">Hide replies</string>
+    <string name="map_comment_more_replies">View more replies</string>
+    <string name="map_comment_replying_to">Replying to %1$s</string>
+    <string name="map_comment_cancel_reply">Cancel reply</string>
+    <string name="map_comment_reply_placeholder">Add a reply…</string>
     <plurals name="map_stop_comment_count">
         <item quantity="one">%1$d comment</item>
         <item quantity="other">%1$d comments</item>
@@ -140,7 +150,6 @@
     <string name="map_confirm_remove">Remove</string>
     <string name="map_my_content_removed">Your photos, comments and likes on this stop were removed.</string>
     <string name="map_error_remove_my_content">Couldn’t remove your photos, comments and likes.</string>
-    <string name="map_trip_owner">by %1$s</string>
 
     <!-- Routes -->
     <string name="map_route">Route</string>
@@ -186,4 +195,20 @@
 
     <!-- Redesign -->
     <string name="map_comments">Comments</string>
+    <!-- The trip card that opens from the trip map's title, laid out like a residence permit. -->
+    <string name="map_trip_card_brand">Tripinly</string>
+    <string name="map_trip_card_title">Trip permit</string>
+    <string name="map_trip_card_name">Name</string>
+    <string name="map_trip_card_holder">Holder</string>
+    <string name="map_trip_card_dates">Valid</string>
+    <string name="map_trip_card_no_dates">No dates</string>
+    <string name="map_trip_card_issued">Issued</string>
+    <string name="map_trip_card_days">Days</string>
+    <string name="map_trip_card_stops">Stops</string>
+    <string name="map_trip_card_members">Members</string>
+    <string name="map_trip_card_likes">Likes</string>
+    <string name="map_trip_card_saves">Saves</string>
+    <string name="map_trip_card_visibility">Visibility</string>
+    <string name="map_trip_card_public">Public</string>
+    <string name="map_trip_card_private">Private</string>
 </resources>

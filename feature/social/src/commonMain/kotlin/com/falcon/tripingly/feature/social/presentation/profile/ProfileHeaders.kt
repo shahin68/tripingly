@@ -38,11 +38,18 @@ import com.falcon.tripingly.feature.social.generated.resources.social_public_tri
 import org.jetbrains.compose.resources.stringResource
 
 /**
- * My profile at the top of the Profile tab: my avatar with the pen that changes my [photo], name and handle,
- * then my counts as three tiles.
+ * My profile at the top of the Profile tab: my avatar with the pen that changes my [photo], name and handle with
+ * [action] at the end, then my counts as three tiles.
  */
 @Composable
-internal fun MyProfileHeader(profile: Profile, photo: MyProfilePhotoViewModel.State, onChoosePhoto: () -> Unit, onRemovePhoto: () -> Unit, modifier: Modifier = Modifier) {
+internal fun MyProfileHeader(
+    profile: Profile,
+    photo: MyProfilePhotoViewModel.State,
+    onChoosePhoto: () -> Unit,
+    onRemovePhoto: () -> Unit,
+    modifier: Modifier = Modifier,
+    action: @Composable () -> Unit = {},
+) {
     Surface(modifier = modifier.fillMaxWidth(), shape = MaterialTheme.shapes.extraLarge, color = MaterialTheme.colorScheme.surfaceContainerLowest) {
         Column(Modifier.padding(HeaderPadding), verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small + MaterialTheme.spacing.extraSmall)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium)) {
@@ -53,10 +60,11 @@ internal fun MyProfileHeader(profile: Profile, photo: MyProfilePhotoViewModel.St
                     onChoose = onChoosePhoto,
                     onRemove = onRemovePhoto,
                 )
-                Column {
+                Column(Modifier.weight(1f)) {
                     Text(profile.user.displayName, style = MaterialTheme.typography.titleLarge, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.skeletonText())
                     Text("@${profile.user.username}", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.skeletonText())
                 }
+                action()
             }
             Row(horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small)) {
                 StatTile(profile.followerCount, stringResource(Res.string.social_followers), Modifier.weight(1f))

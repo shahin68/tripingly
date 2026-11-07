@@ -15,6 +15,7 @@ import com.falcon.tripingly.core.storage.di.storageModule
 import com.falcon.tripingly.deeplink.DeepLinks
 import com.falcon.tripingly.feature.auth.di.authModule
 import com.falcon.tripingly.feature.map.di.mapModule
+import com.falcon.tripingly.feature.notifications.di.notificationsModule
 import com.falcon.tripingly.feature.paywall.di.paywallModule
 import com.falcon.tripingly.feature.settings.di.settingsModule
 import com.falcon.tripingly.feature.social.di.socialModule
@@ -43,6 +44,7 @@ fun initKoin(appDeclaration: KoinAppDeclaration = {}) {
             socialModule,
             settingsModule,
             paywallModule,
+            notificationsModule,
             appModule,
         )
     }

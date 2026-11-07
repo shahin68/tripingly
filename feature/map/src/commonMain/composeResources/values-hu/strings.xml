@@ -105,6 +105,16 @@
     <string name="map_comment_delete_title">Törlöd ezt a hozzászólást?</string>
     <string name="map_comment_delete_message">A hozzászólás mindenki számára törlődik.</string>
     <string name="map_comment_report">Hozzászólás jelentése</string>
+    <string name="map_comment_reply">Válasz</string>
+    <plurals name="map_comment_view_replies">
+        <item quantity="one">%1$d válasz megtekintése</item>
+        <item quantity="other">%1$d válasz megtekintése</item>
+    </plurals>
+    <string name="map_comment_hide_replies">Válaszok elrejtése</string>
+    <string name="map_comment_more_replies">További válaszok</string>
+    <string name="map_comment_replying_to">Válasz neki: %1$s</string>
+    <string name="map_comment_cancel_reply">Válasz megszakítása</string>
+    <string name="map_comment_reply_placeholder">Válasz írása…</string>
     <plurals name="map_stop_comment_count">
         <item quantity="one">%1$d hozzászólás</item>
         <item quantity="other">%1$d hozzászólás</item>
@@ -140,7 +150,6 @@
     <string name="map_confirm_remove">Eltávolítás</string>
     <string name="map_my_content_removed">A fotóid, hozzászólásaid és kedveléseid eltávolítva erről a megállóról.</string>
     <string name="map_error_remove_my_content">Nem sikerült eltávolítani a fotóidat, hozzászólásaidat és kedveléseidet.</string>
-    <string name="map_trip_owner">· készítette: %1$s</string>
 
     <!-- Routes -->
     <string name="map_route">Útvonal</string>
@@ -186,4 +195,19 @@
 
     <!-- Redesign -->
     <string name="map_comments">Hozzászólások</string>
+    <string name="map_trip_card_brand">Tripinly</string>
+    <string name="map_trip_card_title">Utazási engedély</string>
+    <string name="map_trip_card_name">Név</string>
+    <string name="map_trip_card_holder">Tulajdonos</string>
+    <string name="map_trip_card_dates">Érvényes</string>
+    <string name="map_trip_card_no_dates">Nincs dátum</string>
+    <string name="map_trip_card_issued">Kiállítva</string>
+    <string name="map_trip_card_days">Napok</string>
+    <string name="map_trip_card_stops">Megállók</string>
+    <string name="map_trip_card_members">Tagok</string>
+    <string name="map_trip_card_likes">Kedvelések</string>
+    <string name="map_trip_card_saves">Mentések</string>
+    <string name="map_trip_card_visibility">Láthatóság</string>
+    <string name="map_trip_card_public">Nyilvános</string>
+    <string name="map_trip_card_private">Privát</string>
 </resources>

@@ -11,6 +11,7 @@ import com.falcon.tripingly.core.model.place.PlaceSearchResult
 import com.falcon.tripingly.core.model.route.AlongTheWayPlace
 import com.falcon.tripingly.core.model.route.TravelMode
 import com.falcon.tripingly.core.model.trip.JoinRequestStatus
+import com.falcon.tripingly.core.model.trip.UserSummary
 import com.falcon.tripingly.core.ui.UiText
 import com.falcon.tripingly.feature.map.presentation.component.MapLayersState
 import com.falcon.tripingly.feature.map.presentation.component.MapMarker
@@ -54,12 +55,10 @@ data class MapUiState(
 @Immutable
 data class HeaderState(
     val tripName: String = "",
-    /** "19 – 23 Oct 2026" under the trip's name; null without dates. */
-    val dates: String? = null,
-    /** All the trip's stops, after the dates. */
-    val stopCount: Int = 0,
-    /** "by Anna" after them, on someone else's trip. */
-    val ownerLabel: UiText? = null,
+    /** The trip's owner, as the avatar before its name that opens their profile; null while the trip loads. */
+    val owner: UserSummary? = null,
+    /** What the trip card shows when the title is tapped. */
+    val card: TripCardState = TripCardState(),
     /** The trip is loading for the first time: the title shows as its skeleton. */
     val isLoading: Boolean = false,
     /** A day change, a save or a request to join waits for the server. */
@@ -73,6 +72,22 @@ data class HeaderState(
      * and in the ⋮ menu while the day has no stops (and so no sheet).
      */
     val editorMenu: EditorMenu? = null,
+)
+
+/**
+ * The trip card that opens from the title, laid out like a residence permit: the whole name, the owner, the
+ * [dates] ("19 – 23 Oct 2026", null without dates), the counts, whether it's public and the day it was [created].
+ */
+@Immutable
+data class TripCardState(
+    val dates: String? = null,
+    val dayCount: Int = 0,
+    val stopCount: Int = 0,
+    val memberCount: Int = 0,
+    val likeCount: Int = 0,
+    val saveCount: Int = 0,
+    val isPublic: Boolean = true,
+    val created: String = "",
 )
 
 /** [requestCount]: people waiting for the owner's answer to join, as a badge; 0 for everyone else. */
@@ -211,7 +226,8 @@ sealed interface MapSheet {
     data class StopPhotos(val stop: MapMarker, val canEdit: Boolean) : MapSheet
     /** A place's photos, which anyone can add to. */
     data class PlacePhotos(val place: MapPlace) : MapSheet
-    data class StopComments(val stop: MapMarker) : MapSheet
+    /** [people]: the trip's owner and members, who can be @mentioned. */
+    data class StopComments(val stop: MapMarker, val people: List<UserSummary>) : MapSheet
     /** The owner's members sheet, with the requests to join. */
     data object Members : MapSheet
     /** An image of the place card, full screen in the place's photo viewer. */

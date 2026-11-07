@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyRow
@@ -38,6 +39,7 @@ import androidx.compose.ui.tooling.preview.PreviewParameter
 import androidx.compose.ui.unit.dp
 import com.falcon.tripingly.core.designsystem.component.GlassDefaults
 import com.falcon.tripingly.core.designsystem.component.GlassSurface
+import com.falcon.tripingly.core.designsystem.theme.MapColors
 import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
 import com.falcon.tripingly.core.designsystem.theme.spacing
 import com.falcon.tripingly.feature.map.generated.resources.Res
@@ -100,37 +102,50 @@ internal fun DayTabs(
     }
 }
 
-/** "Day 2" over its date; filled with the brand's green while open. A dot at the top end: a stop has a "new" mark. */
+/**
+ * "Day 2" over its date; filled with the brand's green while open. A red dot on the top end corner of that fill (open
+ * or not): a stop of the day has a "new" mark.
+ */
 @Composable
 private fun DayPill(day: DayTab, selected: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier) {
     val container by animateColorAsState(if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.primary.copy(alpha = 0f))
     val content by animateColorAsState(if (selected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant)
-    Box(
-        modifier = modifier
-            .heightIn(min = DayPillHeight)
-            .clip(MaterialTheme.shapes.large)
-            .background(container)
-            .selectable(selected = selected, role = Role.Tab, onClick = onClick)
-            .padding(horizontal = MaterialTheme.spacing.medium + MaterialTheme.spacing.extraSmall),
-        contentAlignment = Alignment.Center,
-    ) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Text(stringResource(Res.string.map_day_label_no_date, day.number), style = MaterialTheme.typography.labelLarge, color = content)
-            day.date?.let { Text(it, style = MaterialTheme.typography.labelSmall, color = content) }
+    Box(modifier) {
+        Box(
+            modifier = Modifier
+                .heightIn(min = DayPillHeight)
+                .clip(MaterialTheme.shapes.large)
+                .background(container)
+                .selectable(selected = selected, role = Role.Tab, onClick = onClick)
+                .padding(horizontal = MaterialTheme.spacing.medium + MaterialTheme.spacing.extraSmall),
+            contentAlignment = Alignment.Center,
+        ) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text(stringResource(Res.string.map_day_label_no_date, day.number), style = MaterialTheme.typography.labelLarge, color = content)
+                day.date?.let { Text(it, style = MaterialTheme.typography.labelSmall, color = content) }
+            }
         }
         if (day.hasNew) {
+            // Centred on the rounded corner's curve, outside the clip so it isn't cut.
+            val onCorner = NewDotSize / 2 - CornerRadius * (1 - CORNER_CURVE_POINT)
             Box(
                 Modifier
                     .align(Alignment.TopEnd)
-                    .padding(top = MaterialTheme.spacing.small, end = MaterialTheme.spacing.small)
+                    .offset(x = onCorner, y = -onCorner)
                     .size(NewDotSize)
-                    .background(if (selected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.primary, CircleShape),
+                    .background(MapColors.NewActivity, CircleShape),
             )
         }
     }
 }
 
-private val NewDotSize = 6.dp
+private val NewDotSize = 10.dp
+
+/** The radius of the day pill's corners ([MaterialTheme.shapes] large). */
+private val CornerRadius = 20.dp
+
+/** How far round a corner's curve its middle point lies from the corner's edges: cos 45°. */
+private const val CORNER_CURVE_POINT = 0.7071f
 
 private val DayPillHeight = 48.dp
 

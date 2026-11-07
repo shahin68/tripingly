@@ -42,6 +42,9 @@ internal fun CommentDto.toComment() = Comment(
     likedByMe = likedByMe,
     canDelete = canDelete,
     createdAt = runCatching { Instant.parse(createdAt) }.getOrDefault(Instant.DISTANT_PAST),
+    parentId = parentId,
+    replyCount = replyCount.toInt(),
+    mentions = mentions.map { it.username },
 )
 
 /** The name in `/likes/{targetType}/…` and in `like.count_changed`. */

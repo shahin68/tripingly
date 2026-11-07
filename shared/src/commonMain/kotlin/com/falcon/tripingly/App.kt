@@ -20,6 +20,7 @@ import coil3.ImageLoader
 import coil3.compose.setSingletonImageLoaderFactory
 import com.falcon.tripingly.core.common.result.AppResult
 import com.falcon.tripingly.core.data.billing.ProRepository
+import com.falcon.tripingly.core.data.push.NotificationCenterRepository
 import com.falcon.tripingly.core.data.push.PushNotifications
 import com.falcon.tripingly.core.data.realtime.LiveUpdates
 import com.falcon.tripingly.core.data.trips.MarkerRepository
@@ -80,6 +81,9 @@ private fun MainNavigation() {
     // Purchases made from here on belong to this account.
     val pro = koinInject<ProRepository>()
     LaunchedEffect(pro) { pro.start() }
+    // The notification center's indicator follows the server from here on.
+    val notificationCenter = koinInject<NotificationCenterRepository>()
+    LaunchedEffect(notificationCenter) { notificationCenter.start() }
     val backStack = rememberNavBackStack(NavConfig, Home)
     val goBack = { if (backStack.size > 1) backStack.removeAt(backStack.size - 1) }
 
@@ -93,10 +97,11 @@ private fun MainNavigation() {
             val route = when (link) {
                 is DeepLink.Trip -> TripMap(link.tripId)
                 is DeepLink.Marker ->
-                    (markers.tripIdOfMarker(link.markerId) as? AppResult.Success)?.data?.let { TripMap(it, stopId = link.markerId) }
+                    (markers.tripIdOfMarker(link.markerId) as? AppResult.Success)?.data?.let { TripMap(it, stopId = link.markerId, showComments = link.showComments) }
                 is DeepLink.Members -> TripMap(link.tripId, showMembers = true)
                 is DeepLink.User -> Profile(link.username)
-                is DeepLink.Home -> null
+                // The notification center opens my Followers itself (MainTabs); a push opens the app.
+                is DeepLink.Followers, is DeepLink.Home -> null
             }
             if (route != null && backStack.lastOrNull() != route) {
                 // The same trip already open opens again on what this push is about.
@@ -130,6 +135,7 @@ private fun MainNavigation() {
                             tripId = key.tripId,
                             stopId = key.stopId,
                             showMembers = key.showMembers,
+                            showComments = key.showComments,
                             onNavigateBack = { goBack() },
                             onOpenProfile = { backStack.add(Profile(it)) },
                             onOpenPaywall = { backStack.add(Paywall) },

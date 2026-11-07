@@ -45,8 +45,12 @@ internal data class MapModel(
     val message: UiText? = null,
     /** Stop changes undone because the connection failed; Retry sends them again. */
     val failedChanges: List<MarkerChangeFailure> = emptyList(),
-    /** Stops with notifications I haven't seen: their pins and days carry a "new" mark ([MapNewActivity]). */
+    /**
+     * Stops with notifications I haven't seen: their pins and days carry a "new" mark ([MapNewActivity]) while they're
+     * in either set. [newStopIds]: news seen by opening the stop; [newCommentStopIds]: news seen in its comments.
+     */
     val newStopIds: Set<String> = emptySet(),
+    val newCommentStopIds: Set<String> = emptySet(),
     /** The places button: only the trip's stops and its route's places show, nothing loads ([MapPins]). Every map opens with them shown. */
     val arePlacesHidden: Boolean = false,
 )

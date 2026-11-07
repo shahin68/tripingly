@@ -153,7 +153,7 @@ class RealtimeSyncTest {
         local.savePlaceHot(PLACE, hotCount = 1, hotByMe = true)
         val comment = NetworkJson.decodeFromString<CommentDto>(
             """{"id":"c1","markerId":"m0","body":"Nice","author":{"id":"$OTHER","username":"anna","displayName":"Anna"},
-               "likeCount":0,"likedByMe":false,"canDelete":false,"createdAt":"2026-10-11T10:00:00Z"}""",
+               "likeCount":0,"likedByMe":false,"canDelete":false,"replyCount":0,"mentions":[],"createdAt":"2026-10-11T10:00:00Z"}""",
         )
 
         sync.apply(RealtimeEvent.MarkerSaved("t1", OTHER, NetworkJson.decodeFromString<MarkerDto>(TripJson.marker("m0", "t1", "d0", 0, name = "Renamed"))))

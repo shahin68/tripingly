@@ -34,9 +34,11 @@ fun MapRoute(
     stopId: String? = null,
     /** A push about a request to join: the Members sheet opens. */
     showMembers: Boolean = false,
+    /** A push about [stopId]'s comments: its comments open. */
+    showComments: Boolean = false,
     // Keyed by trip: the view model store is shared across screens, and the class alone would
     // hand every trip the first trip's view model.
-    viewModel: MapViewModel = koinViewModel(key = "map:$tripId") { parametersOf(tripId, stopId, showMembers) }
+    viewModel: MapViewModel = koinViewModel(key = "map:$tripId") { parametersOf(tripId, stopId, showMembers, showComments) }
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val onAction = viewModel::onAction
@@ -92,7 +94,7 @@ fun MapRoute(
                 onReport = { photo -> onAction(MapAction.Sheet.ReportPhoto(photo)) },
                 onDismiss = close,
             )
-            is MapSheet.StopComments -> StopCommentsRoute(marker = shown.stop, onOpenProfile = onOpenProfile, onDismiss = close)
+            is MapSheet.StopComments -> StopCommentsRoute(marker = shown.stop, people = shown.people, onOpenProfile = onOpenProfile, onDismiss = close)
             MapSheet.Members -> membersContent(tripId, close)
             is MapSheet.PlaceImage, MapSheet.PhotoCamera -> Unit
         }

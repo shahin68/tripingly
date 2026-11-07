@@ -33,6 +33,8 @@ import androidx.compose.material.icons.filled.Explore
 import androidx.compose.material.icons.filled.Luggage
 import androidx.compose.material.icons.filled.NearMe
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material3.Badge
+import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -63,7 +65,8 @@ import kotlinx.coroutines.launch
 
 /** One tab of a [FloatingNavigationBar]. */
 @Immutable
-data class NavBarItem(val label: String, val icon: ImageVector)
+/** One tab; [hasBadge] puts a red dot on its icon (something new waits there). */
+data class NavBarItem(val label: String, val icon: ImageVector, val hasBadge: Boolean = false)
 
 /**
  * The app's bottom bar: a floating rounded glass bar whose selected tab sits in a filled accent pill. The bar
@@ -182,7 +185,9 @@ private fun NavBarTab(item: NavBarItem, selected: Boolean, onClick: () -> Unit, 
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraSmall, Alignment.CenterVertically),
     ) {
-        Icon(item.icon, contentDescription = null, tint = color, modifier = Modifier.size(NavBarDefaults.IconSize))
+        BadgedBox(badge = { if (item.hasBadge) Badge() }) {
+            Icon(item.icon, contentDescription = null, tint = color, modifier = Modifier.size(NavBarDefaults.IconSize))
+        }
         Text(
             text = item.label,
             color = color,
@@ -207,7 +212,7 @@ private val PreviewTabs = listOf(
     NavBarItem("Trips", Icons.Default.Luggage),
     NavBarItem("Explore", Icons.Default.Explore),
     NavBarItem("Nearby", Icons.Default.NearMe),
-    NavBarItem("Profile", Icons.Default.Person),
+    NavBarItem("Profile", Icons.Default.Person, hasBadge = true),
 )
 
 @Composable

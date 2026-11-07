@@ -14,6 +14,7 @@ import com.falcon.tripingly.core.data.photos.FakePhotoRepository
 import com.falcon.tripingly.core.data.places.FakePlaceRepository
 import com.falcon.tripingly.core.data.places.PlaceRepository
 import com.falcon.tripingly.core.data.push.FakeNewActivityRepository
+import com.falcon.tripingly.core.data.push.StopNews
 import com.falcon.tripingly.core.data.routing.FakeRouteRepository
 import com.falcon.tripingly.core.data.routing.RouteErrorCodes
 import com.falcon.tripingly.core.data.routing.RouteRepository
@@ -69,7 +70,6 @@ import com.falcon.tripingly.feature.map.generated.resources.map_error_load_trip
 import com.falcon.tripingly.feature.map.generated.resources.map_error_stop_change
 import com.falcon.tripingly.feature.map.generated.resources.map_join_requested
 import com.falcon.tripingly.feature.map.generated.resources.map_my_content_removed
-import com.falcon.tripingly.feature.map.generated.resources.map_trip_owner
 import com.falcon.tripingly.feature.map.presentation.FakeTripMapViewRepository
 import com.falcon.tripingly.feature.map.presentation.component.CameraCommand
 import com.falcon.tripingly.feature.map.presentation.component.PinSizes
@@ -225,10 +225,11 @@ class MapViewModelTest {
             it.accept((it.legalDocuments("en") as AppResult.Success).data)
         }
 
-    private fun TestScope.viewModel(tripId: String = trip.trip.id, stopId: String? = null, showMembers: Boolean = false) = MapViewModel(
+    private fun TestScope.viewModel(tripId: String = trip.trip.id, stopId: String? = null, showMembers: Boolean = false, showComments: Boolean = false) = MapViewModel(
         tripId = tripId,
         stopId = stopId,
         showMembers = showMembers,
+        showComments = showComments,
         tripRepository = backend,
         markerRepository = backend,
         placeRepository = places,
@@ -637,6 +638,14 @@ class MapViewModelTest {
     }
 
     @Test
+    fun `a push about a stop's comments opens them`() = runTest(testDispatcher) {
+        val stop = backend.addMarker(trip.trip.id, trip.days[0].id, NewMarker("Stop #1", GeoPoint(48.85, 2.35)))
+        val viewModel = viewModel(stopId = stop.id, showComments = true)
+        testScheduler.advanceUntilIdle()
+        assertEquals(stop.id, (viewModel.uiState.value.sheet as MapSheet.StopComments).stop.id)
+    }
+
+    @Test
     fun `stops with new activity carry a mark until they are opened, and new ones come live`() = runTest(testDispatcher) {
         val first = backend.addMarker(trip.trip.id, trip.days[0].id, NewMarker("Stop #1", GeoPoint(48.85, 2.35)))
         val second = backend.addMarker(trip.trip.id, trip.days[0].id, NewMarker("Stop #2", GeoPoint(48.86, 2.29)))
@@ -649,15 +658,40 @@ class MapViewModelTest {
         viewModel.onAction(MapAction.MapView.MarkerClick(viewModel.uiState.value.layers.stops[0]))
         testScheduler.advanceUntilIdle()
         assertEquals(listOf(false, false), viewModel.uiState.value.layers.stops.map { it.isNew })
-        assertEquals(listOf(first.id), newActivity.seen)
+        assertEquals(listOf(StopNews(first.id, false)), newActivity.seen)
 
-        // A comment on the open stop is seen at once; one on another stop marks it.
+        // A like on the open stop is seen at once; one on another stop marks it.
         newActivity.arrive(trip.trip.id, first.id)
         newActivity.arrive(trip.trip.id, second.id)
         testScheduler.advanceUntilIdle()
         assertEquals(listOf(false, true), viewModel.uiState.value.layers.stops.map { it.isNew })
-        assertEquals(listOf(first.id, first.id), newActivity.seen)
+        assertEquals(listOf(StopNews(first.id, false), StopNews(first.id, false)), newActivity.seen)
         assertTrue(viewModel.uiState.value.dayTabs.days[0].hasNew)
+    }
+
+    @Test
+    fun `a stop with new comments keeps its mark until its comments are seen`() = runTest(testDispatcher) {
+        val first = backend.addMarker(trip.trip.id, trip.days[0].id, NewMarker("Stop #1", GeoPoint(48.85, 2.35)))
+        newActivity.commentMarked[trip.trip.id] = setOf(first.id)
+        val viewModel = viewModel()
+        testScheduler.advanceUntilIdle()
+
+        // Opening the stop card doesn't read its comments.
+        viewModel.onAction(MapAction.MapView.MarkerClick(viewModel.uiState.value.layers.stops[0]))
+        testScheduler.advanceUntilIdle()
+        assertTrue(viewModel.uiState.value.layers.stops[0].isNew)
+        assertTrue(newActivity.seen.isEmpty())
+
+        viewModel.onAction(MapAction.StopCard.OpenComments)
+        testScheduler.advanceUntilIdle()
+        assertFalse(viewModel.uiState.value.layers.stops[0].isNew)
+        assertEquals(listOf(StopNews(first.id, true)), newActivity.seen)
+
+        // A new comment while they're open is seen at once.
+        newActivity.arrive(trip.trip.id, first.id, aboutComments = true)
+        testScheduler.advanceUntilIdle()
+        assertFalse(viewModel.uiState.value.layers.stops[0].isNew)
+        assertEquals(listOf(StopNews(first.id, true), StopNews(first.id, true)), newActivity.seen)
     }
 
     @Test
@@ -825,13 +859,14 @@ class MapViewModelTest {
     }
 
     @Test
-    fun `on someone else's trip the header says whose it is, with its dates, stops and members`() = runTest(testDispatcher) {
+    fun `the header shows the owner, and the trip card the stops, members and whether it's public`() = runTest(testDispatcher) {
         backend.addMarker(trip.trip.id, trip.days[0].id, NewMarker("Owner's", GeoPoint(48.85, 2.35)))
         backend.addMarker(trip.trip.id, trip.days[0].id, NewMarker("Another editor's", GeoPoint(41.9, 12.49)))
         val own = viewModel()
         testScheduler.advanceUntilIdle()
-        assertNull(own.uiState.value.header.ownerLabel)
-        assertEquals(2, own.uiState.value.header.stopCount)
+        assertEquals(trip.trip.owner, own.uiState.value.header.owner)
+        assertEquals(2, own.uiState.value.header.card.stopCount)
+        assertEquals(trip.days.size, own.uiState.value.header.card.dayCount)
 
         val shared = backend.observeTrip(trip.trip.id).first()!!
         backend.seed(
@@ -848,8 +883,9 @@ class MapViewModelTest {
         val header = viewModel.uiState.value.header
         assertEquals(shared.members.size, header.members?.count)
         assertEquals(0, header.members?.requestCount)
-        val owner = assertIs<UiText.Resource>(viewModel.uiState.value.header.ownerLabel)
-        assertEquals(Res.string.map_trip_owner, owner.resource)
+        assertEquals(shared.trip.owner, header.owner)
+        assertEquals(shared.members.size, header.card.memberCount)
+        assertTrue(header.card.isPublic)
     }
 
     @Test

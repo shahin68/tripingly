@@ -101,4 +101,5 @@
     <string name="social_trip_private">Privát</string>
     <string name="social_trip_member">Benne vagy</string>
     <string name="social_trip_own">A te utad</string>
+    <string name="social_notifications">Értesítések</string>
 </resources>

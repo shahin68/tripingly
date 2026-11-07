@@ -129,9 +129,10 @@ REST over HTTPS, JSON, base path `/v1`.
 ### Comments and likes
 | Method | Path | Notes |
 |---|---|---|
-| GET | `/markers/{id}/comments` | Paginated, oldest first; the stop's comments sheet loads pages of 50 |
-| POST | `/markers/{id}/comments` | `{ body }` (≤ 1000), with an `Idempotency-Key`; the sheet adds the answer and the cached stop counts it |
-| DELETE | `/comments/{id}` | Author or trip owner |
+| GET | `/markers/{id}/comments` | Paginated main comments (no replies): most liked first, then newest; the stop's comments sheet loads pages of 50. Each has `parentId` (null), `replyCount` and `mentions` (`{ userId, username }` of the trip people its body @mentions) |
+| POST | `/markers/{id}/comments` | `{ body, parentId? }` (≤ 1000), with an `Idempotency-Key`. `parentId` makes it a reply; a reply to a reply goes under the same main comment. `@username` of the trip's owner or members (not me, not blocked) become `mentions`; anything else stays text. The sheet adds the answer and the cached stop counts it |
+| GET | `/comments/{id}/replies` | Paginated replies of a main comment, oldest first (2026-11-07) |
+| DELETE | `/comments/{id}` | Author or trip owner; a main comment takes its replies with it (each gets `comment.deleted`, the stop's count drops by all of them) |
 | PUT | `/likes/{targetType}/{targetId}` | `trip`, `photo`, `comment`, `place_image` (a Commons image in a place's gallery, backend#47) (`marker` and `place` answer `400`); answers `{ liked, likeCount }`. The app shows a like at once and puts it back on a refusal, in the screen's state |
 | PUT / DELETE | `/places/{id}/hot` | Marks a place hot (a flame, never a heart): a stop's flame marks its place, one mark per person per place (backend#59). Answers `{ placeId, hot, hotCount }`. The app shows it at once on every cached stop at that place in Room and puts it back on a refusal (`SocialRepository.setHot`). A custom spot only in private trips can't be marked (`404`) |
 | DELETE | `/likes/{targetType}/{targetId}` | |
@@ -164,9 +165,10 @@ Response shapes and behaviour: see `05-maps-places-routing.md`.
 ### Notifications
 | Method | Path | Notes |
 |---|---|---|
-| GET | `/notifications` | Paginated, newest first |
-| POST | `/notifications/read` | Body: IDs, `markerId` (everything about one stop: clears its "new" mark) or `all` |
-| GET | `/trips/{id}/new-activity` | `{ markerIds }`: the trip's stops with unread notifications for me, drawn as "new" marks |
+| GET | `/notifications` | The notification center, paginated, newest first → `{ items, nextCursor, unreadCount, unseenCount }`. The app reads each entry's server-rendered `title`, `body`, `deepLink`, `actor`, `actors` (up to 3 people of a group, latest first; backend#72), `read`, `createdAt` and ignores `type`, so new kinds never break it (`NotificationCenterPageDto`, hand-written). Grouped entries (comments per stop, replies, changes per stop, likes and flames per item, saves, follows) come back on top with the same id until read. `unseenCount` > 0 lights the red dots on the Profile tab and the center's segment (2026-11-07) |
+| POST | `/notifications/seen` | The center is on screen: everything in it counts as seen → 204 (2026-11-07) |
+| POST | `/notifications/read` | Body: IDs, `markerId` (everything about one stop: clears its "new" mark; with `kind` `comments` only the news about its comments, `other` the rest) or `all` |
+| GET | `/trips/{id}/new-activity` | `{ markerIds, commentMarkerIds }`: the trip's stops with unread notifications for me, drawn as "new" marks; `commentMarkerIds` those with unread news about their comments (a new comment or a like on one; `aboutComments` on each notification) |
 | GET/PATCH | `/me/notification-settings` | Per-type push on/off: `commentOnMarker`, `addedToTrip`, `tripChangedByCollaborator`, `likesGrouped` (likes, saves and hot-spot milestones), `joinRequested`, `newFollowers` (follows and new friends); PATCH sends only the one that changed |
 
 ### Moderation

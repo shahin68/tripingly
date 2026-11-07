@@ -1,0 +1,7 @@
+<resources>
+    <string name="notifications_title">Értesítések</string>
+    <string name="notifications_empty">Még nincs semmi. A kedvelések, hozzászólások és meghívások itt jelennek meg.</string>
+    <string name="notifications_error_load">Nem sikerült betölteni az értesítéseidet.</string>
+    <string name="notifications_retry">Újra</string>
+    <string name="notifications_unread">Olvasatlan</string>
+</resources>

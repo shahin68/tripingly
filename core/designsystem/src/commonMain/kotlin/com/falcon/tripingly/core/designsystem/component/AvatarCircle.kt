@@ -21,6 +21,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextAlign
@@ -37,7 +38,8 @@ import com.falcon.tripingly.core.model.trip.UserSummary
 
 /**
  * A person as a round avatar: their profile [photo], or without one the first letter of [name] on a quiet
- * neutral circle (people have no colours). The letter also shows while the photo loads.
+ * neutral circle (people have no colours). The letter also shows while the photo loads. Another [shape] for a
+ * photo like an ID card's.
  */
 @Composable
 fun AvatarCircle(
@@ -45,12 +47,13 @@ fun AvatarCircle(
     photo: ProfilePhoto?,
     modifier: Modifier = Modifier,
     size: Dp = AvatarSize.Medium,
+    shape: Shape = CircleShape,
 ) {
     Box(
         modifier = modifier
             .size(size)
-            .skeleton(CircleShape)
-            .clip(CircleShape)
+            .skeleton(shape)
+            .clip(shape)
             .background(MaterialTheme.colorScheme.surfaceContainerHighest),
         contentAlignment = Alignment.Center,
     ) {
@@ -73,8 +76,8 @@ fun AvatarCircle(
 
 /** [AvatarCircle] for a [user]. */
 @Composable
-fun AvatarCircle(user: UserSummary, modifier: Modifier = Modifier, size: Dp = AvatarSize.Medium) =
-    AvatarCircle(user.displayName, user.photo, modifier, size)
+fun AvatarCircle(user: UserSummary, modifier: Modifier = Modifier, size: Dp = AvatarSize.Medium, shape: Shape = CircleShape) =
+    AvatarCircle(user.displayName, user.photo, modifier, size, shape)
 
 /**
  * An avatar with the name and `@handle` below that the user taps to pick or unpick the person,
