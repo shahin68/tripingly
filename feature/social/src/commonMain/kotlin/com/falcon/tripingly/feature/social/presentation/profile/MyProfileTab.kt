@@ -12,6 +12,10 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Notifications
+import androidx.compose.material3.Badge
+import androidx.compose.material3.BadgedBox
+import androidx.compose.material3.FilledTonalIconToggleButton
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -21,7 +25,6 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.falcon.tripingly.core.designsystem.component.DropdownAction
@@ -77,15 +80,15 @@ import org.koin.compose.viewmodel.koinViewModel
 import org.koin.core.parameter.parametersOf
 
 /**
- * What the Profile tab lists under my header: my public trips, one of my people lists, or the notification center
- * (shown by its [icon] alone, [label] being its description).
+ * What the Profile tab lists under my header: my public trips or one of my people lists, picked in the segments,
+ * or the notification center, picked with the bell in my header.
  */
-internal enum class ProfileSegment(val label: StringResource, val list: PeopleList?, val icon: ImageVector? = null) {
+internal enum class ProfileSegment(val label: StringResource, val list: PeopleList?) {
     Trips(Res.string.social_trips, null),
     Friends(Res.string.social_friends, PeopleList.Friends),
     Following(Res.string.social_following, PeopleList.Following),
     Followers(Res.string.social_followers, PeopleList.Followers),
-    Notifications(Res.string.social_notifications, null, Icons.Outlined.Notifications),
+    Notifications(Res.string.social_notifications, null),
 }
 
 /**
@@ -96,7 +99,7 @@ typealias NotificationCenterSlot = @Composable (header: LazyListScope.() -> Unit
 
 /**
  * The Profile tab: my header and counts, then my public trips, my friends, the people I follow, my followers or my
- * notifications ([notificationCenter]; its segment has a red dot while [hasUnseenNotifications]). While a name is
+ * notifications ([notificationCenter]; the bell in my header has a red dot while [hasUnseenNotifications]). While a name is
  * typed in the shell's top bar ([PeopleSearchField]), the people found replace it all.
  */
 @Composable
@@ -188,10 +191,16 @@ internal fun MyProfileScreen(
                         onChoosePhoto = onChoosePhoto,
                         onRemovePhoto = { onPhotoAction(MyProfilePhotoViewModel.Action.Remove) },
                         modifier = Modifier.animateItem(),
-                    )
+                    ) {
+                        NotificationsButton(
+                            selected = segment == ProfileSegment.Notifications,
+                            hasBadge = hasUnseenNotifications,
+                            onClick = { onSegment(if (segment == ProfileSegment.Notifications) ProfileSegment.Trips else ProfileSegment.Notifications) },
+                        )
+                    }
                 }
             }
-            item(key = "segments") { Segments(segment, hasUnseenNotifications, onSegment, Modifier.animateItem()) }
+            item(key = "segments") { Segments(segment, onSegment, Modifier.animateItem()) }
         }
         if (segment == ProfileSegment.Notifications && !search.isSearching) {
             notificationCenter(header, contentPadding, Modifier.glassSource())
@@ -240,17 +249,20 @@ fun PeopleSearchField(viewModel: PeopleSearchViewModel = koinViewModel()) {
 }
 
 @Composable
-private fun Segments(segment: ProfileSegment, hasUnseenNotifications: Boolean, onSegment: (ProfileSegment) -> Unit, modifier: Modifier = Modifier) {
+private fun Segments(segment: ProfileSegment, onSegment: (ProfileSegment) -> Unit, modifier: Modifier = Modifier) {
     SegmentedToggle(modifier.fillMaxWidth()) {
-        ProfileSegment.entries.forEach { entry ->
-            SegmentedToggleOption(
-                label = stringResource(entry.label),
-                selected = entry == segment,
-                onClick = { onSegment(entry) },
-                icon = entry.icon,
-                showLabel = entry.icon == null,
-                hasBadge = entry == ProfileSegment.Notifications && hasUnseenNotifications,
-            )
+        ProfileSegment.entries.filter { it != ProfileSegment.Notifications }.forEach { entry ->
+            SegmentedToggleOption(label = stringResource(entry.label), selected = entry == segment, onClick = { onSegment(entry) })
+        }
+    }
+}
+
+/** Opens the notification center (again: back to my trips); a red dot while something new waits there. */
+@Composable
+private fun NotificationsButton(selected: Boolean, hasBadge: Boolean, onClick: () -> Unit) {
+    BadgedBox(badge = { if (hasBadge) Badge() }) {
+        FilledTonalIconToggleButton(checked = selected, onCheckedChange = { onClick() }) {
+            Icon(Icons.Outlined.Notifications, contentDescription = stringResource(Res.string.social_notifications))
         }
     }
 }
@@ -260,8 +272,10 @@ private fun Segments(segment: ProfileSegment, hasUnseenNotifications: Boolean, o
 private fun MyProfileSkeleton(segment: ProfileSegment, contentPadding: PaddingValues) {
     Skeleton(Modifier.fillMaxSize()) {
         Column(Modifier.padding(contentPadding), verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small)) {
-            MyProfileHeader(placeholderProfile, MyProfilePhotoViewModel.State(), onChoosePhoto = {}, onRemovePhoto = {})
-            Segments(segment, hasUnseenNotifications = false, onSegment = {})
+            MyProfileHeader(placeholderProfile, MyProfilePhotoViewModel.State(), onChoosePhoto = {}, onRemovePhoto = {}) {
+                NotificationsButton(selected = segment == ProfileSegment.Notifications, hasBadge = false, onClick = {})
+            }
+            Segments(segment, onSegment = {})
             when {
                 segment == ProfileSegment.Trips ->
                     placeholderTrips.forEach { PublicTripCard(trip = it, onOpen = {}, onLike = {}, onToggleSave = {}, onAskToJoin = {}, onReport = {}) }

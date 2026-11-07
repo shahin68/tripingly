@@ -19,8 +19,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Public
-import androidx.compose.material3.Badge
-import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -61,7 +59,6 @@ fun SegmentedToggle(
 /**
  * One option of a [SegmentedToggle]; the options share the width equally. With [showLabel] off only the [icon]
  * shows, the label being its description (e.g. the ways of travelling, where only the picked one is named).
- * [hasBadge] puts a red dot on it (something new waits there).
  */
 @Composable
 fun RowScope.SegmentedToggleOption(
@@ -72,7 +69,6 @@ fun RowScope.SegmentedToggleOption(
     icon: ImageVector? = null,
     enabled: Boolean = true,
     showLabel: Boolean = true,
-    hasBadge: Boolean = false,
 ) {
     val container by animateColorAsState(
         if (selected) MaterialTheme.colorScheme.surfaceContainerLowest else MaterialTheme.colorScheme.surfaceVariant,
@@ -90,15 +86,13 @@ fun RowScope.SegmentedToggleOption(
             .padding(horizontal = MaterialTheme.spacing.small),
         contentAlignment = Alignment.Center,
     ) {
-        BadgedBox(badge = { if (hasBadge) Badge() }) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                if (icon != null) {
-                    Icon(icon, contentDescription = label.takeUnless { showLabel }, tint = content, modifier = Modifier.size(SegmentIconSize))
-                }
-                if (showLabel) {
-                    if (icon != null) Spacer(Modifier.width(MaterialTheme.spacing.extraSmall))
-                    Text(text = label, color = content, style = MaterialTheme.typography.labelLarge, textAlign = TextAlign.Center)
-                }
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            if (icon != null) {
+                Icon(icon, contentDescription = label.takeUnless { showLabel }, tint = content, modifier = Modifier.size(SegmentIconSize))
+            }
+            if (showLabel) {
+                if (icon != null) Spacer(Modifier.width(MaterialTheme.spacing.extraSmall))
+                Text(text = label, color = content, style = MaterialTheme.typography.labelLarge, textAlign = TextAlign.Center)
             }
         }
     }
@@ -116,7 +110,7 @@ private fun VisibilityTogglePreviewContent(publicSelected: Boolean) = Column {
     }
     SegmentedToggle(Modifier.padding(16.dp)) {
         SegmentedToggleOption("Walk", true, {}, icon = Icons.Default.Public)
-        SegmentedToggleOption("Car", false, {}, icon = Icons.Default.Lock, showLabel = false, hasBadge = true)
+        SegmentedToggleOption("Car", false, {}, icon = Icons.Default.Lock, showLabel = false)
     }
 }
 
