@@ -92,7 +92,7 @@ fun MapRoute(
                 onReport = { photo -> onAction(MapAction.Sheet.ReportPhoto(photo)) },
                 onDismiss = close,
             )
-            is MapSheet.StopComments -> StopCommentsRoute(marker = shown.stop, onOpenProfile = onOpenProfile, onDismiss = close)
+            is MapSheet.StopComments -> StopCommentsRoute(marker = shown.stop, people = shown.people, onOpenProfile = onOpenProfile, onDismiss = close)
             MapSheet.Members -> membersContent(tripId, close)
             is MapSheet.PlaceImage, MapSheet.PhotoCamera -> Unit
         }

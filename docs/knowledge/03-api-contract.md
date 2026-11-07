@@ -129,9 +129,10 @@ REST over HTTPS, JSON, base path `/v1`.
 ### Comments and likes
 | Method | Path | Notes |
 |---|---|---|
-| GET | `/markers/{id}/comments` | Paginated, oldest first; the stop's comments sheet loads pages of 50 |
-| POST | `/markers/{id}/comments` | `{ body }` (≤ 1000), with an `Idempotency-Key`; the sheet adds the answer and the cached stop counts it |
-| DELETE | `/comments/{id}` | Author or trip owner |
+| GET | `/markers/{id}/comments` | Paginated main comments (no replies): most liked first, then newest; the stop's comments sheet loads pages of 50. Each has `parentId` (null), `replyCount` and `mentions` (`{ userId, username }` of the trip people its body @mentions) |
+| POST | `/markers/{id}/comments` | `{ body, parentId? }` (≤ 1000), with an `Idempotency-Key`. `parentId` makes it a reply; a reply to a reply goes under the same main comment. `@username` of the trip's owner or members (not me, not blocked) become `mentions`; anything else stays text. The sheet adds the answer and the cached stop counts it |
+| GET | `/comments/{id}/replies` | Paginated replies of a main comment, oldest first (2026-11-07) |
+| DELETE | `/comments/{id}` | Author or trip owner; a main comment takes its replies with it (each gets `comment.deleted`, the stop's count drops by all of them) |
 | PUT | `/likes/{targetType}/{targetId}` | `trip`, `photo`, `comment`, `place_image` (a Commons image in a place's gallery, backend#47) (`marker` and `place` answer `400`); answers `{ liked, likeCount }`. The app shows a like at once and puts it back on a refusal, in the screen's state |
 | PUT / DELETE | `/places/{id}/hot` | Marks a place hot (a flame, never a heart): a stop's flame marks its place, one mark per person per place (backend#59). Answers `{ placeId, hot, hotCount }`. The app shows it at once on every cached stop at that place in Room and puts it back on a refusal (`SocialRepository.setHot`). A custom spot only in private trips can't be marked (`404`) |
 | DELETE | `/likes/{targetType}/{targetId}` | |

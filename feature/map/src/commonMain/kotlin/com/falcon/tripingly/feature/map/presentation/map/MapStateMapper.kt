@@ -9,6 +9,7 @@ import com.falcon.tripingly.core.model.route.AlongTheWayPlace
 import com.falcon.tripingly.core.model.trip.TripDetails
 import com.falcon.tripingly.core.model.trip.TripMarker
 import com.falcon.tripingly.core.model.trip.TripRole
+import com.falcon.tripingly.core.model.trip.UserSummary
 import com.falcon.tripingly.core.ui.UiText
 import com.falcon.tripingly.feature.map.generated.resources.Res
 import com.falcon.tripingly.feature.map.generated.resources.map_stop_title_format
@@ -198,11 +199,15 @@ internal class MapStateMapper(
     private fun sheet(): MapSheet? = when (val sheet = model.sheet) {
         is Sheet.StopPhotos -> stops.firstOrNull { it.id == sheet.markerId }?.let { MapSheet.StopPhotos(it, canEdit) }
         is Sheet.PlacePhotos -> MapSheet.PlacePhotos(sheet.place)
-        is Sheet.StopComments -> stops.firstOrNull { it.id == sheet.markerId }?.let(MapSheet::StopComments)
+        is Sheet.StopComments -> stops.firstOrNull { it.id == sheet.markerId }?.let { MapSheet.StopComments(it, tripPeople()) }
         Sheet.Members -> MapSheet.Members
         Sheet.PhotoCamera -> MapSheet.PhotoCamera.takeIf { stops.any { it.id == (model.selection as? Selection.Stop)?.markerId } }
         null -> placeImage()
     }
+
+    /** The trip's owner and members but me: the people my comment can @mention. */
+    private fun tripPeople(): List<UserSummary> =
+        (listOfNotNull(details?.trip?.owner) + details?.members.orEmpty().map { it.user }).distinctBy { it.id }.filter { it.id != myUserId }
 
     /** A card image opens in the place's photo viewer, so its heart is the same like as in the Photos sheet. */
     private fun placeImage(): MapSheet? {

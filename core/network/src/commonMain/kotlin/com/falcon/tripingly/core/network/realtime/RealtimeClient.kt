@@ -29,9 +29,17 @@ interface RealtimeClient {
     fun watchTrip(tripId: String)
 
     fun unwatchTrip(tripId: String)
+
+    /**
+     * A stop's comments are open: the server sends no pushes about them while they are (and while connected).
+     * Counted like [watchTrip].
+     */
+    fun watchComments(markerId: String)
+
+    fun unwatchComments(markerId: String)
 }
 
-/** Who watches which trip, counted (public for the test fake). */
+/** Who watches which trip, or which stop's comments, counted (public for the test fake). */
 class TripWatches {
     private val counts = MutableStateFlow<Map<String, Int>>(emptyMap())
 

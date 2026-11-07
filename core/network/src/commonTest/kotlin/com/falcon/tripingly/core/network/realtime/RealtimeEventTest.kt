@@ -50,7 +50,7 @@ class RealtimeEventTest {
     fun commentAndLikeEvents() {
         val comment = """
             {"id":"c1","markerId":"m1","body":"Lovely","author":{"id":"u2","username":"anna","displayName":"Anna"},
-             "likeCount":0,"likedByMe":false,"canDelete":false,"createdAt":"2026-10-11T10:00:00Z"}
+             "likeCount":0,"likedByMe":false,"canDelete":false,"replyCount":0,"mentions":[],"createdAt":"2026-10-11T10:00:00Z"}
         """.trimIndent()
         val added = assertIs<RealtimeEvent.CommentAdded>(parse("comment.created", envelope("comment.created", """{"comment":$comment}""")))
         assertEquals("Lovely", added.comment.body)

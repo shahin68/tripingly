@@ -105,6 +105,16 @@
     <string name="map_comment_delete_title">Delete this comment?</string>
     <string name="map_comment_delete_message">The comment will be deleted for everyone.</string>
     <string name="map_comment_report">Report comment</string>
+    <string name="map_comment_reply">Reply</string>
+    <plurals name="map_comment_view_replies">
+        <item quantity="one">View %1$d reply</item>
+        <item quantity="other">View %1$d replies</item>
+    </plurals>
+    <string name="map_comment_hide_replies">Hide replies</string>
+    <string name="map_comment_more_replies">View more replies</string>
+    <string name="map_comment_replying_to">Replying to %1$s</string>
+    <string name="map_comment_cancel_reply">Cancel reply</string>
+    <string name="map_comment_reply_placeholder">Add a reply…</string>
     <plurals name="map_stop_comment_count">
         <item quantity="one">%1$d comment</item>
         <item quantity="other">%1$d comments</item>

@@ -105,6 +105,16 @@
     <string name="map_comment_delete_title">Törlöd ezt a hozzászólást?</string>
     <string name="map_comment_delete_message">A hozzászólás mindenki számára törlődik.</string>
     <string name="map_comment_report">Hozzászólás jelentése</string>
+    <string name="map_comment_reply">Válasz</string>
+    <plurals name="map_comment_view_replies">
+        <item quantity="one">%1$d válasz megtekintése</item>
+        <item quantity="other">%1$d válasz megtekintése</item>
+    </plurals>
+    <string name="map_comment_hide_replies">Válaszok elrejtése</string>
+    <string name="map_comment_more_replies">További válaszok</string>
+    <string name="map_comment_replying_to">Válasz neki: %1$s</string>
+    <string name="map_comment_cancel_reply">Válasz megszakítása</string>
+    <string name="map_comment_reply_placeholder">Válasz írása…</string>
     <plurals name="map_stop_comment_count">
         <item quantity="one">%1$d hozzászólás</item>
         <item quantity="other">%1$d hozzászólás</item>

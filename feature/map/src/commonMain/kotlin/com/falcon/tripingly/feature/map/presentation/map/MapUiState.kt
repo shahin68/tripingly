@@ -226,7 +226,8 @@ sealed interface MapSheet {
     data class StopPhotos(val stop: MapMarker, val canEdit: Boolean) : MapSheet
     /** A place's photos, which anyone can add to. */
     data class PlacePhotos(val place: MapPlace) : MapSheet
-    data class StopComments(val stop: MapMarker) : MapSheet
+    /** [people]: the trip's owner and members, who can be @mentioned. */
+    data class StopComments(val stop: MapMarker, val people: List<UserSummary>) : MapSheet
     /** The owner's members sheet, with the requests to join. */
     data object Members : MapSheet
     /** An image of the place card, full screen in the place's photo viewer. */

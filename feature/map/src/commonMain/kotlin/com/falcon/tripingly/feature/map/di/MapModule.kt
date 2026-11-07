@@ -26,5 +26,5 @@ val mapModule = module {
         )
     }
     viewModel { params -> PhotosViewModel(owner = params.get(), photoRepository = get(), sessionRepository = get()) }
-    viewModel { params -> StopCommentsViewModel(markerId = params.get(), socialRepository = get()) }
+    viewModel { params -> StopCommentsViewModel(markerId = params[0], people = params[1], socialRepository = get(), sessionRepository = get()) }
 }

@@ -25,9 +25,12 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.mapNotNull
 import kotlinx.coroutines.flow.merge
+import kotlinx.coroutines.flow.onCompletion
+import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.flow.updateAndGet
 import kotlinx.coroutines.sync.Mutex
@@ -48,13 +51,16 @@ internal class DefaultSocialRepository(
     override suspend fun comments(markerId: String, cursor: String?): AppResult<Page<Comment>, DataError.Network> =
         api.comments(markerId, cursor, COMMENTS_PAGE_SIZE).map { page -> Page(page.items.map { it.toComment() }, page.nextCursor) }
 
-    override suspend fun addComment(markerId: String, body: String): AppResult<Comment, DataError.Network> =
-        api.addComment(markerId, CreateCommentDto(body.trim()), newIdempotencyKey())
+    override suspend fun replies(commentId: String, cursor: String?): AppResult<Page<Comment>, DataError.Network> =
+        api.replies(commentId, cursor, COMMENTS_PAGE_SIZE).map { page -> Page(page.items.map { it.toComment() }, page.nextCursor) }
+
+    override suspend fun addComment(markerId: String, body: String, parentId: String?): AppResult<Comment, DataError.Network> =
+        api.addComment(markerId, CreateCommentDto(body = body.trim(), parentId = parentId), newIdempotencyKey())
             .map { it.toComment() }
             .onSuccess { local.addToCommentCount(markerId, 1) }
 
     override suspend fun deleteComment(comment: Comment): AppResult<Unit, DataError.Network> =
-        api.deleteComment(comment.id).onSuccess { local.addToCommentCount(comment.markerId, -1) }
+        api.deleteComment(comment.id).onSuccess { local.addToCommentCount(comment.markerId, -1 - comment.replyCount) }
 
     /** Per item, while taps on its heart or flame are being sent: see [sendLatest]. */
     private class Sync(var wanted: Boolean) {
@@ -165,13 +171,17 @@ internal class DefaultSocialRepository(
         ).map { }
 
     // My own comments are already shown from the server's answer.
-    override val commentChanges: Flow<CommentChange> = realtime.events.mapNotNull { event ->
-        when (event) {
-            is RealtimeEvent.CommentAdded -> if (event.byMe()) null else CommentChange.Added(event.comment.toComment())
-            is RealtimeEvent.CommentDeleted -> if (event.byMe()) null else CommentChange.Deleted(event.markerId, event.commentId)
-            else -> null
+    override fun commentChanges(markerId: String): Flow<CommentChange> = realtime.events
+        .mapNotNull { event ->
+            when (event) {
+                is RealtimeEvent.CommentAdded -> CommentChange.Added(event.comment.toComment()).takeUnless { event.byMe() }
+                is RealtimeEvent.CommentDeleted -> CommentChange.Deleted(event.markerId, event.commentId).takeUnless { event.byMe() }
+                else -> null
+            }
         }
-    }
+        .filter { it.markerId == markerId }
+        .onStart { realtime.watchComments(markerId) }
+        .onCompletion { realtime.unwatchComments(markerId) }
 
     // My own likes are already shown from my taps and the server's answer; the live echo of an earlier tap would
     // put an old count back (like, then unlike: 2 → 1 → 2).
