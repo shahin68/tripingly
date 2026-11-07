@@ -14,10 +14,11 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
-import androidx.compose.material3.FilledTonalIconToggleButton
+import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
@@ -79,28 +80,18 @@ import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel
 import org.koin.core.parameter.parametersOf
 
-/**
- * What the Profile tab lists under my header: my public trips or one of my people lists, picked in the segments,
- * or the notification center, picked with the bell in my header.
- */
+/** What the Profile tab lists under my header: my public trips or one of my people lists, picked in the segments. */
 internal enum class ProfileSegment(val label: StringResource, val list: PeopleList?) {
     Trips(Res.string.social_trips, null),
     Friends(Res.string.social_friends, PeopleList.Friends),
     Following(Res.string.social_following, PeopleList.Following),
     Followers(Res.string.social_followers, PeopleList.Followers),
-    Notifications(Res.string.social_notifications, null),
 }
 
 /**
- * The notification center, from its own module: a list that starts with the Profile tab's [header] items, padded
- * by [contentPadding]. A tap on several new followers switches to my Followers ([onOpenFollowers]).
- */
-typealias NotificationCenterSlot =
-    @Composable (header: LazyListScope.() -> Unit, contentPadding: PaddingValues, modifier: Modifier, onOpenFollowers: () -> Unit) -> Unit
-
-/**
  * The Profile tab: my header and counts, then my public trips, my friends, the people I follow, my followers or my
- * notifications ([notificationCenter]; the bell in my header has a red dot while [hasUnseenNotifications]). While a name is
+ * followers. The bell in my header opens the notification center ([onOpenNotifications]), with a red dot while
+ * [hasUnseenNotifications]; [showFollowers] switches to my Followers (a tap on several new followers). While a name is
  * typed in the shell's top bar ([PeopleSearchField]), the people found replace it all.
  */
 @Composable
@@ -109,8 +100,10 @@ internal fun MyProfileTab(
     onAction: (Action) -> Unit,
     onOpenProfile: (username: String) -> Unit,
     barsPadding: PaddingValues,
-    notificationCenter: NotificationCenterSlot,
+    onOpenNotifications: () -> Unit,
     hasUnseenNotifications: Boolean,
+    showFollowers: Boolean,
+    onFollowersShown: () -> Unit,
     searchViewModel: PeopleSearchViewModel = koinViewModel(),
     photoViewModel: MyProfilePhotoViewModel = koinViewModel(),
 ) {
@@ -118,6 +111,12 @@ internal fun MyProfileTab(
     val photo by photoViewModel.uiState.collectAsStateWithLifecycle()
     val choosePhoto = rememberPhotoPicker(single = true) { images -> photoViewModel.onAction(MyProfilePhotoViewModel.Action.Choose(images.first())) }
     var segment by rememberSaveable { mutableStateOf(ProfileSegment.Trips) }
+    LaunchedEffect(showFollowers) {
+        if (showFollowers) {
+            segment = ProfileSegment.Followers
+            onFollowersShown()
+        }
+    }
     // One list per segment, each loaded the first time its segment is picked and kept while the tab lives.
     val people = segment.list?.let { list ->
         key(list) {
@@ -139,7 +138,7 @@ internal fun MyProfileTab(
         onPeopleAction = { action -> people?.second?.invoke(action) },
         onOpenProfile = onOpenProfile,
         barsPadding = barsPadding,
-        notificationCenter = notificationCenter,
+        onOpenNotifications = onOpenNotifications,
         hasUnseenNotifications = hasUnseenNotifications,
     )
 }
@@ -159,7 +158,7 @@ internal fun MyProfileScreen(
     onPeopleAction: (PeopleViewModel.Action) -> Unit,
     onOpenProfile: (username: String) -> Unit,
     barsPadding: PaddingValues = PaddingValues(),
-    notificationCenter: NotificationCenterSlot = { _, _, _, _ -> },
+    onOpenNotifications: () -> Unit = {},
     hasUnseenNotifications: Boolean = false,
 ) {
     val contentPadding = screenContentPadding(barsPadding)
@@ -193,45 +192,37 @@ internal fun MyProfileScreen(
                         onRemovePhoto = { onPhotoAction(MyProfilePhotoViewModel.Action.Remove) },
                         modifier = Modifier.animateItem(),
                     ) {
-                        NotificationsButton(
-                            selected = segment == ProfileSegment.Notifications,
-                            hasBadge = hasUnseenNotifications,
-                            onClick = { onSegment(if (segment == ProfileSegment.Notifications) ProfileSegment.Trips else ProfileSegment.Notifications) },
-                        )
+                        NotificationsButton(hasBadge = hasUnseenNotifications, onClick = onOpenNotifications)
                     }
                 }
             }
             item(key = "segments") { Segments(segment, onSegment, Modifier.animateItem()) }
         }
-        if (segment == ProfileSegment.Notifications && !search.isSearching) {
-            notificationCenter(header, contentPadding, Modifier.glassSource()) { onSegment(ProfileSegment.Followers) }
-        } else {
-            val listState = rememberLazyListState()
-            LoadMoreAtEnd(listState) { if (segment.list == null) onAction(Action.Trips.LoadMore) else onPeopleAction(PeopleViewModel.Action.OnLoadMore) }
-            LazyColumn(
-                state = listState,
-                modifier = Modifier.fillMaxSize().glassSource(),
-                contentPadding = contentPadding,
-                verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
-            ) {
-                if (search.isSearching) {
-                    peopleItems(search.results, isLoading = search.isLoading, loadError = null, empty = Res.string.social_people_none, onRetry = {}, onOpenProfile)
-                    return@LazyColumn
-                }
-                header()
-                when (val list = segment.list) {
-                    null -> tripItems(state, onAction)
-                    else -> peopleItems(
-                        people = people?.people.orEmpty(),
-                        isLoading = people?.hasLoaded != true,
-                        loadError = people?.loadError,
-                        empty = list.empty,
-                        onRetry = { onPeopleAction(PeopleViewModel.Action.OnRetry) },
-                        onOpenProfile = onOpenProfile,
-                        // Followers may be people I don't follow; reporting and blocking stay on their profile.
-                        actions = { user -> if (list == PeopleList.Followers) emptyList() else listOf(unfollowAction { onPeopleAction(PeopleViewModel.Action.Unfollow(user)) }) },
-                    )
-                }
+        val listState = rememberLazyListState()
+        LoadMoreAtEnd(listState) { if (segment.list == null) onAction(Action.Trips.LoadMore) else onPeopleAction(PeopleViewModel.Action.OnLoadMore) }
+        LazyColumn(
+            state = listState,
+            modifier = Modifier.fillMaxSize().glassSource(),
+            contentPadding = contentPadding,
+            verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
+        ) {
+            if (search.isSearching) {
+                peopleItems(search.results, isLoading = search.isLoading, loadError = null, empty = Res.string.social_people_none, onRetry = {}, onOpenProfile)
+                return@LazyColumn
+            }
+            header()
+            when (val list = segment.list) {
+                null -> tripItems(state, onAction)
+                else -> peopleItems(
+                    people = people?.people.orEmpty(),
+                    isLoading = people?.hasLoaded != true,
+                    loadError = people?.loadError,
+                    empty = list.empty,
+                    onRetry = { onPeopleAction(PeopleViewModel.Action.OnRetry) },
+                    onOpenProfile = onOpenProfile,
+                    // Followers may be people I don't follow; reporting and blocking stay on their profile.
+                    actions = { user -> if (list == PeopleList.Followers) emptyList() else listOf(unfollowAction { onPeopleAction(PeopleViewModel.Action.Unfollow(user)) }) },
+                )
             }
         }
     }
@@ -252,17 +243,17 @@ fun PeopleSearchField(viewModel: PeopleSearchViewModel = koinViewModel()) {
 @Composable
 private fun Segments(segment: ProfileSegment, onSegment: (ProfileSegment) -> Unit, modifier: Modifier = Modifier) {
     SegmentedToggle(modifier.fillMaxWidth()) {
-        ProfileSegment.entries.filter { it != ProfileSegment.Notifications }.forEach { entry ->
+        ProfileSegment.entries.forEach { entry ->
             SegmentedToggleOption(label = stringResource(entry.label), selected = entry == segment, onClick = { onSegment(entry) })
         }
     }
 }
 
-/** Opens the notification center (again: back to my trips); a red dot while something new waits there. */
+/** Opens the notification center; a red dot while something new waits there. */
 @Composable
-private fun NotificationsButton(selected: Boolean, hasBadge: Boolean, onClick: () -> Unit) {
+private fun NotificationsButton(hasBadge: Boolean, onClick: () -> Unit) {
     BadgedBox(badge = { if (hasBadge) Badge() }) {
-        FilledTonalIconToggleButton(checked = selected, onCheckedChange = { onClick() }) {
+        FilledTonalIconButton(onClick = onClick) {
             Icon(Icons.Outlined.Notifications, contentDescription = stringResource(Res.string.social_notifications))
         }
     }
@@ -274,7 +265,7 @@ private fun MyProfileSkeleton(segment: ProfileSegment, contentPadding: PaddingVa
     Skeleton(Modifier.fillMaxSize()) {
         Column(Modifier.padding(contentPadding), verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small)) {
             MyProfileHeader(placeholderProfile, MyProfilePhotoViewModel.State(), onChoosePhoto = {}, onRemovePhoto = {}) {
-                NotificationsButton(selected = segment == ProfileSegment.Notifications, hasBadge = false, onClick = {})
+                NotificationsButton(hasBadge = false, onClick = {})
             }
             Segments(segment, onSegment = {})
             when {

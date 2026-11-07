@@ -4,4 +4,21 @@
     <string name="notifications_error_load">Nem sikerült betölteni az értesítéseidet.</string>
     <string name="notifications_retry">Újra</string>
     <string name="notifications_unread">Olvasatlan</string>
+    <string name="notifications_clear_all">Összes törlése</string>
+    <string name="notifications_clear_title">Törlöd az összes értesítést?</string>
+    <string name="notifications_clear_message">Minden eszközödről eltűnnek. A hozzászólások, kedvelések és követések megmaradnak.</string>
+    <string name="notifications_clear_confirm">Törlés</string>
+    <string name="notifications_delete">Törlés</string>
+    <string name="notifications_block">Letiltás</string>
+    <string name="notifications_remove_follower">Követő eltávolítása</string>
+    <string name="notifications_block_title">Letiltod: @%1$s?</string>
+    <string name="notifications_block_message">Nem látjátok egymás utazásait, megállóit és hozzászólásait, megszűnik a kölcsönös követés, és kiléptek egymás utazásaiból.</string>
+    <string name="notifications_remove_follower_title">Eltávolítod @%1$s követőt?</string>
+    <string name="notifications_remove_follower_message">Nem követ tovább, és nem kap róla értesítést. Később újra követhet.</string>
+    <string name="notifications_remove_follower_confirm">Eltávolítás</string>
+    <string name="notifications_follower_removed">@%1$s már nem követ.</string>
+    <string name="notifications_error_remove">Nem sikerült eltávolítani.</string>
+    <string name="notifications_error_clear">Nem sikerült törölni az értesítéseket.</string>
+    <string name="notifications_error_block">Nem sikerült letiltani.</string>
+    <string name="notifications_error_remove_follower">Nem sikerült eltávolítani a követőt.</string>
 </resources>

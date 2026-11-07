@@ -195,7 +195,7 @@ val dataModule = module {
     // The notification center's indicator was about whoever was signed in.
     single(named("notificationCenter")) {
         val center = get<DefaultNotificationCenterRepository>()
-        LocalDataCleaner { center.clear() }
+        LocalDataCleaner { center.forget() }
     }
 
     // The cached trips belong to whoever was signed in.

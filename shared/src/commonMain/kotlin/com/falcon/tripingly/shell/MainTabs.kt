@@ -12,6 +12,7 @@ import androidx.compose.material.icons.outlined.NearMe
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.ui.Modifier
@@ -24,10 +25,8 @@ import com.falcon.tripingly.core.designsystem.component.NavBarItem
 import com.falcon.tripingly.core.designsystem.component.SettingsAction
 import com.falcon.tripingly.core.designsystem.component.safeSides
 import com.falcon.tripingly.core.model.photo.PhotoOwner
-import com.falcon.tripingly.deeplink.DeepLink
 import com.falcon.tripingly.deeplink.DeepLinks
 import com.falcon.tripingly.feature.map.presentation.photos.PhotoViewerRoute
-import com.falcon.tripingly.feature.notifications.presentation.NotificationCenterRoute
 import com.falcon.tripingly.feature.social.presentation.explore.ExplorePeriodAction
 import com.falcon.tripingly.feature.social.presentation.explore.ExploreRoute
 import com.falcon.tripingly.feature.social.presentation.nearby.NearbyRoute
@@ -67,6 +66,7 @@ internal fun MainTabs(
     onOpenTrip: (tripId: String) -> Unit,
     onOpenProfile: (username: String) -> Unit,
     onOpenSettings: () -> Unit,
+    onOpenNotifications: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val tabs = MainTab.entries
@@ -75,6 +75,9 @@ internal fun MainTabs(
     val notificationCenter = koinInject<NotificationCenterRepository>()
     val hasUnseenNotifications by notificationCenter.hasUnseen.collectAsStateWithLifecycle()
     val deepLinks = koinInject<DeepLinks>()
+    // A link about several new followers: the Profile tab shows them.
+    val showFollowers by deepLinks.followersRequested.collectAsStateWithLifecycle()
+    LaunchedEffect(showFollowers) { if (showFollowers) pagerState.scrollToPage(MainTab.Profile.ordinal) }
     val items = tabs.map { NavBarItem(stringResource(it.label), it.icon, hasBadge = it == MainTab.Profile && hasUnseenNotifications) }
     val shown = tabs[pagerState.currentPage]
     Scaffold(
@@ -119,21 +122,10 @@ internal fun MainTabs(
                         onOpenTrip = onOpenTrip,
                         onOpenProfile = onOpenProfile,
                         barsPadding = barsPadding,
-                        // A tap opens what it's about the way a tapped push does.
-                        notificationCenter = { header, contentPadding, modifier, onOpenFollowers ->
-                            NotificationCenterRoute(
-                                header = header,
-                                onOpen = { link, id ->
-                                    val opened = DeepLink.parse(link, id)
-                                    // Marked read like any link; my Followers are on this tab.
-                                    deepLinks.open(opened)
-                                    if (opened is DeepLink.Followers) onOpenFollowers()
-                                },
-                                contentPadding = contentPadding,
-                                modifier = modifier,
-                            )
-                        },
+                        onOpenNotifications = onOpenNotifications,
                         hasUnseenNotifications = hasUnseenNotifications,
+                        showFollowers = showFollowers,
+                        onFollowersShown = deepLinks::followersShown,
                     )
                 }
             }

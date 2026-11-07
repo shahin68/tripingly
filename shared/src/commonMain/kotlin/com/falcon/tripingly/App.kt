@@ -31,6 +31,7 @@ import com.falcon.tripingly.core.designsystem.component.safeTopAndSides
 import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
 import com.falcon.tripingly.core.navigation.Home
 import com.falcon.tripingly.core.navigation.NavConfig
+import com.falcon.tripingly.core.navigation.Notifications
 import com.falcon.tripingly.core.navigation.Paywall
 import com.falcon.tripingly.core.navigation.Profile
 import com.falcon.tripingly.core.navigation.Settings
@@ -42,6 +43,7 @@ import com.falcon.tripingly.feature.map.presentation.map.MapRoute
 import com.falcon.tripingly.feature.paywall.presentation.PaywallRoute
 import com.falcon.tripingly.feature.settings.presentation.SettingsRoute
 import com.falcon.tripingly.feature.social.presentation.profile.ProfileRoute
+import com.falcon.tripingly.feature.notifications.presentation.NotificationCenterRoute
 import com.falcon.tripingly.feature.trips.presentation.members.TripMembersRoute
 import com.falcon.tripingly.shell.MainTabs
 import kotlinx.coroutines.flow.filterNotNull
@@ -100,8 +102,14 @@ private fun MainNavigation() {
                     (markers.tripIdOfMarker(link.markerId) as? AppResult.Success)?.data?.let { TripMap(it, stopId = link.markerId, showComments = link.showComments) }
                 is DeepLink.Members -> TripMap(link.tripId, showMembers = true)
                 is DeepLink.User -> Profile(link.username)
-                // The notification center opens my Followers itself (MainTabs); a push opens the app.
-                is DeepLink.Followers, is DeepLink.Home -> null
+                // My Followers are on the Profile tab: back to the tabs, which switch to it.
+                is DeepLink.Followers -> {
+                    while (backStack.size > 1) backStack.removeAt(backStack.lastIndex)
+                    deepLinks.showFollowers()
+                    null
+                }
+                is DeepLink.Notifications -> Notifications
+                is DeepLink.Home -> null
             }
             if (route != null && backStack.lastOrNull() != route) {
                 // The same trip already open opens again on what this push is about.
@@ -129,6 +137,7 @@ private fun MainNavigation() {
                         onOpenTrip = { backStack.add(TripMap(it)) },
                         onOpenProfile = { backStack.add(Profile(it)) },
                         onOpenSettings = { backStack.add(Settings) },
+                        onOpenNotifications = { backStack.add(Notifications) },
                     )
                     is TripMap -> {
                         MapRoute(
@@ -148,6 +157,8 @@ private fun MainNavigation() {
                         onOpenTrip = { backStack.add(TripMap(it)) },
                         onOpenProfile = { backStack.add(Profile(it)) },
                     )
+                    // A tap opens what it's about the way a tapped push does.
+                    is Notifications -> NotificationCenterRoute(onBack = { goBack() }, onOpen = { link, id -> deepLinks.open(DeepLink.parse(link, id)) })
                     is Settings -> SettingsRoute(onBack = { goBack() }, onOpenPro = { backStack.add(Paywall) })
                     is Paywall -> PaywallRoute(onBack = { goBack() })
                 }

@@ -93,6 +93,11 @@
     <string name="map_join_requested">Kérés elküldve. A tulajdonos dönt.</string>
     <string name="map_join_withdrawn">Kérés visszavonva.</string>
     <string name="map_join_declined">A tulajdonos elutasította a csatlakozási kérésedet.</string>
+    <string name="map_join_request">@%1$s csatlakozna</string>
+    <plurals name="map_join_requests">
+        <item quantity="one">@%1$s és még %2$d ember csatlakozna</item>
+        <item quantity="other">@%1$s és még %2$d ember csatlakozna</item>
+    </plurals>
     <string name="map_owner_profile">@%1$s profilja</string>
     <string name="map_report_trip">Utazás jelentése</string>
     <string name="map_stop_comment">Hozzászólás</string>

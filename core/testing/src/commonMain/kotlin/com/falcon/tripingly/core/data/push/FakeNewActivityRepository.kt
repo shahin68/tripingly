@@ -19,6 +19,7 @@ class FakeNewActivityRepository(
     /** Stops sent as seen, in order, with whether it was their comments. */
     val seen = mutableListOf<StopNews>()
     private val live = MutableSharedFlow<Pair<String, StopNews>>(extraBufferCapacity = 16)
+    private val changed = MutableSharedFlow<String>(extraBufferCapacity = 16)
 
     override suspend fun stopsWithNewActivity(tripId: String): AppResult<NewActivity, DataError.Network> {
         val comments = commentMarked[tripId].orEmpty()
@@ -27,10 +28,19 @@ class FakeNewActivityRepository(
 
     override fun newActivity(tripId: String): Flow<StopNews> = live.filter { it.first == tripId }.map { it.second }
 
+    override fun marksChanged(tripId: String): Flow<Unit> = changed.filter { it == tripId }.map { }
+
     override suspend fun markSeen(markerId: String, comments: Boolean) {
         seen += StopNews(markerId, comments)
         val from = if (comments) commentMarked else marked
         from.keys.forEach { from[it] = from.getValue(it) - markerId }
+    }
+
+    /** The stop's news was read somewhere else (another screen or device), as the server tells it. */
+    fun readElsewhere(tripId: String, markerId: String) {
+        marked[tripId] = marked[tripId].orEmpty() - markerId
+        commentMarked[tripId] = commentMarked[tripId].orEmpty() - markerId
+        changed.tryEmit(tripId)
     }
 
     fun arrive(tripId: String, markerId: String, aboutComments: Boolean = false) {

@@ -23,6 +23,10 @@ internal class DefaultNewActivityRepository(
         realtime.events.filterIsInstance<RealtimeEvent.NotificationCreated>()
             .mapNotNull { news -> news.markerId?.takeIf { news.tripId == tripId }?.let { StopNews(it, news.aboutComments) } }
 
+    override fun marksChanged(tripId: String): Flow<Unit> =
+        realtime.events.filterIsInstance<RealtimeEvent.NotificationsChanged>()
+            .mapNotNull { changed -> Unit.takeIf { tripId in changed.tripIds || changed.change == RealtimeEvent.NotificationsChanged.Change.Cleared } }
+
     // Best effort: offline, the mark comes back the next time the trip opens.
     override suspend fun markSeen(markerId: String, comments: Boolean) {
         api.markRead(MarkReadDto(markerId = markerId, kind = if (comments) MarkReadDto.Kind.COMMENTS else MarkReadDto.Kind.OTHER))

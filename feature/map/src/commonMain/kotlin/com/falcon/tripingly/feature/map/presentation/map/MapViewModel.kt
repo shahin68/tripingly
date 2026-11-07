@@ -32,6 +32,7 @@ import com.falcon.tripingly.feature.map.presentation.map.state.MapContext
 import com.falcon.tripingly.feature.map.presentation.map.state.MapEdits
 import com.falcon.tripingly.feature.map.presentation.map.state.MapLocation
 import com.falcon.tripingly.feature.map.presentation.map.state.MapModel
+import com.falcon.tripingly.feature.map.presentation.map.state.MapJoinRequests
 import com.falcon.tripingly.feature.map.presentation.map.state.MapNewActivity
 import com.falcon.tripingly.feature.map.presentation.map.state.MapOpening
 import com.falcon.tripingly.feature.map.presentation.map.state.MapPins
@@ -107,7 +108,8 @@ class MapViewModel(
     private val location = MapLocation(context, camera, getCurrentLocationUseCase, ::sendEvent)
     private val sharing = MapSharing(context, tripRepository, socialRepository)
     private val opening = MapOpening(context, camera, tripRepository, mapViews, ::hasRoutes, stopId, showMembers, showComments)
-    private val newActivity = MapNewActivity(context, newActivityRepository, pushedStopId = stopId)
+    private val joinRequests = MapJoinRequests(context, tripRepository)
+    private val newActivity = MapNewActivity(context, newActivityRepository, pushedStopId = stopId, pushedAboutComments = showComments)
 
     /** The map's layers and what they were built from, kept until one of those changes. */
     private var layers: Pair<List<Any?>, MapLayersState>? = null
@@ -118,6 +120,7 @@ class MapViewModel(
     init {
         opening.start()
         newActivity.start()
+        joinRequests.start()
     }
 
     fun onAction(action: MapAction) {
@@ -161,6 +164,10 @@ class MapViewModel(
             is MapAction.Header.RequestToJoin -> sharing.requestToJoin()
             is MapAction.Header.CancelJoinRequest -> sharing.cancelJoinRequest()
             is MapAction.Header.OpenMembers -> openSheet(Sheet.Members)
+            is MapAction.Header.OpenJoinRequests -> {
+                joinRequests.dismiss()
+                openSheet(Sheet.Members)
+            }
             is MapAction.Header.OpenOwnerProfile -> trip.value?.trip?.owner?.let { sendEvent(MapEvent.OpenProfile(it.username)) }
             is MapAction.Header.ReportTrip -> sharing.report(ReportTarget.Trip, context.tripId)
         }

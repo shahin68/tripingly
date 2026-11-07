@@ -64,6 +64,7 @@ import com.falcon.tripingly.feature.map.presentation.component.fittedCamera
 import com.falcon.tripingly.feature.map.presentation.component.stopPinRadius
 import com.falcon.tripingly.feature.map.presentation.map.preview.MapScreenPreviewStates
 import com.falcon.tripingly.feature.map.presentation.map.ui.BottomCards
+import com.falcon.tripingly.feature.map.presentation.map.ui.JoinRequestsPill
 import com.falcon.tripingly.feature.map.presentation.map.ui.MapHeader
 import com.falcon.tripingly.feature.map.presentation.map.ui.PinCard
 import com.falcon.tripingly.feature.map.presentation.map.ui.PlaceCard
@@ -196,6 +197,13 @@ internal fun MapScreen(
                 onTitleClick = { isTripCardOpen = true },
                 onTitlePlaced = { titleBounds = it },
             )
+            state.joinRequests?.let { requests ->
+                JoinRequestsPill(
+                    requests = requests,
+                    onClick = { onAction(MapAction.Header.OpenJoinRequests) },
+                    modifier = Modifier.align(Alignment.CenterHorizontally).padding(horizontal = MaterialTheme.spacing.medium),
+                )
+            }
             state.search?.results?.takeIf { it.isNotEmpty() }?.let { results ->
                 SearchResults(results = results, onAction = onAction, modifier = Modifier.padding(horizontal = MaterialTheme.spacing.medium))
             }

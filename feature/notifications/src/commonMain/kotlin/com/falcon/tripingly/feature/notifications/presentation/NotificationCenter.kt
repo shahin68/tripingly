@@ -1,7 +1,6 @@
 package com.falcon.tripingly.feature.notifications.presentation
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -10,18 +9,22 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Block
+import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material.icons.outlined.DeleteSweep
 import androidx.compose.material.icons.outlined.Notifications
+import androidx.compose.material.icons.outlined.PersonRemove
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -39,23 +42,45 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.falcon.tripingly.core.designsystem.component.AvatarCircle
+import com.falcon.tripingly.core.designsystem.component.AppDialog
+import com.falcon.tripingly.core.designsystem.component.AvatarStack
 import com.falcon.tripingly.core.designsystem.component.AvatarSize
+import com.falcon.tripingly.core.designsystem.component.BackAction
 import com.falcon.tripingly.core.designsystem.component.ButtonSize
+import com.falcon.tripingly.core.designsystem.component.FloatingTopBar
 import com.falcon.tripingly.core.designsystem.component.SecondaryButton
+import com.falcon.tripingly.core.designsystem.component.ShowMessage
 import com.falcon.tripingly.core.designsystem.component.Skeleton
+import com.falcon.tripingly.core.designsystem.component.SwipeAction
+import com.falcon.tripingly.core.designsystem.component.SwipeActions
+import com.falcon.tripingly.core.designsystem.component.glassSource
+import com.falcon.tripingly.core.designsystem.component.screenContentPadding
 import com.falcon.tripingly.core.designsystem.component.skeleton
 import com.falcon.tripingly.core.designsystem.component.skeletonText
 import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
 import com.falcon.tripingly.core.designsystem.theme.spacing
 import com.falcon.tripingly.core.model.notification.NotificationEntry
-import com.falcon.tripingly.core.model.trip.UserSummary
+import com.falcon.tripingly.core.ui.UiText
 import com.falcon.tripingly.core.ui.timeAgo
 import com.falcon.tripingly.feature.notifications.generated.resources.Res
+import com.falcon.tripingly.feature.notifications.generated.resources.notifications_block
+import com.falcon.tripingly.feature.notifications.generated.resources.notifications_block_message
+import com.falcon.tripingly.feature.notifications.generated.resources.notifications_block_title
+import com.falcon.tripingly.feature.notifications.generated.resources.notifications_clear_all
+import com.falcon.tripingly.feature.notifications.generated.resources.notifications_clear_confirm
+import com.falcon.tripingly.feature.notifications.generated.resources.notifications_clear_message
+import com.falcon.tripingly.feature.notifications.generated.resources.notifications_clear_title
+import com.falcon.tripingly.feature.notifications.generated.resources.notifications_delete
 import com.falcon.tripingly.feature.notifications.generated.resources.notifications_empty
+import com.falcon.tripingly.feature.notifications.generated.resources.notifications_remove_follower
+import com.falcon.tripingly.feature.notifications.generated.resources.notifications_remove_follower_confirm
+import com.falcon.tripingly.feature.notifications.generated.resources.notifications_remove_follower_message
+import com.falcon.tripingly.feature.notifications.generated.resources.notifications_remove_follower_title
 import com.falcon.tripingly.feature.notifications.generated.resources.notifications_retry
+import com.falcon.tripingly.feature.notifications.generated.resources.notifications_title
 import com.falcon.tripingly.feature.notifications.generated.resources.notifications_unread
 import com.falcon.tripingly.feature.notifications.presentation.NotificationCenterViewModel.Action
+import com.falcon.tripingly.feature.notifications.presentation.NotificationCenterViewModel.Confirm
 import com.falcon.tripingly.feature.notifications.presentation.NotificationCenterViewModel.State
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filter
@@ -63,16 +88,14 @@ import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel
 
 /**
- * The notification center as a list under [header] (where it is hosted, e.g. the Profile tab's header and
- * segments), so the host decides where it lives. A tap opens the entry's [NotificationEntry.deepLink] through
- * [onOpen] with its id, which marks it read. While it is on screen everything in it counts as seen.
+ * The notification center on its own screen, opened from the bell on my profile. A tap opens the entry's
+ * [NotificationEntry.deepLink] through [onOpen] with its id, which marks it read. While it is on screen everything in it
+ * counts as seen. Swiping an entry to the start shows Delete, and Block or Remove follower for one person.
  */
 @Composable
 fun NotificationCenterRoute(
-    header: LazyListScope.() -> Unit,
+    onBack: () -> Unit,
     onOpen: (deepLink: String, notificationId: String) -> Unit,
-    contentPadding: PaddingValues,
-    modifier: Modifier = Modifier,
     viewModel: NotificationCenterViewModel = koinViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -82,24 +105,39 @@ fun NotificationCenterRoute(
     }
     NotificationCenterScreen(
         state = state,
-        header = header,
+        onBack = onBack,
         onAction = { action ->
             if (action is Action.OnOpen) onOpen(action.entry.deepLink, action.entry.id)
             viewModel.onAction(action)
         },
-        contentPadding = contentPadding,
-        modifier = modifier,
     )
+    state.confirming?.let { ConfirmDialog(it, viewModel::onAction) }
 }
 
 @Composable
-internal fun NotificationCenterScreen(
-    state: State,
-    header: LazyListScope.() -> Unit,
-    onAction: (Action) -> Unit,
-    contentPadding: PaddingValues,
-    modifier: Modifier = Modifier,
-) {
+internal fun NotificationCenterScreen(state: State, onBack: () -> Unit, onAction: (Action) -> Unit) {
+    Scaffold(
+        topBar = {
+            FloatingTopBar(
+                title = stringResource(Res.string.notifications_title),
+                navigationIcon = { BackAction(onBack) },
+                actions = {
+                    if (state.entries.isNotEmpty()) {
+                        IconButton(onClick = { onAction(Action.OnClearAll) }) {
+                            Icon(Icons.Outlined.DeleteSweep, contentDescription = stringResource(Res.string.notifications_clear_all))
+                        }
+                    }
+                },
+            )
+        },
+    ) { padding ->
+        ShowMessage(message = state.message?.asString(), onShown = { onAction(Action.OnMessageShown) }, isError = state.message !is UiText.Note)
+        NotificationList(state, onAction, screenContentPadding(padding))
+    }
+}
+
+@Composable
+private fun NotificationList(state: State, onAction: (Action) -> Unit, contentPadding: PaddingValues) {
     val listState = rememberLazyListState()
     // Older entries load as the end of the list comes into view.
     LaunchedEffect(listState) {
@@ -111,11 +149,10 @@ internal fun NotificationCenterScreen(
     }
     LazyColumn(
         state = listState,
-        modifier = modifier.fillMaxSize(),
+        modifier = Modifier.fillMaxSize().glassSource(),
         contentPadding = contentPadding,
         verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
     ) {
-        header()
         when {
             state.entries.isEmpty() && state.loadError != null -> item(key = "notifications-error") {
                 Column(Modifier.fillMaxWidth().animateItem(), horizontalAlignment = Alignment.CenterHorizontally) {
@@ -130,10 +167,54 @@ internal fun NotificationCenterScreen(
                 QuietText(stringResource(Res.string.notifications_empty), Modifier.animateItem())
             }
             else -> items(state.entries, key = { it.id }) { entry ->
-                NotificationRow(entry = entry, onClick = { onAction(Action.OnOpen(entry)) }, modifier = Modifier.animateItem())
+                SwipeActions(actions = swipeActionsOf(entry, onAction), modifier = Modifier.animateItem()) {
+                    NotificationRow(entry = entry, onClick = { onAction(Action.OnOpen(entry)) })
+                }
             }
         }
     }
+}
+
+/** Delete always; Block, and Remove follower on a follow, only when one person is behind it. */
+@Composable
+private fun swipeActionsOf(entry: NotificationEntry, onAction: (Action) -> Unit): List<SwipeAction> {
+    val person = entry.actor?.takeIf { entry.actors.size <= 1 }
+    return listOfNotNull(
+        person?.takeIf { entry.isFollow }?.let {
+            SwipeAction(stringResource(Res.string.notifications_remove_follower), Icons.Outlined.PersonRemove) { onAction(Action.OnRemoveFollower(it)) }
+        },
+        person?.let { SwipeAction(stringResource(Res.string.notifications_block), Icons.Outlined.Block) { onAction(Action.OnBlock(it)) } },
+        SwipeAction(stringResource(Res.string.notifications_delete), Icons.Outlined.Delete, isDestructive = true) { onAction(Action.OnRemove(entry)) },
+    )
+}
+
+@Composable
+private fun ConfirmDialog(confirming: Confirm, onAction: (Action) -> Unit) {
+    val (title, message, confirm) = when (confirming) {
+        Confirm.ClearAll -> Triple(
+            stringResource(Res.string.notifications_clear_title),
+            stringResource(Res.string.notifications_clear_message),
+            stringResource(Res.string.notifications_clear_confirm),
+        )
+        is Confirm.Block -> Triple(
+            stringResource(Res.string.notifications_block_title, confirming.user.username),
+            stringResource(Res.string.notifications_block_message),
+            stringResource(Res.string.notifications_block),
+        )
+        is Confirm.RemoveFollower -> Triple(
+            stringResource(Res.string.notifications_remove_follower_title, confirming.user.username),
+            stringResource(Res.string.notifications_remove_follower_message),
+            stringResource(Res.string.notifications_remove_follower_confirm),
+        )
+    }
+    AppDialog(
+        title = title,
+        message = message,
+        confirmLabel = confirm,
+        isDestructive = true,
+        onConfirm = { onAction(Action.OnConfirm) },
+        onDismiss = { onAction(Action.OnDismissConfirm) },
+    )
 }
 
 /** One entry on a card: who (or a bell for the app itself), what, when; unread ones carry a dot. */
@@ -152,7 +233,7 @@ private fun NotificationRow(entry: NotificationEntry, onClick: () -> Unit, modif
         ) {
             val people = entry.actors.ifEmpty { listOfNotNull(entry.actor) }
             if (people.isNotEmpty()) {
-                Faces(people)
+                AvatarStack(people)
             } else {
                 Box(
                     modifier = Modifier.size(AvatarSize.Row).skeleton(CircleShape).clip(CircleShape).background(MaterialTheme.colorScheme.surfaceVariant),
@@ -194,25 +275,6 @@ private fun NotificationRow(entry: NotificationEntry, onClick: () -> Unit, modif
     }
 }
 
-/** One person's avatar, or a group's first few overlapping, the latest in front at the top left. */
-@Composable
-private fun Faces(people: List<UserSummary>) {
-    if (people.size == 1) return AvatarCircle(people.single(), size = AvatarSize.Row)
-    val shown = people.take(MAX_FACES)
-    Box(Modifier.size(AvatarSize.Row)) {
-        shown.asReversed().forEachIndexed { index, user ->
-            val step = FaceStep * (shown.lastIndex - index)
-            AvatarCircle(
-                user = user,
-                size = AvatarSize.Row - FaceStep * (MAX_FACES - 1),
-                modifier = Modifier
-                    .offset(x = step, y = step)
-                    .border(FaceRing, MaterialTheme.colorScheme.surfaceContainerLowest, CircleShape),
-            )
-        }
-    }
-}
-
 @Composable
 private fun QuietText(text: String, modifier: Modifier = Modifier) {
     Text(
@@ -225,25 +287,13 @@ private fun QuietText(text: String, modifier: Modifier = Modifier) {
 }
 
 private val UnreadDotSize = 8.dp
-private const val MAX_FACES = 3
-/** How far each face of a group sits from the one in front of it. */
-private val FaceStep = 6.dp
-private val FaceRing = 2.dp
 
 /** Entries from the end at which the next page loads. */
 private const val LOAD_MORE_THRESHOLD = 3
 
 @Composable
 private fun NotificationCenterPreview(state: State, darkTheme: Boolean) {
-    TripinglyTheme(darkTheme = darkTheme) {
-        NotificationCenterScreen(
-            state = state,
-            header = {},
-            onAction = {},
-            contentPadding = PaddingValues(MaterialTheme.spacing.medium),
-            modifier = Modifier.background(MaterialTheme.colorScheme.background),
-        )
-    }
+    TripinglyTheme(darkTheme = darkTheme) { NotificationCenterScreen(state = state, onBack = {}, onAction = {}) }
 }
 
 @Preview
@@ -253,6 +303,10 @@ private fun NotificationCenterContentPreview() = NotificationCenterPreview(previ
 @Preview
 @Composable
 private fun NotificationCenterContentDarkPreview() = NotificationCenterPreview(previewCenter, darkTheme = true)
+
+@Preview(widthDp = 800, heightDp = 360)
+@Composable
+private fun NotificationCenterLandscapePreview() = NotificationCenterPreview(previewCenter, darkTheme = false)
 
 @Preview
 @Composable
@@ -265,3 +319,7 @@ private fun NotificationCenterEmptyPreview() = NotificationCenterPreview(State(i
 @Preview
 @Composable
 private fun NotificationCenterErrorPreview() = NotificationCenterPreview(previewCenterError, darkTheme = false)
+
+@Preview
+@Composable
+private fun ConfirmDialogPreview() = TripinglyTheme { ConfirmDialog(Confirm.ClearAll, onAction = {}) }

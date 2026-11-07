@@ -41,6 +41,14 @@ interface PushApi {
     @POST("notifications/seen")
     suspend fun markCenterSeen(): AppResult<Unit, DataError.Network>
 
+    /** Takes one of my notifications out of the center (never what it is about). */
+    @DELETE("notifications/{id}")
+    suspend fun removeNotification(@Path("id") notificationId: String): AppResult<Unit, DataError.Network>
+
+    /** Empties my notification center. */
+    @DELETE("notifications")
+    suspend fun clearNotifications(): AppResult<Unit, DataError.Network>
+
     /** The stops of a trip with unread notifications for me, shown as "new" marks. */
     @GET("trips/{id}/new-activity")
     suspend fun newActivity(@Path("id") tripId: String): AppResult<NewActivityDto, DataError.Network>

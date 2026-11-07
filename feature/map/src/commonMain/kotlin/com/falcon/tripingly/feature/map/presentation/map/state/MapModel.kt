@@ -15,6 +15,7 @@ import com.falcon.tripingly.core.model.route.RoutePlan
 import com.falcon.tripingly.core.model.route.TravelMode
 import com.falcon.tripingly.core.model.social.ReportTarget
 import com.falcon.tripingly.core.model.trip.GeoPoint
+import com.falcon.tripingly.core.model.trip.UserSummary
 import com.falcon.tripingly.core.ui.UiText
 import com.falcon.tripingly.feature.map.presentation.component.PlacePin
 import com.falcon.tripingly.feature.map.presentation.map.LocationPrompt
@@ -53,6 +54,9 @@ internal data class MapModel(
     val newCommentStopIds: Set<String> = emptySet(),
     /** The places button: only the trip's stops and its route's places show, nothing loads ([MapPins]). Every map opens with them shown. */
     val arePlacesHidden: Boolean = false,
+    /** The trip's newest people asking to join, for its owner ([MapJoinRequests]); the pill shows while one isn't [dismissedJoinRequesterIds]. */
+    val joinRequesters: List<UserSummary> = emptyList(),
+    val dismissedJoinRequesterIds: Set<String> = emptySet(),
 )
 
 /** Where the camera rests, as the map last reported it, or where it was last sent. */

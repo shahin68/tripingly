@@ -59,6 +59,7 @@ internal class MapStateMapper(
     fun map(layers: MapLayersState = layers()): MapUiState = MapUiState(
         loadError = model.loadError,
         header = header(),
+        joinRequests = joinRequests(),
         search = model.search?.let { SearchState(it.query, it.results.toImmutableList(), it.isSearching) },
         dayTabs = DayTabsState(days.map { day -> DayTab(day.id, day.position + 1, day.date?.let(DateUtils::formatAbbreviated), hasNew = day.markers.any { it.id in model.newStopIds || it.id in model.newCommentStopIds }) }.toImmutableList(), activeIndex),
         plan = route.between?.let { PointRouteCardState(it.from, it.to, routeSummary()) } ?: stopsCard(),
@@ -98,6 +99,13 @@ internal class MapStateMapper(
             },
             editorMenu = EditorMenu(canDeleteDay = days.size > 1 && canDeleteDay()).takeIf { canEdit },
         )
+    }
+
+    private fun joinRequests(): JoinRequestsState? {
+        val people = model.joinRequesters
+        if (model.search != null || people.all { it.id in model.dismissedJoinRequesterIds }) return null
+        val count = maxOf(details?.pendingJoinRequestCount ?: 0, people.size)
+        return JoinRequestsState(people.toImmutableList(), othersCount = count - 1)
     }
 
     /** Like the server: an editor only when every stop on the day is theirs. */

@@ -20,6 +20,7 @@ import com.falcon.tripingly.feature.map.presentation.map.DayTab
 import com.falcon.tripingly.feature.map.presentation.map.DayTabsState
 import com.falcon.tripingly.feature.map.presentation.map.EditorMenu
 import com.falcon.tripingly.feature.map.presentation.map.HeaderState
+import com.falcon.tripingly.feature.map.presentation.map.JoinRequestsState
 import com.falcon.tripingly.feature.map.presentation.map.LocationPrompt
 import com.falcon.tripingly.feature.map.presentation.map.MapDialog
 import com.falcon.tripingly.feature.map.presentation.map.MapUiState
@@ -66,6 +67,7 @@ private val withStops = MapUiState(
         members = MembersEntry(count = 4, requestCount = 1),
         editorMenu = EditorMenu(canDeleteDay = true),
     ),
+    joinRequests = JoinRequestsState(persistentListOf(UserSummary(id = "u2", username = "anna", displayName = "Anna Kovács")), othersCount = 0),
     dayTabs = previewDays,
     plan = StopsCardState(
         stops = previewStops,

@@ -93,6 +93,11 @@
     <string name="map_join_requested">Request sent. The owner decides.</string>
     <string name="map_join_withdrawn">Request withdrawn.</string>
     <string name="map_join_declined">The owner declined your request to join.</string>
+    <string name="map_join_request">@%1$s wants to join</string>
+    <plurals name="map_join_requests">
+        <item quantity="one">@%1$s and %2$d other want to join</item>
+        <item quantity="other">@%1$s and %2$d others want to join</item>
+    </plurals>
     <string name="map_owner_profile">@%1$s’s profile</string>
     <string name="map_report_trip">Report trip</string>
     <string name="map_stop_comment">Comment</string>

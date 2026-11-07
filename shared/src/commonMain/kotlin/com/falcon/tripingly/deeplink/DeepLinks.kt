@@ -24,19 +24,23 @@ sealed interface DeepLink {
     /** Someone's profile, by username. */
     data class User(val username: String, override val notificationId: String? = null) : DeepLink
 
-    /** The app itself (`tripinly://notifications` until there's an Activity screen, or an unknown link). */
+    /** The notification center (`tripinly://notifications`). */
+    data class Notifications(override val notificationId: String? = null) : DeepLink
+
+    /** The app itself (an unknown link). */
     data class Home(override val notificationId: String? = null) : DeepLink
 
     companion object {
         /**
          * `tripinly://trips/{id}`, `tripinly://trips/{id}/members`, `tripinly://markers/{id}`,
-         * `tripinly://markers/{id}/comments`, `tripinly://me/followers`, `tripinly://users/{username}`; anything else
-         * opens the app.
+         * `tripinly://markers/{id}/comments`, `tripinly://me/followers`, `tripinly://users/{username}`,
+         * `tripinly://notifications`; anything else opens the app.
          */
         fun parse(url: String, notificationId: String? = null): DeepLink {
             val path = url.takeIf { it.startsWith(PREFIX) }?.removePrefix(PREFIX)?.trimEnd('/')?.split('/')
             val id = path?.getOrNull(1)?.ifBlank { null }
             return when {
+                path == listOf("notifications") -> Notifications(notificationId)
                 id == null -> Home(notificationId)
                 path.size == 2 && path[0] == "trips" -> Trip(id, notificationId)
                 path.size == 3 && path[0] == "trips" && path[2] == "members" -> Members(id, notificationId)
@@ -67,4 +71,17 @@ class DeepLinks {
 
     /** Taken by the navigation; null when another taker was first. */
     fun take(): DeepLink? = pending.getAndUpdate { null }
+
+    private val followers = MutableStateFlow(false)
+
+    /** My Followers should show on the Profile tab (a link about several new followers), until [followersShown]. */
+    val followersRequested: StateFlow<Boolean> = followers.asStateFlow()
+
+    fun showFollowers() {
+        followers.value = true
+    }
+
+    fun followersShown() {
+        followers.value = false
+    }
 }

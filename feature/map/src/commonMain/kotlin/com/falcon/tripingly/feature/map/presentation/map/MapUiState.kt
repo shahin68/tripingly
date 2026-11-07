@@ -29,6 +29,8 @@ data class MapUiState(
     /** The trip couldn't load and there's nothing to show: an error screen with Retry instead of the map. */
     val loadError: UiText? = null,
     val header: HeaderState = HeaderState(),
+    /** The owner's pill under the header while people they haven't seen here ask to join; closed while searching. */
+    val joinRequests: JoinRequestsState? = null,
     /** The header shows the search field instead of the trip's name. */
     val search: SearchState? = null,
     val dayTabs: DayTabsState = DayTabsState(),
@@ -51,6 +53,10 @@ data class MapUiState(
     val dialog: MapDialog? = null,
     val message: MessageState? = null,
 )
+
+/** "@[people] first and [othersCount] others want to join", with [people]'s faces stacked. */
+@Immutable
+data class JoinRequestsState(val people: ImmutableList<UserSummary>, val othersCount: Int)
 
 @Immutable
 data class HeaderState(

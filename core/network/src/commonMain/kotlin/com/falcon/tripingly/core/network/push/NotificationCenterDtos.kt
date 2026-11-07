@@ -4,8 +4,8 @@ import com.falcon.tripingly.core.network.model.UserSummaryDto
 import kotlinx.serialization.Serializable
 
 /**
- * A page of `GET /notifications`. Written by hand, unlike the generated models, because it leaves out `type`: the
- * server renders the text and the link, so a kind added later never stops this app from reading the page.
+ * A page of `GET /notifications`. Written by hand, unlike the generated models, because it reads `type` as plain text:
+ * the server renders the text and the link, so a kind added later never stops this app from reading the page.
  */
 @Serializable
 data class NotificationCenterPageDto(
@@ -19,6 +19,8 @@ data class NotificationCenterPageDto(
 @Serializable
 data class NotificationEntryDto(
     val id: String,
+    /** Read only to offer "Remove follower" on follows; any other kind reads the same. */
+    val type: String? = null,
     val actor: UserSummaryDto? = null,
     /** The people of a group, latest first, at most three. */
     val actors: List<UserSummaryDto> = emptyList(),

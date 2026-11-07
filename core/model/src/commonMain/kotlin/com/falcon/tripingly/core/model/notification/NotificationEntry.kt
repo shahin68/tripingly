@@ -16,6 +16,8 @@ data class NotificationEntry(
     val actors: List<UserSummary> = emptyList(),
     val title: String,
     val body: String,
+    /** Someone followed me (or we became friends): they can be removed as a follower from here. */
+    val isFollow: Boolean = false,
     /** Where a tap goes (`tripinly://…`). */
     val deepLink: String,
     val isRead: Boolean,

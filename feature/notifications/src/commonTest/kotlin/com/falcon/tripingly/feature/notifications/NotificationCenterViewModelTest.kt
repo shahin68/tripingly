@@ -1,7 +1,13 @@
 package com.falcon.tripingly.feature.notifications
 
 import com.falcon.tripingly.core.common.error.DataError
+import com.falcon.tripingly.core.common.result.AppResult
+import com.falcon.tripingly.core.data.push.CenterChange
 import com.falcon.tripingly.core.data.push.FakeNotificationCenterRepository
+import com.falcon.tripingly.core.data.users.FakeUserRepository
+import com.falcon.tripingly.core.model.social.PeopleList
+import com.falcon.tripingly.core.model.trip.UserSummary
+import com.falcon.tripingly.core.ui.UiText
 import com.falcon.tripingly.core.model.Page
 import com.falcon.tripingly.core.model.notification.NotificationEntry
 import com.falcon.tripingly.feature.notifications.presentation.NotificationCenterViewModel
@@ -19,6 +25,8 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
+import kotlin.test.assertIs
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Instant
@@ -27,6 +35,8 @@ import kotlin.time.Instant
 class NotificationCenterViewModelTest {
 
     private val dispatcher = StandardTestDispatcher()
+    private val users = FakeUserRepository()
+    private val anna = UserSummary("00000000-0000-4000-8000-000000000101", "anna", "Anna")
 
     @BeforeTest
     fun setUp() = Dispatchers.setMain(dispatcher)
@@ -34,9 +44,9 @@ class NotificationCenterViewModelTest {
     @AfterTest
     fun tearDown() = Dispatchers.resetMain()
 
-    private fun entry(id: String, minute: Int = 0) = NotificationEntry(
+    private fun entry(id: String, minute: Int = 0, actor: UserSummary? = null) = NotificationEntry(
         id = id,
-        actor = null,
+        actor = actor,
         title = "Entry $id",
         body = "",
         deepLink = "tripinly://notifications",
@@ -52,7 +62,7 @@ class NotificationCenterViewModelTest {
                 "c1" to Page(listOf(entry("n2"), entry("n1")), nextCursor = null),
             ),
         )
-        val viewModel = NotificationCenterViewModel(center)
+        val viewModel = NotificationCenterViewModel(center, users)
         advanceUntilIdle()
         viewModel.onAction(Action.OnLoadMore)
         advanceUntilIdle()
@@ -69,7 +79,7 @@ class NotificationCenterViewModelTest {
     @Test
     fun `being shown marks it seen and arrivals come in on top`() = runTest(dispatcher) {
         val center = FakeNotificationCenterRepository(mapOf(null to Page(listOf(entry("n2"), entry("n1")), nextCursor = null)))
-        val viewModel = NotificationCenterViewModel(center)
+        val viewModel = NotificationCenterViewModel(center, users)
         advanceUntilIdle()
 
         viewModel.onAction(Action.OnShown)
@@ -94,7 +104,7 @@ class NotificationCenterViewModelTest {
     @Test
     fun `opening an entry marks it read`() = runTest(dispatcher) {
         val center = FakeNotificationCenterRepository(mapOf(null to Page(listOf(entry("n1")), nextCursor = null)))
-        val viewModel = NotificationCenterViewModel(center)
+        val viewModel = NotificationCenterViewModel(center, users)
         advanceUntilIdle()
 
         viewModel.onAction(Action.OnOpen(viewModel.uiState.value.entries.single()))
@@ -106,7 +116,7 @@ class NotificationCenterViewModelTest {
     fun `a failed load says why and retries`() = runTest(dispatcher) {
         val center = FakeNotificationCenterRepository(mapOf(null to Page(listOf(entry("n1")), nextCursor = null)))
         center.failure = DataError.Network.NoInternet
-        val viewModel = NotificationCenterViewModel(center)
+        val viewModel = NotificationCenterViewModel(center, users)
         advanceUntilIdle()
         assertNotNull(viewModel.uiState.value.loadError)
         assertTrue(viewModel.uiState.value.entries.isEmpty())
@@ -116,5 +126,100 @@ class NotificationCenterViewModelTest {
         advanceUntilIdle()
         assertEquals(listOf("n1"), viewModel.uiState.value.entries.map { it.id })
         assertEquals(null, viewModel.uiState.value.loadError)
+    }
+
+    @Test
+    fun `entries read or removed elsewhere change here too`() = runTest(dispatcher) {
+        val center = FakeNotificationCenterRepository(mapOf(null to Page(listOf(entry("n3"), entry("n2"), entry("n1")), nextCursor = null)))
+        val viewModel = NotificationCenterViewModel(center, users)
+        advanceUntilIdle()
+
+        center.change(CenterChange.Read(setOf("n2")))
+        center.change(CenterChange.Removed(setOf("n3")))
+        advanceUntilIdle()
+        assertEquals(listOf("n2" to true, "n1" to false), viewModel.uiState.value.entries.map { it.id to it.isRead })
+
+        center.change(CenterChange.Cleared)
+        advanceUntilIdle()
+        assertTrue(viewModel.uiState.value.entries.isEmpty())
+    }
+
+    @Test
+    fun `a removed entry goes at once and comes back in its place when the server refuses`() = runTest(dispatcher) {
+        val center = FakeNotificationCenterRepository(mapOf(null to Page(listOf(entry("n3"), entry("n2"), entry("n1")), nextCursor = null)))
+        val viewModel = NotificationCenterViewModel(center, users)
+        advanceUntilIdle()
+
+        viewModel.onAction(Action.OnRemove(viewModel.uiState.value.entries[0]))
+        assertEquals(listOf("n2", "n1"), viewModel.uiState.value.entries.map { it.id })
+        advanceUntilIdle()
+        assertEquals(listOf("n3"), center.removed)
+
+        center.failure = DataError.Network.NoInternet
+        viewModel.onAction(Action.OnRemove(viewModel.uiState.value.entries[1]))
+        assertEquals(listOf("n2"), viewModel.uiState.value.entries.map { it.id })
+        advanceUntilIdle()
+        assertEquals(listOf("n2", "n1"), viewModel.uiState.value.entries.map { it.id })
+        assertNotNull(viewModel.uiState.value.message)
+    }
+
+    @Test
+    fun `clearing all asks first and empties the center`() = runTest(dispatcher) {
+        val center = FakeNotificationCenterRepository(mapOf(null to Page(listOf(entry("n2"), entry("n1")), nextCursor = null)))
+        val viewModel = NotificationCenterViewModel(center, users)
+        advanceUntilIdle()
+
+        viewModel.onAction(Action.OnClearAll)
+        assertEquals(NotificationCenterViewModel.Confirm.ClearAll, viewModel.uiState.value.confirming)
+        viewModel.onAction(Action.OnDismissConfirm)
+        assertNull(viewModel.uiState.value.confirming)
+        assertEquals(2, viewModel.uiState.value.entries.size)
+
+        viewModel.onAction(Action.OnClearAll)
+        viewModel.onAction(Action.OnConfirm)
+        advanceUntilIdle()
+        assertTrue(center.cleared)
+        assertTrue(viewModel.uiState.value.entries.isEmpty())
+    }
+
+    @Test
+    fun `a failed clear brings the entries back`() = runTest(dispatcher) {
+        val center = FakeNotificationCenterRepository(mapOf(null to Page(listOf(entry("n2"), entry("n1")), nextCursor = null)))
+        val viewModel = NotificationCenterViewModel(center, users)
+        advanceUntilIdle()
+        center.failure = DataError.Network.NoInternet
+
+        viewModel.onAction(Action.OnClearAll)
+        viewModel.onAction(Action.OnConfirm)
+        advanceUntilIdle()
+        assertEquals(listOf("n2", "n1"), viewModel.uiState.value.entries.map { it.id })
+        assertNotNull(viewModel.uiState.value.message)
+    }
+
+    @Test
+    fun `blocking someone takes their entries out`() = runTest(dispatcher) {
+        val center = FakeNotificationCenterRepository(mapOf(null to Page(listOf(entry("n2", actor = anna), entry("n1")), nextCursor = null)))
+        val viewModel = NotificationCenterViewModel(center, users)
+        advanceUntilIdle()
+
+        viewModel.onAction(Action.OnBlock(anna))
+        viewModel.onAction(Action.OnConfirm)
+        advanceUntilIdle()
+        assertEquals(listOf("n1"), viewModel.uiState.value.entries.map { it.id })
+    }
+
+    @Test
+    fun `removing a follower keeps the entry and says it`() = runTest(dispatcher) {
+        val center = FakeNotificationCenterRepository(mapOf(null to Page(listOf(entry("n1", actor = anna).copy(isFollow = true)), nextCursor = null)))
+        val viewModel = NotificationCenterViewModel(center, users)
+        advanceUntilIdle()
+
+        viewModel.onAction(Action.OnRemoveFollower(anna))
+        viewModel.onAction(Action.OnConfirm)
+        advanceUntilIdle()
+        assertIs<UiText.Note>(viewModel.uiState.value.message)
+        assertEquals(listOf("n1"), viewModel.uiState.value.entries.map { it.id })
+        val followers = (users.people(PeopleList.Followers, cursor = null) as AppResult.Success).data.items
+        assertFalse(followers.any { it.id == anna.id })
     }
 }

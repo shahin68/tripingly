@@ -54,7 +54,10 @@ internal class RealtimeSync(
             is RealtimeEvent.ToMe -> photos.applyLive(event)
             is RealtimeEvent.MyTripsChanged -> myTripsRefreshes.request(MY_TRIPS)
             // For the screens showing people; nothing cached changes.
-            is RealtimeEvent.FollowsChanged, is RealtimeEvent.NotificationCreated -> Unit
+            // Someone asks to join my trip: its count (the map's join pill) comes with the trip.
+            is RealtimeEvent.NotificationCreated ->
+                if (event.entry?.type == "join_requested" && event.tripId != null && local.trip(event.tripId) != null) tripRefreshes.request(event.tripId)
+            is RealtimeEvent.FollowsChanged, is RealtimeEvent.NotificationsChanged -> Unit
         }
     }
 

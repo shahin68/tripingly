@@ -83,6 +83,11 @@ class FakeUserRepository : UserRepository {
         return AppResult.Success(Unit)
     }
 
+    override suspend fun removeFollower(userId: String): AppResult<Unit, DataError.Network> {
+        followers -= userId
+        return AppResult.Success(Unit)
+    }
+
     override suspend fun setBlocked(userId: String, blocked: Boolean): AppResult<Unit, DataError.Network> {
         if (blocked) {
             _blocks.emit(userId)

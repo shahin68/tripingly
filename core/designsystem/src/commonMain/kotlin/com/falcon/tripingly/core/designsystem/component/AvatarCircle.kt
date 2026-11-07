@@ -143,6 +143,37 @@ fun AvatarChoice(
     }
 }
 
+/**
+ * One person's avatar, or a group's first [MAX_STACKED] overlapping in a [size] square, the latest (first in [people])
+ * in front at the top start: the notification center's groups, the map's join requests.
+ */
+@Composable
+fun AvatarStack(people: List<UserSummary>, modifier: Modifier = Modifier, size: Dp = AvatarSize.Row) {
+    if (people.size <= 1) {
+        people.firstOrNull()?.let { AvatarCircle(it, modifier, size) }
+        return
+    }
+    val shown = people.take(MAX_STACKED)
+    val step = size * STACK_STEP
+    Box(modifier.size(size)) {
+        shown.asReversed().forEachIndexed { index, user ->
+            val offset = step * (shown.lastIndex - index)
+            AvatarCircle(
+                user = user,
+                size = size - step * (MAX_STACKED - 1),
+                modifier = Modifier
+                    .padding(start = offset, top = offset)
+                    .border(AvatarSize.Ring, MaterialTheme.colorScheme.surfaceContainerLowest, CircleShape),
+            )
+        }
+    }
+}
+
+private const val MAX_STACKED = 3
+
+/** How far each face of a stack sits from the one in front of it, as a part of the stack's size. */
+private const val STACK_STEP = 0.15f
+
 object AvatarSize {
     val Small = 24.dp
     val Row = 40.dp

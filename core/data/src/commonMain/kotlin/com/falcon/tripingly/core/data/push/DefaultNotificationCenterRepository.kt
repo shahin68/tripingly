@@ -21,7 +21,10 @@ import kotlinx.coroutines.flow.filterIsInstance
 import kotlinx.coroutines.flow.mapNotNull
 import kotlinx.coroutines.launch
 
-/** Asks the server whether something unseen waits at start and after every reconnect; each arrival lights it up. */
+/**
+ * Asks the server whether something unseen waits at start and after every reconnect; each arrival lights it up, and
+ * `notifications.changed` (read, removed or seen anywhere) sets it to what the server counts.
+ */
 internal class DefaultNotificationCenterRepository(
     private val api: PushApi,
     private val realtime: RealtimeClient,
@@ -34,6 +37,16 @@ internal class DefaultNotificationCenterRepository(
     private val created = realtime.events.filterIsInstance<RealtimeEvent.NotificationCreated>()
     override val arrivals: Flow<NotificationEntry> = created.mapNotNull { it.entry?.toEntry() }
 
+    private val changed = realtime.events.filterIsInstance<RealtimeEvent.NotificationsChanged>()
+    override val changes: Flow<CenterChange> = changed.mapNotNull {
+        when (it.change) {
+            RealtimeEvent.NotificationsChanged.Change.Read -> CenterChange.Read(it.ids.toSet())
+            RealtimeEvent.NotificationsChanged.Change.Removed -> CenterChange.Removed(it.ids.toSet())
+            RealtimeEvent.NotificationsChanged.Change.Cleared -> CenterChange.Cleared
+            RealtimeEvent.NotificationsChanged.Change.Seen -> null
+        }
+    }
+
     private var listening: Job? = null
 
     override fun start() {
@@ -43,6 +56,7 @@ internal class DefaultNotificationCenterRepository(
         }
         listening = scope.launch {
             launch { created.collect { unseen.value = true } }
+            launch { changed.collect { unseen.value = it.unseenCount > 0 } }
             launch { refresh() }
             realtime.connections.collect { refresh() }
         }
@@ -57,8 +71,12 @@ internal class DefaultNotificationCenterRepository(
         api.markCenterSeen()
     }
 
+    override suspend fun remove(id: String): AppResult<Unit, DataError.Network> = api.removeNotification(id)
+
+    override suspend fun clear(): AppResult<Unit, DataError.Network> = api.clearNotifications()
+
     /** Whoever signs in next starts from what the server says. */
-    fun clear() {
+    fun forget() {
         unseen.value = false
     }
 
@@ -77,6 +95,7 @@ private fun NotificationEntryDto.toEntry() = NotificationEntry(
     actors = actors.map { it.toUser() },
     title = title,
     body = body,
+    isFollow = type == "followed" || type == "became_friends",
     deepLink = deepLink,
     isRead = read,
     at = createdAt.toInstant(),

@@ -17,8 +17,10 @@ import io.ktor.http.HttpMethod
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.headersOf
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.async
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
@@ -47,7 +49,7 @@ class NotificationCenterRepositoryTest {
     private fun repository(): DefaultNotificationCenterRepository {
         val engine = MockEngine { request ->
             sent.update { it + request }
-            if (request.method == HttpMethod.Post) {
+            if (request.method == HttpMethod.Post || request.method == HttpMethod.Delete) {
                 respond("", HttpStatusCode.NoContent)
             } else {
                 respond(
@@ -99,6 +101,30 @@ class NotificationCenterRepositoryTest {
         unseenCount = 0
         realtime.connect()
         realTime { center.hasUnseen.first { !it } }
+    }
+
+    @Test
+    fun readOrRemovedElsewhereReachesTheCenterAndTheIndicator() = runTest {
+        val center = repository()
+        center.start()
+        realTime { center.hasUnseen.first { it } }
+
+        // Undispatched: it listens before the event is sent.
+        val change = scope.async(start = CoroutineStart.UNDISPATCHED) { center.changes.first() }
+        realtime.send(RealtimeEvent.NotificationsChanged(RealtimeEvent.NotificationsChanged.Change.Read, ids = listOf("n1"), tripIds = listOf("t1"), unseenCount = 0))
+        assertEquals(CenterChange.Read(setOf("n1")), realTime { change.await() })
+        realTime { center.hasUnseen.first { !it } }
+    }
+
+    @Test
+    fun removingAndClearingAskTheServer() = runTest {
+        val center = repository()
+        assertIs<AppResult.Success<*>>(center.remove("n1"))
+        assertIs<AppResult.Success<*>>(center.clear())
+        assertEquals(
+            listOf("/v1/notifications/n1", "/v1/notifications"),
+            sent.value.filter { it.method == HttpMethod.Delete }.map { it.url.encodedPath },
+        )
     }
 }
 

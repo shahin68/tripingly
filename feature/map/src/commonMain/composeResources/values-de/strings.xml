@@ -93,6 +93,11 @@
     <string name="map_join_requested">Anfrage gesendet. Die Besitzerin oder der Besitzer entscheidet.</string>
     <string name="map_join_withdrawn">Anfrage zurückgezogen.</string>
     <string name="map_join_declined">Deine Anfrage zum Mitmachen wurde abgelehnt.</string>
+    <string name="map_join_request">@%1$s möchte mitmachen</string>
+    <plurals name="map_join_requests">
+        <item quantity="one">@%1$s und %2$d weitere Person möchten mitmachen</item>
+        <item quantity="other">@%1$s und %2$d weitere möchten mitmachen</item>
+    </plurals>
     <string name="map_owner_profile">Profil von @%1$s</string>
     <string name="map_report_trip">Reise melden</string>
     <string name="map_stop_comment">Kommentieren</string>

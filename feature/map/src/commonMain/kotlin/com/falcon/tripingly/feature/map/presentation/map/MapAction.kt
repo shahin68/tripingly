@@ -44,6 +44,8 @@ sealed interface MapAction {
         data object CancelJoinRequest : Header
         /** "Trip members" in the ⋮ menu opens the members sheet (where the owner answers requests to join). */
         data object OpenMembers : Header
+        /** The "wants to join" pill: it goes and the members sheet opens. */
+        data object OpenJoinRequests : Header
         data object OpenOwnerProfile : Header
         data object ReportTrip : Header
     }

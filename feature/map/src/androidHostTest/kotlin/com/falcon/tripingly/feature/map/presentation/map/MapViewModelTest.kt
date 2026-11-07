@@ -53,6 +53,7 @@ import com.falcon.tripingly.core.model.social.ReportReason
 import com.falcon.tripingly.core.model.social.ReportTarget
 import com.falcon.tripingly.core.model.trip.Destination
 import com.falcon.tripingly.core.model.trip.GeoPoint
+import com.falcon.tripingly.core.model.trip.JoinRequest
 import com.falcon.tripingly.core.model.trip.JoinRequestStatus
 import com.falcon.tripingly.core.model.trip.NewMarker
 import com.falcon.tripingly.core.model.trip.NewTrip
@@ -60,6 +61,7 @@ import com.falcon.tripingly.core.model.trip.TripDay
 import com.falcon.tripingly.core.model.trip.TripDetails
 import com.falcon.tripingly.core.model.trip.TripMapView
 import com.falcon.tripingly.core.model.trip.TripRole
+import com.falcon.tripingly.core.model.trip.UserSummary
 import com.falcon.tripingly.core.ui.UiText
 import com.falcon.tripingly.feature.map.generated.resources.Res
 import com.falcon.tripingly.feature.map.generated.resources.error_location_denied_manual
@@ -86,6 +88,7 @@ import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertSame
 import kotlin.test.assertTrue
+import kotlin.time.Instant
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
@@ -692,6 +695,59 @@ class MapViewModelTest {
         testScheduler.advanceUntilIdle()
         assertFalse(viewModel.uiState.value.layers.stops[0].isNew)
         assertEquals(listOf(StopNews(first.id, true), StopNews(first.id, true)), newActivity.seen)
+    }
+
+    @Test
+    fun `news read elsewhere takes its mark off`() = runTest(testDispatcher) {
+        val first = backend.addMarker(trip.trip.id, trip.days[0].id, NewMarker("Stop #1", GeoPoint(48.85, 2.35)))
+        newActivity.commentMarked[trip.trip.id] = setOf(first.id)
+        val viewModel = viewModel()
+        testScheduler.advanceUntilIdle()
+        assertTrue(viewModel.uiState.value.layers.stops[0].isNew)
+
+        // Its comments opened from the notification center, or on another device.
+        newActivity.readElsewhere(trip.trip.id, first.id)
+        testScheduler.advanceUntilIdle()
+        assertFalse(viewModel.uiState.value.layers.stops[0].isNew)
+        assertFalse(viewModel.uiState.value.dayTabs.days[0].hasNew)
+    }
+
+    @Test
+    fun `a push about comments opens them without a mark`() = runTest(testDispatcher) {
+        val first = backend.addMarker(trip.trip.id, trip.days[0].id, NewMarker("Stop #1", GeoPoint(48.85, 2.35)))
+        val viewModel = viewModel(stopId = first.id, showComments = true)
+        testScheduler.advanceUntilIdle()
+        assertFalse(viewModel.uiState.value.layers.stops[0].isNew)
+        assertFalse(viewModel.uiState.value.dayTabs.days[0].hasNew)
+    }
+
+    @Test
+    fun `people asking to join show as a pill that opens the members sheet`() = runTest(testDispatcher) {
+        fun ask(id: String, username: String) = backend.seedJoinRequest(
+            JoinRequest("r-$id", trip.trip.id, UserSummary(id, username, username), Instant.parse("2026-11-07T10:00:00Z")),
+        )
+        val viewModel = viewModel()
+        testScheduler.advanceUntilIdle()
+        assertNull(viewModel.uiState.value.joinRequests)
+
+        ask("u2", "anna")
+        testScheduler.advanceUntilIdle()
+        assertEquals(listOf("anna") to 0, viewModel.uiState.value.joinRequests?.let { pill -> pill.people.map { it.username } to pill.othersCount })
+
+        ask("u3", "jonas")
+        testScheduler.advanceUntilIdle()
+        assertEquals(listOf("jonas", "anna") to 1, viewModel.uiState.value.joinRequests?.let { pill -> pill.people.map { it.username } to pill.othersCount })
+
+        viewModel.onAction(MapAction.Header.OpenJoinRequests)
+        testScheduler.advanceUntilIdle()
+        assertNull(viewModel.uiState.value.joinRequests)
+        assertEquals(MapSheet.Members, viewModel.uiState.value.sheet)
+
+        // Someone new brings it back.
+        ask("u4", "mia")
+        testScheduler.advanceUntilIdle()
+        assertEquals("mia", viewModel.uiState.value.joinRequests?.people?.first()?.username)
+        assertEquals(2, viewModel.uiState.value.joinRequests?.othersCount)
     }
 
     @Test

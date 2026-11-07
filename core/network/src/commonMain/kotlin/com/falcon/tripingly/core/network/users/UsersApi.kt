@@ -35,6 +35,10 @@ interface UsersApi {
     @DELETE("users/{id}/follow")
     suspend fun unfollow(@Path("id") userId: String): AppResult<Unit, DataError.Network>
 
+    /** They stop following me (and we stop being friends); they aren't told. Idempotent. */
+    @DELETE("me/followers/{id}")
+    suspend fun removeFollower(@Path("id") userId: String): AppResult<Unit, DataError.Network>
+
     /** Also removes follows both ways and each of us from the other's trips. Idempotent. */
     @POST("users/{id}/block")
     suspend fun block(@Path("id") userId: String): AppResult<Unit, DataError.Network>

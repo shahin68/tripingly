@@ -27,6 +27,10 @@ data class Profile(val username: String) : Route
 @Serializable
 data object Settings : Route
 
+/** The notification center, opened from the bell on my profile or by `tripinly://notifications`. */
+@Serializable
+data object Notifications : Route
+
 /** Tripinly Pro: what it unlocks, buying it and restoring earlier purchases. */
 @Serializable
 data object Paywall : Route
@@ -38,6 +42,7 @@ val NavConfig = SavedStateConfiguration {
             subclass(TripMap::class, TripMap.serializer())
             subclass(Profile::class, Profile.serializer())
             subclass(Settings::class, Settings.serializer())
+            subclass(Notifications::class, Notifications.serializer())
             subclass(Paywall::class, Paywall.serializer())
         }
     }

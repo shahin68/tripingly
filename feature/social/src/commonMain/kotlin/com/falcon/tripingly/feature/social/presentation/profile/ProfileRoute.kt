@@ -77,9 +77,12 @@ fun ProfileRoute(
     onOpenTrip: (tripId: String) -> Unit,
     onOpenProfile: (username: String) -> Unit,
     barsPadding: PaddingValues = PaddingValues(),
-    /** On my own profile: the notification center under my header, and whether something new waits there. */
-    notificationCenter: NotificationCenterSlot = { _, _, _, _ -> },
+    /** On my own profile: the bell opens the notification center; a red dot while something new waits there. */
+    onOpenNotifications: () -> Unit = {},
     hasUnseenNotifications: Boolean = false,
+    /** On my own profile: switch to my Followers (a tap on several new followers), then [onFollowersShown]. */
+    showFollowers: Boolean = false,
+    onFollowersShown: () -> Unit = {},
     // Keyed by person, like the trip map: the class alone would hand everyone the first profile's view model.
     viewModel: ProfileViewModel = koinViewModel(key = "profile:${username.orEmpty()}") { parametersOf(username) },
 ) {
@@ -97,8 +100,10 @@ fun ProfileRoute(
             onAction = viewModel::onAction,
             onOpenProfile = onOpenProfile,
             barsPadding = barsPadding,
-            notificationCenter = notificationCenter,
+            onOpenNotifications = onOpenNotifications,
             hasUnseenNotifications = hasUnseenNotifications,
+            showFollowers = showFollowers,
+            onFollowersShown = onFollowersShown,
         )
     } else {
         PersonProfileScreen(state = state, onAction = viewModel::onAction, onBack = onBack)

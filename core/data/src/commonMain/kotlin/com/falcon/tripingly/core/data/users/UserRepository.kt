@@ -30,6 +30,9 @@ interface UserRepository {
 
     suspend fun setFollowing(userId: String, following: Boolean): AppResult<Unit, DataError.Network>
 
+    /** [userId] stops following me (and we stop being friends); they aren't told. */
+    suspend fun removeFollower(userId: String): AppResult<Unit, DataError.Network>
+
     /** Blocking also ends follows both ways and takes each of us out of the other's trips. */
     suspend fun setBlocked(userId: String, blocked: Boolean): AppResult<Unit, DataError.Network>
 
