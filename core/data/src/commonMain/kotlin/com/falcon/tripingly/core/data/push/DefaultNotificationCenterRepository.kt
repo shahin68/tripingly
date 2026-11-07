@@ -24,7 +24,7 @@ import kotlinx.coroutines.launch
 /** Asks the server whether something unseen waits at start and after every reconnect; each arrival lights it up. */
 internal class DefaultNotificationCenterRepository(
     private val api: PushApi,
-    realtime: RealtimeClient,
+    private val realtime: RealtimeClient,
     private val scope: CoroutineScope,
 ) : NotificationCenterRepository {
 
