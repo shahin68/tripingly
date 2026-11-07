@@ -39,7 +39,7 @@ import kotlinx.coroutines.sync.withLock
 internal class DefaultSocialRepository(
     private val api: SocialApi,
     private val local: TripLocalDataSource,
-    realtime: RealtimeClient,
+    private val realtime: RealtimeClient,
     /** The signed-in user's id. */
     private val currentUserId: () -> String?,
 ) : SocialRepository {
