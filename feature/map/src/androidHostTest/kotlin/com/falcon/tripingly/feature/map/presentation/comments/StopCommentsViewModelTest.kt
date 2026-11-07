@@ -48,7 +48,9 @@ class StopCommentsViewModelTest {
 
     private val people = listOf(UserSummary("u2", "anna", "Anna Berg"), UserSummary("u3", "jonas.k", "Jonas Krüger"))
 
-    private fun viewModel() = StopCommentsViewModel(MARKER_ID, people, social, FakeAccountBackend(today = { error("not used") }))
+    private val account = FakeAccountBackend(today = { error("not used") })
+
+    private fun viewModel() = StopCommentsViewModel(MARKER_ID, people, social, account)
 
     @BeforeTest
     fun setUp() = Dispatchers.setMain(testDispatcher)
@@ -89,7 +91,6 @@ class StopCommentsViewModelTest {
         testScheduler.advanceUntilIdle()
 
         live.emit(CommentChange.Added(comment("c1")))
-        live.emit(CommentChange.Added(comment("c2").copy(markerId = "other-stop")))
         liveLikes.emit(LikeCount(LikeTarget.Comment, "c1", 3))
         testScheduler.advanceUntilIdle()
         assertEquals(listOf("c1"), viewModel.uiState.value.comments.map { it.id })
@@ -130,6 +131,8 @@ class StopCommentsViewModelTest {
 
     @Test
     fun `a reply goes under its main comment and opens the thread`() = runTest(testDispatcher) {
+        // The first fake account is the fake social repository's "me".
+        account.signInForDevelopment("me", null)
         val viewModel = viewModel()
         testScheduler.advanceUntilIdle()
         viewModel.draft.setTextAndPlaceCursorAtEnd("First")

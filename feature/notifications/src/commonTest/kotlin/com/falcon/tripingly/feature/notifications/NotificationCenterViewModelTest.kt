@@ -67,7 +67,7 @@ class NotificationCenterViewModelTest {
     }
 
     @Test
-    fun `being shown marks it seen, and arrivals come in on top`() = runTest(dispatcher) {
+    fun `being shown marks it seen and arrivals come in on top`() = runTest(dispatcher) {
         val center = FakeNotificationCenterRepository(mapOf(null to Page(listOf(entry("n2"), entry("n1")), nextCursor = null)))
         val viewModel = NotificationCenterViewModel(center)
         advanceUntilIdle()
