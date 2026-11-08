@@ -16,7 +16,10 @@ interface NewActivityRepository {
     /** News about stops of [tripId] while the app runs. */
     fun newActivity(tripId: String): Flow<StopNews>
 
-    /** Some of [tripId]'s marks may have gone: news read or removed somewhere else (another screen or device). */
+    /**
+     * [tripId]'s marks may have changed: news read or removed somewhere else (another screen or device), or the live
+     * connection is back, so news sent while it was down was missed.
+     */
     fun marksChanged(tripId: String): Flow<Unit>
 
     /** The stop's comments were seen ([comments]), or the stop was opened: that news counts as read. */
