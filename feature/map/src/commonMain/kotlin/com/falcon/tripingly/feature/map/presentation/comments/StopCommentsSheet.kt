@@ -1,19 +1,18 @@
 package com.falcon.tripingly.feature.map.presentation.comments
 
-import kotlinx.collections.immutable.ImmutableList
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.imePadding
-import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -38,6 +37,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -75,6 +75,7 @@ import com.falcon.tripingly.core.designsystem.component.ReportDialog
 import com.falcon.tripingly.core.designsystem.component.SheetHeader
 import com.falcon.tripingly.core.designsystem.component.ShowMessage
 import com.falcon.tripingly.core.designsystem.component.Skeleton
+import com.falcon.tripingly.core.designsystem.component.bottomSystemBar
 import com.falcon.tripingly.core.designsystem.component.skeleton
 import com.falcon.tripingly.core.designsystem.component.skeletonText
 import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
@@ -106,6 +107,7 @@ import com.falcon.tripingly.feature.map.presentation.comments.StopCommentsViewMo
 import com.falcon.tripingly.feature.map.presentation.component.MapMarker
 import com.falcon.tripingly.feature.map.presentation.map.preview.previewStop
 import kotlin.time.Instant
+import kotlinx.collections.immutable.ImmutableList
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filter
 import org.jetbrains.compose.resources.pluralStringResource
@@ -196,7 +198,7 @@ fun StopCommentsScreen(
         modifier = modifier
             .fillMaxWidth()
             .fillMaxHeight(SHEET_HEIGHT_FRACTION)
-            .navigationBarsPadding()
+            .windowInsetsPadding(WindowInsets.bottomSystemBar)
             .imePadding(),
     ) {
         SheetHeader(title = stringResource(Res.string.map_comments), subtitle = marker.title.asString(), onClose = onClose)

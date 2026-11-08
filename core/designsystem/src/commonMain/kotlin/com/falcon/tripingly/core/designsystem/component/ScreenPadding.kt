@@ -3,18 +3,14 @@ package com.falcon.tripingly.core.designsystem.component
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
-import androidx.compose.foundation.layout.only
-import androidx.compose.foundation.layout.union
 import androidx.compose.foundation.layout.asPaddingValues
-import androidx.compose.foundation.layout.displayCutout
+import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.safeDrawing
-import androidx.compose.foundation.layout.systemBars
+import androidx.compose.foundation.layout.union
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.Stable
-import androidx.compose.ui.unit.Density
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.unit.Dp
-import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import com.falcon.tripingly.core.designsystem.theme.spacing
 
@@ -31,41 +27,37 @@ fun screenContentPadding(
     extraBottom: Dp = 0.dp,
 ): PaddingValues {
     val spacing = MaterialTheme.spacing
-    val side = WindowInsets.safeSides.asPaddingValues().calculateLeftPadding(LayoutDirection.Ltr) + spacing.medium
+    val sides = WindowInsets.safeSides.asPaddingValues()
+    val layoutDirection = LocalLayoutDirection.current
     return PaddingValues(
-        start = side,
-        end = side,
+        start = sides.calculateStartPadding(layoutDirection) + spacing.medium,
+        end = sides.calculateEndPadding(layoutDirection) + spacing.medium,
         top = topBar.calculateTopPadding() + spacing.small,
         bottom = maxOf(bottomBar.calculateBottomPadding(), topBar.calculateBottomPadding()) + spacing.medium + extraBottom,
     )
 }
 
 /**
- * The screen's sides that content keeps clear of: the camera cutout and system bars on the left or right in
- * landscape. Both sides get the larger of the two, so the content stays centred and its ends line up (on Android
- * the cutout is only on one side). Use it for anything laid over an edge-to-edge screen: bars, cards, buttons.
+ * The screen's sides that content keeps clear of, each as the system reports it: the camera cutout and the system bars
+ * in landscape, only on the side they're on (Shahin, 2026-11-08). Use it for anything laid over an edge-to-edge
+ * screen: bars, cards, buttons.
  */
 val WindowInsets.Companion.safeSides: WindowInsets
-    @Composable get() = SymmetricSides(safeDrawing)
+    @Composable get() = safeDrawing.only(WindowInsetsSides.Horizontal)
 
 /** The top of the screen (status bar, notch) plus [WindowInsets.Companion.safeSides]: for headers. */
 val WindowInsets.Companion.safeTopAndSides: WindowInsets
     @Composable get() = safeDrawing.only(WindowInsetsSides.Top).union(safeSides)
 
 /**
- * The bottom of the screen (navigation bar, home indicator) plus [WindowInsets.Companion.safeSides]: for bottom bars,
- * which stay put under the keyboard.
+ * The bottom of the screen that a bottom bar, tab row, sheet footer or input stays above, plus
+ * [WindowInsets.Companion.safeSides]. They stay put under the keyboard.
  */
 val WindowInsets.Companion.safeBottomAndSides: WindowInsets
-    @Composable get() = systemBars.union(displayCutout).only(WindowInsetsSides.Bottom).union(safeSides)
+    @Composable get() = bottomSystemBar.union(safeSides)
 
-@Stable
-private class SymmetricSides(private val insets: WindowInsets) : WindowInsets {
-    override fun getLeft(density: Density, layoutDirection: LayoutDirection) =
-        maxOf(insets.getLeft(density, layoutDirection), insets.getRight(density, layoutDirection))
-    override fun getRight(density: Density, layoutDirection: LayoutDirection) = getLeft(density, layoutDirection)
-    override fun getTop(density: Density) = 0
-    override fun getBottom(density: Density) = 0
-    override fun equals(other: Any?) = other is SymmetricSides && other.insets == insets
-    override fun hashCode() = insets.hashCode()
-}
+/**
+ * Android's navigation bar at the bottom (the gesture handle or the buttons), which bottom controls stay above. None on
+ * iOS: there the home indicator sits over the app, and bottom controls keep only their own padding (Shahin, 2026-11-08).
+ */
+expect val WindowInsets.Companion.bottomSystemBar: WindowInsets

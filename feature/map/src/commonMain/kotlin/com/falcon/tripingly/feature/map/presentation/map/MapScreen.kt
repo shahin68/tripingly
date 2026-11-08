@@ -46,6 +46,7 @@ import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.unit.toSize
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.tooling.preview.PreviewParameter
 import androidx.compose.ui.unit.Dp
@@ -151,11 +152,14 @@ internal fun MapScreen(
         val hasDays = state.dayTabs.days.isNotEmpty()
         val coveredBottom = (tabsHeight?.second ?: 0.dp) + (if (plan != null) PlanSheetPeek else 0.dp) + (creditsHeight ?: 0.dp)
         val isWide = maxWidth > maxHeight
-        val side = WindowInsets.safeSides.asPaddingValues().calculateLeftPadding(LayoutDirection.Ltr)
-        val panelWidth = (maxWidth - side * 2) / 2
+        val sides = WindowInsets.safeSides.asPaddingValues()
+        val layoutDirection = LocalLayoutDirection.current
+        val start = sides.calculateStartPadding(layoutDirection)
+        val end = sides.calculateEndPadding(layoutDirection)
+        val panelWidth = (maxWidth - start - end) / 2
         // What the header and the cards cover: the top and the bottom, or in landscape the right half.
         val covered = if (isWide) {
-            PaddingValues(start = side, top = statusBar, end = side + panelWidth)
+            PaddingValues(start = start, top = statusBar, end = end + panelWidth)
         } else {
             PaddingValues(top = coveredTop, bottom = coveredBottom)
         }
