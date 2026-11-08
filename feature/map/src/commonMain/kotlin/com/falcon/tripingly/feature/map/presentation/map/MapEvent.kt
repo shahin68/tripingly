@@ -8,6 +8,9 @@ sealed interface MapEvent {
     data class OpenProfile(val username: String) : MapEvent
     data object OpenPaywall : MapEvent
 
-    /** The user added a stop or tapped a route: the plan sheet opens all the way, so its list, Best order and route show. */
+    /** The user tapped a route: the plan sheet opens all the way, so its list, Best order and route show. */
     data object ShowWholePlan : MapEvent
+
+    /** The user added a stop: felt, and the plan sheet opens all the way as for [ShowWholePlan]. */
+    data object StopAdded : MapEvent
 }

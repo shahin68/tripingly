@@ -79,9 +79,12 @@ fun GlassSurface(
 
 object GlassDefaults {
     val ShadowElevation = 8.dp
-    internal val Shadow = Color.Black.copy(alpha = 0.18f)
-    internal val Edge = 1.dp
+    val Shadow = Color.Black.copy(alpha = 0.18f)
+    val Edge = 1.dp
     internal val BlurRadius = 24.dp
+
+    /** The tint of glass with nothing blurred behind it (over the native map): nearly opaque, as [GlassSurface] draws it. */
+    val opaqueTint: Color @Composable get() = MaterialTheme.extendedColors.glass.copy(alpha = OPAQUE_TINT)
 }
 
 private const val OPAQUE_TINT = 0.94f

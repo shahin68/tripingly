@@ -43,6 +43,7 @@ fun HotButton(
     modifier: Modifier = Modifier,
 ) {
     var burst by remember { mutableIntStateOf(0) }
+    val haptics = rememberHaptics()
     Row(
         modifier = modifier
             .toggleable(
@@ -52,6 +53,7 @@ fun HotButton(
                 role = Role.Checkbox,
                 onValueChange = { markHot ->
                     if (markHot) burst++
+                    haptics.toggle(markHot)
                     onToggle()
                 },
             )

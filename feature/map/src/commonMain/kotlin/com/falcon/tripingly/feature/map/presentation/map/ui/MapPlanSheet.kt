@@ -1,5 +1,8 @@
 package com.falcon.tripingly.feature.map.presentation.map.ui
 
+import kotlinx.coroutines.flow.drop
+import androidx.compose.runtime.snapshotFlow
+import com.falcon.tripingly.core.designsystem.component.rememberHaptics
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.EnterExitState
 import androidx.compose.animation.SizeTransform
@@ -88,6 +91,9 @@ internal fun <T : Any> PlanSheet(
     content: @Composable (T) -> Unit,
 ) {
     val scope = rememberCoroutineScope()
+    val haptics = rememberHaptics()
+    // A tick as the sheet settles up or down.
+    LaunchedEffect(state) { snapshotFlow { state.settledValue }.drop(1).collect { haptics.tick() } }
     val handleLabel = stringResource(Res.string.map_plan_handle)
     // The pulled-down part of the sheet sits below this box, behind the day tabs.
     Column(modifier = modifier.fillMaxWidth().clipToBounds()) {

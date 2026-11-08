@@ -31,6 +31,7 @@ import io.ktor.http.content.TextContent
 import io.ktor.http.headersOf
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.async
+import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
@@ -195,7 +196,7 @@ class SocialRepositoryTest {
     @Test
     fun report_sendsTheReasonAndLeavesOutBlankDetails() = runTest {
         val repository = repository(
-            """{"id":"r1","targetType":"comment","targetId":"c1","reason":"spam","status":"open","createdAt":"2026-10-11T10:00:00Z"}""",
+            """{"id":"r1","targetType":"comment","targetId":"c1","reason":"spam","status":"open","replyCount":0,"mentions":[],"createdAt":"2026-10-11T10:00:00Z"}""",
             HttpStatusCode.Created,
         )
 
@@ -216,13 +217,18 @@ class SocialRepositoryTest {
         )
         val changes = mutableListOf<CommentChange>()
         val collecting = backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
-            repository.commentChanges.collect { changes += it }
+            repository.commentChanges("m0").collect { changes += it }
         }
 
         realtime.send(RealtimeEvent.CommentAdded("t1", ME, NetworkJson.decodeFromString<CommentDto>(comment(author = ME))))
         realtime.send(RealtimeEvent.CommentAdded("t1", OTHER, NetworkJson.decodeFromString<CommentDto>(comment(author = OTHER))))
         realtime.send(RealtimeEvent.CommentDeleted("t1", OTHER, "c1", "m0"))
-        collecting.cancel()
+        // Another stop's.
+        realtime.send(RealtimeEvent.CommentDeleted("t1", OTHER, "c2", "m9"))
+        // While collected, the server knows the comments are open.
+        assertEquals(setOf("m0"), realtime.watchedComments)
+        collecting.cancelAndJoin()
+        assertEquals(emptySet(), realtime.watchedComments)
 
         assertEquals(2, changes.size)
         assertEquals(OTHER, (changes[0] as CommentChange.Added).comment.author.id)
@@ -252,7 +258,7 @@ class SocialRepositoryTest {
 
     private fun comment(author: String, canDelete: Boolean = false) =
         """{"id":"c1","markerId":"m0","body":"Lovely","author":{"id":"$author","username":"u","displayName":"U"},
-            "likeCount":0,"likedByMe":false,"canDelete":$canDelete,"createdAt":"2026-10-11T10:00:00Z"}"""
+            "likeCount":0,"likedByMe":false,"canDelete":$canDelete,"replyCount":0,"mentions":[],"createdAt":"2026-10-11T10:00:00Z"}"""
 
     private companion object {
         const val ME = "11111111-1111-4111-8111-111111111111"

@@ -9,6 +9,8 @@ kotlin {
             implementation(projects.core.ui)
             implementation(projects.core.location)
             implementation(libs.compose.material.icons.extended)
+            // System back closes the trip card, which is drawn in the screen's own window (no Dialog).
+            implementation(libs.compose.uiBackhandler)
         }
         androidMain.dependencies {
             implementation(libs.playServices.maps)

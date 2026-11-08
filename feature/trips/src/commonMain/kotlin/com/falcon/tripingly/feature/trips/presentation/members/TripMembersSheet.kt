@@ -1,5 +1,6 @@
 package com.falcon.tripingly.feature.trips.presentation.members
 
+import com.falcon.tripingly.core.designsystem.component.rememberHaptics
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -74,9 +75,11 @@ fun TripMembersRoute(
         isOpened = true
     }
 
+    val haptics = rememberHaptics()
     ObserveAsEvents(viewModel.events) { event ->
         when (event) {
             is Event.ShareInvite -> shareManager.share(getString(Res.string.members_invite_share_text, event.tripName, event.url))
+            Event.Accepted -> haptics.success()
         }
     }
 

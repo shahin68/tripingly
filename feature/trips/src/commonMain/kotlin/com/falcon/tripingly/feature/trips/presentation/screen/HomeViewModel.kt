@@ -168,6 +168,7 @@ class HomeViewModel(
                     is AppResult.Error -> state.copy(dialog = state.dialog?.let { refused(it.copy(isSaving = false), result.error) })
                 }
             }
+            if (result is AppResult.Success) sendEvent(Event.Saved)
         }
     }
 
@@ -240,6 +241,9 @@ class HomeViewModel(
     sealed interface Event {
         data class NavigateToMap(val tripId: String) : Event
         data class ShareTrip(val trip: Trip) : Event
+
+        /** A trip was created, renamed or moved to other dates: felt as done. */
+        data object Saved : Event
     }
 
     /** Grouped by the part of the screen they come from. */

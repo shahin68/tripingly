@@ -14,11 +14,11 @@ sealed interface Route : NavKey
 data object Home : Route
 
 /**
- * One trip on the map. A push opens it on [stopId] (its day, centred on it), or with its Members sheet open
- * ([showMembers], for join requests).
+ * One trip on the map. A push opens it on [stopId] (its day, centred on it, with its comments open: [showComments]),
+ * or with its Members sheet open ([showMembers], for join requests).
  */
 @Serializable
-data class TripMap(val tripId: String, val stopId: String? = null, val showMembers: Boolean = false) : Route
+data class TripMap(val tripId: String, val stopId: String? = null, val showMembers: Boolean = false, val showComments: Boolean = false) : Route
 
 /** Someone else's profile (my own is the Profile tab). */
 @Serializable
@@ -26,6 +26,10 @@ data class Profile(val username: String) : Route
 
 @Serializable
 data object Settings : Route
+
+/** The notification center, opened from the bell on my profile or by `tripinly://notifications`. */
+@Serializable
+data object Notifications : Route
 
 /** Tripinly Pro: what it unlocks, buying it and restoring earlier purchases. */
 @Serializable
@@ -38,6 +42,7 @@ val NavConfig = SavedStateConfiguration {
             subclass(TripMap::class, TripMap.serializer())
             subclass(Profile::class, Profile.serializer())
             subclass(Settings::class, Settings.serializer())
+            subclass(Notifications::class, Notifications.serializer())
             subclass(Paywall::class, Paywall.serializer())
         }
     }

@@ -1,5 +1,6 @@
 package com.falcon.tripingly.feature.trips.presentation.screen
 
+import com.falcon.tripingly.core.designsystem.component.rememberHaptics
 import com.falcon.tripingly.core.designsystem.component.AppBottomSheet
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.runtime.Composable
@@ -49,9 +50,11 @@ fun HomeRoute(
         }
     }
 
+    val haptics = rememberHaptics()
     ObserveAsEvents(viewModel.events) { event ->
         when (event) {
             is Event.NavigateToMap -> onNavigateToMap(event.tripId)
+            Event.Saved -> haptics.success()
             is Event.ShareTrip -> {
                 val trip = event.trip
                 val dates = DateUtils.formatRange(trip.startDate, trip.endDate)

@@ -7,12 +7,14 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.lifecycle.compose.LifecycleStartEffect
 import androidx.lifecycle.viewmodel.navigation3.rememberViewModelStoreNavEntryDecorator
 import androidx.navigation3.runtime.NavEntry
+import androidx.navigation3.runtime.NavKey
 import androidx.navigation3.runtime.rememberNavBackStack
 import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
 import androidx.navigation3.ui.NavDisplay
@@ -20,6 +22,7 @@ import coil3.ImageLoader
 import coil3.compose.setSingletonImageLoaderFactory
 import com.falcon.tripingly.core.common.result.AppResult
 import com.falcon.tripingly.core.data.billing.ProRepository
+import com.falcon.tripingly.core.data.push.NotificationCenterRepository
 import com.falcon.tripingly.core.data.push.PushNotifications
 import com.falcon.tripingly.core.data.realtime.LiveUpdates
 import com.falcon.tripingly.core.data.trips.MarkerRepository
@@ -30,6 +33,7 @@ import com.falcon.tripingly.core.designsystem.component.safeTopAndSides
 import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
 import com.falcon.tripingly.core.navigation.Home
 import com.falcon.tripingly.core.navigation.NavConfig
+import com.falcon.tripingly.core.navigation.Notifications
 import com.falcon.tripingly.core.navigation.Paywall
 import com.falcon.tripingly.core.navigation.Profile
 import com.falcon.tripingly.core.navigation.Settings
@@ -41,7 +45,9 @@ import com.falcon.tripingly.feature.map.presentation.map.MapRoute
 import com.falcon.tripingly.feature.paywall.presentation.PaywallRoute
 import com.falcon.tripingly.feature.settings.presentation.SettingsRoute
 import com.falcon.tripingly.feature.social.presentation.profile.ProfileRoute
+import com.falcon.tripingly.feature.notifications.presentation.NotificationCenterRoute
 import com.falcon.tripingly.feature.trips.presentation.members.TripMembersRoute
+import com.falcon.tripingly.shell.KeepMapSceneStrategy
 import com.falcon.tripingly.shell.MainTabs
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.launch
@@ -80,6 +86,9 @@ private fun MainNavigation() {
     // Purchases made from here on belong to this account.
     val pro = koinInject<ProRepository>()
     LaunchedEffect(pro) { pro.start() }
+    // The notification center's indicator follows the server from here on.
+    val notificationCenter = koinInject<NotificationCenterRepository>()
+    LaunchedEffect(notificationCenter) { notificationCenter.start() }
     val backStack = rememberNavBackStack(NavConfig, Home)
     val goBack = { if (backStack.size > 1) backStack.removeAt(backStack.size - 1) }
 
@@ -93,9 +102,16 @@ private fun MainNavigation() {
             val route = when (link) {
                 is DeepLink.Trip -> TripMap(link.tripId)
                 is DeepLink.Marker ->
-                    (markers.tripIdOfMarker(link.markerId) as? AppResult.Success)?.data?.let { TripMap(it, stopId = link.markerId) }
+                    (markers.tripIdOfMarker(link.markerId) as? AppResult.Success)?.data?.let { TripMap(it, stopId = link.markerId, showComments = link.showComments) }
                 is DeepLink.Members -> TripMap(link.tripId, showMembers = true)
                 is DeepLink.User -> Profile(link.username)
+                // My Followers are on the Profile tab: back to the tabs, which switch to it.
+                is DeepLink.Followers -> {
+                    while (backStack.size > 1) backStack.removeAt(backStack.lastIndex)
+                    deepLinks.showFollowers()
+                    null
+                }
+                is DeepLink.Notifications -> Notifications
                 is DeepLink.Home -> null
             }
             if (route != null && backStack.lastOrNull() != route) {
@@ -115,8 +131,10 @@ private fun MainNavigation() {
             rememberSaveableStateHolderNavEntryDecorator(),
             rememberViewModelStoreNavEntryDecorator(),
         ),
+        // The trip map stays composed under the screens opened over it, so going back to it is instant.
+        sceneStrategies = listOf(remember { KeepMapSceneStrategy<NavKey>() }),
     ) { route ->
-        NavEntry(route) { key ->
+        NavEntry(route, metadata = if (route is TripMap) KeepMapSceneStrategy.keepUnder else emptyMap()) { key ->
             // Only the top screen shows its sheets: under the screen a back swipe leaves, they'd cover it.
             CompositionLocalProvider(LocalScreenOnTop provides (key == backStack.lastOrNull())) {
                 when (key) {
@@ -124,12 +142,14 @@ private fun MainNavigation() {
                         onOpenTrip = { backStack.add(TripMap(it)) },
                         onOpenProfile = { backStack.add(Profile(it)) },
                         onOpenSettings = { backStack.add(Settings) },
+                        onOpenNotifications = { backStack.add(Notifications) },
                     )
                     is TripMap -> {
                         MapRoute(
                             tripId = key.tripId,
                             stopId = key.stopId,
                             showMembers = key.showMembers,
+                            showComments = key.showComments,
                             onNavigateBack = { goBack() },
                             onOpenProfile = { backStack.add(Profile(it)) },
                             onOpenPaywall = { backStack.add(Paywall) },
@@ -142,6 +162,8 @@ private fun MainNavigation() {
                         onOpenTrip = { backStack.add(TripMap(it)) },
                         onOpenProfile = { backStack.add(Profile(it)) },
                     )
+                    // A tap opens what it's about the way a tapped push does.
+                    is Notifications -> NotificationCenterRoute(onBack = { goBack() }, onOpen = { link, id -> deepLinks.open(DeepLink.parse(link, id)) })
                     is Settings -> SettingsRoute(onBack = { goBack() }, onOpenPro = { backStack.add(Paywall) })
                     is Paywall -> PaywallRoute(onBack = { goBack() })
                 }

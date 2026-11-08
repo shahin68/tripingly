@@ -82,7 +82,7 @@ internal fun drawCoverPin(orderNumber: Int, cover: ImageBitmap, isNew: Boolean, 
     return UIImage(data = surface.makeImageSnapshot().png(), scale = density.toDouble())
 }
 
-/** The "new" dot in the pin's top left corner: light ivy in a white ring. */
+/** The "new" dot in the pin's top left corner: the accent red in a white ring. */
 private fun org.jetbrains.skia.Canvas.drawNewDot(density: Float) {
     val radius = NEW_DOT_SIZE.value * density / 2
     drawCircle(radius, radius, radius, fill(WHITE))

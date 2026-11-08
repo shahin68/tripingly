@@ -110,10 +110,15 @@ fun ToggleButton(
     icon: ImageVector? = null,
 ) {
     val toggle = modifier.semantics { toggleableState = ToggleableState(checked) }
+    val haptics = rememberHaptics()
+    val click = {
+        haptics.toggle(!checked)
+        onClick()
+    }
     if (checked) {
-        PrimaryButton(text, onClick, toggle, size = size, icon = icon)
+        PrimaryButton(text, click, toggle, size = size, icon = icon)
     } else {
-        SecondaryButton(text, onClick, toggle, size = size, icon = icon)
+        SecondaryButton(text, click, toggle, size = size, icon = icon)
     }
 }
 

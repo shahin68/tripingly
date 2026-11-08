@@ -20,7 +20,7 @@ import kotlinx.coroutines.launch
  * Loads the trip and opens it on the day and Route button it was left with ([mapViews]), framed like a tap on that
  * day's tab ([MapCamera.showOpenDay]). Saves them when they change, so they're there after the app is closed too.
  * A push opens it on its stop instead ([stopId]: that day, the camera on the stop, its card closed so the stop's
- * "new" mark shows), or with the Members sheet open ([showMembers]).
+ * "new" mark shows; or its comments open, [showComments]), or with the Members sheet open ([showMembers]).
  */
 internal class MapOpening(
     private val context: MapContext,
@@ -30,9 +30,11 @@ internal class MapOpening(
     private val hasRoutes: () -> Boolean,
     private val stopId: String? = null,
     private val showMembers: Boolean = false,
+    private val showComments: Boolean = false,
 ) {
     fun start() {
         if (showMembers) context.update { it.copy(sheet = Sheet.Members) }
+        if (showComments && stopId != null) context.update { it.copy(sheet = Sheet.StopComments(stopId)) }
         load()
         rememberView()
     }

@@ -12,6 +12,7 @@ val mapModule = module {
             tripId = params[0],
             stopId = params[1],
             showMembers = params[2],
+            showComments = params[3],
             tripRepository = get(),
             markerRepository = get(),
             placeRepository = get(),
@@ -26,5 +27,5 @@ val mapModule = module {
         )
     }
     viewModel { params -> PhotosViewModel(owner = params.get(), photoRepository = get(), sessionRepository = get()) }
-    viewModel { params -> StopCommentsViewModel(markerId = params.get(), socialRepository = get()) }
+    viewModel { params -> StopCommentsViewModel(markerId = params[0], people = params[1], socialRepository = get(), sessionRepository = get()) }
 }

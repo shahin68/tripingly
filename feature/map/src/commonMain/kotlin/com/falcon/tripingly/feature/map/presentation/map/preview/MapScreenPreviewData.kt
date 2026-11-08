@@ -7,10 +7,13 @@ import com.falcon.tripingly.core.model.place.PlaceSearchResult
 import com.falcon.tripingly.core.model.place.SearchResultType
 import com.falcon.tripingly.core.model.route.TravelMode
 import com.falcon.tripingly.core.model.trip.GeoPoint
+import com.falcon.tripingly.core.model.trip.UserSummary
 import com.falcon.tripingly.core.ui.UiText
 import com.falcon.tripingly.feature.map.generated.resources.Res
 import com.falcon.tripingly.feature.map.generated.resources.map_error_load_trip
 import com.falcon.tripingly.feature.map.generated.resources.map_route_minutes
+import com.falcon.tripingly.feature.map.generated.resources.map_trip_card_more
+import com.falcon.tripingly.feature.map.generated.resources.map_trip_card_only
 import com.falcon.tripingly.feature.map.presentation.component.MapLayersState
 import com.falcon.tripingly.feature.map.presentation.component.MapMarker
 import com.falcon.tripingly.feature.map.presentation.map.BestOrderPreview
@@ -19,6 +22,7 @@ import com.falcon.tripingly.feature.map.presentation.map.DayTab
 import com.falcon.tripingly.feature.map.presentation.map.DayTabsState
 import com.falcon.tripingly.feature.map.presentation.map.EditorMenu
 import com.falcon.tripingly.feature.map.presentation.map.HeaderState
+import com.falcon.tripingly.feature.map.presentation.map.JoinRequestsState
 import com.falcon.tripingly.feature.map.presentation.map.LocationPrompt
 import com.falcon.tripingly.feature.map.presentation.map.MapDialog
 import com.falcon.tripingly.feature.map.presentation.map.MapUiState
@@ -28,6 +32,7 @@ import com.falcon.tripingly.feature.map.presentation.map.PointRouteCardState
 import com.falcon.tripingly.feature.map.presentation.map.RouteSummaryState
 import com.falcon.tripingly.feature.map.presentation.map.SearchState
 import com.falcon.tripingly.feature.map.presentation.map.StopsCardState
+import com.falcon.tripingly.feature.map.presentation.map.TripCardState
 import com.falcon.tripingly.feature.map.presentation.map.ViewerMenu
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.persistentMapOf
@@ -59,11 +64,24 @@ private val previewDays = DayTabsState(
 private val withStops = MapUiState(
     header = HeaderState(
         tripName = "Summer Vacation in Paris",
-        dates = "19 – 23 Oct 2026",
-        stopCount = 6,
+        owner = UserSummary(id = "u1", username = "shahin", displayName = "Shahin"),
+        card = TripCardState(
+            dates = "Oct 19 – 23",
+            likeCount = 12,
+            saveCount = 3,
+            faces = persistentListOf(
+                UserSummary(id = "u1", username = "shahin", displayName = "Shahin"),
+                UserSummary(id = "u2", username = "anna", displayName = "Anna Kovács"),
+                UserSummary(id = "u3", username = "jonas", displayName = "Jonas"),
+            ),
+            memberCount = 4,
+            membersNote = UiText.Resource(Res.string.map_trip_card_more, 1),
+            hasNewJoinRequests = true,
+        ),
         members = MembersEntry(count = 4, requestCount = 1),
         editorMenu = EditorMenu(canDeleteDay = true),
     ),
+    joinRequests = JoinRequestsState(persistentListOf(UserSummary(id = "u2", username = "anna", displayName = "Anna Kovács")), othersCount = 0),
     dayTabs = previewDays,
     plan = StopsCardState(
         stops = previewStops,
@@ -153,7 +171,8 @@ internal class MapHeaderPreviewStates : PreviewParameterProvider<MapHeaderPrevie
         MapHeaderPreview(
             HeaderState(
                 tripName = "A long weekend in Budapest with the whole family",
-                ownerLabel = UiText.Server("by anna"),
+                owner = UserSummary(id = "u2", username = "anna", displayName = "Anna Kovács"),
+                card = TripCardState(dates = "Nov 4 – 9", likeCount = 12400, saveCount = 980, faces = persistentListOf(UserSummary(id = "u2", username = "anna", displayName = "Anna Kovács")), memberCount = 1, membersNote = UiText.Resource(Res.string.map_trip_card_only, "Anna Kovács")),
                 viewerMenu = ViewerMenu(isSavedByMe = true, myJoinRequest = null, ownerUsername = "anna"),
             ),
         ),

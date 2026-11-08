@@ -1,5 +1,6 @@
 package com.falcon.tripingly.feature.map.presentation.map
 
+import com.falcon.tripingly.core.designsystem.component.rememberHaptics
 import com.falcon.tripingly.core.designsystem.component.AppBottomSheet
 import androidx.compose.foundation.gestures.animateTo
 import androidx.compose.runtime.Composable
@@ -34,9 +35,11 @@ fun MapRoute(
     stopId: String? = null,
     /** A push about a request to join: the Members sheet opens. */
     showMembers: Boolean = false,
+    /** A push about [stopId]'s comments: its comments open. */
+    showComments: Boolean = false,
     // Keyed by trip: the view model store is shared across screens, and the class alone would
     // hand every trip the first trip's view model.
-    viewModel: MapViewModel = koinViewModel(key = "map:$tripId") { parametersOf(tripId, stopId, showMembers) }
+    viewModel: MapViewModel = koinViewModel(key = "map:$tripId") { parametersOf(tripId, stopId, showMembers, showComments) }
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val onAction = viewModel::onAction
@@ -52,14 +55,23 @@ fun MapRoute(
 
     val planSheet = rememberPlanSheetState()
     val scope = rememberCoroutineScope()
+    val haptics = rememberHaptics()
     ObserveAsEvents(viewModel.events) { event ->
         when (event) {
             MapEvent.RequestPermission -> locationPermission.request()
             MapEvent.OpenAppSettings -> locationPermission.openSettings()
             MapEvent.NavigateBack -> onNavigateBack()
             is MapEvent.OpenProfile -> onOpenProfile(event.username)
-            MapEvent.OpenPaywall -> onOpenPaywall()
+            // A locked feature (street routes without Pro) is felt as a no before the paywall.
+            MapEvent.OpenPaywall -> {
+                haptics.error()
+                onOpenPaywall()
+            }
             MapEvent.ShowWholePlan -> scope.launch { planSheet.animateTo(PlanSheetValue.Expanded) }
+            MapEvent.StopAdded -> {
+                haptics.success()
+                scope.launch { planSheet.animateTo(PlanSheetValue.Expanded) }
+            }
         }
     }
 
@@ -92,7 +104,7 @@ fun MapRoute(
                 onReport = { photo -> onAction(MapAction.Sheet.ReportPhoto(photo)) },
                 onDismiss = close,
             )
-            is MapSheet.StopComments -> StopCommentsRoute(marker = shown.stop, onOpenProfile = onOpenProfile, onDismiss = close)
+            is MapSheet.StopComments -> StopCommentsRoute(marker = shown.stop, people = shown.people, onOpenProfile = onOpenProfile, onDismiss = close)
             MapSheet.Members -> membersContent(tripId, close)
             is MapSheet.PlaceImage, MapSheet.PhotoCamera -> Unit
         }

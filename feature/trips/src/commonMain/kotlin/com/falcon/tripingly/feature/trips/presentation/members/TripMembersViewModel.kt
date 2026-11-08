@@ -89,8 +89,8 @@ class TripMembersViewModel(
             Action.DismissMessage -> ui.update { it.copy(message = null) }
             is Action.Add -> onAddAction(action)
             is Action.JoinRequests -> when (action) {
-                is Action.JoinRequests.Accept -> answerJoinRequest(action.request.id) { tripRepository.acceptJoinRequest(tripId, it) }
-                is Action.JoinRequests.Decline -> answerJoinRequest(action.request.id) { tripRepository.declineJoinRequest(tripId, it) }
+                is Action.JoinRequests.Accept -> answerJoinRequest(action.request.id, isAccept = true) { tripRepository.acceptJoinRequest(tripId, it) }
+                is Action.JoinRequests.Decline -> answerJoinRequest(action.request.id, isAccept = false) { tripRepository.declineJoinRequest(tripId, it) }
             }
             is Action.Invites -> when (action) {
                 Action.Invites.Create -> createInvite()
@@ -143,12 +143,13 @@ class TripMembersViewModel(
     }
 
     /** Accepting or declining; the request leaves the list once the server agreed (or it was gone already). */
-    private fun answerJoinRequest(requestId: String, answer: suspend (String) -> AppResult<*, DataError.Network>) {
+    private fun answerJoinRequest(requestId: String, isAccept: Boolean, answer: suspend (String) -> AppResult<*, DataError.Network>) {
         if (requestId in ui.value.joinRequests.answeringIds) return
         ui.update { it.copy(joinRequests = it.joinRequests.copy(answeringIds = (it.joinRequests.answeringIds + requestId).toImmutableSet()), message = null) }
         viewModelScope.launch {
             val result = answer(requestId)
             val isGone = result is AppResult.Success || (result is AppResult.Error && result.error.hasCode(TripErrorCodes.NOT_FOUND))
+            if (isAccept && result is AppResult.Success) sendEvent(Event.Accepted)
             ui.update { state ->
                 val requests = state.joinRequests
                 state.copy(
@@ -286,6 +287,9 @@ class TripMembersViewModel(
 
     sealed interface Event {
         data class ShareInvite(val tripName: String, val url: String) : Event
+
+        /** The server took in a request I accepted: a success click. */
+        data object Accepted : Event
     }
 
     sealed interface Action {

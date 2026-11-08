@@ -36,10 +36,18 @@ interface SocialApi {
         @Query("lng") lng: Double?,
     ): AppResult<TripSummaryPageDto, DataError.Network>
 
-    /** Oldest first; comments by people with a block with me are left out. */
+    /** Main comments, most liked first, then newest first; comments by people with a block with me are left out. */
     @GET("markers/{id}/comments")
     suspend fun comments(
         @Path("id") markerId: String,
+        @Query("cursor") cursor: String?,
+        @Query("limit") limit: Int,
+    ): AppResult<CommentPageDto, DataError.Network>
+
+    /** A main comment's replies, oldest first. */
+    @GET("comments/{id}/replies")
+    suspend fun replies(
+        @Path("id") commentId: String,
         @Query("cursor") cursor: String?,
         @Query("limit") limit: Int,
     ): AppResult<CommentPageDto, DataError.Network>

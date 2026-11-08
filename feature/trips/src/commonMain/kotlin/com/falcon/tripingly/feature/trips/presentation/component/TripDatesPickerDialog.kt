@@ -1,5 +1,9 @@
 package com.falcon.tripingly.feature.trips.presentation.component
 
+import kotlinx.coroutines.flow.drop
+import androidx.compose.runtime.snapshotFlow
+import androidx.compose.runtime.LaunchedEffect
+import com.falcon.tripingly.core.designsystem.component.rememberHaptics
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -63,6 +67,9 @@ internal fun TripDatesPickerDialog(
             override fun isSelectableDate(utcTimeMillis: Long): Boolean = utcTimeMillis.toLocalDate() >= today
         },
     )
+    // A tick as each end of the range is picked.
+    val haptics = rememberHaptics()
+    LaunchedEffect(state) { snapshotFlow { state.selectedStartDateMillis to state.selectedEndDateMillis }.drop(1).collect { haptics.tick() } }
 
     Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
         ElevatedCard(

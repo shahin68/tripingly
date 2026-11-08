@@ -35,9 +35,13 @@ class FakeSocialRepository(
         AppResult.Success(Page(emptyList(), nextCursor = null))
 
     override suspend fun comments(markerId: String, cursor: String?): AppResult<Page<Comment>, DataError.Network> =
-        AppResult.Success(Page(comments.filter { it.markerId == markerId }, nextCursor = null))
+        AppResult.Success(Page(comments.filter { it.markerId == markerId && it.parentId == null }.reversed(), nextCursor = null))
 
-    override suspend fun addComment(markerId: String, body: String): AppResult<Comment, DataError.Network> {
+    override suspend fun replies(commentId: String, cursor: String?): AppResult<Page<Comment>, DataError.Network> =
+        AppResult.Success(Page(comments.filter { it.parentId == commentId }, nextCursor = null))
+
+    override suspend fun addComment(markerId: String, body: String, parentId: String?): AppResult<Comment, DataError.Network> {
+        val mainId = parentId?.let { id -> comments.firstOrNull { it.id == id }?.let { it.parentId ?: it.id } }
         val comment = Comment(
             id = "fake-comment-${nextId++}",
             markerId = markerId,
@@ -47,13 +51,14 @@ class FakeSocialRepository(
             likedByMe = false,
             canDelete = true,
             createdAt = Clock.System.now(),
+            parentId = mainId,
         )
         comments += comment
         return AppResult.Success(comment)
     }
 
     override suspend fun deleteComment(comment: Comment): AppResult<Unit, DataError.Network> {
-        comments.removeAll { it.id == comment.id }
+        comments.removeAll { it.id == comment.id || it.parentId == comment.id }
         return AppResult.Success(Unit)
     }
 
@@ -77,7 +82,7 @@ class FakeSocialRepository(
         details: String?,
     ): AppResult<Unit, DataError.Network> = AppResult.Success(Unit)
 
-    override val commentChanges: Flow<CommentChange> = emptyFlow()
+    override fun commentChanges(markerId: String): Flow<CommentChange> = emptyFlow()
 
     override val likeCounts: Flow<LikeCount> = emptyFlow()
 

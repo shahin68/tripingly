@@ -33,6 +33,8 @@ import androidx.compose.material.icons.filled.Explore
 import androidx.compose.material.icons.filled.Luggage
 import androidx.compose.material.icons.filled.NearMe
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material3.Badge
+import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -40,7 +42,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -63,7 +67,8 @@ import kotlinx.coroutines.launch
 
 /** One tab of a [FloatingNavigationBar]. */
 @Immutable
-data class NavBarItem(val label: String, val icon: ImageVector)
+/** One tab; [hasBadge] puts a red dot on its icon (something new waits there). */
+data class NavBarItem(val label: String, val icon: ImageVector, val hasBadge: Boolean = false)
 
 /**
  * The app's bottom bar: a floating rounded glass bar whose selected tab sits in a filled accent pill. The bar
@@ -79,7 +84,19 @@ fun FloatingNavigationBar(
     modifier: Modifier = Modifier,
 ) {
     val scope = rememberCoroutineScope()
+    val haptics = rememberHaptics()
     var isDragging by remember { mutableStateOf(false) }
+    // One tick per tab reached with the bar: a tap at the tap itself (not once its page has loaded), a pill drag at each
+    // tab it passes. Swiping the pages themselves doesn't tick. [feltPage] is the last tab reached, so none ticks twice.
+    var feltPage by remember { mutableStateOf(pagerState.currentPage) }
+    val feel = { page: Int ->
+        if (page != feltPage) {
+            feltPage = page
+            haptics.tick()
+        }
+    }
+    LaunchedEffect(pagerState) { snapshotFlow { pagerState.currentPage }.collect { if (isDragging) feel(it) } }
+    LaunchedEffect(pagerState) { snapshotFlow { pagerState.settledPage }.collect { feltPage = it } }
     val lift by animateFloatAsState(if (isDragging) NavBarDefaults.DragScale else 1f)
     // While a tap jumps over tabs the pill slides on its own; otherwise it follows the pages.
     val jump = remember { Animatable(0f) }
@@ -87,6 +104,7 @@ fun FloatingNavigationBar(
     val pagerPosition = { pagerState.currentPage + pagerState.currentPageOffsetFraction }
     val position = { if (isJumping) jump.value else pagerPosition() }
     val select: (Int) -> Unit = { index ->
+        feel(index)
         scope.launch {
             if (abs(index - pagerState.currentPage) <= 1) {
                 pagerState.animateScrollToPage(index)
@@ -182,7 +200,9 @@ private fun NavBarTab(item: NavBarItem, selected: Boolean, onClick: () -> Unit, 
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraSmall, Alignment.CenterVertically),
     ) {
-        Icon(item.icon, contentDescription = null, tint = color, modifier = Modifier.size(NavBarDefaults.IconSize))
+        BadgedBox(badge = { if (item.hasBadge) Badge() }) {
+            Icon(item.icon, contentDescription = null, tint = color, modifier = Modifier.size(NavBarDefaults.IconSize))
+        }
         Text(
             text = item.label,
             color = color,
@@ -207,7 +227,7 @@ private val PreviewTabs = listOf(
     NavBarItem("Trips", Icons.Default.Luggage),
     NavBarItem("Explore", Icons.Default.Explore),
     NavBarItem("Nearby", Icons.Default.NearMe),
-    NavBarItem("Profile", Icons.Default.Person),
+    NavBarItem("Profile", Icons.Default.Person, hasBadge = true),
 )
 
 @Composable

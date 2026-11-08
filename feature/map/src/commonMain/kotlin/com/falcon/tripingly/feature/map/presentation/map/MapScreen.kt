@@ -1,14 +1,9 @@
 package com.falcon.tripingly.feature.map.presentation.map
 
+import com.falcon.tripingly.core.designsystem.component.rememberHaptics
+import androidx.compose.animation.core.MutableTransitionState
+import androidx.compose.animation.core.rememberTransition
 import androidx.compose.foundation.background
-import com.falcon.tripingly.feature.map.presentation.map.ui.TripTitleCard
-import androidx.compose.ui.layout.positionInRoot
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.animation.core.LinearEasing
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.foundation.gestures.AnchoredDraggableState
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
@@ -35,16 +30,21 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.backhandler.BackHandler
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.layout.boundsInRoot
+import androidx.compose.ui.layout.LayoutCoordinates
+import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.unit.toSize
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.tooling.preview.PreviewParameter
@@ -53,6 +53,7 @@ import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import com.falcon.tripingly.core.designsystem.component.ErrorScreen
 import com.falcon.tripingly.core.designsystem.component.GlassIconButton
+import com.falcon.tripingly.core.designsystem.component.LocalScreenOnTop
 import com.falcon.tripingly.core.designsystem.component.ShowMessage
 import com.falcon.tripingly.core.designsystem.component.SkeletonBox
 import com.falcon.tripingly.core.designsystem.component.safeSides
@@ -61,6 +62,7 @@ import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
 import com.falcon.tripingly.core.designsystem.theme.spacing
 import com.falcon.tripingly.core.model.place.GeoBounds
 import com.falcon.tripingly.core.ui.UiText
+import com.falcon.tripingly.core.ui.photos.rememberPhotoPicker
 import com.falcon.tripingly.feature.map.generated.resources.Res
 import com.falcon.tripingly.feature.map.generated.resources.map_back
 import com.falcon.tripingly.feature.map.generated.resources.map_retry
@@ -71,6 +73,7 @@ import com.falcon.tripingly.feature.map.presentation.component.fittedCamera
 import com.falcon.tripingly.feature.map.presentation.component.stopPinRadius
 import com.falcon.tripingly.feature.map.presentation.map.preview.MapScreenPreviewStates
 import com.falcon.tripingly.feature.map.presentation.map.ui.BottomCards
+import com.falcon.tripingly.feature.map.presentation.map.ui.JoinRequestsPill
 import com.falcon.tripingly.feature.map.presentation.map.ui.MapHeader
 import com.falcon.tripingly.feature.map.presentation.map.ui.PinCard
 import com.falcon.tripingly.feature.map.presentation.map.ui.PlaceCard
@@ -78,9 +81,11 @@ import com.falcon.tripingly.feature.map.presentation.map.ui.PlanSheetPeek
 import com.falcon.tripingly.feature.map.presentation.map.ui.PlanSheetValue
 import com.falcon.tripingly.feature.map.presentation.map.ui.SearchResults
 import com.falcon.tripingly.feature.map.presentation.map.ui.StopCard
+import com.falcon.tripingly.feature.map.presentation.map.ui.TripCard
+import com.falcon.tripingly.feature.map.presentation.map.ui.TripCardScrim
+import com.falcon.tripingly.feature.map.presentation.map.ui.animateTripCard
 import com.falcon.tripingly.feature.map.presentation.map.ui.pulledUp
 import com.falcon.tripingly.feature.map.presentation.map.ui.rememberPlanSheetState
-import com.falcon.tripingly.core.ui.photos.rememberPhotoPicker
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.map
@@ -100,6 +105,7 @@ internal fun MapScreen(
     planSheet: AnchoredDraggableState<PlanSheetValue> = rememberPlanSheetState(),
 ) {
     state.loadError?.let { error -> return MapLoadError(error.asString(), onAction) }
+    val haptics = rememberHaptics()
     val density = LocalDensity.current
     // Layout only: what the header, the day tabs and the credits cover of the map, handed to it as its padding. Each is
     // measured when its size changes; the map waits for all three, so it opens already fitted to what's left.
@@ -112,24 +118,26 @@ internal fun MapScreen(
     var stopCardBounds by remember { mutableStateOf(Rect.Zero) }
     val isPlaceCardOpen by rememberUpdatedState(state.placeCard != null)
     val isStopCardOpen by rememberUpdatedState(state.stopCard != null)
-    // The trip's whole name, open under the header's buttons; any touch closes it, a touch on the title too.
-    var isTitleOpen by rememberSaveable { mutableStateOf(false) }
-    var wasTitleOpen by remember { mutableStateOf(false) }
+    // The trip card that grows out of the title pill, and where that pill is on the screen.
+    // Where the pill is inside the header's padding, which is where the card starts too.
+    var isTripCardOpen by rememberSaveable { mutableStateOf(false) }
     var titleBounds by remember { mutableStateOf(Rect.Zero) }
-    var titleTarget by remember { mutableStateOf(Rect.Zero) }
-    var rootOrigin by remember { mutableStateOf(Offset.Zero) }
+    val tripCardState = remember { MutableTransitionState(isTripCardOpen) }
+    tripCardState.targetState = isTripCardOpen
+    val tripCard = rememberTransition(tripCardState, label = "trip card")
+    val tripCardProgress by tripCard.animateTripCard()
+    val isTripCardShown = tripCardState.currentState || tripCardState.targetState
+    @OptIn(ExperimentalComposeUiApi::class)
+    // Not while another screen covers the map: back closes that screen.
+    BackHandler(enabled = isTripCardOpen && LocalScreenOnTop.current) { isTripCardOpen = false }
 
     BoxWithConstraints(
         modifier = Modifier
             .fillMaxSize()
-            .onGloballyPositioned { rootOrigin = it.positionInRoot() }
-            // Any touch outside the open card closes it, and still reaches the map and the controls; any touch closes
-            // the open trip name.
+            // Any touch outside the open card closes it, and still reaches the map and the controls.
             .pointerInput(Unit) {
                 awaitEachGesture {
                     val down = awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
-                    wasTitleOpen = isTitleOpen
-                    isTitleOpen = false
                     val isOnCard = (isPlaceCardOpen && placeCardBounds.contains(down.position)) ||
                         (isStopCardOpen && stopCardBounds.contains(down.position))
                     if (!isOnCard) onAction(MapAction.MapView.ScreenTouch)
@@ -193,10 +201,6 @@ internal fun MapScreen(
             )
         }
 
-        val isSearching = state.search != null
-        LaunchedEffect(isSearching) { if (isSearching) isTitleOpen = false }
-        val titleProgress by animateFloatAsState(if (isTitleOpen) 1f else 0f, tween(TITLE_MOTION_MILLIS, easing = LinearEasing))
-        val titleGap = with(density) { MaterialTheme.spacing.small.toPx() }
         Column(
             modifier = Modifier
                 .align(Alignment.TopEnd)
@@ -209,29 +213,26 @@ internal fun MapScreen(
                 showDayActions = plan == null,
                 onAction = onAction,
                 modifier = Modifier.onSizeChanged { headerHeight = with(density) { it.height.toDp() } },
-                isTitleHidden = titleProgress > 0f,
-                // The touch that taps the open title already closed it.
-                onTitleClick = { if (!wasTitleOpen) isTitleOpen = true },
-                onTitlePlaced = { title, row ->
-                    titleBounds = title
-                    titleTarget = Rect(row.left, row.bottom + titleGap, row.right, row.bottom + titleGap)
+                isTitleHidden = isTripCardShown,
+                onTitleClick = {
+                    haptics.tick()
+                    isTripCardOpen = true
                 },
+                onTitlePlaced = { titleBounds = it },
+                cardProgress = { tripCardProgress },
             )
+            state.joinRequests?.let { requests ->
+                JoinRequestsPill(
+                    requests = requests,
+                    onClick = { onAction(MapAction.Header.OpenJoinRequests) },
+                    modifier = Modifier.align(Alignment.Start).padding(horizontal = MaterialTheme.spacing.medium),
+                )
+            }
             state.search?.results?.takeIf { it.isNotEmpty() }?.let { results ->
                 SearchResults(results = results, onAction = onAction, modifier = Modifier.padding(horizontal = MaterialTheme.spacing.medium))
             }
         }
 
-        // The whole trip name: morphs out of the title pill into a card just below the header, over everything else.
-        if (titleProgress > 0f) {
-            TripTitleCard(
-                header = state.header,
-                from = titleBounds.translate(-rootOrigin),
-                to = titleTarget.translate(-rootOrigin),
-                opening = isTitleOpen,
-                progress = { titleProgress },
-            )
-        }
 
         // Retry sends every stop change that failed for a connection problem, earlier ones too.
         val message = state.message
@@ -264,7 +265,7 @@ internal fun MapScreen(
                 card = state.placeCard,
                 key = { it.place.id to it.place.location },
                 pinClearance = SelectedPinSize / 2 + MaterialTheme.spacing.small,
-                modifier = Modifier.onGloballyPositioned { placeCardBounds = it.boundsInRoot() },
+                modifier = Modifier.onGloballyPositioned { placeCardBounds = it.unclippedBounds() },
             ) { card ->
                 PlaceCard(
                     place = card.place,
@@ -283,7 +284,7 @@ internal fun MapScreen(
                 card = state.stopCard,
                 key = { it.stop.id },
                 pinClearance = stopPinRadius(hasCover = state.stopCard?.stop?.coverPhotoId != null) + MaterialTheme.spacing.small,
-                modifier = Modifier.onGloballyPositioned { stopCardBounds = it.boundsInRoot() },
+                modifier = Modifier.onGloballyPositioned { stopCardBounds = it.unclippedBounds() },
             ) { card ->
                 StopCard(
                     marker = card.stop,
@@ -299,6 +300,31 @@ internal fun MapScreen(
                     onRemoveMyContent = { onAction(MapAction.StopCard.RemoveMyContent) }.takeIf { card.canRemoveMyContent },
                 )
             }
+        }
+
+        // Over everything: the dimmed map and the trip card grown out of the title, in the header's place.
+        if (isTripCardShown) {
+            TripCardScrim(progress = { tripCardProgress }, onClose = { isTripCardOpen = false })
+            TripCard(
+                header = state.header,
+                transition = tripCard,
+                progress = { tripCardProgress },
+                pill = titleBounds,
+                onClose = { isTripCardOpen = false },
+                onOwnerClick = {
+                    isTripCardOpen = false
+                    onAction(MapAction.Header.OpenOwnerProfile)
+                },
+                onMembersClick = {
+                    isTripCardOpen = false
+                    onAction(MapAction.Header.OpenJoinRequests)
+                },
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .statusBarsPadding()
+                    .then(panel)
+                    .padding(horizontal = MaterialTheme.spacing.medium, vertical = MaterialTheme.spacing.small),
+            )
         }
     }
 }
@@ -346,5 +372,8 @@ private fun MapScreenLoadErrorPreview() {
     }
 }
 
-/** How long the trip name card takes to morph out of the title pill or back. */
-private const val TITLE_MOTION_MILLIS = 320
+/**
+ * Where a pin card really is. Not boundsInRoot: that cuts off what lies outside its parents, and a card is lifted
+ * above the pin, out of its own layout, so touches on its top half counted as touches on the map and closed it.
+ */
+private fun LayoutCoordinates.unclippedBounds() = Rect(positionInRoot(), size.toSize())

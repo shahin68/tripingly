@@ -48,6 +48,7 @@ fun LikeButton(
     indication: Indication? = ripple(bounded = false),
 ) {
     var burst by remember { mutableIntStateOf(0) }
+    val haptics = rememberHaptics()
     Row(
         modifier = modifier
             .toggleable(
@@ -58,6 +59,7 @@ fun LikeButton(
                 role = Role.Checkbox,
                 onValueChange = { like ->
                     if (like) burst++
+                    haptics.toggle(like)
                     onToggle()
                 },
             )

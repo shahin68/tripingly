@@ -1,5 +1,7 @@
 package com.falcon.tripingly.feature.map.presentation.map.ui
 
+import androidx.compose.runtime.LaunchedEffect
+import com.falcon.tripingly.core.designsystem.component.rememberHaptics
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.rememberScrollState
@@ -138,10 +140,15 @@ private fun BestOrderDialog(order: BestOrderPreview, onAction: (MapAction) -> Un
         savedMinutes != null -> stringResource(Res.string.map_best_order_saved, savedMinutes)
         else -> null
     }
+    val haptics = rememberHaptics()
     AppDialog(
         title = stringResource(Res.string.map_best_order_title),
         confirmLabel = stringResource(Res.string.map_best_order_apply),
-        onConfirm = { onAction(MapAction.Dialog.ApplyBestOrder) },
+        // Saved like any reorder: shown at once, so it worked.
+        onConfirm = {
+            haptics.success()
+            onAction(MapAction.Dialog.ApplyBestOrder)
+        },
         onDismiss = { onAction(MapAction.Dialog.DismissBestOrder) },
     ) {
         Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraSmall)) {
@@ -156,6 +163,9 @@ private fun BestOrderDialog(order: BestOrderPreview, onAction: (MapAction) -> Un
 /** Names a dropped pin; [name] is the view model's field. Done on the keyboard adds the stop. */
 @Composable
 private fun NamePinDialog(name: TextFieldState, onAction: (MapAction) -> Unit) {
+    // The long press that dropped the pin is felt as it opens.
+    val haptics = rememberHaptics()
+    LaunchedEffect(Unit) { haptics.longPress() }
     val canAdd = name.text.isNotBlank()
     AppDialog(
         title = stringResource(Res.string.map_pin_name_title),

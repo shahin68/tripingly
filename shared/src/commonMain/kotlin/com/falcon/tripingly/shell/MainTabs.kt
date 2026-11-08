@@ -12,15 +12,20 @@ import androidx.compose.material.icons.outlined.NearMe
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.falcon.tripingly.core.data.push.NotificationCenterRepository
 import com.falcon.tripingly.core.designsystem.component.AnimatedTopBar
 import com.falcon.tripingly.core.designsystem.component.FloatingNavigationBar
 import com.falcon.tripingly.core.designsystem.component.NavBarItem
 import com.falcon.tripingly.core.designsystem.component.SettingsAction
 import com.falcon.tripingly.core.designsystem.component.safeSides
 import com.falcon.tripingly.core.model.photo.PhotoOwner
+import com.falcon.tripingly.deeplink.DeepLinks
 import com.falcon.tripingly.feature.map.presentation.photos.PhotoViewerRoute
 import com.falcon.tripingly.feature.social.presentation.explore.ExplorePeriodAction
 import com.falcon.tripingly.feature.social.presentation.explore.ExploreRoute
@@ -38,6 +43,7 @@ import com.falcon.tripingly.shared.generated.resources.tab_trips
 import com.falcon.tripingly.shared.generated.resources.tab_trips_title
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
+import org.koin.compose.koinInject
 
 /** The four tabs, in the bottom bar's order, with the title each shows in the top bar. */
 internal enum class MainTab(val label: StringResource, val icon: ImageVector, val title: StringResource = label) {
@@ -52,19 +58,27 @@ internal enum class MainTab(val label: StringResource, val icon: ImageVector, va
  * like pages or picks in the bottom bar (tap, or drag its selection; a tap on a far tab jumps there without passing the tabs in between). The top bar animates to the page shown: its
  * title, the page's own action (Explore's period) and its search field (Trips, Profile). The Add Trip button
  * shrinks away off the Trips tab. Every tab keeps its scroll position and view models while another is shown
- * (they live as long as this screen); content scrolls behind both bars.
+ * (they live as long as this screen); content scrolls behind both bars. Profile has a red dot while something new
+ * waits in the notification center.
  */
 @Composable
 internal fun MainTabs(
     onOpenTrip: (tripId: String) -> Unit,
     onOpenProfile: (username: String) -> Unit,
     onOpenSettings: () -> Unit,
+    onOpenNotifications: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val tabs = MainTab.entries
     val pagerState = rememberPagerState { tabs.size }
     val tabStates = rememberSaveableStateHolder()
-    val items = tabs.map { NavBarItem(stringResource(it.label), it.icon) }
+    val notificationCenter = koinInject<NotificationCenterRepository>()
+    val hasUnseenNotifications by notificationCenter.hasUnseen.collectAsStateWithLifecycle()
+    val deepLinks = koinInject<DeepLinks>()
+    // A link about several new followers: the Profile tab shows them.
+    val showFollowers by deepLinks.followersRequested.collectAsStateWithLifecycle()
+    LaunchedEffect(showFollowers) { if (showFollowers) pagerState.scrollToPage(MainTab.Profile.ordinal) }
+    val items = tabs.map { NavBarItem(stringResource(it.label), it.icon, hasBadge = it == MainTab.Profile && hasUnseenNotifications) }
     val shown = tabs[pagerState.currentPage]
     Scaffold(
         modifier = modifier.fillMaxSize(),
@@ -108,6 +122,10 @@ internal fun MainTabs(
                         onOpenTrip = onOpenTrip,
                         onOpenProfile = onOpenProfile,
                         barsPadding = barsPadding,
+                        onOpenNotifications = onOpenNotifications,
+                        hasUnseenNotifications = hasUnseenNotifications,
+                        showFollowers = showFollowers,
+                        onFollowersShown = deepLinks::followersShown,
                     )
                 }
             }

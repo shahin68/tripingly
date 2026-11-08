@@ -50,7 +50,7 @@ class RealtimeEventTest {
     fun commentAndLikeEvents() {
         val comment = """
             {"id":"c1","markerId":"m1","body":"Lovely","author":{"id":"u2","username":"anna","displayName":"Anna"},
-             "likeCount":0,"likedByMe":false,"canDelete":false,"createdAt":"2026-10-11T10:00:00Z"}
+             "likeCount":0,"likedByMe":false,"canDelete":false,"replyCount":0,"mentions":[],"createdAt":"2026-10-11T10:00:00Z"}
         """.trimIndent()
         val added = assertIs<RealtimeEvent.CommentAdded>(parse("comment.created", envelope("comment.created", """{"comment":$comment}""")))
         assertEquals("Lovely", added.comment.body)
@@ -123,14 +123,49 @@ class RealtimeEventTest {
     }
 
     @Test
-    fun notificationsAboutAStop_markIt() {
+    fun notifications_carryTheirStopAndCenterEntry() {
         assertEquals(
-            RealtimeEvent.NewActivity("t1", "m1"),
-            parse("notification.created", envelope("notification.created", """{"id":"n1","type":"comment_on_marker","markerId":"m1"}""")),
+            RealtimeEvent.NotificationCreated("t1", "m1"),
+            parse("notification.created", envelope("notification.created", """{"id":"n1","type":"photo_liked","markerId":"m1"}""")),
         )
-        // About a whole trip or a person: no mark.
-        assertNull(parse("notification.created", envelope("notification.created", """{"id":"n2","type":"added_to_trip","markerId":null}""")))
-        assertNull(parse("notification.created", envelope("notification.created", """{"id":"n3","type":"followed"}""", tripId = null)))
+        assertEquals(
+            RealtimeEvent.NotificationCreated("t1", "m1", aboutComments = true),
+            parse(
+                "notification.created",
+                envelope("notification.created", """{"id":"n4","type":"comment_on_marker","markerId":"m1","aboutComments":true}"""),
+            ),
+        )
+        // About a person: no trip, no stop; the entry for the center, whatever its type.
+        val followed = parse(
+            "notification.created",
+            envelope(
+                "notification.created",
+                """{"id":"n3","type":"some_new_kind","actor":null,"title":"Anna followed you","body":"Follow back.","deepLink":"tripinly://users/anna","read":false,"createdAt":"2026-11-07T10:00:00.000Z"}""",
+                tripId = null,
+            ),
+        ) as RealtimeEvent.NotificationCreated
+        assertNull(followed.tripId)
+        assertNull(followed.markerId)
+        assertEquals("Anna followed you", followed.entry?.title)
+    }
+
+    @Test
+    fun notificationsChanged_carryWhatChangedAndTheUnseenCount() {
+        fun changed(data: String) = parse("notifications.changed", envelope("notifications.changed", data, tripId = null, actorId = null))
+        assertEquals(
+            RealtimeEvent.NotificationsChanged(RealtimeEvent.NotificationsChanged.Change.Read, listOf("n1"), listOf("t1"), 2),
+            changed("""{"change":"read","ids":["n1"],"tripIds":["t1"],"unseenCount":2}"""),
+        )
+        // Cleared and seen carry no ids.
+        assertEquals(
+            RealtimeEvent.NotificationsChanged(RealtimeEvent.NotificationsChanged.Change.Cleared, emptyList(), emptyList(), 0),
+            changed("""{"change":"cleared"}"""),
+        )
+        assertEquals(RealtimeEvent.NotificationsChanged.Change.Seen, assertIs<RealtimeEvent.NotificationsChanged>(changed("""{"change":"seen"}""")).change)
+        assertEquals(RealtimeEvent.NotificationsChanged.Change.Removed, assertIs<RealtimeEvent.NotificationsChanged>(changed("""{"change":"removed","ids":["n2"]}""")).change)
+        // A change this app doesn't know yet, or none at all, is skipped.
+        assertNull(changed("""{"change":"archived","ids":["n1"]}"""))
+        assertNull(changed("{}"))
     }
 
     @Test

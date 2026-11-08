@@ -55,6 +55,12 @@ data class Comment(
     /** The author, or the trip's owner. */
     val canDelete: Boolean,
     val createdAt: Instant,
+    /** The main comment this replies to; null for a main comment. */
+    val parentId: String? = null,
+    /** Replies I can see; 0 on replies. */
+    val replyCount: Int = 0,
+    /** Usernames of the trip people the body @mentions; other handles are plain text. */
+    val mentions: List<String> = emptyList(),
 )
 
 /** [PlaceImage]: a place's Wikimedia Commons image. Places aren't liked but marked hot ([HotState]). */

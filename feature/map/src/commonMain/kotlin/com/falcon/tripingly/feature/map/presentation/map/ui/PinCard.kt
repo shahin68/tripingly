@@ -13,6 +13,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.tooling.preview.Preview
@@ -58,7 +59,8 @@ internal fun <T : Any> PinCard(
                 }
                 .then(modifier),
         ) { shown ->
-            if (shown != null) content(shown)
+            // The whole card takes touches, its empty parts too: the map under it must not pan or get a long press.
+            if (shown != null) Box(Modifier.pointerInput(Unit) {}) { content(shown) }
         }
     }
 }

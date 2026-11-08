@@ -4,6 +4,7 @@ import com.falcon.tripingly.core.network.NetworkJson
 import com.falcon.tripingly.core.network.model.CommentDto
 import com.falcon.tripingly.core.network.model.MarkerDto
 import com.falcon.tripingly.core.network.model.PhotoDto
+import com.falcon.tripingly.core.network.push.NotificationEntryDto
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.JsonElement
@@ -92,8 +93,31 @@ sealed interface RealtimeEvent {
     /** `follows.changed`, to both people: [followerId] started ([following]) or stopped following [followeeId]. */
     data class FollowsChanged(val followerId: String, val followeeId: String, val following: Boolean) : RealtimeEvent
 
-    /** `notification.created` about a stop: it gets a "new" mark on my map of [tripId]. */
-    data class NewActivity(val tripId: String, val markerId: String) : RealtimeEvent
+    /**
+     * `notification.created`, new or back on top: [entry] for the notification center (null when it can't be
+     * read). About a stop ([markerId] in [tripId]) it gets a "new" mark on my map; [aboutComments]: news about its
+     * comments.
+     */
+    data class NotificationCreated(
+        val tripId: String?,
+        val markerId: String?,
+        val aboutComments: Boolean = false,
+        val entry: NotificationEntryDto? = null,
+    ) : RealtimeEvent
+
+    /**
+     * `notifications.changed`: my notifications [ids] were read, removed, all removed ([Change.Cleared], no ids) or the
+     * center was opened ([Change.Seen]), here or on another device. Stop marks of [tripIds] may have gone;
+     * [unseenCount] is what waits unseen now.
+     */
+    data class NotificationsChanged(
+        val change: Change,
+        val ids: List<String>,
+        val tripIds: List<String>,
+        val unseenCount: Int,
+    ) : RealtimeEvent {
+        enum class Change { Read, Removed, Cleared, Seen }
+    }
 }
 
 /** What every event carries on the wire. */
@@ -135,7 +159,15 @@ private data class PlaceHotData(val placeId: String, val hotCount: Int)
 private data class TripIdData(val tripId: String)
 
 @Serializable
-private data class NotificationData(val markerId: String? = null)
+private data class NotificationData(val markerId: String? = null, val aboutComments: Boolean = false)
+
+@Serializable
+private data class NotificationsChangedData(
+    val change: String,
+    val ids: List<String> = emptyList(),
+    val tripIds: List<String> = emptyList(),
+    val unseenCount: Int = 0,
+)
 
 @Serializable
 private data class FollowData(val followerId: String, val followeeId: String, val following: Boolean)
@@ -195,8 +227,18 @@ internal fun parseRealtimeEvent(name: String, payload: JsonElement): RealtimeEve
             inTrip { RealtimeEvent.TripChanged(it, actorId) }
         "trip.deleted" -> inTrip { RealtimeEvent.TripDeleted(it, actorId) }
         "trips.changed" -> RealtimeEvent.MyTripsChanged(NetworkJson.decodeFromJsonElement<TripIdData>(data).tripId)
-        "notification.created" -> NetworkJson.decodeFromJsonElement<NotificationData>(data).markerId?.let { markerId ->
-            inTrip { RealtimeEvent.NewActivity(it, markerId) }
+        "notification.created" -> NetworkJson.decodeFromJsonElement<NotificationData>(data).let { notification ->
+            val entry = try {
+                NetworkJson.decodeFromJsonElement<NotificationEntryDto>(data)
+            } catch (_: SerializationException) {
+                null
+            }
+            RealtimeEvent.NotificationCreated(tripId, notification.markerId, notification.aboutComments, entry)
+        }
+        "notifications.changed" -> NetworkJson.decodeFromJsonElement<NotificationsChangedData>(data).let { changed ->
+            RealtimeEvent.NotificationsChanged.Change.entries.firstOrNull { it.name.equals(changed.change, ignoreCase = true) }?.let {
+                RealtimeEvent.NotificationsChanged(it, changed.ids, changed.tripIds, changed.unseenCount)
+            }
         }
         "follows.changed" -> NetworkJson.decodeFromJsonElement<FollowData>(data).let {
             RealtimeEvent.FollowsChanged(it.followerId, it.followeeId, it.following)

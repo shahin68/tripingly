@@ -5,14 +5,9 @@ import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotDisplayed
 import androidx.compose.ui.test.onAllNodesWithContentDescription
-import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
-import androidx.compose.ui.test.onRoot
-import androidx.compose.ui.test.hasText
-import androidx.compose.ui.test.hasClickAction
-import androidx.compose.ui.test.onFirst
-import androidx.compose.ui.test.click
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.runComposeUiTest
@@ -69,6 +64,7 @@ class MapFlowTest {
         tripId = trip.trip.id,
         stopId = null,
         showMembers = false,
+        showComments = false,
         tripRepository = backend,
         markerRepository = backend,
         placeRepository = FakePlaceRepository(),
@@ -220,25 +216,18 @@ class MapFlowTest {
     }
 
     @Test
-    fun `tapping the title opens the whole name and another touch closes it`() = runComposeUiTest {
+    fun `tapping the title opens the trip card with its details, and Close shrinks it back`() = runComposeUiTest {
         setContent { TripinglyTheme { MapRoute(trip.trip.id, onNavigateBack = {}, onOpenProfile = {}, onOpenPaywall = {}, membersContent = { _, _ -> }, viewModel = viewModel()) } }
-        onAllNodesWithText("Vienna weekend").assertCountEquals(1)
 
         onNodeWithText("Vienna weekend").performClick()
         waitForIdle()
-        onAllNodesWithText("Vienna weekend").assertCountEquals(2)
 
-        onRoot().performTouchInput { click(center) }
-        mainClock.advanceTimeBy(1_000)
-        onAllNodesWithText("Vienna weekend").assertCountEquals(1)
+        onNodeWithText("Dates").assertIsDisplayed()
+        onNodeWithText("Seen by").assertIsDisplayed()
+        onNodeWithText("Members").assertIsDisplayed()
 
-        // A tap on the title opens it again, and a tap on it while open closes it.
-        onNodeWithText("Vienna weekend").performClick()
+        onNodeWithContentDescription("Close").performClick()
         waitForIdle()
-        onAllNodesWithText("Vienna weekend").assertCountEquals(2)
-        onAllNodes(hasText("Vienna weekend") and hasClickAction()).onFirst().performClick()
-        mainClock.advanceTimeBy(1_000)
-        onAllNodesWithText("Vienna weekend").assertCountEquals(1)
+        onNodeWithText("Dates").assertDoesNotExist()
     }
 }
-

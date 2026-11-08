@@ -32,6 +32,7 @@ import com.falcon.tripingly.feature.map.presentation.map.state.MapContext
 import com.falcon.tripingly.feature.map.presentation.map.state.MapEdits
 import com.falcon.tripingly.feature.map.presentation.map.state.MapLocation
 import com.falcon.tripingly.feature.map.presentation.map.state.MapModel
+import com.falcon.tripingly.feature.map.presentation.map.state.MapJoinRequests
 import com.falcon.tripingly.feature.map.presentation.map.state.MapNewActivity
 import com.falcon.tripingly.feature.map.presentation.map.state.MapOpening
 import com.falcon.tripingly.feature.map.presentation.map.state.MapPins
@@ -63,6 +64,8 @@ class MapViewModel(
     stopId: String?,
     /** A push about a request to join opened the trip: the Members sheet shows. */
     showMembers: Boolean,
+    /** A push about the stop's comments opened the trip: they show. */
+    showComments: Boolean,
     tripRepository: TripRepository,
     markerRepository: MarkerRepository,
     placeRepository: PlaceRepository,
@@ -94,7 +97,7 @@ class MapViewModel(
     val cameraCommands: Flow<CameraCommand> = camera.commands
 
     private val selection = MapSelection(context, camera, placeRepository)
-    private val edits = MapEdits(context, selection, tripRepository, markerRepository) { sendEvent(MapEvent.ShowWholePlan) }
+    private val edits = MapEdits(context, selection, tripRepository, markerRepository) { sendEvent(MapEvent.StopAdded) }
     private val pins = MapPins(context, placeRepository, appConfigRepository)
     private val search = MapSearch(context, camera, selection, placeRepository)
     private val routes = MapRouting(
@@ -104,8 +107,9 @@ class MapViewModel(
     )
     private val location = MapLocation(context, camera, getCurrentLocationUseCase, ::sendEvent)
     private val sharing = MapSharing(context, tripRepository, socialRepository)
-    private val opening = MapOpening(context, camera, tripRepository, mapViews, ::hasRoutes, stopId, showMembers)
-    private val newActivity = MapNewActivity(context, newActivityRepository, pushedStopId = stopId)
+    private val opening = MapOpening(context, camera, tripRepository, mapViews, ::hasRoutes, stopId, showMembers, showComments)
+    private val joinRequests = MapJoinRequests(context, tripRepository)
+    private val newActivity = MapNewActivity(context, newActivityRepository, pushedStopId = stopId, pushedAboutComments = showComments)
 
     /** The map's layers and what they were built from, kept until one of those changes. */
     private var layers: Pair<List<Any?>, MapLayersState>? = null
@@ -116,6 +120,7 @@ class MapViewModel(
     init {
         opening.start()
         newActivity.start()
+        joinRequests.start()
     }
 
     fun onAction(action: MapAction) {
@@ -159,6 +164,10 @@ class MapViewModel(
             is MapAction.Header.RequestToJoin -> sharing.requestToJoin()
             is MapAction.Header.CancelJoinRequest -> sharing.cancelJoinRequest()
             is MapAction.Header.OpenMembers -> openSheet(Sheet.Members)
+            is MapAction.Header.OpenJoinRequests -> {
+                joinRequests.dismiss()
+                openSheet(Sheet.Members)
+            }
             is MapAction.Header.OpenOwnerProfile -> trip.value?.trip?.owner?.let { sendEvent(MapEvent.OpenProfile(it.username)) }
             is MapAction.Header.ReportTrip -> sharing.report(ReportTarget.Trip, context.tripId)
         }
@@ -266,7 +275,7 @@ class MapViewModel(
         val config = appConfigRepository.config.value
         val mapper = MapStateMapper(details, model, config, myUserId)
         // Most changes (a search keystroke, a message, a sheet) don't touch the map: its ~150 pins aren't built again.
-        val inputs = listOf(details, model.activeDayIndex, model.route, model.pins, model.selection, model.location.permission, model.newStopIds, model.arePlacesHidden, config)
+        val inputs = listOf(details, model.activeDayIndex, model.route, model.pins, model.selection, model.location.permission, model.newStopIds, model.newCommentStopIds, model.arePlacesHidden, config)
         val layers = layers?.takeIf { it.first == inputs }?.second ?: mapper.layers().also { layers = inputs to it }
         return mapper.map(layers)
     }

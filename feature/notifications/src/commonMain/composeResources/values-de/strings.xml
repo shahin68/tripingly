@@ -1,0 +1,14 @@
+<resources>
+    <string name="notifications_title">Benachrichtigungen</string>
+    <string name="notifications_empty">Noch nichts da. Likes, Kommentare und Einladungen erscheinen hier.</string>
+    <string name="notifications_error_load">Deine Benachrichtigungen konnten nicht geladen werden.</string>
+    <string name="notifications_retry">Erneut versuchen</string>
+    <string name="notifications_unread">Ungelesen</string>
+    <string name="notifications_clear_all">Alle löschen</string>
+    <string name="notifications_clear_title">Alle Benachrichtigungen löschen?</string>
+    <string name="notifications_clear_message">Sie verschwinden auf allen deinen Geräten. Die Kommentare, Likes und Follows bleiben.</string>
+    <string name="notifications_clear_confirm">Löschen</string>
+    <string name="notifications_delete">Löschen</string>
+    <string name="notifications_error_remove">Entfernen ist fehlgeschlagen.</string>
+    <string name="notifications_error_clear">Löschen ist fehlgeschlagen.</string>
+</resources>

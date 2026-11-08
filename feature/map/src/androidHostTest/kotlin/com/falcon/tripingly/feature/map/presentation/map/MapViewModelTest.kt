@@ -14,6 +14,7 @@ import com.falcon.tripingly.core.data.photos.FakePhotoRepository
 import com.falcon.tripingly.core.data.places.FakePlaceRepository
 import com.falcon.tripingly.core.data.places.PlaceRepository
 import com.falcon.tripingly.core.data.push.FakeNewActivityRepository
+import com.falcon.tripingly.core.data.push.StopNews
 import com.falcon.tripingly.core.data.routing.FakeRouteRepository
 import com.falcon.tripingly.core.data.routing.RouteErrorCodes
 import com.falcon.tripingly.core.data.routing.RouteRepository
@@ -52,6 +53,7 @@ import com.falcon.tripingly.core.model.social.ReportReason
 import com.falcon.tripingly.core.model.social.ReportTarget
 import com.falcon.tripingly.core.model.trip.Destination
 import com.falcon.tripingly.core.model.trip.GeoPoint
+import com.falcon.tripingly.core.model.trip.JoinRequest
 import com.falcon.tripingly.core.model.trip.JoinRequestStatus
 import com.falcon.tripingly.core.model.trip.NewMarker
 import com.falcon.tripingly.core.model.trip.NewTrip
@@ -59,17 +61,18 @@ import com.falcon.tripingly.core.model.trip.TripDay
 import com.falcon.tripingly.core.model.trip.TripDetails
 import com.falcon.tripingly.core.model.trip.TripMapView
 import com.falcon.tripingly.core.model.trip.TripRole
+import com.falcon.tripingly.core.model.trip.UserSummary
 import com.falcon.tripingly.core.ui.UiText
 import com.falcon.tripingly.feature.map.generated.resources.Res
 import com.falcon.tripingly.feature.map.generated.resources.error_location_denied_manual
 import com.falcon.tripingly.feature.map.generated.resources.error_location_permission_required
+import com.falcon.tripingly.feature.map.generated.resources.map_trip_card_more
 import com.falcon.tripingly.feature.map.generated.resources.map_best_order_already
 import com.falcon.tripingly.feature.map.generated.resources.map_change_not_saved
 import com.falcon.tripingly.feature.map.generated.resources.map_error_load_trip
 import com.falcon.tripingly.feature.map.generated.resources.map_error_stop_change
 import com.falcon.tripingly.feature.map.generated.resources.map_join_requested
 import com.falcon.tripingly.feature.map.generated.resources.map_my_content_removed
-import com.falcon.tripingly.feature.map.generated.resources.map_trip_owner
 import com.falcon.tripingly.feature.map.presentation.FakeTripMapViewRepository
 import com.falcon.tripingly.feature.map.presentation.component.CameraCommand
 import com.falcon.tripingly.feature.map.presentation.component.PinSizes
@@ -86,6 +89,7 @@ import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertSame
 import kotlin.test.assertTrue
+import kotlin.time.Instant
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
@@ -225,10 +229,11 @@ class MapViewModelTest {
             it.accept((it.legalDocuments("en") as AppResult.Success).data)
         }
 
-    private fun TestScope.viewModel(tripId: String = trip.trip.id, stopId: String? = null, showMembers: Boolean = false) = MapViewModel(
+    private fun TestScope.viewModel(tripId: String = trip.trip.id, stopId: String? = null, showMembers: Boolean = false, showComments: Boolean = false) = MapViewModel(
         tripId = tripId,
         stopId = stopId,
         showMembers = showMembers,
+        showComments = showComments,
         tripRepository = backend,
         markerRepository = backend,
         placeRepository = places,
@@ -637,6 +642,14 @@ class MapViewModelTest {
     }
 
     @Test
+    fun `a push about a stop's comments opens them`() = runTest(testDispatcher) {
+        val stop = backend.addMarker(trip.trip.id, trip.days[0].id, NewMarker("Stop #1", GeoPoint(48.85, 2.35)))
+        val viewModel = viewModel(stopId = stop.id, showComments = true)
+        testScheduler.advanceUntilIdle()
+        assertEquals(stop.id, (viewModel.uiState.value.sheet as MapSheet.StopComments).stop.id)
+    }
+
+    @Test
     fun `stops with new activity carry a mark until they are opened, and new ones come live`() = runTest(testDispatcher) {
         val first = backend.addMarker(trip.trip.id, trip.days[0].id, NewMarker("Stop #1", GeoPoint(48.85, 2.35)))
         val second = backend.addMarker(trip.trip.id, trip.days[0].id, NewMarker("Stop #2", GeoPoint(48.86, 2.29)))
@@ -649,16 +662,100 @@ class MapViewModelTest {
         viewModel.onAction(MapAction.MapView.MarkerClick(viewModel.uiState.value.layers.stops[0]))
         testScheduler.advanceUntilIdle()
         assertEquals(listOf(false, false), viewModel.uiState.value.layers.stops.map { it.isNew })
-        assertEquals(listOf(first.id), newActivity.seen)
+        assertEquals(listOf(StopNews(first.id, false)), newActivity.seen)
 
-        // A comment on the open stop is seen at once; one on another stop marks it.
+        // A like on the open stop is seen at once; one on another stop marks it.
         newActivity.arrive(trip.trip.id, first.id)
         newActivity.arrive(trip.trip.id, second.id)
         testScheduler.advanceUntilIdle()
         assertEquals(listOf(false, true), viewModel.uiState.value.layers.stops.map { it.isNew })
-        assertEquals(listOf(first.id, first.id), newActivity.seen)
+        assertEquals(listOf(StopNews(first.id, false), StopNews(first.id, false)), newActivity.seen)
         assertTrue(viewModel.uiState.value.dayTabs.days[0].hasNew)
     }
+
+    @Test
+    fun `a stop with new comments keeps its mark until its comments are seen`() = runTest(testDispatcher) {
+        val first = backend.addMarker(trip.trip.id, trip.days[0].id, NewMarker("Stop #1", GeoPoint(48.85, 2.35)))
+        newActivity.commentMarked[trip.trip.id] = setOf(first.id)
+        val viewModel = viewModel()
+        testScheduler.advanceUntilIdle()
+
+        // Opening the stop card doesn't read its comments.
+        viewModel.onAction(MapAction.MapView.MarkerClick(viewModel.uiState.value.layers.stops[0]))
+        testScheduler.advanceUntilIdle()
+        assertTrue(viewModel.uiState.value.layers.stops[0].isNew)
+        assertTrue(newActivity.seen.isEmpty())
+
+        viewModel.onAction(MapAction.StopCard.OpenComments)
+        testScheduler.advanceUntilIdle()
+        assertFalse(viewModel.uiState.value.layers.stops[0].isNew)
+        assertEquals(listOf(StopNews(first.id, true)), newActivity.seen)
+
+        // A new comment while they're open is seen at once.
+        newActivity.arrive(trip.trip.id, first.id, aboutComments = true)
+        testScheduler.advanceUntilIdle()
+        assertFalse(viewModel.uiState.value.layers.stops[0].isNew)
+        assertEquals(listOf(StopNews(first.id, true), StopNews(first.id, true)), newActivity.seen)
+    }
+
+    @Test
+    fun `news read elsewhere takes its mark off`() = runTest(testDispatcher) {
+        val first = backend.addMarker(trip.trip.id, trip.days[0].id, NewMarker("Stop #1", GeoPoint(48.85, 2.35)))
+        newActivity.commentMarked[trip.trip.id] = setOf(first.id)
+        val viewModel = viewModel()
+        testScheduler.advanceUntilIdle()
+        assertTrue(viewModel.uiState.value.layers.stops[0].isNew)
+
+        // Its comments opened from the notification center, or on another device.
+        newActivity.readElsewhere(trip.trip.id, first.id)
+        testScheduler.advanceUntilIdle()
+        assertFalse(viewModel.uiState.value.layers.stops[0].isNew)
+        assertFalse(viewModel.uiState.value.dayTabs.days[0].hasNew)
+    }
+
+    @Test
+    fun `a push about comments opens them without a mark`() = runTest(testDispatcher) {
+        val first = backend.addMarker(trip.trip.id, trip.days[0].id, NewMarker("Stop #1", GeoPoint(48.85, 2.35)))
+        val viewModel = viewModel(stopId = first.id, showComments = true)
+        testScheduler.advanceUntilIdle()
+        assertFalse(viewModel.uiState.value.layers.stops[0].isNew)
+        assertFalse(viewModel.uiState.value.dayTabs.days[0].hasNew)
+    }
+
+    @Test
+    fun `people asking to join show as a pill that opens the members sheet`() = runTest(testDispatcher) {
+        fun ask(id: String, username: String) = backend.seedJoinRequest(
+            JoinRequest("r-$id", trip.trip.id, UserSummary(id, username, username), Instant.parse("2026-11-07T10:00:00Z")),
+        )
+        val viewModel = viewModel()
+        testScheduler.advanceUntilIdle()
+        assertNull(viewModel.uiState.value.joinRequests)
+        assertFalse(viewModel.uiState.value.header.card.hasNewJoinRequests)
+
+        ask("u2", "anna")
+        testScheduler.advanceUntilIdle()
+        // The trip card's members strip gets a red dot too.
+        assertTrue(viewModel.uiState.value.header.card.hasNewJoinRequests)
+        assertEquals(listOf("anna") to 0, viewModel.uiState.value.joinRequests?.let { pill -> pill.people.map { it.username } to pill.othersCount })
+
+        ask("u3", "jonas")
+        testScheduler.advanceUntilIdle()
+        assertEquals(listOf("jonas", "anna") to 1, viewModel.uiState.value.joinRequests?.let { pill -> pill.people.map { it.username } to pill.othersCount })
+
+        viewModel.onAction(MapAction.Header.OpenJoinRequests)
+        testScheduler.advanceUntilIdle()
+        assertNull(viewModel.uiState.value.joinRequests)
+        assertFalse(viewModel.uiState.value.header.card.hasNewJoinRequests)
+        assertEquals(MapSheet.Members, viewModel.uiState.value.sheet)
+
+        // Someone new brings it back.
+        ask("u4", "mia")
+        testScheduler.advanceUntilIdle()
+        assertEquals("mia", viewModel.uiState.value.joinRequests?.people?.first()?.username)
+        assertEquals(2, viewModel.uiState.value.joinRequests?.othersCount)
+        assertTrue(viewModel.uiState.value.header.card.hasNewJoinRequests)
+    }
+
 
     @Test
     fun `a day without stops shows the whole trip, as when a trip opens on it`() = runTest(testDispatcher) {
@@ -825,13 +922,13 @@ class MapViewModelTest {
     }
 
     @Test
-    fun `on someone else's trip the header says whose it is, with its dates, stops and members`() = runTest(testDispatcher) {
+    fun `the header shows the owner, and the trip card the short dates, members and whether it's public`() = runTest(testDispatcher) {
         backend.addMarker(trip.trip.id, trip.days[0].id, NewMarker("Owner's", GeoPoint(48.85, 2.35)))
         backend.addMarker(trip.trip.id, trip.days[0].id, NewMarker("Another editor's", GeoPoint(41.9, 12.49)))
         val own = viewModel()
         testScheduler.advanceUntilIdle()
-        assertNull(own.uiState.value.header.ownerLabel)
-        assertEquals(2, own.uiState.value.header.stopCount)
+        assertEquals(trip.trip.owner, own.uiState.value.header.owner)
+        assertEquals(DateUtils.formatShortRange(trip.trip.startDate, trip.trip.endDate), own.uiState.value.header.card.dates)
 
         val shared = backend.observeTrip(trip.trip.id).first()!!
         backend.seed(
@@ -848,8 +945,14 @@ class MapViewModelTest {
         val header = viewModel.uiState.value.header
         assertEquals(shared.members.size, header.members?.count)
         assertEquals(0, header.members?.requestCount)
-        val owner = assertIs<UiText.Resource>(viewModel.uiState.value.header.ownerLabel)
-        assertEquals(Res.string.map_trip_owner, owner.resource)
+        assertEquals(shared.trip.owner, header.owner)
+        assertEquals(shared.members.size, header.card.memberCount)
+        // The owner's face first, at most three.
+        assertEquals(shared.trip.owner, header.card.faces.firstOrNull())
+        assertTrue(header.card.faces.size <= 3)
+        val more = shared.members.size - header.card.faces.size
+        if (more > 0) assertEquals(UiText.Resource(Res.string.map_trip_card_more, more), header.card.membersNote)
+        assertTrue(header.card.isPublic)
     }
 
     @Test
@@ -1503,8 +1606,12 @@ class MapViewModelTest {
         viewModel.onAction(MapAction.MapView.LongClick(Coordinates(48.85, 2.35)))
         testScheduler.runCurrent()
         assertIs<MapDialog.NamePin>(viewModel.uiState.value.dialog).name.setTextAndPlaceCursorAtEnd("Our hotel")
-        viewModel.onAction(MapAction.Dialog.ConfirmPinName)
-        testScheduler.advanceUntilIdle()
+        viewModel.events.test {
+            viewModel.onAction(MapAction.Dialog.ConfirmPinName)
+            testScheduler.advanceUntilIdle()
+            // Felt as done, and the plan opens all the way.
+            assertEquals(MapEvent.StopAdded, awaitItem())
+        }
 
         assertNull(viewModel.uiState.value.dialog)
         val stop = (backend.refreshTrip(trip.trip.id) as AppResult.Success).data.days[0].markers.single()

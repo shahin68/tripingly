@@ -12,8 +12,9 @@ import de.jensklingenberg.ktorfit.http.Headers
 import de.jensklingenberg.ktorfit.http.POST
 import de.jensklingenberg.ktorfit.http.PUT
 import de.jensklingenberg.ktorfit.http.Path
+import de.jensklingenberg.ktorfit.http.Query
 
-/** This device's push registration, the notifications push opens, and the stops they leave marked. */
+/** This device's push registration, the notifications push opens, the stops they leave marked, and the notification center. */
 interface PushApi {
     @PUT("me/devices/{fcmToken}")
     @Headers("Content-Type: application/json")
@@ -28,6 +29,25 @@ interface PushApi {
     @POST("notifications/read")
     @Headers("Content-Type: application/json")
     suspend fun markRead(@Body body: MarkReadDto): AppResult<Unit, DataError.Network>
+
+    /** The notification center, newest first. */
+    @GET("notifications")
+    suspend fun notifications(
+        @Query("cursor") cursor: String?,
+        @Query("limit") limit: Int,
+    ): AppResult<NotificationCenterPageDto, DataError.Network>
+
+    /** The notification center was opened: what's in it counts as seen. */
+    @POST("notifications/seen")
+    suspend fun markCenterSeen(): AppResult<Unit, DataError.Network>
+
+    /** Takes one of my notifications out of the center (never what it is about). */
+    @DELETE("notifications/{id}")
+    suspend fun removeNotification(@Path("id") notificationId: String): AppResult<Unit, DataError.Network>
+
+    /** Empties my notification center. */
+    @DELETE("notifications")
+    suspend fun clearNotifications(): AppResult<Unit, DataError.Network>
 
     /** The stops of a trip with unread notifications for me, shown as "new" marks. */
     @GET("trips/{id}/new-activity")

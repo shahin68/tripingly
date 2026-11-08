@@ -122,6 +122,8 @@ class TripMembersViewModelTest {
         assertTrue(state.joinRequests.requests.isEmpty())
         assertEquals(listOf("mia"), state.members.filter { it.role == TripRole.EDITOR }.map { it.user.username })
         assertEquals(0, backend.observeTrip(trip.id).first()?.pendingJoinRequestCount)
+        // The accept the server took in is felt.
+        assertEquals(Event.Accepted, viewModel.events.first())
     }
 
     @Test

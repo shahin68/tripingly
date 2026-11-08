@@ -12,31 +12,41 @@ sealed interface DeepLink {
 
     data class Trip(val tripId: String, override val notificationId: String? = null) : DeepLink
 
-    /** One stop: its trip opens on the stop. */
-    data class Marker(val markerId: String, override val notificationId: String? = null) : DeepLink
+    /** One stop: its trip opens on the stop, with its comments open when the news is about them ([showComments]). */
+    data class Marker(val markerId: String, override val notificationId: String? = null, val showComments: Boolean = false) : DeepLink
 
     /** A trip's Members sheet, where join requests are accepted or declined. */
     data class Members(val tripId: String, override val notificationId: String? = null) : DeepLink
 
+    /** My Followers, when several people followed me. */
+    data class Followers(override val notificationId: String? = null) : DeepLink
+
     /** Someone's profile, by username. */
     data class User(val username: String, override val notificationId: String? = null) : DeepLink
 
-    /** The app itself (`tripinly://notifications` until there's an Activity screen, or an unknown link). */
+    /** The notification center (`tripinly://notifications`). */
+    data class Notifications(override val notificationId: String? = null) : DeepLink
+
+    /** The app itself (an unknown link). */
     data class Home(override val notificationId: String? = null) : DeepLink
 
     companion object {
         /**
          * `tripinly://trips/{id}`, `tripinly://trips/{id}/members`, `tripinly://markers/{id}`,
-         * `tripinly://users/{username}`; anything else opens the app.
+         * `tripinly://markers/{id}/comments`, `tripinly://me/followers`, `tripinly://users/{username}`,
+         * `tripinly://notifications`; anything else opens the app.
          */
         fun parse(url: String, notificationId: String? = null): DeepLink {
             val path = url.takeIf { it.startsWith(PREFIX) }?.removePrefix(PREFIX)?.trimEnd('/')?.split('/')
             val id = path?.getOrNull(1)?.ifBlank { null }
             return when {
+                path == listOf("notifications") -> Notifications(notificationId)
                 id == null -> Home(notificationId)
                 path.size == 2 && path[0] == "trips" -> Trip(id, notificationId)
                 path.size == 3 && path[0] == "trips" && path[2] == "members" -> Members(id, notificationId)
                 path.size == 2 && path[0] == "markers" -> Marker(id, notificationId)
+                path.size == 3 && path[0] == "markers" && path[2] == "comments" -> Marker(id, notificationId, showComments = true)
+                path == listOf("me", "followers") -> Followers(notificationId)
                 path.size == 2 && path[0] == "users" -> User(id, notificationId)
                 else -> Home(notificationId)
             }
@@ -61,4 +71,17 @@ class DeepLinks {
 
     /** Taken by the navigation; null when another taker was first. */
     fun take(): DeepLink? = pending.getAndUpdate { null }
+
+    private val followers = MutableStateFlow(false)
+
+    /** My Followers should show on the Profile tab (a link about several new followers), until [followersShown]. */
+    val followersRequested: StateFlow<Boolean> = followers.asStateFlow()
+
+    fun showFollowers() {
+        followers.value = true
+    }
+
+    fun followersShown() {
+        followers.value = false
+    }
 }

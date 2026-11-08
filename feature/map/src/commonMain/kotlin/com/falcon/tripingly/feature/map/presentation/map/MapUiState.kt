@@ -11,6 +11,7 @@ import com.falcon.tripingly.core.model.place.PlaceSearchResult
 import com.falcon.tripingly.core.model.route.AlongTheWayPlace
 import com.falcon.tripingly.core.model.route.TravelMode
 import com.falcon.tripingly.core.model.trip.JoinRequestStatus
+import com.falcon.tripingly.core.model.trip.UserSummary
 import com.falcon.tripingly.core.ui.UiText
 import com.falcon.tripingly.feature.map.presentation.component.MapLayersState
 import com.falcon.tripingly.feature.map.presentation.component.MapMarker
@@ -28,6 +29,8 @@ data class MapUiState(
     /** The trip couldn't load and there's nothing to show: an error screen with Retry instead of the map. */
     val loadError: UiText? = null,
     val header: HeaderState = HeaderState(),
+    /** The owner's pill under the header while people they haven't seen here ask to join; closed while searching. */
+    val joinRequests: JoinRequestsState? = null,
     /** The header shows the search field instead of the trip's name. */
     val search: SearchState? = null,
     val dayTabs: DayTabsState = DayTabsState(),
@@ -51,15 +54,17 @@ data class MapUiState(
     val message: MessageState? = null,
 )
 
+/** "@[people] first and [othersCount] others want to join", with [people]'s faces stacked. */
+@Immutable
+data class JoinRequestsState(val people: ImmutableList<UserSummary>, val othersCount: Int)
+
 @Immutable
 data class HeaderState(
     val tripName: String = "",
-    /** "19 – 23 Oct 2026" under the trip's name; null without dates. */
-    val dates: String? = null,
-    /** All the trip's stops, after the dates. */
-    val stopCount: Int = 0,
-    /** "by Anna" after them, on someone else's trip. */
-    val ownerLabel: UiText? = null,
+    /** The trip's owner, as the avatar before its name that opens their profile; null while the trip loads. */
+    val owner: UserSummary? = null,
+    /** What the trip card shows when the title is tapped. */
+    val card: TripCardState = TripCardState(),
     /** The trip is loading for the first time: the title shows as its skeleton. */
     val isLoading: Boolean = false,
     /** A day change, a save or a request to join waits for the server. */
@@ -73,6 +78,25 @@ data class HeaderState(
      * and in the ⋮ menu while the day has no stops (and so no sheet).
      */
     val editorMenu: EditorMenu? = null,
+)
+
+/**
+ * The trip card that grows out of the title: the owner and the whole name, the details ([dates] as short as possible,
+ * "Oct 19 – 23", null without dates; the likes, saves and who sees it) and a strip of the members' first [faces] (the
+ * owner first, at most three) with how many there are. [hasNewJoinRequests]: the owner hasn't opened the members since
+ * someone asked to join, a red dot on that strip.
+ */
+@Immutable
+data class TripCardState(
+    val dates: String? = null,
+    val likeCount: Int = 0,
+    val saveCount: Int = 0,
+    val isPublic: Boolean = true,
+    val faces: ImmutableList<UserSummary> = persistentListOf(),
+    val memberCount: Int = 0,
+    /** Beside the faces: "and N more" past them, or "Only Anna" for a trip of one. */
+    val membersNote: UiText? = null,
+    val hasNewJoinRequests: Boolean = false,
 )
 
 /** [requestCount]: people waiting for the owner's answer to join, as a badge; 0 for everyone else. */
@@ -106,10 +130,10 @@ data class DayTabsState(
 
 /**
  * A day tab: "Day 2" ([number] counts from 1) over its [date] ("Jun 2"), null when the trip has no dates. [hasNew]: one
- * of its stops has a "new" mark.
+ * of its stops has a "new" mark. [canDelete]: a long press offers to delete it (see [EditorMenu.canDeleteDay]).
  */
 @Immutable
-data class DayTab(val id: String, val number: Int, val date: String?, val hasNew: Boolean = false)
+data class DayTab(val id: String, val number: Int, val date: String?, val hasNew: Boolean = false, val canDelete: Boolean = false)
 
 /** What the plan sheet shows. */
 @Immutable
@@ -211,7 +235,8 @@ sealed interface MapSheet {
     data class StopPhotos(val stop: MapMarker, val canEdit: Boolean) : MapSheet
     /** A place's photos, which anyone can add to. */
     data class PlacePhotos(val place: MapPlace) : MapSheet
-    data class StopComments(val stop: MapMarker) : MapSheet
+    /** [people]: the trip's owner and members, who can be @mentioned. */
+    data class StopComments(val stop: MapMarker, val people: ImmutableList<UserSummary>) : MapSheet
     /** The owner's members sheet, with the requests to join. */
     data object Members : MapSheet
     /** An image of the place card, full screen in the place's photo viewer. */

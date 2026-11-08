@@ -1,0 +1,14 @@
+<resources>
+    <string name="notifications_title">Értesítések</string>
+    <string name="notifications_empty">Még nincs semmi. A kedvelések, hozzászólások és meghívások itt jelennek meg.</string>
+    <string name="notifications_error_load">Nem sikerült betölteni az értesítéseidet.</string>
+    <string name="notifications_retry">Újra</string>
+    <string name="notifications_unread">Olvasatlan</string>
+    <string name="notifications_clear_all">Összes törlése</string>
+    <string name="notifications_clear_title">Törlöd az összes értesítést?</string>
+    <string name="notifications_clear_message">Minden eszközödről eltűnnek. A hozzászólások, kedvelések és követések megmaradnak.</string>
+    <string name="notifications_clear_confirm">Törlés</string>
+    <string name="notifications_delete">Törlés</string>
+    <string name="notifications_error_remove">Nem sikerült eltávolítani.</string>
+    <string name="notifications_error_clear">Nem sikerült törölni az értesítéseket.</string>
+</resources>
