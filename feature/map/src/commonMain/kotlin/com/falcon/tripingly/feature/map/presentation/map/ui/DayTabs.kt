@@ -1,5 +1,12 @@
 package com.falcon.tripingly.feature.map.presentation.map.ui
 
+import kotlin.math.abs
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.awaitEachGesture
 import com.falcon.tripingly.core.designsystem.component.rememberHaptics
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.background
@@ -67,6 +74,10 @@ internal fun DayTabs(
     if (tabs.days.isEmpty()) return Spacer(modifier.navigationBarsPadding())
     val corner = MaterialTheme.shapes.extraLarge.topStart
     val listState = rememberLazyListState()
+    val haptics = rememberHaptics()
+    // Read by the drag on the open day, which outlives recompositions.
+    val activeIndex by rememberUpdatedState(tabs.activeIndex)
+    val currentOnAction by rememberUpdatedState(onAction)
     // Keeps the open day in view, e.g. after adding one at the end.
     LaunchedEffect(tabs.activeIndex) {
         if (listState.layoutInfo.visibleItemsInfo.none { it.index == tabs.activeIndex }) listState.animateScrollToItem(tabs.activeIndex)
@@ -84,7 +95,13 @@ internal fun DayTabs(
             modifier = Modifier.padding(MaterialTheme.spacing.small),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            LazyRow(state = listState, modifier = Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraSmall)) {
+            LazyRow(
+                state = listState,
+                modifier = Modifier.weight(1f).dragOpenDay(listState, active = { activeIndex }) { index ->
+                    haptics.tick()
+                    currentOnAction(MapAction.Days.Select(index))
+                },
+                horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraSmall)) {
                 itemsIndexed(tabs.days, key = { _, day -> day.id }) { index, day ->
                     DayPill(day, selected = index == tabs.activeIndex, onClick = { onAction(MapAction.Days.Select(index)) }, modifier = Modifier.animateItem())
                 }
@@ -97,6 +114,35 @@ internal fun DayTabs(
                     colors = IconButtonDefaults.filledTonalIconButtonColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
                 ) {
                     Icon(Icons.Outlined.Add, contentDescription = stringResource(Res.string.map_add_day))
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Like the bottom bar's pill, the open day can be dragged: a drag that starts on it opens each day the finger passes
+ * ([select]). Watched before the row's own scrolling, which it takes over once the finger moves past the touch slop;
+ * a drag that starts on another day scrolls the row, and taps stay taps.
+ */
+private fun Modifier.dragOpenDay(listState: LazyListState, active: () -> Int, select: (Int) -> Unit): Modifier {
+    val dayAt = { x: Float -> listState.layoutInfo.visibleItemsInfo.firstOrNull { x >= it.offset && x < it.offset + it.size }?.index }
+    return pointerInput(listState) {
+        awaitEachGesture {
+            val down = awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
+            var open = active()
+            if (dayAt(down.position.x) != open) return@awaitEachGesture
+            var isDragging = false
+            while (true) {
+                val change = awaitPointerEvent(PointerEventPass.Initial).changes.firstOrNull { it.id == down.id } ?: break
+                if (!change.pressed) break
+                if (!isDragging) isDragging = abs(change.position.x - down.position.x) > viewConfiguration.touchSlop
+                if (isDragging) {
+                    change.consume()
+                    dayAt(change.position.x)?.takeIf { it != open }?.let { day ->
+                        open = day
+                        select(day)
+                    }
                 }
             }
         }
