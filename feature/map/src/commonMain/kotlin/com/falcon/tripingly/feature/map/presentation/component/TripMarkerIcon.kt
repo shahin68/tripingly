@@ -10,11 +10,13 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.TextStyle
@@ -26,8 +28,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
 import com.falcon.tripingly.core.designsystem.component.NewIndicator
-import com.falcon.tripingly.core.designsystem.theme.MapColors
 import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
+import com.falcon.tripingly.core.designsystem.theme.extendedColors
 
 /**
  * A stop's pin, a circle centered on the stop: its number on near-black ivy in a white ring, or, once the stop
@@ -45,7 +47,7 @@ fun TripMarkerIcon(
         PinBody(orderNumber, cover)
         if (isNew) {
             val inset = newDotInset(hasCover = cover != null)
-            NewIndicator(Modifier.offset(inset, inset), size = NEW_DOT_SIZE - PIN_RING * 2, strokeColor = MapColors.OnStop, strokeWidth = PIN_RING)
+            NewIndicator(Modifier.offset(inset, inset), size = NEW_DOT_SIZE - PIN_RING * 2, strokeColor = MaterialTheme.extendedColors.onStop, strokeWidth = PIN_RING)
         }
     }
 }
@@ -56,9 +58,9 @@ private fun PinBody(orderNumber: Int, cover: ImageBitmap?) {
         Box(
             modifier = Modifier
                 .size(PIN_SIZE)
-                .background(MapColors.OnStop, CircleShape)
+                .background(MaterialTheme.extendedColors.onStop, CircleShape)
                 .padding(PIN_RING)
-                .background(MapColors.Stop, CircleShape),
+                .background(MaterialTheme.extendedColors.stop, CircleShape),
             contentAlignment = Alignment.Center,
         ) {
             PinNumber(orderNumber, fontSize = 13)
@@ -71,7 +73,7 @@ private fun PinBody(orderNumber: Int, cover: ImageBitmap?) {
                 contentScale = ContentScale.Crop,
                 modifier = Modifier
                     .matchParentSize()
-                    .background(MapColors.OnStop, CircleShape)
+                    .background(MaterialTheme.extendedColors.onStop, CircleShape)
                     .padding(COVER_RING)
                     .clip(CircleShape),
             )
@@ -79,8 +81,8 @@ private fun PinBody(orderNumber: Int, cover: ImageBitmap?) {
                 modifier = Modifier
                     .align(Alignment.TopEnd)
                     .size(COVER_BADGE_SIZE)
-                    .background(MapColors.Stop, CircleShape)
-                    .border(PIN_RING, MapColors.OnStop, CircleShape),
+                    .background(MaterialTheme.extendedColors.stop, CircleShape)
+                    .border(PIN_RING, MaterialTheme.extendedColors.onStop, CircleShape),
                 contentAlignment = Alignment.Center,
             ) {
                 PinNumber(orderNumber, fontSize = 10)
@@ -93,7 +95,7 @@ private fun PinBody(orderNumber: Int, cover: ImageBitmap?) {
 private fun PinNumber(orderNumber: Int, fontSize: Int) {
     Text(
         text = orderNumber.toString(),
-        color = MapColors.OnStop,
+        color = MaterialTheme.extendedColors.onStop,
         fontSize = fontSize.sp,
         fontWeight = FontWeight.Bold,
         style = PinNumberStyle,
@@ -136,7 +138,7 @@ private const val CORNER_EDGE_POINT = 0.7071f
 @Composable
 private fun TripMarkerIconPreview() {
     TripinglyTheme {
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.background(MapColors.Plan.copy(alpha = 0.2f)).padding(8.dp)) {
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.background(Color(0xFFECEDEE)).padding(8.dp)) {
             TripMarkerIcon(orderNumber = 1)
             TripMarkerIcon(orderNumber = 12)
             TripMarkerIcon(orderNumber = 3, cover = ImageBitmap(64, 64))
@@ -150,7 +152,7 @@ private fun TripMarkerIconPreview() {
 @Composable
 private fun TripMarkerIconDarkPreview() {
     TripinglyTheme(darkTheme = true) {
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.background(MapColors.Stop.copy(alpha = 0.6f)).padding(8.dp)) {
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.background(Color(0xFF1A1C1E)).padding(8.dp)) {
             TripMarkerIcon(orderNumber = 4)
             TripMarkerIcon(orderNumber = 5, cover = ImageBitmap(64, 64))
             TripMarkerIcon(orderNumber = 7, isNew = true)

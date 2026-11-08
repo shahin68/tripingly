@@ -43,8 +43,8 @@ import com.falcon.tripingly.core.designsystem.component.ButtonSize
 import com.falcon.tripingly.core.designsystem.component.DropdownAction
 import com.falcon.tripingly.core.designsystem.component.SecondaryButton
 import com.falcon.tripingly.core.designsystem.component.ToggleButton
-import com.falcon.tripingly.core.designsystem.theme.MapColors
 import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
+import com.falcon.tripingly.core.designsystem.theme.extendedColors
 import com.falcon.tripingly.core.designsystem.theme.spacing
 import com.falcon.tripingly.feature.map.generated.resources.Res
 import com.falcon.tripingly.feature.map.generated.resources.map_add_day
@@ -218,8 +218,8 @@ private fun StopChip(stop: MapMarker, isSelected: Boolean, onAction: (MapAction)
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
         ) {
-            Box(Modifier.size(StopNumberSize).background(MapColors.Stop, CircleShape), contentAlignment = Alignment.Center) {
-                Text(stop.orderNumber.toString(), style = MaterialTheme.typography.labelSmall, color = MapColors.OnStop)
+            Box(Modifier.size(StopNumberSize).background(MaterialTheme.extendedColors.stop, CircleShape), contentAlignment = Alignment.Center) {
+                Text(stop.orderNumber.toString(), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.extendedColors.onStop)
             }
             Text(stop.title.asString(), style = MaterialTheme.typography.labelLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)
             if (stop.canDelete) {

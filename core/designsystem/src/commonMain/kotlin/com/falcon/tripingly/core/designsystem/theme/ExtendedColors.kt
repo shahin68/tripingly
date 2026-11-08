@@ -14,10 +14,31 @@ data class ExtendedColors(
     val glass: Color,
     /** The thin light edge that sets glass apart from what's behind it. */
     val glassEdge: Color,
+    /**
+     * A stop's pin and the plan line joining a day's stops: the brand green, light on the dark map (Shahin's "Ivy
+     * stops" on the graphite map, 2026-11-08).
+     */
+    val stop: Color,
+    /** A stop's number and ring. */
+    val onStop: Color,
+    /** A place's pin (and a hot spot's) on the map: slate grey, softer on the dark map. */
+    val place: Color,
 )
 
-internal val LightExtendedColors = ExtendedColors(glass = GlassLight, glassEdge = GlassEdgeLight)
-internal val DarkExtendedColors = ExtendedColors(glass = GlassDark, glassEdge = GlassEdgeDark)
+internal val LightExtendedColors = ExtendedColors(
+    glass = GlassLight,
+    glassEdge = GlassEdgeLight,
+    stop = IvyLight,
+    onStop = OnIvyLight,
+    place = SecondaryLight,
+)
+internal val DarkExtendedColors = ExtendedColors(
+    glass = GlassDark,
+    glassEdge = GlassEdgeDark,
+    stop = IvyDark,
+    onStop = OnIvyDark,
+    place = MapPlaceDark,
+)
 
 val LocalExtendedColors = staticCompositionLocalOf { LightExtendedColors }
 

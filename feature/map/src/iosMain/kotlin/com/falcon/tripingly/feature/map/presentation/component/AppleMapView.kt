@@ -1,12 +1,13 @@
 package com.falcon.tripingly.feature.map.presentation.component
 
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.interop.UIKitView
-import com.falcon.tripingly.core.designsystem.theme.MapColors
+import com.falcon.tripingly.core.designsystem.theme.extendedColors
 import com.falcon.tripingly.core.location.model.Coordinates
 import com.falcon.tripingly.core.model.place.GeoBounds
 import com.falcon.tripingly.core.model.place.MapPlace
@@ -50,7 +51,8 @@ internal fun AppleMapView(
     onMapLongClick: (Coordinates) -> Unit,
     onMarkerClick: (MapMarker) -> Unit,
 ) {
-    val delegate = remember {
+    val stopColor = MaterialTheme.extendedColors.stop
+    val delegate = remember(stopColor) {
         object : NSObject(), MKMapViewDelegateProtocol {
             /** The stops by their title, which is all an annotation keeps. */
             var currentMarkers: Map<String, MapMarker> = emptyMap()
@@ -103,7 +105,7 @@ internal fun AppleMapView(
 
                     marker?.let { 
                         annotationView.glyphText = it.orderNumber.toString()
-                        annotationView.markerTintColor = MapColors.Stop.let { color ->
+                        annotationView.markerTintColor = stopColor.let { color ->
                             UIColor(red = color.red.toDouble(), green = color.green.toDouble(), blue = color.blue.toDouble(), alpha = 1.0)
                         }
                     }
