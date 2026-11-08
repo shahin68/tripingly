@@ -9,17 +9,6 @@
     <string name="notifications_clear_message">They go on all your devices. The comments, likes and follows they are about stay.</string>
     <string name="notifications_clear_confirm">Clear</string>
     <string name="notifications_delete">Delete</string>
-    <string name="notifications_more">More</string>
-    <string name="notifications_block">Block</string>
-    <string name="notifications_remove_follower">Remove follower</string>
-    <string name="notifications_block_title">Block @%1$s?</string>
-    <string name="notifications_block_message">You won’t see each other’s trips, stops or comments, you stop following each other, and you leave each other’s trips.</string>
-    <string name="notifications_remove_follower_title">Remove @%1$s as a follower?</string>
-    <string name="notifications_remove_follower_message">They stop following you and aren’t told. They can follow you again.</string>
-    <string name="notifications_remove_follower_confirm">Remove</string>
-    <string name="notifications_follower_removed">@%1$s no longer follows you.</string>
     <string name="notifications_error_remove">Couldn’t remove it.</string>
     <string name="notifications_error_clear">Couldn’t clear your notifications.</string>
-    <string name="notifications_error_block">Couldn’t block them.</string>
-    <string name="notifications_error_remove_follower">Couldn’t remove the follower.</string>
 </resources>

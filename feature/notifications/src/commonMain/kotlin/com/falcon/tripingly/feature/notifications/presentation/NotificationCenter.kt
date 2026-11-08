@@ -1,8 +1,7 @@
 package com.falcon.tripingly.feature.notifications.presentation
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -17,12 +16,9 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.icons.outlined.Block
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.DeleteSweep
 import androidx.compose.material.icons.outlined.Notifications
-import androidx.compose.material.icons.outlined.PersonRemove
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -36,10 +32,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.rememberUpdatedState
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -54,12 +46,10 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.falcon.tripingly.core.designsystem.component.AppDialog
-import com.falcon.tripingly.core.designsystem.component.AppDropdownMenu
 import com.falcon.tripingly.core.designsystem.component.AvatarStack
 import com.falcon.tripingly.core.designsystem.component.AvatarSize
 import com.falcon.tripingly.core.designsystem.component.BackAction
 import com.falcon.tripingly.core.designsystem.component.ButtonSize
-import com.falcon.tripingly.core.designsystem.component.DropdownAction
 import com.falcon.tripingly.core.designsystem.component.FloatingTopBar
 import com.falcon.tripingly.core.designsystem.component.SecondaryButton
 import com.falcon.tripingly.core.designsystem.component.ShowMessage
@@ -74,25 +64,16 @@ import com.falcon.tripingly.core.model.notification.NotificationEntry
 import com.falcon.tripingly.core.ui.UiText
 import com.falcon.tripingly.core.ui.timeAgo
 import com.falcon.tripingly.feature.notifications.generated.resources.Res
-import com.falcon.tripingly.feature.notifications.generated.resources.notifications_block
-import com.falcon.tripingly.feature.notifications.generated.resources.notifications_block_message
-import com.falcon.tripingly.feature.notifications.generated.resources.notifications_block_title
 import com.falcon.tripingly.feature.notifications.generated.resources.notifications_clear_all
 import com.falcon.tripingly.feature.notifications.generated.resources.notifications_clear_confirm
 import com.falcon.tripingly.feature.notifications.generated.resources.notifications_clear_message
 import com.falcon.tripingly.feature.notifications.generated.resources.notifications_clear_title
 import com.falcon.tripingly.feature.notifications.generated.resources.notifications_delete
 import com.falcon.tripingly.feature.notifications.generated.resources.notifications_empty
-import com.falcon.tripingly.feature.notifications.generated.resources.notifications_more
-import com.falcon.tripingly.feature.notifications.generated.resources.notifications_remove_follower
-import com.falcon.tripingly.feature.notifications.generated.resources.notifications_remove_follower_confirm
-import com.falcon.tripingly.feature.notifications.generated.resources.notifications_remove_follower_message
-import com.falcon.tripingly.feature.notifications.generated.resources.notifications_remove_follower_title
 import com.falcon.tripingly.feature.notifications.generated.resources.notifications_retry
 import com.falcon.tripingly.feature.notifications.generated.resources.notifications_title
 import com.falcon.tripingly.feature.notifications.generated.resources.notifications_unread
 import com.falcon.tripingly.feature.notifications.presentation.NotificationCenterViewModel.Action
-import com.falcon.tripingly.feature.notifications.presentation.NotificationCenterViewModel.Confirm
 import com.falcon.tripingly.feature.notifications.presentation.NotificationCenterViewModel.State
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filter
@@ -102,7 +83,7 @@ import org.koin.compose.viewmodel.koinViewModel
 /**
  * The notification center on its own screen, opened from the bell on my profile. A tap opens the entry's
  * [NotificationEntry.deepLink] through [onOpen] with its id, which marks it read. While it is on screen everything in it
- * counts as seen. Swiping an entry to the start deletes it; ⋮ on an entry from one person offers Block, and Remove follower on a follow.
+ * counts as seen. Swiping an entry to the start and letting go deletes it.
  */
 @Composable
 fun NotificationCenterRoute(
@@ -123,7 +104,7 @@ fun NotificationCenterRoute(
             viewModel.onAction(action)
         },
     )
-    state.confirming?.let { ConfirmDialog(it, viewModel::onAction) }
+    if (state.isConfirmingClear) ClearAllDialog(viewModel::onAction)
 }
 
 @Composable
@@ -180,7 +161,7 @@ private fun NotificationList(state: State, onAction: (Action) -> Unit, contentPa
             }
             else -> items(state.entries, key = { it.id }) { entry ->
                 SwipeToDelete(onDelete = { onAction(Action.OnRemove(entry)) }, modifier = Modifier.animateItem()) {
-                    NotificationRow(entry = entry, onClick = { onAction(Action.OnOpen(entry)) }, actions = menuActionsOf(entry, onAction))
+                    NotificationRow(entry = entry, onClick = { onAction(Action.OnOpen(entry)) })
                 }
             }
         }
@@ -188,20 +169,20 @@ private fun NotificationList(state: State, onAction: (Action) -> Unit, contentPa
 }
 
 /**
- * Compose's own [SwipeToDismissBox]: pulling a row to the start past the threshold deletes it. The red behind it is
- * drawn only while a row is pulled, so none peeks out at the card's rounded corners at rest. Screen readers get
- * Delete as an action on the row.
+ * Compose's own [SwipeToDismissBox]. A row follows the finger; let go past [DELETE_THRESHOLD] of its width (or fling
+ * it) and it slides out and is deleted, otherwise it springs back. The delete runs only once the row has settled out
+ * ([SwipeToDismissBox]'s `onDismiss`), never while the finger is still down. The red behind it is drawn only while a
+ * row is pulled, so none peeks out at the card's rounded corners at rest. Screen readers get Delete as an action.
  */
 @Composable
 private fun SwipeToDelete(onDelete: () -> Unit, modifier: Modifier = Modifier, content: @Composable () -> Unit) {
-    val state = rememberSwipeToDismissBoxState()
-    val delete by rememberUpdatedState(onDelete)
-    LaunchedEffect(state.currentValue) { if (state.currentValue == SwipeToDismissBoxValue.EndToStart) delete() }
+    val state = rememberSwipeToDismissBoxState(positionalThreshold = { width -> width * DELETE_THRESHOLD })
     val label = stringResource(Res.string.notifications_delete)
     SwipeToDismissBox(
         state = state,
         enableDismissFromStartToEnd = false,
-        modifier = modifier.semantics { customActions = listOf(CustomAccessibilityAction(label) { delete(); true }) },
+        onDismiss = { onDelete() },
+        modifier = modifier.semantics { customActions = listOf(CustomAccessibilityAction(label) { onDelete(); true }) },
         backgroundContent = {
             if (state.dismissDirection == SwipeToDismissBoxValue.EndToStart) {
                 Box(
@@ -219,66 +200,29 @@ private fun SwipeToDelete(onDelete: () -> Unit, modifier: Modifier = Modifier, c
     ) { content() }
 }
 
-/** The ⋮ menu, only when one person is behind the entry: Remove follower on a follow, and Block. */
 @Composable
-private fun menuActionsOf(entry: NotificationEntry, onAction: (Action) -> Unit): List<DropdownAction> {
-    val person = entry.actor?.takeIf { entry.actors.size <= 1 } ?: return emptyList()
-    return listOfNotNull(
-        DropdownAction(stringResource(Res.string.notifications_remove_follower), icon = Icons.Outlined.PersonRemove) {
-            onAction(Action.OnRemoveFollower(person))
-        }.takeIf { entry.isFollow },
-        DropdownAction(stringResource(Res.string.notifications_block), isDestructive = true, icon = Icons.Outlined.Block) { onAction(Action.OnBlock(person)) },
-    )
-}
-
-@Composable
-private fun ConfirmDialog(confirming: Confirm, onAction: (Action) -> Unit) {
-    val (title, message, confirm) = when (confirming) {
-        Confirm.ClearAll -> Triple(
-            stringResource(Res.string.notifications_clear_title),
-            stringResource(Res.string.notifications_clear_message),
-            stringResource(Res.string.notifications_clear_confirm),
-        )
-        is Confirm.Block -> Triple(
-            stringResource(Res.string.notifications_block_title, confirming.user.username),
-            stringResource(Res.string.notifications_block_message),
-            stringResource(Res.string.notifications_block),
-        )
-        is Confirm.RemoveFollower -> Triple(
-            stringResource(Res.string.notifications_remove_follower_title, confirming.user.username),
-            stringResource(Res.string.notifications_remove_follower_message),
-            stringResource(Res.string.notifications_remove_follower_confirm),
-        )
-    }
+private fun ClearAllDialog(onAction: (Action) -> Unit) {
     AppDialog(
-        title = title,
-        message = message,
-        confirmLabel = confirm,
+        title = stringResource(Res.string.notifications_clear_title),
+        message = stringResource(Res.string.notifications_clear_message),
+        confirmLabel = stringResource(Res.string.notifications_clear_confirm),
         isDestructive = true,
         onConfirm = { onAction(Action.OnConfirm) },
         onDismiss = { onAction(Action.OnDismissConfirm) },
     )
 }
 
-/**
- * One entry on a card: who (or a bell for the app itself), what, when; unread ones carry a dot. ⋮ or a long press
- * opens [actions] when there are any, as on people rows.
- */
-@OptIn(ExperimentalFoundationApi::class)
+/** One entry on a card: who (or a bell for the app itself), what, when; unread ones carry a dot. */
 @Composable
-private fun NotificationRow(entry: NotificationEntry, onClick: () -> Unit, modifier: Modifier = Modifier, actions: List<DropdownAction> = emptyList()) {
-    var menuOpen by rememberSaveable { mutableStateOf(false) }
+private fun NotificationRow(entry: NotificationEntry, onClick: () -> Unit, modifier: Modifier = Modifier) {
     Surface(
-        modifier = modifier
-            .fillMaxWidth()
-            .clip(MaterialTheme.shapes.large)
-            .combinedClickable(onClick = onClick, onLongClick = if (actions.isEmpty()) null else ({ menuOpen = true })),
+        modifier = modifier.fillMaxWidth().clip(MaterialTheme.shapes.large).clickable(onClick = onClick),
         shape = MaterialTheme.shapes.large,
         color = MaterialTheme.colorScheme.surfaceContainerLowest,
     ) {
         val inset = MaterialTheme.spacing.small + MaterialTheme.spacing.extraSmall
         Row(
-            modifier = Modifier.padding(start = inset, top = inset, bottom = inset, end = if (actions.isEmpty()) inset else 0.dp),
+            modifier = Modifier.padding(inset),
             horizontalArrangement = Arrangement.spacedBy(inset),
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -322,14 +266,6 @@ private fun NotificationRow(entry: NotificationEntry, onClick: () -> Unit, modif
                         .semantics { contentDescription = unread },
                 )
             }
-            if (actions.isNotEmpty()) {
-                Box {
-                    IconButton(onClick = { menuOpen = true }) {
-                        Icon(Icons.Default.MoreVert, contentDescription = stringResource(Res.string.notifications_more), modifier = Modifier.skeleton(CircleShape))
-                    }
-                    AppDropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }, actions = actions)
-                }
-            }
         }
     }
 }
@@ -346,6 +282,9 @@ private fun QuietText(text: String, modifier: Modifier = Modifier) {
 }
 
 private val UnreadDotSize = 8.dp
+
+/** How much of a row's width it must be pulled before letting go deletes it. */
+private const val DELETE_THRESHOLD = 0.4f
 
 /** Entries from the end at which the next page loads. */
 private const val LOAD_MORE_THRESHOLD = 3
@@ -381,4 +320,4 @@ private fun NotificationCenterErrorPreview() = NotificationCenterPreview(preview
 
 @Preview
 @Composable
-private fun ConfirmDialogPreview() = TripinglyTheme { ConfirmDialog(Confirm.ClearAll, onAction = {}) }
+private fun ClearAllDialogPreview() = TripinglyTheme { ClearAllDialog(onAction = {}) }

@@ -9,17 +9,6 @@
     <string name="notifications_clear_message">Sie verschwinden auf allen deinen Geräten. Die Kommentare, Likes und Follows bleiben.</string>
     <string name="notifications_clear_confirm">Löschen</string>
     <string name="notifications_delete">Löschen</string>
-    <string name="notifications_more">Mehr</string>
-    <string name="notifications_block">Blockieren</string>
-    <string name="notifications_remove_follower">Follower entfernen</string>
-    <string name="notifications_block_title">@%1$s blockieren?</string>
-    <string name="notifications_block_message">Ihr seht die Reisen, Stopps und Kommentare des anderen nicht mehr, folgt einander nicht mehr und verlasst die Reisen des anderen.</string>
-    <string name="notifications_remove_follower_title">@%1$s als Follower entfernen?</string>
-    <string name="notifications_remove_follower_message">Die Person folgt dir nicht mehr und erfährt es nicht. Sie kann dir wieder folgen.</string>
-    <string name="notifications_remove_follower_confirm">Entfernen</string>
-    <string name="notifications_follower_removed">@%1$s folgt dir nicht mehr.</string>
     <string name="notifications_error_remove">Entfernen ist fehlgeschlagen.</string>
     <string name="notifications_error_clear">Löschen ist fehlgeschlagen.</string>
-    <string name="notifications_error_block">Blockieren ist fehlgeschlagen.</string>
-    <string name="notifications_error_remove_follower">Follower entfernen ist fehlgeschlagen.</string>
 </resources>
