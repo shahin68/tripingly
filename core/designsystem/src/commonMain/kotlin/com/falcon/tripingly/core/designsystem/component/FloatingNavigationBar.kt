@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.union
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
@@ -118,9 +119,10 @@ fun FloatingNavigationBar(
     }
     GlassSurface(
         modifier = modifier
-            .windowInsetsPadding(WindowInsets.safeBottomAndSides)
-            // As far from the bottom as from the sides (Shahin, 2026-11-08).
-            .padding(start = MaterialTheme.spacing.medium, top = MaterialTheme.spacing.small, end = MaterialTheme.spacing.medium, bottom = MaterialTheme.spacing.medium)
+            // 8 dp over Android's navigation bar; with no bar under it (iOS) as far from the bottom as from the sides,
+            // 16 dp (Shahin, 2026-11-08).
+            .windowInsetsPadding(WindowInsets.safeBottomAndSides.union(WindowInsets(bottom = MaterialTheme.spacing.small)))
+            .padding(horizontal = MaterialTheme.spacing.medium, vertical = MaterialTheme.spacing.small)
             // In landscape the bar stays a comfortable width, centred, instead of stretching across the screen.
             .fillMaxWidth()
             .wrapContentWidth()
