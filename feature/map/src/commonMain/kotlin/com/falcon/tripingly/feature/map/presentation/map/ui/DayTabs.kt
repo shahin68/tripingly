@@ -1,5 +1,20 @@
 package com.falcon.tripingly.feature.map.presentation.map.ui
 
+import kotlinx.coroutines.launch
+import kotlin.math.roundToInt
+import kotlin.math.floor
+import androidx.compose.ui.util.lerp
+import androidx.compose.ui.graphics.drawOutline
+import androidx.compose.ui.graphics.drawscope.translate
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.Animatable
 import kotlin.math.abs
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.PointerEventPass
@@ -78,6 +93,14 @@ internal fun DayTabs(
     // Read by the drag on the open day, which outlives recompositions.
     val activeIndex by rememberUpdatedState(tabs.activeIndex)
     val currentOnAction by rememberUpdatedState(onAction)
+    // The green pill is its own layer behind the days, at a fractional day: it slides to a tapped day and follows a
+    // drag that starts on it, like the bottom bar's pill.
+    val pill = remember { Animatable(tabs.activeIndex.toFloat()) }
+    var isDragging by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+    LaunchedEffect(tabs.activeIndex, isDragging) { if (!isDragging) pill.animateTo(tabs.activeIndex.toFloat(), PillSpring) }
+    val pillColor = MaterialTheme.colorScheme.primary
+    val pillShape = MaterialTheme.shapes.large
     // Keeps the open day in view, e.g. after adding one at the end.
     LaunchedEffect(tabs.activeIndex) {
         if (listState.layoutInfo.visibleItemsInfo.none { it.index == tabs.activeIndex }) listState.animateScrollToItem(tabs.activeIndex)
@@ -97,11 +120,30 @@ internal fun DayTabs(
         ) {
             LazyRow(
                 state = listState,
-                modifier = Modifier.weight(1f).dragOpenDay(listState, active = { activeIndex }) { index ->
-                    haptics.tick()
-                    currentOnAction(MapAction.Days.Select(index))
-                },
-                horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraSmall)) {
+                modifier = Modifier
+                    .weight(1f)
+                    .drawBehind {
+                        val bounds = listState.pillBounds(pill.value) ?: return@drawBehind
+                        translate(left = bounds.first) {
+                            drawOutline(pillShape.createOutline(Size(bounds.second, size.height), layoutDirection, this), pillColor)
+                        }
+                    }
+                    .dragOpenDay(
+                        listState = listState,
+                        active = { activeIndex },
+                        onDrag = { x ->
+                            isDragging = true
+                            val position = listState.dayPosition(x) ?: return@dragOpenDay
+                            scope.launch { pill.snapTo(position) }
+                            position.roundToInt().takeIf { it != activeIndex }?.let { day ->
+                                haptics.tick()
+                                currentOnAction(MapAction.Days.Select(day))
+                            }
+                        },
+                        onDragEnd = { isDragging = false },
+                    ),
+                horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraSmall),
+            ) {
                 itemsIndexed(tabs.days, key = { _, day -> day.id }) { index, day ->
                     DayPill(day, selected = index == tabs.activeIndex, onClick = { onAction(MapAction.Days.Select(index)) }, modifier = Modifier.animateItem())
                 }
@@ -121,41 +163,62 @@ internal fun DayTabs(
 }
 
 /**
- * Like the bottom bar's pill, the open day can be dragged: a drag that starts on it opens each day the finger passes
- * ([select]). Watched before the row's own scrolling, which it takes over once the finger moves past the touch slop;
- * a drag that starts on another day scrolls the row, and taps stay taps.
+ * Like the bottom bar's pill, the open day can be dragged: a drag that starts on it reports the finger's x ([onDrag])
+ * until it lifts ([onDragEnd]). Watched before the row's own scrolling, which it takes over once the finger moves past
+ * the touch slop; a drag that starts on another day scrolls the row, and taps stay taps.
  */
-private fun Modifier.dragOpenDay(listState: LazyListState, active: () -> Int, select: (Int) -> Unit): Modifier {
-    val dayAt = { x: Float -> listState.layoutInfo.visibleItemsInfo.firstOrNull { x >= it.offset && x < it.offset + it.size }?.index }
-    return pointerInput(listState) {
+private fun Modifier.dragOpenDay(listState: LazyListState, active: () -> Int, onDrag: (x: Float) -> Unit, onDragEnd: () -> Unit): Modifier =
+    pointerInput(listState) {
         awaitEachGesture {
             val down = awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
-            var open = active()
-            if (dayAt(down.position.x) != open) return@awaitEachGesture
+            val onOpenDay = listState.layoutInfo.visibleItemsInfo.any { it.index == active() && down.position.x >= it.offset && down.position.x < it.offset + it.size }
+            if (!onOpenDay) return@awaitEachGesture
             var isDragging = false
-            while (true) {
-                val change = awaitPointerEvent(PointerEventPass.Initial).changes.firstOrNull { it.id == down.id } ?: break
-                if (!change.pressed) break
-                if (!isDragging) isDragging = abs(change.position.x - down.position.x) > viewConfiguration.touchSlop
-                if (isDragging) {
-                    change.consume()
-                    dayAt(change.position.x)?.takeIf { it != open }?.let { day ->
-                        open = day
-                        select(day)
+            try {
+                while (true) {
+                    val change = awaitPointerEvent(PointerEventPass.Initial).changes.firstOrNull { it.id == down.id } ?: break
+                    if (!change.pressed) break
+                    if (!isDragging) isDragging = abs(change.position.x - down.position.x) > viewConfiguration.touchSlop
+                    if (isDragging) {
+                        change.consume()
+                        onDrag(change.position.x)
                     }
                 }
+            } finally {
+                if (isDragging) onDragEnd()
             }
         }
     }
+
+/** The fractional day under [x], between the centres of the days around it; null before the row is laid out. */
+private fun LazyListState.dayPosition(x: Float): Float? {
+    val centres = layoutInfo.visibleItemsInfo.map { it.index to it.offset + it.size / 2f }.ifEmpty { return null }
+    if (x <= centres.first().second) return centres.first().first.toFloat()
+    if (x >= centres.last().second) return centres.last().first.toFloat()
+    val before = centres.indexOfLast { it.second <= x }
+    val (day, from) = centres[before]
+    val to = centres[before + 1].second
+    return day + (x - from) / (to - from)
 }
 
+/** Where the pill at fractional day [position] is drawn: its left edge and width, between the two days around it. */
+private fun LazyListState.pillBounds(position: Float): Pair<Float, Float>? {
+    val items = layoutInfo.visibleItemsInfo
+    val day = floor(position).toInt()
+    val from = items.firstOrNull { it.index == day } ?: return null
+    val to = items.firstOrNull { it.index == day + 1 } ?: from
+    val fraction = position - day
+    return lerp(from.offset.toFloat(), to.offset.toFloat(), fraction) to lerp(from.size.toFloat(), to.size.toFloat(), fraction)
+}
+
+private val PillSpring = spring<Float>(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessMediumLow)
+
 /**
- * "Day 2" over its date; filled with the brand's green while open. A red dot on the top end corner of that fill (open
+ * "Day 2" over its date, in white while open (the green pill is drawn behind the days by [DayTabs]). A red dot on the top end corner of that fill (open
  * or not): a stop of the day has a "new" mark.
  */
 @Composable
 private fun DayPill(day: DayTab, selected: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier) {
-    val container by animateColorAsState(if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.primary.copy(alpha = 0f))
     val content by animateColorAsState(if (selected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant)
     val haptics = rememberHaptics()
     Box(modifier) {
@@ -163,7 +226,6 @@ private fun DayPill(day: DayTab, selected: Boolean, onClick: () -> Unit, modifie
             modifier = Modifier
                 .heightIn(min = DayPillHeight)
                 .clip(MaterialTheme.shapes.large)
-                .background(container)
                 .selectable(selected = selected, role = Role.Tab) {
                     if (!selected) haptics.tick()
                     onClick()
