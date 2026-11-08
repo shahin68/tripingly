@@ -19,7 +19,7 @@ import kotlin.time.TimeSource
 class Haptics(private val feedback: HapticFeedback) {
     private var lastTick: TimeSource.Monotonic.ValueTimeMark? = null
 
-    /** A selection moving one step: a day, a tab, a segment, a sheet settling. Never more than ten a second. */
+    /** A selection moving one step: a day, a tab, a segment, a sheet settling. Never more than 20 a second, so a fast drag still ticks at every step. */
     fun tick() {
         val now = TimeSource.Monotonic.markNow()
         if (lastTick?.let { now - it < TickGap } == true) return
@@ -49,4 +49,4 @@ fun rememberHaptics(): Haptics {
     return remember(feedback) { Haptics(feedback) }
 }
 
-private val TickGap = 100.milliseconds
+private val TickGap = 50.milliseconds
