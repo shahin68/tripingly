@@ -41,15 +41,16 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Rect
-import androidx.compose.ui.layout.onGloballyPositioned
-import androidx.compose.ui.unit.toSize
 import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.Layout
+import androidx.compose.ui.layout.boundsInParent
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.tooling.preview.PreviewParameter
 import androidx.compose.ui.unit.Constraints
@@ -97,8 +98,10 @@ import org.jetbrains.compose.resources.stringResource
  * The map's header, one row of glass pills of the same height: a round back button, the trip's owner and name, and
  * search joined to the trip's ⋮ menu. Tapping search grows that pill to the left over the whole
  * row, pushing the back button and the title away while ⋮ stays put, as on the design canvas; closing it shrinks
- * back. Tapping the title opens the trip card ([onTitleClick]; [onTitlePlaced] gives the pill's bounds on the screen,
- * which the card grows out of; the pill hides meanwhile, [isTitleHidden]). Over the native map, so no blur.
+ * back. Tapping the title opens the trip card ([onTitleClick]; [onTitlePlaced] gives the pill's bounds inside the
+ * header's padding, where the card grows out of it; the pill hides meanwhile, [isTitleHidden]). As the card grows
+ * ([cardProgress], 0 to 1) it pushes the back button out to the start and search and ⋮ out to the end, cut at the
+ * header's sides (the right half in landscape). Over the native map, so no blur.
  * [showDayActions]: the day has no plan sheet, so its day actions are in ⋮.
  */
 @Composable
@@ -111,21 +114,35 @@ internal fun MapHeader(
     isTitleHidden: Boolean = false,
     onTitleClick: () -> Unit = {},
     onTitlePlaced: (Rect) -> Unit = {},
+    cardProgress: () -> Float = { 0f },
 ) {
     val progress by animateFloatAsState(if (search != null) 1f else 0f, tween(SEARCH_MOTION_MILLIS))
     val actions = tripMenuActions(header, showDayActions, onAction)
     val gap = MaterialTheme.spacing.small
+    // How far past the header's padding the trip card pushes the buttons: off the screen, or out of the right half.
+    val pushedOut = MaterialTheme.spacing.medium
     // The search pill's width with just its buttons, kept while the field is open.
     val collapsedWidth = remember { intArrayOf(0) }
     Layout(
-        modifier = modifier.fillMaxWidth().padding(horizontal = MaterialTheme.spacing.medium, vertical = MaterialTheme.spacing.small).height(GlassButtonDefaults.HeaderSize),
+        modifier = modifier
+            .fillMaxWidth()
+            // Only the sides: what the trip card pushes out goes no further, the buttons' shadows still show.
+            .drawWithContent { clipRect(top = -size.height, bottom = size.height * 2) { this@drawWithContent.drawContent() } }
+            .padding(horizontal = MaterialTheme.spacing.medium, vertical = MaterialTheme.spacing.small)
+            .height(GlassButtonDefaults.HeaderSize),
         content = {
             Row(
-                modifier = Modifier.graphicsLayer { alpha = 1f - progress }.clipToBounds(),
+                // Cut while search grows over it; not while the trip card pushes the back button off the screen.
+                modifier = Modifier.graphicsLayer { alpha = 1f - progress }.then(if (search != null || progress > 0f) Modifier.clipToBounds() else Modifier),
                 horizontalArrangement = Arrangement.spacedBy(gap),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                GlassIconButton(onClick = { onAction(MapAction.Header.Back) }, blur = false, size = GlassButtonDefaults.HeaderSize) {
+                GlassIconButton(
+                    onClick = { onAction(MapAction.Header.Back) },
+                    blur = false,
+                    size = GlassButtonDefaults.HeaderSize,
+                    modifier = Modifier.graphicsLayer { translationX = -cardProgress() * (size.width + pushedOut.toPx()) },
+                ) {
                     Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(Res.string.map_back))
                 }
                 TripTitle(
@@ -135,7 +152,7 @@ internal fun MapHeader(
                     modifier = Modifier
                         .weight(1f)
                         .graphicsLayer { alpha = if (isTitleHidden) 0f else 1f }
-                        .onGloballyPositioned { onTitlePlaced(Rect(it.localToScreen(Offset.Zero), it.size.toSize())) },
+                        .onGloballyPositioned { onTitlePlaced(it.boundsInParent()) },
                 )
             }
             GlassButtonRow(blur = false, height = GlassButtonDefaults.HeaderSize) {
@@ -162,7 +179,7 @@ internal fun MapHeader(
         val pillPlaceable = pill.measure(Constraints.fixed(pillWidth, height))
         layout(width, height) {
             titlePlaceable.place(0, 0)
-            pillPlaceable.place(width - pillWidth, 0)
+            pillPlaceable.placeWithLayer(width - pillWidth, 0) { translationX = cardProgress() * (pillWidth + pushedOut.toPx()) }
         }
     }
 }

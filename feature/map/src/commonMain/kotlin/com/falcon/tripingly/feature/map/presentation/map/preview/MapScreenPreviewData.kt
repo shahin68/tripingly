@@ -63,7 +63,18 @@ private val withStops = MapUiState(
     header = HeaderState(
         tripName = "Summer Vacation in Paris",
         owner = UserSummary(id = "u1", username = "shahin", displayName = "Shahin"),
-        card = TripCardState(dates = "19 – 23 Oct 2026", dayCount = 5, stopCount = 6, memberCount = 4, likeCount = 12, saveCount = 3, created = "2 Oct 2026"),
+        card = TripCardState(
+            dates = "Oct 19 – 23",
+            likeCount = 12,
+            saveCount = 3,
+            faces = persistentListOf(
+                UserSummary(id = "u1", username = "shahin", displayName = "Shahin"),
+                UserSummary(id = "u2", username = "anna", displayName = "Anna Kovács"),
+                UserSummary(id = "u3", username = "jonas", displayName = "Jonas"),
+            ),
+            memberCount = 4,
+            hasNewJoinRequests = true,
+        ),
         members = MembersEntry(count = 4, requestCount = 1),
         editorMenu = EditorMenu(canDeleteDay = true),
     ),
@@ -158,7 +169,7 @@ internal class MapHeaderPreviewStates : PreviewParameterProvider<MapHeaderPrevie
             HeaderState(
                 tripName = "A long weekend in Budapest with the whole family",
                 owner = UserSummary(id = "u2", username = "anna", displayName = "Anna Kovács"),
-                card = TripCardState(dates = "4 – 9 Nov 2026", dayCount = 6, stopCount = 23, memberCount = 2, likeCount = 1480, saveCount = 96, created = "12 Oct 2026"),
+                card = TripCardState(dates = "Nov 4 – 9", likeCount = 12400, saveCount = 980, faces = persistentListOf(UserSummary(id = "u2", username = "anna", displayName = "Anna Kovács")), memberCount = 1),
                 viewerMenu = ViewerMenu(isSavedByMe = true, myJoinRequest = null, ownerUsername = "anna"),
             ),
         ),

@@ -1,5 +1,7 @@
 package com.falcon.tripingly.feature.map.presentation.map
 
+import androidx.compose.animation.core.MutableTransitionState
+import androidx.compose.animation.core.rememberTransition
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.AnchoredDraggableState
 import androidx.compose.foundation.gestures.awaitEachGesture
@@ -30,7 +32,9 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.backhandler.BackHandler
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.input.pointer.PointerEventPass
@@ -54,6 +58,7 @@ import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
 import com.falcon.tripingly.core.designsystem.theme.spacing
 import com.falcon.tripingly.core.model.place.GeoBounds
 import com.falcon.tripingly.core.ui.UiText
+import com.falcon.tripingly.core.ui.photos.rememberPhotoPicker
 import com.falcon.tripingly.feature.map.generated.resources.Res
 import com.falcon.tripingly.feature.map.generated.resources.map_back
 import com.falcon.tripingly.feature.map.generated.resources.map_retry
@@ -72,10 +77,11 @@ import com.falcon.tripingly.feature.map.presentation.map.ui.PlanSheetPeek
 import com.falcon.tripingly.feature.map.presentation.map.ui.PlanSheetValue
 import com.falcon.tripingly.feature.map.presentation.map.ui.SearchResults
 import com.falcon.tripingly.feature.map.presentation.map.ui.StopCard
-import com.falcon.tripingly.feature.map.presentation.map.ui.TripCardDialog
+import com.falcon.tripingly.feature.map.presentation.map.ui.TripCard
+import com.falcon.tripingly.feature.map.presentation.map.ui.TripCardScrim
+import com.falcon.tripingly.feature.map.presentation.map.ui.animateTripCard
 import com.falcon.tripingly.feature.map.presentation.map.ui.pulledUp
 import com.falcon.tripingly.feature.map.presentation.map.ui.rememberPlanSheetState
-import com.falcon.tripingly.core.ui.photos.rememberPhotoPicker
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.map
@@ -108,8 +114,16 @@ internal fun MapScreen(
     val isPlaceCardOpen by rememberUpdatedState(state.placeCard != null)
     val isStopCardOpen by rememberUpdatedState(state.stopCard != null)
     // The trip card that grows out of the title pill, and where that pill is on the screen.
+    // Where the pill is inside the header's padding, which is where the card starts too.
     var isTripCardOpen by rememberSaveable { mutableStateOf(false) }
     var titleBounds by remember { mutableStateOf(Rect.Zero) }
+    val tripCardState = remember { MutableTransitionState(isTripCardOpen) }
+    tripCardState.targetState = isTripCardOpen
+    val tripCard = rememberTransition(tripCardState, label = "trip card")
+    val tripCardProgress by tripCard.animateTripCard()
+    val isTripCardShown = tripCardState.currentState || tripCardState.targetState
+    @OptIn(ExperimentalComposeUiApi::class)
+    BackHandler(enabled = isTripCardOpen) { isTripCardOpen = false }
 
     BoxWithConstraints(
         modifier = Modifier
@@ -193,9 +207,10 @@ internal fun MapScreen(
                 showDayActions = plan == null,
                 onAction = onAction,
                 modifier = Modifier.onSizeChanged { headerHeight = with(density) { it.height.toDp() } },
-                isTitleHidden = isTripCardOpen,
+                isTitleHidden = isTripCardShown,
                 onTitleClick = { isTripCardOpen = true },
                 onTitlePlaced = { titleBounds = it },
+                cardProgress = { tripCardProgress },
             )
             state.joinRequests?.let { requests ->
                 JoinRequestsPill(
@@ -209,14 +224,6 @@ internal fun MapScreen(
             }
         }
 
-        if (isTripCardOpen) {
-            TripCardDialog(
-                header = state.header,
-                from = titleBounds,
-                onOwnerClick = { onAction(MapAction.Header.OpenOwnerProfile) },
-                onDismiss = { isTripCardOpen = false },
-            )
-        }
 
         // Retry sends every stop change that failed for a connection problem, earlier ones too.
         val message = state.message
@@ -284,6 +291,31 @@ internal fun MapScreen(
                     onRemoveMyContent = { onAction(MapAction.StopCard.RemoveMyContent) }.takeIf { card.canRemoveMyContent },
                 )
             }
+        }
+
+        // Over everything: the dimmed map and the trip card grown out of the title, in the header's place.
+        if (isTripCardShown) {
+            TripCardScrim(progress = { tripCardProgress }, onClose = { isTripCardOpen = false })
+            TripCard(
+                header = state.header,
+                transition = tripCard,
+                progress = { tripCardProgress },
+                pill = titleBounds,
+                onClose = { isTripCardOpen = false },
+                onOwnerClick = {
+                    isTripCardOpen = false
+                    onAction(MapAction.Header.OpenOwnerProfile)
+                },
+                onMembersClick = {
+                    isTripCardOpen = false
+                    onAction(MapAction.Header.OpenJoinRequests)
+                },
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .statusBarsPadding()
+                    .then(panel)
+                    .padding(horizontal = MaterialTheme.spacing.medium, vertical = MaterialTheme.spacing.small),
+            )
         }
     }
 }

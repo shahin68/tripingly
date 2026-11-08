@@ -200,19 +200,16 @@
 
     <!-- Redesign -->
     <string name="map_comments">Hozzászólások</string>
-    <string name="map_trip_card_brand">Tripinly</string>
-    <string name="map_trip_card_title">Utazási engedély</string>
-    <string name="map_trip_card_name">Név</string>
-    <string name="map_trip_card_holder">Tulajdonos</string>
-    <string name="map_trip_card_dates">Érvényes</string>
+    <string name="map_trip_card_by">%1$s útja</string>
+    <string name="map_trip_card_dates">Dátum</string>
     <string name="map_trip_card_no_dates">Nincs dátum</string>
-    <string name="map_trip_card_issued">Kiállítva</string>
-    <string name="map_trip_card_days">Napok</string>
-    <string name="map_trip_card_stops">Megállók</string>
-    <string name="map_trip_card_members">Tagok</string>
     <string name="map_trip_card_likes">Kedvelések</string>
     <string name="map_trip_card_saves">Mentések</string>
     <string name="map_trip_card_visibility">Láthatóság</string>
     <string name="map_trip_card_public">Nyilvános</string>
     <string name="map_trip_card_private">Privát</string>
+    <string name="map_trip_card_members">Tagok</string>
+    <string name="map_trip_card_more">és még %1$d</string>
+    <string name="map_trip_card_only">Csak %1$s</string>
+    <string name="map_trip_card_new_requests">Új csatlakozási kérések</string>
 </resources>

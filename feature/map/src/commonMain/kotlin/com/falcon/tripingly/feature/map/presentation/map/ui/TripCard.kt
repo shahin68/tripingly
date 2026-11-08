@@ -1,282 +1,426 @@
 package com.falcon.tripingly.feature.map.presentation.map.ui
 
-import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.ExperimentalSharedTransitionApi
-import androidx.compose.animation.SharedTransitionLayout
-import androidx.compose.animation.core.updateTransition
-import androidx.compose.foundation.BorderStroke
+import androidx.compose.animation.core.CubicBezierEasing
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.MutableTransitionState
+import androidx.compose.animation.core.Transition
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.rememberTransition
+import androidx.compose.animation.core.snap
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.outlined.BookmarkBorder
+import androidx.compose.material.icons.outlined.FavoriteBorder
+import androidx.compose.material.icons.outlined.Lock
+import androidx.compose.material.icons.outlined.Public
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.State
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.geometry.RoundRect
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Outline
+import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.graphics.drawOutline
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.window.DialogProperties
+import androidx.compose.ui.util.lerp
 import com.falcon.tripingly.core.designsystem.component.AvatarCircle
+import com.falcon.tripingly.core.designsystem.component.AvatarSize
+import com.falcon.tripingly.core.designsystem.component.GlassButtonDefaults
+import com.falcon.tripingly.core.designsystem.component.GlassDefaults
 import com.falcon.tripingly.core.designsystem.component.compactCount
+import com.falcon.tripingly.core.designsystem.theme.MapColors
 import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
-import com.falcon.tripingly.core.designsystem.theme.spacing
+import com.falcon.tripingly.core.designsystem.theme.extendedColors
 import com.falcon.tripingly.feature.map.generated.resources.Res
+import com.falcon.tripingly.feature.map.generated.resources.map_close
 import com.falcon.tripingly.feature.map.generated.resources.map_owner_profile
-import com.falcon.tripingly.feature.map.generated.resources.map_trip_card_brand
+import com.falcon.tripingly.feature.map.generated.resources.map_trip_card_by
 import com.falcon.tripingly.feature.map.generated.resources.map_trip_card_dates
-import com.falcon.tripingly.feature.map.generated.resources.map_trip_card_days
-import com.falcon.tripingly.feature.map.generated.resources.map_trip_card_holder
-import com.falcon.tripingly.feature.map.generated.resources.map_trip_card_issued
 import com.falcon.tripingly.feature.map.generated.resources.map_trip_card_likes
 import com.falcon.tripingly.feature.map.generated.resources.map_trip_card_members
-import com.falcon.tripingly.feature.map.generated.resources.map_trip_card_name
+import com.falcon.tripingly.feature.map.generated.resources.map_trip_card_more
+import com.falcon.tripingly.feature.map.generated.resources.map_trip_card_new_requests
 import com.falcon.tripingly.feature.map.generated.resources.map_trip_card_no_dates
+import com.falcon.tripingly.feature.map.generated.resources.map_trip_card_only
 import com.falcon.tripingly.feature.map.generated.resources.map_trip_card_private
 import com.falcon.tripingly.feature.map.generated.resources.map_trip_card_public
 import com.falcon.tripingly.feature.map.generated.resources.map_trip_card_saves
-import com.falcon.tripingly.feature.map.generated.resources.map_trip_card_stops
-import com.falcon.tripingly.feature.map.generated.resources.map_trip_card_title
 import com.falcon.tripingly.feature.map.generated.resources.map_trip_card_visibility
 import com.falcon.tripingly.feature.map.presentation.map.HeaderState
+import com.falcon.tripingly.feature.map.presentation.map.TripCardState
 import com.falcon.tripingly.feature.map.presentation.map.preview.MapHeaderPreviewStates
 import kotlin.math.roundToInt
 import org.jetbrains.compose.resources.stringResource
 
-/**
- * The trip card over the map, grown out of the title pill at [from] (its bounds on the screen) as a shared element,
- * and shrunk back into it when closed: a tap outside it, back, or the owner's photo (which then opens their
- * profile, [onOwnerClick]). [onDismiss] once it is back on the pill. While it shows, the header hides its pill.
+/*
+ * The trip card grows out of the title pill in the same window, no Dialog and no shared bounds (both broke on iOS).
+ * One transition drives everything: the card's shape (from the pill's rectangle to the whole card, corners kept
+ * round), the header's back and ⋮ pushed out, and the three rows sliding down into place. The card is laid out once at
+ * its full size, so every frame only draws again, the same on Android and iOS. Design: the "Final" board of the trip
+ * card canvas (Shahin, 2026-11-08).
  */
-@OptIn(ExperimentalSharedTransitionApi::class)
-@Composable
-internal fun TripCardDialog(header: HeaderState, from: Rect, onOwnerClick: () -> Unit, onDismiss: () -> Unit) {
-    // Where the dialog starts on the screen, so the pill's copy lands on the pill; nothing shows until it's known.
-    var origin by remember { mutableStateOf<Offset?>(null) }
-    var isOpen by remember { mutableStateOf(false) }
-    var hasOpened by remember { mutableStateOf(false) }
-    val transition = updateTransition(isOpen, label = "trip card")
-    LaunchedEffect(origin) { if (origin != null) isOpen = true }
-    // Back on the pill after being open: the dialog goes and the real pill shows again.
-    LaunchedEffect(transition.currentState) { if (transition.currentState) hasOpened = true else if (hasOpened) onDismiss() }
 
-    Dialog(onDismissRequest = { isOpen = false }, properties = DialogProperties(usePlatformDefaultWidth = false)) {
-        SharedTransitionLayout(
-            Modifier
-                .fillMaxSize()
-                .onGloballyPositioned { origin = it.localToScreen(Offset.Zero) }
-                .graphicsLayer { alpha = if (origin == null) 0f else 1f },
-        ) {
-            transition.AnimatedContent { open ->
-                val shared = Modifier.sharedBounds(rememberSharedContentState(TRIP_CARD_KEY), this@AnimatedContent)
-                if (open) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .clickable(interactionSource = null, indication = null) { isOpen = false }
-                            .safeDrawingPadding()
-                            .padding(MaterialTheme.spacing.large),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        TripCard(
-                            header = header,
-                            onOwnerClick = {
-                                isOpen = false
-                                onOwnerClick()
-                            },
-                            // A tap on the card itself keeps it open; a long name scrolls in landscape.
-                            modifier = shared
-                                .widthIn(max = TripCardMaxWidth)
-                                .clickable(interactionSource = null, indication = null) {}
-                                .verticalScroll(rememberScrollState()),
-                        )
-                    }
-                } else {
-                    val start = origin ?: Offset.Zero
-                    val size = with(LocalDensity.current) { from.width.toDp() to from.height.toDp() }
-                    Box(Modifier.fillMaxSize()) {
-                        TripTitle(
-                            header = header,
-                            isInteractive = false,
-                            modifier = Modifier
-                                .offset { IntOffset((from.left - start.x).roundToInt(), (from.top - start.y).roundToInt()) }
-                                .size(size.first, size.second)
-                                .then(shared),
-                        )
-                    }
-                }
+/** The card's growth: 0 is the title pill, 1 the open card. It slows down towards the end both ways. */
+@Composable
+internal fun Transition<Boolean>.animateTripCard(): State<Float> = animateFloat(
+    transitionSpec = { tween(if (false isTransitioningTo true) OPEN_MILLIS else CLOSE_MILLIS, easing = Decelerate) },
+    label = "trip card",
+) { open -> if (open) 1f else 0f }
+
+/**
+ * The trip card over the map, grown out of the title pill at [pill] (its bounds in the same coordinates as this card)
+ * by [progress] of [transition]: the owner (whose face opens their profile, [onOwnerClick]) and the whole name, the
+ * details as tiles, and the members strip, which opens the members sheet ([onMembersClick]) and has a red dot while
+ * the owner hasn't seen new requests to join. [onClose]: the close button. It wraps its content; a long name scrolls
+ * where the screen is short.
+ */
+@Composable
+internal fun TripCard(
+    header: HeaderState,
+    transition: Transition<Boolean>,
+    progress: () -> Float,
+    pill: Rect,
+    onClose: () -> Unit,
+    onOwnerClick: () -> Unit,
+    onMembersClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val tint = GlassDefaults.opaqueTint
+    val edge = MaterialTheme.extendedColors.glassEdge
+    val pillAlpha by transition.animateFloat(
+        transitionSpec = { if (false isTransitioningTo true) tween(PILL_FADE_OUT_MILLIS, easing = LinearEasing) else tween(PILL_FADE_IN_MILLIS, PILL_FADE_IN_DELAY_MILLIS, LinearEasing) },
+        label = "pill",
+    ) { open -> if (open) 0f else 1f }
+    val pillSize = with(LocalDensity.current) { pill.width.toDp() to pill.height.toDp() }
+    Box(
+        modifier = modifier
+            .graphicsLayer {
+                shape = GrowingShape(pill, progress())
+                clip = true
+                shadowElevation = GlassDefaults.ShadowElevation.toPx()
+                ambientShadowColor = GlassDefaults.Shadow
+                spotShadowColor = GlassDefaults.Shadow
             }
-        }
-    }
-}
-
-private const val TRIP_CARD_KEY = "trip-card"
-
-private val TripCardMaxWidth = 420.dp
-
-/**
- * The trip as a residence permit: the issuing band, the owner's photo (opening their profile) beside the whole
- * name and the holder, the dates and counts in labelled fields, and a machine-readable zone at the bottom.
- */
-@Composable
-internal fun TripCard(header: HeaderState, onOwnerClick: () -> Unit, modifier: Modifier = Modifier) {
-    val card = header.card
-    val owner = header.owner
-    val pattern = MaterialTheme.colorScheme.primary.copy(alpha = 0.06f)
-    Surface(
-        modifier = modifier,
-        shape = MaterialTheme.shapes.extraLarge,
-        color = MaterialTheme.colorScheme.surfaceContainerLowest,
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+            .drawBehind {
+                val outline = GrowingShape(pill, progress()).createOutline(size, layoutDirection, this)
+                drawOutline(outline, tint)
+                drawOutline(outline, edge, style = Stroke(GlassDefaults.Edge.toPx()))
+            }
+            // Taps on the card stay on it: only a tap outside closes it.
+            .clickable(interactionSource = null, indication = null) {},
     ) {
         Column(
-            modifier = Modifier.drawBehind {
-                // The fine rings printed on permits, behind everything.
-                val center = Offset(size.width * 0.85f, size.height * 0.45f)
-                repeat(12) { ring -> drawCircle(pattern, radius = 24.dp.toPx() + ring * 14.dp.toPx(), center = center, style = Stroke(1.dp.toPx())) }
-            },
+            modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(CardInset),
+            verticalArrangement = Arrangement.spacedBy(RowGap),
         ) {
-            Row(
-                modifier = Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.primary).padding(horizontal = MaterialTheme.spacing.medium, vertical = MaterialTheme.spacing.small + MaterialTheme.spacing.extraSmall),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(stringResource(Res.string.map_trip_card_brand).uppercase(), style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onPrimary, letterSpacing = 2.sp)
-                Spacer(Modifier.weight(1f))
-                Text(stringResource(Res.string.map_trip_card_title).uppercase(), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.8f), letterSpacing = 1.sp)
+            OwnerRow(header, onOwnerClick, onClose, transition.rowMotion(0))
+            DetailTiles(header.card, transition.rowMotion(1))
+            if (header.card.memberCount > 0) MembersStrip(header.card, onMembersClick, transition.rowMotion(2))
+        }
+        // The pill's own face and name, fading as the card grows over them and back as it shrinks into the pill.
+        TripTitleContent(
+            header = header,
+            modifier = Modifier
+                .offset { IntOffset(pill.left.roundToInt(), pill.top.roundToInt()) }
+                .size(pillSize.first, pillSize.second)
+                .graphicsLayer { alpha = pillAlpha },
+        )
+    }
+}
+
+/** The dimmed map behind the open card, following [progress]; a tap on it closes the card ([onClose]). */
+@Composable
+internal fun TripCardScrim(progress: () -> Float, onClose: () -> Unit, modifier: Modifier = Modifier) {
+    Box(
+        modifier
+            .fillMaxSize()
+            .graphicsLayer { alpha = progress() }
+            .background(MaterialTheme.colorScheme.scrim.copy(alpha = SCRIM_ALPHA))
+            .clickable(interactionSource = null, indication = null, onClick = onClose),
+    )
+}
+
+/**
+ * A row of the card: opening, it fades in and slides down from above (each row from further up, so they land one after
+ * another); closing, it only fades out, quickly, and goes back up once it's gone.
+ */
+@Composable
+private fun Transition<Boolean>.rowMotion(index: Int): Modifier {
+    val alpha by animateFloat(
+        transitionSpec = {
+            if (false isTransitioningTo true) {
+                tween(ROW_FADE_IN_MILLIS, ROW_FADE_IN_DELAY_MILLIS + index * ROW_STAGGER_MILLIS, LinearEasing)
+            } else {
+                tween(ROW_FADE_OUT_MILLIS, easing = LinearEasing)
             }
-            Column(modifier = Modifier.padding(MaterialTheme.spacing.medium), verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium)) {
-                Row(horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium)) {
-                    if (owner != null) {
-                        val profile = stringResource(Res.string.map_owner_profile, owner.username)
-                        AvatarCircle(
-                            user = owner,
-                            size = OwnerPhotoSize,
-                            shape = MaterialTheme.shapes.small,
-                            modifier = Modifier.clip(MaterialTheme.shapes.small).clickable(onClick = onOwnerClick).semantics { contentDescription = profile },
-                        )
-                    }
-                    Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small)) {
-                        Field(stringResource(Res.string.map_trip_card_name), header.tripName, isMain = true)
-                        owner?.let { Field(stringResource(Res.string.map_trip_card_holder), "${it.displayName}\n@${it.username}") }
-                    }
-                }
-                Row(horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium)) {
-                    Field(stringResource(Res.string.map_trip_card_dates), card.dates ?: stringResource(Res.string.map_trip_card_no_dates), Modifier.weight(2f))
-                    Field(stringResource(Res.string.map_trip_card_issued), card.created, Modifier.weight(1f))
-                }
-                Row(horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium)) {
-                    Field(stringResource(Res.string.map_trip_card_days), card.dayCount.toString(), Modifier.weight(1f))
-                    Field(stringResource(Res.string.map_trip_card_stops), card.stopCount.toString(), Modifier.weight(1f))
-                    Field(stringResource(Res.string.map_trip_card_members), card.memberCount.toString(), Modifier.weight(1f))
-                }
-                Row(horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium)) {
-                    Field(stringResource(Res.string.map_trip_card_likes), compactCount(card.likeCount), Modifier.weight(1f))
-                    Field(stringResource(Res.string.map_trip_card_saves), compactCount(card.saveCount), Modifier.weight(1f))
-                    Field(
-                        stringResource(Res.string.map_trip_card_visibility),
-                        stringResource(if (card.isPublic) Res.string.map_trip_card_public else Res.string.map_trip_card_private),
-                        Modifier.weight(1f),
-                    )
-                }
+        },
+        label = "row $index",
+    ) { open -> if (open) 1f else 0f }
+    val lift by animateFloat(
+        transitionSpec = { if (false isTransitioningTo true) tween(ROW_SLIDE_MILLIS, easing = SlideIn) else snap(CLOSE_MILLIS) },
+        label = "row $index lift",
+    ) { open -> if (open) 0f else 1f }
+    val distance = RowSlide * (index + 1)
+    return Modifier.graphicsLayer {
+        this.alpha = alpha
+        translationY = -lift * distance.toPx()
+    }
+}
+
+/** The owner's face beside the whole name and "by Shahin", their tops in line, and the close button at the end. */
+@Composable
+private fun OwnerRow(header: HeaderState, onOwnerClick: () -> Unit, onClose: () -> Unit, modifier: Modifier = Modifier) {
+    val owner = header.owner
+    Row(modifier = modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(TitleGap)) {
+        if (owner != null) {
+            val profile = stringResource(Res.string.map_owner_profile, owner.username)
+            AvatarCircle(
+                user = owner,
+                size = AvatarSize.Medium,
+                modifier = Modifier.clip(CircleShape).clickable(onClick = onOwnerClick).semantics { contentDescription = profile },
+            )
+        }
+        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text(header.tripName, style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.ExtraBold))
+            owner?.let {
+                Text(stringResource(Res.string.map_trip_card_by, it.displayName), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
-            // Decoration only, like the code lines at the bottom of a permit: screen readers skip it.
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(MaterialTheme.colorScheme.surfaceContainerHigh)
-                    .padding(horizontal = MaterialTheme.spacing.medium, vertical = MaterialTheme.spacing.small)
-                    .clearAndSetSemantics {},
-            ) {
-                machineZone(header).forEach { line ->
-                    Text(
-                        line,
-                        style = MaterialTheme.typography.labelMedium,
-                        fontFamily = FontFamily.Monospace,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        letterSpacing = 1.5.sp,
-                        maxLines = 1,
-                        overflow = TextOverflow.Clip,
-                        softWrap = false,
-                    )
-                }
-            }
+        }
+        Box(
+            modifier = Modifier
+                .size(CloseSize)
+                .clip(CircleShape)
+                .background(MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.8f))
+                .clickable(role = Role.Button, onClick = onClose),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(Icons.Default.Close, contentDescription = stringResource(Res.string.map_close), modifier = Modifier.size(16.dp))
         }
     }
 }
 
-/** A label in small capitals over its value; the trip's name ([isMain]) larger, never cut. */
+/** Dates, likes, saves and who sees the trip, each on a small tile; Dates gets what the others leave. */
 @Composable
-private fun Field(label: String, value: String, modifier: Modifier = Modifier, isMain: Boolean = false) {
-    Column(modifier) {
-        Text(label.uppercase(), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, letterSpacing = 0.8.sp)
-        Text(value, style = if (isMain) MaterialTheme.typography.titleMedium else MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface)
+private fun DetailTiles(card: TripCardState, modifier: Modifier = Modifier) {
+    Row(modifier = modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(TileGap)) {
+        DetailTile(stringResource(Res.string.map_trip_card_dates), Modifier.weight(1f)) {
+            TileValue(card.dates ?: stringResource(Res.string.map_trip_card_no_dates))
+        }
+        DetailTile(stringResource(Res.string.map_trip_card_likes)) { TileValue(compactCount(card.likeCount), Icons.Outlined.FavoriteBorder) }
+        DetailTile(stringResource(Res.string.map_trip_card_saves)) { TileValue(compactCount(card.saveCount), Icons.Outlined.BookmarkBorder) }
+        DetailTile(stringResource(Res.string.map_trip_card_visibility)) {
+            TileValue(
+                text = stringResource(if (card.isPublic) Res.string.map_trip_card_public else Res.string.map_trip_card_private),
+                icon = if (card.isPublic) Icons.Outlined.Public else Icons.Outlined.Lock,
+                color = MaterialTheme.colorScheme.primary,
+            )
+        }
     }
 }
 
-/** Two permit-style code lines from the trip: its name, then the owner and the counts, filled with `<`. */
-private fun machineZone(header: HeaderState): List<String> {
-    fun code(text: String) = text.uppercase().map { if (it.isLetterOrDigit()) it else '<' }.joinToString("")
-    val card = header.card
-    return listOf(
-        "TRP<" + code(header.tripName),
-        code(header.owner?.username.orEmpty()) + "<<" + "${card.dayCount}D<${card.stopCount}S<${card.memberCount}M",
-    ).map { it.padEnd(MACHINE_LINE_LENGTH, '<') }
+@Composable
+private fun DetailTile(label: String, modifier: Modifier = Modifier, value: @Composable () -> Unit) {
+    Column(
+        modifier = modifier
+            .clip(TileShape)
+            .background(MaterialTheme.colorScheme.surfaceContainerLow)
+            .border(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f), TileShape)
+            .padding(horizontal = 10.dp, vertical = 8.dp),
+        verticalArrangement = Arrangement.spacedBy(2.dp),
+    ) {
+        Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        value()
+    }
 }
 
-/** Longer than any card is wide: the lines run to the edge and are cut there. */
-private const val MACHINE_LINE_LENGTH = 60
+@Composable
+private fun TileValue(text: String, icon: ImageVector? = null, color: Color = MaterialTheme.colorScheme.onSurface) {
+    Row(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
+        icon?.let { Icon(it, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(14.dp)) }
+        Text(text, style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.ExtraBold), color = color, maxLines = 1, overflow = TextOverflow.Ellipsis)
+    }
+}
 
-private val OwnerPhotoSize = 88.dp
+/**
+ * Up to three faces (the owner first), "and 2 more" (or "Only Shahin" on a one-person trip) and "Members ›"; the whole
+ * strip opens the members sheet. A red dot on its top end corner, like the day tabs': new requests to join.
+ */
+@Composable
+private fun MembersStrip(card: TripCardState, onClick: () -> Unit, modifier: Modifier = Modifier) {
+    val newRequests = stringResource(Res.string.map_trip_card_new_requests)
+    Box(modifier.fillMaxWidth()) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(StripHeight)
+                .clip(StripShape)
+                .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+                .clickable(role = Role.Button, onClick = onClick)
+                .semantics(mergeDescendants = true) { if (card.hasNewJoinRequests) contentDescription = newRequests }
+                .padding(start = 6.dp, end = 12.dp),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Row(horizontalArrangement = Arrangement.spacedBy(-FaceOverlap)) {
+                card.faces.forEach { face ->
+                    AvatarCircle(
+                        user = face,
+                        size = FaceSize,
+                        modifier = Modifier.border(2.dp, MaterialTheme.colorScheme.surfaceContainerHigh, CircleShape),
+                    )
+                }
+            }
+            val more = card.memberCount - card.faces.size
+            val note = when {
+                more > 0 -> stringResource(Res.string.map_trip_card_more, more)
+                card.memberCount == 1 -> card.faces.firstOrNull()?.let { stringResource(Res.string.map_trip_card_only, it.displayName) }
+                else -> null
+            }
+            Text(
+                note.orEmpty(),
+                style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f),
+            )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(stringResource(Res.string.map_trip_card_members), style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold), color = MaterialTheme.colorScheme.primary)
+                Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(16.dp))
+            }
+        }
+        if (card.hasNewJoinRequests) {
+            // Centred on the rounded corner's curve, as on the day tabs.
+            val onCorner = NewDotSize / 2 - StripRadius * (1 - CORNER_CURVE_POINT)
+            Box(
+                Modifier
+                    .align(Alignment.TopEnd)
+                    .offset(x = onCorner, y = -onCorner)
+                    .size(NewDotSize)
+                    .background(MapColors.NewActivity, CircleShape),
+            )
+        }
+    }
+}
+
+/**
+ * The card's outline at [progress]: the pill's rectangle at 0, the whole card at 1, every edge moving at once; the
+ * corners stay as round as the pill's.
+ */
+private class GrowingShape(private val pill: Rect, private val progress: Float) : Shape {
+    override fun createOutline(size: Size, layoutDirection: LayoutDirection, density: Density): Outline {
+        val rect = Rect(
+            left = lerp(pill.left, 0f, progress),
+            top = lerp(pill.top, 0f, progress),
+            right = lerp(pill.right, size.width, progress),
+            bottom = lerp(pill.bottom, size.height, progress),
+        )
+        val radius = with(density) { CardRadius.toPx() }.coerceAtMost(rect.height / 2)
+        return Outline.Rounded(RoundRect(rect, CornerRadius(radius)))
+    }
+}
+
+/** Material's emphasized decelerate: fast at first, easing into place. */
+private val Decelerate = CubicBezierEasing(0.05f, 0.7f, 0.1f, 1f)
+
+/** Softer than the card's, so the rows' slide is still seen once the card is nearly open. */
+private val SlideIn = CubicBezierEasing(0.2f, 0f, 0f, 1f)
+
+private const val OPEN_MILLIS = 400
+private const val CLOSE_MILLIS = 320
+private const val PILL_FADE_OUT_MILLIS = 100
+private const val PILL_FADE_IN_MILLIS = 150
+
+/** The pill's face and name come back only once the rows are gone, so nothing shows through them. */
+private const val PILL_FADE_IN_DELAY_MILLIS = 170
+private const val ROW_FADE_IN_MILLIS = 260
+private const val ROW_FADE_IN_DELAY_MILLIS = 60
+private const val ROW_STAGGER_MILLIS = 30
+private const val ROW_FADE_OUT_MILLIS = 90
+private const val ROW_SLIDE_MILLIS = 460
+private const val SCRIM_ALPHA = 0.24f
+
+/** How far above its place each row starts, times its position (24, 48, 72 dp). */
+private val RowSlide = 24.dp
+
+/** The pill's corners, kept by the card. */
+private val CardRadius = GlassButtonDefaults.HeaderSize / 2
+
+/** The same inset for the owner's face and the close button, and every row. */
+private val CardInset = 10.dp
+private val RowGap = 12.dp
+private val TitleGap = 12.dp
+private val CloseSize = 36.dp
+private val TileGap = 6.dp
+private val TileShape = RoundedCornerShape(16.dp)
+private val StripRadius = 22.dp
+private val StripShape = RoundedCornerShape(StripRadius)
+private val StripHeight = 56.dp
+private val FaceSize = 44.dp
+private val FaceOverlap = 12.dp
+private val NewDotSize = 10.dp
+
+/** How far round a corner's curve its middle point lies from the corner's edges: cos 45°. */
+private const val CORNER_CURVE_POINT = 0.7071f
 
 @Composable
-private fun TripCardPreviewContent() {
-    Box(Modifier.background(MaterialTheme.colorScheme.surfaceContainerHigh).padding(MaterialTheme.spacing.medium)) {
-        TripCard(header = MapHeaderPreviewStates().values.elementAt(1).header, onOwnerClick = {})
+private fun TripCardPreviewContent(header: HeaderState) {
+    val transition = rememberTransition(remember { MutableTransitionState(true) })
+    Box(Modifier.background(MaterialTheme.colorScheme.surfaceContainerHigh).padding(16.dp)) {
+        TripCard(header = header, transition = transition, progress = { 1f }, pill = Rect.Zero, onClose = {}, onOwnerClick = {}, onMembersClick = {})
     }
 }
 
 @Preview
 @Composable
 private fun TripCardPreview() {
-    TripinglyTheme { TripCardPreviewContent() }
+    TripinglyTheme { TripCardPreviewContent(MapHeaderPreviewStates().values.first().header) }
 }
 
 @Preview
 @Composable
 private fun TripCardDarkPreview() {
-    TripinglyTheme(darkTheme = true) { TripCardPreviewContent() }
+    TripinglyTheme(darkTheme = true) { TripCardPreviewContent(MapHeaderPreviewStates().values.elementAt(1).header) }
 }

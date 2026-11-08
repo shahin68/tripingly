@@ -200,19 +200,16 @@
 
     <!-- Redesign -->
     <string name="map_comments">Kommentare</string>
-    <string name="map_trip_card_brand">Tripinly</string>
-    <string name="map_trip_card_title">Reiseerlaubnis</string>
-    <string name="map_trip_card_name">Name</string>
-    <string name="map_trip_card_holder">Inhaber</string>
-    <string name="map_trip_card_dates">Gültig</string>
+    <string name="map_trip_card_by">von %1$s</string>
+    <string name="map_trip_card_dates">Datum</string>
     <string name="map_trip_card_no_dates">Ohne Daten</string>
-    <string name="map_trip_card_issued">Ausgestellt</string>
-    <string name="map_trip_card_days">Tage</string>
-    <string name="map_trip_card_stops">Stopps</string>
-    <string name="map_trip_card_members">Mitglieder</string>
     <string name="map_trip_card_likes">Likes</string>
     <string name="map_trip_card_saves">Gespeichert</string>
-    <string name="map_trip_card_visibility">Sichtbarkeit</string>
+    <string name="map_trip_card_visibility">Sichtbar</string>
     <string name="map_trip_card_public">Öffentlich</string>
     <string name="map_trip_card_private">Privat</string>
+    <string name="map_trip_card_members">Mitglieder</string>
+    <string name="map_trip_card_more">und %1$d weitere</string>
+    <string name="map_trip_card_only">Nur %1$s</string>
+    <string name="map_trip_card_new_requests">Neue Beitrittsanfragen</string>
 </resources>

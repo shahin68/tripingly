@@ -82,14 +82,13 @@ internal class MapStateMapper(
             tripName = trip?.name.orEmpty(),
             owner = trip?.owner,
             card = TripCardState(
-                dates = trip?.let { DateUtils.formatRange(it.startDate, it.endDate) },
-                dayCount = days.size,
-                stopCount = days.sumOf { it.markers.size },
-                memberCount = details?.members?.size ?: 0,
+                dates = trip?.let { DateUtils.formatShortRange(it.startDate, it.endDate) },
                 likeCount = details?.likeCount ?: 0,
                 saveCount = details?.saveCount ?: 0,
                 isPublic = trip?.visibility != TripVisibility.PRIVATE,
-                created = trip?.createdAt?.let(DateUtils::formatFormal).orEmpty(),
+                faces = details?.members.orEmpty().sortedByDescending { it.role == TripRole.OWNER }.take(TRIP_CARD_FACES).map { it.user }.toImmutableList(),
+                memberCount = details?.members?.size ?: 0,
+                hasNewJoinRequests = model.joinRequesters.any { it.id !in model.dismissedJoinRequesterIds },
             ),
             members = details?.members?.takeIf { it.isNotEmpty() }?.let { MembersEntry(it.size, details.pendingJoinRequestCount) },
             isLoading = days.isEmpty() && model.isLoadingTrip,
@@ -271,3 +270,6 @@ internal class MapStateMapper(
         const val MAX_BEST_ORDER_STOPS = 25
     }
 }
+
+/** The trip card shows at most this many members' faces; the rest as "and 2 more". */
+private const val TRIP_CARD_FACES = 3

@@ -81,19 +81,20 @@ data class HeaderState(
 )
 
 /**
- * The trip card that opens from the title, laid out like a residence permit: the whole name, the owner, the
- * [dates] ("19 – 23 Oct 2026", null without dates), the counts, whether it's public and the day it was [created].
+ * The trip card that grows out of the title: the owner and the whole name, the details ([dates] as short as possible,
+ * "Oct 19 – 23", null without dates; the likes, saves and who sees it) and a strip of the members' first [faces] (the
+ * owner first, at most three) with how many there are. [hasNewJoinRequests]: the owner hasn't opened the members since
+ * someone asked to join, a red dot on that strip.
  */
 @Immutable
 data class TripCardState(
     val dates: String? = null,
-    val dayCount: Int = 0,
-    val stopCount: Int = 0,
-    val memberCount: Int = 0,
     val likeCount: Int = 0,
     val saveCount: Int = 0,
     val isPublic: Boolean = true,
-    val created: String = "",
+    val faces: ImmutableList<UserSummary> = persistentListOf(),
+    val memberCount: Int = 0,
+    val hasNewJoinRequests: Boolean = false,
 )
 
 /** [requestCount]: people waiting for the owner's answer to join, as a badge; 0 for everyone else. */

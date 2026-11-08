@@ -31,7 +31,21 @@ object DateUtils {
         end == null || end == start -> formatFormal(start)
         else -> "${formatFormal(start)} - ${formatFormal(end)}"
     }
+
+    /**
+     * As short as the locale allows: "Oct 19 – 23", "Oct 30 – Nov 2", "19.–23. Okt."; the year only when it isn't this
+     * year or the trip spans two. Null for a trip without dates.
+     */
+    fun formatShortRange(start: LocalDate?, end: LocalDate?): String? {
+        if (start == null) return null
+        val last = end ?: start
+        val skeleton = if (start.year == last.year && start.year == today().year) "MMMd" else "yMMMd"
+        return formatLocalizedRange(start, last, skeleton)
+    }
 }
 
 /** Formats [date] with the platform's best pattern for the CLDR [skeleton] in the device's locale. */
 internal expect fun formatLocalized(date: LocalDate, skeleton: String): String
+
+/** Formats the days [start] to [end] as one interval for the CLDR [skeleton], sharing what they have in common. */
+internal expect fun formatLocalizedRange(start: LocalDate, end: LocalDate, skeleton: String): String

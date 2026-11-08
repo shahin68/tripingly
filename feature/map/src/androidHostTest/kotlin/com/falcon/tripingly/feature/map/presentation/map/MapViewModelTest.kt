@@ -729,9 +729,12 @@ class MapViewModelTest {
         val viewModel = viewModel()
         testScheduler.advanceUntilIdle()
         assertNull(viewModel.uiState.value.joinRequests)
+        assertFalse(viewModel.uiState.value.header.card.hasNewJoinRequests)
 
         ask("u2", "anna")
         testScheduler.advanceUntilIdle()
+        // The trip card's members strip gets a red dot too.
+        assertTrue(viewModel.uiState.value.header.card.hasNewJoinRequests)
         assertEquals(listOf("anna") to 0, viewModel.uiState.value.joinRequests?.let { pill -> pill.people.map { it.username } to pill.othersCount })
 
         ask("u3", "jonas")
@@ -741,6 +744,7 @@ class MapViewModelTest {
         viewModel.onAction(MapAction.Header.OpenJoinRequests)
         testScheduler.advanceUntilIdle()
         assertNull(viewModel.uiState.value.joinRequests)
+        assertFalse(viewModel.uiState.value.header.card.hasNewJoinRequests)
         assertEquals(MapSheet.Members, viewModel.uiState.value.sheet)
 
         // Someone new brings it back.
@@ -748,7 +752,9 @@ class MapViewModelTest {
         testScheduler.advanceUntilIdle()
         assertEquals("mia", viewModel.uiState.value.joinRequests?.people?.first()?.username)
         assertEquals(2, viewModel.uiState.value.joinRequests?.othersCount)
+        assertTrue(viewModel.uiState.value.header.card.hasNewJoinRequests)
     }
+
 
     @Test
     fun `a day without stops shows the whole trip, as when a trip opens on it`() = runTest(testDispatcher) {
@@ -915,14 +921,13 @@ class MapViewModelTest {
     }
 
     @Test
-    fun `the header shows the owner, and the trip card the stops, members and whether it's public`() = runTest(testDispatcher) {
+    fun `the header shows the owner, and the trip card the short dates, members and whether it's public`() = runTest(testDispatcher) {
         backend.addMarker(trip.trip.id, trip.days[0].id, NewMarker("Owner's", GeoPoint(48.85, 2.35)))
         backend.addMarker(trip.trip.id, trip.days[0].id, NewMarker("Another editor's", GeoPoint(41.9, 12.49)))
         val own = viewModel()
         testScheduler.advanceUntilIdle()
         assertEquals(trip.trip.owner, own.uiState.value.header.owner)
-        assertEquals(2, own.uiState.value.header.card.stopCount)
-        assertEquals(trip.days.size, own.uiState.value.header.card.dayCount)
+        assertEquals(DateUtils.formatShortRange(trip.trip.startDate, trip.trip.endDate), own.uiState.value.header.card.dates)
 
         val shared = backend.observeTrip(trip.trip.id).first()!!
         backend.seed(
@@ -941,6 +946,9 @@ class MapViewModelTest {
         assertEquals(0, header.members?.requestCount)
         assertEquals(shared.trip.owner, header.owner)
         assertEquals(shared.members.size, header.card.memberCount)
+        // The owner's face first, at most three.
+        assertEquals(shared.trip.owner, header.card.faces.firstOrNull())
+        assertTrue(header.card.faces.size <= 3)
         assertTrue(header.card.isPublic)
     }
 
