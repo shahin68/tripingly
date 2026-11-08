@@ -1,6 +1,5 @@
 package com.falcon.tripingly.feature.map.presentation.map.ui
 
-import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -12,6 +11,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.DirectionsBike
@@ -36,6 +36,7 @@ import androidx.compose.ui.unit.dp
 import com.falcon.tripingly.core.common.util.NumberUtils
 import com.falcon.tripingly.core.designsystem.component.SegmentedToggle
 import com.falcon.tripingly.core.designsystem.component.SegmentedToggleOption
+import com.falcon.tripingly.core.designsystem.component.horizontalFadingEdge
 import com.falcon.tripingly.core.designsystem.component.icon
 import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
 import com.falcon.tripingly.core.designsystem.theme.spacing
@@ -113,8 +114,7 @@ internal fun RouteTotals(
  * "Along the way" with the route's [totals] beside it, then the places near the route in the order the route passes
  * them: when the route gets there and how far off it they are. A tap opens the place; owners and editors add it to
  * the open day with + ([dayNumber] is null otherwise). Without places, only the totals show. It rests as far in as the
- * plan's title on both sides, and the places scroll out to the sheet's edges; places and totals coming in grow it
- * smoothly instead of jumping.
+ * plan's title on both sides, and the places scroll out to the sheet's edges.
  */
 @Composable
 internal fun AlongTheWay(
@@ -126,7 +126,7 @@ internal fun AlongTheWay(
     totals: @Composable () -> Unit = {},
 ) {
     val side = MaterialTheme.spacing.medium
-    Column(modifier = modifier.animateContentSize(), verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small)) {
+    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small)) {
         Row(modifier = Modifier.padding(horizontal = side), verticalAlignment = Alignment.CenterVertically) {
             if (places.isNotEmpty()) {
                 Text(
@@ -139,7 +139,8 @@ internal fun AlongTheWay(
             totals()
         }
         if (places.isEmpty()) return@Column
-        LazyRow(contentPadding = PaddingValues(horizontal = side), horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small)) {
+        val listState = rememberLazyListState()
+        LazyRow(state = listState, modifier = Modifier.horizontalFadingEdge(listState), contentPadding = PaddingValues(horizontal = side), horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small)) {
             items(places, key = { it.place.id }) { item ->
                 AlongTheWayCard(item, dayNumber, onOpen, onAdd, Modifier.animateItem())
             }

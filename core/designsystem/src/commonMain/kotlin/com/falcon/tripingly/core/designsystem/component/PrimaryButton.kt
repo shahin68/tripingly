@@ -27,12 +27,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.Alignment
-import androidx.compose.runtime.getValue
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Box
-import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
@@ -52,8 +46,8 @@ enum class ButtonSize(internal val height: Dp, internal val padding: PaddingValu
 }
 
 /**
- * The screen's main action ("Create trip"): an Ivy-filled pill. While [isLoading] a spinner fades in over its
- * label, keeping its size and colours, and taps do nothing.
+ * The screen's main action ("Create trip"): an Ivy-filled pill. While [isLoading] it shows a spinner and
+ * can't be tapped.
  */
 @Composable
 fun PrimaryButton(
@@ -66,9 +60,8 @@ fun PrimaryButton(
     icon: ImageVector? = null,
 ) {
     Button(
-        // While loading it keeps its colours (no jump to the disabled look) and ignores taps.
-        onClick = { if (!isLoading) onClick() },
-        enabled = enabled,
+        onClick = onClick,
+        enabled = enabled && !isLoading,
         shape = CircleShape,
         contentPadding = size.padding,
         modifier = modifier.heightIn(min = size.height).skeleton(CircleShape),
@@ -89,9 +82,8 @@ fun SecondaryButton(
     icon: ImageVector? = null,
 ) {
     FilledTonalButton(
-        // While loading it keeps its colours (no jump to the disabled look) and ignores taps.
-        onClick = { if (!isLoading) onClick() },
-        enabled = enabled,
+        onClick = onClick,
+        enabled = enabled && !isLoading,
         shape = CircleShape,
         contentPadding = size.padding,
         colors = ButtonDefaults.filledTonalButtonColors(
@@ -132,27 +124,22 @@ fun ToggleButton(
 
 @Composable
 private fun ButtonContent(text: String, isLoading: Boolean, size: ButtonSize, icon: ImageVector?) {
-    // The label stays laid out under the spinner, so the button keeps its size; the two only fade into each other.
-    val loading by animateFloatAsState(if (isLoading) 1f else 0f, label = "button loading")
-    Box(contentAlignment = Alignment.Center) {
-        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.graphicsLayer { alpha = 1f - loading }) {
-            if (icon != null) {
-                Icon(icon, contentDescription = null, modifier = Modifier.size(IconSize))
-                Spacer(Modifier.width(MaterialTheme.spacing.small))
-            }
-            Text(
-                text = text,
-                style = if (size == ButtonSize.Large) MaterialTheme.typography.titleMedium else MaterialTheme.typography.labelLarge,
-                textAlign = TextAlign.Center,
-            )
+    if (isLoading) {
+        CircularProgressIndicator(
+            modifier = Modifier.size(SpinnerSize),
+            strokeWidth = 2.dp,
+            color = LocalContentColor.current,
+        )
+    } else {
+        if (icon != null) {
+            Icon(icon, contentDescription = null, modifier = Modifier.size(IconSize))
+            Spacer(Modifier.width(MaterialTheme.spacing.small))
         }
-        if (loading > 0f) {
-            CircularProgressIndicator(
-                modifier = Modifier.size(SpinnerSize).graphicsLayer { alpha = loading },
-                strokeWidth = 2.dp,
-                color = LocalContentColor.current,
-            )
-        }
+        Text(
+            text = text,
+            style = if (size == ButtonSize.Large) MaterialTheme.typography.titleMedium else MaterialTheme.typography.labelLarge,
+            textAlign = TextAlign.Center,
+        )
     }
 }
 

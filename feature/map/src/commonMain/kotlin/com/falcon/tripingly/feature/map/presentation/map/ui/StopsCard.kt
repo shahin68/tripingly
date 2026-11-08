@@ -1,18 +1,5 @@
 package com.falcon.tripingly.feature.map.presentation.map.ui
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.animateContentSize
-import androidx.compose.animation.core.CubicBezierEasing
-import androidx.compose.animation.core.LinearEasing
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.core.updateTransition
-import androidx.compose.animation.expandHorizontally
-import androidx.compose.animation.expandVertically
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.shrinkHorizontally
-import androidx.compose.animation.shrinkVertically
-import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
@@ -26,6 +13,7 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
@@ -59,6 +47,7 @@ import com.falcon.tripingly.core.designsystem.component.ButtonSize
 import com.falcon.tripingly.core.designsystem.component.DropdownAction
 import com.falcon.tripingly.core.designsystem.component.SecondaryButton
 import com.falcon.tripingly.core.designsystem.component.ToggleButton
+import com.falcon.tripingly.core.designsystem.component.horizontalFadingEdge
 import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
 import com.falcon.tripingly.core.designsystem.theme.extendedColors
 import com.falcon.tripingly.core.designsystem.theme.spacing
@@ -86,9 +75,7 @@ import org.jetbrains.compose.resources.stringResource
 
 /**
  * The open day's plan: "6 stops" with Route and the day's ⋯ menu ([editorMenu], for owners and editors), the stops,
- * how to travel with the best order, and, with the route on, its totals and the places along the way. Turning the
- * route on slides its parts down into place one after another, like the trip card's rows; off, they fade out and the
- * sheet closes up behind them.
+ * how to travel with the best order, and, with the route on, its totals and the places along the way.
  */
 @Composable
 internal fun StopsCard(
@@ -98,8 +85,6 @@ internal fun StopsCard(
     onAction: (MapAction) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    // Keeps the route that's going while its parts fade out.
-    val route = updateTransition(card.route, label = "route")
     PlanCardColumn(modifier) {
         PlanTitleRow(pluralStringResource(Res.plurals.map_stop_count, card.stops.size, card.stops.size)) {
             card.isRouteOn?.let { isOn ->
@@ -114,54 +99,47 @@ internal fun StopsCard(
             DayMenuButton(dayNumber, canClear = card.canClear, editorMenu = editorMenu, onAction = onAction)
         }
         StopChips(card, onAction)
+        val route = card.route
         // How to travel (with the route) and Best order (free for everyone, with or without the route).
-        AnimatedVisibility(visible = card.route != null || card.canFindBestOrder, enter = growIn(0), exit = collapseOut) {
+        if (route != null || card.canFindBestOrder) {
             Row(
                 modifier = Modifier.padding(top = RowGap).padding(horizontal = MaterialTheme.spacing.medium),
-                horizontalArrangement = Arrangement.End,
+                horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                route.AnimatedVisibility(visible = { it != null }, modifier = Modifier.weight(1f), enter = slideDownIn(0), exit = fadeOutQuick) {
-                    val shown = route.targetState ?: route.currentState ?: return@AnimatedVisibility
-                    TravelModeToggle(shown.mode, onModeSelected = { onAction(MapAction.Plan.SelectTravelMode(it)) })
+                if (route != null) {
+                    TravelModeToggle(route.mode, onModeSelected = { onAction(MapAction.Plan.SelectTravelMode(it)) }, modifier = Modifier.weight(1f))
                 }
-                // Coming and going sideways, so the travel modes beside it widen and narrow instead of jumping.
-                AnimatedVisibility(
-                    visible = card.canFindBestOrder,
-                    enter = fadeIn(tween(FADE_IN_MILLIS)) + expandHorizontally(tween(SIZE_MILLIS, easing = Decelerate), expandFrom = Alignment.Start),
-                    exit = fadeOutQuick + shrinkHorizontally(tween(SIZE_MILLIS, easing = Decelerate), shrinkTowards = Alignment.Start),
-                ) {
+                if (card.canFindBestOrder) {
                     SecondaryButton(
                         text = stringResource(Res.string.map_best_order),
                         onClick = { onAction(MapAction.Plan.FindBestOrder) },
                         isLoading = card.isFindingBestOrder,
                         size = ButtonSize.Small,
                         icon = Icons.Outlined.AutoAwesome,
-                        modifier = Modifier.padding(start = MaterialTheme.spacing.small),
                     )
                 }
             }
         }
-        route.AnimatedVisibility(visible = { it != null }, enter = growIn(1) + slideDownIn(1), exit = collapseOut) {
-            val shown = route.targetState ?: route.currentState ?: return@AnimatedVisibility
-            RouteAlongTheWay(shown, onAction, Modifier.padding(top = RowGap))
-        }
+        route?.let { RouteAlongTheWay(it, onAction, Modifier.padding(top = RowGap)) }
     }
 }
 
 /** The stops in a row that scrolls to the sheet's edges and rests as far in as the title. */
 @Composable
 private fun StopChips(card: StopsCardState, onAction: (MapAction) -> Unit) {
+    val listState = rememberLazyListState()
     LazyRow(
-        modifier = Modifier.padding(top = RowGap),
+        state = listState,
+        modifier = Modifier.padding(top = RowGap).horizontalFadingEdge(listState),
         contentPadding = PaddingValues(horizontal = MaterialTheme.spacing.medium),
         horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         items(card.stops, key = { it.id }) { stop ->
-            // The time from the stop before shows while the route does; the chips make room for it smoothly.
+            // The time from the stop before, while the route shows.
             Row(
-                modifier = Modifier.animateItem().animateContentSize(tween(SIZE_MILLIS, easing = Decelerate)),
+                modifier = Modifier.animateItem(),
                 horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
@@ -285,24 +263,6 @@ private fun StopChip(stop: MapMarker, isSelected: Boolean, onAction: (MapAction)
 private val TitleRowHeight = 48.dp
 private val RowGap = 12.dp
 
-// The route's parts move like the trip card's rows: they slide down into place and fade in, one after another, while
-// the sheet makes room; going, they fade out quickly and the sheet closes up.
-private val Decelerate = CubicBezierEasing(0.05f, 0.7f, 0.1f, 1f)
-private val SlideIn = CubicBezierEasing(0.2f, 0f, 0f, 1f)
-private const val SIZE_MILLIS = 350
-private const val SLIDE_MILLIS = 400
-private const val FADE_IN_MILLIS = 220
-private const val FADE_OUT_MILLIS = 120
-private const val STAGGER_MILLIS = 60
-
-private fun growIn(index: Int) = expandVertically(tween(SIZE_MILLIS, index * STAGGER_MILLIS, Decelerate), expandFrom = Alignment.Top)
-
-private fun slideDownIn(index: Int) =
-    fadeIn(tween(FADE_IN_MILLIS, index * STAGGER_MILLIS, LinearEasing)) +
-        slideInVertically(tween(SLIDE_MILLIS, index * STAGGER_MILLIS, SlideIn)) { -it / 2 }
-
-private val fadeOutQuick = fadeOut(tween(FADE_OUT_MILLIS, easing = LinearEasing))
-private val collapseOut = fadeOutQuick + shrinkVertically(tween(SIZE_MILLIS, easing = Decelerate), shrinkTowards = Alignment.Top)
 private val ChipHeight = 36.dp
 private val StopNumberSize = 24.dp
 
