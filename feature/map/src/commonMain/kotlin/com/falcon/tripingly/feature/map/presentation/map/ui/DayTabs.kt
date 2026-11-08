@@ -1,5 +1,8 @@
 package com.falcon.tripingly.feature.map.presentation.map.ui
 
+import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.graphics.ColorProducer
+import androidx.compose.foundation.text.BasicText
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 import kotlin.math.floor
@@ -23,7 +26,6 @@ import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.awaitEachGesture
 import com.falcon.tripingly.core.designsystem.component.rememberHaptics
-import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -49,7 +51,6 @@ import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -135,7 +136,8 @@ internal fun DayTabs(
                             isDragging = true
                             val position = listState.dayPosition(x) ?: return@dragOpenDay
                             scope.launch { pill.snapTo(position) }
-                            position.roundToInt().takeIf { it != activeIndex }?.let { day ->
+                            // A day opens once the pill is mostly on it, so it doesn't flip back and forth halfway between two.
+                            position.roundToInt().takeIf { it != activeIndex && abs(position - it) < OPEN_DAY_REACH }?.let { day ->
                                 haptics.tick()
                                 currentOnAction(MapAction.Days.Select(day))
                             }
@@ -145,7 +147,14 @@ internal fun DayTabs(
                 horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraSmall),
             ) {
                 itemsIndexed(tabs.days, key = { _, day -> day.id }) { index, day ->
-                    DayPill(day, selected = index == tabs.activeIndex, onClick = { onAction(MapAction.Days.Select(index)) }, modifier = Modifier.animateItem())
+                    DayPill(
+                        day = day,
+                        selected = index == tabs.activeIndex,
+                        // How much of the pill is on this day right now, read while drawing (no recomposition per frame).
+                        onPill = { (1 - abs(pill.value - index)).coerceIn(0f, 1f) },
+                        onClick = { onAction(MapAction.Days.Select(index)) },
+                        modifier = Modifier.animateItem(),
+                    )
                 }
             }
             if (canAddDay) {
@@ -211,6 +220,9 @@ private fun LazyListState.pillBounds(position: Float): Pair<Float, Float>? {
     return lerp(from.offset.toFloat(), to.offset.toFloat(), fraction) to lerp(from.size.toFloat(), to.size.toFloat(), fraction)
 }
 
+/** How close to a day the dragged pill must be to open it, in days. */
+private const val OPEN_DAY_REACH = 0.35f
+
 private val PillSpring = spring<Float>(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessMediumLow)
 
 /**
@@ -218,8 +230,11 @@ private val PillSpring = spring<Float>(dampingRatio = Spring.DampingRatioLowBoun
  * or not): a stop of the day has a "new" mark.
  */
 @Composable
-private fun DayPill(day: DayTab, selected: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier) {
-    val content by animateColorAsState(if (selected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant)
+private fun DayPill(day: DayTab, selected: Boolean, onPill: () -> Float, onClick: () -> Unit, modifier: Modifier = Modifier) {
+    val off = MaterialTheme.colorScheme.onSurfaceVariant
+    val on = MaterialTheme.colorScheme.onPrimary
+    // The text turns white exactly as far as the sliding pill covers it, so it never flashes or hides under the pill.
+    val content = ColorProducer { lerp(off, on, onPill()) }
     val haptics = rememberHaptics()
     Box(modifier) {
         Box(
@@ -234,8 +249,8 @@ private fun DayPill(day: DayTab, selected: Boolean, onClick: () -> Unit, modifie
             contentAlignment = Alignment.Center,
         ) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text(stringResource(Res.string.map_day_label_no_date, day.number), style = MaterialTheme.typography.labelLarge, color = content)
-                day.date?.let { Text(it, style = MaterialTheme.typography.labelSmall, color = content) }
+                BasicText(stringResource(Res.string.map_day_label_no_date, day.number), style = MaterialTheme.typography.labelLarge, color = content)
+                day.date?.let { BasicText(it, style = MaterialTheme.typography.labelSmall, color = content) }
             }
         }
         if (day.hasNew) {
