@@ -1,6 +1,8 @@
 package com.falcon.tripingly.feature.map.presentation.map.ui
 
-import androidx.compose.ui.graphics.lerp
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.ui.graphics.ColorProducer
 import androidx.compose.foundation.text.BasicText
 import kotlinx.coroutines.launch
@@ -13,7 +15,6 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.Spring
@@ -93,13 +94,37 @@ internal fun DayTabs(
     val haptics = rememberHaptics()
     // Read by the drag on the open day, which outlives recompositions.
     val activeIndex by rememberUpdatedState(tabs.activeIndex)
-    val currentOnAction by rememberUpdatedState(onAction)
     // The green pill is its own layer behind the days, at a fractional day: it slides to a tapped day and follows a
-    // drag that starts on it, like the bottom bar's pill.
+    // drag that starts on it, like the bottom bar's pill. While dragged it sits at [dragPosition] (a plain float state: no coroutine or recomposition per move, only a
+    // redraw); otherwise [pill] animates it onto the open day. Only the draw phase reads either.
     val pill = remember { Animatable(tabs.activeIndex.toFloat()) }
-    var isDragging by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
-    LaunchedEffect(tabs.activeIndex, isDragging) { if (!isDragging) pill.animateTo(tabs.activeIndex.toFloat(), PillSpring) }
+    var dragPosition by remember { mutableFloatStateOf(Float.NaN) }
+    val isDragging by remember { derivedStateOf { !dragPosition.isNaN() } }
+    LaunchedEffect(tabs.activeIndex, isDragging) {
+        if (isDragging) return@LaunchedEffect
+        pill.animateTo(tabs.activeIndex.toFloat(), PillSpring)
+    }
+    val pillAt = { if (dragPosition.isNaN()) pill.value else dragPosition }
+    // The day last opened, so a drag opens each day once even before the open day comes back from the view model.
+    var opened by remember { mutableIntStateOf(tabs.activeIndex) }
+    LaunchedEffect(tabs.activeIndex) { opened = tabs.activeIndex }
+    // The open day's own drag: the pill follows the finger and a day opens once the pill is mostly on it (so it
+    // doesn't flip back and forth halfway between two). Read through updated state, so the gesture never restarts.
+    val onDayDrag by rememberUpdatedState { x: Float ->
+        listState.dayPosition(x)?.let { position ->
+            dragPosition = position
+            position.roundToInt().takeIf { it != opened && abs(position - it) < OPEN_DAY_REACH }?.let { day ->
+                opened = day
+                haptics.tick()
+                onAction(MapAction.Days.Select(day))
+            }
+        }
+    }
+    val onDayDragEnd by rememberUpdatedState {
+        // The spring takes over from where the finger let go.
+        if (!dragPosition.isNaN()) scope.launch { pill.snapTo(dragPosition) }.invokeOnCompletion { dragPosition = Float.NaN }
+    }
     val pillColor = MaterialTheme.colorScheme.primary
     val pillShape = MaterialTheme.shapes.large
     // Keeps the open day in view, e.g. after adding one at the end.
@@ -124,7 +149,7 @@ internal fun DayTabs(
                 modifier = Modifier
                     .weight(1f)
                     .drawBehind {
-                        val bounds = listState.pillBounds(pill.value) ?: return@drawBehind
+                        val bounds = listState.pillBounds(pillAt()) ?: return@drawBehind
                         translate(left = bounds.first) {
                             drawOutline(pillShape.createOutline(Size(bounds.second, size.height), layoutDirection, this), pillColor)
                         }
@@ -132,17 +157,8 @@ internal fun DayTabs(
                     .dragOpenDay(
                         listState = listState,
                         active = { activeIndex },
-                        onDrag = { x ->
-                            isDragging = true
-                            val position = listState.dayPosition(x) ?: return@dragOpenDay
-                            scope.launch { pill.snapTo(position) }
-                            // A day opens once the pill is mostly on it, so it doesn't flip back and forth halfway between two.
-                            position.roundToInt().takeIf { it != activeIndex && abs(position - it) < OPEN_DAY_REACH }?.let { day ->
-                                haptics.tick()
-                                currentOnAction(MapAction.Days.Select(day))
-                            }
-                        },
-                        onDragEnd = { isDragging = false },
+                        onDrag = { onDayDrag(it) },
+                        onDragEnd = { onDayDragEnd() },
                     ),
                 horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraSmall),
             ) {
@@ -151,7 +167,7 @@ internal fun DayTabs(
                         day = day,
                         selected = index == tabs.activeIndex,
                         // How much of the pill is on this day right now, read while drawing (no recomposition per frame).
-                        onPill = { (1 - abs(pill.value - index)).coerceIn(0f, 1f) },
+                        onPill = { pillAt().roundToInt() == index },
                         onClick = { onAction(MapAction.Days.Select(index)) },
                         modifier = Modifier.animateItem(),
                     )
@@ -213,10 +229,12 @@ private fun LazyListState.dayPosition(x: Float): Float? {
 /** Where the pill at fractional day [position] is drawn: its left edge and width, between the two days around it. */
 private fun LazyListState.pillBounds(position: Float): Pair<Float, Float>? {
     val items = layoutInfo.visibleItemsInfo
-    val day = floor(position).toInt()
+    // A spring's overshoot past the first or last day stays drawn on it (it vanished for a frame: the blink).
+    val clamped = position.coerceIn(0f, (layoutInfo.totalItemsCount - 1).coerceAtLeast(0).toFloat())
+    val day = floor(clamped).toInt()
     val from = items.firstOrNull { it.index == day } ?: return null
     val to = items.firstOrNull { it.index == day + 1 } ?: from
-    val fraction = position - day
+    val fraction = clamped - day
     return lerp(from.offset.toFloat(), to.offset.toFloat(), fraction) to lerp(from.size.toFloat(), to.size.toFloat(), fraction)
 }
 
@@ -230,11 +248,11 @@ private val PillSpring = spring<Float>(dampingRatio = Spring.DampingRatioLowBoun
  * or not): a stop of the day has a "new" mark.
  */
 @Composable
-private fun DayPill(day: DayTab, selected: Boolean, onPill: () -> Float, onClick: () -> Unit, modifier: Modifier = Modifier) {
+private fun DayPill(day: DayTab, selected: Boolean, onPill: () -> Boolean, onClick: () -> Unit, modifier: Modifier = Modifier) {
     val off = MaterialTheme.colorScheme.onSurfaceVariant
     val on = MaterialTheme.colorScheme.onPrimary
-    // The text turns white exactly as far as the sliding pill covers it, so it never flashes or hides under the pill.
-    val content = ColorProducer { lerp(off, on, onPill()) }
+    // White while the sliding pill is mostly on it, grey otherwise: no fading, read while drawing.
+    val content = ColorProducer { if (onPill()) on else off }
     val haptics = rememberHaptics()
     Box(modifier) {
         Box(
