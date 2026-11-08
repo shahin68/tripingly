@@ -67,6 +67,7 @@ import com.falcon.tripingly.core.designsystem.component.GlassDefaults
 import com.falcon.tripingly.core.designsystem.component.GlassSurface
 import com.falcon.tripingly.core.designsystem.component.NewIndicator
 import com.falcon.tripingly.core.designsystem.component.bottomSystemBar
+import com.falcon.tripingly.core.designsystem.component.floatingBottom
 import com.falcon.tripingly.core.designsystem.component.onTopEndCorner
 import com.falcon.tripingly.core.designsystem.component.rememberHaptics
 import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
@@ -142,8 +143,8 @@ internal fun DayTabs(
     }
     GlassSurface(
         modifier = modifier
-            .windowInsetsPadding(WindowInsets.bottomSystemBar)
-            .padding(start = MaterialTheme.spacing.medium, end = MaterialTheme.spacing.medium, bottom = MaterialTheme.spacing.medium)
+            .windowInsetsPadding(WindowInsets.floatingBottom)
+            .padding(start = MaterialTheme.spacing.medium, end = MaterialTheme.spacing.medium, bottom = MaterialTheme.spacing.small)
             .fillMaxWidth(),
         shape = if (isJoined) RoundedCornerShape(topStart = ZeroCornerSize, topEnd = ZeroCornerSize, bottomStart = corner, bottomEnd = corner) else MaterialTheme.shapes.extraLarge,
         shadowElevation = if (isJoined) 0.dp else GlassDefaults.ShadowElevation,

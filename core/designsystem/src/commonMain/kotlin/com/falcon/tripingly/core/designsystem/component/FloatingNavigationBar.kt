@@ -119,9 +119,7 @@ fun FloatingNavigationBar(
     }
     GlassSurface(
         modifier = modifier
-            // 8 dp over Android's navigation bar; with no bar under it (iOS) as far from the bottom as from the sides,
-            // 16 dp (Shahin, 2026-11-08).
-            .windowInsetsPadding(WindowInsets.safeBottomAndSides.union(WindowInsets(bottom = MaterialTheme.spacing.small)))
+            .windowInsetsPadding(WindowInsets.floatingBottom.union(WindowInsets.safeSides))
             .padding(horizontal = MaterialTheme.spacing.medium, vertical = MaterialTheme.spacing.small)
             // In landscape the bar stays a comfortable width, centred, instead of stretching across the screen.
             .fillMaxWidth()

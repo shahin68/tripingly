@@ -59,6 +59,14 @@ val WindowInsets.Companion.safeBottomAndSides: WindowInsets
     @Composable get() = bottomSystemBar.union(safeSides)
 
 /**
+ * Where a floating bottom card (the Home bottom bar, the map's day tabs) stands off the bottom, with 8 dp of its own
+ * padding on top: 8 dp over Android's navigation bar, and 16 dp from the edge where there's no bar (iOS), as far as
+ * from the sides (Shahin, 2026-11-08).
+ */
+val WindowInsets.Companion.floatingBottom: WindowInsets
+    @Composable get() = bottomSystemBar.union(WindowInsets(bottom = MaterialTheme.spacing.small))
+
+/**
  * Android's navigation bar at the bottom (the gesture handle or the buttons), which bottom controls stay above. None on
  * iOS: there the home indicator sits over the app, and bottom controls keep only their own padding (Shahin, 2026-11-08).
  */
