@@ -57,6 +57,9 @@ class KeepMapSceneStrategy<T : Any> : SceneStrategy<T> {
 
         /** The metadata of the map entry that stays composed under the screens opened over it. */
         val keepUnder: Map<String, Any> = mapOf(KEEP_UNDER to true)
+
+        /** Whether [scene] is the trip map (with whatever covers it). */
+        fun isMap(scene: Scene<*>): Boolean = scene is MapScene<*>
     }
 }
 

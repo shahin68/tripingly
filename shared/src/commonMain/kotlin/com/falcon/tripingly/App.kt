@@ -23,6 +23,7 @@ import androidx.navigation3.runtime.NavKey
 import androidx.navigation3.runtime.rememberNavBackStack
 import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
 import androidx.navigation3.ui.LocalNavAnimatedContentScope
+import androidx.navigation3.scene.Scene
 import androidx.navigation3.ui.NavDisplay
 import coil3.ImageLoader
 import coil3.compose.setSingletonImageLoaderFactory
@@ -140,8 +141,17 @@ private fun MainNavigation() {
         // The trip map stays composed under the screens opened over it, so going back to it is instant.
         sceneStrategies = listOf(remember { KeepMapSceneStrategy<NavKey>() }),
         transitionSpec = ScreenTransitions.push(),
-        popTransitionSpec = ScreenTransitions.pop(),
-        predictivePopTransitionSpec = ScreenTransitions.predictivePop(),
+        // The trip map leaves to the right; every other screen slides down.
+        popTransitionSpec = {
+            if (KeepMapSceneStrategy.isMap(initialState)) ScreenTransitions.mapPop<Scene<NavKey>>().invoke(this) else ScreenTransitions.pop<Scene<NavKey>>().invoke(this)
+        },
+        predictivePopTransitionSpec = { edge ->
+            if (KeepMapSceneStrategy.isMap(initialState)) {
+                ScreenTransitions.mapPredictivePop<Scene<NavKey>>().invoke(this, edge)
+            } else {
+                ScreenTransitions.predictivePop<Scene<NavKey>>().invoke(this, edge)
+            }
+        },
     ) { route ->
         NavEntry(route, metadata = if (route is TripMap) KeepMapSceneStrategy.keepUnder else emptyMap()) { key ->
             // Once this screen's slide in has ended, and from then on.
