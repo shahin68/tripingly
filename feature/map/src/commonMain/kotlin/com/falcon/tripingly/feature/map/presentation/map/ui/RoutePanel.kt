@@ -1,9 +1,11 @@
 package com.falcon.tripingly.feature.map.presentation.map.ui
 
+import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -110,7 +112,9 @@ internal fun RouteTotals(
 /**
  * "Along the way" with the route's [totals] beside it, then the places near the route in the order the route passes
  * them: when the route gets there and how far off it they are. A tap opens the place; owners and editors add it to
- * the open day with + ([dayNumber] is null otherwise). Without places, only the totals show.
+ * the open day with + ([dayNumber] is null otherwise). Without places, only the totals show. It rests as far in as the
+ * plan's title on both sides, and the places scroll out to the sheet's edges; places and totals coming in grow it
+ * smoothly instead of jumping.
  */
 @Composable
 internal fun AlongTheWay(
@@ -121,8 +125,9 @@ internal fun AlongTheWay(
     modifier: Modifier = Modifier,
     totals: @Composable () -> Unit = {},
 ) {
-    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small)) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
+    val side = MaterialTheme.spacing.medium
+    Column(modifier = modifier.animateContentSize(), verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small)) {
+        Row(modifier = Modifier.padding(horizontal = side), verticalAlignment = Alignment.CenterVertically) {
             if (places.isNotEmpty()) {
                 Text(
                     text = stringResource(Res.string.map_along_the_way),
@@ -134,7 +139,7 @@ internal fun AlongTheWay(
             totals()
         }
         if (places.isEmpty()) return@Column
-        LazyRow(horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small)) {
+        LazyRow(contentPadding = PaddingValues(horizontal = side), horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small)) {
             items(places, key = { it.place.id }) { item ->
                 AlongTheWayCard(item, dayNumber, onOpen, onAdd, Modifier.animateItem())
             }
