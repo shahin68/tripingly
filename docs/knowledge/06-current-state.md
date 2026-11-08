@@ -9,7 +9,7 @@ Last audit: 2026-10-03, on `develop` at `7cfb1ab` plus the foundation PR (module
 ```
 androidApp/            Android shell: MainActivity, TripinglyApplication (starts Koin), manifest with MAPS_API_KEY
 iosApp/                Xcode project; calls MainViewController() from the Shared framework
-shared/                Umbrella: App() with Navigation 3, the tab shell (`shell/MainTabs.kt`: a pager of Trips, Explore, Nearby, Profile under one animated top bar, the floating bottom bar with a draggable selection, and the Add Trip button), initKoin(), iOS framework "Shared" (static)
+shared/                Umbrella: App() with Navigation 3 (`shell/KeepMapSceneStrategy.kt` keeps the trip map composed under the screens opened over it), the tab shell (`shell/MainTabs.kt`: a pager of Trips, Explore, Nearby, Profile under one animated top bar, the floating bottom bar with a draggable selection, and the Add Trip button), initKoin(), iOS framework "Shared" (static)
 build-logic/           Convention plugins: tripinly.kmp.library, tripinly.kmp.compose, tripinly.kmp.feature
 core/common            AppResult, RootError/DataError, CoroutineDispatchers, DateUtils (dates in the device's locale via platform skeleton formats), ShareManager (expect/actual via Koin)
 core/model             Domain models shared across features (account, trip: Trip, TripDetails, TripDay, TripMarker, TripMember, TripInvite, changes; social: PublicTrip, Profile, Comment, NearbyPlace, likes and reports; `Page<T>`). No Compose dependency

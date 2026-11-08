@@ -51,6 +51,7 @@ import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import com.falcon.tripingly.core.designsystem.component.ErrorScreen
 import com.falcon.tripingly.core.designsystem.component.GlassIconButton
+import com.falcon.tripingly.core.designsystem.component.LocalScreenOnTop
 import com.falcon.tripingly.core.designsystem.component.ShowMessage
 import com.falcon.tripingly.core.designsystem.component.SkeletonBox
 import com.falcon.tripingly.core.designsystem.component.safeSides
@@ -125,7 +126,8 @@ internal fun MapScreen(
     val tripCardProgress by tripCard.animateTripCard()
     val isTripCardShown = tripCardState.currentState || tripCardState.targetState
     @OptIn(ExperimentalComposeUiApi::class)
-    BackHandler(enabled = isTripCardOpen) { isTripCardOpen = false }
+    // Not while another screen covers the map: back closes that screen.
+    BackHandler(enabled = isTripCardOpen && LocalScreenOnTop.current) { isTripCardOpen = false }
 
     BoxWithConstraints(
         modifier = Modifier

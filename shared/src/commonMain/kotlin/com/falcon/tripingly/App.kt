@@ -7,12 +7,14 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.lifecycle.compose.LifecycleStartEffect
 import androidx.lifecycle.viewmodel.navigation3.rememberViewModelStoreNavEntryDecorator
 import androidx.navigation3.runtime.NavEntry
+import androidx.navigation3.runtime.NavKey
 import androidx.navigation3.runtime.rememberNavBackStack
 import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
 import androidx.navigation3.ui.NavDisplay
@@ -45,6 +47,7 @@ import com.falcon.tripingly.feature.settings.presentation.SettingsRoute
 import com.falcon.tripingly.feature.social.presentation.profile.ProfileRoute
 import com.falcon.tripingly.feature.notifications.presentation.NotificationCenterRoute
 import com.falcon.tripingly.feature.trips.presentation.members.TripMembersRoute
+import com.falcon.tripingly.shell.KeepMapSceneStrategy
 import com.falcon.tripingly.shell.MainTabs
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.launch
@@ -128,8 +131,10 @@ private fun MainNavigation() {
             rememberSaveableStateHolderNavEntryDecorator(),
             rememberViewModelStoreNavEntryDecorator(),
         ),
+        // The trip map stays composed under the screens opened over it, so going back to it is instant.
+        sceneStrategies = listOf(remember { KeepMapSceneStrategy<NavKey>() }),
     ) { route ->
-        NavEntry(route) { key ->
+        NavEntry(route, metadata = if (route is TripMap) KeepMapSceneStrategy.keepUnder else emptyMap()) { key ->
             // Only the top screen shows its sheets: under the screen a back swipe leaves, they'd cover it.
             CompositionLocalProvider(LocalScreenOnTop provides (key == backStack.lastOrNull())) {
                 when (key) {

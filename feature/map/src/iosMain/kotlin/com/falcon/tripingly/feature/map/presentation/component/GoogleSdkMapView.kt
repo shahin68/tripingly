@@ -25,6 +25,7 @@ import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.viewinterop.UIKitInteropInteractionMode
 import androidx.compose.ui.viewinterop.UIKitInteropProperties
 import androidx.compose.ui.viewinterop.UIKitView
+import androidx.lifecycle.compose.LifecycleStartEffect
 import com.falcon.tripingly.core.designsystem.component.icon
 import com.falcon.tripingly.core.designsystem.theme.MapColors
 import com.falcon.tripingly.core.location.model.Coordinates
@@ -325,6 +326,11 @@ internal fun GoogleSdkMapView(
         map.setMarkers(pins + clusters + stops + listOfNotNull(place))
     }
 
+    // Stopped (another screen covers the map, or the app is in the background): the map draws nothing.
+    LifecycleStartEffect(map) {
+        map.view.hidden = false
+        onStopOrDispose { map.view.hidden = true }
+    }
     UIKitView(
         factory = { map.view },
         modifier = modifier.fillMaxSize(),
