@@ -58,6 +58,8 @@ If the agent returns `{"skip": true, ...}`, jump straight to Stage 8 with verdic
 Read into your context (these are ground truth for downstream leaves). Collect their absolute paths in a `discovered_files` list:
 
 - Repo root `CLAUDE.md` (always).
+- `docs/knowledge/07-architecture.md` and `docs/knowledge/02-client-rules.md` (always): the architecture, design system (colours, surfaces, content colour, sheets, dialogs, haptics) and client rules live there, not in `CLAUDE.md`.
+- The `SKILL.md` of every project skill in `.claude/skills/` whose domain the diff touches (e.g. `ui-component` for any composable, `map-features` for the map, `localization` for strings).
 - Repo root `AGENTS.md` (if exists).
 - `.specify/memory/constitution.md` (if exists).
 - Any `specs/<feature>/{plan,spec,tasks}.md` and every file under `specs/<feature>/contracts/` where either the path appears in `changed_files`, or `<feature>` matches the active feature named in `CLAUDE.md`'s "Current feature" line.

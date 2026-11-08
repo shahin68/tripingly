@@ -33,9 +33,11 @@ import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.Public
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.State
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -70,8 +72,9 @@ import com.falcon.tripingly.core.designsystem.component.AvatarCircle
 import com.falcon.tripingly.core.designsystem.component.AvatarSize
 import com.falcon.tripingly.core.designsystem.component.GlassButtonDefaults
 import com.falcon.tripingly.core.designsystem.component.GlassDefaults
+import com.falcon.tripingly.core.designsystem.component.NewIndicator
 import com.falcon.tripingly.core.designsystem.component.compactCount
-import com.falcon.tripingly.core.designsystem.theme.MapColors
+import com.falcon.tripingly.core.designsystem.component.onTopEndCorner
 import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
 import com.falcon.tripingly.core.designsystem.theme.extendedColors
 import com.falcon.tripingly.feature.map.generated.resources.Res
@@ -150,22 +153,25 @@ internal fun TripCard(
             // Taps on the card stay on it: only a tap outside closes it.
             .clickable(interactionSource = null, indication = null) {},
     ) {
-        Column(
-            modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(CardInset),
-            verticalArrangement = Arrangement.spacedBy(RowGap),
-        ) {
-            OwnerRow(header, onOwnerClick, onClose, transition.rowMotion(0))
-            DetailTiles(header.card, transition.rowMotion(1))
-            if (header.card.memberCount > 0) MembersStrip(header.card, onMembersClick, transition.rowMotion(2))
+        // Drawn by hand rather than with GlassSurface, so it sets the glass's content color itself.
+        CompositionLocalProvider(LocalContentColor provides MaterialTheme.colorScheme.onSurface) {
+            Column(
+                modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(CardInset),
+                verticalArrangement = Arrangement.spacedBy(RowGap),
+            ) {
+                OwnerRow(header, onOwnerClick, onClose, transition.rowMotion(0))
+                DetailTiles(header.card, transition.rowMotion(1))
+                if (header.card.memberCount > 0) MembersStrip(header.card, onMembersClick, transition.rowMotion(2))
+            }
+            // The pill's own face and name, fading as the card grows over them and back as it shrinks into the pill.
+            TripTitleContent(
+                header = header,
+                modifier = Modifier
+                    .offset { IntOffset(pill.left.roundToInt(), pill.top.roundToInt()) }
+                    .size(pillSize.first, pillSize.second)
+                    .graphicsLayer { alpha = pillAlpha },
+            )
         }
-        // The pill's own face and name, fading as the card grows over them and back as it shrinks into the pill.
-        TripTitleContent(
-            header = header,
-            modifier = Modifier
-                .offset { IntOffset(pill.left.roundToInt(), pill.top.roundToInt()) }
-                .size(pillSize.first, pillSize.second)
-                .graphicsLayer { alpha = pillAlpha },
-        )
     }
 }
 
@@ -325,14 +331,7 @@ private fun MembersStrip(card: TripCardState, onClick: () -> Unit, modifier: Mod
         }
         if (card.hasNewJoinRequests) {
             // Centred on the rounded corner's curve, as on the day tabs.
-            val onCorner = NewDotSize / 2 - StripRadius * (1 - CORNER_CURVE_POINT)
-            Box(
-                Modifier
-                    .align(Alignment.TopEnd)
-                    .offset(x = onCorner, y = -onCorner)
-                    .size(NewDotSize)
-                    .background(MapColors.NewActivity, CircleShape),
-            )
+            NewIndicator(Modifier.align(Alignment.TopEnd).onTopEndCorner(StripRadius), strokeColor = GlassDefaults.opaqueTint)
         }
     }
 }
@@ -392,10 +391,7 @@ private val StripShape = RoundedCornerShape(StripRadius)
 private val StripHeight = 56.dp
 private val FaceSize = 44.dp
 private val FaceOverlap = 12.dp
-private val NewDotSize = 10.dp
 
-/** How far round a corner's curve its middle point lies from the corner's edges: cos 45°. */
-private const val CORNER_CURVE_POINT = 0.7071f
 
 @Composable
 private fun TripCardPreviewContent(header: HeaderState) {

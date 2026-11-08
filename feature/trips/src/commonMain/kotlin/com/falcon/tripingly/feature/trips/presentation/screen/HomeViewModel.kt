@@ -1,5 +1,6 @@
 package com.falcon.tripingly.feature.trips.presentation.screen
 
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.runtime.Immutable
 import androidx.lifecycle.ViewModel
@@ -57,6 +58,9 @@ class HomeViewModel(
 
     /** The search field in the top bar; each change comes back as [Action.SearchQueryChanged]. */
     val searchField = TextFieldState()
+
+    /** The trips list's scroll, shared with the [AddTripButton], which shrinks to its icon once the list is scrolled. */
+    val tripList = LazyListState()
 
     /** Everything but the trips, which come from the cache and are filled in below. */
     private val ui = MutableStateFlow(State())

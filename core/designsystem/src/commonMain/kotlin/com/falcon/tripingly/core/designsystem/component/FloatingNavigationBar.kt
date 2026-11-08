@@ -17,7 +17,9 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.union
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
@@ -33,8 +35,6 @@ import androidx.compose.material.icons.filled.Explore
 import androidx.compose.material.icons.filled.Luggage
 import androidx.compose.material.icons.filled.NearMe
 import androidx.compose.material.icons.filled.Person
-import androidx.compose.material3.Badge
-import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -52,6 +52,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextOverflow
@@ -117,14 +118,15 @@ fun FloatingNavigationBar(
             }
         }
     }
+    val isLandscape = LocalWindowInfo.current.containerSize.let { it.width > it.height }
     GlassSurface(
         modifier = modifier
-            .windowInsetsPadding(WindowInsets.safeBottomAndSides)
+            .windowInsetsPadding(WindowInsets.floatingBottom.union(WindowInsets.safeSides))
             .padding(horizontal = MaterialTheme.spacing.medium, vertical = MaterialTheme.spacing.small)
-            // In landscape the bar stays a comfortable width, centred, instead of stretching across the screen.
+            // In landscape the right half, its end in line with the Add Trip button (Shahin, 2026-11-08); otherwise
+            // the full width up to a comfortable maximum, centred (tablets).
             .fillMaxWidth()
-            .wrapContentWidth()
-            .widthIn(max = NavBarDefaults.MaxWidth)
+            .then(if (isLandscape) Modifier.wrapContentWidth(Alignment.End).fillMaxWidth(0.5f) else Modifier.wrapContentWidth().widthIn(max = NavBarDefaults.MaxWidth))
             .fillMaxWidth()
             .height(NavBarDefaults.Height),
         shape = NavBarDefaults.Shape,
@@ -200,8 +202,10 @@ private fun NavBarTab(item: NavBarItem, selected: Boolean, onClick: () -> Unit, 
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraSmall, Alignment.CenterVertically),
     ) {
-        BadgedBox(badge = { if (item.hasBadge) Badge() }) {
+        Box {
             Icon(item.icon, contentDescription = null, tint = color, modifier = Modifier.size(NavBarDefaults.IconSize))
+            // Beside the icon's top end, without a ring: behind it is blurred glass of no one colour (Shahin, 2026-11-08).
+            if (item.hasBadge) NewIndicator(Modifier.align(Alignment.TopEnd).offset(x = NavBarDefaults.BadgeShiftX, y = -NavBarDefaults.BadgeShiftY), strokeWidth = 0.dp)
         }
         Text(
             text = item.label,
@@ -218,6 +222,8 @@ private object NavBarDefaults {
     val MaxWidth = 560.dp
     val InnerPadding = 8.dp
     val IconSize = 22.dp
+    val BadgeShiftX = 7.dp
+    val BadgeShiftY = 5.dp
     val Shape = RoundedCornerShape(32.dp)
     val PillShape = RoundedCornerShape(24.dp)
     const val DragScale = 1.08f

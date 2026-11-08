@@ -5,6 +5,7 @@ import com.falcon.tripingly.core.data.account.AccountRepository
 import com.falcon.tripingly.core.data.account.AccountRepositoryImpl
 import com.falcon.tripingly.core.data.account.DeveloperSignIn
 import com.falcon.tripingly.core.data.account.LocalDataCleaner
+import com.falcon.tripingly.core.data.account.SignedInStart
 import com.falcon.tripingly.core.data.account.SessionRepository
 import com.falcon.tripingly.core.data.account.SessionRepositoryImpl
 import com.falcon.tripingly.core.data.billing.DefaultProRepository
@@ -156,6 +157,21 @@ val dataModule = module {
         )
     }
     single<ProRepository> { get<DefaultProRepository>() }
+    // Once signed in: this device registers for push, purchases belong to this account, and the notification
+    // center's indicator follows the server.
+    single(named("push")) {
+        val push = get<PushNotifications>()
+        SignedInStart { push.start() }
+    }
+    single(named("purchases")) {
+        val pro = get<ProRepository>()
+        SignedInStart { pro.start() }
+    }
+    single(named("notificationCenter")) {
+        val center = get<NotificationCenterRepository>()
+        SignedInStart { center.start() }
+    }
+
     // Galleries and uploads in progress belong to whoever was signed in.
     single(named("photos")) {
         val photos = get<DefaultPhotoRepository>()

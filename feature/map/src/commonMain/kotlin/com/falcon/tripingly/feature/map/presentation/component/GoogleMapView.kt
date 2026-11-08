@@ -105,6 +105,12 @@ internal fun Coordinates.shiftedSouth(by: Dp, zoom: Float): Coordinates {
     return Coordinates(latitude = atan(sinh(y)) * 180 / PI, longitude = longitude)
 }
 
+/** The point [by] east of this one on a map at [zoom] (west for a negative [by]). */
+internal fun Coordinates.shiftedEast(by: Dp, zoom: Float): Coordinates {
+    val east = longitude + by.value / (WORLD_DP * 2.0.pow(zoom.toDouble())) * 360
+    return Coordinates(latitude = latitude, longitude = (east + 540) % 360 - 180)
+}
+
 /** How wide the whole world is at zoom 0. */
 private const val WORLD_DP = 256.0
 private const val MIN_ZOOM = 2f

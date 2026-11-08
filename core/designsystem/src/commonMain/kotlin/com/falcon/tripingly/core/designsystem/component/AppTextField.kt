@@ -53,6 +53,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.falcon.tripingly.core.designsystem.generated.resources.Res
 import com.falcon.tripingly.core.designsystem.generated.resources.common_clear
+import com.falcon.tripingly.core.designsystem.generated.resources.common_close
 import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
 import com.falcon.tripingly.core.designsystem.theme.spacing
 import kotlinx.coroutines.flow.drop
@@ -79,7 +80,8 @@ enum class AppTextFieldStyle(internal val minHeight: Dp) {
  * The keyboard's key does the same everywhere: Next moves to the next field; Done, Search, Go and Send close the
  * keyboard, after running [onImeAction] (submit, add) when there is one. A ✕ shows while the field is focused or has
  * text: it closes the keyboard and clears the field, which [onTextChange] reports as "" so the view model puts what
- * depends on it back to the start. [clearable] false hides it.
+ * depends on it back to the start. [clearable] false hides it. A field that closes (the tabs' search) passes
+ * [onClose]: its ✕ then always shows and also closes the field, keyboard and text together.
  */
 @Composable
 fun AppTextField(
@@ -89,6 +91,7 @@ fun AppTextField(
     style: AppTextFieldStyle = AppTextFieldStyle.Field,
     onTextChange: ((String) -> Unit)? = null,
     clearable: Boolean = true,
+    onClose: (() -> Unit)? = null,
     onImeAction: (() -> Unit)? = null,
     leadingIcon: ImageVector? = if (style == AppTextFieldStyle.Search) Icons.Default.Search else null,
     trailing: (@Composable () -> Unit)? = null,
@@ -108,7 +111,7 @@ fun AppTextField(
     LaunchedEffect(state) {
         snapshotFlow { state.text.toString() }.drop(1).collect { currentOnTextChange?.invoke(it) }
     }
-    val showClear = clearable && enabled && (isFocused || state.text.isNotEmpty())
+    val showClear = clearable && enabled && (onClose != null || isFocused || state.text.isNotEmpty())
     val shape: Shape = if (style == AppTextFieldStyle.Field) MaterialTheme.shapes.extraLarge else CircleShape
     val container = if (style == AppTextFieldStyle.Inline) Color.Transparent else MaterialTheme.colorScheme.surfaceVariant
     val vertical = (style.minHeight - LineHeight) / 2
@@ -127,8 +130,10 @@ fun AppTextField(
                         IconButton(onClick = {
                             focusManager.clearFocus()
                             state.clearText()
+                            onClose?.invoke()
                         }) {
-                            Icon(Icons.Default.Close, contentDescription = stringResource(Res.string.common_clear), modifier = Modifier.size(IconSize))
+                            val label = if (onClose != null) Res.string.common_close else Res.string.common_clear
+                            Icon(Icons.Default.Close, contentDescription = stringResource(label), modifier = Modifier.size(IconSize))
                         }
                     }
                 }

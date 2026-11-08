@@ -5,13 +5,12 @@ import androidx.compose.runtime.Stable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.hapticfeedback.HapticFeedback
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
-import androidx.compose.ui.platform.LocalHapticFeedback
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.TimeSource
 
 /**
  * The app's haptics: the phone's own short, sharp clicks (Android's system feedback, iOS's Taptic Engine) through
- * Compose's [HapticFeedback], so they follow the user's touch-feedback setting and need no permission. Every place
+ * Compose's [HapticFeedback] ([platformHapticFeedback]), so they follow the user's touch-feedback setting and need no permission. Every place
  * uses these few, so the whole app feels the same and can be retuned here. A haptic answers the user's own touch or
  * its result, never something that happens on its own (live arrivals, pushes, search results, scrolling).
  */
@@ -45,8 +44,15 @@ class Haptics(private val feedback: HapticFeedback) {
 
 @Composable
 fun rememberHaptics(): Haptics {
-    val feedback = LocalHapticFeedback.current
+    val feedback = platformHapticFeedback()
     return remember(feedback) { Haptics(feedback) }
 }
+
+/**
+ * Android: Compose's own [LocalHapticFeedback]. iOS: UIKit's feedback generators directly, at full strength, because
+ * Compose's iOS mapping felt much weaker than Android (Shahin, 2026-11-08).
+ */
+@Composable
+internal expect fun platformHapticFeedback(): HapticFeedback
 
 private val TickGap = 50.milliseconds

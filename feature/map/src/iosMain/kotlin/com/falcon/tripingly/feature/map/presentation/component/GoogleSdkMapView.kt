@@ -22,6 +22,8 @@ import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.text.rememberTextMeasurer
+import androidx.compose.ui.unit.DpOffset
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.viewinterop.UIKitInteropInteractionMode
 import androidx.compose.ui.viewinterop.UIKitInteropProperties
 import androidx.compose.ui.viewinterop.UIKitView
@@ -77,13 +79,16 @@ internal fun GoogleSdkMapView(
     val currentOnMarkerClick by rememberUpdatedState(onMarkerClick)
 
     // The SDK keeps its camera in the middle of its padding and moves the map whenever the padding changes, a frame
-    // apart from any move that would undo it. So the map gets the same padding at the top and the bottom, and its
-    // camera stays in the middle of the view; the target the screen means (the middle of what its padding leaves
-    // free) is that far from it.
+    // apart from any move that would undo it. So the map gets the same padding at the top and the bottom and none at
+    // the sides, and its camera stays in the middle of the view; the target the screen means (the middle of what its
+    // padding leaves free: above the cards, or left of the panel in landscape) is that far from it.
     val top = contentPadding.calculateTopPadding()
     val bottom = contentPadding.calculateBottomPadding()
-    val freeMiddleAbove = (bottom - top) / 2
-    val currentFreeMiddleAbove by rememberUpdatedState(freeMiddleAbove)
+    val freeMiddle = DpOffset(
+        x = (contentPadding.calculateLeftPadding(LayoutDirection.Ltr) - contentPadding.calculateRightPadding(LayoutDirection.Ltr)) / 2,
+        y = (top - bottom) / 2,
+    )
+    val currentFreeMiddle by rememberUpdatedState(freeMiddle)
     // Where the camera last rested, to report it again when the free middle moves.
     var rest by remember { mutableStateOf<Triple<Coordinates, Float, GeoBounds>?>(null) }
     // The map has rested once, so it has its size: a camera move flies from then on.
@@ -106,7 +111,7 @@ internal fun GoogleSdkMapView(
                     val bounds = GeoBounds(south, west, north, east)
                     isMapReady = true
                     rest = Triple(Coordinates(latitude, longitude), zoom, bounds)
-                    currentOnCameraMove(Coordinates(latitude, longitude).shiftedSouth(-currentFreeMiddleAbove, zoom), zoom, bounds)
+                    currentOnCameraMove(Coordinates(latitude, longitude).shiftedBy(currentFreeMiddle, zoom), zoom, bounds)
                 }
 
                 override fun onGestureStart() {
@@ -142,7 +147,7 @@ internal fun GoogleSdkMapView(
     }
 
     fun moveCamera(target: Coordinates, zoom: Float, animated: Boolean) {
-        val center = target.shiftedSouth(currentFreeMiddleAbove, zoom)
+        val center = target.shiftedBy(DpOffset(-currentFreeMiddle.x, -currentFreeMiddle.y), zoom)
         map.moveCamera(center.latitude, center.longitude, zoom, animated)
     }
     LaunchedEffect(map) { moveCamera(initialTarget, initialZoom, animated = false) }
@@ -156,13 +161,23 @@ internal fun GoogleSdkMapView(
     val isDark = isSystemInDarkTheme()
     LaunchedEffect(isDark) { map.setStyle(if (isDark) DARK_MAP_STYLE else LIGHT_MAP_STYLE) }
     LaunchedEffect(isMyLocationEnabled) { map.setMyLocationEnabled(isMyLocationEnabled) }
-    // As much at the top as at the bottom: enough for the header there and for the logo above the cards here.
-    val padding = maxOf(top, bottom).value.toDouble()
+    // As much at the top as at the bottom, so the camera stays in the middle: what the logo needs to sit above the cards.
+    // Not the top's: in landscape it's most of the height (a tapped pin goes low), which would leave the map no middle.
+    val padding = bottom.value.toDouble()
     LaunchedEffect(padding) { map.setPadding(padding, padding) }
-    // The map stays put, but the middle of what's free moved: the view model learns where the target now is.
-    LaunchedEffect(freeMiddleAbove) {
+    // The middle of what's free moved. A rotation moves it sideways (the panel takes or gives back the right half):
+    // like Android's map with its padding, what was in the middle of what's free goes back there. Otherwise the map
+    // stays put and the view model learns where the target now is.
+    var shownMiddle by remember { mutableStateOf(freeMiddle) }
+    LaunchedEffect(freeMiddle) {
+        val before = shownMiddle
+        shownMiddle = freeMiddle
         val (center, zoom, bounds) = rest ?: return@LaunchedEffect
-        currentOnCameraMove(center.shiftedSouth(-freeMiddleAbove, zoom), zoom, bounds)
+        if (freeMiddle.x != before.x) {
+            moveCamera(center.shiftedBy(before, zoom), zoom, animated = false)
+        } else {
+            currentOnCameraMove(center.shiftedBy(freeMiddle, zoom), zoom, bounds)
+        }
     }
 
     // Every pin look is drawn once and shared by every pin that looks the same.
@@ -347,3 +362,6 @@ private const val PLACE_KEY = "place:"
 private const val CLUSTER_KEY = "cluster:"
 
 private fun Color.toUIColor(): UIColor = UIColor.colorWithRed(red.toDouble(), green.toDouble(), blue.toDouble(), alpha.toDouble())
+
+/** The point [offset] from this one on a map at [zoom]: right and down for positive x and y. */
+private fun Coordinates.shiftedBy(offset: DpOffset, zoom: Float): Coordinates = shiftedEast(offset.x, zoom).shiftedSouth(offset.y, zoom)

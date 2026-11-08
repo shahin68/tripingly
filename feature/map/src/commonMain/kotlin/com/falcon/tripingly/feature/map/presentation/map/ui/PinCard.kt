@@ -29,8 +29,9 @@ import com.falcon.tripingly.feature.map.presentation.map.preview.previewPlace
  */
 
 /**
- * A card over the camera's middle, where the tapped pin is: it grows out of the pin, just above it, and shrinks back
- * into it when it closes. A card for another pin replaces it; the same pin's card only updates.
+ * A card over the camera's middle, where the tapped pin is ([pinBelowMiddle] lower, in landscape): it grows out of the
+ * pin, just above it, and shrinks back into it when it closes. A card for another pin replaces it; the same pin's card
+ * only updates.
  */
 @Composable
 internal fun <T : Any> PinCard(
@@ -38,6 +39,7 @@ internal fun <T : Any> PinCard(
     key: (T) -> Any,
     pinClearance: Dp,
     modifier: Modifier = Modifier,
+    pinBelowMiddle: Dp = 0.dp,
     content: @Composable (T) -> Unit,
 ) {
     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -54,7 +56,7 @@ internal fun <T : Any> PinCard(
                 .layout { measurable, constraints ->
                     val measured = measurable.measure(constraints)
                     layout(measured.width, measured.height) {
-                        measured.place(0, -measured.height / 2 - pinClearance.roundToPx())
+                        measured.place(0, -measured.height / 2 - pinClearance.roundToPx() + pinBelowMiddle.roundToPx())
                     }
                 }
                 .then(modifier),

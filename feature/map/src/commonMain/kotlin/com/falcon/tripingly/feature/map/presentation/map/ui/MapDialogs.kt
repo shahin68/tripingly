@@ -151,7 +151,8 @@ private fun BestOrderDialog(order: BestOrderPreview, onAction: (MapAction) -> Un
         },
         onDismiss = { onAction(MapAction.Dialog.DismissBestOrder) },
     ) {
-        Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraSmall)) {
+        // AppDialog's column gives its children unbounded height; a non-filling weight bounds the scroll to what's left.
+        Column(Modifier.weight(1f, fill = false).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraSmall)) {
             order.stops.forEachIndexed { index, stop ->
                 Text("${index + 1}. ${stop.title.asString()}", style = MaterialTheme.typography.bodyMedium)
             }

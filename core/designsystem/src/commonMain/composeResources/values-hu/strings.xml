@@ -26,6 +26,7 @@
 
     <!-- Shell and states -->
     <string name="common_settings">Beállítások</string>
+    <string name="common_search">Keresés</string>
     <string name="common_back">Vissza</string>
     <string name="error_title">Valami hiba történt</string>
     <string name="error_message">Ezt nem sikerült betölteni. Kérjük, próbáld újra.</string>

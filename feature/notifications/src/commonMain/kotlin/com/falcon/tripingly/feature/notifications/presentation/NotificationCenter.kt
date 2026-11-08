@@ -1,5 +1,6 @@
 package com.falcon.tripingly.feature.notifications.presentation
 
+import com.falcon.tripingly.core.designsystem.component.NewIndicator
 import kotlinx.coroutines.flow.drop
 import com.falcon.tripingly.core.designsystem.component.rememberHaptics
 import androidx.compose.foundation.background
@@ -263,13 +264,7 @@ private fun NotificationRow(entry: NotificationEntry, onClick: () -> Unit, modif
             }
             if (!entry.isRead) {
                 val unread = stringResource(Res.string.notifications_unread)
-                Box(
-                    Modifier
-                        .size(UnreadDotSize)
-                        .clip(CircleShape)
-                        .background(MaterialTheme.colorScheme.primary)
-                        .semantics { contentDescription = unread },
-                )
+                NewIndicator(Modifier.semantics { contentDescription = unread }, size = UnreadDotSize, color = MaterialTheme.colorScheme.primary, strokeWidth = 0.dp)
             }
         }
     }
