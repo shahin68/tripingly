@@ -52,7 +52,8 @@ class StopCommentsViewModelTest {
 
     private val account = FakeAccountBackend(today = { LocalDate(2026, 11, 7) })
 
-    private fun viewModel() = StopCommentsViewModel(MARKER_ID, people, social, account)
+    /** A view model whose sheet is on screen, as the sheet starts it. */
+    private fun viewModel() = StopCommentsViewModel(MARKER_ID, people, social, account).also { it.onAction(Action.OnShown) }
 
     @BeforeTest
     fun setUp() = Dispatchers.setMain(testDispatcher)
@@ -101,6 +102,22 @@ class StopCommentsViewModelTest {
         live.emit(CommentChange.Deleted(MARKER_ID, "c1"))
         testScheduler.advanceUntilIdle()
         assertTrue(viewModel.uiState.value.comments.isEmpty())
+    }
+
+    @Test
+    fun `the stop is watched only while the sheet is on screen`() = runTest(testDispatcher) {
+        val viewModel = viewModel()
+        testScheduler.advanceUntilIdle()
+        assertEquals(1, live.subscriptionCount.value)
+
+        viewModel.onAction(Action.OnHidden)
+        testScheduler.advanceUntilIdle()
+        // Collecting is what sends `comments.watch`: stopping it unwatches the stop, so its pushes come again.
+        assertEquals(0, live.subscriptionCount.value)
+
+        viewModel.onAction(Action.OnShown)
+        testScheduler.advanceUntilIdle()
+        assertEquals(1, live.subscriptionCount.value)
     }
 
     @Test

@@ -1,5 +1,6 @@
 package com.falcon.tripingly.feature.map.presentation.comments
 
+import kotlinx.coroutines.Job
 import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.foundation.text.input.clearText
 import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
@@ -66,12 +67,14 @@ class StopCommentsViewModel(
 
     init {
         load(cursor = null)
-        watchLiveChanges()
+        watchLikeCounts()
         suggestMentions()
     }
 
     fun onAction(action: Action) {
         when (action) {
+            is Action.OnShown -> watchLiveChanges(isShown = true)
+            is Action.OnHidden -> watchLiveChanges(isShown = false)
             is Action.OnSend -> send()
             is Action.OnLoadMore -> _uiState.value.nextCursor?.takeUnless { _uiState.value.isLoading }?.let { load(it) }
             is Action.OnToggleReplies -> toggleReplies(action.main)
@@ -170,8 +173,21 @@ class StopCommentsViewModel(
         }
     }
 
-    private fun watchLiveChanges() {
-        viewModelScope.launch {
+    /**
+     * The stop's live comments while the sheet is on screen: collecting sends `comments.watch` (no pushes about them
+     * meanwhile) and stopping sends `comments.unwatch`. This view model outlives the sheet (it belongs to the trip
+     * map), so the sheet starts and stops it; a sheet shown again first catches up on what came while it was closed.
+     */
+    private var liveChanges: Job? = null
+    private var wasShown = false
+
+    private fun watchLiveChanges(isShown: Boolean) {
+        liveChanges?.cancel()
+        liveChanges = null
+        if (!isShown) return
+        if (wasShown) load(cursor = null)
+        wasShown = true
+        liveChanges = viewModelScope.launch {
             socialRepository.commentChanges(markerId).collect { change ->
                 when (change) {
                     is CommentChange.Added -> add(change.comment)
@@ -179,6 +195,9 @@ class StopCommentsViewModel(
                 }
             }
         }
+    }
+
+    private fun watchLikeCounts() {
         viewModelScope.launch {
             socialRepository.likeCounts.collect { count ->
                 if (count.target != LikeTarget.Comment) return@collect
@@ -338,6 +357,9 @@ class StopCommentsViewModel(
     )
 
     sealed interface Action {
+        /** The sheet came on screen, or left it: live comments (and `comments.watch`) only in between. */
+        data object OnShown : Action
+        data object OnHidden : Action
         data object OnSend : Action
         data object OnLoadMore : Action
         /** Opens or folds a main comment's replies. */

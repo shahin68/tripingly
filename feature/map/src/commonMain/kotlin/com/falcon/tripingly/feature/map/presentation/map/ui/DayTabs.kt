@@ -148,6 +148,7 @@ internal fun DayTabs(
                 state = listState,
                 modifier = Modifier
                     .weight(1f)
+                    .clip(MaterialTheme.shapes.extraLarge)
                     .drawBehind {
                         val bounds = listState.pillBounds(pillAt()) ?: return@drawBehind
                         translate(left = bounds.first) {
@@ -300,6 +301,14 @@ private val DayPillHeight = 48.dp
 private fun DayTabsPreview(@PreviewParameter(DayTabsPreviewStates::class) tabs: DayTabsState) {
     TripinglyTheme {
         Box(Modifier.background(MaterialTheme.colorScheme.surfaceContainerHigh)) { DayTabs(tabs = tabs, isJoined = false, canAddDay = true, onAction = {}) }
+    }
+}
+
+@Preview
+@Composable
+private fun DayTabsJoinedPreview(@PreviewParameter(DayTabsPreviewStates::class) tabs: DayTabsState) {
+    TripinglyTheme {
+        Box(Modifier.background(MaterialTheme.colorScheme.surfaceContainerHigh)) { DayTabs(tabs = tabs, isJoined = true, canAddDay = true, onAction = {}) }
     }
 }
 

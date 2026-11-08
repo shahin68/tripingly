@@ -1,5 +1,6 @@
 package com.falcon.tripingly.feature.map.presentation.comments
 
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -123,6 +124,10 @@ fun StopCommentsRoute(
     viewModel: StopCommentsViewModel = koinViewModel(key = "comments:${marker.id}") { parametersOf(marker.id, people) },
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    DisposableEffect(viewModel) {
+        viewModel.onAction(StopCommentsViewModel.Action.OnShown)
+        onDispose { viewModel.onAction(StopCommentsViewModel.Action.OnHidden) }
+    }
 
     Box {
         StopCommentsScreen(
