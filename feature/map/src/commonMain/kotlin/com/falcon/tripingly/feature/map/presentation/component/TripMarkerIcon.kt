@@ -118,7 +118,7 @@ internal val COVER_RING = 3.dp
 internal val COVER_BADGE_SIZE = 18.dp
 
 /** The "new" dot with its white ring, in the pin's top left corner on the pin's edge, clear of the number. */
-internal val NEW_DOT_SIZE = 11.dp
+internal val NEW_DOT_SIZE = 12.dp // an 8 dp red dot in its 2 dp ring (Shahin, 2026-11-08)
 
 /**
  * How far the "new" dot's box sits in from the pin's top left corner: a photo pin's dot is centred on its circle's
