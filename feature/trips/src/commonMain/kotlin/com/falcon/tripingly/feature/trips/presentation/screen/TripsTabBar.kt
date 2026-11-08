@@ -16,12 +16,12 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.Dp
 import com.falcon.tripingly.core.designsystem.component.AppTextField
 import com.falcon.tripingly.core.designsystem.component.AppTextFieldStyle
-import com.falcon.tripingly.core.designsystem.component.GlassDefaults
 import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
-import com.falcon.tripingly.core.designsystem.theme.extendedColors
 import com.falcon.tripingly.feature.trips.generated.resources.Res
 import com.falcon.tripingly.feature.trips.generated.resources.home_fab_add_trip
 import com.falcon.tripingly.feature.trips.generated.resources.home_search_placeholder_trips
@@ -57,8 +57,7 @@ fun AddTripButton(visible: Boolean, modifier: Modifier = Modifier, viewModel: Ho
 }
 
 /**
- * White in light, raised grey in dark (`surfaceBright`) with green text and a thin glass edge, so it stands out over the
- * green cards of today's trips (Shahin, 2026-11-08).
+ * The brand's green, with a very thin glass edge so it still shows over today's green cards (Shahin, 2026-11-08).
  */
 @Composable
 private fun AddTripButton(visible: Boolean, expanded: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier) {
@@ -70,13 +69,16 @@ private fun AddTripButton(visible: Boolean, expanded: Boolean, onClick: () -> Un
             icon = { Icon(Icons.Default.Add, contentDescription = stringResource(Res.string.home_fab_add_trip).takeUnless { expanded }) },
             onClick = onClick,
             expanded = expanded,
-            containerColor = MaterialTheme.colorScheme.surfaceBright,
-            contentColor = MaterialTheme.colorScheme.primary,
+            containerColor = MaterialTheme.colorScheme.primary,
+            contentColor = MaterialTheme.colorScheme.onPrimary,
             shape = shape,
-            modifier = modifier.scale(scale).border(GlassDefaults.Edge, MaterialTheme.extendedColors.glassEdge, shape),
+            modifier = modifier.scale(scale).border(Dp.Hairline, GlassStroke, shape),
         )
     }
 }
+
+/** A glass edge that reads on the green in both themes. */
+private val GlassStroke = Color.White.copy(alpha = 0.6f)
 
 @Preview
 @Composable
