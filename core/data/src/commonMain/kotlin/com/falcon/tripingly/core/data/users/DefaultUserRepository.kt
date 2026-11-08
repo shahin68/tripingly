@@ -53,7 +53,6 @@ class DefaultUserRepository(private val api: UsersApi, realtime: RealtimeClient)
     override suspend fun setFollowing(userId: String, following: Boolean): AppResult<Unit, DataError.Network> =
         if (following) api.follow(userId) else api.unfollow(userId)
 
-    override suspend fun removeFollower(userId: String): AppResult<Unit, DataError.Network> = api.removeFollower(userId)
 
     private val _blocks = MutableSharedFlow<String>(extraBufferCapacity = BLOCKS_BUFFER)
     override val blocks: Flow<String> = _blocks.asSharedFlow()

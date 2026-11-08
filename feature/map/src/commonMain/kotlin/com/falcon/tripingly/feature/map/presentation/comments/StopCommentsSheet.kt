@@ -1,5 +1,6 @@
 package com.falcon.tripingly.feature.map.presentation.comments
 
+import kotlinx.collections.immutable.ImmutableList
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -118,7 +119,7 @@ import org.koin.core.parameter.parametersOf
 fun StopCommentsRoute(
     marker: MapMarker,
     /** The trip's people but me, who can be @mentioned. */
-    people: List<UserSummary>,
+    people: ImmutableList<UserSummary>,
     onOpenProfile: (String) -> Unit,
     onDismiss: () -> Unit,
     viewModel: StopCommentsViewModel = koinViewModel(key = "comments:${marker.id}") { parametersOf(marker.id, people) },

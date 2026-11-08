@@ -19,7 +19,7 @@ data class NotificationCenterPageDto(
 @Serializable
 data class NotificationEntryDto(
     val id: String,
-    /** Read only to offer "Remove follower" on follows; any other kind reads the same. */
+    /** Read only to refresh a trip's join count on `join_requested`; any other kind reads the same. */
     val type: String? = null,
     val actor: UserSummaryDto? = null,
     /** The people of a group, latest first, at most three. */

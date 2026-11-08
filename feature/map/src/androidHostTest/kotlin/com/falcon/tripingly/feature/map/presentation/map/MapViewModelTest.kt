@@ -66,6 +66,7 @@ import com.falcon.tripingly.core.ui.UiText
 import com.falcon.tripingly.feature.map.generated.resources.Res
 import com.falcon.tripingly.feature.map.generated.resources.error_location_denied_manual
 import com.falcon.tripingly.feature.map.generated.resources.error_location_permission_required
+import com.falcon.tripingly.feature.map.generated.resources.map_trip_card_more
 import com.falcon.tripingly.feature.map.generated.resources.map_best_order_already
 import com.falcon.tripingly.feature.map.generated.resources.map_change_not_saved
 import com.falcon.tripingly.feature.map.generated.resources.map_error_load_trip
@@ -949,6 +950,8 @@ class MapViewModelTest {
         // The owner's face first, at most three.
         assertEquals(shared.trip.owner, header.card.faces.firstOrNull())
         assertTrue(header.card.faces.size <= 3)
+        val more = shared.members.size - header.card.faces.size
+        if (more > 0) assertEquals(UiText.Resource(Res.string.map_trip_card_more, more), header.card.membersNote)
         assertTrue(header.card.isPublic)
     }
 

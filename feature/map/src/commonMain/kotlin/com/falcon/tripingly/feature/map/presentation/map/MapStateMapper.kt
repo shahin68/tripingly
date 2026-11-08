@@ -13,6 +13,8 @@ import com.falcon.tripingly.core.model.trip.UserSummary
 import com.falcon.tripingly.core.ui.UiText
 import com.falcon.tripingly.feature.map.generated.resources.Res
 import com.falcon.tripingly.feature.map.generated.resources.map_stop_title_format
+import com.falcon.tripingly.feature.map.generated.resources.map_trip_card_more
+import com.falcon.tripingly.feature.map.generated.resources.map_trip_card_only
 import com.falcon.tripingly.feature.map.presentation.component.MapLayersState
 import com.falcon.tripingly.feature.map.presentation.component.MapMarker
 import com.falcon.tripingly.feature.map.presentation.component.PlacePin
@@ -26,6 +28,7 @@ import com.falcon.tripingly.feature.map.presentation.map.state.Sheet
 import com.falcon.tripingly.feature.map.presentation.map.state.activeDayIndex
 import com.falcon.tripingly.feature.map.presentation.map.state.stopPlaceIds
 import com.falcon.tripingly.feature.map.presentation.map.ui.durationText
+import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.toImmutableList
 import kotlinx.collections.immutable.toImmutableMap
 
@@ -78,6 +81,8 @@ internal class MapStateMapper(
 
     private fun header(): HeaderState {
         val trip = details?.trip
+        val faces = details?.members.orEmpty().sortedByDescending { it.role == TripRole.OWNER }.take(TRIP_CARD_FACES).map { it.user }.toImmutableList()
+        val memberCount = details?.members?.size ?: 0
         return HeaderState(
             tripName = trip?.name.orEmpty(),
             owner = trip?.owner,
@@ -86,8 +91,13 @@ internal class MapStateMapper(
                 likeCount = details?.likeCount ?: 0,
                 saveCount = details?.saveCount ?: 0,
                 isPublic = trip?.visibility != TripVisibility.PRIVATE,
-                faces = details?.members.orEmpty().sortedByDescending { it.role == TripRole.OWNER }.take(TRIP_CARD_FACES).map { it.user }.toImmutableList(),
-                memberCount = details?.members?.size ?: 0,
+                faces = faces,
+                memberCount = memberCount,
+                membersNote = when {
+                    memberCount > faces.size -> UiText.Resource(Res.string.map_trip_card_more, memberCount - faces.size)
+                    memberCount == 1 -> faces.firstOrNull()?.let { UiText.Resource(Res.string.map_trip_card_only, it.displayName) }
+                    else -> null
+                },
                 hasNewJoinRequests = model.joinRequesters.any { it.id !in model.dismissedJoinRequesterIds },
             ),
             members = details?.members?.takeIf { it.isNotEmpty() }?.let { MembersEntry(it.size, details.pendingJoinRequestCount) },
@@ -213,8 +223,8 @@ internal class MapStateMapper(
     }
 
     /** The trip's owner and members but me: the people my comment can @mention. */
-    private fun tripPeople(): List<UserSummary> =
-        (listOfNotNull(details?.trip?.owner) + details?.members.orEmpty().map { it.user }).distinctBy { it.id }.filter { it.id != myUserId }
+    private fun tripPeople(): ImmutableList<UserSummary> =
+        (listOfNotNull(details?.trip?.owner) + details?.members.orEmpty().map { it.user }).distinctBy { it.id }.filter { it.id != myUserId }.toImmutableList()
 
     /** A card image opens in the place's photo viewer, so its heart is the same like as in the Photos sheet. */
     private fun placeImage(): MapSheet? {

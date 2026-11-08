@@ -21,7 +21,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextAlign
@@ -38,8 +37,7 @@ import com.falcon.tripingly.core.model.trip.UserSummary
 
 /**
  * A person as a round avatar: their profile [photo], or without one the first letter of [name] on a quiet
- * neutral circle (people have no colours). The letter also shows while the photo loads. Another [shape] for a
- * photo like an ID card's.
+ * neutral circle (people have no colours). The letter also shows while the photo loads.
  */
 @Composable
 fun AvatarCircle(
@@ -47,13 +45,12 @@ fun AvatarCircle(
     photo: ProfilePhoto?,
     modifier: Modifier = Modifier,
     size: Dp = AvatarSize.Medium,
-    shape: Shape = CircleShape,
 ) {
     Box(
         modifier = modifier
             .size(size)
-            .skeleton(shape)
-            .clip(shape)
+            .skeleton(CircleShape)
+            .clip(CircleShape)
             .background(MaterialTheme.colorScheme.surfaceContainerHighest),
         contentAlignment = Alignment.Center,
     ) {
@@ -76,8 +73,8 @@ fun AvatarCircle(
 
 /** [AvatarCircle] for a [user]. */
 @Composable
-fun AvatarCircle(user: UserSummary, modifier: Modifier = Modifier, size: Dp = AvatarSize.Medium, shape: Shape = CircleShape) =
-    AvatarCircle(user.displayName, user.photo, modifier, size, shape)
+fun AvatarCircle(user: UserSummary, modifier: Modifier = Modifier, size: Dp = AvatarSize.Medium) =
+    AvatarCircle(user.displayName, user.photo, modifier, size)
 
 /**
  * An avatar with the name and `@handle` below that the user taps to pick or unpick the person,
@@ -204,6 +201,28 @@ private fun AvatarChoiceDarkPreview() {
         Row(Modifier.background(MaterialTheme.colorScheme.surface)) {
             AvatarChoice(UserSummary("1", "anna", "Anna"), selected = true, onToggle = {})
             AvatarCircle(name = "Lena", photo = null, size = AvatarSize.Small)
+        }
+    }
+}
+
+@Preview
+@Composable
+private fun AvatarStackPreview() {
+    TripinglyTheme {
+        Row(Modifier.background(MaterialTheme.colorScheme.surfaceContainerLowest), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            AvatarStack(listOf(UserSummary("1", "anna", "Anna")))
+            AvatarStack(listOf(UserSummary("1", "anna", "Anna"), UserSummary("2", "jonas.k", "Jonas")))
+            AvatarStack(listOf(UserSummary("1", "anna", "Anna"), UserSummary("2", "jonas.k", "Jonas"), UserSummary("3", "max", "Max")))
+        }
+    }
+}
+
+@Preview
+@Composable
+private fun AvatarStackDarkPreview() {
+    TripinglyTheme(darkTheme = true) {
+        Row(Modifier.background(MaterialTheme.colorScheme.surfaceContainerLowest)) {
+            AvatarStack(listOf(UserSummary("1", "anna", "Anna"), UserSummary("2", "jonas.k", "Jonas"), UserSummary("3", "max", "Max")))
         }
     }
 }

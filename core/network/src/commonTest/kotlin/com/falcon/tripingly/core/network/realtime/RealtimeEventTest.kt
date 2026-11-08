@@ -150,6 +150,25 @@ class RealtimeEventTest {
     }
 
     @Test
+    fun notificationsChanged_carryWhatChangedAndTheUnseenCount() {
+        fun changed(data: String) = parse("notifications.changed", envelope("notifications.changed", data, tripId = null, actorId = null))
+        assertEquals(
+            RealtimeEvent.NotificationsChanged(RealtimeEvent.NotificationsChanged.Change.Read, listOf("n1"), listOf("t1"), 2),
+            changed("""{"change":"read","ids":["n1"],"tripIds":["t1"],"unseenCount":2}"""),
+        )
+        // Cleared and seen carry no ids.
+        assertEquals(
+            RealtimeEvent.NotificationsChanged(RealtimeEvent.NotificationsChanged.Change.Cleared, emptyList(), emptyList(), 0),
+            changed("""{"change":"cleared"}"""),
+        )
+        assertEquals(RealtimeEvent.NotificationsChanged.Change.Seen, assertIs<RealtimeEvent.NotificationsChanged>(changed("""{"change":"seen"}""")).change)
+        assertEquals(RealtimeEvent.NotificationsChanged.Change.Removed, assertIs<RealtimeEvent.NotificationsChanged>(changed("""{"change":"removed","ids":["n2"]}""")).change)
+        // A change this app doesn't know yet, or none at all, is skipped.
+        assertNull(changed("""{"change":"archived","ids":["n1"]}"""))
+        assertNull(changed("{}"))
+    }
+
+    @Test
     fun unknownOrBrokenEvents_areSkipped() {
         assertNull(parse("comment.created", envelope("comment.created", "{}")))
         assertNull(parse("marker.deleted", envelope("marker.deleted", "{}")))

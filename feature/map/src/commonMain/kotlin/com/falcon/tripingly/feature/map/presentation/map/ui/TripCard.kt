@@ -81,10 +81,8 @@ import com.falcon.tripingly.feature.map.generated.resources.map_trip_card_by
 import com.falcon.tripingly.feature.map.generated.resources.map_trip_card_dates
 import com.falcon.tripingly.feature.map.generated.resources.map_trip_card_likes
 import com.falcon.tripingly.feature.map.generated.resources.map_trip_card_members
-import com.falcon.tripingly.feature.map.generated.resources.map_trip_card_more
 import com.falcon.tripingly.feature.map.generated.resources.map_trip_card_new_requests
 import com.falcon.tripingly.feature.map.generated.resources.map_trip_card_no_dates
-import com.falcon.tripingly.feature.map.generated.resources.map_trip_card_only
 import com.falcon.tripingly.feature.map.generated.resources.map_trip_card_private
 import com.falcon.tripingly.feature.map.generated.resources.map_trip_card_public
 import com.falcon.tripingly.feature.map.generated.resources.map_trip_card_saves
@@ -313,14 +311,8 @@ private fun MembersStrip(card: TripCardState, onClick: () -> Unit, modifier: Mod
                     )
                 }
             }
-            val more = card.memberCount - card.faces.size
-            val note = when {
-                more > 0 -> stringResource(Res.string.map_trip_card_more, more)
-                card.memberCount == 1 -> card.faces.firstOrNull()?.let { stringResource(Res.string.map_trip_card_only, it.displayName) }
-                else -> null
-            }
             Text(
-                note.orEmpty(),
+                card.membersNote?.asString().orEmpty(),
                 style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,

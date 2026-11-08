@@ -12,6 +12,8 @@ import com.falcon.tripingly.core.ui.UiText
 import com.falcon.tripingly.feature.map.generated.resources.Res
 import com.falcon.tripingly.feature.map.generated.resources.map_error_load_trip
 import com.falcon.tripingly.feature.map.generated.resources.map_route_minutes
+import com.falcon.tripingly.feature.map.generated.resources.map_trip_card_more
+import com.falcon.tripingly.feature.map.generated.resources.map_trip_card_only
 import com.falcon.tripingly.feature.map.presentation.component.MapLayersState
 import com.falcon.tripingly.feature.map.presentation.component.MapMarker
 import com.falcon.tripingly.feature.map.presentation.map.BestOrderPreview
@@ -73,6 +75,7 @@ private val withStops = MapUiState(
                 UserSummary(id = "u3", username = "jonas", displayName = "Jonas"),
             ),
             memberCount = 4,
+            membersNote = UiText.Resource(Res.string.map_trip_card_more, 1),
             hasNewJoinRequests = true,
         ),
         members = MembersEntry(count = 4, requestCount = 1),
@@ -169,7 +172,7 @@ internal class MapHeaderPreviewStates : PreviewParameterProvider<MapHeaderPrevie
             HeaderState(
                 tripName = "A long weekend in Budapest with the whole family",
                 owner = UserSummary(id = "u2", username = "anna", displayName = "Anna Kovács"),
-                card = TripCardState(dates = "Nov 4 – 9", likeCount = 12400, saveCount = 980, faces = persistentListOf(UserSummary(id = "u2", username = "anna", displayName = "Anna Kovács")), memberCount = 1),
+                card = TripCardState(dates = "Nov 4 – 9", likeCount = 12400, saveCount = 980, faces = persistentListOf(UserSummary(id = "u2", username = "anna", displayName = "Anna Kovács")), memberCount = 1, membersNote = UiText.Resource(Res.string.map_trip_card_only, "Anna Kovács")),
                 viewerMenu = ViewerMenu(isSavedByMe = true, myJoinRequest = null, ownerUsername = "anna"),
             ),
         ),

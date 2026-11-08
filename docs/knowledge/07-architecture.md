@@ -152,6 +152,7 @@ Prefer what the project already has. New ones are confirmed with the user when t
 | Purchases | RevenueCat's native SDKs behind `StorePurchases` (`core:data`), bound by the app shell like push: Android `com.revenuecat.purchases:purchases` in `androidApp`, iOS the `RevenueCat` Swift package through `NativePurchases` (Swift) handed to `MainViewController`. Keys from `local.properties` (`revenuecat.androidKey`, `revenuecat.iosKey`); without one the build has no purchases. Not the KMP wrapper, which would link RevenueCat's iOS library into the shared framework and its tests (decided 2026-10-20) |
 | Push | Firebase Messaging per platform behind `PushMessaging` (`core:data`), bound by the app shell (`androidApp` today; iOS once APNs is set up); Firebase starts from `local.properties` values, no `google-services.json` in the repo and no Google Services plugin (decided 2026-10-11) |
 | Sign-in | Android Credential Manager + googleid; iOS GoogleSignIn (SPM) and AuthenticationServices, in Swift behind `NativeSignIn` (decided 2026-10-03) |
+| System back | `org.jetbrains.compose.ui:ui-backhandler` (version of Compose Multiplatform) for `BackHandler` in shared code, e.g. closing the map's trip card; part of Compose itself (decided 2026-11-07) |
 | Quality | detekt with Compose rules, ktlint, Konsist architecture tests, Roborazzi screenshots |
 
 ## Testing

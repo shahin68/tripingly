@@ -94,6 +94,8 @@ data class TripCardState(
     val isPublic: Boolean = true,
     val faces: ImmutableList<UserSummary> = persistentListOf(),
     val memberCount: Int = 0,
+    /** Beside the faces: "and N more" past them, or "Only Anna" for a trip of one. */
+    val membersNote: UiText? = null,
     val hasNewJoinRequests: Boolean = false,
 )
 
@@ -234,7 +236,7 @@ sealed interface MapSheet {
     /** A place's photos, which anyone can add to. */
     data class PlacePhotos(val place: MapPlace) : MapSheet
     /** [people]: the trip's owner and members, who can be @mentioned. */
-    data class StopComments(val stop: MapMarker, val people: List<UserSummary>) : MapSheet
+    data class StopComments(val stop: MapMarker, val people: ImmutableList<UserSummary>) : MapSheet
     /** The owner's members sheet, with the requests to join. */
     data object Members : MapSheet
     /** An image of the place card, full screen in the place's photo viewer. */

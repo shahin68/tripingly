@@ -20,6 +20,7 @@ import com.falcon.tripingly.core.network.model.CommentDto
 import com.falcon.tripingly.core.network.model.MarkerDto
 import com.falcon.tripingly.core.network.model.TripDto
 import com.falcon.tripingly.core.network.photos.StorageClient
+import com.falcon.tripingly.core.network.push.NotificationEntryDto
 import com.falcon.tripingly.core.network.photos.createPhotosApi
 import com.falcon.tripingly.core.network.realtime.FakeRealtimeClient
 import com.falcon.tripingly.core.network.realtime.RealtimeEvent
@@ -221,6 +222,26 @@ class RealtimeSyncTest {
         realTime { sent.first { it.isNotEmpty() } }
         assertEquals(listOf("/v1/me/trips"), paths)
     }
+
+    @Test
+    fun aJoinRequest_reloadsTheCachedTripForItsCount_otherNotificationsDoNot() = runTest {
+        val sync = sync { json(TripJson.trip("t1")) }
+        cacheTrip()
+
+        sync.apply(RealtimeEvent.NotificationCreated("t1", markerId = "m0", entry = entry("photo_liked")))
+        sync.apply(RealtimeEvent.NotificationCreated("t2", markerId = null, entry = entry("join_requested")))
+        sync.apply(RealtimeEvent.NotificationCreated("t1", markerId = null))
+        realTime { delay(100.milliseconds) }
+        // A like, a trip not on the device, a notification without its entry: nothing to reload.
+        assertTrue(paths.isEmpty())
+
+        sync.apply(RealtimeEvent.NotificationCreated("t1", markerId = null, entry = entry("join_requested")))
+        realTime { sent.first { it.isNotEmpty() } }
+        assertEquals(listOf("/v1/trips/t1"), paths)
+    }
+
+    private fun entry(type: String) =
+        NotificationEntryDto(id = "n1", type = type, title = "Anna", body = "", deepLink = "tripinly://trips/t1", createdAt = "2026-11-08T10:00:00Z")
 
     @Test
     fun aFollowEvent_leavesLiveUpdatesWorking() = runTest {

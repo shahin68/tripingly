@@ -95,7 +95,6 @@ private fun NotificationEntryDto.toEntry() = NotificationEntry(
     actors = actors.map { it.toUser() },
     title = title,
     body = body,
-    isFollow = type == "followed" || type == "became_friends",
     deepLink = deepLink,
     isRead = read,
     at = createdAt.toInstant(),

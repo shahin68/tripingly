@@ -169,7 +169,6 @@ Response shapes and behaviour: see `05-maps-places-routing.md`.
 | POST | `/notifications/seen` | The center is on screen: everything in it counts as seen → 204 (2026-11-07) |
 | DELETE | `/notifications/{id}` | Swiped away in the center: only the entry goes, never what it is about (the comment, the like); someone else's or an unknown id is a 204 too (backend#73) |
 | DELETE | `/notifications` | "Clear all" in the center → 204 (backend#73) |
-| DELETE | `/me/followers/{id}` | They stop following me (and we stop being friends); they aren't told. From a follow row in the center (backend#73) |
 | POST | `/notifications/read` | Body: IDs, `markerId` (everything about one stop: clears its "new" mark; with `kind` `comments` only the news about its comments, `other` the rest) or `all` |
 | GET | `/trips/{id}/new-activity` | `{ markerIds, commentMarkerIds }`: the trip's stops with unread notifications for me, drawn as "new" marks; `commentMarkerIds` those with unread news about their comments (a new comment or a like on one; `aboutComments` on each notification) |
 | GET/PATCH | `/me/notification-settings` | Per-type push on/off: `commentOnMarker`, `addedToTrip`, `tripChangedByCollaborator`, `likesGrouped` (likes, saves and hot-spot milestones), `joinRequested`, `newFollowers` (follows and new friends); PATCH sends only the one that changed |
