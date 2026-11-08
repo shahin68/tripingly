@@ -48,6 +48,7 @@ import com.falcon.tripingly.feature.notifications.presentation.NotificationCente
 import com.falcon.tripingly.feature.trips.presentation.members.TripMembersRoute
 import com.falcon.tripingly.shell.KeepMapSceneStrategy
 import com.falcon.tripingly.shell.MainTabs
+import com.falcon.tripingly.shell.ScreenTransitions
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.launch
 import org.koin.compose.getKoin
@@ -129,6 +130,9 @@ private fun MainNavigation() {
         ),
         // The trip map stays composed under the screens opened over it, so going back to it is instant.
         sceneStrategies = listOf(remember { KeepMapSceneStrategy<NavKey>() }),
+        transitionSpec = ScreenTransitions.push(),
+        popTransitionSpec = ScreenTransitions.pop(),
+        predictivePopTransitionSpec = ScreenTransitions.predictivePop(),
     ) { route ->
         NavEntry(route, metadata = if (route is TripMap) KeepMapSceneStrategy.keepUnder else emptyMap()) { key ->
             // Only the top screen shows its sheets: under the screen a back swipe leaves, they'd cover it.

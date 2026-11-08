@@ -21,9 +21,6 @@ import androidx.navigation3.runtime.NavEntry
 import androidx.navigation3.scene.Scene
 import androidx.navigation3.scene.SceneStrategy
 import androidx.navigation3.scene.SceneStrategyScope
-import androidx.navigation3.ui.defaultPopTransitionSpec
-import androidx.navigation3.ui.defaultPredictivePopTransitionSpec
-import androidx.navigation3.ui.defaultTransitionSpec
 import androidx.navigationevent.NavigationEventInfo
 import androidx.navigationevent.NavigationEventTransitionState
 import androidx.navigationevent.compose.NavigationBackHandler
@@ -35,7 +32,7 @@ import kotlinx.coroutines.launch
  * center), so going back shows it at once instead of building the native map, its pins and its camera again.
  *
  * The map and what covers it are one scene to the NavDisplay (its key is the map's), so a screen opening over the map
- * never moves or rebuilds it: the covering screens come and go inside the scene, with the platform's own transitions,
+ * never moves or rebuilds it: the covering screens come and go inside the scene, with the app's [ScreenTransitions],
  * back and predictive back included. Only the top-most map is kept; a map further down the back stack is built again
  * when it comes back, as before. A covered map stops once the screen over it has settled (its lifecycle drops to
  * CREATED: no rendering, location or collecting), and its sheets hide as on any screen that isn't on top.
@@ -136,15 +133,16 @@ private fun <T : Any> MapWithCovers(map: NavEntry<T>, cover: Cover<T>, below: Co
             transitionSpec = {
                 val target = targetState as Cover<T>
                 val spec = when {
-                    gesture != null -> defaultPredictivePopTransitionSpec<T>().invoke(this, gesture.swipeEdge)
-                    target.depth < (initialState as Cover<T>).depth -> defaultPopTransitionSpec<T>().invoke(this)
-                    else -> defaultTransitionSpec<T>().invoke(this)
+                    gesture != null -> ScreenTransitions.predictivePop<Scene<T>>().invoke(this, gesture.swipeEdge)
+                    target.depth < (initialState as Cover<T>).depth -> ScreenTransitions.pop<Scene<T>>().invoke(this)
+                    else -> ScreenTransitions.push<Scene<T>>().invoke(this)
                 }
                 // The deeper screen is in front, whichever way it goes.
                 ContentTransform(spec.targetContentEnter, spec.initialContentExit, targetContentZIndex = target.depth.toFloat(), sizeTransform = null)
             },
             contentKey = { it.key },
-        ) { it.content() }
+            // Full size even with no screen over the map: a transition sizes itself by the screen it goes to.
+        ) { Box(Modifier.fillMaxSize()) { it.content() } }
     }
     // After the map's own back handlers, so this one goes first while a screen covers the map.
     NavigationBackHandler(state = backState, isBackEnabled = cover.entry != null, onBackCompleted = onBack)
