@@ -2,6 +2,7 @@ package com.falcon.tripingly.feature.trips.presentation.screen
 
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
@@ -10,13 +11,17 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.tooling.preview.Preview
 import com.falcon.tripingly.core.designsystem.component.AppTextField
 import com.falcon.tripingly.core.designsystem.component.AppTextFieldStyle
+import com.falcon.tripingly.core.designsystem.component.GlassDefaults
 import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
+import com.falcon.tripingly.core.designsystem.theme.extendedColors
 import com.falcon.tripingly.feature.trips.generated.resources.Res
 import com.falcon.tripingly.feature.trips.generated.resources.home_fab_add_trip
 import com.falcon.tripingly.feature.trips.generated.resources.home_search_placeholder_trips
@@ -41,24 +46,34 @@ fun TripsSearchField(viewModel: HomeViewModel = koinViewModel()) {
     )
 }
 
-/** Opens the New trip sheet; it shrinks away when the user swipes off the Trips tab and grows back on return. */
+/**
+ * Opens the New trip sheet; it shrinks away when the user swipes off the Trips tab and grows back on return, and folds
+ * to its icon once the trips are scrolled, back to "Add Trip" at the top, as Gmail's Compose (Shahin, 2026-11-08).
+ */
 @Composable
 fun AddTripButton(visible: Boolean, modifier: Modifier = Modifier, viewModel: HomeViewModel = koinViewModel()) {
-    AddTripButton(visible, onClick = { viewModel.onAction(Action.Trips.Add) }, modifier)
+    val expanded by remember(viewModel) { derivedStateOf { viewModel.tripList.firstVisibleItemIndex == 0 } }
+    AddTripButton(visible, expanded, onClick = { viewModel.onAction(Action.Trips.Add) }, modifier)
 }
 
+/**
+ * White in light, raised grey in dark (`surfaceBright`) with green text and a thin glass edge, so it stands out over the
+ * green cards of today's trips (Shahin, 2026-11-08).
+ */
 @Composable
-private fun AddTripButton(visible: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier) {
+private fun AddTripButton(visible: Boolean, expanded: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier) {
     val scale by animateFloatAsState(if (visible) 1f else 0f, tween(durationMillis = 200))
     if (scale > 0f) {
+        val shape = MaterialTheme.shapes.extraLarge
         ExtendedFloatingActionButton(
             text = { Text(stringResource(Res.string.home_fab_add_trip)) },
-            icon = { Icon(Icons.Default.Add, contentDescription = null) },
+            icon = { Icon(Icons.Default.Add, contentDescription = stringResource(Res.string.home_fab_add_trip).takeUnless { expanded }) },
             onClick = onClick,
-            containerColor = MaterialTheme.colorScheme.primary,
-            contentColor = MaterialTheme.colorScheme.onPrimary,
-            shape = MaterialTheme.shapes.extraLarge,
-            modifier = modifier.scale(scale),
+            expanded = expanded,
+            containerColor = MaterialTheme.colorScheme.surfaceBright,
+            contentColor = MaterialTheme.colorScheme.primary,
+            shape = shape,
+            modifier = modifier.scale(scale).border(GlassDefaults.Edge, MaterialTheme.extendedColors.glassEdge, shape),
         )
     }
 }
@@ -66,11 +81,11 @@ private fun AddTripButton(visible: Boolean, onClick: () -> Unit, modifier: Modif
 @Preview
 @Composable
 private fun AddTripButtonPreview() {
-    TripinglyTheme { AddTripButton(visible = true, onClick = {}) }
+    TripinglyTheme { AddTripButton(visible = true, expanded = true, onClick = {}) }
 }
 
 @Preview
 @Composable
 private fun AddTripButtonDarkPreview() {
-    TripinglyTheme(darkTheme = true) { AddTripButton(visible = true, onClick = {}) }
+    TripinglyTheme(darkTheme = true) { AddTripButton(visible = true, expanded = false, onClick = {}) }
 }

@@ -6,7 +6,9 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -43,6 +45,7 @@ fun HomeScreen(
     onAction: (Action) -> Unit,
     modifier: Modifier = Modifier,
     barsPadding: PaddingValues = PaddingValues(),
+    listState: LazyListState = rememberLazyListState(),
 ) {
     val contentPadding = screenContentPadding(barsPadding, extraBottom = FabClearance)
     ShowMessage(
@@ -65,7 +68,7 @@ fun HomeScreen(
             if (state.timeline.isEmpty) {
                 EmptyTrips(hasTrips = state.hasTrips, contentPadding = contentPadding)
             } else {
-                TripTimelineList(state.timeline, onAction, contentPadding)
+                TripTimelineList(state.timeline, onAction, contentPadding, listState)
             }
         }
     }
@@ -76,9 +79,10 @@ private fun TripTimelineList(
     timeline: TripTimeline,
     onAction: (Action) -> Unit,
     contentPadding: PaddingValues,
+    listState: LazyListState,
 ) {
     val today = timeline.today
-    LazyColumn(modifier = Modifier.fillMaxSize().glassSource(), contentPadding = contentPadding) {
+    LazyColumn(modifier = Modifier.fillMaxSize().glassSource(), state = listState, contentPadding = contentPadding) {
         // Without a trip on today, a "Today" row stands above what's coming; otherwise those trips carry today's ring.
         if (today != null && timeline.showsTodayRow) item(key = "today") { TodayHeader(today, Modifier.animateItem()) }
         items(timeline.upcoming, key = { it.trip.id }) { entry ->

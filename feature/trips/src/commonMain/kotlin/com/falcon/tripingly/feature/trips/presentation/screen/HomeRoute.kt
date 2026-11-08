@@ -69,7 +69,7 @@ fun HomeRoute(
         }
     }
 
-    HomeScreen(state = state, onAction = viewModel::onAction, barsPadding = barsPadding)
+    HomeScreen(state = state, onAction = viewModel::onAction, barsPadding = barsPadding, listState = viewModel.tripList)
 
     state.dialog?.takeUnless { it.dialog is Dialog.Create }?.let { TripDialog(it, viewModel::onAction) }
 
