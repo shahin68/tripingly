@@ -9,6 +9,7 @@
     <string name="notifications_clear_message">Minden eszközödről eltűnnek. A hozzászólások, kedvelések és követések megmaradnak.</string>
     <string name="notifications_clear_confirm">Törlés</string>
     <string name="notifications_delete">Törlés</string>
+    <string name="notifications_more">Továbbiak</string>
     <string name="notifications_block">Letiltás</string>
     <string name="notifications_remove_follower">Követő eltávolítása</string>
     <string name="notifications_block_title">Letiltod: @%1$s?</string>

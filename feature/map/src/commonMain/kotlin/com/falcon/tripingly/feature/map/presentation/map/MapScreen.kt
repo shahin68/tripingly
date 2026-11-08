@@ -216,7 +216,7 @@ internal fun MapScreen(
                 JoinRequestsPill(
                     requests = requests,
                     onClick = { onAction(MapAction.Header.OpenJoinRequests) },
-                    modifier = Modifier.align(Alignment.CenterHorizontally).padding(horizontal = MaterialTheme.spacing.medium),
+                    modifier = Modifier.align(Alignment.Start).padding(horizontal = MaterialTheme.spacing.medium),
                 )
             }
             state.search?.results?.takeIf { it.isNotEmpty() }?.let { results ->

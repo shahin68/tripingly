@@ -26,7 +26,7 @@ import kotlinx.collections.immutable.persistentListOf
 import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
 
-/** "@anna and 2 others want to join" under the map's header, their faces stacked; a tap opens the members sheet. */
+/** "@anna and 2 others want to join" under the map's header at the start, in line with the back button, their faces stacked; a tap opens the members sheet. */
 @Composable
 internal fun JoinRequestsPill(requests: JoinRequestsState, onClick: () -> Unit, modifier: Modifier = Modifier) {
     GlassSurface(modifier = modifier, shape = CircleShape, onClick = onClick, blur = false) {

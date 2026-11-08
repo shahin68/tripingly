@@ -9,6 +9,7 @@
     <string name="notifications_clear_message">They go on all your devices. The comments, likes and follows they are about stay.</string>
     <string name="notifications_clear_confirm">Clear</string>
     <string name="notifications_delete">Delete</string>
+    <string name="notifications_more">More</string>
     <string name="notifications_block">Block</string>
     <string name="notifications_remove_follower">Remove follower</string>
     <string name="notifications_block_title">Block @%1$s?</string>

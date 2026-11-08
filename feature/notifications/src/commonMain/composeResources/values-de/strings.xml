@@ -9,6 +9,7 @@
     <string name="notifications_clear_message">Sie verschwinden auf allen deinen Geräten. Die Kommentare, Likes und Follows bleiben.</string>
     <string name="notifications_clear_confirm">Löschen</string>
     <string name="notifications_delete">Löschen</string>
+    <string name="notifications_more">Mehr</string>
     <string name="notifications_block">Blockieren</string>
     <string name="notifications_remove_follower">Follower entfernen</string>
     <string name="notifications_block_title">@%1$s blockieren?</string>
