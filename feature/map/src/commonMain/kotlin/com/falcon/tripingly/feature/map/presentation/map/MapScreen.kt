@@ -166,6 +166,11 @@ internal fun MapScreen(
         } else {
             PaddingValues(top = coveredTop, bottom = coveredBottom)
         }
+        // Where the camera puts a tapped pin, with its card above it: the middle of what's free, but in landscape low
+        // down, so the card above the pin has the height it needs (Shahin, 2026-11-08). Only the camera's padding
+        // moves; fits still use all that's free ([raise] puts them back in its middle).
+        val pinLowering = if (isWide) (maxHeight - LandscapePinArea - statusBar).coerceAtLeast(0.dp) else 0.dp
+        val cameraPadding = if (isWide) PaddingValues(start = start, top = statusBar + pinLowering, end = end + panelWidth) else covered
         // The header and the cards: full width, or the right half in landscape; never under the camera cutout.
         val panel = Modifier.windowInsetsPadding(WindowInsets.safeSides).then(if (isWide) Modifier.width(panelWidth) else Modifier.fillMaxWidth())
         // Not before the camera knows where the trip is: the map opens there, fitted to the open day, instead of
@@ -175,7 +180,7 @@ internal fun MapScreen(
             val pulledUp = if (plan != null && !isWide) with(density) { planSheet.pulledUp().toDp() } else 0.dp
             val width = maxWidth - covered.calculateLeftPadding(LayoutDirection.Ltr) - covered.calculateRightPadding(LayoutDirection.Ltr)
             val height = maxHeight - covered.calculateTopPadding() - covered.calculateBottomPadding() - pulledUp
-            fittedCamera(bounds, width, height, raise = pulledUp / 2)
+            fittedCamera(bounds, width, height, raise = pulledUp / 2 + pinLowering / 2)
         }
         val moves = remember(cameraCommands) {
             cameraCommands.map { command ->
@@ -198,7 +203,7 @@ internal fun MapScreen(
                 initialTarget = target,
                 initialZoom = zoom,
                 cameraCommands = moves,
-                contentPadding = covered,
+                contentPadding = cameraPadding,
                 layers = state.layers,
                 onCameraMove = { coords, zoom, bounds -> onAction(MapAction.MapView.CameraRest(coords, zoom, bounds)) },
                 onMapTouch = { onAction(MapAction.MapView.ScreenTouch) },
@@ -268,12 +273,13 @@ internal fun MapScreen(
             modifier = Modifier.align(Alignment.BottomEnd).then(panel).padding(top = coveredTop),
         )
 
-        // The part of the map nothing covers: its middle is where the camera puts a tapped pin.
+        // The part of the map nothing covers: its middle is where the camera puts a tapped pin (lower in landscape).
         Box(modifier = Modifier.fillMaxSize().padding(covered)) {
             PinCard(
                 card = state.placeCard,
                 key = { it.place.id to it.place.location },
                 pinClearance = SelectedPinSize / 2 + MaterialTheme.spacing.small,
+                pinBelowMiddle = pinLowering / 2,
                 modifier = Modifier.onGloballyPositioned { placeCardBounds = it.unclippedBounds() },
             ) { card ->
                 PlaceCard(
@@ -293,6 +299,7 @@ internal fun MapScreen(
                 card = state.stopCard,
                 key = { it.stop.id },
                 pinClearance = stopPinRadius(hasCover = state.stopCard?.stop?.coverPhotoId != null) + MaterialTheme.spacing.small,
+                pinBelowMiddle = pinLowering / 2,
                 modifier = Modifier.onGloballyPositioned { stopCardBounds = it.unclippedBounds() },
             ) { card ->
                 StopCard(
@@ -386,3 +393,6 @@ private fun MapScreenLoadErrorPreview() {
  * above the pin, out of its own layout, so touches on its top half counted as touches on the map and closed it.
  */
 private fun LayoutCoordinates.unclippedBounds() = Rect(positionInRoot(), size.toSize())
+
+/** In landscape, the strip at the bottom of the free map whose middle a tapped pin goes to (64 dp up). */
+private val LandscapePinArea = 128.dp

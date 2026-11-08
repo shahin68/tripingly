@@ -161,8 +161,9 @@ internal fun GoogleSdkMapView(
     val isDark = isSystemInDarkTheme()
     LaunchedEffect(isDark) { map.setStyle(if (isDark) DARK_MAP_STYLE else LIGHT_MAP_STYLE) }
     LaunchedEffect(isMyLocationEnabled) { map.setMyLocationEnabled(isMyLocationEnabled) }
-    // As much at the top as at the bottom: enough for the header there and for the logo above the cards here.
-    val padding = maxOf(top, bottom).value.toDouble()
+    // As much at the top as at the bottom, so the camera stays in the middle: what the logo needs to sit above the cards.
+    // Not the top's: in landscape it's most of the height (a tapped pin goes low), which would leave the map no middle.
+    val padding = bottom.value.toDouble()
     LaunchedEffect(padding) { map.setPadding(padding, padding) }
     // The map stays put, but the middle of what's free moved: the view model learns where the target now is.
     LaunchedEffect(freeMiddle) {
