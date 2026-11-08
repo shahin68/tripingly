@@ -58,4 +58,13 @@ class FittedCameraTest {
         assertEquals(start.latitude, back.latitude, 1e-9)
         assertEquals(start.longitude, back.longitude, 1e-9)
     }
+
+    @Test
+    fun `shifting east moves the longitude by the map's width at that zoom`() {
+        val start = Coordinates(48.2, 16.37)
+        // At zoom 0 the world is 256 dp wide.
+        assertEquals(16.37 + 90, start.shiftedEast(64.dp, 0f).longitude, 1e-9)
+        assertEquals(start.longitude, start.shiftedEast(40.dp, 14f).shiftedEast(-40.dp, 14f).longitude, 1e-9)
+        assertEquals(start.latitude, start.shiftedEast(40.dp, 14f).latitude, 1e-9)
+    }
 }
