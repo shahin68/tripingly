@@ -52,6 +52,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextOverflow
@@ -117,14 +118,15 @@ fun FloatingNavigationBar(
             }
         }
     }
+    val isLandscape = LocalWindowInfo.current.containerSize.let { it.width > it.height }
     GlassSurface(
         modifier = modifier
             .windowInsetsPadding(WindowInsets.floatingBottom.union(WindowInsets.safeSides))
             .padding(horizontal = MaterialTheme.spacing.medium, vertical = MaterialTheme.spacing.small)
-            // In landscape the bar stays a comfortable width, centred, instead of stretching across the screen.
+            // In landscape the right half, its end in line with the Add Trip button (Shahin, 2026-11-08); otherwise
+            // the full width up to a comfortable maximum, centred (tablets).
             .fillMaxWidth()
-            .wrapContentWidth()
-            .widthIn(max = NavBarDefaults.MaxWidth)
+            .then(if (isLandscape) Modifier.wrapContentWidth(Alignment.End).fillMaxWidth(0.5f) else Modifier.wrapContentWidth().widthIn(max = NavBarDefaults.MaxWidth))
             .fillMaxWidth()
             .height(NavBarDefaults.Height),
         shape = NavBarDefaults.Shape,
