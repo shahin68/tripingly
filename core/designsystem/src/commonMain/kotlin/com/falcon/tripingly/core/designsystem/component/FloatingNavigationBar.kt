@@ -86,8 +86,8 @@ fun FloatingNavigationBar(
     val scope = rememberCoroutineScope()
     val haptics = rememberHaptics()
     var isDragging by remember { mutableStateOf(false) }
-    // One tick per tab reached: a tap at the tap itself (not once its page has loaded), a pill drag at each tab it
-    // passes, a page swipe as it lands. [feltPage] is the last tab felt, so none ticks twice.
+    // One tick per tab reached with the bar: a tap at the tap itself (not once its page has loaded), a pill drag at each
+    // tab it passes. Swiping the pages themselves doesn't tick. [feltPage] is the last tab reached, so none ticks twice.
     var feltPage by remember { mutableStateOf(pagerState.currentPage) }
     val feel = { page: Int ->
         if (page != feltPage) {
@@ -96,7 +96,7 @@ fun FloatingNavigationBar(
         }
     }
     LaunchedEffect(pagerState) { snapshotFlow { pagerState.currentPage }.collect { if (isDragging) feel(it) } }
-    LaunchedEffect(pagerState) { snapshotFlow { pagerState.settledPage }.collect(feel) }
+    LaunchedEffect(pagerState) { snapshotFlow { pagerState.settledPage }.collect { feltPage = it } }
     val lift by animateFloatAsState(if (isDragging) NavBarDefaults.DragScale else 1f)
     // While a tap jumps over tabs the pill slides on its own; otherwise it follows the pages.
     val jump = remember { Animatable(0f) }
