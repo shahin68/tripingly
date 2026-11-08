@@ -57,7 +57,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
-import com.falcon.tripingly.core.designsystem.theme.extendedColors
 import com.falcon.tripingly.core.designsystem.theme.spacing
 import kotlin.math.abs
 import kotlin.math.ceil
@@ -192,7 +191,6 @@ private fun NavBarTab(item: NavBarItem, selected: Boolean, onClick: () -> Unit, 
     val color by animateColorAsState(
         if (selected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
     )
-    val behind by animateColorAsState(if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.extendedColors.glass)
     Column(
         modifier = modifier
             .fillMaxHeight()
@@ -203,8 +201,8 @@ private fun NavBarTab(item: NavBarItem, selected: Boolean, onClick: () -> Unit, 
     ) {
         Box {
             Icon(item.icon, contentDescription = null, tint = color, modifier = Modifier.size(NavBarDefaults.IconSize))
-            // Beside the icon's top end, ringed in what's behind it: the selection pill or the bar's glass.
-            if (item.hasBadge) NewIndicator(Modifier.align(Alignment.TopEnd).offset(x = NavBarDefaults.BadgeShift, y = -NavBarDefaults.BadgeShift), strokeColor = behind)
+            // Beside the icon's top end, without a ring: behind it is blurred glass of no one colour (Shahin, 2026-11-08).
+            if (item.hasBadge) NewIndicator(Modifier.align(Alignment.TopEnd).offset(x = NavBarDefaults.BadgeShift, y = -NavBarDefaults.BadgeShift), strokeWidth = 0.dp)
         }
         Text(
             text = item.label,
