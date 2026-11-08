@@ -216,15 +216,18 @@ class MapFlowTest {
     }
 
     @Test
-    fun `tapping the title opens the trip card with the whole name and its fields`() = runComposeUiTest {
+    fun `tapping the title opens the trip card with its details, and Close shrinks it back`() = runComposeUiTest {
         setContent { TripinglyTheme { MapRoute(trip.trip.id, onNavigateBack = {}, onOpenProfile = {}, onOpenPaywall = {}, membersContent = { _, _ -> }, viewModel = viewModel()) } }
 
         onNodeWithText("Vienna weekend").performClick()
         waitForIdle()
 
-        onNodeWithText("TRIP PERMIT").assertIsDisplayed()
-        onNodeWithText("STOPS").assertIsDisplayed()
-        // The hidden pill and the card.
-        onAllNodesWithText("Vienna weekend").assertCountEquals(2)
+        onNodeWithText("Dates").assertIsDisplayed()
+        onNodeWithText("Seen by").assertIsDisplayed()
+        onNodeWithText("Members").assertIsDisplayed()
+
+        onNodeWithContentDescription("Close").performClick()
+        waitForIdle()
+        onNodeWithText("Dates").assertDoesNotExist()
     }
 }
