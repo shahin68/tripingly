@@ -130,10 +130,10 @@ data class DayTabsState(
 
 /**
  * A day tab: "Day 2" ([number] counts from 1) over its [date] ("Jun 2"), null when the trip has no dates. [hasNew]: one
- * of its stops has a "new" mark.
+ * of its stops has a "new" mark. [canDelete]: a long press offers to delete it (see [EditorMenu.canDeleteDay]).
  */
 @Immutable
-data class DayTab(val id: String, val number: Int, val date: String?, val hasNew: Boolean = false)
+data class DayTab(val id: String, val number: Int, val date: String?, val hasNew: Boolean = false, val canDelete: Boolean = false)
 
 /** What the plan sheet shows. */
 @Immutable

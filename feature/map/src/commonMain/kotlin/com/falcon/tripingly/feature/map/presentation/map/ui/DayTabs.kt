@@ -42,7 +42,14 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
+import com.falcon.tripingly.core.designsystem.component.AppDropdownMenu
+import com.falcon.tripingly.core.designsystem.component.DropdownAction
+import com.falcon.tripingly.feature.map.generated.resources.map_delete_day
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.shape.ZeroCornerSize
@@ -170,6 +177,11 @@ internal fun DayTabs(
                         // How much of the pill is on this day right now, read while drawing (no recomposition per frame).
                         onPill = { pillAt().roundToInt() == index },
                         onClick = { onAction(MapAction.Days.Select(index)) },
+                        onDelete = {
+                            // The confirmation (and the delete) is about the open day.
+                            onAction(MapAction.Days.Select(index))
+                            onAction(MapAction.Header.DeleteDay)
+                        }.takeIf { day.canDelete },
                         modifier = Modifier.animateItem(),
                     )
                 }
@@ -246,21 +258,27 @@ private val PillSpring = spring<Float>(dampingRatio = Spring.DampingRatioLowBoun
 
 /**
  * "Day 2" over its date, in white while open (the green pill is drawn behind the days by [DayTabs]). A red dot on the top end corner of that fill (open
- * or not): a stop of the day has a "new" mark.
+ * or not): a stop of the day has a "new" mark. A long press opens a menu to delete the day, when the user may ([onDelete]).
  */
 @Composable
-private fun DayPill(day: DayTab, selected: Boolean, onPill: () -> Boolean, onClick: () -> Unit, modifier: Modifier = Modifier) {
+private fun DayPill(day: DayTab, selected: Boolean, onPill: () -> Boolean, onClick: () -> Unit, onDelete: (() -> Unit)?, modifier: Modifier = Modifier) {
     val off = MaterialTheme.colorScheme.onSurfaceVariant
     val on = MaterialTheme.colorScheme.onPrimary
     // White while the sliding pill is mostly on it, grey otherwise: no fading, read while drawing.
     val content = ColorProducer { if (onPill()) on else off }
     val haptics = rememberHaptics()
+    var isMenuOpen by remember { mutableStateOf(false) }
     Box(modifier) {
         Box(
             modifier = Modifier
                 .heightIn(min = DayPillHeight)
                 .clip(MaterialTheme.shapes.large)
-                .selectable(selected = selected, role = Role.Tab) {
+                .semantics { this.selected = selected }
+                .combinedClickable(
+                    role = Role.Tab,
+                    onLongClick = onDelete?.let { { isMenuOpen = true } },
+                    onLongClickLabel = onDelete?.let { stringResource(Res.string.map_delete_day) },
+                ) {
                     if (!selected) haptics.tick()
                     onClick()
                 }
@@ -281,6 +299,18 @@ private fun DayPill(day: DayTab, selected: Boolean, onPill: () -> Boolean, onCli
                     .offset(x = onCorner, y = -onCorner)
                     .size(NewDotSize)
                     .background(MapColors.NewActivity, CircleShape),
+            )
+        }
+        if (onDelete != null) {
+            AppDropdownMenu(
+                expanded = isMenuOpen,
+                onDismissRequest = { isMenuOpen = false },
+                actions = listOf(
+                    DropdownAction(stringResource(Res.string.map_delete_day), isDestructive = true, icon = Icons.Outlined.Delete) {
+                        isMenuOpen = false
+                        onDelete()
+                    },
+                ),
             )
         }
     }

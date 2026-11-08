@@ -64,7 +64,7 @@ internal class MapStateMapper(
         header = header(),
         joinRequests = joinRequests(),
         search = model.search?.let { SearchState(it.query, it.results.toImmutableList(), it.isSearching) },
-        dayTabs = DayTabsState(days.map { day -> DayTab(day.id, day.position + 1, day.date?.let(DateUtils::formatAbbreviated), hasNew = day.markers.any { it.id in model.newStopIds || it.id in model.newCommentStopIds }) }.toImmutableList(), activeIndex),
+        dayTabs = DayTabsState(days.map { day -> DayTab(day.id, day.position + 1, day.date?.let(DateUtils::formatAbbreviated), hasNew = day.markers.any { it.id in model.newStopIds || it.id in model.newCommentStopIds }, canDelete = canEdit && days.size > 1 && canDeleteDay(day.markers)) }.toImmutableList(), activeIndex),
         plan = route.between?.let { PointRouteCardState(it.from, it.to, routeSummary()) } ?: stopsCard(),
         routeStartName = route.start?.name,
         placeCard = placeCard(),
@@ -118,7 +118,8 @@ internal class MapStateMapper(
     }
 
     /** Like the server: an editor only when every stop on the day is theirs. */
-    private fun canDeleteDay() = role == TripRole.OWNER || (canEdit && stops.all { it.canDelete })
+    private fun canDeleteDay(markers: List<TripMarker> = days.getOrNull(activeIndex)?.markers.orEmpty()) =
+        role == TripRole.OWNER || (canEdit && myUserId != null && markers.all { it.createdById == myUserId })
 
     private fun stopsCard(): StopsCardState? {
         if (stops.isEmpty() || route.between != null) return null

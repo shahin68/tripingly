@@ -40,9 +40,11 @@ import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.layout.boundsInRoot
+import androidx.compose.ui.layout.LayoutCoordinates
+import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.unit.toSize
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.tooling.preview.PreviewParameter
@@ -263,7 +265,7 @@ internal fun MapScreen(
                 card = state.placeCard,
                 key = { it.place.id to it.place.location },
                 pinClearance = SelectedPinSize / 2 + MaterialTheme.spacing.small,
-                modifier = Modifier.onGloballyPositioned { placeCardBounds = it.boundsInRoot() },
+                modifier = Modifier.onGloballyPositioned { placeCardBounds = it.unclippedBounds() },
             ) { card ->
                 PlaceCard(
                     place = card.place,
@@ -282,7 +284,7 @@ internal fun MapScreen(
                 card = state.stopCard,
                 key = { it.stop.id },
                 pinClearance = stopPinRadius(hasCover = state.stopCard?.stop?.coverPhotoId != null) + MaterialTheme.spacing.small,
-                modifier = Modifier.onGloballyPositioned { stopCardBounds = it.boundsInRoot() },
+                modifier = Modifier.onGloballyPositioned { stopCardBounds = it.unclippedBounds() },
             ) { card ->
                 StopCard(
                     marker = card.stop,
@@ -369,3 +371,9 @@ private fun MapScreenLoadErrorPreview() {
         MapScreen(state = MapUiState(loadError = UiText.Server("No internet connection.")), cameraCommands = emptyFlow(), onAction = {})
     }
 }
+
+/**
+ * Where a pin card really is. Not boundsInRoot: that cuts off what lies outside its parents, and a card is lifted
+ * above the pin, out of its own layout, so touches on its top half counted as touches on the map and closed it.
+ */
+private fun LayoutCoordinates.unclippedBounds() = Rect(positionInRoot(), size.toSize())
