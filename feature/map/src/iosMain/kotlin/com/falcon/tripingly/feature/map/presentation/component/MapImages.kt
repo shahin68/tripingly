@@ -49,7 +49,7 @@ internal fun drawTripPin(orderNumber: Int, isNew: Boolean, density: Float, fontS
         drawCircle(pin / 2, pin / 2, pin / 2, fill(WHITE))
         drawCircle(pin / 2, pin / 2, pin / 2 - PIN_RING.value * density, fill(STOP))
         drawNumber(orderNumber, pin / 2, pin / 2, boldFont(13 * density * fontScale))
-        if (isNew) drawNewDot(density)
+        if (isNew) drawNewDot(density, hasCover = false)
     }
     return UIImage(data = surface.makeImageSnapshot().png(), scale = density.toDouble())
 }
@@ -77,16 +77,17 @@ internal fun drawCoverPin(orderNumber: Int, cover: ImageBitmap, isNew: Boolean, 
         drawCircle(pin - badge / 2, badge / 2, badge / 2, fill(WHITE))
         drawCircle(pin - badge / 2, badge / 2, badge / 2 - PIN_RING.value * density, fill(STOP))
         drawNumber(orderNumber, pin - badge / 2, badge / 2, boldFont(10 * density * fontScale))
-        if (isNew) drawNewDot(density)
+        if (isNew) drawNewDot(density, hasCover = true)
     }
     return UIImage(data = surface.makeImageSnapshot().png(), scale = density.toDouble())
 }
 
-/** The "new" dot in the pin's top left corner: the accent red in a white ring. */
-private fun org.jetbrains.skia.Canvas.drawNewDot(density: Float) {
+/** The "new" dot at the pin's top left (see [newDotInset]): the accent red in a white ring. */
+private fun org.jetbrains.skia.Canvas.drawNewDot(density: Float, hasCover: Boolean) {
     val radius = NEW_DOT_SIZE.value * density / 2
-    drawCircle(radius, radius, radius, fill(WHITE))
-    drawCircle(radius, radius, radius - PIN_RING.value * density, fill(NEW_ACTIVITY))
+    val center = radius + newDotInset(hasCover).value * density
+    drawCircle(center, center, radius, fill(WHITE))
+    drawCircle(center, center, radius - PIN_RING.value * density, fill(NEW_ACTIVITY))
 }
 
 private fun fill(color: Int) = Paint().apply {
