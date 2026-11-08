@@ -2,6 +2,7 @@ package com.falcon.tripingly.shell
 
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
@@ -10,6 +11,7 @@ import androidx.compose.material.icons.outlined.Explore
 import androidx.compose.material.icons.outlined.Luggage
 import androidx.compose.material.icons.outlined.NearMe
 import androidx.compose.material.icons.outlined.Person
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -24,6 +26,7 @@ import com.falcon.tripingly.core.designsystem.component.FloatingNavigationBar
 import com.falcon.tripingly.core.designsystem.component.NavBarItem
 import com.falcon.tripingly.core.designsystem.component.SettingsAction
 import com.falcon.tripingly.core.designsystem.component.safeSides
+import com.falcon.tripingly.core.designsystem.theme.spacing
 import com.falcon.tripingly.core.model.photo.PhotoOwner
 import com.falcon.tripingly.deeplink.DeepLinks
 import com.falcon.tripingly.feature.map.presentation.photos.PhotoViewerRoute
@@ -101,7 +104,10 @@ internal fun MainTabs(
         bottomBar = {
             FloatingNavigationBar(items = items, pagerState = pagerState)
         },
-        floatingActionButton = { AddTripButton(visible = shown == MainTab.Trips, Modifier.windowInsetsPadding(WindowInsets.safeSides)) },
+        // 8 dp closer to the bottom bar than the Scaffold's spacing (Shahin, 2026-11-08).
+        floatingActionButton = {
+            AddTripButton(visible = shown == MainTab.Trips, Modifier.windowInsetsPadding(WindowInsets.safeSides).offset(y = MaterialTheme.spacing.small))
+        },
     ) { barsPadding ->
         HorizontalPager(state = pagerState, key = { tabs[it].name }) { page ->
             val tab = tabs[page]

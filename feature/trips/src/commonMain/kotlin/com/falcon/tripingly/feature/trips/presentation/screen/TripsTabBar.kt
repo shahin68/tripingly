@@ -1,7 +1,10 @@
 package com.falcon.tripingly.feature.trips.presentation.screen
 
-import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.EaseOut
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material.icons.Icons
@@ -15,8 +18,8 @@ import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import com.falcon.tripingly.core.designsystem.component.AppTextField
@@ -57,13 +60,13 @@ fun AddTripButton(visible: Boolean, modifier: Modifier = Modifier, viewModel: Ho
 }
 
 /**
- * The brand's green, with a very thin glass edge so it still shows over today's green cards (Shahin, 2026-11-08).
+ * The brand's green, with a very thin glass edge so it still shows over today's green cards (Shahin, 2026-11-08). It
+ * grows up from its bottom edge when the Trips tab shows and shrinks back into it when it goes.
  */
 @Composable
 private fun AddTripButton(visible: Boolean, expanded: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier) {
-    val scale by animateFloatAsState(if (visible) 1f else 0f, tween(durationMillis = 200))
-    if (scale > 0f) {
-        val shape = MaterialTheme.shapes.extraLarge
+    val shape = MaterialTheme.shapes.extraLarge
+    AnimatedVisibility(visible = visible, enter = FabEnter, exit = FabExit, modifier = modifier) {
         ExtendedFloatingActionButton(
             text = { Text(stringResource(Res.string.home_fab_add_trip)) },
             icon = { Icon(Icons.Default.Add, contentDescription = stringResource(Res.string.home_fab_add_trip).takeUnless { expanded }) },
@@ -72,10 +75,15 @@ private fun AddTripButton(visible: Boolean, expanded: Boolean, onClick: () -> Un
             containerColor = MaterialTheme.colorScheme.primary,
             contentColor = MaterialTheme.colorScheme.onPrimary,
             shape = shape,
-            modifier = modifier.scale(scale).border(Dp.Hairline, GlassStroke, shape),
+            modifier = Modifier.border(Dp.Hairline, GlassStroke, shape),
         )
     }
 }
+
+/** Grows from and shrinks into its bottom edge, quickly (Shahin, 2026-11-08). */
+private val FabOrigin = TransformOrigin(0.5f, 1f)
+private val FabEnter = scaleIn(tween(durationMillis = 150, easing = EaseOut), transformOrigin = FabOrigin)
+private val FabExit = scaleOut(tween(durationMillis = 150, easing = EaseOut), transformOrigin = FabOrigin)
 
 /** A glass edge that reads on the green in both themes. */
 private val GlassStroke = Color.White.copy(alpha = 0.6f)
