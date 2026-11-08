@@ -238,3 +238,4 @@ Append-only. Newest at the bottom.
 | 2026-11-08 | **Top bar titles roll instead of overlapping**: the title box keeps one width (an animated width bigger than the space was centred and cut the first letter, "xplore") and clips, so the old title rolls out at the top as the new one rolls in from below | Shahin (device recording) | Shahin |
 | 2026-11-08 | **Home bottom bar: 16 dp from the bottom only on iOS** (no system bar there); on Android it stays 8 dp over the navigation bar. Done with insets: `safeBottomAndSides.union(WindowInsets(bottom = 8.dp))` + 8 dp padding | Shahin | Shahin |
 | 2026-11-08 | **Photo pin "new" dot centred on the photo circle's edge at 45°** (`newDotInset`); the small numbered pin keeps its dot in the corner, clear of the number | Shahin | Shahin |
+| 2026-11-08 | **The map's day tabs stand off the bottom like the Home bar**: both use `WindowInsets.floatingBottom` (8 dp over Android's navigation bar, 16 dp on iOS) | Shahin | Shahin |

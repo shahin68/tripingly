@@ -52,13 +52,6 @@ val WindowInsets.Companion.safeTopAndSides: WindowInsets
     @Composable get() = safeDrawing.only(WindowInsetsSides.Top).union(safeSides)
 
 /**
- * The bottom of the screen that a bottom bar, tab row, sheet footer or input stays above, plus
- * [WindowInsets.Companion.safeSides]. They stay put under the keyboard.
- */
-val WindowInsets.Companion.safeBottomAndSides: WindowInsets
-    @Composable get() = bottomSystemBar.union(safeSides)
-
-/**
  * Where a floating bottom card (the Home bottom bar, the map's day tabs) stands off the bottom, with 8 dp of its own
  * padding on top: 8 dp over Android's navigation bar, and 16 dp from the edge where there's no bar (iOS), as far as
  * from the sides (Shahin, 2026-11-08).
