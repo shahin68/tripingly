@@ -29,7 +29,6 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -156,12 +155,6 @@ internal fun MapScreen(
         val hasDays = state.dayTabs.days.isNotEmpty()
         val coveredBottom = (tabsHeight?.second ?: 0.dp) + (if (plan != null) PlanSheetPeek else 0.dp) + (creditsHeight ?: 0.dp)
         val isWide = maxWidth > maxHeight
-        // A rotation keeps the map on iOS (Android builds the screen again): fit the open day again, as its button does.
-        var fittedWide by remember { mutableStateOf(isWide) }
-        LaunchedEffect(isWide) {
-            if (isWide != fittedWide) onAction(MapAction.Days.FitDay)
-            fittedWide = isWide
-        }
         val sides = WindowInsets.safeSides.asPaddingValues()
         val layoutDirection = LocalLayoutDirection.current
         val start = sides.calculateStartPadding(layoutDirection)
