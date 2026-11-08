@@ -2,6 +2,7 @@ package com.falcon.tripingly.core.designsystem.component
 
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.SizeTransform
+import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -33,8 +34,10 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import com.falcon.tripingly.core.designsystem.generated.resources.Res
 import com.falcon.tripingly.core.designsystem.generated.resources.common_back
@@ -89,17 +92,21 @@ fun <T> AnimatedTopBar(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 if (navigationIcon != null) navigationIcon() else Spacer(Modifier.width(MaterialTheme.spacing.small))
+                // Always the full width the row leaves it, so its size never animates: an animated width larger than
+                // that space got centred and pushed the title's first letter out of the bar. The titles roll inside
+                // this box, so the old and the new one never show on top of each other.
                 AnimatedContent(
                     targetState = page,
-                    transitionSpec = { TitleIn togetherWith TitleOut using SizeTransform(clip = false) },
+                    transitionSpec = { TitleIn togetherWith TitleOut using null },
                     contentAlignment = Alignment.CenterStart,
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier.weight(1f).clipToBounds(),
                 ) { shown ->
                     Text(
                         text = title(shown),
                         style = MaterialTheme.typography.headlineSmall,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.fillMaxWidth(),
                     )
                 }
                 AnimatedContent(
@@ -143,9 +150,10 @@ private object TopBarDefaults {
     val Fade = tween<Float>(durationMillis = 220)
 }
 
-/** The new title comes up from below while the old one leaves upwards. */
-private val TitleIn = slideInVertically(tween(260)) { it / 2 } + fadeIn(tween(260))
-private val TitleOut = slideOutVertically(tween(200)) { -it / 2 } + fadeOut(tween(200))
+/** The new title rolls up from below while the old one rolls out upwards, together, as one strip. */
+private val TitleRoll = tween<IntOffset>(durationMillis = 300, easing = CubicBezierEasing(0.2f, 0f, 0f, 1f))
+private val TitleIn = slideInVertically(TitleRoll) { it } + fadeIn(tween(300))
+private val TitleOut = slideOutVertically(TitleRoll) { -it } + fadeOut(tween(200))
 
 @Composable
 private fun FloatingTopBarPreviewContent() {
