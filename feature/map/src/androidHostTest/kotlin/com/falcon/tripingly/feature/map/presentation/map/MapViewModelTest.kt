@@ -1603,8 +1603,12 @@ class MapViewModelTest {
         viewModel.onAction(MapAction.MapView.LongClick(Coordinates(48.85, 2.35)))
         testScheduler.runCurrent()
         assertIs<MapDialog.NamePin>(viewModel.uiState.value.dialog).name.setTextAndPlaceCursorAtEnd("Our hotel")
-        viewModel.onAction(MapAction.Dialog.ConfirmPinName)
-        testScheduler.advanceUntilIdle()
+        viewModel.events.test {
+            viewModel.onAction(MapAction.Dialog.ConfirmPinName)
+            testScheduler.advanceUntilIdle()
+            // Felt as done, and the plan opens all the way.
+            assertEquals(MapEvent.StopAdded, awaitItem())
+        }
 
         assertNull(viewModel.uiState.value.dialog)
         val stop = (backend.refreshTrip(trip.trip.id) as AppResult.Success).data.days[0].markers.single()

@@ -1,5 +1,6 @@
 package com.falcon.tripingly.feature.social.presentation.profile
 
+import com.falcon.tripingly.core.designsystem.component.rememberHaptics
 import com.falcon.tripingly.core.designsystem.component.skeletonText
 import com.falcon.tripingly.core.designsystem.component.skeleton
 import androidx.compose.foundation.background
@@ -96,10 +97,15 @@ internal fun PersonProfileHeader(profile: Profile, onToggleFollow: (() -> Unit)?
             Count(profile.followingCount, stringResource(Res.string.social_following))
         }
         if (onToggleFollow == null) return@Column
+        val haptics = rememberHaptics()
+        val toggle = {
+            haptics.toggle(!profile.isFollowing)
+            onToggleFollow()
+        }
         if (profile.isFollowing) {
-            SecondaryButton(stringResource(Res.string.social_following_button), onToggleFollow, size = ButtonSize.Medium)
+            SecondaryButton(stringResource(Res.string.social_following_button), toggle, size = ButtonSize.Medium)
         } else {
-            PrimaryButton(stringResource(Res.string.social_follow), onToggleFollow, size = ButtonSize.Medium)
+            PrimaryButton(stringResource(Res.string.social_follow), toggle, size = ButtonSize.Medium)
         }
     }
 }

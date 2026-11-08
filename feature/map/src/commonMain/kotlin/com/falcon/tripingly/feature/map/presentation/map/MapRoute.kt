@@ -1,5 +1,6 @@
 package com.falcon.tripingly.feature.map.presentation.map
 
+import com.falcon.tripingly.core.designsystem.component.rememberHaptics
 import com.falcon.tripingly.core.designsystem.component.AppBottomSheet
 import androidx.compose.foundation.gestures.animateTo
 import androidx.compose.runtime.Composable
@@ -54,14 +55,23 @@ fun MapRoute(
 
     val planSheet = rememberPlanSheetState()
     val scope = rememberCoroutineScope()
+    val haptics = rememberHaptics()
     ObserveAsEvents(viewModel.events) { event ->
         when (event) {
             MapEvent.RequestPermission -> locationPermission.request()
             MapEvent.OpenAppSettings -> locationPermission.openSettings()
             MapEvent.NavigateBack -> onNavigateBack()
             is MapEvent.OpenProfile -> onOpenProfile(event.username)
-            MapEvent.OpenPaywall -> onOpenPaywall()
+            // A locked feature (street routes without Pro) is felt as a no before the paywall.
+            MapEvent.OpenPaywall -> {
+                haptics.error()
+                onOpenPaywall()
+            }
             MapEvent.ShowWholePlan -> scope.launch { planSheet.animateTo(PlanSheetValue.Expanded) }
+            MapEvent.StopAdded -> {
+                haptics.success()
+                scope.launch { planSheet.animateTo(PlanSheetValue.Expanded) }
+            }
         }
     }
 

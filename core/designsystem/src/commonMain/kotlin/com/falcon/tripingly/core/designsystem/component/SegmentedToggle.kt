@@ -70,6 +70,7 @@ fun RowScope.SegmentedToggleOption(
     enabled: Boolean = true,
     showLabel: Boolean = true,
 ) {
+    val haptics = rememberHaptics()
     val container by animateColorAsState(
         if (selected) MaterialTheme.colorScheme.surfaceContainerLowest else MaterialTheme.colorScheme.surfaceVariant,
     )
@@ -82,7 +83,10 @@ fun RowScope.SegmentedToggleOption(
             .heightIn(min = SegmentHeight)
             .clip(CircleShape)
             .background(container)
-            .selectable(selected = selected, enabled = enabled, role = Role.RadioButton, onClick = onClick)
+            .selectable(selected = selected, enabled = enabled, role = Role.RadioButton) {
+                if (!selected) haptics.tick()
+                onClick()
+            }
             .padding(horizontal = MaterialTheme.spacing.small),
         contentAlignment = Alignment.Center,
     ) {

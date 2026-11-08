@@ -1,5 +1,7 @@
 package com.falcon.tripingly.feature.notifications.presentation
 
+import kotlinx.coroutines.flow.drop
+import com.falcon.tripingly.core.designsystem.component.rememberHaptics
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -172,11 +174,14 @@ private fun NotificationList(state: State, onAction: (Action) -> Unit, contentPa
  * Compose's own [SwipeToDismissBox]. A row follows the finger; let go past [DELETE_THRESHOLD] of its width (or fling
  * it) and it slides out and is deleted, otherwise it springs back. The delete runs only once the row has settled out
  * ([SwipeToDismissBox]'s `onDismiss`), never while the finger is still down. The red behind it is drawn only while a
- * row is pulled, so none peeks out at the card's rounded corners at rest. Screen readers get Delete as an action.
+ * row is pulled, so none peeks out at the card's rounded corners at rest. Passing the threshold either way clicks. Screen readers get Delete as an action.
  */
 @Composable
 private fun SwipeToDelete(onDelete: () -> Unit, modifier: Modifier = Modifier, content: @Composable () -> Unit) {
     val state = rememberSwipeToDismissBoxState(positionalThreshold = { width -> width * DELETE_THRESHOLD })
+    // A click as the row passes the point where letting go deletes it, and again if pulled back under it.
+    val haptics = rememberHaptics()
+    LaunchedEffect(state) { snapshotFlow { state.targetValue }.drop(1).collect { haptics.threshold() } }
     val label = stringResource(Res.string.notifications_delete)
     SwipeToDismissBox(
         state = state,

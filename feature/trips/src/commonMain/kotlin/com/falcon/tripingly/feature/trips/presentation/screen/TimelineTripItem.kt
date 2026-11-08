@@ -1,5 +1,7 @@
 package com.falcon.tripingly.feature.trips.presentation.screen
 
+import com.falcon.tripingly.core.designsystem.component.Haptics
+import com.falcon.tripingly.core.designsystem.component.rememberHaptics
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -295,12 +297,24 @@ private fun TripCardDetails(trip: Trip, muted: Color) {
 
 /** The ⋮ and long-press menu; which entries a trip has is decided by [menu]. */
 @Composable
-private fun tripActions(trip: Trip, onAction: (Action) -> Unit): List<DropdownAction> = trip.menu().map { item ->
+private fun tripActions(trip: Trip, onAction: (Action) -> Unit): List<DropdownAction> {
+    val haptics = rememberHaptics()
+    return trip.menu().map { item -> tripAction(item, trip, haptics, onAction) }
+}
+
+@Composable
+private fun tripAction(item: TripMenuItem, trip: Trip, haptics: Haptics, onAction: (Action) -> Unit): DropdownAction =
     when (item) {
         TripMenuItem.Rename -> DropdownAction(stringResource(Res.string.trip_action_rename)) { onAction(Action.Trips.Rename(trip.id)) }
         TripMenuItem.Reschedule -> DropdownAction(stringResource(Res.string.trip_action_reschedule)) { onAction(Action.Trips.Reschedule(trip.id)) }
-        TripMenuItem.MakePrivate -> DropdownAction(stringResource(Res.string.trip_action_make_private)) { onAction(Action.Trips.ToggleVisibility(trip.id)) }
-        TripMenuItem.MakePublic -> DropdownAction(stringResource(Res.string.trip_action_make_public)) { onAction(Action.Trips.ToggleVisibility(trip.id)) }
+        TripMenuItem.MakePrivate -> DropdownAction(stringResource(Res.string.trip_action_make_private)) {
+            haptics.toggle(on = false)
+            onAction(Action.Trips.ToggleVisibility(trip.id))
+        }
+        TripMenuItem.MakePublic -> DropdownAction(stringResource(Res.string.trip_action_make_public)) {
+            haptics.toggle(on = true)
+            onAction(Action.Trips.ToggleVisibility(trip.id))
+        }
         TripMenuItem.Members -> DropdownAction(stringResource(Res.string.trip_action_members)) { onAction(Action.Trips.ManageMembers(trip.id)) }
         TripMenuItem.Share -> DropdownAction(stringResource(Res.string.trip_action_share)) { onAction(Action.Trips.Share(trip.id)) }
         TripMenuItem.RemoveSaved -> DropdownAction(stringResource(Res.string.trip_action_remove_saved), isDestructive = true) {
@@ -309,7 +323,6 @@ private fun tripActions(trip: Trip, onAction: (Action) -> Unit): List<DropdownAc
         TripMenuItem.Delete -> DropdownAction(stringResource(Res.string.trip_action_delete), isDestructive = true) { onAction(Action.Trips.Delete(trip.id)) }
         TripMenuItem.Leave -> DropdownAction(stringResource(Res.string.trip_action_leave), isDestructive = true) { onAction(Action.Trips.Leave(trip.id)) }
     }
-}
 
 private object TimelineDefaults {
     val DateWidth = 32.dp

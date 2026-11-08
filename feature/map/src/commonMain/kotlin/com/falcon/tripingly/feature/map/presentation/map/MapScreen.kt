@@ -1,5 +1,6 @@
 package com.falcon.tripingly.feature.map.presentation.map
 
+import com.falcon.tripingly.core.designsystem.component.rememberHaptics
 import androidx.compose.animation.core.MutableTransitionState
 import androidx.compose.animation.core.rememberTransition
 import androidx.compose.foundation.background
@@ -101,6 +102,7 @@ internal fun MapScreen(
     planSheet: AnchoredDraggableState<PlanSheetValue> = rememberPlanSheetState(),
 ) {
     state.loadError?.let { error -> return MapLoadError(error.asString(), onAction) }
+    val haptics = rememberHaptics()
     val density = LocalDensity.current
     // Layout only: what the header, the day tabs and the credits cover of the map, handed to it as its padding. Each is
     // measured when its size changes; the map waits for all three, so it opens already fitted to what's left.
@@ -208,7 +210,10 @@ internal fun MapScreen(
                 onAction = onAction,
                 modifier = Modifier.onSizeChanged { headerHeight = with(density) { it.height.toDp() } },
                 isTitleHidden = isTripCardShown,
-                onTitleClick = { isTripCardOpen = true },
+                onTitleClick = {
+                    haptics.tick()
+                    isTripCardOpen = true
+                },
                 onTitlePlaced = { titleBounds = it },
                 cardProgress = { tripCardProgress },
             )

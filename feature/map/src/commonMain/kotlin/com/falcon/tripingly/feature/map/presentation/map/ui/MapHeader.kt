@@ -1,5 +1,6 @@
 package com.falcon.tripingly.feature.map.presentation.map.ui
 
+import com.falcon.tripingly.core.designsystem.component.rememberHaptics
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
@@ -193,6 +194,7 @@ private const val SEARCH_MOTION_MILLIS = 300
  */
 @Composable
 private fun tripMenuActions(header: HeaderState, showDayActions: Boolean, onAction: (MapAction) -> Unit): List<DropdownAction> {
+    val haptics = rememberHaptics()
     val members = header.members?.let {
         DropdownAction(
             label = stringResource(Res.string.map_trip_members, it.count),
@@ -205,7 +207,10 @@ private fun tripMenuActions(header: HeaderState, showDayActions: Boolean, onActi
             DropdownAction(
                 label = stringResource(if (menu.isSavedByMe) Res.string.map_unsave_trip else Res.string.map_save_trip),
                 icon = if (menu.isSavedByMe) Icons.Outlined.Bookmark else Icons.Outlined.BookmarkBorder,
-            ) { onAction(MapAction.Header.ToggleSave) },
+            ) {
+                haptics.toggle(!menu.isSavedByMe)
+                onAction(MapAction.Header.ToggleSave)
+            },
             // Once the owner declined, there's nothing more to ask.
             when (menu.myJoinRequest) {
                 null -> DropdownAction(stringResource(Res.string.map_join_trip), icon = Icons.Outlined.PersonAdd) { onAction(MapAction.Header.RequestToJoin) }

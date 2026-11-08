@@ -1,5 +1,6 @@
 package com.falcon.tripingly.feature.map.presentation.map.ui
 
+import com.falcon.tripingly.core.designsystem.component.rememberHaptics
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -110,13 +111,17 @@ internal fun DayTabs(
 private fun DayPill(day: DayTab, selected: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier) {
     val container by animateColorAsState(if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.primary.copy(alpha = 0f))
     val content by animateColorAsState(if (selected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant)
+    val haptics = rememberHaptics()
     Box(modifier) {
         Box(
             modifier = Modifier
                 .heightIn(min = DayPillHeight)
                 .clip(MaterialTheme.shapes.large)
                 .background(container)
-                .selectable(selected = selected, role = Role.Tab, onClick = onClick)
+                .selectable(selected = selected, role = Role.Tab) {
+                    if (!selected) haptics.tick()
+                    onClick()
+                }
                 .padding(horizontal = MaterialTheme.spacing.medium + MaterialTheme.spacing.extraSmall),
             contentAlignment = Alignment.Center,
         ) {

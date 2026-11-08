@@ -1,5 +1,6 @@
 package com.falcon.tripingly.feature.social.presentation.component
 
+import com.falcon.tripingly.core.designsystem.component.rememberHaptics
 import androidx.compose.foundation.shape.CircleShape
 import com.falcon.tripingly.core.designsystem.component.skeletonText
 import com.falcon.tripingly.core.designsystem.component.skeleton
@@ -162,16 +163,21 @@ internal fun PublicTripCard(
 
 /** Someone else's public trip's ⋮ menu, on every card that shows one: save, ask to join, report. */
 @Composable
-internal fun publicTripActions(trip: PublicTrip, onToggleSave: () -> Unit, onAskToJoin: () -> Unit, onReport: () -> Unit): List<DropdownAction> = listOf(
-    DropdownAction(
-        label = stringResource(if (trip.trip.savedByMe) Res.string.social_saved_trip else Res.string.social_save_trip),
-        icon = if (trip.trip.savedByMe) Icons.Outlined.Bookmark else Icons.Outlined.BookmarkBorder,
-        selected = trip.trip.savedByMe,
-        onClick = onToggleSave,
-    ),
-    DropdownAction(stringResource(Res.string.social_ask_to_join), icon = Icons.Outlined.PersonAdd, onClick = onAskToJoin),
-    DropdownAction(stringResource(Res.string.social_report), isDestructive = true, icon = Icons.Outlined.Flag, onClick = onReport),
-)
+internal fun publicTripActions(trip: PublicTrip, onToggleSave: () -> Unit, onAskToJoin: () -> Unit, onReport: () -> Unit): List<DropdownAction> {
+    val haptics = rememberHaptics()
+    return listOf(
+        DropdownAction(
+            label = stringResource(if (trip.trip.savedByMe) Res.string.social_saved_trip else Res.string.social_save_trip),
+            icon = if (trip.trip.savedByMe) Icons.Outlined.Bookmark else Icons.Outlined.BookmarkBorder,
+            selected = trip.trip.savedByMe,
+        ) {
+            haptics.toggle(!trip.trip.savedByMe)
+            onToggleSave()
+        },
+        DropdownAction(stringResource(Res.string.social_ask_to_join), icon = Icons.Outlined.PersonAdd, onClick = onAskToJoin),
+        DropdownAction(stringResource(Res.string.social_report), isDestructive = true, icon = Icons.Outlined.Flag, onClick = onReport),
+    )
+}
 
 /** One small detail line under the dates: counts, or when the trip was created. */
 @Composable

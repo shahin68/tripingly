@@ -1,5 +1,6 @@
 package com.falcon.tripingly.feature.settings.presentation
 
+import com.falcon.tripingly.core.designsystem.component.rememberHaptics
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -209,11 +210,15 @@ internal fun LinkRow(label: String, onClick: () -> Unit, detail: String? = null,
 /** The whole row toggles, so the target is large enough and screen readers read it as one switch. */
 @Composable
 private fun SwitchRow(label: String, checked: Boolean, onCheckedChange: (Boolean) -> Unit) {
+    val haptics = rememberHaptics()
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .heightIn(min = RowHeight)
-            .toggleable(value = checked, role = Role.Switch, onValueChange = onCheckedChange)
+            .toggleable(value = checked, role = Role.Switch) { on ->
+                haptics.toggle(on)
+                onCheckedChange(on)
+            }
             .padding(horizontal = MaterialTheme.spacing.medium),
         verticalAlignment = Alignment.CenterVertically,
     ) {

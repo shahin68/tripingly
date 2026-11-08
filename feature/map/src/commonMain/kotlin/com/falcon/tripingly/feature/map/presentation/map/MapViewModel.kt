@@ -97,7 +97,7 @@ class MapViewModel(
     val cameraCommands: Flow<CameraCommand> = camera.commands
 
     private val selection = MapSelection(context, camera, placeRepository)
-    private val edits = MapEdits(context, selection, tripRepository, markerRepository) { sendEvent(MapEvent.ShowWholePlan) }
+    private val edits = MapEdits(context, selection, tripRepository, markerRepository) { sendEvent(MapEvent.StopAdded) }
     private val pins = MapPins(context, placeRepository, appConfigRepository)
     private val search = MapSearch(context, camera, selection, placeRepository)
     private val routes = MapRouting(
