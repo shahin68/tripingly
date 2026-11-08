@@ -21,8 +21,7 @@ import androidx.navigation3.ui.NavDisplay
 import coil3.ImageLoader
 import coil3.compose.setSingletonImageLoaderFactory
 import com.falcon.tripingly.core.common.result.AppResult
-import com.falcon.tripingly.core.data.billing.ProRepository
-import com.falcon.tripingly.core.data.push.NotificationCenterRepository
+import com.falcon.tripingly.core.data.account.SignedInStart
 import com.falcon.tripingly.core.data.push.PushNotifications
 import com.falcon.tripingly.core.data.realtime.LiveUpdates
 import com.falcon.tripingly.core.data.trips.MarkerRepository
@@ -51,6 +50,7 @@ import com.falcon.tripingly.shell.KeepMapSceneStrategy
 import com.falcon.tripingly.shell.MainTabs
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.launch
+import org.koin.compose.getKoin
 import org.koin.compose.koinInject
 
 @Composable
@@ -81,20 +81,16 @@ private fun MainNavigation() {
         liveUpdates.start()
         onStopOrDispose { liveUpdates.stop() }
     }
-    val push = koinInject<PushNotifications>()
-    LaunchedEffect(push) { push.start() }
-    // Purchases made from here on belong to this account.
-    val pro = koinInject<ProRepository>()
-    LaunchedEffect(pro) { pro.start() }
-    // The notification center's indicator follows the server from here on.
-    val notificationCenter = koinInject<NotificationCenterRepository>()
-    LaunchedEffect(notificationCenter) { notificationCenter.start() }
+    // And whatever else each part of the app starts once signed in.
+    val koin = getKoin()
+    LaunchedEffect(koin) { koin.getAll<SignedInStart>().forEach { it.start() } }
     val backStack = rememberNavBackStack(NavConfig, Home)
     val goBack = { if (backStack.size > 1) backStack.removeAt(backStack.size - 1) }
 
     // A tapped push opens what it's about, once signed in.
     val deepLinks = koinInject<DeepLinks>()
     val markers = koinInject<MarkerRepository>()
+    val push = koinInject<PushNotifications>()
     LaunchedEffect(deepLinks) {
         deepLinks.next.filterNotNull().collect {
             val link = deepLinks.take() ?: return@collect
