@@ -1,9 +1,5 @@
 package com.falcon.tripingly.feature.map.presentation.photos
 
-import com.falcon.tripingly.core.data.photos.PhotoUpload
-import androidx.compose.runtime.setValue
-import androidx.compose.runtime.mutableStateOf
-import com.falcon.tripingly.core.designsystem.component.rememberHaptics
 import com.falcon.tripingly.core.ui.photos.rememberPhotoPicker
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -212,14 +208,6 @@ fun PhotosScreen(
     modifier: Modifier = Modifier,
 ) {
     ShowMessage(message = state.message?.asString(), onShown = { onAction(Action.OnDismissMessage) }, isError = state.message !is UiText.Note)
-    // A click when one of my photos finishes uploading: it leaves the uploads without having failed.
-    val haptics = rememberHaptics()
-    var sending by remember { mutableStateOf(emptySet<String>()) }
-    LaunchedEffect(state.uploads) {
-        val now = state.uploads.filter { it.state !is PhotoUpload.State.Failed }.mapTo(mutableSetOf()) { it.key }
-        if (sending.any { key -> state.uploads.none { it.key == key } }) haptics.success()
-        sending = now
-    }
     val fullWidth: LazyGridItemSpanScope.() -> GridItemSpan = { GridItemSpan(maxLineSpan) }
     Column(modifier.fillMaxWidth().navigationBarsPadding()) {
         SheetHeader(title = title, subtitle = subtitle, onClose = onClose)

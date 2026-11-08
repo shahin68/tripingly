@@ -173,9 +173,6 @@ fun MessageBannerHost(modifier: Modifier = Modifier) {
         onDispose { banner.hosts.remove(key) }
     }
     val message = banner.current.takeIf { banner.hosts.lastOrNull() === key }
-    // Every failure in the app (and every optimistic change that switched back) is felt once as it shows.
-    val haptics = rememberHaptics()
-    LaunchedEffect(message?.id) { if (message?.isError == true) haptics.error() }
     AnimatedContent(
         targetState = message,
         modifier = modifier,

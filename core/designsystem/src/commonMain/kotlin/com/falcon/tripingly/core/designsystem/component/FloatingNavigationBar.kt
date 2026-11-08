@@ -42,10 +42,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.snapshotFlow
-import kotlinx.coroutines.flow.drop
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -86,8 +83,6 @@ fun FloatingNavigationBar(
 ) {
     val scope = rememberCoroutineScope()
     val haptics = rememberHaptics()
-    // A tick as the pill lands on a new tab, however it got there (tap, pill drag or page swipe).
-    LaunchedEffect(pagerState) { snapshotFlow { pagerState.settledPage }.drop(1).collect { haptics.tick() } }
     var isDragging by remember { mutableStateOf(false) }
     val lift by animateFloatAsState(if (isDragging) NavBarDefaults.DragScale else 1f)
     // While a tap jumps over tabs the pill slides on its own; otherwise it follows the pages.
@@ -96,6 +91,8 @@ fun FloatingNavigationBar(
     val pagerPosition = { pagerState.currentPage + pagerState.currentPageOffsetFraction }
     val position = { if (isJumping) jump.value else pagerPosition() }
     val select: (Int) -> Unit = { index ->
+        // Felt the moment a tab is tapped, not once its page has loaded.
+        if (index != pagerState.currentPage) haptics.tick()
         scope.launch {
             if (abs(index - pagerState.currentPage) <= 1) {
                 pagerState.animateScrollToPage(index)
