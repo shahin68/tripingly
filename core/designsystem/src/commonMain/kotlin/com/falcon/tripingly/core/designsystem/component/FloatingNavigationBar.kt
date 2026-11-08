@@ -119,7 +119,8 @@ fun FloatingNavigationBar(
     GlassSurface(
         modifier = modifier
             .windowInsetsPadding(WindowInsets.safeBottomAndSides)
-            .padding(horizontal = MaterialTheme.spacing.medium, vertical = MaterialTheme.spacing.small)
+            // As far from the bottom as from the sides (Shahin, 2026-11-08).
+            .padding(start = MaterialTheme.spacing.medium, top = MaterialTheme.spacing.small, end = MaterialTheme.spacing.medium, bottom = MaterialTheme.spacing.medium)
             // In landscape the bar stays a comfortable width, centred, instead of stretching across the screen.
             .fillMaxWidth()
             .wrapContentWidth()
@@ -202,7 +203,7 @@ private fun NavBarTab(item: NavBarItem, selected: Boolean, onClick: () -> Unit, 
         Box {
             Icon(item.icon, contentDescription = null, tint = color, modifier = Modifier.size(NavBarDefaults.IconSize))
             // Beside the icon's top end, without a ring: behind it is blurred glass of no one colour (Shahin, 2026-11-08).
-            if (item.hasBadge) NewIndicator(Modifier.align(Alignment.TopEnd).offset(x = NavBarDefaults.BadgeShift, y = -NavBarDefaults.BadgeShift), strokeWidth = 0.dp)
+            if (item.hasBadge) NewIndicator(Modifier.align(Alignment.TopEnd).offset(x = NavBarDefaults.BadgeShiftX, y = -NavBarDefaults.BadgeShiftY), strokeWidth = 0.dp)
         }
         Text(
             text = item.label,
@@ -219,7 +220,8 @@ private object NavBarDefaults {
     val MaxWidth = 560.dp
     val InnerPadding = 8.dp
     val IconSize = 22.dp
-    val BadgeShift = 9.dp
+    val BadgeShiftX = 7.dp
+    val BadgeShiftY = 5.dp
     val Shape = RoundedCornerShape(32.dp)
     val PillShape = RoundedCornerShape(24.dp)
     const val DragScale = 1.08f

@@ -1,5 +1,6 @@
 package com.falcon.tripingly.feature.map.presentation.map
 
+import com.falcon.tripingly.core.designsystem.component.LocalScreenArrived
 import com.falcon.tripingly.core.designsystem.component.rememberHaptics
 import androidx.compose.animation.core.MutableTransitionState
 import androidx.compose.animation.core.rememberTransition
@@ -184,7 +185,9 @@ internal fun MapScreen(
                 }
             }
         }
-        val isMapShown = state.camera.isReady && headerHeight != null && tabsHeight?.first == hasDays && creditsHeight != null
+        // And not while the screen still slides in: building the native map then skips frames (Shahin, 2026-11-08).
+        val isMapShown = state.camera.isReady && headerHeight != null && tabsHeight?.first == hasDays && creditsHeight != null &&
+            LocalScreenArrived.current
         // The map's place while the trip loads: no flash of an empty default map before it opens on the trip.
         if (!isMapShown) SkeletonBox(Modifier.fillMaxSize(), shape = RectangleShape)
         if (isMapShown) {

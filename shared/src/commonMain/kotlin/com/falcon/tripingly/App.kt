@@ -1,13 +1,18 @@
 package com.falcon.tripingly
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalUriHandler
@@ -17,6 +22,7 @@ import androidx.navigation3.runtime.NavEntry
 import androidx.navigation3.runtime.NavKey
 import androidx.navigation3.runtime.rememberNavBackStack
 import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
+import androidx.navigation3.ui.LocalNavAnimatedContentScope
 import androidx.navigation3.ui.NavDisplay
 import coil3.ImageLoader
 import coil3.compose.setSingletonImageLoaderFactory
@@ -26,6 +32,7 @@ import com.falcon.tripingly.core.data.push.PushNotifications
 import com.falcon.tripingly.core.data.realtime.LiveUpdates
 import com.falcon.tripingly.core.data.trips.MarkerRepository
 import com.falcon.tripingly.core.designsystem.browser.rememberInAppUriHandler
+import com.falcon.tripingly.core.designsystem.component.LocalScreenArrived
 import com.falcon.tripingly.core.designsystem.component.LocalScreenOnTop
 import com.falcon.tripingly.core.designsystem.component.MessageBannerHost
 import com.falcon.tripingly.core.designsystem.component.safeTopAndSides
@@ -41,15 +48,16 @@ import com.falcon.tripingly.deeplink.DeepLink
 import com.falcon.tripingly.deeplink.DeepLinks
 import com.falcon.tripingly.feature.auth.presentation.gate.AuthGate
 import com.falcon.tripingly.feature.map.presentation.map.MapRoute
+import com.falcon.tripingly.feature.notifications.presentation.NotificationCenterRoute
 import com.falcon.tripingly.feature.paywall.presentation.PaywallRoute
 import com.falcon.tripingly.feature.settings.presentation.SettingsRoute
 import com.falcon.tripingly.feature.social.presentation.profile.ProfileRoute
-import com.falcon.tripingly.feature.notifications.presentation.NotificationCenterRoute
 import com.falcon.tripingly.feature.trips.presentation.members.TripMembersRoute
 import com.falcon.tripingly.shell.KeepMapSceneStrategy
 import com.falcon.tripingly.shell.MainTabs
 import com.falcon.tripingly.shell.ScreenTransitions
 import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import org.koin.compose.getKoin
 import org.koin.compose.koinInject
@@ -62,7 +70,8 @@ fun App() {
         // Links (legal documents and others) open in an in-app browser, not the external one.
         CompositionLocalProvider(LocalUriHandler provides rememberInAppUriHandler()) {
             // Every screen's errors and notes show in one floating banner (see MessageBanner).
-            Box(Modifier.fillMaxSize()) {
+            // The window behind is the theme's background too: a screen shrinking back under another shows no edge.
+            Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
                 AuthGate { MainNavigation() }
                 MessageBannerHost(
                     Modifier
@@ -135,8 +144,14 @@ private fun MainNavigation() {
         predictivePopTransitionSpec = ScreenTransitions.predictivePop(),
     ) { route ->
         NavEntry(route, metadata = if (route is TripMap) KeepMapSceneStrategy.keepUnder else emptyMap()) { key ->
+            // Once this screen's slide in has ended, and from then on.
+            val transition = LocalNavAnimatedContentScope.current.transition
+            val arrived by produceState(false, transition) {
+                snapshotFlow { transition.currentState == transition.targetState }.first { it }
+                value = true
+            }
             // Only the top screen shows its sheets: under the screen a back swipe leaves, they'd cover it.
-            CompositionLocalProvider(LocalScreenOnTop provides (key == backStack.lastOrNull())) {
+            CompositionLocalProvider(LocalScreenOnTop provides (key == backStack.lastOrNull()), LocalScreenArrived provides arrived) {
                 when (key) {
                     is Home -> MainTabs(
                         onOpenTrip = { backStack.add(TripMap(it)) },

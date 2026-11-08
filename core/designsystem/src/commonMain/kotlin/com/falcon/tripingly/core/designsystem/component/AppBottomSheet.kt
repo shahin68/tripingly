@@ -62,3 +62,9 @@ fun <T : Any> AppBottomSheet(
 
 /** False while this screen is under another one on the back stack, so its [AppBottomSheet]s stay hidden. */
 val LocalScreenOnTop = compositionLocalOf { true }
+
+/**
+ * False while this screen's opening transition still runs, then true for as long as it stays. Heavy content (the
+ * native map) waits for it, so building it doesn't skip frames of the slide in.
+ */
+val LocalScreenArrived = compositionLocalOf { true }

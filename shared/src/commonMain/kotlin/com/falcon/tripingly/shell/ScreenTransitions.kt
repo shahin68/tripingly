@@ -36,6 +36,9 @@ internal object ScreenTransitions {
     private const val DURATION_MILLIS = 450
     /** How far the screen underneath shrinks back. */
     private const val BEHIND_SCALE = 0.92f
-    /** iOS's own: quick start, long soft landing. */
-    private val Ease = CubicBezierEasing(0.2833f, 0.99f, 0.31833f, 0.99f)
+    /**
+     * Material's emphasized curve: a gentle start and a soft landing. iOS's own (0.28, 0.99, 0.32, 0.99) covered
+     * most of the way in the first frames, so screens seemed to flash in (Shahin, 2026-11-08).
+     */
+    private val Ease = CubicBezierEasing(0.2f, 0f, 0f, 1f)
 }
