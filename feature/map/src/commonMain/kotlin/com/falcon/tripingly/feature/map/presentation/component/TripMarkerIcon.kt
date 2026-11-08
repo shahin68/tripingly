@@ -76,7 +76,7 @@ private fun PinBody(orderNumber: Int, cover: ImageBitmap?) {
                     .align(Alignment.TopEnd)
                     .size(COVER_BADGE_SIZE)
                     .background(MapColors.Stop, CircleShape)
-                    .border(PIN_RING / 2, MapColors.OnStop, CircleShape),
+                    .border(PIN_RING, MapColors.OnStop, CircleShape),
                 contentAlignment = Alignment.Center,
             ) {
                 PinNumber(orderNumber, fontSize = 10)
@@ -113,8 +113,8 @@ internal val COVER_PIN_SIZE = 44.dp
 internal val COVER_RING = 3.dp
 internal val COVER_BADGE_SIZE = 18.dp
 
-/** The "new" dot, in the pin's top left corner where it meets the ring. */
-internal val NEW_DOT_SIZE = 16.dp
+/** The "new" dot with its white ring, in the pin's top left corner on the pin's edge, clear of the number. */
+internal val NEW_DOT_SIZE = 11.dp
 
 /** A stop's pin with one and two digits, with a cover, and with the "new" dot. */
 @Preview

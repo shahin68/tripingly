@@ -73,8 +73,8 @@ import com.falcon.tripingly.core.designsystem.component.AvatarSize
 import com.falcon.tripingly.core.designsystem.component.GlassButtonDefaults
 import com.falcon.tripingly.core.designsystem.component.GlassDefaults
 import com.falcon.tripingly.core.designsystem.component.NewIndicator
-import com.falcon.tripingly.core.designsystem.component.NewIndicatorDefaults
 import com.falcon.tripingly.core.designsystem.component.compactCount
+import com.falcon.tripingly.core.designsystem.component.onTopEndCorner
 import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
 import com.falcon.tripingly.core.designsystem.theme.extendedColors
 import com.falcon.tripingly.feature.map.generated.resources.Res
@@ -331,8 +331,7 @@ private fun MembersStrip(card: TripCardState, onClick: () -> Unit, modifier: Mod
         }
         if (card.hasNewJoinRequests) {
             // Centred on the rounded corner's curve, as on the day tabs.
-            val onCorner = NewIndicatorDefaults.Size / 2 + NewIndicatorDefaults.StrokeWidth - StripRadius * (1 - CORNER_CURVE_POINT)
-            NewIndicator(Modifier.align(Alignment.TopEnd).offset(x = onCorner, y = -onCorner), strokeColor = GlassDefaults.opaqueTint)
+            NewIndicator(Modifier.align(Alignment.TopEnd).onTopEndCorner(StripRadius), strokeColor = GlassDefaults.opaqueTint)
         }
     }
 }
@@ -393,8 +392,6 @@ private val StripHeight = 56.dp
 private val FaceSize = 44.dp
 private val FaceOverlap = 12.dp
 
-/** How far round a corner's curve its middle point lies from the corner's edges: cos 45°. */
-private const val CORNER_CURVE_POINT = 0.7071f
 
 @Composable
 private fun TripCardPreviewContent(header: HeaderState) {

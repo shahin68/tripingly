@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -33,7 +34,6 @@ import androidx.compose.material.icons.filled.Explore
 import androidx.compose.material.icons.filled.Luggage
 import androidx.compose.material.icons.filled.NearMe
 import androidx.compose.material.icons.filled.Person
-import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -192,6 +192,7 @@ private fun NavBarTab(item: NavBarItem, selected: Boolean, onClick: () -> Unit, 
     val color by animateColorAsState(
         if (selected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
     )
+    val behind by animateColorAsState(if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.extendedColors.glass)
     Column(
         modifier = modifier
             .fillMaxHeight()
@@ -200,8 +201,10 @@ private fun NavBarTab(item: NavBarItem, selected: Boolean, onClick: () -> Unit, 
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraSmall, Alignment.CenterVertically),
     ) {
-        BadgedBox(badge = { if (item.hasBadge) NewIndicator(strokeColor = MaterialTheme.extendedColors.glass) }) {
+        Box {
             Icon(item.icon, contentDescription = null, tint = color, modifier = Modifier.size(NavBarDefaults.IconSize))
+            // Beside the icon's top end, ringed in what's behind it: the selection pill or the bar's glass.
+            if (item.hasBadge) NewIndicator(Modifier.align(Alignment.TopEnd).offset(x = NavBarDefaults.BadgeShift, y = -NavBarDefaults.BadgeShift), strokeColor = behind)
         }
         Text(
             text = item.label,
@@ -218,6 +221,7 @@ private object NavBarDefaults {
     val MaxWidth = 560.dp
     val InnerPadding = 8.dp
     val IconSize = 22.dp
+    val BadgeShift = 9.dp
     val Shape = RoundedCornerShape(32.dp)
     val PillShape = RoundedCornerShape(24.dp)
     const val DragScale = 1.08f

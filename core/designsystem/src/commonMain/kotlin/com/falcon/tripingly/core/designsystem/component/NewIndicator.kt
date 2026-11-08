@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.MaterialTheme
@@ -41,6 +42,23 @@ fun NewIndicator(
             },
     )
 }
+
+/**
+ * Moves a [NewIndicator] aligned to its parent's top end so its centre sits on that corner's curve of [cornerRadius]:
+ * cut into the edge of a pill, a strip or a round button. [inset]: how far the visible shape lies inside the parent's
+ * box (a 40 dp icon button in its 48 dp touch box); [indicatorSize]: the whole dot, ring included.
+ */
+fun Modifier.onTopEndCorner(
+    cornerRadius: Dp,
+    inset: Dp = 0.dp,
+    indicatorSize: Dp = NewIndicatorDefaults.Size + NewIndicatorDefaults.StrokeWidth * 2,
+): Modifier {
+    val shift = indicatorSize / 2 - inset - cornerRadius * (1 - CORNER_CURVE_POINT)
+    return offset(x = shift, y = -shift)
+}
+
+/** How far round a corner's curve its middle point lies from the corner's edges: cos 45°. */
+private const val CORNER_CURVE_POINT = 0.7071f
 
 object NewIndicatorDefaults {
     val Size = 10.dp

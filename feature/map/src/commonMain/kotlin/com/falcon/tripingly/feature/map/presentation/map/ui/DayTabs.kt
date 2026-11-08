@@ -66,8 +66,8 @@ import com.falcon.tripingly.core.designsystem.component.DropdownAction
 import com.falcon.tripingly.core.designsystem.component.GlassDefaults
 import com.falcon.tripingly.core.designsystem.component.GlassSurface
 import com.falcon.tripingly.core.designsystem.component.NewIndicator
-import com.falcon.tripingly.core.designsystem.component.NewIndicatorDefaults
 import com.falcon.tripingly.core.designsystem.component.bottomSystemBar
+import com.falcon.tripingly.core.designsystem.component.onTopEndCorner
 import com.falcon.tripingly.core.designsystem.component.rememberHaptics
 import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
 import com.falcon.tripingly.core.designsystem.theme.spacing
@@ -294,8 +294,7 @@ private fun DayPill(day: DayTab, selected: Boolean, onPill: () -> Boolean, onCli
         }
         if (day.hasNew) {
             // Centred on the rounded corner's curve, outside the clip so it isn't cut.
-            val onCorner = NewIndicatorDefaults.Size / 2 + NewIndicatorDefaults.StrokeWidth - CornerRadius * (1 - CORNER_CURVE_POINT)
-            NewIndicator(Modifier.align(Alignment.TopEnd).offset(x = onCorner, y = -onCorner), strokeColor = GlassDefaults.opaqueTint)
+            NewIndicator(Modifier.align(Alignment.TopEnd).onTopEndCorner(CornerRadius), strokeColor = GlassDefaults.opaqueTint)
         }
         if (onDelete != null) {
             AppDropdownMenu(
@@ -316,8 +315,6 @@ private fun DayPill(day: DayTab, selected: Boolean, onPill: () -> Boolean, onCli
 /** The radius of the day pill's corners ([MaterialTheme.shapes] large). */
 private val CornerRadius = 20.dp
 
-/** How far round a corner's curve its middle point lies from the corner's edges: cos 45°. */
-private const val CORNER_CURVE_POINT = 0.7071f
 
 private val DayPillHeight = 48.dp
 

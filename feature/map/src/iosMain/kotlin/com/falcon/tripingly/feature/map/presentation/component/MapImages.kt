@@ -75,7 +75,7 @@ internal fun drawCoverPin(orderNumber: Int, cover: ImageBitmap, isNew: Boolean, 
         drawImageRect(photo, source, inner, SamplingMode.LINEAR, Paint().apply { isAntiAlias = true }, true)
         restore()
         drawCircle(pin - badge / 2, badge / 2, badge / 2, fill(WHITE))
-        drawCircle(pin - badge / 2, badge / 2, badge / 2 - PIN_RING.value / 2 * density, fill(STOP))
+        drawCircle(pin - badge / 2, badge / 2, badge / 2 - PIN_RING.value * density, fill(STOP))
         drawNumber(orderNumber, pin - badge / 2, badge / 2, boldFont(10 * density * fontScale))
         if (isNew) drawNewDot(density)
     }

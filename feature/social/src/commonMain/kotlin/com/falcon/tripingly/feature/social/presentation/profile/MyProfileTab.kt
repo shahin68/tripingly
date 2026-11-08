@@ -1,6 +1,7 @@
 package com.falcon.tripingly.feature.social.presentation.profile
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
@@ -12,7 +13,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Notifications
-import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -26,6 +26,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.falcon.tripingly.core.designsystem.component.DropdownAction
 import com.falcon.tripingly.core.designsystem.component.AppTextField
@@ -39,6 +40,7 @@ import com.falcon.tripingly.core.designsystem.component.SegmentedToggleOption
 import com.falcon.tripingly.core.designsystem.component.ShowMessage
 import com.falcon.tripingly.core.designsystem.component.Skeleton
 import com.falcon.tripingly.core.designsystem.component.glassSource
+import com.falcon.tripingly.core.designsystem.component.onTopEndCorner
 import com.falcon.tripingly.core.designsystem.component.screenContentPadding
 import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
 import com.falcon.tripingly.core.designsystem.theme.spacing
@@ -252,10 +254,16 @@ private fun Segments(segment: ProfileSegment, onSegment: (ProfileSegment) -> Uni
 /** Opens the notification center; a red dot while something new waits there. */
 @Composable
 private fun NotificationsButton(hasBadge: Boolean, onClick: () -> Unit) {
-    // On the profile card.
-    BadgedBox(badge = { if (hasBadge) NewIndicator(strokeColor = MaterialTheme.colorScheme.surfaceContainerLowest) }) {
+    Box {
         FilledTonalIconButton(onClick = onClick) {
             Icon(Icons.Outlined.Notifications, contentDescription = stringResource(Res.string.social_notifications))
+        }
+        // On the button's round edge, ringed in the profile card's colour.
+        if (hasBadge) {
+            NewIndicator(
+                Modifier.align(Alignment.TopEnd).onTopEndCorner(cornerRadius = BellSize / 2, inset = (TouchSize - BellSize) / 2),
+                strokeColor = MaterialTheme.colorScheme.surfaceContainerLowest,
+            )
         }
     }
 }
@@ -354,3 +362,7 @@ private fun MyProfileFriendsDarkPreview() = MyProfilePreview(ProfileSegment.Frie
 @Preview
 @Composable
 private fun MyProfileSearchPreview() = MyProfilePreview(ProfileSegment.Trips, query = "ann")
+
+/** The bell's circle (Material's icon button) and its touch box. */
+private val BellSize = 40.dp
+private val TouchSize = 48.dp
