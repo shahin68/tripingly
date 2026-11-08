@@ -1,5 +1,7 @@
 package com.falcon.tripingly.feature.trips.presentation.members
 
+import androidx.compose.runtime.remember
+import com.falcon.tripingly.core.designsystem.component.rememberHaptics
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -98,6 +100,14 @@ fun TripMembersScreen(
     modifier: Modifier = Modifier,
 ) {
     ShowMessage(message = state.message?.asString(), onShown = { onAction(Action.DismissMessage) }, isError = state.message !is UiText.Note)
+    // A request I accepted is felt once the server took it in (it leaves the list); a refused one just stops waiting.
+    val haptics = rememberHaptics()
+    var accepting by remember { mutableStateOf(emptySet<String>()) }
+    LaunchedEffect(state.joinRequests) {
+        val requests = state.joinRequests
+        if (accepting.any { id -> requests.requests.none { it.id == id } }) haptics.success()
+        accepting = accepting.filterTo(mutableSetOf()) { id -> id in requests.answeringIds }
+    }
     val rowPadding = Modifier.padding(horizontal = MaterialTheme.spacing.large)
     LazyColumn(
         modifier = modifier.fillMaxWidth().navigationBarsPadding(),
@@ -115,7 +125,10 @@ fun TripMembersScreen(
                     modifier = Modifier.animateItem(),
                     request = request,
                     isAnswering = request.id in state.joinRequests.answeringIds,
-                    onAccept = { onAction(Action.JoinRequests.Accept(request)) },
+                    onAccept = {
+                        accepting = accepting + request.id
+                        onAction(Action.JoinRequests.Accept(request))
+                    },
                     onDecline = { onAction(Action.JoinRequests.Decline(request)) },
                 )
             }
