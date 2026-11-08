@@ -165,19 +165,10 @@ internal fun GoogleSdkMapView(
     // Not the top's: in landscape it's most of the height (a tapped pin goes low), which would leave the map no middle.
     val padding = bottom.value.toDouble()
     LaunchedEffect(padding) { map.setPadding(padding, padding) }
-    // The middle of what's free moved. A rotation moves it sideways (the panel takes or gives back the right half):
-    // like Android's map with its padding, what was in the middle of what's free goes back there. Otherwise the map
-    // stays put and the view model learns where the target now is.
-    var shownMiddle by remember { mutableStateOf(freeMiddle) }
+    // The map stays put, but the middle of what's free moved: the view model learns where the target now is.
     LaunchedEffect(freeMiddle) {
-        val before = shownMiddle
-        shownMiddle = freeMiddle
         val (center, zoom, bounds) = rest ?: return@LaunchedEffect
-        if (freeMiddle.x != before.x) {
-            moveCamera(center.shiftedBy(before, zoom), zoom, animated = false)
-        } else {
-            currentOnCameraMove(center.shiftedBy(freeMiddle, zoom), zoom, bounds)
-        }
+        currentOnCameraMove(center.shiftedBy(freeMiddle, zoom), zoom, bounds)
     }
 
     // Every pin look is drawn once and shared by every pin that looks the same.
