@@ -37,14 +37,15 @@ import org.koin.compose.viewmodel.koinViewModel
  * view model belongs to the shell's back stack entry).
  */
 
-/** Searches My Trips as the user types; shown under the shell's top bar on the Trips tab. */
+/** Searches My Trips as the user types; shown under the shell's top bar once its search button opens it, until [onClose]. */
 @Composable
-fun TripsSearchField(viewModel: HomeViewModel = koinViewModel()) {
+fun TripsSearchField(onClose: () -> Unit, modifier: Modifier = Modifier, viewModel: HomeViewModel = koinViewModel()) {
     AppTextField(
         state = viewModel.searchField,
         placeholder = stringResource(Res.string.home_search_placeholder_trips),
         onTextChange = { viewModel.onAction(Action.SearchQueryChanged(it)) },
-        modifier = Modifier.fillMaxWidth(),
+        onClose = onClose,
+        modifier = modifier.fillMaxWidth(),
         style = AppTextFieldStyle.Search,
     )
 }

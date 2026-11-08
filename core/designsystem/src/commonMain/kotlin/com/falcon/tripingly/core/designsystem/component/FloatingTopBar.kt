@@ -1,11 +1,16 @@
 package com.falcon.tripingly.core.designsystem.component
 
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.SizeTransform
 import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandHorizontally
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
+import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
@@ -23,9 +28,11 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -38,9 +45,11 @@ import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import com.falcon.tripingly.core.designsystem.generated.resources.Res
 import com.falcon.tripingly.core.designsystem.generated.resources.common_back
+import com.falcon.tripingly.core.designsystem.generated.resources.common_search
 import com.falcon.tripingly.core.designsystem.generated.resources.common_settings
 import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
 import com.falcon.tripingly.core.designsystem.theme.spacing
@@ -66,8 +75,9 @@ fun FloatingTopBar(
 /**
  * The floating glass header shared by several pages (the tabs), showing what [page] asks for. When the page
  * changes it animates as on the design canvas: the old [title] slides up and fades while the new one comes in from
- * below, the page's own [pageActions] cross-fade (the shared [actions] stay put), and the [search] row grows,
- * shrinks, or cross-fades to the new page's field.
+ * below, the page's own [pageActions] cross-fade (the shared [actions] stay put), and the [search] row (shown while
+ * [isSearchOpen] says so, so a page can open and close it) grows, shrinks, or cross-fades to the new page's field. Like the trip card's content, a field coming in slides down a
+ * little while it fades in, and one going away only fades, while the row grows or shrinks with one easing.
  */
 @Composable
 fun <T> AnimatedTopBar(
@@ -78,6 +88,7 @@ fun <T> AnimatedTopBar(
     pageActions: @Composable RowScope.(T) -> Unit = {},
     actions: @Composable RowScope.() -> Unit = {},
     search: (T) -> (@Composable () -> Unit)? = { null },
+    isSearchOpen: (T) -> Boolean = { true },
 ) {
     GlassSurface(
         modifier = modifier
@@ -116,15 +127,37 @@ fun <T> AnimatedTopBar(
                 ) { shown -> Row(verticalAlignment = Alignment.CenterVertically) { pageActions(shown) } }
                 actions()
             }
-            // A page without search shows no row at all; between two pages with search the fields cross-fade.
+            // The page whose field shows, or null for no row at all; a field going away keeps drawing while it fades.
             AnimatedContent(
-                targetState = page,
-                contentKey = { if (search(it) == null) null else it },
-                transitionSpec = { fadeIn(TopBarDefaults.Fade) togetherWith fadeOut(TopBarDefaults.Fade) using SizeTransform(clip = true) },
+                targetState = page.takeIf { search(it) != null && isSearchOpen(it) },
+                transitionSpec = { SearchIn togetherWith SearchOut using SizeTransform(clip = true) { _, _ -> SearchResize } },
             ) { shown ->
-                search(shown)?.let { field -> Box(Modifier.padding(top = MaterialTheme.spacing.small)) { field() } }
+                shown?.let(search)?.let { field -> Box(Modifier.padding(top = MaterialTheme.spacing.small)) { field() } }
             }
         }
+    }
+}
+
+/**
+ * The tabs' filled pill at the right of the top bar: a search button, a thin line and Settings. The search half shows
+ * while [onSearch] is set (a tab with search, closed) and folds away to the right when it isn't, leaving Settings
+ * round in the pill (Shahin's E1, 2026-11-08).
+ */
+@Composable
+fun SearchSettingsPill(onSearch: (() -> Unit)?, onSettings: () -> Unit, modifier: Modifier = Modifier) {
+    Row(
+        modifier = modifier.background(MaterialTheme.colorScheme.surfaceVariant, CircleShape),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        AnimatedVisibility(visible = onSearch != null, enter = SearchButtonIn, exit = SearchButtonOut) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                IconButton(onClick = { onSearch?.invoke() }) {
+                    Icon(Icons.Outlined.Search, contentDescription = stringResource(Res.string.common_search))
+                }
+                GlassButtonDivider()
+            }
+        }
+        SettingsAction(onSettings)
     }
 }
 
@@ -155,14 +188,27 @@ private val TitleRoll = tween<IntOffset>(durationMillis = 300, easing = CubicBez
 private val TitleIn = slideInVertically(TitleRoll) { it } + fadeIn(tween(300))
 private val TitleOut = slideOutVertically(TitleRoll) { -it } + fadeOut(tween(200))
 
+/** The search row, as the trip card's content: in, it slides down a quarter of its height and fades; out, it only fades. */
+private val Emphasized = CubicBezierEasing(0.2f, 0f, 0f, 1f)
+private val SearchResize = tween<IntSize>(durationMillis = 300, easing = Emphasized)
+private val SearchIn = slideInVertically(tween(300, easing = Emphasized)) { -it / 4 } + fadeIn(tween(220))
+private val SearchOut = fadeOut(tween(90))
+
+/** The pill's search half folds into its right edge (towards Settings) and unfolds from it. */
+private val SearchButtonIn = expandHorizontally(tween(300, easing = Emphasized), expandFrom = Alignment.End) +
+    scaleIn(tween(300, easing = Emphasized)) + fadeIn(tween(220))
+private val SearchButtonOut = shrinkHorizontally(tween(300, easing = Emphasized), shrinkTowards = Alignment.End) +
+    scaleOut(tween(300, easing = Emphasized)) + fadeOut(tween(150))
+
 @Composable
 private fun FloatingTopBarPreviewContent() {
     Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
         Column {
-            FloatingTopBar(title = "My Trips", actions = { SettingsAction({}) }, search = {
+            FloatingTopBar(title = "My Trips", actions = { SearchSettingsPill(onSearch = null, onSettings = {}) }, search = {
                 AppTextField(rememberTextFieldState(), "Search trips…", Modifier.fillMaxWidth(), style = AppTextFieldStyle.Search)
             })
-            FloatingTopBar(title = "Nearby", actions = { SettingsAction({}) })
+            FloatingTopBar(title = "Profile", actions = { SearchSettingsPill(onSearch = {}, onSettings = {}) })
+            FloatingTopBar(title = "Nearby", actions = { SearchSettingsPill(onSearch = null, onSettings = {}) })
             FloatingTopBar(title = "@anna", navigationIcon = { BackAction({}) })
             Spacer(Modifier.height(MaterialTheme.spacing.medium))
         }

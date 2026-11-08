@@ -232,12 +232,13 @@ internal fun MyProfileScreen(
 
 /** The Profile tab's part of the shell's top bar: people search, on the tab's own [PeopleSearchViewModel]. */
 @Composable
-fun PeopleSearchField(viewModel: PeopleSearchViewModel = koinViewModel()) {
+fun PeopleSearchField(onClose: () -> Unit, modifier: Modifier = Modifier, viewModel: PeopleSearchViewModel = koinViewModel()) {
     AppTextField(
         state = viewModel.queryField,
         placeholder = stringResource(Res.string.social_search_people),
         onTextChange = { viewModel.onAction(PeopleSearchViewModel.Action.QueryChanged(it)) },
-        modifier = Modifier.fillMaxWidth(),
+        onClose = onClose,
+        modifier = modifier.fillMaxWidth(),
         style = AppTextFieldStyle.Search,
     )
 }
