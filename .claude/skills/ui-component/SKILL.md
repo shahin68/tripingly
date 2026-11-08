@@ -17,6 +17,7 @@ Lives in `core/designsystem/src/commonMain/kotlin/com/falcon/tripingly/core/desi
 - **Stateless.** Values in, events out: `TripCard(title: String, dateRange: String, coverUrl: String?, onClick: () -> Unit, modifier: Modifier = Modifier)`. No ViewModels, no feature `XAction`, no repositories, no domain models from a single feature.
 - `modifier: Modifier = Modifier` is the first optional parameter and is applied to the root.
 - Prefer **slots** for variable content: `leading: (@Composable () -> Unit)? = null`, `content: @Composable RowScope.() -> Unit`.
+- Content colour: a component that draws its own background (not `GlassSurface`/`Surface`) provides `LocalContentColor` for its content, else text and icons without their own colour turn black in dark mode (`07-architecture.md`, "Content colour").
 - Only theme tokens: `MaterialTheme.colorScheme`, `MaterialTheme.typography`, `MaterialTheme.shapes`, `MaterialTheme.spacing`. No hex colors, raw `dp` spacing or font sizes inside components.
 - Text shown by the component itself (e.g. "Dismiss") comes from `core:designsystem` string resources; text the caller provides is a `String` parameter already resolved by the caller.
 - Stable parameters only (primitives, `ImmutableList`, stable models); hoist any internal UI state with a `rememberXState()` holder when callers need control.

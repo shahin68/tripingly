@@ -33,9 +33,11 @@ import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.Public
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.State
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -150,22 +152,25 @@ internal fun TripCard(
             // Taps on the card stay on it: only a tap outside closes it.
             .clickable(interactionSource = null, indication = null) {},
     ) {
-        Column(
-            modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(CardInset),
-            verticalArrangement = Arrangement.spacedBy(RowGap),
-        ) {
-            OwnerRow(header, onOwnerClick, onClose, transition.rowMotion(0))
-            DetailTiles(header.card, transition.rowMotion(1))
-            if (header.card.memberCount > 0) MembersStrip(header.card, onMembersClick, transition.rowMotion(2))
+        // Drawn by hand rather than with GlassSurface, so it sets the glass's content color itself.
+        CompositionLocalProvider(LocalContentColor provides MaterialTheme.colorScheme.onSurface) {
+            Column(
+                modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(CardInset),
+                verticalArrangement = Arrangement.spacedBy(RowGap),
+            ) {
+                OwnerRow(header, onOwnerClick, onClose, transition.rowMotion(0))
+                DetailTiles(header.card, transition.rowMotion(1))
+                if (header.card.memberCount > 0) MembersStrip(header.card, onMembersClick, transition.rowMotion(2))
+            }
+            // The pill's own face and name, fading as the card grows over them and back as it shrinks into the pill.
+            TripTitleContent(
+                header = header,
+                modifier = Modifier
+                    .offset { IntOffset(pill.left.roundToInt(), pill.top.roundToInt()) }
+                    .size(pillSize.first, pillSize.second)
+                    .graphicsLayer { alpha = pillAlpha },
+            )
         }
-        // The pill's own face and name, fading as the card grows over them and back as it shrinks into the pill.
-        TripTitleContent(
-            header = header,
-            modifier = Modifier
-                .offset { IntOffset(pill.left.roundToInt(), pill.top.roundToInt()) }
-                .size(pillSize.first, pillSize.second)
-                .graphicsLayer { alpha = pillAlpha },
-        )
     }
 }
 
