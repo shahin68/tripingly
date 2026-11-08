@@ -12,7 +12,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Notifications
-import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
@@ -33,6 +32,7 @@ import com.falcon.tripingly.core.designsystem.component.AppTextField
 import com.falcon.tripingly.core.designsystem.component.AppTextFieldStyle
 import com.falcon.tripingly.core.designsystem.component.ButtonSize
 import com.falcon.tripingly.core.designsystem.component.LoadStateContent
+import com.falcon.tripingly.core.designsystem.component.NewIndicator
 import com.falcon.tripingly.core.designsystem.component.SecondaryButton
 import com.falcon.tripingly.core.designsystem.component.SegmentedToggle
 import com.falcon.tripingly.core.designsystem.component.SegmentedToggleOption
@@ -252,7 +252,8 @@ private fun Segments(segment: ProfileSegment, onSegment: (ProfileSegment) -> Uni
 /** Opens the notification center; a red dot while something new waits there. */
 @Composable
 private fun NotificationsButton(hasBadge: Boolean, onClick: () -> Unit) {
-    BadgedBox(badge = { if (hasBadge) Badge() }) {
+    // On the profile card.
+    BadgedBox(badge = { if (hasBadge) NewIndicator(strokeColor = MaterialTheme.colorScheme.surfaceContainerLowest) }) {
         FilledTonalIconButton(onClick = onClick) {
             Icon(Icons.Outlined.Notifications, contentDescription = stringResource(Res.string.social_notifications))
         }

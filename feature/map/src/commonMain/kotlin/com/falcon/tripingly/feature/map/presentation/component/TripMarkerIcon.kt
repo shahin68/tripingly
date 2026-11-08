@@ -24,6 +24,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
+import com.falcon.tripingly.core.designsystem.component.NewIndicator
 import com.falcon.tripingly.core.designsystem.theme.MapColors
 import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
 
@@ -41,15 +42,7 @@ fun TripMarkerIcon(
 ) {
     Box(modifier) {
         PinBody(orderNumber, cover)
-        if (isNew) {
-            Box(
-                Modifier
-                    .size(NEW_DOT_SIZE)
-                    .background(MapColors.OnStop, CircleShape)
-                    .padding(PIN_RING)
-                    .background(MapColors.NewActivity, CircleShape),
-            )
-        }
+        if (isNew) NewIndicator(size = NEW_DOT_SIZE - PIN_RING * 2, strokeColor = MapColors.OnStop, strokeWidth = PIN_RING)
     }
 }
 

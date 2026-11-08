@@ -33,7 +33,6 @@ import androidx.compose.material.icons.filled.Explore
 import androidx.compose.material.icons.filled.Luggage
 import androidx.compose.material.icons.filled.NearMe
 import androidx.compose.material.icons.filled.Person
-import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -58,6 +57,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
+import com.falcon.tripingly.core.designsystem.theme.extendedColors
 import com.falcon.tripingly.core.designsystem.theme.spacing
 import kotlin.math.abs
 import kotlin.math.ceil
@@ -200,7 +200,7 @@ private fun NavBarTab(item: NavBarItem, selected: Boolean, onClick: () -> Unit, 
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraSmall, Alignment.CenterVertically),
     ) {
-        BadgedBox(badge = { if (item.hasBadge) Badge() }) {
+        BadgedBox(badge = { if (item.hasBadge) NewIndicator(strokeColor = MaterialTheme.extendedColors.glass) }) {
             Icon(item.icon, contentDescription = null, tint = color, modifier = Modifier.size(NavBarDefaults.IconSize))
         }
         Text(
