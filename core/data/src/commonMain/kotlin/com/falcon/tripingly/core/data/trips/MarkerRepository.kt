@@ -27,8 +27,9 @@ interface MarkerRepository {
     /**
      * Only the stop's creator or the trip's owner. When other people's photos, comments or likes
      * are on it, the server refuses ([MarkerChangeFailure.needsConfirm]); [deleteAnyway] sends it again.
+     * [confirm]: the user already agreed that other people's things go too (someone else's stop).
      */
-    suspend fun deleteMarker(markerId: String)
+    suspend fun deleteMarker(markerId: String, confirm: Boolean = false)
 
     /** Deletes all of the day's markers, sent as one request; refused like [deleteMarker]. */
     suspend fun clearDay(tripId: String, dayId: String)

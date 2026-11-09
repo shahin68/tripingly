@@ -29,7 +29,7 @@ import androidx.compose.ui.viewinterop.UIKitInteropProperties
 import androidx.compose.ui.viewinterop.UIKitView
 import androidx.lifecycle.compose.LifecycleStartEffect
 import com.falcon.tripingly.core.designsystem.component.icon
-import com.falcon.tripingly.core.designsystem.theme.MapColors
+import com.falcon.tripingly.core.designsystem.theme.extendedColors
 import com.falcon.tripingly.core.location.model.Coordinates
 import com.falcon.tripingly.core.model.place.GeoBounds
 import com.falcon.tripingly.core.model.place.MapPlace
@@ -182,29 +182,32 @@ internal fun GoogleSdkMapView(
 
     // Every pin look is drawn once and shared by every pin that looks the same.
     val categoryIcons = PlaceCategory.entries.associateWith { rememberVectorPainter(it.icon) }
-    val placeColor = MaterialTheme.colorScheme.secondary
+    val placeColor = MaterialTheme.extendedColors.place
     val onPlaceColor = MaterialTheme.colorScheme.onSecondary
-    val hotSpotColor = MaterialTheme.colorScheme.tertiary
+    val hotSpotColor = MaterialTheme.extendedColors.place
+    val stopColor = MaterialTheme.extendedColors.stop
+    val onStopColor = MaterialTheme.extendedColors.onStop
     val onHotSpotColor = MaterialTheme.colorScheme.onTertiary
     val density = LocalDensity.current
     val layoutDirection = LocalLayoutDirection.current
 
     // The line under every pin, with its arrows, as on Android.
-    LaunchedEffect(line) {
-        if (line == null || line.points.size < 2) {
-            map.setLine(emptyList(), MapColors.Plan.toUIColor(), 0.0, emptyList(), null, null)
+    val themedLine = line?.themed()
+    LaunchedEffect(themedLine) {
+        if (themedLine == null || themedLine.points.size < 2) {
+            map.setLine(emptyList(), stopColor.toUIColor(), 0.0, emptyList(), null, null)
             map.setLineSweep(emptyList(), MapLineSweepColor.toUIColor(), 0.0)
             return@LaunchedEffect
         }
-        val points = line.points.map { GoogleMapPoint(it.latitude, it.longitude) }
-        val width = line.style.width.value.toDouble()
+        val points = themedLine.points.map { GoogleMapPoint(it.latitude, it.longitude) }
+        val width = themedLine.style.width.value.toDouble()
         map.setLine(
             points = points,
-            color = line.style.color.toUIColor(),
+            color = themedLine.style.color.toUIColor(),
             width = width,
-            arrows = line.arrows.map { GoogleMapArrow(it.position.latitude, it.position.longitude, it.bearing.toDouble()) },
-            arrowIcon = drawPathArrow(density, layoutDirection, line.style.color).toUIImage(density.density),
-            capIcon = drawLineCap(density, layoutDirection, line.style).toUIImage(density.density),
+            arrows = themedLine.arrows.map { GoogleMapArrow(it.position.latitude, it.position.longitude, it.bearing.toDouble()) },
+            arrowIcon = drawPathArrow(density, layoutDirection, themedLine.style.color).toUIImage(density.density),
+            capIcon = drawLineCap(density, layoutDirection, themedLine.style).toUIImage(density.density),
         )
         // Once, like a progress bar; then nothing moves.
         val sweepColor = MapLineSweepColor.toUIColor()
@@ -249,7 +252,7 @@ internal fun GoogleSdkMapView(
 
     // A stop's pin is drawn once per number and color.
     // By number, cover photo (once its thumbnail has loaded) and "new" dot.
-    val stopIcons = remember(density) { mutableMapOf<Triple<Int, String?, Boolean>, UIImage>() }
+    val stopIcons = remember(density, stopColor) { mutableMapOf<Triple<Int, String?, Boolean>, UIImage>() }
     val coverThumbs = rememberCoverThumbs(markers)
     val stopTitles = markers.map { it.title.asString() }
     LaunchedEffect(markers, stopTitles, coverThumbs, pinPhotos, selectedPlace, placePins, placeClusters, pinIcons, clusterIcons, isDots) {
@@ -262,9 +265,9 @@ internal fun GoogleSdkMapView(
                 icon = marker.coverPhotoId?.let { coverThumbs[it] }.let { cover ->
                     stopIcons.getOrPut(Triple(marker.orderNumber, marker.coverPhotoId.takeIf { cover != null }, marker.isNew)) {
                         if (cover == null) {
-                            drawTripPin(marker.orderNumber, marker.isNew, density.density, density.fontScale)
+                            drawTripPin(marker.orderNumber, marker.isNew, stopColor, onStopColor, density.density, density.fontScale)
                         } else {
-                            drawCoverPin(marker.orderNumber, cover, marker.isNew, density.density, density.fontScale)
+                            drawCoverPin(marker.orderNumber, cover, marker.isNew, stopColor, onStopColor, density.density, density.fontScale)
                         }
                     }
                 },

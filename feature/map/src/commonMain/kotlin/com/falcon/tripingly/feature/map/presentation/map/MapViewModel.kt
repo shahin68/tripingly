@@ -97,7 +97,7 @@ class MapViewModel(
     val cameraCommands: Flow<CameraCommand> = camera.commands
 
     private val selection = MapSelection(context, camera, placeRepository)
-    private val edits = MapEdits(context, selection, tripRepository, markerRepository) { sendEvent(MapEvent.StopAdded) }
+    private val edits = MapEdits(context, selection, tripRepository, markerRepository, myUserId) { sendEvent(MapEvent.StopAdded) }
     private val pins = MapPins(context, placeRepository, appConfigRepository)
     private val search = MapSearch(context, camera, selection, placeRepository)
     private val routes = MapRouting(
@@ -205,6 +205,7 @@ class MapViewModel(
             is MapAction.Plan.RemoveStop -> edits.removeMarker(action.markerId)
             is MapAction.Plan.ClearAll -> openDialog(Dialog.ClearDay)
             is MapAction.Plan.ToggleRoute -> routes.toggleDayRoute()
+            is MapAction.Plan.RetryRoute -> routes.retryRoute()
             is MapAction.Plan.SelectTravelMode -> routes.selectTravelMode(action.mode)
             is MapAction.Plan.FindBestOrder -> routes.findBestOrder()
             is MapAction.Plan.AlongTheWayClick -> selection.openPlace(action.place)

@@ -17,6 +17,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.AddPhotoAlternate
 import androidx.compose.material.icons.outlined.AutoAwesome
+import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -33,6 +34,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
+import com.falcon.tripingly.core.designsystem.theme.extendedColors
 import com.falcon.tripingly.core.designsystem.theme.spacing
 
 /**
@@ -99,6 +101,7 @@ fun SecondaryButton(
 /**
  * A button that switches something on and off (the plan's Route): neutral like [SecondaryButton] while off, filled
  * with the brand colour like [PrimaryButton] while on. Its [icon] stays the same either way; the colour says it's on.
+ * [isFailed]: on, but what it shows couldn't be had; orange, and the caller gives it a "Retry" [text] and tap.
  */
 @Composable
 fun ToggleButton(
@@ -108,17 +111,30 @@ fun ToggleButton(
     modifier: Modifier = Modifier,
     size: ButtonSize = ButtonSize.Small,
     icon: ImageVector? = null,
+    isFailed: Boolean = false,
 ) {
-    val toggle = modifier.semantics { toggleableState = ToggleableState(checked) }
     val haptics = rememberHaptics()
-    val click = {
-        haptics.toggle(!checked)
-        onClick()
-    }
-    if (checked) {
-        PrimaryButton(text, click, toggle, size = size, icon = icon)
-    } else {
-        SecondaryButton(text, click, toggle, size = size, icon = icon)
+    val colors = MaterialTheme.colorScheme
+    val isRetry = checked && isFailed
+    // One button that only changes colour, so switching doesn't replace it (and its ripple) with another.
+    Button(
+        onClick = {
+            if (!isRetry) haptics.toggle(!checked)
+            onClick()
+        },
+        shape = CircleShape,
+        contentPadding = size.padding,
+        colors = when {
+            isRetry -> ButtonDefaults.buttonColors(containerColor = MaterialTheme.extendedColors.attention, contentColor = MaterialTheme.extendedColors.onAttention)
+            checked -> ButtonDefaults.buttonColors()
+            else -> ButtonDefaults.buttonColors(containerColor = colors.surfaceVariant, contentColor = colors.onSurface)
+        },
+        modifier = modifier
+            .then(if (isRetry) Modifier else Modifier.semantics { toggleableState = ToggleableState(checked) })
+            .heightIn(min = size.height)
+            .skeleton(CircleShape),
+    ) {
+        ButtonContent(text, isLoading = false, size, icon)
     }
 }
 
@@ -162,6 +178,7 @@ private fun ButtonsPreviewContent() {
         SecondaryButton("Best order", {}, size = ButtonSize.Small, icon = Icons.Outlined.AutoAwesome)
         ToggleButton("Route", checked = false, onClick = {}, icon = Icons.Outlined.AutoAwesome)
         ToggleButton("Route", checked = true, onClick = {}, icon = Icons.Outlined.AutoAwesome)
+        ToggleButton("Retry", checked = true, onClick = {}, icon = Icons.Outlined.Refresh, isFailed = true)
     }
 }
 

@@ -10,6 +10,7 @@ import com.falcon.tripingly.core.network.realtime.RealtimeEvent
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.filterIsInstance
 import kotlinx.coroutines.flow.mapNotNull
+import kotlinx.coroutines.flow.merge
 
 internal class DefaultNewActivityRepository(
     private val api: PushApi,
@@ -23,9 +24,12 @@ internal class DefaultNewActivityRepository(
         realtime.events.filterIsInstance<RealtimeEvent.NotificationCreated>()
             .mapNotNull { news -> news.markerId?.takeIf { news.tripId == tripId }?.let { StopNews(it, news.aboutComments) } }
 
-    override fun marksChanged(tripId: String): Flow<Unit> =
+    // Also on every (re)connection: news sent while the app was in the background or offline never came live.
+    override fun marksChanged(tripId: String): Flow<Unit> = merge(
         realtime.events.filterIsInstance<RealtimeEvent.NotificationsChanged>()
-            .mapNotNull { changed -> Unit.takeIf { tripId in changed.tripIds || changed.change == RealtimeEvent.NotificationsChanged.Change.Cleared } }
+            .mapNotNull { changed -> Unit.takeIf { tripId in changed.tripIds || changed.change == RealtimeEvent.NotificationsChanged.Change.Cleared } },
+        realtime.connections,
+    )
 
     // Best effort: offline, the mark comes back the next time the trip opens.
     override suspend fun markSeen(markerId: String, comments: Boolean) {

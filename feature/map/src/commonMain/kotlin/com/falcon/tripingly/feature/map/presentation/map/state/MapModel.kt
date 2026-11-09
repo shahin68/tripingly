@@ -95,6 +95,11 @@ internal data class SearchModel(
 internal data class RouteModel(
     /** The Route button: the open day's route is drawn. */
     val isDayRouteShown: Boolean = false,
+    /**
+     * The user switched the route on or off on this screen: from then on the route card and leg times animate. A route
+     * left on from last time shows at once, as the map opens and loads, without animating the lists (too costly then).
+     */
+    val isAnimated: Boolean = false,
     val travelMode: TravelMode = TravelMode.Walking,
     /** "Route from here" was tapped on this place; the next place's card offers "Route to here". */
     val start: MapPlace? = null,
@@ -107,6 +112,8 @@ internal data class RouteModel(
     /** The route couldn't be had: the day keeps its own lines, without times. */
     val isUnavailable: Boolean = false,
     val isLoading: Boolean = false,
+    /** Retry was tapped this many times: each asks for the same route again. */
+    val attempt: Int = 0,
     val isFindingBestOrder: Boolean = false,
 )
 
@@ -146,6 +153,8 @@ internal sealed interface Dialog {
     data object DeleteDay : Dialog
     /** About the selected stop. */
     data object RemoveMyContent : Dialog
+    /** The owner deletes a stop someone else added, with everything on it, once they agree. */
+    data class DeleteOthersStop(val markerId: String) : Dialog
     /** A delete waits for the user to agree that other people's content goes too. */
     sealed interface OthersContent : Dialog {
         val message: UiText

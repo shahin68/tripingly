@@ -130,12 +130,14 @@ internal class MapStateMapper(
             canClear = canDeleteDay(),
             // A route needs two stops.
             isRouteOn = route.isDayRouteShown.takeIf { stops.size >= 2 },
+            isRouteFailed = isRouteShown && route.isUnavailable && !route.isLoading,
             route = routeSummary().takeIf { isRouteShown },
             legLabels = if (isRouteShown && isDayRoute) {
                 plan?.route?.legs.orEmpty().mapNotNull { leg -> leg.toMarkerId?.let { it to durationText(leg.durationSeconds) } }.toMap().toImmutableMap()
             } else {
                 emptyMap<String, UiText>().toImmutableMap()
             },
+            isRouteAnimated = route.isAnimated,
             canFindBestOrder = canEdit && stops.size in MIN_BEST_ORDER_STOPS..MAX_BEST_ORDER_STOPS,
             isFindingBestOrder = route.isFindingBestOrder,
         )
@@ -239,6 +241,7 @@ internal class MapStateMapper(
         Dialog.ClearDay -> MapDialog.ClearDay(dayNumber ?: 1, stops.size)
         Dialog.DeleteDay -> MapDialog.DeleteDay(dayNumber ?: 1, stops.size)
         Dialog.RemoveMyContent -> MapDialog.RemoveMyContent
+        is Dialog.DeleteOthersStop -> stops.firstOrNull { it.id == dialog.markerId }?.let { MapDialog.DeleteOthersStop(it.title) }
         is Dialog.OthersContent -> MapDialog.DeleteOthersContent(dialog.message)
         is Dialog.Report -> MapDialog.Report(dialog.isSending, dialog.details)
         is Dialog.NamePin -> MapDialog.NamePin(dialog.name)

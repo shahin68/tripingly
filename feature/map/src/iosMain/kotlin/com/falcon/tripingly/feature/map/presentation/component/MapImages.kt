@@ -1,5 +1,6 @@
 package com.falcon.tripingly.feature.map.presentation.component
 
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asSkiaBitmap
 import androidx.compose.ui.graphics.toArgb
@@ -39,33 +40,35 @@ internal fun ByteArray.toNSData(): NSData =
 internal fun boldFont(points: Float): Font = Font(FontMgr.default.legacyMakeTypeface("", FontStyle.BOLD), points)
 
 /**
- * A stop's pin: its number on near-black ivy in a white ring, centered on the stop, with the "new" dot when [isNew],
- * as `TripMarkerIcon` draws it on Android.
+ * A stop's pin: its number on the [stop] colour in an [onStop] ring, centered on the stop, with the "new" dot when
+ * [isNew], as `TripMarkerIcon` draws it on Android.
  */
-internal fun drawTripPin(orderNumber: Int, isNew: Boolean, density: Float, fontScale: Float): UIImage {
+internal fun drawTripPin(orderNumber: Int, isNew: Boolean, stop: Color, onStop: Color, density: Float, fontScale: Float): UIImage {
+    val (pinColor, on) = stop.toArgb() to onStop.toArgb()
     val pin = PIN_SIZE.value * density
     val surface = Surface.makeRasterN32Premul(pin.toInt(), pin.toInt())
     surface.canvas.apply {
-        drawCircle(pin / 2, pin / 2, pin / 2, fill(WHITE))
-        drawCircle(pin / 2, pin / 2, pin / 2 - PIN_RING.value * density, fill(STOP))
-        drawNumber(orderNumber, pin / 2, pin / 2, boldFont(13 * density * fontScale))
-        if (isNew) drawNewDot(density, hasCover = false)
+        drawCircle(pin / 2, pin / 2, pin / 2, fill(on))
+        drawCircle(pin / 2, pin / 2, pin / 2 - PIN_RING.value * density, fill(pinColor))
+        drawNumber(orderNumber, pin / 2, pin / 2, boldFont(13 * density * fontScale), on)
+        if (isNew) drawNewDot(density, hasCover = false, on)
     }
     return UIImage(data = surface.makeImageSnapshot().png(), scale = density.toDouble())
 }
 
 /**
- * A stop's pin with its cover photo: the photo in a white ring with the number in a small badge on it, and the "new"
- * dot when [isNew], as `TripMarkerIcon` draws it on Android.
+ * A stop's pin with its cover photo: the photo in an [onStop] ring with the number in a small badge on it, and the
+ * "new" dot when [isNew], as `TripMarkerIcon` draws it on Android.
  */
-internal fun drawCoverPin(orderNumber: Int, cover: ImageBitmap, isNew: Boolean, density: Float, fontScale: Float): UIImage {
+internal fun drawCoverPin(orderNumber: Int, cover: ImageBitmap, isNew: Boolean, stop: Color, onStop: Color, density: Float, fontScale: Float): UIImage {
+    val (pinColor, on) = stop.toArgb() to onStop.toArgb()
     val pin = COVER_PIN_SIZE.value * density
     val ring = COVER_RING.value * density
     val badge = COVER_BADGE_SIZE.value * density
     val surface = Surface.makeRasterN32Premul(pin.toInt(), pin.toInt())
     val photo = Image.makeFromBitmap(cover.asSkiaBitmap())
     surface.canvas.apply {
-        drawCircle(pin / 2, pin / 2, pin / 2, fill(WHITE))
+        drawCircle(pin / 2, pin / 2, pin / 2, fill(on))
         save()
         val inner = Rect.makeXYWH(ring, ring, pin - 2 * ring, pin - 2 * ring)
         clipRRect(RRect.makeOvalLTRB(inner.left, inner.top, inner.right, inner.bottom), antiAlias = true)
@@ -74,19 +77,19 @@ internal fun drawCoverPin(orderNumber: Int, cover: ImageBitmap, isNew: Boolean, 
         val source = Rect.makeXYWH((photo.width - side) / 2, (photo.height - side) / 2, side, side)
         drawImageRect(photo, source, inner, SamplingMode.LINEAR, Paint().apply { isAntiAlias = true }, true)
         restore()
-        drawCircle(pin - badge / 2, badge / 2, badge / 2, fill(WHITE))
-        drawCircle(pin - badge / 2, badge / 2, badge / 2 - PIN_RING.value * density, fill(STOP))
-        drawNumber(orderNumber, pin - badge / 2, badge / 2, boldFont(10 * density * fontScale))
-        if (isNew) drawNewDot(density, hasCover = true)
+        drawCircle(pin - badge / 2, badge / 2, badge / 2, fill(on))
+        drawCircle(pin - badge / 2, badge / 2, badge / 2 - PIN_RING.value * density, fill(pinColor))
+        drawNumber(orderNumber, pin - badge / 2, badge / 2, boldFont(10 * density * fontScale), on)
+        if (isNew) drawNewDot(density, hasCover = true, on)
     }
     return UIImage(data = surface.makeImageSnapshot().png(), scale = density.toDouble())
 }
 
-/** The "new" dot at the pin's top left (see [newDotInset]): the accent red in a white ring. */
-private fun org.jetbrains.skia.Canvas.drawNewDot(density: Float, hasCover: Boolean) {
+/** The "new" dot at the pin's top left (see [newDotInset]): the accent red in the pin's [ring] colour. */
+private fun org.jetbrains.skia.Canvas.drawNewDot(density: Float, hasCover: Boolean, ring: Int) {
     val radius = NEW_DOT_SIZE.value * density / 2
     val center = radius + newDotInset(hasCover).value * density
-    drawCircle(center, center, radius, fill(WHITE))
+    drawCircle(center, center, radius, fill(ring))
     drawCircle(center, center, radius - PIN_RING.value * density, fill(NEW_ACTIVITY))
 }
 
@@ -95,14 +98,11 @@ private fun fill(color: Int) = Paint().apply {
     isAntiAlias = true
 }
 
-/** [orderNumber] in white, centered on ([x], [y]). */
-private fun org.jetbrains.skia.Canvas.drawNumber(orderNumber: Int, x: Float, y: Float, font: Font) {
+/** [orderNumber] in [color], centered on ([x], [y]). */
+private fun org.jetbrains.skia.Canvas.drawNumber(orderNumber: Int, x: Float, y: Float, font: Font, color: Int) {
     val label = orderNumber.toString()
     val metrics = font.metrics
-    drawString(label, x - font.measureTextWidth(label) / 2, y - (metrics.ascent + metrics.descent) / 2, font, fill(WHITE))
+    drawString(label, x - font.measureTextWidth(label) / 2, y - (metrics.ascent + metrics.descent) / 2, font, fill(color))
 }
 
-private val STOP = MapColors.Stop.toArgb()
 private val NEW_ACTIVITY = MapColors.NewActivity.toArgb()
-
-internal const val WHITE = 0xFFFFFFFF.toInt()

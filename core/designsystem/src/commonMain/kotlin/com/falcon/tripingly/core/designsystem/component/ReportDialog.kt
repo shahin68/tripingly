@@ -3,6 +3,7 @@ package com.falcon.tripingly.core.designsystem.component
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
@@ -67,7 +68,8 @@ fun ReportDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(Res.string.report_title)) },
         text = {
-            Column(Modifier.verticalScroll(rememberScrollState()).selectableGroup()) {
+            // Its own height limit: on iOS a dialog is now and then measured with none, and a scroll would throw.
+            Column(Modifier.heightIn(max = ReportListMaxHeight).verticalScroll(rememberScrollState()).selectableGroup()) {
                 ReportReason.entries.forEach { option ->
                     Row(
                         modifier = Modifier
@@ -135,3 +137,5 @@ private fun ReportDialogDarkPreview() {
 private fun ReportDialogLandscapePreview() {
     TripinglyTheme { ReportDialog(details = rememberTextFieldState(), onReport = {}, onDismiss = {}) }
 }
+
+private val ReportListMaxHeight = 480.dp

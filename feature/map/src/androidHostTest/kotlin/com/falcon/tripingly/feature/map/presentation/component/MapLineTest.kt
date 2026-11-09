@@ -1,6 +1,5 @@
 package com.falcon.tripingly.feature.map.presentation.component
 
-import com.falcon.tripingly.core.designsystem.theme.MapColors
 import com.falcon.tripingly.core.location.model.Coordinates
 import com.falcon.tripingly.core.model.route.TravelMode
 import kotlin.test.Test
@@ -56,7 +55,7 @@ class MapLineTest {
         val colors = TravelMode.entries.map { routeLine(streets, listOf(opera, prater), it).style.color }
 
         assertEquals(colors.size, colors.toSet().size)
-        assertTrue(colors.none { it == MapColors.Plan })
+        assertTrue(colors.none { it == StopPathStyle.color })
         assertNotEquals(StopPathStyle, routeLine(streets, listOf(opera, prater), TravelMode.Walking).style)
     }
 }

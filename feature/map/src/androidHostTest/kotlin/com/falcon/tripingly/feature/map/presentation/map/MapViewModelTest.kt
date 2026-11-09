@@ -605,6 +605,12 @@ class MapViewModelTest {
         assertTrue(state.camera.isReady)
         assertEquals(true, state.stopsCard?.isRouteOn)
         assertEquals(TravelMode.Cycling, state.stopsCard?.route?.mode)
+        // The route left on shows at once while the map loads; it animates again once switched here.
+        assertEquals(true, left.uiState.value.stopsCard?.isRouteAnimated)
+        assertEquals(false, state.stopsCard?.isRouteAnimated)
+        reopened.onAction(MapAction.Plan.ToggleRoute)
+        testScheduler.advanceUntilIdle()
+        assertEquals(true, reopened.uiState.value.stopsCard?.isRouteAnimated)
     }
 
     @Test
@@ -953,6 +959,32 @@ class MapViewModelTest {
         val more = shared.members.size - header.card.faces.size
         if (more > 0) assertEquals(UiText.Resource(Res.string.map_trip_card_more, more), header.card.membersNote)
         assertTrue(header.card.isPublic)
+    }
+
+    @Test
+    fun `the owner deletes someone else's stop only after agreeing in the dialog`() = runTest(testDispatcher) {
+        backend.addMarker(trip.trip.id, trip.days[0].id, NewMarker("Theirs", GeoPoint(48.85, 2.35)))
+        val shared = backend.observeTrip(trip.trip.id).first()!!
+        backend.seed(shared.copy(days = shared.days.map { day -> day.copy(markers = day.markers.map { it.copy(createdById = "someone-else") }) }))
+        val viewModel = viewModel()
+        testScheduler.advanceUntilIdle()
+        val stop = viewModel.uiState.value.layers.stops.single()
+
+        viewModel.onAction(MapAction.Plan.RemoveStop(stop.id))
+        testScheduler.advanceUntilIdle()
+        assertEquals(MapDialog.DeleteOthersStop(UiText.Server("Theirs")), viewModel.uiState.value.dialog)
+        assertEquals(1, viewModel.uiState.value.layers.stops.size)
+
+        viewModel.onAction(MapAction.Dialog.DismissConfirm)
+        testScheduler.advanceUntilIdle()
+        assertNull(viewModel.uiState.value.dialog)
+        assertEquals(1, viewModel.uiState.value.layers.stops.size)
+
+        viewModel.onAction(MapAction.Plan.RemoveStop(stop.id))
+        viewModel.onAction(MapAction.Dialog.Confirm)
+        testScheduler.advanceUntilIdle()
+        assertNull(viewModel.uiState.value.dialog)
+        assertTrue(viewModel.uiState.value.layers.stops.isEmpty())
     }
 
     @Test
@@ -1677,6 +1709,27 @@ class MapViewModelTest {
         viewModel.uiState.value.assertStopPath()
         assertEquals(3, viewModel.uiState.value.layers.stops.size)
         assertEquals(3, routes.dayRoutes.size)
+    }
+
+    @Test
+    fun `a failed route turns the Route button into Retry, which asks again and keeps the route on`() = runTest(testDispatcher) {
+        addStops(GeoPoint(48.2085, 16.3731), GeoPoint(48.2104, 16.3655))
+        routes.error = DataError.Network.Api(503, RouteErrorCodes.ROUTING_UNAVAILABLE, "Routes aren't available")
+        val viewModel = viewModel()
+        viewModel.onAction(MapAction.Plan.ToggleRoute)
+        testScheduler.advanceUntilIdle()
+        assertEquals(true, viewModel.uiState.value.stopsCard?.isRouteFailed)
+        val asked = routes.dayRoutes.size
+
+        routes.error = null
+        viewModel.onAction(MapAction.Plan.RetryRoute)
+        testScheduler.advanceUntilIdle()
+
+        val card = assertNotNull(viewModel.uiState.value.stopsCard)
+        assertEquals(asked + 1, routes.dayRoutes.size)
+        assertEquals(true, card.isRouteOn)
+        assertEquals(false, card.isRouteFailed)
+        assertEquals(false, card.route?.isEstimated)
     }
 
     @Test

@@ -148,10 +148,14 @@ data class StopsCardState(
     val canClear: Boolean,
     /** The Route button; null with fewer than two stops, which have no route. */
     val isRouteOn: Boolean?,
+    /** The route is on but couldn't be had: the Route button turns into an orange Retry. */
+    val isRouteFailed: Boolean = false,
     /** The route's times and the places along it, while the Route button is on. */
     val route: RouteSummaryState?,
     /** The time to each stop from the one before ("12 min"), by stop ID, while the route shows. */
     val legLabels: ImmutableMap<String, UiText> = persistentMapOf(),
+    /** The route card and leg times animate; off for a route left on from last time, which shows at once on opening. */
+    val isRouteAnimated: Boolean = true,
     /** An owner or editor, with 3 to 25 stops on the day. */
     val canFindBestOrder: Boolean,
     val isFindingBestOrder: Boolean,
@@ -252,6 +256,8 @@ sealed interface MapDialog {
     data class DeleteDay(val dayNumber: Int, val stopCount: Int) : MapDialog
     /** An editor removes their photos, comments and likes from the selected stop. */
     data object RemoveMyContent : MapDialog
+    /** The owner deletes a stop someone else added: [stopName] and everything on it goes for everyone. */
+    data class DeleteOthersStop(val stopName: UiText) : MapDialog
     /** Deleting would delete other people's photos, comments or likes too; the server's [message] says so. */
     data class DeleteOthersContent(val message: UiText) : MapDialog
     /** Reports the trip, a stop or a photo; [isSending] while the server answers; [details] is the text field. */

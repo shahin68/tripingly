@@ -89,9 +89,9 @@ internal class DefaultMarkerRepository(
         submit(MarkerChange.Update(before, after, update))
     }
 
-    override suspend fun deleteMarker(markerId: String) {
+    override suspend fun deleteMarker(markerId: String, confirm: Boolean) {
         val marker = cachedMarker(markerId) ?: return
-        submit(MarkerChange.Delete(marker))
+        submit(MarkerChange.Delete(marker, confirm))
     }
 
     override suspend fun clearDay(tripId: String, dayId: String) {

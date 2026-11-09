@@ -1,5 +1,6 @@
 package com.falcon.tripingly.feature.map.presentation.map.ui
 
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.runtime.LaunchedEffect
 import com.falcon.tripingly.core.designsystem.component.rememberHaptics
 import androidx.compose.foundation.layout.Arrangement
@@ -20,6 +21,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.tooling.preview.PreviewParameter
+import androidx.compose.ui.unit.dp
 import com.falcon.tripingly.core.designsystem.component.AppDialog
 import com.falcon.tripingly.core.designsystem.component.AppTextField
 import com.falcon.tripingly.core.designsystem.component.ReportDialog
@@ -37,6 +39,8 @@ import com.falcon.tripingly.feature.map.generated.resources.map_confirm_remove
 import com.falcon.tripingly.feature.map.generated.resources.map_delete_day_message
 import com.falcon.tripingly.feature.map.generated.resources.map_delete_day_title
 import com.falcon.tripingly.feature.map.generated.resources.map_delete_others_content_title
+import com.falcon.tripingly.feature.map.generated.resources.map_delete_others_stop_message
+import com.falcon.tripingly.feature.map.generated.resources.map_delete_others_stop_title
 import com.falcon.tripingly.feature.map.generated.resources.map_location_continue
 import com.falcon.tripingly.feature.map.generated.resources.map_location_explain_message
 import com.falcon.tripingly.feature.map.generated.resources.map_location_explain_title
@@ -76,6 +80,12 @@ internal fun MapDialogs(dialog: MapDialog, onAction: (MapAction) -> Unit) {
             title = stringResource(Res.string.map_remove_my_content_title),
             text = stringResource(Res.string.map_remove_my_content_message),
             confirm = Res.string.map_confirm_remove,
+            onAction = onAction,
+        )
+        is MapDialog.DeleteOthersStop -> ConfirmDialog(
+            title = stringResource(Res.string.map_delete_others_stop_title),
+            text = stringResource(Res.string.map_delete_others_stop_message, dialog.stopName.asString()),
+            confirm = Res.string.map_confirm_delete,
             onAction = onAction,
         )
         is MapDialog.DeleteOthersContent -> AppDialog(
@@ -151,8 +161,9 @@ private fun BestOrderDialog(order: BestOrderPreview, onAction: (MapAction) -> Un
         },
         onDismiss = { onAction(MapAction.Dialog.DismissBestOrder) },
     ) {
-        // AppDialog's column gives its children unbounded height; a non-filling weight bounds the scroll to what's left.
-        Column(Modifier.weight(1f, fill = false).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraSmall)) {
+        // AppDialog's column gives its children unbounded height; a non-filling weight bounds the scroll to what's left,
+        // and a height limit of its own covers iOS measuring the dialog now and then with no height limit at all.
+        Column(Modifier.weight(1f, fill = false).heightIn(max = BestOrderMaxHeight).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraSmall)) {
             order.stops.forEachIndexed { index, stop ->
                 Text("${index + 1}. ${stop.title.asString()}", style = MaterialTheme.typography.bodyMedium)
             }
@@ -205,3 +216,5 @@ private fun MapDialogsDarkPreview() {
 private fun BestOrderDialogLandscapePreview() {
     TripinglyTheme(darkTheme = true) { MapDialogs(dialog = MapDialogPreviewStates().values.elementAt(8), onAction = {}) }
 }
+
+private val BestOrderMaxHeight = 480.dp

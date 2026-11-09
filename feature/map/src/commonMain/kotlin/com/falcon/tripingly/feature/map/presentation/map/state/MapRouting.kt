@@ -53,9 +53,12 @@ internal class MapRouting(
     fun toggleDayRoute() {
         val isShown = context.model.value.route.isDayRouteShown
         if (!isShown && !hasRoutes()) return showRoutesArePro()
-        update { it.copy(isDayRouteShown = !isShown) }
+        update { it.copy(isDayRouteShown = !isShown, isAnimated = true) }
         showWholePlan()
     }
+
+    /** The Route button's Retry after the route failed: asks for it again at once, the route stays on. */
+    fun retryRoute() = update { it.copy(attempt = it.attempt + 1) }
 
     fun selectTravelMode(mode: TravelMode) = update { it.copy(travelMode = mode) }
 
@@ -130,12 +133,12 @@ internal class MapRouting(
 
     private fun requestOf(details: TripDetails?, model: MapModel): RouteRequest? {
         val route = model.route
-        route.between?.let { return RouteRequest.Between(it.from.location, it.to.location, route.travelMode) }
+        route.between?.let { return RouteRequest.Between(it.from.location, it.to.location, route.travelMode, route.attempt) }
         if (!route.isDayRouteShown) return null
         val days = details?.days.orEmpty()
         val day = days.getOrNull(activeDayIndex(days.size, model.activeDayIndex)) ?: return null
         if (day.markers.size < 2) return null
-        return RouteRequest.Day(day.id, day.markers.map { it.id to it.location }, route.travelMode)
+        return RouteRequest.Day(day.id, day.markers.map { it.id to it.location }, route.travelMode, route.attempt)
     }
 
     private suspend fun load(request: RouteRequest?) {
@@ -185,19 +188,19 @@ internal class MapRouting(
 
     private fun update(change: (RouteModel) -> RouteModel) = context.update { it.copy(route = change(it.route)) }
 
-    /** What a route is asked for; [subject] is the same for the same day or the same two places. */
+    /** What a route is asked for; [subject] is the same for the same day or the same two places; a new [attempt] asks again. */
     private sealed interface RouteRequest {
         val subject: Any
         val mode: TravelMode
         /** The stops the route goes through in order. */
         val stops: List<GeoPoint>
 
-        data class Day(val dayId: String, val markers: List<Pair<String, GeoPoint>>, override val mode: TravelMode) : RouteRequest {
+        data class Day(val dayId: String, val markers: List<Pair<String, GeoPoint>>, override val mode: TravelMode, val attempt: Int) : RouteRequest {
             override val subject get() = dayId
             override val stops get() = markers.map { it.second }
         }
 
-        data class Between(val from: GeoPoint, val to: GeoPoint, override val mode: TravelMode) : RouteRequest {
+        data class Between(val from: GeoPoint, val to: GeoPoint, override val mode: TravelMode, val attempt: Int) : RouteRequest {
             override val subject get() = from to to
             override val stops get() = listOf(from, to)
         }

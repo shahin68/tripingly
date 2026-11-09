@@ -1,5 +1,7 @@
 package com.falcon.tripingly.feature.map.presentation.component
 
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Canvas
@@ -9,11 +11,13 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.CanvasDrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.isSpecified
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import com.falcon.tripingly.core.designsystem.theme.MapColors
+import com.falcon.tripingly.core.designsystem.theme.extendedColors
 import com.falcon.tripingly.core.location.model.Coordinates
 import com.falcon.tripingly.core.model.route.TravelMode
 import kotlin.math.PI
@@ -35,6 +39,11 @@ data class MapLineStyle(val color: Color, val width: Dp)
 /** A line to draw: its [points] from start to end and the [arrows] pointing the way. A new value runs the streak again. */
 @Immutable
 data class MapLine(val points: List<Coordinates>, val arrows: List<PathArrow>, val style: MapLineStyle)
+
+/** This line in the theme's colours: the plan, which has no colour of its own, takes the stops' colour. */
+@Composable
+internal fun MapLine.themed(): MapLine =
+    if (style.color.isSpecified) this else copy(style = style.copy(color = MaterialTheme.extendedColors.stop))
 
 /** [bearing] in degrees clockwise from north, the way the line runs here. */
 data class PathArrow(val position: Coordinates, val bearing: Float)

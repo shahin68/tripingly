@@ -24,6 +24,9 @@ internal val OutlineLight = Color(0xFF8A8F8B)
 internal val OutlineVariantLight = Color(0xFFD5D8D5)
 internal val ErrorLight = Color(0xFFC22A1E)
 internal val ErrorContainerLight = Color(0xFFFCE3E0)
+// Attention: something on that didn't work and can be tried again (the Route button's Retry), orange, not alarming red.
+internal val AttentionLight = Color(0xFFC8661A)
+internal val OnAttentionLight = Color(0xFFFFFFFF)
 internal val OnErrorContainerLight = Color(0xFF5C0E08)
 
 // Dark
@@ -46,7 +49,12 @@ internal val OutlineDark = Color(0xFF6F7570)
 internal val OutlineVariantDark = Color(0xFF353A37)
 internal val ErrorDark = Color(0xFFFFB4AB)
 internal val ErrorContainerDark = Color(0xFF5C1A14)
+internal val AttentionDark = Color(0xFFF2A65E)
+internal val OnAttentionDark = Color(0xFF3A1E00)
 internal val OnErrorContainerDark = Color(0xFFFFDAD5)
+
+// A place's pin on the dark map: softer than the secondary grey, so the stops lead.
+internal val MapPlaceDark = Color(0xFF8E9A92)
 
 // Glass: what the floating bars, sheets and cards are tinted with over the blur.
 internal val GlassLight = Color(0x9EFFFFFF)
@@ -55,17 +63,12 @@ internal val GlassEdgeLight = Color(0x99FFFFFF)
 internal val GlassEdgeDark = Color(0x14FFFFFF)
 
 /**
- * What the map draws: stop pins, the day's plan line and the routes. The same in light and dark: the map
- * brings its own day and night style, and these read on both.
+ * What the map draws the same in light and dark: the new dot and the routes. Stops, the plan line and places
+ * follow the theme ([ExtendedColors.stop], [ExtendedColors.place]).
  */
 object MapColors {
-    /** A stop's pin: near-black ivy, with a white ring and number. */
-    val Stop = Color(0xFF1C2620)
-    val OnStop = Color.White
     /** The dot on a stop (and its day tab) with something I haven't seen: the accent red, in a white ring on pins. */
     val NewActivity = Color(0xFFE53935)
-    /** The straight line joining a day's stops while no route shows: the brand's green. */
-    val Plan = Color(0xFF2E5E3E)
     /** Routes: one soft, pastel color per way of travelling. */
     val Walk = Color(0xFF7CC49A)
     val Bike = Color(0xFFF2A86B)

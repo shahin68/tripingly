@@ -1,6 +1,7 @@
 package com.falcon.tripingly.core.designsystem.component
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
@@ -57,7 +58,9 @@ fun AppDropdownMenu(
         shape = MaterialTheme.shapes.large,
         containerColor = MaterialTheme.colorScheme.surfaceContainerLowest,
         shadowElevation = GlassDefaults.ShadowElevation,
-        modifier = modifier.widthIn(min = MenuMinWidth),
+        // A height limit of its own: on iOS a popup is now and then measured with no height limit, and the menu's
+        // scrolling column then throws ("measured with an infinity maximum height").
+        modifier = modifier.widthIn(min = MenuMinWidth).heightIn(max = MenuMaxHeight),
     ) {
         actions.forEach { action ->
             val color = if (action.isDestructive) MaterialTheme.colorScheme.error else Color.Unspecified
@@ -99,6 +102,7 @@ private fun MenuBadge(text: String) {
 }
 
 private val MenuMinWidth = 200.dp
+private val MenuMaxHeight = 560.dp
 
 private val previewActions = listOf(
     DropdownAction("Trip members · 4", icon = Icons.Outlined.Group, badge = "2", onClick = {}),

@@ -32,6 +32,7 @@ import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import com.falcon.tripingly.core.designsystem.component.icon
+import com.falcon.tripingly.core.designsystem.theme.extendedColors
 import com.falcon.tripingly.core.location.model.Coordinates
 import com.falcon.tripingly.core.model.place.GeoBounds
 import com.falcon.tripingly.core.model.place.MapPlace
@@ -192,9 +193,9 @@ actual fun GoogleMapView(
     ) {
         // Every pin look is drawn once, here where the map can take icons, and shared by every pin that looks the same.
         val categoryIcons = PlaceCategory.entries.associateWith { rememberVectorPainter(it.icon) }
-        val placeColor = MaterialTheme.colorScheme.secondary
+        val placeColor = MaterialTheme.extendedColors.place
         val onPlaceColor = MaterialTheme.colorScheme.onSecondary
-        val hotSpotColor = MaterialTheme.colorScheme.tertiary
+        val hotSpotColor = MaterialTheme.extendedColors.place
         val onHotSpotColor = MaterialTheme.colorScheme.onTertiary
         val density = LocalDensity.current
         val layoutDirection = LocalLayoutDirection.current
@@ -322,7 +323,7 @@ actual fun GoogleMapView(
         }
 
         // Under every pin.
-        if (line != null && line.points.size > 1) MapLineView(line)
+        if (line != null && line.points.size > 1) MapLineView(line.themed())
 
         // The tapped place, bigger and on top.
         selectedPlace?.let { place ->

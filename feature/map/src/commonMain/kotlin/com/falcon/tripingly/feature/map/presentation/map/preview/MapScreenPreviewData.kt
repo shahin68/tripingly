@@ -189,6 +189,7 @@ internal class MapDialogPreviewStates : PreviewParameterProvider<MapDialog> {
         MapDialog.ClearDay(dayNumber = 2, stopCount = 4),
         MapDialog.DeleteDay(dayNumber = 3, stopCount = 1),
         MapDialog.RemoveMyContent,
+        MapDialog.DeleteOthersStop(UiText.Server("Palais Pereira")),
         MapDialog.DeleteOthersContent(UiText.Server("This stop has 3 photos and 2 comments by other people.")),
         MapDialog.Report(isSending = true, details = TextFieldState()),
         MapDialog.NamePin(TextFieldState()),
