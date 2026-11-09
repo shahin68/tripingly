@@ -294,9 +294,9 @@ class FakeTripBackend(
         run(MarkerChange.Update(marker, marker, update))
     }
 
-    override suspend fun deleteMarker(markerId: String) {
+    override suspend fun deleteMarker(markerId: String, confirm: Boolean) {
         val (_, marker) = markerOf(markerId) ?: return
-        run(MarkerChange.Delete(marker))
+        run(MarkerChange.Delete(marker, confirm))
     }
 
     override suspend fun clearDay(tripId: String, dayId: String) {

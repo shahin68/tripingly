@@ -31,6 +31,7 @@ internal class MapEdits(
     private val selection: MapSelection,
     private val tripRepository: TripRepository,
     private val markerRepository: MarkerRepository,
+    private val myUserId: String?,
     private val onStopAdded: () -> Unit,
 ) {
     init {
@@ -85,10 +86,20 @@ internal class MapEdits(
         add(if (address != null) NewMarker(address.name, address.location, osm = address.osm) else NewMarker(place.place.name, place.place.location, placeId = place.place.id))
     }
 
+    /** My own stop goes at once; someone else's (only the owner may) only once the user agreed in a dialog. */
     fun removeMarker(markerId: String) {
         if (!context.canEdit()) return
+        val marker = context.days().firstNotNullOfOrNull { day -> day.markers.firstOrNull { it.id == markerId } } ?: return
+        if (marker.createdById != myUserId) {
+            context.update { it.copy(dialog = Dialog.DeleteOthersStop(markerId)) }
+            return
+        }
+        deleteMarker(markerId, confirm = false)
+    }
+
+    private fun deleteMarker(markerId: String, confirm: Boolean) {
         selection.closeStop(markerId)
-        context.scope.launch { markerRepository.deleteMarker(markerId) }
+        context.scope.launch { markerRepository.deleteMarker(markerId, confirm) }
     }
 
     fun addDay() {
@@ -116,6 +127,7 @@ internal class MapEdits(
             }
             Dialog.DeleteDay -> deleteDay(day.id, confirm = false)
             Dialog.RemoveMyContent -> selection.selectedMarkerId?.let(::removeMyContent)
+            is Dialog.DeleteOthersStop -> deleteMarker(dialog.markerId, confirm = true)
             else -> Unit
         }
     }

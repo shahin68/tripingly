@@ -239,6 +239,7 @@ internal class MapStateMapper(
         Dialog.ClearDay -> MapDialog.ClearDay(dayNumber ?: 1, stops.size)
         Dialog.DeleteDay -> MapDialog.DeleteDay(dayNumber ?: 1, stops.size)
         Dialog.RemoveMyContent -> MapDialog.RemoveMyContent
+        is Dialog.DeleteOthersStop -> stops.firstOrNull { it.id == dialog.markerId }?.let { MapDialog.DeleteOthersStop(it.title) }
         is Dialog.OthersContent -> MapDialog.DeleteOthersContent(dialog.message)
         is Dialog.Report -> MapDialog.Report(dialog.isSending, dialog.details)
         is Dialog.NamePin -> MapDialog.NamePin(dialog.name)

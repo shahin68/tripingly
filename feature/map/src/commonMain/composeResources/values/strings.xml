@@ -148,6 +148,8 @@
     <!-- Place photos and deleting stops -->
     <string name="map_place_photos">Photos</string>
     <string name="map_error_like_photo">Couldn’t save your like on the photo.</string>
+    <string name="map_delete_others_stop_title">Delete someone else\'s stop?</string>
+    <string name="map_delete_others_stop_message">%1$s was added by someone else. It goes for everyone, with its photos, comments and likes.</string>
     <string name="map_delete_others_content_title">Delete for everyone?</string>
     <string name="map_remove_my_content">Remove my photos, comments and likes</string>
     <string name="map_remove_my_content_title">Remove your things from this stop?</string>

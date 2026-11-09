@@ -290,7 +290,7 @@ private val RowGap = 12.dp
 private val ChipHeight = 40.dp
 
 private val LegLineLength = 8.dp
-private val LegLineLengthOff = 16.dp
+private val LegLineLengthOff = 12.dp
 private val LegLineWidth = 2.dp
 private val LegTextPadding = 3.dp
 

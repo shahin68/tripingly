@@ -39,6 +39,8 @@ import com.falcon.tripingly.feature.map.generated.resources.map_confirm_remove
 import com.falcon.tripingly.feature.map.generated.resources.map_delete_day_message
 import com.falcon.tripingly.feature.map.generated.resources.map_delete_day_title
 import com.falcon.tripingly.feature.map.generated.resources.map_delete_others_content_title
+import com.falcon.tripingly.feature.map.generated.resources.map_delete_others_stop_message
+import com.falcon.tripingly.feature.map.generated.resources.map_delete_others_stop_title
 import com.falcon.tripingly.feature.map.generated.resources.map_location_continue
 import com.falcon.tripingly.feature.map.generated.resources.map_location_explain_message
 import com.falcon.tripingly.feature.map.generated.resources.map_location_explain_title
@@ -78,6 +80,12 @@ internal fun MapDialogs(dialog: MapDialog, onAction: (MapAction) -> Unit) {
             title = stringResource(Res.string.map_remove_my_content_title),
             text = stringResource(Res.string.map_remove_my_content_message),
             confirm = Res.string.map_confirm_remove,
+            onAction = onAction,
+        )
+        is MapDialog.DeleteOthersStop -> ConfirmDialog(
+            title = stringResource(Res.string.map_delete_others_stop_title),
+            text = stringResource(Res.string.map_delete_others_stop_message, dialog.stopName.asString()),
+            confirm = Res.string.map_confirm_delete,
             onAction = onAction,
         )
         is MapDialog.DeleteOthersContent -> AppDialog(

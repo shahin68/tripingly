@@ -252,6 +252,8 @@ sealed interface MapDialog {
     data class DeleteDay(val dayNumber: Int, val stopCount: Int) : MapDialog
     /** An editor removes their photos, comments and likes from the selected stop. */
     data object RemoveMyContent : MapDialog
+    /** The owner deletes a stop someone else added: [stopName] and everything on it goes for everyone. */
+    data class DeleteOthersStop(val stopName: UiText) : MapDialog
     /** Deleting would delete other people's photos, comments or likes too; the server's [message] says so. */
     data class DeleteOthersContent(val message: UiText) : MapDialog
     /** Reports the trip, a stop or a photo; [isSending] while the server answers; [details] is the text field. */

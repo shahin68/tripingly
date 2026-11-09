@@ -148,6 +148,8 @@
     <!-- Place photos and deleting stops -->
     <string name="map_place_photos">Fotos</string>
     <string name="map_error_like_photo">Dein Like für das Foto konnte nicht gespeichert werden.</string>
+    <string name="map_delete_others_stop_title">Fremden Stopp löschen?</string>
+    <string name="map_delete_others_stop_message">%1$s wurde von jemand anderem hinzugefügt. Der Stopp wird für alle gelöscht, mit seinen Fotos, Kommentaren und Likes.</string>
     <string name="map_delete_others_content_title">Für alle löschen?</string>
     <string name="map_remove_my_content">Meine Fotos, Kommentare und Likes entfernen</string>
     <string name="map_remove_my_content_title">Deine Inhalte von diesem Stopp entfernen?</string>

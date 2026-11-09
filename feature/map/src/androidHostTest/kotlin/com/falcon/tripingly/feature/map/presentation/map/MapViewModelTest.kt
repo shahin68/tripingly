@@ -956,6 +956,32 @@ class MapViewModelTest {
     }
 
     @Test
+    fun `the owner deletes someone else's stop only after agreeing in the dialog`() = runTest(testDispatcher) {
+        backend.addMarker(trip.trip.id, trip.days[0].id, NewMarker("Theirs", GeoPoint(48.85, 2.35)))
+        val shared = backend.observeTrip(trip.trip.id).first()!!
+        backend.seed(shared.copy(days = shared.days.map { day -> day.copy(markers = day.markers.map { it.copy(createdById = "someone-else") }) }))
+        val viewModel = viewModel()
+        testScheduler.advanceUntilIdle()
+        val stop = viewModel.uiState.value.layers.stops.single()
+
+        viewModel.onAction(MapAction.Plan.RemoveStop(stop.id))
+        testScheduler.advanceUntilIdle()
+        assertEquals(MapDialog.DeleteOthersStop(UiText.Server("Theirs")), viewModel.uiState.value.dialog)
+        assertEquals(1, viewModel.uiState.value.layers.stops.size)
+
+        viewModel.onAction(MapAction.Dialog.DismissConfirm)
+        testScheduler.advanceUntilIdle()
+        assertNull(viewModel.uiState.value.dialog)
+        assertEquals(1, viewModel.uiState.value.layers.stops.size)
+
+        viewModel.onAction(MapAction.Plan.RemoveStop(stop.id))
+        viewModel.onAction(MapAction.Dialog.Confirm)
+        testScheduler.advanceUntilIdle()
+        assertNull(viewModel.uiState.value.dialog)
+        assertTrue(viewModel.uiState.value.layers.stops.isEmpty())
+    }
+
+    @Test
     fun `deleting a stop with other people's things warns first, then deletes it for everyone`() = runTest(testDispatcher) {
         val stop = backend.addMarker(trip.trip.id, trip.days[0].id, NewMarker("Stop #1", GeoPoint(48.85, 2.35)))
         val viewModel = viewModel()

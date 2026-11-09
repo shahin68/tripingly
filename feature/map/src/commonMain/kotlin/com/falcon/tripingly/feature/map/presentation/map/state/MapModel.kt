@@ -146,6 +146,8 @@ internal sealed interface Dialog {
     data object DeleteDay : Dialog
     /** About the selected stop. */
     data object RemoveMyContent : Dialog
+    /** The owner deletes a stop someone else added, with everything on it, once they agree. */
+    data class DeleteOthersStop(val markerId: String) : Dialog
     /** A delete waits for the user to agree that other people's content goes too. */
     sealed interface OthersContent : Dialog {
         val message: UiText
