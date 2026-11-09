@@ -27,6 +27,7 @@ import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
 import com.falcon.tripingly.core.location.GetCurrentLocationUseCase
 import com.falcon.tripingly.core.location.LocationRepository
 import com.falcon.tripingly.core.location.model.Coordinates
+import com.falcon.tripingly.core.model.account.ProfileUpdate
 import com.falcon.tripingly.core.model.trip.GeoPoint
 import com.falcon.tripingly.core.model.trip.NewMarker
 import com.falcon.tripingly.core.model.trip.NewTrip
@@ -60,6 +61,15 @@ class MapFlowTest {
         created
     }
 
+    /** Signed in and onboarded as the trip's owner (the fake backend's "me"), so my own stops delete at once. */
+    private val session = runBlocking {
+        FakeAccountBackend(today = { LocalDate(2026, 10, 16) }).also {
+            it.signInForDevelopment("me", "Me")
+            it.updateProfile(ProfileUpdate(username = "me", birthDate = LocalDate(1990, 1, 1)))
+            it.accept((it.legalDocuments("en") as AppResult.Success).data)
+        }
+    }
+
     private fun viewModel() = MapViewModel(
         tripId = trip.trip.id,
         stopId = null,
@@ -73,7 +83,7 @@ class MapFlowTest {
         socialRepository = FakeSocialRepository(),
         appConfigRepository = FakeAppConfigRepository(),
         mapViews = FakeTripMapViewRepository(),
-        sessionRepository = FakeAccountBackend(today = { LocalDate(2026, 10, 16) }),
+        sessionRepository = session,
         getCurrentLocationUseCase = GetCurrentLocationUseCase(
             object : LocationRepository {
                 override fun getLocationStream() = flowOf(Coordinates.Paris.asSuccess())
