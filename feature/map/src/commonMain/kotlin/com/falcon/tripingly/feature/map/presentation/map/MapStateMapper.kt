@@ -6,6 +6,7 @@ import com.falcon.tripingly.core.location.permission.LocationPermission
 import com.falcon.tripingly.core.model.account.TripVisibility
 import com.falcon.tripingly.core.model.config.AppConfig
 import com.falcon.tripingly.core.model.route.AlongTheWayPlace
+import com.falcon.tripingly.core.model.trip.GeoPoint
 import com.falcon.tripingly.core.model.trip.TripDetails
 import com.falcon.tripingly.core.model.trip.TripMarker
 import com.falcon.tripingly.core.model.trip.TripRole
@@ -23,9 +24,13 @@ import com.falcon.tripingly.feature.map.presentation.component.routeLine
 import com.falcon.tripingly.feature.map.presentation.component.stopPathShape
 import com.falcon.tripingly.feature.map.presentation.map.state.Dialog
 import com.falcon.tripingly.feature.map.presentation.map.state.MapModel
+import com.falcon.tripingly.feature.map.presentation.map.state.RouteStart
 import com.falcon.tripingly.feature.map.presentation.map.state.Selection
 import com.falcon.tripingly.feature.map.presentation.map.state.Sheet
 import com.falcon.tripingly.feature.map.presentation.map.state.activeDayIndex
+import com.falcon.tripingly.feature.map.presentation.map.state.guess
+import com.falcon.tripingly.feature.map.presentation.map.state.knownPoint
+import com.falcon.tripingly.feature.map.presentation.map.state.routeStarts
 import com.falcon.tripingly.feature.map.presentation.map.state.stopPlaceIds
 import com.falcon.tripingly.feature.map.presentation.map.ui.durationText
 import kotlinx.collections.immutable.ImmutableList
@@ -65,8 +70,7 @@ internal class MapStateMapper(
         joinRequests = joinRequests(),
         search = model.search?.let { SearchState(it.query, it.results.toImmutableList(), it.isSearching) },
         dayTabs = DayTabsState(days.map { day -> DayTab(day.id, day.position + 1, day.date?.let(DateUtils::formatAbbreviated), hasNew = day.markers.any { it.id in model.newStopIds || it.id in model.newCommentStopIds }, canDelete = canEdit && days.size > 1 && canDeleteDay(day.markers)) }.toImmutableList(), activeIndex),
-        plan = route.between?.let { PointRouteCardState(it.from, it.to, routeSummary()) } ?: stopsCard(),
-        routeStartName = route.start?.name,
+        plan = route.between?.let { PointRouteCardState(it.from, it.to, routeSummary(), it.fromLabel) } ?: stopsCard(),
         placeCard = placeCard(),
         stopCard = stopCard(),
         layers = layers,
@@ -161,8 +165,16 @@ internal class MapStateMapper(
             details = selection.details,
             address = selection.address?.address,
             addToDayNumber = dayNumber?.takeIf { canEdit },
-            canRouteTo = route.start != null && route.start.location != selection.place.location,
+            routeStart = routeStart(selection.place.location),
         )
+    }
+
+    /** Where a route to the place can start, the guess first; see [routeStarts]. */
+    private fun routeStart(place: GeoPoint): RouteStartState? {
+        val starts = routeStarts(place, model.location.knownPoint, days.getOrNull(activeIndex)?.markers.orEmpty())
+        val guess = starts.guess() ?: return null
+        fun RouteStart.option() = RouteStartOption(id, number, number?.let { stops.getOrNull(it - 1)?.title }, distanceMeters)
+        return RouteStartState(guess.option(), starts.map { it.option() }.toImmutableList())
     }
 
     private fun stopCard(): StopCardState? {

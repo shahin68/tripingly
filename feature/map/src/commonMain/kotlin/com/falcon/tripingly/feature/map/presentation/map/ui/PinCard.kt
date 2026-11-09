@@ -73,7 +73,7 @@ internal fun <T : Any> PinCard(
 private fun PinCardPreview() {
     TripinglyTheme {
         PinCard(card = previewPlace, key = { it.id }, pinClearance = 24.dp) { place ->
-            PlaceCard(place, details = null, address = null, dayNumber = 1, onAdd = {}, onOpenImage = {}, onOpenPhotos = {}, onRouteFrom = {}, onRouteTo = null)
+            PlaceCard(place, details = null, address = null, dayNumber = 1, onAdd = {}, onOpenImage = {}, onOpenPhotos = {}, routeStart = null, onRoute = {})
         }
     }
 }
@@ -83,7 +83,7 @@ private fun PinCardPreview() {
 private fun PinCardDarkPreview() {
     TripinglyTheme(darkTheme = true) {
         PinCard(card = previewPlace, key = { it.id }, pinClearance = 24.dp) { place ->
-            PlaceCard(place, details = null, address = null, dayNumber = null, onAdd = {}, onOpenImage = {}, onOpenPhotos = {}, onRouteFrom = {}, onRouteTo = {})
+            PlaceCard(place, details = null, address = null, dayNumber = null, onAdd = {}, onOpenImage = {}, onOpenPhotos = {}, routeStart = null, onRoute = {})
         }
     }
 }

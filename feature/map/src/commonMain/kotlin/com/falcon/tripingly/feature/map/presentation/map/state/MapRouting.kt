@@ -7,6 +7,7 @@ import com.falcon.tripingly.core.data.trips.MarkerRepository
 import com.falcon.tripingly.core.data.trips.hasCode
 import com.falcon.tripingly.core.location.model.Coordinates
 import com.falcon.tripingly.core.model.place.MapPlace
+import com.falcon.tripingly.core.model.place.PlaceCategory
 import com.falcon.tripingly.core.model.route.TravelMode
 import com.falcon.tripingly.core.model.trip.GeoPoint
 import com.falcon.tripingly.core.model.trip.NewMarker
@@ -17,7 +18,8 @@ import com.falcon.tripingly.feature.map.generated.resources.Res
 import com.falcon.tripingly.feature.map.generated.resources.map_best_order_already
 import com.falcon.tripingly.feature.map.generated.resources.map_error_best_order
 import com.falcon.tripingly.feature.map.generated.resources.map_error_route
-import com.falcon.tripingly.feature.map.generated.resources.map_route_pick_destination
+import com.falcon.tripingly.feature.map.generated.resources.map_route_my_location
+import com.falcon.tripingly.feature.map.generated.resources.map_stop_title_format
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -62,29 +64,33 @@ internal class MapRouting(
 
     fun selectTravelMode(mode: TravelMode) = update { it.copy(travelMode = mode) }
 
-    /** "Route from here" on a place's card: the next place's card offers "Route to here". */
-    fun startPointRoute() {
+    /**
+     * The route to the open place, from [startId] (one of [routeStarts]) or else the start guessed for the user (see
+     * [guess]): both ends on screen.
+     */
+    fun routeToPlace(startId: String?) {
         val place = selection.selectedPlace?.place ?: return
         if (!hasRoutes()) return showRoutesArePro()
-        selection.closePlace()
-        context.update {
-            it.copy(
-                route = it.route.copy(start = place),
-                message = UiText.Note(UiText.Resource(Res.string.map_route_pick_destination)),
-            )
+        val starts = routeStarts(place.location, context.model.value.location.knownPoint, context.activeDay()?.markers.orEmpty())
+        val start = (if (startId != null) starts.firstOrNull { it.id == startId } else starts.guess()) ?: return
+        val from = MapPlace(
+            id = start.stop?.placeId ?: start.id,
+            name = start.stop?.name.orEmpty(),
+            category = PlaceCategory.Other,
+            location = start.location,
+            isTripinly = false,
+            hotCount = 0,
+            prominence = 0,
+        )
+        val fromLabel = when {
+            start.stop == null -> UiText.Resource(Res.string.map_route_my_location)
+            start.stop.name.isBlank() -> UiText.Resource(Res.string.map_stop_title_format, start.number ?: 0)
+            else -> null
         }
-    }
-
-    fun cancelRouteStart() = update { it.copy(start = null) }
-
-    /** From the place picked first to this one, both on screen. */
-    fun showPointRoute() {
-        val from = context.model.value.route.start ?: return
-        val to = selection.selectedPlace?.place ?: return
         selection.closePlace()
-        update { it.copy(start = null, between = PointRoute(from, to)) }
+        update { it.copy(between = PointRoute(from, place, fromLabel)) }
         showWholePlan()
-        camera.frame(listOf(from.location, to.location).map { Coordinates(it.lat, it.lng) })
+        camera.frame(listOf(from.location, place.location).map { Coordinates(it.lat, it.lng) })
     }
 
     fun closePointRoute() = update { it.copy(between = null) }

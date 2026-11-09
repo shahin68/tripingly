@@ -64,6 +64,7 @@ import com.falcon.tripingly.core.model.trip.TripRole
 import com.falcon.tripingly.core.model.trip.UserSummary
 import com.falcon.tripingly.core.ui.UiText
 import com.falcon.tripingly.feature.map.generated.resources.Res
+import com.falcon.tripingly.feature.map.generated.resources.map_route_my_location
 import com.falcon.tripingly.feature.map.generated.resources.error_location_denied_manual
 import com.falcon.tripingly.feature.map.generated.resources.error_location_permission_required
 import com.falcon.tripingly.feature.map.generated.resources.map_trip_card_more
@@ -1782,48 +1783,98 @@ class MapViewModelTest {
 
             val place = MapPlace("a", "Oper", PlaceCategory.Attraction, GeoPoint(48.2031, 16.3691), isTripinly = false, hotCount = 0, prominence = 80)
             viewModel.onAction(MapAction.MapView.PlacePinClick(place))
-            viewModel.onAction(MapAction.PlaceCard.RouteFrom)
+            viewModel.onAction(MapAction.PlaceCard.Route())
             testScheduler.advanceUntilIdle()
             assertEquals(MapEvent.OpenPaywall, awaitItem())
-            assertNull(viewModel.uiState.value.routeStartName)
+            assertNull(viewModel.uiState.value.pointRouteCard)
             assertTrue(routes.dayRoutes.isEmpty() && routes.pointRoutes.isEmpty())
         }
     }
 
     @Test
-    fun `a route from one place to another shows instead of the day's until it is closed`() = runTest(testDispatcher) {
+    fun `the place card offers the day's stops nearest first and routes from the nearest until it is closed`() = runTest(testDispatcher) {
         addStops(GeoPoint(48.2085, 16.3731), GeoPoint(48.2104, 16.3655))
         val viewModel = viewModel()
         viewModel.onAction(MapAction.Plan.ToggleRoute)
         testScheduler.advanceUntilIdle()
-        val from = MapPlace("a", "Oper", PlaceCategory.Attraction, GeoPoint(48.2031, 16.3691), isTripinly = false, hotCount = 0, prominence = 80)
+        val (first, second) = viewModel.uiState.value.layers.stops.map { it.id }
         val to = MapPlace("b", "Prater", PlaceCategory.Park, GeoPoint(48.2166, 16.3958), isTripinly = false, hotCount = 0, prominence = 80)
 
-        viewModel.onAction(MapAction.MapView.PlacePinClick(from))
-        viewModel.onAction(MapAction.PlaceCard.RouteFrom)
+        viewModel.onAction(MapAction.MapView.PlacePinClick(to))
         testScheduler.advanceUntilIdle()
-        assertEquals("Oper", viewModel.uiState.value.routeStartName)
-        assertNull(viewModel.uiState.value.layers.selectedPlace)
+        val routeStart = assertNotNull(viewModel.uiState.value.placeCard?.routeStart)
+        assertEquals(first, routeStart.start.id)
+        assertEquals(listOf(first, second), routeStart.options.filter { it.stopNumber != null }.map { it.id })
+        assertEquals(1, routeStart.start.stopNumber)
 
         viewModel.cameraCommands.test {
-            viewModel.onAction(MapAction.MapView.PlacePinClick(to))
-            viewModel.onAction(MapAction.PlaceCard.RouteTo)
+            viewModel.onAction(MapAction.PlaceCard.Route())
             testScheduler.advanceUntilIdle()
-            // Both places show.
-            assertEquals(CameraCommand.fit(listOf(Coordinates(48.2031, 16.3691), Coordinates(48.2166, 16.3958))), expectMostRecentItem())
+            // Both ends show.
+            assertEquals(CameraCommand.fit(listOf(Coordinates(48.2085, 16.3731), Coordinates(48.2166, 16.3958))), expectMostRecentItem())
         }
         val state = viewModel.uiState.value
         val card = assertNotNull(state.pointRouteCard)
-        assertEquals(from to to, card.from to card.to)
+        assertEquals("Stop 1", card.from.name)
+        assertEquals(to, card.to)
+        assertNull(state.layers.selectedPlace)
         assertNull(state.stopsCard)
-        assertNull(state.routeStartName)
-        assertEquals(listOf(from.location to to.location), routes.pointRoutes)
-        state.assertRoute(listOf(Coordinates(48.2031, 16.3691), Coordinates(48.2166, 16.3958)))
+        assertEquals(listOf(GeoPoint(48.2085, 16.3731) to to.location), routes.pointRoutes)
+        state.assertRoute(listOf(Coordinates(48.2085, 16.3731), Coordinates(48.2166, 16.3958)))
 
         viewModel.onAction(MapAction.Plan.ClosePointRoute)
         testScheduler.advanceUntilIdle()
         assertNull(viewModel.uiState.value.pointRouteCard)
         viewModel.uiState.value.assertRoute(viewModel.uiState.value.stopPositions)
+    }
+
+    @Test
+    fun `a start picked from the place card's menu routes from it`() = runTest(testDispatcher) {
+        addStops(GeoPoint(48.2085, 16.3731), GeoPoint(48.2104, 16.3655))
+        val viewModel = viewModel()
+        testScheduler.advanceUntilIdle()
+        val second = viewModel.uiState.value.layers.stops[1].id
+        val to = MapPlace("b", "Prater", PlaceCategory.Park, GeoPoint(48.2166, 16.3958), isTripinly = false, hotCount = 0, prominence = 80)
+
+        viewModel.onAction(MapAction.MapView.PlacePinClick(to))
+        viewModel.onAction(MapAction.PlaceCard.Route(startId = second))
+        testScheduler.advanceUntilIdle()
+
+        assertEquals("Stop 2", viewModel.uiState.value.pointRouteCard?.from?.name)
+        assertEquals(listOf(GeoPoint(48.2104, 16.3655) to to.location), routes.pointRoutes)
+    }
+
+    @Test
+    fun `a user near the place starts from where they are`() = runTest(testDispatcher) {
+        addStops(GeoPoint(48.2085, 16.3731))
+        fakeLocationRepository.locationResult = Coordinates(48.2000, 16.3700).asSuccess()
+        val viewModel = viewModel()
+        viewModel.onAction(MapAction.Location.PermissionChecked(LocationPermission.Granted))
+        testScheduler.advanceUntilIdle()
+        val to = MapPlace("b", "Prater", PlaceCategory.Park, GeoPoint(48.2166, 16.3958), isTripinly = false, hotCount = 0, prominence = 80)
+
+        viewModel.onAction(MapAction.MapView.PlacePinClick(to))
+        testScheduler.advanceUntilIdle()
+        val routeStart = assertNotNull(viewModel.uiState.value.placeCard?.routeStart)
+        assertNull(routeStart.start.stopNumber)
+        assertEquals(listOf(null, 1), routeStart.options.map { it.stopNumber })
+
+        viewModel.onAction(MapAction.PlaceCard.Route())
+        testScheduler.advanceUntilIdle()
+        assertEquals(listOf(GeoPoint(48.2000, 16.3700) to to.location), routes.pointRoutes)
+        assertEquals(UiText.Resource(Res.string.map_route_my_location), viewModel.uiState.value.pointRouteCard?.fromLabel)
+    }
+
+    @Test
+    fun `a place with no stops on the day and no known location offers no route`() = runTest(testDispatcher) {
+        val viewModel = viewModel()
+        testScheduler.advanceUntilIdle()
+        val to = MapPlace("b", "Prater", PlaceCategory.Park, GeoPoint(48.2166, 16.3958), isTripinly = false, hotCount = 0, prominence = 80)
+
+        viewModel.onAction(MapAction.MapView.PlacePinClick(to))
+        testScheduler.advanceUntilIdle()
+
+        assertNull(viewModel.uiState.value.placeCard?.routeStart)
     }
 
     @Test

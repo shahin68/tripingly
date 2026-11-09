@@ -172,10 +172,10 @@
     <string name="map_along_the_way">Útközben</string>
     <string name="map_along_the_way_item">%1$s múlva · %2$s-re az útvonaltól</string>
     <string name="map_along_add">Hozzáadás a(z) %1$d. naphoz</string>
-    <string name="map_route_from_here">Útvonal innen</string>
-    <string name="map_route_to_here">Útvonal ide</string>
-    <string name="map_route_pick_destination">Most nyisd meg a helyet, ahová menni szeretnél.</string>
-    <string name="map_route_start">Útvonal innen: %1$s</string>
+    <string name="map_route_from_stop">%1$s a(z) %2$d. megállótól</string>
+    <string name="map_route_from_you">%1$s tőled</string>
+    <string name="map_route_my_location">Saját helyzetem</string>
+    <string name="map_route_choose_start">Kiindulópont választása</string>
     <string name="map_route_between">%1$s → %2$s</string>
     <string name="map_route_close">Útvonal bezárása</string>
     <string name="map_best_order">Legjobb sorrend</string>

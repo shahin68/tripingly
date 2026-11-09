@@ -89,7 +89,6 @@ sealed interface MapAction {
         /** Adds a place along the way to the open day. */
         data class AddAlongTheWay(val place: MapPlace) : Plan
         data object ClosePointRoute : Plan
-        data object CancelRouteStart : Plan
     }
 
     /** The card over the selected stop. */
@@ -115,10 +114,8 @@ sealed interface MapAction {
         data object OpenPhotos : PlaceCard
         /** A tapped image opens full screen. */
         data class OpenImage(val index: Int) : PlaceCard
-        /** A route from here to the next place picked. */
-        data object RouteFrom : PlaceCard
-        /** The route from the place picked first to this one. */
-        data object RouteTo : PlaceCard
+        /** The route to the place from [startId] (one of the card's starts), or from the start the card shows. */
+        data class Route(val startId: String? = null) : PlaceCard
     }
 
     /** The sheet or full-screen viewer open over the map. */

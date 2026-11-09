@@ -1,6 +1,12 @@
 package com.falcon.tripingly.feature.map.presentation.map.ui
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
@@ -8,27 +14,37 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Directions
+import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.PhotoLibrary
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.Directions
-import androidx.compose.material.icons.outlined.Flag
 import androidx.compose.material.icons.outlined.Language
+import androidx.compose.material.icons.outlined.MyLocation
 import androidx.compose.material.icons.outlined.PhotoLibrary
+import androidx.compose.material.icons.outlined.Place
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.tooling.preview.PreviewParameter
 import androidx.compose.ui.tooling.preview.PreviewParameterProvider
+import androidx.compose.ui.unit.dp
+import com.falcon.tripingly.core.designsystem.component.AppDropdownMenu
 import com.falcon.tripingly.core.designsystem.component.ButtonSize
+import com.falcon.tripingly.core.designsystem.component.DropdownAction
 import com.falcon.tripingly.core.designsystem.component.GlassSurface
 import com.falcon.tripingly.core.designsystem.component.OsmAttribution
 import com.falcon.tripingly.core.designsystem.component.PrimaryButton
-import com.falcon.tripingly.core.designsystem.component.SecondaryButton
 import com.falcon.tripingly.core.designsystem.component.icon
 import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
 import com.falcon.tripingly.core.designsystem.theme.spacing
@@ -36,19 +52,25 @@ import com.falcon.tripingly.core.model.place.MapPlace
 import com.falcon.tripingly.core.model.place.PlaceCategory
 import com.falcon.tripingly.core.model.place.PlaceDetails
 import com.falcon.tripingly.core.model.trip.UserSummary
+import com.falcon.tripingly.core.ui.UiText
 import com.falcon.tripingly.feature.map.generated.resources.*
 import com.falcon.tripingly.feature.map.generated.resources.Res
+import com.falcon.tripingly.feature.map.presentation.map.RouteStartOption
+import com.falcon.tripingly.feature.map.presentation.map.RouteStartState
 import com.falcon.tripingly.feature.map.presentation.map.preview.previewCafe
+import com.falcon.tripingly.feature.map.presentation.map.state.MY_LOCATION_START
 import com.falcon.tripingly.feature.map.presentation.map.preview.previewPlace
 import com.falcon.tripingly.feature.map.presentation.map.preview.previewPlaceDetails
+import kotlinx.collections.immutable.persistentListOf
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
 
 /**
  * A place tapped on the map, in a card that floats above its pin: what the pin knows at once, its images,
  * opening hours and website once loaded, its photos (anyone can add one), and Add to the open day for owners
- * and editors ([dayNumber] is null for viewers). A tapped image opens full screen. Anyone can route from the
- * place, and to it once another place was picked to start from ([onRouteTo]).
+ * and editors ([dayNumber] is null for viewers). A tapped image opens full screen. [routeStart]: how far the place
+ * is from the start the app guessed; tapping it routes from there, its arrow lists the other starts ([onRoute] gets
+ * the picked start's id, null for the guess).
  */
 @Composable
 fun PlaceCard(
@@ -60,9 +82,9 @@ fun PlaceCard(
     onAdd: () -> Unit,
     onOpenImage: (index: Int) -> Unit,
     onOpenPhotos: () -> Unit,
-    onRouteFrom: () -> Unit,
-    /** Null until "Route from here" was tapped on another place. */
-    onRouteTo: (() -> Unit)?,
+    /** Null while there's nowhere to start from: no stops on the open day and no known location. */
+    routeStart: RouteStartState?,
+    onRoute: (startId: String?) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     GlassSurface(modifier = modifier.widthIn(max = MapCardMaxWidth), shape = MaterialTheme.shapes.extraLarge, blur = false) {
@@ -86,15 +108,15 @@ fun PlaceCard(
             notes.forEach { note ->
                 Text(note, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(horizontal = MaterialTheme.spacing.extraSmall))
             }
-            PlaceActions(address == null, details?.website, dayNumber, onAdd, onOpenPhotos, onRouteFrom, onRouteTo)
+            PlaceActions(address == null, details?.website, dayNumber, onAdd, onOpenPhotos, routeStart, onRoute)
             OsmAttribution(modifier = Modifier.padding(horizontal = MaterialTheme.spacing.extraSmall))
         }
     }
 }
 
 /**
- * Photos (not for an address from search, which is no place of ours), route from here, route to here once another
- * place was picked, the website, and Add to the open day.
+ * The route from the guessed start (with how far it is), photos (not for an address from search, which is no place
+ * of ours), the website, and Add to the open day.
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -104,8 +126,8 @@ private fun PlaceActions(
     dayNumber: Int?,
     onAdd: () -> Unit,
     onOpenPhotos: () -> Unit,
-    onRouteFrom: () -> Unit,
-    onRouteTo: (() -> Unit)?,
+    routeStart: RouteStartState?,
+    onRoute: (startId: String?) -> Unit,
 ) {
     val uriHandler = LocalUriHandler.current
     FlowRow(
@@ -113,11 +135,8 @@ private fun PlaceActions(
         verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
         itemVerticalAlignment = Alignment.CenterVertically,
     ) {
+        routeStart?.let { RouteStartPill(it, onRoute) }
         if (hasPhotos) ActionIconButton(onOpenPhotos, Icons.Outlined.PhotoLibrary, stringResource(Res.string.map_place_photos))
-        ActionIconButton(onRouteFrom, Icons.Outlined.Directions, stringResource(Res.string.map_route_from_here))
-        if (onRouteTo != null) {
-            SecondaryButton(stringResource(Res.string.map_route_to_here), onRouteTo, size = ButtonSize.Small, icon = Icons.Outlined.Flag)
-        }
         website?.let {
             ActionIconButton(
                 onClick = {
@@ -135,6 +154,65 @@ private fun PlaceActions(
     }
 }
 
+/**
+ * "1.2 km from stop 1": tapping it routes from that start; the arrow opens the menu of every start (the user, then
+ * the open day's stops nearest first), and picking one routes from it at once.
+ */
+@Composable
+private fun RouteStartPill(routeStart: RouteStartState, onRoute: (startId: String?) -> Unit) {
+    var menuOpen by remember { mutableStateOf(false) }
+    val start = routeStart.start
+    val distance = distanceText(start.distanceMeters).asString()
+    Box {
+        Row(
+            modifier = Modifier.heightIn(min = ActionHeight).clip(CircleShape).background(MaterialTheme.colorScheme.surfaceVariant),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Row(
+                modifier = Modifier.heightIn(min = ActionHeight).clickable { onRoute(null) }
+                    .padding(start = MaterialTheme.spacing.small + MaterialTheme.spacing.extraSmall, end = MaterialTheme.spacing.extraSmall),
+                horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraSmall),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Icon(Icons.Outlined.Directions, contentDescription = null, modifier = Modifier.size(18.dp))
+                Text(
+                    text = start.stopNumber?.let { stringResource(Res.string.map_route_from_stop, distance, it) }
+                        ?: stringResource(Res.string.map_route_from_you, distance),
+                    style = MaterialTheme.typography.labelLarge,
+                    maxLines = 1,
+                )
+            }
+            Box(
+                modifier = Modifier.size(ActionHeight).clickable { menuOpen = true },
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    imageVector = if (menuOpen) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
+                    contentDescription = stringResource(Res.string.map_route_choose_start),
+                    modifier = Modifier.size(20.dp),
+                )
+            }
+        }
+        AppDropdownMenu(
+            expanded = menuOpen,
+            onDismissRequest = { menuOpen = false },
+            actions = routeStart.options.map { option ->
+                DropdownAction(
+                    label = option.stopNumber?.let { number -> "$number · ${option.stopName?.asString().orEmpty()}" }
+                        ?: stringResource(Res.string.map_route_my_location),
+                    icon = if (option.stopNumber == null) Icons.Outlined.MyLocation else Icons.Outlined.Place,
+                    badge = distanceText(option.distanceMeters).asString(),
+                    selected = option.id == start.id,
+                    onClick = {
+                        menuOpen = false
+                        onRoute(option.id)
+                    },
+                )
+            },
+        )
+    }
+}
+
 private fun PlaceCategory.label(): StringResource = when (this) {
     PlaceCategory.Cafe -> Res.string.map_place_category_cafe
     PlaceCategory.Restaurant -> Res.string.map_place_category_restaurant
@@ -148,14 +226,14 @@ private fun PlaceCategory.label(): StringResource = when (this) {
     PlaceCategory.Other -> Res.string.map_place_category_other
 }
 
-/** A place loading, loaded with images, hours and website, an address from search, a viewer's offering "Route to here", and a custom spot crediting its creator. */
+/** A place loading, loaded with images, hours and website, an address from search, a viewer's with the route start, and a custom spot crediting its creator. */
 internal class PlaceCardPreviewStates : PreviewParameterProvider<PlaceCardPreview> {
     override val values = sequenceOf(
-        PlaceCardPreview(previewPlace, details = null, address = null, dayNumber = 2, canRouteTo = false),
-        PlaceCardPreview(previewPlace, previewPlaceDetails, address = null, dayNumber = 2, canRouteTo = false),
-        PlaceCardPreview(previewCafe.copy(name = "12 Rue de Rivoli"), details = null, address = "12 Rue de Rivoli, 75004 Paris, France", dayNumber = 1, canRouteTo = false),
-        PlaceCardPreview(previewCafe, previewPlaceDetails.copy(images = emptyList(), openingHours = null, website = null), address = null, dayNumber = null, canRouteTo = true),
-        PlaceCardPreview(previewCafe, previewPlaceDetails.copy(addedBy = UserSummary("u-1", "anna", "Anna")), address = null, dayNumber = 1, canRouteTo = false),
+        PlaceCardPreview(previewPlace, details = null, address = null, dayNumber = 2, routeStart = null),
+        PlaceCardPreview(previewPlace, previewPlaceDetails, address = null, dayNumber = 2, routeStart = null),
+        PlaceCardPreview(previewCafe.copy(name = "12 Rue de Rivoli"), details = null, address = "12 Rue de Rivoli, 75004 Paris, France", dayNumber = 1, routeStart = null),
+        PlaceCardPreview(previewCafe, previewPlaceDetails.copy(images = emptyList(), openingHours = null, website = null), address = null, dayNumber = null, routeStart = previewRouteStart),
+        PlaceCardPreview(previewCafe, previewPlaceDetails.copy(addedBy = UserSummary("u-1", "anna", "Anna")), address = null, dayNumber = 1, routeStart = null),
     )
 }
 
@@ -164,7 +242,16 @@ internal data class PlaceCardPreview(
     val details: PlaceDetails?,
     val address: String?,
     val dayNumber: Int?,
-    val canRouteTo: Boolean,
+    val routeStart: RouteStartState?,
+)
+
+private val previewRouteStart = RouteStartState(
+    start = RouteStartOption("m-1", stopNumber = 1, stopName = UiText.Server("Saint Stephen's"), distanceMeters = 1200),
+    options = persistentListOf(
+        RouteStartOption(MY_LOCATION_START, stopNumber = null, stopName = null, distanceMeters = 2300),
+        RouteStartOption("m-1", stopNumber = 1, stopName = UiText.Server("Saint Stephen's"), distanceMeters = 1200),
+        RouteStartOption("m-2", stopNumber = 2, stopName = UiText.Server("Wilhelminenberg"), distanceMeters = 3400),
+    ),
 )
 
 @Preview
@@ -179,8 +266,8 @@ private fun PlaceCardPreview(@PreviewParameter(PlaceCardPreviewStates::class) ca
             onAdd = {},
             onOpenImage = {},
             onOpenPhotos = {},
-            onRouteFrom = {},
-            onRouteTo = if (card.canRouteTo) ({}) else null,
+            routeStart = card.routeStart,
+            onRoute = {},
         )
     }
 }
@@ -189,6 +276,6 @@ private fun PlaceCardPreview(@PreviewParameter(PlaceCardPreviewStates::class) ca
 @Composable
 private fun PlaceCardDarkPreview() {
     TripinglyTheme(darkTheme = true) {
-        PlaceCard(previewPlace, previewPlaceDetails, address = null, dayNumber = 2, onAdd = {}, onOpenImage = {}, onOpenPhotos = {}, onRouteFrom = {}, onRouteTo = null)
+        PlaceCard(previewPlace, previewPlaceDetails, address = null, dayNumber = 2, onAdd = {}, onOpenImage = {}, onOpenPhotos = {}, routeStart = previewRouteStart, onRoute = {})
     }
 }

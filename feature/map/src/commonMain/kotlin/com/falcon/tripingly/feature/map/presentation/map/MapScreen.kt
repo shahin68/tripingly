@@ -265,7 +265,6 @@ internal fun MapScreen(
             routeAttribution = state.routeAttribution,
             location = state.location,
             arePlacesHidden = state.arePlacesHidden,
-            routeStartName = state.routeStartName,
             dayTabs = state.dayTabs,
             plan = plan,
             editorMenu = state.header.editorMenu,
@@ -315,8 +314,8 @@ internal fun MapScreen(
                     onAdd = { onAction(MapAction.PlaceCard.AddToDay) },
                     onOpenImage = { index -> onAction(MapAction.PlaceCard.OpenImage(index)) },
                     onOpenPhotos = { onAction(MapAction.PlaceCard.OpenPhotos) },
-                    onRouteFrom = { onAction(MapAction.PlaceCard.RouteFrom) },
-                    onRouteTo = { onAction(MapAction.PlaceCard.RouteTo) }.takeIf { card.canRouteTo },
+                    routeStart = card.routeStart,
+                    onRoute = { startId -> onAction(MapAction.PlaceCard.Route(startId)) },
                 )
             }
             val pickPhotos = rememberPhotoPicker { images -> onAction(MapAction.StopCard.AddPhotos(images)) }

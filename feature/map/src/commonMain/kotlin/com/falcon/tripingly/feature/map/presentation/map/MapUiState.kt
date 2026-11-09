@@ -36,8 +36,6 @@ data class MapUiState(
     val dayTabs: DayTabsState = DayTabsState(),
     /** The plan sheet's card: a route from A to B, else the open day's stops; closed while the day has none. */
     val plan: PlanCardState? = null,
-    /** "Route from here" was tapped on this place: the chip that cancels it. */
-    val routeStartName: String? = null,
     /** The card over the tapped place's pin, once the camera has centered it. */
     val placeCard: PlaceCardState? = null,
     /** The card over the tapped stop's pin, once the camera has centered it. */
@@ -166,6 +164,8 @@ data class PointRouteCardState(
     val from: MapPlace,
     val to: MapPlace,
     val route: RouteSummaryState,
+    /** The start's name when it's no place of ours: "My location", "Stop 3". */
+    val fromLabel: UiText? = null,
 ) : PlanCardState
 
 /** A route's way of travelling, its time and length, and the places along the way. */
@@ -192,9 +192,17 @@ data class PlaceCardState(
     val address: String?,
     /** The open day "Add" puts the place on; null when this user can't add stops. */
     val addToDayNumber: Int?,
-    /** "Route from here" was tapped on another place, so this one offers "Route to here". */
-    val canRouteTo: Boolean,
+    /** The route button, from the start guessed for the user; null with nowhere to start from (no location, no stops). */
+    val routeStart: RouteStartState? = null,
 )
+
+/** The place card's route button: how far the place is from [start] ("1.2 km from stop 1"), and the [options] its arrow lists. */
+@Immutable
+data class RouteStartState(val start: RouteStartOption, val options: ImmutableList<RouteStartOption>)
+
+/** A start for the route: one of the open day's stops ([stopNumber], [stopName]), or the user when both are null. */
+@Immutable
+data class RouteStartOption(val id: String, val stopNumber: Int?, val stopName: UiText?, val distanceMeters: Int)
 
 @Immutable
 data class StopCardState(

@@ -211,7 +211,6 @@ class MapViewModel(
             is MapAction.Plan.AlongTheWayClick -> selection.openPlace(action.place)
             is MapAction.Plan.AddAlongTheWay -> routes.addAlongTheWay(action.place)
             is MapAction.Plan.ClosePointRoute -> routes.closePointRoute()
-            is MapAction.Plan.CancelRouteStart -> routes.cancelRouteStart()
         }
     }
 
@@ -233,8 +232,7 @@ class MapViewModel(
             // Not for an address from search: it isn't one of our places yet.
             is MapAction.PlaceCard.OpenPhotos -> selection.selectedPlace?.takeIf { it.address == null }?.let { openSheet(Sheet.PlacePhotos(it.place)) }
             is MapAction.PlaceCard.OpenImage -> selection.openPlaceImage(action.index)
-            is MapAction.PlaceCard.RouteFrom -> routes.startPointRoute()
-            is MapAction.PlaceCard.RouteTo -> routes.showPointRoute()
+            is MapAction.PlaceCard.Route -> routes.routeToPlace(action.startId)
         }
     }
 

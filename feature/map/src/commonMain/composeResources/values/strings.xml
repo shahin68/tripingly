@@ -172,10 +172,10 @@
     <string name="map_along_the_way">Along the way</string>
     <string name="map_along_the_way_item">in %1$s · %2$s off route</string>
     <string name="map_along_add">Add to day %1$d</string>
-    <string name="map_route_from_here">Route from here</string>
-    <string name="map_route_to_here">Route to here</string>
-    <string name="map_route_pick_destination">Now open the place you want to go to.</string>
-    <string name="map_route_start">Route from %1$s</string>
+    <string name="map_route_from_stop">%1$s from stop %2$d</string>
+    <string name="map_route_from_you">%1$s from you</string>
+    <string name="map_route_my_location">My location</string>
+    <string name="map_route_choose_start">Choose where to start</string>
     <string name="map_route_between">%1$s → %2$s</string>
     <string name="map_route_close">Close the route</string>
     <string name="map_best_order">Best order</string>

@@ -101,8 +101,6 @@ internal data class RouteModel(
      */
     val isAnimated: Boolean = false,
     val travelMode: TravelMode = TravelMode.Walking,
-    /** "Route from here" was tapped on this place; the next place's card offers "Route to here". */
-    val start: MapPlace? = null,
     /** A route from A to B, shown instead of the day's. */
     val between: PointRoute? = null,
     val plan: RoutePlan? = null,
@@ -117,8 +115,8 @@ internal data class RouteModel(
     val isFindingBestOrder: Boolean = false,
 )
 
-/** A route from one place to another. */
-internal data class PointRoute(val from: MapPlace, val to: MapPlace)
+/** A route from one place to another; [fromLabel] names the start when it's no place of ours (the user, an unnamed stop). */
+internal data class PointRoute(val from: MapPlace, val to: MapPlace, val fromLabel: UiText? = null)
 
 internal data class LocationModel(
     /** Null until the screen has read it. */
@@ -128,6 +126,10 @@ internal data class LocationModel(
     /** The location button was tapped: the camera moves to the first location that comes. */
     val isWaitingForFirst: Boolean = false,
 )
+
+/** Where the user is, while the app may know it. */
+internal val LocationModel.knownPoint: GeoPoint?
+    get() = current?.takeIf { permission == LocationPermission.Granted }?.let { GeoPoint(it.latitude, it.longitude) }
 
 internal data class PinsModel(
     val pins: List<PlacePin> = emptyList(),
