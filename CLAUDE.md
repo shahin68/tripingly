@@ -85,6 +85,7 @@ Report to the user after each stage.
 | `api-integration` | Any API call, repository, DTO, error handling, fakes, contract changes |
 | `feature-module` | Creating a new `feature:*` or `core:*` module end to end |
 | `ui-component` | Adding or changing a design-system component in `core:designsystem` |
+| `layout-symmetry` | Every UI change and canvas design: symmetric paddings, equal heights, aligned actions (checklist) |
 | `auth-and-onboarding` | Google/Apple sign-in, tokens, refresh, onboarding, consent, sign-out |
 | `map-features` | Google Maps screens: places in view, pins with thumbnails, clustering, search, routes, along-the-way, attribution |
 | `photos` | Picking, uploading, gallery, cover, image loading |
