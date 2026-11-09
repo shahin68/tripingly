@@ -147,7 +147,7 @@ private fun StopChips(card: StopsCardState, onAction: (MapAction) -> Unit) {
 /** The time from the stop before ("12 min") between two lines, growing in after the route card, one gap after another. */
 @Composable
 private fun LegConnector(leg: UiText?, color: Color, index: Int) {
-    val delay = LEG_DELAY_MILLIS + index * LEG_STAGGER_MILLIS
+    val delay = LEG_DELAY_MILLIS + index.coerceAtMost(LEG_STAGGERED) * LEG_STAGGER_MILLIS
     AnimatedContent(
         targetState = leg,
         contentKey = { it != null },
@@ -285,6 +285,8 @@ private val LegLineWidth = 2.dp
 // The canvas's timings: the times grow into the gaps one after another, just after the route card starts growing.
 private const val LEG_DELAY_MILLIS = 80
 private const val LEG_STAGGER_MILLIS = 60
+// Gaps further on are off screen anyway, so they don't wait.
+private const val LEG_STAGGERED = 5
 private const val LEG_GROW_MILLIS = 420
 private const val LEG_FADE_MILLIS = 220
 private const val LEG_FADE_OUT_MILLIS = 120
