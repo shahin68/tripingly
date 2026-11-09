@@ -46,6 +46,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
@@ -116,23 +117,26 @@ internal fun TravelModeToggle(
 @Composable
 internal fun RouteCardSlot(route: RouteSummaryState?, onAction: (MapAction) -> Unit, modifier: Modifier = Modifier, isAnimated: Boolean = true) {
     val grow = tween<IntSize>(ROUTE_GROW_MILLIS, easing = RouteGrowEasing)
-    AnimatedContent(
-        targetState = route,
-        contentKey = { it != null },
-        transitionSpec = {
-            if (isAnimated) {
-                fadeIn(tween(CARD_FADE_IN_MILLIS)) togetherWith fadeOut(tween(CARD_FADE_OUT_MILLIS, CARD_FADE_OUT_DELAY_MILLIS)) using SizeTransform { _, _ -> grow }
-            } else {
-                EnterTransition.None togetherWith ExitTransition.None using null
-            }
-        },
-        contentAlignment = Alignment.TopStart,
-        // A shade of the content colour, not a surface colour: the glass sheet is nearly white (light) or nearly the
-        // darkest surface (dark), so a surface colour vanishes on one of them; this is a touch darker or lighter on both.
-        modifier = modifier.clip(MaterialTheme.shapes.large).background(MaterialTheme.colorScheme.onSurface.copy(alpha = CARD_SHADE)),
-        label = "route card",
-    ) { shown ->
-        if (shown != null) RouteCardContent(shown, isAnimated, onAction)
+    // The card's background is a plain box around the animation, sized by it, so it grows and shrinks with the card
+    // and stays drawn when the animation rests. An opaque colour (a touch darker or lighter than the sheet's glass,
+    // worked out once), not a see-through shade: translucent paint on the translucent glass didn't show on devices.
+    val cardColor = MaterialTheme.colorScheme.onSurface.copy(alpha = CARD_SHADE).compositeOver(GlassDefaults.opaqueTint.compositeOver(MaterialTheme.colorScheme.surface))
+    Box(modifier.clip(MaterialTheme.shapes.large).background(cardColor)) {
+        AnimatedContent(
+            targetState = route,
+            contentKey = { it != null },
+            transitionSpec = {
+                if (isAnimated) {
+                    fadeIn(tween(CARD_FADE_IN_MILLIS)) togetherWith fadeOut(tween(CARD_FADE_OUT_MILLIS, CARD_FADE_OUT_DELAY_MILLIS)) using SizeTransform { _, _ -> grow }
+                } else {
+                    EnterTransition.None togetherWith ExitTransition.None using null
+                }
+            },
+            contentAlignment = Alignment.TopStart,
+            label = "route card",
+        ) { shown ->
+            if (shown != null) RouteCardContent(shown, isAnimated, onAction)
+        }
     }
 }
 
