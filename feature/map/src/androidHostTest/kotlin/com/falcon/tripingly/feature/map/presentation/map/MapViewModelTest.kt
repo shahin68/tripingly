@@ -1801,6 +1801,8 @@ class MapViewModelTest {
         val to = MapPlace("b", "Prater", PlaceCategory.Park, GeoPoint(48.2166, 16.3958), isTripinly = false, hotCount = 0, prominence = 80)
 
         viewModel.onAction(MapAction.MapView.PlacePinClick(to))
+        // The camera rests on the place: its card opens.
+        viewModel.onAction(MapAction.MapView.CameraRest(Coordinates(to.location.lat, to.location.lng), 15f))
         testScheduler.advanceUntilIdle()
         val routeStart = assertNotNull(viewModel.uiState.value.placeCard?.routeStart)
         assertEquals(first, routeStart.start.id)
@@ -1854,6 +1856,8 @@ class MapViewModelTest {
         val to = MapPlace("b", "Prater", PlaceCategory.Park, GeoPoint(48.2166, 16.3958), isTripinly = false, hotCount = 0, prominence = 80)
 
         viewModel.onAction(MapAction.MapView.PlacePinClick(to))
+        // The camera rests on the place: its card opens.
+        viewModel.onAction(MapAction.MapView.CameraRest(Coordinates(to.location.lat, to.location.lng), 15f))
         testScheduler.advanceUntilIdle()
         val routeStart = assertNotNull(viewModel.uiState.value.placeCard?.routeStart)
         assertNull(routeStart.start.stopNumber)
@@ -1872,8 +1876,10 @@ class MapViewModelTest {
         val to = MapPlace("b", "Prater", PlaceCategory.Park, GeoPoint(48.2166, 16.3958), isTripinly = false, hotCount = 0, prominence = 80)
 
         viewModel.onAction(MapAction.MapView.PlacePinClick(to))
+        viewModel.onAction(MapAction.MapView.CameraRest(Coordinates(to.location.lat, to.location.lng), 15f))
         testScheduler.advanceUntilIdle()
 
+        assertNotNull(viewModel.uiState.value.placeCard)
         assertNull(viewModel.uiState.value.placeCard?.routeStart)
     }
 
