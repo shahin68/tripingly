@@ -130,6 +130,7 @@ internal class MapStateMapper(
             canClear = canDeleteDay(),
             // A route needs two stops.
             isRouteOn = route.isDayRouteShown.takeIf { stops.size >= 2 },
+            isRouteFailed = isRouteShown && route.isUnavailable && !route.isLoading,
             route = routeSummary().takeIf { isRouteShown },
             legLabels = if (isRouteShown && isDayRoute) {
                 plan?.route?.legs.orEmpty().mapNotNull { leg -> leg.toMarkerId?.let { it to durationText(leg.durationSeconds) } }.toMap().toImmutableMap()

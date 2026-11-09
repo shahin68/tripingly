@@ -160,6 +160,7 @@
 
     <!-- Routes -->
     <string name="map_route">Route</string>
+    <string name="map_route_retry">Erneut</string>
     <string name="map_mode_walking">Zu Fuß</string>
     <string name="map_mode_cycling">Rad</string>
     <string name="map_mode_driving">Auto</string>

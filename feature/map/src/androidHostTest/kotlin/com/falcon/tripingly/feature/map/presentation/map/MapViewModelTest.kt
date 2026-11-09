@@ -1712,6 +1712,27 @@ class MapViewModelTest {
     }
 
     @Test
+    fun `a failed route turns the Route button into Retry, which asks again and keeps the route on`() = runTest(testDispatcher) {
+        addStops(GeoPoint(48.2085, 16.3731), GeoPoint(48.2104, 16.3655))
+        routes.error = DataError.Network.Api(503, RouteErrorCodes.ROUTING_UNAVAILABLE, "Routes aren't available")
+        val viewModel = viewModel()
+        viewModel.onAction(MapAction.Plan.ToggleRoute)
+        testScheduler.advanceUntilIdle()
+        assertEquals(true, viewModel.uiState.value.stopsCard?.isRouteFailed)
+        val asked = routes.dayRoutes.size
+
+        routes.error = null
+        viewModel.onAction(MapAction.Plan.RetryRoute)
+        testScheduler.advanceUntilIdle()
+
+        val card = assertNotNull(viewModel.uiState.value.stopsCard)
+        assertEquals(asked + 1, routes.dayRoutes.size)
+        assertEquals(true, card.isRouteOn)
+        assertEquals(false, card.isRouteFailed)
+        assertEquals(false, card.route?.isEstimated)
+    }
+
+    @Test
     fun `without routing the day keeps its own lines between the stops, never straight lines`() = runTest(testDispatcher) {
         addStops(GeoPoint(48.2085, 16.3731), GeoPoint(48.2104, 16.3655))
         routes.error = DataError.Network.Api(503, RouteErrorCodes.ROUTING_UNAVAILABLE, "Routes aren't available")

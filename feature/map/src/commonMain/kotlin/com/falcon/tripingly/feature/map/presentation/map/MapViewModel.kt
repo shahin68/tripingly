@@ -205,6 +205,7 @@ class MapViewModel(
             is MapAction.Plan.RemoveStop -> edits.removeMarker(action.markerId)
             is MapAction.Plan.ClearAll -> openDialog(Dialog.ClearDay)
             is MapAction.Plan.ToggleRoute -> routes.toggleDayRoute()
+            is MapAction.Plan.RetryRoute -> routes.retryRoute()
             is MapAction.Plan.SelectTravelMode -> routes.selectTravelMode(action.mode)
             is MapAction.Plan.FindBestOrder -> routes.findBestOrder()
             is MapAction.Plan.AlongTheWayClick -> selection.openPlace(action.place)

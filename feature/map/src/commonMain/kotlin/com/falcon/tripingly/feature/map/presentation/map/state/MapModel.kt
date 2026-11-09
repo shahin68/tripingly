@@ -112,6 +112,8 @@ internal data class RouteModel(
     /** The route couldn't be had: the day keeps its own lines, without times. */
     val isUnavailable: Boolean = false,
     val isLoading: Boolean = false,
+    /** Retry was tapped this many times: each asks for the same route again. */
+    val attempt: Int = 0,
     val isFindingBestOrder: Boolean = false,
 )
 

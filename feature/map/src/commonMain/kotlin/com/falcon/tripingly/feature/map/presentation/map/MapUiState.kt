@@ -148,6 +148,8 @@ data class StopsCardState(
     val canClear: Boolean,
     /** The Route button; null with fewer than two stops, which have no route. */
     val isRouteOn: Boolean?,
+    /** The route is on but couldn't be had: the Route button turns into an orange Retry. */
+    val isRouteFailed: Boolean = false,
     /** The route's times and the places along it, while the Route button is on. */
     val route: RouteSummaryState?,
     /** The time to each stop from the one before ("12 min"), by stop ID, while the route shows. */

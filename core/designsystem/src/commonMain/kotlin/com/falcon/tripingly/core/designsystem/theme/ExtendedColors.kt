@@ -23,6 +23,9 @@ data class ExtendedColors(
     val onStop: Color,
     /** A place's pin (and a hot spot's) on the map: slate grey, softer on the dark map. */
     val place: Color,
+    /** Something switched on that failed and can be tried again: orange, with [onAttention] on it. */
+    val attention: Color,
+    val onAttention: Color,
 )
 
 internal val LightExtendedColors = ExtendedColors(
@@ -31,6 +34,8 @@ internal val LightExtendedColors = ExtendedColors(
     stop = IvyLight,
     onStop = OnIvyLight,
     place = SecondaryLight,
+    attention = AttentionLight,
+    onAttention = OnAttentionLight,
 )
 internal val DarkExtendedColors = ExtendedColors(
     glass = GlassDark,
@@ -38,6 +43,8 @@ internal val DarkExtendedColors = ExtendedColors(
     stop = IvyDark,
     onStop = OnIvyDark,
     place = MapPlaceDark,
+    attention = AttentionDark,
+    onAttention = OnAttentionDark,
 )
 
 val LocalExtendedColors = staticCompositionLocalOf { LightExtendedColors }

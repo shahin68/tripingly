@@ -160,6 +160,7 @@
 
     <!-- Routes -->
     <string name="map_route">Útvonal</string>
+    <string name="map_route_retry">Újra</string>
     <string name="map_mode_walking">Gyalog</string>
     <string name="map_mode_cycling">Bicikli</string>
     <string name="map_mode_driving">Autó</string>

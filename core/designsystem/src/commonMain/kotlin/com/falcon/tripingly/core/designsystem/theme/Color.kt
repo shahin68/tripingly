@@ -24,6 +24,9 @@ internal val OutlineLight = Color(0xFF8A8F8B)
 internal val OutlineVariantLight = Color(0xFFD5D8D5)
 internal val ErrorLight = Color(0xFFC22A1E)
 internal val ErrorContainerLight = Color(0xFFFCE3E0)
+// Attention: something on that didn't work and can be tried again (the Route button's Retry), orange, not alarming red.
+internal val AttentionLight = Color(0xFFC8661A)
+internal val OnAttentionLight = Color(0xFFFFFFFF)
 internal val OnErrorContainerLight = Color(0xFF5C0E08)
 
 // Dark
@@ -46,6 +49,8 @@ internal val OutlineDark = Color(0xFF6F7570)
 internal val OutlineVariantDark = Color(0xFF353A37)
 internal val ErrorDark = Color(0xFFFFB4AB)
 internal val ErrorContainerDark = Color(0xFF5C1A14)
+internal val AttentionDark = Color(0xFFF2A65E)
+internal val OnAttentionDark = Color(0xFF3A1E00)
 internal val OnErrorContainerDark = Color(0xFFFFDAD5)
 
 // A place's pin on the dark map: softer than the secondary grey, so the stops lead.

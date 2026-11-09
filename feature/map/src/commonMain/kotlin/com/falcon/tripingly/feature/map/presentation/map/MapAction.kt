@@ -81,6 +81,8 @@ sealed interface MapAction {
         data object ClearAll : Plan
         /** The Route button: shows or hides the open day's route. */
         data object ToggleRoute : Plan
+        /** The Route button's Retry, after the route failed. */
+        data object RetryRoute : Plan
         data class SelectTravelMode(val mode: TravelMode) : Plan
         data object FindBestOrder : Plan
         data class AlongTheWayClick(val place: MapPlace) : Plan

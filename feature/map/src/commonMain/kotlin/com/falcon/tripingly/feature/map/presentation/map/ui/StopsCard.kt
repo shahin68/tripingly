@@ -35,6 +35,7 @@ import androidx.compose.material.icons.outlined.AutoAwesome
 import androidx.compose.material.icons.outlined.CleaningServices
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Directions
+import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -74,6 +75,7 @@ import com.falcon.tripingly.feature.map.generated.resources.map_delete_day
 import com.falcon.tripingly.feature.map.generated.resources.map_ordering
 import com.falcon.tripingly.feature.map.generated.resources.map_remove_stop
 import com.falcon.tripingly.feature.map.generated.resources.map_route
+import com.falcon.tripingly.feature.map.generated.resources.map_route_retry
 import com.falcon.tripingly.feature.map.generated.resources.map_route_between
 import com.falcon.tripingly.feature.map.generated.resources.map_route_close
 import com.falcon.tripingly.feature.map.generated.resources.map_stop_count
@@ -109,12 +111,13 @@ internal fun StopsCard(
         }
         PlanTitleRow(title = { ScrambleText(title, it, style = MaterialTheme.typography.titleMedium) }) {
             card.isRouteOn?.let { isOn ->
-                // Neutral like ⋯ while off; green once on.
+                // Neutral like ⋯ while off; green once on; orange Retry when the route failed (a tap asks again, it stays on).
                 ToggleButton(
-                    text = stringResource(Res.string.map_route),
+                    text = stringResource(if (card.isRouteFailed) Res.string.map_route_retry else Res.string.map_route),
                     checked = isOn,
-                    onClick = { onAction(MapAction.Plan.ToggleRoute) },
-                    icon = Icons.Outlined.Directions,
+                    onClick = { onAction(if (card.isRouteFailed) MapAction.Plan.RetryRoute else MapAction.Plan.ToggleRoute) },
+                    icon = if (card.isRouteFailed) Icons.Outlined.Refresh else Icons.Outlined.Directions,
+                    isFailed = card.isRouteFailed,
                 )
             }
             DayMenuButton(dayNumber, card, editorMenu = editorMenu, onAction = onAction)
