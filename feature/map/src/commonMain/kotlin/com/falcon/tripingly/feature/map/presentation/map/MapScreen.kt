@@ -1,7 +1,5 @@
 package com.falcon.tripingly.feature.map.presentation.map
 
-import com.falcon.tripingly.core.designsystem.component.LocalScreenArrived
-import com.falcon.tripingly.core.designsystem.component.rememberHaptics
 import androidx.compose.animation.core.MutableTransitionState
 import androidx.compose.animation.core.rememberTransition
 import androidx.compose.foundation.background
@@ -44,10 +42,9 @@ import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.LayoutCoordinates
-import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.onSizeChanged
-import androidx.compose.ui.unit.toSize
+import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.tooling.preview.Preview
@@ -55,11 +52,15 @@ import androidx.compose.ui.tooling.preview.PreviewParameter
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.toSize
 import com.falcon.tripingly.core.designsystem.component.ErrorScreen
 import com.falcon.tripingly.core.designsystem.component.GlassIconButton
+import com.falcon.tripingly.core.designsystem.component.LocalScreenArrived
 import com.falcon.tripingly.core.designsystem.component.LocalScreenOnTop
 import com.falcon.tripingly.core.designsystem.component.ShowMessage
 import com.falcon.tripingly.core.designsystem.component.SkeletonBox
+import com.falcon.tripingly.core.designsystem.component.bottomSystemBar
+import com.falcon.tripingly.core.designsystem.component.rememberHaptics
 import com.falcon.tripingly.core.designsystem.component.safeSides
 import com.falcon.tripingly.core.designsystem.component.safeTopAndSides
 import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
@@ -78,6 +79,8 @@ import com.falcon.tripingly.feature.map.presentation.component.stopPinRadius
 import com.falcon.tripingly.feature.map.presentation.map.preview.MapScreenPreviewStates
 import com.falcon.tripingly.feature.map.presentation.map.ui.BottomCards
 import com.falcon.tripingly.feature.map.presentation.map.ui.JoinRequestsPill
+import com.falcon.tripingly.feature.map.presentation.map.ui.MapButtons
+import com.falcon.tripingly.feature.map.presentation.map.ui.MapCredits
 import com.falcon.tripingly.feature.map.presentation.map.ui.MapHeader
 import com.falcon.tripingly.feature.map.presentation.map.ui.PinCard
 import com.falcon.tripingly.feature.map.presentation.map.ui.PlaceCard
@@ -267,11 +270,30 @@ internal fun MapScreen(
             plan = plan,
             editorMenu = state.header.editorMenu,
             planSheet = planSheet,
+            isWide = isWide,
             onAction = onAction,
             onTabsHeight = { tabsHeight = hasDays to with(density) { it.toDp() } },
             onCreditsHeight = { creditsHeight = with(density) { it.toDp() } },
             modifier = Modifier.align(Alignment.BottomEnd).then(panel).padding(top = coveredTop),
         )
+
+        // In landscape the map's credits and buttons sit at the bottom of the map half, so the plan sheet has the right
+        // half's whole height (Shahin, 2026-11-09, option 1); in portrait they ride on the sheet.
+        if (isWide) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(covered)
+                    .windowInsetsPadding(WindowInsets.bottomSystemBar)
+                    .padding(MaterialTheme.spacing.medium),
+            ) {
+                MapCredits(
+                    routeAttribution = state.routeAttribution,
+                    modifier = Modifier.align(Alignment.BottomStart).onSizeChanged { creditsHeight = with(density) { it.height.toDp() } },
+                )
+                MapButtons(state.location, state.arePlacesHidden, onAction, Modifier.align(Alignment.BottomEnd))
+            }
+        }
 
         // The part of the map nothing covers: its middle is where the camera puts a tapped pin (lower in landscape).
         Box(modifier = Modifier.fillMaxSize().padding(covered)) {

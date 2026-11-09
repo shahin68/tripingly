@@ -68,6 +68,7 @@ internal fun BottomCards(
     plan: PlanCardState?,
     editorMenu: EditorMenu?,
     planSheet: AnchoredDraggableState<PlanSheetValue>,
+    isWide: Boolean,
     onAction: (MapAction) -> Unit,
     onTabsHeight: (Int) -> Unit,
     onCreditsHeight: (Int) -> Unit,
@@ -82,23 +83,26 @@ internal fun BottomCards(
                 routeStartName?.let { name ->
                     RouteStartChip(name, onAction, Modifier.padding(start = MaterialTheme.spacing.medium))
                 }
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = MaterialTheme.spacing.medium),
-                    verticalAlignment = Alignment.Bottom,
-                ) {
-                    // Our places come from OpenStreetMap, routes from openrouteservice too. The credits and the gap
-                    // under them are what this row covers of the map.
-                    MapCredits(
-                        routeAttribution = routeAttribution,
+                // In landscape they sit on the map half instead (MapScreen), so the plan has the panel's whole height.
+                if (!isWide) {
+                    Row(
                         modifier = Modifier
-                            .weight(1f, fill = false)
-                            .onSizeChanged { onCreditsHeight(it.height) }
-                            .padding(bottom = MaterialTheme.spacing.small),
-                    )
-                    Spacer(modifier = Modifier.weight(1f))
-                    MapButtons(location, arePlacesHidden, onAction, Modifier.padding(bottom = MaterialTheme.spacing.small))
+                            .fillMaxWidth()
+                            .padding(horizontal = MaterialTheme.spacing.medium),
+                        verticalAlignment = Alignment.Bottom,
+                    ) {
+                        // Our places come from OpenStreetMap, routes from openrouteservice too. The credits and the gap
+                        // under them are what this row covers of the map.
+                        MapCredits(
+                            routeAttribution = routeAttribution,
+                            modifier = Modifier
+                                .weight(1f, fill = false)
+                                .onSizeChanged { onCreditsHeight(it.height) }
+                                .padding(bottom = MaterialTheme.spacing.small),
+                        )
+                        Spacer(modifier = Modifier.weight(1f))
+                        MapButtons(location, arePlacesHidden, onAction, Modifier.padding(bottom = MaterialTheme.spacing.small))
+                    }
                 }
             },
             modifier = Modifier.weight(1f, fill = false),
@@ -122,7 +126,7 @@ internal fun BottomCards(
 
 /** OpenStreetMap's credit, or the route's while one shows, on a small glass label. */
 @Composable
-private fun MapCredits(routeAttribution: String?, modifier: Modifier = Modifier) {
+internal fun MapCredits(routeAttribution: String?, modifier: Modifier = Modifier) {
     GlassSurface(modifier = modifier, shape = MaterialTheme.shapes.extraSmall, shadowElevation = 0.dp, blur = false) {
         if (routeAttribution != null) RouteAttribution(routeAttribution) else OsmAttribution()
     }
