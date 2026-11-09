@@ -2,6 +2,8 @@ package com.falcon.tripingly.feature.map.presentation.map.ui
 
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibilityScope
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.SizeTransform
 import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.tween
@@ -112,19 +114,25 @@ internal fun TravelModeToggle(
  * another, the places come in from the end, and on the way out everything only fades.
  */
 @Composable
-internal fun RouteCardSlot(route: RouteSummaryState?, onAction: (MapAction) -> Unit, modifier: Modifier = Modifier) {
+internal fun RouteCardSlot(route: RouteSummaryState?, onAction: (MapAction) -> Unit, modifier: Modifier = Modifier, isAnimated: Boolean = true) {
     val grow = tween<IntSize>(ROUTE_GROW_MILLIS, easing = RouteGrowEasing)
     AnimatedContent(
         targetState = route,
         contentKey = { it != null },
-        transitionSpec = { fadeIn(tween(CARD_FADE_IN_MILLIS)) togetherWith fadeOut(tween(CARD_FADE_OUT_MILLIS, CARD_FADE_OUT_DELAY_MILLIS)) using SizeTransform { _, _ -> grow } },
+        transitionSpec = {
+            if (isAnimated) {
+                fadeIn(tween(CARD_FADE_IN_MILLIS)) togetherWith fadeOut(tween(CARD_FADE_OUT_MILLIS, CARD_FADE_OUT_DELAY_MILLIS)) using SizeTransform { _, _ -> grow }
+            } else {
+                EnterTransition.None togetherWith ExitTransition.None using null
+            }
+        },
         contentAlignment = Alignment.TopStart,
         // A shade of the content colour, not a surface colour: the glass sheet is nearly white (light) or nearly the
         // darkest surface (dark), so a surface colour vanishes on one of them; this is a touch darker or lighter on both.
         modifier = modifier.clip(MaterialTheme.shapes.large).background(MaterialTheme.colorScheme.onSurface.copy(alpha = CARD_SHADE)),
         label = "route card",
     ) { shown ->
-        if (shown != null) RouteCardContent(shown, onAction)
+        if (shown != null) RouteCardContent(shown, isAnimated, onAction)
     }
 }
 
@@ -133,11 +141,11 @@ internal fun RouteCardSlot(route: RouteSummaryState?, onAction: (MapAction) -> U
  * along the way scrolling out to the card's edges. Everything sits [spacing.small] in from every side of the card.
  */
 @Composable
-private fun AnimatedVisibilityScope.RouteCardContent(route: RouteSummaryState, onAction: (MapAction) -> Unit) {
+private fun AnimatedVisibilityScope.RouteCardContent(route: RouteSummaryState, isAnimated: Boolean, onAction: (MapAction) -> Unit) {
     val inset = MaterialTheme.spacing.small
     Column(Modifier.fillMaxWidth().padding(vertical = inset), verticalArrangement = Arrangement.spacedBy(inset)) {
         Row(
-            modifier = Modifier.padding(horizontal = inset).then(rowMotion(0)),
+            modifier = Modifier.padding(horizontal = inset).then(rowMotion(0, isAnimated)),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
         ) {
@@ -150,7 +158,7 @@ private fun AnimatedVisibilityScope.RouteCardContent(route: RouteSummaryState, o
                 text = stringResource(Res.string.map_route_estimated),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(horizontal = inset).then(rowMotion(1)),
+                modifier = Modifier.padding(horizontal = inset).then(rowMotion(1, isAnimated)),
             )
         }
         if (route.alongTheWay.isNotEmpty()) {
@@ -158,7 +166,7 @@ private fun AnimatedVisibilityScope.RouteCardContent(route: RouteSummaryState, o
                 text = stringResource(Res.string.map_along_the_way),
                 style = MaterialTheme.typography.labelLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(horizontal = inset).then(rowMotion(2)),
+                modifier = Modifier.padding(horizontal = inset).then(rowMotion(2, isAnimated)),
             )
             val listState = rememberLazyListState()
             LazyRow(
@@ -173,7 +181,9 @@ private fun AnimatedVisibilityScope.RouteCardContent(route: RouteSummaryState, o
                         dayNumber = route.addToDayNumber,
                         onOpen = { onAction(MapAction.Plan.AlongTheWayClick(it)) },
                         onAdd = { onAction(MapAction.Plan.AddAlongTheWay(it)) },
-                        modifier = Modifier.animateItem().then(alongMotion(index)),
+                        // Places arriving with a route left on from last time just show, like the rest of the card.
+                        modifier = (if (isAnimated) Modifier.animateItem() else Modifier.animateItem(fadeInSpec = null, placementSpec = null, fadeOutSpec = null))
+                            .then(alongMotion(index, isAnimated)),
                     )
                 }
             }
@@ -182,7 +192,8 @@ private fun AnimatedVisibilityScope.RouteCardContent(route: RouteSummaryState, o
 }
 
 /** Row [index] of the card slides down a little into place after the one before; it only fades on the way out. */
-private fun AnimatedVisibilityScope.rowMotion(index: Int): Modifier {
+private fun AnimatedVisibilityScope.rowMotion(index: Int, isAnimated: Boolean): Modifier {
+    if (!isAnimated) return Modifier
     val delay = ROW_DELAY_MILLIS + index * ROW_STAGGER_MILLIS
     return Modifier.animateEnterExit(
         enter = fadeIn(tween(ROW_FADE_MILLIS, delay)) + slideInVertically(tween(ROW_SLIDE_MILLIS, delay, RouteGrowEasing)) { -it / ROW_SLIDE_FRACTION },
@@ -191,7 +202,8 @@ private fun AnimatedVisibilityScope.rowMotion(index: Int): Modifier {
 }
 
 /** The places come in from the end one after another (the first few; later ones are off screen anyway). */
-private fun AnimatedVisibilityScope.alongMotion(index: Int): Modifier {
+private fun AnimatedVisibilityScope.alongMotion(index: Int, isAnimated: Boolean): Modifier {
+    if (!isAnimated) return Modifier
     val delay = ALONG_DELAY_MILLIS + index.coerceAtMost(ALONG_STAGGERED) * ALONG_STAGGER_MILLIS
     return Modifier.animateEnterExit(
         enter = fadeIn(tween(ROW_FADE_MILLIS, delay)) + slideInHorizontally(tween(ROUTE_GROW_MILLIS, delay, RouteGrowEasing)) { it / ALONG_SLIDE_FRACTION },

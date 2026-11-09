@@ -53,7 +53,7 @@ internal class MapRouting(
     fun toggleDayRoute() {
         val isShown = context.model.value.route.isDayRouteShown
         if (!isShown && !hasRoutes()) return showRoutesArePro()
-        update { it.copy(isDayRouteShown = !isShown) }
+        update { it.copy(isDayRouteShown = !isShown, isAnimated = true) }
         showWholePlan()
     }
 

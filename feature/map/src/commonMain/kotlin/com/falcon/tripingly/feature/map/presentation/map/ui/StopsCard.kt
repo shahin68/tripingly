@@ -1,8 +1,11 @@
 package com.falcon.tripingly.feature.map.presentation.map.ui
 
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.SizeTransform
 import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -117,8 +120,9 @@ internal fun StopsCard(
             DayMenuButton(dayNumber, card, editorMenu = editorMenu, onAction = onAction)
         }
         StopChips(card, onAction)
-        val gap by animateDpAsState(if (card.route != null) RowGap else 0.dp, tween(ROUTE_GROW_MILLIS, easing = RouteGrowEasing), label = "route gap")
-        RouteCardSlot(card.route, onAction, Modifier.padding(top = gap).padding(horizontal = MaterialTheme.spacing.medium))
+        val gapTarget = if (card.route != null) RowGap else 0.dp
+        val gap by animateDpAsState(gapTarget, if (card.isRouteAnimated) tween(ROUTE_GROW_MILLIS, easing = RouteGrowEasing) else snap(), label = "route gap")
+        RouteCardSlot(card.route, onAction, Modifier.padding(top = gap).padding(horizontal = MaterialTheme.spacing.medium), isAnimated = card.isRouteAnimated)
     }
 }
 
@@ -138,7 +142,7 @@ private fun StopChips(card: StopsCardState, onAction: (MapAction) -> Unit) {
     ) {
         itemsIndexed(card.stops, key = { _, stop -> stop.id }) { index, stop ->
             Row(modifier = Modifier.animateItem(), verticalAlignment = Alignment.CenterVertically) {
-                if (index > 0) LegConnector(card.legLabels[stop.id], legColor, index)
+                if (index > 0) LegConnector(card.legLabels[stop.id], legColor, index, card.isRouteAnimated)
                 StopChip(stop = stop, isSelected = stop.id == card.selectedStopId, onAction = onAction)
             }
         }
@@ -150,14 +154,18 @@ private fun StopChips(card: StopsCardState, onAction: (MapAction) -> Unit) {
  * before ("12 min") between two lines in the route's colour, growing in one gap after another.
  */
 @Composable
-private fun LegConnector(leg: UiText?, color: Color, index: Int) {
+private fun LegConnector(leg: UiText?, color: Color, index: Int, isAnimated: Boolean) {
     val delay = LEG_DELAY_MILLIS + index.coerceAtMost(LEG_STAGGERED) * LEG_STAGGER_MILLIS
     AnimatedContent(
         targetState = leg,
         contentKey = { it != null },
         transitionSpec = {
-            fadeIn(tween(LEG_FADE_MILLIS, delay)) togetherWith fadeOut(tween(LEG_FADE_OUT_MILLIS)) using
-                SizeTransform(clip = true) { _, _ -> tween(LEG_GROW_MILLIS, if (targetState != null) delay else 0, RouteGrowEasing) }
+            if (isAnimated) {
+                fadeIn(tween(LEG_FADE_MILLIS, delay)) togetherWith fadeOut(tween(LEG_FADE_OUT_MILLIS)) using
+                    SizeTransform(clip = true) { _, _ -> tween(LEG_GROW_MILLIS, if (targetState != null) delay else 0, RouteGrowEasing) }
+            } else {
+                EnterTransition.None togetherWith ExitTransition.None using null
+            }
         },
         label = "leg",
     ) { shown ->

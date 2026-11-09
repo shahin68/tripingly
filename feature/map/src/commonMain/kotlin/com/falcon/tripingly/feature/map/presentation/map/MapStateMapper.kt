@@ -136,6 +136,7 @@ internal class MapStateMapper(
             } else {
                 emptyMap<String, UiText>().toImmutableMap()
             },
+            isRouteAnimated = route.isAnimated,
             canFindBestOrder = canEdit && stops.size in MIN_BEST_ORDER_STOPS..MAX_BEST_ORDER_STOPS,
             isFindingBestOrder = route.isFindingBestOrder,
         )

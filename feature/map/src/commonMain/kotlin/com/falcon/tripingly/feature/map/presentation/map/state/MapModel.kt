@@ -95,6 +95,11 @@ internal data class SearchModel(
 internal data class RouteModel(
     /** The Route button: the open day's route is drawn. */
     val isDayRouteShown: Boolean = false,
+    /**
+     * The user switched the route on or off on this screen: from then on the route card and leg times animate. A route
+     * left on from last time shows at once, as the map opens and loads, without animating the lists (too costly then).
+     */
+    val isAnimated: Boolean = false,
     val travelMode: TravelMode = TravelMode.Walking,
     /** "Route from here" was tapped on this place; the next place's card offers "Route to here". */
     val start: MapPlace? = null,

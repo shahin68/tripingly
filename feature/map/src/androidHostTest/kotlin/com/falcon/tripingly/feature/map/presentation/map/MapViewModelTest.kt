@@ -605,6 +605,12 @@ class MapViewModelTest {
         assertTrue(state.camera.isReady)
         assertEquals(true, state.stopsCard?.isRouteOn)
         assertEquals(TravelMode.Cycling, state.stopsCard?.route?.mode)
+        // The route left on shows at once while the map loads; it animates again once switched here.
+        assertEquals(true, left.uiState.value.stopsCard?.isRouteAnimated)
+        assertEquals(false, state.stopsCard?.isRouteAnimated)
+        reopened.onAction(MapAction.Plan.ToggleRoute)
+        testScheduler.advanceUntilIdle()
+        assertEquals(true, reopened.uiState.value.stopsCard?.isRouteAnimated)
     }
 
     @Test

@@ -152,6 +152,8 @@ data class StopsCardState(
     val route: RouteSummaryState?,
     /** The time to each stop from the one before ("12 min"), by stop ID, while the route shows. */
     val legLabels: ImmutableMap<String, UiText> = persistentMapOf(),
+    /** The route card and leg times animate; off for a route left on from last time, which shows at once on opening. */
+    val isRouteAnimated: Boolean = true,
     /** An owner or editor, with 3 to 25 stops on the day. */
     val canFindBestOrder: Boolean,
     val isFindingBestOrder: Boolean,
