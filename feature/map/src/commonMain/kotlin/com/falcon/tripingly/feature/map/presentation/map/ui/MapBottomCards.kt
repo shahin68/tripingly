@@ -128,7 +128,8 @@ internal fun BottomCards(
 @Composable
 internal fun MapCredits(routeAttribution: String?, modifier: Modifier = Modifier) {
     GlassSurface(modifier = modifier, shape = MaterialTheme.shapes.extraSmall, shadowElevation = 0.dp, blur = false) {
-        if (routeAttribution != null) RouteAttribution(routeAttribution) else OsmAttribution()
+        // The route's two credits on two lines, so the label stays narrow.
+        if (routeAttribution != null) RouteAttribution(routeAttribution.replace(CreditsSeparator, "\n")) else OsmAttribution()
     }
 }
 
@@ -216,3 +217,6 @@ private fun MapControlsPreview() {
 private fun MapControlsDarkPreview() {
     TripinglyTheme(darkTheme = true) { MapControlsPreviewContent() }
 }
+
+/** Between openrouteservice's and OpenStreetMap's credit in the route's attribution. */
+private val CreditsSeparator = Regex("""\s*\|\s*""")

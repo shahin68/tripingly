@@ -59,7 +59,7 @@ import com.falcon.tripingly.core.designsystem.component.LocalScreenArrived
 import com.falcon.tripingly.core.designsystem.component.LocalScreenOnTop
 import com.falcon.tripingly.core.designsystem.component.ShowMessage
 import com.falcon.tripingly.core.designsystem.component.SkeletonBox
-import com.falcon.tripingly.core.designsystem.component.bottomSystemBar
+import com.falcon.tripingly.core.designsystem.component.floatingBottom
 import com.falcon.tripingly.core.designsystem.component.rememberHaptics
 import com.falcon.tripingly.core.designsystem.component.safeSides
 import com.falcon.tripingly.core.designsystem.component.safeTopAndSides
@@ -117,6 +117,8 @@ internal fun MapScreen(
     // Layout only: what the header, the day tabs and the credits cover of the map, handed to it as its padding. Each is
     // measured when its size changes; the map waits for all three, so it opens already fitted to what's left.
     var headerHeight by remember { mutableStateOf<Dp?>(null) }
+    // The header with the join pill under it, status bar included: in landscape the plan sheet starts below it.
+    var topPanelHeight by remember { mutableStateOf<Dp?>(null) }
     // The tabs' height with whether there were days to show, so the map doesn't open on the height without tabs.
     var tabsHeight by remember { mutableStateOf<Pair<Boolean, Dp>?>(null) }
     var creditsHeight by remember { mutableStateOf<Dp?>(null) }
@@ -221,6 +223,7 @@ internal fun MapScreen(
         Column(
             modifier = Modifier
                 .align(Alignment.TopEnd)
+                .onSizeChanged { topPanelHeight = with(density) { it.height.toDp() } }
                 .statusBarsPadding()
                 .then(panel)
         ) {
@@ -274,18 +277,21 @@ internal fun MapScreen(
             onAction = onAction,
             onTabsHeight = { tabsHeight = hasDays to with(density) { it.toDp() } },
             onCreditsHeight = { creditsHeight = with(density) { it.toDp() } },
-            modifier = Modifier.align(Alignment.BottomEnd).then(panel).padding(top = coveredTop),
+            // In landscape under the join pill too, so the sheet never opens over it.
+            modifier = Modifier.align(Alignment.BottomEnd).then(panel).padding(top = if (isWide) topPanelHeight ?: coveredTop else coveredTop),
         )
 
         // In landscape the map's credits and buttons sit at the bottom of the map half, so the plan sheet has the right
-        // half's whole height (Shahin, 2026-11-09, option 1); in portrait they ride on the sheet.
+        // half's whole height (Shahin, 2026-11-09, option 1); in portrait they ride on the sheet. Their bottoms line up
+        // with the plan card's (the day tabs' floating bottom inset); the buttons sit the card's own 16 dp side inset
+        // away from it, the credits that far in from the map's start.
         if (isWide) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(covered)
-                    .windowInsetsPadding(WindowInsets.bottomSystemBar)
-                    .padding(MaterialTheme.spacing.medium),
+                    .windowInsetsPadding(WindowInsets.floatingBottom)
+                    .padding(start = MaterialTheme.spacing.medium, bottom = MaterialTheme.spacing.small),
             ) {
                 MapCredits(
                     routeAttribution = state.routeAttribution,
