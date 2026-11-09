@@ -362,11 +362,13 @@ private const val COPYRIGHT_URL = "https://www.openstreetmap.org/copyright"
 
 @Composable
 private fun RouteCardPreviewContent() {
-    Column(Modifier.background(MaterialTheme.colorScheme.surface).padding(MaterialTheme.spacing.medium), verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium)) {
-        // An owner's or editor's, with Add; one loading a new way of travelling; a viewer's with estimated times.
-        RouteCardSlot(previewRoute, onAction = {})
-        RouteCardSlot(previewRoute.copy(mode = TravelMode.Cycling, isLoading = true, alongTheWay = persistentListOf()), onAction = {})
-        RouteCardSlot(previewRoute.copy(mode = TravelMode.Driving, isEstimated = true, addToDayNumber = null), onAction = {})
+    PlanPreviewSheet {
+        Column(Modifier.padding(MaterialTheme.spacing.medium), verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium)) {
+            // An owner's or editor's, with Add; one loading a new way of travelling; a viewer's with estimated times.
+            RouteCardSlot(previewRoute, onAction = {})
+            RouteCardSlot(previewRoute.copy(mode = TravelMode.Cycling, isLoading = true, alongTheWay = persistentListOf()), onAction = {})
+            RouteCardSlot(previewRoute.copy(mode = TravelMode.Driving, isEstimated = true, addToDayNumber = null), onAction = {})
+        }
     }
 }
 

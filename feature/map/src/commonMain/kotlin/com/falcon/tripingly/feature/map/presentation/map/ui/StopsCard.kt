@@ -51,6 +51,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
@@ -59,6 +60,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.falcon.tripingly.core.designsystem.component.AppDropdownMenu
 import com.falcon.tripingly.core.designsystem.component.DropdownAction
+import com.falcon.tripingly.core.designsystem.component.GlassSurface
 import com.falcon.tripingly.core.designsystem.component.ScrambleText
 import com.falcon.tripingly.core.designsystem.component.ToggleButton
 import com.falcon.tripingly.core.designsystem.component.horizontalFadingEdge
@@ -75,9 +77,9 @@ import com.falcon.tripingly.feature.map.generated.resources.map_delete_day
 import com.falcon.tripingly.feature.map.generated.resources.map_ordering
 import com.falcon.tripingly.feature.map.generated.resources.map_remove_stop
 import com.falcon.tripingly.feature.map.generated.resources.map_route
-import com.falcon.tripingly.feature.map.generated.resources.map_route_retry
 import com.falcon.tripingly.feature.map.generated.resources.map_route_between
 import com.falcon.tripingly.feature.map.generated.resources.map_route_close
+import com.falcon.tripingly.feature.map.generated.resources.map_route_retry
 import com.falcon.tripingly.feature.map.generated.resources.map_stop_count
 import com.falcon.tripingly.feature.map.presentation.component.MapMarker
 import com.falcon.tripingly.feature.map.presentation.component.lineColor
@@ -273,7 +275,8 @@ private fun StopChip(stop: MapMarker, isSelected: Boolean, onAction: (MapAction)
     Surface(
         onClick = { onAction(MapAction.MapView.MarkerClick(stop)) },
         shape = CircleShape,
-        color = if (isSelected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainer,
+        // The ⋯ button's colour, the same token in light and dark.
+        color = if (isSelected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant,
         contentColor = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface,
     ) {
         Row(
@@ -315,11 +318,16 @@ private const val LEG_FADE_MILLIS = 220
 private const val LEG_FADE_OUT_MILLIS = 120
 private val StopNumberSize = 28.dp
 
+/** Previews draw the plan on the sheet's own glass, which also gives the text its colour, as in the app. */
+@Composable
+internal fun PlanPreviewSheet(content: @Composable () -> Unit) =
+    GlassSurface(shape = RectangleShape, shadowElevation = 0.dp, blur = false, content = content)
+
 @Preview
 @Composable
 private fun StopsCardPreview(@PreviewParameter(StopsCardPreviewStates::class) card: StopsCardState) {
     TripinglyTheme {
-        StopsCard(card = card, dayNumber = 1, editorMenu = EditorMenu(canDeleteDay = true), onAction = {}, modifier = Modifier.background(MaterialTheme.colorScheme.surface))
+        PlanPreviewSheet { StopsCard(card = card, dayNumber = 1, editorMenu = EditorMenu(canDeleteDay = true), onAction = {}) }
     }
 }
 
@@ -327,20 +335,20 @@ private fun StopsCardPreview(@PreviewParameter(StopsCardPreviewStates::class) ca
 @Composable
 private fun StopsCardDarkPreview() {
     TripinglyTheme(darkTheme = true) {
-        StopsCard(card = StopsCardPreviewStates().values.elementAt(1), dayNumber = 2, editorMenu = null, onAction = {}, modifier = Modifier.background(MaterialTheme.colorScheme.surface))
+        PlanPreviewSheet { StopsCard(card = StopsCardPreviewStates().values.elementAt(1), dayNumber = 2, editorMenu = null, onAction = {}) }
     }
 }
 
 @Preview
 @Composable
 private fun PointRouteCardPreview(@PreviewParameter(PointRouteCardPreviewStates::class) card: PointRouteCardState) {
-    TripinglyTheme { PointRouteCard(card = card, onAction = {}, modifier = Modifier.background(MaterialTheme.colorScheme.surface)) }
+    TripinglyTheme { PlanPreviewSheet { PointRouteCard(card = card, onAction = {}) } }
 }
 
 @Preview
 @Composable
 private fun PointRouteCardDarkPreview() {
     TripinglyTheme(darkTheme = true) {
-        PointRouteCard(card = PointRouteCardPreviewStates().values.first(), onAction = {}, modifier = Modifier.background(MaterialTheme.colorScheme.surface))
+        PlanPreviewSheet { PointRouteCard(card = PointRouteCardPreviewStates().values.first(), onAction = {}) }
     }
 }
