@@ -113,26 +113,28 @@ fun ToggleButton(
     icon: ImageVector? = null,
     isFailed: Boolean = false,
 ) {
-    val toggle = modifier.semantics { toggleableState = ToggleableState(checked) }
     val haptics = rememberHaptics()
-    val click = {
-        haptics.toggle(!checked)
-        onClick()
-    }
-    if (checked && isFailed) {
-        Button(
-            onClick = onClick,
-            shape = CircleShape,
-            contentPadding = size.padding,
-            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.extendedColors.attention, contentColor = MaterialTheme.extendedColors.onAttention),
-            modifier = modifier.heightIn(min = size.height),
-        ) {
-            ButtonContent(text, isLoading = false, size, icon)
-        }
-    } else if (checked) {
-        PrimaryButton(text, click, toggle, size = size, icon = icon)
-    } else {
-        SecondaryButton(text, click, toggle, size = size, icon = icon)
+    val colors = MaterialTheme.colorScheme
+    val isRetry = checked && isFailed
+    // One button that only changes colour, so switching doesn't replace it (and its ripple) with another.
+    Button(
+        onClick = {
+            if (!isRetry) haptics.toggle(!checked)
+            onClick()
+        },
+        shape = CircleShape,
+        contentPadding = size.padding,
+        colors = when {
+            isRetry -> ButtonDefaults.buttonColors(containerColor = MaterialTheme.extendedColors.attention, contentColor = MaterialTheme.extendedColors.onAttention)
+            checked -> ButtonDefaults.buttonColors()
+            else -> ButtonDefaults.buttonColors(containerColor = colors.surfaceVariant, contentColor = colors.onSurface)
+        },
+        modifier = modifier
+            .then(if (isRetry) Modifier else Modifier.semantics { toggleableState = ToggleableState(checked) })
+            .heightIn(min = size.height)
+            .skeleton(CircleShape),
+    ) {
+        ButtonContent(text, isLoading = false, size, icon)
     }
 }
 

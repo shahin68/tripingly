@@ -52,12 +52,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.tooling.preview.PreviewParameter
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.offset
 import com.falcon.tripingly.core.designsystem.component.AppDropdownMenu
 import com.falcon.tripingly.core.designsystem.component.DropdownAction
 import com.falcon.tripingly.core.designsystem.component.GlassSurface
@@ -125,10 +127,17 @@ internal fun StopsCard(
             DayMenuButton(dayNumber, card, editorMenu = editorMenu, onAction = onAction)
         }
         StopChips(card, onAction)
-        val gapTarget = if (card.route != null) RowGap else 0.dp
-        val gap by animateDpAsState(gapTarget, if (card.isRouteAnimated) tween(ROUTE_GROW_MILLIS, easing = RouteGrowEasing) else snap(), label = "route gap")
-        RouteCardSlot(card.route, onAction, Modifier.padding(top = gap).padding(horizontal = MaterialTheme.spacing.medium), isAnimated = card.isRouteAnimated)
+        val gap = animateDpAsState(if (card.route != null) RowGap else 0.dp, if (card.isRouteAnimated) tween(ROUTE_GROW_MILLIS, easing = RouteGrowEasing) else snap(), label = "route gap")
+        // The gap is read while laying out, so its animation moves the card without recomposing the plan every frame.
+        RouteCardSlot(card.route, onAction, Modifier.topGap { gap.value }.padding(horizontal = MaterialTheme.spacing.medium), isAnimated = card.isRouteAnimated)
     }
+}
+
+/** Space above, as tall as [gap] says at each layout. */
+private fun Modifier.topGap(gap: () -> Dp) = layout { measurable, constraints ->
+    val top = gap().roundToPx()
+    val placeable = measurable.measure(constraints.offset(vertical = -top))
+    layout(placeable.width, placeable.height + top) { placeable.place(0, top) }
 }
 
 /**
