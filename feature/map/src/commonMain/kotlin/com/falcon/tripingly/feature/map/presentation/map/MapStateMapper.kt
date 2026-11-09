@@ -65,7 +65,7 @@ internal class MapStateMapper(
         joinRequests = joinRequests(),
         search = model.search?.let { SearchState(it.query, it.results.toImmutableList(), it.isSearching) },
         dayTabs = DayTabsState(days.map { day -> DayTab(day.id, day.position + 1, day.date?.let(DateUtils::formatAbbreviated), hasNew = day.markers.any { it.id in model.newStopIds || it.id in model.newCommentStopIds }, canDelete = canEdit && days.size > 1 && canDeleteDay(day.markers)) }.toImmutableList(), activeIndex),
-        plan = route.between?.let { PointRouteCardState(it.from, it.to, routeSummary()) } ?: stopsCard(),
+        plan = route.between?.let { PointRouteCardState(it.from, it.to, routeSummary(), it.fromLabel, it.toLabel) } ?: stopsCard(),
         routeStartName = route.start?.name,
         placeCard = placeCard(),
         stopCard = stopCard(),

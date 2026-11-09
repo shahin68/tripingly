@@ -7,6 +7,7 @@ import com.falcon.tripingly.core.data.trips.MarkerRepository
 import com.falcon.tripingly.core.data.trips.hasCode
 import com.falcon.tripingly.core.location.model.Coordinates
 import com.falcon.tripingly.core.model.place.MapPlace
+import com.falcon.tripingly.core.model.place.PlaceCategory
 import com.falcon.tripingly.core.model.route.TravelMode
 import com.falcon.tripingly.core.model.trip.GeoPoint
 import com.falcon.tripingly.core.model.trip.NewMarker
@@ -18,6 +19,7 @@ import com.falcon.tripingly.feature.map.generated.resources.map_best_order_alrea
 import com.falcon.tripingly.feature.map.generated.resources.map_error_best_order
 import com.falcon.tripingly.feature.map.generated.resources.map_error_route
 import com.falcon.tripingly.feature.map.generated.resources.map_route_pick_destination
+import com.falcon.tripingly.feature.map.presentation.component.PinEnd
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -81,11 +83,36 @@ internal class MapRouting(
     fun showPointRoute() {
         val from = context.model.value.route.start ?: return
         val to = selection.selectedPlace?.place ?: return
-        selection.closePlace()
-        update { it.copy(start = null, between = PointRoute(from, to)) }
-        showWholePlan()
-        camera.frame(listOf(from.location, to.location).map { Coordinates(it.lat, it.lng) })
+        showRoute(PointRoute(from, to))
     }
+
+    /** A pin pulled onto another: the route from the first to the second, both on screen. */
+    fun routeBetweenPins(from: PinEnd, to: PinEnd) {
+        if (!hasRoutes()) return showRoutesArePro()
+        showRoute(PointRoute(from.toPlace(), to.toPlace(), from.label(), to.label()))
+    }
+
+    private fun showRoute(route: PointRoute) {
+        selection.closePlace()
+        update { it.copy(start = null, between = route) }
+        showWholePlan()
+        camera.frame(listOf(route.from.location, route.to.location).map { Coordinates(it.lat, it.lng) })
+    }
+
+    private fun PinEnd.toPlace(): MapPlace = when (this) {
+        is PinEnd.Place -> place
+        is PinEnd.Stop -> MapPlace(
+            id = stop.placeId ?: stop.id,
+            name = "",
+            category = PlaceCategory.Other,
+            location = GeoPoint(stop.position.latitude, stop.position.longitude),
+            isTripinly = false,
+            hotCount = 0,
+            prominence = 0,
+        )
+    }
+
+    private fun PinEnd.label(): UiText? = (this as? PinEnd.Stop)?.stop?.title
 
     fun closePointRoute() = update { it.copy(between = null) }
 

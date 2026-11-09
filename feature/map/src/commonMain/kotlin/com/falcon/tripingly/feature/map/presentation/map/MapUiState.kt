@@ -166,6 +166,9 @@ data class PointRouteCardState(
     val from: MapPlace,
     val to: MapPlace,
     val route: RouteSummaryState,
+    /** The stops' titles, for ends pulled from or onto a stop. */
+    val fromLabel: UiText? = null,
+    val toLabel: UiText? = null,
 ) : PlanCardState
 
 /** A route's way of travelling, its time and length, and the places along the way. */

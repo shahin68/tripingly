@@ -215,7 +215,7 @@ internal fun PointRouteCard(
     modifier: Modifier = Modifier,
 ) {
     PlanCardColumn(modifier) {
-        PlanTitleRow(title = { Text(stringResource(Res.string.map_route_between, card.from.name, card.to.name), it, style = MaterialTheme.typography.titleMedium, maxLines = 2, overflow = TextOverflow.Ellipsis) }) {
+        PlanTitleRow(title = { Text(stringResource(Res.string.map_route_between, card.fromLabel?.asString() ?: card.from.name, card.toLabel?.asString() ?: card.to.name), it, style = MaterialTheme.typography.titleMedium, maxLines = 2, overflow = TextOverflow.Ellipsis) }) {
             IconButton(onClick = { onAction(MapAction.Plan.ClosePointRoute) }) {
                 Icon(Icons.Default.Close, contentDescription = stringResource(Res.string.map_route_close))
             }

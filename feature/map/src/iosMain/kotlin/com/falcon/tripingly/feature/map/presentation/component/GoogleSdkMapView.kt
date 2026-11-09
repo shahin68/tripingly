@@ -15,6 +15,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -29,12 +30,14 @@ import androidx.compose.ui.viewinterop.UIKitInteropProperties
 import androidx.compose.ui.viewinterop.UIKitView
 import androidx.lifecycle.compose.LifecycleStartEffect
 import com.falcon.tripingly.core.designsystem.component.icon
+import com.falcon.tripingly.core.designsystem.component.rememberHaptics
 import com.falcon.tripingly.core.designsystem.theme.extendedColors
 import com.falcon.tripingly.core.location.model.Coordinates
 import com.falcon.tripingly.core.model.place.GeoBounds
 import com.falcon.tripingly.core.model.place.MapPlace
 import com.falcon.tripingly.core.model.place.PlaceCategory
 import com.falcon.tripingly.core.model.place.PlaceCluster
+import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.flow.Flow
 import platform.UIKit.UIColor
 import platform.UIKit.UIImage
@@ -66,8 +69,18 @@ internal fun GoogleSdkMapView(
     onClusterClick: (PlaceCluster) -> Unit,
     onMapLongClick: (Coordinates) -> Unit,
     onMarkerClick: (MapMarker) -> Unit,
+    onPinDrop: (from: PinEnd, to: PinEnd) -> Unit,
 ) {
     val currentMarkers by rememberUpdatedState(markers)
+    val currentSelectedPlace by rememberUpdatedState(selectedPlace)
+    val currentOnPinDrop by rememberUpdatedState(onPinDrop)
+    // A held pin pulled toward another, as on Android: a dashed line follows it and snaps onto the pin it would be
+    // let go on, with a tick.
+    val dragger = remember { PinDragger() }
+    val haptics = rememberHaptics()
+    LaunchedEffect(dragger) {
+        snapshotFlow { dragger.drag?.target?.key }.collect { if (it != null) haptics.tick() }
+    }
     val currentPlacePins by rememberUpdatedState(placePins)
     val currentPlaceClusters by rememberUpdatedState(placeClusters)
     val currentOnPlacePinClick by rememberUpdatedState(onPlacePinClick)
@@ -141,6 +154,20 @@ internal fun GoogleSdkMapView(
                             currentPlaceClusters.find { it.key() == key }?.let(currentOnClusterClick)
                         else -> currentMarkers.find { it.id == key }?.let(currentOnMarkerClick)
                     }
+                }
+
+                override fun onMarkerDrag(key: String, latitude: Double, longitude: Double) {
+                    val targets = MapLayersState(
+                        stops = currentMarkers.toImmutableList(),
+                        placePins = currentPlacePins.toImmutableList(),
+                        selectedPlace = currentSelectedPlace,
+                    ).dropTargets()
+                    val from = if (key == SELECTED_PLACE_KEY) currentSelectedPlace?.let { PinEnd.Place(it) } else targets.find { it.key == key }
+                    from?.let { dragger.move(it, Coordinates(latitude, longitude), liveZoom, targets) }
+                }
+
+                override fun onMarkerDragEnd(key: String) {
+                    dragger.end()?.let { (start, end) -> currentOnPinDrop(start, end) }
                 }
             },
         )
@@ -216,6 +243,14 @@ internal fun GoogleSdkMapView(
         }
         map.setLineSweep(emptyList(), sweepColor, width)
     }
+    // The pulled pin's line; only this effect runs while the finger moves.
+    LaunchedEffect(dragger, stopColor) {
+        val color = stopColor.toUIColor()
+        snapshotFlow { dragger.drag }.collect { drag ->
+            val points = drag?.let { listOf(it.from.position, it.end).map { point -> GoogleMapPoint(point.latitude, point.longitude) } }.orEmpty()
+            map.setDragLine(points, color, PinDragLineWidth)
+        }
+    }
     val textMeasurer = rememberTextMeasurer()
     val pinPhotos = rememberPinPhotos(placePins)
     val pinIcons = remember(placeColor, hotSpotColor, density) { mutableMapOf<PlacePinLook, UIImage>() }
@@ -279,6 +314,7 @@ internal fun GoogleSdkMapView(
                 // The stop's card shows instead.
                 showsInfoWindow = false,
                 fadesIn = false,
+                draggable = true,
             )
         }
         // The first pins (the most liked, then the best known) on top. A photo pin waits for its photo. The tapped
@@ -299,6 +335,7 @@ internal fun GoogleSdkMapView(
                 zIndex = -1 - index,
                 showsInfoWindow = false,
                 fadesIn = true,
+                draggable = true,
             )
         }
         val clusters = placeClusters.map { cluster ->
@@ -339,6 +376,7 @@ internal fun GoogleSdkMapView(
                 zIndex = 2,
                 showsInfoWindow = false,
                 fadesIn = false,
+                draggable = true,
             )
         }
         map.setMarkers(pins + clusters + stops + listOfNotNull(place))
@@ -356,6 +394,9 @@ internal fun GoogleSdkMapView(
         properties = UIKitInteropProperties(interactionMode = UIKitInteropInteractionMode.NonCooperative),
     )
 }
+
+/** In points, as on Android (4 dp). */
+private const val PinDragLineWidth = 4.0
 
 private fun PlaceCluster.key() = "$CLUSTER_KEY${location.lat},${location.lng}"
 

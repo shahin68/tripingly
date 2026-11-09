@@ -17,7 +17,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
@@ -32,6 +34,7 @@ import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import com.falcon.tripingly.core.designsystem.component.icon
+import com.falcon.tripingly.core.designsystem.component.rememberHaptics
 import com.falcon.tripingly.core.designsystem.theme.extendedColors
 import com.falcon.tripingly.core.location.model.Coordinates
 import com.falcon.tripingly.core.model.place.GeoBounds
@@ -43,6 +46,8 @@ import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.model.BitmapDescriptor
 import com.google.android.gms.maps.model.BitmapDescriptorFactory
 import com.google.android.gms.maps.model.CameraPosition
+import com.google.android.gms.maps.model.Dash
+import com.google.android.gms.maps.model.Gap
 import com.google.android.gms.maps.model.JointType
 import com.google.android.gms.maps.model.LatLng
 import com.google.android.gms.maps.model.MapStyleOptions
@@ -54,6 +59,7 @@ import com.google.maps.android.compose.MapProperties
 import com.google.maps.android.compose.MapUiSettings
 import com.google.maps.android.compose.Marker
 import com.google.maps.android.compose.MarkerComposable
+import com.google.maps.android.compose.MarkerState
 import com.google.maps.android.compose.Polyline
 import com.google.maps.android.compose.rememberCameraPositionState
 import com.google.maps.android.compose.rememberUpdatedMarkerState
@@ -79,6 +85,7 @@ actual fun GoogleMapView(
     onClusterClick: (PlaceCluster) -> Unit,
     onMapLongClick: (Coordinates) -> Unit,
     onMarkerClick: (MapMarker) -> Unit,
+    onPinDrop: (from: PinEnd, to: PinEnd) -> Unit,
 ) {
     val (markers, placePins, pinDotBelowZoom, placeClusters, selectedPlace, line, isMyLocationEnabled) = layers
     val cameraPositionState = rememberCameraPositionState {
@@ -157,6 +164,22 @@ actual fun GoogleMapView(
     LaunchedEffect(cameraCommands) {
         cameraCommands.collect { command ->
             runCamera(CameraUpdateFactory.newLatLngZoom(LatLng(command.target.latitude, command.target.longitude), command.zoom))
+        }
+    }
+
+    // A held pin pulled toward another: a dashed line follows it and snaps onto the pin it would be let go on, with a tick.
+    val dragger = remember { PinDragger() }
+    val currentLayers by rememberUpdatedState(layers)
+    val currentOnPinDrop by rememberUpdatedState(onPinDrop)
+    val haptics = rememberHaptics()
+    LaunchedEffect(dragger) {
+        snapshotFlow { dragger.drag?.target?.key }.collect { if (it != null) haptics.tick() }
+    }
+    fun onPinDrag(from: PinEnd, at: LatLng?) {
+        if (at != null) {
+            dragger.move(from, Coordinates(at.latitude, at.longitude), cameraPositionState.position.zoom, currentLayers.dropTargets())
+        } else if (dragger.drag?.from?.key == from.key) {
+            dragger.end()?.let { (start, end) -> currentOnPinDrop(start, end) }
         }
     }
 
@@ -279,7 +302,8 @@ actual fun GoogleMapView(
                 }
                 key(look) {
                     Marker(
-                        state = rememberUpdatedMarkerState(position = position),
+                        state = rememberDraggablePin(position, PinEnd.Place(pin.place), ::onPinDrag),
+                        draggable = true,
                         icon = pinIcon(look),
                         title = pin.place.name,
                         anchor = Offset(0.5f, 0.5f),
@@ -291,7 +315,8 @@ actual fun GoogleMapView(
                 }
                 key(dotLook) {
                     Marker(
-                        state = rememberUpdatedMarkerState(position = position),
+                        state = rememberDraggablePin(position, PinEnd.Place(pin.place), ::onPinDrag),
+                        draggable = true,
                         icon = pinIcon(dotLook),
                         title = pin.place.name,
                         anchor = Offset(0.5f, 0.5f),
@@ -325,11 +350,14 @@ actual fun GoogleMapView(
         // Under every pin.
         if (line != null && line.points.size > 1) MapLineView(line.themed())
 
+        PinDragLine(dragger)
+
         // The tapped place, bigger and on top.
         selectedPlace?.let { place ->
             key(place.id) {
                 Marker(
-                    state = rememberUpdatedMarkerState(position = LatLng(place.location.lat, place.location.lng)),
+                    state = rememberDraggablePin(LatLng(place.location.lat, place.location.lng), PinEnd.Place(place), ::onPinDrag),
+                    draggable = true,
                     icon = pinIcon(
                         PlacePinLook(
                             place.category,
@@ -350,7 +378,7 @@ actual fun GoogleMapView(
         markers.forEach { marker ->
             key(marker.id) {
                 val position = LatLng(marker.position.latitude, marker.position.longitude)
-                val markerState = rememberUpdatedMarkerState(position = position)
+                val markerState = rememberDraggablePin(position, PinEnd.Stop(marker), ::onPinDrag)
                 // The icon is drawn once and redrawn only when its number or cover changes.
                 val cover = marker.coverPhotoId?.let { coverThumbs[it] }
                 MarkerComposable(
@@ -359,6 +387,7 @@ actual fun GoogleMapView(
                     marker.coverPhotoId.takeIf { cover != null }.orEmpty(),
                     marker.isNew,
                     state = markerState,
+                    draggable = true,
                     title = marker.title.asString(),
                     // The pin is a circle centered on the stop.
                     anchor = Offset(0.5f, 0.5f),
@@ -379,6 +408,47 @@ actual fun GoogleMapView(
             }
         }
     }
+}
+
+/**
+ * A pin's marker state that can be held and pulled: reports where it's pulled to while it's dragged ([onDrag] with
+ * the point) and when it's let go (null), then goes back to [position]. A drag doesn't move the stop or the place.
+ */
+@Composable
+private fun rememberDraggablePin(position: LatLng, end: PinEnd, onDrag: (PinEnd, LatLng?) -> Unit): MarkerState {
+    val state = remember { MarkerState(position) }
+    val current by rememberUpdatedState(end)
+    val currentPosition by rememberUpdatedState(position)
+    val currentOnDrag by rememberUpdatedState(onDrag)
+    LaunchedEffect(position) { if (!state.isDragging) state.position = position }
+    LaunchedEffect(state) {
+        snapshotFlow { state.isDragging to state.position }.collect { (isDragging, at) ->
+            if (isDragging) {
+                currentOnDrag(current, at)
+            } else {
+                currentOnDrag(current, null)
+                if (at != currentPosition) state.position = currentPosition
+            }
+        }
+    }
+    return state
+}
+
+/** The pulled pin's dashed line, over the route and under the pins; only this redraws while the finger moves. */
+@Composable
+@GoogleMapComposable
+private fun PinDragLine(dragger: PinDragger) {
+    val drag = dragger.drag ?: return
+    val density = LocalDensity.current
+    Polyline(
+        points = listOf(drag.from.position, drag.end).map { LatLng(it.latitude, it.longitude) },
+        color = MaterialTheme.extendedColors.stop,
+        width = with(density) { PinDragLineWidth.toPx() },
+        pattern = with(density) { listOf(Dash(PinDragDash.toPx()), Gap(PinDragGap.toPx())) },
+        startCap = RoundCap(),
+        endCap = RoundCap(),
+        zIndex = 0.9f,
+    )
 }
 
 /** A line with rounded ends and arrows pointing the way; a streak runs along it once when it changes. */
@@ -425,6 +495,10 @@ private fun MapLineView(line: MapLine) {
         )
     }
 }
+
+private val PinDragLineWidth = 4.dp
+private val PinDragDash = 2.dp
+private val PinDragGap = 9.dp
 
 /** A new place pin fades in, as Google's own pins do. */
 private const val PIN_FADE_MILLIS = 250

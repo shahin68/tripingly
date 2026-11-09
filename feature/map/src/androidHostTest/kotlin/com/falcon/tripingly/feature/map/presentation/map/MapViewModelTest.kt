@@ -75,6 +75,7 @@ import com.falcon.tripingly.feature.map.generated.resources.map_join_requested
 import com.falcon.tripingly.feature.map.generated.resources.map_my_content_removed
 import com.falcon.tripingly.feature.map.presentation.FakeTripMapViewRepository
 import com.falcon.tripingly.feature.map.presentation.component.CameraCommand
+import com.falcon.tripingly.feature.map.presentation.component.PinEnd
 import com.falcon.tripingly.feature.map.presentation.component.PinSizes
 import com.falcon.tripingly.feature.map.presentation.component.routeLine
 import com.falcon.tripingly.feature.map.presentation.component.stopPathShape
@@ -1788,6 +1789,58 @@ class MapViewModelTest {
             assertNull(viewModel.uiState.value.routeStartName)
             assertTrue(routes.dayRoutes.isEmpty() && routes.pointRoutes.isEmpty())
         }
+    }
+
+    @Test
+    fun `a stop pulled onto a place routes from the stop to the place, titled by the stop`() = runTest(testDispatcher) {
+        addStops(GeoPoint(48.2085, 16.3731), GeoPoint(48.2104, 16.3655))
+        val viewModel = viewModel()
+        testScheduler.advanceUntilIdle()
+        val stop = viewModel.uiState.value.layers.stops.first()
+        val to = MapPlace("b", "Prater", PlaceCategory.Park, GeoPoint(48.2166, 16.3958), isTripinly = false, hotCount = 0, prominence = 80)
+
+        viewModel.cameraCommands.test {
+            viewModel.onAction(MapAction.MapView.PinDrop(PinEnd.Stop(stop), PinEnd.Place(to)))
+            testScheduler.advanceUntilIdle()
+            assertEquals(CameraCommand.fit(listOf(Coordinates(48.2085, 16.3731), Coordinates(48.2166, 16.3958))), expectMostRecentItem())
+        }
+        val card = assertNotNull(viewModel.uiState.value.pointRouteCard)
+        assertEquals(stop.title, card.fromLabel)
+        assertNull(card.toLabel)
+        assertEquals(to, card.to)
+        assertEquals(listOf(GeoPoint(48.2085, 16.3731) to to.location), routes.pointRoutes)
+    }
+
+    @Test
+    fun `a stop pulled onto another stop routes between them`() = runTest(testDispatcher) {
+        addStops(GeoPoint(48.2085, 16.3731), GeoPoint(48.2104, 16.3655), GeoPoint(48.2166, 16.3958))
+        val viewModel = viewModel()
+        testScheduler.advanceUntilIdle()
+        val (first, _, third) = viewModel.uiState.value.layers.stops
+
+        viewModel.onAction(MapAction.MapView.PinDrop(PinEnd.Stop(third), PinEnd.Stop(first)))
+        testScheduler.advanceUntilIdle()
+
+        val card = assertNotNull(viewModel.uiState.value.pointRouteCard)
+        assertEquals(third.title to first.title, card.fromLabel to card.toLabel)
+        assertEquals(listOf(GeoPoint(48.2166, 16.3958) to GeoPoint(48.2085, 16.3731)), routes.pointRoutes)
+    }
+
+    @Test
+    fun `a free user's pin drop opens the paywall`() = runTest(testDispatcher) {
+        session = signedIn(entitlements = emptySet())
+        addStops(GeoPoint(48.2085, 16.3731), GeoPoint(48.2104, 16.3655))
+        val viewModel = viewModel()
+        testScheduler.advanceUntilIdle()
+        val (first, second) = viewModel.uiState.value.layers.stops
+
+        viewModel.events.test {
+            viewModel.onAction(MapAction.MapView.PinDrop(PinEnd.Stop(first), PinEnd.Stop(second)))
+            testScheduler.advanceUntilIdle()
+            assertEquals(MapEvent.OpenPaywall, awaitItem())
+        }
+        assertNull(viewModel.uiState.value.pointRouteCard)
+        assertTrue(routes.pointRoutes.isEmpty())
     }
 
     @Test

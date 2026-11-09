@@ -27,6 +27,7 @@ actual fun GoogleMapView(
     onClusterClick: (PlaceCluster) -> Unit,
     onMapLongClick: (Coordinates) -> Unit,
     onMarkerClick: (MapMarker) -> Unit,
+    onPinDrop: (from: PinEnd, to: PinEnd) -> Unit,
 ) {
     val koin = getKoin()
     val googleMaps = remember(koin) { koin.getOrNull<GoogleMapsSdk>() }
@@ -52,6 +53,7 @@ actual fun GoogleMapView(
             onClusterClick = onClusterClick,
             onMapLongClick = onMapLongClick,
             onMarkerClick = onMarkerClick,
+            onPinDrop = onPinDrop,
         )
     } else {
         AppleMapView(

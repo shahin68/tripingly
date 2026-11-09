@@ -215,6 +215,7 @@ internal fun MapScreen(
                 onClusterClick = { cluster -> onAction(MapAction.MapView.ClusterClick(cluster)) },
                 onMapLongClick = { coords -> onAction(MapAction.MapView.LongClick(coords)) },
                 onMarkerClick = { marker -> onAction(MapAction.MapView.MarkerClick(marker)) },
+                onPinDrop = { from, to -> onAction(MapAction.MapView.PinDrop(from, to)) },
             )
         }
 

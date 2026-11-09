@@ -40,6 +40,9 @@ private final class AppGoogleMap: NSObject, GoogleMap, GMSMapViewDelegate {
     private var line: GMSPolyline?
     private var lineMarkers: [GMSMarker] = []
     private var lineSweep: GMSPolyline?
+    private var dragLine: GMSPolyline?
+    /// The marker being held and pulled: setMarkers leaves its position alone until it's let go.
+    private var draggedKey: String?
     private let touches = TouchRecorder()
 
     var view: UIView { mapView }
@@ -86,7 +89,10 @@ private final class AppGoogleMap: NSObject, GoogleMap, GMSMapViewDelegate {
         for item in items {
             let marker = markers[item.key] ?? GMSMarker()
             if marker.map == nil { marker.appearAnimation = item.fadesIn ? .fadeIn : .none }
-            marker.position = CLLocationCoordinate2D(latitude: item.latitude, longitude: item.longitude)
+            if item.key != draggedKey {
+                marker.position = CLLocationCoordinate2D(latitude: item.latitude, longitude: item.longitude)
+            }
+            marker.isDraggable = item.draggable
             marker.title = item.title
             if marker.icon !== item.icon { marker.icon = item.icon }
             marker.groundAnchor = CGPoint(x: item.anchorX, y: item.anchorY)
@@ -152,6 +158,30 @@ private final class AppGoogleMap: NSObject, GoogleMap, GMSMapViewDelegate {
         lineSweep = sweep
     }
 
+    func setDragLine(points: [GoogleMapPoint], color: UIColor, width: Double) {
+        guard points.count > 1, let first = points.first else {
+            dragLine?.map = nil
+            dragLine = nil
+            return
+        }
+        let line = dragLine ?? GMSPolyline()
+        let linePath = path(of: points)
+        line.path = linePath
+        line.strokeWidth = CGFloat(width)
+        // Dashes of 2 pt with 9 pt gaps, as on Android, whatever the zoom: span lengths are metres on the ground.
+        let metresPerPoint = 156_543.033_92 * cos(first.latitude * .pi / 180) / pow(2, Double(mapView.camera.zoom))
+        line.spans = GMSStyleSpans(
+            linePath,
+            [GMSStrokeStyle.solidColor(color), GMSStrokeStyle.solidColor(.clear)],
+            [NSNumber(value: 2 * metresPerPoint), NSNumber(value: 9 * metresPerPoint)],
+            .rhumb
+        )
+        // Over the route line and its streak, under the pins.
+        line.zIndex = 2
+        if line.map == nil { line.map = mapView }
+        dragLine = line
+    }
+
     private func path(of points: [GoogleMapPoint]) -> GMSPath {
         let path = GMSMutablePath()
         for point in points {
@@ -193,6 +223,25 @@ private final class AppGoogleMap: NSObject, GoogleMap, GMSMapViewDelegate {
     func mapView(_ mapView: GMSMapView, didLongPressAt coordinate: CLLocationCoordinate2D) {
         if touches.isDoubleTap { return }
         listener.onLongPress(latitude: coordinate.latitude, longitude: coordinate.longitude)
+    }
+
+    func mapView(_ mapView: GMSMapView, didBeginDragging marker: GMSMarker) {
+        guard let item = marker.userData as? GoogleMapMarker else { return }
+        draggedKey = item.key
+        listener.onMarkerDrag(key: item.key, latitude: marker.position.latitude, longitude: marker.position.longitude)
+    }
+
+    func mapView(_ mapView: GMSMapView, didDrag marker: GMSMarker) {
+        guard let item = marker.userData as? GoogleMapMarker else { return }
+        listener.onMarkerDrag(key: item.key, latitude: marker.position.latitude, longitude: marker.position.longitude)
+    }
+
+    /// A drag only picks the route's ends: the pin goes back to its point.
+    func mapView(_ mapView: GMSMapView, didEndDragging marker: GMSMarker) {
+        guard let item = marker.userData as? GoogleMapMarker else { return }
+        draggedKey = nil
+        marker.position = CLLocationCoordinate2D(latitude: item.latitude, longitude: item.longitude)
+        listener.onMarkerDragEnd(key: item.key)
     }
 
     func mapView(_ mapView: GMSMapView, didTap marker: GMSMarker) -> Bool {

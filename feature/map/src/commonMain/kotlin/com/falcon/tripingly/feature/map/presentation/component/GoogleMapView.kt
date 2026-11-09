@@ -50,6 +50,8 @@ expect fun GoogleMapView(
     onClusterClick: (PlaceCluster) -> Unit,
     onMapLongClick: (Coordinates) -> Unit,
     onMarkerClick: (MapMarker) -> Unit,
+    /** A stop's or a place's pin was held, pulled onto another pin and let go there: a route from one to the other. */
+    onPinDrop: (from: PinEnd, to: PinEnd) -> Unit,
 )
 
 /** What the map draws. */

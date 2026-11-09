@@ -149,6 +149,7 @@ class MapViewModel(
                 camera.zoom + CLUSTER_ZOOM_STEP,
             )
             is MapAction.MapView.MarkerClick -> selection.selectMarker(action.marker)
+            is MapAction.MapView.PinDrop -> routes.routeBetweenPins(action.from, action.to)
             is MapAction.MapView.CameraRest -> onCameraRest(action)
             is MapAction.MapView.ScreenTouch -> selection.onScreenTouch()
         }

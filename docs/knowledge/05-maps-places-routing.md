@@ -130,6 +130,7 @@ Decided 2026-10-10 (Shahin, "Tiles + prefetch"): places load and draw like Googl
 
 - Trip screen: toggle "Show route" for the selected day → `GET /days/{id}/route?mode=walking&categories=…`. Draw the decoded polyline (encoded polyline, precision 5; decode in shared code). Show total time/distance and per-leg times between pins.
 - A→B: from the place card or search, "Route from here / to here" → `GET /routes?from=…&to=…&mode=…`.
+- A→B by dragging (trial M4, 2026-11-09): hold a stop's or a place's pin (the map's own marker drag), pull it onto another stop or place and let go: the A→B route from the held pin to that one. While pulled, a dashed stop-green line runs from the pin to the finger and snaps onto a pin within 40 dp, with a tick; let go elsewhere and nothing happens. The pin goes back to its spot (a drag never moves a stop). A stop's own place is no target. Clusters can't be pulled. Not on the Apple-map fallback. "Route from here / to here" stays on this branch. (`component/PinDrag.kt`)
 - Mode selector: walking (default), cycling, driving. Public transport (tram, U-Bahn, bus) is being decided (owner, 2026-10-19): openrouteservice has none on its hosted service.
 - **Along the way**: show `alongTheWay` pins and a horizontal list under the map ("in 12 min · 80 m off route"), ordered along the route. Each item has "Add to trip".
 - Refetch the day route after marker add/move/delete/reorder (including realtime events).

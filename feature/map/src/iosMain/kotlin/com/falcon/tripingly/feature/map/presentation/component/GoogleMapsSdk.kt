@@ -47,6 +47,9 @@ interface GoogleMap {
 
     /** Replaces the streak running along the line, on top of it; fewer than two points draw none. */
     fun setLineSweep(points: List<GoogleMapPoint>, color: UIColor, width: Double)
+
+    /** Replaces the dashed line of a pulled pin, over the line and under the pins; fewer than two points draw none. */
+    fun setDragLine(points: List<GoogleMapPoint>, color: UIColor, width: Double)
 }
 
 @ObjCName("GoogleMapPoint", exact = true)
@@ -71,6 +74,8 @@ class GoogleMapMarker(
     val showsInfoWindow: Boolean,
     /** Fades in when it first shows, as Google's own pins do. */
     val fadesIn: Boolean,
+    /** Can be held and pulled; it goes back to its point when let go (see [GoogleMapListener.onMarkerDrag]). */
+    val draggable: Boolean = false,
 )
 
 @ObjCName("GoogleMapListener", exact = true)
@@ -89,4 +94,10 @@ interface GoogleMapListener {
     fun onLongPress(latitude: Double, longitude: Double)
 
     fun onMarkerTap(key: String)
+
+    /** A held marker is pulled to this point. */
+    fun onMarkerDrag(key: String, latitude: Double, longitude: Double)
+
+    /** The held marker was let go; it's back at its point. */
+    fun onMarkerDragEnd(key: String)
 }

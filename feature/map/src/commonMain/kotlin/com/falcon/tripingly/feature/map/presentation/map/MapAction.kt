@@ -11,6 +11,7 @@ import com.falcon.tripingly.core.model.place.PlaceSearchResult
 import com.falcon.tripingly.core.model.route.TravelMode
 import com.falcon.tripingly.core.model.social.ReportReason
 import com.falcon.tripingly.feature.map.presentation.component.MapMarker
+import com.falcon.tripingly.feature.map.presentation.component.PinEnd
 
 /** What the user did on the trip's map, grouped by the UI element it happened on (as [MapUiState] is). */
 sealed interface MapAction {
@@ -26,6 +27,8 @@ sealed interface MapAction {
         data class MarkerClick(val marker: MapMarker) : MapView
         /** The camera came to rest. */
         data class CameraRest(val coordinates: Coordinates, val zoom: Float, val bounds: GeoBounds? = null) : MapView
+        /** A pin was pulled onto another and let go there: the route from one to the other. */
+        data class PinDrop(val from: PinEnd, val to: PinEnd) : MapView
         /** A touch began anywhere outside the place card, on the map or on the screen's other controls. */
         data object ScreenTouch : MapView
     }
