@@ -68,6 +68,7 @@ internal fun BottomCards(
     plan: PlanCardState?,
     editorMenu: EditorMenu?,
     planSheet: AnchoredDraggableState<PlanSheetValue>,
+    isWide: Boolean,
     onAction: (MapAction) -> Unit,
     onTabsHeight: (Int) -> Unit,
     onCreditsHeight: (Int) -> Unit,
@@ -102,6 +103,12 @@ internal fun BottomCards(
                 }
             },
             modifier = Modifier.weight(1f, fill = false),
+            // In landscape the plan may open over the credits and buttons; the credits then end the plan.
+            canCoverAbove = isWide,
+            coverNote = {
+                val credits = Modifier.padding(horizontal = MaterialTheme.spacing.small).padding(bottom = MaterialTheme.spacing.small)
+                if (routeAttribution != null) RouteAttribution(routeAttribution, credits) else OsmAttribution(credits)
+            },
         ) { shown ->
             // A route from A to B takes the stops' place until it's closed.
             when (shown) {
