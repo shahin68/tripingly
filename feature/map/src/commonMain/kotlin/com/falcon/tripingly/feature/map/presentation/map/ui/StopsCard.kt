@@ -1,20 +1,27 @@
 package com.falcon.tripingly.feature.map.presentation.map.ui
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.SizeTransform
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.ColumnScope
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
@@ -38,35 +45,38 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.tooling.preview.PreviewParameter
 import androidx.compose.ui.unit.dp
 import com.falcon.tripingly.core.designsystem.component.AppDropdownMenu
-import com.falcon.tripingly.core.designsystem.component.ButtonSize
 import com.falcon.tripingly.core.designsystem.component.DropdownAction
-import com.falcon.tripingly.core.designsystem.component.SecondaryButton
+import com.falcon.tripingly.core.designsystem.component.ScrambleText
 import com.falcon.tripingly.core.designsystem.component.ToggleButton
 import com.falcon.tripingly.core.designsystem.component.horizontalFadingEdge
 import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
 import com.falcon.tripingly.core.designsystem.theme.extendedColors
 import com.falcon.tripingly.core.designsystem.theme.spacing
+import com.falcon.tripingly.core.ui.UiText
 import com.falcon.tripingly.feature.map.generated.resources.Res
 import com.falcon.tripingly.feature.map.generated.resources.map_add_day
 import com.falcon.tripingly.feature.map.generated.resources.map_best_order
 import com.falcon.tripingly.feature.map.generated.resources.map_clear_day
 import com.falcon.tripingly.feature.map.generated.resources.map_day_menu
 import com.falcon.tripingly.feature.map.generated.resources.map_delete_day
+import com.falcon.tripingly.feature.map.generated.resources.map_ordering
 import com.falcon.tripingly.feature.map.generated.resources.map_remove_stop
 import com.falcon.tripingly.feature.map.generated.resources.map_route
 import com.falcon.tripingly.feature.map.generated.resources.map_route_between
 import com.falcon.tripingly.feature.map.generated.resources.map_route_close
 import com.falcon.tripingly.feature.map.generated.resources.map_stop_count
 import com.falcon.tripingly.feature.map.presentation.component.MapMarker
+import com.falcon.tripingly.feature.map.presentation.component.lineColor
 import com.falcon.tripingly.feature.map.presentation.map.EditorMenu
 import com.falcon.tripingly.feature.map.presentation.map.MapAction
 import com.falcon.tripingly.feature.map.presentation.map.PointRouteCardState
-import com.falcon.tripingly.feature.map.presentation.map.RouteSummaryState
 import com.falcon.tripingly.feature.map.presentation.map.StopsCardState
 import com.falcon.tripingly.feature.map.presentation.map.preview.PointRouteCardPreviewStates
 import com.falcon.tripingly.feature.map.presentation.map.preview.StopsCardPreviewStates
@@ -74,8 +84,9 @@ import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
 
 /**
- * The open day's plan: "6 stops" with Route and the day's ⋯ menu ([editorMenu], for owners and editors), the stops,
- * how to travel with the best order, and, with the route on, its totals and the places along the way.
+ * The open day's plan: "6 stops" (scrambling to "Ordering…" while the best order is found) with Route and the day's
+ * ⋯ menu (Best order, and for owners and editors [editorMenu]), the stops with the travel time between them while the
+ * route shows, and the route card growing under them.
  */
 @Composable
 internal fun StopsCard(
@@ -86,7 +97,12 @@ internal fun StopsCard(
     modifier: Modifier = Modifier,
 ) {
     PlanCardColumn(modifier) {
-        PlanTitleRow(pluralStringResource(Res.plurals.map_stop_count, card.stops.size, card.stops.size)) {
+        val title = if (card.isFindingBestOrder) {
+            stringResource(Res.string.map_ordering)
+        } else {
+            pluralStringResource(Res.plurals.map_stop_count, card.stops.size, card.stops.size)
+        }
+        PlanTitleRow(title = { ScrambleText(title, it, style = MaterialTheme.typography.titleMedium) }) {
             card.isRouteOn?.let { isOn ->
                 // Neutral like ⋯ while off; green once on.
                 ToggleButton(
@@ -96,39 +112,22 @@ internal fun StopsCard(
                     icon = Icons.Outlined.Directions,
                 )
             }
-            DayMenuButton(dayNumber, canClear = card.canClear, editorMenu = editorMenu, onAction = onAction)
+            DayMenuButton(dayNumber, card, editorMenu = editorMenu, onAction = onAction)
         }
         StopChips(card, onAction)
-        val route = card.route
-        // How to travel (with the route) and Best order (free for everyone, with or without the route).
-        if (route != null || card.canFindBestOrder) {
-            Row(
-                modifier = Modifier.padding(top = RowGap).padding(horizontal = MaterialTheme.spacing.medium),
-                horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                if (route != null) {
-                    TravelModeToggle(route.mode, onModeSelected = { onAction(MapAction.Plan.SelectTravelMode(it)) }, modifier = Modifier.weight(1f))
-                }
-                if (card.canFindBestOrder) {
-                    SecondaryButton(
-                        text = stringResource(Res.string.map_best_order),
-                        onClick = { onAction(MapAction.Plan.FindBestOrder) },
-                        isLoading = card.isFindingBestOrder,
-                        size = ButtonSize.Small,
-                        icon = Icons.Outlined.AutoAwesome,
-                    )
-                }
-            }
-        }
-        route?.let { RouteAlongTheWay(it, onAction, Modifier.padding(top = RowGap)) }
+        val gap by animateDpAsState(if (card.route != null) RowGap else 0.dp, tween(ROUTE_GROW_MILLIS, easing = RouteGrowEasing), label = "route gap")
+        RouteCardSlot(card.route, onAction, Modifier.padding(top = gap).padding(horizontal = MaterialTheme.spacing.medium))
     }
 }
 
-/** The stops in a row that scrolls to the sheet's edges and rests as far in as the title. */
+/**
+ * The stops in a row that scrolls to the sheet's edges and rests as far in as the title. While the route shows, the
+ * time from the stop before grows into each gap, on a short line in the route's colour.
+ */
 @Composable
 private fun StopChips(card: StopsCardState, onAction: (MapAction) -> Unit) {
     val listState = rememberLazyListState()
+    val legColor = card.route?.mode?.lineColor ?: MaterialTheme.colorScheme.outlineVariant
     LazyRow(
         state = listState,
         modifier = Modifier.padding(top = RowGap).horizontalFadingEdge(listState),
@@ -136,20 +135,45 @@ private fun StopChips(card: StopsCardState, onAction: (MapAction) -> Unit) {
         horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        items(card.stops, key = { it.id }) { stop ->
-            // The time from the stop before, while the route shows.
-            Row(
-                modifier = Modifier.animateItem(),
-                horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                card.legLabels[stop.id]?.let { leg ->
-                    Text(leg.asString(), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
+        itemsIndexed(card.stops, key = { _, stop -> stop.id }) { index, stop ->
+            Row(modifier = Modifier.animateItem(), verticalAlignment = Alignment.CenterVertically) {
+                LegConnector(card.legLabels[stop.id], legColor, index)
                 StopChip(stop = stop, isSelected = stop.id == card.selectedStopId, onAction = onAction)
             }
         }
     }
+}
+
+/** The time from the stop before ("12 min") between two lines, growing in after the route card, one gap after another. */
+@Composable
+private fun LegConnector(leg: UiText?, color: Color, index: Int) {
+    val delay = LEG_DELAY_MILLIS + index * LEG_STAGGER_MILLIS
+    AnimatedContent(
+        targetState = leg,
+        contentKey = { it != null },
+        transitionSpec = {
+            fadeIn(tween(LEG_FADE_MILLIS, delay)) togetherWith fadeOut(tween(LEG_FADE_OUT_MILLIS)) using
+                SizeTransform(clip = true) { _, _ -> tween(LEG_GROW_MILLIS, if (targetState != null) delay else 0, RouteGrowEasing) }
+        },
+        label = "leg",
+    ) { shown ->
+        if (shown != null) {
+            Row(
+                modifier = Modifier.padding(end = MaterialTheme.spacing.small),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraSmall),
+            ) {
+                LegLine(color)
+                Text(shown.asString(), style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, maxLines = 1)
+                LegLine(color)
+            }
+        }
+    }
+}
+
+@Composable
+private fun LegLine(color: Color) {
+    Box(Modifier.size(LegLineLength, LegLineWidth).background(color, CircleShape))
 }
 
 /** A route from one place to another, with how to travel, its totals and the places along the way. */
@@ -160,17 +184,12 @@ internal fun PointRouteCard(
     modifier: Modifier = Modifier,
 ) {
     PlanCardColumn(modifier) {
-        PlanTitleRow(stringResource(Res.string.map_route_between, card.from.name, card.to.name), maxLines = 2) {
+        PlanTitleRow(title = { Text(stringResource(Res.string.map_route_between, card.from.name, card.to.name), it, style = MaterialTheme.typography.titleMedium, maxLines = 2, overflow = TextOverflow.Ellipsis) }) {
             IconButton(onClick = { onAction(MapAction.Plan.ClosePointRoute) }) {
                 Icon(Icons.Default.Close, contentDescription = stringResource(Res.string.map_route_close))
             }
         }
-        TravelModeToggle(
-            card.route.mode,
-            onModeSelected = { onAction(MapAction.Plan.SelectTravelMode(it)) },
-            modifier = Modifier.padding(top = RowGap).padding(horizontal = MaterialTheme.spacing.medium),
-        )
-        RouteAlongTheWay(card.route, onAction, Modifier.padding(top = RowGap))
+        RouteCardSlot(card.route, onAction, Modifier.padding(top = RowGap).padding(horizontal = MaterialTheme.spacing.medium))
     }
 }
 
@@ -181,48 +200,43 @@ private fun PlanCardColumn(modifier: Modifier, content: @Composable ColumnScope.
 }
 
 /**
- * The plan's title with its buttons at the end. The end button's 48 dp touch area makes up the rest of the end
- * padding, so its circle sits as far in as the title.
+ * The plan's [title] (given the modifier that lets it take the room left) with its buttons at the end, all one
+ * height. The end button's 48 dp touch area makes up the rest of the end padding, so its circle sits as far in as
+ * the title.
  */
 @Composable
-private fun PlanTitleRow(title: String, maxLines: Int = 1, buttons: @Composable RowScope.() -> Unit) {
+private fun PlanTitleRow(title: @Composable (Modifier) -> Unit, buttons: @Composable RowScope.() -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .heightIn(min = TitleRowHeight)
             .padding(start = MaterialTheme.spacing.medium, end = MaterialTheme.spacing.small + MaterialTheme.spacing.extraSmall),
         verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
     ) {
-        Text(title, style = MaterialTheme.typography.titleMedium, maxLines = maxLines, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+        title(Modifier.weight(1f))
         buttons()
     }
 }
 
+/**
+ * The day's ⋯: Best order (anyone who can reorder, 3 to 25 stops), add a day, clear the open one, delete it. Hidden
+ * when none of them is open to this user.
+ */
 @Composable
-private fun RouteAlongTheWay(route: RouteSummaryState, onAction: (MapAction) -> Unit, modifier: Modifier = Modifier) {
-    AlongTheWay(
-        modifier = modifier,
-        places = route.alongTheWay,
-        dayNumber = route.addToDayNumber,
-        onOpen = { onAction(MapAction.Plan.AlongTheWayClick(it)) },
-        onAdd = { onAction(MapAction.Plan.AddAlongTheWay(it)) },
-        totals = { RouteTotals(route.durationSeconds, route.distanceMeters, route.isEstimated, route.isLoading) },
-    )
-}
-
-/** The day's ⋯: add a day, clear the open one ([canClear]), delete it. Hidden for viewers. */
-@Composable
-private fun DayMenuButton(dayNumber: Int, canClear: Boolean, editorMenu: EditorMenu?, onAction: (MapAction) -> Unit) {
+private fun DayMenuButton(dayNumber: Int, card: StopsCardState, editorMenu: EditorMenu?, onAction: (MapAction) -> Unit) {
     val actions = listOfNotNull(
+        DropdownAction(stringResource(Res.string.map_best_order), icon = Icons.Outlined.AutoAwesome) { onAction(MapAction.Plan.FindBestOrder) }
+            .takeIf { card.canFindBestOrder && !card.isFindingBestOrder },
         editorMenu?.let { DropdownAction(stringResource(Res.string.map_add_day), icon = Icons.Outlined.Add) { onAction(MapAction.Header.AddDay) } },
         DropdownAction(stringResource(Res.string.map_clear_day, dayNumber), icon = Icons.Outlined.CleaningServices) { onAction(MapAction.Plan.ClearAll) }
-            .takeIf { canClear },
+            .takeIf { card.canClear },
         DropdownAction(stringResource(Res.string.map_delete_day), isDestructive = true, icon = Icons.Outlined.Delete) { onAction(MapAction.Header.DeleteDay) }
             .takeIf { editorMenu?.canDeleteDay == true },
     )
     if (actions.isEmpty()) return
     var isExpanded by rememberSaveable { mutableStateOf(false) }
-    Box(Modifier.padding(start = MaterialTheme.spacing.small)) {
+    Box {
         FilledTonalIconButton(
             onClick = { isExpanded = true },
             colors = IconButtonDefaults.filledTonalIconButtonColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
@@ -263,7 +277,17 @@ private fun StopChip(stop: MapMarker, isSelected: Boolean, onAction: (MapAction)
 private val TitleRowHeight = 48.dp
 private val RowGap = 12.dp
 
-private val ChipHeight = 36.dp
+private val ChipHeight = 40.dp
+
+private val LegLineLength = 8.dp
+private val LegLineWidth = 2.dp
+
+// The canvas's timings: the times grow into the gaps one after another, just after the route card starts growing.
+private const val LEG_DELAY_MILLIS = 80
+private const val LEG_STAGGER_MILLIS = 60
+private const val LEG_GROW_MILLIS = 420
+private const val LEG_FADE_MILLIS = 220
+private const val LEG_FADE_OUT_MILLIS = 120
 private val StopNumberSize = 24.dp
 
 @Preview

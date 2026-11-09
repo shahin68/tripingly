@@ -165,7 +165,6 @@
     <string name="map_route_hours">%1$d Std. %2$d Min.</string>
     <string name="map_route_meters">%1$d m</string>
     <string name="map_route_km">%1$s km</string>
-    <string name="map_route_total">%1$s · %2$s</string>
     <string name="map_route_estimated">Routen sind gerade nicht verfügbar.</string>
     <string name="map_along_the_way">Auf dem Weg</string>
     <string name="map_along_the_way_item">in %1$s · %2$s abseits der Route</string>
@@ -177,6 +176,7 @@
     <string name="map_route_between">%1$s → %2$s</string>
     <string name="map_route_close">Route schließen</string>
     <string name="map_best_order">Beste Reihenfolge</string>
+    <string name="map_ordering">Wird sortiert…</string>
     <string name="map_best_order_title">Beste Reihenfolge für diesen Tag</string>
     <string name="map_best_order_saved">%1$d Min. kürzer als jetzt.</string>
     <string name="map_best_order_hint">Nach Entfernung sortiert: Reisezeiten sind gerade nicht verfügbar.</string>
