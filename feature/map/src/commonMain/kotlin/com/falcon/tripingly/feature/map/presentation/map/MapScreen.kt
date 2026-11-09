@@ -267,7 +267,6 @@ internal fun MapScreen(
             plan = plan,
             editorMenu = state.header.editorMenu,
             planSheet = planSheet,
-            isWide = isWide,
             onAction = onAction,
             onTabsHeight = { tabsHeight = hasDays to with(density) { it.toDp() } },
             onCreditsHeight = { creditsHeight = with(density) { it.toDp() } },

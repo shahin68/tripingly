@@ -42,9 +42,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
-import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.layout.layout
-import androidx.compose.ui.unit.offset
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.tooling.preview.Preview
@@ -83,10 +81,6 @@ internal fun AnchoredDraggableState<PlanSheetValue>.pulledUp(): Float =
  * it, and the map keeps out of the peek only, so pulling the sheet doesn't move the map; a fit keeps out of all that
  * shows of it (see [pulledUp]). [above] (the credits, the location button) rides on the sheet's top. The sheet slides up
  * all the way when a plan comes, and down when it goes.
- *
- * With [canCoverAbove] (landscape, where the height is short) [above] rides on the sheet only until it reaches the top
- * of the room the sheet has; from there the sheet keeps opening over it while it fades out, so the whole plan can show
- * (Shahin's option 3, 2026-11-09). [coverNote] then ends the plan, for what [above] said that must stay readable.
  */
 @Composable
 internal fun <T : Any> PlanSheet(
@@ -94,8 +88,6 @@ internal fun <T : Any> PlanSheet(
     state: AnchoredDraggableState<PlanSheetValue>,
     above: @Composable ColumnScope.() -> Unit,
     modifier: Modifier = Modifier,
-    canCoverAbove: Boolean = false,
-    coverNote: @Composable () -> Unit = {},
     content: @Composable (T) -> Unit,
 ) {
     val scope = rememberCoroutineScope()
@@ -104,75 +96,54 @@ internal fun <T : Any> PlanSheet(
     LaunchedEffect(state) { snapshotFlow { state.settledValue }.drop(1).collect { haptics.tick() } }
     val handleLabel = stringResource(Res.string.map_plan_handle)
     // The pulled-down part of the sheet sits below this box, behind the day tabs.
-    Layout(
-        modifier = modifier.fillMaxWidth().clipToBounds(),
-        content = {
-            Column(content = above)
-            AnimatedContent(
-                targetState = plan,
-                // A plan replacing another (stops, a route from A to B) only updates; slides are for coming and going.
-                contentKey = { it != null },
-                // The column clips what's below it; the sheet's shadow on top stays.
-                transitionSpec = { (slideInVertically { it } togetherWith slideOutVertically { it }).using(SizeTransform(clip = false)) },
-            ) { shown ->
-                if (shown == null) return@AnimatedContent
-                // A sheet that comes in (not one shown again after a rotation) comes in all the way up.
-                val isComingIn = transition.currentState == EnterExitState.PreEnter
-                LaunchedEffect(Unit) { if (isComingIn) state.snapTo(PlanSheetValue.Expanded) }
-                val corner = MaterialTheme.shapes.extraLarge.topStart
-                // Glass over the native map, which can't be blurred; the day tabs below are its bottom part.
-                GlassSurface(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = MaterialTheme.spacing.medium)
-                        // Dragging anywhere on the sheet pulls it; the plan scrolls only once it's pulled all the way up.
-                        .nestedScroll(remember(state) { state.pullFirst() })
-                        .anchoredDraggable(state, Orientation.Vertical)
-                        .pulledDown(state),
-                    shape = RoundedCornerShape(topStart = corner, topEnd = corner, bottomStart = ZeroCornerSize, bottomEnd = ZeroCornerSize),
-                    blur = false,
-                ) {
-                    Column {
+    Column(modifier = modifier.fillMaxWidth().clipToBounds()) {
+        above()
+        AnimatedContent(
+            targetState = plan,
+            // A plan replacing another (stops, a route from A to B) only updates; slides are for coming and going.
+            contentKey = { it != null },
+            // The column clips what's below it; the sheet's shadow on top stays.
+            transitionSpec = { (slideInVertically { it } togetherWith slideOutVertically { it }).using(SizeTransform(clip = false)) },
+        ) { shown ->
+            if (shown == null) return@AnimatedContent
+            // A sheet that comes in (not one shown again after a rotation) comes in all the way up.
+            val isComingIn = transition.currentState == EnterExitState.PreEnter
+            LaunchedEffect(Unit) { if (isComingIn) state.snapTo(PlanSheetValue.Expanded) }
+            val corner = MaterialTheme.shapes.extraLarge.topStart
+            // Glass over the native map, which can't be blurred; the day tabs below are its bottom part.
+            GlassSurface(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = MaterialTheme.spacing.medium)
+                    // Dragging anywhere on the sheet pulls it; the plan scrolls only once it's pulled all the way up.
+                    .nestedScroll(remember(state) { state.pullFirst() })
+                    .anchoredDraggable(state, Orientation.Vertical)
+                    .pulledDown(state),
+                shape = RoundedCornerShape(topStart = corner, topEnd = corner, bottomStart = ZeroCornerSize, bottomEnd = ZeroCornerSize),
+                blur = false,
+            ) {
+                Column {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(HandleAreaHeight)
+                            .semantics { contentDescription = handleLabel }
+                            .clickable {
+                                val next = if (state.settledValue == PlanSheetValue.Expanded) PlanSheetValue.Collapsed else PlanSheetValue.Expanded
+                                scope.launch { state.animateTo(next) }
+                            },
+                        contentAlignment = Alignment.Center,
+                    ) {
                         Box(
                             modifier = Modifier
-                                .fillMaxWidth()
-                                .height(HandleAreaHeight)
-                                .semantics { contentDescription = handleLabel }
-                                .clickable {
-                                    val next = if (state.settledValue == PlanSheetValue.Expanded) PlanSheetValue.Collapsed else PlanSheetValue.Expanded
-                                    scope.launch { state.animateTo(next) }
-                                },
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .size(width = 32.dp, height = 4.dp)
-                                    .background(MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f), RoundedCornerShape(2.dp)),
-                            )
-                        }
-                        // In a short window (landscape) the expanded plan scrolls.
-                        Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
-                            content(shown)
-                            if (canCoverAbove) coverNote()
-                        }
+                                .size(width = 32.dp, height = 4.dp)
+                                .background(MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f), RoundedCornerShape(2.dp)),
+                        )
                     }
+                    // In a short window (landscape) the expanded plan scrolls.
+                    Box(modifier = Modifier.verticalScroll(rememberScrollState())) { content(shown) }
                 }
             }
-        },
-    ) { (aboveMeasurable, sheetMeasurable), constraints ->
-        val loose = constraints.copy(minHeight = 0)
-        val aboveRow = aboveMeasurable.measure(loose)
-        // Covering, the sheet may take all the height; otherwise what's left under the row on top of it.
-        val sheet = sheetMeasurable.measure(if (canCoverAbove) loose else loose.offset(vertical = -aboveRow.height))
-        val height = (aboveRow.height + sheet.height).coerceAtMost(constraints.maxHeight)
-        val sheetTop = height - sheet.height
-        val covered = (aboveRow.height - sheetTop).coerceAtLeast(0)
-        layout(constraints.maxWidth, height) {
-            // The row stops at the top and fades as the sheet, drawn after it, opens over it.
-            aboveRow.placeWithLayer(0, (sheetTop - aboveRow.height).coerceAtLeast(0)) {
-                alpha = if (aboveRow.height == 0) 1f else 1f - covered.toFloat() / aboveRow.height
-            }
-            sheet.place(0, sheetTop)
         }
     }
 }
