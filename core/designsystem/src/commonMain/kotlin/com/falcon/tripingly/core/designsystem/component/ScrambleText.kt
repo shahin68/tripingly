@@ -14,7 +14,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.clearAndSetSemantics
-import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.text
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
@@ -41,7 +42,7 @@ fun ScrambleText(
     LaunchedEffect(text) {
         scramble(from = shown, to = text, random = Random.Default, onFrame = { shown = it }, onLetterLocked = haptics::tick)
     }
-    Box(modifier.clearAndSetSemantics { contentDescription = text }) {
+    Box(modifier.clearAndSetSemantics { this.text = AnnotatedString(text) }) {
         // The new text, unseen, keeps the width steady while the letters shuffle.
         Text(text, Modifier.alpha(0f), color = color, style = style, maxLines = 1, overflow = TextOverflow.Ellipsis)
         Text(shown, color = color, style = style, maxLines = 1, overflow = TextOverflow.Ellipsis)
