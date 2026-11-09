@@ -118,7 +118,7 @@ internal fun RouteCardSlot(route: RouteSummaryState?, onAction: (MapAction) -> U
         contentKey = { it != null },
         transitionSpec = { fadeIn(tween(CARD_FADE_IN_MILLIS)) togetherWith fadeOut(tween(CARD_FADE_OUT_MILLIS, CARD_FADE_OUT_DELAY_MILLIS)) using SizeTransform { _, _ -> grow } },
         contentAlignment = Alignment.TopStart,
-        modifier = modifier.clip(MaterialTheme.shapes.large).background(MaterialTheme.colorScheme.surfaceContainerLow),
+        modifier = modifier.clip(MaterialTheme.shapes.large).background(MaterialTheme.colorScheme.surfaceContainerLowest),
         label = "route card",
     ) { shown ->
         if (shown != null) RouteCardContent(shown, onAction)
@@ -236,7 +236,7 @@ private fun AlongTheWayCard(item: AlongTheWayPlace, dayNumber: Int?, onOpen: (Ma
     Surface(
         onClick = { onOpen(item.place) },
         shape = MaterialTheme.shapes.medium,
-        color = MaterialTheme.colorScheme.surfaceContainerLowest,
+        color = MaterialTheme.colorScheme.surfaceContainer,
         modifier = modifier.widthIn(max = AlongCardMaxWidth),
     ) {
         Row(
@@ -265,7 +265,8 @@ private fun AlongTheWayCard(item: AlongTheWayPlace, dayNumber: Int?, onOpen: (Ma
 
 /** The travel modes' height (40 dp options in 4 dp of track), which the route icon matches. */
 private val RowHeight = 48.dp
-private val ModesWidth = 144.dp
+/** Three 40 dp options in 4 dp of track and gaps: each picked option is a circle. */
+private val ModesWidth = 136.dp
 private val SpinnerSize = 20.dp
 private val AlongCardMaxWidth = 240.dp
 private val AddButtonSize = 36.dp

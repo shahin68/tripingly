@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -50,6 +51,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.tooling.preview.PreviewParameter
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.falcon.tripingly.core.designsystem.component.AppDropdownMenu
 import com.falcon.tripingly.core.designsystem.component.DropdownAction
@@ -132,19 +134,21 @@ private fun StopChips(card: StopsCardState, onAction: (MapAction) -> Unit) {
         state = listState,
         modifier = Modifier.padding(top = RowGap).horizontalFadingEdge(listState),
         contentPadding = PaddingValues(horizontal = MaterialTheme.spacing.medium),
-        horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         itemsIndexed(card.stops, key = { _, stop -> stop.id }) { index, stop ->
             Row(modifier = Modifier.animateItem(), verticalAlignment = Alignment.CenterVertically) {
-                LegConnector(card.legLabels[stop.id], legColor, index)
+                if (index > 0) LegConnector(card.legLabels[stop.id], legColor, index)
                 StopChip(stop = stop, isSelected = stop.id == card.selectedStopId, onAction = onAction)
             }
         }
     }
 }
 
-/** The time from the stop before ("12 min") between two lines, growing in after the route card, one gap after another. */
+/**
+ * What joins a stop to the one before: a short grey line, or with the route on, the time from the stop before
+ * ("12 min") between two lines in the route's colour, growing in one gap after another.
+ */
 @Composable
 private fun LegConnector(leg: UiText?, color: Color, index: Int) {
     val delay = LEG_DELAY_MILLIS + index.coerceAtMost(LEG_STAGGERED) * LEG_STAGGER_MILLIS
@@ -158,22 +162,28 @@ private fun LegConnector(leg: UiText?, color: Color, index: Int) {
         label = "leg",
     ) { shown ->
         if (shown != null) {
-            Row(
-                modifier = Modifier.padding(end = MaterialTheme.spacing.small),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraSmall),
-            ) {
-                LegLine(color)
-                Text(shown.asString(), style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, maxLines = 1)
-                LegLine(color)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                LegLine(color, LegLineLength)
+                Text(
+                    text = shown.asString(),
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                    modifier = Modifier.padding(horizontal = LegTextPadding),
+                )
+                LegLine(color, LegLineLength)
+            }
+        } else {
+            Box(Modifier.width(LegLineLength), contentAlignment = Alignment.Center) {
+                LegLine(MaterialTheme.colorScheme.surfaceVariant, LegLineLength / 2)
             }
         }
     }
 }
 
 @Composable
-private fun LegLine(color: Color) {
-    Box(Modifier.size(LegLineLength, LegLineWidth).background(color, CircleShape))
+private fun LegLine(color: Color, length: Dp) {
+    Box(Modifier.size(length, LegLineWidth).background(color, CircleShape))
 }
 
 /** A route from one place to another, with how to travel, its totals and the places along the way. */
@@ -247,17 +257,18 @@ private fun DayMenuButton(dayNumber: Int, card: StopsCardState, editorMenu: Edit
     }
 }
 
-/** A stop: its number in a pin-colored circle and its name; selected while its card is open; × removes it. */
+/** A stop: its number in a pin-coloured circle and its name; selected while its card is open; × removes it (owners, and editors on their own stops). */
 @Composable
 private fun StopChip(stop: MapMarker, isSelected: Boolean, onAction: (MapAction) -> Unit) {
     Surface(
         onClick = { onAction(MapAction.MapView.MarkerClick(stop)) },
         shape = CircleShape,
-        color = if (isSelected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant,
+        color = if (isSelected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainer,
         contentColor = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface,
     ) {
         Row(
-            modifier = Modifier.heightIn(min = ChipHeight).padding(start = MaterialTheme.spacing.extraSmall, end = if (stop.canDelete) 0.dp else MaterialTheme.spacing.small + MaterialTheme.spacing.extraSmall),
+            // The number sits as far from the chip's start as from its top and bottom.
+            modifier = Modifier.heightIn(min = ChipHeight).padding(start = (ChipHeight - StopNumberSize) / 2, end = if (stop.canDelete) 0.dp else MaterialTheme.spacing.medium),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
         ) {
@@ -281,6 +292,7 @@ private val ChipHeight = 40.dp
 
 private val LegLineLength = 8.dp
 private val LegLineWidth = 2.dp
+private val LegTextPadding = 3.dp
 
 // The canvas's timings: the times grow into the gaps one after another, just after the route card starts growing.
 private const val LEG_DELAY_MILLIS = 80
@@ -290,7 +302,7 @@ private const val LEG_STAGGERED = 5
 private const val LEG_GROW_MILLIS = 420
 private const val LEG_FADE_MILLIS = 220
 private const val LEG_FADE_OUT_MILLIS = 120
-private val StopNumberSize = 24.dp
+private val StopNumberSize = 28.dp
 
 @Preview
 @Composable
