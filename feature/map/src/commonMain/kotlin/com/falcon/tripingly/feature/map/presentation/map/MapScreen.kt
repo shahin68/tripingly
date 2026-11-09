@@ -117,8 +117,6 @@ internal fun MapScreen(
     // Layout only: what the header, the day tabs and the credits cover of the map, handed to it as its padding. Each is
     // measured when its size changes; the map waits for all three, so it opens already fitted to what's left.
     var headerHeight by remember { mutableStateOf<Dp?>(null) }
-    // The header with the join pill under it, status bar included: in landscape the plan sheet starts below it.
-    var topPanelHeight by remember { mutableStateOf<Dp?>(null) }
     // The tabs' height with whether there were days to show, so the map doesn't open on the height without tabs.
     var tabsHeight by remember { mutableStateOf<Pair<Boolean, Dp>?>(null) }
     var creditsHeight by remember { mutableStateOf<Dp?>(null) }
@@ -223,7 +221,6 @@ internal fun MapScreen(
         Column(
             modifier = Modifier
                 .align(Alignment.TopEnd)
-                .onSizeChanged { topPanelHeight = with(density) { it.height.toDp() } }
                 .statusBarsPadding()
                 .then(panel)
         ) {
@@ -277,8 +274,8 @@ internal fun MapScreen(
             onAction = onAction,
             onTabsHeight = { tabsHeight = hasDays to with(density) { it.toDp() } },
             onCreditsHeight = { creditsHeight = with(density) { it.toDp() } },
-            // In landscape under the join pill too, so the sheet never opens over it.
-            modifier = Modifier.align(Alignment.BottomEnd).then(panel).padding(top = if (isWide) topPanelHeight ?: coveredTop else coveredTop),
+            // Only the header limits the sheet: opened, it goes over the join pill and anything else under the header.
+            modifier = Modifier.align(Alignment.BottomEnd).then(panel).padding(top = coveredTop),
         )
 
         // In landscape the map's credits and buttons sit at the bottom of the map half, so the plan sheet has the right
