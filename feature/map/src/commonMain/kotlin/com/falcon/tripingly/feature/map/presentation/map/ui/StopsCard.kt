@@ -146,8 +146,8 @@ private fun StopChips(card: StopsCardState, onAction: (MapAction) -> Unit) {
 }
 
 /**
- * What joins a stop to the one before: a short grey line, or with the route on, the time from the stop before
- * ("12 min") between two lines in the route's colour, growing in one gap after another.
+ * What joins a stop to the one before, touching both chips: a grey line, or with the route on, the time from the stop
+ * before ("12 min") between two lines in the route's colour, growing in one gap after another.
  */
 @Composable
 private fun LegConnector(leg: UiText?, color: Color, index: Int) {
@@ -174,16 +174,15 @@ private fun LegConnector(leg: UiText?, color: Color, index: Int) {
                 LegLine(color, LegLineLength)
             }
         } else {
-            Box(Modifier.width(LegLineLength), contentAlignment = Alignment.Center) {
-                LegLine(MaterialTheme.colorScheme.surfaceVariant, LegLineLength / 2)
-            }
+            LegLine(MaterialTheme.colorScheme.surfaceVariant, LegLineLengthOff)
         }
     }
 }
 
 @Composable
 private fun LegLine(color: Color, length: Dp) {
-    Box(Modifier.size(length, LegLineWidth).background(color, CircleShape))
+    // Square ends, so the line meets the chips on both sides instead of floating between them.
+    Box(Modifier.size(length, LegLineWidth).background(color))
 }
 
 /** A route from one place to another, with how to travel, its totals and the places along the way. */
@@ -291,6 +290,7 @@ private val RowGap = 12.dp
 private val ChipHeight = 40.dp
 
 private val LegLineLength = 8.dp
+private val LegLineLengthOff = 16.dp
 private val LegLineWidth = 2.dp
 private val LegTextPadding = 3.dp
 

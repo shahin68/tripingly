@@ -50,6 +50,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import com.falcon.tripingly.core.common.util.NumberUtils
+import com.falcon.tripingly.core.designsystem.component.GlassDefaults
 import com.falcon.tripingly.core.designsystem.component.SegmentedToggle
 import com.falcon.tripingly.core.designsystem.component.SegmentedToggleOption
 import com.falcon.tripingly.core.designsystem.component.horizontalFadingEdge
@@ -118,7 +119,9 @@ internal fun RouteCardSlot(route: RouteSummaryState?, onAction: (MapAction) -> U
         contentKey = { it != null },
         transitionSpec = { fadeIn(tween(CARD_FADE_IN_MILLIS)) togetherWith fadeOut(tween(CARD_FADE_OUT_MILLIS, CARD_FADE_OUT_DELAY_MILLIS)) using SizeTransform { _, _ -> grow } },
         contentAlignment = Alignment.TopStart,
-        modifier = modifier.clip(MaterialTheme.shapes.large).background(MaterialTheme.colorScheme.surfaceContainerLowest),
+        // A shade of the content colour, not a surface colour: the glass sheet is nearly white (light) or nearly the
+        // darkest surface (dark), so a surface colour vanishes on one of them; this is a touch darker or lighter on both.
+        modifier = modifier.clip(MaterialTheme.shapes.large).background(MaterialTheme.colorScheme.onSurface.copy(alpha = CARD_SHADE)),
         label = "route card",
     ) { shown ->
         if (shown != null) RouteCardContent(shown, onAction)
@@ -236,7 +239,8 @@ private fun AlongTheWayCard(item: AlongTheWayPlace, dayNumber: Int?, onOpen: (Ma
     Surface(
         onClick = { onOpen(item.place) },
         shape = MaterialTheme.shapes.medium,
-        color = MaterialTheme.colorScheme.surfaceContainer,
+        // The sheet's own glass colour, so the places stand out of the shaded card in both themes.
+        color = GlassDefaults.opaqueTint,
         modifier = modifier.widthIn(max = AlongCardMaxWidth),
     ) {
         Row(
@@ -286,6 +290,9 @@ private const val ALONG_STAGGER_MILLIS = 45
 private const val ALONG_STAGGERED = 4
 private const val ALONG_SLIDE_FRACTION = 9
 private const val ICON_SWAP_MILLIS = 160
+
+/** How much of the content colour shades the route card over the sheet. */
+private const val CARD_SHADE = 0.05f
 
 /** The routes' credits ("© openrouteservice.org | © OpenStreetMap contributors"), tappable like the map's. */
 @Composable
