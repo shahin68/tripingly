@@ -145,7 +145,8 @@ internal fun edgePanVelocity(finger: Offset, free: Rect, density: Density): Offs
     fun share(distance: Float, half: Float, still: Float) = ((abs(distance) / half - still) / (1 - still)).coerceIn(0f, 1f)
     val share = max(share(fromMiddle.x, free.width / 2, PAN_STILL_SHARE_X), share(fromMiddle.y, free.height / 2, PAN_STILL_SHARE_Y))
     if (share <= 0f) return Offset.Zero
-    val speed = with(density) { PAN_MAX_SPEED.toPx() } * share * share
+    // Cubic: about as before through the middle of the way, faster only near the very edges.
+    val speed = with(density) { PAN_MAX_SPEED.toPx() } * share * share * share
     return fromMiddle / fromMiddle.getDistance() * speed
 }
 
@@ -181,4 +182,4 @@ internal const val PAN_STILL_SHARE_X = 0.45f
 internal const val PAN_STILL_SHARE_Y = 0.35f
 
 /** The camera's speed with the finger at an edge, per second. */
-internal val PAN_MAX_SPEED = 650.dp
+internal val PAN_MAX_SPEED = 850.dp
