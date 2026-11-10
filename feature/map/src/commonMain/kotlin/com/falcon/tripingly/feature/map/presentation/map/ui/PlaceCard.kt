@@ -78,7 +78,6 @@ fun PlaceCard(
                 images = if (address != null) emptyList() else details?.images,
                 category = place.category,
                 onOpen = onOpenImage,
-                hasImage = address == null && place.coverImageId != null,
             )
             val notes = listOfNotNull(
                 details?.addedBy?.let { stringResource(Res.string.map_place_added_by, it.username) },

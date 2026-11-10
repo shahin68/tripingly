@@ -14,7 +14,6 @@ import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.LocalFireDepartment
 import androidx.compose.material3.Icon
-import androidx.compose.material3.Text
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -41,8 +40,7 @@ import org.jetbrains.compose.resources.stringResource
 /**
  * The top of the place card: its images swiped through in a photo banner, with its name, its [subtitle] and which
  * image shows ("1 / 2"), its hot count, and under it the shown Commons image's credit. [images] is null while the
- * place loads; a place without images shows its category icon. While it loads, a place whose pin knows an image
- * ([hasImage]) keeps the credit's line free, so the card doesn't jump when the credit comes (Shahin, 2026-11-10).
+ * place loads; a place without images shows its category icon.
  */
 @Composable
 internal fun PlaceBanner(
@@ -53,7 +51,6 @@ internal fun PlaceBanner(
     category: PlaceCategory,
     onOpen: (index: Int) -> Unit,
     modifier: Modifier = Modifier,
-    hasImage: Boolean = false,
 ) {
     val pagerState = rememberPagerState { images.orEmpty().size }
     val position = images?.takeIf { it.size > 1 }?.let { stringResource(Res.string.map_place_image_position, pagerState.currentPage + 1, it.size) }
@@ -88,7 +85,6 @@ internal fun PlaceBanner(
         images?.getOrNull(pagerState.currentPage)?.credit?.let { credit ->
             CommonsCredit(credit = credit, cropped = true, maxLines = 2, modifier = Modifier.padding(horizontal = MaterialTheme.spacing.extraSmall))
         }
-        if (images == null && hasImage) Text(" ", style = MaterialTheme.typography.labelSmall)
     }
 }
 
