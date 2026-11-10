@@ -138,8 +138,8 @@ actual fun GoogleMapView(
         haptics.tick()
         when (pin) {
             is PinEnd.Stop -> currentOnMarkerClick(pin.stop)
-            // The open place's own pin: as before, a tap on it does nothing more.
-            is PinEnd.Place -> if (pin.place.id != currentLayers.selectedPlace?.id) currentOnPlacePinClick(pin.place)
+            // A tap on a place's pin always opens its card, the open one's too: the finger going down closed it (Shahin, 2026-11-10).
+            is PinEnd.Place -> currentOnPlacePinClick(pin.place)
         }
         return true
     }

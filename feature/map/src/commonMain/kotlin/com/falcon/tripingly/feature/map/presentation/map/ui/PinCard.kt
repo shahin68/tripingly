@@ -6,6 +6,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.animation.togetherWith
+import androidx.compose.animation.using
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -48,7 +49,10 @@ internal fun <T : Any> PinCard(
             contentKey = { it?.let(key) },
             transitionSpec = {
                 (scaleIn(transformOrigin = TransformOrigin(0.5f, 1f)) + fadeIn()) togetherWith
-                    (scaleOut(transformOrigin = TransformOrigin(0.5f, 1f)) + fadeOut())
+                    (scaleOut(transformOrigin = TransformOrigin(0.5f, 1f)) + fadeOut()) using
+                    // Only the scale grows the card: a size animation too clipped it while it grew and slid its content
+                    // up as its height changed, so it jittered (Shahin, 2026-11-10).
+                    null
             },
             // [modifier] comes after the lift, so it sees where the card really is (a touch on it mustn't close it).
             modifier = Modifier
