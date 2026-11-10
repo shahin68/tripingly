@@ -48,12 +48,19 @@ interface GoogleMap {
     /** Replaces the streak running along the line, on top of it; fewer than two points draw none. */
     fun setLineSweep(points: List<GoogleMapPoint>, color: UIColor, width: Double)
 
-    /** Replaces the dashed line of a pulled pin, over the line and under the pins; fewer than two points draw none. */
-    fun setDragLine(points: List<GoogleMapPoint>, color: UIColor, width: Double)
+    /** Where a point is on the view now, in points from its top left. */
+    fun screenPoint(latitude: Double, longitude: Double): GoogleMapScreenPoint
+
+    /** Moves the camera at once by this many points, right and down for positive values. */
+    fun scrollCamera(dx: Double, dy: Double)
 }
 
 @ObjCName("GoogleMapPoint", exact = true)
 class GoogleMapPoint(val latitude: Double, val longitude: Double)
+
+/** A point on the map view, in points from its top left. */
+@ObjCName("GoogleMapScreenPoint", exact = true)
+class GoogleMapScreenPoint(val x: Double, val y: Double)
 
 /** [bearing] in degrees clockwise from north. */
 @ObjCName("GoogleMapArrow", exact = true)
@@ -74,8 +81,6 @@ class GoogleMapMarker(
     val showsInfoWindow: Boolean,
     /** Fades in when it first shows, as Google's own pins do. */
     val fadesIn: Boolean,
-    /** Can be held and pulled; it goes back to its point when let go (see [GoogleMapListener.onMarkerDrag]). */
-    val draggable: Boolean = false,
 )
 
 @ObjCName("GoogleMapListener", exact = true)
@@ -91,13 +96,17 @@ interface GoogleMapListener {
 
     fun onTap(latitude: Double, longitude: Double)
 
-    fun onLongPress(latitude: Double, longitude: Double)
+    /**
+     * A long press at this point on the map, and at [x], [y] on the view (points). True when it was on a pin, which is
+     * then held: the map's own gestures stop until [onPinHoldEnd], and [onPinHoldMove] reports the finger.
+     */
+    fun onLongPress(latitude: Double, longitude: Double, x: Double, y: Double): Boolean
 
     fun onMarkerTap(key: String)
 
-    /** A held marker is pulled to this point. */
-    fun onMarkerDrag(key: String, latitude: Double, longitude: Double)
+    /** The finger holding a pin moved to [x], [y] on the view (points). */
+    fun onPinHoldMove(x: Double, y: Double)
 
-    /** The held marker was let go; it's back at its point. */
-    fun onMarkerDragEnd(key: String)
+    /** The finger holding a pin was lifted. */
+    fun onPinHoldEnd()
 }

@@ -7,6 +7,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
@@ -19,9 +20,9 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.graphics.vector.rememberVectorPainter
@@ -46,8 +47,6 @@ import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.model.BitmapDescriptor
 import com.google.android.gms.maps.model.BitmapDescriptorFactory
 import com.google.android.gms.maps.model.CameraPosition
-import com.google.android.gms.maps.model.Dash
-import com.google.android.gms.maps.model.Gap
 import com.google.android.gms.maps.model.JointType
 import com.google.android.gms.maps.model.LatLng
 import com.google.android.gms.maps.model.MapStyleOptions
@@ -59,7 +58,6 @@ import com.google.maps.android.compose.MapProperties
 import com.google.maps.android.compose.MapUiSettings
 import com.google.maps.android.compose.Marker
 import com.google.maps.android.compose.MarkerComposable
-import com.google.maps.android.compose.MarkerState
 import com.google.maps.android.compose.Polyline
 import com.google.maps.android.compose.rememberCameraPositionState
 import com.google.maps.android.compose.rememberUpdatedMarkerState
@@ -112,6 +110,22 @@ actual fun GoogleMapView(
     // The second tap of a double tap (double tap and drag zooms) is no tap or long press of its own.
     var isDoubleTap by remember { mutableStateOf(false) }
 
+    // A pin held to pull a route from it (see PinHoldLayer). The map's own long press starts it when the finger is on a
+    // pin, instead of dropping a named pin; the map doesn't move under the finger while it's held.
+    val holder = remember { PinHolder() }
+    val isHolding = holder.hold != null
+    val density = LocalDensity.current
+    val haptics = rememberHaptics()
+    val currentLayers by rememberUpdatedState(layers)
+    val currentOnPinDrop by rememberUpdatedState(onPinDrop)
+    fun project(point: Coordinates): Offset? =
+        cameraPositionState.projection?.toScreenLocation(LatLng(point.latitude, point.longitude))?.let { Offset(it.x.toFloat(), it.y.toFloat()) }
+    fun shownPins(): List<ShownPin> {
+        // Read for the zoom, so a pin's dot or pin size counts.
+        val zoom = cameraPositionState.position.zoom
+        return currentLayers.shownPins(zoom, density, ::project)
+    }
+
     // A camera animation started before the map has loaded doesn't run (on a fresh start the trip's stops arrive
     // first), so until then the camera jumps instead.
     var isMapLoaded by remember { mutableStateOf(false) }
@@ -126,16 +140,22 @@ actual fun GoogleMapView(
     }
 
     // Sync camera position back to ViewModel when it stops moving
-    LaunchedEffect(cameraPositionState.isMoving) {
-        if (!cameraPositionState.isMoving) reportCamera()
+    // Not while a held pin moves the camera: once it's let go.
+    LaunchedEffect(cameraPositionState.isMoving, isHolding) {
+        if (!cameraPositionState.isMoving && !isHolding) reportCamera()
     }
 
-    val uiSettings = remember {
+    val uiSettings = remember(isHolding) {
         MapUiSettings(
             zoomControlsEnabled = false,
             myLocationButtonEnabled = false,
             compassEnabled = true,
-            mapToolbarEnabled = false
+            mapToolbarEnabled = false,
+            // While a pin is held the finger pulls its line; only the hold moves the camera.
+            scrollGesturesEnabled = !isHolding,
+            zoomGesturesEnabled = !isHolding,
+            rotationGesturesEnabled = !isHolding,
+            tiltGesturesEnabled = !isHolding,
         )
     }
 
@@ -167,288 +187,256 @@ actual fun GoogleMapView(
         }
     }
 
-    // A held pin pulled toward another: a dashed line follows it and snaps onto the pin it would be let go on, with a tick.
-    val dragger = remember { PinDragger() }
-    val currentLayers by rememberUpdatedState(layers)
-    val currentOnPinDrop by rememberUpdatedState(onPinDrop)
-    val haptics = rememberHaptics()
-    LaunchedEffect(dragger) {
-        snapshotFlow { dragger.drag?.target?.key }.collect { if (it != null) haptics.tick() }
-    }
-    fun onPinDrag(from: PinEnd, at: LatLng?) {
-        if (at != null) {
-            dragger.move(from, Coordinates(at.latitude, at.longitude), cameraPositionState.position.zoom, currentLayers.dropTargets())
-        } else if (dragger.drag?.from?.key == from.key) {
-            dragger.end()?.let { (start, end) -> currentOnPinDrop(start, end) }
-        }
-    }
-
-    GoogleMap(
-        modifier = modifier
-            .fillMaxSize()
-            .onSizeChanged { mapSize = it }
-            .pointerInput(Unit) {
-                var lastDownMillis = Long.MIN_VALUE / 2
-                awaitEachGesture {
-                    val down = awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
-                    lastTouch = down.position
-                    isDoubleTap = down.uptimeMillis - lastDownMillis < DOUBLE_TAP_MILLIS
-                    lastDownMillis = down.uptimeMillis
+    Box(modifier.fillMaxSize()) {
+        GoogleMap(
+            modifier = Modifier
+                .fillMaxSize()
+                .onSizeChanged { mapSize = it }
+                .pointerInput(Unit) {
+                    var lastDownMillis = Long.MIN_VALUE / 2
+                    awaitEachGesture {
+                        val down = awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
+                        lastTouch = down.position
+                        isDoubleTap = down.uptimeMillis - lastDownMillis < DOUBLE_TAP_MILLIS
+                        lastDownMillis = down.uptimeMillis
+                        // Follows the finger to the end of the gesture, for a pin it may hold.
+                        while (true) {
+                            val event = awaitPointerEvent(PointerEventPass.Initial)
+                            val change = event.changes.firstOrNull { it.id == down.id } ?: break
+                            if (!change.pressed) break
+                            lastTouch = change.position
+                            if (holder.hold != null) holder.move(change.position, shownPins(), density)
+                        }
+                        holder.end()?.let { (from, to) -> currentOnPinDrop(from, to) }
+                    }
+                },
+            cameraPositionState = cameraPositionState,
+            properties = mapProperties,
+            uiSettings = uiSettings,
+            contentPadding = contentPadding,
+            // Dark map in dark mode, so the light status bar icons stay readable.
+            mapColorScheme = ComposeMapColorScheme.FOLLOW_SYSTEM,
+            onMapClick = { latLng ->
+                if (!isDoubleTap) onMapClick(Coordinates(latitude = latLng.latitude, longitude = latLng.longitude))
+            },
+            onMapLongClick = { latLng ->
+                val touch = lastTouch
+                val pin = touch?.let { shownPins().pinAt(it) }
+                when {
+                    isDoubleTap -> Unit
+                    // On a pin: it's held to pull a route from it, no pin dropped.
+                    pin != null && touch != null -> holder.start(pin, touch)
+                    else -> onMapLongClick(Coordinates(latitude = latLng.latitude, longitude = latLng.longitude))
                 }
             },
-        cameraPositionState = cameraPositionState,
-        properties = mapProperties,
-        uiSettings = uiSettings,
-        contentPadding = contentPadding,
-        // Dark map in dark mode, so the light status bar icons stay readable.
-        mapColorScheme = ComposeMapColorScheme.FOLLOW_SYSTEM,
-        onMapClick = { latLng ->
-            if (!isDoubleTap) onMapClick(Coordinates(latitude = latLng.latitude, longitude = latLng.longitude))
-        },
-        onMapLongClick = { latLng ->
-            if (!isDoubleTap) onMapLongClick(Coordinates(latitude = latLng.latitude, longitude = latLng.longitude))
-        },
-        // The first camera report comes before the map can tell its bounds, so the squares around the view load from here.
-        onMapLoaded = {
-            isMapLoaded = true
-            reportCamera()
-        },
-    ) {
-        // Every pin look is drawn once, here where the map can take icons, and shared by every pin that looks the same.
-        val categoryIcons = PlaceCategory.entries.associateWith { rememberVectorPainter(it.icon) }
-        val placeColor = MaterialTheme.extendedColors.place
-        val onPlaceColor = MaterialTheme.colorScheme.onSecondary
-        val hotSpotColor = MaterialTheme.extendedColors.place
-        val onHotSpotColor = MaterialTheme.colorScheme.onTertiary
-        val density = LocalDensity.current
-        val layoutDirection = LocalLayoutDirection.current
-        val textMeasurer = rememberTextMeasurer()
-        val pinPhotos = rememberPinPhotos(placePins)
-        val pinIcons = remember(placeColor, hotSpotColor, density) { mutableMapOf<PlacePinLook, BitmapDescriptor>() }
-        fun pinIcon(look: PlacePinLook) = pinIcons.getOrPut(look) {
-            val fill = when {
-                look.isAlongTheWay -> AlongTheWayPinColor
-                look.isTripinly -> hotSpotColor
-                else -> placeColor
-            }
-            val photo = look.photoId?.let { pinPhotos[it] }
-            val bitmap = if (look.isDot) {
-                drawPlaceDot(look.size, fill, density, layoutDirection)
-            } else if (photo != null) {
-                drawPlacePhotoPin(photo, look.size, fill, density, layoutDirection)
-            } else {
-                drawPlacePin(
-                    icon = categoryIcons.getValue(look.category),
-                    size = look.size,
-                    fill = fill,
-                    iconColor = when {
-                        look.isAlongTheWay -> Color.White
-                        look.isTripinly -> onHotSpotColor
-                        else -> onPlaceColor
-                    },
-                    density = density,
-                    layoutDirection = layoutDirection,
-                )
-            }
-            BitmapDescriptorFactory.fromBitmap(bitmap.asAndroidBitmap())
-        }
-        // A photo pin that couldn't load its photo shows its icon.
-        fun photoId(place: MapPlace, photo: Boolean) = place.coverImageId?.takeIf { photo && pinPhotos[it] != null }
-        val clusterIcons = remember(hotSpotColor, density) { mutableMapOf<Int, BitmapDescriptor>() }
-
-        // Place pins are markers, so they keep their size on screen while the camera zooms. The first ones
-        // (the most liked, then the best known) are drawn on top; a new pin fades in. Changing a pin's icon makes
-        // every pin on the map blink, so a pin whose look changes comes back as a new pin, a photo pin waits for its
-        // photo, and the tapped place's pin stays as it is under a bigger copy.
-        //
-        // Zoomed out below pinDotBelowZoom, the pins turn into dots. Each pin has its dot marker from the start, hidden,
-        // so the swap only shows one and hides the other, at once: no markers are made or dropped while the fingers move.
-        val isDots by remember(pinDotBelowZoom) { derivedStateOf { cameraPositionState.position.zoom < pinDotBelowZoom } }
-        val shownPins = placePins.filter { !it.photo || it.place.coverImageId in pinPhotos }
-
-        // The map hands a tap on overlapping pins to the one on top; the pin whose middle is nearest the finger is the
-        // one meant, as long as the finger is on it.
-        fun aimedPin(tapped: PlacePin): PlacePin {
-            val touch = lastTouch ?: return tapped
-            val projection = cameraPositionState.projection ?: return tapped
-            val slop = with(density) { PIN_TAP_SLOP.toPx() }
-            return shownPins
-                .map { pin ->
-                    val point = projection.toScreenLocation(LatLng(pin.place.location.lat, pin.place.location.lng))
-                    pin to hypot(point.x - touch.x, point.y - touch.y)
+            // The first camera report comes before the map can tell its bounds, so the squares around the view load from here.
+            onMapLoaded = {
+                isMapLoaded = true
+                reportCamera()
+            },
+        ) {
+            // Every pin look is drawn once, here where the map can take icons, and shared by every pin that looks the same.
+            val categoryIcons = PlaceCategory.entries.associateWith { rememberVectorPainter(it.icon) }
+            val placeColor = MaterialTheme.extendedColors.place
+            val onPlaceColor = MaterialTheme.colorScheme.onSecondary
+            val hotSpotColor = MaterialTheme.extendedColors.place
+            val onHotSpotColor = MaterialTheme.colorScheme.onTertiary
+            val layoutDirection = LocalLayoutDirection.current
+            val textMeasurer = rememberTextMeasurer()
+            val pinPhotos = rememberPinPhotos(placePins)
+            val pinIcons = remember(placeColor, hotSpotColor, density) { mutableMapOf<PlacePinLook, BitmapDescriptor>() }
+            fun pinIcon(look: PlacePinLook) = pinIcons.getOrPut(look) {
+                val fill = when {
+                    look.isAlongTheWay -> AlongTheWayPinColor
+                    look.isTripinly -> hotSpotColor
+                    else -> placeColor
                 }
-                .filter { (pin, distance) ->
-                    val size = if (isDots || pin.isDot) PlaceDotSize else pin.size
-                    distance <= with(density) { size.toPx() } / 2 + slop
-                }
-                .minByOrNull { (_, distance) -> distance }
-                ?.first ?: tapped
-        }
-
-        shownPins.forEach { pin ->
-            val look = PlacePinLook(pin.place.category, pin.place.isTripinly, pin.size, photoId(pin.place, pin.photo), pin.isAlongTheWay)
-            val dotLook = pin.dotLook()
-            key(pin.place.id) {
-                val fadeIn = remember { Animatable(0f) }
-                LaunchedEffect(Unit) { fadeIn.animateTo(1f, tween(PIN_FADE_MILLIS)) }
-                val position = LatLng(pin.place.location.lat, pin.place.location.lng)
-                // Under the clusters and the stops. Taken from the place, not from its place in the list, so a pin's
-                // z-order stays the same when pins come and go: changing it makes pins vanish for a frame.
-                val zIndex = PLACE_PINS_Z * pinRank(pin.place)
-                // No info window and no camera move of the map's own: the card and the camera are ours.
-                fun onClick(): Boolean {
-                    onPlacePinClick(aimedPin(pin).place)
-                    return true
-                }
-                key(look) {
-                    Marker(
-                        state = rememberDraggablePin(position, PinEnd.Place(pin.place), ::onPinDrag),
-                        draggable = true,
-                        icon = pinIcon(look),
-                        title = pin.place.name,
-                        anchor = Offset(0.5f, 0.5f),
-                        alpha = fadeIn.value,
-                        visible = !isDots && !pin.isDot,
-                        zIndex = zIndex,
-                        onClick = { onClick() },
+                val photo = look.photoId?.let { pinPhotos[it] }
+                val bitmap = if (look.isDot) {
+                    drawPlaceDot(look.size, fill, density, layoutDirection)
+                } else if (photo != null) {
+                    drawPlacePhotoPin(photo, look.size, fill, density, layoutDirection)
+                } else {
+                    drawPlacePin(
+                        icon = categoryIcons.getValue(look.category),
+                        size = look.size,
+                        fill = fill,
+                        iconColor = when {
+                            look.isAlongTheWay -> Color.White
+                            look.isTripinly -> onHotSpotColor
+                            else -> onPlaceColor
+                        },
+                        density = density,
+                        layoutDirection = layoutDirection,
                     )
                 }
-                key(dotLook) {
-                    Marker(
-                        state = rememberDraggablePin(position, PinEnd.Place(pin.place), ::onPinDrag),
-                        draggable = true,
-                        icon = pinIcon(dotLook),
-                        title = pin.place.name,
-                        anchor = Offset(0.5f, 0.5f),
-                        alpha = fadeIn.value,
-                        visible = isDots || pin.isDot,
-                        zIndex = zIndex,
-                        onClick = { onClick() },
-                    )
-                }
+                BitmapDescriptorFactory.fromBitmap(bitmap.asAndroidBitmap())
             }
-        }
-        placeClusters.forEach { cluster ->
-            key(cluster.location) {
-                Marker(
-                    state = rememberUpdatedMarkerState(position = LatLng(cluster.location.lat, cluster.location.lng)),
-                    icon = clusterIcons.getOrPut(cluster.count) {
-                        BitmapDescriptorFactory.fromBitmap(
-                            drawClusterPin(cluster.count, hotSpotColor, onHotSpotColor, textMeasurer, density, layoutDirection).asAndroidBitmap(),
-                        )
-                    },
-                    anchor = Offset(0.5f, 0.5f),
-                    zIndex = PLACE_PINS_Z,
-                    onClick = {
-                        onClusterClick(cluster)
-                        true
-                    },
-                )
-            }
-        }
+            // A photo pin that couldn't load its photo shows its icon.
+            fun photoId(place: MapPlace, photo: Boolean) = place.coverImageId?.takeIf { photo && pinPhotos[it] != null }
+            val clusterIcons = remember(hotSpotColor, density) { mutableMapOf<Int, BitmapDescriptor>() }
 
-        // Under every pin.
-        if (line != null && line.points.size > 1) MapLineView(line.themed())
+            // Place pins are markers, so they keep their size on screen while the camera zooms. The first ones
+            // (the most liked, then the best known) are drawn on top; a new pin fades in. Changing a pin's icon makes
+            // every pin on the map blink, so a pin whose look changes comes back as a new pin, a photo pin waits for its
+            // photo, and the tapped place's pin stays as it is under a bigger copy.
+            //
+            // Zoomed out below pinDotBelowZoom, the pins turn into dots. Each pin has its dot marker from the start, hidden,
+            // so the swap only shows one and hides the other, at once: no markers are made or dropped while the fingers move.
+            val isDots by remember(pinDotBelowZoom) { derivedStateOf { cameraPositionState.position.zoom < pinDotBelowZoom } }
+            val shownPins = placePins.filter { !it.photo || it.place.coverImageId in pinPhotos }
 
-        PinDragLine(dragger)
-
-        // The tapped place, bigger and on top.
-        selectedPlace?.let { place ->
-            key(place.id) {
-                Marker(
-                    state = rememberDraggablePin(LatLng(place.location.lat, place.location.lng), PinEnd.Place(place), ::onPinDrag),
-                    draggable = true,
-                    icon = pinIcon(
-                        PlacePinLook(
-                            place.category,
-                            place.isTripinly,
-                            SelectedPinSize,
-                            photoId(place, placePins.any { it.photo && it.place.id == place.id }),
-                            isAlongTheWay = placePins.any { it.isAlongTheWay && it.place.id == place.id },
-                        ),
-                    ),
-                    title = place.name,
-                    anchor = Offset(0.5f, 0.5f),
-                    zIndex = 2f,
-                    onClick = { true },
-                )
-            }
-        }
-        val coverThumbs = rememberCoverThumbs(markers)
-        markers.forEach { marker ->
-            key(marker.id) {
-                val position = LatLng(marker.position.latitude, marker.position.longitude)
-                val markerState = rememberDraggablePin(position, PinEnd.Stop(marker), ::onPinDrag)
-                // The icon is drawn once and redrawn only when its number or cover changes.
-                val cover = marker.coverPhotoId?.let { coverThumbs[it] }
-                MarkerComposable(
-                    marker.orderNumber,
-                    // Empty until the cover's thumbnail has loaded.
-                    marker.coverPhotoId.takeIf { cover != null }.orEmpty(),
-                    marker.isNew,
-                    state = markerState,
-                    draggable = true,
-                    title = marker.title.asString(),
-                    // The pin is a circle centered on the stop.
-                    anchor = Offset(0.5f, 0.5f),
-                    // Above the places.
-                    zIndex = 1f,
-                    onClick = {
-                        onMarkerClick(marker)
-                        // No info window and no camera move of the map's own: the card and the camera are ours.
-                        true
+            // The map hands a tap on overlapping pins to the one on top; the pin whose middle is nearest the finger is the
+            // one meant, as long as the finger is on it.
+            fun aimedPin(tapped: PlacePin): PlacePin {
+                val touch = lastTouch ?: return tapped
+                val projection = cameraPositionState.projection ?: return tapped
+                val slop = with(density) { PIN_TAP_SLOP.toPx() }
+                return shownPins
+                    .map { pin ->
+                        val point = projection.toScreenLocation(LatLng(pin.place.location.lat, pin.place.location.lng))
+                        pin to hypot(point.x - touch.x, point.y - touch.y)
                     }
-                ) {
-                    TripMarkerIcon(
-                        orderNumber = marker.orderNumber,
-                        cover = cover,
-                        isNew = marker.isNew,
+                    .filter { (pin, distance) ->
+                        val size = if (isDots || pin.isDot) PlaceDotSize else pin.size
+                        distance <= with(density) { size.toPx() } / 2 + slop
+                    }
+                    .minByOrNull { (_, distance) -> distance }
+                    ?.first ?: tapped
+            }
+
+            shownPins.forEach { pin ->
+                val look = PlacePinLook(pin.place.category, pin.place.isTripinly, pin.size, photoId(pin.place, pin.photo), pin.isAlongTheWay)
+                val dotLook = pin.dotLook()
+                key(pin.place.id) {
+                    val fadeIn = remember { Animatable(0f) }
+                    LaunchedEffect(Unit) { fadeIn.animateTo(1f, tween(PIN_FADE_MILLIS)) }
+                    val position = LatLng(pin.place.location.lat, pin.place.location.lng)
+                    // Under the clusters and the stops. Taken from the place, not from its place in the list, so a pin's
+                    // z-order stays the same when pins come and go: changing it makes pins vanish for a frame.
+                    val zIndex = PLACE_PINS_Z * pinRank(pin.place)
+                    // No info window and no camera move of the map's own: the card and the camera are ours.
+                    fun onClick(): Boolean {
+                        haptics.tick()
+                        onPlacePinClick(aimedPin(pin).place)
+                        return true
+                    }
+                    key(look) {
+                        Marker(
+                            state = rememberUpdatedMarkerState(position = position),
+                            icon = pinIcon(look),
+                            title = pin.place.name,
+                            anchor = Offset(0.5f, 0.5f),
+                            alpha = fadeIn.value,
+                            visible = !isDots && !pin.isDot,
+                            zIndex = zIndex,
+                            onClick = { onClick() },
+                        )
+                    }
+                    key(dotLook) {
+                        Marker(
+                            state = rememberUpdatedMarkerState(position = position),
+                            icon = pinIcon(dotLook),
+                            title = pin.place.name,
+                            anchor = Offset(0.5f, 0.5f),
+                            alpha = fadeIn.value,
+                            visible = isDots || pin.isDot,
+                            zIndex = zIndex,
+                            onClick = { onClick() },
+                        )
+                    }
+                }
+            }
+            placeClusters.forEach { cluster ->
+                key(cluster.location) {
+                    Marker(
+                        state = rememberUpdatedMarkerState(position = LatLng(cluster.location.lat, cluster.location.lng)),
+                        icon = clusterIcons.getOrPut(cluster.count) {
+                            BitmapDescriptorFactory.fromBitmap(
+                                drawClusterPin(cluster.count, hotSpotColor, onHotSpotColor, textMeasurer, density, layoutDirection).asAndroidBitmap(),
+                            )
+                        },
+                        anchor = Offset(0.5f, 0.5f),
+                        zIndex = PLACE_PINS_Z,
+                        onClick = {
+                            haptics.tick()
+                            onClusterClick(cluster)
+                            true
+                        },
                     )
                 }
             }
-        }
-    }
-}
 
-/**
- * A pin's marker state that can be held and pulled: reports where it's pulled to while it's dragged ([onDrag] with
- * the point) and when it's let go (null), then goes back to [position]. A drag doesn't move the stop or the place.
- */
-@Composable
-private fun rememberDraggablePin(position: LatLng, end: PinEnd, onDrag: (PinEnd, LatLng?) -> Unit): MarkerState {
-    val state = remember { MarkerState(position) }
-    val current by rememberUpdatedState(end)
-    val currentPosition by rememberUpdatedState(position)
-    val currentOnDrag by rememberUpdatedState(onDrag)
-    LaunchedEffect(position) { if (!state.isDragging) state.position = position }
-    LaunchedEffect(state) {
-        snapshotFlow { state.isDragging to state.position }.collect { (isDragging, at) ->
-            if (isDragging) {
-                currentOnDrag(current, at)
-            } else {
-                currentOnDrag(current, null)
-                if (at != currentPosition) state.position = currentPosition
+            // Under every pin.
+            if (line != null && line.points.size > 1) MapLineView(line.themed())
+
+            // The tapped place, bigger and on top.
+            selectedPlace?.let { place ->
+                key(place.id) {
+                    Marker(
+                        state = rememberUpdatedMarkerState(position = LatLng(place.location.lat, place.location.lng)),
+                        icon = pinIcon(
+                            PlacePinLook(
+                                place.category,
+                                place.isTripinly,
+                                SelectedPinSize,
+                                photoId(place, placePins.any { it.photo && it.place.id == place.id }),
+                                isAlongTheWay = placePins.any { it.isAlongTheWay && it.place.id == place.id },
+                            ),
+                        ),
+                        title = place.name,
+                        anchor = Offset(0.5f, 0.5f),
+                        zIndex = 2f,
+                        onClick = { true },
+                    )
+                }
+            }
+            val coverThumbs = rememberCoverThumbs(markers)
+            markers.forEach { marker ->
+                key(marker.id) {
+                    val position = LatLng(marker.position.latitude, marker.position.longitude)
+                    val markerState = rememberUpdatedMarkerState(position = position)
+                    // The icon is drawn once and redrawn only when its number or cover changes.
+                    val cover = marker.coverPhotoId?.let { coverThumbs[it] }
+                    MarkerComposable(
+                        marker.orderNumber,
+                        // Empty until the cover's thumbnail has loaded.
+                        marker.coverPhotoId.takeIf { cover != null }.orEmpty(),
+                        marker.isNew,
+                        state = markerState,
+                        title = marker.title.asString(),
+                        // The pin is a circle centered on the stop.
+                        anchor = Offset(0.5f, 0.5f),
+                        // Above the places.
+                        zIndex = 1f,
+                        onClick = {
+                            haptics.tick()
+                            onMarkerClick(marker)
+                            // No info window and no camera move of the map's own: the card and the camera are ours.
+                            true
+                        }
+                    ) {
+                        TripMarkerIcon(
+                            orderNumber = marker.orderNumber,
+                            cover = cover,
+                            isNew = marker.isNew,
+                        )
+                    }
+                }
             }
         }
+        PinHoldLayer(
+            holder = holder,
+            mapSize = Size(mapSize.width.toFloat(), mapSize.height.toFloat()),
+            project = { point ->
+                // Read, so the line follows the camera.
+                cameraPositionState.position
+                project(point)
+            },
+            pins = ::shownPins,
+            onScroll = { by -> cameraPositionState.move(CameraUpdateFactory.scrollBy(by.x, by.y)) },
+        )
     }
-    return state
-}
-
-/** The pulled pin's dashed line, over the route and under the pins; only this redraws while the finger moves. */
-@Composable
-@GoogleMapComposable
-private fun PinDragLine(dragger: PinDragger) {
-    val drag = dragger.drag ?: return
-    val density = LocalDensity.current
-    Polyline(
-        points = listOf(drag.from.position, drag.end).map { LatLng(it.latitude, it.longitude) },
-        color = MaterialTheme.extendedColors.stop,
-        width = with(density) { PinDragLineWidth.toPx() },
-        pattern = with(density) { listOf(Dash(PinDragDash.toPx()), Gap(PinDragGap.toPx())) },
-        startCap = RoundCap(),
-        endCap = RoundCap(),
-        zIndex = 0.9f,
-    )
 }
 
 /** A line with rounded ends and arrows pointing the way; a streak runs along it once when it changes. */
@@ -495,10 +483,6 @@ private fun MapLineView(line: MapLine) {
         )
     }
 }
-
-private val PinDragLineWidth = 4.dp
-private val PinDragDash = 2.dp
-private val PinDragGap = 9.dp
 
 /** A new place pin fades in, as Google's own pins do. */
 private const val PIN_FADE_MILLIS = 250

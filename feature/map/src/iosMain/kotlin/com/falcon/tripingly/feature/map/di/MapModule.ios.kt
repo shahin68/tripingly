@@ -27,8 +27,8 @@ private object NoListener : GoogleMapListener {
     override fun onGestureStart() = Unit
     override fun onZoomChange(zoom: Float) = Unit
     override fun onTap(latitude: Double, longitude: Double) = Unit
-    override fun onLongPress(latitude: Double, longitude: Double) = Unit
+    override fun onLongPress(latitude: Double, longitude: Double, x: Double, y: Double) = false
     override fun onMarkerTap(key: String) = Unit
-    override fun onMarkerDrag(key: String, latitude: Double, longitude: Double) = Unit
-    override fun onMarkerDragEnd(key: String) = Unit
+    override fun onPinHoldMove(x: Double, y: Double) = Unit
+    override fun onPinHoldEnd() = Unit
 }

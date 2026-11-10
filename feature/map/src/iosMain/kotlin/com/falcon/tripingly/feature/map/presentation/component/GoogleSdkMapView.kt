@@ -4,6 +4,7 @@ import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
@@ -15,11 +16,13 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.rememberVectorPainter
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.text.rememberTextMeasurer
@@ -73,14 +76,8 @@ internal fun GoogleSdkMapView(
 ) {
     val currentMarkers by rememberUpdatedState(markers)
     val currentSelectedPlace by rememberUpdatedState(selectedPlace)
+    val currentPinDotBelowZoom by rememberUpdatedState(pinDotBelowZoom)
     val currentOnPinDrop by rememberUpdatedState(onPinDrop)
-    // A held pin pulled toward another, as on Android: a dashed line follows it and snaps onto the pin it would be
-    // let go on, with a tick.
-    val dragger = remember { PinDragger() }
-    val haptics = rememberHaptics()
-    LaunchedEffect(dragger) {
-        snapshotFlow { dragger.drag?.target?.key }.collect { if (it != null) haptics.tick() }
-    }
     val currentPlacePins by rememberUpdatedState(placePins)
     val currentPlaceClusters by rememberUpdatedState(placeClusters)
     val currentOnPlacePinClick by rememberUpdatedState(onPlacePinClick)
@@ -109,7 +106,27 @@ internal fun GoogleSdkMapView(
     // The camera's zoom as it moves, read only to tell when the pins turn into dots and back.
     var liveZoom by remember { mutableStateOf(initialZoom) }
     val isDots by remember(pinDotBelowZoom) { derivedStateOf { liveZoom < pinDotBelowZoom } }
-    val map = remember(googleMaps) {
+    // Counts the camera's moves, read where something on top of the map has to follow it.
+    var cameraFrame by remember { mutableStateOf(0) }
+    // A pin held to pull a route from it (see PinHoldLayer), started by the map's long press on a pin.
+    val holder = remember { PinHolder() }
+    val density = LocalDensity.current
+    val haptics = rememberHaptics()
+    // The map works in points, the layer on top in px.
+    lateinit var map: GoogleMap
+    fun project(point: Coordinates): Offset =
+        map.screenPoint(point.latitude, point.longitude).let { Offset(it.x.toFloat() * density.density, it.y.toFloat() * density.density) }
+    fun shownPins(): List<ShownPin> = MapLayersState(
+        stops = currentMarkers.toImmutableList(),
+        placePins = currentPlacePins.toImmutableList(),
+        pinDotBelowZoom = currentPinDotBelowZoom,
+        selectedPlace = currentSelectedPlace,
+    ).shownPins(liveZoom, density, ::project)
+    fun reportRest() {
+        val (center, zoom, bounds) = rest ?: return
+        currentOnCameraMove(center.shiftedBy(currentFreeMiddle, zoom), zoom, bounds)
+    }
+    map = remember(googleMaps) {
         googleMaps.createMap(
             object : GoogleMapListener {
                 override fun onCameraIdle(
@@ -124,7 +141,8 @@ internal fun GoogleSdkMapView(
                     val bounds = GeoBounds(south, west, north, east)
                     isMapReady = true
                     rest = Triple(Coordinates(latitude, longitude), zoom, bounds)
-                    currentOnCameraMove(Coordinates(latitude, longitude).shiftedBy(currentFreeMiddle, zoom), zoom, bounds)
+                    // Not while a held pin moves the camera: once it's let go.
+                    if (holder.hold == null) reportRest()
                 }
 
                 override fun onGestureStart() {
@@ -133,6 +151,7 @@ internal fun GoogleSdkMapView(
 
                 override fun onZoomChange(zoom: Float) {
                     liveZoom = zoom
+                    cameraFrame++
                 }
 
                 override fun onTap(latitude: Double, longitude: Double) {
@@ -140,13 +159,31 @@ internal fun GoogleSdkMapView(
                     currentOnMapClick(Coordinates(latitude, longitude))
                 }
 
-                override fun onLongPress(latitude: Double, longitude: Double) {
+                override fun onLongPress(latitude: Double, longitude: Double, x: Double, y: Double): Boolean {
                     currentOnMapTouch()
+                    val touch = Offset(x.toFloat() * density.density, y.toFloat() * density.density)
+                    // On a pin: it's held to pull a route from it, no pin dropped.
+                    val pin = shownPins().pinAt(touch)
+                    if (pin != null) {
+                        holder.start(pin, touch)
+                        return true
+                    }
                     currentOnMapLongClick(Coordinates(latitude, longitude))
+                    return false
+                }
+
+                override fun onPinHoldMove(x: Double, y: Double) {
+                    holder.move(Offset(x.toFloat() * density.density, y.toFloat() * density.density), shownPins(), density)
+                }
+
+                override fun onPinHoldEnd() {
+                    holder.end()?.let { (from, to) -> currentOnPinDrop(from, to) }
+                    reportRest()
                 }
 
                 override fun onMarkerTap(key: String) {
                     currentOnMapTouch()
+                    haptics.tick()
                     when {
                         key.startsWith(PLACE_KEY) ->
                             currentPlacePins.find { PLACE_KEY + it.place.id == key }?.let { currentOnPlacePinClick(it.place) }
@@ -154,20 +191,6 @@ internal fun GoogleSdkMapView(
                             currentPlaceClusters.find { it.key() == key }?.let(currentOnClusterClick)
                         else -> currentMarkers.find { it.id == key }?.let(currentOnMarkerClick)
                     }
-                }
-
-                override fun onMarkerDrag(key: String, latitude: Double, longitude: Double) {
-                    val targets = MapLayersState(
-                        stops = currentMarkers.toImmutableList(),
-                        placePins = currentPlacePins.toImmutableList(),
-                        selectedPlace = currentSelectedPlace,
-                    ).dropTargets()
-                    val from = if (key == SELECTED_PLACE_KEY) currentSelectedPlace?.let { PinEnd.Place(it) } else targets.find { it.key == key }
-                    from?.let { dragger.move(it, Coordinates(latitude, longitude), liveZoom, targets) }
-                }
-
-                override fun onMarkerDragEnd(key: String) {
-                    dragger.end()?.let { (start, end) -> currentOnPinDrop(start, end) }
                 }
             },
         )
@@ -215,7 +238,6 @@ internal fun GoogleSdkMapView(
     val stopColor = MaterialTheme.extendedColors.stop
     val onStopColor = MaterialTheme.extendedColors.onStop
     val onHotSpotColor = MaterialTheme.colorScheme.onTertiary
-    val density = LocalDensity.current
     val layoutDirection = LocalLayoutDirection.current
 
     // The line under every pin, with its arrows, as on Android.
@@ -242,14 +264,6 @@ internal fun GoogleSdkMapView(
             map.setLineSweep(sweepOf(points, value), sweepColor, width)
         }
         map.setLineSweep(emptyList(), sweepColor, width)
-    }
-    // The pulled pin's line; only this effect runs while the finger moves.
-    LaunchedEffect(dragger, stopColor) {
-        val color = stopColor.toUIColor()
-        snapshotFlow { dragger.drag }.collect { drag ->
-            val points = drag?.let { listOf(it.from.position, it.end).map { point -> GoogleMapPoint(point.latitude, point.longitude) } }.orEmpty()
-            map.setDragLine(points, color, PinDragLineWidth)
-        }
     }
     val textMeasurer = rememberTextMeasurer()
     val pinPhotos = rememberPinPhotos(placePins)
@@ -314,7 +328,6 @@ internal fun GoogleSdkMapView(
                 // The stop's card shows instead.
                 showsInfoWindow = false,
                 fadesIn = false,
-                draggable = true,
             )
         }
         // The first pins (the most liked, then the best known) on top. A photo pin waits for its photo. The tapped
@@ -335,7 +348,6 @@ internal fun GoogleSdkMapView(
                 zIndex = -1 - index,
                 showsInfoWindow = false,
                 fadesIn = true,
-                draggable = true,
             )
         }
         val clusters = placeClusters.map { cluster ->
@@ -376,7 +388,6 @@ internal fun GoogleSdkMapView(
                 zIndex = 2,
                 showsInfoWindow = false,
                 fadesIn = false,
-                draggable = true,
             )
         }
         map.setMarkers(pins + clusters + stops + listOfNotNull(place))
@@ -387,16 +398,27 @@ internal fun GoogleSdkMapView(
         map.view.hidden = false
         onStopOrDispose { map.view.hidden = true }
     }
-    UIKitView(
-        factory = { map.view },
-        modifier = modifier.fillMaxSize(),
-        // The map takes every touch at once, without waiting to see whether Compose scrolls.
-        properties = UIKitInteropProperties(interactionMode = UIKitInteropInteractionMode.NonCooperative),
-    )
+    var viewSize by remember { mutableStateOf(Size.Zero) }
+    Box(modifier.fillMaxSize().onSizeChanged { viewSize = Size(it.width.toFloat(), it.height.toFloat()) }) {
+        UIKitView(
+            factory = { map.view },
+            modifier = Modifier.fillMaxSize(),
+            // The map takes every touch at once, without waiting to see whether Compose scrolls.
+            properties = UIKitInteropProperties(interactionMode = UIKitInteropInteractionMode.NonCooperative),
+        )
+        PinHoldLayer(
+            holder = holder,
+            mapSize = viewSize,
+            project = { point ->
+                // Read, so the line follows the camera.
+                cameraFrame
+                project(point)
+            },
+            pins = ::shownPins,
+            onScroll = { by -> map.scrollCamera(by.x.toDouble() / density.density, by.y.toDouble() / density.density) },
+        )
+    }
 }
-
-/** In points, as on Android (4 dp). */
-private const val PinDragLineWidth = 4.0
 
 private fun PlaceCluster.key() = "$CLUSTER_KEY${location.lat},${location.lng}"
 
