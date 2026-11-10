@@ -9,7 +9,6 @@ import com.falcon.tripingly.feature.map.presentation.component.placeClusters
 import com.falcon.tripingly.feature.map.presentation.component.placePins
 import kotlin.math.floor
 import kotlin.time.Duration.Companion.milliseconds
-import kotlin.time.TimeMark
 import kotlin.time.TimeSource
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -33,7 +32,7 @@ internal class MapPins(
     /** Where the camera last rested, loaded when hidden places show again. */
     private var lastRest: Pair<GeoBounds, Float>? = null
     /** When the pins last followed a moving camera. */
-    private var lastMoving: TimeMark? = null
+    private var lastMoving: TimeSource.Monotonic.ValueTimeMark? = null
 
     init {
         // Pins change when a square in view reloads with new places, and when stops come or go (a stop hides its place).
