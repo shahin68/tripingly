@@ -432,8 +432,17 @@ actual fun GoogleMapView(
                 }
             }
             val coverThumbs = rememberCoverThumbs(markers)
+            // A stop that comes back on screen while the camera moves isn't drawn by the map until the camera rests
+            // (Shahin's recordings, 2026-11-10), so its marker is made anew as it comes back: stops never go missing.
+            val stopsOnScreen by remember(markers) {
+                derivedStateOf {
+                    cameraPositionState.position
+                    val bounds = cameraPositionState.projection?.visibleRegion?.latLngBounds
+                    markers.filter { bounds?.contains(LatLng(it.position.latitude, it.position.longitude)) == true }.mapTo(HashSet()) { it.id }
+                }
+            }
             markers.forEach { marker ->
-                key(marker.id) {
+                key(marker.id, marker.id in stopsOnScreen) {
                     val position = LatLng(marker.position.latitude, marker.position.longitude)
                     val markerState = rememberUpdatedMarkerState(position = position)
                     // The icon is drawn once and redrawn only when its number or cover changes.
