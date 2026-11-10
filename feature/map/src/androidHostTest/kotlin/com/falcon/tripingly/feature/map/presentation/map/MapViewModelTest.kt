@@ -63,6 +63,7 @@ import com.falcon.tripingly.core.model.trip.TripMapView
 import com.falcon.tripingly.core.model.trip.TripRole
 import com.falcon.tripingly.core.model.trip.UserSummary
 import com.falcon.tripingly.core.ui.UiText
+import com.falcon.tripingly.feature.map.presentation.map.state.withPinMargin
 import com.falcon.tripingly.feature.map.generated.resources.Res
 import com.falcon.tripingly.feature.map.generated.resources.error_location_denied_manual
 import com.falcon.tripingly.feature.map.generated.resources.error_location_permission_required
@@ -1287,10 +1288,10 @@ class MapViewModelTest {
         testScheduler.advanceTimeBy(100)
         viewModel.onAction(MapAction.MapView.CameraRest(Coordinates(48.86, 2.32), 15.6f, PARIS_CENTER))
         testScheduler.advanceTimeBy(299)
-        assertEquals(listOf(PlaceSquare.covering(elsewhere, 15), PlaceSquare.covering(PARIS_CENTER, 15)), places.requests)
+        assertEquals(listOf(PlaceSquare.covering(elsewhere.withPinMargin(), 15), PlaceSquare.covering(PARIS_CENTER.withPinMargin(), 15)), places.requests)
 
         testScheduler.advanceUntilIdle()
-        assertEquals(PlaceSquare.covering(PARIS_CENTER, 15, ring = 1), places.requests.last())
+        assertEquals(PlaceSquare.covering(PARIS_CENTER.withPinMargin(), 15, ring = 1), places.requests.last())
         assertEquals(3, places.requests.size)
     }
 
@@ -1303,7 +1304,7 @@ class MapViewModelTest {
         testScheduler.advanceUntilIdle()
 
         // Only the view's squares: the ring around them waits for the camera to rest.
-        assertEquals(listOf(PlaceSquare.covering(PARIS_CENTER, 15)), places.requests)
+        assertEquals(listOf(PlaceSquare.covering(PARIS_CENTER.withPinMargin(), 15)), places.requests)
         assertTrue(viewModel.uiState.value.layers.placePins.isNotEmpty())
     }
 
@@ -1506,7 +1507,7 @@ class MapViewModelTest {
 
         val pins = viewModel.uiState.value.layers.placePins
         assertTrue(pins.isNotEmpty())
-        assertTrue(pins.all { it.place.location in PARIS_CENTER })
+        assertTrue(pins.all { it.place.location in PARIS_CENTER.withPinMargin() })
         assertEquals(PinSizes[2], pins.single { it.place.name == "Louvre" }.size)
     }
 
@@ -1534,8 +1535,8 @@ class MapViewModelTest {
         // Shown again: the view the camera rests on loads.
         viewModel.onAction(MapAction.Days.TogglePlaces)
         testScheduler.advanceUntilIdle()
-        assertEquals(PlaceSquare.covering(elsewhere, 15), places.requests[requests])
-        assertTrue(viewModel.uiState.value.layers.placePins.all { it.place.location in elsewhere })
+        assertEquals(PlaceSquare.covering(elsewhere.withPinMargin(), 15), places.requests[requests])
+        assertTrue(viewModel.uiState.value.layers.placePins.all { it.place.location in elsewhere.withPinMargin() })
     }
 
     @Test

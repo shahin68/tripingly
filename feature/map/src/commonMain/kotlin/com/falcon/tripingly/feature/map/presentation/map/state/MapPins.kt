@@ -56,9 +56,10 @@ internal class MapPins(
         if (!hidden) lastRest?.let { (bounds, zoom) -> onCameraRest(bounds, zoom) }
     }
 
-    fun onCameraRest(bounds: GeoBounds, zoom: Float) {
-        lastRest = bounds to zoom
+    fun onCameraRest(view: GeoBounds, zoom: Float) {
+        lastRest = view to zoom
         if (context.model.value.arePlacesHidden) return
+        val bounds = view.withPinMargin()
         val squares = PlaceSquare.covering(bounds, floor(zoom).toInt())
         pinsJob?.cancel()
         pinsJob = context.scope.launch {
@@ -80,8 +81,9 @@ internal class MapPins(
      * otherwise never finish one). While it moves pins only come, never go, so few markers change; the rest tidies up
      * and loads the ring around the view.
      */
-    fun onCameraMoving(bounds: GeoBounds, zoom: Float) {
+    fun onCameraMoving(view: GeoBounds, zoom: Float) {
         if (context.model.value.arePlacesHidden) return
+        val bounds = view.withPinMargin()
         val now = TimeSource.Monotonic.markNow()
         if (lastMoving?.let { now - it < MOVING_PINS_MILLIS.milliseconds } == true) return
         lastMoving = now
@@ -127,3 +129,16 @@ internal class MapPins(
 /** A place that is already a stop shows as the stop only. */
 internal fun stopPlaceIds(details: TripDetails?): Set<String> =
     details?.days.orEmpty().flatMapTo(HashSet()) { day -> day.markers.map { it.placeId } }
+
+/**
+ * Pins count as in view a little beyond the screen ([PIN_MARGIN_SHARE] of its width and height on each side), so a pin
+ * comes before it shows and goes only once it's off screen, not at the edge (Shahin, 2026-11-10).
+ */
+internal fun GeoBounds.withPinMargin(): GeoBounds {
+    val lat = (north - south) * PIN_MARGIN_SHARE
+    val lng = (east - west) * PIN_MARGIN_SHARE
+    return GeoBounds(maxOf(-90.0, south - lat), west - lng, minOf(90.0, north + lat), east + lng)
+}
+
+/** About a big pin's width beyond a phone screen's side, in portrait and landscape. */
+private const val PIN_MARGIN_SHARE = 0.1

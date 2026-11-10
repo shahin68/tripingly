@@ -364,7 +364,8 @@ internal fun GoogleSdkMapView(
                 anchorY = 0.5,
                 zIndex = -1 - index,
                 showsInfoWindow = false,
-                fadesIn = true,
+                // Places along the way show at once with their route (Shahin, 2026-11-10).
+                fadesIn = !pin.isAlongTheWay,
             )
         }
         val clusters = placeClusters.map { cluster ->
