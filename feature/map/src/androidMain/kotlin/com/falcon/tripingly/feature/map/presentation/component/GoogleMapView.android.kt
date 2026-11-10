@@ -18,7 +18,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.withFrameNanos
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
@@ -321,19 +320,6 @@ actual fun GoogleMapView(
             val isDots by remember(pinDotBelowZoom) { derivedStateOf { cameraPositionState.position.zoom < pinDotBelowZoom } }
             val shownPins = placePins.filter { !it.photo || it.place.coverImageId in pinPhotos }
 
-            // New pins go on the map a few per frame, the best ranked first: each is two native markers, made on the main
-            // thread, and a load while the camera moves brings dozens at once. Pins that leave go at once.
-            var placedIds by remember { mutableStateOf(emptySet<String>()) }
-            val wantedIds = shownPins.map { it.place.id }
-            LaunchedEffect(wantedIds) {
-                val wanted = wantedIds.toSet()
-                placedIds = placedIds intersect wanted
-                wantedIds.filter { it !in placedIds }.chunked(NEW_PINS_PER_FRAME).forEach { batch ->
-                    placedIds = placedIds + batch
-                    withFrameNanos { }
-                }
-            }
-
             // The map hands a tap on overlapping pins to the one on top; the pin whose middle is nearest the finger is the
             // one meant, as long as the finger is on it.
             fun aimedPin(tapped: PlacePin): PlacePin {
@@ -353,7 +339,8 @@ actual fun GoogleMapView(
                     ?.first ?: tapped
             }
 
-            shownPins.filter { it.place.id in placedIds }.forEach { pin ->
+            // All pins go on the map in the same frame, along-the-way ones too, so a change shows at once (Shahin, 2026-11-10).
+            shownPins.forEach { pin ->
                 val look = PlacePinLook(pin.place.category, pin.place.isTripinly, pin.size, photoId(pin.place, pin.photo), pin.isAlongTheWay)
                 val dotLook = pin.dotLook()
                 key(pin.place.id) {
@@ -539,7 +526,6 @@ private fun MapLineView(line: MapLine) {
 private const val PIN_FADE_MILLIS = 250
 
 /** How many new place pins go on the map per frame (each is two markers); the rest follow on the next frames. */
-private const val NEW_PINS_PER_FRAME = 6
 
 /** Between 0 and 1, higher for a better place: liked places by their likes above the others by how well known. */
 private fun pinRank(place: MapPlace): Float =
