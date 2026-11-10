@@ -61,7 +61,7 @@ internal fun List<ShownPin>.pinAt(touch: Offset): PinEnd? {
 
 /**
  * A pin held to pull a route from it. The pin stays where it is; a handle floats a little above the finger and the
- * line runs from the pin to it, or onto [target] while the handle is near another pin. Positions are px in the map view.
+ * line runs from the pin to it; [target] is the pin the handle is near, the one it'll be let go on. Positions are px in the map view.
  */
 @Stable
 internal class PinHold(val from: PinEnd, val pressedAt: Offset) {
@@ -85,7 +85,7 @@ internal class PinHolder {
         hold = PinHold(from, at)
     }
 
-    /** The finger is at [finger]; the handle snaps onto the nearest of [pins] within [SNAP_DISTANCE]. */
+    /** The finger is at [finger]; the nearest of [pins] within [SNAP_DISTANCE] of the handle is the target. */
     fun move(finger: Offset, pins: List<ShownPin>, density: Density) {
         val hold = hold ?: return
         hold.finger = finger

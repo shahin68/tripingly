@@ -58,6 +58,12 @@ private final class AppGoogleMap: NSObject, GoogleMap, GMSMapViewDelegate {
             guard let self, self.isHoldingPin else { return }
             self.listener.onPinHoldMove(x: Double(point.x), y: Double(point.y))
         }
+        // A quick tap on a pin opens it as the finger lifts, without waiting for the map's own tap, which first waits
+        // to see whether a second tap follows.
+        touches.onTap = { [weak self] point in
+            guard let self, !self.isHoldingPin, !self.touches.isDoubleTap, !self.touches.isTapHandled else { return }
+            self.touches.isTapHandled = self.listener.onPinTap(x: Double(point.x), y: Double(point.y))
+        }
         touches.onEnd = { [weak self] in
             guard let self, self.isHoldingPin else { return }
             self.isHoldingPin = false
@@ -181,11 +187,15 @@ private final class AppGoogleMap: NSObject, GoogleMap, GMSMapViewDelegate {
         return path
     }
 
-    func mapView(_ mapView: GMSMapView, idleAt position: GMSCameraPosition) {
-        // The whole view, not only the part inside the padding.
+    /// The corners of the whole view on the map, not only the part inside the padding.
+    private func viewCorners() -> [CLLocationCoordinate2D] {
         let size = mapView.bounds.size
-        let corners = [CGPoint.zero, CGPoint(x: size.width, y: 0), CGPoint(x: 0, y: size.height), CGPoint(x: size.width, y: size.height)]
+        return [CGPoint.zero, CGPoint(x: size.width, y: 0), CGPoint(x: 0, y: size.height), CGPoint(x: size.width, y: size.height)]
             .map { mapView.projection.coordinate(for: $0) }
+    }
+
+    func mapView(_ mapView: GMSMapView, idleAt position: GMSCameraPosition) {
+        let corners = viewCorners()
         listener.onCameraIdle(
             latitude: position.target.latitude,
             longitude: position.target.longitude,
@@ -198,7 +208,14 @@ private final class AppGoogleMap: NSObject, GoogleMap, GMSMapViewDelegate {
     }
 
     func mapView(_ mapView: GMSMapView, didChange position: GMSCameraPosition) {
-        listener.onZoomChange(zoom: position.zoom)
+        let corners = viewCorners()
+        listener.onCameraChange(
+            zoom: position.zoom,
+            south: corners.map(\.latitude).min() ?? position.target.latitude,
+            west: corners.map(\.longitude).min() ?? position.target.longitude,
+            north: corners.map(\.latitude).max() ?? position.target.latitude,
+            east: corners.map(\.longitude).max() ?? position.target.longitude
+        )
     }
 
     func mapView(_ mapView: GMSMapView, willMove gesture: Bool) {
@@ -207,7 +224,7 @@ private final class AppGoogleMap: NSObject, GoogleMap, GMSMapViewDelegate {
 
     // The second tap of a double tap (double tap and drag zooms) is no tap or long press of its own.
     func mapView(_ mapView: GMSMapView, didTapAt coordinate: CLLocationCoordinate2D) {
-        if touches.isDoubleTap { return }
+        if touches.isDoubleTap || touches.isTapHandled { return }
         listener.onTap(latitude: coordinate.latitude, longitude: coordinate.longitude)
     }
 
@@ -223,6 +240,9 @@ private final class AppGoogleMap: NSObject, GoogleMap, GMSMapViewDelegate {
 
     func mapView(_ mapView: GMSMapView, didTap marker: GMSMarker) -> Bool {
         guard let item = marker.userData as? GoogleMapMarker else { return false }
+        // Opened already as the finger lifted.
+        if touches.isTapHandled { return !item.showsInfoWindow }
+        touches.isTapHandled = true
         listener.onMarkerTap(key: aimedMarker(tapped: item).key)
         // True: the map shows no info window and keeps its camera.
         return !item.showsInfoWindow
@@ -265,8 +285,14 @@ private final class TouchRecorder: UIGestureRecognizer, UIGestureRecognizerDeleg
     private(set) var isDoubleTap = false
     var onMove: ((CGPoint) -> Void)?
     var onEnd: (() -> Void)?
+    /// A quick tap that didn't move: called as the finger lifts, before [onEnd].
+    var onTap: ((CGPoint) -> Void)?
+    /// This touch's tap was handled (a pin opened): the map's own tap does nothing.
+    var isTapHandled = false
     private var lastBegan: TimeInterval = -.infinity
     private var finger: UITouch?
+    private var start: CGPoint = .zero
+    private var hasMoved = false
 
     override init(target: Any? = nil, action: Selector? = nil) {
         super.init(target: target, action: action)
@@ -279,6 +305,9 @@ private final class TouchRecorder: UIGestureRecognizer, UIGestureRecognizerDeleg
         guard finger == nil, let touch = touches.first else { return }
         finger = touch
         point = touch.location(in: view)
+        start = point ?? .zero
+        hasMoved = false
+        isTapHandled = false
         isDoubleTap = event.timestamp - lastBegan < Self.doubleTapSeconds
         lastBegan = event.timestamp
     }
@@ -287,11 +316,13 @@ private final class TouchRecorder: UIGestureRecognizer, UIGestureRecognizerDeleg
         guard let finger, touches.contains(finger) else { return }
         let location = finger.location(in: view)
         point = location
+        if hypot(location.x - start.x, location.y - start.y) > Self.tapSlop { hasMoved = true }
         onMove?(location)
     }
 
     override func touchesEnded(_ touches: Set<UITouch>, with event: UIEvent) {
         guard let finger, touches.contains(finger) else { return }
+        if !hasMoved && event.timestamp - lastBegan < Self.tapSeconds { onTap?(finger.location(in: view)) }
         lift()
     }
 
@@ -318,6 +349,10 @@ private final class TouchRecorder: UIGestureRecognizer, UIGestureRecognizerDeleg
 
     /** The first tap's length plus the platform's double tap time. */
     private static let doubleTapSeconds: TimeInterval = 0.5
+    /** Longer is a long press, not a tap. */
+    private static let tapSeconds: TimeInterval = 0.4
+    /** A tap's finger may move this far. */
+    private static let tapSlop: CGFloat = 10
 }
 
 #endif

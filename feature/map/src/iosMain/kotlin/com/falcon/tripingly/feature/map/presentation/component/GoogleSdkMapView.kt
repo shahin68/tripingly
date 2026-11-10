@@ -66,6 +66,7 @@ internal fun GoogleSdkMapView(
     line: MapLine?,
     isMyLocationEnabled: Boolean,
     onCameraMove: (Coordinates, Float, GeoBounds?) -> Unit,
+    onCameraMoving: (GeoBounds, Float) -> Unit,
     onMapTouch: () -> Unit,
     onMapClick: (Coordinates) -> Unit,
     onPlacePinClick: (MapPlace) -> Unit,
@@ -83,6 +84,7 @@ internal fun GoogleSdkMapView(
     val currentOnPlacePinClick by rememberUpdatedState(onPlacePinClick)
     val currentOnClusterClick by rememberUpdatedState(onClusterClick)
     val currentOnCameraMove by rememberUpdatedState(onCameraMove)
+    val currentOnCameraMoving by rememberUpdatedState(onCameraMoving)
     val currentOnMapTouch by rememberUpdatedState(onMapTouch)
     val currentOnMapClick by rememberUpdatedState(onMapClick)
     val currentOnMapLongClick by rememberUpdatedState(onMapLongClick)
@@ -149,9 +151,10 @@ internal fun GoogleSdkMapView(
                     currentOnMapTouch()
                 }
 
-                override fun onZoomChange(zoom: Float) {
+                override fun onCameraChange(zoom: Float, south: Double, west: Double, north: Double, east: Double) {
                     liveZoom = zoom
                     cameraFrame++
+                    currentOnCameraMoving(GeoBounds(south, west, north, east), zoom)
                 }
 
                 override fun onTap(latitude: Double, longitude: Double) {
@@ -170,6 +173,18 @@ internal fun GoogleSdkMapView(
                     }
                     currentOnMapLongClick(Coordinates(latitude, longitude))
                     return false
+                }
+
+                override fun onPinTap(x: Double, y: Double): Boolean {
+                    val pin = shownPins().pinAt(Offset(x.toFloat() * density.density, y.toFloat() * density.density)) ?: return false
+                    currentOnMapTouch()
+                    haptics.tick()
+                    when (pin) {
+                        is PinEnd.Stop -> currentOnMarkerClick(pin.stop)
+                        // The open place's own pin: as before, a tap on it only closes its card.
+                        is PinEnd.Place -> if (pin.place.id != currentSelectedPlace?.id) currentOnPlacePinClick(pin.place)
+                    }
+                    return true
                 }
 
                 override fun onPinHoldMove(x: Double, y: Double) {

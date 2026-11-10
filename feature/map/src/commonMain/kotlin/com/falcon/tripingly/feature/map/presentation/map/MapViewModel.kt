@@ -151,6 +151,7 @@ class MapViewModel(
             is MapAction.MapView.MarkerClick -> selection.selectMarker(action.marker)
             is MapAction.MapView.PinDrop -> routes.routeBetweenPins(action.from, action.to)
             is MapAction.MapView.CameraRest -> onCameraRest(action)
+            is MapAction.MapView.CameraMoving -> pins.onCameraMoving(action.bounds, action.zoom)
             is MapAction.MapView.ScreenTouch -> selection.onScreenTouch()
         }
     }

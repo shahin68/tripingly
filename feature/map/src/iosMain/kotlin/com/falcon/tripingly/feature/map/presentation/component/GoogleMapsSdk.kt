@@ -91,8 +91,8 @@ interface GoogleMapListener {
     /** A finger started moving the camera. */
     fun onGestureStart()
 
-    /** The camera's zoom while it moves, every frame: keep it cheap. */
-    fun onZoomChange(zoom: Float)
+    /** The camera's zoom and the area the whole view shows while it moves, every frame: keep it cheap. */
+    fun onCameraChange(zoom: Float, south: Double, west: Double, north: Double, east: Double)
 
     fun onTap(latitude: Double, longitude: Double)
 
@@ -103,6 +103,9 @@ interface GoogleMapListener {
     fun onLongPress(latitude: Double, longitude: Double, x: Double, y: Double): Boolean
 
     fun onMarkerTap(key: String)
+
+    /** A quick tap at [x], [y] on the view (points), as the finger lifted. True when it was on a pin, which opened. */
+    fun onPinTap(x: Double, y: Double): Boolean
 
     /** The finger holding a pin moved to [x], [y] on the view (points). */
     fun onPinHoldMove(x: Double, y: Double)

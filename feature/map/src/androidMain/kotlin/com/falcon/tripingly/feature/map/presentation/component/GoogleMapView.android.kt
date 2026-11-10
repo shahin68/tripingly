@@ -77,6 +77,7 @@ actual fun GoogleMapView(
     contentPadding: PaddingValues,
     layers: MapLayersState,
     onCameraMove: (Coordinates, Float, GeoBounds?) -> Unit,
+    onCameraMoving: (GeoBounds, Float) -> Unit,
     onMapTouch: () -> Unit,
     onMapClick: (Coordinates) -> Unit,
     onPlacePinClick: (MapPlace) -> Unit,
@@ -118,12 +119,28 @@ actual fun GoogleMapView(
     val haptics = rememberHaptics()
     val currentLayers by rememberUpdatedState(layers)
     val currentOnPinDrop by rememberUpdatedState(onPinDrop)
+    val currentOnMarkerClick by rememberUpdatedState(onMarkerClick)
+    val currentOnPlacePinClick by rememberUpdatedState(onPlacePinClick)
+    // This touch was a tap on a pin, handled as the finger lifted: the map's own click, which comes a moment later
+    // (it waits to see whether a second tap follows), does nothing.
+    var isTapHandled by remember { mutableStateOf(false) }
     fun project(point: Coordinates): Offset? =
         cameraPositionState.projection?.toScreenLocation(LatLng(point.latitude, point.longitude))?.let { Offset(it.x.toFloat(), it.y.toFloat()) }
     fun shownPins(): List<ShownPin> {
         // Read for the zoom, so a pin's dot or pin size counts.
         val zoom = cameraPositionState.position.zoom
         return currentLayers.shownPins(zoom, density, ::project)
+    }
+    /** A tap on a pin at [touch]: a tick and the pin opens at once. False when no pin is there. */
+    fun tapPin(touch: Offset): Boolean {
+        val pin = shownPins().pinAt(touch) ?: return false
+        haptics.tick()
+        when (pin) {
+            is PinEnd.Stop -> currentOnMarkerClick(pin.stop)
+            // The open place's own pin: as before, a tap on it does nothing more.
+            is PinEnd.Place -> if (pin.place.id != currentLayers.selectedPlace?.id) currentOnPlacePinClick(pin.place)
+        }
+        return true
     }
 
     // A camera animation started before the map has loaded doesn't run (on a fresh start the trip's stops arrive
@@ -140,6 +157,14 @@ actual fun GoogleMapView(
     }
 
     // Sync camera position back to ViewModel when it stops moving
+    // Every frame while the camera moves (a finger, a flight, a held pin pulling it), so places load on the way.
+    val currentOnCameraMoving by rememberUpdatedState(onCameraMoving)
+    LaunchedEffect(cameraPositionState) {
+        snapshotFlow { cameraPositionState.position }.collect { position ->
+            if (cameraPositionState.isMoving || holder.hold != null) viewBounds()?.let { currentOnCameraMoving(it, position.zoom) }
+        }
+    }
+
     // Not while a held pin moves the camera: once it's let go.
     LaunchedEffect(cameraPositionState.isMoving, isHolding) {
         if (!cameraPositionState.isMoving && !isHolding) reportCamera()
@@ -199,11 +224,19 @@ actual fun GoogleMapView(
                         lastTouch = down.position
                         isDoubleTap = down.uptimeMillis - lastDownMillis < DOUBLE_TAP_MILLIS
                         lastDownMillis = down.uptimeMillis
+                        isTapHandled = false
+                        var isTap = true
                         // Follows the finger to the end of the gesture, for a pin it may hold.
                         while (true) {
                             val event = awaitPointerEvent(PointerEventPass.Initial)
                             val change = event.changes.firstOrNull { it.id == down.id } ?: break
-                            if (!change.pressed) break
+                            if ((change.position - down.position).getDistance() > viewConfiguration.touchSlop) isTap = false
+                            if (!change.pressed) {
+                                // A quick tap on a pin opens it as the finger lifts; a long press isn't a tap.
+                                val isQuick = change.uptimeMillis - down.uptimeMillis < viewConfiguration.longPressTimeoutMillis
+                                if (isTap && isQuick && !isDoubleTap && holder.hold == null) isTapHandled = tapPin(change.position)
+                                break
+                            }
                             lastTouch = change.position
                             if (holder.hold != null) holder.move(change.position, shownPins(), density)
                         }
@@ -217,7 +250,7 @@ actual fun GoogleMapView(
             // Dark map in dark mode, so the light status bar icons stay readable.
             mapColorScheme = ComposeMapColorScheme.FOLLOW_SYSTEM,
             onMapClick = { latLng ->
-                if (!isDoubleTap) onMapClick(Coordinates(latitude = latLng.latitude, longitude = latLng.longitude))
+                if (!isDoubleTap && !isTapHandled) onMapClick(Coordinates(latitude = latLng.latitude, longitude = latLng.longitude))
             },
             onMapLongClick = { latLng ->
                 val touch = lastTouch
@@ -317,6 +350,7 @@ actual fun GoogleMapView(
                     val zIndex = PLACE_PINS_Z * pinRank(pin.place)
                     // No info window and no camera move of the map's own: the card and the camera are ours.
                     fun onClick(): Boolean {
+                        if (isTapHandled) return true
                         haptics.tick()
                         onPlacePinClick(aimedPin(pin).place)
                         return true
@@ -410,8 +444,10 @@ actual fun GoogleMapView(
                         // Above the places.
                         zIndex = 1f,
                         onClick = {
-                            haptics.tick()
-                            onMarkerClick(marker)
+                            if (!isTapHandled) {
+                                haptics.tick()
+                                onMarkerClick(marker)
+                            }
                             // No info window and no camera move of the map's own: the card and the camera are ours.
                             true
                         }

@@ -39,8 +39,8 @@ import kotlinx.coroutines.flow.collectLatest
 
 /**
  * What a held pin draws over the map, and what it does while held: a dotted line of small circles from the pin to a
- * handle (an arrow in a circle) that pops out a little above the finger and turns smoothly to point along the line, a
- * ring on the pin the handle would be let go on, a tick when that pin changes and a long-press haptic when the hold
+ * handle (an arrow in a circle) that pops out a little above the finger, follows it and turns smoothly to point
+ * along the line, a ring on the pin the handle would be let go on, a tick when that pin changes and a long-press haptic when the hold
  * starts. While the finger pulls toward the map's edges the camera moves ([onScroll], px), faster nearer the edges;
  * never in the middle of the map, near the held pin or before the finger has moved. [project] places a point on the
  * map view in px and must read the camera's state, so the line follows the camera; [pins] are the pins on screen now.
@@ -62,8 +62,8 @@ internal fun PinHoldLayer(
     val currentOnScroll by rememberUpdatedState(onScroll)
     val currentSize by rememberUpdatedState(mapSize)
 
-    // The line's end: the pin the handle is on, or the handle.
-    fun lineEnd(): Offset = hold.target?.end?.position?.let(currentProject) ?: handleOf(hold.finger, density)
+    // The line ends at the handle, which follows the finger; a pin the handle is on only gets a ring.
+    fun lineEnd(): Offset = handleOf(hold.finger, density)
 
     LaunchedEffect(hold) { haptics.longPress() }
     LaunchedEffect(hold) {
@@ -115,13 +115,11 @@ internal fun PinHoldLayer(
 
     Canvas(Modifier.fillMaxSize()) {
         val pin = currentProject(hold.from.position) ?: return@Canvas
-        val target = hold.target
-        val end = lineEnd()
-        drawDots(from = pin, to = end, startGap = PIN_SIZE.toPx() / 2, endGap = if (target != null) target.radius else HANDLE_SIZE.toPx() / 2, color = color)
-        if (target != null) {
-            drawCircle(Color.White, radius = target.radius + 3.dp.toPx(), center = end, style = Stroke(5.dp.toPx()))
-            drawCircle(color, radius = target.radius + 3.dp.toPx(), center = end, style = Stroke(3.dp.toPx()))
-        }
+        drawDots(from = pin, to = lineEnd(), startGap = PIN_SIZE.toPx() / 2, endGap = HANDLE_SIZE.toPx() / 2, color = color)
+        val target = hold.target ?: return@Canvas
+        val ring = target.end.position.let(currentProject) ?: return@Canvas
+        drawCircle(Color.White, radius = target.radius + 3.dp.toPx(), center = ring, style = Stroke(5.dp.toPx()))
+        drawCircle(color, radius = target.radius + 3.dp.toPx(), center = ring, style = Stroke(3.dp.toPx()))
     }
     Box(
         modifier = Modifier

@@ -25,6 +25,8 @@ sealed interface MapAction {
         data class ClusterClick(val cluster: PlaceCluster) : MapView
         /** A stop's pin, or its chip on the plan. */
         data class MarkerClick(val marker: MapMarker) : MapView
+        /** The camera moves: what the whole view shows now, every frame. */
+        data class CameraMoving(val bounds: GeoBounds, val zoom: Float) : MapView
         /** The camera came to rest. */
         data class CameraRest(val coordinates: Coordinates, val zoom: Float, val bounds: GeoBounds? = null) : MapView
         /** A pin was pulled onto another and let go there: the route from one to the other. */
