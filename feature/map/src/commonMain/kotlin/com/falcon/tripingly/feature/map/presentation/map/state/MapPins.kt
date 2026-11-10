@@ -8,6 +8,8 @@ import com.falcon.tripingly.core.model.trip.TripDetails
 import com.falcon.tripingly.feature.map.presentation.component.placeClusters
 import com.falcon.tripingly.feature.map.presentation.component.placePins
 import kotlin.math.floor
+import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.TimeSource
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -33,6 +35,8 @@ internal class MapPins(
     private var prefetchJob: Job? = null
     /** Where the camera last rested, loaded when hidden places show again. */
     private var lastRest: Pair<GeoBounds, Float>? = null
+    /** When the pins last followed a moving camera. */
+    private var lastMoving: TimeSource.Monotonic.ValueTimeMark? = null
 
     init {
         // Pins change when a square in view reloads with new places, and when stops come or go (a stop hides its place).
@@ -70,15 +74,41 @@ internal class MapPins(
         }
     }
 
+    /**
+     * The camera moves: new places show while it does, not only once it rests. At most every [MOVING_PINS_MILLIS], the
+     * pins follow the view; squares not loaded yet load, without cancelling a load still on its way (a quick pan would
+     * otherwise never finish one). While it moves pins only come, never go, so few markers change; the rest tidies up
+     * and loads the ring around the view.
+     */
+    fun onCameraMoving(bounds: GeoBounds, zoom: Float) {
+        if (context.model.value.arePlacesHidden) return
+        val now = TimeSource.Monotonic.markNow()
+        if (lastMoving?.let { now - it < MOVING_PINS_MILLIS.milliseconds } == true) return
+        lastMoving = now
+        if (pinsJob?.isActive == true) return
+        val squares = PlaceSquare.covering(bounds, floor(zoom).toInt())
+        pinsJob = context.scope.launch {
+            placeRepository.placesIn(squares)
+            update { it.copy(area = PinArea(bounds, squares)) }
+            show(addOnly = true)
+        }
+    }
+
     /** The pins of the squares the camera rests on, from what the repository keeps. */
-    private suspend fun show() {
+    private suspend fun show(addOnly: Boolean = false) {
         val area = context.model.value.pins.area ?: return
         val squares = placeRepository.loadedPlacesIn(area.squares).values
         val hidden = stopPlaceIds(context.trip.value)
         val config = appConfigRepository.config.value
-        val shown = context.model.value.pins.pins
+        val shown = context.model.value.pins
         val (pins, clusters) = withContext(computation) {
-            placePins(squares, area.bounds, hidden, config, shown) to placeClusters(squares, area.bounds)
+            val pins = placePins(squares, area.bounds, hidden, config, shown = shown.pins)
+            val clusters = placeClusters(squares, area.bounds)
+            if (!addOnly) return@withContext pins to clusters
+            val pinIds = pins.mapTo(HashSet()) { it.place.id }
+            val clusterSpots = clusters.mapTo(HashSet()) { it.location }
+            (pins + shown.pins.filter { it.place.id !in pinIds && it.place.id !in hidden }) to
+                (clusters + shown.clusters.filter { it.location !in clusterSpots })
         }
         update { it.copy(pins = pins, clusters = clusters) }
     }
@@ -88,6 +118,9 @@ internal class MapPins(
     private companion object {
         /** Same wait as for search: the camera has rested. */
         const val PREFETCH_DELAY_MILLIS = 300L
+
+        /** How often the pins follow a moving camera. */
+        const val MOVING_PINS_MILLIS = 250L
     }
 }
 
