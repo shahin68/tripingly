@@ -97,12 +97,13 @@ internal class MapPins(
     /** The pins of the squares the camera rests on, from what the repository keeps. */
     private suspend fun show(addOnly: Boolean = false) {
         val area = context.model.value.pins.area ?: return
+        val zoom = area.squares.firstOrNull()?.zoom ?: return
         val squares = placeRepository.loadedPlacesIn(area.squares).values
         val hidden = stopPlaceIds(context.trip.value)
         val config = appConfigRepository.config.value
         val shown = context.model.value.pins
         val (pins, clusters) = withContext(computation) {
-            val pins = placePins(squares, area.bounds, hidden, config, shown = shown.pins)
+            val pins = placePins(squares, area.bounds, zoom, hidden, config)
             val clusters = placeClusters(squares, area.bounds)
             if (!addOnly) return@withContext pins to clusters
             val pinIds = pins.mapTo(HashSet()) { it.place.id }

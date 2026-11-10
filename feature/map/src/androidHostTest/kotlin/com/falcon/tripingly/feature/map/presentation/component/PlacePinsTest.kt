@@ -13,11 +13,17 @@ class PlacePinsTest {
 
     private val area = GeoBounds(south = 48.0, west = 16.0, north = 49.0, east = 17.0)
 
-    private fun place(id: String, hotCount: Int = 0, prominence: Int = 0, photo: Boolean = true) = MapPlace(
+    private fun place(
+        id: String,
+        hotCount: Int = 0,
+        prominence: Int = 0,
+        photo: Boolean = true,
+        at: GeoPoint = GeoPoint(48.2, 16.37),
+    ) = MapPlace(
         id = id,
         name = id,
         category = PlaceCategory.Attraction,
-        location = GeoPoint(48.2, 16.37),
+        location = at,
         isTripinly = hotCount > 0,
         hotCount = hotCount,
         prominence = prominence,
@@ -26,7 +32,7 @@ class PlacePinsTest {
     )
 
     private fun photoPins(vararg places: MapPlace, config: AppConfig = AppConfig()) =
-        placePins(listOf(PlacesInView(places.toList(), emptyList())), area, emptySet(), config)
+        placePins(listOf(PlacesInView(places.toList(), emptyList())), area, zoom = 0, emptySet(), config)
             .filter { it.photo }
             .map { it.place.id }
 
@@ -48,27 +54,31 @@ class PlacePinsTest {
         val places = arrayOf(place("a", prominence = 95), place("b", hotCount = 5), place("c", hotCount = 9))
 
         assertEquals(listOf("c", "b"), photoPins(*places, config = config))
-        val pins = placePins(listOf(PlacesInView(places.toList(), emptyList())), area, emptySet(), config)
+        val pins = placePins(listOf(PlacesInView(places.toList(), emptyList())), area, zoom = 0, emptySet(), config)
         assertEquals(PhotoPinSize, pins.single { it.place.id == "c" }.size)
         assertEquals(PinSizes[2], pins.single { it.place.id == "a" }.size)
     }
 
     @Test
-    fun `a pin still in view stays, with its look, and new places take the free places best first`() {
-        val config = AppConfig(mapMaxPins = 2, mapMaxPhotoPins = 1)
-        val low = place("low", prominence = 10, photo = false)
-        val famous = place("famous", prominence = 95)
-        val known = place("known", prominence = 92)
-        val squares = listOf(PlacesInView(listOf(low, famous, known), emptyList()))
-        // Shown before the pan: "low", and "known" as an icon although it has a photo.
-        val shown = listOf(PlacePin(low, placePinSize(low, config)), PlacePin(known, placePinSize(known, config)))
+    fun `every map cell shows its own best places, so places elsewhere never push them out`() {
+        // At zoom 10 a cell is about a third of a degree, a tenth of the area: two pins each out of 20.
+        val config = AppConfig(mapMaxPins = 20, mapMaxPhotoPins = 10)
+        val oldTown = GeoPoint(48.2, 16.1)
+        val edge = GeoPoint(48.8, 16.9)
+        val crowd = (1..5).map { place("old $it", prominence = 50 + it, photo = false, at = oldTown) }
+        val stop = place("stop", prominence = 99, at = oldTown)
+        fun pins(vararg more: MapPlace) =
+            placePins(listOf(PlacesInView(crowd + stop + more, emptyList())), area, zoom = 10, setOf(stop.id), config)
+                .map { it.place.id }.toSet()
 
-        val pins = placePins(squares, area, emptySet(), config, shown)
+        val before = pins(place("edge", prominence = 10, at = edge))
+        val after = pins(
+            place("edge", prominence = 10, at = edge),
+            place("famous edge", prominence = 95, at = edge),
+            place("just beyond", prominence = 90, at = GeoPoint(49.05, 16.9)),
+        )
 
-        assertEquals(listOf("known", "low"), pins.map { it.place.id })
-        assertEquals(listOf(false, false), pins.map { it.photo })
-        // Without them the best two show, the first with its photo.
-        val fresh = placePins(squares, area, emptySet(), config)
-        assertEquals(listOf("famous" to true, "known" to false), fresh.map { it.place.id to it.photo })
+        assertEquals(setOf("old 5", "old 4", "edge"), before)
+        assertEquals(setOf("old 5", "old 4", "famous edge", "edge", "just beyond"), after)
     }
 }

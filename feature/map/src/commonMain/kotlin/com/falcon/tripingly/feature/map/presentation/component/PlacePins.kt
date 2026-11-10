@@ -32,6 +32,8 @@ import com.falcon.tripingly.core.model.place.PlaceCategory
 import com.falcon.tripingly.core.model.place.PlaceCluster
 import com.falcon.tripingly.core.model.place.PlacesInView
 import kotlin.math.ceil
+import kotlin.math.floor
+import kotlin.math.pow
 import kotlin.math.roundToInt
 
 /**
@@ -49,42 +51,57 @@ data class PlacePin(
 )
 
 /**
- * The place pins for the squares in view: places inside [area] that aren't stops of the trip ([hiddenPlaceIds]),
- * liked places first (the most liked first), then the best known, at most [AppConfig.mapMaxPins]. Pins keep their
- * size on screen, so each one costs the map; the server already puts a square's best places first. The first
- * [AppConfig.mapMaxPhotoPins] places that have a photo and are well known or liked enough show it ([showsPhoto]).
+ * The place pins for the squares in view: places a little beyond [area] ([PIN_MARGIN_SHARE], so pins come in
+ * before they show and go after they're gone) that aren't stops of the trip ([hiddenPlaceIds]), liked places
+ * first (the most liked first), then the best known. Pins keep their size on screen, so each one costs the map.
  *
- * Panning doesn't reshuffle them: a pin already [shown] that is still in [area] stays, with its photo or icon, and
- * the places new to the view take the free places, best first (Shahin, 2026-11-10; pins in view vanished and came back).
+ * The map is cut into fixed cells, one map tile at [zoom] each, and every cell gets its share of
+ * [AppConfig.mapMaxPins] and [AppConfig.mapMaxPhotoPins] by its size against the view. A cell shows its best
+ * places up to that share, whatever else is in view, so panning never changes a cell's pins: a place coming in
+ * at the edge can't push out one in the middle (Shahin, 2026-11-10). A place with a photo shows it on its pin
+ * once it's well known or liked enough ([showsPhoto]).
  */
 fun placePins(
     squares: Collection<PlacesInView>,
     area: GeoBounds,
+    zoom: Int,
     hiddenPlaceIds: Set<String>,
     config: AppConfig,
-    shown: List<PlacePin> = emptyList(),
 ): List<PlacePin> {
-    val inView = squares.asSequence()
+    val shown = area.grown(PIN_MARGIN_SHARE)
+    val side = 360.0 / 2.0.pow(zoom.coerceIn(0, 22))
+    val share = side * side / ((shown.north - shown.south) * (shown.east - shown.west))
+    val maxPins = budget(config.mapMaxPins, share)
+    val maxPhotos = budget(config.mapMaxPhotoPins, share)
+    return squares.asSequence()
         .flatMap { it.places }
-        .filter { it.location in area && it.id !in hiddenPlaceIds }
+        .filter { it.location in shown && it.id !in hiddenPlaceIds }
         .distinctBy { it.id }
-        .sortedWith(PinOrder)
-        .toList()
-    val shownPhoto = shown.associate { it.place.id to it.photo }
-    val kept = inView.filter { it.id in shownPhoto }.take(config.mapMaxPins)
-    val keptIds = kept.mapTo(HashSet()) { it.id }
-    var photos = kept.count { shownPhoto.getValue(it.id) && it.showsPhoto(config) }
-    val pins = kept.map { place -> pin(place, shownPhoto.getValue(place.id) && place.showsPhoto(config), config) } +
-        inView.asSequence()
-            .filter { it.id !in keptIds }
-            .take(config.mapMaxPins - kept.size)
-            .map { place ->
-                val photo = photos < config.mapMaxPhotoPins && place.showsPhoto(config)
+        .groupBy { floor(it.location.lng / side).toInt() to floor(it.location.lat / side).toInt() }
+        .values
+        .flatMap { cell ->
+            var photos = 0
+            cell.sortedWith(PinOrder).take(maxPins).map { place ->
+                val photo = photos < maxPhotos && place.showsPhoto(config)
                 if (photo) photos++
                 pin(place, photo, config)
             }
-    return pins.sortedWith(compareBy(PinOrder) { it.place })
+        }
+        .sortedWith(compareBy(PinOrder) { it.place })
 }
+
+/** A cell's part of [max]: at least one, at most all of it for a cell bigger than the view. */
+private fun budget(max: Int, share: Double): Int =
+    if (max <= 0) 0 else ceil(max * share.coerceAtMost(1.0)).toInt().coerceIn(1, max)
+
+private fun GeoBounds.grown(share: Double): GeoBounds {
+    val lat = (north - south) * share
+    val lng = (east - west) * share
+    return GeoBounds(maxOf(-90.0, south - lat), west - lng, minOf(90.0, north + lat), east + lng)
+}
+
+/** How far beyond the view, on each side, places count as in view: a share of its width and height. */
+private const val PIN_MARGIN_SHARE = 0.08
 
 private fun pin(place: MapPlace, photo: Boolean, config: AppConfig) =
     PlacePin(place, if (photo) PhotoPinSize else placePinSize(place, config), photo)
