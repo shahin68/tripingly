@@ -15,7 +15,9 @@ internal actual val mapPlatformModule: Module = module {
         SignedInStart {
             // Once Home has drawn and the main thread is idle: loading the SDK takes it for a moment.
             Looper.myQueue().addIdleHandler {
-                MapsInitializer.initialize(context, MapsInitializer.Renderer.LATEST) {}
+                // Test (Shahin, 2026-11-10): the older renderer, to see whether markers near the screen edges stop going missing.
+                @Suppress("DEPRECATION")
+                MapsInitializer.initialize(context, MapsInitializer.Renderer.LEGACY) {}
                 MapView(context).run {
                     onCreate(null)
                     onDestroy()
