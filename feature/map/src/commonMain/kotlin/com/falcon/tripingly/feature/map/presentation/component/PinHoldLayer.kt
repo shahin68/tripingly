@@ -32,6 +32,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
@@ -43,6 +44,8 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.falcon.tripingly.core.designsystem.component.GlassSurface
+import com.falcon.tripingly.core.designsystem.component.PhotoImage
+import com.falcon.tripingly.core.designsystem.component.PhotoSize
 import com.falcon.tripingly.core.designsystem.component.icon
 import com.falcon.tripingly.core.designsystem.component.rememberHaptics
 import com.falcon.tripingly.core.designsystem.theme.extendedColors
@@ -192,7 +195,7 @@ private fun DrawScope.drawRing(shown: ShownPin, grow: Float, project: (Coordinat
 
 /**
  * The name of the pin the handle is on, in a glass pill above the handle, so it reads even where pins crowd: a small
- * mark at its start (the stop's number, or the place's category), as far in from the top, bottom and start, then the name.
+ * mark at its start (the pin's image, else the stop's number or the place's category), as far in from the top, bottom and start, then the name.
  */
 @Composable
 private fun NameTag(end: PinEnd, handle: () -> Offset, alpha: () -> Float) {
@@ -234,9 +237,20 @@ private fun NameTag(end: PinEnd, handle: () -> Offset, alpha: () -> Float) {
     }
 }
 
-/** A stop's number on stop green, or a place's category icon on the place colour, like their pins. */
+/**
+ * The pin's image when it has one (a stop's cover, a place's photo; the thumbnail its pin already loaded, from the
+ * cache), else a stop's number on stop green or a place's category icon on the place colour, like their pins.
+ */
 @Composable
 private fun NameTagMark(end: PinEnd) {
+    val (imageId, imageUrl) = when (end) {
+        is PinEnd.Stop -> end.stop.coverPhotoId to end.stop.coverThumbUrl
+        is PinEnd.Place -> end.place.coverImageId to end.place.coverThumbUrl
+    }
+    if (imageId != null && imageUrl != null) {
+        PhotoImage(photoId = imageId, url = imageUrl, size = PhotoSize.Thumb, contentDescription = null, modifier = Modifier.size(NAME_TAG_MARK).clip(CircleShape))
+        return
+    }
     val fill = when (end) {
         is PinEnd.Stop -> MaterialTheme.extendedColors.stop
         is PinEnd.Place -> MaterialTheme.extendedColors.place
