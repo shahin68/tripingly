@@ -119,10 +119,12 @@ internal fun PinHoldLayer(
         val grow = ring.value
         val fade = grow.coerceIn(0f, 1f)
         if (fade <= 0f) return@Canvas
-        val radius = shown.radius + RING_GROW.toPx() * grow
+        // Sized from the pin itself: a small dot gets a small ring.
+        val pinRadius = shown.radius - PIN_TOUCH_SLOP.toPx()
+        val radius = pinRadius + RING_GAP.toPx() + pinRadius * RING_GROW_SHARE * grow
         val stroke = (RING_STROKE + (RING_STROKE_HELD - RING_STROKE) * fade).toPx()
         drawCircle(color.copy(alpha = 0.18f * fade), radius = radius, center = at)
-        drawCircle(Color.White.copy(alpha = fade), radius = radius, center = at, style = Stroke(stroke + 2.dp.toPx()))
+        drawCircle(Color.White.copy(alpha = fade), radius = radius, center = at, style = Stroke(stroke + 1.5.dp.toPx()))
         drawCircle(color.copy(alpha = fade), radius = radius, center = at, style = Stroke(stroke))
     }
     Box(
@@ -179,8 +181,9 @@ private val DOT_SPACING = 11.dp
 /** Around the held pin the camera stays put, wherever on the map it is. */
 private val PAN_STILL_AROUND_PIN = 64.dp
 
-/** How much the ring of the pin the handle is on grows, how thick it gets, and how fast it fades when the handle leaves. */
-private val RING_GROW = 7.dp
-private val RING_STROKE = 2.dp
-private val RING_STROKE_HELD = 4.5.dp
+/** The ring of the pin the handle is on: its gap to the pin, how much it grows (a share of the pin's radius), how thick it gets, how fast it fades. */
+private val RING_GAP = 2.dp
+private const val RING_GROW_SHARE = 0.2f
+private val RING_STROKE = 1.5.dp
+private val RING_STROKE_HELD = 3.dp
 private const val RING_OUT_MILLIS = 160

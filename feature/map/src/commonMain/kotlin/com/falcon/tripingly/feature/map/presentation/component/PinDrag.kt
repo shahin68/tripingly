@@ -157,7 +157,7 @@ internal fun freeArea(size: Size, padding: PaddingValues, density: Density, layo
 }
 
 /** How far a finger may be off a pin's circle and still hold it. */
-private val PIN_TOUCH_SLOP = 6.dp
+internal val PIN_TOUCH_SLOP = 6.dp
 
 /** The finger moved this far from where it pressed: it's pulling, not just holding. */
 internal val MOVE_SLOP = 12.dp
