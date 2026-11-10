@@ -94,9 +94,10 @@ class PinDragTest {
         val free = freeArea(Size(400f, 800f), PaddingValues(top = 100.dp, bottom = 300.dp), density, LayoutDirection.Ltr)
         assertEquals(Rect(0f, 100f, 400f, 500f), free)
         assertEquals(Offset.Zero, edgePanVelocity(Offset(200f, 300f), free, density))
-        // Sideways the still middle reaches 45 % of the way to the sides, up and down only 35 %.
-        assertEquals(Offset.Zero, edgePanVelocity(Offset(280f, 300f), free, density))
-        assertEquals(Offset.Zero, edgePanVelocity(Offset(200f, 240f), free, density))
+        // Sideways the still middle reaches 35 % of the way to the sides, up and down only 28 %.
+        assertEquals(Offset.Zero, edgePanVelocity(Offset(260f, 300f), free, density))
+        assertTrue(edgePanVelocity(Offset(280f, 300f), free, density).x > 0f)
+        assertEquals(Offset.Zero, edgePanVelocity(Offset(200f, 250f), free, density))
         assertTrue(edgePanVelocity(Offset(200f, 210f), free, density).y < 0f)
         val near = edgePanVelocity(Offset(330f, 300f), free, density)
         val edge = edgePanVelocity(Offset(400f, 300f), free, density)
