@@ -88,7 +88,7 @@ internal class PinHolder {
         hold = PinHold(from, at)
     }
 
-    /** The finger is at [finger]; the nearest of [pins] within [SNAP_DISTANCE] of the handle is the target. */
+    /** The finger is at [finger]; the nearest of [pins] within [SNAP_DISTANCE] of the handle is the target (sticky by [STICK_DISTANCE]). */
     fun move(finger: Offset, pins: List<ShownPin>, density: Density) {
         val hold = hold ?: return
         hold.finger = finger
@@ -101,15 +101,18 @@ internal class PinHolder {
         val hold = hold ?: return
         val handle = handleOf(hold.finger, density)
         val snap = with(density) { SNAP_DISTANCE.toPx() }
-        hold.target = if (!hold.hasMoved) {
-            null
-        } else {
-            pins.filter { it.end.key != hold.from.key && !it.end.isSameSpot(hold.from) }
-                .map { it to (it.middle - handle).getDistance() }
-                .filter { (_, distance) -> distance <= snap }
-                .minByOrNull { (_, distance) -> distance }
-                ?.first
+        if (!hold.hasMoved) {
+            hold.target = null
+            return
         }
+        val near = pins.filter { it.end.key != hold.from.key && !it.end.isSameSpot(hold.from) }
+            .map { it to (it.middle - handle).getDistance() }
+            .filter { (_, distance) -> distance <= snap }
+        val nearest = near.minByOrNull { (_, distance) -> distance }
+        // Sticky: the pin it's on stays the target until another one is clearly nearer, so a crowd doesn't flicker.
+        val current = near.firstOrNull { (pin, _) -> pin.end.key == hold.target?.end?.key }
+        val stick = with(density) { STICK_DISTANCE.toPx() }
+        hold.target = if (current != null && nearest != null && nearest.second > current.second - stick) current.first else nearest?.first
     }
 
     /** Lifted: both ends when the handle was on another pin, else null. */
@@ -167,6 +170,9 @@ internal val HANDLE_LIFT = 56.dp
 
 /** A pin this close to the handle, middle to middle, is the one it'll be let go on. */
 internal val SNAP_DISTANCE = 40.dp
+
+/** Another pin takes over from the target only once it's this much nearer the handle. */
+internal val STICK_DISTANCE = 8.dp
 
 /** The middle of the free map, as a share of the way to its sides, where pulling doesn't move the camera. */
 internal const val PAN_STILL_SHARE_X = 0.45f

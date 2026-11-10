@@ -1,5 +1,6 @@
 package com.falcon.tripingly.feature.map.di
 
+import com.falcon.tripingly.core.common.coroutines.CoroutineDispatchers
 import com.falcon.tripingly.feature.map.presentation.comments.StopCommentsViewModel
 import com.falcon.tripingly.feature.map.presentation.map.MapViewModel
 import com.falcon.tripingly.feature.map.presentation.photos.PhotosViewModel
@@ -26,6 +27,7 @@ val mapModule = module {
             sessionRepository = get(),
             getCurrentLocationUseCase = get(),
             newActivityRepository = get(),
+            computation = get<CoroutineDispatchers>().default,
         )
     }
     viewModel { params -> PhotosViewModel(owner = params.get(), photoRepository = get(), sessionRepository = get()) }

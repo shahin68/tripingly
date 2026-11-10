@@ -154,7 +154,8 @@ internal fun GoogleSdkMapView(
                 override fun onCameraChange(zoom: Float, south: Double, west: Double, north: Double, east: Double) {
                     liveZoom = zoom
                     cameraFrame++
-                    currentOnCameraMoving(GeoBounds(south, west, north, east), zoom)
+                    // Not while a held pin pulls the camera: its places load once it's let go.
+                    if (holder.hold == null) currentOnCameraMoving(GeoBounds(south, west, north, east), zoom)
                 }
 
                 override fun onTap(latitude: Double, longitude: Double) {

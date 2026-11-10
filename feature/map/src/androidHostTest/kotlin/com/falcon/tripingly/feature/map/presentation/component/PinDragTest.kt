@@ -52,6 +52,21 @@ class PinDragTest {
     }
 
     @Test
+    fun `the target holds on until another pin is clearly nearer`() {
+        val graben = PinEnd.Place(MapPlace("p-graben", "Graben", PlaceCategory.Attraction, GeoPoint(48.2087, 16.3699), isTripinly = false, hotCount = 0, prominence = 70))
+        val near = listOf(ShownPin(opera, Offset(200f, 400f), 22f), ShownPin(graben, Offset(215f, 400f), 22f))
+        val holder = PinHolder()
+        holder.start(stephansdom, Offset(100f, 400f))
+        holder.move(Offset(200f, 456f), near, density)
+        assertEquals(opera, holder.hold?.target?.end)
+        // The handle at (209, 400): the place is 3 px nearer, not enough to take over.
+        holder.move(Offset(209f, 456f), near, density)
+        assertEquals(opera, holder.hold?.target?.end)
+        holder.move(Offset(214f, 456f), near, density)
+        assertEquals(graben, holder.hold?.target?.end)
+    }
+
+    @Test
     fun `lifting on a pin gives both ends, elsewhere nothing`() {
         val holder = PinHolder()
         holder.start(stephansdom, Offset(100f, 400f))

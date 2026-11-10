@@ -10,12 +10,14 @@ import com.falcon.tripingly.feature.map.presentation.component.placePins
 import kotlin.math.floor
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.TimeSource
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /**
  * Place pins load by map square once the camera rests: liked places first, then the best known, without the
@@ -26,6 +28,8 @@ internal class MapPins(
     private val context: MapContext,
     private val placeRepository: PlaceRepository,
     private val appConfigRepository: AppConfigRepository,
+    /** Where the pins are worked out, off the main thread. */
+    private val computation: CoroutineDispatcher,
 ) {
     private var pinsJob: Job? = null
     private var prefetchJob: Job? = null
@@ -73,7 +77,8 @@ internal class MapPins(
     /**
      * The camera moves: new places show while it does, not only once it rests. At most every [MOVING_PINS_MILLIS], the
      * pins follow the view; squares not loaded yet load, without cancelling a load still on its way (a quick pan would
-     * otherwise never finish one). The rest still loads the ring around the view.
+     * otherwise never finish one). While it moves pins only come, never go, so few markers change; the rest tidies up
+     * and loads the ring around the view.
      */
     fun onCameraMoving(bounds: GeoBounds, zoom: Float) {
         if (context.model.value.arePlacesHidden) return
@@ -85,17 +90,27 @@ internal class MapPins(
         pinsJob = context.scope.launch {
             placeRepository.placesIn(squares)
             update { it.copy(area = PinArea(bounds, squares)) }
-            show()
+            show(addOnly = true)
         }
     }
 
     /** The pins of the squares the camera rests on, from what the repository keeps. */
-    private suspend fun show() {
+    private suspend fun show(addOnly: Boolean = false) {
         val area = context.model.value.pins.area ?: return
         val squares = placeRepository.loadedPlacesIn(area.squares).values
         val hidden = stopPlaceIds(context.trip.value)
         val config = appConfigRepository.config.value
-        update { it.copy(pins = placePins(squares, area.bounds, hidden, config), clusters = placeClusters(squares, area.bounds)) }
+        val shown = context.model.value.pins
+        val (pins, clusters) = withContext(computation) {
+            val pins = placePins(squares, area.bounds, hidden, config)
+            val clusters = placeClusters(squares, area.bounds)
+            if (!addOnly) return@withContext pins to clusters
+            val pinIds = pins.mapTo(HashSet()) { it.place.id }
+            val clusterSpots = clusters.mapTo(HashSet()) { it.location }
+            (pins + shown.pins.filter { it.place.id !in pinIds && it.place.id !in hidden }) to
+                (clusters + shown.clusters.filter { it.location !in clusterSpots })
+        }
+        update { it.copy(pins = pins, clusters = clusters) }
     }
 
     private fun update(change: (PinsModel) -> PinsModel) = context.update { it.copy(pins = change(it.pins)) }

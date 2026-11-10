@@ -158,11 +158,12 @@ actual fun GoogleMapView(
     }
 
     // Sync camera position back to ViewModel when it stops moving
-    // Every frame while the camera moves (a finger, a flight, a held pin pulling it), so places load on the way.
+    // Every frame while the camera moves (a finger, a flight), so places load on the way; not while a held pin pulls
+    // it: no marker changes then, its places load once it's let go.
     val currentOnCameraMoving by rememberUpdatedState(onCameraMoving)
     LaunchedEffect(cameraPositionState) {
         snapshotFlow { cameraPositionState.position }.collect { position ->
-            if (cameraPositionState.isMoving || holder.hold != null) viewBounds()?.let { currentOnCameraMoving(it, position.zoom) }
+            if (cameraPositionState.isMoving && holder.hold == null) viewBounds()?.let { currentOnCameraMoving(it, position.zoom) }
         }
     }
 
@@ -343,7 +344,8 @@ actual fun GoogleMapView(
                 val look = PlacePinLook(pin.place.category, pin.place.isTripinly, pin.size, photoId(pin.place, pin.photo), pin.isAlongTheWay)
                 val dotLook = pin.dotLook()
                 key(pin.place.id) {
-                    val fadeIn = remember { Animatable(0f) }
+                    // A pin that comes while the camera moves shows at once: fading many in at a time redraws them every frame.
+                    val fadeIn = remember { Animatable(if (cameraPositionState.isMoving) 1f else 0f) }
                     LaunchedEffect(Unit) { fadeIn.animateTo(1f, tween(PIN_FADE_MILLIS)) }
                     val position = LatLng(pin.place.location.lat, pin.place.location.lng)
                     // Under the clusters and the stops. Taken from the place, not from its place in the list, so a pin's
