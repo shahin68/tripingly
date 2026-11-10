@@ -171,8 +171,8 @@ internal val SNAP_DISTANCE = 40.dp
 /** The middle of the free map, as a share of the way to its sides, where pulling doesn't move the camera. */
 internal const val PAN_STILL_SHARE_X = 0.45f
 
-/** The same up and down: smaller, since the free map is short between the header and the plan (Shahin, 2026-11-10). */
-internal const val PAN_STILL_SHARE_Y = 0.25f
+/** The same up and down: smaller, since the free map is short between the header and the plan (Shahin, 2026-11-10; 0.25 felt too close, 0.35). */
+internal const val PAN_STILL_SHARE_Y = 0.35f
 
 /** The camera's speed with the finger at an edge, per second. */
-internal val PAN_MAX_SPEED = 900.dp
+internal val PAN_MAX_SPEED = 650.dp

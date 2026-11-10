@@ -3,6 +3,7 @@ package com.falcon.tripingly.feature.map.presentation.component
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -21,6 +22,8 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
@@ -39,8 +42,8 @@ import kotlinx.coroutines.flow.collectLatest
 
 /**
  * What a held pin draws over the map, and what it does while held: a dotted line of small circles from the pin to a
- * handle (an arrow in a circle) that pops out a little above the finger, follows it and turns smoothly to point
- * along the line, a ring on the pin the handle would be let go on, a tick when that pin changes and a long-press haptic when the hold
+ * handle (an arrow in a circle) that pops out a little above the finger, follows it and points
+ * along the line, a ring that bounces out on the pin the handle would be let go on, a tick when that pin changes and a long-press haptic when the hold
  * starts. While the finger pulls toward the map's edges the camera moves ([onScroll], px), faster nearer the edges;
  * never in the middle of the map, near the held pin or before the finger has moved. [project] places a point on the
  * map view in px and must read the camera's state, so the line follows the camera; [pins] are the pins on screen now.
@@ -88,24 +91,18 @@ internal fun PinHoldLayer(
         }
     }
 
-    // Turns like a compass needle: along the shortest way, easing into each new direction.
-    val angle = remember(hold) { Animatable(0f) }
+    // The pin the handle is on gets a ring that bounces out, and the ring shrinks and fades when the handle leaves it.
+    val ring = remember(hold) { Animatable(0f) }
+    var ringPin by remember(hold) { mutableStateOf<ShownPin?>(null) }
     LaunchedEffect(hold) {
-        var first = true
-        snapshotFlow {
-            val pin = currentProject(hold.from.position) ?: return@snapshotFlow null
-            val end = lineEnd()
-            atan2(end.y - pin.y, end.x - pin.x) * 180f / PI.toFloat() + 90f
-        }.collectLatest { target ->
-            if (target == null) return@collectLatest
-            var delta = (target - angle.value) % 360f
-            if (delta > 180f) delta -= 360f
-            if (delta < -180f) delta += 360f
-            if (first) {
-                first = false
-                angle.snapTo(target)
+        snapshotFlow { hold.target?.end?.key }.collectLatest {
+            val target = hold.target
+            if (target != null) {
+                ringPin = target
+                ring.snapTo(0f)
+                ring.animateTo(1f, spring(dampingRatio = 0.45f, stiffness = Spring.StiffnessMediumLow))
             } else {
-                angle.animateTo(angle.value + delta, spring(dampingRatio = 0.8f, stiffness = Spring.StiffnessMediumLow))
+                ring.animateTo(0f, tween(RING_OUT_MILLIS))
             }
         }
     }
@@ -117,10 +114,16 @@ internal fun PinHoldLayer(
     Canvas(Modifier.fillMaxSize()) {
         val pin = currentProject(hold.from.position) ?: return@Canvas
         drawDots(from = pin, to = lineEnd(), startGap = PIN_SIZE.toPx() / 2, endGap = HANDLE_SIZE.toPx() / 2, color = color)
-        val target = hold.target ?: return@Canvas
-        val ring = target.end.position.let(currentProject) ?: return@Canvas
-        drawCircle(Color.White, radius = target.radius + 3.dp.toPx(), center = ring, style = Stroke(5.dp.toPx()))
-        drawCircle(color, radius = target.radius + 3.dp.toPx(), center = ring, style = Stroke(3.dp.toPx()))
+        val shown = ringPin ?: return@Canvas
+        val at = currentProject(shown.end.position) ?: return@Canvas
+        val grow = ring.value
+        val fade = grow.coerceIn(0f, 1f)
+        if (fade <= 0f) return@Canvas
+        val radius = shown.radius + RING_GROW.toPx() * grow
+        val stroke = (RING_STROKE + (RING_STROKE_HELD - RING_STROKE) * fade).toPx()
+        drawCircle(color.copy(alpha = 0.18f * fade), radius = radius, center = at)
+        drawCircle(Color.White.copy(alpha = fade), radius = radius, center = at, style = Stroke(stroke + 2.dp.toPx()))
+        drawCircle(color.copy(alpha = fade), radius = radius, center = at, style = Stroke(stroke))
     }
     Box(
         modifier = Modifier
@@ -144,7 +147,10 @@ internal fun PinHoldLayer(
             contentDescription = null,
             tint = Color.White,
             modifier = Modifier.fillMaxSize().graphicsLayer {
-                rotationZ = angle.value
+                // Along the line, from the pin out through the handle.
+                val pin = currentProject(hold.from.position)
+                val handle = handleOf(hold.finger, density)
+                if (pin != null) rotationZ = atan2(handle.y - pin.y, handle.x - pin.x) * 180f / PI.toFloat() + 90f
                 scaleX = 0.6f
                 scaleY = 0.6f
             },
@@ -152,7 +158,7 @@ internal fun PinHoldLayer(
     }
 }
 
-/** Small circles from [from] to [to], leaving [startGap] and [endGap] clear at the ends, each with a white rim. */
+/** Small circles from [from] to [to], leaving [startGap] and [endGap] clear at the ends. */
 private fun DrawScope.drawDots(from: Offset, to: Offset, startGap: Float, endGap: Float, color: Color) {
     val length = (to - from).getDistance()
     if (length <= startGap + endGap) return
@@ -161,7 +167,6 @@ private fun DrawScope.drawDots(from: Offset, to: Offset, startGap: Float, endGap
     var at = startGap + step / 2
     while (at < length - endGap) {
         val center = from + direction * at
-        drawCircle(Color.White, radius = DOT_RADIUS.toPx() + 1.5.dp.toPx(), center = center)
         drawCircle(color, radius = DOT_RADIUS.toPx(), center = center)
         at += step
     }
@@ -172,4 +177,10 @@ private val DOT_RADIUS = 3.dp
 private val DOT_SPACING = 11.dp
 
 /** Around the held pin the camera stays put, wherever on the map it is. */
-private val PAN_STILL_AROUND_PIN = 48.dp
+private val PAN_STILL_AROUND_PIN = 64.dp
+
+/** How much the ring of the pin the handle is on grows, how thick it gets, and how fast it fades when the handle leaves. */
+private val RING_GROW = 7.dp
+private val RING_STROKE = 2.dp
+private val RING_STROKE_HELD = 4.5.dp
+private const val RING_OUT_MILLIS = 160
