@@ -54,8 +54,9 @@ data class PlacePin(
  * size on screen, so each one costs the map; the server already puts a square's best places first. The first
  * [AppConfig.mapMaxPhotoPins] places that have a photo and are well known or liked enough show it ([showsPhoto]).
  *
- * Panning doesn't reshuffle them: a pin already [shown] that is still in [area] stays, with its photo or icon, and
- * the places new to the view take the free places, best first (Shahin, 2026-11-10; pins in view vanished and came back).
+ * Panning doesn't reshuffle them: a pin already [shown] that is still in [area] stays, with its photo or icon, even past
+ * the cap (a pin on screen never vanishes), and the places new to the view take the free places, best first (Shahin,
+ * 2026-11-10; pins in view vanished and came back). Pins only leave once they're out of [area].
  */
 fun placePins(
     squares: Collection<PlacesInView>,
@@ -71,13 +72,13 @@ fun placePins(
         .sortedWith(PinOrder)
         .toList()
     val shownPhoto = shown.associate { it.place.id to it.photo }
-    val kept = inView.filter { it.id in shownPhoto }.take(config.mapMaxPins)
+    val kept = inView.filter { it.id in shownPhoto }
     val keptIds = kept.mapTo(HashSet()) { it.id }
     var photos = kept.count { shownPhoto.getValue(it.id) && it.showsPhoto(config) }
     val pins = kept.map { place -> pin(place, shownPhoto.getValue(place.id) && place.showsPhoto(config), config) } +
         inView.asSequence()
             .filter { it.id !in keptIds }
-            .take(config.mapMaxPins - kept.size)
+            .take((config.mapMaxPins - kept.size).coerceAtLeast(0))
             .map { place ->
                 val photo = photos < config.mapMaxPhotoPins && place.showsPhoto(config)
                 if (photo) photos++

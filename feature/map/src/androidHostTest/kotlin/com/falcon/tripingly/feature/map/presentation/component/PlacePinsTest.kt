@@ -71,4 +71,16 @@ class PlacePinsTest {
         val fresh = placePins(squares, area, emptySet(), config)
         assertEquals(listOf("famous" to true, "known" to false), fresh.map { it.place.id to it.photo })
     }
+
+    @Test
+    fun `pins still in view all stay, even past the cap, and no new ones come then`() {
+        val config = AppConfig(mapMaxPins = 2, mapMaxPhotoPins = 0)
+        val shownPlaces = listOf(place("a", prominence = 10), place("b", prominence = 20), place("c", prominence = 30))
+        val squares = listOf(PlacesInView(shownPlaces + place("famous", prominence = 99), emptyList()))
+        val shown = shownPlaces.map { PlacePin(it, placePinSize(it, config)) }
+
+        val pins = placePins(squares, area, emptySet(), config, shown)
+
+        assertEquals(listOf("c", "b", "a"), pins.map { it.place.id })
+    }
 }
