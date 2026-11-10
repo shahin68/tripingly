@@ -464,7 +464,7 @@ actual fun GoogleMapView(
         }
         PinHoldLayer(
             holder = holder,
-            mapSize = Size(mapSize.width.toFloat(), mapSize.height.toFloat()),
+            freeArea = freeArea(Size(mapSize.width.toFloat(), mapSize.height.toFloat()), contentPadding, density, LocalLayoutDirection.current),
             project = { point ->
                 // Read, so the line follows the camera.
                 cameraPositionState.position

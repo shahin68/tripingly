@@ -23,7 +23,7 @@ import androidx.compose.runtime.withFrameNanos
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -48,7 +48,8 @@ import kotlinx.coroutines.flow.collectLatest
 @Composable
 internal fun PinHoldLayer(
     holder: PinHolder,
-    mapSize: Size,
+    /** The part of the map nothing covers, px in the map view: pulling toward its edges moves the camera. */
+    freeArea: Rect,
     project: (Coordinates) -> Offset?,
     pins: () -> List<ShownPin>,
     onScroll: (Offset) -> Unit,
@@ -60,7 +61,7 @@ internal fun PinHoldLayer(
     val currentProject by rememberUpdatedState(project)
     val currentPins by rememberUpdatedState(pins)
     val currentOnScroll by rememberUpdatedState(onScroll)
-    val currentSize by rememberUpdatedState(mapSize)
+    val currentFree by rememberUpdatedState(freeArea)
 
     // The line ends at the handle, which follows the finger; a pin the handle is on only gets a ring.
     fun lineEnd(): Offset = handleOf(hold.finger, density)
@@ -80,7 +81,7 @@ internal fun PinHoldLayer(
             if (!hold.hasMoved) continue
             val pin = currentProject(hold.from.position)
             if (pin != null && (hold.finger - pin).getDistance() < with(density) { PAN_STILL_AROUND_PIN.toPx() }) continue
-            val velocity = edgePanVelocity(hold.finger, currentSize, density)
+            val velocity = edgePanVelocity(hold.finger, currentFree, density)
             if (velocity == Offset.Zero) continue
             currentOnScroll(velocity * seconds)
             holder.retarget(currentPins(), density)

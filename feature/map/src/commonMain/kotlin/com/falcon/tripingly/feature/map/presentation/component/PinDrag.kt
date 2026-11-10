@@ -6,8 +6,11 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.unit.Density
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import com.falcon.tripingly.core.location.model.Coordinates
 import com.falcon.tripingly.core.model.place.MapPlace
@@ -128,18 +131,29 @@ private fun PinEnd.isSameSpot(other: PinEnd): Boolean = when {
 }
 
 /**
- * How fast the camera moves while a held pin is pulled, in px per second toward the finger: still in the middle of the
- * map ([PAN_STILL_SHARE] of the way to its edges), then faster the nearer the finger gets to an edge, up to
- * [PAN_MAX_SPEED] there.
+ * How fast the camera moves while a held pin is pulled, in px per second toward the finger. [free] is the part of the
+ * map nothing covers (between the header and the plan, left of the panel in landscape): the camera stays still in its
+ * middle ([PAN_STILL_SHARE_X] and [PAN_STILL_SHARE_Y] of the way to its edges), then moves faster the nearer the
+ * finger gets to an edge, up to [PAN_MAX_SPEED] there and beyond.
  */
-internal fun edgePanVelocity(finger: Offset, size: Size, density: Density): Offset {
-    if (size.width <= 0f || size.height <= 0f) return Offset.Zero
-    val fromMiddle = finger - Offset(size.width / 2, size.height / 2)
-    val reach = max(abs(fromMiddle.x) / (size.width / 2), abs(fromMiddle.y) / (size.height / 2)).coerceAtMost(1f)
-    if (reach <= PAN_STILL_SHARE) return Offset.Zero
-    val share = (reach - PAN_STILL_SHARE) / (1 - PAN_STILL_SHARE)
+internal fun edgePanVelocity(finger: Offset, free: Rect, density: Density): Offset {
+    if (free.width <= 0f || free.height <= 0f) return Offset.Zero
+    val fromMiddle = finger - free.center
+    fun share(distance: Float, half: Float, still: Float) = ((abs(distance) / half - still) / (1 - still)).coerceIn(0f, 1f)
+    val share = max(share(fromMiddle.x, free.width / 2, PAN_STILL_SHARE_X), share(fromMiddle.y, free.height / 2, PAN_STILL_SHARE_Y))
+    if (share <= 0f) return Offset.Zero
     val speed = with(density) { PAN_MAX_SPEED.toPx() } * share * share
     return fromMiddle / fromMiddle.getDistance() * speed
+}
+
+/** The part of a map of [size] (px) that its [padding] leaves free: what the header and cards don't cover. */
+internal fun freeArea(size: Size, padding: PaddingValues, density: Density, layoutDirection: LayoutDirection): Rect = with(density) {
+    Rect(
+        left = padding.calculateLeftPadding(layoutDirection).toPx(),
+        top = padding.calculateTopPadding().toPx(),
+        right = size.width - padding.calculateRightPadding(layoutDirection).toPx(),
+        bottom = size.height - padding.calculateBottomPadding().toPx(),
+    )
 }
 
 /** How far a finger may be off a pin's circle and still hold it. */
@@ -154,8 +168,11 @@ internal val HANDLE_LIFT = 56.dp
 /** A pin this close to the handle, middle to middle, is the one it'll be let go on. */
 internal val SNAP_DISTANCE = 40.dp
 
-/** The middle of the map, as a share of the way to its edges, where pulling doesn't move the camera. */
-internal const val PAN_STILL_SHARE = 0.45f
+/** The middle of the free map, as a share of the way to its sides, where pulling doesn't move the camera. */
+internal const val PAN_STILL_SHARE_X = 0.45f
+
+/** The same up and down: smaller, since the free map is short between the header and the plan (Shahin, 2026-11-10). */
+internal const val PAN_STILL_SHARE_Y = 0.25f
 
 /** The camera's speed with the finger at an edge, per second. */
 internal val PAN_MAX_SPEED = 900.dp

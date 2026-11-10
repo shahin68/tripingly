@@ -423,7 +423,7 @@ internal fun GoogleSdkMapView(
         )
         PinHoldLayer(
             holder = holder,
-            mapSize = viewSize,
+            freeArea = freeArea(viewSize, contentPadding, density, LocalLayoutDirection.current),
             project = { point ->
                 // Read, so the line follows the camera.
                 cameraFrame

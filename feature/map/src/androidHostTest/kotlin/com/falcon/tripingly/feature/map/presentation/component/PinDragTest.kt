@@ -1,8 +1,12 @@
 package com.falcon.tripingly.feature.map.presentation.component
 
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.unit.Density
+import androidx.compose.ui.unit.LayoutDirection
+import androidx.compose.ui.unit.dp
 import com.falcon.tripingly.core.location.model.Coordinates
 import com.falcon.tripingly.core.model.place.MapPlace
 import com.falcon.tripingly.core.model.place.PlaceCategory
@@ -70,16 +74,20 @@ class PinDragTest {
     }
 
     @Test
-    fun `the camera stays still in the middle and speeds up toward the edges`() {
-        val size = Size(400f, 800f)
-        assertEquals(Offset.Zero, edgePanVelocity(Offset(200f, 400f), size, density))
-        assertEquals(Offset.Zero, edgePanVelocity(Offset(260f, 500f), size, density))
-        val near = edgePanVelocity(Offset(330f, 400f), size, density)
-        val edge = edgePanVelocity(Offset(400f, 400f), size, density)
+    fun `the camera stays still in the middle of the free map and speeds up toward its edges`() {
+        // A 400 x 800 map with a 100 px header and a 300 px plan: the free part is 400 x 400, its middle at (200, 300).
+        val free = freeArea(Size(400f, 800f), PaddingValues(top = 100.dp, bottom = 300.dp), density, LayoutDirection.Ltr)
+        assertEquals(Rect(0f, 100f, 400f, 500f), free)
+        assertEquals(Offset.Zero, edgePanVelocity(Offset(200f, 300f), free, density))
+        // Sideways the still middle reaches 45 % of the way to the sides, up and down only 25 %.
+        assertEquals(Offset.Zero, edgePanVelocity(Offset(280f, 300f), free, density))
+        assertTrue(edgePanVelocity(Offset(200f, 240f), free, density).y < 0f)
+        val near = edgePanVelocity(Offset(330f, 300f), free, density)
+        val edge = edgePanVelocity(Offset(400f, 300f), free, density)
         assertTrue(near.x > 0f && near.y == 0f)
         assertTrue(edge.x > near.x)
         assertEquals(PAN_MAX_SPEED.value, edge.x, 0.01f)
-        // Toward the top: the camera moves up.
-        assertTrue(edgePanVelocity(Offset(200f, 10f), size, density).y < 0f)
+        // Over the header: as fast as at the edge.
+        assertEquals(PAN_MAX_SPEED.value, -edgePanVelocity(Offset(200f, 20f), free, density).y, 0.01f)
     }
 }
