@@ -21,6 +21,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -61,7 +62,8 @@ import kotlinx.coroutines.launch
  * What a held pin draws over the map, and what it does while held: a dotted line of small circles from the pin to a
  * handle (an arrow in a circle) that pops out a little above the finger, follows it and points
  * along the line, a ring that bounces out on the pin the handle would be let go on with its name in a tag above the handle, a tick when that pin changes and a long-press haptic when the hold
- * starts. While the finger pulls toward the map's edges the camera moves ([onScroll], px), faster nearer the edges;
+ * starts. While the finger pulls toward the map's edges the camera moves ([onPan]: px per second, and the frame's
+ * seconds; zero once it stops), faster nearer the edges;
  * never in the middle of the map, near the held pin or before the finger has moved. [project] places a point on the
  * map view in px and must read the camera's state, so the line follows the camera; [pins] are the pins on screen now.
  */
@@ -72,7 +74,7 @@ internal fun PinHoldLayer(
     freeArea: Rect,
     project: (Coordinates) -> Offset?,
     pins: () -> List<ShownPin>,
-    onScroll: (Offset) -> Unit,
+    onPan: (velocity: Offset, seconds: Float) -> Unit,
 ) {
     val hold = holder.hold ?: return
     val density = LocalDensity.current
@@ -80,7 +82,7 @@ internal fun PinHoldLayer(
     val haptics = rememberHaptics()
     val currentProject by rememberUpdatedState(project)
     val currentPins by rememberUpdatedState(pins)
-    val currentOnScroll by rememberUpdatedState(onScroll)
+    val currentOnPan by rememberUpdatedState(onPan)
     val currentFree by rememberUpdatedState(freeArea)
 
     // The line ends at the handle, which follows the finger; a pin the handle is on only gets a ring.
@@ -97,22 +99,24 @@ internal fun PinHoldLayer(
         }
     }
 
-    // The camera follows a pull toward the edges, every frame while the finger is there.
+    // The camera follows a pull toward the edges, every frame while the finger is there; it stops when the hold ends.
     LaunchedEffect(hold) {
         var last = withFrameNanos { it }
+        var lastVelocity = Offset.Zero
         while (true) {
             val now = withFrameNanos { it }
             val seconds = (now - last) / 1_000_000_000f
             last = now
-            if (!hold.hasMoved) continue
             val pin = currentProject(hold.from.position)
-            if (pin != null && (hold.finger - pin).getDistance() < with(density) { PAN_STILL_AROUND_PIN.toPx() }) continue
-            val velocity = edgePanVelocity(hold.finger, currentFree, density)
-            if (velocity == Offset.Zero) continue
-            currentOnScroll(velocity * seconds)
+            val isStill = !hold.hasMoved || pin != null && (hold.finger - pin).getDistance() < with(density) { PAN_STILL_AROUND_PIN.toPx() }
+            val velocity = if (isStill) Offset.Zero else edgePanVelocity(hold.finger, currentFree, density)
+            if (velocity == Offset.Zero && lastVelocity == Offset.Zero) continue
+            lastVelocity = velocity
+            currentOnPan(velocity, seconds)
             holder.retarget(currentPins(), density)
         }
     }
+    DisposableEffect(hold) { onDispose { currentOnPan(Offset.Zero, 0f) } }
 
     // The pin the handle is on gets a ring that bounces out; the ring of the pin it leaves shrinks and fades meanwhile.
     val ring = remember(hold) { Animatable(0f) }

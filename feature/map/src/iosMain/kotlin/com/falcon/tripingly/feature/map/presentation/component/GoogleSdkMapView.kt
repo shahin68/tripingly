@@ -154,6 +154,8 @@ internal fun GoogleSdkMapView(
                 override fun onCameraChange(zoom: Float, south: Double, west: Double, north: Double, east: Double) {
                     liveZoom = zoom
                     cameraFrame++
+                    // The map pans itself while a pin is pulled: the handle may be near another pin now.
+                    if (holder.hold != null) holder.retarget(shownPins(), density)
                     currentOnCameraMoving(GeoBounds(south, west, north, east), zoom)
                 }
 
@@ -430,7 +432,8 @@ internal fun GoogleSdkMapView(
                 project(point)
             },
             pins = ::shownPins,
-            onScroll = { by -> map.scrollCamera(by.x.toDouble() / density.density, by.y.toDouble() / density.density) },
+            // The map moves itself on its own display frames at this speed: stepping it from Compose's frames jitters.
+            onPan = { velocity, _ -> map.setPanVelocity(velocity.x.toDouble() / density.density, velocity.y.toDouble() / density.density) },
         )
     }
 }

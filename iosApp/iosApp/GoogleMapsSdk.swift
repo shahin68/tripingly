@@ -35,6 +35,9 @@ final class AppGoogleMapsSdk: NSObject, GoogleMapsSdk {
 private final class AppGoogleMap: NSObject, GoogleMap, GMSMapViewDelegate {
 
     private let mapView = GMSMapView(options: GMSMapViewOptions())
+    /// The pan of a pulled pin: its speed in points per second, and the display link that moves the camera each frame.
+    private var panVelocity = CGVector.zero
+    private var panLink: CADisplayLink?
     private let listener: any GoogleMapListener
     private var markers: [String: GMSMarker] = [:]
     private var line: GMSPolyline?
@@ -175,8 +178,22 @@ private final class AppGoogleMap: NSObject, GoogleMap, GMSMapViewDelegate {
         return GoogleMapScreenPoint(x: Double(point.x), y: Double(point.y))
     }
 
-    func scrollCamera(dx: Double, dy: Double) {
-        mapView.moveCamera(GMSCameraUpdate.scrollBy(x: CGFloat(dx), y: CGFloat(dy)))
+    func setPanVelocity(dx: Double, dy: Double) {
+        panVelocity = CGVector(dx: dx, dy: dy)
+        if dx == 0 && dy == 0 {
+            panLink?.invalidate()
+            panLink = nil
+        } else if panLink == nil {
+            let link = CADisplayLink(target: self, selector: #selector(panStep(_:)))
+            link.add(to: .main, forMode: .common)
+            panLink = link
+        }
+    }
+
+    /// One display frame of a pan: the camera moves by the speed times the frame's length.
+    @objc private func panStep(_ link: CADisplayLink) {
+        let seconds = CGFloat(link.targetTimestamp - link.timestamp)
+        mapView.moveCamera(GMSCameraUpdate.scrollBy(x: panVelocity.dx * seconds, y: panVelocity.dy * seconds))
     }
 
     private func path(of points: [GoogleMapPoint]) -> GMSPath {

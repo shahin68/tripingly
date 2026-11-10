@@ -51,8 +51,11 @@ interface GoogleMap {
     /** Where a point is on the view now, in points from its top left. */
     fun screenPoint(latitude: Double, longitude: Double): GoogleMapScreenPoint
 
-    /** Moves the camera at once by this many points, right and down for positive values. */
-    fun scrollCamera(dx: Double, dy: Double)
+    /**
+     * Pans the camera at this speed, points per second (right and down for positive values), moving it on each of the
+     * map's own display frames so it stays smooth; zero stops it.
+     */
+    fun setPanVelocity(dx: Double, dy: Double)
 }
 
 @ObjCName("GoogleMapPoint", exact = true)

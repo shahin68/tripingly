@@ -471,7 +471,7 @@ actual fun GoogleMapView(
                 project(point)
             },
             pins = ::shownPins,
-            onScroll = { by -> cameraPositionState.move(CameraUpdateFactory.scrollBy(by.x, by.y)) },
+            onPan = { velocity, seconds -> if (velocity != Offset.Zero) cameraPositionState.move(CameraUpdateFactory.scrollBy(velocity.x * seconds, velocity.y * seconds)) },
         )
     }
 }
