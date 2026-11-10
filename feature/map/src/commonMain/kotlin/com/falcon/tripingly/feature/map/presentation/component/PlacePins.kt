@@ -53,22 +53,41 @@ data class PlacePin(
  * liked places first (the most liked first), then the best known, at most [AppConfig.mapMaxPins]. Pins keep their
  * size on screen, so each one costs the map; the server already puts a square's best places first. The first
  * [AppConfig.mapMaxPhotoPins] places that have a photo and are well known or liked enough show it ([showsPhoto]).
+ *
+ * Panning doesn't reshuffle them: a pin already [shown] that is still in [area] stays, with its photo or icon, and
+ * the places new to the view take the free places, best first (Shahin, 2026-11-10; pins in view vanished and came back).
  */
-fun placePins(squares: Collection<PlacesInView>, area: GeoBounds, hiddenPlaceIds: Set<String>, config: AppConfig): List<PlacePin> {
-    var photos = 0
-    return squares.asSequence()
+fun placePins(
+    squares: Collection<PlacesInView>,
+    area: GeoBounds,
+    hiddenPlaceIds: Set<String>,
+    config: AppConfig,
+    shown: List<PlacePin> = emptyList(),
+): List<PlacePin> {
+    val inView = squares.asSequence()
         .flatMap { it.places }
         .filter { it.location in area && it.id !in hiddenPlaceIds }
         .distinctBy { it.id }
         .sortedWith(PinOrder)
-        .take(config.mapMaxPins)
-        .map { place ->
-            val photo = photos < config.mapMaxPhotoPins && place.showsPhoto(config)
-            if (photo) photos++
-            PlacePin(place, if (photo) PhotoPinSize else placePinSize(place, config), photo)
-        }
         .toList()
+    val shownPhoto = shown.associate { it.place.id to it.photo }
+    val kept = inView.filter { it.id in shownPhoto }.take(config.mapMaxPins)
+    val keptIds = kept.mapTo(HashSet()) { it.id }
+    var photos = kept.count { shownPhoto.getValue(it.id) && it.showsPhoto(config) }
+    val pins = kept.map { place -> pin(place, shownPhoto.getValue(place.id) && place.showsPhoto(config), config) } +
+        inView.asSequence()
+            .filter { it.id !in keptIds }
+            .take(config.mapMaxPins - kept.size)
+            .map { place ->
+                val photo = photos < config.mapMaxPhotoPins && place.showsPhoto(config)
+                if (photo) photos++
+                pin(place, photo, config)
+            }
+    return pins.sortedWith(compareBy(PinOrder) { it.place })
 }
+
+private fun pin(place: MapPlace, photo: Boolean, config: AppConfig) =
+    PlacePin(place, if (photo) PhotoPinSize else placePinSize(place, config), photo)
 
 /** A place with a photo shows it on its pin once it's well known or liked enough (server values). */
 private fun MapPlace.showsPhoto(config: AppConfig): Boolean =

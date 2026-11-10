@@ -102,7 +102,7 @@ internal class MapPins(
         val config = appConfigRepository.config.value
         val shown = context.model.value.pins
         val (pins, clusters) = withContext(computation) {
-            val pins = placePins(squares, area.bounds, hidden, config)
+            val pins = placePins(squares, area.bounds, hidden, config, shown = shown.pins)
             val clusters = placeClusters(squares, area.bounds)
             if (!addOnly) return@withContext pins to clusters
             val pinIds = pins.mapTo(HashSet()) { it.place.id }

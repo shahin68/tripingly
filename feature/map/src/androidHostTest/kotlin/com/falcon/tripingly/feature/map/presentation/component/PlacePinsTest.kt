@@ -52,4 +52,23 @@ class PlacePinsTest {
         assertEquals(PhotoPinSize, pins.single { it.place.id == "c" }.size)
         assertEquals(PinSizes[2], pins.single { it.place.id == "a" }.size)
     }
+
+    @Test
+    fun `a pin still in view stays, with its look, and new places take the free places best first`() {
+        val config = AppConfig(mapMaxPins = 2, mapMaxPhotoPins = 1)
+        val low = place("low", prominence = 10, photo = false)
+        val famous = place("famous", prominence = 95)
+        val known = place("known", prominence = 92)
+        val squares = listOf(PlacesInView(listOf(low, famous, known), emptyList()))
+        // Shown before the pan: "low", and "known" as an icon although it has a photo.
+        val shown = listOf(PlacePin(low, placePinSize(low, config)), PlacePin(known, placePinSize(known, config)))
+
+        val pins = placePins(squares, area, emptySet(), config, shown)
+
+        assertEquals(listOf("known", "low"), pins.map { it.place.id })
+        assertEquals(listOf(false, false), pins.map { it.photo })
+        // Without them the best two show, the first with its photo.
+        val fresh = placePins(squares, area, emptySet(), config)
+        assertEquals(listOf("famous" to true, "known" to false), fresh.map { it.place.id to it.photo })
+    }
 }
