@@ -56,7 +56,8 @@ internal class MapRouting(
         val isShown = context.model.value.route.isDayRouteShown
         if (!isShown && !hasRoutes()) return showRoutesArePro()
         update { it.copy(isDayRouteShown = !isShown, isAnimated = true) }
-        showWholePlan()
+        // Only a route coming on opens the plan; switching it off leaves the sheet as it is (Shahin, 2026-11-10).
+        if (!isShown) showWholePlan()
     }
 
     /** The Route button's Retry after the route failed: asks for it again at once, the route stays on. */

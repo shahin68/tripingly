@@ -793,7 +793,7 @@ class MapViewModelTest {
     }
 
     @Test
-    fun `a tap on Route shows the whole plan, on and off, and without Pro opens the paywall`() = runTest(testDispatcher) {
+    fun `a tap on Route shows the whole plan when it comes on, not when it goes off, and without Pro opens the paywall`() = runTest(testDispatcher) {
         backend.addMarker(trip.trip.id, trip.days[0].id, NewMarker("Stop #1", GeoPoint(48.85, 2.35)))
         backend.addMarker(trip.trip.id, trip.days[0].id, NewMarker("Stop #2", GeoPoint(41.9, 12.49)))
         val viewModel = viewModel()
@@ -804,7 +804,7 @@ class MapViewModelTest {
             assertEquals(MapEvent.ShowWholePlan, awaitItem())
             viewModel.onAction(MapAction.Plan.ToggleRoute)
             testScheduler.advanceUntilIdle()
-            assertEquals(MapEvent.ShowWholePlan, awaitItem())
+            expectNoEvents()
         }
 
         session = signedIn(entitlements = emptySet())
