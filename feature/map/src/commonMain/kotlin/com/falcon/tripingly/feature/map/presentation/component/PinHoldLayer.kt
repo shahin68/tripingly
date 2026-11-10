@@ -7,7 +7,9 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.padding
@@ -17,7 +19,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowUpward
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -29,6 +30,7 @@ import androidx.compose.runtime.withFrameNanos
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
@@ -40,6 +42,8 @@ import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.falcon.tripingly.core.designsystem.component.GlassSurface
+import com.falcon.tripingly.core.designsystem.component.icon
 import com.falcon.tripingly.core.designsystem.component.rememberHaptics
 import com.falcon.tripingly.core.designsystem.theme.extendedColors
 import com.falcon.tripingly.core.location.model.Coordinates
@@ -186,17 +190,20 @@ private fun DrawScope.drawRing(shown: ShownPin, grow: Float, project: (Coordinat
     drawCircle(color.copy(alpha = fade), radius = radius, center = at, style = Stroke(stroke))
 }
 
-/** The name of the pin the handle is on, in a pill above the handle, so it reads even where pins crowd. */
+/**
+ * The name of the pin the handle is on, in a glass pill above the handle, so it reads even where pins crowd: a small
+ * mark at its start (the stop's number, or the place's category), as far in from the top, bottom and start, then the name.
+ */
 @Composable
 private fun NameTag(end: PinEnd, handle: () -> Offset, alpha: () -> Float) {
     val name = when (end) {
         is PinEnd.Stop -> end.stop.title.asString()
         is PinEnd.Place -> end.place.name
     }
-    Surface(
+    GlassSurface(
         shape = CircleShape,
-        color = MaterialTheme.colorScheme.surface,
-        shadowElevation = 4.dp,
+        shadowElevation = 0.dp,
+        blur = false,
         modifier = Modifier
             .layout { measurable, constraints ->
                 val tag = measurable.measure(constraints.copy(minWidth = 0, minHeight = 0))
@@ -209,13 +216,45 @@ private fun NameTag(end: PinEnd, handle: () -> Offset, alpha: () -> Float) {
             }
             .graphicsLayer { this.alpha = alpha() },
     ) {
-        Text(
-            text = name,
-            style = MaterialTheme.typography.labelLarge,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.widthIn(max = NAME_TAG_MAX_WIDTH).padding(horizontal = 12.dp, vertical = 6.dp),
-        )
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(NAME_TAG_INSET),
+            // The mark is NAME_TAG_INSET from the top, bottom and start; the name ends a pill's radius from the end.
+            modifier = Modifier.padding(start = NAME_TAG_INSET, top = NAME_TAG_INSET, bottom = NAME_TAG_INSET, end = NAME_TAG_MARK / 2 + NAME_TAG_INSET),
+        ) {
+            NameTagMark(end)
+            Text(
+                text = name,
+                style = MaterialTheme.typography.labelLarge,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.widthIn(max = NAME_TAG_MAX_WIDTH),
+            )
+        }
+    }
+}
+
+/** A stop's number on stop green, or a place's category icon on the place colour, like their pins. */
+@Composable
+private fun NameTagMark(end: PinEnd) {
+    val fill = when (end) {
+        is PinEnd.Stop -> MaterialTheme.extendedColors.stop
+        is PinEnd.Place -> MaterialTheme.extendedColors.place
+    }
+    Box(contentAlignment = Alignment.Center, modifier = Modifier.size(NAME_TAG_MARK).background(fill, CircleShape)) {
+        when (end) {
+            is PinEnd.Stop -> Text(
+                text = end.stop.orderNumber.toString(),
+                style = MaterialTheme.typography.labelSmall,
+                color = Color.White,
+            )
+            is PinEnd.Place -> Icon(
+                imageVector = end.place.category.icon,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSecondary,
+                modifier = Modifier.size(NAME_TAG_MARK_ICON),
+            )
+        }
     }
 }
 
@@ -250,6 +289,9 @@ private const val RING_OUT_MILLIS = 160
 /** At most one tick this often while the target changes. */
 private const val TICK_GAP_MILLIS = 80
 
-/** The name tag: how far above the handle it floats, and how wide it gets before the name is cut. */
+/** The name tag: how far above the handle it floats, the mark at its start and its inset, and how wide the name gets before it's cut. */
 private val NAME_TAG_GAP = 8.dp
-private val NAME_TAG_MAX_WIDTH = 220.dp
+private val NAME_TAG_MARK = 24.dp
+private val NAME_TAG_MARK_ICON = 14.dp
+private val NAME_TAG_INSET = 6.dp
+private val NAME_TAG_MAX_WIDTH = 200.dp
