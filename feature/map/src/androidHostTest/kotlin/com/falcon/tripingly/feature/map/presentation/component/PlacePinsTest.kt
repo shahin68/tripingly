@@ -83,4 +83,17 @@ class PlacePinsTest {
 
         assertEquals(listOf("c", "b", "a"), pins.map { it.place.id })
     }
+
+    @Test
+    fun `a shown pin the squares no longer list stays only when asked to`() {
+        val config = AppConfig(mapMaxPins = 10, mapMaxPhotoPins = 0)
+        val small = place("small", prominence = 5)
+        val outside = place("outside", prominence = 5).copy(location = GeoPoint(50.0, 16.5))
+        val squares = listOf(PlacesInView(listOf(place("big", prominence = 90)), emptyList()))
+        val shown = listOf(small, outside).map { PlacePin(it, placePinSize(it, config)) }
+
+        assertEquals(listOf("big", "small"), placePins(squares, area, emptySet(), config, shown, keepUnlisted = true).map { it.place.id })
+        assertEquals(listOf("big"), placePins(squares, area, setOf("small"), config, shown, keepUnlisted = true).map { it.place.id })
+        assertEquals(listOf("big"), placePins(squares, area, emptySet(), config, shown).map { it.place.id })
+    }
 }

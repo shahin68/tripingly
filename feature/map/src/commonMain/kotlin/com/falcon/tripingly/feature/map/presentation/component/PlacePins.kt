@@ -57,6 +57,10 @@ data class PlacePin(
  * Panning doesn't reshuffle them: a pin already [shown] that is still in [area] stays, with its photo or icon, even past
  * the cap (a pin on screen never vanishes), and the places new to the view take the free places, best first (Shahin,
  * 2026-11-10; pins in view vanished and came back). Pins only leave once they're out of [area].
+ *
+ * With [keepUnlisted] (the same zoom or closer than when they showed) a shown pin in [area] stays even when the squares
+ * don't list it any more: the server picks each square's places per zoom, so a zoom step or a reload can leave out a
+ * small place the map already shows. Zooming out drops the ones the farther squares don't list (Shahin, 2026-11-10).
  */
 fun placePins(
     squares: Collection<PlacesInView>,
@@ -64,6 +68,7 @@ fun placePins(
     hiddenPlaceIds: Set<String>,
     config: AppConfig,
     shown: List<PlacePin> = emptyList(),
+    keepUnlisted: Boolean = false,
 ): List<PlacePin> {
     val inView = squares.asSequence()
         .flatMap { it.places }
@@ -72,7 +77,12 @@ fun placePins(
         .sortedWith(PinOrder)
         .toList()
     val shownPhoto = shown.associate { it.place.id to it.photo }
-    val kept = inView.filter { it.id in shownPhoto }
+    val listedIds = inView.mapTo(HashSet()) { it.id }
+    val unlisted = if (!keepUnlisted) emptyList() else shown.asSequence()
+        .map { it.place }
+        .filter { it.id !in listedIds && it.location in area && it.id !in hiddenPlaceIds }
+        .toList()
+    val kept = inView.filter { it.id in shownPhoto } + unlisted
     val keptIds = kept.mapTo(HashSet()) { it.id }
     var photos = kept.count { shownPhoto.getValue(it.id) && it.showsPhoto(config) }
     val pins = kept.map { place -> pin(place, shownPhoto.getValue(place.id) && place.showsPhoto(config), config) } +

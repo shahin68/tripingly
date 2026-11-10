@@ -37,6 +37,13 @@ internal class MapPins(
     private var lastRest: Pair<GeoBounds, Float>? = null
     /** When the pins last followed a moving camera. */
     private var lastMoving: TimeSource.Monotonic.ValueTimeMark? = null
+    /**
+     * The closest zoom the camera rested at since the pins were last tidied. Until it rests a whole step farther out
+     * than that, every pin still in view stays, also one the squares of this zoom don't list.
+     */
+    private var closestZoom: Float? = null
+    /** Whether shown pins the squares no longer list stay: not once zoomed out a whole step. */
+    private var keepUnlisted = false
 
     init {
         // Pins change when a square in view reloads with new places, and when stops come or go (a stop hides its place).
@@ -60,6 +67,9 @@ internal class MapPins(
         lastRest = view to zoom
         if (context.model.value.arePlacesHidden) return
         val bounds = view.withPinMargin()
+        val closest = closestZoom
+        keepUnlisted = closest != null && zoom > closest - TIDY_ZOOM_OUT
+        closestZoom = if (keepUnlisted && closest != null) maxOf(closest, zoom) else zoom
         val squares = PlaceSquare.covering(bounds, floor(zoom).toInt())
         pinsJob?.cancel()
         pinsJob = context.scope.launch {
@@ -104,7 +114,7 @@ internal class MapPins(
         val config = appConfigRepository.config.value
         val shown = context.model.value.pins
         val (pins, clusters) = withContext(computation) {
-            val pins = placePins(squares, area.bounds, hidden, config, shown = shown.pins)
+            val pins = placePins(squares, area.bounds, hidden, config, shown = shown.pins, keepUnlisted = keepUnlisted)
             val clusters = placeClusters(squares, area.bounds)
             if (!addOnly) return@withContext pins to clusters
             val pinIds = pins.mapTo(HashSet()) { it.place.id }
@@ -123,6 +133,12 @@ internal class MapPins(
 
         /** How often the pins follow a moving camera. */
         const val MOVING_PINS_MILLIS = 250L
+
+        /**
+         * How far out the camera zooms before the pins the farther squares don't list leave. A whole step, so a pinch
+         * that ends a little below a whole zoom (14.9 after 15) keeps them (Shahin, 2026-11-10).
+         */
+        const val TIDY_ZOOM_OUT = 1f
     }
 }
 
