@@ -1295,19 +1295,6 @@ class MapViewModelTest {
     }
 
     @Test
-    fun `while the camera moves its squares load and pins show, without waiting for it to rest`() = runTest(testDispatcher) {
-        val viewModel = viewModel()
-        testScheduler.advanceUntilIdle()
-
-        viewModel.onAction(MapAction.MapView.CameraMoving(PARIS_CENTER, 15f))
-        testScheduler.advanceUntilIdle()
-
-        // Only the view's squares: the ring around them waits for the camera to rest.
-        assertEquals(listOf(PlaceSquare.covering(PARIS_CENTER, 15)), places.requests)
-        assertTrue(viewModel.uiState.value.layers.placePins.isNotEmpty())
-    }
-
-    @Test
     fun `a place's images open full screen, and a Commons image is reported as the place's image`() = runTest(testDispatcher) {
         places.images["fake-louvre"] = listOf(TRIP_PHOTO, COMMONS_IMAGE)
         val viewModel = viewModel()

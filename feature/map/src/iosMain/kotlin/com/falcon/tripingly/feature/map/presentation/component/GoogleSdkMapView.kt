@@ -66,7 +66,6 @@ internal fun GoogleSdkMapView(
     line: MapLine?,
     isMyLocationEnabled: Boolean,
     onCameraMove: (Coordinates, Float, GeoBounds?) -> Unit,
-    onCameraMoving: (GeoBounds, Float) -> Unit,
     onMapTouch: () -> Unit,
     onMapClick: (Coordinates) -> Unit,
     onPlacePinClick: (MapPlace) -> Unit,
@@ -84,7 +83,6 @@ internal fun GoogleSdkMapView(
     val currentOnPlacePinClick by rememberUpdatedState(onPlacePinClick)
     val currentOnClusterClick by rememberUpdatedState(onClusterClick)
     val currentOnCameraMove by rememberUpdatedState(onCameraMove)
-    val currentOnCameraMoving by rememberUpdatedState(onCameraMoving)
     val currentOnMapTouch by rememberUpdatedState(onMapTouch)
     val currentOnMapClick by rememberUpdatedState(onMapClick)
     val currentOnMapLongClick by rememberUpdatedState(onMapLongClick)
@@ -156,7 +154,6 @@ internal fun GoogleSdkMapView(
                     cameraFrame++
                     // The map pans itself while a pin is pulled: the handle may be near another pin now.
                     if (holder.hold != null) holder.retarget(shownPins(), density)
-                    currentOnCameraMoving(GeoBounds(south, west, north, east), zoom)
                 }
 
                 override fun onTap(latitude: Double, longitude: Double) {

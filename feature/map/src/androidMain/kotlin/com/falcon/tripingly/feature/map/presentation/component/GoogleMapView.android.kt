@@ -18,10 +18,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.withFrameNanos
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -79,7 +77,6 @@ actual fun GoogleMapView(
     contentPadding: PaddingValues,
     layers: MapLayersState,
     onCameraMove: (Coordinates, Float, GeoBounds?) -> Unit,
-    onCameraMoving: (GeoBounds, Float) -> Unit,
     onMapTouch: () -> Unit,
     onMapClick: (Coordinates) -> Unit,
     onPlacePinClick: (MapPlace) -> Unit,
@@ -159,14 +156,6 @@ actual fun GoogleMapView(
     }
 
     // Sync camera position back to ViewModel when it stops moving
-    // Every frame while the camera moves (a finger, a flight, a held pin pulling it), so places load on the way.
-    val currentOnCameraMoving by rememberUpdatedState(onCameraMoving)
-    LaunchedEffect(cameraPositionState) {
-        snapshotFlow { cameraPositionState.position }.collect { position ->
-            if (cameraPositionState.isMoving || holder.hold != null) viewBounds()?.let { currentOnCameraMoving(it, position.zoom) }
-        }
-    }
-
     // Not while a held pin moves the camera: once it's let go.
     LaunchedEffect(cameraPositionState.isMoving, isHolding) {
         if (!cameraPositionState.isMoving && !isHolding) reportCamera()
@@ -321,19 +310,6 @@ actual fun GoogleMapView(
             val isDots by remember(pinDotBelowZoom) { derivedStateOf { cameraPositionState.position.zoom < pinDotBelowZoom } }
             val shownPins = placePins.filter { !it.photo || it.place.coverImageId in pinPhotos }
 
-            // New pins go on the map a few per frame, the best ranked first: each is two native markers, made on the main
-            // thread, and a load while the camera moves brings dozens at once. Pins that leave go at once.
-            var placedIds by remember { mutableStateOf(emptySet<String>()) }
-            val wantedIds = shownPins.map { it.place.id }
-            LaunchedEffect(wantedIds) {
-                val wanted = wantedIds.toSet()
-                placedIds = placedIds intersect wanted
-                wantedIds.filter { it !in placedIds }.chunked(NEW_PINS_PER_FRAME).forEach { batch ->
-                    placedIds = placedIds + batch
-                    withFrameNanos { }
-                }
-            }
-
             // The map hands a tap on overlapping pins to the one on top; the pin whose middle is nearest the finger is the
             // one meant, as long as the finger is on it.
             fun aimedPin(tapped: PlacePin): PlacePin {
@@ -353,7 +329,7 @@ actual fun GoogleMapView(
                     ?.first ?: tapped
             }
 
-            shownPins.filter { it.place.id in placedIds }.forEach { pin ->
+            shownPins.forEach { pin ->
                 val look = PlacePinLook(pin.place.category, pin.place.isTripinly, pin.size, photoId(pin.place, pin.photo), pin.isAlongTheWay)
                 val dotLook = pin.dotLook()
                 key(pin.place.id) {
@@ -539,7 +515,6 @@ private fun MapLineView(line: MapLine) {
 private const val PIN_FADE_MILLIS = 250
 
 /** How many new place pins go on the map per frame (each is two markers); the rest follow on the next frames. */
-private const val NEW_PINS_PER_FRAME = 6
 
 /** Between 0 and 1, higher for a better place: liked places by their likes above the others by how well known. */
 private fun pinRank(place: MapPlace): Float =

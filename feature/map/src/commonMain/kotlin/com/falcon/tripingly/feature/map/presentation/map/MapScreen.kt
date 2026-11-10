@@ -209,7 +209,6 @@ internal fun MapScreen(
                 contentPadding = cameraPadding,
                 layers = state.layers,
                 onCameraMove = { coords, zoom, bounds -> onAction(MapAction.MapView.CameraRest(coords, zoom, bounds)) },
-                onCameraMoving = { bounds, zoom -> onAction(MapAction.MapView.CameraMoving(bounds, zoom)) },
                 onMapTouch = { onAction(MapAction.MapView.ScreenTouch) },
                 onMapClick = { coords -> onAction(MapAction.MapView.Click(coords)) },
                 onPlacePinClick = { place -> onAction(MapAction.MapView.PlacePinClick(place)) },

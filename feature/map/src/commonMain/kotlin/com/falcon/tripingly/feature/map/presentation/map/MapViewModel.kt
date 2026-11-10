@@ -79,7 +79,7 @@ class MapViewModel(
     sessionRepository: SessionRepository,
     getCurrentLocationUseCase: GetCurrentLocationUseCase,
     newActivityRepository: NewActivityRepository,
-    /** Where heavier work runs off the main thread: the place pins, worked out while the camera moves. */
+    /** Where heavier work runs off the main thread: the place pins. */
     computation: CoroutineDispatcher,
 ) : ViewModel() {
 
@@ -154,7 +154,6 @@ class MapViewModel(
             is MapAction.MapView.MarkerClick -> selection.selectMarker(action.marker)
             is MapAction.MapView.PinDrop -> routes.routeBetweenPins(action.from, action.to)
             is MapAction.MapView.CameraRest -> onCameraRest(action)
-            is MapAction.MapView.CameraMoving -> pins.onCameraMoving(action.bounds, action.zoom)
             is MapAction.MapView.ScreenTouch -> selection.onScreenTouch()
         }
     }
