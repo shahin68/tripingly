@@ -340,7 +340,10 @@ actual fun GoogleMapView(
             }
 
             // All pins go on the map in the same frame, along-the-way ones too, so a change shows at once (Shahin, 2026-11-10).
-            shownPins.forEach { pin ->
+            // A pin that leaves is only hidden, up to MAX_HIDDEN_PINS of the latest ones: making a native marker is the
+            // costly part, so a pin coming back (a pan back, the route switched off) just shows again.
+            val hiddenPins = rememberHiddenPins(shownPins)
+            (shownPins.map { it to true } + hiddenPins.map { it to false }).forEach { (pin, isShown) ->
                 val look = PlacePinLook(pin.place.category, pin.place.isTripinly, pin.size, photoId(pin.place, pin.photo), pin.isAlongTheWay)
                 val dotLook = pin.dotLook()
                 key(pin.place.id) {
@@ -365,7 +368,7 @@ actual fun GoogleMapView(
                             title = pin.place.name,
                             anchor = Offset(0.5f, 0.5f),
                             alpha = fadeIn.value,
-                            visible = !isDots && !pin.isDot,
+                            visible = isShown && !isDots && !pin.isDot,
                             zIndex = zIndex,
                             onClick = { onClick() },
                         )
@@ -377,7 +380,7 @@ actual fun GoogleMapView(
                             title = pin.place.name,
                             anchor = Offset(0.5f, 0.5f),
                             alpha = fadeIn.value,
-                            visible = isDots || pin.isDot,
+                            visible = isShown && (isDots || pin.isDot),
                             zIndex = zIndex,
                             onClick = { onClick() },
                         )
@@ -522,6 +525,30 @@ private fun MapLineView(line: MapLine) {
         )
     }
 }
+
+/**
+ * The latest pins that left [shown], newest last, at most [MAX_HIDDEN_PINS]: their markers stay on the map, hidden. A pin
+ * back in [shown] leaves this list.
+ */
+@Composable
+private fun rememberHiddenPins(shown: List<PlacePin>): List<PlacePin> {
+    val hidden = remember { LinkedHashMap<String, PlacePin>() }
+    val previous = remember { arrayOf(emptyList<PlacePin>()) }
+    return remember(shown) {
+        val shownIds = shown.mapTo(HashSet()) { it.place.id }
+        previous[0].filter { it.place.id !in shownIds }.forEach { pin ->
+            hidden.remove(pin.place.id)
+            hidden[pin.place.id] = pin
+        }
+        shownIds.forEach(hidden::remove)
+        while (hidden.size > MAX_HIDDEN_PINS) hidden.remove(hidden.keys.first())
+        previous[0] = shown
+        hidden.values.toList()
+    }
+}
+
+/** Hidden markers cost a little memory and nothing to draw; enough for a pan back and forth over a full map. */
+private const val MAX_HIDDEN_PINS = 300
 
 /** A new place pin fades in, as Google's own pins do. */
 private const val PIN_FADE_MILLIS = 250
