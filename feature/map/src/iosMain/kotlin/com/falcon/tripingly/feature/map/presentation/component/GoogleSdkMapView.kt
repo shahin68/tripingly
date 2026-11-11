@@ -199,9 +199,14 @@ internal fun GoogleSdkMapView(
                 }
 
                 override fun onMarkerTap(key: String) {
+                    // Read before the touch closes it.
+                    val selected = currentSelectedPlace
                     currentOnMapTouch()
                     haptics.tick()
                     when {
+                        // The open place's own pin, drawn bigger on top: a tap on it opens its card again, as on any pin.
+                        // A second tap within the double-tap time comes this way, not as the quick tap (Shahin, 2026-11-11).
+                        key == SELECTED_PLACE_KEY -> selected?.let(currentOnPlacePinClick)
                         key.startsWith(PLACE_KEY) ->
                             currentPlacePins.find { PLACE_KEY + it.place.id == key }?.let { currentOnPlacePinClick(it.place) }
                         key.startsWith(CLUSTER_KEY) ->
