@@ -26,6 +26,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.backhandler.BackHandler
 import androidx.compose.ui.focus.FocusRequester
@@ -63,6 +64,7 @@ import org.jetbrains.compose.resources.stringResource
  */
 @Composable
 internal fun RouteBar(bar: RouteBarState, search: SearchState?, onAction: (MapAction) -> Unit, modifier: Modifier = Modifier) {
+    @OptIn(ExperimentalComposeUiApi::class)
     BackHandler(enabled = LocalScreenOnTop.current) { onAction(MapAction.PinRoute.Close) }
     GlassSurface(
         modifier = modifier.fillMaxWidth().padding(horizontal = MaterialTheme.spacing.medium, vertical = MaterialTheme.spacing.small),
