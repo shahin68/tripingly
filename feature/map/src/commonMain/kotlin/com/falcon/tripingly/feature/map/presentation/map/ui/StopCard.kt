@@ -16,7 +16,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.Comment
 import androidx.compose.material.icons.outlined.ExpandLess
 import androidx.compose.material.icons.outlined.ExpandMore
-import androidx.compose.material.icons.outlined.LocationOn
 import androidx.compose.material.icons.outlined.PhotoLibrary
 import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
@@ -86,6 +85,7 @@ internal fun PinCardScope.StopCard(
                         subtitle = stopSubtitle(card),
                         image = stop.coverPhotoId?.let { coverId -> coverImage(coverId, stop.coverThumbUrl) },
                         onClick = onOpenPhotos,
+                        mark = { PinMark(category = null, stopNumber = stop.orderNumber) },
                         topEnd = { BannerButton({ isExpanded = false }, Icons.Outlined.ExpandMore, stringResource(Res.string.map_stop_collapse)) },
                     )
                 },
@@ -158,16 +158,14 @@ private fun StopPill(card: StopCardState, onDelete: (() -> Unit)?, onExpand: () 
     }
 }
 
-/** The stop's image in the pill: its cover, or the pin icon while it has none. */
+/** The stop's image in the pill: its cover, or its pin's number while it has none. */
 @Composable
 private fun StopImage(marker: MapMarker, modifier: Modifier) {
     val coverId = marker.coverPhotoId
     if (coverId != null) {
         PhotoImage(photoId = coverId, url = marker.coverThumbUrl, size = PhotoSize.Thumb, contentDescription = null, modifier = modifier)
     } else {
-        Box(modifier.background(MaterialTheme.colorScheme.surfaceVariant), contentAlignment = Alignment.Center) {
-            Icon(Icons.Outlined.LocationOn, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(JoinedButtonDefaults.IconSize))
-        }
+        PinMark(category = null, stopNumber = marker.orderNumber, modifier = modifier)
     }
 }
 

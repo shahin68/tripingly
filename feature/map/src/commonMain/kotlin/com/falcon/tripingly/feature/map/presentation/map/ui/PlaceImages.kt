@@ -18,6 +18,7 @@ import androidx.compose.ui.unit.dp
 import com.falcon.tripingly.core.designsystem.component.PhotoImage
 import com.falcon.tripingly.core.designsystem.component.PhotoSize
 import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
+import com.falcon.tripingly.core.model.place.PlaceCategory
 import com.falcon.tripingly.core.model.place.PlaceImage
 import com.falcon.tripingly.feature.map.generated.resources.Res
 import com.falcon.tripingly.feature.map.generated.resources.map_place_image_position
@@ -34,6 +35,7 @@ import org.jetbrains.compose.resources.stringResource
 internal fun PlaceBanner(
     name: String,
     subtitle: String,
+    category: PlaceCategory,
     hotCount: Int,
     images: List<PlaceImage>?,
     pagerState: PagerState,
@@ -50,6 +52,7 @@ internal fun PlaceBanner(
         // Loading, the photo's grey waits; a place without images has none to wait for.
         image = if (images?.isEmpty() == true) null else pagerImages(images, pagerState, description, onOpen),
         onClick = onOpenPhotos.takeIf { images?.isEmpty() == true },
+        mark = { PinMark(category, stopNumber = null) },
         trailing = { if (hotCount > 0) BannerCount(Icons.Outlined.LocalFireDepartment, hotCount) },
     )
 }
@@ -79,7 +82,7 @@ internal class PlaceImageStripPreviewStates : PreviewParameterProvider<List<Plac
 @Composable
 private fun PlaceBannerPreview(@PreviewParameter(PlaceImageStripPreviewStates::class) images: List<PlaceImage>?) {
     TripinglyTheme {
-        PlaceBanner("Peterskirche", "Attraction · Innere Stadt", 2_300, images, rememberPagerState { images.orEmpty().size }, onOpen = {}, onOpenPhotos = {}, modifier = Modifier.width(320.dp))
+        PlaceBanner("Peterskirche", "Attraction · Innere Stadt", PlaceCategory.Attraction, 2_300, images, rememberPagerState { images.orEmpty().size }, onOpen = {}, onOpenPhotos = {}, modifier = Modifier.width(320.dp))
     }
 }
 

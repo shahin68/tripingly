@@ -67,6 +67,7 @@ internal fun PinCardScope.PlaceCard(
             PlaceBanner(
                 name = place.name,
                 subtitle = address ?: stringResource(place.category.label()),
+                category = place.category,
                 hotCount = details?.hotCount ?: place.hotCount,
                 images = images,
                 pagerState = pagerState,
