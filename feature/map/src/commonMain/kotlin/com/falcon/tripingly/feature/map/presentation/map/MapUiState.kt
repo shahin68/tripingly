@@ -276,10 +276,10 @@ sealed interface MapSheet {
     data object Members : MapSheet
     /** An image of the place card, full screen in the place's photo viewer. */
     data class PlaceImage(val placeId: String, val photoId: String) : MapSheet
-    /** The selected stop's details, half high; [showsPhotos]: switched to its photos, with a back arrow. */
-    data class StopDetails(val card: StopCardState, val showsPhotos: Boolean) : MapSheet
-    /** The selected place's details, half high; [showsPhotos]: switched to its photos, with a back arrow. */
-    data class PlaceDetails(val card: PlaceCardState, val showsPhotos: Boolean) : MapSheet
+    /** The selected stop's details, half high. Its photos and comments open in their own sheets in its place. */
+    data class StopDetails(val card: StopCardState) : MapSheet
+    /** The selected place's details, half high. Its photos open in their own sheet in its place. */
+    data class PlaceDetails(val card: PlaceCardState) : MapSheet
 }
 
 @Immutable

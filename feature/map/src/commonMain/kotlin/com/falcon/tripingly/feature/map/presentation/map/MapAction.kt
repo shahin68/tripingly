@@ -137,8 +137,6 @@ sealed interface MapAction {
         data object CloseMembers : Sheet
         data object ClosePlaceImage : Sheet
         data object CloseDetails : Sheet
-        /** The details sheet shows the photos instead ([show]), or goes back from them. */
-        data class ShowDetailsPhotos(val show: Boolean) : Sheet
         /** Reports the photo open in a viewer: a Commons image as the place's image, anything else as a photo. */
         data class ReportPhoto(val photo: Photo) : Sheet
     }

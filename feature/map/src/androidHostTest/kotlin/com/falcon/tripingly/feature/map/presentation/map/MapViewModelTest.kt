@@ -473,7 +473,7 @@ class MapViewModelTest {
     }
 
     @Test
-    fun `Details opens a stop's details over its card, switches to its photos and back, and the card stays open`() = runTest(testDispatcher) {
+    fun `Details opens a stop's details over its card, its photos and comments take their place and come back to them`() = runTest(testDispatcher) {
         backend.addMarker(trip.trip.id, trip.days[0].id, NewMarker("Louvre", LOUVRE, placeId = "fake-louvre"))
         val viewModel = viewModel()
         testScheduler.advanceUntilIdle()
@@ -486,22 +486,34 @@ class MapViewModelTest {
 
         viewModel.onAction(MapAction.StopCard.OpenDetails)
         testScheduler.advanceUntilIdle()
-        val details = assertIs<MapSheet.StopDetails>(viewModel.uiState.value.sheet)
-        assertEquals(stop.id, details.card.stop.id)
-        assertEquals(false, details.showsPhotos)
+        assertEquals(stop.id, assertIs<MapSheet.StopDetails>(viewModel.uiState.value.sheet).card.stop.id)
         assertEquals(stop.id, viewModel.uiState.value.stopCard?.stop?.id)
 
-        viewModel.onAction(MapAction.Sheet.ShowDetailsPhotos(true))
+        // One sheet at a time: comments take the details' place, and closing them brings the details back.
+        viewModel.onAction(MapAction.StopCard.OpenComments)
         testScheduler.advanceUntilIdle()
-        assertEquals(true, assertIs<MapSheet.StopDetails>(viewModel.uiState.value.sheet).showsPhotos)
-        viewModel.onAction(MapAction.Sheet.ShowDetailsPhotos(false))
+        assertIs<MapSheet.StopComments>(viewModel.uiState.value.sheet)
+        viewModel.onAction(MapAction.Sheet.CloseStopComments)
         testScheduler.advanceUntilIdle()
-        assertEquals(false, assertIs<MapSheet.StopDetails>(viewModel.uiState.value.sheet).showsPhotos)
+        assertIs<MapSheet.StopDetails>(viewModel.uiState.value.sheet)
+
+        viewModel.onAction(MapAction.StopCard.OpenPhotos)
+        testScheduler.advanceUntilIdle()
+        assertIs<MapSheet.StopPhotos>(viewModel.uiState.value.sheet)
+        viewModel.onAction(MapAction.Sheet.CloseStopPhotos)
+        testScheduler.advanceUntilIdle()
+        assertIs<MapSheet.StopDetails>(viewModel.uiState.value.sheet)
 
         viewModel.onAction(MapAction.Sheet.CloseDetails)
         testScheduler.advanceUntilIdle()
         assertNull(viewModel.uiState.value.sheet)
         assertEquals(stop.id, viewModel.uiState.value.stopCard?.stop?.id)
+
+        // Opened from the card, comments close to the map.
+        viewModel.onAction(MapAction.StopCard.OpenComments)
+        viewModel.onAction(MapAction.Sheet.CloseStopComments)
+        testScheduler.advanceUntilIdle()
+        assertNull(viewModel.uiState.value.sheet)
     }
 
     @Test
@@ -558,6 +570,13 @@ class MapViewModelTest {
         testScheduler.advanceUntilIdle()
         assertEquals("Louvre", assertIs<MapSheet.PlaceDetails>(viewModel.uiState.value.sheet).card.place.name)
         assertEquals("Louvre", viewModel.uiState.value.placeCard?.place?.name)
+
+        viewModel.onAction(MapAction.PlaceCard.OpenPhotos)
+        testScheduler.advanceUntilIdle()
+        assertIs<MapSheet.PlacePhotos>(viewModel.uiState.value.sheet)
+        viewModel.onAction(MapAction.Sheet.ClosePlacePhotos)
+        testScheduler.advanceUntilIdle()
+        assertIs<MapSheet.PlaceDetails>(viewModel.uiState.value.sheet)
 
         viewModel.onAction(MapAction.Sheet.CloseDetails)
         testScheduler.advanceUntilIdle()
