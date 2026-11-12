@@ -18,6 +18,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.tooling.preview.PreviewParameter
+import androidx.compose.ui.tooling.preview.PreviewParameterProvider
 import androidx.compose.ui.unit.dp
 import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
 import com.falcon.tripingly.core.designsystem.theme.spacing
@@ -70,30 +72,38 @@ private fun PickerRowItem(row: PickerRow, onClick: () -> Unit, modifier: Modifie
 private val RowHeight = 56.dp
 private const val SKELETON_ROWS = 3
 
-@Preview
+/** The trips loaded (one name too long for a line, one without dates), and the days loading. */
+private class PickerSheetPreviewStates : PreviewParameterProvider<Pair<String, List<PickerRow>?>> {
+    override val values = sequenceOf(
+        "Add Café Central to which trip?" to listOf(
+            PickerRow("1", "A week in Vienna", "Jun 1 – Jun 7, 2026"),
+            PickerRow("2", "A very long trip name that goes on and on and doesn't fit on one line"),
+        ),
+        "Which day of A week in Vienna?" to null,
+    )
+}
+
 @Composable
-private fun PickerSheetPreview() {
-    TripinglyTheme {
-        Column(Modifier.background(MaterialTheme.colorScheme.surface)) {
-            PickerSheet(
-                title = "Add Café Central to which trip?",
-                rows = listOf(
-                    PickerRow("1", "A week in Vienna", "Jun 1 – Jun 7, 2026"),
-                    PickerRow("2", "A very long trip name that goes on and on and doesn't fit on one line"),
-                ),
-                onPick = {},
-                onClose = {},
-            )
-        }
+private fun PickerSheetPreviewContent(state: Pair<String, List<PickerRow>?>) {
+    Column(Modifier.background(MaterialTheme.colorScheme.surface)) {
+        PickerSheet(title = state.first, rows = state.second, onPick = {}, onClose = {})
     }
 }
 
 @Preview
 @Composable
-private fun PickerSheetLoadingPreview() {
-    TripinglyTheme(darkTheme = true) {
-        Column(Modifier.background(MaterialTheme.colorScheme.surface)) {
-            PickerSheet(title = "Which day of A week in Vienna?", rows = null, onPick = {}, onClose = {})
-        }
-    }
+private fun PickerSheetPreview(@PreviewParameter(PickerSheetPreviewStates::class) state: Pair<String, List<PickerRow>?>) {
+    TripinglyTheme { PickerSheetPreviewContent(state) }
+}
+
+@Preview
+@Composable
+private fun PickerSheetDarkPreview(@PreviewParameter(PickerSheetPreviewStates::class) state: Pair<String, List<PickerRow>?>) {
+    TripinglyTheme(darkTheme = true) { PickerSheetPreviewContent(state) }
+}
+
+@Preview(widthDp = 800, heightDp = 360)
+@Composable
+private fun PickerSheetLandscapePreview() {
+    TripinglyTheme { PickerSheetPreviewContent(PickerSheetPreviewStates().values.first()) }
 }
