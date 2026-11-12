@@ -40,7 +40,6 @@ import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.util.lerp
 import com.falcon.tripingly.core.designsystem.component.GlassDefaults
 import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
 import com.falcon.tripingly.core.designsystem.theme.extendedColors
@@ -50,9 +49,9 @@ import com.falcon.tripingly.feature.map.presentation.map.preview.previewPlace
 
 /*
  * How the map's pin cards come and go: they bloom out of the pin (design: the "Final" board of the pin card canvas,
- * Shahin, 2026-11-12). Opening, a small circle over the pin grows into the whole card, slowing down at the end, and the
+ * Shahin, 2026-11-12). Opening, the card grows out of a point on the pin (nothing at first, Shahin 2026-11-12) into the whole card, slowing down at the end, and the
  * card's rows rise into place one after another, the row nearest the pin first. Closing is quick and even: the card
- * shrinks back into the pin and the rows only fade. A map tap or drag closes it at once from wherever it is. One
+ * shrinks back into that point and the rows only fade. A map tap or drag closes it at once from wherever it is. One
  * transition drives it all, read only while drawing, so a frame lays nothing out again.
  *
  * Each card shows what it last showed while it leaves and only updates while it stays, so no screen code keeps old
@@ -101,14 +100,14 @@ internal fun <T : Any> PinCard(
                 Box(
                     Modifier
                         .graphicsLayer {
-                            shape = BloomShape(progress.value, CardRadius.toPx(), BloomStart.toPx())
+                            shape = BloomShape(progress.value, CardRadius.toPx())
                             clip = true
                             shadowElevation = GlassDefaults.ShadowElevation.toPx()
                             ambientShadowColor = GlassDefaults.Shadow
                             spotShadowColor = GlassDefaults.Shadow
                         }
                         .drawBehind {
-                            val outline = BloomShape(progress.value, CardRadius.toPx(), BloomStart.toPx()).createOutline(size, layoutDirection, this)
+                            val outline = BloomShape(progress.value, CardRadius.toPx()).createOutline(size, layoutDirection, this)
                             drawOutline(outline, tint)
                             drawOutline(outline, edge, style = Stroke(GlassDefaults.Edge.toPx()))
                         }
@@ -148,7 +147,7 @@ internal class PinCardScope(private val transition: Transition<EnterExitState>) 
     }
 }
 
-/** The card's growth out of the pin: 0 is the circle over it, 1 the whole card. */
+/** The card's growth out of the pin: 0 is nothing (a point over it), 1 the whole card. */
 @Composable
 private fun Transition<EnterExitState>.animateBloom(): State<Float> = animateFloat(
     transitionSpec = { if (targetState == EnterExitState.Visible) tween(OPEN_MILLIS, easing = Bloom) else tween(CLOSE_MILLIS, easing = LinearEasing) },
@@ -156,25 +155,19 @@ private fun Transition<EnterExitState>.animateBloom(): State<Float> = animateFlo
 ) { if (it == EnterExitState.Visible) 1f else 0f }
 
 /**
- * The card's outline at [progress]: a circle [start] wide where the card meets the pin (the middle of its bottom) at 0,
- * the whole card with its [radius] corners at 1, and in between a rounded rectangle growing out of one into the other.
+ * The card's outline at [progress]: nothing at 0, a point where the card meets the pin (the middle of its bottom), the
+ * whole card with its [radius] corners at 1, and in between a rounded rectangle growing out of that point.
  */
-private class BloomShape(private val progress: Float, private val radius: Float, private val start: Float) : Shape {
+private class BloomShape(private val progress: Float, private val radius: Float) : Shape {
     override fun createOutline(size: Size, layoutDirection: LayoutDirection, density: Density): Outline {
-        val from = Rect(size.width / 2 - start / 2, size.height - start, size.width / 2 + start / 2, size.height)
-        val rect = Rect(
-            left = lerp(from.left, 0f, progress),
-            top = lerp(from.top, 0f, progress),
-            right = lerp(from.right, size.width, progress),
-            bottom = size.height,
-        )
-        val corner = lerp(start / 2, radius, progress).coerceAtMost(minOf(rect.width, rect.height) / 2)
+        val halfWidth = size.width / 2 * progress
+        val rect = Rect(size.width / 2 - halfWidth, size.height * (1 - progress), size.width / 2 + halfWidth, size.height)
+        val corner = (radius * progress).coerceAtMost(minOf(rect.width, rect.height) / 2)
         return Outline.Rounded(RoundRect(rect, CornerRadius(corner)))
     }
 }
 
 private val CardRadius = 28.dp
-private val BloomStart = 24.dp
 private const val OPEN_MILLIS = 320
 private const val CLOSE_MILLIS = 120
 private const val ROW_RISE_MILLIS = 380
