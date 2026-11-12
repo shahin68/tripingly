@@ -25,9 +25,9 @@ import androidx.compose.material.icons.outlined.Directions
 import androidx.compose.material.icons.outlined.ExpandMore
 import androidx.compose.material.icons.outlined.Flag
 import androidx.compose.material.icons.outlined.Info
-import androidx.compose.material.icons.outlined.LocationOn
 import androidx.compose.material.icons.outlined.NearMe
 import androidx.compose.material.icons.outlined.LocalFireDepartment
+import androidx.compose.material.icons.outlined.NearMe
 import androidx.compose.material.icons.outlined.PhotoLibrary
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LocalContentColor
@@ -50,9 +50,12 @@ import com.falcon.tripingly.core.designsystem.component.JoinedButtonColors
 import com.falcon.tripingly.core.designsystem.component.JoinedButtonDefaults
 import com.falcon.tripingly.core.designsystem.component.JoinedButtonSlot
 import com.falcon.tripingly.core.designsystem.component.JoinedButtons
+import com.falcon.tripingly.core.designsystem.component.icon
 import com.falcon.tripingly.core.designsystem.theme.MapColors
 import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
+import com.falcon.tripingly.core.designsystem.theme.extendedColors
 import com.falcon.tripingly.core.designsystem.theme.spacing
+import com.falcon.tripingly.core.model.place.PlaceCategory
 import com.falcon.tripingly.feature.map.generated.resources.Res
 import com.falcon.tripingly.feature.map.generated.resources.map_card_delete
 import com.falcon.tripingly.feature.map.generated.resources.map_card_details
@@ -156,6 +159,8 @@ internal fun PhotoBanner(
     onClick: (() -> Unit)? = null,
     trailing: @Composable () -> Unit = {},
     topEnd: @Composable () -> Unit = {},
+    /** Without an image: the pin's own mark ([PinMark]), mirroring [topEnd]. */
+    mark: @Composable () -> Unit = {},
 ) {
     val textColor = if (image != null) Color.White else MaterialTheme.colorScheme.onSecondaryContainer
     Box(
@@ -170,10 +175,8 @@ internal fun PhotoBanner(
             image()
             Box(Modifier.fillMaxSize().background(Brush.verticalGradient(0.35f to Color.Transparent, 1f to Color.Black.copy(alpha = 0.6f))))
         } else {
-            // The pin's icon, mirroring the top end button: the same size and inset.
-            Box(Modifier.padding(BannerButtonInset).size(JoinedButtonDefaults.Height), contentAlignment = Alignment.Center) {
-                Icon(Icons.Outlined.LocationOn, contentDescription = null, tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f), modifier = Modifier.size(PinIconSize))
-            }
+            // The pin's mark, mirroring the top end button: the same size and inset.
+            Box(Modifier.padding(BannerButtonInset)) { mark() }
         }
         Box(Modifier.align(Alignment.TopEnd).padding(BannerButtonInset)) { topEnd() }
         CompositionLocalProvider(LocalContentColor provides textColor) {
@@ -185,6 +188,22 @@ internal fun PhotoBanner(
                     trailing()
                 }
             }
+        }
+    }
+}
+
+/**
+ * What a pin without a photo looks like on the map, for a card without an image: a place's category icon on the place
+ * colour, or a stop's number on stop green ([stopNumber]).
+ */
+@Composable
+internal fun PinMark(category: PlaceCategory?, stopNumber: Int?, modifier: Modifier = Modifier.size(JoinedButtonDefaults.Height)) {
+    val fill = if (stopNumber != null) MaterialTheme.extendedColors.stop else MaterialTheme.extendedColors.place
+    Box(modifier.background(fill, CircleShape), contentAlignment = Alignment.Center) {
+        if (stopNumber != null) {
+            Text(stopNumber.toString(), style = MaterialTheme.typography.titleMedium, color = Color.White)
+        } else {
+            Icon((category ?: PlaceCategory.Other).icon, contentDescription = null, tint = MaterialTheme.colorScheme.onSecondary, modifier = Modifier.size(JoinedButtonDefaults.IconSize))
         }
     }
 }
@@ -208,7 +227,6 @@ internal val MapCardMaxWidth = 360.dp
 private val BannerHeight = 160.dp
 private val BannerInset = 14.dp
 private val BannerButtonInset = 8.dp
-private val PinIconSize = 28.dp
 private val BannerButtonColor = Color.White.copy(alpha = 0.26f)
 private const val ROUTE_TINT = 0.18f
 private const val DIMMED_ALPHA = 0.38f
@@ -216,11 +234,12 @@ private const val DIMMED_ALPHA = 0.38f
 @Composable
 private fun MapCardPartsPreviewContent() {
     Column(Modifier.background(MaterialTheme.colorScheme.surface).padding(MaterialTheme.spacing.medium).width(340.dp), verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small)) {
-        PhotoBanner(title = "Hofburg", subtitle = "Historic site", image = {}, trailing = { BannerCount(Icons.Outlined.LocalFireDepartment, 40) })
+        PhotoBanner(title = "Hofburg", subtitle = "Historic site", image = null, mark = { PinMark(PlaceCategory.Historic, stopNumber = null) }, trailing = { BannerCount(Icons.Outlined.LocalFireDepartment, 40) })
         PhotoBanner(
             title = "Lunch at Anna's, a long name that wraps",
             subtitle = "Custom spot",
             image = null,
+            mark = { PinMark(category = null, stopNumber = 3) },
             topEnd = { BannerButton({}, Icons.Outlined.ExpandMore, "Collapse") },
         )
         PinCardButtons(
