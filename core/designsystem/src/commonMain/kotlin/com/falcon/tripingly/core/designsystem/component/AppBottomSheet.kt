@@ -1,9 +1,12 @@
 package com.falcon.tripingly.core.designsystem.component
 
+import androidx.compose.animation.core.FiniteAnimationSpec
 import androidx.compose.foundation.clickable
 import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.MotionScheme
 import androidx.compose.material3.SheetValue
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
@@ -24,7 +27,9 @@ import kotlinx.coroutines.launch
  * clearing [value] (e.g. once a trip is created). [onDismiss] tells the view model the user closed it; while
  * [dismissEnabled] is false (saving) the user can't. It hides while its screen isn't on top (see [LocalScreenOnTop]) and
  * comes back when it is, still open in the view model. [halfHigh]: it opens half high first (Material's peek), and a
- * drag or a tap on its handle takes it to its full height and back.
+ * drag or a tap on its handle takes it to its full height and back. It slides up with Material's fast spatial motion,
+ * not the default one, so one sheet handing over to another (the map's details and its photos or comments) is quick
+ * (Shahin, 2026-11-12); what's inside the sheet keeps the app's own motion.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -59,24 +64,36 @@ fun <T : Any> AppBottomSheet(
     val current = visible ?: shown ?: return
     val scope = rememberCoroutineScope()
     val close: () -> Unit = { scope.launch { sheetState.hide() }.invokeOnCompletion { currentOnDismiss() } }
-    ModalBottomSheet(
-        onDismissRequest = { currentOnDismiss() },
-        sheetState = sheetState,
-        modifier = modifier,
-        dragHandle = {
-            BottomSheetDefaults.DragHandle(
-                modifier = if (halfHigh) {
-                    Modifier.clickable(interactionSource = null, indication = null) {
-                        scope.launch { if (sheetState.currentValue == SheetValue.Expanded) sheetState.partialExpand() else sheetState.expand() }
-                    }
-                } else {
-                    Modifier
-                },
-            )
-        },
-    ) {
-        content(current, close)
+    val motion = MaterialTheme.motionScheme
+    val sheetMotion = remember(motion) { FastSheetMotion(motion) }
+    // Only the sheet's own slide is faster; its content gets the app's motion back.
+    MaterialTheme(colorScheme = MaterialTheme.colorScheme, motionScheme = sheetMotion, shapes = MaterialTheme.shapes, typography = MaterialTheme.typography) {
+        ModalBottomSheet(
+            onDismissRequest = { currentOnDismiss() },
+            sheetState = sheetState,
+            modifier = modifier,
+            dragHandle = {
+                BottomSheetDefaults.DragHandle(
+                    modifier = if (halfHigh) {
+                        Modifier.clickable(interactionSource = null, indication = null) {
+                            scope.launch { if (sheetState.currentValue == SheetValue.Expanded) sheetState.partialExpand() else sheetState.expand() }
+                        }
+                    } else {
+                        Modifier
+                    },
+                )
+            },
+        ) {
+            MaterialTheme(colorScheme = MaterialTheme.colorScheme, motionScheme = motion, shapes = MaterialTheme.shapes, typography = MaterialTheme.typography) {
+                content(current, close)
+            }
+        }
     }
+}
+
+/** [base], but the sheet slides in (and settles after a drag) with the fast spatial motion. */
+private class FastSheetMotion(private val base: MotionScheme) : MotionScheme by base {
+    override fun <T> defaultSpatialSpec(): FiniteAnimationSpec<T> = base.fastSpatialSpec()
 }
 
 /** False while this screen is under another one on the back stack, so its [AppBottomSheet]s stay hidden. */
