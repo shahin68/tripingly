@@ -264,6 +264,8 @@ class MapViewModelTest {
         testScheduler.advanceUntilIdle()
         val camera = viewModel.uiState.value.camera
         viewModel.onAction(MapAction.MapView.CameraRest(camera.target, camera.zoom, PARIS_CENTER))
+        // The screen state catches up, so the card shows right after.
+        testScheduler.advanceUntilIdle()
     }
 
     private fun MapUiState.assertStopPath() = assertEquals(stopPathShape(stopPositions), layers.line)
