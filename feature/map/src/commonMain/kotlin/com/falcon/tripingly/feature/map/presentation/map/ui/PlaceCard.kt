@@ -25,6 +25,7 @@ import com.falcon.tripingly.core.model.place.PlaceDetails
 import com.falcon.tripingly.core.model.trip.UserSummary
 import com.falcon.tripingly.feature.map.generated.resources.*
 import com.falcon.tripingly.feature.map.generated.resources.Res
+import com.falcon.tripingly.feature.map.presentation.map.PinAdd
 import com.falcon.tripingly.feature.map.presentation.map.PinRoutesState
 import com.falcon.tripingly.feature.map.presentation.map.preview.previewCafe
 import com.falcon.tripingly.feature.map.presentation.map.preview.previewPlace
@@ -36,7 +37,7 @@ import org.jetbrains.compose.resources.stringResource
  * A place tapped on the map, in a card that floats above its pin: its images (a tap opens one full screen), name, type
  * and flames (only counted here: a place is marked hot as a trip's stop), the credit, and the buttons: its photos
  * (anyone can add one), Go here and Route from or to here ([routes]); on the right ⓘ for the details (hours, website)
- * and the green + that adds it to the open day ([dayNumber], null for viewers).
+ * and the green + ([add]: to the open day, or on a trip I only view to one of my trips).
  */
 @Composable
 internal fun PinCardScope.PlaceCard(
@@ -44,7 +45,7 @@ internal fun PinCardScope.PlaceCard(
     details: PlaceDetails?,
     /** For an address from search: shown instead of the category. */
     address: String?,
-    dayNumber: Int?,
+    add: PinAdd?,
     onAdd: () -> Unit,
     onOpenImage: (index: Int) -> Unit,
     onOpenPhotos: () -> Unit,
@@ -86,8 +87,8 @@ internal fun PinCardScope.PlaceCard(
                 group = placeButtons(hasPhotos = address == null, onOpenPhotos, routes, onGoHere, onRoute),
                 onDetails = onOpenDetails,
                 onDelete = null,
-                onAdd = onAdd.takeIf { dayNumber != null },
-                addLabel = dayNumber?.let { stringResource(Res.string.map_place_add_to_day, it) }.orEmpty(),
+                onAdd = onAdd.takeIf { add != null },
+                addLabel = add?.label().orEmpty(),
             )
         },
     )
@@ -117,11 +118,11 @@ internal fun PlaceCategory.label(): StringResource = when (this) {
 /** A place loading, loaded with images, hours and website, an address from search, one offering Route to here with Go here dimmed, and a custom spot crediting its creator. */
 internal class PlaceCardPreviewStates : PreviewParameterProvider<PlaceCardPreview> {
     override val values = sequenceOf(
-        PlaceCardPreview(previewPlace, details = null, address = null, dayNumber = 2, routes = PinRoutesState()),
-        PlaceCardPreview(previewPlace, previewPlaceDetails, address = null, dayNumber = 2, routes = PinRoutesState()),
-        PlaceCardPreview(previewCafe.copy(name = "12 Rue de Rivoli"), details = null, address = "12 Rue de Rivoli, 75004 Paris, France", dayNumber = 1, routes = PinRoutesState()),
-        PlaceCardPreview(previewCafe, previewPlaceDetails.copy(images = emptyList(), openingHours = null, website = null), address = null, dayNumber = null, routes = PinRoutesState(hasLocation = false, isRouteTo = true)),
-        PlaceCardPreview(previewCafe, previewPlaceDetails.copy(addedBy = UserSummary("u-1", "anna", "Anna")), address = null, dayNumber = 1, routes = PinRoutesState()),
+        PlaceCardPreview(previewPlace, details = null, address = null, add = PinAdd.ToDay(2), routes = PinRoutesState()),
+        PlaceCardPreview(previewPlace, previewPlaceDetails, address = null, add = PinAdd.ToDay(2), routes = PinRoutesState()),
+        PlaceCardPreview(previewCafe.copy(name = "12 Rue de Rivoli"), details = null, address = "12 Rue de Rivoli, 75004 Paris, France", add = PinAdd.ToDay(1), routes = PinRoutesState()),
+        PlaceCardPreview(previewCafe, previewPlaceDetails.copy(images = emptyList(), openingHours = null, website = null), address = null, add = PinAdd.ToMyTrip, routes = PinRoutesState(hasLocation = false, isRouteTo = true)),
+        PlaceCardPreview(previewCafe, previewPlaceDetails.copy(addedBy = UserSummary("u-1", "anna", "Anna")), address = null, add = PinAdd.ToDay(1), routes = PinRoutesState()),
     )
 }
 
@@ -129,7 +130,7 @@ internal data class PlaceCardPreview(
     val place: MapPlace,
     val details: PlaceDetails?,
     val address: String?,
-    val dayNumber: Int?,
+    val add: PinAdd?,
     val routes: PinRoutesState,
 )
 
@@ -141,7 +142,7 @@ private fun PlaceCardPreviewContent(card: PlaceCardPreview) {
                 place = shown.place,
                 details = shown.details,
                 address = shown.address,
-                dayNumber = shown.dayNumber,
+                add = shown.add,
                 onAdd = {},
                 onOpenImage = {},
                 onOpenPhotos = {},

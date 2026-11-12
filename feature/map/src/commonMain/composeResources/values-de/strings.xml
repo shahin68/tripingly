@@ -207,4 +207,11 @@
     <string name="map_photos_add">Hinzufügen</string>
     <string name="map_photos_more">+%1$d</string>
     <string name="map_details_comments">Kommentare · %1$d</string>
+    <string name="map_add_to_my_trip">Zu meiner Reise hinzufügen</string>
+    <string name="map_add_to_trip_pick_trip">%1$s zu welcher Reise hinzufügen?</string>
+    <string name="map_add_to_trip_pick_day">Welcher Tag von %1$s?</string>
+    <string name="map_add_to_trip_no_trips">Erstelle zuerst eine Reise und füge dann Stopps hinzu.</string>
+    <string name="map_add_to_trip_added">Zu %1$s hinzugefügt, Tag %2$d.</string>
+    <string name="map_error_add_to_trip">Konnte nicht zu deiner Reise hinzugefügt werden.</string>
+    <string name="map_error_load_days">Die Tage der Reise konnten nicht geladen werden.</string>
 </resources>

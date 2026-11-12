@@ -13,4 +13,7 @@ sealed interface MapEvent {
 
     /** The user added a stop: felt, and the plan sheet opens all the way as for [ShowWholePlan]. */
     data object StopAdded : MapEvent
+
+    /** A stop or place went to one of my trips: felt; a note says where. */
+    data object AddedToMyTrip : MapEvent
 }

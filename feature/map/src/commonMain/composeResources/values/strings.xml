@@ -208,4 +208,11 @@
     <string name="map_photos_add">Add</string>
     <string name="map_photos_more">+%1$d</string>
     <string name="map_details_comments">Comments · %1$d</string>
+    <string name="map_add_to_my_trip">Add to my trip</string>
+    <string name="map_add_to_trip_pick_trip">Add %1$s to which trip?</string>
+    <string name="map_add_to_trip_pick_day">Which day of %1$s?</string>
+    <string name="map_add_to_trip_no_trips">Create a trip first, then add stops to it.</string>
+    <string name="map_add_to_trip_added">Added to %1$s, day %2$d.</string>
+    <string name="map_error_add_to_trip">Couldn’t add it to your trip.</string>
+    <string name="map_error_load_days">Couldn’t load the trip’s days.</string>
 </resources>

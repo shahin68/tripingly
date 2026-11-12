@@ -43,11 +43,11 @@ import com.falcon.tripingly.core.designsystem.theme.spacing
 import com.falcon.tripingly.core.model.place.PlaceDetails
 import com.falcon.tripingly.feature.map.generated.resources.Res
 import com.falcon.tripingly.feature.map.generated.resources.map_details_comments
-import com.falcon.tripingly.feature.map.generated.resources.map_place_add_to_day
 import com.falcon.tripingly.feature.map.generated.resources.map_place_added_by
 import com.falcon.tripingly.feature.map.generated.resources.map_place_opening_hours
 import com.falcon.tripingly.feature.map.generated.resources.map_stop_report
 import com.falcon.tripingly.feature.map.presentation.map.MapAction
+import com.falcon.tripingly.feature.map.presentation.map.PinAdd
 import com.falcon.tripingly.feature.map.presentation.map.PinRoutesState
 import com.falcon.tripingly.feature.map.presentation.map.PlaceCardState
 import com.falcon.tripingly.feature.map.presentation.map.StopCardState
@@ -71,7 +71,11 @@ internal fun StopDetailsContent(card: StopCardState, onAction: (MapAction) -> Un
     PinDetails(
         title = stop.title.asString(),
         subtitle = stopSubtitle(card),
-        action = pinAction(onDelete = { onAction(MapAction.Plan.RemoveStop(stop.id)) }.takeIf { stop.canDelete }, onAdd = null),
+        action = pinAction(
+            onDelete = { onAction(MapAction.Plan.RemoveStop(stop.id)) }.takeIf { stop.canDelete },
+            onAdd = { onAction(MapAction.StopCard.Add) }.takeIf { card.add != null },
+            addLabel = card.add?.label().orEmpty(),
+        ),
         onClose = onClose,
         buttons = {
             val group = stopButtons(stop, { onAction(MapAction.StopCard.ToggleHot(stop.id)) }, { onAction(MapAction.StopCard.OpenComments) }, showPhotos) +
@@ -101,8 +105,8 @@ internal fun PlaceDetailsContent(card: PlaceCardState, onAction: (MapAction) -> 
         subtitle = card.address ?: stringResource(card.place.category.label()),
         action = pinAction(
             onDelete = null,
-            onAdd = { onAction(MapAction.PlaceCard.AddToDay) }.takeIf { card.addToDayNumber != null },
-            addLabel = card.addToDayNumber?.let { stringResource(Res.string.map_place_add_to_day, it) }.orEmpty(),
+            onAdd = { onAction(MapAction.PlaceCard.Add) }.takeIf { card.add != null },
+            addLabel = card.add?.label().orEmpty(),
         ),
         onClose = onClose,
         buttons = {
@@ -192,13 +196,13 @@ private val FactHeight = 48.dp
 private fun PinDetailsPreviewContent() {
     Column(Modifier.background(MaterialTheme.colorScheme.surfaceContainerLow)) {
         StopDetailsContent(
-            card = StopCardState(previewStop.copy(canDelete = false), coverCredit = previewPlaceImages.first().credit, place = previewPlaceDetails, canEdit = false, canReport = true),
+            card = StopCardState(previewStop.copy(canDelete = false), coverCredit = previewPlaceImages.first().credit, place = previewPlaceDetails, canEdit = false, canReport = true, add = PinAdd.ToMyTrip),
             onAction = {},
             onClose = {},
             photoStrip = { Text("Photos") },
         )
         PlaceDetailsContent(
-            card = PlaceCardState(previewCafe, previewPlaceDetails.copy(isFromOsm = true), address = null, addToDayNumber = 2, routes = PinRoutesState(isRouteOn = true)),
+            card = PlaceCardState(previewCafe, previewPlaceDetails.copy(isFromOsm = true), address = null, add = PinAdd.ToDay(2), routes = PinRoutesState(isRouteOn = true)),
             onAction = {},
             onClose = {},
             photoStrip = {},

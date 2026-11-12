@@ -28,6 +28,7 @@ import com.falcon.tripingly.feature.map.presentation.map.state.Selection
 import com.falcon.tripingly.feature.map.presentation.map.state.Sheet
 import com.falcon.tripingly.feature.map.presentation.map.state.activeDayIndex
 import com.falcon.tripingly.feature.map.presentation.map.state.stopPlaceIds
+import com.falcon.tripingly.feature.map.presentation.map.state.toState
 import com.falcon.tripingly.feature.map.presentation.map.ui.durationText
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.toImmutableList
@@ -48,6 +49,8 @@ internal class MapStateMapper(
     private val otherOwnerId = details?.trip?.owner?.id?.takeIf { role != TripRole.OWNER }
     private val stops = days.getOrNull(activeIndex)?.markers.orEmpty().mapIndexed { index, it -> it.toMapMarker(index + 1) }
     private val dayNumber = days.getOrNull(activeIndex)?.let { it.position + 1 }
+    /** A viewer's + puts a stop or place on one of my trips; an editor's puts a place on the open day. */
+    private val copyAdd = PinAdd.ToMyTrip.takeIf { role != null && !canEdit }
     private val route = model.route
     /** Only a real route is drawn; without one the day keeps its own lines between the stops. */
     private val plan = route.plan?.takeIf { !it.isEstimated }
@@ -155,7 +158,7 @@ internal class MapStateMapper(
         place = selection.place,
         details = selection.details,
         address = selection.address?.address,
-        addToDayNumber = dayNumber?.takeIf { canEdit },
+        add = copyAdd ?: dayNumber?.takeIf { canEdit }?.let(PinAdd::ToDay),
         routes = pinRoutes(selection.place.location),
     )
 
@@ -175,6 +178,7 @@ internal class MapStateMapper(
             canEdit = canEdit,
             canReport = role == TripRole.VIEWER,
             routes = pinRoutes(GeoPoint(stop.position.latitude, stop.position.longitude)),
+            add = copyAdd,
         )
     }
 
@@ -226,6 +230,7 @@ internal class MapStateMapper(
         is Sheet.PlacePhotos -> MapSheet.PlacePhotos(sheet.place)
         is Sheet.StopComments -> stops.firstOrNull { it.id == sheet.markerId }?.let { MapSheet.StopComments(it, tripPeople()) }
         Sheet.Members -> MapSheet.Members
+        is Sheet.AddToTrip -> MapSheet.AddToTrip(sheet.toState(stops))
         is Sheet.Details -> when (val selection = model.selection) {
             is Selection.Stop -> stopDetails(selection)?.let { MapSheet.StopDetails(it) }
             is Selection.Place -> MapSheet.PlaceDetails(placeDetails(selection))

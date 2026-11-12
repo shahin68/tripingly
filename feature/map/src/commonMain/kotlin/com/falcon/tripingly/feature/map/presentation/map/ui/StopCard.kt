@@ -51,6 +51,7 @@ import com.falcon.tripingly.feature.map.generated.resources.map_stop_expand
 import com.falcon.tripingly.feature.map.generated.resources.map_stop_number
 import com.falcon.tripingly.feature.map.generated.resources.map_stop_photos
 import com.falcon.tripingly.feature.map.presentation.component.MapMarker
+import com.falcon.tripingly.feature.map.presentation.map.PinAdd
 import com.falcon.tripingly.feature.map.presentation.map.StopCardState
 import com.falcon.tripingly.feature.map.presentation.map.preview.previewPlaceDetails
 import com.falcon.tripingly.feature.map.presentation.map.preview.previewPlaceImages
@@ -71,6 +72,7 @@ internal fun PinCardScope.StopCard(
     onOpenPhotos: () -> Unit,
     onOpenDetails: () -> Unit,
     onDelete: () -> Unit,
+    onAdd: () -> Unit,
     onGoHere: () -> Unit,
     onRoute: () -> Unit,
     modifier: Modifier = Modifier,
@@ -79,6 +81,8 @@ internal fun PinCardScope.StopCard(
     val stop = card.stop
     var isExpanded by rememberSaveable(stop.id) { mutableStateOf(initiallyExpanded) }
     val onDeleteShown = onDelete.takeIf { stop.canDelete }
+    val onAddShown = onAdd.takeIf { card.add != null }
+    val addLabel = card.add?.label().orEmpty()
     AnimatedContent(targetState = isExpanded, modifier = modifier.widthIn(max = MapCardMaxWidth)) { expanded ->
         if (expanded) {
             BigPinCard(
@@ -93,10 +97,10 @@ internal fun PinCardScope.StopCard(
                     )
                 },
                 credit = { StopCredit(card, Modifier.padding(top = MaterialTheme.spacing.small)) },
-                buttons = { PinCardButtons(stopButtons(stop, onToggleHot, onOpenComments, onOpenPhotos) + routeButtons(card.routes, onGoHere, onRoute), onOpenDetails, onDeleteShown, onAdd = null) },
+                buttons = { PinCardButtons(stopButtons(stop, onToggleHot, onOpenComments, onOpenPhotos) + routeButtons(card.routes, onGoHere, onRoute), onOpenDetails, onDeleteShown, onAddShown, addLabel = addLabel) },
             )
         } else {
-            StopPill(card, onDeleteShown, onExpand = { isExpanded = true }, modifier = Modifier.bloomRow(fromPin = 0))
+            StopPill(card, onDeleteShown, onAddShown, addLabel, onExpand = { isExpanded = true }, modifier = Modifier.bloomRow(fromPin = 0))
         }
     }
 }
@@ -141,7 +145,7 @@ internal fun StopCredit(card: StopCardState, modifier: Modifier = Modifier) {
  * onto a second line before it ends.
  */
 @Composable
-private fun StopPill(card: StopCardState, onDelete: (() -> Unit)?, onExpand: () -> Unit, modifier: Modifier = Modifier) {
+private fun StopPill(card: StopCardState, onDelete: (() -> Unit)?, onAdd: (() -> Unit)?, addLabel: String, onExpand: () -> Unit, modifier: Modifier = Modifier) {
     val stop = card.stop
     Row(
         modifier = modifier.padding(PillInset),
@@ -153,8 +157,8 @@ private fun StopPill(card: StopCardState, onDelete: (() -> Unit)?, onExpand: () 
             Text(stop.title.asString(), style = MaterialTheme.typography.titleSmall, maxLines = 2)
             Text(stopSubtitle(card), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
         }
-        // Delete is for whoever added the stop or owns the trip; a viewer's + comes with copying stops.
-        pinAction(onDelete, onAdd = null)?.let { action -> JoinedButtons(listOf(action)) }
+        // Delete is for whoever added the stop or owns the trip; a viewer's + puts it on one of their trips.
+        pinAction(onDelete, onAdd, addLabel)?.let { action -> JoinedButtons(listOf(action)) }
         FilledTonalIconButton(onClick = onExpand, modifier = Modifier.size(PillImageSize)) {
             Icon(Icons.Outlined.ExpandLess, contentDescription = stringResource(Res.string.map_stop_expand), modifier = Modifier.size(JoinedButtonDefaults.IconSize))
         }
@@ -180,7 +184,7 @@ private val PillImageSize = JoinedButtonDefaults.Height
 internal class StopCardPreviewStates : PreviewParameterProvider<StopCardPreview> {
     override val values = sequenceOf(
         StopCardPreview(StopCardState(previewStop, coverCredit = previewPlaceImages.first().credit, place = previewPlaceDetails, canEdit = true, canReport = false), expanded = true),
-        StopCardPreview(StopCardState(previewStop.copy(canDelete = false), coverCredit = null, place = previewPlaceDetails, canEdit = false, canReport = true), expanded = true),
+        StopCardPreview(StopCardState(previewStop.copy(canDelete = false), coverCredit = null, place = previewPlaceDetails, canEdit = false, canReport = true, add = PinAdd.ToMyTrip), expanded = true),
         StopCardPreview(
             StopCardState(
                 previewStop.copy(
@@ -200,7 +204,7 @@ internal class StopCardPreviewStates : PreviewParameterProvider<StopCardPreview>
             expanded = true,
         ),
         StopCardPreview(StopCardState(previewStop, coverCredit = null, place = previewPlaceDetails, canEdit = true, canReport = false), expanded = false),
-        StopCardPreview(StopCardState(previewStop.copy(canDelete = false), coverCredit = null, place = null, canEdit = false, canReport = true), expanded = false),
+        StopCardPreview(StopCardState(previewStop.copy(canDelete = false), coverCredit = null, place = null, canEdit = false, canReport = true, add = PinAdd.ToMyTrip), expanded = false),
     )
 }
 
@@ -217,6 +221,7 @@ private fun StopCardPreviewContent(preview: StopCardPreview) {
                 onOpenPhotos = {},
                 onOpenDetails = {},
                 onDelete = {},
+                onAdd = {},
                 onGoHere = {},
                 onRoute = {},
                 initiallyExpanded = shown.expanded,

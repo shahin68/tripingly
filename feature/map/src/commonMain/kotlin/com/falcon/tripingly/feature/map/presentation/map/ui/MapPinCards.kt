@@ -43,8 +43,8 @@ internal fun MapPinCards(
                 place = card.place,
                 details = card.details,
                 address = card.address,
-                dayNumber = card.addToDayNumber,
-                onAdd = { onAction(MapAction.PlaceCard.AddToDay) },
+                add = card.add,
+                onAdd = { onAction(MapAction.PlaceCard.Add) },
                 onOpenImage = { index -> onAction(MapAction.PlaceCard.OpenImage(index)) },
                 onOpenPhotos = { onAction(MapAction.PlaceCard.OpenPhotos) },
                 onOpenDetails = { onAction(MapAction.PlaceCard.OpenDetails) },
@@ -67,6 +67,7 @@ internal fun MapPinCards(
                 onOpenPhotos = { onAction(MapAction.StopCard.OpenPhotos) },
                 onOpenDetails = { onAction(MapAction.StopCard.OpenDetails) },
                 onDelete = { onAction(MapAction.Plan.RemoveStop(card.stop.id)) },
+                onAdd = { onAction(MapAction.StopCard.Add) },
                 onGoHere = { onAction(MapAction.PinRoute.GoHere) },
                 onRoute = { onAction(MapAction.PinRoute.Route) },
             )

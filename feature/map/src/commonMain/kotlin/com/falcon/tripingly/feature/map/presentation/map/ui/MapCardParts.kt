@@ -25,7 +25,6 @@ import androidx.compose.material.icons.outlined.Directions
 import androidx.compose.material.icons.outlined.ExpandMore
 import androidx.compose.material.icons.outlined.Flag
 import androidx.compose.material.icons.outlined.Info
-import androidx.compose.material.icons.outlined.NearMe
 import androidx.compose.material.icons.outlined.LocalFireDepartment
 import androidx.compose.material.icons.outlined.NearMe
 import androidx.compose.material.icons.outlined.PhotoLibrary
@@ -57,11 +56,14 @@ import com.falcon.tripingly.core.designsystem.theme.extendedColors
 import com.falcon.tripingly.core.designsystem.theme.spacing
 import com.falcon.tripingly.core.model.place.PlaceCategory
 import com.falcon.tripingly.feature.map.generated.resources.Res
+import com.falcon.tripingly.feature.map.generated.resources.map_add_to_my_trip
 import com.falcon.tripingly.feature.map.generated.resources.map_card_delete
 import com.falcon.tripingly.feature.map.generated.resources.map_card_details
+import com.falcon.tripingly.feature.map.generated.resources.map_place_add_to_day
 import com.falcon.tripingly.feature.map.generated.resources.map_route_from_here
 import com.falcon.tripingly.feature.map.generated.resources.map_route_go_here
 import com.falcon.tripingly.feature.map.generated.resources.map_route_to_here
+import com.falcon.tripingly.feature.map.presentation.map.PinAdd
 import com.falcon.tripingly.feature.map.presentation.map.PinRoutesState
 import org.jetbrains.compose.resources.stringResource
 
@@ -112,6 +114,13 @@ internal fun PinCardButtons(
         val info: JoinedButtonSlot = { shape -> JoinedButton(Icons.Outlined.Info, details, shape, onClick = onDetails) }
         JoinedButtons(listOfNotNull(info, pinAction(onDelete, onAdd, addLabel)))
     }
+}
+
+/** What the green + is read out as: "Add to day 2", or "Add to my trip" on a trip I only view. */
+@Composable
+internal fun PinAdd.label(): String = when (this) {
+    is PinAdd.ToDay -> stringResource(Res.string.map_place_add_to_day, dayNumber)
+    PinAdd.ToMyTrip -> stringResource(Res.string.map_add_to_my_trip)
 }
 
 /**

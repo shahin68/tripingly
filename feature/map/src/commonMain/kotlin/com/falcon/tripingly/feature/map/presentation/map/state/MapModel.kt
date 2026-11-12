@@ -14,6 +14,9 @@ import com.falcon.tripingly.core.model.route.RoutePlan
 import com.falcon.tripingly.core.model.route.TravelMode
 import com.falcon.tripingly.core.model.social.ReportTarget
 import com.falcon.tripingly.core.model.trip.GeoPoint
+import com.falcon.tripingly.core.model.trip.NewMarker
+import com.falcon.tripingly.core.model.trip.Trip
+import com.falcon.tripingly.core.model.trip.TripDay
 import com.falcon.tripingly.core.model.trip.UserSummary
 import com.falcon.tripingly.core.ui.UiText
 import com.falcon.tripingly.feature.map.presentation.component.PlacePin
@@ -174,6 +177,22 @@ internal sealed interface Sheet {
     data object Members : Sheet
     /** The selected stop's or place's details. */
     data object Details : Sheet
+    /** The + on a trip I only view: one of my [trips], then the picked [trip]'s [days] (null while they load). */
+    data class AddToTrip(
+        val item: CopyItem,
+        val trips: List<Trip>,
+        val trip: Trip? = null,
+        val days: List<TripDay>? = null,
+        override val fromDetails: Boolean = false,
+    ) : Sheet
+}
+
+/** What the + on a trip I only view puts on one of my trips. */
+internal sealed interface CopyItem {
+    /** Copied by the server, which keeps where it came from. */
+    data class Stop(val markerId: String) : CopyItem
+    /** A place, or an address from search, added like a stop added on the map. */
+    data class Place(val marker: NewMarker) : CopyItem
 }
 
 internal sealed interface Dialog {

@@ -187,7 +187,7 @@ data class RouteSummaryState(
 )
 
 /**
- * A place's card and details sheet: ⓘ opens the details, + adds the place to the open day ([addToDayNumber]), and
+ * A place's card and details sheet: ⓘ opens the details, + adds the place to the open day or one of my trips ([add]), and
  * from OpenStreetMap (once [details] say so) it credits "© OpenStreetMap contributors".
  */
 @Immutable
@@ -197,8 +197,8 @@ data class PlaceCardState(
     val details: PlaceDetails?,
     /** Street, city and country when the card is for an address from search. */
     val address: String?,
-    /** The open day "Add" puts the place on; null when this user can't add stops. */
-    val addToDayNumber: Int?,
+    /** What its + does; null when this user can't add it anywhere (an editor's trip without days). */
+    val add: PinAdd?,
     val routes: PinRoutesState,
 )
 
@@ -218,6 +218,8 @@ data class StopCardState(
     /** Someone else's public trip: the stop can be reported (in its details). */
     val canReport: Boolean,
     val routes: PinRoutesState = PinRoutesState(),
+    /** [PinAdd.ToMyTrip] on a trip I only view; null otherwise. */
+    val add: PinAdd? = null,
 )
 
 /**
@@ -260,6 +262,7 @@ sealed interface MapSheet {
     data class StopDetails(val card: StopCardState) : MapSheet
     /** The selected place's details, half high. Its photos open in their own sheet in its place. */
     data class PlaceDetails(val card: PlaceCardState) : MapSheet
+    data class AddToTrip(val picker: AddToTripState) : MapSheet
 }
 
 @Immutable

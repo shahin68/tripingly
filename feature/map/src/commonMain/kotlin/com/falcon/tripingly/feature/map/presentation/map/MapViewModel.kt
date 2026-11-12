@@ -24,6 +24,7 @@ import com.falcon.tripingly.feature.map.generated.resources.map_error_hot
 import com.falcon.tripingly.feature.map.presentation.component.CameraCommand
 import com.falcon.tripingly.feature.map.presentation.component.MapLayersState
 import com.falcon.tripingly.feature.map.presentation.map.state.Dialog
+import com.falcon.tripingly.feature.map.presentation.map.state.MapAddToTrip
 import com.falcon.tripingly.feature.map.presentation.map.state.MapCamera
 import com.falcon.tripingly.feature.map.presentation.map.state.MapContext
 import com.falcon.tripingly.feature.map.presentation.map.state.MapEdits
@@ -109,6 +110,7 @@ class MapViewModel(
     private val sharing = MapSharing(context, tripRepository, socialRepository)
     private val opening = MapOpening(context, camera, tripRepository, mapViews, ::hasRoutes, stopId, showMembers, showComments)
     private val joinRequests = MapJoinRequests(context, tripRepository)
+    private val addToTrip = MapAddToTrip(context, selection, tripRepository, markerRepository) { sendEvent(MapEvent.AddedToMyTrip) }
     private val newActivity = MapNewActivity(context, newActivityRepository, pushedStopId = stopId, pushedAboutComments = showComments)
 
     /** The map's layers and what they were built from, kept until one of those changes. */
@@ -226,12 +228,13 @@ class MapViewModel(
             is MapAction.StopCard.OpenComments -> selection.selectedMarkerId?.let { openSheet(Sheet.StopComments(it, fromDetails = isDetailsOpen())) }
             is MapAction.StopCard.OpenDetails -> if (selection.selectedMarkerId != null) openSheet(Sheet.Details)
             is MapAction.StopCard.Report -> selection.selectedMarkerId?.let { sharing.report(ReportTarget.Marker, it) }
+            is MapAction.StopCard.Add -> addToTrip.open(fromDetails = isDetailsOpen())
         }
     }
 
     private fun onPlaceCard(action: MapAction.PlaceCard) {
         when (action) {
-            is MapAction.PlaceCard.AddToDay -> edits.addPlace()
+            is MapAction.PlaceCard.Add -> if (context.canEdit()) edits.addPlace() else addToTrip.open(fromDetails = isDetailsOpen())
             // Not for an address from search: it isn't one of our places yet.
             is MapAction.PlaceCard.OpenPhotos -> selection.selectedPlace?.takeIf { it.address == null }?.let { openSheet(Sheet.PlacePhotos(it.place, fromDetails = isDetailsOpen())) }
             is MapAction.PlaceCard.OpenImage -> selection.openPlaceImage(action.index)
@@ -243,11 +246,14 @@ class MapViewModel(
         when (action) {
             is MapAction.Sheet.ClosePlaceImage -> selection.openPlaceImage(null)
             is MapAction.Sheet.ReportPhoto -> sharing.reportPhoto(action.photo)
+            is MapAction.Sheet.PickTrip -> addToTrip.pickTrip(action.tripId)
+            is MapAction.Sheet.PickDay -> addToTrip.pickDay(action.dayId)
             is MapAction.Sheet.CloseStopPhotos,
             is MapAction.Sheet.ClosePlacePhotos,
             is MapAction.Sheet.CloseStopComments,
             is MapAction.Sheet.CloseMembers,
-            is MapAction.Sheet.CloseDetails -> closeSheet()
+            is MapAction.Sheet.CloseDetails,
+            is MapAction.Sheet.CloseAddToTrip -> closeSheet()
         }
     }
 

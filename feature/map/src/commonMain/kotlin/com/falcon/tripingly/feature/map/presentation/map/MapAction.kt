@@ -116,11 +116,14 @@ sealed interface MapAction {
         data object OpenDetails : StopCard
         /** From the details sheet, on someone else's public trip. */
         data object Report : StopCard
+        /** The + on a trip I only view: to one of my trips. */
+        data object Add : StopCard
     }
 
     /** The card over the selected place. */
     sealed interface PlaceCard : MapAction {
-        data object AddToDay : PlaceCard
+        /** The +: to the open day, or on a trip I only view to one of my trips. */
+        data object Add : PlaceCard
         /** The place's photos, which anyone can add to (not for an address from search). */
         data object OpenPhotos : PlaceCard
         /** A tapped image opens full screen. */
@@ -137,6 +140,10 @@ sealed interface MapAction {
         data object CloseMembers : Sheet
         data object ClosePlaceImage : Sheet
         data object CloseDetails : Sheet
+        data object CloseAddToTrip : Sheet
+        /** The add-to-trip sheet's rows: one of my trips, then its day. */
+        data class PickTrip(val tripId: String) : Sheet
+        data class PickDay(val dayId: String) : Sheet
         /** Reports the photo open in a viewer: a Commons image as the place's image, anything else as a photo. */
         data class ReportPhoto(val photo: Photo) : Sheet
     }

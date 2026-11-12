@@ -207,4 +207,11 @@
     <string name="map_photos_add">Hozzáadás</string>
     <string name="map_photos_more">+%1$d</string>
     <string name="map_details_comments">Hozzászólások · %1$d</string>
+    <string name="map_add_to_my_trip">Hozzáadás az utazásomhoz</string>
+    <string name="map_add_to_trip_pick_trip">Melyik utazáshoz add hozzá: %1$s?</string>
+    <string name="map_add_to_trip_pick_day">%1$s melyik napjára?</string>
+    <string name="map_add_to_trip_no_trips">Előbb hozz létre egy utazást, aztán adj hozzá megállókat.</string>
+    <string name="map_add_to_trip_added">Hozzáadva: %1$s, %2$d. nap.</string>
+    <string name="map_error_add_to_trip">Nem sikerült hozzáadni az utazásodhoz.</string>
+    <string name="map_error_load_days">Nem sikerült betölteni az utazás napjait.</string>
 </resources>
