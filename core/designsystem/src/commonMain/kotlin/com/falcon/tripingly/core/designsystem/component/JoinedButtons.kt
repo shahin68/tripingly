@@ -4,8 +4,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.defaultMinSize
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -71,7 +69,8 @@ fun joinedShape(index: Int, count: Int): Shape {
 }
 
 /**
- * One button of a [JoinedButtons] group: an [icon], with a [count] after it where it has one; as wide as its content.
+ * One button of a [JoinedButtons] group: an [icon], with a [count] after it where it has one; as wide as its content,
+ * with the same padding on every side (the count's line is as high as the icon).
  * [onClick] null draws it without a touch (a count to read only). Neutral unless given [colors].
  */
 @Composable
@@ -88,9 +87,7 @@ fun JoinedButton(
     val content: @Composable () -> Unit = {
         Row(
             modifier = Modifier
-                .heightIn(min = JoinedButtonDefaults.Height)
-                .defaultMinSize(minWidth = JoinedButtonDefaults.MinWidth)
-                .padding(horizontal = JoinedButtonDefaults.SidePadding)
+                .padding(JoinedButtonDefaults.Padding)
                 .alpha(if (enabled) 1f else DISABLED_ALPHA),
             horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraSmall, Alignment.CenterHorizontally),
             verticalAlignment = Alignment.CenterVertically,
@@ -136,10 +133,7 @@ fun HotJoinedButton(hot: Boolean, count: Int, shape: Shape, onToggle: () -> Unit
         modifier = modifier,
     ) {
         Row(
-            modifier = Modifier
-                .heightIn(min = JoinedButtonDefaults.Height)
-                .defaultMinSize(minWidth = JoinedButtonDefaults.MinWidth)
-                .padding(horizontal = JoinedButtonDefaults.SidePadding),
+            modifier = Modifier.padding(JoinedButtonDefaults.Padding),
             horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraSmall, Alignment.CenterHorizontally),
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -158,12 +152,13 @@ fun HotJoinedButton(hot: Boolean, count: Int, shape: Shape, onToggle: () -> Unit
 data class JoinedButtonColors(val container: Color, val content: Color)
 
 object JoinedButtonDefaults {
-    val Height = 40.dp
-    val MinWidth = 40.dp
+    val IconSize = 20.dp
+
+    /** The same on every side, so an icon alone is a square and its height the touch target's 48 dp. */
+    val Padding = 14.dp
+    val Height = IconSize + Padding * 2
     val Gap = 3.dp
     val InnerCorner = 6.dp
-    val IconSize = 18.dp
-    internal val SidePadding = 9.dp
 
     /** The quiet grey of most buttons. */
     @Composable

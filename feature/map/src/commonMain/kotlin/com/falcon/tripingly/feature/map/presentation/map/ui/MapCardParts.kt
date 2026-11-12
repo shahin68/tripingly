@@ -23,6 +23,7 @@ import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.ExpandMore
 import androidx.compose.material.icons.outlined.Info
+import androidx.compose.material.icons.outlined.LocationOn
 import androidx.compose.material.icons.outlined.LocalFireDepartment
 import androidx.compose.material.icons.outlined.PhotoLibrary
 import androidx.compose.material3.Icon
@@ -114,7 +115,7 @@ internal fun pinAction(onDelete: (() -> Unit)?, onAdd: (() -> Unit)?, addLabel: 
 /**
  * A photo [image] filling a rounded banner (tapped: [onClick]) with the [title] (wrapping) and [subtitle] in white over
  * a dark fade at the bottom, a quiet count at the bottom end ([trailing], e.g. the flames), and a [topEnd] button.
- * Without an image ([image] null) it is a tinted panel with a photos icon at the top start and the text dark.
+ * Without an image ([image] null) it is a tinted panel with the pin icon at the top start and the text dark.
  */
 @Composable
 internal fun PhotoBanner(
@@ -139,14 +140,12 @@ internal fun PhotoBanner(
             image()
             Box(Modifier.fillMaxSize().background(Brush.verticalGradient(0.35f to Color.Transparent, 1f to Color.Black.copy(alpha = 0.6f))))
         } else {
-            Icon(
-                Icons.Outlined.PhotoLibrary,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f),
-                modifier = Modifier.padding(BannerInset).size(32.dp),
-            )
+            // The pin's icon, mirroring the top end button: the same size and inset.
+            Box(Modifier.padding(BannerButtonInset).size(JoinedButtonDefaults.Height), contentAlignment = Alignment.Center) {
+                Icon(Icons.Outlined.LocationOn, contentDescription = null, tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f), modifier = Modifier.size(PinIconSize))
+            }
         }
-        Box(Modifier.align(Alignment.TopEnd).padding(MaterialTheme.spacing.small)) { topEnd() }
+        Box(Modifier.align(Alignment.TopEnd).padding(BannerButtonInset)) { topEnd() }
         CompositionLocalProvider(LocalContentColor provides textColor) {
             // The same inset on every side the text has: start, end and bottom.
             Column(Modifier.align(Alignment.BottomStart).fillMaxWidth().padding(BannerInset)) {
@@ -170,7 +169,7 @@ internal fun BannerCount(icon: ImageVector, count: Int) {
 @Composable
 internal fun BannerButton(onClick: () -> Unit, icon: ImageVector, contentDescription: String, modifier: Modifier = Modifier) {
     Surface(onClick = onClick, modifier = modifier.size(JoinedButtonDefaults.Height), shape = CircleShape, color = BannerButtonColor, contentColor = Color.White) {
-        Box(contentAlignment = Alignment.Center) { Icon(icon, contentDescription = contentDescription, modifier = Modifier.size(20.dp)) }
+        Box(contentAlignment = Alignment.Center) { Icon(icon, contentDescription = contentDescription, modifier = Modifier.size(JoinedButtonDefaults.IconSize)) }
     }
 }
 
@@ -178,6 +177,8 @@ internal fun BannerButton(onClick: () -> Unit, icon: ImageVector, contentDescrip
 internal val MapCardMaxWidth = 360.dp
 private val BannerHeight = 160.dp
 private val BannerInset = 14.dp
+private val BannerButtonInset = 8.dp
+private val PinIconSize = 28.dp
 private val BannerButtonColor = Color.White.copy(alpha = 0.26f)
 
 @Composable

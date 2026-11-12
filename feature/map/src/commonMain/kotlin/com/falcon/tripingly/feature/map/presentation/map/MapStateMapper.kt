@@ -67,9 +67,9 @@ internal class MapStateMapper(
         dayTabs = DayTabsState(days.map { day -> DayTab(day.id, day.position + 1, day.date?.let(DateUtils::formatAbbreviated), hasNew = day.markers.any { it.id in model.newStopIds || it.id in model.newCommentStopIds }, canDelete = canEdit && days.size > 1 && canDeleteDay(day.markers)) }.toImmutableList(), activeIndex),
         plan = route.between?.let { PointRouteCardState(it.from, it.to, routeSummary(), it.fromLabel, it.toLabel) } ?: stopsCard(),
         routeStartName = route.start?.name,
-        // A sheet is over the map: the card makes way, and comes back when it closes.
-        placeCard = placeCard()?.takeIf { model.sheet == null },
-        stopCard = stopCard()?.takeIf { model.sheet == null },
+        // The card stays open under a sheet, so closing the sheet comes back to it.
+        placeCard = placeCard(),
+        stopCard = stopCard(),
         layers = layers,
         camera = CameraState(model.camera.isReady, model.camera.target, model.camera.zoom, model.camera.openingBounds),
         location = LocationState(isLoading = model.location.isLoading),

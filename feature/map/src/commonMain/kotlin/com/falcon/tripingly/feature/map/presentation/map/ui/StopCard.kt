@@ -16,6 +16,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.Comment
 import androidx.compose.material.icons.outlined.ExpandLess
 import androidx.compose.material.icons.outlined.ExpandMore
+import androidx.compose.material.icons.outlined.LocationOn
 import androidx.compose.material.icons.outlined.PhotoLibrary
 import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
@@ -36,6 +37,7 @@ import androidx.compose.ui.unit.dp
 import com.falcon.tripingly.core.designsystem.component.CreditLine
 import com.falcon.tripingly.core.designsystem.component.HotJoinedButton
 import com.falcon.tripingly.core.designsystem.component.JoinedButton
+import com.falcon.tripingly.core.designsystem.component.JoinedButtonDefaults
 import com.falcon.tripingly.core.designsystem.component.JoinedButtonSlot
 import com.falcon.tripingly.core.designsystem.component.JoinedButtons
 import com.falcon.tripingly.core.designsystem.component.PhotoImage
@@ -151,12 +153,12 @@ private fun StopPill(card: StopCardState, onDelete: (() -> Unit)?, onExpand: () 
         // Delete is for whoever added the stop or owns the trip; a viewer's + comes with copying stops.
         pinAction(onDelete, onAdd = null)?.let { action -> JoinedButtons(listOf(action)) }
         FilledTonalIconButton(onClick = onExpand, modifier = Modifier.size(PillImageSize)) {
-            Icon(Icons.Outlined.ExpandLess, contentDescription = stringResource(Res.string.map_stop_expand))
+            Icon(Icons.Outlined.ExpandLess, contentDescription = stringResource(Res.string.map_stop_expand), modifier = Modifier.size(JoinedButtonDefaults.IconSize))
         }
     }
 }
 
-/** The stop's image in the pill: its cover, or an empty circle while it has none. */
+/** The stop's image in the pill: its cover, or the pin icon while it has none. */
 @Composable
 private fun StopImage(marker: MapMarker, modifier: Modifier) {
     val coverId = marker.coverPhotoId
@@ -164,13 +166,14 @@ private fun StopImage(marker: MapMarker, modifier: Modifier) {
         PhotoImage(photoId = coverId, url = marker.coverThumbUrl, size = PhotoSize.Thumb, contentDescription = null, modifier = modifier)
     } else {
         Box(modifier.background(MaterialTheme.colorScheme.surfaceVariant), contentAlignment = Alignment.Center) {
-            Icon(Icons.Outlined.PhotoLibrary, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(20.dp))
+            Icon(Icons.Outlined.LocationOn, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(JoinedButtonDefaults.IconSize))
         }
     }
 }
 
 private val PillInset = 6.dp
-private val PillImageSize = 44.dp
+// The image and ⌃ are as high as the joined Delete between them.
+private val PillImageSize = JoinedButtonDefaults.Height
 
 /** An editor's stop, a viewer's, one with a long name and no counts, opened, and the pill of a stop I can't delete. */
 internal class StopCardPreviewStates : PreviewParameterProvider<StopCardPreview> {

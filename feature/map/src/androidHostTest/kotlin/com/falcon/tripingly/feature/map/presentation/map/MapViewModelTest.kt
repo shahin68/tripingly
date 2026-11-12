@@ -473,7 +473,7 @@ class MapViewModelTest {
     }
 
     @Test
-    fun `Details opens a stop's details in place of its card, switches to its photos and back, and the card comes back on close`() = runTest(testDispatcher) {
+    fun `Details opens a stop's details over its card, switches to its photos and back, and the card stays open`() = runTest(testDispatcher) {
         backend.addMarker(trip.trip.id, trip.days[0].id, NewMarker("Louvre", LOUVRE, placeId = "fake-louvre"))
         val viewModel = viewModel()
         testScheduler.advanceUntilIdle()
@@ -489,7 +489,7 @@ class MapViewModelTest {
         val details = assertIs<MapSheet.StopDetails>(viewModel.uiState.value.sheet)
         assertEquals(stop.id, details.card.stop.id)
         assertEquals(false, details.showsPhotos)
-        assertNull(viewModel.uiState.value.stopCard)
+        assertEquals(stop.id, viewModel.uiState.value.stopCard?.stop?.id)
 
         viewModel.onAction(MapAction.Sheet.ShowDetailsPhotos(true))
         testScheduler.advanceUntilIdle()
@@ -557,7 +557,7 @@ class MapViewModelTest {
         viewModel.onAction(MapAction.PlaceCard.OpenDetails)
         testScheduler.advanceUntilIdle()
         assertEquals("Louvre", assertIs<MapSheet.PlaceDetails>(viewModel.uiState.value.sheet).card.place.name)
-        assertNull(viewModel.uiState.value.placeCard)
+        assertEquals("Louvre", viewModel.uiState.value.placeCard?.place?.name)
 
         viewModel.onAction(MapAction.Sheet.CloseDetails)
         testScheduler.advanceUntilIdle()
