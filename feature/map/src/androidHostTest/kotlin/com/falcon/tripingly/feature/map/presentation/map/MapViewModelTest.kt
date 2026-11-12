@@ -71,6 +71,7 @@ import com.falcon.tripingly.feature.map.generated.resources.map_change_not_saved
 import com.falcon.tripingly.feature.map.generated.resources.map_error_load_trip
 import com.falcon.tripingly.feature.map.generated.resources.map_error_stop_change
 import com.falcon.tripingly.feature.map.generated.resources.map_join_requested
+import com.falcon.tripingly.feature.map.generated.resources.map_route_my_location
 import com.falcon.tripingly.feature.map.presentation.FakeTripMapViewRepository
 import com.falcon.tripingly.feature.map.presentation.component.CameraCommand
 import com.falcon.tripingly.feature.map.presentation.component.PinEnd
@@ -1830,10 +1831,14 @@ class MapViewModelTest {
 
             val place = MapPlace("a", "Oper", PlaceCategory.Attraction, GeoPoint(48.2031, 16.3691), isTripinly = false, hotCount = 0, prominence = 80)
             viewModel.onAction(MapAction.MapView.PlacePinClick(place))
-            viewModel.onAction(MapAction.PlaceCard.RouteFrom)
+            viewModel.onAction(MapAction.PinRoute.Route)
             testScheduler.advanceUntilIdle()
             assertEquals(MapEvent.OpenPaywall, awaitItem())
-            assertNull(viewModel.uiState.value.routeStartName)
+            assertNull(viewModel.uiState.value.routeBar)
+
+            viewModel.onAction(MapAction.PinRoute.GoHere)
+            testScheduler.advanceUntilIdle()
+            assertEquals(MapEvent.OpenPaywall, awaitItem())
             assertTrue(routes.dayRoutes.isEmpty() && routes.pointRoutes.isEmpty())
         }
     }
@@ -1900,14 +1905,19 @@ class MapViewModelTest {
         val to = MapPlace("b", "Prater", PlaceCategory.Park, GeoPoint(48.2166, 16.3958), isTripinly = false, hotCount = 0, prominence = 80)
 
         viewModel.onAction(MapAction.MapView.PlacePinClick(from))
-        viewModel.onAction(MapAction.PlaceCard.RouteFrom)
+        viewModel.onAction(MapAction.PinRoute.Route)
         testScheduler.advanceUntilIdle()
-        assertEquals("Oper", viewModel.uiState.value.routeStartName)
+        // The pin is ringed as the start, its card closes, and the header asks where to, searching.
+        assertEquals(RouteBarState(UiText.Server("Oper"), to = null), viewModel.uiState.value.routeBar)
+        assertNotNull(viewModel.uiState.value.search)
+        assertEquals(from.location, viewModel.uiState.value.layers.routeStart)
         assertNull(viewModel.uiState.value.layers.selectedPlace)
 
+        viewModel.onAction(MapAction.MapView.PlacePinClick(to))
+        restOnTarget(viewModel)
+        assertEquals(true, viewModel.uiState.value.placeCard?.routes?.isRouteTo)
         viewModel.cameraCommands.test {
-            viewModel.onAction(MapAction.MapView.PlacePinClick(to))
-            viewModel.onAction(MapAction.PlaceCard.RouteTo)
+            viewModel.onAction(MapAction.PinRoute.Route)
             testScheduler.advanceUntilIdle()
             // Both places show.
             assertEquals(CameraCommand.fit(listOf(Coordinates(48.2031, 16.3691), Coordinates(48.2166, 16.3958))), expectMostRecentItem())
@@ -1916,14 +1926,111 @@ class MapViewModelTest {
         val card = assertNotNull(state.pointRouteCard)
         assertEquals(from to to, card.from to card.to)
         assertNull(state.stopsCard)
-        assertNull(state.routeStartName)
+        assertEquals(RouteBarState(UiText.Server("Oper"), UiText.Server("Prater")), state.routeBar)
+        assertNull(state.search)
+        assertEquals(from.location, state.layers.routeStart)
         assertEquals(listOf(from.location to to.location), routes.pointRoutes)
         state.assertRoute(listOf(Coordinates(48.2031, 16.3691), Coordinates(48.2166, 16.3958)))
 
         viewModel.onAction(MapAction.Plan.ClosePointRoute)
         testScheduler.advanceUntilIdle()
         assertNull(viewModel.uiState.value.pointRouteCard)
+        assertNull(viewModel.uiState.value.routeBar)
+        assertNull(viewModel.uiState.value.layers.routeStart)
         viewModel.uiState.value.assertRoute(viewModel.uiState.value.stopPositions)
+    }
+
+    @Test
+    fun `Route from a stop, then a search result: the route goes there, and the start's Route button closes it`() = runTest(testDispatcher) {
+        addStops(GeoPoint(48.2085, 16.3731), GeoPoint(48.2104, 16.3655))
+        val viewModel = viewModel()
+        testScheduler.advanceUntilIdle()
+        val stop = viewModel.uiState.value.layers.stops.first()
+        viewModel.onAction(MapAction.MapView.MarkerClick(stop))
+        restOnTarget(viewModel)
+        viewModel.onAction(MapAction.PinRoute.Route)
+        testScheduler.advanceUntilIdle()
+        assertEquals(stop.title, viewModel.uiState.value.routeBar?.from)
+        assertNull(viewModel.uiState.value.stopCard)
+
+        val prater = PlaceSearchResult("Prater", address = "Leopoldstadt, Wien", location = GeoPoint(48.2166, 16.3958), type = SearchResultType.Place)
+        viewModel.onAction(MapAction.Search.ResultClick(prater))
+        testScheduler.advanceUntilIdle()
+        assertEquals(RouteBarState(stop.title, UiText.Server("Prater")), viewModel.uiState.value.routeBar)
+        assertEquals(listOf(GeoPoint(48.2085, 16.3731) to prater.location), routes.pointRoutes)
+        // The search result opened no card: the route is what was asked for.
+        assertNull(viewModel.uiState.value.placeCard)
+
+        // The start's card shows its Route button on; a tap closes the route and the bar.
+        viewModel.onAction(MapAction.MapView.MarkerClick(stop))
+        restOnTarget(viewModel)
+        assertEquals(true, viewModel.uiState.value.stopCard?.routes?.isRouteOn)
+        viewModel.onAction(MapAction.PinRoute.Route)
+        testScheduler.advanceUntilIdle()
+        assertNull(viewModel.uiState.value.routeBar)
+        assertNull(viewModel.uiState.value.pointRouteCard)
+    }
+
+    @Test
+    fun `the bar's close cancels a start picked, and the day's route replaces it`() = runTest(testDispatcher) {
+        addStops(GeoPoint(48.2085, 16.3731), GeoPoint(48.2104, 16.3655))
+        val viewModel = viewModel()
+        testScheduler.advanceUntilIdle()
+        val oper = MapPlace("a", "Oper", PlaceCategory.Attraction, GeoPoint(48.2031, 16.3691), isTripinly = false, hotCount = 0, prominence = 80)
+        viewModel.onAction(MapAction.MapView.PlacePinClick(oper))
+        viewModel.onAction(MapAction.PinRoute.Route)
+        testScheduler.advanceUntilIdle()
+        viewModel.onAction(MapAction.PinRoute.Close)
+        testScheduler.advanceUntilIdle()
+        assertNull(viewModel.uiState.value.routeBar)
+        assertNull(viewModel.uiState.value.search)
+        assertNull(viewModel.uiState.value.layers.routeStart)
+
+        viewModel.onAction(MapAction.MapView.PlacePinClick(oper))
+        viewModel.onAction(MapAction.PinRoute.Route)
+        viewModel.onAction(MapAction.Plan.ToggleRoute)
+        testScheduler.advanceUntilIdle()
+        assertNull(viewModel.uiState.value.routeBar)
+        assertEquals(true, viewModel.uiState.value.stopsCard?.isRouteOn)
+    }
+
+    @Test
+    fun `Go here routes from where I am, and asks for the location while it is unknown`() = runTest(testDispatcher) {
+        val viewModel = viewModel()
+        testScheduler.advanceUntilIdle()
+        val oper = MapPlace("a", "Oper", PlaceCategory.Attraction, GeoPoint(48.2031, 16.3691), isTripinly = false, hotCount = 0, prominence = 80)
+        viewModel.onAction(MapAction.Location.PermissionChecked(LocationPermission.NotAsked))
+        viewModel.onAction(MapAction.MapView.PlacePinClick(oper))
+        restOnTarget(viewModel)
+        assertEquals(false, viewModel.uiState.value.placeCard?.routes?.hasLocation)
+
+        viewModel.events.test {
+            viewModel.onAction(MapAction.PinRoute.GoHere)
+            testScheduler.advanceUntilIdle()
+            assertEquals(MapEvent.RequestPermission, awaitItem())
+        }
+        assertNotNull(viewModel.uiState.value.message)
+        assertNull(viewModel.uiState.value.routeBar)
+
+        val me = Coordinates(48.2000, 16.3700)
+        fakeLocationRepository.locationResult = me.asSuccess()
+        viewModel.onAction(MapAction.Location.PermissionResult(LocationPermission.Granted))
+        testScheduler.advanceUntilIdle()
+        viewModel.onAction(MapAction.PinRoute.GoHere)
+        testScheduler.advanceUntilIdle()
+        assertEquals(RouteBarState(UiText.Resource(Res.string.map_route_my_location), UiText.Server("Oper")), viewModel.uiState.value.routeBar)
+        assertEquals(listOf(GeoPoint(me.latitude, me.longitude) to oper.location), routes.pointRoutes)
+        // Where I am isn't a pin: nothing is ringed.
+        assertNull(viewModel.uiState.value.layers.routeStart)
+
+        // On again on the pin's card: Go here is on, and a tap closes it.
+        viewModel.onAction(MapAction.MapView.PlacePinClick(oper))
+        restOnTarget(viewModel)
+        assertEquals(true, viewModel.uiState.value.placeCard?.routes?.isGoHereOn)
+        viewModel.onAction(MapAction.PinRoute.GoHere)
+        testScheduler.advanceUntilIdle()
+        assertNull(viewModel.uiState.value.routeBar)
+        assertNull(viewModel.uiState.value.pointRouteCard)
     }
 
     @Test

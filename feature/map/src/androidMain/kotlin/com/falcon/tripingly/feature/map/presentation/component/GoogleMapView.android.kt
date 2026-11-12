@@ -432,7 +432,7 @@ actual fun GoogleMapView(
                     )
                 }
             }
-            // A route's start (Route from), ringed in the routes' blue over its pin.
+            // A route's start (Route from), ringed in the routes' blue around its pin.
             layers.routeStart?.let { start ->
                 val ring = remember(density, layoutDirection) {
                     BitmapDescriptorFactory.fromBitmap(drawRouteStartRing(MapColors.Car, density, layoutDirection).asAndroidBitmap())
@@ -443,7 +443,8 @@ actual fun GoogleMapView(
                         icon = ring,
                         anchor = Offset(0.5f, 0.5f),
                         zIndex = ROUTE_START_Z,
-                        onClick = { false },
+                        // Only a mark: the map neither moves nor opens anything.
+                        onClick = { true },
                     )
                 }
             }
@@ -592,6 +593,6 @@ private val PIN_TAP_SLOP = 4.dp
 /** Place pins sit under this, the stops at 1 and the tapped place at 2. */
 private const val PLACE_PINS_Z = 0.5f
 
-/** Over every pin: the ring is hollow, so the pin shows through it. */
-private const val ROUTE_START_Z = 3f
+/** Under every pin, so a tap on the pin inside the ring still reaches the pin. */
+private const val ROUTE_START_Z = -1f
 

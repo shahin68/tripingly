@@ -108,10 +108,10 @@ internal class MapRouting(
             else -> {
                 selection.closePlace()
                 selection.closeStop()
-                // One route at a time: the newest replaces the one before (Shahin, 2026-11-12).
+                // One route between two points at a time: a new start replaces the route before (Shahin, 2026-11-12).
                 context.update {
                     it.copy(
-                        route = it.route.copy(start = end.place, startLabel = end.label, between = null, isDayRouteShown = false),
+                        route = it.route.copy(start = end.place, startLabel = end.label, between = null),
                         search = it.search ?: SearchModel(),
                     )
                 }
@@ -155,7 +155,7 @@ internal class MapRouting(
     private fun showRoute(route: PointRoute) {
         selection.closePlace()
         selection.closeStop()
-        context.update { it.copy(route = it.route.copy(start = null, startLabel = null, between = route, isDayRouteShown = false), search = null) }
+        context.update { it.copy(route = it.route.copy(start = null, startLabel = null, between = route), search = null) }
         showWholePlan()
         camera.frame(listOf(route.from.location, route.to.location).map { Coordinates(it.lat, it.lng) })
     }
