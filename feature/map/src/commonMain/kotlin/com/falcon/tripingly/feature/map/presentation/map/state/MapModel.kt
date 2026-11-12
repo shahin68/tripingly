@@ -8,7 +8,6 @@ import com.falcon.tripingly.core.model.place.GeoBounds
 import com.falcon.tripingly.core.model.place.MapPlace
 import com.falcon.tripingly.core.model.place.PlaceCluster
 import com.falcon.tripingly.core.model.place.PlaceDetails
-import com.falcon.tripingly.core.model.place.PlaceImage
 import com.falcon.tripingly.core.model.place.PlaceSearchResult
 import com.falcon.tripingly.core.model.place.PlaceSquare
 import com.falcon.tripingly.core.model.route.RoutePlan
@@ -35,8 +34,11 @@ internal data class MapModel(
     val activeDayIndex: Int = 0,
     val camera: CameraModel = CameraModel(),
     val selection: Selection? = null,
-    /** The images of stops' places, by place ID, for the credit of a stop's Commons cover. */
-    val stopPlaceImages: Map<String, List<PlaceImage>> = emptyMap(),
+    /**
+     * Stops' places, by place ID, loaded when a stop is tapped: the credit of its cover (OpenStreetMap, a Commons image)
+     * and its opening hours and website in the details sheet.
+     */
+    val stopPlaces: Map<String, PlaceDetails> = emptyMap(),
     val search: SearchModel? = null,
     val route: RouteModel = RouteModel(),
     val location: LocationModel = LocationModel(),
@@ -145,15 +147,13 @@ internal sealed interface Sheet {
     data class PlacePhotos(val place: MapPlace) : Sheet
     data class StopComments(val markerId: String) : Sheet
     data object Members : Sheet
-    /** The in-app camera, for the selected stop. */
-    data object PhotoCamera : Sheet
+    /** The selected stop's or place's details; [showsPhotos]: switched to its photos. */
+    data class Details(val showsPhotos: Boolean = false) : Sheet
 }
 
 internal sealed interface Dialog {
     data object ClearDay : Dialog
     data object DeleteDay : Dialog
-    /** About the selected stop. */
-    data object RemoveMyContent : Dialog
     /** The owner deletes a stop someone else added, with everything on it, once they agree. */
     data class DeleteOthersStop(val markerId: String) : Dialog
     /** A delete waits for the user to agree that other people's content goes too. */

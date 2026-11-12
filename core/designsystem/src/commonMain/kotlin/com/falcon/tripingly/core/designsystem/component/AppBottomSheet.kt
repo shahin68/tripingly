@@ -1,5 +1,7 @@
 package com.falcon.tripingly.core.designsystem.component
 
+import androidx.compose.foundation.clickable
+import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.SheetValue
@@ -21,7 +23,8 @@ import kotlinx.coroutines.launch
  * a swipe, a tap outside, back, the `close` handed to [content] (for [SheetHeader]'s button), or the view model
  * clearing [value] (e.g. once a trip is created). [onDismiss] tells the view model the user closed it; while
  * [dismissEnabled] is false (saving) the user can't. It hides while its screen isn't on top (see [LocalScreenOnTop]) and
- * comes back when it is, still open in the view model.
+ * comes back when it is, still open in the view model. [halfHigh]: it opens half high first (Material's peek), and a
+ * drag or a tap on its handle takes it to its full height and back.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -30,6 +33,7 @@ fun <T : Any> AppBottomSheet(
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier,
     dismissEnabled: Boolean = true,
+    halfHigh: Boolean = false,
     content: @Composable (value: T, close: () -> Unit) -> Unit,
 ) {
     val canDismiss by rememberUpdatedState(dismissEnabled)
@@ -38,7 +42,7 @@ fun <T : Any> AppBottomSheet(
     // would cover that screen and take its back gesture.
     val visible = value.takeIf { LocalScreenOnTop.current }
     val sheetState = rememberModalBottomSheetState(
-        skipPartiallyExpanded = true,
+        skipPartiallyExpanded = !halfHigh,
         confirmValueChange = { it != SheetValue.Hidden || canDismiss },
     )
     // The last value stays on screen while the sheet slides away.
@@ -55,7 +59,22 @@ fun <T : Any> AppBottomSheet(
     val current = visible ?: shown ?: return
     val scope = rememberCoroutineScope()
     val close: () -> Unit = { scope.launch { sheetState.hide() }.invokeOnCompletion { currentOnDismiss() } }
-    ModalBottomSheet(onDismissRequest = { currentOnDismiss() }, sheetState = sheetState, modifier = modifier) {
+    ModalBottomSheet(
+        onDismissRequest = { currentOnDismiss() },
+        sheetState = sheetState,
+        modifier = modifier,
+        dragHandle = {
+            BottomSheetDefaults.DragHandle(
+                modifier = if (halfHigh) {
+                    Modifier.clickable(interactionSource = null, indication = null) {
+                        scope.launch { if (sheetState.currentValue == SheetValue.Expanded) sheetState.partialExpand() else sheetState.expand() }
+                    }
+                } else {
+                    Modifier
+                },
+            )
+        },
+    ) {
         content(current, close)
     }
 }

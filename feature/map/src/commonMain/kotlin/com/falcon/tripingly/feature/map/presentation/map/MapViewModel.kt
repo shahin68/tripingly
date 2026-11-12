@@ -5,7 +5,6 @@ import androidx.lifecycle.viewModelScope
 import com.falcon.tripingly.core.common.result.AppResult
 import com.falcon.tripingly.core.data.account.SessionRepository
 import com.falcon.tripingly.core.data.config.AppConfigRepository
-import com.falcon.tripingly.core.data.photos.PhotoRepository
 import com.falcon.tripingly.core.data.places.PlaceRepository
 import com.falcon.tripingly.core.data.push.NewActivityRepository
 import com.falcon.tripingly.core.data.routing.RouteRepository
@@ -16,8 +15,6 @@ import com.falcon.tripingly.core.data.trips.TripRepository
 import com.falcon.tripingly.core.location.GetCurrentLocationUseCase
 import com.falcon.tripingly.core.location.model.Coordinates
 import com.falcon.tripingly.core.model.account.SessionState
-import com.falcon.tripingly.core.model.photo.PhotoOwner
-import com.falcon.tripingly.core.model.photo.PickedImage
 import com.falcon.tripingly.core.model.route.ROUTES_ENTITLEMENT
 import com.falcon.tripingly.core.model.social.ReportTarget
 import com.falcon.tripingly.core.model.trip.TripDetails
@@ -71,7 +68,6 @@ class MapViewModel(
     markerRepository: MarkerRepository,
     placeRepository: PlaceRepository,
     routeRepository: RouteRepository,
-    private val photoRepository: PhotoRepository,
     private val socialRepository: SocialRepository,
     private val appConfigRepository: AppConfigRepository,
     /** How this trip's map was left: restored when it opens, saved as it changes. */
@@ -225,9 +221,7 @@ class MapViewModel(
             is MapAction.StopCard.ToggleHot -> toggleStopHot(action.markerId)
             is MapAction.StopCard.OpenPhotos -> selection.selectedMarkerId?.let { openSheet(Sheet.StopPhotos(it)) }
             is MapAction.StopCard.OpenComments -> selection.selectedMarkerId?.let { openSheet(Sheet.StopComments(it)) }
-            is MapAction.StopCard.AddPhotos -> addStopPhotos(action.images)
-            is MapAction.StopCard.OpenCamera -> if (context.canEdit() && selection.selectedMarkerId != null) openSheet(Sheet.PhotoCamera)
-            is MapAction.StopCard.RemoveMyContent -> if (selection.selectedMarkerId != null) openDialog(Dialog.RemoveMyContent)
+            is MapAction.StopCard.OpenDetails -> if (selection.selectedMarkerId != null) openSheet(Sheet.Details())
             is MapAction.StopCard.Report -> selection.selectedMarkerId?.let { sharing.report(ReportTarget.Marker, it) }
         }
     }
@@ -240,6 +234,7 @@ class MapViewModel(
             is MapAction.PlaceCard.OpenImage -> selection.openPlaceImage(action.index)
             is MapAction.PlaceCard.RouteFrom -> routes.startPointRoute()
             is MapAction.PlaceCard.RouteTo -> routes.showPointRoute()
+            is MapAction.PlaceCard.OpenDetails -> if (selection.selectedPlace != null) openSheet(Sheet.Details())
         }
     }
 
@@ -247,11 +242,12 @@ class MapViewModel(
         when (action) {
             is MapAction.Sheet.ClosePlaceImage -> selection.openPlaceImage(null)
             is MapAction.Sheet.ReportPhoto -> sharing.reportPhoto(action.photo)
+            is MapAction.Sheet.ShowDetailsPhotos -> context.update { if (it.sheet is Sheet.Details) it.copy(sheet = Sheet.Details(action.show)) else it }
             is MapAction.Sheet.CloseStopPhotos,
             is MapAction.Sheet.ClosePlacePhotos,
             is MapAction.Sheet.CloseStopComments,
             is MapAction.Sheet.CloseMembers,
-            is MapAction.Sheet.CloseCamera -> closeSheet()
+            is MapAction.Sheet.CloseDetails -> closeSheet()
         }
     }
 
@@ -305,15 +301,6 @@ class MapViewModel(
     private fun openDialog(dialog: Dialog) = context.update { it.copy(dialog = dialog) }
 
     private fun closeDialog() = context.update { it.copy(dialog = null) }
-
-    /** Photos picked or taken on the stop card: they upload in the background, and the sheet opens to show them going up. */
-    private fun addStopPhotos(images: List<PickedImage>) {
-        if (model.sheet == Sheet.PhotoCamera) closeSheet()
-        val markerId = selection.selectedMarkerId ?: return
-        if (images.isEmpty() || !context.canEdit()) return
-        photoRepository.upload(PhotoOwner.Stop(markerId), images)
-        openSheet(Sheet.StopPhotos(markerId))
-    }
 
     /** A stop's flame marks its place hot; shows at once, see [SocialRepository.setHot]. */
     private fun toggleStopHot(markerId: String) {

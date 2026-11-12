@@ -5,7 +5,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
@@ -22,6 +21,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AddPhotoAlternate
 import androidx.compose.material.icons.filled.PhotoCamera
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilledTonalIconButton
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -46,7 +47,6 @@ import com.falcon.tripingly.core.designsystem.component.AppDialog
 import com.falcon.tripingly.core.designsystem.component.ButtonSize
 import com.falcon.tripingly.core.designsystem.component.MessageBannerHost
 import com.falcon.tripingly.core.designsystem.component.PrimaryButton
-import com.falcon.tripingly.core.designsystem.component.SecondaryButton
 import com.falcon.tripingly.core.designsystem.component.SheetHeader
 import com.falcon.tripingly.core.designsystem.component.ShowMessage
 import com.falcon.tripingly.core.designsystem.component.SkeletonBox
@@ -67,10 +67,10 @@ import org.koin.compose.viewmodel.koinViewModel
 import org.koin.core.parameter.parametersOf
 
 /**
- * The photos of a stop or a place ([owner]) in a sheet over the map, under [title]. [canAdd]: may add photos
+ * The photos of a stop or a place ([owner], named [title]) in a sheet over the map. [canAdd]: may add photos
  * (a stop's owners and editors; anyone on a place). [canManage]: a stop's owners and editors, who pick the
  * cover ([coverPhotoId]) and delete any photo; everyone else deletes only their own. [onReport] reports the
- * photo open in the viewer.
+ * photo open in the viewer. [onBack]: switched from the details sheet, the header has a back arrow and no ✕.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -82,6 +82,7 @@ fun PhotosRoute(
     coverPhotoId: String?,
     onReport: (Photo) -> Unit,
     onDismiss: () -> Unit,
+    onBack: (() -> Unit)? = null,
     viewModel: PhotosViewModel = koinViewModel(key = "photos:$owner") { parametersOf(owner) },
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -90,14 +91,15 @@ fun PhotosRoute(
     Box {
         PhotosScreen(
             state = state,
-            title = title,
-            subtitle = stringResource(if (owner is PhotoOwner.Place) Res.string.map_place_photos else Res.string.map_stop_photos),
+            title = stringResource(if (owner is PhotoOwner.Place) Res.string.map_place_photos else Res.string.map_stop_photos),
+            subtitle = title,
             canAdd = canAdd,
             canManage = canManage,
             coverPhotoId = coverPhotoId,
             onAddPhotos = pickPhotos,
             onAction = viewModel::onAction,
             onClose = onDismiss,
+            onBack = onBack,
         )
         MessageBannerHost(Modifier.align(Alignment.TopCenter))
     }
@@ -199,7 +201,10 @@ private fun DeletePhotoDialog(onAction: (Action) -> Unit) {
     )
 }
 
-/** The sheet's content: the header with Add photos and the camera, then the uploads and photos in a grid. */
+/**
+ * The sheet's content: the header with the camera and Add (where photos can be added), then the uploads and photos in a
+ * grid. [onBack]: a back arrow instead of the ✕.
+ */
 @Composable
 fun PhotosScreen(
     state: State,
@@ -212,6 +217,7 @@ fun PhotosScreen(
     onAction: (Action) -> Unit,
     onClose: () -> Unit,
     modifier: Modifier = Modifier,
+    onBack: (() -> Unit)? = null,
 ) {
     ShowMessage(message = state.message?.asString(), onShown = { onAction(Action.OnDismissMessage) }, isError = state.message !is UiText.Note)
     // A click when one of my photos finishes uploading: it leaves the uploads without having failed.
@@ -224,26 +230,25 @@ fun PhotosScreen(
     }
     val fullWidth: LazyGridItemSpanScope.() -> GridItemSpan = { GridItemSpan(maxLineSpan) }
     Column(modifier.fillMaxWidth().windowInsetsPadding(WindowInsets.bottomSystemBar)) {
-        SheetHeader(title = title, subtitle = subtitle, onClose = onClose)
-        if (canAdd) {
-            Row(
-                modifier = Modifier.padding(horizontal = MaterialTheme.spacing.medium).padding(bottom = MaterialTheme.spacing.medium),
-                horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
-            ) {
-                PrimaryButton(
-                    text = stringResource(Res.string.map_stop_add_photos),
-                    onClick = onAddPhotos,
-                    size = ButtonSize.Small,
-                    icon = Icons.Default.AddPhotoAlternate,
-                )
-                SecondaryButton(
-                    text = stringResource(Res.string.map_camera_take_photo),
-                    onClick = { onAction(Action.OnOpenCamera) },
-                    size = ButtonSize.Small,
-                    icon = Icons.Default.PhotoCamera,
-                )
-            }
-        }
+        SheetHeader(
+            title = title,
+            subtitle = subtitle,
+            onClose = onClose.takeIf { onBack == null },
+            onBack = onBack,
+            actions = {
+                if (canAdd) {
+                    FilledTonalIconButton(onClick = { onAction(Action.OnOpenCamera) }) {
+                        Icon(Icons.Default.PhotoCamera, contentDescription = stringResource(Res.string.map_camera_take_photo))
+                    }
+                    PrimaryButton(
+                        text = stringResource(Res.string.map_photos_add),
+                        onClick = onAddPhotos,
+                        size = ButtonSize.Small,
+                        icon = Icons.Default.AddPhotoAlternate,
+                    )
+                }
+            },
+        )
         LazyVerticalGrid(
             columns = GridCells.Adaptive(minSize = GalleryTileMinSize),
             modifier = Modifier.fillMaxWidth(),
@@ -303,8 +308,8 @@ private fun PhotosScreenPreview(@PreviewParameter(PhotosPreviewStates::class) st
     TripinglyTheme {
         PhotosScreen(
             state = state,
-            title = "Eiffel Tower",
-            subtitle = "Day 1 · Stop 1",
+            title = "Photos",
+            subtitle = "Eiffel Tower",
             canAdd = true,
             canManage = true,
             coverPhotoId = "ph1",
@@ -323,8 +328,9 @@ private fun PhotosScreenLandscapePreview() {
     TripinglyTheme(darkTheme = true) {
         PhotosScreen(
             state = PhotosPreviewStates().values.first(),
-            title = "A very long place name that doesn't fit on one line of the gallery",
-            subtitle = "5 photos",
+            title = "Photos",
+            subtitle = "A very long place name that doesn't fit on one line of the gallery",
+            onBack = {},
             canAdd = false,
             canManage = false,
             coverPhotoId = null,

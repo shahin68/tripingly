@@ -67,8 +67,9 @@ internal class MapStateMapper(
         dayTabs = DayTabsState(days.map { day -> DayTab(day.id, day.position + 1, day.date?.let(DateUtils::formatAbbreviated), hasNew = day.markers.any { it.id in model.newStopIds || it.id in model.newCommentStopIds }, canDelete = canEdit && days.size > 1 && canDeleteDay(day.markers)) }.toImmutableList(), activeIndex),
         plan = route.between?.let { PointRouteCardState(it.from, it.to, routeSummary(), it.fromLabel, it.toLabel) } ?: stopsCard(),
         routeStartName = route.start?.name,
-        placeCard = placeCard(),
-        stopCard = stopCard(),
+        // A sheet is over the map: the card makes way, and comes back when it closes.
+        placeCard = placeCard()?.takeIf { model.sheet == null },
+        stopCard = stopCard()?.takeIf { model.sheet == null },
         layers = layers,
         camera = CameraState(model.camera.isReady, model.camera.target, model.camera.zoom, model.camera.openingBounds),
         location = LocationState(isLoading = model.location.isLoading),
@@ -156,25 +157,32 @@ internal class MapStateMapper(
     private fun placeCard(): PlaceCardState? {
         val selection = model.selection as? Selection.Place ?: return null
         if (!selection.isCardShown) return null
-        return PlaceCardState(
-            place = selection.place,
-            details = selection.details,
-            address = selection.address?.address,
-            addToDayNumber = dayNumber?.takeIf { canEdit },
-            canRouteTo = route.start != null && route.start.location != selection.place.location,
-        )
+        return placeDetails(selection)
     }
+
+    private fun placeDetails(selection: Selection.Place) = PlaceCardState(
+        place = selection.place,
+        details = selection.details,
+        address = selection.address?.address,
+        addToDayNumber = dayNumber?.takeIf { canEdit },
+        canRouteTo = route.start != null && route.start.location != selection.place.location,
+    )
 
     private fun stopCard(): StopCardState? {
         val selection = model.selection as? Selection.Stop ?: return null
         if (!selection.isCardShown) return null
+        return stopDetails(selection)
+    }
+
+    private fun stopDetails(selection: Selection.Stop): StopCardState? {
         val stop = stops.firstOrNull { it.id == selection.markerId } ?: return null
+        val place = stop.placeId?.let { model.stopPlaces[it] }
         return StopCardState(
             stop = stop,
-            coverCredit = stop.placeId?.let { model.stopPlaceImages[it] }?.firstOrNull { it.id == stop.coverPhotoId }?.credit,
+            coverCredit = place?.images?.firstOrNull { it.id == stop.coverPhotoId }?.credit,
+            place = place,
             canEdit = canEdit,
             canReport = role == TripRole.VIEWER,
-            canRemoveMyContent = canEdit && !stop.canDelete,
         )
     }
 
@@ -221,7 +229,11 @@ internal class MapStateMapper(
         is Sheet.PlacePhotos -> MapSheet.PlacePhotos(sheet.place)
         is Sheet.StopComments -> stops.firstOrNull { it.id == sheet.markerId }?.let { MapSheet.StopComments(it, tripPeople()) }
         Sheet.Members -> MapSheet.Members
-        Sheet.PhotoCamera -> MapSheet.PhotoCamera.takeIf { stops.any { it.id == (model.selection as? Selection.Stop)?.markerId } }
+        is Sheet.Details -> when (val selection = model.selection) {
+            is Selection.Stop -> stopDetails(selection)?.let { MapSheet.StopDetails(it, sheet.showsPhotos) }
+            is Selection.Place -> MapSheet.PlaceDetails(placeDetails(selection), sheet.showsPhotos)
+            null -> null
+        }
         null -> placeImage()
     }
 
@@ -240,7 +252,6 @@ internal class MapStateMapper(
     private fun dialog(): MapDialog? = when (val dialog = model.dialog) {
         Dialog.ClearDay -> MapDialog.ClearDay(dayNumber ?: 1, stops.size)
         Dialog.DeleteDay -> MapDialog.DeleteDay(dayNumber ?: 1, stops.size)
-        Dialog.RemoveMyContent -> MapDialog.RemoveMyContent
         is Dialog.DeleteOthersStop -> stops.firstOrNull { it.id == dialog.markerId }?.let { MapDialog.DeleteOthersStop(it.title) }
         is Dialog.OthersContent -> MapDialog.DeleteOthersContent(dialog.message)
         is Dialog.Report -> MapDialog.Report(dialog.isSending, dialog.details)

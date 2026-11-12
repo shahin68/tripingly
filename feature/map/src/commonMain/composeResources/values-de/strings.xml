@@ -34,7 +34,6 @@
     <string name="map_location_open_settings">Einstellungen öffnen</string>
     <string name="map_place_add_to_day">Zu Tag %1$d hinzufügen</string>
     <string name="map_place_opening_hours">Öffnungszeiten</string>
-    <string name="map_place_website">Website</string>
     <string name="map_place_added_by">Hinzugefügt von @%1$s</string>
     <string name="map_place_image_position">%1$d / %2$d</string>
     <string name="map_place_image_report">Bild melden</string>
@@ -55,12 +54,7 @@
     <string name="map_pin_name_title">Ort benennen</string>
     <string name="map_pin_name_label">Name</string>
     <string name="map_pin_add">Hinzufügen</string>
-    <plurals name="map_stop_photo_count">
-        <item quantity="one">%1$d Foto</item>
-        <item quantity="other">%1$d Fotos</item>
-    </plurals>
     <string name="map_stop_no_photos">Noch keine Fotos</string>
-    <string name="map_stop_add_photos">Fotos hinzufügen</string>
     <string name="map_stop_photos">Fotos</string>
     <string name="map_photo_make_cover">Als Titelbild</string>
     <string name="map_photo_cover">Titelbild</string>
@@ -120,10 +114,6 @@
     <string name="map_comment_replying_to">Antwort an %1$s</string>
     <string name="map_comment_cancel_reply">Antwort abbrechen</string>
     <string name="map_comment_reply_placeholder">Antwort schreiben…</string>
-    <plurals name="map_stop_comment_count">
-        <item quantity="one">%1$d Kommentar</item>
-        <item quantity="other">%1$d Kommentare</item>
-    </plurals>
 
     <!-- Errors: what failed -->
     <string name="map_error_load_trip">Die Reise konnte nicht geladen werden.</string>
@@ -151,12 +141,6 @@
     <string name="map_delete_others_stop_title">Fremden Stopp löschen?</string>
     <string name="map_delete_others_stop_message">%1$s wurde von jemand anderem hinzugefügt. Der Stopp wird für alle gelöscht, mit seinen Fotos, Kommentaren und Likes.</string>
     <string name="map_delete_others_content_title">Für alle löschen?</string>
-    <string name="map_remove_my_content">Meine Fotos, Kommentare und Likes entfernen</string>
-    <string name="map_remove_my_content_title">Deine Inhalte von diesem Stopp entfernen?</string>
-    <string name="map_remove_my_content_message">Deine Fotos, Kommentare und Likes auf diesem Stopp werden gelöscht. Der Stopp bleibt.</string>
-    <string name="map_confirm_remove">Entfernen</string>
-    <string name="map_my_content_removed">Deine Fotos, Kommentare und Likes auf diesem Stopp wurden entfernt.</string>
-    <string name="map_error_remove_my_content">Deine Fotos, Kommentare und Likes konnten nicht entfernt werden.</string>
 
     <!-- Routes -->
     <string name="map_route">Route</string>
@@ -199,7 +183,6 @@
     <string name="map_stop_expand">Mehr zeigen</string>
     <string name="map_stop_collapse">Weniger zeigen</string>
     <string name="map_stop_number">Stopp %1$d</string>
-    <string name="map_stop_more">Mehr zu diesem Stopp</string>
 
     <!-- Redesign -->
     <string name="map_comments">Kommentare</string>
@@ -215,4 +198,9 @@
     <string name="map_trip_card_more">und %1$d weitere</string>
     <string name="map_trip_card_only">Nur %1$s</string>
     <string name="map_trip_card_new_requests">Neue Beitrittsanfragen</string>
+    <string name="map_card_details">Details</string>
+    <string name="map_card_delete">Stopp löschen</string>
+    <string name="map_photos_add">Hinzufügen</string>
+    <string name="map_photos_more">+%1$d</string>
+    <string name="map_details_comments">Kommentare · %1$d</string>
 </resources>

@@ -111,16 +111,6 @@ internal class DefaultMarkerRepository(
         failure.change.confirmed()?.let { submit(it) }
     }
 
-    override suspend fun removeMyContent(tripId: String, markerId: String): AppResult<Unit, DataError.Network> =
-        when (val result = api.removeMine(markerId)) {
-            is AppResult.Success -> {
-                // The stop's counts and cover changed on the server.
-                trips.refreshTrip(tripId)
-                result
-            }
-            is AppResult.Error -> result
-        }
-
     override suspend fun copyMarker(markerId: String, targetDayId: String): AppResult<TripMarker, DataError.Network> =
         when (val result = api.copy(markerId, CopyMarkerDto(dayId = targetDayId), newIdempotencyKey())) {
             is AppResult.Success -> {
