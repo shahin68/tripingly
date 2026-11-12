@@ -27,9 +27,6 @@ import com.falcon.tripingly.feature.map.presentation.map.state.MapModel
 import com.falcon.tripingly.feature.map.presentation.map.state.Selection
 import com.falcon.tripingly.feature.map.presentation.map.state.Sheet
 import com.falcon.tripingly.feature.map.presentation.map.state.activeDayIndex
-import com.falcon.tripingly.feature.map.presentation.map.state.isGoingTo
-import com.falcon.tripingly.feature.map.presentation.map.state.isRouteEnd
-import com.falcon.tripingly.feature.map.presentation.map.state.isRouteTo
 import com.falcon.tripingly.feature.map.presentation.map.state.stopPlaceIds
 import com.falcon.tripingly.feature.map.presentation.map.ui.durationText
 import kotlinx.collections.immutable.ImmutableList
@@ -70,7 +67,7 @@ internal class MapStateMapper(
         search = model.search?.let { SearchState(it.query, it.results.toImmutableList(), it.isSearching) },
         dayTabs = DayTabsState(days.map { day -> DayTab(day.id, day.position + 1, day.date?.let(DateUtils::formatAbbreviated), hasNew = day.markers.any { it.id in model.newStopIds || it.id in model.newCommentStopIds }, canDelete = canEdit && days.size > 1 && canDeleteDay(day.markers)) }.toImmutableList(), activeIndex),
         plan = route.between?.let { PointRouteCardState(it.from, it.to, routeSummary(), it.fromLabel, it.toLabel) } ?: stopsCard(),
-        routeBar = routeBar(),
+        routeBar = route.routeBar(),
         // The card stays open under a sheet, so closing the sheet comes back to it.
         placeCard = placeCard(),
         stopCard = stopCard(),
@@ -148,16 +145,6 @@ internal class MapStateMapper(
         )
     }
 
-    private fun routeSummary() = RouteSummaryState(
-        mode = route.travelMode,
-        durationSeconds = plan?.route?.durationSeconds,
-        distanceMeters = plan?.route?.distanceMeters,
-        isEstimated = route.isUnavailable || route.plan?.isEstimated == true,
-        isLoading = route.isLoading,
-        alongTheWay = alongTheWay.toImmutableList(),
-        addToDayNumber = dayNumber?.takeIf { canEdit },
-    )
-
     private fun placeCard(): PlaceCardState? {
         val selection = model.selection as? Selection.Place ?: return null
         if (!selection.isCardShown) return null
@@ -191,19 +178,9 @@ internal class MapStateMapper(
         )
     }
 
-    private fun pinRoutes(at: GeoPoint) = PinRoutesState(
-        isGoHereOn = route.isGoingTo(at),
-        hasLocation = model.location.current != null,
-        isRouteTo = route.isRouteTo(at),
-        isRouteOn = route.isRouteEnd(at),
-    )
+    private fun routeSummary() = route.summary(plan, alongTheWay, addToDayNumber = dayNumber?.takeIf { canEdit })
 
-    /** The from/to bar: a start waiting for where to go, or the route between two points that shows. */
-    private fun routeBar(): RouteBarState? {
-        route.start?.let { return RouteBarState(route.startLabel ?: UiText.Server(it.name), to = null) }
-        val between = route.between ?: return null
-        return RouteBarState(between.fromLabel ?: UiText.Server(between.from.name), between.toLabel ?: UiText.Server(between.to.name))
-    }
+    private fun pinRoutes(at: GeoPoint) = route.pinRoutes(at, hasLocation = model.location.current != null)
 
     fun layers(): MapLayersState {
         val pins = model.pins.pins
@@ -238,7 +215,7 @@ internal class MapStateMapper(
                 else -> null
             },
             isMyLocationEnabled = model.location.permission == LocationPermission.Granted,
-            routeStart = route.start?.location ?: route.between?.takeUnless { it.isFromMe }?.from?.location,
+            routeStart = route.startRing(),
         )
     }
 
