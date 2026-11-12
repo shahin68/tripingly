@@ -1941,7 +1941,7 @@ class MapViewModelTest {
     }
 
     @Test
-    fun `Route from a stop, then a search result: the route goes there, and the start's Route button closes it`() = runTest(testDispatcher) {
+    fun `Route from a stop, then a search result, routes there, and the start's Route button closes it`() = runTest(testDispatcher) {
         addStops(GeoPoint(48.2085, 16.3731), GeoPoint(48.2104, 16.3655))
         val viewModel = viewModel()
         testScheduler.advanceUntilIdle()
