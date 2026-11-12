@@ -13,13 +13,3 @@ plugins {
     alias(libs.plugins.openapiGenerator) apply false
     alias(libs.plugins.ktorfit) apply false
 }
-// TEMPORARY: full failure messages in CI logs, to read two failing tests; removed in the next commit.
-subprojects {
-    tasks.withType<Test>().configureEach {
-        testLogging {
-            events("failed")
-            exceptionFormat = org.gradle.api.tasks.testing.logging.TestExceptionFormat.FULL
-            showCauses = true
-        }
-    }
-}
