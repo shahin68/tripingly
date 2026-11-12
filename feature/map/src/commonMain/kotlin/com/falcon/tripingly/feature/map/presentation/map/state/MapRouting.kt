@@ -112,7 +112,8 @@ internal class MapRouting(
                 context.update {
                     it.copy(
                         route = it.route.copy(start = end.place, startLabel = end.label, between = null),
-                        search = it.search ?: SearchModel(),
+                        // An empty "to" field, not a query searched before.
+                        search = SearchModel(),
                     )
                 }
             }

@@ -2,7 +2,6 @@ package com.falcon.tripingly.feature.map.presentation.map
 
 import androidx.compose.animation.core.MutableTransitionState
 import androidx.compose.animation.core.rememberTransition
-import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.AnchoredDraggableState
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
@@ -17,14 +16,10 @@ import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -41,10 +36,7 @@ import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.layout.LayoutCoordinates
-import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.onSizeChanged
-import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.tooling.preview.Preview
@@ -52,9 +44,6 @@ import androidx.compose.ui.tooling.preview.PreviewParameter
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.toSize
-import com.falcon.tripingly.core.designsystem.component.ErrorScreen
-import com.falcon.tripingly.core.designsystem.component.GlassIconButton
 import com.falcon.tripingly.core.designsystem.component.LocalScreenArrived
 import com.falcon.tripingly.core.designsystem.component.LocalScreenOnTop
 import com.falcon.tripingly.core.designsystem.component.ShowMessage
@@ -62,32 +51,27 @@ import com.falcon.tripingly.core.designsystem.component.SkeletonBox
 import com.falcon.tripingly.core.designsystem.component.floatingBottom
 import com.falcon.tripingly.core.designsystem.component.rememberHaptics
 import com.falcon.tripingly.core.designsystem.component.safeSides
-import com.falcon.tripingly.core.designsystem.component.safeTopAndSides
 import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
 import com.falcon.tripingly.core.designsystem.theme.spacing
 import com.falcon.tripingly.core.model.place.GeoBounds
 import com.falcon.tripingly.core.ui.UiText
 import com.falcon.tripingly.feature.map.generated.resources.Res
-import com.falcon.tripingly.feature.map.generated.resources.map_back
 import com.falcon.tripingly.feature.map.generated.resources.map_retry
 import com.falcon.tripingly.feature.map.presentation.component.CameraCommand
 import com.falcon.tripingly.feature.map.presentation.component.GoogleMapView
-import com.falcon.tripingly.feature.map.presentation.component.SelectedPinSize
 import com.falcon.tripingly.feature.map.presentation.component.fittedCamera
-import com.falcon.tripingly.feature.map.presentation.component.stopPinRadius
 import com.falcon.tripingly.feature.map.presentation.map.preview.MapScreenPreviewStates
 import com.falcon.tripingly.feature.map.presentation.map.ui.BottomCards
 import com.falcon.tripingly.feature.map.presentation.map.ui.JoinRequestsPill
 import com.falcon.tripingly.feature.map.presentation.map.ui.MapButtons
 import com.falcon.tripingly.feature.map.presentation.map.ui.MapCredits
 import com.falcon.tripingly.feature.map.presentation.map.ui.MapHeader
-import com.falcon.tripingly.feature.map.presentation.map.ui.PinCard
-import com.falcon.tripingly.feature.map.presentation.map.ui.PlaceCard
+import com.falcon.tripingly.feature.map.presentation.map.ui.MapLoadError
+import com.falcon.tripingly.feature.map.presentation.map.ui.MapPinCards
 import com.falcon.tripingly.feature.map.presentation.map.ui.PlanSheetPeek
 import com.falcon.tripingly.feature.map.presentation.map.ui.PlanSheetValue
 import com.falcon.tripingly.feature.map.presentation.map.ui.RouteBar
 import com.falcon.tripingly.feature.map.presentation.map.ui.SearchResults
-import com.falcon.tripingly.feature.map.presentation.map.ui.StopCard
 import com.falcon.tripingly.feature.map.presentation.map.ui.TripCard
 import com.falcon.tripingly.feature.map.presentation.map.ui.TripCardScrim
 import com.falcon.tripingly.feature.map.presentation.map.ui.animateTripCard
@@ -302,48 +286,15 @@ internal fun MapScreen(
             }
         }
 
-        // The part of the map nothing covers: its middle is where the camera puts a tapped pin (lower in landscape).
-        Box(modifier = Modifier.fillMaxSize().padding(covered)) {
-            PinCard(
-                card = state.placeCard,
-                key = { it.place.id to it.place.location },
-                pinClearance = SelectedPinSize / 2 + MaterialTheme.spacing.small,
-                pinBelowMiddle = pinLowering / 2,
-                modifier = Modifier.onGloballyPositioned { placeCardBounds = it.unclippedBounds() },
-            ) { card ->
-                PlaceCard(
-                    place = card.place,
-                    details = card.details,
-                    address = card.address,
-                    dayNumber = card.addToDayNumber,
-                    onAdd = { onAction(MapAction.PlaceCard.AddToDay) },
-                    onOpenImage = { index -> onAction(MapAction.PlaceCard.OpenImage(index)) },
-                    onOpenPhotos = { onAction(MapAction.PlaceCard.OpenPhotos) },
-                    onOpenDetails = { onAction(MapAction.PlaceCard.OpenDetails) },
-                    routes = card.routes,
-                    onGoHere = { onAction(MapAction.PinRoute.GoHere) },
-                    onRoute = { onAction(MapAction.PinRoute.Route) },
-                )
-            }
-            PinCard(
-                card = state.stopCard,
-                key = { it.stop.id },
-                pinClearance = stopPinRadius(hasCover = state.stopCard?.stop?.coverPhotoId != null) + MaterialTheme.spacing.small,
-                pinBelowMiddle = pinLowering / 2,
-                modifier = Modifier.onGloballyPositioned { stopCardBounds = it.unclippedBounds() },
-            ) { card ->
-                StopCard(
-                    card = card,
-                    onToggleHot = { onAction(MapAction.StopCard.ToggleHot(card.stop.id)) },
-                    onOpenComments = { onAction(MapAction.StopCard.OpenComments) },
-                    onOpenPhotos = { onAction(MapAction.StopCard.OpenPhotos) },
-                    onOpenDetails = { onAction(MapAction.StopCard.OpenDetails) },
-                    onDelete = { onAction(MapAction.Plan.RemoveStop(card.stop.id)) },
-                    onGoHere = { onAction(MapAction.PinRoute.GoHere) },
-                    onRoute = { onAction(MapAction.PinRoute.Route) },
-                )
-            }
-        }
+        MapPinCards(
+            placeCard = state.placeCard,
+            stopCard = state.stopCard,
+            pinBelowMiddle = pinLowering / 2,
+            onAction = onAction,
+            onPlaceCardBounds = { placeCardBounds = it },
+            onStopCardBounds = { stopCardBounds = it },
+            modifier = Modifier.fillMaxSize().padding(covered),
+        )
 
         // Over everything: the dimmed map and the trip card grown out of the title, in the header's place.
         if (isTripCardShown) {
@@ -368,20 +319,6 @@ internal fun MapScreen(
                     .then(panel)
                     .padding(horizontal = MaterialTheme.spacing.medium, vertical = MaterialTheme.spacing.small),
             )
-        }
-    }
-}
-
-/** The trip couldn't load: the error with Retry, and the back button where the header has it. */
-@Composable
-private fun MapLoadError(message: String, onAction: (MapAction) -> Unit) {
-    Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
-        ErrorScreen(onRetry = { onAction(MapAction.Header.Retry) }, message = message, modifier = Modifier.safeDrawingPadding())
-        GlassIconButton(
-            onClick = { onAction(MapAction.Header.Back) },
-            modifier = Modifier.windowInsetsPadding(WindowInsets.safeTopAndSides).padding(MaterialTheme.spacing.medium),
-        ) {
-            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(Res.string.map_back))
         }
     }
 }
@@ -414,12 +351,6 @@ private fun MapScreenLoadErrorPreview() {
         MapScreen(state = MapUiState(loadError = UiText.Server("No internet connection.")), cameraCommands = emptyFlow(), onAction = {})
     }
 }
-
-/**
- * Where a pin card really is. Not boundsInRoot: that cuts off what lies outside its parents, and a card is lifted
- * above the pin, out of its own layout, so touches on its top half counted as touches on the map and closed it.
- */
-private fun LayoutCoordinates.unclippedBounds() = Rect(positionInRoot(), size.toSize())
 
 /** In landscape, the strip at the bottom of the free map whose middle a tapped pin goes to (64 dp up). */
 private val LandscapePinArea = 128.dp
