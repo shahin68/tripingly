@@ -90,6 +90,6 @@ private fun PlaceBannerPreview(@PreviewParameter(PlaceImageStripPreviewStates::c
 @Composable
 private fun PlaceBannerDarkPreview() {
     TripinglyTheme(darkTheme = true) {
-        PlaceBanner("Peterskirche", "Attraction", 0, emptyList(), rememberPagerState { 0 }, onOpen = {}, onOpenPhotos = {}, modifier = Modifier.width(320.dp))
+        PlaceBanner("Peterskirche", "Attraction", PlaceCategory.Attraction, 0, emptyList(), rememberPagerState { 0 }, onOpen = {}, onOpenPhotos = {}, modifier = Modifier.width(320.dp))
     }
 }
