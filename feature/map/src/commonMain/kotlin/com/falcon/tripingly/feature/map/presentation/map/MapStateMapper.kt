@@ -6,6 +6,7 @@ import com.falcon.tripingly.core.location.permission.LocationPermission
 import com.falcon.tripingly.core.model.account.TripVisibility
 import com.falcon.tripingly.core.model.config.AppConfig
 import com.falcon.tripingly.core.model.route.AlongTheWayPlace
+import com.falcon.tripingly.core.model.trip.GeoPoint
 import com.falcon.tripingly.core.model.trip.TripDetails
 import com.falcon.tripingly.core.model.trip.TripMarker
 import com.falcon.tripingly.core.model.trip.TripRole
@@ -26,6 +27,9 @@ import com.falcon.tripingly.feature.map.presentation.map.state.MapModel
 import com.falcon.tripingly.feature.map.presentation.map.state.Selection
 import com.falcon.tripingly.feature.map.presentation.map.state.Sheet
 import com.falcon.tripingly.feature.map.presentation.map.state.activeDayIndex
+import com.falcon.tripingly.feature.map.presentation.map.state.isGoingTo
+import com.falcon.tripingly.feature.map.presentation.map.state.isRouteEnd
+import com.falcon.tripingly.feature.map.presentation.map.state.isRouteTo
 import com.falcon.tripingly.feature.map.presentation.map.state.stopPlaceIds
 import com.falcon.tripingly.feature.map.presentation.map.ui.durationText
 import kotlinx.collections.immutable.ImmutableList
@@ -66,7 +70,7 @@ internal class MapStateMapper(
         search = model.search?.let { SearchState(it.query, it.results.toImmutableList(), it.isSearching) },
         dayTabs = DayTabsState(days.map { day -> DayTab(day.id, day.position + 1, day.date?.let(DateUtils::formatAbbreviated), hasNew = day.markers.any { it.id in model.newStopIds || it.id in model.newCommentStopIds }, canDelete = canEdit && days.size > 1 && canDeleteDay(day.markers)) }.toImmutableList(), activeIndex),
         plan = route.between?.let { PointRouteCardState(it.from, it.to, routeSummary(), it.fromLabel, it.toLabel) } ?: stopsCard(),
-        routeStartName = route.start?.name,
+        routeBar = routeBar(),
         // The card stays open under a sheet, so closing the sheet comes back to it.
         placeCard = placeCard(),
         stopCard = stopCard(),
@@ -165,7 +169,7 @@ internal class MapStateMapper(
         details = selection.details,
         address = selection.address?.address,
         addToDayNumber = dayNumber?.takeIf { canEdit },
-        canRouteTo = route.start != null && route.start.location != selection.place.location,
+        routes = pinRoutes(selection.place.location),
     )
 
     private fun stopCard(): StopCardState? {
@@ -183,7 +187,22 @@ internal class MapStateMapper(
             place = place,
             canEdit = canEdit,
             canReport = role == TripRole.VIEWER,
+            routes = pinRoutes(GeoPoint(stop.position.latitude, stop.position.longitude)),
         )
+    }
+
+    private fun pinRoutes(at: GeoPoint) = PinRoutesState(
+        isGoHereOn = route.isGoingTo(at),
+        hasLocation = model.location.current != null,
+        isRouteTo = route.isRouteTo(at),
+        isRouteOn = route.isRouteEnd(at),
+    )
+
+    /** The from/to bar: a start waiting for where to go, or the route between two points that shows. */
+    private fun routeBar(): RouteBarState? {
+        route.start?.let { return RouteBarState(route.startLabel ?: UiText.Server(it.name), to = null) }
+        val between = route.between ?: return null
+        return RouteBarState(between.fromLabel ?: UiText.Server(between.from.name), between.toLabel ?: UiText.Server(between.to.name))
     }
 
     fun layers(): MapLayersState {
@@ -219,6 +238,7 @@ internal class MapStateMapper(
                 else -> null
             },
             isMyLocationEnabled = model.location.permission == LocationPermission.Granted,
+            routeStart = route.start?.location ?: route.between?.takeUnless { it.isFromMe }?.from?.location,
         )
     }
 

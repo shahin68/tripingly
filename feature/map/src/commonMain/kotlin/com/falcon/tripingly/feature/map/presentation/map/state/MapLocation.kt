@@ -70,6 +70,17 @@ internal class MapLocation(
         }
     }
 
+    /** Go here needs where I am: asks for the permission where it can, and the camera stays where it is. */
+    fun askForRoute() {
+        when (context.model.value.location.permission) {
+            LocationPermission.NotAsked, null -> sendEvent(MapEvent.RequestPermission)
+            LocationPermission.ShouldExplain -> context.update { it.copy(dialog = Dialog.Location(LocationPrompt.Explain)) }
+            LocationPermission.Blocked -> context.update { it.copy(dialog = Dialog.Location(LocationPrompt.OpenSettings)) }
+            // Still finding where I am: the note asks to try again in a moment.
+            LocationPermission.Granted -> Unit
+        }
+    }
+
     fun confirmPrompt() {
         val prompt = (context.model.value.dialog as? Dialog.Location)?.prompt ?: return
         context.update { it.copy(dialog = null) }

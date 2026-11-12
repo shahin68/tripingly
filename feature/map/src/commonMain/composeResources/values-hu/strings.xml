@@ -158,8 +158,12 @@
     <string name="map_along_add">Hozzáadás a(z) %1$d. naphoz</string>
     <string name="map_route_from_here">Útvonal innen</string>
     <string name="map_route_to_here">Útvonal ide</string>
-    <string name="map_route_pick_destination">Most nyisd meg a helyet, ahová menni szeretnél.</string>
-    <string name="map_route_start">Útvonal innen: %1$s</string>
+    <string name="map_route_go_here">Navigálás ide</string>
+    <string name="map_route_my_location">A helyzeted</string>
+    <string name="map_route_need_location">Kapcsold be a helymeghatározást, majd koppints újra a Navigálás ide gombra.</string>
+    <string name="map_route_to_placeholder">Keress, vagy koppints egy tűre</string>
+    <string name="map_route_from">Innen</string>
+    <string name="map_route_to">Ide</string>
     <string name="map_route_between">%1$s → %2$s</string>
     <string name="map_route_close">Útvonal bezárása</string>
     <string name="map_best_order">Legjobb sorrend</string>

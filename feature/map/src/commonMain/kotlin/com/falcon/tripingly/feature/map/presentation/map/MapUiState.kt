@@ -36,11 +36,11 @@ data class MapUiState(
     val dayTabs: DayTabsState = DayTabsState(),
     /** The plan sheet's card: a route from A to B, else the open day's stops; closed while the day has none. */
     val plan: PlanCardState? = null,
-    /** "Route from here" was tapped on this place: the chip that cancels it. */
-    val routeStartName: String? = null,
-    /** The card over the tapped place's pin, once the camera has centered it; away while a sheet is open. */
+    /** Route from was tapped, or a route between two pins or from where I am shows: the header is the from/to bar. */
+    val routeBar: RouteBarState? = null,
+    /** The card over the tapped place's pin, once the camera has centered it; it stays under a sheet. */
     val placeCard: PlaceCardState? = null,
-    /** The card over the tapped stop's pin, once the camera has centered it; away while a sheet is open. */
+    /** The card over the tapped stop's pin, once the camera has centered it; it stays under a sheet. */
     val stopCard: StopCardState? = null,
     val layers: MapLayersState = MapLayersState(),
     val camera: CameraState = CameraState(),
@@ -199,8 +199,7 @@ data class PlaceCardState(
     val address: String?,
     /** The open day "Add" puts the place on; null when this user can't add stops. */
     val addToDayNumber: Int?,
-    /** "Route from here" was tapped on another place, so this one offers "Route to here". */
-    val canRouteTo: Boolean,
+    val routes: PinRoutesState,
 )
 
 /**
@@ -218,7 +217,28 @@ data class StopCardState(
     val canEdit: Boolean,
     /** Someone else's public trip: the stop can be reported (in its details). */
     val canReport: Boolean,
+    val routes: PinRoutesState = PinRoutesState(),
 )
+
+/**
+ * A pin's Go here and Route buttons (Tripinly Pro). [isGoHereOn]: its route from where I am shows. [hasLocation]: where I
+ * am is known, else Go here is dimmed (a tap asks for it). [isRouteTo]: another pin is the start, so Route from says Route
+ * to here. [isRouteOn]: the pin is the start or an end of the route shown. On buttons are blue, like the route.
+ */
+@Immutable
+data class PinRoutesState(
+    val isGoHereOn: Boolean = false,
+    val hasLocation: Boolean = true,
+    val isRouteTo: Boolean = false,
+    val isRouteOn: Boolean = false,
+)
+
+/**
+ * The header while routing between two points: where from ([from]: a stop's title, the place's name or "Your
+ * location") and where to ([to]; null while it's being picked, then the "to" field searches when [search] is open).
+ */
+@Immutable
+data class RouteBarState(val from: UiText, val to: UiText?)
 
 /**
  * Where a new map view starts. Later moves come from [MapViewModel.cameraCommands]; the map reports where it

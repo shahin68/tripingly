@@ -85,6 +85,7 @@ import com.falcon.tripingly.feature.map.presentation.map.ui.PinCard
 import com.falcon.tripingly.feature.map.presentation.map.ui.PlaceCard
 import com.falcon.tripingly.feature.map.presentation.map.ui.PlanSheetPeek
 import com.falcon.tripingly.feature.map.presentation.map.ui.PlanSheetValue
+import com.falcon.tripingly.feature.map.presentation.map.ui.RouteBar
 import com.falcon.tripingly.feature.map.presentation.map.ui.SearchResults
 import com.falcon.tripingly.feature.map.presentation.map.ui.StopCard
 import com.falcon.tripingly.feature.map.presentation.map.ui.TripCard
@@ -225,12 +226,15 @@ internal fun MapScreen(
                 .statusBarsPadding()
                 .then(panel)
         ) {
-            MapHeader(
+            val headerSize = Modifier.onSizeChanged { headerHeight = with(density) { it.height.toDp() } }
+            // Routing between two points, the header is where from and where to.
+            val routeBar = state.routeBar
+            if (routeBar != null) RouteBar(routeBar, state.search, onAction, headerSize) else MapHeader(
                 header = state.header,
                 search = state.search,
                 showDayActions = plan == null,
                 onAction = onAction,
-                modifier = Modifier.onSizeChanged { headerHeight = with(density) { it.height.toDp() } },
+                modifier = headerSize,
                 isTitleHidden = isTripCardShown,
                 onTitleClick = {
                     haptics.tick()
@@ -266,7 +270,6 @@ internal fun MapScreen(
             routeAttribution = state.routeAttribution,
             location = state.location,
             arePlacesHidden = state.arePlacesHidden,
-            routeStartName = state.routeStartName,
             dayTabs = state.dayTabs,
             plan = plan,
             editorMenu = state.header.editorMenu,
@@ -317,8 +320,9 @@ internal fun MapScreen(
                     onOpenImage = { index -> onAction(MapAction.PlaceCard.OpenImage(index)) },
                     onOpenPhotos = { onAction(MapAction.PlaceCard.OpenPhotos) },
                     onOpenDetails = { onAction(MapAction.PlaceCard.OpenDetails) },
-                    onRouteFrom = { onAction(MapAction.PlaceCard.RouteFrom) },
-                    onRouteTo = { onAction(MapAction.PlaceCard.RouteTo) }.takeIf { card.canRouteTo },
+                    routes = card.routes,
+                    onGoHere = { onAction(MapAction.PinRoute.GoHere) },
+                    onRoute = { onAction(MapAction.PinRoute.Route) },
                 )
             }
             PinCard(
@@ -335,6 +339,8 @@ internal fun MapScreen(
                     onOpenPhotos = { onAction(MapAction.StopCard.OpenPhotos) },
                     onOpenDetails = { onAction(MapAction.StopCard.OpenDetails) },
                     onDelete = { onAction(MapAction.Plan.RemoveStop(card.stop.id)) },
+                    onGoHere = { onAction(MapAction.PinRoute.GoHere) },
+                    onRoute = { onAction(MapAction.PinRoute.Route) },
                 )
             }
         }

@@ -37,6 +37,7 @@ import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import com.falcon.tripingly.core.designsystem.component.icon
 import com.falcon.tripingly.core.designsystem.component.rememberHaptics
+import com.falcon.tripingly.core.designsystem.theme.MapColors
 import com.falcon.tripingly.core.designsystem.theme.extendedColors
 import com.falcon.tripingly.core.location.model.Coordinates
 import com.falcon.tripingly.core.model.place.GeoBounds
@@ -431,6 +432,21 @@ actual fun GoogleMapView(
                     )
                 }
             }
+            // A route's start (Route from), ringed in the routes' blue over its pin.
+            layers.routeStart?.let { start ->
+                val ring = remember(density, layoutDirection) {
+                    BitmapDescriptorFactory.fromBitmap(drawRouteStartRing(MapColors.Car, density, layoutDirection).asAndroidBitmap())
+                }
+                key(start) {
+                    Marker(
+                        state = rememberUpdatedMarkerState(position = LatLng(start.lat, start.lng)),
+                        icon = ring,
+                        anchor = Offset(0.5f, 0.5f),
+                        zIndex = ROUTE_START_Z,
+                        onClick = { false },
+                    )
+                }
+            }
             val coverThumbs = rememberCoverThumbs(markers)
             // A stop that comes back on screen while the camera moves isn't drawn by the map until the camera rests
             // (Shahin's recordings, 2026-11-10), so its marker is made anew as it comes back: stops never go missing.
@@ -575,4 +591,7 @@ private val PIN_TAP_SLOP = 4.dp
 
 /** Place pins sit under this, the stops at 1 and the tapped place at 2. */
 private const val PLACE_PINS_Z = 0.5f
+
+/** Over every pin: the ring is hollow, so the pin shows through it. */
+private const val ROUTE_START_Z = 3f
 

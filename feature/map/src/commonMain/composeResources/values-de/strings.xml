@@ -158,8 +158,12 @@
     <string name="map_along_add">Zu Tag %1$d hinzufügen</string>
     <string name="map_route_from_here">Route von hier</string>
     <string name="map_route_to_here">Route hierher</string>
-    <string name="map_route_pick_destination">Öffne jetzt den Ort, zu dem du willst.</string>
-    <string name="map_route_start">Route von %1$s</string>
+    <string name="map_route_go_here">Hierhin</string>
+    <string name="map_route_my_location">Dein Standort</string>
+    <string name="map_route_need_location">Schalte deinen Standort ein und tippe dann noch einmal auf Hierhin.</string>
+    <string name="map_route_to_placeholder">Suchen oder Pin antippen</string>
+    <string name="map_route_from">Von</string>
+    <string name="map_route_to">Nach</string>
     <string name="map_route_between">%1$s → %2$s</string>
     <string name="map_route_close">Route schließen</string>
     <string name="map_best_order">Beste Reihenfolge</string>

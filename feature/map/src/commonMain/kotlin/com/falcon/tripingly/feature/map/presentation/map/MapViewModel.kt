@@ -98,13 +98,14 @@ class MapViewModel(
     private val selection = MapSelection(context, camera, placeRepository)
     private val edits = MapEdits(context, selection, tripRepository, markerRepository, myUserId) { sendEvent(MapEvent.StopAdded) }
     private val pins = MapPins(context, placeRepository, appConfigRepository, computation)
-    private val search = MapSearch(context, camera, selection, placeRepository)
+    private val location = MapLocation(context, camera, getCurrentLocationUseCase, ::sendEvent)
     private val routes = MapRouting(
         context, camera, selection, routeRepository, markerRepository, ::hasRoutes,
+        askForLocation = location::askForRoute,
         showRoutesArePro = { sendEvent(MapEvent.OpenPaywall) },
         showWholePlan = { sendEvent(MapEvent.ShowWholePlan) },
     )
-    private val location = MapLocation(context, camera, getCurrentLocationUseCase, ::sendEvent)
+    private val search = MapSearch(context, camera, selection, placeRepository, routeTo = routes::routeToResult)
     private val sharing = MapSharing(context, tripRepository, socialRepository)
     private val opening = MapOpening(context, camera, tripRepository, mapViews, ::hasRoutes, stopId, showMembers, showComments)
     private val joinRequests = MapJoinRequests(context, tripRepository)
@@ -135,6 +136,9 @@ class MapViewModel(
             is MapAction.Sheet -> onSheet(action)
             is MapAction.Dialog -> onDialog(action)
             is MapAction.Message -> onMessage(action)
+            is MapAction.PinRoute.GoHere -> routes.goHere()
+            is MapAction.PinRoute.Route -> routes.onRouteButton()
+            is MapAction.PinRoute.Close -> routes.closeRouteBar()
         }
     }
 
@@ -212,7 +216,6 @@ class MapViewModel(
             is MapAction.Plan.AlongTheWayClick -> selection.openPlace(action.place)
             is MapAction.Plan.AddAlongTheWay -> routes.addAlongTheWay(action.place)
             is MapAction.Plan.ClosePointRoute -> routes.closePointRoute()
-            is MapAction.Plan.CancelRouteStart -> routes.cancelRouteStart()
         }
     }
 
@@ -232,8 +235,6 @@ class MapViewModel(
             // Not for an address from search: it isn't one of our places yet.
             is MapAction.PlaceCard.OpenPhotos -> selection.selectedPlace?.takeIf { it.address == null }?.let { openSheet(Sheet.PlacePhotos(it.place)) }
             is MapAction.PlaceCard.OpenImage -> selection.openPlaceImage(action.index)
-            is MapAction.PlaceCard.RouteFrom -> routes.startPointRoute()
-            is MapAction.PlaceCard.RouteTo -> routes.showPointRoute()
             is MapAction.PlaceCard.OpenDetails -> if (selection.selectedPlace != null) openSheet(Sheet.Details())
         }
     }

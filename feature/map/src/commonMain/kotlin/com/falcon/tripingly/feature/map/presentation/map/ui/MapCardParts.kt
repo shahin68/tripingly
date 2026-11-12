@@ -21,9 +21,12 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.Comment
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material.icons.outlined.Directions
 import androidx.compose.material.icons.outlined.ExpandMore
+import androidx.compose.material.icons.outlined.Flag
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.LocationOn
+import androidx.compose.material.icons.outlined.NearMe
 import androidx.compose.material.icons.outlined.LocalFireDepartment
 import androidx.compose.material.icons.outlined.PhotoLibrary
 import androidx.compose.material3.Icon
@@ -43,14 +46,20 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.falcon.tripingly.core.designsystem.component.CountLabel
 import com.falcon.tripingly.core.designsystem.component.JoinedButton
+import com.falcon.tripingly.core.designsystem.component.JoinedButtonColors
 import com.falcon.tripingly.core.designsystem.component.JoinedButtonDefaults
 import com.falcon.tripingly.core.designsystem.component.JoinedButtonSlot
 import com.falcon.tripingly.core.designsystem.component.JoinedButtons
+import com.falcon.tripingly.core.designsystem.theme.MapColors
 import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
 import com.falcon.tripingly.core.designsystem.theme.spacing
 import com.falcon.tripingly.feature.map.generated.resources.Res
 import com.falcon.tripingly.feature.map.generated.resources.map_card_delete
 import com.falcon.tripingly.feature.map.generated.resources.map_card_details
+import com.falcon.tripingly.feature.map.generated.resources.map_route_from_here
+import com.falcon.tripingly.feature.map.generated.resources.map_route_go_here
+import com.falcon.tripingly.feature.map.generated.resources.map_route_to_here
+import com.falcon.tripingly.feature.map.presentation.map.PinRoutesState
 import org.jetbrains.compose.resources.stringResource
 
 /*
@@ -110,6 +119,27 @@ internal fun pinAction(onDelete: (() -> Unit)?, onAdd: (() -> Unit)?, addLabel: 
     onDelete != null -> { shape -> JoinedButton(Icons.Outlined.Delete, stringResource(Res.string.map_card_delete), shape, onClick = onDelete, colors = JoinedButtonDefaults.destructive()) }
     onAdd != null -> { shape -> JoinedButton(Icons.Outlined.Add, addLabel, shape, onClick = onAdd, colors = JoinedButtonDefaults.accent()) }
     else -> null
+}
+
+/**
+ * Go here (dimmed until where I am is known; a tap then asks for it) and Route from, or Route to here while another pin
+ * is the start. Each turns blue, the routes' colour, while its route shows (Tripinly Pro; the paywall otherwise).
+ */
+@Composable
+internal fun routeButtons(routes: PinRoutesState, onGoHere: () -> Unit, onRoute: () -> Unit): List<JoinedButtonSlot> {
+    val goHere = stringResource(Res.string.map_route_go_here)
+    val route = stringResource(if (routes.isRouteTo) Res.string.map_route_to_here else Res.string.map_route_from_here)
+    val neutral = JoinedButtonDefaults.neutral()
+    val on = JoinedButtonColors(MapColors.Car.copy(alpha = ROUTE_TINT), MapColors.Car)
+    val goHereColors = when {
+        routes.isGoHereOn -> on
+        routes.hasLocation -> neutral
+        else -> neutral.copy(content = neutral.content.copy(alpha = DIMMED_ALPHA))
+    }
+    return listOf<JoinedButtonSlot>(
+        { shape -> JoinedButton(Icons.Outlined.NearMe, goHere, shape, onClick = onGoHere, colors = goHereColors) },
+        { shape -> JoinedButton(if (routes.isRouteTo) Icons.Outlined.Flag else Icons.Outlined.Directions, route, shape, onClick = onRoute, colors = if (routes.isRouteOn) on else neutral) },
+    )
 }
 
 /**
@@ -180,6 +210,8 @@ private val BannerInset = 14.dp
 private val BannerButtonInset = 8.dp
 private val PinIconSize = 28.dp
 private val BannerButtonColor = Color.White.copy(alpha = 0.26f)
+private const val ROUTE_TINT = 0.18f
+private const val DIMMED_ALPHA = 0.38f
 
 @Composable
 private fun MapCardPartsPreviewContent() {

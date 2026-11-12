@@ -11,6 +11,7 @@ import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.CanvasDrawScope
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.graphics.painter.Painter
@@ -266,6 +267,28 @@ fun drawClusterPin(
     }
     return bitmap
 }
+
+/**
+ * Draws the ring around a route's start (Route from): a [color] ring, white inside and out so it shows on any map,
+ * wide enough to go round the biggest pin.
+ */
+fun drawRouteStartRing(color: Color, density: Density, layoutDirection: LayoutDirection): ImageBitmap {
+    val diameter = with(density) { ROUTE_START_RING.toPx() }
+    val stroke = with(density) { ROUTE_START_STROKE.toPx() }
+    val edge = with(density) { ROUTE_START_EDGE.toPx() }
+    val px = ceil(diameter).toInt()
+    val bitmap = ImageBitmap(px, px)
+    CanvasDrawScope().draw(density, layoutDirection, Canvas(bitmap), Size(px.toFloat(), px.toFloat())) {
+        val ring = (diameter - stroke) / 2 - edge
+        drawCircle(Color.White, radius = ring, style = Stroke(stroke + edge * 2))
+        drawCircle(color, radius = ring, style = Stroke(stroke))
+    }
+    return bitmap
+}
+
+private val ROUTE_START_RING = 64.dp
+private val ROUTE_START_STROKE = 3.dp
+private val ROUTE_START_EDGE = 1.5.dp
 
 private val CLUSTER_RADIUS = 18.dp
 private val CLUSTER_PADDING = 8.dp

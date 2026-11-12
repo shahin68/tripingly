@@ -2,6 +2,7 @@ package com.falcon.tripingly.feature.map.presentation.map.ui
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -47,6 +48,7 @@ import com.falcon.tripingly.feature.map.generated.resources.map_place_added_by
 import com.falcon.tripingly.feature.map.generated.resources.map_place_opening_hours
 import com.falcon.tripingly.feature.map.generated.resources.map_stop_report
 import com.falcon.tripingly.feature.map.presentation.map.MapAction
+import com.falcon.tripingly.feature.map.presentation.map.PinRoutesState
 import com.falcon.tripingly.feature.map.presentation.map.PlaceCardState
 import com.falcon.tripingly.feature.map.presentation.map.StopCardState
 import com.falcon.tripingly.feature.map.presentation.map.preview.previewCafe
@@ -71,7 +73,11 @@ internal fun StopDetailsContent(card: StopCardState, onAction: (MapAction) -> Un
         subtitle = stopSubtitle(card),
         action = pinAction(onDelete = { onAction(MapAction.Plan.RemoveStop(stop.id)) }.takeIf { stop.canDelete }, onAdd = null),
         onClose = onClose,
-        buttons = { JoinedButtons(stopButtons(stop, { onAction(MapAction.StopCard.ToggleHot(stop.id)) }, { onAction(MapAction.StopCard.OpenComments) }, showPhotos)) },
+        buttons = {
+            val group = stopButtons(stop, { onAction(MapAction.StopCard.ToggleHot(stop.id)) }, { onAction(MapAction.StopCard.OpenComments) }, showPhotos) +
+                routeButtons(card.routes, { onAction(MapAction.PinRoute.GoHere) }, { onAction(MapAction.PinRoute.Route) })
+            JoinedButtons(group, Modifier.horizontalScroll(rememberScrollState()))
+        },
         photoStrip = photoStrip,
     ) {
         PlaceFacts(card.place)
@@ -104,9 +110,11 @@ internal fun PlaceDetailsContent(card: PlaceCardState, onAction: (MapAction) -> 
                 placeButtons(
                     hasPhotos = card.address == null,
                     onOpenPhotos = { onAction(MapAction.Sheet.ShowDetailsPhotos(true)) },
-                    onRouteFrom = { onAction(MapAction.PlaceCard.RouteFrom) },
-                    onRouteTo = { onAction(MapAction.PlaceCard.RouteTo) }.takeIf { card.canRouteTo },
+                    routes = card.routes,
+                    onGoHere = { onAction(MapAction.PinRoute.GoHere) },
+                    onRoute = { onAction(MapAction.PinRoute.Route) },
                 ),
+                Modifier.horizontalScroll(rememberScrollState()),
             )
         },
         photoStrip = photoStrip,
@@ -190,7 +198,7 @@ private fun PinDetailsPreviewContent() {
             photoStrip = { Text("Photos") },
         )
         PlaceDetailsContent(
-            card = PlaceCardState(previewCafe, previewPlaceDetails.copy(isFromOsm = true), address = null, addToDayNumber = 2, canRouteTo = false),
+            card = PlaceCardState(previewCafe, previewPlaceDetails.copy(isFromOsm = true), address = null, addToDayNumber = 2, routes = PinRoutesState(isRouteOn = true)),
             onAction = {},
             onClose = {},
             photoStrip = {},

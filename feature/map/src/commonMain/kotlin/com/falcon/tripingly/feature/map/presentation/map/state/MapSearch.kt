@@ -13,12 +13,15 @@ import kotlinx.coroutines.launch
 /**
  * The search in the header, like the destination search: asks the server once typing pauses, ranked near the
  * map's center. One of our places or an address opens its card; a city or larger area only moves the map there.
+ * While a route's start is picked it is the header's "to" field, and a result is where the route goes.
  */
 internal class MapSearch(
     private val context: MapContext,
     private val camera: MapCamera,
     private val selection: MapSelection,
     private val placeRepository: PlaceRepository,
+    /** While a route's start is picked, a result is where to go. */
+    private val routeTo: (PlaceSearchResult) -> Unit,
 ) {
     private var searchJob: Job? = null
 
@@ -46,6 +49,7 @@ internal class MapSearch(
 
     fun onResultClick(result: PlaceSearchResult) {
         close()
+        if (context.model.value.route.start != null) return routeTo(result)
         when {
             result.place != null -> selection.openPlace(result.place!!, result.type.zoom())
             result.type in ADDRESS_TYPES -> selection.openAddress(result)

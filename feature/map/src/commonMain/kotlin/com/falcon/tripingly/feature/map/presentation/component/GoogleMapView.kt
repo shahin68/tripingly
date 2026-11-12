@@ -18,6 +18,7 @@ import kotlin.math.min
 import kotlin.math.pow
 import kotlin.math.sinh
 import kotlin.math.tan
+import com.falcon.tripingly.core.model.trip.GeoPoint
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.coroutines.flow.Flow
@@ -75,6 +76,8 @@ data class MapLayersState(
     /** A real route, or the day's stops joined in order; null for none. */
     val line: MapLine? = null,
     val isMyLocationEnabled: Boolean = false,
+    /** The start of a route picked with Route from (or of the route it became): ringed in the route's blue. */
+    val routeStart: GeoPoint? = null,
 )
 
 /** Room kept free around the points of a fit, inside the content padding. */
