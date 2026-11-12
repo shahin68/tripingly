@@ -38,6 +38,8 @@ expect fun GoogleMapView(
     layers: MapLayersState,
     /** The camera's center, zoom and visible area (null while the map can't tell yet). */
     onCameraMove: (Coordinates, Float, GeoBounds?) -> Unit,
+    /** The area the whole view shows and the zoom, every frame while the camera moves: keep it cheap. */
+    onCameraMoving: (GeoBounds, Float) -> Unit,
     /**
      * A finger touched the map: a tap, a long press, or a drag or pinch starting, reported before the
      * click. Only iOS calls it: Compose doesn't see touches on the iOS map view, while on Android they
@@ -50,6 +52,8 @@ expect fun GoogleMapView(
     onClusterClick: (PlaceCluster) -> Unit,
     onMapLongClick: (Coordinates) -> Unit,
     onMarkerClick: (MapMarker) -> Unit,
+    /** A stop's or a place's pin was held, pulled onto another pin and let go there: a route from one to the other. */
+    onPinDrop: (from: PinEnd, to: PinEnd) -> Unit,
 )
 
 /** What the map draws. */

@@ -25,8 +25,11 @@ internal actual val mapPlatformModule: Module = module {
 private object NoListener : GoogleMapListener {
     override fun onCameraIdle(latitude: Double, longitude: Double, zoom: Float, south: Double, west: Double, north: Double, east: Double) = Unit
     override fun onGestureStart() = Unit
-    override fun onZoomChange(zoom: Float) = Unit
+    override fun onCameraChange(zoom: Float, south: Double, west: Double, north: Double, east: Double) = Unit
     override fun onTap(latitude: Double, longitude: Double) = Unit
-    override fun onLongPress(latitude: Double, longitude: Double) = Unit
+    override fun onLongPress(latitude: Double, longitude: Double, x: Double, y: Double) = false
     override fun onMarkerTap(key: String) = Unit
+    override fun onPinTap(x: Double, y: Double) = false
+    override fun onPinHoldMove(x: Double, y: Double) = Unit
+    override fun onPinHoldEnd() = Unit
 }

@@ -38,6 +38,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
 import kotlinx.datetime.LocalDate
 import org.junit.runner.RunWith
@@ -90,6 +91,7 @@ class MapFlowTest {
             },
         ),
         newActivityRepository = FakeNewActivityRepository(),
+        computation = Dispatchers.Unconfined,
     )
 
     private fun dayOneStops() = runBlocking {

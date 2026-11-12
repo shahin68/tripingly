@@ -118,7 +118,8 @@ internal data class RouteModel(
 )
 
 /** A route from one place to another. */
-internal data class PointRoute(val from: MapPlace, val to: MapPlace)
+/** A route between two places; a stop's end carries its stop's title ([fromLabel], [toLabel]) for the card. */
+internal data class PointRoute(val from: MapPlace, val to: MapPlace, val fromLabel: UiText? = null, val toLabel: UiText? = null)
 
 internal data class LocationModel(
     /** Null until the screen has read it. */

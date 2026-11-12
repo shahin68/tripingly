@@ -209,12 +209,14 @@ internal fun MapScreen(
                 contentPadding = cameraPadding,
                 layers = state.layers,
                 onCameraMove = { coords, zoom, bounds -> onAction(MapAction.MapView.CameraRest(coords, zoom, bounds)) },
+                onCameraMoving = { bounds, zoom -> onAction(MapAction.MapView.CameraMoving(bounds, zoom)) },
                 onMapTouch = { onAction(MapAction.MapView.ScreenTouch) },
                 onMapClick = { coords -> onAction(MapAction.MapView.Click(coords)) },
                 onPlacePinClick = { place -> onAction(MapAction.MapView.PlacePinClick(place)) },
                 onClusterClick = { cluster -> onAction(MapAction.MapView.ClusterClick(cluster)) },
                 onMapLongClick = { coords -> onAction(MapAction.MapView.LongClick(coords)) },
                 onMarkerClick = { marker -> onAction(MapAction.MapView.MarkerClick(marker)) },
+                onPinDrop = { from, to -> onAction(MapAction.MapView.PinDrop(from, to)) },
             )
         }
 

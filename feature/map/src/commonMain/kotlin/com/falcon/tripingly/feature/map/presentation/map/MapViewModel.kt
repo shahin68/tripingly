@@ -42,6 +42,7 @@ import com.falcon.tripingly.feature.map.presentation.map.state.MapSelection
 import com.falcon.tripingly.feature.map.presentation.map.state.MapSharing
 import com.falcon.tripingly.feature.map.presentation.map.state.Sheet
 import com.falcon.tripingly.feature.map.presentation.map.state.activeDayIndex
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
@@ -78,6 +79,8 @@ class MapViewModel(
     sessionRepository: SessionRepository,
     getCurrentLocationUseCase: GetCurrentLocationUseCase,
     newActivityRepository: NewActivityRepository,
+    /** Where heavier work runs off the main thread: the place pins, worked out while the camera moves. */
+    computation: CoroutineDispatcher,
 ) : ViewModel() {
 
     private val session = sessionRepository.session
@@ -98,7 +101,7 @@ class MapViewModel(
 
     private val selection = MapSelection(context, camera, placeRepository)
     private val edits = MapEdits(context, selection, tripRepository, markerRepository, myUserId) { sendEvent(MapEvent.StopAdded) }
-    private val pins = MapPins(context, placeRepository, appConfigRepository)
+    private val pins = MapPins(context, placeRepository, appConfigRepository, computation)
     private val search = MapSearch(context, camera, selection, placeRepository)
     private val routes = MapRouting(
         context, camera, selection, routeRepository, markerRepository, ::hasRoutes,
@@ -149,7 +152,9 @@ class MapViewModel(
                 camera.zoom + CLUSTER_ZOOM_STEP,
             )
             is MapAction.MapView.MarkerClick -> selection.selectMarker(action.marker)
+            is MapAction.MapView.PinDrop -> routes.routeBetweenPins(action.from, action.to)
             is MapAction.MapView.CameraRest -> onCameraRest(action)
+            is MapAction.MapView.CameraMoving -> pins.onCameraMoving(action.bounds, action.zoom)
             is MapAction.MapView.ScreenTouch -> selection.onScreenTouch()
         }
     }

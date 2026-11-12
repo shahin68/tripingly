@@ -85,7 +85,8 @@ val generateApiModels = tasks.named<GenerateTask>("openApiGenerate") {
 
 tasks.withType<KotlinCompilationTask<*>>().configureEach { dependsOn(generateApiModels) }
 // KSP (Ktorfit) reads the API interfaces, which use the generated models.
-tasks.matching { it.name.startsWith("ksp") || it.name.endsWith("SourcesJar", ignoreCase = true) }.configureEach {
+// The release build's ART profile step looks for baselineProfiles next to every source folder, the generated one too.
+tasks.matching { it.name.startsWith("ksp") || it.name.endsWith("SourcesJar", ignoreCase = true) || it.name.endsWith("ArtProfile") }.configureEach {
     dependsOn(generateApiModels)
 }
 

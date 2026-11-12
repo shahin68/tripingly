@@ -63,6 +63,7 @@ import com.falcon.tripingly.core.model.trip.TripMapView
 import com.falcon.tripingly.core.model.trip.TripRole
 import com.falcon.tripingly.core.model.trip.UserSummary
 import com.falcon.tripingly.core.ui.UiText
+import com.falcon.tripingly.feature.map.presentation.map.state.withPinMargin
 import com.falcon.tripingly.feature.map.generated.resources.Res
 import com.falcon.tripingly.feature.map.generated.resources.error_location_denied_manual
 import com.falcon.tripingly.feature.map.generated.resources.error_location_permission_required
@@ -75,6 +76,7 @@ import com.falcon.tripingly.feature.map.generated.resources.map_join_requested
 import com.falcon.tripingly.feature.map.generated.resources.map_my_content_removed
 import com.falcon.tripingly.feature.map.presentation.FakeTripMapViewRepository
 import com.falcon.tripingly.feature.map.presentation.component.CameraCommand
+import com.falcon.tripingly.feature.map.presentation.component.PinEnd
 import com.falcon.tripingly.feature.map.presentation.component.PinSizes
 import com.falcon.tripingly.feature.map.presentation.component.routeLine
 import com.falcon.tripingly.feature.map.presentation.component.stopPathShape
@@ -245,6 +247,7 @@ class MapViewModelTest {
         sessionRepository = session,
         getCurrentLocationUseCase = GetCurrentLocationUseCase(fakeLocationRepository),
         newActivityRepository = newActivity,
+        computation = testDispatcher,
     ).also { viewModel -> backgroundScope.launch { viewModel.uiState.collect {} } }
 
     /** The place of the pin named [name] on the map. */
@@ -790,7 +793,7 @@ class MapViewModelTest {
     }
 
     @Test
-    fun `a tap on Route shows the whole plan, on and off, and without Pro opens the paywall`() = runTest(testDispatcher) {
+    fun `a tap on Route shows the whole plan when it comes on, not when it goes off, and without Pro opens the paywall`() = runTest(testDispatcher) {
         backend.addMarker(trip.trip.id, trip.days[0].id, NewMarker("Stop #1", GeoPoint(48.85, 2.35)))
         backend.addMarker(trip.trip.id, trip.days[0].id, NewMarker("Stop #2", GeoPoint(41.9, 12.49)))
         val viewModel = viewModel()
@@ -801,7 +804,7 @@ class MapViewModelTest {
             assertEquals(MapEvent.ShowWholePlan, awaitItem())
             viewModel.onAction(MapAction.Plan.ToggleRoute)
             testScheduler.advanceUntilIdle()
-            assertEquals(MapEvent.ShowWholePlan, awaitItem())
+            expectNoEvents()
         }
 
         session = signedIn(entitlements = emptySet())
@@ -1285,11 +1288,24 @@ class MapViewModelTest {
         testScheduler.advanceTimeBy(100)
         viewModel.onAction(MapAction.MapView.CameraRest(Coordinates(48.86, 2.32), 15.6f, PARIS_CENTER))
         testScheduler.advanceTimeBy(299)
-        assertEquals(listOf(PlaceSquare.covering(elsewhere, 15), PlaceSquare.covering(PARIS_CENTER, 15)), places.requests)
+        assertEquals(listOf(PlaceSquare.covering(elsewhere.withPinMargin(), 15), PlaceSquare.covering(PARIS_CENTER.withPinMargin(), 15)), places.requests)
 
         testScheduler.advanceUntilIdle()
-        assertEquals(PlaceSquare.covering(PARIS_CENTER, 15, ring = 1), places.requests.last())
+        assertEquals(PlaceSquare.covering(PARIS_CENTER.withPinMargin(), 15, ring = 1), places.requests.last())
         assertEquals(3, places.requests.size)
+    }
+
+    @Test
+    fun `while the camera moves its squares load and pins show, without waiting for it to rest`() = runTest(testDispatcher) {
+        val viewModel = viewModel()
+        testScheduler.advanceUntilIdle()
+
+        viewModel.onAction(MapAction.MapView.CameraMoving(PARIS_CENTER, 15f))
+        testScheduler.advanceUntilIdle()
+
+        // Only the view's squares: the ring around them waits for the camera to rest.
+        assertEquals(listOf(PlaceSquare.covering(PARIS_CENTER.withPinMargin(), 15)), places.requests)
+        assertTrue(viewModel.uiState.value.layers.placePins.isNotEmpty())
     }
 
     @Test
@@ -1491,7 +1507,7 @@ class MapViewModelTest {
 
         val pins = viewModel.uiState.value.layers.placePins
         assertTrue(pins.isNotEmpty())
-        assertTrue(pins.all { it.place.location in PARIS_CENTER })
+        assertTrue(pins.all { it.place.location in PARIS_CENTER.withPinMargin() })
         assertEquals(PinSizes[2], pins.single { it.place.name == "Louvre" }.size)
     }
 
@@ -1519,8 +1535,8 @@ class MapViewModelTest {
         // Shown again: the view the camera rests on loads.
         viewModel.onAction(MapAction.Days.TogglePlaces)
         testScheduler.advanceUntilIdle()
-        assertEquals(PlaceSquare.covering(elsewhere, 15), places.requests[requests])
-        assertTrue(viewModel.uiState.value.layers.placePins.all { it.place.location in elsewhere })
+        assertEquals(PlaceSquare.covering(elsewhere.withPinMargin(), 15), places.requests[requests])
+        assertTrue(viewModel.uiState.value.layers.placePins.all { it.place.location in elsewhere.withPinMargin() })
     }
 
     @Test
@@ -1788,6 +1804,58 @@ class MapViewModelTest {
             assertNull(viewModel.uiState.value.routeStartName)
             assertTrue(routes.dayRoutes.isEmpty() && routes.pointRoutes.isEmpty())
         }
+    }
+
+    @Test
+    fun `a stop pulled onto a place routes from the stop to the place, titled by the stop`() = runTest(testDispatcher) {
+        addStops(GeoPoint(48.2085, 16.3731), GeoPoint(48.2104, 16.3655))
+        val viewModel = viewModel()
+        testScheduler.advanceUntilIdle()
+        val stop = viewModel.uiState.value.layers.stops.first()
+        val to = MapPlace("b", "Prater", PlaceCategory.Park, GeoPoint(48.2166, 16.3958), isTripinly = false, hotCount = 0, prominence = 80)
+
+        viewModel.cameraCommands.test {
+            viewModel.onAction(MapAction.MapView.PinDrop(PinEnd.Stop(stop), PinEnd.Place(to)))
+            testScheduler.advanceUntilIdle()
+            assertEquals(CameraCommand.fit(listOf(Coordinates(48.2085, 16.3731), Coordinates(48.2166, 16.3958))), expectMostRecentItem())
+        }
+        val card = assertNotNull(viewModel.uiState.value.pointRouteCard)
+        assertEquals(stop.title, card.fromLabel)
+        assertNull(card.toLabel)
+        assertEquals(to, card.to)
+        assertEquals(listOf(GeoPoint(48.2085, 16.3731) to to.location), routes.pointRoutes)
+    }
+
+    @Test
+    fun `a stop pulled onto another stop routes between them`() = runTest(testDispatcher) {
+        addStops(GeoPoint(48.2085, 16.3731), GeoPoint(48.2104, 16.3655), GeoPoint(48.2166, 16.3958))
+        val viewModel = viewModel()
+        testScheduler.advanceUntilIdle()
+        val (first, _, third) = viewModel.uiState.value.layers.stops
+
+        viewModel.onAction(MapAction.MapView.PinDrop(PinEnd.Stop(third), PinEnd.Stop(first)))
+        testScheduler.advanceUntilIdle()
+
+        val card = assertNotNull(viewModel.uiState.value.pointRouteCard)
+        assertEquals(third.title to first.title, card.fromLabel to card.toLabel)
+        assertEquals(listOf(GeoPoint(48.2166, 16.3958) to GeoPoint(48.2085, 16.3731)), routes.pointRoutes)
+    }
+
+    @Test
+    fun `a free user's pin drop opens the paywall`() = runTest(testDispatcher) {
+        session = signedIn(entitlements = emptySet())
+        addStops(GeoPoint(48.2085, 16.3731), GeoPoint(48.2104, 16.3655))
+        val viewModel = viewModel()
+        testScheduler.advanceUntilIdle()
+        val (first, second) = viewModel.uiState.value.layers.stops
+
+        viewModel.events.test {
+            viewModel.onAction(MapAction.MapView.PinDrop(PinEnd.Stop(first), PinEnd.Stop(second)))
+            testScheduler.advanceUntilIdle()
+            assertEquals(MapEvent.OpenPaywall, awaitItem())
+        }
+        assertNull(viewModel.uiState.value.pointRouteCard)
+        assertTrue(routes.pointRoutes.isEmpty())
     }
 
     @Test

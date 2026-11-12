@@ -47,10 +47,23 @@ interface GoogleMap {
 
     /** Replaces the streak running along the line, on top of it; fewer than two points draw none. */
     fun setLineSweep(points: List<GoogleMapPoint>, color: UIColor, width: Double)
+
+    /** Where a point is on the view now, in points from its top left. */
+    fun screenPoint(latitude: Double, longitude: Double): GoogleMapScreenPoint
+
+    /**
+     * Pans the camera at this speed, points per second (right and down for positive values), moving it on each of the
+     * map's own display frames so it stays smooth; zero stops it.
+     */
+    fun setPanVelocity(dx: Double, dy: Double)
 }
 
 @ObjCName("GoogleMapPoint", exact = true)
 class GoogleMapPoint(val latitude: Double, val longitude: Double)
+
+/** A point on the map view, in points from its top left. */
+@ObjCName("GoogleMapScreenPoint", exact = true)
+class GoogleMapScreenPoint(val x: Double, val y: Double)
 
 /** [bearing] in degrees clockwise from north. */
 @ObjCName("GoogleMapArrow", exact = true)
@@ -81,12 +94,25 @@ interface GoogleMapListener {
     /** A finger started moving the camera. */
     fun onGestureStart()
 
-    /** The camera's zoom while it moves, every frame: keep it cheap. */
-    fun onZoomChange(zoom: Float)
+    /** The camera's zoom and the area the whole view shows while it moves, every frame: keep it cheap. */
+    fun onCameraChange(zoom: Float, south: Double, west: Double, north: Double, east: Double)
 
     fun onTap(latitude: Double, longitude: Double)
 
-    fun onLongPress(latitude: Double, longitude: Double)
+    /**
+     * A long press at this point on the map, and at [x], [y] on the view (points). True when it was on a pin, which is
+     * then held: the map's own gestures stop until [onPinHoldEnd], and [onPinHoldMove] reports the finger.
+     */
+    fun onLongPress(latitude: Double, longitude: Double, x: Double, y: Double): Boolean
 
     fun onMarkerTap(key: String)
+
+    /** A quick tap at [x], [y] on the view (points), as the finger lifted. True when it was on a pin, which opened. */
+    fun onPinTap(x: Double, y: Double): Boolean
+
+    /** The finger holding a pin moved to [x], [y] on the view (points). */
+    fun onPinHoldMove(x: Double, y: Double)
+
+    /** The finger holding a pin was lifted. */
+    fun onPinHoldEnd()
 }

@@ -21,12 +21,14 @@ actual fun GoogleMapView(
     contentPadding: PaddingValues,
     layers: MapLayersState,
     onCameraMove: (Coordinates, Float, GeoBounds?) -> Unit,
+    onCameraMoving: (GeoBounds, Float) -> Unit,
     onMapTouch: () -> Unit,
     onMapClick: (Coordinates) -> Unit,
     onPlacePinClick: (MapPlace) -> Unit,
     onClusterClick: (PlaceCluster) -> Unit,
     onMapLongClick: (Coordinates) -> Unit,
     onMarkerClick: (MapMarker) -> Unit,
+    onPinDrop: (from: PinEnd, to: PinEnd) -> Unit,
 ) {
     val koin = getKoin()
     val googleMaps = remember(koin) { koin.getOrNull<GoogleMapsSdk>() }
@@ -46,12 +48,14 @@ actual fun GoogleMapView(
             line = layers.line,
             isMyLocationEnabled = layers.isMyLocationEnabled,
             onCameraMove = onCameraMove,
+            onCameraMoving = onCameraMoving,
             onMapTouch = onMapTouch,
             onMapClick = onMapClick,
             onPlacePinClick = onPlacePinClick,
             onClusterClick = onClusterClick,
             onMapLongClick = onMapLongClick,
             onMarkerClick = onMarkerClick,
+            onPinDrop = onPinDrop,
         )
     } else {
         AppleMapView(
