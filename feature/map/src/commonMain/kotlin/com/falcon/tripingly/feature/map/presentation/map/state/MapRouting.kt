@@ -63,7 +63,7 @@ internal class MapRouting(
         // One route at a time: the day's replaces a route between two pins, and a start picked waits no more.
         context.update {
             it.copy(
-                route = if (isShown) it.route.copy(isDayRouteShown = false) else it.route.copy(isDayRouteShown = true, isAnimated = true, start = null, startLabel = null, between = null),
+                route = if (isShown) it.route.copy(isDayRouteShown = false, isAnimated = true) else it.route.copy(isDayRouteShown = true, isAnimated = true, start = null, startLabel = null, between = null),
                 search = if (isShown || it.route.start == null) it.search else null,
             )
         }
