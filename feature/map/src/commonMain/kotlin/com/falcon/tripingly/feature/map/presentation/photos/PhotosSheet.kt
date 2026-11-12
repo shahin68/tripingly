@@ -64,7 +64,7 @@ import org.koin.core.parameter.parametersOf
  * The photos of a stop or a place ([owner], named [title]) in a sheet over the map. [canAdd]: may add photos
  * (a stop's owners and editors; anyone on a place). [canManage]: a stop's owners and editors, who pick the
  * cover ([coverPhotoId]) and delete any photo; everyone else deletes only their own. [onReport] reports the
- * photo open in the viewer. [onBack]: switched from the details sheet, the header has a back arrow and no ✕.
+ * photo open in the viewer.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -76,7 +76,6 @@ fun PhotosRoute(
     coverPhotoId: String?,
     onReport: (Photo) -> Unit,
     onDismiss: () -> Unit,
-    onBack: (() -> Unit)? = null,
     viewModel: PhotosViewModel = koinViewModel(key = "photos:$owner") { parametersOf(owner) },
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -93,7 +92,6 @@ fun PhotosRoute(
             onAddPhotos = pickPhotos,
             onAction = viewModel::onAction,
             onClose = onDismiss,
-            onBack = onBack,
         )
         MessageBannerHost(Modifier.align(Alignment.TopCenter))
     }
@@ -133,7 +131,7 @@ internal fun DeletePhotoDialog(onAction: (Action) -> Unit) {
 
 /**
  * The sheet's content: the header with the camera and Add (where photos can be added), then the uploads and photos in a
- * grid. [onBack]: a back arrow instead of the ✕.
+ * grid.
  */
 @Composable
 fun PhotosScreen(
@@ -147,7 +145,6 @@ fun PhotosScreen(
     onAction: (Action) -> Unit,
     onClose: () -> Unit,
     modifier: Modifier = Modifier,
-    onBack: (() -> Unit)? = null,
 ) {
     ShowMessage(message = state.message?.asString(), onShown = { onAction(Action.OnDismissMessage) }, isError = state.message !is UiText.Note)
     // A click when one of my photos finishes uploading: it leaves the uploads without having failed.
@@ -163,8 +160,7 @@ fun PhotosScreen(
         SheetHeader(
             title = title,
             subtitle = subtitle,
-            onClose = onClose.takeIf { onBack == null },
-            onBack = onBack,
+            onClose = onClose,
             actions = {
                 if (canAdd) {
                     FilledTonalIconButton(onClick = { onAction(Action.OnOpenCamera) }) {
@@ -260,7 +256,6 @@ private fun PhotosScreenLandscapePreview() {
             state = PhotosPreviewStates().values.first(),
             title = "Photos",
             subtitle = "A very long place name that doesn't fit on one line of the gallery",
-            onBack = {},
             canAdd = false,
             canManage = false,
             coverPhotoId = null,

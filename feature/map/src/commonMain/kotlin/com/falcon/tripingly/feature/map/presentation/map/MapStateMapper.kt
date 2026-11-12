@@ -230,8 +230,8 @@ internal class MapStateMapper(
         is Sheet.StopComments -> stops.firstOrNull { it.id == sheet.markerId }?.let { MapSheet.StopComments(it, tripPeople()) }
         Sheet.Members -> MapSheet.Members
         is Sheet.Details -> when (val selection = model.selection) {
-            is Selection.Stop -> stopDetails(selection)?.let { MapSheet.StopDetails(it, sheet.showsPhotos) }
-            is Selection.Place -> MapSheet.PlaceDetails(placeDetails(selection), sheet.showsPhotos)
+            is Selection.Stop -> stopDetails(selection)?.let { MapSheet.StopDetails(it) }
+            is Selection.Place -> MapSheet.PlaceDetails(placeDetails(selection))
             null -> null
         }
         null -> placeImage()

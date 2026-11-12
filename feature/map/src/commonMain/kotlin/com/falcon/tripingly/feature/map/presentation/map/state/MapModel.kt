@@ -141,14 +141,20 @@ internal data class PinsModel(
 
 internal data class PinArea(val bounds: GeoBounds, val squares: List<PlaceSquare>)
 
+/**
+ * One sheet at a time (Shahin, 2026-11-12). A sheet opened from the details ([fromDetails]) takes their place, and
+ * closing it brings the details back.
+ */
 internal sealed interface Sheet {
-    data class StopPhotos(val markerId: String) : Sheet
+    val fromDetails: Boolean get() = false
+
+    data class StopPhotos(val markerId: String, override val fromDetails: Boolean = false) : Sheet
     /** It stays open when the place's card closes. */
-    data class PlacePhotos(val place: MapPlace) : Sheet
-    data class StopComments(val markerId: String) : Sheet
+    data class PlacePhotos(val place: MapPlace, override val fromDetails: Boolean = false) : Sheet
+    data class StopComments(val markerId: String, override val fromDetails: Boolean = false) : Sheet
     data object Members : Sheet
-    /** The selected stop's or place's details; [showsPhotos]: switched to its photos. */
-    data class Details(val showsPhotos: Boolean = false) : Sheet
+    /** The selected stop's or place's details. */
+    data object Details : Sheet
 }
 
 internal sealed interface Dialog {

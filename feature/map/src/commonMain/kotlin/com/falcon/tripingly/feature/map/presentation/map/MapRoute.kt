@@ -106,40 +106,17 @@ fun MapRoute(
             is MapSheet.PlaceImage, is MapSheet.StopDetails, is MapSheet.PlaceDetails -> Unit
         }
     }
-    // A pin's details open half high, in a sheet of their own; their photos show in the same sheet.
+    // A pin's details open half high, in a sheet of their own. Its photos and comments open in their own sheets in its
+    // place, one sheet at a time, and closing them brings the details back.
     AppBottomSheet(value = sheet?.takeIf { it.isDetails }, onDismiss = { onAction(MapAction.Sheet.CloseDetails) }, halfHigh = true) { shown, close ->
-        val back = { onAction(MapAction.Sheet.ShowDetailsPhotos(false)) }
         when (shown) {
-            is MapSheet.StopDetails -> {
-                val stop = shown.card.stop
-                if (shown.showsPhotos) {
-                    PhotosRoute(
-                        owner = PhotoOwner.Stop(stop.id),
-                        title = stop.title.asString(),
-                        canAdd = shown.card.canEdit,
-                        canManage = shown.card.canEdit,
-                        coverPhotoId = stop.coverPhotoId,
-                        onReport = onReportPhoto,
-                        onDismiss = close,
-                        onBack = back,
-                    )
-                } else {
-                    StopDetailsContent(shown.card, onAction, onClose = close) {
-                        PhotoStripRoute(PhotoOwner.Stop(stop.id), onShowAll = { onAction(MapAction.Sheet.ShowDetailsPhotos(true)) }, onReport = onReportPhoto)
-                    }
-                }
+            is MapSheet.StopDetails -> StopDetailsContent(shown.card, onAction, onClose = close) {
+                PhotoStripRoute(PhotoOwner.Stop(shown.card.stop.id), onShowAll = { onAction(MapAction.StopCard.OpenPhotos) }, onReport = onReportPhoto)
             }
-            is MapSheet.PlaceDetails -> {
-                val place = shown.card.place
-                if (shown.showsPhotos) {
-                    PlacePhotos(place, onReportPhoto, onDismiss = close, onBack = back)
-                } else {
-                    PlaceDetailsContent(shown.card, onAction, onClose = close) {
-                        // An address from search isn't one of our places: it has no photos.
-                        if (shown.card.address == null) {
-                            PhotoStripRoute(PhotoOwner.Place(place.id), onShowAll = { onAction(MapAction.Sheet.ShowDetailsPhotos(true)) }, onReport = onReportPhoto)
-                        }
-                    }
+            is MapSheet.PlaceDetails -> PlaceDetailsContent(shown.card, onAction, onClose = close) {
+                // An address from search isn't one of our places: it has no photos.
+                if (shown.card.address == null) {
+                    PhotoStripRoute(PhotoOwner.Place(shown.card.place.id), onShowAll = { onAction(MapAction.PlaceCard.OpenPhotos) }, onReport = onReportPhoto)
                 }
             }
             else -> Unit
@@ -159,7 +136,7 @@ fun MapRoute(
 
 /** A place's photos, which anyone can add to. */
 @Composable
-private fun PlacePhotos(place: MapPlace, onReport: (Photo) -> Unit, onDismiss: () -> Unit, onBack: (() -> Unit)? = null) {
+private fun PlacePhotos(place: MapPlace, onReport: (Photo) -> Unit, onDismiss: () -> Unit) {
     PhotosRoute(
         owner = PhotoOwner.Place(place.id),
         title = place.name,
@@ -168,7 +145,6 @@ private fun PlacePhotos(place: MapPlace, onReport: (Photo) -> Unit, onDismiss: (
         coverPhotoId = null,
         onReport = onReport,
         onDismiss = onDismiss,
-        onBack = onBack,
     )
 }
 

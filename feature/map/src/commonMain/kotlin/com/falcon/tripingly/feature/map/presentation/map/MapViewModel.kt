@@ -219,9 +219,9 @@ class MapViewModel(
     private fun onStopCard(action: MapAction.StopCard) {
         when (action) {
             is MapAction.StopCard.ToggleHot -> toggleStopHot(action.markerId)
-            is MapAction.StopCard.OpenPhotos -> selection.selectedMarkerId?.let { openSheet(Sheet.StopPhotos(it)) }
-            is MapAction.StopCard.OpenComments -> selection.selectedMarkerId?.let { openSheet(Sheet.StopComments(it)) }
-            is MapAction.StopCard.OpenDetails -> if (selection.selectedMarkerId != null) openSheet(Sheet.Details())
+            is MapAction.StopCard.OpenPhotos -> selection.selectedMarkerId?.let { openSheet(Sheet.StopPhotos(it, fromDetails = isDetailsOpen())) }
+            is MapAction.StopCard.OpenComments -> selection.selectedMarkerId?.let { openSheet(Sheet.StopComments(it, fromDetails = isDetailsOpen())) }
+            is MapAction.StopCard.OpenDetails -> if (selection.selectedMarkerId != null) openSheet(Sheet.Details)
             is MapAction.StopCard.Report -> selection.selectedMarkerId?.let { sharing.report(ReportTarget.Marker, it) }
         }
     }
@@ -230,11 +230,11 @@ class MapViewModel(
         when (action) {
             is MapAction.PlaceCard.AddToDay -> edits.addPlace()
             // Not for an address from search: it isn't one of our places yet.
-            is MapAction.PlaceCard.OpenPhotos -> selection.selectedPlace?.takeIf { it.address == null }?.let { openSheet(Sheet.PlacePhotos(it.place)) }
+            is MapAction.PlaceCard.OpenPhotos -> selection.selectedPlace?.takeIf { it.address == null }?.let { openSheet(Sheet.PlacePhotos(it.place, fromDetails = isDetailsOpen())) }
             is MapAction.PlaceCard.OpenImage -> selection.openPlaceImage(action.index)
             is MapAction.PlaceCard.RouteFrom -> routes.startPointRoute()
             is MapAction.PlaceCard.RouteTo -> routes.showPointRoute()
-            is MapAction.PlaceCard.OpenDetails -> if (selection.selectedPlace != null) openSheet(Sheet.Details())
+            is MapAction.PlaceCard.OpenDetails -> if (selection.selectedPlace != null) openSheet(Sheet.Details)
         }
     }
 
@@ -242,7 +242,6 @@ class MapViewModel(
         when (action) {
             is MapAction.Sheet.ClosePlaceImage -> selection.openPlaceImage(null)
             is MapAction.Sheet.ReportPhoto -> sharing.reportPhoto(action.photo)
-            is MapAction.Sheet.ShowDetailsPhotos -> context.update { if (it.sheet is Sheet.Details) it.copy(sheet = Sheet.Details(action.show)) else it }
             is MapAction.Sheet.CloseStopPhotos,
             is MapAction.Sheet.ClosePlacePhotos,
             is MapAction.Sheet.CloseStopComments,
@@ -296,7 +295,12 @@ class MapViewModel(
 
     private fun openSheet(sheet: Sheet) = context.update { it.copy(sheet = sheet) }
 
-    private fun closeSheet() = context.update { it.copy(sheet = null) }
+    /** One sheet at a time: one opened from the details goes back to them, while their stop or place is still open. */
+    private fun closeSheet() = context.update { model ->
+        model.copy(sheet = if (model.sheet?.fromDetails == true && model.selection != null) Sheet.Details else null)
+    }
+
+    private fun isDetailsOpen() = model.sheet == Sheet.Details
 
     private fun openDialog(dialog: Dialog) = context.update { it.copy(dialog = dialog) }
 

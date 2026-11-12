@@ -65,7 +65,7 @@ import org.jetbrains.compose.resources.stringResource
 @Composable
 internal fun StopDetailsContent(card: StopCardState, onAction: (MapAction) -> Unit, onClose: () -> Unit, photoStrip: @Composable () -> Unit) {
     val stop = card.stop
-    val showPhotos = { onAction(MapAction.Sheet.ShowDetailsPhotos(true)) }
+    val showPhotos = { onAction(MapAction.StopCard.OpenPhotos) }
     PinDetails(
         title = stop.title.asString(),
         subtitle = stopSubtitle(card),
@@ -103,7 +103,7 @@ internal fun PlaceDetailsContent(card: PlaceCardState, onAction: (MapAction) -> 
             JoinedButtons(
                 placeButtons(
                     hasPhotos = card.address == null,
-                    onOpenPhotos = { onAction(MapAction.Sheet.ShowDetailsPhotos(true)) },
+                    onOpenPhotos = { onAction(MapAction.PlaceCard.OpenPhotos) },
                     onRouteFrom = { onAction(MapAction.PlaceCard.RouteFrom) },
                     onRouteTo = { onAction(MapAction.PlaceCard.RouteTo) }.takeIf { card.canRouteTo },
                 ),
