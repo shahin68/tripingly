@@ -74,7 +74,8 @@ import com.falcon.tripingly.feature.map.presentation.map.ui.RouteBar
 import com.falcon.tripingly.feature.map.presentation.map.ui.SearchResults
 import com.falcon.tripingly.feature.map.presentation.map.ui.TripCard
 import com.falcon.tripingly.feature.map.presentation.map.ui.TripCardScrim
-import com.falcon.tripingly.feature.map.presentation.map.ui.animateTripCard
+import com.falcon.tripingly.feature.map.presentation.map.ui.TripTitleContent
+import com.falcon.tripingly.feature.map.presentation.map.ui.animatePillGrowth
 import com.falcon.tripingly.feature.map.presentation.map.ui.pulledUp
 import com.falcon.tripingly.feature.map.presentation.map.ui.rememberPlanSheetState
 import kotlinx.coroutines.flow.Flow
@@ -116,8 +117,17 @@ internal fun MapScreen(
     val tripCardState = remember { MutableTransitionState(isTripCardOpen) }
     tripCardState.targetState = isTripCardOpen
     val tripCard = rememberTransition(tripCardState, label = "trip card")
-    val tripCardProgress by tripCard.animateTripCard()
+    val tripCardProgress by tripCard.animatePillGrowth()
     val isTripCardShown = tripCardState.currentState || tripCardState.targetState
+    // Routing between two points, the route bar grows out of the title pill the same way, and back into it on close.
+    val routeBarState = remember { MutableTransitionState(state.routeBar != null) }
+    routeBarState.targetState = state.routeBar != null
+    val routeBarTransition = rememberTransition(routeBarState, label = "route bar")
+    val routeBarProgress by routeBarTransition.animatePillGrowth()
+    // While it shrinks back, it keeps showing the ends it had.
+    var shownRouteBar by remember { mutableStateOf(state.routeBar) }
+    state.routeBar?.let { shownRouteBar = it }
+    val isRouteBarShown = routeBarState.currentState || routeBarState.targetState
     @OptIn(ExperimentalComposeUiApi::class)
     // Not while another screen covers the map: back closes that screen.
     BackHandler(enabled = isTripCardOpen && LocalScreenOnTop.current) { isTripCardOpen = false }
@@ -210,23 +220,36 @@ internal fun MapScreen(
                 .statusBarsPadding()
                 .then(panel)
         ) {
-            val headerSize = Modifier.onSizeChanged { headerHeight = with(density) { it.height.toDp() } }
-            // Routing between two points, the header is where from and where to.
-            val routeBar = state.routeBar
-            if (routeBar != null) RouteBar(routeBar, state.search, onAction, headerSize) else MapHeader(
-                header = state.header,
-                search = state.search,
-                showDayActions = plan == null,
-                onAction = onAction,
-                modifier = headerSize,
-                isTitleHidden = isTripCardShown,
-                onTitleClick = {
-                    haptics.tick()
-                    isTripCardOpen = true
-                },
-                onTitlePlaced = { titleBounds = it },
-                cardProgress = { tripCardProgress },
-            )
+            // The route bar over the header it pushes away: the taller of the two is what the header covers.
+            Box(Modifier.onSizeChanged { headerHeight = with(density) { it.height.toDp() } }) {
+                MapHeader(
+                    header = state.header,
+                    // While routing, the search is the route bar's "to".
+                    search = state.search.takeUnless { isRouteBarShown },
+                    showDayActions = plan == null,
+                    onAction = onAction,
+                    isTitleHidden = isTripCardShown || isRouteBarShown,
+                    onTitleClick = {
+                        haptics.tick()
+                        isTripCardOpen = true
+                    },
+                    onTitlePlaced = { titleBounds = it },
+                    cardProgress = { maxOf(tripCardProgress, routeBarProgress) },
+                )
+                val routeBar = shownRouteBar
+                if (isRouteBarShown && routeBar != null) {
+                    RouteBar(
+                        bar = routeBar,
+                        search = state.search,
+                        transition = routeBarTransition,
+                        progress = { routeBarProgress },
+                        pill = titleBounds,
+                        pillContent = { TripTitleContent(header = state.header) },
+                        onAction = onAction,
+                        modifier = Modifier.padding(horizontal = MaterialTheme.spacing.medium, vertical = MaterialTheme.spacing.small),
+                    )
+                }
+            }
             state.joinRequests?.let { requests ->
                 JoinRequestsPill(
                     requests = requests,

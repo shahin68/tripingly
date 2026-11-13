@@ -2134,6 +2134,13 @@ class MapViewModelTest {
         assertEquals(listOf(from.location to to.location), routes.pointRoutes)
         state.assertRoute(listOf(Coordinates(48.2031, 16.3691), Coordinates(48.2166, 16.3958)))
 
+        // ⇅ asks for the same route the other way round.
+        viewModel.onAction(MapAction.PinRoute.Swap)
+        testScheduler.advanceUntilIdle()
+        assertEquals(RouteBarState(UiText.Server("Prater"), UiText.Server("Oper")), viewModel.uiState.value.routeBar)
+        assertEquals(to.location, viewModel.uiState.value.layers.routeStart)
+        assertEquals(to.location to from.location, routes.pointRoutes.last())
+
         viewModel.onAction(MapAction.Plan.ClosePointRoute)
         testScheduler.advanceUntilIdle()
         assertNull(viewModel.uiState.value.pointRouteCard)

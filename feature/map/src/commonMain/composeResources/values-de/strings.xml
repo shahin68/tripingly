@@ -171,6 +171,7 @@
     <string name="map_route_to">Nach</string>
     <string name="map_route_between">%1$s → %2$s</string>
     <string name="map_route_close">Route schließen</string>
+    <string name="map_route_swap">Richtung tauschen</string>
     <string name="map_best_order">Beste Reihenfolge</string>
     <string name="map_ordering">Wird sortiert…</string>
     <string name="map_best_order_title">Beste Reihenfolge für diesen Tag</string>

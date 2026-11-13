@@ -129,6 +129,12 @@ internal class MapRouting(
         showRoute(PointRoute(from, to, route.startLabel))
     }
 
+    /** The route bar's ⇅: the same two ends the other way round. */
+    fun swapEnds() {
+        val route = context.model.value.route.between ?: return
+        showRoute(PointRoute(route.to, route.from, route.toLabel, route.fromLabel))
+    }
+
     /** The header's ✕ or back: the start, the route between two pins and the "to" search close. */
     fun closeRouteBar() = context.update { it.copy(route = it.route.copy(start = null, startLabel = null, between = null), search = null) }
 

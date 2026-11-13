@@ -171,6 +171,7 @@
     <string name="map_route_to">Ide</string>
     <string name="map_route_between">%1$s → %2$s</string>
     <string name="map_route_close">Útvonal bezárása</string>
+    <string name="map_route_swap">Irány megfordítása</string>
     <string name="map_best_order">Legjobb sorrend</string>
     <string name="map_ordering">Rendezés…</string>
     <string name="map_best_order_title">A nap legjobb sorrendje</string>

@@ -103,6 +103,8 @@ sealed interface MapAction {
         data object Route : PinRoute
         /** The from/to bar's ✕ or back. */
         data object Close : PinRoute
+        /** The from/to bar's ⇅: the route the other way round. */
+        data object Swap : PinRoute
     }
 
     /** The card over the selected stop, and its details sheet. */

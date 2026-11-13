@@ -141,6 +141,7 @@ class MapViewModel(
             is MapAction.PinRoute.GoHere -> routes.goHere()
             is MapAction.PinRoute.Route -> routes.onRouteButton()
             is MapAction.PinRoute.Close -> routes.closeRouteBar()
+            is MapAction.PinRoute.Swap -> routes.swapEnds()
         }
     }
 
