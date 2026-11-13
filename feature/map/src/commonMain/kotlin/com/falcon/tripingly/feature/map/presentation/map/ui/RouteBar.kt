@@ -253,7 +253,7 @@ private fun EndField(query: TextFieldState, isSearching: Boolean, onAction: (Map
 
 /** Every pill and button's height: a touch target, as tall as the map's glass buttons. */
 private val RouteHeight = GlassButtonDefaults.Size
-private val FocusWidth = 2.dp
+private val FocusWidth = 1.dp
 
 /** How long the names take to switch pills. */
 private const val SWAP_MILLIS = 220

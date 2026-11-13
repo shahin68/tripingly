@@ -64,8 +64,10 @@ internal class MapStateMapper(
     private val routePoints = plan?.route?.points.orEmpty().map { Coordinates(it.lat, it.lng) }
         .takeIf { isDayRoute || route.between != null }.orEmpty()
     private val alongTheWay = stopPlaceIds(details).let { stopIds ->
-        // A place added from the list is a stop now, until the route reloads without it.
-        plan?.alongTheWay.orEmpty().filter { it.place.id !in stopIds }
+        // A place added from the list is a stop now, until the route reloads without it; the route's own ends never are
+        // (an older server lists them).
+        val endIds = route.endPlaces().mapTo(HashSet()) { (place, _) -> place.id }
+        plan?.alongTheWay.orEmpty().filter { it.place.id !in stopIds && it.place.id !in endIds }
     }
 
     /** [layers] can be ones built before from the same trip and model; see [MapViewModel]. */
@@ -216,7 +218,7 @@ internal class MapStateMapper(
     fun layers(): MapLayersState {
         val pins = model.pins.pins
         val alongIds = alongTheWay.mapTo(HashSet()) { it.place.id }
-        // The route's ends: a stop keeps its own pin and gets the badge on it; a place's pin grows (Shahin, 2026-11-13).
+        // The route's ends: a stop keeps its own pin and gets the ring round it; a place's pin grows (Shahin, 2026-11-13).
         val ends = route.endPlaces().map { (place, isStart) -> RouteEnd(place, isStart, stopAt(place)) }
         val endPlaces = ends.filter { it.stop == null }.associateBy { it.place.id }
         // Places tapped while routing stay pins until the route closes.
@@ -230,7 +232,7 @@ internal class MapStateMapper(
         val shown = visible.mapTo(HashSet()) { it.place.id }
         val placePins = visible.map {
             when {
-                it.place.id in endPlaces -> it.copy(size = SelectedPinSize, isAlongTheWay = it.place.id in alongIds, isKept = true)
+                it.place.id in endPlaces -> it.copy(size = SelectedPinSize, isAlongTheWay = false, isKept = true)
                 it.place.id in kept -> it.copy(isAlongTheWay = it.place.id in alongIds, isKept = true)
                 it.place.id in alongIds -> it.copy(isAlongTheWay = true)
                 routeShows -> it.copy(isDot = true)

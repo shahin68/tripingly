@@ -7,9 +7,6 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Flag
-import androidx.compose.material.icons.outlined.TripOrigin
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -29,6 +26,7 @@ import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.text.rememberTextMeasurer
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.viewinterop.UIKitInteropInteractionMode
@@ -330,10 +328,8 @@ internal fun GoogleSdkMapView(
     val stopIcons = remember(density, stopColor) { mutableMapOf<Triple<Int, String?, Boolean>, UIImage>() }
     val coverThumbs = rememberCoverThumbs(markers)
     val stopTitles = markers.map { it.title.asString() }
-    // The route's ends' badges, one per mark and way of travelling's colour.
-    val startIcon = rememberVectorPainter(Icons.Outlined.TripOrigin)
-    val endIcon = rememberVectorPainter(Icons.Outlined.Flag)
-    val badges = remember(density) { mutableMapOf<Pair<Boolean, Color>, UIImage>() }
+    // The rings round the route's ends, one per pin size and way of travelling's colour.
+    val rings = remember(density) { mutableMapOf<Pair<Dp, Color>, UIImage>() }
     LaunchedEffect(markers, stopTitles, coverThumbs, pinPhotos, selectedPlace, placePins, placeClusters, pinIcons, clusterIcons, isDots, routeEnds) {
         val stops = markers.mapIndexed { index, marker ->
             GoogleMapMarker(
@@ -376,7 +372,7 @@ internal fun GoogleSdkMapView(
                 anchorX = 0.5,
                 anchorY = 0.5,
                 // A route's end and the places tapped while routing on top of the other places.
-                zIndex = if (pin.isKept) 0 else -1 - index,
+                zIndex = if (pin.isKept) KEPT_PIN_Z else -1 - index,
                 showsInfoWindow = false,
                 // Places along the way show at once with their route (Shahin, 2026-11-10).
                 fadesIn = !pin.isAlongTheWay,
@@ -422,18 +418,18 @@ internal fun GoogleSdkMapView(
                 fadesIn = false,
             )
         }
-        // The route's ends: a badge on each end's pin, in the way of travelling's colour, over every pin.
+        // The route's ends: a thick ring in the way of travelling's colour round each end's pin, under it.
         val ends = routeEnds.map { end ->
             GoogleMapMarker(
                 key = ROUTE_END_KEY + end.isStart,
                 latitude = end.position.lat,
                 longitude = end.position.lng,
                 title = "",
-                icon = badges.getOrPut(end.isStart to end.color) {
-                    drawRouteEndBadge(if (end.isStart) startIcon else endIcon, end.color, density, layoutDirection).toUIImage(density.density)
+                icon = rings.getOrPut(end.pinSize to end.color) {
+                    drawRouteEndRing(end.pinSize, end.color, density, layoutDirection).toUIImage(density.density)
                 },
-                anchorX = end.anchor.x.toDouble(),
-                anchorY = end.anchor.y.toDouble(),
+                anchorX = 0.5,
+                anchorY = 0.5,
                 zIndex = ROUTE_END_Z,
                 showsInfoWindow = false,
                 fadesIn = false,
@@ -476,8 +472,11 @@ private fun PlaceCluster.key() = "$CLUSTER_KEY${location.lat},${location.lng}"
 private const val SELECTED_PLACE_KEY = "selected-place"
 private const val ROUTE_END_KEY = "route-end:"
 
-/** Over every pin, the tapped place's (2) too. */
-private const val ROUTE_END_Z = 3
+/** The rings round a route's ends: under their pins (kept places and stops at 1), over the other places. */
+private const val ROUTE_END_Z = 0
+
+/** A route's ends and the places kept while routing: over the other places (and the rings), with the stops. */
+private const val KEPT_PIN_Z = 1
 private const val PLACE_KEY = "place:"
 private const val CLUSTER_KEY = "cluster:"
 

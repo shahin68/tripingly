@@ -277,43 +277,31 @@ fun drawClusterPin(
 }
 
 /**
- * One end of a route on the map (Shahin, 2026-11-13: instead of a ring round the start): the end's pin, grown, with a
- * badge on its top end corner in the way of travelling's colour, the same marks as the route bar's: a dot in a ring
- * where it starts ([isStart]), a flag where it goes. [pinSize] is the pin's size, so the badge sits on its edge.
+ * One end of a route on the map ([isStart]: where it starts): the end's pin, a place's grown, with a thick ring round it
+ * in the way of travelling's [color] (Shahin, 2026-11-13: for now, to be redesigned after a few rounds of refinements).
+ * [pinSize] is the pin's size, so the ring hugs it.
  */
 @Immutable
-data class RouteEndMark(val position: GeoPoint, val isStart: Boolean, val pinSize: Dp, val color: Color) {
-    /**
-     * Where the badge's bitmap hangs from [position], as the map's anchor: its middle on the pin's edge at the top end
-     * corner (outside 0..1, as the badge sits beside the point, not on it).
-     */
-    val anchor: Offset get() {
-        val along = pinSize.value / 2 * CORNER / RouteEndBadgeSize.value
-        return Offset(0.5f - along, 0.5f + along)
-    }
-}
+data class RouteEndMark(val position: GeoPoint, val isStart: Boolean, val pinSize: Dp, val color: Color)
 
-/** Draws a route end's badge: [icon] in white on a [color] circle in a white ring. */
-fun drawRouteEndBadge(icon: Painter, color: Color, density: Density, layoutDirection: LayoutDirection): ImageBitmap {
-    val px = with(density) { RouteEndBadgeSize.roundToPx() }
-    val border = with(density) { 2.dp.toPx() }
+/**
+ * Draws a route end's ring, drawn under the end's pin: a [color] disc [RouteEndRingWidth] wider than the pin all round,
+ * in a thin white edge so it shows on any map. The pin covers its middle.
+ */
+fun drawRouteEndRing(pinSize: Dp, color: Color, density: Density, layoutDirection: LayoutDirection): ImageBitmap {
+    val px = with(density) { (pinSize + RouteEndRingWidth * 2).roundToPx() }
+    val edge = with(density) { RouteEndRingEdge.toPx() }
     val bitmap = ImageBitmap(px, px)
     CanvasDrawScope().draw(density, layoutDirection, Canvas(bitmap), Size(px.toFloat(), px.toFloat())) {
         drawCircle(Color.White)
-        drawCircle(color, radius = this.size.minDimension / 2 - border)
-        val iconSize = this.size * 0.6f
-        translate((this.size.width - iconSize.width) / 2, (this.size.height - iconSize.height) / 2) {
-            with(icon) { draw(iconSize, colorFilter = ColorFilter.tint(Color.White)) }
-        }
+        drawCircle(color, radius = this.size.minDimension / 2 - edge)
     }
     return bitmap
 }
 
-/** A route end's badge. */
-val RouteEndBadgeSize: Dp = 22.dp
-
-/** A circle's top end corner, as a share of its radius along each axis (cos 45°). */
-private const val CORNER = 0.7071f
+/** How far a route end's ring reaches out from its pin. */
+private val RouteEndRingWidth = 5.dp
+private val RouteEndRingEdge = 1.dp
 
 private val CLUSTER_RADIUS = 18.dp
 private val CLUSTER_PADDING = 8.dp

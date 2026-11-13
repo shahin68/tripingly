@@ -10,9 +10,6 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Flag
-import androidx.compose.material.icons.outlined.TripOrigin
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -36,6 +33,7 @@ import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.text.rememberTextMeasurer
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import com.falcon.tripingly.core.designsystem.component.icon
@@ -435,19 +433,16 @@ actual fun GoogleMapView(
                     )
                 }
             }
-            // The route's ends: a badge on each end's pin, in the way of travelling's colour.
-            val startIcon = rememberVectorPainter(Icons.Outlined.TripOrigin)
-            val endIcon = rememberVectorPainter(Icons.Outlined.Flag)
-            val badges = remember(density, layoutDirection) { mutableMapOf<Pair<Boolean, Color>, BitmapDescriptor>() }
+            // The route's ends: a thick ring in the way of travelling's colour round each end's pin, under it.
+            val rings = remember(density, layoutDirection) { mutableMapOf<Pair<Dp, Color>, BitmapDescriptor>() }
             layers.routeEnds.forEach { end ->
                 key(end.isStart) {
                     Marker(
                         state = rememberUpdatedMarkerState(position = LatLng(end.position.lat, end.position.lng)),
-                        icon = badges.getOrPut(end.isStart to end.color) {
-                            val icon = if (end.isStart) startIcon else endIcon
-                            BitmapDescriptorFactory.fromBitmap(drawRouteEndBadge(icon, end.color, density, layoutDirection).asAndroidBitmap())
+                        icon = rings.getOrPut(end.pinSize to end.color) {
+                            BitmapDescriptorFactory.fromBitmap(drawRouteEndRing(end.pinSize, end.color, density, layoutDirection).asAndroidBitmap())
                         },
-                        anchor = end.anchor,
+                        anchor = Offset(0.5f, 0.5f),
                         zIndex = ROUTE_END_Z,
                         // Only a mark: the map neither moves nor opens anything.
                         onClick = { true },
@@ -602,6 +597,6 @@ private const val PLACE_PINS_Z = 0.5f
 /** A route's ends and the places kept while routing: over the other places, under the stops. */
 private const val KEPT_PINS_Z = 0.75f
 
-/** The badges on a route's ends: over every pin, the tapped place's too. */
-private const val ROUTE_END_Z = 3f
+/** The rings round a route's ends: under their pins (kept places and stops), over the other places. */
+private const val ROUTE_END_Z = 0.7f
 
