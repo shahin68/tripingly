@@ -14,13 +14,18 @@ import de.jensklingenberg.ktorfit.http.Query
  * routing fails; straight lines with `degraded` when it's out of quota. [mode] is `walking`, `cycling` or `driving`.
  */
 interface RoutingApi {
-    /** From [from] to [to] (`lat,lng`); [excludeTripId]'s places are left out of the places along the way. */
+    /**
+     * From [from] to [to] (`lat,lng`); [excludeTripId]'s places and the places at the ends ([fromPlaceId], [toPlaceId])
+     * are left out of the places along the way.
+     */
     @GET("routes")
     suspend fun route(
         @Query("from") from: String,
         @Query("to") to: String,
         @Query("mode") mode: String,
         @Query("excludeTripId") excludeTripId: String?,
+        @Query("fromPlaceId") fromPlaceId: String?,
+        @Query("toPlaceId") toPlaceId: String?,
     ): AppResult<RouteResponseDto, DataError.Network>
 
     /** Through the day's stops in order; `route` is null for fewer than two stops. */

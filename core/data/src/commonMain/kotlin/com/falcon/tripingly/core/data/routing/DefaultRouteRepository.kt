@@ -38,10 +38,11 @@ internal class DefaultRouteRepository(
         }
     }
 
-    override suspend fun route(from: GeoPoint, to: GeoPoint, mode: TravelMode, tripId: String?): AppResult<RoutePlan, DataError.Network> {
-        val key = RouteKey(tripId, mode, listOf("from" to from, "to" to to))
+    override suspend fun route(from: GeoPoint, to: GeoPoint, mode: TravelMode, tripId: String?, fromPlaceId: String?, toPlaceId: String?): AppResult<RoutePlan, DataError.Network> {
+        // The ends' places change the places along the way, so they're part of what was asked.
+        val key = RouteKey(tripId, mode, listOf("from:$fromPlaceId" to from, "to:$toPlaceId" to to))
         return cached(key) {
-            api.route(from.query(), to.query(), mode.value, tripId).map { it.toRoutePlan() }
+            api.route(from.query(), to.query(), mode.value, tripId, fromPlaceId, toPlaceId).map { it.toRoutePlan() }
         }
     }
 

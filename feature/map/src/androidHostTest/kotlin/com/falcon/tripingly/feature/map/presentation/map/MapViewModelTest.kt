@@ -161,6 +161,8 @@ class MapViewModelTest {
     ) : RouteRepository by fake {
         val dayRoutes = mutableListOf<Pair<List<String>, TravelMode>>()
         val pointRoutes = mutableListOf<Pair<GeoPoint, GeoPoint>>()
+        /** The places at the ends sent with each route between two points. */
+        val pointRoutePlaces = mutableListOf<Pair<String?, String?>>()
         /** Answers every route with this error when set. */
         var error: DataError.Network? = null
         /** The best order to propose; the fake's (nearest stop next) when null. */
@@ -173,9 +175,10 @@ class MapViewModelTest {
             return error?.asError() ?: fake.dayRoute(tripId, day, mode).map { it.copy(alongTheWay = alongTheWay) }
         }
 
-        override suspend fun route(from: GeoPoint, to: GeoPoint, mode: TravelMode, tripId: String?): AppResult<RoutePlan, DataError.Network> {
+        override suspend fun route(from: GeoPoint, to: GeoPoint, mode: TravelMode, tripId: String?, fromPlaceId: String?, toPlaceId: String?): AppResult<RoutePlan, DataError.Network> {
             pointRoutes += from to to
-            return error?.asError() ?: fake.route(from, to, mode, tripId)
+            pointRoutePlaces += fromPlaceId to toPlaceId
+            return error?.asError() ?: fake.route(from, to, mode, tripId, fromPlaceId, toPlaceId)
         }
 
         override suspend fun bestOrder(tripId: String, day: TripDay, mode: TravelMode): AppResult<BestOrder, DataError.Network> =
@@ -2143,6 +2146,8 @@ class MapViewModelTest {
         assertNull(state.search)
         assertEquals(from.location, state.startMark)
         assertEquals(listOf(from.location to to.location), routes.pointRoutes)
+        // The two places are left out of the places along the way by their ids.
+        assertEquals(listOf<Pair<String?, String?>>("a" to "b"), routes.pointRoutePlaces)
         state.assertRoute(listOf(Coordinates(48.2031, 16.3691), Coordinates(48.2166, 16.3958)))
 
         // ⇅ asks for the same route the other way round.
@@ -2273,6 +2278,8 @@ class MapViewModelTest {
         testScheduler.advanceUntilIdle()
         assertEquals(RouteBarState(UiText.Resource(Res.string.map_route_my_location), UiText.Server("Oper")), viewModel.uiState.value.routeBar)
         assertEquals(listOf(GeoPoint(me.latitude, me.longitude) to oper.location), routes.pointRoutes)
+        // Where I am is no place.
+        assertEquals(listOf<Pair<String?, String?>>(null to "a"), routes.pointRoutePlaces)
         // Where I am isn't a pin: nothing is ringed.
         assertNull(viewModel.uiState.value.startMark)
 

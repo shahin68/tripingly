@@ -198,7 +198,15 @@ internal class MapRouting(
         MapPlace(id = id, name = "", category = PlaceCategory.Other, location = location, isTripinly = false, hotCount = 0, prominence = 0)
 
     /** An address from search as an end: no place of ours, so an id of its own from where it is. */
-    private fun addressId(at: GeoPoint) = "address:${at.lat},${at.lng}"
+    private fun addressId(at: GeoPoint) = "$ADDRESS_ID_PREFIX${at.lat},${at.lng}"
+
+    /**
+     * The place at a route's end, for the server to leave out of the places along the way (Shahin, 2026-11-13): none for
+     * where I am or an address, nor for a stop, as the trip's own places are left out anyway.
+     */
+    private fun MapPlace.endPlaceId(details: TripDetails?): String? = id.takeUnless {
+        id == MY_LOCATION_ID || id.startsWith(ADDRESS_ID_PREFIX) || details?.days.orEmpty().any { day -> day.markers.any { it.id == id || it.placeId == id } }
+    }
 
         private fun myLocation(me: Coordinates) = stopPlace(MY_LOCATION_ID, GeoPoint(me.latitude, me.longitude))
 
@@ -251,7 +259,9 @@ internal class MapRouting(
 
     private fun requestOf(details: TripDetails?, model: MapModel): RouteRequest? {
         val route = model.route
-        route.between?.let { return RouteRequest.Between(it.from.location, it.to.location, route.travelMode, route.attempt) }
+        route.between?.let {
+            return RouteRequest.Between(it.from.location, it.to.location, route.travelMode, route.attempt, it.from.endPlaceId(details), it.to.endPlaceId(details))
+        }
         if (!route.isDayRouteShown) return null
         val days = details?.days.orEmpty()
         val day = days.getOrNull(activeDayIndex(days.size, model.activeDayIndex)) ?: return null
@@ -274,7 +284,7 @@ internal class MapRouting(
                 val day = context.days().firstOrNull { it.id == request.dayId } ?: return update { it.copy(isLoading = false) }
                 routeRepository.dayRoute(context.tripId, day, request.mode)
             }
-            is RouteRequest.Between -> routeRepository.route(request.from, request.to, request.mode, context.tripId)
+            is RouteRequest.Between -> routeRepository.route(request.from, request.to, request.mode, context.tripId, request.fromPlaceId, request.toPlaceId)
         }
         context.update {
             when (result) {
@@ -318,9 +328,19 @@ internal class MapRouting(
             override val stops get() = markers.map { it.second }
         }
 
-        data class Between(val from: GeoPoint, val to: GeoPoint, override val mode: TravelMode, val attempt: Int) : RouteRequest {
+        data class Between(
+            val from: GeoPoint,
+            val to: GeoPoint,
+            override val mode: TravelMode,
+            val attempt: Int,
+            val fromPlaceId: String?,
+            val toPlaceId: String?,
+        ) : RouteRequest {
             override val subject get() = from to to
             override val stops get() = listOf(from, to)
         }
     }
 }
+
+/** How an address picked from search starts its id as a route's end. */
+private const val ADDRESS_ID_PREFIX = "address:"

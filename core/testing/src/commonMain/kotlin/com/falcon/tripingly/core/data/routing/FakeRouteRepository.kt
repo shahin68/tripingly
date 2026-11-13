@@ -24,7 +24,7 @@ class FakeRouteRepository : RouteRepository {
         return AppResult.Success(RoutePlan(route(stops.map { it.location }, legs), emptyList(), isEstimated = false, ATTRIBUTION))
     }
 
-    override suspend fun route(from: GeoPoint, to: GeoPoint, mode: TravelMode, tripId: String?): AppResult<RoutePlan, DataError.Network> =
+    override suspend fun route(from: GeoPoint, to: GeoPoint, mode: TravelMode, tripId: String?, fromPlaceId: String?, toPlaceId: String?): AppResult<RoutePlan, DataError.Network> =
         AppResult.Success(RoutePlan(route(listOf(from, to), listOf(leg(from, to, mode, null, null))), emptyList(), isEstimated = false, ATTRIBUTION))
 
     /** Nearest stop next, from the first. */

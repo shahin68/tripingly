@@ -20,8 +20,11 @@ interface RouteRepository {
      */
     suspend fun dayRoute(tripId: String, day: TripDay, mode: TravelMode): AppResult<RoutePlan, DataError.Network>
 
-    /** From [from] to [to]; the places along the way leave out [tripId]'s own. */
-    suspend fun route(from: GeoPoint, to: GeoPoint, mode: TravelMode, tripId: String?): AppResult<RoutePlan, DataError.Network>
+    /**
+     * From [from] to [to]; the places along the way leave out [tripId]'s own and the places at the ends ([fromPlaceId],
+     * [toPlaceId]: null for where I am, an address or a stop).
+     */
+    suspend fun route(from: GeoPoint, to: GeoPoint, mode: TravelMode, tripId: String?, fromPlaceId: String?, toPlaceId: String?): AppResult<RoutePlan, DataError.Network>
 
     /** The best order for [day]'s stops, the first one staying first; only proposed, not saved. */
     suspend fun bestOrder(tripId: String, day: TripDay, mode: TravelMode): AppResult<BestOrder, DataError.Network>

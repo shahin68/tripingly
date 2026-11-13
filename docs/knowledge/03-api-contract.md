@@ -151,7 +151,7 @@ REST over HTTPS, JSON, base path `/v1`.
 ### Routing
 | Method | Path | Notes |
 |---|---|---|
-| GET | `/routes?from=lat,lng&to=lat,lng&mode=walking\|cycling\|driving&categories=` | Route line + places along the way |
+| GET | `/routes?from=lat,lng&to=lat,lng&mode=walking\|cycling\|driving&categories=&excludeTripId=&fromPlaceId=&toPlaceId=` | Route line + places along the way, leaving out the trip's places and the places at the ends by id (`fromPlaceId`, `toPlaceId`: only for a place end, not where I am, an address or a stop; backend#75, 2026-11-13) |
 | GET | `/days/{id}/route?mode=&categories=` | Route through the day's markers in order + places along the way |
 
 Response shapes and behaviour: see `05-maps-places-routing.md`.
