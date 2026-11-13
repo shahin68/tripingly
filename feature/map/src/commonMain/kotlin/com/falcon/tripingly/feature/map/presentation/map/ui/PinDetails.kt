@@ -47,7 +47,6 @@ import com.falcon.tripingly.core.model.place.PlaceDetails
 import com.falcon.tripingly.core.model.trip.UserSummary
 import com.falcon.tripingly.feature.map.generated.resources.Res
 import com.falcon.tripingly.feature.map.generated.resources.map_details_comments
-import com.falcon.tripingly.feature.map.generated.resources.map_spot_by
 import com.falcon.tripingly.feature.map.generated.resources.map_place_opening_hours
 import com.falcon.tripingly.feature.map.generated.resources.map_stop_report
 import com.falcon.tripingly.feature.map.presentation.map.AddedBy
@@ -91,7 +90,7 @@ internal fun StopDetailsContent(card: StopCardState, onAction: (MapAction) -> Un
     ) {
         card.addedBy?.let { AddedByFact(it, it.text(), onAction) }
         PlaceFacts(card.place)
-        card.spotBy?.let { AddedByFact(it, stringResource(Res.string.map_spot_by, it.user?.username.orEmpty()), onAction) }
+        card.spotBy?.let { AddedByFact(it, it.spotText(), onAction) }
         Fact(
             icon = Icons.AutoMirrored.Outlined.Comment,
             text = stringResource(Res.string.map_details_comments, stop.commentCount),
@@ -130,7 +129,8 @@ internal fun PlaceDetailsContent(card: PlaceCardState, onAction: (MapAction) -> 
         },
         photoStrip = photoStrip,
     ) {
-        card.addedBy?.let { AddedByFact(it, it.text(), onAction) }
+        // A place off the trip: who made the spot, in the same words as on a stop at it.
+        card.addedBy?.let { AddedByFact(it, it.spotText(), onAction) }
         PlaceFacts(card.details)
         CreditLine(
             osm = card.address != null || card.details?.isFromOsm == true,

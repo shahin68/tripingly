@@ -191,10 +191,13 @@ internal class MapStateMapper(
      * Who added a stop, shown once a trip has editors or the stop isn't the owner's (on a trip only its owner edits,
      * every stop would name the header's owner); nothing when the server names no one (a deleted account, a block).
      */
+    private fun me(): UserSummary? = details?.members?.firstOrNull { it.user.id == myUserId }?.user ?: details?.trip?.owner?.takeIf { it.id == myUserId }
+
     private fun addedBy(creatorId: String?, creator: UserSummary?): AddedBy? {
         if (creatorId == null || (creatorId == details?.trip?.owner?.id && details?.members.orEmpty().none { it.role == TripRole.EDITOR })) return null
         return when {
-            creatorId == myUserId -> AddedBy(creator, isMe = true)
+            // Mine added a moment ago comes without me from the server yet: my face from the trip's people.
+            creatorId == myUserId -> AddedBy(creator ?: me(), isMe = true)
             creator != null -> AddedBy(creator, isMe = false)
             else -> null
         }

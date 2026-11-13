@@ -15,6 +15,7 @@ import com.falcon.tripingly.feature.map.generated.resources.Res
 import com.falcon.tripingly.feature.map.generated.resources.map_added_by_you
 import com.falcon.tripingly.feature.map.generated.resources.map_by_you
 import com.falcon.tripingly.feature.map.generated.resources.map_place_added_by
+import com.falcon.tripingly.feature.map.generated.resources.map_spot_by
 import com.falcon.tripingly.feature.map.presentation.map.AddedBy
 import org.jetbrains.compose.resources.stringResource
 
@@ -36,7 +37,11 @@ internal fun AddedByInline(addedBy: AddedBy, modifier: Modifier = Modifier) {
     }
 }
 
-/** "Added by @handle" or "Added by you", for the details. */
+/** "Added by @handle" or "Added by you": who put a stop on the trip, for the details. */
 @Composable
 internal fun AddedBy.text(): String =
     if (isMe) stringResource(Res.string.map_added_by_you) else stringResource(Res.string.map_place_added_by, user?.username.orEmpty())
+
+/** "Spot by @handle": who made a custom spot, on the trip or off it (Shahin, 2026-11-13: "added by" is only for the trip). */
+@Composable
+internal fun AddedBy.spotText(): String = stringResource(Res.string.map_spot_by, user?.username.orEmpty())
