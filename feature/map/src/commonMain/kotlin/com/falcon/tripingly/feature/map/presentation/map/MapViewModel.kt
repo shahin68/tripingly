@@ -249,6 +249,7 @@ class MapViewModel(
             is MapAction.Sheet.PickTrip -> addToTrip.pickTrip(action.tripId)
             is MapAction.Sheet.PickDay -> addToTrip.pickDay(action.dayId)
             is MapAction.Sheet.BackToTrips -> addToTrip.backToTrips()
+            is MapAction.Sheet.CloseAll -> context.update { it.copy(sheet = null) }
             is MapAction.Sheet.CloseStopPhotos,
             is MapAction.Sheet.ClosePlacePhotos,
             is MapAction.Sheet.CloseStopComments,

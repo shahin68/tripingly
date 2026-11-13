@@ -1676,6 +1676,30 @@ class MapViewModelTest {
     }
 
     @Test
+    fun `a swipe on the days sheet closes the trips and the details too`() = runTest(testDispatcher) {
+        backend.addMarker(trip.trip.id, trip.days[0].id, NewMarker("Stephansdom", GeoPoint(48.2085, 16.3721)))
+        val withStop = (backend.refreshTrip(trip.trip.id) as AppResult.Success).data
+        backend.seed(withStop.copy(trip = withStop.trip.copy(role = TripRole.VIEWER)))
+        val mine = (backend.createTrip(NewTrip("Mine", LocalDate(2024, 2, 1), LocalDate(2024, 2, 2))) as AppResult.Success).data
+        val viewModel = viewModel()
+        testScheduler.advanceUntilIdle()
+        viewModel.onAction(MapAction.MapView.MarkerClick(viewModel.uiState.value.layers.stops.single()))
+        restOnTarget(viewModel)
+        viewModel.onAction(MapAction.StopCard.OpenDetails)
+        viewModel.onAction(MapAction.StopCard.Add)
+        testScheduler.advanceUntilIdle()
+        viewModel.onAction(MapAction.Sheet.PickTrip(mine.trip.id))
+        testScheduler.advanceUntilIdle()
+
+        viewModel.onAction(MapAction.Sheet.CloseAll)
+        testScheduler.advanceUntilIdle()
+
+        assertNull(viewModel.uiState.value.sheet)
+        // The card stays, as under any sheet.
+        assertNotNull(viewModel.uiState.value.stopCard)
+    }
+
+    @Test
     fun `closing the days sheet goes back to the trips`() = runTest(testDispatcher) {
         backend.seed(trip.copy(trip = trip.trip.copy(role = TripRole.VIEWER)))
         val mine = (backend.createTrip(NewTrip("Mine", LocalDate(2024, 2, 1), LocalDate(2024, 2, 2))) as AppResult.Success).data

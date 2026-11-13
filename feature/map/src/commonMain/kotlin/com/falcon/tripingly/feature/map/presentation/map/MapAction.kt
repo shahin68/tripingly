@@ -146,6 +146,8 @@ sealed interface MapAction {
         data class PickDay(val dayId: String) : Sheet
         /** The days sheet closed: back to the trips. */
         data object BackToTrips : Sheet
+        /** A sheet swiped down: the ones it was opened from close too. */
+        data object CloseAll : Sheet
         /** Reports the photo open in a viewer: a Commons image as the place's image, anything else as a photo. */
         data class ReportPhoto(val photo: Photo) : Sheet
     }
