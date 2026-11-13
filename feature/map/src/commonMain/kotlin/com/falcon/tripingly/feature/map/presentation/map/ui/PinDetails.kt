@@ -33,6 +33,8 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.falcon.tripingly.core.designsystem.component.AvatarCircle
+import com.falcon.tripingly.core.designsystem.component.AvatarSize
 import com.falcon.tripingly.core.designsystem.component.CreditLine
 import com.falcon.tripingly.core.designsystem.component.JoinedButtonSlot
 import com.falcon.tripingly.core.designsystem.component.JoinedButtons
@@ -41,11 +43,13 @@ import com.falcon.tripingly.core.designsystem.component.bottomSystemBar
 import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
 import com.falcon.tripingly.core.designsystem.theme.spacing
 import com.falcon.tripingly.core.model.place.PlaceDetails
+import com.falcon.tripingly.core.model.trip.UserSummary
 import com.falcon.tripingly.feature.map.generated.resources.Res
 import com.falcon.tripingly.feature.map.generated.resources.map_details_comments
-import com.falcon.tripingly.feature.map.generated.resources.map_place_added_by
+import com.falcon.tripingly.feature.map.generated.resources.map_spot_by
 import com.falcon.tripingly.feature.map.generated.resources.map_place_opening_hours
 import com.falcon.tripingly.feature.map.generated.resources.map_stop_report
+import com.falcon.tripingly.feature.map.presentation.map.AddedBy
 import com.falcon.tripingly.feature.map.presentation.map.MapAction
 import com.falcon.tripingly.feature.map.presentation.map.PinAdd
 import com.falcon.tripingly.feature.map.presentation.map.PinRoutesState
@@ -84,7 +88,9 @@ internal fun StopDetailsContent(card: StopCardState, onAction: (MapAction) -> Un
         },
         photoStrip = photoStrip,
     ) {
+        card.addedBy?.let { AddedByFact(it, it.text(), onAction) }
         PlaceFacts(card.place)
+        card.spotBy?.let { AddedByFact(it, stringResource(Res.string.map_spot_by, it.user?.username.orEmpty()), onAction) }
         Fact(
             icon = Icons.AutoMirrored.Outlined.Comment,
             text = stringResource(Res.string.map_details_comments, stop.commentCount),
@@ -123,6 +129,7 @@ internal fun PlaceDetailsContent(card: PlaceCardState, onAction: (MapAction) -> 
         },
         photoStrip = photoStrip,
     ) {
+        card.addedBy?.let { AddedByFact(it, it.text(), onAction) }
         PlaceFacts(card.details)
         CreditLine(
             osm = card.address != null || card.details?.isFromOsm == true,
@@ -156,7 +163,7 @@ private fun PinDetails(
     }
 }
 
-/** What a place's details say: opening hours, website (opens it), and who made a custom spot. */
+/** What a place's details say: opening hours and website (opens it). */
 @Composable
 private fun PlaceFacts(details: PlaceDetails?) {
     val uriHandler = LocalUriHandler.current
@@ -168,12 +175,18 @@ private fun PlaceFacts(details: PlaceDetails?) {
             runCatching { uriHandler.openUri(url) }
         })
     }
-    details?.addedBy?.let { Fact(Icons.Outlined.Person, stringResource(Res.string.map_place_added_by, it.username)) }
 }
 
-/** One line of the details with a line above it; a tappable one ends with ›. */
+/** Who added a stop or made a spot (Shahin's D1, 2026-11-13): their face first; a tap opens their profile, not for me. */
 @Composable
-private fun Fact(icon: ImageVector, text: String, onClick: (() -> Unit)? = null, color: Color = MaterialTheme.colorScheme.onSurface) {
+private fun AddedByFact(addedBy: AddedBy, text: String, onAction: (MapAction) -> Unit) {
+    val user = addedBy.user
+    Fact(Icons.Outlined.Person, text, avatar = user, onClick = user?.takeUnless { addedBy.isMe }?.let { { onAction(MapAction.Sheet.OpenProfile(it.username)) } })
+}
+
+/** One line of the details with a line above it, led by [icon] or a person's face ([avatar]); a tappable one ends with ›. */
+@Composable
+private fun Fact(icon: ImageVector, text: String, onClick: (() -> Unit)? = null, color: Color = MaterialTheme.colorScheme.onSurface, avatar: UserSummary? = null) {
     HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
     Row(
         modifier = Modifier
@@ -184,7 +197,11 @@ private fun Fact(icon: ImageVector, text: String, onClick: (() -> Unit)? = null,
         horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Icon(icon, contentDescription = null, tint = if (color == MaterialTheme.colorScheme.onSurface) MaterialTheme.colorScheme.onSurfaceVariant else color, modifier = Modifier.size(20.dp))
+        if (avatar != null) {
+            AvatarCircle(avatar, size = AvatarSize.Small)
+        } else {
+            Icon(icon, contentDescription = null, tint = if (color == MaterialTheme.colorScheme.onSurface) MaterialTheme.colorScheme.onSurfaceVariant else color, modifier = Modifier.size(20.dp))
+        }
         Text(text, style = MaterialTheme.typography.bodyMedium, color = color, modifier = Modifier.weight(1f))
         if (onClick != null) Icon(Icons.AutoMirrored.Outlined.KeyboardArrowRight, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
     }
@@ -196,13 +213,13 @@ private val FactHeight = 48.dp
 private fun PinDetailsPreviewContent() {
     Column(Modifier.background(MaterialTheme.colorScheme.surfaceContainerLow)) {
         StopDetailsContent(
-            card = StopCardState(previewStop.copy(canDelete = false), coverCredit = previewPlaceImages.first().credit, place = previewPlaceDetails, canEdit = false, canReport = true, add = PinAdd.ToMyTrip),
+            card = StopCardState(previewStop.copy(canDelete = false), coverCredit = previewPlaceImages.first().credit, place = previewPlaceDetails, canEdit = false, canReport = true, add = PinAdd.ToMyTrip, addedBy = AddedBy(UserSummary("u-2", "anna", "Anna"), isMe = false)),
             onAction = {},
             onClose = {},
             photoStrip = { Text("Photos") },
         )
         PlaceDetailsContent(
-            card = PlaceCardState(previewCafe, previewPlaceDetails.copy(isFromOsm = true), address = null, add = PinAdd.ToDay(2), routes = PinRoutesState(isRouteOn = true)),
+            card = PlaceCardState(previewCafe, previewPlaceDetails.copy(isFromOsm = true), address = null, add = PinAdd.ToDay(2), routes = PinRoutesState(isRouteOn = true), addedBy = AddedBy(null, isMe = true)),
             onAction = {},
             onClose = {},
             photoStrip = {},

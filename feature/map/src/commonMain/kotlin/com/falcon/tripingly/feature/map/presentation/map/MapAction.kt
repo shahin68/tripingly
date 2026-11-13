@@ -144,6 +144,8 @@ sealed interface MapAction {
         data class PickDay(val dayId: String) : Sheet
         /** Reports the photo open in a viewer: a Commons image as the place's image, anything else as a photo. */
         data class ReportPhoto(val photo: Photo) : Sheet
+        /** "Added by" in a pin's details: that person's profile. */
+        data class OpenProfile(val username: String) : Sheet
     }
 
     sealed interface Dialog : MapAction {

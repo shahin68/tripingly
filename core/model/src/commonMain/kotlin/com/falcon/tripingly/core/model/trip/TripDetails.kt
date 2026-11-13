@@ -54,6 +54,8 @@ data class TripMarker(
     val commentCount: Int = 0,
     /** Who added the stop; null after they deleted their account. Only they and the trip's owner may delete it. */
     val createdById: String? = null,
+    /** [createdById]'s name, @handle and photo, shown as "added by"; null after a deleted account or a block either way. */
+    val createdBy: UserSummary? = null,
 )
 
 data class GeoPoint(val lat: Double, val lng: Double)

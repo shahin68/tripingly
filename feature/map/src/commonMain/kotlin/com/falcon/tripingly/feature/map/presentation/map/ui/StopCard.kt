@@ -43,6 +43,7 @@ import com.falcon.tripingly.core.designsystem.component.PhotoImage
 import com.falcon.tripingly.core.designsystem.component.PhotoSize
 import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
 import com.falcon.tripingly.core.designsystem.theme.spacing
+import com.falcon.tripingly.core.model.trip.UserSummary
 import com.falcon.tripingly.core.ui.UiText
 import com.falcon.tripingly.feature.map.generated.resources.Res
 import com.falcon.tripingly.feature.map.generated.resources.map_stop_collapse
@@ -51,6 +52,7 @@ import com.falcon.tripingly.feature.map.generated.resources.map_stop_expand
 import com.falcon.tripingly.feature.map.generated.resources.map_stop_number
 import com.falcon.tripingly.feature.map.generated.resources.map_stop_photos
 import com.falcon.tripingly.feature.map.presentation.component.MapMarker
+import com.falcon.tripingly.feature.map.presentation.map.AddedBy
 import com.falcon.tripingly.feature.map.presentation.map.PinAdd
 import com.falcon.tripingly.feature.map.presentation.map.StopCardState
 import com.falcon.tripingly.feature.map.presentation.map.preview.previewPlaceDetails
@@ -90,6 +92,7 @@ internal fun PinCardScope.StopCard(
                     PhotoBanner(
                         title = stop.title.asString(),
                         subtitle = stopSubtitle(card),
+                        addedBy = card.addedBy,
                         image = stop.coverPhotoId?.let { coverId -> coverImage(coverId, stop.coverThumbUrl) },
                         onClick = onOpenPhotos,
                         mark = { PinMark(category = null, stopNumber = stop.orderNumber) },
@@ -183,8 +186,8 @@ private val PillImageSize = JoinedButtonDefaults.Height
 /** An editor's stop, a viewer's, one with a long name and no counts, opened, and the pill of a stop I can't delete. */
 internal class StopCardPreviewStates : PreviewParameterProvider<StopCardPreview> {
     override val values = sequenceOf(
-        StopCardPreview(StopCardState(previewStop, coverCredit = previewPlaceImages.first().credit, place = previewPlaceDetails, canEdit = true, canReport = false), expanded = true),
-        StopCardPreview(StopCardState(previewStop.copy(canDelete = false), coverCredit = null, place = previewPlaceDetails, canEdit = false, canReport = true, add = PinAdd.ToMyTrip), expanded = true),
+        StopCardPreview(StopCardState(previewStop, coverCredit = previewPlaceImages.first().credit, place = previewPlaceDetails, canEdit = true, canReport = false, addedBy = AddedBy(null, isMe = true)), expanded = true),
+        StopCardPreview(StopCardState(previewStop.copy(canDelete = false), coverCredit = null, place = previewPlaceDetails, canEdit = false, canReport = true, add = PinAdd.ToMyTrip, addedBy = AddedBy(UserSummary("u-2", "anna", "Anna"), isMe = false)), expanded = true),
         StopCardPreview(
             StopCardState(
                 previewStop.copy(

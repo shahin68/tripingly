@@ -122,6 +122,7 @@ internal fun MarkerDto.toMarker() = TripMarker(
     canMarkHot = canMarkHot,
     commentCount = commentCount.toInt(),
     createdById = createdBy?.id,
+    createdBy = createdBy?.toUser(),
 )
 
 internal fun DestinationDto.toDestination() = Destination(name = name, location = location.toGeoPoint())

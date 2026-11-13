@@ -200,7 +200,16 @@ data class PlaceCardState(
     /** What its + does; null when this user can't add it anywhere (an editor's trip without days). */
     val add: PinAdd?,
     val routes: PinRoutesState,
+    /** Who made it, for a custom spot. */
+    val addedBy: AddedBy? = null,
 )
+
+/**
+ * Who added a stop or made a custom spot: [user]'s face and @handle after the type on the big card, "Added by" in the
+ * details (a tap opens the profile), or "you" ([isMe]; [user] may not be known yet for a stop added offline).
+ */
+@Immutable
+data class AddedBy(val user: UserSummary?, val isMe: Boolean)
 
 /**
  * A stop's card and details sheet: ⓘ opens the details, Delete shows for whoever may delete it ([MapMarker.canDelete]).
@@ -220,6 +229,10 @@ data class StopCardState(
     val routes: PinRoutesState = PinRoutesState(),
     /** [PinAdd.ToMyTrip] on a trip I only view; null otherwise. */
     val add: PinAdd? = null,
+    /** Who put it on the trip; null on a trip only its owner edits, after a deleted account or with a block. */
+    val addedBy: AddedBy? = null,
+    /** Who made its custom spot, when that's someone else than [addedBy]. */
+    val spotBy: AddedBy? = null,
 )
 
 /**

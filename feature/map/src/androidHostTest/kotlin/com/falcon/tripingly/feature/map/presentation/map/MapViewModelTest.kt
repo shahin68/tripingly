@@ -58,6 +58,7 @@ import com.falcon.tripingly.core.model.trip.NewTrip
 import com.falcon.tripingly.core.model.trip.TripDay
 import com.falcon.tripingly.core.model.trip.TripDetails
 import com.falcon.tripingly.core.model.trip.TripMapView
+import com.falcon.tripingly.core.model.trip.TripMember
 import com.falcon.tripingly.core.model.trip.TripRole
 import com.falcon.tripingly.core.model.trip.UserSummary
 import com.falcon.tripingly.core.ui.UiText
@@ -956,6 +957,48 @@ class MapViewModelTest {
         assertEquals(0, viewModel.uiState.value.layers.stops.size)
         assertNull(viewModel.uiState.value.dialog)
         assertNull(viewModel.uiState.value.stopsCard?.selectedStopId)
+    }
+
+    @Test
+    fun `a stop's card says who added it once the trip has editors and me as me`() = runTest(testDispatcher) {
+        backend.addMarker(trip.trip.id, trip.days[0].id, NewMarker("Mine", GeoPoint(48.2085, 16.3721)))
+        backend.addMarker(trip.trip.id, trip.days[0].id, NewMarker("Anna's", GeoPoint(48.21, 16.37)))
+        val alone = viewModel()
+        testScheduler.advanceUntilIdle()
+        // Only its owner on the trip: the header already names them.
+        assertNull(openStopCard(alone, 0).addedBy)
+
+        val anna = UserSummary("anna-id", "anna", "Anna")
+        val shared = backend.observeTrip(trip.trip.id).first()!!
+        backend.seed(
+            shared.copy(
+                members = shared.members + TripMember(anna, TripRole.EDITOR),
+                days = shared.days.map { day -> day.copy(markers = day.markers.mapIndexed { i, it -> if (i == 1) it.copy(createdById = anna.id, createdBy = anna) else it }) },
+            ),
+        )
+        val viewModel = viewModel()
+        testScheduler.advanceUntilIdle()
+        assertEquals(true, openStopCard(viewModel, 0).addedBy?.isMe)
+        viewModel.onAction(MapAction.MapView.ScreenTouch)
+        assertEquals(AddedBy(anna, isMe = false), openStopCard(viewModel, 1).addedBy)
+    }
+
+    @Test
+    fun `no one is named when the server names no one, after a block or a deleted account`() = runTest(testDispatcher) {
+        backend.addMarker(trip.trip.id, trip.days[0].id, NewMarker("Hidden", GeoPoint(48.2085, 16.3721)))
+        val shared = backend.observeTrip(trip.trip.id).first()!!
+        backend.seed(shared.copy(days = shared.days.map { day -> day.copy(markers = day.markers.map { it.copy(createdById = "blocked-id", createdBy = null) }) }))
+        val viewModel = viewModel()
+        testScheduler.advanceUntilIdle()
+        assertNull(openStopCard(viewModel, 0).addedBy)
+    }
+
+    private fun TestScope.openStopCard(viewModel: MapViewModel, index: Int): StopCardState {
+        val stop = viewModel.uiState.value.layers.stops[index]
+        viewModel.onAction(MapAction.MapView.MarkerClick(stop))
+        viewModel.onAction(MapAction.MapView.CameraRest(stop.position, 15f, PARIS_CENTER))
+        testScheduler.advanceUntilIdle()
+        return assertNotNull(viewModel.uiState.value.stopCard)
     }
 
     @Test

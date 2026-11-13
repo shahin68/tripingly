@@ -23,12 +23,13 @@ import com.falcon.tripingly.core.model.place.PlaceImage
 import com.falcon.tripingly.feature.map.generated.resources.Res
 import com.falcon.tripingly.feature.map.generated.resources.map_place_image_position
 import com.falcon.tripingly.feature.map.generated.resources.map_place_images
+import com.falcon.tripingly.feature.map.presentation.map.AddedBy
 import com.falcon.tripingly.feature.map.presentation.map.preview.previewPlaceImages
 import org.jetbrains.compose.resources.stringResource
 
 /**
  * The top of the place card: its images swiped through in a photo banner ([pagerState]), with its name, its [subtitle]
- * and which image shows ("1 / 2"), and its flames, only counted. A tapped image opens full screen ([onOpen]). [images]
+ * and which image shows ("1 / 2"), who made a custom spot ([addedBy]), and its flames, only counted. A tapped image opens full screen ([onOpen]). [images]
  * is null while the place loads; a place without images is a tinted panel, whose tap opens its photos ([onOpenPhotos]).
  */
 @Composable
@@ -42,12 +43,14 @@ internal fun PlaceBanner(
     onOpen: (index: Int) -> Unit,
     onOpenPhotos: (() -> Unit)?,
     modifier: Modifier = Modifier,
+    addedBy: AddedBy? = null,
 ) {
     val position = images?.takeIf { it.size > 1 }?.let { stringResource(Res.string.map_place_image_position, pagerState.currentPage + 1, it.size) }
     val description = stringResource(Res.string.map_place_images)
     PhotoBanner(
         title = name,
         subtitle = listOfNotNull(subtitle, position).joinToString(" · "),
+        addedBy = addedBy,
         modifier = modifier,
         // Loading, the photo's grey waits; a place without images has none to wait for.
         image = if (images?.isEmpty() == true) null else pagerImages(images, pagerState, description, onOpen),

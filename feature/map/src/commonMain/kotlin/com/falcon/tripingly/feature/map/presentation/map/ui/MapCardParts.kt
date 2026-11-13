@@ -63,6 +63,7 @@ import com.falcon.tripingly.feature.map.generated.resources.map_place_add_to_day
 import com.falcon.tripingly.feature.map.generated.resources.map_route_from_here
 import com.falcon.tripingly.feature.map.generated.resources.map_route_go_here
 import com.falcon.tripingly.feature.map.generated.resources.map_route_to_here
+import com.falcon.tripingly.feature.map.presentation.map.AddedBy
 import com.falcon.tripingly.feature.map.presentation.map.PinAdd
 import com.falcon.tripingly.feature.map.presentation.map.PinRoutesState
 import org.jetbrains.compose.resources.stringResource
@@ -164,6 +165,8 @@ internal fun PhotoBanner(
     title: String,
     subtitle: String?,
     image: (@Composable BoxScope.() -> Unit)?,
+    /** Who added it, after the [subtitle]. */
+    addedBy: AddedBy? = null,
     modifier: Modifier = Modifier,
     onClick: (() -> Unit)? = null,
     trailing: @Composable () -> Unit = {},
@@ -193,7 +196,10 @@ internal fun PhotoBanner(
             Column(Modifier.align(Alignment.BottomStart).fillMaxWidth().padding(BannerInset)) {
                 Text(title, style = MaterialTheme.typography.titleLarge)
                 Row(horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small), verticalAlignment = Alignment.CenterVertically) {
-                    subtitle?.let { Text(it, style = MaterialTheme.typography.bodySmall, modifier = Modifier.weight(1f)) } ?: Box(Modifier.weight(1f))
+                    Row(Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraSmall), verticalAlignment = Alignment.CenterVertically) {
+                        subtitle?.let { Text(it, style = MaterialTheme.typography.bodySmall, modifier = Modifier.weight(1f, fill = false)) }
+                        addedBy?.let { AddedByInline(it, Modifier.weight(1f, fill = false)) }
+                    }
                     trailing()
                 }
             }

@@ -246,6 +246,7 @@ class MapViewModel(
         when (action) {
             is MapAction.Sheet.ClosePlaceImage -> selection.openPlaceImage(null)
             is MapAction.Sheet.ReportPhoto -> sharing.reportPhoto(action.photo)
+            is MapAction.Sheet.OpenProfile -> sendEvent(MapEvent.OpenProfile(action.username))
             is MapAction.Sheet.PickTrip -> addToTrip.pickTrip(action.tripId)
             is MapAction.Sheet.PickDay -> addToTrip.pickDay(action.dayId)
             is MapAction.Sheet.CloseAll -> context.update { it.copy(sheet = null) }

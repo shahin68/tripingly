@@ -25,6 +25,7 @@ import com.falcon.tripingly.core.model.place.PlaceDetails
 import com.falcon.tripingly.core.model.trip.UserSummary
 import com.falcon.tripingly.feature.map.generated.resources.*
 import com.falcon.tripingly.feature.map.generated.resources.Res
+import com.falcon.tripingly.feature.map.presentation.map.AddedBy
 import com.falcon.tripingly.feature.map.presentation.map.PinAdd
 import com.falcon.tripingly.feature.map.presentation.map.PinRoutesState
 import com.falcon.tripingly.feature.map.presentation.map.preview.previewCafe
@@ -54,6 +55,8 @@ internal fun PinCardScope.PlaceCard(
     onGoHere: () -> Unit,
     onRoute: () -> Unit,
     modifier: Modifier = Modifier,
+    /** Who made it, for a custom spot. */
+    addedBy: AddedBy? = null,
 ) {
     // An address from search is no place of ours, so it has no images to wait for and no photos.
     val images = if (address != null) emptyList() else details?.images
@@ -70,6 +73,7 @@ internal fun PinCardScope.PlaceCard(
                 pagerState = pagerState,
                 onOpen = onOpenImage,
                 onOpenPhotos = onOpenPhotos.takeIf { address == null },
+                addedBy = addedBy,
             )
         },
         credit = {
@@ -150,6 +154,7 @@ private fun PlaceCardPreviewContent(card: PlaceCardPreview) {
                 routes = shown.routes,
                 onGoHere = {},
                 onRoute = {},
+                addedBy = shown.details?.addedBy?.let { AddedBy(it, isMe = false) },
             )
         }
     }

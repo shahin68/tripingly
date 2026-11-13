@@ -160,6 +160,7 @@ internal class MapStateMapper(
         address = selection.address?.address,
         add = copyAdd ?: dayNumber?.takeIf { canEdit }?.let(PinAdd::ToDay),
         routes = pinRoutes(selection.place.location),
+        addedBy = selection.details?.addedBy?.let { AddedBy(it, isMe = it.id == myUserId) },
     )
 
     private fun stopCard(): StopCardState? {
@@ -171,6 +172,8 @@ internal class MapStateMapper(
     private fun stopDetails(selection: Selection.Stop): StopCardState? {
         val stop = stops.firstOrNull { it.id == selection.markerId } ?: return null
         val place = stop.placeId?.let { model.stopPlaces[it] }
+        val marker = days.getOrNull(activeIndex)?.markers?.firstOrNull { it.id == stop.id }
+        val creatorId = marker?.createdById
         return StopCardState(
             stop = stop,
             coverCredit = place?.images?.firstOrNull { it.id == stop.coverPhotoId }?.credit,
@@ -179,7 +182,22 @@ internal class MapStateMapper(
             canReport = role == TripRole.VIEWER,
             routes = pinRoutes(GeoPoint(stop.position.latitude, stop.position.longitude)),
             add = copyAdd,
+            addedBy = addedBy(creatorId, marker?.createdBy),
+            spotBy = place?.addedBy?.takeIf { it.id != creatorId }?.let { AddedBy(it, isMe = it.id == myUserId) },
         )
+    }
+
+    /**
+     * Who added a stop, shown once a trip has editors or the stop isn't the owner's (on a trip only its owner edits,
+     * every stop would name the header's owner); nothing when the server names no one (a deleted account, a block).
+     */
+    private fun addedBy(creatorId: String?, creator: UserSummary?): AddedBy? {
+        if (creatorId == null || (creatorId == details?.trip?.owner?.id && details?.members.orEmpty().none { it.role == TripRole.EDITOR })) return null
+        return when {
+            creatorId == myUserId -> AddedBy(creator, isMe = true)
+            creator != null -> AddedBy(creator, isMe = false)
+            else -> null
+        }
     }
 
     private fun routeSummary() = route.summary(plan, alongTheWay, addToDayNumber = dayNumber?.takeIf { canEdit })
