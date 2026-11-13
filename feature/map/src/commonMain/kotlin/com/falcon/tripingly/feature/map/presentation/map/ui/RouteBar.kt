@@ -202,11 +202,13 @@ private fun RouteEnd(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Icon(icon, contentDescription = label, tint = tint, modifier = Modifier.size(JoinedButtonDefaults.IconSize))
+        // The search goes with what's shown, so a field fading out stays the field, its text where it was.
         AnimatedContent(
-            targetState = bar,
-            contentKey = { name(it) },
+            targetState = bar to search,
+            contentKey = { (shownBar, shownSearch) -> name(shownBar) to (shownSearch != null) },
             transitionSpec = {
-                val isSwap = initialState.from != null && initialState.from == targetState.to && initialState.to == targetState.from
+                val (before, after) = initialState.first to targetState.first
+                val isSwap = before.from != null && before.from == after.to && before.to == after.from
                 if (isSwap) {
                     // No clipping: the name leaving slides into the other pill as the other's name slides into this one.
                     slideInVertically(tween(SWAP_MILLIS)) { swapDistance } togetherWith slideOutVertically(tween(SWAP_MILLIS)) { swapDistance } using null
@@ -216,32 +218,29 @@ private fun RouteEnd(
             },
             modifier = Modifier.weight(1f),
             label = "route end",
-        ) { shown ->
-            val text = name(shown)
+        ) { (shownBar, shownSearch) ->
+            val text = name(shownBar)
             when {
                 text != null -> EndName(text.asString(), Modifier.clickable(interactionSource = null, indication = null, onClickLabel = editLabel, onClick = onEdit))
-                search != null -> EndField(search.query, search.isSearching, bar.isEditing, onAction)
-                else -> Text(
+                shownSearch != null -> EndField(shownSearch.query, shownSearch.isSearching, shownBar.isEditing, onAction)
+                else -> EndName(
                     stringResource(Res.string.map_route_to_placeholder),
-                    style = MaterialTheme.typography.bodyLarge,
+                    Modifier.clickable(interactionSource = null, indication = null) { onAction(MapAction.Search.Open) },
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable(interactionSource = null, indication = null) { onAction(MapAction.Search.Open) }
-                        .padding(horizontal = MaterialTheme.spacing.medium),
                 )
             }
         }
     }
 }
 
-/** An end's name, where the field's text would start, the whole pill's width (its tap target). */
+/** An end's name (or the placeholder), where the field's text would start, the whole pill's width (its tap target). */
 @Composable
-private fun EndName(name: String, modifier: Modifier) {
+private fun EndName(name: String, modifier: Modifier, color: Color = Color.Unspecified) {
     Box(modifier.fillMaxWidth().height(RouteHeight), contentAlignment = Alignment.CenterStart) {
         Text(
             name,
             style = MaterialTheme.typography.bodyLarge,
+            color = color,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier.padding(horizontal = MaterialTheme.spacing.medium),
