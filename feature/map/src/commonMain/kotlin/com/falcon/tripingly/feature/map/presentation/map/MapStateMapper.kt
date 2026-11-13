@@ -1,6 +1,8 @@
 package com.falcon.tripingly.feature.map.presentation.map
 
 import com.falcon.tripingly.core.common.util.DateUtils
+import com.falcon.tripingly.core.data.push.NewsKind
+import com.falcon.tripingly.core.data.push.StopNews
 import com.falcon.tripingly.core.location.model.Coordinates
 import com.falcon.tripingly.core.location.permission.LocationPermission
 import com.falcon.tripingly.core.model.account.TripVisibility
@@ -55,6 +57,8 @@ internal class MapStateMapper(
     private val otherOwnerId = details?.trip?.owner?.id?.takeIf { role != TripRole.OWNER }
     private val stops = days.getOrNull(activeIndex)?.markers.orEmpty().mapIndexed { index, it -> it.toMapMarker(index + 1) }
     private val dayNumber = days.getOrNull(activeIndex)?.let { it.position + 1 }
+    /** Stops with news that marks their pin: any but flames, which only pop the open stop's flame (Shahin, 2026-11-13). */
+    private val markedStopIds = model.news.filter { it.kind != NewsKind.Hot }.mapTo(HashSet()) { it.markerId }
     /** A viewer's + puts a stop or place on one of my trips; an editor's puts a place on the open day. */
     private val copyAdd = PinAdd.ToMyTrip.takeIf { role != null && !canEdit }
     private val route = model.route
@@ -76,7 +80,7 @@ internal class MapStateMapper(
         header = header(),
         joinRequests = joinRequests(),
         search = model.search?.let { SearchState(it.query, it.results.toImmutableList(), it.isSearching) },
-        dayTabs = DayTabsState(days.map { day -> DayTab(day.id, day.position + 1, day.date?.let(DateUtils::formatAbbreviated), hasNew = day.markers.any { it.id in model.newStopIds || it.id in model.newCommentStopIds }, canDelete = canEdit && days.size > 1 && canDeleteDay(day.markers)) }.toImmutableList(), activeIndex),
+        dayTabs = DayTabsState(days.map { day -> DayTab(day.id, day.position + 1, day.date?.let(DateUtils::formatAbbreviated), hasNew = day.markers.any { it.id in markedStopIds }, canDelete = canEdit && days.size > 1 && canDeleteDay(day.markers)) }.toImmutableList(), activeIndex),
         plan = route.between?.let { PointRouteCardState(it.from, it.to, routeSummary(), it.fromLabel, it.toLabel) } ?: stopsCard(),
         routeBar = route.routeBar(),
         // The card stays open under a sheet, so closing the sheet comes back to it.
@@ -192,6 +196,11 @@ internal class MapStateMapper(
             add = copyAdd,
             addedBy = addedBy(creatorId, marker?.createdBy),
             spotBy = place?.addedBy?.takeIf { it.id != creatorId }?.let { AddedBy(it, isMe = it.id == myUserId) },
+            news = StopCardNews(
+                comments = StopNews(stop.id, NewsKind.Comments) in model.news,
+                photos = StopNews(stop.id, NewsKind.Photos) in model.news,
+                hot = StopNews(stop.id, NewsKind.Hot) in model.news,
+            ),
         )
     }
 
@@ -340,7 +349,7 @@ internal class MapStateMapper(
         commentCount = commentCount,
         placeId = placeId,
         canDelete = role == TripRole.OWNER || (canEdit && myUserId != null && createdById == myUserId),
-        isNew = id in model.newStopIds || id in model.newCommentStopIds,
+        isNew = id in markedStopIds,
     )
 
     private companion object {

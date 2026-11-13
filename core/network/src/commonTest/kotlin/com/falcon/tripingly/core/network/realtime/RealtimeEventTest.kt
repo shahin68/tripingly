@@ -129,10 +129,17 @@ class RealtimeEventTest {
             parse("notification.created", envelope("notification.created", """{"id":"n1","type":"photo_liked","markerId":"m1"}""")),
         )
         assertEquals(
-            RealtimeEvent.NotificationCreated("t1", "m1", aboutComments = true),
+            RealtimeEvent.NotificationCreated("t1", "m1", newsKind = "comments"),
             parse(
                 "notification.created",
                 envelope("notification.created", """{"id":"n4","type":"comment_on_marker","markerId":"m1","aboutComments":true}"""),
+            ),
+        )
+        assertEquals(
+            RealtimeEvent.NotificationCreated("t1", "m1", newsKind = "photos"),
+            parse(
+                "notification.created",
+                envelope("notification.created", """{"id":"n5","type":"likes_grouped","markerId":"m1","aboutComments":false,"newsKind":"photos"}"""),
             ),
         )
         // About a person: no trip, no stop; the entry for the center, whatever its type.

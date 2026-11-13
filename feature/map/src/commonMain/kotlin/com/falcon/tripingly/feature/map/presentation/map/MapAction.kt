@@ -114,6 +114,8 @@ sealed interface MapAction {
     /** The card over the selected stop, and its details sheet. */
     sealed interface StopCard : MapAction {
         data class ToggleHot(val markerId: String) : StopCard
+        /** The stop's flame popped for flames I hadn't seen. */
+        data class HotSeen(val markerId: String) : StopCard
         /** The stop's photos open in a sheet, where photos are added too. */
         data object OpenPhotos : StopCard
         /** The stop's comments open in a sheet. */

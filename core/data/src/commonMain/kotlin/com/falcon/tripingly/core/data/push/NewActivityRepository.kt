@@ -5,13 +5,12 @@ import com.falcon.tripingly.core.common.result.AppResult
 import kotlinx.coroutines.flow.Flow
 
 /**
- * The stops with notifications I haven't seen (a comment, a like on a photo, a collaborator's change): their pins
- * carry a "new" mark until that news is seen. News about a stop's comments ([StopNews.aboutComments]: a new comment
- * or a like on one) is seen in its comments, the rest when the stop opens.
+ * The stops with notifications I haven't seen (a comment, a photo, flames, a collaborator's change): their pins carry a
+ * "new" mark (not for flames) until that news is seen where it belongs ([NewsKind]).
  */
 interface NewActivityRepository {
-    /** The marked stops of [tripId], as the server has them. */
-    suspend fun stopsWithNewActivity(tripId: String): AppResult<NewActivity, DataError.Network>
+    /** The stops of [tripId] with news, as the server has them. */
+    suspend fun stopsWithNewActivity(tripId: String): AppResult<Set<StopNews>, DataError.Network>
 
     /** News about stops of [tripId] while the app runs. */
     fun newActivity(tripId: String): Flow<StopNews>
@@ -22,11 +21,14 @@ interface NewActivityRepository {
      */
     fun marksChanged(tripId: String): Flow<Unit>
 
-    /** The stop's comments were seen ([comments]), or the stop was opened: that news counts as read. */
-    suspend fun markSeen(markerId: String, comments: Boolean)
+    /** The stop's news of that kind was seen: it counts as read. */
+    suspend fun markSeen(news: StopNews)
 }
 
-/** [stopIds]: stops with any unread news; [commentStopIds]: those of them with news about their comments. */
-data class NewActivity(val stopIds: Set<String>, val commentStopIds: Set<String>)
+/**
+ * Where a stop's news is seen (Shahin, 2026-11-13): [Comments] in its comments and [Photos] in its photos (their
+ * buttons carry a dot until then), [Hot] (flames: no dot, the flame pops once) and [Other] when the stop opens.
+ */
+enum class NewsKind { Comments, Photos, Hot, Other }
 
-data class StopNews(val markerId: String, val aboutComments: Boolean)
+data class StopNews(val markerId: String, val kind: NewsKind)

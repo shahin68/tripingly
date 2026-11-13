@@ -64,6 +64,7 @@ internal fun MapPinCards(
             StopCard(
                 card = card,
                 onToggleHot = { onAction(MapAction.StopCard.ToggleHot(card.stop.id)) },
+                onHotSeen = { onAction(MapAction.StopCard.HotSeen(card.stop.id)) },
                 onOpenComments = { onAction(MapAction.StopCard.OpenComments) },
                 onOpenPhotos = { onAction(MapAction.StopCard.OpenPhotos) },
                 onOpenDetails = { onAction(MapAction.StopCard.OpenDetails) },

@@ -235,7 +235,15 @@ data class StopCardState(
     val addedBy: AddedBy? = null,
     /** Who made its custom spot, when that's someone else than [addedBy]. */
     val spotBy: AddedBy? = null,
+    val news: StopCardNews = StopCardNews(),
 )
+
+/**
+ * What's new about the open stop (Shahin, 2026-11-13): a dot on its [comments] and [photos] buttons until they're seen;
+ * [hot]: flames came, so its flame pops once, with no dot.
+ */
+@Immutable
+data class StopCardNews(val comments: Boolean = false, val photos: Boolean = false, val hot: Boolean = false)
 
 /**
  * Where a new map view starts. Later moves come from [MapViewModel.cameraCommands]; the map reports where it

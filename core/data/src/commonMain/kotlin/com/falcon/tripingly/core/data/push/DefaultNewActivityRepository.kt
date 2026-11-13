@@ -17,12 +17,19 @@ internal class DefaultNewActivityRepository(
     private val realtime: RealtimeClient,
 ) : NewActivityRepository {
 
-    override suspend fun stopsWithNewActivity(tripId: String): AppResult<NewActivity, DataError.Network> =
-        api.newActivity(tripId).map { NewActivity(it.markerIds.toSet(), it.commentMarkerIds.toSet()) }
+    override suspend fun stopsWithNewActivity(tripId: String): AppResult<Set<StopNews>, DataError.Network> =
+        api.newActivity(tripId).map { news ->
+            listOf(
+                news.commentMarkerIds to NewsKind.Comments,
+                news.photoMarkerIds to NewsKind.Photos,
+                news.hotMarkerIds to NewsKind.Hot,
+                news.otherMarkerIds to NewsKind.Other,
+            ).flatMap { (ids, kind) -> ids.map { StopNews(it, kind) } }.toSet()
+        }
 
     override fun newActivity(tripId: String): Flow<StopNews> =
         realtime.events.filterIsInstance<RealtimeEvent.NotificationCreated>()
-            .mapNotNull { news -> news.markerId?.takeIf { news.tripId == tripId }?.let { StopNews(it, news.aboutComments) } }
+            .mapNotNull { news -> news.markerId?.takeIf { news.tripId == tripId }?.let { StopNews(it, news.newsKind.toNewsKind()) } }
 
     // Also on every (re)connection: news sent while the app was in the background or offline never came live.
     override fun marksChanged(tripId: String): Flow<Unit> = merge(
@@ -32,7 +39,16 @@ internal class DefaultNewActivityRepository(
     )
 
     // Best effort: offline, the mark comes back the next time the trip opens.
-    override suspend fun markSeen(markerId: String, comments: Boolean) {
-        api.markRead(MarkReadDto(markerId = markerId, kind = if (comments) MarkReadDto.Kind.COMMENTS else MarkReadDto.Kind.OTHER))
+    override suspend fun markSeen(news: StopNews) {
+        val kind = when (news.kind) {
+            NewsKind.Comments -> MarkReadDto.Kind.COMMENTS
+            NewsKind.Photos -> MarkReadDto.Kind.PHOTOS
+            NewsKind.Hot -> MarkReadDto.Kind.HOT
+            NewsKind.Other -> MarkReadDto.Kind.OTHER
+        }
+        api.markRead(MarkReadDto(markerId = news.markerId, kind = kind))
     }
+
+    /** The server's `newsKind`; anything this app doesn't know yet is seen when the stop opens. */
+    private fun String.toNewsKind() = NewsKind.entries.firstOrNull { it.name.equals(this, ignoreCase = true) } ?: NewsKind.Other
 }

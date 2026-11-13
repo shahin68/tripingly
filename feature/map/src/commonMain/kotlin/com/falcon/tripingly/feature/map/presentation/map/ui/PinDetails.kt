@@ -82,7 +82,14 @@ internal fun StopDetailsContent(card: StopCardState, onAction: (MapAction) -> Un
         ),
         onClose = onClose,
         buttons = {
-            val group = stopButtons(stop, { onAction(MapAction.StopCard.ToggleHot(stop.id)) }, { onAction(MapAction.StopCard.OpenComments) }, showPhotos) +
+            val group = stopButtons(
+                stop,
+                card.news,
+                { onAction(MapAction.StopCard.ToggleHot(stop.id)) },
+                { onAction(MapAction.StopCard.HotSeen(stop.id)) },
+                { onAction(MapAction.StopCard.OpenComments) },
+                showPhotos,
+            ) +
                 routeButtons(card.routes, { onAction(MapAction.PinRoute.GoHere) }, { onAction(MapAction.PinRoute.Route) })
             JoinedButtons(group, Modifier.horizontalScroll(rememberScrollState()))
         },

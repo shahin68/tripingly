@@ -1,7 +1,9 @@
 package com.falcon.tripingly.feature.map.presentation.map.ui
 
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
@@ -60,6 +62,7 @@ import com.falcon.tripingly.feature.map.generated.resources.map_stop_photos
 import com.falcon.tripingly.feature.map.presentation.component.MapMarker
 import com.falcon.tripingly.feature.map.presentation.map.AddedBy
 import com.falcon.tripingly.feature.map.presentation.map.PinAdd
+import com.falcon.tripingly.feature.map.presentation.map.StopCardNews
 import com.falcon.tripingly.feature.map.presentation.map.StopCardState
 import com.falcon.tripingly.feature.map.presentation.map.preview.previewPlaceDetails
 import com.falcon.tripingly.feature.map.presentation.map.preview.previewPlaceImages
@@ -76,6 +79,7 @@ import org.jetbrains.compose.resources.stringResource
 internal fun PinCardScope.StopCard(
     card: StopCardState,
     onToggleHot: () -> Unit,
+    onHotSeen: () -> Unit,
     onOpenComments: () -> Unit,
     onOpenPhotos: () -> Unit,
     onOpenDetails: () -> Unit,
@@ -106,7 +110,7 @@ internal fun PinCardScope.StopCard(
                     )
                 },
                 credit = { StopCredit(card, Modifier.padding(top = MaterialTheme.spacing.small)) },
-                buttons = { PinCardButtons(stopButtons(stop, onToggleHot, onOpenComments, onOpenPhotos) + routeButtons(card.routes, onGoHere, onRoute), onOpenDetails, onDeleteShown, onAddShown, addLabel = addLabel) },
+                buttons = { PinCardButtons(stopButtons(stop, card.news, onToggleHot, onHotSeen, onOpenComments, onOpenPhotos) + routeButtons(card.routes, onGoHere, onRoute), onOpenDetails, onDeleteShown, onAddShown, addLabel = addLabel) },
             )
         } else {
             StopPill(card, onDeleteShown, onAddShown, addLabel, onExpand = { isExpanded = true }, modifier = Modifier.bloomRow(fromPin = 0))
@@ -114,14 +118,26 @@ internal fun PinCardScope.StopCard(
     }
 }
 
-/** The stop's group: its flame (where its place can be marked hot), its comments and its photos. */
+/** The stop's group: its flame (where its place can be marked hot), its comments and its photos, with their [news]. */
 @Composable
-internal fun stopButtons(stop: MapMarker, onToggleHot: () -> Unit, onOpenComments: () -> Unit, onOpenPhotos: () -> Unit): List<JoinedButtonSlot> {
+internal fun stopButtons(
+    stop: MapMarker,
+    news: StopCardNews,
+    onToggleHot: () -> Unit,
+    onHotSeen: () -> Unit,
+    onOpenComments: () -> Unit,
+    onOpenPhotos: () -> Unit,
+): List<JoinedButtonSlot> {
     val comments = stringResource(Res.string.map_stop_comment)
     val photos = stringResource(Res.string.map_stop_photos)
-    val hot: JoinedButtonSlot = { shape -> HotJoinedButton(hot = stop.hotByMe, count = stop.hotCount, shape = shape, onToggle = onToggleHot) }
-    val comment: JoinedButtonSlot = { shape -> JoinedButton(Icons.AutoMirrored.Outlined.Comment, comments, shape, onClick = onOpenComments, count = stop.commentCount) }
-    val photo: JoinedButtonSlot = { shape -> JoinedButton(Icons.Outlined.PhotoLibrary, photos, shape, onClick = onOpenPhotos, count = stop.photoCount) }
+    // News waits on the comments and photos until they open; flames only pop the flame once (Shahin, 2026-11-13).
+    val hot: JoinedButtonSlot = { shape ->
+        HotJoinedButton(hot = stop.hotByMe, count = stop.hotCount, shape = shape, onToggle = onToggleHot, isNew = news.hot, onNewSeen = onHotSeen)
+    }
+    val comment: JoinedButtonSlot = { shape ->
+        JoinedButton(Icons.AutoMirrored.Outlined.Comment, comments, shape, onClick = onOpenComments, count = stop.commentCount, isNew = news.comments)
+    }
+    val photo: JoinedButtonSlot = { shape -> JoinedButton(Icons.Outlined.PhotoLibrary, photos, shape, onClick = onOpenPhotos, count = stop.photoCount, isNew = news.photos) }
     return listOfNotNull(hot.takeIf { stop.canMarkHot }, comment, photo)
 }
 
@@ -158,13 +174,17 @@ internal fun StopCredit(card: StopCardState, modifier: Modifier = Modifier) {
 
 /**
  * The slim pill: as wide as its content, at most the card's width (the screen's minus its margins), the name wrapping
- * onto a second line before it ends.
+ * onto a second line before it ends. It glides to its new size when the place's type comes in late (Shahin,
+ * 2026-11-13), and a tap anywhere on it grows it into the big card, like ⌃.
  */
 @Composable
 private fun StopPill(card: StopCardState, onDelete: (() -> Unit)?, onAdd: (() -> Unit)?, addLabel: String, onExpand: () -> Unit, modifier: Modifier = Modifier) {
     val stop = card.stop
     Row(
-        modifier = modifier.padding(PillInset),
+        modifier = modifier
+            .clickable(interactionSource = null, indication = null, onClickLabel = stringResource(Res.string.map_stop_expand), onClick = onExpand)
+            .animateContentSize()
+            .padding(PillInset),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
     ) {
@@ -200,7 +220,7 @@ private val PillImageSize = JoinedButtonDefaults.Height
 /** An editor's stop, a viewer's, one with a long name and no counts, opened, and the pill of a stop I can't delete. */
 internal class StopCardPreviewStates : PreviewParameterProvider<StopCardPreview> {
     override val values = sequenceOf(
-        StopCardPreview(StopCardState(previewStop, coverCredit = previewPlaceImages.first().credit, place = previewPlaceDetails, canEdit = true, canReport = false, addedBy = AddedBy(null, isMe = true)), expanded = true),
+        StopCardPreview(StopCardState(previewStop, coverCredit = previewPlaceImages.first().credit, place = previewPlaceDetails, canEdit = true, canReport = false, addedBy = AddedBy(null, isMe = true), news = StopCardNews(comments = true, photos = true)), expanded = true),
         StopCardPreview(StopCardState(previewStop.copy(canDelete = false), coverCredit = null, place = previewPlaceDetails, canEdit = false, canReport = true, add = PinAdd.ToMyTrip, addedBy = AddedBy(UserSummary("u-2", "anna", "Anna"), isMe = false)), expanded = true),
         StopCardPreview(
             StopCardState(
@@ -234,6 +254,7 @@ private fun StopCardPreviewContent(preview: StopCardPreview) {
             StopCard(
                 card = shown.card,
                 onToggleHot = {},
+                onHotSeen = {},
                 onOpenComments = {},
                 onOpenPhotos = {},
                 onOpenDetails = {},

@@ -1,6 +1,7 @@
 package com.falcon.tripingly.feature.map.presentation.map.state
 
 import androidx.compose.foundation.text.input.TextFieldState
+import com.falcon.tripingly.core.data.push.StopNews
 import com.falcon.tripingly.core.data.trips.MarkerChangeFailure
 import com.falcon.tripingly.core.location.model.Coordinates
 import com.falcon.tripingly.core.location.permission.LocationPermission
@@ -52,11 +53,10 @@ internal data class MapModel(
     /** Stop changes undone because the connection failed; Retry sends them again. */
     val failedChanges: List<MarkerChangeFailure> = emptyList(),
     /**
-     * Stops with notifications I haven't seen: their pins and days carry a "new" mark ([MapNewActivity]) while they're
-     * in either set. [newStopIds]: news seen by opening the stop; [newCommentStopIds]: news seen in its comments.
+     * News about stops I haven't seen, by where it is seen ([MapNewActivity]): their pins and days carry a "new" mark for
+     * any but flames; the comments and photos buttons a dot for theirs; flames pop the open stop's flame.
      */
-    val newStopIds: Set<String> = emptySet(),
-    val newCommentStopIds: Set<String> = emptySet(),
+    val news: Set<StopNews> = emptySet(),
     /** The places button: only the trip's stops and its route's places show, nothing loads ([MapPins]). Every map opens with them shown. */
     val arePlacesHidden: Boolean = false,
     /** The trip's newest people asking to join, for its owner ([MapJoinRequests]); the pill shows while one isn't [dismissedJoinRequesterIds]. */

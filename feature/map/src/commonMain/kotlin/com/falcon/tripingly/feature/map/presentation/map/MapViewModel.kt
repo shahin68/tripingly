@@ -227,6 +227,7 @@ class MapViewModel(
     private fun onStopCard(action: MapAction.StopCard) {
         when (action) {
             is MapAction.StopCard.ToggleHot -> toggleStopHot(action.markerId)
+            is MapAction.StopCard.HotSeen -> newActivity.seenHot(action.markerId)
             is MapAction.StopCard.OpenPhotos -> selection.selectedMarkerId?.let { openSheet(Sheet.StopPhotos(it, fromDetails = isDetailsOpen())) }
             is MapAction.StopCard.OpenComments -> selection.selectedMarkerId?.let { openSheet(Sheet.StopComments(it, fromDetails = isDetailsOpen())) }
             is MapAction.StopCard.OpenDetails -> if (selection.selectedMarkerId != null) openSheet(Sheet.Details)
@@ -284,7 +285,7 @@ class MapViewModel(
         val config = appConfigRepository.config.value
         val mapper = MapStateMapper(details, model, config, myUserId)
         // Most changes (a search keystroke, a message, a sheet) don't touch the map: its ~150 pins aren't built again.
-        val inputs = listOf(details, model.activeDayIndex, model.route, model.pins, model.selection, model.location.permission, model.newStopIds, model.newCommentStopIds, model.arePlacesHidden, config)
+        val inputs = listOf(details, model.activeDayIndex, model.route, model.pins, model.selection, model.location.permission, model.news, model.arePlacesHidden, config)
         val layers = layers?.takeIf { it.first == inputs }?.second ?: mapper.layers().also { layers = inputs to it }
         return mapper.map(layers)
     }

@@ -14,6 +14,7 @@ import com.falcon.tripingly.core.data.config.FakeAppConfigRepository
 import com.falcon.tripingly.core.data.places.FakePlaceRepository
 import com.falcon.tripingly.core.data.places.PlaceRepository
 import com.falcon.tripingly.core.data.push.FakeNewActivityRepository
+import com.falcon.tripingly.core.data.push.NewsKind
 import com.falcon.tripingly.core.data.push.StopNews
 import com.falcon.tripingly.core.data.routing.FakeRouteRepository
 import com.falcon.tripingly.core.data.routing.RouteErrorCodes
@@ -732,7 +733,7 @@ class MapViewModelTest {
     fun `stops with new activity carry a mark until they are opened, and new ones come live`() = runTest(testDispatcher) {
         val first = backend.addMarker(trip.trip.id, trip.days[0].id, NewMarker("Stop #1", GeoPoint(48.85, 2.35)))
         val second = backend.addMarker(trip.trip.id, trip.days[0].id, NewMarker("Stop #2", GeoPoint(48.86, 2.29)))
-        newActivity.marked[trip.trip.id] = setOf(first.id)
+        newActivity.news[trip.trip.id] = setOf(StopNews(first.id, NewsKind.Other))
         val viewModel = viewModel()
         testScheduler.advanceUntilIdle()
         assertEquals(listOf(true, false), viewModel.uiState.value.layers.stops.map { it.isNew })
@@ -741,46 +742,71 @@ class MapViewModelTest {
         viewModel.onAction(MapAction.MapView.MarkerClick(viewModel.uiState.value.layers.stops[0]))
         testScheduler.advanceUntilIdle()
         assertEquals(listOf(false, false), viewModel.uiState.value.layers.stops.map { it.isNew })
-        assertEquals(listOf(StopNews(first.id, false)), newActivity.seen)
+        assertEquals(listOf(StopNews(first.id, NewsKind.Other)), newActivity.seen)
 
         // A like on the open stop is seen at once; one on another stop marks it.
         newActivity.arrive(trip.trip.id, first.id)
         newActivity.arrive(trip.trip.id, second.id)
         testScheduler.advanceUntilIdle()
         assertEquals(listOf(false, true), viewModel.uiState.value.layers.stops.map { it.isNew })
-        assertEquals(listOf(StopNews(first.id, false), StopNews(first.id, false)), newActivity.seen)
+        assertEquals(listOf(StopNews(first.id, NewsKind.Other), StopNews(first.id, NewsKind.Other)), newActivity.seen)
         assertTrue(viewModel.uiState.value.dayTabs.days[0].hasNew)
     }
 
     @Test
     fun `a stop with new comments keeps its mark until its comments are seen`() = runTest(testDispatcher) {
         val first = backend.addMarker(trip.trip.id, trip.days[0].id, NewMarker("Stop #1", GeoPoint(48.85, 2.35)))
-        newActivity.commentMarked[trip.trip.id] = setOf(first.id)
+        newActivity.news[trip.trip.id] = setOf(StopNews(first.id, NewsKind.Comments))
         val viewModel = viewModel()
         testScheduler.advanceUntilIdle()
 
-        // Opening the stop card doesn't read its comments.
-        viewModel.onAction(MapAction.MapView.MarkerClick(viewModel.uiState.value.layers.stops[0]))
-        testScheduler.advanceUntilIdle()
+        // Opening the stop card doesn't read its comments: their button carries the dot.
+        assertEquals(StopCardNews(comments = true), openStopCard(viewModel, 0).news)
         assertTrue(viewModel.uiState.value.layers.stops[0].isNew)
         assertTrue(newActivity.seen.isEmpty())
 
         viewModel.onAction(MapAction.StopCard.OpenComments)
         testScheduler.advanceUntilIdle()
         assertFalse(viewModel.uiState.value.layers.stops[0].isNew)
-        assertEquals(listOf(StopNews(first.id, true)), newActivity.seen)
+        assertEquals(listOf(StopNews(first.id, NewsKind.Comments)), newActivity.seen)
 
         // A new comment while they're open is seen at once.
-        newActivity.arrive(trip.trip.id, first.id, aboutComments = true)
+        newActivity.arrive(trip.trip.id, first.id, NewsKind.Comments)
         testScheduler.advanceUntilIdle()
         assertFalse(viewModel.uiState.value.layers.stops[0].isNew)
-        assertEquals(listOf(StopNews(first.id, true), StopNews(first.id, true)), newActivity.seen)
+        assertEquals(listOf(StopNews(first.id, NewsKind.Comments), StopNews(first.id, NewsKind.Comments)), newActivity.seen)
+    }
+
+    @Test
+    fun `photos keep their dot until they open, and flames only pop the flame`() = runTest(testDispatcher) {
+        val first = backend.addMarker(trip.trip.id, trip.days[0].id, NewMarker("Stop #1", GeoPoint(48.85, 2.35)))
+        val second = backend.addMarker(trip.trip.id, trip.days[0].id, NewMarker("Stop #2", GeoPoint(48.86, 2.29)))
+        newActivity.news[trip.trip.id] = setOf(StopNews(first.id, NewsKind.Photos), StopNews(second.id, NewsKind.Hot))
+        val viewModel = viewModel()
+        testScheduler.advanceUntilIdle()
+        // Flames put no mark on the pin.
+        assertEquals(listOf(true, false), viewModel.uiState.value.layers.stops.map { it.isNew })
+
+        assertEquals(StopCardNews(photos = true), openStopCard(viewModel, 0).news)
+        viewModel.onAction(MapAction.StopCard.OpenPhotos)
+        testScheduler.advanceUntilIdle()
+        assertEquals(StopCardNews(), viewModel.uiState.value.stopCard?.news)
+        assertFalse(viewModel.uiState.value.layers.stops[0].isNew)
+        assertEquals(listOf(StopNews(first.id, NewsKind.Photos)), newActivity.seen)
+
+        // The flame pops once on the card, then the flames count as seen.
+        viewModel.onAction(MapAction.Sheet.CloseAll)
+        assertEquals(StopCardNews(hot = true), openStopCard(viewModel, 1).news)
+        viewModel.onAction(MapAction.StopCard.HotSeen(second.id))
+        testScheduler.advanceUntilIdle()
+        assertEquals(StopCardNews(), viewModel.uiState.value.stopCard?.news)
+        assertEquals(StopNews(second.id, NewsKind.Hot), newActivity.seen.last())
     }
 
     @Test
     fun `news read elsewhere takes its mark off`() = runTest(testDispatcher) {
         val first = backend.addMarker(trip.trip.id, trip.days[0].id, NewMarker("Stop #1", GeoPoint(48.85, 2.35)))
-        newActivity.commentMarked[trip.trip.id] = setOf(first.id)
+        newActivity.news[trip.trip.id] = setOf(StopNews(first.id, NewsKind.Comments))
         val viewModel = viewModel()
         testScheduler.advanceUntilIdle()
         assertTrue(viewModel.uiState.value.layers.stops[0].isNew)

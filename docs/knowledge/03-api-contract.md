@@ -170,7 +170,7 @@ Response shapes and behaviour: see `05-maps-places-routing.md`.
 | DELETE | `/notifications/{id}` | Swiped away in the center: only the entry goes, never what it is about (the comment, the like); someone else's or an unknown id is a 204 too (backend#73) |
 | DELETE | `/notifications` | "Clear all" in the center → 204 (backend#73) |
 | POST | `/notifications/read` | Body: IDs, `markerId` (everything about one stop: clears its "new" mark; with `kind` `comments` only the news about its comments, `other` the rest) or `all` |
-| GET | `/trips/{id}/new-activity` | `{ markerIds, commentMarkerIds }`: the trip's stops with unread notifications for me, drawn as "new" marks; `commentMarkerIds` those with unread news about their comments (a new comment or a like on one; `aboutComments` on each notification) |
+| GET | `/trips/{id}/new-activity` | `{ markerIds, commentMarkerIds, photoMarkerIds, hotMarkerIds, otherMarkerIds }`: the trip's stops with unread notifications for me other than flames, drawn as "new" marks, and the stops per kind of news (`newsKind` on each notification: `comments`, `photos`, `hot`, `other`; backend#76, 2026-11-13). `POST /notifications/read { markerId, kind }` takes the same kinds |
 | GET/PATCH | `/me/notification-settings` | Per-type push on/off: `commentOnMarker`, `addedToTrip`, `tripChangedByCollaborator`, `likesGrouped` (likes, saves and hot-spot milestones), `joinRequested`, `newFollowers` (follows and new friends); PATCH sends only the one that changed |
 
 ### Moderation

@@ -95,13 +95,13 @@ sealed interface RealtimeEvent {
 
     /**
      * `notification.created`, new or back on top: [entry] for the notification center (null when it can't be
-     * read). About a stop ([markerId] in [tripId]) it gets a "new" mark on my map; [aboutComments]: news about its
-     * comments.
+     * read). About a stop ([markerId] in [tripId]) it gets a "new" mark on my map; [newsKind]: where it is seen
+     * (`comments`, `photos`, `hot`, `other`).
      */
     data class NotificationCreated(
         val tripId: String?,
         val markerId: String?,
-        val aboutComments: Boolean = false,
+        val newsKind: String = OTHER_NEWS,
         val entry: NotificationEntryDto? = null,
     ) : RealtimeEvent
 
@@ -159,7 +159,10 @@ private data class PlaceHotData(val placeId: String, val hotCount: Int)
 private data class TripIdData(val tripId: String)
 
 @Serializable
-private data class NotificationData(val markerId: String? = null, val aboutComments: Boolean = false)
+private data class NotificationData(val markerId: String? = null, val aboutComments: Boolean = false, val newsKind: String? = null)
+
+/** News seen when its stop opens. */
+private const val OTHER_NEWS = "other"
 
 @Serializable
 private data class NotificationsChangedData(
@@ -233,7 +236,9 @@ internal fun parseRealtimeEvent(name: String, payload: JsonElement): RealtimeEve
             } catch (_: SerializationException) {
                 null
             }
-            RealtimeEvent.NotificationCreated(tripId, notification.markerId, notification.aboutComments, entry)
+            // A server from before newsKind says only whether it is about comments.
+            val kind = notification.newsKind ?: if (notification.aboutComments) "comments" else OTHER_NEWS
+            RealtimeEvent.NotificationCreated(tripId, notification.markerId, kind, entry)
         }
         "notifications.changed" -> NetworkJson.decodeFromJsonElement<NotificationsChangedData>(data).let { changed ->
             RealtimeEvent.NotificationsChanged.Change.entries.firstOrNull { it.name.equals(changed.change, ignoreCase = true) }?.let {
