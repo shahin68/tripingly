@@ -178,7 +178,7 @@ private fun AnimatedVisibilityScope.RouteCardContent(route: RouteSummaryState, i
             // A place picked on the map is the card in view, also when the plan first shows.
             val listState = rememberLazyListState(initialFirstVisibleItemIndex = selectedIndex.coerceAtLeast(0))
             val onScreen = remember { OnScreen() }
-            LaunchedEffect(route.selectedPlaceId) { listState.reveal(selectedIndex, onScreen) }
+            LaunchedEffect(route.selectedPlaceId) { listState.reveal(selectedIndex, onScreen, toStart = true) }
             LazyRow(
                 state = listState,
                 modifier = Modifier.horizontalFadingEdge(listState).trackOnScreen(onScreen),

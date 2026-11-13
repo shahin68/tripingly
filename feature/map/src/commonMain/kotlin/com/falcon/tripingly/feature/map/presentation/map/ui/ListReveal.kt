@@ -6,17 +6,22 @@ import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
 
 /**
- * Brings item [index] to the row's start when it isn't wholly in view (a pin tapped on the map shows its chip in the
- * plan): gliding there while the row is on screen ([onScreen]), at once otherwise, e.g. under a collapsed sheet, where
- * a glide only costs frames (Shahin, 2026-11-13). Nothing when it already is in view, or for -1 (nothing picked).
+ * Brings item [index] into view (a pin tapped on the map shows its chip in the plan): to the row's start, also when it
+ * already shows ([toStart], Shahin 2026-11-13), or else only when it isn't wholly in view. It glides there while the row
+ * is on screen ([onScreen]) and jumps at once otherwise, e.g. under a collapsed sheet, where a glide only costs frames.
+ * Nothing for -1 (nothing picked).
  */
-internal suspend fun LazyListState.reveal(index: Int, onScreen: OnScreen? = null) {
+internal suspend fun LazyListState.reveal(index: Int, onScreen: OnScreen? = null, toStart: Boolean = false) {
     if (index < 0) return
     val info = layoutInfo
     val item = info.visibleItemsInfo.firstOrNull { it.index == index }
-    val isWhollyShown = item != null && item.offset >= info.viewportStartOffset && item.offset + item.size <= info.viewportEndOffset
+    val isInPlace = if (toStart) {
+        firstVisibleItemIndex == index && firstVisibleItemScrollOffset == 0
+    } else {
+        item != null && item.offset >= info.viewportStartOffset && item.offset + item.size <= info.viewportEndOffset
+    }
     when {
-        isWhollyShown -> Unit
+        isInPlace -> Unit
         onScreen == null || onScreen.isShown -> animateScrollToItem(index)
         else -> scrollToItem(index)
     }

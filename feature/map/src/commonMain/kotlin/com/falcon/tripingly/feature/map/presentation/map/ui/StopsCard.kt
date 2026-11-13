@@ -152,7 +152,7 @@ private fun StopChips(card: StopsCardState, onAction: (MapAction) -> Unit) {
     // A stop picked on the map is the chip in view, also when the plan first shows.
     val listState = rememberLazyListState(initialFirstVisibleItemIndex = selectedIndex.coerceAtLeast(0))
     val onScreen = remember { OnScreen() }
-    LaunchedEffect(card.selectedStopId) { listState.reveal(selectedIndex, onScreen) }
+    LaunchedEffect(card.selectedStopId) { listState.reveal(selectedIndex, onScreen, toStart = true) }
     val legColor = card.route?.mode?.lineColor ?: MaterialTheme.colorScheme.outlineVariant
     LazyRow(
         state = listState,
