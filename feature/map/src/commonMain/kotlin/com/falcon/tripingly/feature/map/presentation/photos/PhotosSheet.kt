@@ -5,10 +5,8 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.aspectRatio
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -22,10 +20,11 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AddPhotoAlternate
 import androidx.compose.material.icons.filled.PhotoCamera
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilledTonalIconButton
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -33,20 +32,15 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.tooling.preview.PreviewParameter
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.falcon.tripingly.core.data.photos.PhotoUpload
 import com.falcon.tripingly.core.designsystem.component.AppDialog
 import com.falcon.tripingly.core.designsystem.component.ButtonSize
 import com.falcon.tripingly.core.designsystem.component.MessageBannerHost
 import com.falcon.tripingly.core.designsystem.component.PrimaryButton
-import com.falcon.tripingly.core.designsystem.component.SecondaryButton
 import com.falcon.tripingly.core.designsystem.component.SheetHeader
 import com.falcon.tripingly.core.designsystem.component.ShowMessage
 import com.falcon.tripingly.core.designsystem.component.SkeletonBox
@@ -67,7 +61,7 @@ import org.koin.compose.viewmodel.koinViewModel
 import org.koin.core.parameter.parametersOf
 
 /**
- * The photos of a stop or a place ([owner]) in a sheet over the map, under [title]. [canAdd]: may add photos
+ * The photos of a stop or a place ([owner], named [title]) in a sheet over the map. [canAdd]: may add photos
  * (a stop's owners and editors; anyone on a place). [canManage]: a stop's owners and editors, who pick the
  * cover ([coverPhotoId]) and delete any photo; everyone else deletes only their own. [onReport] reports the
  * photo open in the viewer.
@@ -90,8 +84,8 @@ fun PhotosRoute(
     Box {
         PhotosScreen(
             state = state,
-            title = title,
-            subtitle = stringResource(if (owner is PhotoOwner.Place) Res.string.map_place_photos else Res.string.map_stop_photos),
+            title = stringResource(if (owner is PhotoOwner.Place) Res.string.map_place_photos else Res.string.map_stop_photos),
+            subtitle = title,
             canAdd = canAdd,
             canManage = canManage,
             coverPhotoId = coverPhotoId,
@@ -123,72 +117,8 @@ fun PhotosRoute(
     if (state.photoToDelete != null) DeletePhotoDialog(viewModel::onAction)
 }
 
-/**
- * One photo of [owner]'s gallery ([photoId]) full screen, without the sheet: the same viewer, likes and
- * gallery as [PhotosRoute], opened from elsewhere (a place card's images). Closing it ends [onDismiss].
- */
 @Composable
-fun PhotoViewerRoute(
-    owner: PhotoOwner,
-    photoId: String,
-    onReport: (Photo) -> Unit,
-    onDismiss: () -> Unit,
-    viewModel: PhotosViewModel = koinViewModel(key = "photos:$owner") { parametersOf(owner) },
-) {
-    val state by viewModel.uiState.collectAsStateWithLifecycle()
-    LaunchedEffect(photoId) { viewModel.onAction(Action.OnOpenPhoto(photoId)) }
-    // Left without closing (e.g. the card went away), the shared gallery must not stay on this photo.
-    DisposableEffect(viewModel) { onDispose { viewModel.onAction(Action.OnClosePhoto) } }
-    val onAction: (Action) -> Unit = { action ->
-        viewModel.onAction(action)
-        if (action is Action.OnClosePhoto) onDismiss()
-    }
-    // Until the gallery has taken this photo in, the state can still be an older one.
-    val isAsked = state.openPhotoId == photoId
-    val index = state.openPhotoIndex?.takeIf { isAsked }
-    val message = state.message
-    when {
-        index != null -> GalleryViewer(
-            state = state,
-            initialIndex = index,
-            coverPhotoId = null,
-            canManage = false,
-            onReport = onReport,
-            onAction = onAction,
-        )
-        // The gallery is loading, or still looking for the photo.
-        !isAsked || state.isLoading || state.isFindingPhoto -> Dialog(
-            onDismissRequest = { onAction(Action.OnClosePhoto) },
-            properties = DialogProperties(usePlatformDefaultWidth = false),
-        ) {
-            // The photo's place in the viewer, shimmering until it's found.
-            Box(Modifier.fillMaxSize().background(Color.Black), contentAlignment = Alignment.Center) {
-                SkeletonBox(Modifier.fillMaxWidth().aspectRatio(1f), shape = RectangleShape)
-            }
-        }
-        // Not there even after a fresh look (deleted, hidden, or the gallery didn't load): say why, then close.
-        else -> {
-            val text = message?.asString() ?: stringResource(Res.string.map_photo_gone)
-            val closingText = remember { text }
-            ShowMessage(
-                message = closingText,
-                onShown = {
-                    onAction(Action.OnDismissMessage)
-                    onAction(Action.OnClosePhoto)
-                },
-                isError = message !is UiText.Note,
-            )
-        }
-    }
-    // While it's still looking, a message waits: the close above says it.
-    if (index != null) {
-        ShowMessage(message = message?.asString(), onShown = { onAction(Action.OnDismissMessage) }, isError = message !is UiText.Note)
-    }
-    if (state.photoToDelete != null) DeletePhotoDialog(viewModel::onAction)
-}
-
-@Composable
-private fun DeletePhotoDialog(onAction: (Action) -> Unit) {
+internal fun DeletePhotoDialog(onAction: (Action) -> Unit) {
     AppDialog(
         title = stringResource(Res.string.map_photo_delete_title),
         message = stringResource(Res.string.map_photo_delete_message),
@@ -199,7 +129,10 @@ private fun DeletePhotoDialog(onAction: (Action) -> Unit) {
     )
 }
 
-/** The sheet's content: the header with Add photos and the camera, then the uploads and photos in a grid. */
+/**
+ * The sheet's content: the header with the camera and Add (where photos can be added), then the uploads and photos in a
+ * grid.
+ */
 @Composable
 fun PhotosScreen(
     state: State,
@@ -224,26 +157,24 @@ fun PhotosScreen(
     }
     val fullWidth: LazyGridItemSpanScope.() -> GridItemSpan = { GridItemSpan(maxLineSpan) }
     Column(modifier.fillMaxWidth().windowInsetsPadding(WindowInsets.bottomSystemBar)) {
-        SheetHeader(title = title, subtitle = subtitle, onClose = onClose)
-        if (canAdd) {
-            Row(
-                modifier = Modifier.padding(horizontal = MaterialTheme.spacing.medium).padding(bottom = MaterialTheme.spacing.medium),
-                horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
-            ) {
-                PrimaryButton(
-                    text = stringResource(Res.string.map_stop_add_photos),
-                    onClick = onAddPhotos,
-                    size = ButtonSize.Small,
-                    icon = Icons.Default.AddPhotoAlternate,
-                )
-                SecondaryButton(
-                    text = stringResource(Res.string.map_camera_take_photo),
-                    onClick = { onAction(Action.OnOpenCamera) },
-                    size = ButtonSize.Small,
-                    icon = Icons.Default.PhotoCamera,
-                )
-            }
-        }
+        SheetHeader(
+            title = title,
+            subtitle = subtitle,
+            onClose = onClose,
+            actions = {
+                if (canAdd) {
+                    FilledTonalIconButton(onClick = { onAction(Action.OnOpenCamera) }) {
+                        Icon(Icons.Default.PhotoCamera, contentDescription = stringResource(Res.string.map_camera_take_photo))
+                    }
+                    PrimaryButton(
+                        text = stringResource(Res.string.map_photos_add),
+                        onClick = onAddPhotos,
+                        size = ButtonSize.Small,
+                        icon = Icons.Default.AddPhotoAlternate,
+                    )
+                }
+            },
+        )
         LazyVerticalGrid(
             columns = GridCells.Adaptive(minSize = GalleryTileMinSize),
             modifier = Modifier.fillMaxWidth(),
@@ -303,8 +234,8 @@ private fun PhotosScreenPreview(@PreviewParameter(PhotosPreviewStates::class) st
     TripinglyTheme {
         PhotosScreen(
             state = state,
-            title = "Eiffel Tower",
-            subtitle = "Day 1 · Stop 1",
+            title = "Photos",
+            subtitle = "Eiffel Tower",
             canAdd = true,
             canManage = true,
             coverPhotoId = "ph1",
@@ -323,8 +254,8 @@ private fun PhotosScreenLandscapePreview() {
     TripinglyTheme(darkTheme = true) {
         PhotosScreen(
             state = PhotosPreviewStates().values.first(),
-            title = "A very long place name that doesn't fit on one line of the gallery",
-            subtitle = "5 photos",
+            title = "Photos",
+            subtitle = "A very long place name that doesn't fit on one line of the gallery",
             canAdd = false,
             canManage = false,
             coverPhotoId = null,
@@ -338,12 +269,12 @@ private fun PhotosScreenLandscapePreview() {
 
 @Preview
 @Composable
-private fun DeletePhotoDialogPreview() {
+internal fun DeletePhotoDialogPreview() {
     TripinglyTheme { DeletePhotoDialog(onAction = {}) }
 }
 
 @Preview
 @Composable
-private fun DeletePhotoDialogDarkPreview() {
+internal fun DeletePhotoDialogDarkPreview() {
     TripinglyTheme(darkTheme = true) { DeletePhotoDialog(onAction = {}) }
 }

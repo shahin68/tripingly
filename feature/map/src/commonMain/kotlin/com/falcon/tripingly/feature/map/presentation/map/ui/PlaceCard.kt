@@ -1,35 +1,26 @@
 package com.falcon.tripingly.feature.map.presentation.map.ui
 
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Directions
-import androidx.compose.material.icons.filled.PhotoLibrary
-import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.Directions
 import androidx.compose.material.icons.outlined.Flag
-import androidx.compose.material.icons.outlined.Language
 import androidx.compose.material.icons.outlined.PhotoLibrary
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.tooling.preview.PreviewParameter
 import androidx.compose.ui.tooling.preview.PreviewParameterProvider
-import com.falcon.tripingly.core.designsystem.component.ButtonSize
-import com.falcon.tripingly.core.designsystem.component.GlassSurface
-import com.falcon.tripingly.core.designsystem.component.OsmAttribution
-import com.falcon.tripingly.core.designsystem.component.PrimaryButton
-import com.falcon.tripingly.core.designsystem.component.SecondaryButton
-import com.falcon.tripingly.core.designsystem.component.icon
+import androidx.compose.ui.unit.dp
+import com.falcon.tripingly.core.designsystem.component.CreditLine
+import com.falcon.tripingly.core.designsystem.component.JoinedButton
+import com.falcon.tripingly.core.designsystem.component.JoinedButtonColors
+import com.falcon.tripingly.core.designsystem.component.JoinedButtonSlot
+import com.falcon.tripingly.core.designsystem.theme.MapColors
 import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
 import com.falcon.tripingly.core.designsystem.theme.spacing
 import com.falcon.tripingly.core.model.place.MapPlace
@@ -45,13 +36,14 @@ import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
 
 /**
- * A place tapped on the map, in a card that floats above its pin: what the pin knows at once, its images,
- * opening hours and website once loaded, its photos (anyone can add one), and Add to the open day for owners
- * and editors ([dayNumber] is null for viewers). A tapped image opens full screen. Anyone can route from the
- * place, and to it once another place was picked to start from ([onRouteTo]).
+ * A place tapped on the map, in a card that floats above its pin: its images (a tap opens one full screen), name, type
+ * and flames (only counted here: a place is marked hot as a trip's stop), the credit, and the buttons: its photos
+ * (anyone can add one), route from here, and route to here once another place was picked to start from ([onRouteTo]);
+ * on the right ⓘ for the details (hours, website) and the green + that adds it to the open day ([dayNumber], null for
+ * viewers).
  */
 @Composable
-fun PlaceCard(
+internal fun PinCardScope.PlaceCard(
     place: MapPlace,
     details: PlaceDetails?,
     /** For an address from search: shown instead of the category. */
@@ -60,82 +52,69 @@ fun PlaceCard(
     onAdd: () -> Unit,
     onOpenImage: (index: Int) -> Unit,
     onOpenPhotos: () -> Unit,
+    onOpenDetails: () -> Unit,
     onRouteFrom: () -> Unit,
     /** Null until "Route from here" was tapped on another place. */
     onRouteTo: (() -> Unit)?,
     modifier: Modifier = Modifier,
 ) {
-    GlassSurface(modifier = modifier.widthIn(max = MapCardMaxWidth), shape = MaterialTheme.shapes.extraLarge, blur = false) {
-        Column(
-            modifier = Modifier.padding(MaterialTheme.spacing.small),
-            verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
-        ) {
+    // An address from search is no place of ours, so it has no images to wait for and no photos.
+    val images = if (address != null) emptyList() else details?.images
+    val pagerState = rememberPagerState { images.orEmpty().size }
+    BigPinCard(
+        modifier = modifier.widthIn(max = MapCardMaxWidth),
+        banner = {
             PlaceBanner(
                 name = place.name,
                 subtitle = address ?: stringResource(place.category.label()),
-                hotCount = details?.hotCount ?: place.hotCount,
-                // An address from search is no place of ours, so it has no images to wait for.
-                images = if (address != null) emptyList() else details?.images,
                 category = place.category,
+                hotCount = details?.hotCount ?: place.hotCount,
+                images = images,
+                pagerState = pagerState,
                 onOpen = onOpenImage,
+                onOpenPhotos = onOpenPhotos.takeIf { address == null },
             )
-            val notes = listOfNotNull(
-                details?.addedBy?.let { stringResource(Res.string.map_place_added_by, it.username) },
-                details?.openingHours?.let { "${stringResource(Res.string.map_place_opening_hours)}: $it" },
+        },
+        credit = {
+            CreditLine(
+                // Our places come from OpenStreetMap or from people; an address from search comes from OpenStreetMap too.
+                osm = address != null || details?.isFromOsm == true,
+                credit = images?.getOrNull(pagerState.currentPage)?.credit,
+                cropped = true,
+                maxLines = 2,
+                modifier = Modifier.padding(top = MaterialTheme.spacing.small).padding(horizontal = MaterialTheme.spacing.extraSmall),
             )
-            notes.forEach { note ->
-                Text(note, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(horizontal = MaterialTheme.spacing.extraSmall))
-            }
-            PlaceActions(address == null, details?.website, dayNumber, onAdd, onOpenPhotos, onRouteFrom, onRouteTo)
-            OsmAttribution(modifier = Modifier.padding(horizontal = MaterialTheme.spacing.extraSmall))
-        }
-    }
+        },
+        buttons = {
+            PinCardButtons(
+                group = placeButtons(hasPhotos = address == null, onOpenPhotos, onRouteFrom, onRouteTo),
+                onDetails = onOpenDetails,
+                onDelete = null,
+                onAdd = onAdd.takeIf { dayNumber != null },
+                addLabel = dayNumber?.let { stringResource(Res.string.map_place_add_to_day, it) }.orEmpty(),
+            )
+        },
+    )
 }
 
-/**
- * Photos (not for an address from search, which is no place of ours), route from here, route to here once another
- * place was picked, the website, and Add to the open day.
- */
-@OptIn(ExperimentalLayoutApi::class)
+/** A place's group: its photos (not for an address from search), route from here, and route to here once one was picked. */
 @Composable
-private fun PlaceActions(
-    hasPhotos: Boolean,
-    website: String?,
-    dayNumber: Int?,
-    onAdd: () -> Unit,
-    onOpenPhotos: () -> Unit,
-    onRouteFrom: () -> Unit,
-    onRouteTo: (() -> Unit)?,
-) {
-    val uriHandler = LocalUriHandler.current
-    FlowRow(
-        horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
-        verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
-        itemVerticalAlignment = Alignment.CenterVertically,
-    ) {
-        if (hasPhotos) ActionIconButton(onOpenPhotos, Icons.Outlined.PhotoLibrary, stringResource(Res.string.map_place_photos))
-        ActionIconButton(onRouteFrom, Icons.Outlined.Directions, stringResource(Res.string.map_route_from_here))
-        if (onRouteTo != null) {
-            SecondaryButton(stringResource(Res.string.map_route_to_here), onRouteTo, size = ButtonSize.Small, icon = Icons.Outlined.Flag)
-        }
-        website?.let {
-            ActionIconButton(
-                onClick = {
-                    val url = if ("://" in it) it else "https://$it"
-                    // OpenStreetMap's value may not be a link a browser takes.
-                    runCatching { uriHandler.openUri(url) }
-                },
-                icon = Icons.Outlined.Language,
-                contentDescription = stringResource(Res.string.map_place_website),
-            )
-        }
-        if (dayNumber != null) {
-            PrimaryButton(stringResource(Res.string.map_place_add_to_day, dayNumber), onAdd, size = ButtonSize.Small, icon = Icons.Outlined.Add)
-        }
-    }
+internal fun placeButtons(hasPhotos: Boolean, onOpenPhotos: () -> Unit, onRouteFrom: () -> Unit, onRouteTo: (() -> Unit)?): List<JoinedButtonSlot> {
+    val photos = stringResource(Res.string.map_place_photos)
+    val routeFrom = stringResource(Res.string.map_route_from_here)
+    val routeTo = stringResource(Res.string.map_route_to_here)
+    val photo: JoinedButtonSlot = { shape -> JoinedButton(Icons.Outlined.PhotoLibrary, photos, shape, onClick = onOpenPhotos) }
+    val from: JoinedButtonSlot = { shape -> JoinedButton(Icons.Outlined.Directions, routeFrom, shape, onClick = onRouteFrom) }
+    val to: JoinedButtonSlot? = onRouteTo?.let { { shape -> JoinedButton(Icons.Outlined.Flag, routeTo, shape, onClick = it, colors = routeColors()) } }
+    return listOfNotNull(photo.takeIf { hasPhotos }, if (to != null) to else from)
 }
 
-private fun PlaceCategory.label(): StringResource = when (this) {
+/** A route button waiting for its other end: the blue of the routes on a see-through blue. */
+private fun routeColors() = JoinedButtonColors(MapColors.Car.copy(alpha = ROUTE_TINT), MapColors.Car)
+
+private const val ROUTE_TINT = 0.18f
+
+internal fun PlaceCategory.label(): StringResource = when (this) {
     PlaceCategory.Cafe -> Res.string.map_place_category_cafe
     PlaceCategory.Restaurant -> Res.string.map_place_category_restaurant
     PlaceCategory.Bar -> Res.string.map_place_category_bar
@@ -167,28 +146,34 @@ internal data class PlaceCardPreview(
     val canRouteTo: Boolean,
 )
 
-@Preview
 @Composable
-private fun PlaceCardPreview(@PreviewParameter(PlaceCardPreviewStates::class) card: PlaceCardPreview) {
-    TripinglyTheme {
-        PlaceCard(
-            place = card.place,
-            details = card.details,
-            address = card.address,
-            dayNumber = card.dayNumber,
-            onAdd = {},
-            onOpenImage = {},
-            onOpenPhotos = {},
-            onRouteFrom = {},
-            onRouteTo = if (card.canRouteTo) ({}) else null,
-        )
+private fun PlaceCardPreviewContent(card: PlaceCardPreview) {
+    Box(Modifier.background(MaterialTheme.colorScheme.surfaceContainerHigh).padding(MaterialTheme.spacing.medium)) {
+        PinCard(card = card, key = { it.place.id }, pinClearance = 0.dp) { shown ->
+            PlaceCard(
+                place = shown.place,
+                details = shown.details,
+                address = shown.address,
+                dayNumber = shown.dayNumber,
+                onAdd = {},
+                onOpenImage = {},
+                onOpenPhotos = {},
+                onOpenDetails = {},
+                onRouteFrom = {},
+                onRouteTo = if (shown.canRouteTo) ({}) else null,
+            )
+        }
     }
 }
 
-@Preview
+@Preview(widthDp = 392, heightDp = 380)
+@Composable
+private fun PlaceCardPreview(@PreviewParameter(PlaceCardPreviewStates::class) card: PlaceCardPreview) {
+    TripinglyTheme { PlaceCardPreviewContent(card) }
+}
+
+@Preview(widthDp = 392, heightDp = 380)
 @Composable
 private fun PlaceCardDarkPreview() {
-    TripinglyTheme(darkTheme = true) {
-        PlaceCard(previewPlace, previewPlaceDetails, address = null, dayNumber = 2, onAdd = {}, onOpenImage = {}, onOpenPhotos = {}, onRouteFrom = {}, onRouteTo = null)
-    }
+    TripinglyTheme(darkTheme = true) { PlaceCardPreviewContent(PlaceCardPreviewStates().values.elementAt(1)) }
 }

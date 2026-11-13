@@ -112,7 +112,7 @@ REST over HTTPS, JSON, base path `/v1`.
 | GET | `/markers/{id}` | Marker with photos, like state, comment count |
 | PATCH | `/markers/{id}` | Name, time, location, move to another day of the same trip |
 | DELETE | `/markers/{id}` | The stop's creator (`createdBy`) or the trip owner, else `403`. A stop with other people's photos, comments or likes answers `409 STOP_HAS_OTHERS_CONTENT` (`details`: counts); the app shows the server's message and sends `?confirm=true` once the user agrees (backend#42) |
-| DELETE | `/markers/{id}/mine` | Anyone who can see the trip: deletes my photos and comments on the stop and my likes on its photos and comments → 204 (a like on its place stays: it belongs to the place). Editors use it on stops they can't delete (backend#42) |
+| DELETE | `/markers/{id}/mine` | Anyone who can see the trip: deletes my photos and comments on the stop and my likes on its photos and comments → 204 (a like on its place stays: it belongs to the place). Editors used it on stops they can't delete (backend#42); the app no longer calls it since the pin cards lost their ⋮ (2026-11-12) |
 | POST | `/markers/{id}/copy` | Body: target `dayId` in one of my trips |
 
 ### Photos

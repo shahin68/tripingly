@@ -38,9 +38,9 @@ data class MapUiState(
     val plan: PlanCardState? = null,
     /** "Route from here" was tapped on this place: the chip that cancels it. */
     val routeStartName: String? = null,
-    /** The card over the tapped place's pin, once the camera has centered it. */
+    /** The card over the tapped place's pin, once the camera has centered it; away while a sheet is open. */
     val placeCard: PlaceCardState? = null,
-    /** The card over the tapped stop's pin, once the camera has centered it. */
+    /** The card over the tapped stop's pin, once the camera has centered it; away while a sheet is open. */
     val stopCard: StopCardState? = null,
     val layers: MapLayersState = MapLayersState(),
     val camera: CameraState = CameraState(),
@@ -186,10 +186,14 @@ data class RouteSummaryState(
     val addToDayNumber: Int?,
 )
 
+/**
+ * A place's card and details sheet: ⓘ opens the details, + adds the place to the open day ([addToDayNumber]), and
+ * from OpenStreetMap (once [details] say so) it credits "© OpenStreetMap contributors".
+ */
 @Immutable
 data class PlaceCardState(
     val place: MapPlace,
-    /** Images, opening hours and website, once loaded. */
+    /** Images, opening hours, website and where it's from, once loaded. */
     val details: PlaceDetails?,
     /** Street, city and country when the card is for an address from search. */
     val address: String?,
@@ -199,17 +203,21 @@ data class PlaceCardState(
     val canRouteTo: Boolean,
 )
 
+/**
+ * A stop's card and details sheet: ⓘ opens the details, Delete shows for whoever may delete it ([MapMarker.canDelete]).
+ * Its place ([place], once loaded) gives the credit (OpenStreetMap, a Commons cover's) and the hours and website.
+ */
 @Immutable
 data class StopCardState(
     val stop: MapMarker,
     /** The cover's credit, when it is one of the place's Wikimedia Commons images. */
     val coverCredit: ImageCredit?,
-    /** An owner or editor: photos can be added and taken. */
+    /** The stop's place, once loaded. */
+    val place: PlaceDetails?,
+    /** An owner or editor: photos can be added and managed. */
     val canEdit: Boolean,
-    /** Someone else's public trip: the stop can be reported. */
+    /** Someone else's public trip: the stop can be reported (in its details). */
     val canReport: Boolean,
-    /** Someone else's stop on a trip I edit: I can't delete it, only my photos, comments and likes on it. */
-    val canRemoveMyContent: Boolean,
 )
 
 /**
@@ -248,8 +256,10 @@ sealed interface MapSheet {
     data object Members : MapSheet
     /** An image of the place card, full screen in the place's photo viewer. */
     data class PlaceImage(val placeId: String, val photoId: String) : MapSheet
-    /** The in-app camera for the selected stop. */
-    data object PhotoCamera : MapSheet
+    /** The selected stop's details, half high. Its photos and comments open in their own sheets in its place. */
+    data class StopDetails(val card: StopCardState) : MapSheet
+    /** The selected place's details, half high. Its photos open in their own sheet in its place. */
+    data class PlaceDetails(val card: PlaceCardState) : MapSheet
 }
 
 @Immutable
@@ -257,8 +267,6 @@ sealed interface MapDialog {
     /** Clear the open day: [dayNumber] and its [stopCount] stops. */
     data class ClearDay(val dayNumber: Int, val stopCount: Int) : MapDialog
     data class DeleteDay(val dayNumber: Int, val stopCount: Int) : MapDialog
-    /** An editor removes their photos, comments and likes from the selected stop. */
-    data object RemoveMyContent : MapDialog
     /** The owner deletes a stop someone else added: [stopName] and everything on it goes for everyone. */
     data class DeleteOthersStop(val stopName: UiText) : MapDialog
     /** Deleting would delete other people's photos, comments or likes too; the server's [message] says so. */

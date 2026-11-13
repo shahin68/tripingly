@@ -63,6 +63,8 @@ data class PlaceDetails(
     val images: List<PlaceImage>,
     /** Who made this custom spot, credited as "Added by"; null for OSM places and when the server keeps it hidden. */
     val addedBy: UserSummary? = null,
+    /** From OpenStreetMap, credited as "© OpenStreetMap contributors"; false for a custom spot people made. */
+    val isFromOsm: Boolean = false,
 )
 
 enum class PlaceImageSource { Trip, Commons }

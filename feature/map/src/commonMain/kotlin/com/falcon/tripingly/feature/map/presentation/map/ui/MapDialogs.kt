@@ -35,7 +35,6 @@ import com.falcon.tripingly.feature.map.generated.resources.map_best_order_title
 import com.falcon.tripingly.feature.map.generated.resources.map_clear_day_message
 import com.falcon.tripingly.feature.map.generated.resources.map_clear_day_title
 import com.falcon.tripingly.feature.map.generated.resources.map_confirm_delete
-import com.falcon.tripingly.feature.map.generated.resources.map_confirm_remove
 import com.falcon.tripingly.feature.map.generated.resources.map_delete_day_message
 import com.falcon.tripingly.feature.map.generated.resources.map_delete_day_title
 import com.falcon.tripingly.feature.map.generated.resources.map_delete_others_content_title
@@ -50,8 +49,6 @@ import com.falcon.tripingly.feature.map.generated.resources.map_location_setting
 import com.falcon.tripingly.feature.map.generated.resources.map_pin_add
 import com.falcon.tripingly.feature.map.generated.resources.map_pin_name_label
 import com.falcon.tripingly.feature.map.generated.resources.map_pin_name_title
-import com.falcon.tripingly.feature.map.generated.resources.map_remove_my_content_message
-import com.falcon.tripingly.feature.map.generated.resources.map_remove_my_content_title
 import com.falcon.tripingly.feature.map.presentation.map.BestOrderPreview
 import com.falcon.tripingly.feature.map.presentation.map.LocationPrompt
 import com.falcon.tripingly.feature.map.presentation.map.MapAction
@@ -74,12 +71,6 @@ internal fun MapDialogs(dialog: MapDialog, onAction: (MapAction) -> Unit) {
             title = stringResource(Res.string.map_delete_day_title, dialog.dayNumber),
             text = stringResource(Res.string.map_delete_day_message, dialog.stopCount),
             confirm = Res.string.map_confirm_delete,
-            onAction = onAction,
-        )
-        MapDialog.RemoveMyContent -> ConfirmDialog(
-            title = stringResource(Res.string.map_remove_my_content_title),
-            text = stringResource(Res.string.map_remove_my_content_message),
-            confirm = Res.string.map_confirm_remove,
             onAction = onAction,
         )
         is MapDialog.DeleteOthersStop -> ConfirmDialog(

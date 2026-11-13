@@ -3,7 +3,6 @@ package com.falcon.tripingly.feature.map.presentation.map
 import com.falcon.tripingly.core.location.model.Coordinates
 import com.falcon.tripingly.core.location.permission.LocationPermission
 import com.falcon.tripingly.core.model.photo.Photo
-import com.falcon.tripingly.core.model.photo.PickedImage
 import com.falcon.tripingly.core.model.place.GeoBounds
 import com.falcon.tripingly.core.model.place.MapPlace
 import com.falcon.tripingly.core.model.place.PlaceCluster
@@ -97,19 +96,16 @@ sealed interface MapAction {
         data object CancelRouteStart : Plan
     }
 
-    /** The card over the selected stop. */
+    /** The card over the selected stop, and its details sheet. */
     sealed interface StopCard : MapAction {
         data class ToggleHot(val markerId: String) : StopCard
-        /** The stop's photos open in a sheet. */
+        /** The stop's photos open in a sheet, where photos are added too. */
         data object OpenPhotos : StopCard
         /** The stop's comments open in a sheet. */
         data object OpenComments : StopCard
-        /** Photos picked or taken for the stop. */
-        data class AddPhotos(val images: List<PickedImage>) : StopCard
-        /** The in-app camera opens for the stop; its photo comes back as [AddPhotos]. */
-        data object OpenCamera : StopCard
-        /** An editor removes their photos, comments and likes from a stop they can't delete. */
-        data object RemoveMyContent : StopCard
+        /** ⓘ: the stop's details open in a sheet, half high. */
+        data object OpenDetails : StopCard
+        /** From the details sheet, on someone else's public trip. */
         data object Report : StopCard
     }
 
@@ -124,6 +120,8 @@ sealed interface MapAction {
         data object RouteFrom : PlaceCard
         /** The route from the place picked first to this one. */
         data object RouteTo : PlaceCard
+        /** ⓘ: the place's details open in a sheet, half high. */
+        data object OpenDetails : PlaceCard
     }
 
     /** The sheet or full-screen viewer open over the map. */
@@ -133,7 +131,7 @@ sealed interface MapAction {
         data object CloseStopComments : Sheet
         data object CloseMembers : Sheet
         data object ClosePlaceImage : Sheet
-        data object CloseCamera : Sheet
+        data object CloseDetails : Sheet
         /** Reports the photo open in a viewer: a Commons image as the place's image, anything else as a photo. */
         data class ReportPhoto(val photo: Photo) : Sheet
     }

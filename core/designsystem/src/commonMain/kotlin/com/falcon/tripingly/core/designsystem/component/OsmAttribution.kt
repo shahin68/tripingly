@@ -30,12 +30,12 @@ fun OsmAttribution(modifier: Modifier = Modifier) {
         color = MaterialTheme.colorScheme.onSurfaceVariant,
         modifier = modifier
             .clip(RoundedCornerShape(4.dp))
-            .clickable { runCatching { uriHandler.openUri(COPYRIGHT_URL) } }
+            .clickable { runCatching { uriHandler.openUri(OSM_COPYRIGHT_URL) } }
             .padding(horizontal = 6.dp, vertical = 2.dp),
     )
 }
 
-private const val COPYRIGHT_URL = "https://www.openstreetmap.org/copyright"
+internal const val OSM_COPYRIGHT_URL = "https://www.openstreetmap.org/copyright"
 
 @Preview
 @Composable

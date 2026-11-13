@@ -34,7 +34,6 @@
     <string name="map_location_open_settings">Beállítások megnyitása</string>
     <string name="map_place_add_to_day">Hozzáadás a(z) %1$d. naphoz</string>
     <string name="map_place_opening_hours">Nyitvatartás</string>
-    <string name="map_place_website">Weboldal</string>
     <string name="map_place_added_by">Hozzáadta: @%1$s</string>
     <string name="map_place_image_position">%1$d / %2$d</string>
     <string name="map_place_image_report">Kép jelentése</string>
@@ -55,12 +54,7 @@
     <string name="map_pin_name_title">Hely elnevezése</string>
     <string name="map_pin_name_label">Név</string>
     <string name="map_pin_add">Hozzáadás</string>
-    <plurals name="map_stop_photo_count">
-        <item quantity="one">%1$d fotó</item>
-        <item quantity="other">%1$d fotó</item>
-    </plurals>
     <string name="map_stop_no_photos">Még nincs fotó</string>
-    <string name="map_stop_add_photos">Fotók hozzáadása</string>
     <string name="map_stop_photos">Fotók</string>
     <string name="map_photo_make_cover">Legyen borítókép</string>
     <string name="map_photo_cover">Borítókép</string>
@@ -120,10 +114,6 @@
     <string name="map_comment_replying_to">Válasz neki: %1$s</string>
     <string name="map_comment_cancel_reply">Válasz megszakítása</string>
     <string name="map_comment_reply_placeholder">Válasz írása…</string>
-    <plurals name="map_stop_comment_count">
-        <item quantity="one">%1$d hozzászólás</item>
-        <item quantity="other">%1$d hozzászólás</item>
-    </plurals>
 
     <!-- Errors: what failed -->
     <string name="map_error_load_trip">Nem sikerült betölteni az utazást.</string>
@@ -151,12 +141,6 @@
     <string name="map_delete_others_stop_title">Törlöd valaki más megállóját?</string>
     <string name="map_delete_others_stop_message">A(z) %1$s megállót más adta hozzá. Mindenkinél törlődik, a fotóival, hozzászólásaival és kedveléseivel együtt.</string>
     <string name="map_delete_others_content_title">Törlöd mindenkinek?</string>
-    <string name="map_remove_my_content">Saját fotóim, hozzászólásaim és kedveléseim eltávolítása</string>
-    <string name="map_remove_my_content_title">Eltávolítod a tartalmaidat erről a megállóról?</string>
-    <string name="map_remove_my_content_message">A fotóid, hozzászólásaid és kedveléseid erről a megállóról törlődnek. A megálló megmarad.</string>
-    <string name="map_confirm_remove">Eltávolítás</string>
-    <string name="map_my_content_removed">A fotóid, hozzászólásaid és kedveléseid eltávolítva erről a megállóról.</string>
-    <string name="map_error_remove_my_content">Nem sikerült eltávolítani a fotóidat, hozzászólásaidat és kedveléseidet.</string>
 
     <!-- Routes -->
     <string name="map_route">Útvonal</string>
@@ -199,7 +183,6 @@
     <string name="map_stop_expand">Több</string>
     <string name="map_stop_collapse">Kevesebb</string>
     <string name="map_stop_number">%1$d. megálló</string>
-    <string name="map_stop_more">Továbbiak ehhez a megállóhoz</string>
 
     <!-- Redesign -->
     <string name="map_comments">Hozzászólások</string>
@@ -215,4 +198,9 @@
     <string name="map_trip_card_more">és még %1$d</string>
     <string name="map_trip_card_only">Csak %1$s</string>
     <string name="map_trip_card_new_requests">Új csatlakozási kérések</string>
+    <string name="map_card_details">Részletek</string>
+    <string name="map_card_delete">Megálló törlése</string>
+    <string name="map_photos_add">Hozzáadás</string>
+    <string name="map_photos_more">+%1$d</string>
+    <string name="map_details_comments">Hozzászólások · %1$d</string>
 </resources>

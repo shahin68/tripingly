@@ -15,9 +15,7 @@ import com.falcon.tripingly.feature.map.generated.resources.Res
 import com.falcon.tripingly.feature.map.generated.resources.map_change_not_saved
 import com.falcon.tripingly.feature.map.generated.resources.map_error_add_day
 import com.falcon.tripingly.feature.map.generated.resources.map_error_delete_day
-import com.falcon.tripingly.feature.map.generated.resources.map_error_remove_my_content
 import com.falcon.tripingly.feature.map.generated.resources.map_error_stop_change
-import com.falcon.tripingly.feature.map.generated.resources.map_my_content_removed
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.StringResource
 
@@ -126,7 +124,6 @@ internal class MapEdits(
                 context.scope.launch { markerRepository.clearDay(context.tripId, day.id) }
             }
             Dialog.DeleteDay -> deleteDay(day.id, confirm = false)
-            Dialog.RemoveMyContent -> selection.selectedMarkerId?.let(::removeMyContent)
             is Dialog.DeleteOthersStop -> deleteMarker(dialog.markerId, confirm = true)
             else -> Unit
         }
@@ -160,18 +157,6 @@ internal class MapEdits(
                 result is AppResult.Error && result.error.hasCode(TripErrorCodes.STOP_HAS_OTHERS_CONTENT) ->
                     context.update { it.copy(dialog = Dialog.OthersContent.Day(result.error.serverMessage(), dayId)) }
             }
-        }
-    }
-
-    private fun removeMyContent(markerId: String) {
-        context.scope.launch {
-            val result = markerRepository.removeMyContent(context.tripId, markerId)
-            context.showMessage(
-                when (result) {
-                    is AppResult.Success -> UiText.Note(UiText.Resource(Res.string.map_my_content_removed))
-                    is AppResult.Error -> result.error.toUiText(Res.string.map_error_remove_my_content)
-                },
-            )
         }
     }
 

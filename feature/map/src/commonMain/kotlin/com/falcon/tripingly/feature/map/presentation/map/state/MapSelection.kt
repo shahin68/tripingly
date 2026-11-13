@@ -22,7 +22,7 @@ internal class MapSelection(
     private val placeRepository: PlaceRepository,
 ) {
     private var placeDetailsJob: Job? = null
-    /** Places whose images are on their way for a stop card; see [loadStopPlaceImages]. */
+    /** Places on their way for a stop card; see [loadStopPlace]. */
     private val loadingStopPlaces = mutableSetOf<String>()
     /** The latest touch closed a place or stop, so its tap only closes it (see [onScreenTouch]). */
     var isClosingTouch = false
@@ -38,7 +38,7 @@ internal class MapSelection(
         val isThere = camera.isAt(GeoPoint(marker.position.latitude, marker.position.longitude), zoom)
         context.update { it.copy(selection = Selection.Stop(marker.id, isCardShown = isThere)) }
         camera.moveTo(marker.position, zoom)
-        if (marker.coverPhotoId != null) loadStopPlaceImages(marker.placeId)
+        loadStopPlace(marker.placeId)
     }
 
     /** Shows the card with what the pin knows and adds the place's details. */
@@ -77,13 +77,16 @@ internal class MapSelection(
 
     fun closePlace() {
         placeDetailsJob?.cancel()
-        context.update { if (it.selection is Selection.Place) it.copy(selection = null) else it }
+        context.update { if (it.selection is Selection.Place) it.unselected() else it }
     }
 
-    fun closeStop() = context.update { if (it.selection is Selection.Stop) it.copy(selection = null) else it }
+    fun closeStop() = context.update { if (it.selection is Selection.Stop) it.unselected() else it }
 
     /** Closes the stop if it's [markerId]'s. */
-    fun closeStop(markerId: String) = context.update { if ((it.selection as? Selection.Stop)?.markerId == markerId) it.copy(selection = null) else it }
+    fun closeStop(markerId: String) = context.update { if ((it.selection as? Selection.Stop)?.markerId == markerId) it.unselected() else it }
+
+    /** Nothing selected, so the details sheet about it closes too (a deleted stop, another day). */
+    private fun MapModel.unselected() = copy(selection = null, sheet = sheet.takeUnless { it is Sheet.Details })
 
     fun openPlaceImage(index: Int?) = context.update { model ->
         val selection = model.selection as? Selection.Place ?: return@update model
@@ -109,12 +112,15 @@ internal class MapSelection(
         closeStop()
     }
 
-    /** A stop's cover may be one of its place's Commons images, shown with its credit; asked for once per place. */
-    private fun loadStopPlaceImages(placeId: String?) {
-        if (placeId == null || placeId in context.model.value.stopPlaceImages || !loadingStopPlaces.add(placeId)) return
+    /**
+     * A stop's place: where it's from (OpenStreetMap is credited), whether its cover is one of its Commons images (shown
+     * with its credit), and its hours and website for the details sheet. Asked for once per place.
+     */
+    private fun loadStopPlace(placeId: String?) {
+        if (placeId == null || placeId in context.model.value.stopPlaces || !loadingStopPlaces.add(placeId)) return
         context.scope.launch {
             placeRepository.place(placeId).onSuccess { details ->
-                context.update { it.copy(stopPlaceImages = it.stopPlaceImages + (placeId to details.images)) }
+                context.update { it.copy(stopPlaces = it.stopPlaces + (placeId to details)) }
             }
             loadingStopPlaces -= placeId
         }

@@ -262,6 +262,7 @@ internal class DefaultPlaceRepository(
             )
         },
         addedBy = addedBy?.toUser(),
+        isFromOsm = source == PlaceDetailDto.Source.OSM,
     )
 
     private class LoadedSquare {

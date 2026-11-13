@@ -49,10 +49,6 @@ interface MarkersApi {
     @DELETE("days/{id}/markers")
     suspend fun clearDay(@Path("id") dayId: String, @Query("confirm") confirm: Boolean): AppResult<Unit, DataError.Network>
 
-    /** Deletes my photos and comments on the stop and my likes on it and on its photos and comments. */
-    @DELETE("markers/{id}/mine")
-    suspend fun removeMine(@Path("id") id: String): AppResult<Unit, DataError.Network>
-
     /** The day's complete marker list in the new order. */
     @PUT("days/{id}/marker-order")
     @Headers("Content-Type: application/json")

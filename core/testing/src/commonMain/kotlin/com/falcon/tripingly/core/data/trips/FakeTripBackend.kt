@@ -315,11 +315,6 @@ class FakeTripBackend(
         failure.change.confirmed()?.let { run(it) }
     }
 
-    /** Nobody else adds photos or comments here, so there is nothing of mine to count back. */
-    override suspend fun removeMyContent(tripId: String, markerId: String): AppResult<Unit, DataError.Network> = call {
-        if (markerOf(markerId) == null) return notFound()
-    }
-
     private suspend fun run(change: MarkerChange) {
         val result = when (change) {
             is MarkerChange.Add -> createMarker(change.marker)

@@ -1,34 +1,23 @@
 package com.falcon.tripingly.feature.map.presentation.map.ui
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.LocalFireDepartment
-import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.tooling.preview.PreviewParameter
 import androidx.compose.ui.tooling.preview.PreviewParameterProvider
 import androidx.compose.ui.unit.dp
-import com.falcon.tripingly.core.designsystem.component.CommonsCredit
 import com.falcon.tripingly.core.designsystem.component.PhotoImage
 import com.falcon.tripingly.core.designsystem.component.PhotoSize
-import com.falcon.tripingly.core.designsystem.component.compactCount
-import com.falcon.tripingly.core.designsystem.component.icon
 import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
-import com.falcon.tripingly.core.designsystem.theme.spacing
 import com.falcon.tripingly.core.model.place.PlaceCategory
 import com.falcon.tripingly.core.model.place.PlaceImage
 import com.falcon.tripingly.feature.map.generated.resources.Res
@@ -38,52 +27,48 @@ import com.falcon.tripingly.feature.map.presentation.map.preview.previewPlaceIma
 import org.jetbrains.compose.resources.stringResource
 
 /**
- * The top of the place card: its images swiped through in a photo banner, with its name, its [subtitle] and which
- * image shows ("1 / 2"), its hot count, and under it the shown Commons image's credit. [images] is null while the
- * place loads; a place without images shows its category icon.
+ * The top of the place card: its images swiped through in a photo banner ([pagerState]), with its name, its [subtitle]
+ * and which image shows ("1 / 2"), and its flames, only counted. A tapped image opens full screen ([onOpen]). [images]
+ * is null while the place loads; a place without images is a tinted panel, whose tap opens its photos ([onOpenPhotos]).
  */
 @Composable
 internal fun PlaceBanner(
     name: String,
     subtitle: String,
+    category: PlaceCategory,
     hotCount: Int,
     images: List<PlaceImage>?,
-    category: PlaceCategory,
+    pagerState: PagerState,
     onOpen: (index: Int) -> Unit,
+    onOpenPhotos: (() -> Unit)?,
     modifier: Modifier = Modifier,
 ) {
-    val pagerState = rememberPagerState { images.orEmpty().size }
     val position = images?.takeIf { it.size > 1 }?.let { stringResource(Res.string.map_place_image_position, pagerState.currentPage + 1, it.size) }
-    Column(modifier, verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraSmall)) {
-        PhotoBanner(
-            title = name,
-            subtitle = listOfNotNull(subtitle, position).joinToString(" · "),
-            image = {
-                when {
-                    images == null -> Unit
-                    images.isEmpty() -> Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.secondaryContainer), contentAlignment = Alignment.Center) {
-                        Icon(category.icon, contentDescription = null, tint = MaterialTheme.colorScheme.onSecondaryContainer, modifier = Modifier.size(40.dp))
-                    }
-                    else -> {
-                        val description = stringResource(Res.string.map_place_images)
-                        HorizontalPager(state = pagerState, modifier = Modifier.fillMaxSize(), key = { images[it].id }) { page ->
-                            // The display size: a thumbnail is too small for the card, and the viewer opens from cache.
-                            PhotoImage(
-                                photoId = images[page].id,
-                                url = images[page].displayUrl,
-                                size = PhotoSize.Display,
-                                contentDescription = description,
-                                modifier = Modifier.fillMaxSize().clickable { onOpen(page) },
-                            )
-                        }
-                    }
-                }
-            },
-        ) {
-            if (hotCount > 0) BannerChip(compactCount(hotCount), icon = Icons.Outlined.LocalFireDepartment)
-        }
-        images?.getOrNull(pagerState.currentPage)?.credit?.let { credit ->
-            CommonsCredit(credit = credit, cropped = true, maxLines = 2, modifier = Modifier.padding(horizontal = MaterialTheme.spacing.extraSmall))
+    val description = stringResource(Res.string.map_place_images)
+    PhotoBanner(
+        title = name,
+        subtitle = listOfNotNull(subtitle, position).joinToString(" · "),
+        modifier = modifier,
+        // Loading, the photo's grey waits; a place without images has none to wait for.
+        image = if (images?.isEmpty() == true) null else pagerImages(images, pagerState, description, onOpen),
+        onClick = onOpenPhotos.takeIf { images?.isEmpty() == true },
+        mark = { PinMark(category, stopNumber = null) },
+        trailing = { if (hotCount > 0) BannerCount(Icons.Outlined.LocalFireDepartment, hotCount) },
+    )
+}
+
+/** The place's [images] swiped through; while they load (null), the photo's grey waits. */
+private fun pagerImages(images: List<PlaceImage>?, pagerState: PagerState, description: String, onOpen: (index: Int) -> Unit): @Composable BoxScope.() -> Unit = {
+    if (images != null) {
+        HorizontalPager(state = pagerState, modifier = Modifier.fillMaxSize(), key = { images[it].id }) { page ->
+            // The display size: a thumbnail is too small for the card, and the viewer opens from cache.
+            PhotoImage(
+                photoId = images[page].id,
+                url = images[page].displayUrl,
+                size = PhotoSize.Display,
+                contentDescription = description,
+                modifier = Modifier.fillMaxSize().clickable { onOpen(page) },
+            )
         }
     }
 }
@@ -97,7 +82,7 @@ internal class PlaceImageStripPreviewStates : PreviewParameterProvider<List<Plac
 @Composable
 private fun PlaceBannerPreview(@PreviewParameter(PlaceImageStripPreviewStates::class) images: List<PlaceImage>?) {
     TripinglyTheme {
-        PlaceBanner("Peterskirche", "Attraction · Innere Stadt", 2_300, images, PlaceCategory.Museum, onOpen = {}, modifier = Modifier.width(320.dp))
+        PlaceBanner("Peterskirche", "Attraction · Innere Stadt", PlaceCategory.Attraction, 2_300, images, rememberPagerState { images.orEmpty().size }, onOpen = {}, onOpenPhotos = {}, modifier = Modifier.width(320.dp))
     }
 }
 
@@ -105,6 +90,6 @@ private fun PlaceBannerPreview(@PreviewParameter(PlaceImageStripPreviewStates::c
 @Composable
 private fun PlaceBannerDarkPreview() {
     TripinglyTheme(darkTheme = true) {
-        PlaceBanner("Peterskirche", "Attraction", 0, emptyList(), PlaceCategory.Museum, onOpen = {}, modifier = Modifier.width(320.dp))
+        PlaceBanner("Peterskirche", "Attraction", PlaceCategory.Attraction, 0, emptyList(), rememberPagerState { 0 }, onOpen = {}, onOpenPhotos = {}, modifier = Modifier.width(320.dp))
     }
 }

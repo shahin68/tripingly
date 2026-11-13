@@ -40,6 +40,7 @@ import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertIs
 import kotlin.test.assertTrue
@@ -223,7 +224,7 @@ class PlaceRepositoryTest {
     }
 
     @Test
-    fun `a place's images keep their order and Commons images keep their credit`() = runTest {
+    fun `a place's images keep their order and Commons credit and an OpenStreetMap place says so`() = runTest {
         val details = assertIs<AppResult.Success<PlaceDetails>>(repository().place("p1")).data
 
         assertEquals(
@@ -248,6 +249,7 @@ class PlaceRepositoryTest {
             details.images,
         )
         assertNull(details.addedBy)
+        assertTrue(details.isFromOsm)
     }
 
     @Test
@@ -255,6 +257,7 @@ class PlaceRepositoryTest {
         val details = assertIs<AppResult.Success<PlaceDetails>>(repository().place("u1")).data
 
         assertEquals(UserSummary(id = "u-anna", username = "anna", displayName = "Anna"), details.addedBy)
+        assertFalse(details.isFromOsm)
     }
 
     @Test

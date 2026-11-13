@@ -67,7 +67,6 @@ import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
 import com.falcon.tripingly.core.designsystem.theme.spacing
 import com.falcon.tripingly.core.model.place.GeoBounds
 import com.falcon.tripingly.core.ui.UiText
-import com.falcon.tripingly.core.ui.photos.rememberPhotoPicker
 import com.falcon.tripingly.feature.map.generated.resources.Res
 import com.falcon.tripingly.feature.map.generated.resources.map_back
 import com.falcon.tripingly.feature.map.generated.resources.map_retry
@@ -317,11 +316,11 @@ internal fun MapScreen(
                     onAdd = { onAction(MapAction.PlaceCard.AddToDay) },
                     onOpenImage = { index -> onAction(MapAction.PlaceCard.OpenImage(index)) },
                     onOpenPhotos = { onAction(MapAction.PlaceCard.OpenPhotos) },
+                    onOpenDetails = { onAction(MapAction.PlaceCard.OpenDetails) },
                     onRouteFrom = { onAction(MapAction.PlaceCard.RouteFrom) },
                     onRouteTo = { onAction(MapAction.PlaceCard.RouteTo) }.takeIf { card.canRouteTo },
                 )
             }
-            val pickPhotos = rememberPhotoPicker { images -> onAction(MapAction.StopCard.AddPhotos(images)) }
             PinCard(
                 card = state.stopCard,
                 key = { it.stop.id },
@@ -330,17 +329,12 @@ internal fun MapScreen(
                 modifier = Modifier.onGloballyPositioned { stopCardBounds = it.unclippedBounds() },
             ) { card ->
                 StopCard(
-                    marker = card.stop,
-                    coverCredit = card.coverCredit,
-                    canEdit = card.canEdit,
-                    onOpen = { onAction(MapAction.StopCard.OpenPhotos) },
-                    onAddPhotos = pickPhotos,
-                    onTakePhoto = { onAction(MapAction.StopCard.OpenCamera) },
+                    card = card,
                     onToggleHot = { onAction(MapAction.StopCard.ToggleHot(card.stop.id)) },
                     onOpenComments = { onAction(MapAction.StopCard.OpenComments) },
-                    canReport = card.canReport,
-                    onReport = { onAction(MapAction.StopCard.Report) },
-                    onRemoveMyContent = { onAction(MapAction.StopCard.RemoveMyContent) }.takeIf { card.canRemoveMyContent },
+                    onOpenPhotos = { onAction(MapAction.StopCard.OpenPhotos) },
+                    onOpenDetails = { onAction(MapAction.StopCard.OpenDetails) },
+                    onDelete = { onAction(MapAction.Plan.RemoveStop(card.stop.id)) },
                 )
             }
         }

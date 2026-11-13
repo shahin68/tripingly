@@ -37,9 +37,6 @@ interface MarkerRepository {
     /** Sends a refused delete or cleared day again, deleting other people's photos, comments and likes too. */
     suspend fun deleteAnyway(failure: MarkerChangeFailure)
 
-    /** Deletes my photos and comments on someone else's stop and my likes there; waits for the server. */
-    suspend fun removeMyContent(tripId: String, markerId: String): AppResult<Unit, DataError.Network>
-
     /** [markerIds] is the day's complete marker list in the new order. */
     suspend fun reorderMarkers(tripId: String, dayId: String, markerIds: List<String>)
 
