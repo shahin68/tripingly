@@ -19,6 +19,7 @@ import androidx.compose.material.icons.outlined.ExpandMore
 import androidx.compose.material.icons.outlined.PhotoLibrary
 import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -129,13 +130,17 @@ private fun coverImage(coverId: String, url: String?): @Composable BoxScope.() -
     PhotoImage(photoId = coverId, url = url, size = PhotoSize.Thumb, contentDescription = null, modifier = Modifier.fillMaxSize())
 }
 
-/** "**Stop 2** · Attraction", the type once the stop's place is loaded; the stop's number in bold, as it has no other mark. */
+/**
+ * "**Stop 2** · Attraction", the type once the stop's place is loaded. The stop's number has no other mark, so it is
+ * extra bold in the full content colour (the line itself is a lighter, Medium or SemiBold style).
+ */
 @Composable
 internal fun stopSubtitle(card: StopCardState): AnnotatedString {
     val number = stringResource(Res.string.map_stop_number, card.stop.orderNumber)
     val type = card.place?.category?.let { stringResource(it.label()) }
+    val color = LocalContentColor.current
     return buildAnnotatedString {
-        withStyle(SpanStyle(fontWeight = FontWeight.Bold)) { append(number) }
+        withStyle(SpanStyle(fontWeight = FontWeight.ExtraBold, color = color)) { append(number) }
         type?.let { append(" · $it") }
     }
 }
