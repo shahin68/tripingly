@@ -56,13 +56,10 @@ internal class MapStateMapper(
     /** Someone else's trip: the header says whose. */
     private val otherOwnerId = details?.trip?.owner?.id?.takeIf { role != TripRole.OWNER }
     /**
-     * Stops with news that marks their pin and day tab: any kind, flames too (Shahin, 2026-11-13). The open stop's
-     * flames don't: its flame pops for them instead, and the mark comes back if it closes before the flame showed.
-     * Set before [stops], which reads it.
+     * Stops with news that marks their pin and day tab: any kind, flames too, until the flame has shown in the
+     * expanded card or the details (Shahin, 2026-11-13). Set before [stops], which reads it.
      */
-    private val markedStopIds = (model.selection as? Selection.Stop)?.markerId.let { open ->
-        model.news.filterNot { it.kind == NewsKind.Hot && it.markerId == open }.mapTo(HashSet()) { it.markerId }
-    }
+    private val markedStopIds = model.news.mapTo(HashSet()) { it.markerId }
     private val stops = days.getOrNull(activeIndex)?.markers.orEmpty().mapIndexed { index, it -> it.toMapMarker(index + 1) }
     private val dayNumber = days.getOrNull(activeIndex)?.let { it.position + 1 }
     /** A viewer's + puts a stop or place on one of my trips; an editor's puts a place on the open day. */

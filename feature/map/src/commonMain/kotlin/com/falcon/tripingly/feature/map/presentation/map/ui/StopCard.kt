@@ -24,6 +24,8 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -130,9 +132,12 @@ internal fun stopButtons(
 ): List<JoinedButtonSlot> {
     val comments = stringResource(Res.string.map_stop_comment)
     val photos = stringResource(Res.string.map_stop_photos)
-    // News waits on the comments and photos until they open; flames only pop the flame once (Shahin, 2026-11-13).
+    // News waits on the comments and photos until they open (Shahin, 2026-11-13). Flames have no dot on the button:
+    // they count as seen once the flame shows (the expanded card or the details), and only then leave the pin.
     val hot: JoinedButtonSlot = { shape ->
-        HotJoinedButton(hot = stop.hotByMe, count = stop.hotCount, shape = shape, onToggle = onToggleHot, isNew = news.hot, onNewSeen = onHotSeen)
+        val currentOnHotSeen by rememberUpdatedState(onHotSeen)
+        LaunchedEffect(news.hot) { if (news.hot) currentOnHotSeen() }
+        HotJoinedButton(hot = stop.hotByMe, count = stop.hotCount, shape = shape, onToggle = onToggleHot)
     }
     val comment: JoinedButtonSlot = { shape ->
         JoinedButton(Icons.AutoMirrored.Outlined.Comment, comments, shape, onClick = onOpenComments, count = stop.commentCount, isNew = news.comments)

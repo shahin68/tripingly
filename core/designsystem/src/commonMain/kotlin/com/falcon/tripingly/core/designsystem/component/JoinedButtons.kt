@@ -23,11 +23,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -123,8 +121,7 @@ fun JoinedButton(
 
 /**
  * The flame of a [JoinedButtons] group, which marks the place hot ([hot]: I did): tinted, filled while marked, and
- * marking it pops the flame like [HotButton] does. [isNew]: flames came that I haven't seen; the flame pops once as it
- * shows, with no dot (Shahin, 2026-11-13), and [onNewSeen] says so. The pop is one-shot and stops with the button.
+ * marking it pops the flame like [HotButton] does (only on my own tap).
  */
 @Composable
 fun HotJoinedButton(
@@ -133,16 +130,8 @@ fun HotJoinedButton(
     shape: Shape,
     onToggle: () -> Unit,
     modifier: Modifier = Modifier,
-    isNew: Boolean = false,
-    onNewSeen: () -> Unit = {},
 ) {
     var burst by remember { mutableIntStateOf(0) }
-    val currentOnNewSeen by rememberUpdatedState(onNewSeen)
-    LaunchedEffect(isNew) {
-        if (!isNew) return@LaunchedEffect
-        burst++
-        currentOnNewSeen()
-    }
     val haptics = rememberHaptics()
     val flame = MaterialTheme.extendedColors.attention
     Surface(
