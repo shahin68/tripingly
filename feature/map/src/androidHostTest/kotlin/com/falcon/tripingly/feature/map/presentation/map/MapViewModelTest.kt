@@ -62,11 +62,9 @@ import com.falcon.tripingly.core.model.trip.TripMember
 import com.falcon.tripingly.core.model.trip.TripRole
 import com.falcon.tripingly.core.model.trip.UserSummary
 import com.falcon.tripingly.core.ui.UiText
-import com.falcon.tripingly.feature.map.presentation.map.state.withPinMargin
 import com.falcon.tripingly.feature.map.generated.resources.Res
 import com.falcon.tripingly.feature.map.generated.resources.error_location_denied_manual
 import com.falcon.tripingly.feature.map.generated.resources.error_location_permission_required
-import com.falcon.tripingly.feature.map.generated.resources.map_trip_card_more
 import com.falcon.tripingly.feature.map.generated.resources.map_add_to_trip_added
 import com.falcon.tripingly.feature.map.generated.resources.map_add_to_trip_no_trips
 import com.falcon.tripingly.feature.map.generated.resources.map_best_order_already
@@ -75,12 +73,16 @@ import com.falcon.tripingly.feature.map.generated.resources.map_error_load_trip
 import com.falcon.tripingly.feature.map.generated.resources.map_error_stop_change
 import com.falcon.tripingly.feature.map.generated.resources.map_join_requested
 import com.falcon.tripingly.feature.map.generated.resources.map_route_my_location
+import com.falcon.tripingly.feature.map.generated.resources.map_trip_card_more
 import com.falcon.tripingly.feature.map.presentation.FakeTripMapViewRepository
 import com.falcon.tripingly.feature.map.presentation.component.CameraCommand
 import com.falcon.tripingly.feature.map.presentation.component.PinEnd
 import com.falcon.tripingly.feature.map.presentation.component.PinSizes
+import com.falcon.tripingly.feature.map.presentation.component.SelectedPinSize
+import com.falcon.tripingly.feature.map.presentation.component.isDotAt
 import com.falcon.tripingly.feature.map.presentation.component.routeLine
 import com.falcon.tripingly.feature.map.presentation.component.stopPathShape
+import com.falcon.tripingly.feature.map.presentation.map.state.withPinMargin
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
@@ -249,6 +251,9 @@ class MapViewModelTest {
     ).also { viewModel -> backgroundScope.launch { viewModel.uiState.collect {} } }
 
     /** The place of the pin named [name] on the map. */
+    /** Where the route's start badge is: its start pin. */
+    private val MapUiState.startMark get() = layers.routeEnds.firstOrNull { it.isStart }?.position
+
     private fun MapViewModel.pin(name: String): MapPlace = uiState.value.layers.placePins.single { it.place.name == name }.place
 
     private val MapUiState.locationPrompt get() = (dialog as? MapDialog.Location)?.prompt
@@ -2118,7 +2123,7 @@ class MapViewModelTest {
         // The pin is ringed as the start, its card closes, and the header asks where to, searching.
         assertEquals(RouteBarState(UiText.Server("Oper"), to = null), viewModel.uiState.value.routeBar)
         assertNotNull(viewModel.uiState.value.search)
-        assertEquals(from.location, viewModel.uiState.value.layers.routeStart)
+        assertEquals(from.location, viewModel.uiState.value.startMark)
         assertNull(viewModel.uiState.value.layers.selectedPlace)
 
         viewModel.onAction(MapAction.MapView.PlacePinClick(to))
@@ -2136,7 +2141,7 @@ class MapViewModelTest {
         assertNull(state.stopsCard)
         assertEquals(RouteBarState(UiText.Server("Oper"), UiText.Server("Prater")), state.routeBar)
         assertNull(state.search)
-        assertEquals(from.location, state.layers.routeStart)
+        assertEquals(from.location, state.startMark)
         assertEquals(listOf(from.location to to.location), routes.pointRoutes)
         state.assertRoute(listOf(Coordinates(48.2031, 16.3691), Coordinates(48.2166, 16.3958)))
 
@@ -2144,15 +2149,48 @@ class MapViewModelTest {
         viewModel.onAction(MapAction.PinRoute.Swap)
         testScheduler.advanceUntilIdle()
         assertEquals(RouteBarState(UiText.Server("Prater"), UiText.Server("Oper")), viewModel.uiState.value.routeBar)
-        assertEquals(to.location, viewModel.uiState.value.layers.routeStart)
+        assertEquals(to.location, viewModel.uiState.value.startMark)
         assertEquals(to.location to from.location, routes.pointRoutes.last())
+        // Both ends are pins at any zoom, grown, though the map loaded neither, and each has its badge.
+        viewModel.uiState.value.layers.placePins.filter { it.place.id in setOf("a", "b") }.let { ends ->
+            assertEquals(2, ends.size)
+            assertTrue(ends.all { it.isKept && it.size == SelectedPinSize && !it.isDotAt(isZoomedOut = true) })
+        }
+        assertEquals(listOf(true to to.location, false to from.location), viewModel.uiState.value.layers.routeEnds.map { it.isStart to it.position })
+
+        // A place tapped while the route shows stays a pin until the route closes.
+        val rathaus = MapPlace("c", "Rathaus", PlaceCategory.Attraction, GeoPoint(48.2108, 16.3572), isTripinly = false, hotCount = 0, prominence = 80)
+        viewModel.onAction(MapAction.MapView.PlacePinClick(rathaus))
+        restOnTarget(viewModel)
+        viewModel.onAction(MapAction.MapView.ScreenTouch)
+        testScheduler.advanceUntilIdle()
+        assertNull(viewModel.uiState.value.layers.selectedPlace)
+        assertTrue(viewModel.uiState.value.layers.placePins.single { it.place.id == "c" }.isKept)
+
+        // A tap on "from" picks where it starts again: the other end stays, and a pin's Route from here starts there.
+        viewModel.onAction(MapAction.PinRoute.EditEnd(isFrom = true))
+        testScheduler.advanceUntilIdle()
+        assertEquals(RouteBarState(from = null, UiText.Server("Oper")), viewModel.uiState.value.routeBar)
+        assertNotNull(viewModel.uiState.value.search)
+        viewModel.onAction(MapAction.MapView.PlacePinClick(rathaus))
+        restOnTarget(viewModel)
+        assertEquals(false, viewModel.uiState.value.placeCard?.routes?.isRouteTo)
+        viewModel.onAction(MapAction.PinRoute.Route)
+        testScheduler.advanceUntilIdle()
+        assertEquals(RouteBarState(UiText.Server("Rathaus"), UiText.Server("Oper")), viewModel.uiState.value.routeBar)
+        assertEquals(rathaus.location to from.location, routes.pointRoutes.last())
 
         viewModel.onAction(MapAction.Plan.ClosePointRoute)
         testScheduler.advanceUntilIdle()
         assertNull(viewModel.uiState.value.pointRouteCard)
         assertNull(viewModel.uiState.value.routeBar)
-        assertNull(viewModel.uiState.value.layers.routeStart)
+        assertNull(viewModel.uiState.value.startMark)
         viewModel.uiState.value.assertRoute(viewModel.uiState.value.stopPositions)
+        // The day's route still shows, so the places tapped keep their pins; with no route at all they go back.
+        assertTrue(viewModel.uiState.value.layers.placePins.single { it.place.id == "c" }.isKept)
+        viewModel.onAction(MapAction.Plan.ToggleRoute)
+        testScheduler.advanceUntilIdle()
+        assertTrue(viewModel.uiState.value.layers.placePins.none { it.isKept })
     }
 
     @Test
@@ -2199,7 +2237,7 @@ class MapViewModelTest {
         testScheduler.advanceUntilIdle()
         assertNull(viewModel.uiState.value.routeBar)
         assertNull(viewModel.uiState.value.search)
-        assertNull(viewModel.uiState.value.layers.routeStart)
+        assertNull(viewModel.uiState.value.startMark)
 
         viewModel.onAction(MapAction.MapView.PlacePinClick(oper))
         viewModel.onAction(MapAction.PinRoute.Route)
@@ -2236,7 +2274,7 @@ class MapViewModelTest {
         assertEquals(RouteBarState(UiText.Resource(Res.string.map_route_my_location), UiText.Server("Oper")), viewModel.uiState.value.routeBar)
         assertEquals(listOf(GeoPoint(me.latitude, me.longitude) to oper.location), routes.pointRoutes)
         // Where I am isn't a pin: nothing is ringed.
-        assertNull(viewModel.uiState.value.layers.routeStart)
+        assertNull(viewModel.uiState.value.startMark)
 
         // On again on the pin's card: Go here is on, and a tap closes it.
         viewModel.onAction(MapAction.MapView.PlacePinClick(oper))

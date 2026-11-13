@@ -312,3 +312,7 @@ Append-only. Newest at the bottom.
 | 2026-11-13 | A stop or along-the-way pin tapped on the map scrolls its chip into view in the plan sheet's stops row or the route card's row, also while the sheet is collapsed. | Shahin's ask. |
 | 2026-11-13 | A stop without a name shows no title instead of a numbered "Stop #3" fallback (its number is already in the bold "Stop 3" line). | Shahin: the fallback should be unspecific. |
 | 2026-11-13 | The plan rows glide to a tapped pin's chip only while they are on screen; under a collapsed sheet they jump there at once. | Shahin: the glide cost frames when the rows weren't visible. |
+| 2026-11-13 | A route's two ends and every place tapped while a route shows stay full pins at any zoom, through a change of the way of travelling and with places hidden, until no route shows. | Shahin: ends and a picked along-the-way pin vanished on zoom-out or mode switch. |
+| 2026-11-13 | The ring round a route's start is gone: each end's pin grows and wears a badge (start mark or flag, the route bar's icons) in the way of travelling's colour. | Shahin: the ring didn't look nice; "grow the two pins, be creative". |
+| 2026-11-13 | The route bar's marks, its typing outline and the pin cards' route buttons take the way of travelling's colour, like the line. | Shahin: blue everywhere didn't match a walking or cycling route. |
+| 2026-11-13 | A tap on a set end's pill in the route bar picks that end again (search or a pin's Route from here / Route to here); the other end stays. ⇅ glides the names past each other. | Shahin's ask. |

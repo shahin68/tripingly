@@ -8,7 +8,7 @@ import com.falcon.tripingly.core.ui.UiText
 data class MapMarker(
     val id: String,
     val position: Coordinates,
-    /** The stop's name, or "Stop 3" while it has none (one just tapped on the map waits for the server's). */
+    /** The stop's name; empty while it has none (its number is in the bold "Stop 3" under it, Shahin 2026-11-13). */
     val title: UiText,
     val orderNumber: Int,
     val snippet: String? = null,

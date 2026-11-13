@@ -11,7 +11,6 @@ import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.CanvasDrawScope
-import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.graphics.painter.Painter
@@ -32,6 +31,7 @@ import com.falcon.tripingly.core.model.place.MapPlace
 import com.falcon.tripingly.core.model.place.PlaceCategory
 import com.falcon.tripingly.core.model.place.PlaceCluster
 import com.falcon.tripingly.core.model.place.PlacesInView
+import com.falcon.tripingly.core.model.trip.GeoPoint
 import kotlin.math.ceil
 import kotlin.math.roundToInt
 
@@ -47,7 +47,15 @@ data class PlacePin(
     val isAlongTheWay: Boolean = false,
     /** Drawn as its dot at any zoom, as every other pin is while a route shows. */
     val isDot: Boolean = false,
+    /**
+     * A route's end or a place tapped while routing: a pin at any zoom, never its dot, until the route closes
+     * (Shahin, 2026-11-13).
+     */
+    val isKept: Boolean = false,
 )
+
+/** Drawn as its dot: zoomed out ([isZoomedOut]) unless it's kept, or a dot anyway while a route shows. */
+internal fun PlacePin.isDotAt(isZoomedOut: Boolean) = isDot || (isZoomedOut && !isKept)
 
 /**
  * The place pins for the squares in view: places inside [area] that aren't stops of the trip ([hiddenPlaceIds]),
@@ -269,26 +277,43 @@ fun drawClusterPin(
 }
 
 /**
- * Draws the ring around a route's start (Route from): a [color] ring, white inside and out so it shows on any map,
- * wide enough to go round the biggest pin.
+ * One end of a route on the map (Shahin, 2026-11-13: instead of a ring round the start): the end's pin, grown, with a
+ * badge on its top end corner in the way of travelling's colour, the same marks as the route bar's: a dot in a ring
+ * where it starts ([isStart]), a flag where it goes. [pinSize] is the pin's size, so the badge sits on its edge.
  */
-fun drawRouteStartRing(color: Color, density: Density, layoutDirection: LayoutDirection): ImageBitmap {
-    val diameter = with(density) { ROUTE_START_RING.toPx() }
-    val stroke = with(density) { ROUTE_START_STROKE.toPx() }
-    val edge = with(density) { ROUTE_START_EDGE.toPx() }
-    val px = ceil(diameter).toInt()
+@Immutable
+data class RouteEndMark(val position: GeoPoint, val isStart: Boolean, val pinSize: Dp, val color: Color) {
+    /**
+     * Where the badge's bitmap hangs from [position], as the map's anchor: its middle on the pin's edge at the top end
+     * corner (outside 0..1, as the badge sits beside the point, not on it).
+     */
+    val anchor: Offset get() {
+        val along = pinSize.value / 2 * CORNER / RouteEndBadgeSize.value
+        return Offset(0.5f - along, 0.5f + along)
+    }
+}
+
+/** Draws a route end's badge: [icon] in white on a [color] circle in a white ring. */
+fun drawRouteEndBadge(icon: Painter, color: Color, density: Density, layoutDirection: LayoutDirection): ImageBitmap {
+    val px = with(density) { RouteEndBadgeSize.roundToPx() }
+    val border = with(density) { 2.dp.toPx() }
     val bitmap = ImageBitmap(px, px)
     CanvasDrawScope().draw(density, layoutDirection, Canvas(bitmap), Size(px.toFloat(), px.toFloat())) {
-        val ring = (diameter - stroke) / 2 - edge
-        drawCircle(Color.White, radius = ring, style = Stroke(stroke + edge * 2))
-        drawCircle(color, radius = ring, style = Stroke(stroke))
+        drawCircle(Color.White)
+        drawCircle(color, radius = this.size.minDimension / 2 - border)
+        val iconSize = this.size * 0.6f
+        translate((this.size.width - iconSize.width) / 2, (this.size.height - iconSize.height) / 2) {
+            with(icon) { draw(iconSize, colorFilter = ColorFilter.tint(Color.White)) }
+        }
     }
     return bitmap
 }
 
-private val ROUTE_START_RING = 64.dp
-private val ROUTE_START_STROKE = 3.dp
-private val ROUTE_START_EDGE = 1.5.dp
+/** A route end's badge. */
+val RouteEndBadgeSize: Dp = 22.dp
+
+/** A circle's top end corner, as a share of its radius along each axis (cos 45°). */
+private const val CORNER = 0.7071f
 
 private val CLUSTER_RADIUS = 18.dp
 private val CLUSTER_PADDING = 8.dp

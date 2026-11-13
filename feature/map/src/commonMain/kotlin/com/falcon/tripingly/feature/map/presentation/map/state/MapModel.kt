@@ -124,7 +124,20 @@ internal data class RouteModel(
     /** Retry was tapped this many times: each asks for the same route again. */
     val attempt: Int = 0,
     val isFindingBestOrder: Boolean = false,
+    /**
+     * A tapped "from" in the route bar ([start] is then where the route goes, Shahin 2026-11-13): the field or a pin's
+     * Route from here picks where it starts.
+     */
+    val isPickingFrom: Boolean = false,
+    /**
+     * Places tapped while a route shows: their pins stay on the map, as pins, until the route closes, whatever the zoom,
+     * the way of travelling or the places loaded (Shahin, 2026-11-13).
+     */
+    val kept: List<MapPlace> = emptyList(),
 )
+
+/** A route shows, or one is being set up: the day's, one between two points, or a start waiting for where to go. */
+internal val RouteModel.isActive get() = isDayRouteShown || start != null || between != null
 
 /** A route between two places; a stop's end carries its stop's title ([fromLabel], [toLabel]) for the card. */
 internal data class PointRoute(val from: MapPlace, val to: MapPlace, val fromLabel: UiText? = null, val toLabel: UiText? = null) {
@@ -143,7 +156,10 @@ internal fun RouteModel.isRouteEnd(at: GeoPoint) =
 
 /** The pin at [at]'s Route button says Route to here: another pin is the start, or it is where the route goes. */
 internal fun RouteModel.isRouteTo(at: GeoPoint) =
-    (start != null && start.location != at) || (between != null && !between.isFromMe && between.to.location == at)
+    (start != null && !isPickingFrom && start.location != at) || (between != null && !between.isFromMe && between.to.location == at)
+
+/** The pin at [at]'s Route from here starts the route to [start], the end kept while "from" is picked again. */
+internal fun RouteModel.isRouteFrom(at: GeoPoint) = start != null && isPickingFrom && start.location != at
 
 internal data class LocationModel(
     /** Null until the screen has read it. */

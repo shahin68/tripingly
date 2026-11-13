@@ -5,6 +5,7 @@ import com.falcon.tripingly.core.location.model.Coordinates
 import com.falcon.tripingly.core.location.permission.LocationPermission
 import com.falcon.tripingly.core.model.account.TripVisibility
 import com.falcon.tripingly.core.model.config.AppConfig
+import com.falcon.tripingly.core.model.place.MapPlace
 import com.falcon.tripingly.core.model.route.AlongTheWayPlace
 import com.falcon.tripingly.core.model.trip.GeoPoint
 import com.falcon.tripingly.core.model.trip.TripDetails
@@ -15,9 +16,14 @@ import com.falcon.tripingly.core.ui.UiText
 import com.falcon.tripingly.feature.map.generated.resources.Res
 import com.falcon.tripingly.feature.map.generated.resources.map_trip_card_more
 import com.falcon.tripingly.feature.map.generated.resources.map_trip_card_only
+import com.falcon.tripingly.feature.map.presentation.component.COVER_PIN_SIZE
 import com.falcon.tripingly.feature.map.presentation.component.MapLayersState
 import com.falcon.tripingly.feature.map.presentation.component.MapMarker
+import com.falcon.tripingly.feature.map.presentation.component.PIN_SIZE
 import com.falcon.tripingly.feature.map.presentation.component.PlacePin
+import com.falcon.tripingly.feature.map.presentation.component.RouteEndMark
+import com.falcon.tripingly.feature.map.presentation.component.SelectedPinSize
+import com.falcon.tripingly.feature.map.presentation.component.lineColor
 import com.falcon.tripingly.feature.map.presentation.component.placePinSize
 import com.falcon.tripingly.feature.map.presentation.component.routeLine
 import com.falcon.tripingly.feature.map.presentation.component.stopPathShape
@@ -26,6 +32,7 @@ import com.falcon.tripingly.feature.map.presentation.map.state.MapModel
 import com.falcon.tripingly.feature.map.presentation.map.state.Selection
 import com.falcon.tripingly.feature.map.presentation.map.state.Sheet
 import com.falcon.tripingly.feature.map.presentation.map.state.activeDayIndex
+import com.falcon.tripingly.feature.map.presentation.map.state.isActive
 import com.falcon.tripingly.feature.map.presentation.map.state.stopPlaceIds
 import com.falcon.tripingly.feature.map.presentation.map.state.toState
 import com.falcon.tripingly.feature.map.presentation.map.ui.durationText
@@ -208,23 +215,33 @@ internal class MapStateMapper(
 
     fun layers(): MapLayersState {
         val pins = model.pins.pins
-        val pinnedIds = pins.mapTo(HashSet()) { it.place.id }
         val alongIds = alongTheWay.mapTo(HashSet()) { it.place.id }
+        // The route's ends: a stop keeps its own pin and gets the badge on it; a place's pin grows (Shahin, 2026-11-13).
+        val ends = route.endPlaces().map { (place, isStart) -> RouteEnd(place, isStart, stopAt(place)) }
+        val endPlaces = ends.filter { it.stop == null }.associateBy { it.place.id }
+        // Places tapped while routing stay pins until the route closes.
+        val kept = route.kept.takeIf { route.isActive }.orEmpty().associateBy { it.id }
         // The places along the way show on the map too, also where the map's own pins leave them out, in their own color.
         // While a route shows, the other pins are dots, so the route, its two ends, the stops and the places along it stand out.
         val routeShows = routePoints.size > 1
-        val routeEndIds = route.between?.let { setOf(it.from.id, it.to.id) }.orEmpty()
         // Hidden places come first: only the route's places stay, then the route makes the rest dots as always.
-        val visible = if (model.arePlacesHidden) pins.filter { it.place.id in alongIds || it.place.id in routeEndIds } else pins
+        val isRoutes = { id: String -> id in alongIds || id in endPlaces || id in kept }
+        val visible = if (model.arePlacesHidden) pins.filter { isRoutes(it.place.id) } else pins
+        val shown = visible.mapTo(HashSet()) { it.place.id }
         val placePins = visible.map {
             when {
+                it.place.id in endPlaces -> it.copy(size = SelectedPinSize, isAlongTheWay = it.place.id in alongIds, isKept = true)
+                it.place.id in kept -> it.copy(isAlongTheWay = it.place.id in alongIds, isKept = true)
                 it.place.id in alongIds -> it.copy(isAlongTheWay = true)
-                routeShows && it.place.id !in routeEndIds -> it.copy(isDot = true)
+                routeShows -> it.copy(isDot = true)
                 else -> it
             }
         } +
-            alongTheWay.filter { it.place.id !in pinnedIds }.map { it.toPin() }
+            endPlaces.values.filter { it.place.id !in shown }.map { PlacePin(it.place, SelectedPinSize, isKept = true) } +
+            kept.values.filter { it.id !in shown && it.id !in endPlaces }.map { PlacePin(it, placePinSize(it, config), isAlongTheWay = it.id in alongIds, isKept = true) } +
+            alongTheWay.filter { it.place.id !in shown && it.place.id !in endPlaces && it.place.id !in kept }.map { it.toPin() }
         val stopPath = stops.map { it.position }.takeIf { routePoints.isEmpty() && route.between == null }.orEmpty()
+        val endColor = route.travelMode.lineColor
         return MapLayersState(
             stops = stops.toImmutableList(),
             placePins = placePins.toImmutableList(),
@@ -239,9 +256,18 @@ internal class MapStateMapper(
                 else -> null
             },
             isMyLocationEnabled = model.location.permission == LocationPermission.Granted,
-            routeStart = route.startRing(),
+            routeEnds = ends.map { end ->
+                val size = end.stop?.let { if (it.coverPhotoId != null) COVER_PIN_SIZE else PIN_SIZE } ?: SelectedPinSize
+                RouteEndMark(end.place.location, end.isStart, size, endColor)
+            }.toImmutableList(),
         )
     }
+
+    /** One end of the route on the map: a stop's ([stop]) or a place's. */
+    private class RouteEnd(val place: MapPlace, val isStart: Boolean, val stop: MapMarker?)
+
+    /** The open day's stop a route's [end] stands for: a stop is an end as its place, or as itself. */
+    private fun stopAt(end: MapPlace): MapMarker? = stops.firstOrNull { (it.placeId ?: it.id) == end.id }
 
     private fun AlongTheWayPlace.toPin() = PlacePin(place, placePinSize(place, config), isAlongTheWay = true)
 

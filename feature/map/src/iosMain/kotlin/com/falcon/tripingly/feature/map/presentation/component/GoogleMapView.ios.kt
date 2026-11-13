@@ -47,7 +47,7 @@ actual fun GoogleMapView(
             selectedPlace = layers.selectedPlace,
             line = layers.line,
             isMyLocationEnabled = layers.isMyLocationEnabled,
-            routeStart = layers.routeStart,
+            routeEnds = layers.routeEnds,
             onCameraMove = onCameraMove,
             onCameraMoving = onCameraMoving,
             onMapTouch = onMapTouch,

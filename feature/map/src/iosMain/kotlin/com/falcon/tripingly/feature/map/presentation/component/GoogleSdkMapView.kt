@@ -7,6 +7,9 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Flag
+import androidx.compose.material.icons.outlined.TripOrigin
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -34,14 +37,12 @@ import androidx.compose.ui.viewinterop.UIKitView
 import androidx.lifecycle.compose.LifecycleStartEffect
 import com.falcon.tripingly.core.designsystem.component.icon
 import com.falcon.tripingly.core.designsystem.component.rememberHaptics
-import com.falcon.tripingly.core.designsystem.theme.MapColors
 import com.falcon.tripingly.core.designsystem.theme.extendedColors
 import com.falcon.tripingly.core.location.model.Coordinates
 import com.falcon.tripingly.core.model.place.GeoBounds
 import com.falcon.tripingly.core.model.place.MapPlace
 import com.falcon.tripingly.core.model.place.PlaceCategory
 import com.falcon.tripingly.core.model.place.PlaceCluster
-import com.falcon.tripingly.core.model.trip.GeoPoint
 import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.flow.Flow
 import platform.UIKit.UIColor
@@ -67,7 +68,7 @@ internal fun GoogleSdkMapView(
     selectedPlace: MapPlace?,
     line: MapLine?,
     isMyLocationEnabled: Boolean,
-    routeStart: GeoPoint?,
+    routeEnds: List<RouteEndMark>,
     onCameraMove: (Coordinates, Float, GeoBounds?) -> Unit,
     onCameraMoving: (GeoBounds, Float) -> Unit,
     onMapTouch: () -> Unit,
@@ -329,8 +330,11 @@ internal fun GoogleSdkMapView(
     val stopIcons = remember(density, stopColor) { mutableMapOf<Triple<Int, String?, Boolean>, UIImage>() }
     val coverThumbs = rememberCoverThumbs(markers)
     val stopTitles = markers.map { it.title.asString() }
-    val startRing = remember(density) { drawRouteStartRing(MapColors.Car, density, layoutDirection).toUIImage(density.density) }
-    LaunchedEffect(markers, stopTitles, coverThumbs, pinPhotos, selectedPlace, placePins, placeClusters, pinIcons, clusterIcons, isDots, routeStart) {
+    // The route's ends' badges, one per mark and way of travelling's colour.
+    val startIcon = rememberVectorPainter(Icons.Outlined.TripOrigin)
+    val endIcon = rememberVectorPainter(Icons.Outlined.Flag)
+    val badges = remember(density) { mutableMapOf<Pair<Boolean, Color>, UIImage>() }
+    LaunchedEffect(markers, stopTitles, coverThumbs, pinPhotos, selectedPlace, placePins, placeClusters, pinIcons, clusterIcons, isDots, routeEnds) {
         val stops = markers.mapIndexed { index, marker ->
             GoogleMapMarker(
                 key = marker.id,
@@ -367,11 +371,12 @@ internal fun GoogleSdkMapView(
                 longitude = pin.place.location.lng,
                 title = pin.place.name,
                 icon = pinIcon(
-                    if (isDots || pin.isDot) pin.dotLook() else PlacePinLook(pin.place.category, pin.place.isTripinly, pin.size, photoId(pin.place, pin.photo), pin.isAlongTheWay),
+                    if (pin.isDotAt(isDots)) pin.dotLook() else PlacePinLook(pin.place.category, pin.place.isTripinly, pin.size, photoId(pin.place, pin.photo), pin.isAlongTheWay),
                 ),
                 anchorX = 0.5,
                 anchorY = 0.5,
-                zIndex = -1 - index,
+                // A route's end and the places tapped while routing on top of the other places.
+                zIndex = if (pin.isKept) 0 else -1 - index,
                 showsInfoWindow = false,
                 // Places along the way show at once with their route (Shahin, 2026-11-10).
                 fadesIn = !pin.isAlongTheWay,
@@ -417,22 +422,24 @@ internal fun GoogleSdkMapView(
                 fadesIn = false,
             )
         }
-        // A route's start (Route from), ringed in the routes' blue around its pin; under every pin, so taps reach the pin.
-        val ring = routeStart?.let {
+        // The route's ends: a badge on each end's pin, in the way of travelling's colour, over every pin.
+        val ends = routeEnds.map { end ->
             GoogleMapMarker(
-                key = ROUTE_START_KEY,
-                latitude = it.lat,
-                longitude = it.lng,
+                key = ROUTE_END_KEY + end.isStart,
+                latitude = end.position.lat,
+                longitude = end.position.lng,
                 title = "",
-                icon = startRing,
-                anchorX = 0.5,
-                anchorY = 0.5,
-                zIndex = ROUTE_START_Z,
+                icon = badges.getOrPut(end.isStart to end.color) {
+                    drawRouteEndBadge(if (end.isStart) startIcon else endIcon, end.color, density, layoutDirection).toUIImage(density.density)
+                },
+                anchorX = end.anchor.x.toDouble(),
+                anchorY = end.anchor.y.toDouble(),
+                zIndex = ROUTE_END_Z,
                 showsInfoWindow = false,
                 fadesIn = false,
             )
         }
-        map.setMarkers(listOfNotNull(ring) + pins + clusters + stops + listOfNotNull(place))
+        map.setMarkers(pins + clusters + stops + listOfNotNull(place) + ends)
     }
 
     // Stopped (another screen covers the map, or the app is in the background): the map draws nothing.
@@ -467,10 +474,10 @@ private fun PlaceCluster.key() = "$CLUSTER_KEY${location.lat},${location.lng}"
 
 // Marker keys that aren't stop ids: stop ids are UUIDs.
 private const val SELECTED_PLACE_KEY = "selected-place"
-private const val ROUTE_START_KEY = "route-start"
+private const val ROUTE_END_KEY = "route-end:"
 
-/** Below the place pins, which count down from -1. */
-private const val ROUTE_START_Z = -1_000_000
+/** Over every pin, the tapped place's (2) too. */
+private const val ROUTE_END_Z = 3
 private const val PLACE_KEY = "place:"
 private const val CLUSTER_KEY = "cluster:"
 

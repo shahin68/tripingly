@@ -168,6 +168,8 @@
     <string name="map_route_to_placeholder">Suchen oder Pin antippen</string>
     <string name="map_route_from">Von</string>
     <string name="map_route_to">Nach</string>
+    <string name="map_route_change_from">Start ändern</string>
+    <string name="map_route_change_to">Ziel ändern</string>
     <string name="map_route_between">%1$s → %2$s</string>
     <string name="map_route_close">Route schließen</string>
     <string name="map_route_swap">Richtung tauschen</string>

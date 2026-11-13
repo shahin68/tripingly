@@ -168,6 +168,8 @@
     <string name="map_route_to_placeholder">Keress, vagy koppints egy tűre</string>
     <string name="map_route_from">Innen</string>
     <string name="map_route_to">Ide</string>
+    <string name="map_route_change_from">Kiindulópont módosítása</string>
+    <string name="map_route_change_to">Úti cél módosítása</string>
     <string name="map_route_between">%1$s → %2$s</string>
     <string name="map_route_close">Útvonal bezárása</string>
     <string name="map_route_swap">Irány megfordítása</string>

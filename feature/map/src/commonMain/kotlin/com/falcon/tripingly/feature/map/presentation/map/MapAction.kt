@@ -105,6 +105,8 @@ sealed interface MapAction {
         data object Close : PinRoute
         /** The from/to bar's ⇅: the route the other way round. */
         data object Swap : PinRoute
+        /** A tap on an end's pill in the from/to bar: that end is picked again ([isFrom]: where it starts). */
+        data class EditEnd(val isFrom: Boolean) : PinRoute
     }
 
     /** The card over the selected stop, and its details sheet. */

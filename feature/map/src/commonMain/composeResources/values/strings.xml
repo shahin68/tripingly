@@ -168,6 +168,8 @@
     <string name="map_route_to_placeholder">Search or tap a pin</string>
     <string name="map_route_from">From</string>
     <string name="map_route_to">To</string>
+    <string name="map_route_change_from">Change where it starts</string>
+    <string name="map_route_change_to">Change where it goes</string>
     <string name="map_route_between">%1$s → %2$s</string>
     <string name="map_route_close">Close the route</string>
     <string name="map_route_swap">Switch directions</string>
