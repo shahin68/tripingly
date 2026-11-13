@@ -572,14 +572,16 @@ class TripRepositoryTest {
                 json(TripJson.error("STOP_HAS_OTHERS_CONTENT", "Others' photos go too."), HttpStatusCode.Conflict)
             }
         }
-        harness.local.saveTrip(details(twoStops()))
+        harness.local.saveTrip(details(twoStops(firstPhotos = 1)))
         val markers = harness.markers()
         val failures = markers.collectFailures()
 
         markers.deleteMarker("m0")
+        // It may carry other people's photos: it stays until the server took the delete.
+        assertEquals(listOf("m0", "m1"), harness.local.trip("t1")!!.days[0].markers.map { it.id })
         val failure = failures.next()
 
-        // Put back until the user agrees.
+        // Still there until the user agrees.
         assertTrue(failure.needsConfirm)
         assertEquals(listOf("m0", "m1"), harness.local.trip("t1")!!.days[0].markers.map { it.id })
 
@@ -688,9 +690,9 @@ class TripRepositoryTest {
         assertEquals("From the server", harness.local.trip("t1")!!.trip.name)
     }
 
-    private fun twoStops() = TripJson.trip(
+    private fun twoStops(firstPhotos: Int = 0) = TripJson.trip(
         "t1",
-        days = listOf(TripJson.day("d0", 0, null, TripJson.marker("m0", "t1", "d0", 0), TripJson.marker("m1", "t1", "d0", 1))),
+        days = listOf(TripJson.day("d0", 0, null, TripJson.marker("m0", "t1", "d0", 0, photoCount = firstPhotos), TripJson.marker("m1", "t1", "d0", 1))),
     )
 
     private fun tripWithMarker(markerId: String) =

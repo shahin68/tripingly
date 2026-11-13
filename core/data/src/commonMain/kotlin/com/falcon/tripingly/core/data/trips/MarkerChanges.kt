@@ -71,6 +71,20 @@ class MarkerChangeFailure(
     val needsConfirm: Boolean get() = error.hasCode(TripErrorCodes.STOP_HAS_OTHERS_CONTENT)
 }
 
+/**
+ * A delete the server may refuse because other people's photos, comments or likes would go too: only stops with photos
+ * or comments can carry them. It shows on the device only once the server took it, so a stop never vanishes before
+ * the "Delete for everyone?" dialog (Shahin, 2026-11-13). Every other change shows at once.
+ */
+internal val MarkerChange.waitsForServer: Boolean
+    get() = when (this) {
+        is MarkerChange.Delete -> !confirm && marker.hasContent()
+        is MarkerChange.ClearDay -> !confirm && markers.any { it.hasContent() }
+        else -> false
+    }
+
+private fun TripMarker.hasContent() = photoCount > 0 || commentCount > 0
+
 /** [change] once more, deleting other people's content too; null for a change that isn't a delete. */
 fun MarkerChange.confirmed(): MarkerChange? = when (this) {
     is MarkerChange.Delete -> copy(confirm = true)
