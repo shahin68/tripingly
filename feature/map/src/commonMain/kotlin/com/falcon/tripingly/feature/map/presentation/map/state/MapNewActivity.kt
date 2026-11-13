@@ -12,8 +12,8 @@ import kotlinx.coroutines.launch
 /**
  * The "new" marks on stops with notifications I haven't seen: loaded when the trip opens and added live. Each kind of
  * news clears where it is seen (Shahin, 2026-11-13): comments when its comments open, photos when its photos open (both
- * buttons carry a dot until then), the rest when the stop opens; flames put no mark anywhere, the open stop's flame pops
- * once ([seenHot]). News read anywhere else (the notification center, another device) takes the marks back to what
+ * buttons carry a dot until then), the rest when the stop opens; flames mark the pin and day tab but no button, and the open
+ * stop's flame pops once for them ([seenHot]). News read anywhere else (the notification center, another device) takes the marks back to what
  * the server has. [pushedStopId] is the stop a push opened the map on: its mark shows even though opening the push
  * already read that notification, until the stop is opened; a push about its comments ([pushedAboutComments]) opens
  * them, so it shows none.

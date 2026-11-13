@@ -829,14 +829,14 @@ class MapViewModelTest {
     }
 
     @Test
-    fun `photos keep their dot until they open, and flames only pop the flame`() = runTest(testDispatcher) {
+    fun `photos keep their dot until they open, and flames mark the pin until the flame pops`() = runTest(testDispatcher) {
         val first = backend.addMarker(trip.trip.id, trip.days[0].id, NewMarker("Stop #1", GeoPoint(48.85, 2.35)))
         val second = backend.addMarker(trip.trip.id, trip.days[0].id, NewMarker("Stop #2", GeoPoint(48.86, 2.29)))
         newActivity.news[trip.trip.id] = setOf(StopNews(first.id, NewsKind.Photos), StopNews(second.id, NewsKind.Hot))
         val viewModel = viewModel()
         testScheduler.advanceUntilIdle()
-        // Flames put no mark on the pin.
-        assertEquals(listOf(true, false), viewModel.uiState.value.layers.stops.map { it.isNew })
+        // Flames mark the pin like any news.
+        assertEquals(listOf(true, true), viewModel.uiState.value.layers.stops.map { it.isNew })
 
         assertEquals(StopCardNews(photos = true), openStopCard(viewModel, 0).news)
         viewModel.onAction(MapAction.StopCard.OpenPhotos)
@@ -848,6 +848,8 @@ class MapViewModelTest {
         // The flame pops once on the card, then the flames count as seen.
         viewModel.onAction(MapAction.Sheet.CloseAll)
         assertEquals(StopCardNews(hot = true), openStopCard(viewModel, 1).news)
+        // The open stop's pin drops the mark: its flame pops instead.
+        assertFalse(viewModel.uiState.value.layers.stops[1].isNew)
         viewModel.onAction(MapAction.StopCard.HotSeen(second.id))
         testScheduler.advanceUntilIdle()
         assertEquals(StopCardNews(), viewModel.uiState.value.stopCard?.news)
