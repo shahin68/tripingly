@@ -134,20 +134,14 @@ sealed interface MapAction {
 
     /** The sheet or full-screen viewer open over the map. */
     sealed interface Sheet : MapAction {
-        data object CloseStopPhotos : Sheet
-        data object ClosePlacePhotos : Sheet
-        data object CloseStopComments : Sheet
-        data object CloseMembers : Sheet
+        /** ✕, a swipe or a tap outside: every sheet closes, also those it was opened from (Shahin, 2026-11-13). */
+        data object CloseAll : Sheet
+        /** A sheet's back arrow or the system back: back to the sheet it was opened from. */
+        data object Back : Sheet
         data object ClosePlaceImage : Sheet
-        data object CloseDetails : Sheet
-        data object CloseAddToTrip : Sheet
         /** The add-to-trip sheet's rows: one of my trips, then its day. */
         data class PickTrip(val tripId: String) : Sheet
         data class PickDay(val dayId: String) : Sheet
-        /** The days sheet closed: back to the trips. */
-        data object BackToTrips : Sheet
-        /** A sheet swiped down: the ones it was opened from close too. */
-        data object CloseAll : Sheet
         /** Reports the photo open in a viewer: a Commons image as the place's image, anything else as a photo. */
         data class ReportPhoto(val photo: Photo) : Sheet
     }

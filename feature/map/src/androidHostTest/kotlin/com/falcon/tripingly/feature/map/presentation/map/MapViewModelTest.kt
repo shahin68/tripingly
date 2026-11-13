@@ -494,31 +494,43 @@ class MapViewModelTest {
         assertEquals(stop.id, assertIs<MapSheet.StopDetails>(viewModel.uiState.value.sheet).card.stop.id)
         assertEquals(stop.id, viewModel.uiState.value.stopCard?.stop?.id)
 
-        // One sheet at a time: comments take the details' place, and closing them brings the details back.
+        // One sheet at a time: comments take the details' place, with a back arrow that brings the details back.
         viewModel.onAction(MapAction.StopCard.OpenComments)
         testScheduler.advanceUntilIdle()
         assertIs<MapSheet.StopComments>(viewModel.uiState.value.sheet)
-        viewModel.onAction(MapAction.Sheet.CloseStopComments)
+        viewModel.onAction(MapAction.Sheet.Back)
         testScheduler.advanceUntilIdle()
         assertIs<MapSheet.StopDetails>(viewModel.uiState.value.sheet)
 
         viewModel.onAction(MapAction.StopCard.OpenPhotos)
         testScheduler.advanceUntilIdle()
         assertIs<MapSheet.StopPhotos>(viewModel.uiState.value.sheet)
-        viewModel.onAction(MapAction.Sheet.CloseStopPhotos)
+        viewModel.onAction(MapAction.Sheet.Back)
         testScheduler.advanceUntilIdle()
         assertIs<MapSheet.StopDetails>(viewModel.uiState.value.sheet)
 
-        viewModel.onAction(MapAction.Sheet.CloseDetails)
+        viewModel.onAction(MapAction.Sheet.CloseAll)
         testScheduler.advanceUntilIdle()
         assertNull(viewModel.uiState.value.sheet)
         assertEquals(stop.id, viewModel.uiState.value.stopCard?.stop?.id)
 
         // Opened from the card, comments close to the map.
         viewModel.onAction(MapAction.StopCard.OpenComments)
-        viewModel.onAction(MapAction.Sheet.CloseStopComments)
+        testScheduler.advanceUntilIdle()
+        assertEquals(false, viewModel.uiState.value.sheet?.hasBack)
+        viewModel.onAction(MapAction.Sheet.CloseAll)
         testScheduler.advanceUntilIdle()
         assertNull(viewModel.uiState.value.sheet)
+
+        // ✕ or a swipe on photos opened from the details closes the details too.
+        viewModel.onAction(MapAction.StopCard.OpenDetails)
+        viewModel.onAction(MapAction.StopCard.OpenPhotos)
+        testScheduler.advanceUntilIdle()
+        assertEquals(true, viewModel.uiState.value.sheet?.hasBack)
+        viewModel.onAction(MapAction.Sheet.CloseAll)
+        testScheduler.advanceUntilIdle()
+        assertNull(viewModel.uiState.value.sheet)
+        assertEquals(stop.id, viewModel.uiState.value.stopCard?.stop?.id)
     }
 
     @Test
@@ -579,11 +591,11 @@ class MapViewModelTest {
         viewModel.onAction(MapAction.PlaceCard.OpenPhotos)
         testScheduler.advanceUntilIdle()
         assertIs<MapSheet.PlacePhotos>(viewModel.uiState.value.sheet)
-        viewModel.onAction(MapAction.Sheet.ClosePlacePhotos)
+        viewModel.onAction(MapAction.Sheet.Back)
         testScheduler.advanceUntilIdle()
         assertIs<MapSheet.PlaceDetails>(viewModel.uiState.value.sheet)
 
-        viewModel.onAction(MapAction.Sheet.CloseDetails)
+        viewModel.onAction(MapAction.Sheet.CloseAll)
         testScheduler.advanceUntilIdle()
         assertEquals("Louvre", viewModel.uiState.value.placeCard?.place?.name)
     }
@@ -1655,7 +1667,7 @@ class MapViewModelTest {
     }
 
     @Test
-    fun `closing the trip picker opened from the details brings them back`() = runTest(testDispatcher) {
+    fun `the trip picker opened from the details goes back to them`() = runTest(testDispatcher) {
         backend.addMarker(trip.trip.id, trip.days[0].id, NewMarker("Stephansdom", GeoPoint(48.2085, 16.3721)))
         val withStop = (backend.refreshTrip(trip.trip.id) as AppResult.Success).data
         backend.seed(withStop.copy(trip = withStop.trip.copy(role = TripRole.VIEWER)))
@@ -1669,14 +1681,14 @@ class MapViewModelTest {
         testScheduler.advanceUntilIdle()
         assertIs<MapSheet.AddToTrip>(viewModel.uiState.value.sheet)
 
-        viewModel.onAction(MapAction.Sheet.CloseAddToTrip)
+        viewModel.onAction(MapAction.Sheet.Back)
         testScheduler.advanceUntilIdle()
 
         assertIs<MapSheet.StopDetails>(viewModel.uiState.value.sheet)
     }
 
     @Test
-    fun `a swipe on the days sheet closes the trips and the details too`() = runTest(testDispatcher) {
+    fun `closing the days sheet closes the trips and the details too`() = runTest(testDispatcher) {
         backend.addMarker(trip.trip.id, trip.days[0].id, NewMarker("Stephansdom", GeoPoint(48.2085, 16.3721)))
         val withStop = (backend.refreshTrip(trip.trip.id) as AppResult.Success).data
         backend.seed(withStop.copy(trip = withStop.trip.copy(role = TripRole.VIEWER)))
@@ -1700,7 +1712,7 @@ class MapViewModelTest {
     }
 
     @Test
-    fun `closing the days sheet goes back to the trips`() = runTest(testDispatcher) {
+    fun `the days sheet goes back to the trips`() = runTest(testDispatcher) {
         backend.seed(trip.copy(trip = trip.trip.copy(role = TripRole.VIEWER)))
         val mine = (backend.createTrip(NewTrip("Mine", LocalDate(2024, 2, 1), LocalDate(2024, 2, 2))) as AppResult.Success).data
         val viewModel = viewModel()
@@ -1714,7 +1726,7 @@ class MapViewModelTest {
         viewModel.onAction(MapAction.Sheet.PickTrip(mine.trip.id))
         testScheduler.advanceUntilIdle()
 
-        viewModel.onAction(MapAction.Sheet.BackToTrips)
+        viewModel.onAction(MapAction.Sheet.Back)
         testScheduler.advanceUntilIdle()
 
         val picker = assertIs<MapSheet.AddToTrip>(viewModel.uiState.value.sheet).picker

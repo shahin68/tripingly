@@ -88,12 +88,14 @@ fun MapRoute(
         onAction = onAction,
     )
 
-    // Photos, comments and members slide up as sheets; the image viewer is full screen. ✕ and back go back one sheet
-    // (to the details, to the trips); a swipe down closes them all (Shahin, 2026-11-13).
+    // Photos, comments and members slide up as sheets; the image viewer is full screen. ✕, a swipe or a tap outside
+    // closes every sheet; one opened from another (the details, the trips) has a back arrow instead of ✕ that goes back
+    // to it, as the system back does (Shahin, 2026-11-13).
     val closeAll = { onAction(MapAction.Sheet.CloseAll) }
+    val back = { onAction(MapAction.Sheet.Back) }
     val sheet = state.sheet
     val onReportPhoto: (Photo) -> Unit = { photo -> onAction(MapAction.Sheet.ReportPhoto(photo)) }
-    AppBottomSheet(value = sheet?.takeUnless { it is MapSheet.PlaceImage || it.isDetails || it.isPickingDay }, onDismiss = { sheet?.let { onAction(it.closeAction()) } }, onSwipeDismiss = closeAll) { shown, close ->
+    AppBottomSheet(value = sheet?.takeUnless { it is MapSheet.PlaceImage || it.isDetails || it.isPickingDay }, onDismiss = closeAll, onBack = back.takeIf { sheet?.hasBack == true }) { shown, close ->
         when (shown) {
             is MapSheet.StopPhotos -> PhotosRoute(
                 owner = PhotoOwner.Stop(shown.stop.id),
@@ -112,8 +114,8 @@ fun MapRoute(
         }
     }
     // A pin's details open half high, in a sheet of their own. Its photos and comments open in their own sheets in its
-    // place, one sheet at a time, and closing them brings the details back.
-    AppBottomSheet(value = sheet?.takeIf { it.isDetails }, onDismiss = { onAction(MapAction.Sheet.CloseDetails) }, onSwipeDismiss = closeAll, halfHigh = true) { shown, close ->
+    // place, one sheet at a time, and their back arrow brings the details back.
+    AppBottomSheet(value = sheet?.takeIf { it.isDetails }, onDismiss = closeAll, halfHigh = true) { shown, close ->
         when (shown) {
             is MapSheet.StopDetails -> StopDetailsContent(shown.card, onAction, onClose = close) {
                 PhotoStripRoute(PhotoOwner.Stop(shown.card.stop.id), onShowAll = { onAction(MapAction.StopCard.OpenPhotos) }, onReport = onReportPhoto)
@@ -127,8 +129,8 @@ fun MapRoute(
             else -> Unit
         }
     }
-    // The picked trip's days, in a sheet of their own in the trips' place; closing it goes back to the trips.
-    AppBottomSheet(value = (sheet as? MapSheet.AddToTrip)?.takeIf { it.isPickingDay }, onDismiss = { onAction(MapAction.Sheet.BackToTrips) }, onSwipeDismiss = closeAll) { shown, close ->
+    // The picked trip's days, in a sheet of their own in the trips' place; its back arrow goes back to the trips.
+    AppBottomSheet(value = (sheet as? MapSheet.AddToTrip)?.takeIf { it.isPickingDay }, onDismiss = closeAll, onBack = back) { shown, close ->
         AddToTripSheet(shown.picker, onAction, onClose = close)
     }
     if (sheet is MapSheet.PlaceImage) {
@@ -161,13 +163,3 @@ private val MapSheet.isDetails get() = this is MapSheet.StopDetails || this is M
 
 /** The add-to-trip sheet with a trip picked: its days show in their own sheet. */
 private val MapSheet.isPickingDay get() = this is MapSheet.AddToTrip && picker.trip != null
-
-private fun MapSheet.closeAction(): MapAction = when (this) {
-    is MapSheet.StopPhotos -> MapAction.Sheet.CloseStopPhotos
-    is MapSheet.PlacePhotos -> MapAction.Sheet.ClosePlacePhotos
-    is MapSheet.StopComments -> MapAction.Sheet.CloseStopComments
-    MapSheet.Members -> MapAction.Sheet.CloseMembers
-    is MapSheet.PlaceImage -> MapAction.Sheet.ClosePlaceImage
-    is MapSheet.StopDetails, is MapSheet.PlaceDetails -> MapAction.Sheet.CloseDetails
-    is MapSheet.AddToTrip -> MapAction.Sheet.CloseAddToTrip
-}

@@ -103,15 +103,15 @@ fun NearbyRoute(
             isSending = report.isSending,
         )
     }
-    // My trips, then the picked trip's days in a sheet of their own in their place; ✕ or back on the days goes back to the trips.
+    // My trips, then the picked trip's days in a sheet of their own in their place; the days' back arrow goes back to the trips.
     AppBottomSheet(value = state.addPlace?.takeIf { it.trip == null }, onDismiss = { viewModel.onAction(Action.AddToTrip.Dismiss) }) { addPlace, close ->
         AddPlaceSheet(addPlace = addPlace, onAction = viewModel::onAction, onClose = close)
     }
     AppBottomSheet(
         value = state.addPlace?.takeIf { it.trip != null },
-        onDismiss = { viewModel.onAction(Action.AddToTrip.BackToTrips) },
-        // A swipe down closes the trips too.
-        onSwipeDismiss = { viewModel.onAction(Action.AddToTrip.Dismiss) },
+        // ✕, a swipe or a tap outside closes both; its back arrow goes back to the trips.
+        onDismiss = { viewModel.onAction(Action.AddToTrip.Dismiss) },
+        onBack = { viewModel.onAction(Action.AddToTrip.BackToTrips) },
     ) { addPlace, close ->
         AddPlaceSheet(addPlace = addPlace, onAction = viewModel::onAction, onClose = close)
     }

@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material3.FilledTonalIconButton
@@ -20,6 +21,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import com.falcon.tripingly.core.designsystem.generated.resources.Res
+import com.falcon.tripingly.core.designsystem.generated.resources.common_back
 import com.falcon.tripingly.core.designsystem.generated.resources.common_close
 import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
 import com.falcon.tripingly.core.designsystem.theme.spacing
@@ -27,7 +29,8 @@ import org.jetbrains.compose.resources.stringResource
 
 /**
  * The top of every bottom sheet: its [title] (and [subtitle]) with a round close button, which waits while
- * [closeEnabled] is false (e.g. while saving). [onClose] null leaves the close button out (the sheet still closes with a swipe or back). [actions] sit
+ * [closeEnabled] is false (e.g. while saving). In a sheet opened from another sheet ([LocalSheetBack]) the button is a back
+ * arrow that goes back to it. [onClose] null leaves the close button out (the sheet still closes with a swipe or back). [actions] sit
  * before the close button on their own; [joinedActions] are joined with it into one group (Delete ✕, Add ✕).
  */
 @Composable
@@ -59,15 +62,19 @@ fun SheetHeader(
             }
         }
         actions()
+        // A sheet opened from another sheet goes back to it with an arrow in the close button's place.
+        val back = LocalSheetBack.current
+        val icon = if (back != null) Icons.AutoMirrored.Filled.ArrowBack else Icons.Default.Close
+        val label = stringResource(if (back != null) Res.string.common_back else Res.string.common_close)
+        val onTap = back ?: onClose
         when {
             onClose == null -> Unit
             joined -> {
-                val close = stringResource(Res.string.common_close)
-                val closeButton: JoinedButtonSlot = { shape -> JoinedButton(Icons.Default.Close, close, shape, onClick = onClose, enabled = closeEnabled) }
+                val closeButton: JoinedButtonSlot = { shape -> JoinedButton(icon, label, shape, onClick = onTap ?: onClose, enabled = closeEnabled) }
                 JoinedButtons(joinedActions + listOf(closeButton))
             }
-            else -> FilledTonalIconButton(onClick = onClose, enabled = closeEnabled) {
-                Icon(Icons.Default.Close, contentDescription = stringResource(Res.string.common_close))
+            else -> FilledTonalIconButton(onClick = onTap ?: onClose, enabled = closeEnabled) {
+                Icon(icon, contentDescription = label)
             }
         }
     }

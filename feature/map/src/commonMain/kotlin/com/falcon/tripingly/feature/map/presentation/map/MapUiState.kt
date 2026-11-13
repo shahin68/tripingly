@@ -248,12 +248,15 @@ data class LocationState(
 /** At most one sheet or full-screen view over the map. */
 @Immutable
 sealed interface MapSheet {
+    /** Opened from another sheet (the details, the trips): a back arrow takes its ✕'s place and goes back to it. */
+    val hasBack: Boolean get() = false
+
     /** [canEdit]: photos can be added and managed. */
-    data class StopPhotos(val stop: MapMarker, val canEdit: Boolean) : MapSheet
+    data class StopPhotos(val stop: MapMarker, val canEdit: Boolean, override val hasBack: Boolean = false) : MapSheet
     /** A place's photos, which anyone can add to. */
-    data class PlacePhotos(val place: MapPlace) : MapSheet
+    data class PlacePhotos(val place: MapPlace, override val hasBack: Boolean = false) : MapSheet
     /** [people]: the trip's owner and members, who can be @mentioned. */
-    data class StopComments(val stop: MapMarker, val people: ImmutableList<UserSummary>) : MapSheet
+    data class StopComments(val stop: MapMarker, val people: ImmutableList<UserSummary>, override val hasBack: Boolean = false) : MapSheet
     /** The owner's members sheet, with the requests to join. */
     data object Members : MapSheet
     /** An image of the place card, full screen in the place's photo viewer. */
@@ -262,7 +265,7 @@ sealed interface MapSheet {
     data class StopDetails(val card: StopCardState) : MapSheet
     /** The selected place's details, half high. Its photos open in their own sheet in its place. */
     data class PlaceDetails(val card: PlaceCardState) : MapSheet
-    data class AddToTrip(val picker: AddToTripState) : MapSheet
+    data class AddToTrip(val picker: AddToTripState, override val hasBack: Boolean = false) : MapSheet
 }
 
 @Immutable

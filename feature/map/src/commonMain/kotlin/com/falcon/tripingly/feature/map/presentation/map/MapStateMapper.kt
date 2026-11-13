@@ -225,12 +225,16 @@ internal class MapStateMapper(
 
     private fun AlongTheWayPlace.toPin() = PlacePin(place, placePinSize(place, config), isAlongTheWay = true)
 
+    /** Opened from the details, while they're still there to go back to. */
+    private val Sheet.fromOpenDetails get() = fromDetails && model.selection != null
+
     private fun sheet(): MapSheet? = when (val sheet = model.sheet) {
-        is Sheet.StopPhotos -> stops.firstOrNull { it.id == sheet.markerId }?.let { MapSheet.StopPhotos(it, canEdit) }
-        is Sheet.PlacePhotos -> MapSheet.PlacePhotos(sheet.place)
-        is Sheet.StopComments -> stops.firstOrNull { it.id == sheet.markerId }?.let { MapSheet.StopComments(it, tripPeople()) }
+        is Sheet.StopPhotos -> stops.firstOrNull { it.id == sheet.markerId }?.let { MapSheet.StopPhotos(it, canEdit, sheet.fromOpenDetails) }
+        is Sheet.PlacePhotos -> MapSheet.PlacePhotos(sheet.place, sheet.fromOpenDetails)
+        is Sheet.StopComments -> stops.firstOrNull { it.id == sheet.markerId }?.let { MapSheet.StopComments(it, tripPeople(), sheet.fromOpenDetails) }
         Sheet.Members -> MapSheet.Members
-        is Sheet.AddToTrip -> MapSheet.AddToTrip(sheet.toState(stops))
+        // The days go back to the trips, the trips to the details they were opened from.
+        is Sheet.AddToTrip -> MapSheet.AddToTrip(sheet.toState(stops), hasBack = sheet.trip != null || sheet.fromOpenDetails)
         is Sheet.Details -> when (val selection = model.selection) {
             is Selection.Stop -> stopDetails(selection)?.let { MapSheet.StopDetails(it) }
             is Selection.Place -> MapSheet.PlaceDetails(placeDetails(selection))

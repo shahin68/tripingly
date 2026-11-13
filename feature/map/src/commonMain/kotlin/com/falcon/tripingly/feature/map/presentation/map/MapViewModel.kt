@@ -248,14 +248,9 @@ class MapViewModel(
             is MapAction.Sheet.ReportPhoto -> sharing.reportPhoto(action.photo)
             is MapAction.Sheet.PickTrip -> addToTrip.pickTrip(action.tripId)
             is MapAction.Sheet.PickDay -> addToTrip.pickDay(action.dayId)
-            is MapAction.Sheet.BackToTrips -> addToTrip.backToTrips()
             is MapAction.Sheet.CloseAll -> context.update { it.copy(sheet = null) }
-            is MapAction.Sheet.CloseStopPhotos,
-            is MapAction.Sheet.ClosePlacePhotos,
-            is MapAction.Sheet.CloseStopComments,
-            is MapAction.Sheet.CloseMembers,
-            is MapAction.Sheet.CloseDetails,
-            is MapAction.Sheet.CloseAddToTrip -> closeSheet()
+            // The days go back to the trips; the rest to the details they were opened from.
+            is MapAction.Sheet.Back -> if ((model.sheet as? Sheet.AddToTrip)?.trip != null) addToTrip.backToTrips() else backToDetails()
         }
     }
 
@@ -305,7 +300,7 @@ class MapViewModel(
     private fun openSheet(sheet: Sheet) = context.update { it.copy(sheet = sheet) }
 
     /** One sheet at a time: one opened from the details goes back to them, while their stop or place is still open. */
-    private fun closeSheet() = context.update { model ->
+    private fun backToDetails() = context.update { model ->
         model.copy(sheet = if (model.sheet?.fromDetails == true && model.selection != null) Sheet.Details else null)
     }
 
