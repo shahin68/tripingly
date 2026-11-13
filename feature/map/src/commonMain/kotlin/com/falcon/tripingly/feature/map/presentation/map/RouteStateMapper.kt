@@ -7,6 +7,7 @@ import com.falcon.tripingly.core.model.trip.GeoPoint
 import com.falcon.tripingly.core.ui.UiText
 import com.falcon.tripingly.feature.map.presentation.map.state.MY_LOCATION_ID
 import com.falcon.tripingly.feature.map.presentation.map.state.RouteModel
+import com.falcon.tripingly.feature.map.presentation.map.state.RouteSide
 import com.falcon.tripingly.feature.map.presentation.map.state.isGoingTo
 import com.falcon.tripingly.feature.map.presentation.map.state.isRouteEnd
 import com.falcon.tripingly.feature.map.presentation.map.state.isRouteTo
@@ -34,20 +35,26 @@ internal fun RouteModel.pinRoutes(at: GeoPoint, hasLocation: Boolean) = PinRoute
 )
 
 /**
- * The from/to bar: one end kept while the other is picked ("to" after Route from, "from" after its pill was tapped), or
- * the route between two points that shows.
+ * The from/to bar: the start while "to" is picked after Route from, or the route between two points that shows, the end
+ * whose pill was tapped being its field.
  */
 internal fun RouteModel.routeBar(): RouteBarState? {
     start?.let {
         val label = startLabel ?: UiText.Server(it.name)
-        return if (isPickingFrom) RouteBarState(from = null, to = label, mode = travelMode) else RouteBarState(label, to = null, mode = travelMode)
+        return RouteBarState(label, to = null, mode = travelMode)
     }
     val between = between ?: return null
-    return RouteBarState(between.fromLabel ?: UiText.Server(between.from.name), between.toLabel ?: UiText.Server(between.to.name), travelMode)
+    // The end picked again is its field; its place stays an end on the map until another is picked.
+    return RouteBarState(
+        from = (between.fromLabel ?: UiText.Server(between.from.name)).takeIf { editing != RouteSide.From },
+        to = (between.toLabel ?: UiText.Server(between.to.name)).takeIf { editing != RouteSide.To },
+        mode = travelMode,
+        isEditing = editing != null,
+    )
 }
 
 /** The route's ends on the map (where I am has my own dot instead): the end kept while the other is picked, or both. */
 internal fun RouteModel.endPlaces(): List<Pair<MapPlace, Boolean>> {
-    val ends = start?.let { listOf(it to !isPickingFrom) } ?: between?.let { listOf(it.from to true, it.to to false) }.orEmpty()
+    val ends = start?.let { listOf(it to true) } ?: between?.let { listOf(it.from to true, it.to to false) }.orEmpty()
     return ends.filter { (place, _) -> place.id != MY_LOCATION_ID }
 }

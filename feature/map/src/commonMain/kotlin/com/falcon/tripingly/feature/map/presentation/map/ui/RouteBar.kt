@@ -62,6 +62,7 @@ import com.falcon.tripingly.core.designsystem.theme.spacing
 import com.falcon.tripingly.core.model.route.TravelMode
 import com.falcon.tripingly.core.ui.UiText
 import com.falcon.tripingly.feature.map.generated.resources.Res
+import com.falcon.tripingly.feature.map.generated.resources.map_route_cancel_edit
 import com.falcon.tripingly.feature.map.generated.resources.map_route_change_from
 import com.falcon.tripingly.feature.map.generated.resources.map_route_change_to
 import com.falcon.tripingly.feature.map.generated.resources.map_route_close
@@ -81,8 +82,10 @@ import org.jetbrains.compose.resources.stringResource
  * Two pills: where from, by its start mark, with ✕ beside it (✕ and back close the route and the start); where to, by a
  * flag, with ⇅ beside it once both ends are set, which switches them (the names glide past each other). The marks take
  * the way of travelling's colour, like the route. A tap on a set end's pill picks it again (Shahin, 2026-11-13): its
- * pill becomes the search field ([search] open, the keyboard up, outlined while it's typed in), or "Search or tap a
- * pin", which opens it. Every pill and button is the same small spacing apart and in from the bar's edges.
+ * pill becomes the search field holding its name ([search] open, the keyboard up, outlined while it's typed in), or
+ * "Search or tap a pin", which opens it; the route stays until another place is picked, and ✕ or back then cancels
+ * the change. The pills show no ripple. Every pill and button is the same small spacing apart and in from the bar's
+ * edges.
  */
 @Composable
 internal fun RouteBar(
@@ -102,7 +105,8 @@ internal fun RouteBar(
     val swapDistance = with(LocalDensity.current) { (RouteHeight + MaterialTheme.spacing.small).roundToPx() }
     PillGrowthPanel(transition, progress, pill, pillContent, modifier.fillMaxWidth()) {
         Column(Modifier.padding(MaterialTheme.spacing.small), verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small)) {
-            RouteRow(transition.rowMotion(0), RouteIcon(Icons.Default.Close, stringResource(Res.string.map_route_close)) { onAction(MapAction.PinRoute.Close) }) {
+            val close = stringResource(if (bar.isEditing) Res.string.map_route_cancel_edit else Res.string.map_route_close)
+            RouteRow(transition.rowMotion(0), RouteIcon(Icons.Default.Close, close) { onAction(MapAction.PinRoute.Close) }) {
                 RouteEnd(
                     icon = Icons.Outlined.TripOrigin,
                     tint = color,
@@ -204,13 +208,16 @@ private fun RouteEnd(
         ) { shown ->
             val text = name(shown)
             when {
-                text != null -> EndName(text.asString(), Modifier.clickable(onClickLabel = editLabel, onClick = onEdit))
+                text != null -> EndName(text.asString(), Modifier.clickable(interactionSource = null, indication = null, onClickLabel = editLabel, onClick = onEdit))
                 search != null -> EndField(search.query, search.isSearching, onAction)
                 else -> Text(
                     stringResource(Res.string.map_route_to_placeholder),
                     style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.fillMaxWidth().clickable { onAction(MapAction.Search.Open) }.padding(horizontal = MaterialTheme.spacing.medium),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable(interactionSource = null, indication = null) { onAction(MapAction.Search.Open) }
+                        .padding(horizontal = MaterialTheme.spacing.medium),
                 )
             }
         }
@@ -231,7 +238,10 @@ private fun EndName(name: String, modifier: Modifier) {
     }
 }
 
-/** The end being picked: searches like the header's search, with the keyboard up as it opens. */
+/**
+ * The end being picked: searches like the header's search, with the keyboard up as it opens; the keyboard's search
+ * picks the first result.
+ */
 @Composable
 private fun EndField(query: TextFieldState, isSearching: Boolean, onAction: (MapAction) -> Unit) {
     val focusRequester = remember { FocusRequester() }
@@ -240,6 +250,7 @@ private fun EndField(query: TextFieldState, isSearching: Boolean, onAction: (Map
         state = query,
         placeholder = stringResource(Res.string.map_route_to_placeholder),
         onTextChange = { onAction(MapAction.Search.QueryChanged(it)) },
+        onImeAction = { onAction(MapAction.PinRoute.SubmitEnd) },
         modifier = Modifier.fillMaxWidth().focusRequester(focusRequester),
         style = AppTextFieldStyle.Inline,
         trailing = if (isSearching) {
@@ -264,7 +275,7 @@ private fun RouteBarPreviewContent() {
     Column(Modifier.background(MaterialTheme.colorScheme.surfaceContainerHigh).padding(MaterialTheme.spacing.medium), verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium)) {
         RouteBar(RouteBarState(UiText.Server("Café Central"), to = null), search = null, open, { 1f }, Rect.Zero, {}, onAction = {})
         RouteBar(RouteBarState(UiText.Server("Café Central"), UiText.Server("Musée national des Arts asiatiques – Guimet"), TravelMode.Cycling), search = null, open, { 1f }, Rect.Zero, {}, onAction = {})
-        RouteBar(RouteBarState(from = null, UiText.Server("Prater"), TravelMode.Driving), search = null, open, { 1f }, Rect.Zero, {}, onAction = {})
+        RouteBar(RouteBarState(from = null, UiText.Server("Prater"), TravelMode.Driving, isEditing = true), search = null, open, { 1f }, Rect.Zero, {}, onAction = {})
     }
 }
 

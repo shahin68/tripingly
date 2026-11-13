@@ -1,5 +1,7 @@
 package com.falcon.tripingly.feature.map.presentation.map.state
 
+import androidx.compose.foundation.text.input.TextFieldState
+import androidx.compose.ui.text.TextRange
 import com.falcon.tripingly.core.common.result.AppResult
 import com.falcon.tripingly.core.data.routing.RouteErrorCodes
 import com.falcon.tripingly.core.data.routing.RouteRepository
@@ -62,7 +64,7 @@ internal class MapRouting(
                 .collect { place -> if (place != null) update { route -> if (route.kept.any { it.id == place.id }) route else route.copy(kept = route.kept + place) } }
         }
         context.scope.launch {
-            context.model.map { it.route.isActive }.distinctUntilChanged().collect { isActive -> if (!isActive) update { it.copy(kept = emptyList(), isPickingFrom = false) } }
+            context.model.map { it.route.isActive }.distinctUntilChanged().collect { isActive -> if (!isActive) update { it.copy(kept = emptyList(), editing = null) } }
         }
     }
 
@@ -72,8 +74,8 @@ internal class MapRouting(
         // One route at a time: the day's replaces a route between two pins, and a start picked waits no more.
         context.update {
             it.copy(
-                route = if (isShown) it.route.copy(isDayRouteShown = false, isAnimated = true) else it.route.copy(isDayRouteShown = true, isAnimated = true, start = null, startLabel = null, between = null, isPickingFrom = false),
-                search = if (isShown || it.route.start == null) it.search else null,
+                route = if (isShown) it.route.copy(isDayRouteShown = false, isAnimated = true) else it.route.copy(isDayRouteShown = true, isAnimated = true, start = null, startLabel = null, between = null, editing = null),
+                search = if (isShown || !it.route.isPicking) it.search else null,
             )
         }
         // Only a route coming on opens the plan; switching it off leaves the sheet as it is (Shahin, 2026-11-10).
@@ -92,7 +94,7 @@ internal class MapRouting(
     fun goHere() {
         val end = selectedEnd() ?: return
         if (!hasRoutes()) return showRoutesArePro()
-        if (context.model.value.route.isGoingTo(end.place.location)) return closeRouteBar()
+        if (context.model.value.route.isGoingTo(end.place.location)) return closeRoute()
         val me = context.model.value.location.current
         if (me == null) {
             askForLocation()
@@ -111,9 +113,8 @@ internal class MapRouting(
         val route = context.model.value.route
         val at = end.place.location
         when {
-            route.isRouteEnd(at) -> closeRouteBar()
-            route.isRouteTo(at) -> route.start?.let { showRoute(PointRoute(it, end.place, route.startLabel, end.label)) }
-            route.isRouteFrom(at) -> route.start?.let { showRoute(PointRoute(end.place, it, end.label, route.startLabel)) }
+            route.isRouteEnd(at) -> closeRoute()
+            route.isRouteTo(at) || route.isRouteFrom(at) -> pick(end.place, end.label)
             !hasRoutes() -> showRoutesArePro()
             else -> {
                 selection.closePlace()
@@ -121,7 +122,7 @@ internal class MapRouting(
                 // One route between two points at a time: a new start replaces the route before (Shahin, 2026-11-12).
                 context.update {
                     it.copy(
-                        route = it.route.copy(start = end.place, startLabel = end.label, between = null, isPickingFrom = false),
+                        route = it.route.copy(start = end.place, startLabel = end.label, between = null, editing = null),
                         // An empty "to" field, not a query searched before.
                         search = SearchModel(),
                     )
@@ -130,27 +131,69 @@ internal class MapRouting(
         }
     }
 
-    /** A search result picked as where to go from the start. */
+    /** A search result picked as the end being picked. */
     fun routeToResult(result: PlaceSearchResult) {
-        val route = context.model.value.route
-        val kept = route.start ?: return
         // An address or a city isn't one of our places: it goes by its name.
-        val picked = result.place ?: stopPlace(addressId(result.location), result.location).copy(name = result.name)
-        showRoute(if (route.isPickingFrom) PointRoute(picked, kept, toLabel = route.startLabel) else PointRoute(kept, picked, route.startLabel))
+        pick(result.place ?: stopPlace(addressId(result.location), result.location).copy(name = result.name), label = null)
     }
 
     /**
-     * A tap on one end's pill in the route bar: that end goes and its pill is the search field, for a place typed or a
-     * pin tapped; the other end stays (Shahin, 2026-11-13).
+     * The keyboard's search in an end's field: the first result is picked. The name it opened with, untouched, keeps the
+     * end as it was; nothing found yet keeps the field for another try.
+     */
+    fun submitEnd() {
+        val model = context.model.value
+        val search = model.search ?: return
+        val query = search.query.text.toString()
+        when {
+            model.route.editing != null && query == editedName(model.route) -> cancelEdit()
+            query.isNotBlank() -> search.results.firstOrNull()?.let(::routeToResult)
+        }
+    }
+
+    /**
+     * A tap on one end's pill in the route bar (Shahin, 2026-11-13): its pill becomes the search field, holding its name,
+     * while the route, its line and both pins stay. A place typed and picked, or a pin's Route from/to here, replaces that
+     * end; ✕ or back leaves it as it was.
      */
     fun editEnd(isFrom: Boolean) {
-        val between = context.model.value.route.between ?: return
-        val (kept, label) = if (isFrom) between.to to between.toLabel else between.from to between.fromLabel
+        val route = context.model.value.route
+        if (route.between == null) return
+        val editing = if (isFrom) RouteSide.From else RouteSide.To
+        val name = editedName(route.copy(editing = editing))
         context.update {
             it.copy(
-                route = it.route.copy(start = kept, startLabel = label, between = null, isPickingFrom = isFrom),
-                search = SearchModel(),
+                route = it.route.copy(editing = editing),
+                search = SearchModel(query = TextFieldState(name, TextRange(name.length))),
             )
+        }
+    }
+
+    /** ✕ or back while an end is picked again: the end stays as it was and the keyboard goes. */
+    private fun cancelEdit() = context.update { it.copy(route = it.route.copy(editing = null), search = null) }
+
+    /**
+     * The name the edited end's field opens with: a stop's title or the place's name; "Your location" is no name to search
+     * by, so its field opens empty.
+     */
+    private fun editedName(route: RouteModel): String {
+        val between = route.between ?: return ""
+        val (place, label) = if (route.editing == RouteSide.From) between.from to between.fromLabel else between.to to between.toLabel
+        return if (place.id == MY_LOCATION_ID) "" else (label as? UiText.Server)?.text ?: place.name
+    }
+
+    /**
+     * A place picked for the end being picked: where the route goes from the start, or the end of a route picked again,
+     * the other end staying.
+     */
+    private fun pick(place: MapPlace, label: UiText?) {
+        val route = context.model.value.route
+        val between = route.between
+        when {
+            between != null && route.editing == RouteSide.From -> showRoute(between.copy(from = place, fromLabel = label))
+            between != null && route.editing == RouteSide.To -> showRoute(between.copy(to = place, toLabel = label))
+            route.start == null -> Unit
+            else -> showRoute(PointRoute(route.start, place, route.startLabel, label))
         }
     }
 
@@ -160,8 +203,17 @@ internal class MapRouting(
         showRoute(PointRoute(route.to, route.from, route.toLabel, route.fromLabel))
     }
 
-    /** The header's ✕ or back: the start, the route between two pins and the "to" search close. */
-    fun closeRouteBar() = context.update { it.copy(route = it.route.copy(start = null, startLabel = null, between = null, isPickingFrom = false), search = null) }
+    /**
+     * The header's ✕ or back: while an end is picked again, that ends (the end stays as it was); otherwise the start, the
+     * route between two pins and the "to" search close.
+     */
+    fun closeRouteBar() {
+        if (context.model.value.route.editing != null) cancelEdit() else closeRoute()
+    }
+
+    /** The start, the route between two pins and the bar's search close. */
+    private fun closeRoute() =
+        context.update { it.copy(route = it.route.copy(start = null, startLabel = null, between = null, editing = null), search = null) }
 
     /** The open pin as an end of a route: a place as it is, a stop as the place it stands at, with its title. */
     private fun selectedEnd(): RouteEnd? = when (val selected = context.model.value.selection) {
@@ -183,7 +235,7 @@ internal class MapRouting(
     private fun showRoute(route: PointRoute) {
         selection.closePlace()
         selection.closeStop()
-        context.update { it.copy(route = it.route.copy(start = null, startLabel = null, between = route, isPickingFrom = false), search = null) }
+        context.update { it.copy(route = it.route.copy(start = null, startLabel = null, between = route, editing = null), search = null) }
         showWholePlan()
         camera.frame(listOf(route.from.location, route.to.location).map { Coordinates(it.lat, it.lng) })
     }
@@ -213,7 +265,7 @@ internal class MapRouting(
     private fun PinEnd.label(): UiText? = (this as? PinEnd.Stop)?.stop?.title
 
     /** The plan's ✕ on a route between two places. */
-    fun closePointRoute() = update { it.copy(between = null) }
+    fun closePointRoute() = context.update { it.copy(route = it.route.copy(between = null, editing = null), search = if (it.route.editing != null) null else it.search) }
 
     /** A place along the way becomes the open day's last stop; shows at once like a tap on the map. */
     fun addAlongTheWay(place: MapPlace) {

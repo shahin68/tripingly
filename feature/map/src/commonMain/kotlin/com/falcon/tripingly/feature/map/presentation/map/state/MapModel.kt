@@ -125,16 +125,22 @@ internal data class RouteModel(
     val attempt: Int = 0,
     val isFindingBestOrder: Boolean = false,
     /**
-     * A tapped "from" in the route bar ([start] is then where the route goes, Shahin 2026-11-13): the field or a pin's
-     * Route from here picks where it starts.
+     * A tapped end of [between] is being picked again (Shahin, 2026-11-13): the route, its line and both pins stay until
+     * a new place is picked; ✕ or back puts the end back as it was.
      */
-    val isPickingFrom: Boolean = false,
+    val editing: RouteSide? = null,
     /**
      * Places tapped while a route shows: their pins stay on the map, as pins, until the route closes, whatever the zoom,
      * the way of travelling or the places loaded (Shahin, 2026-11-13).
      */
     val kept: List<MapPlace> = emptyList(),
 )
+
+/** The route bar's search picks an end: where to go from a start, or an end of a route picked again. */
+internal val RouteModel.isPicking get() = start != null || (between != null && editing != null)
+
+/** One end of a route between two points. */
+internal enum class RouteSide { From, To }
 
 /** A route shows, or one is being set up: the day's, one between two points, or a start waiting for where to go. */
 internal val RouteModel.isActive get() = isDayRouteShown || start != null || between != null
@@ -150,16 +156,25 @@ internal const val MY_LOCATION_ID = "my-location"
 /** Go here's route to the pin at [at] shows. */
 internal fun RouteModel.isGoingTo(at: GeoPoint) = between?.isFromMe == true && between.to.location == at
 
-/** The pin at [at] is the start picked with Route from, or an end of a route between two pins: its Route button is on. */
-internal fun RouteModel.isRouteEnd(at: GeoPoint) =
-    start?.location == at || (between != null && !between.isFromMe && (between.from.location == at || between.to.location == at))
+/**
+ * The pin at [at] is the start picked with Route from, or an end of a route between two pins, but not the end being
+ * picked again: its Route button is on.
+ */
+internal fun RouteModel.isRouteEnd(at: GeoPoint) = start?.location == at ||
+    (between != null && !between.isFromMe && ((editing != RouteSide.From && between.from.location == at) || (editing != RouteSide.To && between.to.location == at)))
 
-/** The pin at [at]'s Route button says Route to here: another pin is the start, or it is where the route goes. */
-internal fun RouteModel.isRouteTo(at: GeoPoint) =
-    (start != null && !isPickingFrom && start.location != at) || (between != null && !between.isFromMe && between.to.location == at)
+/**
+ * The pin at [at]'s Route button says Route to here: another pin is the start, or the route's "to" is picked again, or
+ * it is where the route goes.
+ */
+internal fun RouteModel.isRouteTo(at: GeoPoint) = (start != null && start.location != at) ||
+    (between != null && editing == RouteSide.To && between.from.location != at) ||
+    (between != null && editing == null && !between.isFromMe && between.to.location == at)
 
-/** The pin at [at]'s Route from here starts the route to [start], the end kept while "from" is picked again. */
-internal fun RouteModel.isRouteFrom(at: GeoPoint) = start != null && isPickingFrom && start.location != at
+/**
+ * The pin at [at]'s Route from here replaces the start of [between] while that is picked again.
+ */
+internal fun RouteModel.isRouteFrom(at: GeoPoint) = between != null && editing == RouteSide.From && between.to.location != at
 
 internal data class LocationModel(
     /** Null until the screen has read it. */

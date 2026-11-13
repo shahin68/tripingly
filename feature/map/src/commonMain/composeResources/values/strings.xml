@@ -172,6 +172,7 @@
     <string name="map_route_change_to">Change where it goes</string>
     <string name="map_route_between">%1$s → %2$s</string>
     <string name="map_route_close">Close the route</string>
+    <string name="map_route_cancel_edit">Keep this end</string>
     <string name="map_route_swap">Switch directions</string>
     <string name="map_best_order">Best order</string>
     <string name="map_ordering">Ordering…</string>

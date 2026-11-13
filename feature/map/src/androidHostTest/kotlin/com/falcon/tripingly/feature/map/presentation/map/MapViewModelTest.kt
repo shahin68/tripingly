@@ -1,5 +1,6 @@
 package com.falcon.tripingly.feature.map.presentation.map
 
+import androidx.compose.foundation.text.input.clearText
 import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
 import app.cash.turbine.test
 import com.falcon.tripingly.core.common.error.DataError
@@ -2172,11 +2173,27 @@ class MapViewModelTest {
         assertNull(viewModel.uiState.value.layers.selectedPlace)
         assertTrue(viewModel.uiState.value.layers.placePins.single { it.place.id == "c" }.isKept)
 
-        // A tap on "from" picks where it starts again: the other end stays, and a pin's Route from here starts there.
+        // A tap on "from" picks where it starts again: its field holds its name and the route stays as it is.
         viewModel.onAction(MapAction.PinRoute.EditEnd(isFrom = true))
         testScheduler.advanceUntilIdle()
-        assertEquals(RouteBarState(from = null, UiText.Server("Oper")), viewModel.uiState.value.routeBar)
-        assertNotNull(viewModel.uiState.value.search)
+        assertEquals(RouteBarState(from = null, UiText.Server("Oper"), isEditing = true), viewModel.uiState.value.routeBar)
+        assertEquals("Prater", viewModel.uiState.value.search?.query?.text?.toString())
+        assertNotNull(viewModel.uiState.value.pointRouteCard)
+        assertEquals(2, viewModel.uiState.value.layers.routeEnds.size)
+        // The keyboard's search on the name untouched, or ✕, keeps the end as it was and closes only the field.
+        viewModel.onAction(MapAction.PinRoute.SubmitEnd)
+        testScheduler.advanceUntilIdle()
+        assertEquals(RouteBarState(UiText.Server("Prater"), UiText.Server("Oper")), viewModel.uiState.value.routeBar)
+        assertNull(viewModel.uiState.value.search)
+        viewModel.onAction(MapAction.PinRoute.EditEnd(isFrom = true))
+        viewModel.onAction(MapAction.PinRoute.Close)
+        testScheduler.advanceUntilIdle()
+        assertEquals(RouteBarState(UiText.Server("Prater"), UiText.Server("Oper")), viewModel.uiState.value.routeBar)
+        assertEquals(to.location to from.location, routes.pointRoutes.last())
+
+        // Picked again, a pin's Route from here replaces it; the other end stays.
+        viewModel.onAction(MapAction.PinRoute.EditEnd(isFrom = true))
+        testScheduler.advanceUntilIdle()
         viewModel.onAction(MapAction.MapView.PlacePinClick(rathaus))
         restOnTarget(viewModel)
         assertEquals(false, viewModel.uiState.value.placeCard?.routes?.isRouteTo)
@@ -2218,6 +2235,24 @@ class MapViewModelTest {
         assertEquals(listOf(GeoPoint(48.2085, 16.3731) to prater.location), routes.pointRoutes)
         // The search result opened no card: the route is what was asked for.
         assertNull(viewModel.uiState.value.placeCard)
+
+        // "To" picked again: an emptied field changes nothing; the keyboard's search on a name typed picks its first result.
+        viewModel.onAction(MapAction.PinRoute.EditEnd(isFrom = false))
+        testScheduler.advanceUntilIdle()
+        val field = assertNotNull(viewModel.uiState.value.search).query
+        field.clearText()
+        viewModel.onAction(MapAction.Search.QueryChanged(""))
+        viewModel.onAction(MapAction.PinRoute.SubmitEnd)
+        testScheduler.advanceUntilIdle()
+        assertEquals(RouteBarState(stop.title, to = null, isEditing = true), viewModel.uiState.value.routeBar)
+        assertEquals(1, routes.pointRoutes.size)
+        field.setTextAndPlaceCursorAtEnd("Vi")
+        viewModel.onAction(MapAction.Search.QueryChanged("Vi"))
+        testScheduler.advanceUntilIdle()
+        viewModel.onAction(MapAction.PinRoute.SubmitEnd)
+        testScheduler.advanceUntilIdle()
+        assertEquals(RouteBarState(stop.title, UiText.Server("Vienna")), viewModel.uiState.value.routeBar)
+        assertEquals(GeoPoint(48.2085, 16.3731) to GeoPoint(48.2082, 16.3738), routes.pointRoutes.last())
 
         // The start's card shows its Route button on; a tap closes the route and the bar.
         viewModel.onAction(MapAction.MapView.MarkerClick(stop))

@@ -143,6 +143,7 @@ class MapViewModel(
             is MapAction.PinRoute.Close -> routes.closeRouteBar()
             is MapAction.PinRoute.Swap -> routes.swapEnds()
             is MapAction.PinRoute.EditEnd -> routes.editEnd(action.isFrom)
+            is MapAction.PinRoute.SubmitEnd -> routes.submitEnd()
         }
     }
 

@@ -49,7 +49,7 @@ internal class MapSearch(
 
     fun onResultClick(result: PlaceSearchResult) {
         close()
-        if (context.model.value.route.start != null) return routeTo(result)
+        if (context.model.value.route.isPicking) return routeTo(result)
         when {
             result.place != null -> selection.openPlace(result.place!!, result.type.zoom())
             result.type in ADDRESS_TYPES -> selection.openAddress(result)

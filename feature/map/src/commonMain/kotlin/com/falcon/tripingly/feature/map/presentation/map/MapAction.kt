@@ -107,6 +107,8 @@ sealed interface MapAction {
         data object Swap : PinRoute
         /** A tap on an end's pill in the from/to bar: that end is picked again ([isFrom]: where it starts). */
         data class EditEnd(val isFrom: Boolean) : PinRoute
+        /** The keyboard's search in an end's field: its first result is picked. */
+        data object SubmitEnd : PinRoute
     }
 
     /** The card over the selected stop, and its details sheet. */
