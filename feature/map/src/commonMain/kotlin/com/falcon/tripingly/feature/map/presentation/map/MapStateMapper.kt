@@ -55,10 +55,10 @@ internal class MapStateMapper(
     private val canEdit = role?.canEdit == true
     /** Someone else's trip: the header says whose. */
     private val otherOwnerId = details?.trip?.owner?.id?.takeIf { role != TripRole.OWNER }
+    /** Stops with news that marks their pin: any but flames, which only pop the open stop's flame (Shahin, 2026-11-13). Before [stops], which reads it. */
+    private val markedStopIds = model.news.filter { it.kind != NewsKind.Hot }.mapTo(HashSet()) { it.markerId }
     private val stops = days.getOrNull(activeIndex)?.markers.orEmpty().mapIndexed { index, it -> it.toMapMarker(index + 1) }
     private val dayNumber = days.getOrNull(activeIndex)?.let { it.position + 1 }
-    /** Stops with news that marks their pin: any but flames, which only pop the open stop's flame (Shahin, 2026-11-13). */
-    private val markedStopIds = model.news.filter { it.kind != NewsKind.Hot }.mapTo(HashSet()) { it.markerId }
     /** A viewer's + puts a stop or place on one of my trips; an editor's puts a place on the open day. */
     private val copyAdd = PinAdd.ToMyTrip.takeIf { role != null && !canEdit }
     private val route = model.route
