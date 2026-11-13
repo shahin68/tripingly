@@ -424,6 +424,46 @@ class MapViewModelTest {
     }
 
     @Test
+    fun `with location switched off the button says so, turns it on and follows once it's back`() = runTest(testDispatcher) {
+        val fixes = MutableSharedFlow<AppResult<Coordinates, DataError.Location>>(replay = 1)
+        fakeLocationRepository.live = fixes
+        val viewModel = viewModel()
+        // As iOS reports it: switched-off location reads as a denial.
+        viewModel.onAction(MapAction.Location.PermissionChecked(LocationPermission.Blocked))
+        viewModel.onAction(MapAction.Location.LocationSwitched(isOn = false))
+        testScheduler.advanceUntilIdle()
+        assertFalse(viewModel.uiState.value.location.isSwitchedOff)
+
+        viewModel.events.test {
+            viewModel.onAction(MapAction.Location.CenterOnUser)
+            testScheduler.runCurrent()
+            // The note instead of the Settings dialog.
+            assertTrue(viewModel.uiState.value.location.isSwitchedOff)
+            assertTrue(viewModel.uiState.value.location.isFollowing)
+            assertNull(viewModel.uiState.value.dialog)
+            testScheduler.advanceTimeBy(13_000)
+            assertFalse(viewModel.uiState.value.location.isSignalLost)
+
+            viewModel.onAction(MapAction.Location.TurnOn)
+            testScheduler.runCurrent()
+            assertEquals(MapEvent.TurnOnLocation, awaitItem())
+            cancelAndIgnoreRemainingEvents()
+        }
+
+        viewModel.cameraCommands.test {
+            // Back from Settings: allowed and on, and the first location starts following.
+            viewModel.onAction(MapAction.Location.PermissionChecked(LocationPermission.Granted))
+            viewModel.onAction(MapAction.Location.LocationSwitched(isOn = true))
+            fixes.emit(Coordinates(52.52, 13.40).asSuccess())
+            testScheduler.runCurrent()
+            assertEquals(CameraCommand.MoveTo(Coordinates(52.52, 13.40), 15f), expectMostRecentItem())
+            assertFalse(viewModel.uiState.value.location.isSwitchedOff)
+            assertTrue(viewModel.uiState.value.location.isFollowing)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
     fun `a tap on a cluster flies the camera in on it`() = runTest(testDispatcher) {
         val viewModel = viewModel()
         testScheduler.advanceUntilIdle()

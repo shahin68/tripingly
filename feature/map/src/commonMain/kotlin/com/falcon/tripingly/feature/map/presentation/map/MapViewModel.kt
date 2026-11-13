@@ -196,6 +196,8 @@ class MapViewModel(
     private fun onLocation(action: MapAction.Location) {
         when (action) {
             is MapAction.Location.PermissionChecked -> location.onPermissionChecked(action.permission)
+            is MapAction.Location.LocationSwitched -> location.onLocationSwitched(action.isOn)
+            MapAction.Location.TurnOn -> location.turnOn()
             is MapAction.Location.PermissionResult -> location.onPermissionResult(action.permission)
             is MapAction.Location.ConfirmPrompt -> location.confirmPrompt()
             is MapAction.Location.DismissPrompt -> location.dismissPrompt()

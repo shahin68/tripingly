@@ -195,6 +195,8 @@
     <string name="map_follow_location">Helyzetem követése</string>
     <string name="map_stop_following">Követés leállítása</string>
     <string name="map_gps_lost">GPS-jelre vár…</string>
+    <string name="map_location_off">A helyadatok ki vannak kapcsolva</string>
+    <string name="map_location_turn_on">Bekapcsolás</string>
     <string name="map_stop_expand">Több</string>
     <string name="map_stop_collapse">Kevesebb</string>
     <string name="map_stop_number">%1$d. megálló</string>

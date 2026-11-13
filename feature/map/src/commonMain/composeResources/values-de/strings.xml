@@ -195,6 +195,8 @@
     <string name="map_follow_location">Meinem Standort folgen</string>
     <string name="map_stop_following">Nicht mehr folgen</string>
     <string name="map_gps_lost">Warte auf GPS…</string>
+    <string name="map_location_off">Standort ist aus</string>
+    <string name="map_location_turn_on">Einschalten</string>
     <string name="map_stop_expand">Mehr zeigen</string>
     <string name="map_stop_collapse">Weniger zeigen</string>
     <string name="map_stop_number">Stopp %1$d</string>

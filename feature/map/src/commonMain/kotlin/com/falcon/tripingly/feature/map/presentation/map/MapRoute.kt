@@ -5,6 +5,9 @@ import com.falcon.tripingly.core.designsystem.component.AppBottomSheet
 import androidx.compose.foundation.gestures.animateTo
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -49,22 +52,27 @@ fun MapRoute(
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val onAction = viewModel::onAction
 
-    val locationPermission = rememberLocationPermissionController { permission ->
-        onAction(MapAction.Location.PermissionResult(permission))
-    }
-    // On open and on every return to the app, e.g. from Settings.
-    LifecycleResumeEffect(locationPermission) {
+    val scope = rememberCoroutineScope()
+    var locationSwitches by remember { mutableIntStateOf(0) }
+    val locationPermission = rememberLocationPermissionController(
+        onResult = { permission -> onAction(MapAction.Location.PermissionResult(permission)) },
+        onLocationSwitched = { locationSwitches++ },
+    )
+    // The permission, then whether the device's location is on: on open, on every return to the app (e.g. from
+    // Settings) and whenever the location is switched.
+    LifecycleResumeEffect(locationPermission, locationSwitches) {
         onAction(MapAction.Location.PermissionChecked(locationPermission.status()))
-        onPauseOrDispose {}
+        val check = scope.launch { onAction(MapAction.Location.LocationSwitched(locationPermission.isLocationOn())) }
+        onPauseOrDispose { check.cancel() }
     }
 
     val planSheet = rememberPlanSheetState()
-    val scope = rememberCoroutineScope()
     val haptics = rememberHaptics()
     ObserveAsEvents(viewModel.events) { event ->
         when (event) {
             MapEvent.RequestPermission -> locationPermission.request()
             MapEvent.OpenAppSettings -> locationPermission.openSettings()
+            MapEvent.TurnOnLocation -> locationPermission.turnOnLocation()
             MapEvent.NavigateBack -> onNavigateBack()
             is MapEvent.OpenProfile -> onOpenProfile(event.username)
             // A locked feature (street routes without Pro) is felt as a no before the paywall.

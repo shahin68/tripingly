@@ -270,6 +270,8 @@ data class LocationState(
     val isFollowing: Boolean = false,
     /** Following me, no location for a while: a quiet note beside the button says it waits for the signal. */
     val isSignalLost: Boolean = false,
+    /** The button is on but the device's location is switched off: the note says so, with "Turn on", instead. */
+    val isSwitchedOff: Boolean = false,
 )
 
 /** At most one sheet or full-screen view over the map. */

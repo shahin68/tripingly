@@ -66,6 +66,10 @@ sealed interface MapAction {
     /** The location button and the permission it needs. */
     sealed interface Location : MapAction {
         data class PermissionChecked(val permission: LocationPermission) : Location
+        /** The device's location (GPS) is on or off, read on open, on return and whenever it's switched. */
+        data class LocationSwitched(val isOn: Boolean) : Location
+        /** "Turn on" on the location-off note. */
+        data object TurnOn : Location
         data class PermissionResult(val permission: LocationPermission) : Location
         data object ConfirmPrompt : Location
         data object DismissPrompt : Location

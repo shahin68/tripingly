@@ -25,7 +25,9 @@ import kotlinx.coroutines.launch
  * The button switches following on and off (Shahin, 2026-11-13): on, the camera goes to me and moves with every new
  * location, until a finger moves the map, the screen shows something else ([MapCamera.moveTo]) or the button is tapped
  * again. When no location comes for [SIGNAL_LOST_MILLIS] (a tunnel, underground) a quiet note says it's waiting, and
- * the first location after that carries on following.
+ * the first location after that carries on following. With the device's location switched off, the button still
+ * switches on and a note says location is off, with "Turn on" (Shahin, 2026-11-13); its errors say nothing more, and
+ * the first location once it's on starts following.
  */
 internal class MapLocation(
     private val context: MapContext,
@@ -39,6 +41,21 @@ internal class MapLocation(
         update { it.copy(permission = permission) }
         if (permission == LocationPermission.Granted && before != LocationPermission.Granted) startUpdates()
     }
+
+    /** The device's location (GPS) is on or off: read on open, on return to the app and whenever it's switched. */
+    fun onLocationSwitched(isOn: Boolean) {
+        val before = context.model.value.location
+        update { it.copy(isSwitchedOff = !isOn) }
+        if (!isOn || !before.isSwitchedOff) return
+        when {
+            // iOS stops sending while it's off: start again.
+            before.permission == LocationPermission.Granted -> startUpdates()
+            // Tapped while off, and the app may not use the location after all: the next tap asks the usual way.
+            before.isWaitingForFirst -> camera.stopFollowing()
+        }
+    }
+
+    fun turnOn() = sendEvent(MapEvent.TurnOnLocation)
 
     /** The user answered the system prompt. */
     fun onPermissionResult(permission: LocationPermission) {
@@ -66,6 +83,10 @@ internal class MapLocation(
     fun centerOnUser() {
         val location = context.model.value.location
         if (location.isFollowing) return camera.stopFollowing()
+        // The note says it's off and turns it on. iOS reports a switched-off location as a denial: no Settings dialog for it.
+        if (location.isSwitchedOff && (location.permission == LocationPermission.Granted || location.permission == LocationPermission.Blocked)) {
+            return update { it.copy(isFollowing = true, isWaitingForFirst = true, isSignalLost = false) }
+        }
         when (location.permission) {
             LocationPermission.Granted -> {
                 update { it.copy(isFollowing = true, isSignalLost = false) }
@@ -107,8 +128,10 @@ internal class MapLocation(
     private fun prompt(prompt: LocationPrompt) =
         context.update { it.copy(location = it.location.copy(isWaitingForFirst = true), dialog = Dialog.Location(prompt)) }
 
+    /** Listens for locations, once at a time: a new start (location switched back on) replaces the one before. */
     private fun startUpdates() {
-        context.scope.launch {
+        updates?.cancel()
+        updates = context.scope.launch {
             context.update { it.copy(location = it.location.copy(isLoading = true), message = null) }
             try {
                 getCurrentLocationUseCase().collect { result ->
@@ -127,6 +150,11 @@ internal class MapLocation(
                             if (context.model.value.location.isFollowing) watchSignal()
                         }
                         is AppResult.Error -> {
+                            // Switched off: the note says so where it matters.
+                            if (context.model.value.location.isSwitchedOff) {
+                                update { it.copy(isLoading = false) }
+                                return@collect
+                            }
                             val resource = when (result.error) {
                                 is DataError.Location.PermissionDenied -> Res.string.error_location_permission_required
                                 is DataError.Location.ServiceDisabled -> Res.string.error_location_services_disabled
@@ -155,6 +183,7 @@ internal class MapLocation(
     }
 
     private var signalWatch: Job? = null
+    private var updates: Job? = null
 
     private fun update(change: (LocationModel) -> LocationModel) = context.update { it.copy(location = change(it.location)) }
 

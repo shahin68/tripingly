@@ -94,7 +94,10 @@ internal class MapStateMapper(
         stopCard = stopCard(),
         layers = layers,
         camera = CameraState(model.camera.isReady, model.camera.target, model.camera.zoom, model.camera.openingBounds),
-        location = model.location.let { LocationState(isLoading = it.isLoading, isFollowing = it.isFollowing, isSignalLost = it.isSignalLost) },
+        location = model.location.let {
+            val isSwitchedOff = it.isSwitchedOff && (it.isFollowing || it.isWaitingForFirst)
+            LocationState(isLoading = it.isLoading && !it.isSwitchedOff, isFollowing = it.isFollowing, isSignalLost = it.isSignalLost && !isSwitchedOff, isSwitchedOff = isSwitchedOff)
+        },
         arePlacesHidden = model.arePlacesHidden,
         routeAttribution = plan?.attribution?.takeIf { routePoints.isNotEmpty() },
         sheet = sheet(),

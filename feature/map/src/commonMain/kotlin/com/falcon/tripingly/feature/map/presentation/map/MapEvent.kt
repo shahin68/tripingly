@@ -4,6 +4,8 @@ package com.falcon.tripingly.feature.map.presentation.map
 sealed interface MapEvent {
     data object RequestPermission : MapEvent
     data object OpenAppSettings : MapEvent
+    /** Android's one-tap dialog that switches location on; iOS Settings. */
+    data object TurnOnLocation : MapEvent
     data object NavigateBack : MapEvent
     data class OpenProfile(val username: String) : MapEvent
     data object OpenPaywall : MapEvent

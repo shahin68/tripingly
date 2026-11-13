@@ -73,7 +73,7 @@ fun NearbyRoute(
     viewModel: NearbyViewModel = koinViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
-    val locationPermission = rememberLocationPermissionController { viewModel.onAction(Action.PermissionResult(it)) }
+    val locationPermission = rememberLocationPermissionController(onResult = { viewModel.onAction(Action.PermissionResult(it)) })
     // When Nearby opens and on every return to the app, e.g. from Settings.
     LifecycleResumeEffect(locationPermission) {
         viewModel.onAction(Action.PermissionChecked(locationPermission.status()))

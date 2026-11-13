@@ -190,6 +190,8 @@ internal data class LocationModel(
     val isFollowing: Boolean = false,
     /** Following me, but no location came for a while (a tunnel, underground): a quiet note says it waits for one. */
     val isSignalLost: Boolean = false,
+    /** The device's location (GPS) is switched off (Shahin, 2026-11-13): while the button is on, a note offers to turn it on. */
+    val isSwitchedOff: Boolean = false,
 )
 
 internal data class PinsModel(
