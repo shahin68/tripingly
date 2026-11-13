@@ -38,6 +38,7 @@
     <string name="map_place_image_position">%1$d / %2$d</string>
     <string name="map_place_image_report">Bild melden</string>
     <string name="map_photos_commons_note">Bilder von Wikimedia Commons: Öffne eines, um Urheber und Lizenz zu sehen.</string>
+    <string name="map_photos_commons_note_some">Einige Bilder sind von Wikimedia Commons: Öffne eines, um Urheber und Lizenz zu sehen.</string>
     <string name="map_place_images">Bilder dieses Ortes</string>
     <string name="map_place_category_cafe">Café</string>
     <string name="map_place_category_restaurant">Restaurant</string>
@@ -55,6 +56,7 @@
     <string name="map_pin_name_label">Name</string>
     <string name="map_pin_add">Hinzufügen</string>
     <string name="map_stop_no_photos">Noch keine Fotos</string>
+    <string name="map_photos_add_first">Erstes Foto hinzufügen</string>
     <string name="map_stop_photos">Fotos</string>
     <string name="map_photo_make_cover">Als Titelbild</string>
     <string name="map_photo_cover">Titelbild</string>

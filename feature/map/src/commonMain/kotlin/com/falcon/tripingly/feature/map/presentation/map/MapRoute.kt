@@ -118,12 +118,12 @@ fun MapRoute(
     AppBottomSheet(value = sheet?.takeIf { it.isDetails }, onDismiss = closeAll, halfHigh = true) { shown, close ->
         when (shown) {
             is MapSheet.StopDetails -> StopDetailsContent(shown.card, onAction, onClose = close) {
-                PhotoStripRoute(PhotoOwner.Stop(shown.card.stop.id), onShowAll = { onAction(MapAction.StopCard.OpenPhotos) }, onReport = onReportPhoto)
+                PhotoStripRoute(PhotoOwner.Stop(shown.card.stop.id), canAdd = shown.card.canEdit, onShowAll = { onAction(MapAction.StopCard.OpenPhotos) }, onReport = onReportPhoto)
             }
             is MapSheet.PlaceDetails -> PlaceDetailsContent(shown.card, onAction, onClose = close) {
                 // An address from search isn't one of our places: it has no photos.
                 if (shown.card.address == null) {
-                    PhotoStripRoute(PhotoOwner.Place(shown.card.place.id), onShowAll = { onAction(MapAction.PlaceCard.OpenPhotos) }, onReport = onReportPhoto)
+                    PhotoStripRoute(PhotoOwner.Place(shown.card.place.id), canAdd = true, onShowAll = { onAction(MapAction.PlaceCard.OpenPhotos) }, onReport = onReportPhoto)
                 }
             }
             else -> Unit
