@@ -92,7 +92,7 @@ internal fun PinCardScope.StopCard(
                     PhotoBanner(
                         title = stop.title.asString(),
                         subtitle = stopSubtitle(card),
-                        addedBy = card.addedBy,
+                        afterSubtitle = { card.addedBy?.let { AddedByInline(it, Modifier.weight(1f, fill = false)) } },
                         image = stop.coverPhotoId?.let { coverId -> coverImage(coverId, stop.coverThumbUrl) },
                         onClick = onOpenPhotos,
                         mark = { PinMark(category = null, stopNumber = stop.orderNumber) },

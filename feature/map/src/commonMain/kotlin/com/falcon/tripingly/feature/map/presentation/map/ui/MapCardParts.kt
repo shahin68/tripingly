@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -63,7 +64,6 @@ import com.falcon.tripingly.feature.map.generated.resources.map_place_add_to_day
 import com.falcon.tripingly.feature.map.generated.resources.map_route_from_here
 import com.falcon.tripingly.feature.map.generated.resources.map_route_go_here
 import com.falcon.tripingly.feature.map.generated.resources.map_route_to_here
-import com.falcon.tripingly.feature.map.presentation.map.AddedBy
 import com.falcon.tripingly.feature.map.presentation.map.PinAdd
 import com.falcon.tripingly.feature.map.presentation.map.PinRoutesState
 import org.jetbrains.compose.resources.stringResource
@@ -157,18 +157,18 @@ internal fun routeButtons(routes: PinRoutesState, onGoHere: () -> Unit, onRoute:
 
 /**
  * A photo [image] filling a rounded banner (tapped: [onClick]) with the [title] (wrapping) and [subtitle] in white over
- * a dark fade at the bottom, a quiet count at the bottom end ([trailing], e.g. the flames), and a [topEnd] button.
+ * a dark fade at the bottom, [afterSubtitle] on its line (e.g. who added it), a quiet count at the bottom end ([trailing],
+ * e.g. the flames), and a [topEnd] button.
  * Without an image ([image] null) it is a tinted panel with the pin icon at the top start and the text dark.
  */
 @Composable
 internal fun PhotoBanner(
     title: String,
-    subtitle: String?,
+    subtitle: String,
     image: (@Composable BoxScope.() -> Unit)?,
-    /** Who added it, after the [subtitle]. */
-    addedBy: AddedBy? = null,
     modifier: Modifier = Modifier,
     onClick: (() -> Unit)? = null,
+    afterSubtitle: @Composable RowScope.() -> Unit = {},
     trailing: @Composable () -> Unit = {},
     topEnd: @Composable () -> Unit = {},
     /** Without an image: the pin's own mark ([PinMark]), mirroring [topEnd]. */
@@ -197,8 +197,8 @@ internal fun PhotoBanner(
                 Text(title, style = MaterialTheme.typography.titleLarge)
                 Row(horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small), verticalAlignment = Alignment.CenterVertically) {
                     Row(Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraSmall), verticalAlignment = Alignment.CenterVertically) {
-                        subtitle?.let { Text(it, style = MaterialTheme.typography.bodySmall, modifier = Modifier.weight(1f, fill = false)) }
-                        addedBy?.let { AddedByInline(it, Modifier.weight(1f, fill = false)) }
+                        Text(subtitle, style = MaterialTheme.typography.bodySmall, modifier = Modifier.weight(1f, fill = false))
+                        afterSubtitle()
                     }
                     trailing()
                 }

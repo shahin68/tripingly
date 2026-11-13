@@ -47,6 +47,8 @@ internal fun PinCardScope.PlaceCard(
     /** For an address from search: shown instead of the category. */
     address: String?,
     add: PinAdd?,
+    /** Who made it, for a custom spot. */
+    addedBy: AddedBy?,
     onAdd: () -> Unit,
     onOpenImage: (index: Int) -> Unit,
     onOpenPhotos: () -> Unit,
@@ -55,8 +57,6 @@ internal fun PinCardScope.PlaceCard(
     onGoHere: () -> Unit,
     onRoute: () -> Unit,
     modifier: Modifier = Modifier,
-    /** Who made it, for a custom spot. */
-    addedBy: AddedBy? = null,
 ) {
     // An address from search is no place of ours, so it has no images to wait for and no photos.
     val images = if (address != null) emptyList() else details?.images
@@ -73,7 +73,7 @@ internal fun PinCardScope.PlaceCard(
                 pagerState = pagerState,
                 onOpen = onOpenImage,
                 onOpenPhotos = onOpenPhotos.takeIf { address == null },
-                addedBy = addedBy,
+                afterSubtitle = { addedBy?.let { AddedByInline(it, Modifier.weight(1f, fill = false)) } },
             )
         },
         credit = {
@@ -147,6 +147,7 @@ private fun PlaceCardPreviewContent(card: PlaceCardPreview) {
                 details = shown.details,
                 address = shown.address,
                 add = shown.add,
+                addedBy = shown.details?.addedBy?.let { AddedBy(it, isMe = false) },
                 onAdd = {},
                 onOpenImage = {},
                 onOpenPhotos = {},
@@ -154,7 +155,6 @@ private fun PlaceCardPreviewContent(card: PlaceCardPreview) {
                 routes = shown.routes,
                 onGoHere = {},
                 onRoute = {},
-                addedBy = shown.details?.addedBy?.let { AddedBy(it, isMe = false) },
             )
         }
     }
