@@ -184,14 +184,18 @@ internal class NearbyPlaces(
                 val addPlace = state.addPlace?.takeIf { it.trip?.id == trip.id } ?: return@update state
                 when (result) {
                     is AppResult.Success -> state.copy(addPlace = addPlace.copy(days = result.data.days.toImmutableList(), isLoadingDays = false))
+                    // Back to the trips, so another can be picked or the same one tried again.
                     is AppResult.Error -> state.copy(
-                        addPlace = addPlace.copy(isLoadingDays = false),
+                        addPlace = addPlace.copy(trip = null, isLoadingDays = false),
                         message = result.error.toUiText(Res.string.social_error_load_days),
                     )
                 }
             }
         }
     }
+
+    /** The days sheet closed: the trips show again. */
+    fun backToTrips() = state.update { it.copy(addPlace = it.addPlace?.copy(trip = null, days = persistentListOf(), isLoadingDays = false)) }
 
     /** Added at once, like a stop added on the map, and the trip opens to show it. */
     fun addPlace(day: TripDay) {

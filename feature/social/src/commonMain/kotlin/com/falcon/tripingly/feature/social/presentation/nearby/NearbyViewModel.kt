@@ -77,6 +77,7 @@ class NearbyViewModel(
             is Action.AddToTrip.PickTrip -> places.pickTrip(action.trip)
             is Action.AddToTrip.PickDay -> places.addPlace(action.day)
             Action.AddToTrip.Dismiss -> _uiState.update { it.copy(addPlace = null) }
+            Action.AddToTrip.BackToTrips -> places.backToTrips()
         }
     }
 
@@ -154,6 +155,8 @@ class NearbyViewModel(
             data class PickTrip(val trip: Trip) : AddToTrip
             data class PickDay(val day: TripDay) : AddToTrip
             data object Dismiss : AddToTrip
+            /** The days sheet closed: back to the trips. */
+            data object BackToTrips : AddToTrip
         }
     }
 

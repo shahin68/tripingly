@@ -91,7 +91,7 @@ fun MapRoute(
     // Photos, comments and members slide up as sheets; the image viewer is full screen.
     val sheet = state.sheet
     val onReportPhoto: (Photo) -> Unit = { photo -> onAction(MapAction.Sheet.ReportPhoto(photo)) }
-    AppBottomSheet(value = sheet?.takeUnless { it is MapSheet.PlaceImage || it.isDetails }, onDismiss = { sheet?.let { onAction(it.closeAction()) } }) { shown, close ->
+    AppBottomSheet(value = sheet?.takeUnless { it is MapSheet.PlaceImage || it.isDetails || it.isPickingDay }, onDismiss = { sheet?.let { onAction(it.closeAction()) } }) { shown, close ->
         when (shown) {
             is MapSheet.StopPhotos -> PhotosRoute(
                 owner = PhotoOwner.Stop(shown.stop.id),
@@ -125,6 +125,10 @@ fun MapRoute(
             else -> Unit
         }
     }
+    // The picked trip's days, in a sheet of their own in the trips' place; closing it goes back to the trips.
+    AppBottomSheet(value = (sheet as? MapSheet.AddToTrip)?.takeIf { it.isPickingDay }, onDismiss = { onAction(MapAction.Sheet.BackToTrips) }) { shown, close ->
+        AddToTripSheet(shown.picker, onAction, onClose = close)
+    }
     if (sheet is MapSheet.PlaceImage) {
         PhotoViewerRoute(
             owner = PhotoOwner.Place(sheet.placeId),
@@ -152,6 +156,9 @@ private fun PlacePhotos(place: MapPlace, onReport: (Photo) -> Unit, onDismiss: (
 }
 
 private val MapSheet.isDetails get() = this is MapSheet.StopDetails || this is MapSheet.PlaceDetails
+
+/** The add-to-trip sheet with a trip picked: its days show in their own sheet. */
+private val MapSheet.isPickingDay get() = this is MapSheet.AddToTrip && picker.trip != null
 
 private fun MapSheet.closeAction(): MapAction = when (this) {
     is MapSheet.StopPhotos -> MapAction.Sheet.CloseStopPhotos

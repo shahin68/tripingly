@@ -136,4 +136,21 @@ class NearbyViewModelTest : SocialTestBase() {
         assertEquals(Event.OpenTrip(vienna), viewModel.events.first())
         assertEquals(listOf(place.name), backend.observeTrip(vienna).first()!!.days.first().markers.map { it.name })
     }
+
+    @Test
+    fun addingAPlace_closingTheDays_goesBackToTheTrips() = runTest {
+        val viewModel = viewModel()
+        viewModel.onAction(Action.PermissionChecked(LocationPermission.Granted))
+        advanceUntilIdle()
+        viewModel.onAction(Action.AddPlace(viewModel.uiState.value.places.first()))
+        advanceUntilIdle()
+        viewModel.onAction(Action.AddToTrip.PickTrip(viewModel.uiState.value.addPlace!!.trips.single()))
+        advanceUntilIdle()
+
+        viewModel.onAction(Action.AddToTrip.BackToTrips)
+
+        val addPlace = viewModel.uiState.value.addPlace!!
+        assertEquals(null, addPlace.trip)
+        assertEquals(1, addPlace.trips.size)
+    }
 }

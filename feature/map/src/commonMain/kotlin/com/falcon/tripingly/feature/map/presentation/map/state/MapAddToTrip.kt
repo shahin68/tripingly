@@ -17,8 +17,8 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 /**
- * The green + on a trip I only view: the stop or place goes to a day of one of my trips, picked in a sheet (my trips I
- * can edit, from the device; then the picked one's days, from the server). A stop is copied by the server, which keeps
+ * The green + on a trip I only view: the stop or place goes to a day of one of my trips, picked in two sheets (my trips I
+ * can edit, from the device; then, in its own sheet, the picked one's days, from the server). A stop is copied by the server, which keeps
  * where it came from; a place is added like a stop added on the map, at once. The map stays where it is; a note says
  * where it went.
  */
@@ -71,6 +71,12 @@ internal class MapAddToTrip(
                 }
             }
         }
+    }
+
+    /** The days sheet closed: the trips show again. */
+    fun backToTrips() = context.update { model ->
+        val sheet = model.sheet as? Sheet.AddToTrip ?: return@update model
+        model.copy(sheet = sheet.copy(trip = null, days = null))
     }
 
     fun pickDay(dayId: String) {

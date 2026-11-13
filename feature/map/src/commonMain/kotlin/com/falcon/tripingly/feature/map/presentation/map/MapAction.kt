@@ -144,6 +144,8 @@ sealed interface MapAction {
         /** The add-to-trip sheet's rows: one of my trips, then its day. */
         data class PickTrip(val tripId: String) : Sheet
         data class PickDay(val dayId: String) : Sheet
+        /** The days sheet closed: back to the trips. */
+        data object BackToTrips : Sheet
         /** Reports the photo open in a viewer: a Commons image as the place's image, anything else as a photo. */
         data class ReportPhoto(val photo: Photo) : Sheet
     }

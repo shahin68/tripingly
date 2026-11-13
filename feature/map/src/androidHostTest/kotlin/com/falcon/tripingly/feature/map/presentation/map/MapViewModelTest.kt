@@ -1676,6 +1676,29 @@ class MapViewModelTest {
     }
 
     @Test
+    fun `closing the days sheet goes back to the trips`() = runTest(testDispatcher) {
+        backend.seed(trip.copy(trip = trip.trip.copy(role = TripRole.VIEWER)))
+        val mine = (backend.createTrip(NewTrip("Mine", LocalDate(2024, 2, 1), LocalDate(2024, 2, 2))) as AppResult.Success).data
+        val viewModel = viewModel()
+        testScheduler.advanceUntilIdle()
+        viewModel.onAction(MapAction.MapView.CameraRest(Coordinates(48.86, 2.32), 15f, PARIS_CENTER))
+        testScheduler.advanceUntilIdle()
+        viewModel.onAction(MapAction.MapView.PlacePinClick(viewModel.pin("Louvre")))
+        restOnTarget(viewModel)
+        viewModel.onAction(MapAction.PlaceCard.Add)
+        testScheduler.advanceUntilIdle()
+        viewModel.onAction(MapAction.Sheet.PickTrip(mine.trip.id))
+        testScheduler.advanceUntilIdle()
+
+        viewModel.onAction(MapAction.Sheet.BackToTrips)
+        testScheduler.advanceUntilIdle()
+
+        val picker = assertIs<MapSheet.AddToTrip>(viewModel.uiState.value.sheet).picker
+        assertNull(picker.trip)
+        assertEquals(listOf(mine.trip.id), picker.trips.map { it.id })
+    }
+
+    @Test
     fun `a viewer without trips of their own is told to create one`() = runTest(testDispatcher) {
         backend.seed(trip.copy(trip = trip.trip.copy(role = TripRole.VIEWER)))
         val viewModel = viewModel()
