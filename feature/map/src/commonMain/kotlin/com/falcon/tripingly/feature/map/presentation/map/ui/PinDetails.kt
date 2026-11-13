@@ -31,6 +31,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalUriHandler
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.falcon.tripingly.core.designsystem.component.AvatarCircle
@@ -108,7 +109,7 @@ internal fun StopDetailsContent(card: StopCardState, onAction: (MapAction) -> Un
 internal fun PlaceDetailsContent(card: PlaceCardState, onAction: (MapAction) -> Unit, onClose: () -> Unit, photoStrip: @Composable () -> Unit) {
     PinDetails(
         title = card.place.name,
-        subtitle = card.address ?: stringResource(card.place.category.label()),
+        subtitle = AnnotatedString(card.address ?: stringResource(card.place.category.label())),
         action = pinAction(
             onDelete = null,
             onAdd = { onAction(MapAction.PlaceCard.Add) }.takeIf { card.add != null },
@@ -143,7 +144,7 @@ internal fun PlaceDetailsContent(card: PlaceCardState, onAction: (MapAction) -> 
 @Composable
 private fun PinDetails(
     title: String,
-    subtitle: String,
+    subtitle: AnnotatedString,
     action: JoinedButtonSlot?,
     onClose: () -> Unit,
     buttons: @Composable () -> Unit,

@@ -42,6 +42,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.falcon.tripingly.core.designsystem.component.CountLabel
@@ -164,7 +165,7 @@ internal fun routeButtons(routes: PinRoutesState, onGoHere: () -> Unit, onRoute:
 @Composable
 internal fun PhotoBanner(
     title: String,
-    subtitle: String,
+    subtitle: AnnotatedString,
     image: (@Composable BoxScope.() -> Unit)?,
     modifier: Modifier = Modifier,
     onClick: (() -> Unit)? = null,
@@ -208,18 +209,14 @@ internal fun PhotoBanner(
 }
 
 /**
- * What a pin without a photo looks like on the map, for a card without an image: a place's category icon on the place
- * colour, or a stop's number on stop green ([stopNumber]).
+ * The mark of a card without an image: its place's category icon, on the place colour or on stop green for a stop
+ * ([isStop]; its number is in the bold "Stop 2" under the title, Shahin 2026-11-13).
  */
 @Composable
-internal fun PinMark(category: PlaceCategory?, stopNumber: Int?, modifier: Modifier = Modifier.size(JoinedButtonDefaults.Height)) {
-    val fill = if (stopNumber != null) MaterialTheme.extendedColors.stop else MaterialTheme.extendedColors.place
+internal fun PinMark(category: PlaceCategory?, isStop: Boolean, modifier: Modifier = Modifier.size(JoinedButtonDefaults.Height)) {
+    val fill = if (isStop) MaterialTheme.extendedColors.stop else MaterialTheme.extendedColors.place
     Box(modifier.background(fill, CircleShape), contentAlignment = Alignment.Center) {
-        if (stopNumber != null) {
-            Text(stopNumber.toString(), style = MaterialTheme.typography.titleMedium, color = Color.White)
-        } else {
-            Icon((category ?: PlaceCategory.Other).icon, contentDescription = null, tint = MaterialTheme.colorScheme.onSecondary, modifier = Modifier.size(JoinedButtonDefaults.IconSize))
-        }
+        Icon((category ?: PlaceCategory.Other).icon, contentDescription = null, tint = if (isStop) Color.White else MaterialTheme.colorScheme.onSecondary, modifier = Modifier.size(JoinedButtonDefaults.IconSize))
     }
 }
 
@@ -249,12 +246,12 @@ private const val DIMMED_ALPHA = 0.38f
 @Composable
 private fun MapCardPartsPreviewContent() {
     Column(Modifier.background(MaterialTheme.colorScheme.surface).padding(MaterialTheme.spacing.medium).width(340.dp), verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small)) {
-        PhotoBanner(title = "Hofburg", subtitle = "Historic site", image = null, mark = { PinMark(PlaceCategory.Historic, stopNumber = null) }, trailing = { BannerCount(Icons.Outlined.LocalFireDepartment, 40) })
+        PhotoBanner(title = "Hofburg", subtitle = AnnotatedString("Historic site"), image = null, mark = { PinMark(PlaceCategory.Historic, isStop = false) }, trailing = { BannerCount(Icons.Outlined.LocalFireDepartment, 40) })
         PhotoBanner(
             title = "Lunch at Anna's, a long name that wraps",
-            subtitle = "Custom spot",
+            subtitle = AnnotatedString("Custom spot"),
             image = null,
-            mark = { PinMark(category = null, stopNumber = 3) },
+            mark = { PinMark(PlaceCategory.Restaurant, isStop = true) },
             topEnd = { BannerButton({}, Icons.Outlined.ExpandMore, "Collapse") },
         )
         PinCardButtons(

@@ -18,6 +18,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import com.falcon.tripingly.core.designsystem.generated.resources.Res
@@ -42,6 +43,29 @@ fun SheetHeader(
     closeEnabled: Boolean = true,
     actions: @Composable RowScope.() -> Unit = {},
     joinedActions: List<JoinedButtonSlot> = emptyList(),
+) = SheetHeaderContent(title, onClose, modifier, subtitle?.let(::AnnotatedString), closeEnabled, actions, joinedActions)
+
+/** A sheet's top with a styled [subtitle], e.g. a stop's "**Stop 2** · Café". */
+@Composable
+fun SheetHeader(
+    title: String,
+    subtitle: AnnotatedString,
+    onClose: (() -> Unit)?,
+    modifier: Modifier = Modifier,
+    closeEnabled: Boolean = true,
+    actions: @Composable RowScope.() -> Unit = {},
+    joinedActions: List<JoinedButtonSlot> = emptyList(),
+) = SheetHeaderContent(title, onClose, modifier, subtitle, closeEnabled, actions, joinedActions)
+
+@Composable
+private fun SheetHeaderContent(
+    title: String,
+    onClose: (() -> Unit)?,
+    modifier: Modifier,
+    subtitle: AnnotatedString?,
+    closeEnabled: Boolean,
+    actions: @Composable RowScope.() -> Unit,
+    joinedActions: List<JoinedButtonSlot>,
 ) {
     val joined = joinedActions.isNotEmpty() && onClose != null
     Row(

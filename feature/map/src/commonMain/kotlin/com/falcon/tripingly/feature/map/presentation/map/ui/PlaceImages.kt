@@ -12,6 +12,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.LocalFireDepartment
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.tooling.preview.PreviewParameter
 import androidx.compose.ui.tooling.preview.PreviewParameterProvider
@@ -49,13 +50,13 @@ internal fun PlaceBanner(
     val description = stringResource(Res.string.map_place_images)
     PhotoBanner(
         title = name,
-        subtitle = listOfNotNull(subtitle, position).joinToString(" · "),
+        subtitle = AnnotatedString(listOfNotNull(subtitle, position).joinToString(" · ")),
         modifier = modifier,
         afterSubtitle = afterSubtitle,
         // Loading, the photo's grey waits; a place without images has none to wait for.
         image = if (images?.isEmpty() == true) null else pagerImages(images, pagerState, description, onOpen),
         onClick = onOpenPhotos.takeIf { images?.isEmpty() == true },
-        mark = { PinMark(category, stopNumber = null) },
+        mark = { PinMark(category, isStop = false) },
         trailing = { if (hotCount > 0) BannerCount(Icons.Outlined.LocalFireDepartment, hotCount) },
     )
 }

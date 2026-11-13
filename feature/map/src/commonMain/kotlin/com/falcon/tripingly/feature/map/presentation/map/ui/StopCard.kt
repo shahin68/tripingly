@@ -29,6 +29,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.tooling.preview.PreviewParameter
 import androidx.compose.ui.tooling.preview.PreviewParameterProvider
@@ -95,7 +100,7 @@ internal fun PinCardScope.StopCard(
                         afterSubtitle = { card.addedBy?.let { AddedByInline(it, Modifier.weight(1f, fill = false)) } },
                         image = stop.coverPhotoId?.let { coverId -> coverImage(coverId, stop.coverThumbUrl) },
                         onClick = onOpenPhotos,
-                        mark = { PinMark(category = null, stopNumber = stop.orderNumber) },
+                        mark = { PinMark(card.place?.category, isStop = true) },
                         topEnd = { BannerButton({ isExpanded = false }, Icons.Outlined.ExpandMore, stringResource(Res.string.map_stop_collapse)) },
                     )
                 },
@@ -124,12 +129,16 @@ private fun coverImage(coverId: String, url: String?): @Composable BoxScope.() -
     PhotoImage(photoId = coverId, url = url, size = PhotoSize.Thumb, contentDescription = null, modifier = Modifier.fillMaxSize())
 }
 
-/** "Stop 2 · Attraction", the type once the stop's place is loaded. */
+/** "**Stop 2** · Attraction", the type once the stop's place is loaded; the stop's number in bold, as it has no other mark. */
 @Composable
-internal fun stopSubtitle(card: StopCardState): String = listOfNotNull(
-    stringResource(Res.string.map_stop_number, card.stop.orderNumber),
-    card.place?.category?.let { stringResource(it.label()) },
-).joinToString(" · ")
+internal fun stopSubtitle(card: StopCardState): AnnotatedString {
+    val number = stringResource(Res.string.map_stop_number, card.stop.orderNumber)
+    val type = card.place?.category?.let { stringResource(it.label()) }
+    return buildAnnotatedString {
+        withStyle(SpanStyle(fontWeight = FontWeight.Bold)) { append(number) }
+        type?.let { append(" · $it") }
+    }
+}
 
 /** OpenStreetMap's credit for a stop at one of its places, then the cover's when it's a Commons image. */
 @Composable
@@ -155,7 +164,7 @@ private fun StopPill(card: StopCardState, onDelete: (() -> Unit)?, onAdd: (() ->
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
     ) {
-        StopImage(stop, Modifier.size(PillImageSize).clip(CircleShape))
+        StopImage(card, Modifier.size(PillImageSize).clip(CircleShape))
         Column(Modifier.weight(1f, fill = false).padding(end = MaterialTheme.spacing.extraSmall)) {
             Text(stop.title.asString(), style = MaterialTheme.typography.titleSmall, maxLines = 2)
             Text(stopSubtitle(card), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
@@ -168,14 +177,15 @@ private fun StopPill(card: StopCardState, onDelete: (() -> Unit)?, onAdd: (() ->
     }
 }
 
-/** The stop's image in the pill: its cover, or its pin's number while it has none. */
+/** The stop's image in the pill: its cover, or its place's icon on stop green while it has none. */
 @Composable
-private fun StopImage(marker: MapMarker, modifier: Modifier) {
+private fun StopImage(card: StopCardState, modifier: Modifier) {
+    val marker = card.stop
     val coverId = marker.coverPhotoId
     if (coverId != null) {
         PhotoImage(photoId = coverId, url = marker.coverThumbUrl, size = PhotoSize.Thumb, contentDescription = null, modifier = modifier)
     } else {
-        PinMark(category = null, stopNumber = marker.orderNumber, modifier = modifier)
+        PinMark(card.place?.category, isStop = true, modifier = modifier)
     }
 }
 
