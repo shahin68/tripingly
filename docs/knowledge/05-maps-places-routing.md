@@ -126,6 +126,7 @@ Decided 2026-10-10 (Shahin, "Tiles + prefetch"): places load and draw like Googl
 - Debounce 300 ms, from the first letter (one letter returns Photon prefix matches only), cancel in-flight requests. Send the map center as `lat/lng` for ranking.
 - Results: our places (have `id`) first, then addresses/cities (`source: "photon"`, no `id`).
 - *(Built: search icon in the map header; picking a result moves the camera at a zoom by its type, country 5 … street or place 17.)* Picking one of our places opens its card; picking an address opens a card with "Add to day N" (`name` + `location` + `osmType`/`osmId`); a city or larger area only moves the camera.
+- **Following my location (Shahin, 2026-11-13):** the location button switches following on and off. On, the camera goes to me (at least street zoom) and moves with every new location at the zoom it has; the button is filled in the accent colour. A finger moving the map (pan, pinch, turn: `onUserMove`, Android `CameraMoveStartedReason.GESTURE`, iOS `willMove gesture`), any other camera move the screen makes (a pin, search, fit day, a route: `MapCamera.moveTo`/`frame`) or a second tap turn it off. No location for 12 s while following (a tunnel, underground) shows a quiet glass note "Waiting for GPS…" beside the button; the next location hides it and the camera carries on. A tap on the map doesn't stop it.
 - A **long press** on the map creates a custom pin: user names it → `POST /days/{id}/markers` with name + location. *(Built on Android and on iOS with Google Maps.)*
 
 ## Routes and places along the way

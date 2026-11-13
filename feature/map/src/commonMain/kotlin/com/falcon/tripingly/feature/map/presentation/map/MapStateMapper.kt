@@ -91,7 +91,7 @@ internal class MapStateMapper(
         stopCard = stopCard(),
         layers = layers,
         camera = CameraState(model.camera.isReady, model.camera.target, model.camera.zoom, model.camera.openingBounds),
-        location = LocationState(isLoading = model.location.isLoading),
+        location = model.location.let { LocationState(isLoading = it.isLoading, isFollowing = it.isFollowing, isSignalLost = it.isSignalLost) },
         arePlacesHidden = model.arePlacesHidden,
         routeAttribution = plan?.attribution?.takeIf { routePoints.isNotEmpty() },
         sheet = sheet(),

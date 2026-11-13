@@ -32,6 +32,8 @@ sealed interface MapAction {
         data class PinDrop(val from: PinEnd, val to: PinEnd) : MapView
         /** A touch began anywhere outside the place card, on the map or on the screen's other controls. */
         data object ScreenTouch : MapView
+        /** A finger started moving the camera: it stops following me. */
+        data object UserMove : MapView
     }
 
     /** The top bar and its menu. */

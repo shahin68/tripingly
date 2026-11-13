@@ -100,6 +100,7 @@ import kotlin.time.Instant
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.launch
@@ -203,8 +204,11 @@ class MapViewModelTest {
         var locationResult: AppResult<Coordinates, DataError.Location> =
             Coordinates(48.8566, 2.3522).asSuccess()
 
+        /** Locations that come one by one as the test sends them, instead of [locationResult] once. */
+        var live: Flow<AppResult<Coordinates, DataError.Location>>? = null
+
         override fun getLocationStream(): Flow<AppResult<Coordinates, DataError.Location>> {
-            return flowOf(locationResult)
+            return live ?: flowOf(locationResult)
         }
     }
 
@@ -369,6 +373,53 @@ class MapViewModelTest {
             viewModel.onAction(MapAction.Location.CenterOnUser)
             testScheduler.advanceUntilIdle()
             assertEquals(CameraCommand.MoveTo(userCoords, 15f), expectMostRecentItem())
+        }
+    }
+
+    @Test
+    fun `the location button follows me until the map is moved, and waits through a lost signal`() = runTest(testDispatcher) {
+        val fixes = MutableSharedFlow<AppResult<Coordinates, DataError.Location>>(replay = 1)
+        fakeLocationRepository.live = fixes
+        val viewModel = viewModel()
+        viewModel.onAction(MapAction.Location.PermissionChecked(LocationPermission.Granted))
+        fixes.emit(Coordinates(52.52, 13.40).asSuccess())
+        testScheduler.advanceUntilIdle()
+
+        viewModel.cameraCommands.test {
+            viewModel.onAction(MapAction.Location.CenterOnUser)
+            testScheduler.runCurrent()
+            // The latest: the trip opening sent its own before.
+            assertEquals(CameraCommand.MoveTo(Coordinates(52.52, 13.40), 15f), expectMostRecentItem())
+            assertTrue(viewModel.uiState.value.location.isFollowing)
+
+            // Each new location moves the camera along.
+            fixes.emit(Coordinates(52.53, 13.41).asSuccess())
+            testScheduler.runCurrent()
+            assertEquals(CameraCommand.MoveTo(Coordinates(52.53, 13.41), 15f), awaitItem())
+
+            // No location for a while: a note says it's waiting, and the next one carries on.
+            testScheduler.advanceTimeBy(13_000)
+            assertTrue(viewModel.uiState.value.location.isSignalLost)
+            fixes.emit(Coordinates(52.54, 13.42).asSuccess())
+            testScheduler.runCurrent()
+            assertEquals(CameraCommand.MoveTo(Coordinates(52.54, 13.42), 15f), awaitItem())
+            assertFalse(viewModel.uiState.value.location.isSignalLost)
+
+            // A finger moves the map: following stops, and locations no longer move it.
+            viewModel.onAction(MapAction.MapView.UserMove)
+            fixes.emit(Coordinates(52.55, 13.43).asSuccess())
+            testScheduler.runCurrent()
+            assertFalse(viewModel.uiState.value.location.isFollowing)
+            expectNoEvents()
+
+            // The button again: back to me and following; once more, it stops.
+            viewModel.onAction(MapAction.Location.CenterOnUser)
+            testScheduler.runCurrent()
+            assertEquals(CameraCommand.MoveTo(Coordinates(52.55, 13.43), 15f), awaitItem())
+            viewModel.onAction(MapAction.Location.CenterOnUser)
+            testScheduler.runCurrent()
+            assertFalse(viewModel.uiState.value.location.isFollowing)
+            cancelAndIgnoreRemainingEvents()
         }
     }
 

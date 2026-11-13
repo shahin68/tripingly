@@ -183,6 +183,13 @@ internal data class LocationModel(
     val isLoading: Boolean = false,
     /** The location button was tapped: the camera moves to the first location that comes. */
     val isWaitingForFirst: Boolean = false,
+    /**
+     * The location button is on (Shahin, 2026-11-13): the camera follows me as I move, until a finger moves the map,
+     * the screen shows something else or the button is tapped again.
+     */
+    val isFollowing: Boolean = false,
+    /** Following me, but no location came for a while (a tunnel, underground): a quiet note says it waits for one. */
+    val isSignalLost: Boolean = false,
 )
 
 internal data class PinsModel(

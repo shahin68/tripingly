@@ -192,7 +192,9 @@
     </plurals>
     <string name="map_trip_members">Trip members · %1$d</string>
     <string name="map_clear_day">Clear day %1$d</string>
-    <string name="map_my_location">Show my location</string>
+    <string name="map_follow_location">Follow my location</string>
+    <string name="map_stop_following">Stop following my location</string>
+    <string name="map_gps_lost">Waiting for GPS…</string>
     <string name="map_stop_expand">Show more</string>
     <string name="map_stop_collapse">Show less</string>
     <string name="map_stop_number">Stop %1$d</string>

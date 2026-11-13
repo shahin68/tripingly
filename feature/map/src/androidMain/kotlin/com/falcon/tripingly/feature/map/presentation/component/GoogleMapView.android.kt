@@ -53,6 +53,7 @@ import com.google.android.gms.maps.model.JointType
 import com.google.android.gms.maps.model.LatLng
 import com.google.android.gms.maps.model.MapStyleOptions
 import com.google.android.gms.maps.model.RoundCap
+import com.google.maps.android.compose.CameraMoveStartedReason
 import com.google.maps.android.compose.ComposeMapColorScheme
 import com.google.maps.android.compose.GoogleMap
 import com.google.maps.android.compose.GoogleMapComposable
@@ -81,6 +82,7 @@ actual fun GoogleMapView(
     onCameraMove: (Coordinates, Float, GeoBounds?) -> Unit,
     onCameraMoving: (GeoBounds, Float) -> Unit,
     onMapTouch: () -> Unit,
+    onUserMove: () -> Unit,
     onMapClick: (Coordinates) -> Unit,
     onPlacePinClick: (MapPlace) -> Unit,
     onClusterClick: (PlaceCluster) -> Unit,
@@ -165,6 +167,12 @@ actual fun GoogleMapView(
         snapshotFlow { cameraPositionState.position }.collect { position ->
             if (cameraPositionState.isMoving || holder.hold != null) viewBounds()?.let { currentOnCameraMoving(it, position.zoom) }
         }
+    }
+
+    // A finger moving the map, not a flight the screen asked for nor a held pin pulling it.
+    val currentOnUserMove by rememberUpdatedState(onUserMove)
+    LaunchedEffect(cameraPositionState.isMoving) {
+        if (cameraPositionState.isMoving && cameraPositionState.cameraMoveStartedReason == CameraMoveStartedReason.GESTURE) currentOnUserMove()
     }
 
     // Not while a held pin moves the camera: once it's let go.

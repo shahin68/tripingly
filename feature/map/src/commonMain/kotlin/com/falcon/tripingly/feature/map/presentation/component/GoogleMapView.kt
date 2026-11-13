@@ -46,6 +46,8 @@ expect fun GoogleMapView(
      * also reach the screen's own touch handling.
      */
     onMapTouch: () -> Unit,
+    /** A finger started moving the camera (a pan, a pinch, a turn): whatever the camera followed stops following. */
+    onUserMove: () -> Unit,
     /** A tap on the map, not on a pin. */
     onMapClick: (Coordinates) -> Unit,
     onPlacePinClick: (MapPlace) -> Unit,

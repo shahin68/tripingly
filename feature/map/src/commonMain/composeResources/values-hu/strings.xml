@@ -192,7 +192,9 @@
     </plurals>
     <string name="map_trip_members">Tagok · %1$d</string>
     <string name="map_clear_day">%1$d. nap ürítése</string>
-    <string name="map_my_location">Saját hely mutatása</string>
+    <string name="map_follow_location">Helyzetem követése</string>
+    <string name="map_stop_following">Követés leállítása</string>
+    <string name="map_gps_lost">GPS-jelre vár…</string>
     <string name="map_stop_expand">Több</string>
     <string name="map_stop_collapse">Kevesebb</string>
     <string name="map_stop_number">%1$d. megálló</string>

@@ -266,6 +266,10 @@ data class CameraState(
 data class LocationState(
     /** The location is on its way: the button shows a spinner. */
     val isLoading: Boolean = false,
+    /** The camera follows me: the button is lit; a tap stops it. */
+    val isFollowing: Boolean = false,
+    /** Following me, no location for a while: a quiet note beside the button says it waits for the signal. */
+    val isSignalLost: Boolean = false,
 )
 
 /** At most one sheet or full-screen view over the map. */

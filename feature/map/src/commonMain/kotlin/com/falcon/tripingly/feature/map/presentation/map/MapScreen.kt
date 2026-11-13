@@ -205,6 +205,7 @@ internal fun MapScreen(
                 onCameraMove = { coords, zoom, bounds -> onAction(MapAction.MapView.CameraRest(coords, zoom, bounds)) },
                 onCameraMoving = { bounds, zoom -> onAction(MapAction.MapView.CameraMoving(bounds, zoom)) },
                 onMapTouch = { onAction(MapAction.MapView.ScreenTouch) },
+                onUserMove = { onAction(MapAction.MapView.UserMove) },
                 onMapClick = { coords -> onAction(MapAction.MapView.Click(coords)) },
                 onPlacePinClick = { place -> onAction(MapAction.MapView.PlacePinClick(place)) },
                 onClusterClick = { cluster -> onAction(MapAction.MapView.ClusterClick(cluster)) },

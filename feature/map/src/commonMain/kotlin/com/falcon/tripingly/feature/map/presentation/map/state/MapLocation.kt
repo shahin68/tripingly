@@ -15,11 +15,17 @@ import com.falcon.tripingly.feature.map.generated.resources.error_location_unkno
 import com.falcon.tripingly.feature.map.presentation.map.LocationPrompt
 import com.falcon.tripingly.feature.map.presentation.map.MapEvent
 import kotlin.coroutines.cancellation.CancellationException
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 /**
  * The user's location: its dot on the map and the location button. Only the button asks for the permission;
  * once granted, the dot shows without moving the camera, and only the button moves the camera to the user.
+ * The button switches following on and off (Shahin, 2026-11-13): on, the camera goes to me and moves with every new
+ * location, until a finger moves the map, the screen shows something else ([MapCamera.moveTo]) or the button is tapped
+ * again. When no location comes for [SIGNAL_LOST_MILLIS] (a tunnel, underground) a quiet note says it's waiting, and
+ * the first location after that carries on following.
  */
 internal class MapLocation(
     private val context: MapContext,
@@ -53,13 +59,19 @@ internal class MapLocation(
         }
     }
 
-    /** The location button: moves to the user, asking for the permission first when it can. */
+    /**
+     * The location button: following on (the camera goes to me, asking for the permission first when it can), or off
+     * when it's on.
+     */
     fun centerOnUser() {
         val location = context.model.value.location
+        if (location.isFollowing) return camera.stopFollowing()
         when (location.permission) {
             LocationPermission.Granted -> {
+                update { it.copy(isFollowing = true, isSignalLost = false) }
                 val current = location.current
-                if (current != null) camera.moveTo(current, USER_ZOOM) else update { it.copy(isWaitingForFirst = true) }
+                if (current != null) camera.follow(current, maxOf(camera.zoom, USER_ZOOM)) else update { it.copy(isWaitingForFirst = true) }
+                watchSignal()
             }
             LocationPermission.NotAsked, null -> {
                 update { it.copy(isWaitingForFirst = true) }
@@ -102,9 +114,17 @@ internal class MapLocation(
                 getCurrentLocationUseCase().collect { result ->
                     when (result) {
                         is AppResult.Success -> {
-                            val isWaiting = context.model.value.location.isWaitingForFirst
-                            update { it.copy(current = result.data, isLoading = false, isWaitingForFirst = false) }
-                            if (isWaiting) camera.moveTo(result.data, USER_ZOOM)
+                            val before = context.model.value.location
+                            update { it.copy(current = result.data, isLoading = false, isWaitingForFirst = false, isSignalLost = false) }
+                            when {
+                                // The button asked for the permission first: following starts now.
+                                before.isWaitingForFirst -> {
+                                    update { it.copy(isFollowing = true) }
+                                    camera.follow(result.data, maxOf(camera.zoom, USER_ZOOM))
+                                }
+                                before.isFollowing -> camera.follow(result.data, camera.zoom)
+                            }
+                            if (context.model.value.location.isFollowing) watchSignal()
                         }
                         is AppResult.Error -> {
                             val resource = when (result.error) {
@@ -125,10 +145,23 @@ internal class MapLocation(
         }
     }
 
+    /** While following, no new location within [SIGNAL_LOST_MILLIS] says the signal is lost; each location starts it again. */
+    private fun watchSignal() {
+        signalWatch?.cancel()
+        signalWatch = context.scope.launch {
+            delay(SIGNAL_LOST_MILLIS)
+            if (context.model.value.location.isFollowing) update { it.copy(isSignalLost = true) }
+        }
+    }
+
+    private var signalWatch: Job? = null
+
     private fun update(change: (LocationModel) -> LocationModel) = context.update { it.copy(location = change(it.location)) }
 
     private companion object {
         /** Streets around the user. */
         const val USER_ZOOM = 15f
+        /** Locations come every 2 to 3 s while the signal is there; this long without one, it's gone. */
+        const val SIGNAL_LOST_MILLIS = 12_000L
     }
 }

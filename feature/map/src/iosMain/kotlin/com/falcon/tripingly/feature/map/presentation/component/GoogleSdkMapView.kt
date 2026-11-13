@@ -70,6 +70,7 @@ internal fun GoogleSdkMapView(
     onCameraMove: (Coordinates, Float, GeoBounds?) -> Unit,
     onCameraMoving: (GeoBounds, Float) -> Unit,
     onMapTouch: () -> Unit,
+    onUserMove: () -> Unit,
     onMapClick: (Coordinates) -> Unit,
     onPlacePinClick: (MapPlace) -> Unit,
     onClusterClick: (PlaceCluster) -> Unit,
@@ -88,6 +89,7 @@ internal fun GoogleSdkMapView(
     val currentOnCameraMove by rememberUpdatedState(onCameraMove)
     val currentOnCameraMoving by rememberUpdatedState(onCameraMoving)
     val currentOnMapTouch by rememberUpdatedState(onMapTouch)
+    val currentOnUserMove by rememberUpdatedState(onUserMove)
     val currentOnMapClick by rememberUpdatedState(onMapClick)
     val currentOnMapLongClick by rememberUpdatedState(onMapLongClick)
     val currentOnMarkerClick by rememberUpdatedState(onMarkerClick)
@@ -151,6 +153,7 @@ internal fun GoogleSdkMapView(
 
                 override fun onGestureStart() {
                     currentOnMapTouch()
+                    currentOnUserMove()
                 }
 
                 override fun onCameraChange(zoom: Float, south: Double, west: Double, north: Double, east: Double) {
