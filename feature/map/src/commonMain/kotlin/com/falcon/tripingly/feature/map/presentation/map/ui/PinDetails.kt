@@ -74,7 +74,7 @@ internal fun StopDetailsContent(card: StopCardState, onAction: (MapAction) -> Un
     val showPhotos = { onAction(MapAction.StopCard.OpenPhotos) }
     PinDetails(
         title = stop.title.asString(),
-        subtitle = stopSubtitle(card),
+        subtitle = stopSubtitle(card, MaterialTheme.colorScheme.onSurface),
         action = pinAction(
             onDelete = { onAction(MapAction.Plan.RemoveStop(stop.id)) }.takeIf { stop.canDelete },
             onAdd = { onAction(MapAction.StopCard.Add) }.takeIf { card.add != null },

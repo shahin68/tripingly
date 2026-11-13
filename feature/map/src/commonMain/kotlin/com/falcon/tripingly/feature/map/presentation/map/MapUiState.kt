@@ -182,6 +182,8 @@ data class RouteSummaryState(
     val isLoading: Boolean,
     /** Places near the route, in the order the route passes them. */
     val alongTheWay: ImmutableList<AlongTheWayPlace>,
+    /** The place along the way whose pin is picked on the map, kept in view in the list. */
+    val selectedPlaceId: String?,
     /** The open day they are added to; null when this user can't add stops. */
     val addToDayNumber: Int?,
 )

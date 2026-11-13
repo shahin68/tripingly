@@ -19,7 +19,6 @@ import androidx.compose.material.icons.outlined.ExpandMore
 import androidx.compose.material.icons.outlined.PhotoLibrary
 import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
-import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -30,6 +29,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
@@ -132,15 +132,14 @@ private fun coverImage(coverId: String, url: String?): @Composable BoxScope.() -
 
 /**
  * "**Stop 2** · Attraction", the type once the stop's place is loaded. The stop's number has no other mark, so it is
- * extra bold in the full content colour (the line itself is a lighter, Medium or SemiBold style).
+ * extra bold, in [numberColor] where the line itself is a quieter grey (on the photo banner the line's own colour).
  */
 @Composable
-internal fun stopSubtitle(card: StopCardState): AnnotatedString {
+internal fun stopSubtitle(card: StopCardState, numberColor: Color = Color.Unspecified): AnnotatedString {
     val number = stringResource(Res.string.map_stop_number, card.stop.orderNumber)
     val type = card.place?.category?.let { stringResource(it.label()) }
-    val color = LocalContentColor.current
     return buildAnnotatedString {
-        withStyle(SpanStyle(fontWeight = FontWeight.ExtraBold, color = color)) { append(number) }
+        withStyle(SpanStyle(fontWeight = FontWeight.ExtraBold, color = numberColor)) { append(number) }
         type?.let { append(" · $it") }
     }
 }
@@ -172,7 +171,7 @@ private fun StopPill(card: StopCardState, onDelete: (() -> Unit)?, onAdd: (() ->
         StopImage(card, Modifier.size(PillImageSize).clip(CircleShape))
         Column(Modifier.weight(1f, fill = false).padding(end = MaterialTheme.spacing.extraSmall)) {
             Text(stop.title.asString(), style = MaterialTheme.typography.titleSmall, maxLines = 2)
-            Text(stopSubtitle(card), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
+            Text(stopSubtitle(card, MaterialTheme.colorScheme.onSurface), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
         }
         // Delete is for whoever added the stop or owns the trip; a viewer's + puts it on one of their trips.
         pinAction(onDelete, onAdd, addLabel)?.let { action -> JoinedButtons(listOf(action)) }

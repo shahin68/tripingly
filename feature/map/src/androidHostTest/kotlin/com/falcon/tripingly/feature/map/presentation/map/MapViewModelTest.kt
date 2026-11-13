@@ -2015,6 +2015,12 @@ class MapViewModelTest {
         assertTrue(viewModel.uiState.value.layers.placePins.single { it.place.id == "cafe" }.isAlongTheWay)
         assertEquals(1, viewModel.uiState.value.layers.placePins.count { it.isAlongTheWay })
         assertEquals(listOf(cafe), viewModel.uiState.value.stopsCard?.route?.alongTheWay?.map { it.place })
+        assertNull(viewModel.uiState.value.stopsCard?.route?.selectedPlaceId)
+
+        // Its pin tapped on the map, the list keeps it in view.
+        viewModel.onAction(MapAction.MapView.PlacePinClick(viewModel.uiState.value.layers.placePins.single { it.place.id == "cafe" }.place))
+        testScheduler.advanceUntilIdle()
+        assertEquals("cafe", viewModel.uiState.value.stopsCard?.route?.selectedPlaceId)
     }
 
     @Test

@@ -138,9 +138,7 @@ internal fun DayTabs(
     val pillColor = MaterialTheme.colorScheme.primary
     val pillShape = MaterialTheme.shapes.large
     // Keeps the open day in view, e.g. after adding one at the end.
-    LaunchedEffect(tabs.activeIndex) {
-        if (listState.layoutInfo.visibleItemsInfo.none { it.index == tabs.activeIndex }) listState.animateScrollToItem(tabs.activeIndex)
-    }
+    LaunchedEffect(tabs.activeIndex) { listState.reveal(tabs.activeIndex) }
     GlassSurface(
         modifier = modifier
             .windowInsetsPadding(WindowInsets.floatingBottom)

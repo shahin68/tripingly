@@ -203,7 +203,7 @@ internal class MapStateMapper(
         }
     }
 
-    private fun routeSummary() = route.summary(plan, alongTheWay, addToDayNumber = dayNumber?.takeIf { canEdit })
+    private fun routeSummary() = route.summary(plan, alongTheWay, selectedPlaceId = (model.selection as? Selection.Place)?.place?.id, addToDayNumber = dayNumber?.takeIf { canEdit })
 
     private fun pinRoutes(at: GeoPoint) = route.pinRoutes(at, hasLocation = model.location.current != null)
 

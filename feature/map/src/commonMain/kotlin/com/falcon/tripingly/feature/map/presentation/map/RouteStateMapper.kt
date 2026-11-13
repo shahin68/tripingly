@@ -11,13 +11,14 @@ import com.falcon.tripingly.feature.map.presentation.map.state.isRouteTo
 import kotlinx.collections.immutable.toImmutableList
 
 /** The route card's summary of [plan] (a real one, or null while there is none). */
-internal fun RouteModel.summary(plan: RoutePlan?, alongTheWay: List<AlongTheWayPlace>, addToDayNumber: Int?) = RouteSummaryState(
+internal fun RouteModel.summary(plan: RoutePlan?, alongTheWay: List<AlongTheWayPlace>, selectedPlaceId: String?, addToDayNumber: Int?) = RouteSummaryState(
     mode = travelMode,
     durationSeconds = plan?.route?.durationSeconds,
     distanceMeters = plan?.route?.distanceMeters,
     isEstimated = isUnavailable || this.plan?.isEstimated == true,
     isLoading = isLoading,
     alongTheWay = alongTheWay.toImmutableList(),
+    selectedPlaceId = selectedPlaceId,
     addToDayNumber = addToDayNumber,
 )
 
