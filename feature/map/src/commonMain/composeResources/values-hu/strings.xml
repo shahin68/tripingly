@@ -5,7 +5,6 @@
     <string name="map_show_places">Helyek mutatása</string>
     <string name="map_fit_day">Az egész nap megjelenítése</string>
     <string name="map_plan_handle">A teljes terv megjelenítése vagy elrejtése</string>
-    <string name="map_stop_title_format">%1$d. megálló</string>
     <string name="map_remove_stop">Megálló eltávolítása</string>
     <string name="map_back">Vissza</string>
     <string name="map_day_menu">Nap beállításai</string>

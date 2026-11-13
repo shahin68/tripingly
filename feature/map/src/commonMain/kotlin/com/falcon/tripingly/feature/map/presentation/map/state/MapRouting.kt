@@ -21,7 +21,6 @@ import com.falcon.tripingly.feature.map.generated.resources.map_error_best_order
 import com.falcon.tripingly.feature.map.generated.resources.map_error_route
 import com.falcon.tripingly.feature.map.generated.resources.map_route_my_location
 import com.falcon.tripingly.feature.map.generated.resources.map_route_need_location
-import com.falcon.tripingly.feature.map.generated.resources.map_stop_title_format
 import com.falcon.tripingly.feature.map.presentation.component.PinEnd
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
@@ -141,12 +140,8 @@ internal class MapRouting(
     /** The open pin as an end of a route: a place as it is, a stop as the place it stands at, with its title. */
     private fun selectedEnd(): RouteEnd? = when (val selected = context.model.value.selection) {
         is Selection.Place -> RouteEnd(selected.place, null)
-        is Selection.Stop -> context.activeDay()?.markers?.let { markers ->
-            val index = markers.indexOfFirst { it.id == selected.markerId }
-            markers.getOrNull(index)?.let { stop ->
-                val label = if (stop.name.isBlank()) UiText.Resource(Res.string.map_stop_title_format, index + 1) else UiText.Server(stop.name)
-                RouteEnd(stopPlace(stop.placeId ?: stop.id, stop.location), label)
-            }
+        is Selection.Stop -> context.activeDay()?.markers?.firstOrNull { it.id == selected.markerId }?.let { stop ->
+            RouteEnd(stopPlace(stop.placeId ?: stop.id, stop.location), UiText.Server(stop.name))
         }
         null -> null
     }

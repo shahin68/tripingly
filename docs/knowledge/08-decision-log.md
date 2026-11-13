@@ -310,3 +310,4 @@ Append-only. Newest at the bottom.
 | 2026-11-13 | "Stop 2" is extra bold in the full text colour (not the line's grey), so it stands out next to the type; plain bold was too close to the line's own SemiBold and Medium weights. | Shahin did not notice the bold. |
 | 2026-11-13 | "Stop 2" takes the line's own colour on a photo (white), the full text colour only where the line is grey (pill, details header). | Shahin: on a photo it showed dark, as the colour was read outside the banner. |
 | 2026-11-13 | A stop or along-the-way pin tapped on the map scrolls its chip into view in the plan sheet's stops row or the route card's row, also while the sheet is collapsed. | Shahin's ask. |
+| 2026-11-13 | A stop without a name shows no title instead of a numbered "Stop #3" fallback (its number is already in the bold "Stop 3" line). | Shahin: the fallback should be unspecific. |

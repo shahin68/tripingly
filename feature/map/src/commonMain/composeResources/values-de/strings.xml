@@ -5,7 +5,6 @@
     <string name="map_show_places">Orte einblenden</string>
     <string name="map_fit_day">Ganzen Tag zeigen</string>
     <string name="map_plan_handle">Ganzen Plan zeigen oder ausblenden</string>
-    <string name="map_stop_title_format">Stopp %1$d</string>
     <string name="map_remove_stop">Stopp entfernen</string>
     <string name="map_back">Zurück</string>
     <string name="map_day_menu">Tagesoptionen</string>

@@ -13,7 +13,6 @@ import com.falcon.tripingly.core.model.trip.TripRole
 import com.falcon.tripingly.core.model.trip.UserSummary
 import com.falcon.tripingly.core.ui.UiText
 import com.falcon.tripingly.feature.map.generated.resources.Res
-import com.falcon.tripingly.feature.map.generated.resources.map_stop_title_format
 import com.falcon.tripingly.feature.map.generated.resources.map_trip_card_more
 import com.falcon.tripingly.feature.map.generated.resources.map_trip_card_only
 import com.falcon.tripingly.feature.map.presentation.component.MapLayersState
@@ -301,7 +300,7 @@ internal class MapStateMapper(
     private fun TripMarker.toMapMarker(orderNumber: Int) = MapMarker(
         id = id,
         position = Coordinates(location.lat, location.lng),
-        title = if (name.isBlank()) UiText.Resource(Res.string.map_stop_title_format, orderNumber) else UiText.Server(name),
+        title = UiText.Server(name),
         orderNumber = orderNumber,
         snippet = time,
         coverPhotoId = coverPhotoId,

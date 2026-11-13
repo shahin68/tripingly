@@ -5,7 +5,6 @@
     <string name="map_show_places">Show places</string>
     <string name="map_fit_day">Show the whole day</string>
     <string name="map_plan_handle">Show or hide the whole plan</string>
-    <string name="map_stop_title_format">Stop #%1$d</string>
     <string name="map_remove_stop">Remove stop</string>
     <string name="map_back">Back</string>
     <string name="map_day_menu">Day options</string>
