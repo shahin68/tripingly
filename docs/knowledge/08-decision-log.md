@@ -311,3 +311,4 @@ Append-only. Newest at the bottom.
 | 2026-11-13 | "Stop 2" takes the line's own colour on a photo (white), the full text colour only where the line is grey (pill, details header). | Shahin: on a photo it showed dark, as the colour was read outside the banner. |
 | 2026-11-13 | A stop or along-the-way pin tapped on the map scrolls its chip into view in the plan sheet's stops row or the route card's row, also while the sheet is collapsed. | Shahin's ask. |
 | 2026-11-13 | A stop without a name shows no title instead of a numbered "Stop #3" fallback (its number is already in the bold "Stop 3" line). | Shahin: the fallback should be unspecific. |
+| 2026-11-13 | The plan rows glide to a tapped pin's chip only while they are on screen; under a collapsed sheet they jump there at once. | Shahin: the glide cost frames when the rows weren't visible. |

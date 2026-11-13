@@ -44,6 +44,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -176,10 +177,11 @@ private fun AnimatedVisibilityScope.RouteCardContent(route: RouteSummaryState, i
             val selectedIndex = route.alongTheWay.indexOfFirst { it.place.id == route.selectedPlaceId }
             // A place picked on the map is the card in view, also when the plan first shows.
             val listState = rememberLazyListState(initialFirstVisibleItemIndex = selectedIndex.coerceAtLeast(0))
-            LaunchedEffect(route.selectedPlaceId) { listState.reveal(selectedIndex) }
+            val onScreen = remember { OnScreen() }
+            LaunchedEffect(route.selectedPlaceId) { listState.reveal(selectedIndex, onScreen) }
             LazyRow(
                 state = listState,
-                modifier = Modifier.horizontalFadingEdge(listState),
+                modifier = Modifier.horizontalFadingEdge(listState).trackOnScreen(onScreen),
                 contentPadding = PaddingValues(horizontal = inset),
                 horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
             ) {
