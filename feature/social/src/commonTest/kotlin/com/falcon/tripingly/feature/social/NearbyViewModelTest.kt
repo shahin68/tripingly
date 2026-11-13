@@ -139,6 +139,8 @@ class NearbyViewModelTest : SocialTestBase() {
 
     @Test
     fun addingAPlace_closingTheDays_goesBackToTheTrips() = runTest {
+        // One trip of mine to add to.
+        publicTrip()
         val viewModel = viewModel()
         viewModel.onAction(Action.PermissionChecked(LocationPermission.Granted))
         advanceUntilIdle()
