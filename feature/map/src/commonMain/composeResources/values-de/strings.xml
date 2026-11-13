@@ -173,6 +173,7 @@
     <string name="map_route_between">%1$s → %2$s</string>
     <string name="map_route_close">Route schließen</string>
     <string name="map_route_cancel_edit">Diesen Punkt behalten</string>
+    <string name="map_route_clear">Leeren</string>
     <string name="map_route_swap">Richtung tauschen</string>
     <string name="map_best_order">Beste Reihenfolge</string>
     <string name="map_ordering">Wird sortiert…</string>

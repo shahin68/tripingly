@@ -173,6 +173,7 @@
     <string name="map_route_between">%1$s → %2$s</string>
     <string name="map_route_close">Útvonal bezárása</string>
     <string name="map_route_cancel_edit">Ez a pont marad</string>
+    <string name="map_route_clear">Törlés</string>
     <string name="map_route_swap">Irány megfordítása</string>
     <string name="map_best_order">Legjobb sorrend</string>
     <string name="map_ordering">Rendezés…</string>

@@ -23,7 +23,10 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.text.input.TextFieldState
+import androidx.compose.foundation.text.input.clearText
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.SwapVert
@@ -32,22 +35,29 @@ import androidx.compose.material.icons.outlined.TripOrigin
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.backhandler.BackHandler
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -65,6 +75,7 @@ import com.falcon.tripingly.feature.map.generated.resources.Res
 import com.falcon.tripingly.feature.map.generated.resources.map_route_cancel_edit
 import com.falcon.tripingly.feature.map.generated.resources.map_route_change_from
 import com.falcon.tripingly.feature.map.generated.resources.map_route_change_to
+import com.falcon.tripingly.feature.map.generated.resources.map_route_clear
 import com.falcon.tripingly.feature.map.generated.resources.map_route_close
 import com.falcon.tripingly.feature.map.generated.resources.map_route_from
 import com.falcon.tripingly.feature.map.generated.resources.map_route_swap
@@ -209,7 +220,7 @@ private fun RouteEnd(
             val text = name(shown)
             when {
                 text != null -> EndName(text.asString(), Modifier.clickable(interactionSource = null, indication = null, onClickLabel = editLabel, onClick = onEdit))
-                search != null -> EndField(search.query, search.isSearching, onAction)
+                search != null -> EndField(search.query, search.isSearching, bar.isEditing, onAction)
                 else -> Text(
                     stringResource(Res.string.map_route_to_placeholder),
                     style = MaterialTheme.typography.bodyLarge,
@@ -240,23 +251,50 @@ private fun EndName(name: String, modifier: Modifier) {
 
 /**
  * The end being picked: searches like the header's search, with the keyboard up as it opens; the keyboard's search
- * picks the first result.
+ * picks the first result. Picking a set end again ([isEditing], Shahin 2026-11-13), its ✕ never empties the field: it
+ * cancels, like the bar's ✕ and back, putting the end's name back, and so does the keyboard closed by back or its own
+ * button while the field is typed in. Otherwise ✕ empties the field and closes the keyboard.
  */
 @Composable
-private fun EndField(query: TextFieldState, isSearching: Boolean, onAction: (MapAction) -> Unit) {
+private fun EndField(query: TextFieldState, isSearching: Boolean, isEditing: Boolean, onAction: (MapAction) -> Unit) {
     val focusRequester = remember { FocusRequester() }
+    val focusManager = LocalFocusManager.current
+    var isFocused by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) { focusRequester.requestFocus() }
+    if (isEditing) {
+        // Back first closes the keyboard (the system's, before the app sees it): that cancels too, so one back does it.
+        val ime = WindowInsets.ime
+        val density = LocalDensity.current
+        LaunchedEffect(Unit) {
+            var wasShown = false
+            snapshotFlow { ime.getBottom(density) > 0 }.collect { isShown ->
+                if (isShown) wasShown = true else if (wasShown && isFocused) onAction(MapAction.PinRoute.Close)
+            }
+        }
+    }
     AppTextField(
         state = query,
         placeholder = stringResource(Res.string.map_route_to_placeholder),
         onTextChange = { onAction(MapAction.Search.QueryChanged(it)) },
         onImeAction = { onAction(MapAction.PinRoute.SubmitEnd) },
-        modifier = Modifier.fillMaxWidth().focusRequester(focusRequester),
+        modifier = Modifier.fillMaxWidth().focusRequester(focusRequester).onFocusChanged { isFocused = it.isFocused },
         style = AppTextFieldStyle.Inline,
-        trailing = if (isSearching) {
-            { CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp) }
-        } else {
-            null
+        clearable = false,
+        trailing = {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                if (isSearching) CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+                IconButton(onClick = {
+                    if (isEditing) {
+                        onAction(MapAction.PinRoute.Close)
+                    } else {
+                        focusManager.clearFocus()
+                        query.clearText()
+                    }
+                }) {
+                    val label = stringResource(if (isEditing) Res.string.map_route_cancel_edit else Res.string.map_route_clear)
+                    Icon(Icons.Default.Close, contentDescription = label, modifier = Modifier.size(20.dp))
+                }
+            }
         },
         keyboardOptions = SearchKeyboard,
     )
