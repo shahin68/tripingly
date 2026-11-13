@@ -41,6 +41,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.tooling.preview.Preview
@@ -191,8 +192,8 @@ internal fun PhotoBanner(
             // The pin's mark, mirroring the top end button: the same size and inset.
             Box(Modifier.padding(BannerButtonInset)) { mark() }
         }
-        Box(Modifier.align(Alignment.TopEnd).padding(BannerButtonInset)) { topEnd() }
         CompositionLocalProvider(LocalContentColor provides textColor) {
+            Box(Modifier.align(Alignment.TopEnd).padding(BannerButtonInset)) { topEnd() }
             // The same inset on every side the text has: start, end and bottom.
             Column(Modifier.align(Alignment.BottomStart).fillMaxWidth().padding(BannerInset)) {
                 Text(title, style = MaterialTheme.typography.titleLarge)
@@ -226,10 +227,16 @@ internal fun BannerCount(icon: ImageVector, count: Int) {
     CountLabel(icon, count, color = LocalContentColor.current.copy(alpha = 0.85f))
 }
 
-/** A round button on a photo banner (⌄ collapse): see-through white glass on a photo. */
+/**
+ * A round button on a photo banner (⌄ collapse), in the banner's text colour on a see-through tint of it: white glass on a
+ * photo, a dark tint on the panel without one, so it shows on both (Shahin, 2026-11-13).
+ */
 @Composable
 internal fun BannerButton(onClick: () -> Unit, icon: ImageVector, contentDescription: String, modifier: Modifier = Modifier) {
-    Surface(onClick = onClick, modifier = modifier.size(JoinedButtonDefaults.Height), shape = CircleShape, color = BannerButtonColor, contentColor = Color.White) {
+    val content = LocalContentColor.current
+    // White on a busy photo needs a stronger glass than a dark tint on the plain panel.
+    val tint = content.copy(alpha = if (content.luminance() > 0.5f) ON_PHOTO_TINT else ON_PANEL_TINT)
+    Surface(onClick = onClick, modifier = modifier.size(JoinedButtonDefaults.Height), shape = CircleShape, color = tint, contentColor = content) {
         Box(contentAlignment = Alignment.Center) { Icon(icon, contentDescription = contentDescription, modifier = Modifier.size(JoinedButtonDefaults.IconSize)) }
     }
 }
@@ -239,7 +246,8 @@ internal val MapCardMaxWidth = 360.dp
 private val BannerHeight = 160.dp
 private val BannerInset = 14.dp
 private val BannerButtonInset = 8.dp
-private val BannerButtonColor = Color.White.copy(alpha = 0.26f)
+private const val ON_PHOTO_TINT = 0.26f
+private const val ON_PANEL_TINT = 0.12f
 private const val ROUTE_TINT = 0.18f
 private const val DIMMED_ALPHA = 0.38f
 
