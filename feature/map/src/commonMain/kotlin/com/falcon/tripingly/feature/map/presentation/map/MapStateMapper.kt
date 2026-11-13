@@ -6,6 +6,7 @@ import com.falcon.tripingly.core.location.permission.LocationPermission
 import com.falcon.tripingly.core.model.account.TripVisibility
 import com.falcon.tripingly.core.model.config.AppConfig
 import com.falcon.tripingly.core.model.route.AlongTheWayPlace
+import com.falcon.tripingly.core.model.trip.GeoPoint
 import com.falcon.tripingly.core.model.trip.TripDetails
 import com.falcon.tripingly.core.model.trip.TripMarker
 import com.falcon.tripingly.core.model.trip.TripRole
@@ -66,7 +67,7 @@ internal class MapStateMapper(
         search = model.search?.let { SearchState(it.query, it.results.toImmutableList(), it.isSearching) },
         dayTabs = DayTabsState(days.map { day -> DayTab(day.id, day.position + 1, day.date?.let(DateUtils::formatAbbreviated), hasNew = day.markers.any { it.id in model.newStopIds || it.id in model.newCommentStopIds }, canDelete = canEdit && days.size > 1 && canDeleteDay(day.markers)) }.toImmutableList(), activeIndex),
         plan = route.between?.let { PointRouteCardState(it.from, it.to, routeSummary(), it.fromLabel, it.toLabel) } ?: stopsCard(),
-        routeStartName = route.start?.name,
+        routeBar = route.routeBar(),
         // The card stays open under a sheet, so closing the sheet comes back to it.
         placeCard = placeCard(),
         stopCard = stopCard(),
@@ -144,16 +145,6 @@ internal class MapStateMapper(
         )
     }
 
-    private fun routeSummary() = RouteSummaryState(
-        mode = route.travelMode,
-        durationSeconds = plan?.route?.durationSeconds,
-        distanceMeters = plan?.route?.distanceMeters,
-        isEstimated = route.isUnavailable || route.plan?.isEstimated == true,
-        isLoading = route.isLoading,
-        alongTheWay = alongTheWay.toImmutableList(),
-        addToDayNumber = dayNumber?.takeIf { canEdit },
-    )
-
     private fun placeCard(): PlaceCardState? {
         val selection = model.selection as? Selection.Place ?: return null
         if (!selection.isCardShown) return null
@@ -165,7 +156,7 @@ internal class MapStateMapper(
         details = selection.details,
         address = selection.address?.address,
         addToDayNumber = dayNumber?.takeIf { canEdit },
-        canRouteTo = route.start != null && route.start.location != selection.place.location,
+        routes = pinRoutes(selection.place.location),
     )
 
     private fun stopCard(): StopCardState? {
@@ -183,8 +174,13 @@ internal class MapStateMapper(
             place = place,
             canEdit = canEdit,
             canReport = role == TripRole.VIEWER,
+            routes = pinRoutes(GeoPoint(stop.position.latitude, stop.position.longitude)),
         )
     }
+
+    private fun routeSummary() = route.summary(plan, alongTheWay, addToDayNumber = dayNumber?.takeIf { canEdit })
+
+    private fun pinRoutes(at: GeoPoint) = route.pinRoutes(at, hasLocation = model.location.current != null)
 
     fun layers(): MapLayersState {
         val pins = model.pins.pins
@@ -219,6 +215,7 @@ internal class MapStateMapper(
                 else -> null
             },
             isMyLocationEnabled = model.location.permission == LocationPermission.Granted,
+            routeStart = route.startRing(),
         )
     }
 

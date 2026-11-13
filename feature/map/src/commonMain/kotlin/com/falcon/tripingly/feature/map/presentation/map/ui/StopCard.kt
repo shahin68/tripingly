@@ -60,7 +60,8 @@ import org.jetbrains.compose.resources.stringResource
 /**
  * A stop tapped on the map, floating above its pin: a slim pill (its image, name, "Stop 2 · Attraction", Delete or +,
  * and ⌃) that grows into the big card: the photo with the name and type, ⌄ to go back, the credit, and the buttons.
- * Tapping the photo opens the stop's photos; ⓘ its details sheet. Delete shows for whoever may delete the stop.
+ * Tapping the photo opens the stop's photos; ⓘ its details sheet. Delete shows for whoever may delete the stop. Go here
+ * and Route follow its flame, comments and photos.
  */
 @Composable
 internal fun PinCardScope.StopCard(
@@ -70,6 +71,8 @@ internal fun PinCardScope.StopCard(
     onOpenPhotos: () -> Unit,
     onOpenDetails: () -> Unit,
     onDelete: () -> Unit,
+    onGoHere: () -> Unit,
+    onRoute: () -> Unit,
     modifier: Modifier = Modifier,
     initiallyExpanded: Boolean = false,
 ) {
@@ -90,7 +93,7 @@ internal fun PinCardScope.StopCard(
                     )
                 },
                 credit = { StopCredit(card, Modifier.padding(top = MaterialTheme.spacing.small)) },
-                buttons = { PinCardButtons(stopButtons(stop, onToggleHot, onOpenComments, onOpenPhotos), onOpenDetails, onDeleteShown, onAdd = null) },
+                buttons = { PinCardButtons(stopButtons(stop, onToggleHot, onOpenComments, onOpenPhotos) + routeButtons(card.routes, onGoHere, onRoute), onOpenDetails, onDeleteShown, onAdd = null) },
             )
         } else {
             StopPill(card, onDeleteShown, onExpand = { isExpanded = true }, modifier = Modifier.bloomRow(fromPin = 0))
@@ -214,6 +217,8 @@ private fun StopCardPreviewContent(preview: StopCardPreview) {
                 onOpenPhotos = {},
                 onOpenDetails = {},
                 onDelete = {},
+                onGoHere = {},
+                onRoute = {},
                 initiallyExpanded = shown.expanded,
             )
         }

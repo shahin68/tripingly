@@ -44,6 +44,7 @@ import com.falcon.tripingly.core.designsystem.component.GlassDefaults
 import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
 import com.falcon.tripingly.core.designsystem.theme.extendedColors
 import com.falcon.tripingly.core.designsystem.theme.spacing
+import com.falcon.tripingly.feature.map.presentation.map.PinRoutesState
 import com.falcon.tripingly.feature.map.presentation.map.preview.previewPlace
 
 /*
@@ -183,7 +184,7 @@ private val Standard = CubicBezierEasing(0.2f, 0f, 0f, 1f)
 private fun PinCardPreview() {
     TripinglyTheme {
         PinCard(card = previewPlace, key = { it.id }, pinClearance = 24.dp) { place ->
-            PlaceCard(place, details = null, address = null, dayNumber = 1, onAdd = {}, onOpenImage = {}, onOpenPhotos = {}, onOpenDetails = {}, onRouteFrom = {}, onRouteTo = null)
+            PlaceCard(place, details = null, address = null, dayNumber = 1, onAdd = {}, onOpenImage = {}, onOpenPhotos = {}, onOpenDetails = {}, routes = PinRoutesState(), onGoHere = {}, onRoute = {})
         }
     }
 }
@@ -193,7 +194,7 @@ private fun PinCardPreview() {
 private fun PinCardDarkPreview() {
     TripinglyTheme(darkTheme = true) {
         PinCard(card = previewPlace, key = { it.id }, pinClearance = 24.dp) { place ->
-            PlaceCard(place, details = null, address = null, dayNumber = null, onAdd = {}, onOpenImage = {}, onOpenPhotos = {}, onOpenDetails = {}, onRouteFrom = {}, onRouteTo = {})
+            PlaceCard(place, details = null, address = null, dayNumber = null, onAdd = {}, onOpenImage = {}, onOpenPhotos = {}, onOpenDetails = {}, routes = PinRoutesState(isRouteTo = true), onGoHere = {}, onRoute = {})
         }
     }
 }

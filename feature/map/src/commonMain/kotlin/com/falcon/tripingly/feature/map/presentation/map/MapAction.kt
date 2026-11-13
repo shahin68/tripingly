@@ -93,7 +93,16 @@ sealed interface MapAction {
         /** Adds a place along the way to the open day. */
         data class AddAlongTheWay(val place: MapPlace) : Plan
         data object ClosePointRoute : Plan
-        data object CancelRouteStart : Plan
+    }
+
+    /** The route buttons of a stop's or a place's card and details, and the header's from/to bar. */
+    sealed interface PinRoute : MapAction {
+        /** From where I am to the pin. */
+        data object GoHere : PinRoute
+        /** Route from, or Route to here while another pin is the start; on, it closes the route. */
+        data object Route : PinRoute
+        /** The from/to bar's ✕ or back. */
+        data object Close : PinRoute
     }
 
     /** The card over the selected stop, and its details sheet. */
@@ -116,10 +125,6 @@ sealed interface MapAction {
         data object OpenPhotos : PlaceCard
         /** A tapped image opens full screen. */
         data class OpenImage(val index: Int) : PlaceCard
-        /** A route from here to the next place picked. */
-        data object RouteFrom : PlaceCard
-        /** The route from the place picked first to this one. */
-        data object RouteTo : PlaceCard
         /** ⓘ: the place's details open in a sheet, half high. */
         data object OpenDetails : PlaceCard
     }

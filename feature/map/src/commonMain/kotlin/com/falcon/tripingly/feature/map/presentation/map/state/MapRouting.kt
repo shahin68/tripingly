@@ -8,6 +8,7 @@ import com.falcon.tripingly.core.data.trips.hasCode
 import com.falcon.tripingly.core.location.model.Coordinates
 import com.falcon.tripingly.core.model.place.MapPlace
 import com.falcon.tripingly.core.model.place.PlaceCategory
+import com.falcon.tripingly.core.model.place.PlaceSearchResult
 import com.falcon.tripingly.core.model.route.TravelMode
 import com.falcon.tripingly.core.model.trip.GeoPoint
 import com.falcon.tripingly.core.model.trip.NewMarker
@@ -18,7 +19,9 @@ import com.falcon.tripingly.feature.map.generated.resources.Res
 import com.falcon.tripingly.feature.map.generated.resources.map_best_order_already
 import com.falcon.tripingly.feature.map.generated.resources.map_error_best_order
 import com.falcon.tripingly.feature.map.generated.resources.map_error_route
-import com.falcon.tripingly.feature.map.generated.resources.map_route_pick_destination
+import com.falcon.tripingly.feature.map.generated.resources.map_route_my_location
+import com.falcon.tripingly.feature.map.generated.resources.map_route_need_location
+import com.falcon.tripingly.feature.map.generated.resources.map_stop_title_format
 import com.falcon.tripingly.feature.map.presentation.component.PinEnd
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
@@ -38,6 +41,8 @@ internal class MapRouting(
     private val routeRepository: RouteRepository,
     private val markerRepository: MarkerRepository,
     private val hasRoutes: () -> Boolean,
+    /** Go here without my location: asks for the permission where it can, without moving the camera. */
+    private val askForLocation: () -> Unit,
     /** Without Pro, a tap on a route opens the paywall. */
     private val showRoutesArePro: () -> Unit,
     /** A stop was added or a route asked for: the plan sheet opens all the way. */
@@ -55,7 +60,13 @@ internal class MapRouting(
     fun toggleDayRoute() {
         val isShown = context.model.value.route.isDayRouteShown
         if (!isShown && !hasRoutes()) return showRoutesArePro()
-        update { it.copy(isDayRouteShown = !isShown, isAnimated = true) }
+        // One route at a time: the day's replaces a route between two pins, and a start picked waits no more.
+        context.update {
+            it.copy(
+                route = if (isShown) it.route.copy(isDayRouteShown = false, isAnimated = true) else it.route.copy(isDayRouteShown = true, isAnimated = true, start = null, startLabel = null, between = null),
+                search = if (isShown || it.route.start == null) it.search else null,
+            )
+        }
         // Only a route coming on opens the plan; switching it off leaves the sheet as it is (Shahin, 2026-11-10).
         if (!isShown) showWholePlan()
     }
@@ -65,27 +76,76 @@ internal class MapRouting(
 
     fun selectTravelMode(mode: TravelMode) = update { it.copy(travelMode = mode) }
 
-    /** "Route from here" on a place's card: the next place's card offers "Route to here". */
-    fun startPointRoute() {
-        val place = selection.selectedPlace?.place ?: return
+    /**
+     * Go here on a pin's card: the route from where I am to the pin (on again: off). Without my location yet, the
+     * permission is asked for where it can be and a note says why; tapping again then routes.
+     */
+    fun goHere() {
+        val end = selectedEnd() ?: return
         if (!hasRoutes()) return showRoutesArePro()
-        selection.closePlace()
-        context.update {
-            it.copy(
-                route = it.route.copy(start = place),
-                message = UiText.Note(UiText.Resource(Res.string.map_route_pick_destination)),
-            )
+        if (context.model.value.route.isGoingTo(end.place.location)) return closeRouteBar()
+        val me = context.model.value.location.current
+        if (me == null) {
+            askForLocation()
+            return context.showMessage(UiText.Note(UiText.Resource(Res.string.map_route_need_location)))
+        }
+        showRoute(PointRoute(myLocation(me), end.place, UiText.Resource(Res.string.map_route_my_location), end.label))
+    }
+
+    /**
+     * The Route button on a pin's card. Off: Route from makes the pin the start, closes its card and opens the
+     * header's "to" search; while another pin is the start it says Route to here and shows the route. On (this pin is an
+     * end of the route or the start): it closes them.
+     */
+    fun onRouteButton() {
+        val end = selectedEnd() ?: return
+        val route = context.model.value.route
+        val at = end.place.location
+        when {
+            route.isRouteEnd(at) -> closeRouteBar()
+            route.isRouteTo(at) -> route.start?.let { showRoute(PointRoute(it, end.place, route.startLabel, end.label)) }
+            !hasRoutes() -> showRoutesArePro()
+            else -> {
+                selection.closePlace()
+                selection.closeStop()
+                // One route between two points at a time: a new start replaces the route before (Shahin, 2026-11-12).
+                context.update {
+                    it.copy(
+                        route = it.route.copy(start = end.place, startLabel = end.label, between = null),
+                        // An empty "to" field, not a query searched before.
+                        search = SearchModel(),
+                    )
+                }
+            }
         }
     }
 
-    fun cancelRouteStart() = update { it.copy(start = null) }
-
-    /** From the place picked first to this one, both on screen. */
-    fun showPointRoute() {
-        val from = context.model.value.route.start ?: return
-        val to = selection.selectedPlace?.place ?: return
-        showRoute(PointRoute(from, to))
+    /** A search result picked as where to go from the start. */
+    fun routeToResult(result: PlaceSearchResult) {
+        val route = context.model.value.route
+        val from = route.start ?: return
+        // An address or a city isn't one of our places: it goes by its name.
+        val to = result.place ?: stopPlace("", result.location).copy(name = result.name)
+        showRoute(PointRoute(from, to, route.startLabel))
     }
+
+    /** The header's ✕ or back: the start, the route between two pins and the "to" search close. */
+    fun closeRouteBar() = context.update { it.copy(route = it.route.copy(start = null, startLabel = null, between = null), search = null) }
+
+    /** The open pin as an end of a route: a place as it is, a stop as the place it stands at, with its title. */
+    private fun selectedEnd(): RouteEnd? = when (val selected = context.model.value.selection) {
+        is Selection.Place -> RouteEnd(selected.place, null)
+        is Selection.Stop -> context.activeDay()?.markers?.let { markers ->
+            val index = markers.indexOfFirst { it.id == selected.markerId }
+            markers.getOrNull(index)?.let { stop ->
+                val label = if (stop.name.isBlank()) UiText.Resource(Res.string.map_stop_title_format, index + 1) else UiText.Server(stop.name)
+                RouteEnd(stopPlace(stop.placeId ?: stop.id, stop.location), label)
+            }
+        }
+        null -> null
+    }
+
+    private data class RouteEnd(val place: MapPlace, val label: UiText?)
 
     /** A pin pulled onto another: the route from the first to the second, both on screen. */
     fun routeBetweenPins(from: PinEnd, to: PinEnd) {
@@ -95,26 +155,26 @@ internal class MapRouting(
 
     private fun showRoute(route: PointRoute) {
         selection.closePlace()
-        update { it.copy(start = null, between = route) }
+        selection.closeStop()
+        context.update { it.copy(route = it.route.copy(start = null, startLabel = null, between = route), search = null) }
         showWholePlan()
         camera.frame(listOf(route.from.location, route.to.location).map { Coordinates(it.lat, it.lng) })
     }
 
     private fun PinEnd.toPlace(): MapPlace = when (this) {
         is PinEnd.Place -> place
-        is PinEnd.Stop -> MapPlace(
-            id = stop.placeId ?: stop.id,
-            name = "",
-            category = PlaceCategory.Other,
-            location = GeoPoint(stop.position.latitude, stop.position.longitude),
-            isTripinly = false,
-            hotCount = 0,
-            prominence = 0,
-        )
+        is PinEnd.Stop -> stopPlace(stop.placeId ?: stop.id, GeoPoint(stop.position.latitude, stop.position.longitude))
     }
+
+    /** A stop, or where I am, as an end of a route; its name comes with the route as a label. */
+    private fun stopPlace(id: String, location: GeoPoint) =
+        MapPlace(id = id, name = "", category = PlaceCategory.Other, location = location, isTripinly = false, hotCount = 0, prominence = 0)
+
+    private fun myLocation(me: Coordinates) = stopPlace(MY_LOCATION_ID, GeoPoint(me.latitude, me.longitude))
 
     private fun PinEnd.label(): UiText? = (this as? PinEnd.Stop)?.stop?.title
 
+    /** The plan's ✕ on a route between two places. */
     fun closePointRoute() = update { it.copy(between = null) }
 
     /** A place along the way becomes the open day's last stop; shows at once like a tap on the map. */

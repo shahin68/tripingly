@@ -10,11 +10,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.outlined.CenterFocusStrong
-import androidx.compose.material.icons.outlined.Directions
 import androidx.compose.material.icons.outlined.Layers
 import androidx.compose.material.icons.outlined.LayersClear
 import androidx.compose.material.icons.outlined.NearMe
@@ -22,12 +19,10 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.onSizeChanged
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.falcon.tripingly.core.designsystem.component.GlassButtonColumn
@@ -40,8 +35,6 @@ import com.falcon.tripingly.feature.map.generated.resources.Res
 import com.falcon.tripingly.feature.map.generated.resources.map_fit_day
 import com.falcon.tripingly.feature.map.generated.resources.map_hide_places
 import com.falcon.tripingly.feature.map.generated.resources.map_my_location
-import com.falcon.tripingly.feature.map.generated.resources.map_route_close
-import com.falcon.tripingly.feature.map.generated.resources.map_route_start
 import com.falcon.tripingly.feature.map.generated.resources.map_show_places
 import com.falcon.tripingly.feature.map.presentation.map.DayTabsState
 import com.falcon.tripingly.feature.map.presentation.map.EditorMenu
@@ -53,7 +46,7 @@ import com.falcon.tripingly.feature.map.presentation.map.StopsCardState
 import org.jetbrains.compose.resources.stringResource
 
 /**
- * The credits and the map buttons, the route-start chip and the open day's [plan] (the stops, or a route from A to
+ * The credits and the map buttons and the open day's [plan] (the stops, or a route from A to
  * B) in its sheet, over the day tabs at the bottom: one floating glass card while there's a plan, the tabs alone
  * without. [onTabsHeight] and [onCreditsHeight] report what always covers the map; the map buttons and a pulled-up
  * sheet only float over it. [editorMenu]: an owner's or editor's day actions, in the sheet's ⋯ and the tabs' +.
@@ -63,7 +56,6 @@ internal fun BottomCards(
     routeAttribution: String?,
     location: LocationState,
     arePlacesHidden: Boolean,
-    routeStartName: String?,
     dayTabs: DayTabsState,
     plan: PlanCardState?,
     editorMenu: EditorMenu?,
@@ -80,9 +72,6 @@ internal fun BottomCards(
             plan = plan,
             state = planSheet,
             above = {
-                routeStartName?.let { name ->
-                    RouteStartChip(name, onAction, Modifier.padding(start = MaterialTheme.spacing.medium))
-                }
                 // In landscape they sit on the map half instead (MapScreen), so the plan has the panel's whole height.
                 if (!isWide) {
                     Row(
@@ -162,39 +151,10 @@ internal fun MapButtons(location: LocationState, arePlacesHidden: Boolean, onAct
     }
 }
 
-/** "Route from here" was tapped on [placeName]: the next place's card offers "Route to here". Tapping it cancels. */
-@Composable
-internal fun RouteStartChip(placeName: String, onAction: (MapAction) -> Unit, modifier: Modifier = Modifier) {
-    GlassSurface(
-        modifier = modifier.padding(bottom = MaterialTheme.spacing.small),
-        shape = CircleShape,
-        onClick = { onAction(MapAction.Plan.CancelRouteStart) },
-        blur = false,
-    ) {
-        Row(
-            modifier = Modifier.padding(start = MaterialTheme.spacing.small + MaterialTheme.spacing.extraSmall, end = MaterialTheme.spacing.small),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
-        ) {
-            Icon(Icons.Outlined.Directions, contentDescription = null, modifier = Modifier.size(18.dp))
-            Text(
-                text = stringResource(Res.string.map_route_start, placeName),
-                style = MaterialTheme.typography.labelLarge,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.weight(1f, fill = false).padding(vertical = MaterialTheme.spacing.small + MaterialTheme.spacing.extraSmall),
-            )
-            Icon(Icons.Default.Close, contentDescription = stringResource(Res.string.map_route_close), modifier = Modifier.size(18.dp))
-        }
-    }
-}
-
 @Composable
 private fun MapControlsPreviewContent() {
     Box(Modifier.fillMaxSize().padding(MaterialTheme.spacing.medium)) {
         Column(verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small)) {
-            RouteStartChip(placeName = "Eiffel Tower", onAction = {})
-            RouteStartChip(placeName = "Musée national des Arts asiatiques – Guimet", onAction = {})
             MapCredits(routeAttribution = null)
             MapCredits(routeAttribution = "© openrouteservice.org | © OpenStreetMap contributors")
         }
@@ -205,7 +165,7 @@ private fun MapControlsPreviewContent() {
     }
 }
 
-/** The route-start chip, the credits, and the map buttons idle and while the location is on its way. */
+/** The credits, and the map buttons idle and while the location is on its way. */
 @Preview(widthDp = 360, heightDp = 360)
 @Composable
 private fun MapControlsPreview() {

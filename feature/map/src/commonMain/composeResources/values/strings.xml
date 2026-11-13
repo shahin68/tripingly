@@ -158,8 +158,12 @@
     <string name="map_along_add">Add to day %1$d</string>
     <string name="map_route_from_here">Route from here</string>
     <string name="map_route_to_here">Route to here</string>
-    <string name="map_route_pick_destination">Now open the place you want to go to.</string>
-    <string name="map_route_start">Route from %1$s</string>
+    <string name="map_route_go_here">Go here</string>
+    <string name="map_route_my_location">Your location</string>
+    <string name="map_route_need_location">Turn on your location, then tap Go here again.</string>
+    <string name="map_route_to_placeholder">Search or tap a pin</string>
+    <string name="map_route_from">From</string>
+    <string name="map_route_to">To</string>
     <string name="map_route_between">%1$s → %2$s</string>
     <string name="map_route_close">Close the route</string>
     <string name="map_best_order">Best order</string>

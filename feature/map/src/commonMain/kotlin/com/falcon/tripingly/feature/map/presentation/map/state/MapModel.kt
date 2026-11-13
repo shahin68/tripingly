@@ -103,9 +103,13 @@ internal data class RouteModel(
      */
     val isAnimated: Boolean = false,
     val travelMode: TravelMode = TravelMode.Walking,
-    /** "Route from here" was tapped on this place; the next place's card offers "Route to here". */
+    /**
+     * Route from was tapped on this pin ([startLabel]: a stop's title): the header asks where to, and every other pin's
+     * card offers Route to here.
+     */
     val start: MapPlace? = null,
-    /** A route from A to B, shown instead of the day's. */
+    val startLabel: UiText? = null,
+    /** A route from A to B (from where I am: [MY_LOCATION_ID]), shown instead of the day's. */
     val between: PointRoute? = null,
     val plan: RoutePlan? = null,
     /** How [plan] is travelled and the stops it goes through, as asked: its line's color and ends. */
@@ -119,9 +123,24 @@ internal data class RouteModel(
     val isFindingBestOrder: Boolean = false,
 )
 
-/** A route from one place to another. */
 /** A route between two places; a stop's end carries its stop's title ([fromLabel], [toLabel]) for the card. */
-internal data class PointRoute(val from: MapPlace, val to: MapPlace, val fromLabel: UiText? = null, val toLabel: UiText? = null)
+internal data class PointRoute(val from: MapPlace, val to: MapPlace, val fromLabel: UiText? = null, val toLabel: UiText? = null) {
+    val isFromMe get() = from.id == MY_LOCATION_ID
+}
+
+/** The id of the start of a Go here route: where I was when it was asked for. */
+internal const val MY_LOCATION_ID = "my-location"
+
+/** Go here's route to the pin at [at] shows. */
+internal fun RouteModel.isGoingTo(at: GeoPoint) = between?.isFromMe == true && between.to.location == at
+
+/** The pin at [at] is the start picked with Route from, or an end of a route between two pins: its Route button is on. */
+internal fun RouteModel.isRouteEnd(at: GeoPoint) =
+    start?.location == at || (between != null && !between.isFromMe && (between.from.location == at || between.to.location == at))
+
+/** The pin at [at]'s Route button says Route to here: another pin is the start, or it is where the route goes. */
+internal fun RouteModel.isRouteTo(at: GeoPoint) =
+    (start != null && start.location != at) || (between != null && !between.isFromMe && between.to.location == at)
 
 internal data class LocationModel(
     /** Null until the screen has read it. */
