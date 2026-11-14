@@ -13,7 +13,6 @@ import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.painter.ColorPainter
 import androidx.compose.ui.layout.ContentScale
 import coil3.compose.AsyncImage
-import coil3.compose.AsyncImagePainter
 import coil3.compose.LocalPlatformContext
 import coil3.request.ImageRequest
 import androidx.compose.foundation.layout.Arrangement
@@ -62,7 +61,9 @@ fun PhotoImage(
             contentDescription = contentDescription,
             error = placeholder,
             contentScale = contentScale,
-            onState = { isLoading = it is AsyncImagePainter.State.Loading || it is AsyncImagePainter.State.Empty },
+            onLoading = { isLoading = true },
+            onSuccess = { isLoading = false },
+            onError = { isLoading = false },
         )
     }
 }
