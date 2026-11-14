@@ -33,7 +33,8 @@ interface GoogleMap {
     /** Points at the top, sides and bottom the map keeps its logo and controls out of. */
     fun setPadding(top: Double, left: Double, bottom: Double, right: Double)
 
-    fun moveCamera(latitude: Double, longitude: Double, zoom: Float, animated: Boolean)
+    /** [bearing] in degrees clockwise from north: which way the map is turned once there. */
+    fun moveCamera(latitude: Double, longitude: Double, zoom: Float, bearing: Double, animated: Boolean)
 
     /** Turns the map back to north up where it is (the compass), as fast as a camera move. */
     fun turnNorthUp()

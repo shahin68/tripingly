@@ -12,6 +12,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
@@ -46,6 +47,9 @@ import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.flow.Flow
 import platform.UIKit.UIColor
 import platform.UIKit.UIImage
+import kotlin.math.PI
+import kotlin.math.cos
+import kotlin.math.sin
 
 /**
  * Google's map on iOS, driven like the Android one: place pins as markers that keep their size on
@@ -116,6 +120,8 @@ internal fun GoogleSdkMapView(
     var isMapReady by remember { mutableStateOf(false) }
     // The camera's zoom as it moves, read only to tell when the pins turn into dots and back.
     var liveZoom by remember { mutableStateOf(initialZoom) }
+    // Which way the map is turned now: the free middle's offset turns with it, and moves keep it (as on Android).
+    var liveBearing by remember { mutableFloatStateOf(0f) }
     val isDots by remember(pinDotBelowZoom) { derivedStateOf { liveZoom < pinDotBelowZoom } }
     // Counts the camera's moves, read where something on top of the map has to follow it.
     var cameraFrame by remember { mutableStateOf(0) }
@@ -135,7 +141,7 @@ internal fun GoogleSdkMapView(
     ).shownPins(liveZoom, density, ::project)
     fun reportRest() {
         val (center, zoom, bounds) = rest ?: return
-        currentOnCameraMove(center.shiftedBy(currentFreeMiddle, zoom), zoom, bounds)
+        currentOnCameraMove(center.shiftedBy(currentFreeMiddle, zoom, liveBearing), zoom, bounds)
     }
     map = remember(googleMaps) {
         googleMaps.createMap(
@@ -156,7 +162,10 @@ internal fun GoogleSdkMapView(
                     if (holder.hold == null) reportRest()
                 }
 
-                override fun onBearingChange(bearing: Double) = currentOnBearingChange(bearing.toFloat())
+                override fun onBearingChange(bearing: Double) {
+                    liveBearing = bearing.toFloat()
+                    currentOnBearingChange(liveBearing)
+                }
 
                 override fun onGestureStart() {
                     currentOnMapTouch()
@@ -230,16 +239,18 @@ internal fun GoogleSdkMapView(
         )
     }
 
-    fun moveCamera(target: Coordinates, zoom: Float, animated: Boolean) {
-        val center = target.shiftedBy(DpOffset(-currentFreeMiddle.x, -currentFreeMiddle.y), zoom)
-        map.moveCamera(center.latitude, center.longitude, zoom, animated)
+    /** Keeps the map turned as it is, unless [bearing] says otherwise (a fit turns it north up). */
+    fun moveCamera(target: Coordinates, zoom: Float, animated: Boolean, bearing: Float = liveBearing) {
+        val center = target.shiftedBy(DpOffset(-currentFreeMiddle.x, -currentFreeMiddle.y), zoom, bearing)
+        map.moveCamera(center.latitude, center.longitude, zoom, bearing.toDouble(), animated)
     }
     LaunchedEffect(map) { moveCamera(initialTarget, initialZoom, animated = false) }
     LaunchedEffect(cameraCommands) {
         cameraCommands.collect { command ->
             when (command) {
                 // Until the map has rested once, it starts there instead of flying there.
-                is CameraCommand.MoveTo -> moveCamera(command.target, command.zoom, animated = isMapReady)
+                is CameraCommand.MoveTo ->
+                    moveCamera(command.target, command.zoom, animated = isMapReady, bearing = if (command.upright) 0f else liveBearing)
                 CameraCommand.NorthUp -> map.turnNorthUp()
             }
         }
@@ -261,9 +272,9 @@ internal fun GoogleSdkMapView(
         shown = Triple(freeMiddle, left, right)
         val (center, zoom, bounds) = rest ?: return@LaunchedEffect
         if (left != leftBefore || right != rightBefore) {
-            moveCamera(center.shiftedBy(before, zoom), zoom, animated = false)
+            moveCamera(center.shiftedBy(before, zoom, liveBearing), zoom, animated = false)
         } else {
-            currentOnCameraMove(center.shiftedBy(freeMiddle, zoom), zoom, bounds)
+            currentOnCameraMove(center.shiftedBy(freeMiddle, zoom, liveBearing), zoom, bounds)
         }
     }
 
@@ -495,5 +506,13 @@ private const val CLUSTER_KEY = "cluster:"
 
 private fun Color.toUIColor(): UIColor = UIColor.colorWithRed(red.toDouble(), green.toDouble(), blue.toDouble(), alpha.toDouble())
 
-/** The point [offset] from this one on a map at [zoom]: right and down for positive x and y. */
-private fun Coordinates.shiftedBy(offset: DpOffset, zoom: Float): Coordinates = shiftedEast(offset.x, zoom).shiftedSouth(offset.y, zoom)
+/**
+ * The point [offset] from this one on a map at [zoom] turned by [bearing] (degrees clockwise from north): right and down
+ * on the screen for positive x and y.
+ */
+private fun Coordinates.shiftedBy(offset: DpOffset, zoom: Float, bearing: Float = 0f): Coordinates {
+    val turn = bearing * PI.toFloat() / 180f
+    val east = offset.x * cos(turn) - offset.y * sin(turn)
+    val south = offset.x * sin(turn) + offset.y * cos(turn)
+    return shiftedEast(east, zoom).shiftedSouth(south, zoom)
+}
