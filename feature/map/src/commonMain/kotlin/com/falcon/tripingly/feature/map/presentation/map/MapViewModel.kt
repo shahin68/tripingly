@@ -39,6 +39,7 @@ import com.falcon.tripingly.feature.map.presentation.map.state.MapRouting
 import com.falcon.tripingly.feature.map.presentation.map.state.MapSearch
 import com.falcon.tripingly.feature.map.presentation.map.state.MapSelection
 import com.falcon.tripingly.feature.map.presentation.map.state.MapSharing
+import com.falcon.tripingly.feature.map.presentation.map.state.MapStopPhotos
 import com.falcon.tripingly.feature.map.presentation.map.state.Sheet
 import com.falcon.tripingly.feature.map.presentation.map.state.activeDayIndex
 import kotlinx.coroutines.CoroutineDispatcher
