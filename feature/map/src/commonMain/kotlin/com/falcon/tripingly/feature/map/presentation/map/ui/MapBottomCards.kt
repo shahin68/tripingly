@@ -36,7 +36,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.falcon.tripingly.core.designsystem.component.GlassButtonColumn
 import com.falcon.tripingly.core.designsystem.component.GlassButtonDefaults
 import com.falcon.tripingly.core.designsystem.component.GlassButtonColumnDivider
@@ -130,12 +132,20 @@ internal fun BottomCards(
 
 /** OpenStreetMap's credit, or the route's while one shows, on a small glass label. */
 @Composable
-internal fun MapCredits(routeAttribution: String?, modifier: Modifier = Modifier) {
+internal fun MapCredits(routeAttribution: String?, modifier: Modifier = Modifier, style: TextStyle = MaterialTheme.typography.labelSmall) {
     GlassSurface(modifier = modifier, shape = MaterialTheme.shapes.extraSmall, shadowElevation = 0.dp, blur = false) {
         // The route's two credits on two lines, so the label stays narrow.
-        if (routeAttribution != null) RouteAttribution(routeAttribution.replace(CreditsSeparator, "\n")) else OsmAttribution()
+        if (routeAttribution != null) {
+            RouteAttribution(routeAttribution.replace(CreditsSeparator, "\n"), style = style)
+        } else {
+            OsmAttribution(style = style)
+        }
     }
 }
+
+/** The credits in landscape, at the map's top end: a little smaller than elsewhere, still legible (Shahin, 2026-11-14). */
+internal val SmallCreditsStyle: TextStyle
+    @Composable get() = MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp, lineHeight = 12.sp)
 
 /**
  * Hides or shows the places (crossed out while hidden), over the button that fits the camera to the open day (its

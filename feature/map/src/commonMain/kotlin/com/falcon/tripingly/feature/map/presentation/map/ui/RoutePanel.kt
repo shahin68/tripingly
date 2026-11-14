@@ -47,6 +47,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.platform.LocalUriHandler
@@ -318,11 +319,11 @@ private const val CARD_SHADE = 0.05f
 
 /** The routes' credits ("© openrouteservice.org | © OpenStreetMap contributors"), tappable like the map's. */
 @Composable
-fun RouteAttribution(text: String, modifier: Modifier = Modifier) {
+fun RouteAttribution(text: String, modifier: Modifier = Modifier, style: TextStyle = MaterialTheme.typography.labelSmall) {
     val uriHandler = LocalUriHandler.current
     Text(
         text = text,
-        style = MaterialTheme.typography.labelSmall,
+        style = style,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
         modifier = modifier
             .clickable { runCatching { uriHandler.openUri(COPYRIGHT_URL) } }

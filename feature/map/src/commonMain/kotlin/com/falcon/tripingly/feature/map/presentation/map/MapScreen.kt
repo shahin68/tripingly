@@ -65,6 +65,7 @@ import com.falcon.tripingly.feature.map.presentation.map.ui.BottomCards
 import com.falcon.tripingly.feature.map.presentation.map.ui.JoinRequestsPill
 import com.falcon.tripingly.feature.map.presentation.map.ui.MapButtons
 import com.falcon.tripingly.feature.map.presentation.map.ui.MapCredits
+import com.falcon.tripingly.feature.map.presentation.map.ui.SmallCreditsStyle
 import com.falcon.tripingly.feature.map.presentation.map.ui.MapHeader
 import com.falcon.tripingly.feature.map.presentation.map.ui.MapLoadError
 import com.falcon.tripingly.feature.map.presentation.map.ui.MapPinCards
@@ -86,8 +87,9 @@ import org.jetbrains.compose.resources.stringResource
 /**
  * The trip's map with the header on top and the day's cards at the bottom. What they cover is the map's content
  * padding: the camera centers and fits within the rest, and the tapped pin's card opens just above its middle.
- * In landscape the header and the cards take the right half and the map's free part is the left half (the other
- * way round from Google Maps), so the camera fits the stops there.
+ * In landscape the header and the cards take the left half and the map's free part is the right half, like Google
+ * Maps (Shahin, 2026-11-14), so the camera fits the stops there; the map buttons float at its bottom end, the credits
+ * at its top end.
  */
 @Composable
 internal fun MapScreen(
@@ -157,9 +159,9 @@ internal fun MapScreen(
         val start = sides.calculateStartPadding(layoutDirection)
         val end = sides.calculateEndPadding(layoutDirection)
         val panelWidth = (maxWidth - start - end) / 2
-        // What the header and the cards cover: the top and the bottom, or in landscape the right half.
+        // What the header and the cards cover: the top and the bottom, or in landscape the left half (Shahin, 2026-11-14).
         val covered = if (isWide) {
-            PaddingValues(start = start, top = statusBar, end = end + panelWidth)
+            PaddingValues(start = start + panelWidth, top = statusBar, end = end)
         } else {
             PaddingValues(top = coveredTop, bottom = coveredBottom)
         }
@@ -169,11 +171,11 @@ internal fun MapScreen(
         // still use all that's free ([raise] puts them back in its middle).
         val pinLowering = if (isWide) (maxHeight - LandscapePinArea - statusBar).coerceAtLeast(0.dp) else PortraitPinDrop * 2
         val cameraPadding = if (isWide) {
-            PaddingValues(start = start, top = statusBar + pinLowering, end = end + panelWidth)
+            PaddingValues(start = start + panelWidth, top = statusBar + pinLowering, end = end)
         } else {
             PaddingValues(top = coveredTop + pinLowering, bottom = coveredBottom)
         }
-        // The header and the cards: full width, or the right half in landscape; never under the camera cutout.
+        // The header and the cards: full width, or the left half in landscape; never under the camera cutout.
         val panel = Modifier.windowInsetsPadding(WindowInsets.safeSides).then(if (isWide) Modifier.width(panelWidth) else Modifier.fillMaxWidth())
         // Not before the camera knows where the trip is: the map opens there, fitted to the open day, instead of
         // starting somewhere and then fitting.
@@ -222,7 +224,7 @@ internal fun MapScreen(
 
         Column(
             modifier = Modifier
-                .align(Alignment.TopEnd)
+                .align(Alignment.TopStart)
                 .statusBarsPadding()
                 .then(panel)
         ) {
@@ -292,24 +294,25 @@ internal fun MapScreen(
             onTabsHeight = { tabsHeight = hasDays to with(density) { it.toDp() } },
             onCreditsHeight = { creditsHeight = with(density) { it.toDp() } },
             // Only the header limits the sheet: opened, it goes over the join pill and anything else under the header.
-            modifier = Modifier.align(Alignment.BottomEnd).then(panel).padding(top = coveredTop),
+            modifier = Modifier.align(Alignment.BottomStart).then(panel).padding(top = coveredTop),
         )
 
-        // In landscape the map's credits and buttons sit at the bottom of the map half, so the plan sheet has the right
-        // half's whole height (Shahin, 2026-11-09, option 1); in portrait they ride on the sheet. Their bottoms line up
-        // with the plan card's (the day tabs' floating bottom inset); the buttons sit the card's own 16 dp side inset
-        // away from it, the credits that far in from the map's start.
+        // In landscape the map's credits and buttons sit on the map half, so the plan sheet has the left half's whole
+        // height (Shahin, 2026-11-09, option 1); in portrait they ride on the sheet. The buttons float at the map's
+        // bottom end, their bottom in line with the plan card's (the day tabs' floating bottom inset), the credits a
+        // little smaller at its top end (Shahin, 2026-11-14); both 16 dp in from the screen's end.
         if (isWide) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(covered)
                     .windowInsetsPadding(WindowInsets.floatingBottom)
-                    .padding(start = MaterialTheme.spacing.medium, bottom = MaterialTheme.spacing.small),
+                    .padding(horizontal = MaterialTheme.spacing.medium, vertical = MaterialTheme.spacing.small),
             ) {
                 MapCredits(
                     routeAttribution = state.routeAttribution,
-                    modifier = Modifier.align(Alignment.BottomStart).onSizeChanged { creditsHeight = with(density) { it.height.toDp() } },
+                    style = SmallCreditsStyle,
+                    modifier = Modifier.align(Alignment.TopEnd).onSizeChanged { creditsHeight = with(density) { it.height.toDp() } },
                 )
                 MapButtons(state.location, state.arePlacesHidden, onAction, Modifier.align(Alignment.BottomEnd))
             }
@@ -343,7 +346,7 @@ internal fun MapScreen(
                     onAction(MapAction.Header.OpenJoinRequests)
                 },
                 modifier = Modifier
-                    .align(Alignment.TopEnd)
+                    .align(Alignment.TopStart)
                     .statusBarsPadding()
                     .then(panel)
                     .padding(horizontal = MaterialTheme.spacing.medium, vertical = MaterialTheme.spacing.small),
