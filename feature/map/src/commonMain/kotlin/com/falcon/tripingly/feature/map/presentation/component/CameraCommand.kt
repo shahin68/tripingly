@@ -13,7 +13,13 @@ sealed interface CameraCommand {
      * With [upright] the map also turns back to north up: a fit is worked out for an unturned map, so it turns it back
      * (Shahin, 2026-11-14). Other moves keep the map turned as the fingers left it.
      */
-    data class MoveTo(val target: Coordinates, val zoom: Float, val upright: Boolean = false) : CameraCommand
+    data class MoveTo(val target: Coordinates, val zoom: Float, val upright: Boolean = false) : Move
+
+    /** The compass: the map turns back to north up where it is, keeping its center and zoom. */
+    data object NorthUp : Move
+
+    /** What the map itself runs; the screen works a [Fit] out into a [MoveTo]. */
+    sealed interface Move : CameraCommand
 
     /** Shows all of [bounds], with a margin, in the part of the map nothing covers, north up. */
     data class Fit(val bounds: GeoBounds) : CameraCommand

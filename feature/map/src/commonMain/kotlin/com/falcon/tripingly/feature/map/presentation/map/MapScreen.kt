@@ -23,6 +23,7 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
@@ -109,6 +110,8 @@ internal fun MapScreen(
     // The tabs' height with whether there were days to show, so the map doesn't open on the height without tabs.
     var tabsHeight by remember { mutableStateOf<Pair<Boolean, Dp>?>(null) }
     var creditsHeight by remember { mutableStateOf<Dp?>(null) }
+    // Which way the map is turned, every frame it turns: read only by the compass while it draws.
+    var bearing by remember { mutableFloatStateOf(0f) }
     // Where the open cards are, so a touch on them doesn't close them.
     var placeCardBounds by remember { mutableStateOf(Rect.Zero) }
     var stopCardBounds by remember { mutableStateOf(Rect.Zero) }
@@ -204,7 +207,7 @@ internal fun MapScreen(
         val moves = remember(cameraCommands) {
             cameraCommands.map { command ->
                 when (command) {
-                    is CameraCommand.MoveTo -> command
+                    is CameraCommand.Move -> command
                     is CameraCommand.Fit -> fit(command.bounds).let { (target, zoom) -> CameraCommand.MoveTo(target, zoom, upright = true) }
                 }
             }
@@ -229,6 +232,7 @@ internal fun MapScreen(
                 layers = state.layers,
                 onCameraMove = { coords, zoom, bounds -> onAction(MapAction.MapView.CameraRest(coords, zoom, bounds)) },
                 onCameraMoving = { bounds, zoom -> onAction(MapAction.MapView.CameraMoving(bounds, zoom)) },
+                onBearingChange = { bearing = it },
                 onMapTouch = { onAction(MapAction.MapView.ScreenTouch) },
                 onUserMove = { onAction(MapAction.MapView.UserMove) },
                 onMapClick = { coords -> onAction(MapAction.MapView.Click(coords)) },
@@ -303,6 +307,7 @@ internal fun MapScreen(
             routeAttribution = state.routeAttribution,
             location = state.location,
             arePlacesHidden = state.arePlacesHidden,
+            bearing = { bearing },
             dayTabs = state.dayTabs,
             plan = plan,
             editorMenu = state.header.editorMenu,
@@ -331,7 +336,7 @@ internal fun MapScreen(
                     style = SmallCreditsStyle,
                     modifier = Modifier.align(Alignment.TopEnd).onSizeChanged { creditsHeight = with(density) { it.height.toDp() } },
                 )
-                MapButtons(state.location, state.arePlacesHidden, onAction, Modifier.align(Alignment.BottomEnd))
+                MapButtons(state.location, state.arePlacesHidden, { bearing }, onAction, Modifier.align(Alignment.BottomEnd))
             }
         }
 

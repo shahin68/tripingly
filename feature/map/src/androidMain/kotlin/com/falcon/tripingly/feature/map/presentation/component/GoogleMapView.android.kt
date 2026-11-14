@@ -76,12 +76,13 @@ actual fun GoogleMapView(
     modifier: Modifier,
     initialTarget: Coordinates,
     initialZoom: Float,
-    cameraCommands: Flow<CameraCommand.MoveTo>,
+    cameraCommands: Flow<CameraCommand.Move>,
     contentPadding: PaddingValues,
     freePadding: PaddingValues,
     layers: MapLayersState,
     onCameraMove: (Coordinates, Float, GeoBounds?) -> Unit,
     onCameraMoving: (GeoBounds, Float) -> Unit,
+    onBearingChange: (Float) -> Unit,
     onMapTouch: () -> Unit,
     onUserMove: () -> Unit,
     onMapClick: (Coordinates) -> Unit,
@@ -170,6 +171,11 @@ actual fun GoogleMapView(
         }
     }
 
+    val currentOnBearingChange by rememberUpdatedState(onBearingChange)
+    LaunchedEffect(cameraPositionState) {
+        snapshotFlow { cameraPositionState.position.bearing }.collect { currentOnBearingChange(it) }
+    }
+
     // A finger moving the map, not a flight the screen asked for nor a held pin pulling it.
     val currentOnUserMove by rememberUpdatedState(onUserMove)
     LaunchedEffect(cameraPositionState.isMoving) {
@@ -185,7 +191,8 @@ actual fun GoogleMapView(
         MapUiSettings(
             zoomControlsEnabled = false,
             myLocationButtonEnabled = false,
-            compassEnabled = true,
+            // Our own compass sits with the map buttons (MapCompass).
+            compassEnabled = false,
             mapToolbarEnabled = false,
             // While a pin is held the finger pulls its line; only the hold moves the camera.
             scrollGesturesEnabled = !isHolding,
@@ -219,10 +226,16 @@ actual fun GoogleMapView(
 
     LaunchedEffect(cameraCommands) {
         cameraCommands.collect { command ->
-            val target = LatLng(command.target.latitude, command.target.longitude)
+            val position = cameraPositionState.position
             runCamera(
-                if (command.upright) CameraUpdateFactory.newCameraPosition(CameraPosition(target, command.zoom, cameraPositionState.position.tilt, 0f))
-                else CameraUpdateFactory.newLatLngZoom(target, command.zoom),
+                when (command) {
+                    is CameraCommand.MoveTo -> {
+                        val target = LatLng(command.target.latitude, command.target.longitude)
+                        if (command.upright) CameraUpdateFactory.newCameraPosition(CameraPosition(target, command.zoom, position.tilt, 0f))
+                        else CameraUpdateFactory.newLatLngZoom(target, command.zoom)
+                    }
+                    CameraCommand.NorthUp -> CameraUpdateFactory.newCameraPosition(CameraPosition(position.target, position.zoom, position.tilt, 0f))
+                },
             )
         }
     }

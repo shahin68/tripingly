@@ -35,6 +35,9 @@ interface GoogleMap {
 
     fun moveCamera(latitude: Double, longitude: Double, zoom: Float, animated: Boolean)
 
+    /** Turns the map back to north up where it is (the compass), as fast as a camera move. */
+    fun turnNorthUp()
+
     /** Replaces the markers; a marker with the same key is moved or updated. */
     fun setMarkers(markers: List<GoogleMapMarker>)
 
@@ -90,6 +93,9 @@ class GoogleMapMarker(
 interface GoogleMapListener {
     /** The camera stopped: its center, zoom and the area the whole view shows. */
     fun onCameraIdle(latitude: Double, longitude: Double, zoom: Float, south: Double, west: Double, north: Double, east: Double)
+
+    /** Which way the map is turned, degrees clockwise from north, every frame it changes and at rest. */
+    fun onBearingChange(bearing: Double)
 
     /** A finger started moving the camera. */
     fun onGestureStart()

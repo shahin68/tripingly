@@ -83,6 +83,8 @@ internal fun BottomCards(
     routeAttribution: String?,
     location: LocationState,
     arePlacesHidden: Boolean,
+    /** Which way the map is turned, for the compass; read only while drawing. */
+    bearing: () -> Float,
     dayTabs: DayTabsState,
     plan: PlanCardState?,
     editorMenu: EditorMenu?,
@@ -114,7 +116,7 @@ internal fun BottomCards(
                         .padding(bottom = MaterialTheme.spacing.small),
                 )
                 Spacer(modifier = Modifier.weight(1f))
-                MapButtons(location, arePlacesHidden, onAction, Modifier.padding(bottom = MaterialTheme.spacing.small))
+                MapButtons(location, arePlacesHidden, bearing, onAction, Modifier.padding(bottom = MaterialTheme.spacing.small))
             }
         }
         // What always covers the map: the tabs (none without days) and the gap under the card, each measured.
@@ -177,16 +179,20 @@ internal val SmallCreditsStyle: TextStyle
 /**
  * Hides or shows the places (crossed out while hidden), over the button that fits the camera to the open day (its
  * stops, else the whole trip's, else the destination), over the location button, which follows me while lit (filled,
- * in the accent colour). Following without a signal, a quiet note beside it says it waits for one.
+ * in the accent colour). Following without a signal, a quiet note beside it says it waits for one. Our compass rides on
+ * top while the map is turned ([MapCompass]).
  */
 @Composable
-internal fun MapButtons(location: LocationState, arePlacesHidden: Boolean, onAction: (MapAction) -> Unit, modifier: Modifier = Modifier) {
+internal fun MapButtons(location: LocationState, arePlacesHidden: Boolean, bearing: () -> Float, onAction: (MapAction) -> Unit, modifier: Modifier = Modifier) {
     Row(modifier, horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small), verticalAlignment = Alignment.Bottom) {
         AnimatedVisibility(location.isSignalLost, enter = fadeIn(), exit = fadeOut()) { GpsLostNote() }
         AnimatedVisibility(location.isSwitchedOff, enter = fadeIn(), exit = fadeOut()) {
             LocationOffNote(onTurnOn = { onAction(MapAction.Location.TurnOn) })
         }
-        MapButtonColumn(location, arePlacesHidden, onAction)
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            MapCompass(bearing, onNorthUp = { onAction(MapAction.MapView.NorthUp) })
+            MapButtonColumn(location, arePlacesHidden, onAction)
+        }
     }
 }
 
@@ -259,11 +265,11 @@ private fun MapControlsPreviewContent() {
             verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
         ) {
             Row(horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small)) {
-                MapButtons(location = LocationState(), arePlacesHidden = false, onAction = {})
-                MapButtons(location = LocationState(isLoading = true), arePlacesHidden = true, onAction = {})
+                MapButtons(location = LocationState(), arePlacesHidden = false, bearing = { 30f }, onAction = {})
+                MapButtons(location = LocationState(isLoading = true), arePlacesHidden = true, bearing = { 0f }, onAction = {})
             }
-            MapButtons(location = LocationState(isFollowing = true, isSignalLost = true), arePlacesHidden = false, onAction = {})
-            MapButtons(location = LocationState(isFollowing = true, isSwitchedOff = true), arePlacesHidden = false, onAction = {})
+            MapButtons(location = LocationState(isFollowing = true, isSignalLost = true), arePlacesHidden = false, bearing = { 0f }, onAction = {})
+            MapButtons(location = LocationState(isFollowing = true, isSwitchedOff = true), arePlacesHidden = false, bearing = { 0f }, onAction = {})
         }
     }
 }

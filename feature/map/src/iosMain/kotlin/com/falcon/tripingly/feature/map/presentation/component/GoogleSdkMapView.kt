@@ -58,7 +58,7 @@ internal fun GoogleSdkMapView(
     modifier: Modifier,
     initialTarget: Coordinates,
     initialZoom: Float,
-    cameraCommands: Flow<CameraCommand.MoveTo>,
+    cameraCommands: Flow<CameraCommand.Move>,
     contentPadding: PaddingValues,
     freePadding: PaddingValues,
     markers: List<MapMarker>,
@@ -71,6 +71,7 @@ internal fun GoogleSdkMapView(
     routeEnds: List<RouteEndMark>,
     onCameraMove: (Coordinates, Float, GeoBounds?) -> Unit,
     onCameraMoving: (GeoBounds, Float) -> Unit,
+    onBearingChange: (Float) -> Unit,
     onMapTouch: () -> Unit,
     onUserMove: () -> Unit,
     onMapClick: (Coordinates) -> Unit,
@@ -90,6 +91,7 @@ internal fun GoogleSdkMapView(
     val currentOnClusterClick by rememberUpdatedState(onClusterClick)
     val currentOnCameraMove by rememberUpdatedState(onCameraMove)
     val currentOnCameraMoving by rememberUpdatedState(onCameraMoving)
+    val currentOnBearingChange by rememberUpdatedState(onBearingChange)
     val currentOnMapTouch by rememberUpdatedState(onMapTouch)
     val currentOnUserMove by rememberUpdatedState(onUserMove)
     val currentOnMapClick by rememberUpdatedState(onMapClick)
@@ -153,6 +155,8 @@ internal fun GoogleSdkMapView(
                     // Not while a held pin moves the camera: once it's let go.
                     if (holder.hold == null) reportRest()
                 }
+
+                override fun onBearingChange(bearing: Double) = currentOnBearingChange(bearing.toFloat())
 
                 override fun onGestureStart() {
                     currentOnMapTouch()
@@ -233,8 +237,11 @@ internal fun GoogleSdkMapView(
     LaunchedEffect(map) { moveCamera(initialTarget, initialZoom, animated = false) }
     LaunchedEffect(cameraCommands) {
         cameraCommands.collect { command ->
-            // Until the map has rested once, it starts there instead of flying there.
-            moveCamera(command.target, command.zoom, animated = isMapReady)
+            when (command) {
+                // Until the map has rested once, it starts there instead of flying there.
+                is CameraCommand.MoveTo -> moveCamera(command.target, command.zoom, animated = isMapReady)
+                CameraCommand.NorthUp -> map.turnNorthUp()
+            }
         }
     }
 

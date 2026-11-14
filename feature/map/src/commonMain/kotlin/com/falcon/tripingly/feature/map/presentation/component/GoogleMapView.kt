@@ -29,7 +29,7 @@ expect fun GoogleMapView(
     initialTarget: Coordinates,
     initialZoom: Float,
     /** Each move runs once, in order; fits are worked out into moves by the screen (see [fittedCamera]). */
-    cameraCommands: Flow<CameraCommand.MoveTo>,
+    cameraCommands: Flow<CameraCommand.Move>,
     /**
      * The parts the screen's header and cards cover. The camera centers and fits within the rest, and Google's
      * logo stays clear of them.
@@ -45,6 +45,8 @@ expect fun GoogleMapView(
     onCameraMove: (Coordinates, Float, GeoBounds?) -> Unit,
     /** The area the whole view shows and the zoom, every frame while the camera moves: keep it cheap. */
     onCameraMoving: (GeoBounds, Float) -> Unit,
+    /** Which way the map is turned, degrees clockwise from north, every frame it turns (for the compass): keep it cheap. */
+    onBearingChange: (Float) -> Unit,
     /**
      * A finger touched the map: a tap, a long press, or a drag or pinch starting, reported before the
      * click. Only iOS calls it: Compose doesn't see touches on the iOS map view, while on Android they
