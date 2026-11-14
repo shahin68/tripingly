@@ -34,7 +34,7 @@
     <string name="map_place_add_to_day">Zu Tag %1$d hinzufügen</string>
     <string name="map_place_opening_hours">Öffnungszeiten</string>
     <string name="map_place_added_by">Hinzugefügt von @%1$s</string>
-    <string name="map_added_by_you">Hinzugefügt von dir</string>
+    <string name="map_added_by_you">Von dir hinzugefügt</string>
     <string name="map_spot_by">Ort von @%1$s</string>
     <string name="map_place_image_position">%1$d / %2$d</string>
     <string name="map_place_image_report">Bild melden</string>
@@ -100,7 +100,7 @@
     <string name="map_stop_comment">Kommentieren</string>
     <string name="map_stop_report">Stopp melden</string>
     <string name="map_comments_empty">Noch keine Kommentare. Schreib etwas!</string>
-    <string name="map_comment_placeholder">Kommentar schreiben …</string>
+    <string name="map_comment_placeholder">Kommentar schreiben…</string>
     <string name="map_comment_send">Senden</string>
     <string name="map_comment_menu">Kommentaroptionen</string>
     <string name="map_comment_delete">Kommentar löschen</string>
@@ -135,7 +135,7 @@
     <string name="map_error_delete_comment">Der Kommentar konnte nicht gelöscht werden.</string>
     <string name="map_error_load_photos">Die Fotos konnten nicht geladen werden.</string>
     <string name="map_photo_gone">Dieses Foto ist nicht mehr verfügbar.</string>
-    <string name="map_error_cover">Das Titelfoto konnte nicht festgelegt werden.</string>
+    <string name="map_error_cover">Das Titelbild konnte nicht festgelegt werden.</string>
     <string name="map_error_delete_photo">Das Foto konnte nicht gelöscht werden.</string>
 
     <!-- Place photos and deleting stops -->

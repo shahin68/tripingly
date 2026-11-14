@@ -4,7 +4,7 @@
     <string name="common_cancel">Abbrechen</string>
 
     <!-- Home -->
-    <string name="home_search_placeholder_trips">Reisen suchen...</string>
+    <string name="home_search_placeholder_trips">Reisen suchen…</string>
     <string name="home_fab_add_trip">Reise hinzufügen</string>
     <string name="home_list_empty">Noch keine Reisen. Tippe auf +, um eine zu erstellen!</string>
     <string name="home_list_no_matches">Keine Reise passt zu deiner Suche.</string>

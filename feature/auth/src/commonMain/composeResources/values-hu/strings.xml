@@ -7,7 +7,7 @@
     <string name="error_timeout">A Tripinly túl lassan válaszol. Próbáld újra.</string>
     <string name="error_server">A Tripinly most nem érhető el. Próbáld újra kicsit később.</string>
     <string name="error_unknown">Valami hiba történt. Próbáld újra.</string>
-    <string name="signin_tagline">Tervezzetek utazásokat együtt, és fedezd fel a helyeket, amelyeket más utazók szeretnek.</string>
+    <string name="signin_tagline">Tervezz utazásokat együtt másokkal, és fedezd fel a helyeket, amelyeket más utazók szeretnek.</string>
     <string name="signin_google">Folytatás Google-fiókkal</string>
     <string name="signin_apple">Bejelentkezés Apple-lel</string>
     <string name="signin_developer_title">Fejlesztői bejelentkezés (csak tesztverziókban)</string>
@@ -34,7 +34,7 @@
     <string name="onboarding_birth_date_private">A születési dátumodat senki sem látja.</string>
     <string name="onboarding_under_age">A Tripinly 16 éves kortól használható.</string>
     <string name="onboarding_consent_terms">Elfogadom a Felhasználási feltételeket</string>
-    <string name="onboarding_consent_privacy">Elfogadom az Adatvédelmi szabályzatot</string>
+    <string name="onboarding_consent_privacy">Elfogadom az Adatvédelmi tájékoztatót</string>
     <string name="onboarding_consent_marketing">Szeretnék híreket és ajánlatokat kapni</string>
     <string name="onboarding_consent_terms_and_privacy">Elfogadom a Felhasználási feltételeket, és elolvastam az Adatvédelmi tájékoztatót</string>
     <string name="onboarding_document_terms">Felhasználási feltételek</string>

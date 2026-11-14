@@ -17,7 +17,7 @@
     <string name="map_confirm_delete">Delete</string>
 
     <!-- Location errors -->
-    <string name="error_location_permission_required">Location permission required to detect your location.</string>
+    <string name="error_location_permission_required">Location permission is needed to show where you are.</string>
     <string name="error_location_services_disabled">Location services are disabled on your device.</string>
     <string name="error_location_unavailable">Unable to determine current location. Showing default view.</string>
     <string name="error_location_unknown">Failed to acquire location.</string>
@@ -65,9 +65,9 @@
     <string name="map_photo_delete">Delete photo</string>
     <string name="map_photo_delete_title">Delete this photo?</string>
     <string name="map_photo_delete_message">The photo will be deleted for everyone in the trip.</string>
-    <string name="map_photo_failed">This photo couldn't be processed</string>
+    <string name="map_photo_failed">This photo couldn’t be processed</string>
     <string name="map_photo_not_uploaded">Not uploaded</string>
-    <string name="map_photo_unreadable">This photo can't be read</string>
+    <string name="map_photo_unreadable">This photo can’t be read</string>
     <string name="map_photo_remove">Remove</string>
     <string name="map_close">Close</string>
     <string name="map_camera_take_photo">Take photo</string>
@@ -76,10 +76,10 @@
     <string name="map_camera_settings_message">The camera is off for Tripinly. Allow it in Settings to take photos for your stops.</string>
     <string name="map_camera_open_settings">Open settings</string>
     <string name="map_camera_unavailable">This device has no camera.</string>
-    <string name="map_camera_failed">The photo couldn't be taken. Try again.</string>
+    <string name="map_camera_failed">The photo couldn’t be taken. Try again.</string>
 
     <!-- Social -->
-    <string name="map_reported">Thanks. We'll take a look.</string>
+    <string name="map_reported">Thanks. We’ll take a look.</string>
     <string name="map_trip_menu">Trip options</string>
     <string name="map_save_trip">Save to my trips</string>
     <string name="map_unsave_trip">Remove from my trips</string>
@@ -141,8 +141,8 @@
     <!-- Place photos and deleting stops -->
     <string name="map_place_photos">Photos</string>
     <string name="map_error_like_photo">Couldn’t save your like on the photo.</string>
-    <string name="map_delete_others_stop_title">Delete someone else\'s stop?</string>
-    <string name="map_delete_others_stop_message">%1$s was added by someone else. It goes for everyone, with its photos, comments and likes.</string>
+    <string name="map_delete_others_stop_title">Delete someone else’s stop?</string>
+    <string name="map_delete_others_stop_message">%1$s was added by someone else. It’s deleted for everyone, with its photos, comments and likes.</string>
     <string name="map_delete_others_content_title">Delete for everyone?</string>
 
     <!-- Routes -->
