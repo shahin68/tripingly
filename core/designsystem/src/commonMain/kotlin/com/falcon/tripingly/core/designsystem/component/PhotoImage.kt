@@ -4,8 +4,12 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.painter.ColorPainter
 import androidx.compose.ui.layout.ContentScale
 import coil3.compose.AsyncImage
@@ -30,7 +34,7 @@ enum class PhotoSize(internal val key: String) {
 /**
  * One of our photos. A photo's pixels never change while its signed [url] does (about every hour), so it's
  * cached in memory and on disk by [photoId] and [size]: once loaded, a new URL never downloads it again. A
- * photo still processing has no [url] and shows the placeholder.
+ * photo still processing has no [url] and shows the grey placeholder; a loading one shimmers until it's there.
  */
 @Composable
 fun PhotoImage(
@@ -48,14 +52,20 @@ fun PhotoImage(
     }
     val context = LocalPlatformContext.current
     val request = remember(context, photoId, url, size) { photoRequest(context, photoId, url, size) }
-    AsyncImage(
-        model = request,
-        contentDescription = contentDescription,
-        modifier = modifier,
-        placeholder = placeholder,
-        error = placeholder,
-        contentScale = contentScale,
-    )
+    // Shimmers like the photo lists' skeletons until the image is there (Shahin, 2026-11-14); a failed one stays grey.
+    var isLoading by remember(request) { mutableStateOf(true) }
+    Box(modifier, propagateMinConstraints = true) {
+        if (isLoading) SkeletonBox(shape = RectangleShape)
+        AsyncImage(
+            model = request,
+            contentDescription = contentDescription,
+            error = placeholder,
+            contentScale = contentScale,
+            onLoading = { isLoading = true },
+            onSuccess = { isLoading = false },
+            onError = { isLoading = false },
+        )
+    }
 }
 
 /** The request for a photo, keyed by what it shows rather than its signed URL; see [PhotoImage]. */
@@ -68,7 +78,7 @@ fun photoRequest(context: coil3.PlatformContext, photoId: String, url: String, s
         .build()
 }
 
-/** Previews have no network, so both show the placeholder: a photo still processing, and one loading. */
+/** Previews have no network: a photo still processing (grey), and one loading (the skeleton, still in previews). */
 @Composable
 private fun PhotoImagePreviewContent() {
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {

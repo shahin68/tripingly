@@ -53,7 +53,8 @@ private final class AppGoogleMap: NSObject, GoogleMap, GMSMapViewDelegate {
         self.listener = listener
         super.init()
         mapView.delegate = self
-        mapView.settings.compassButton = true
+        // Our own compass sits with the map buttons (MapCompass in the shared code).
+        mapView.settings.compassButton = false
         mapView.settings.myLocationButton = false
         mapView.settings.indoorPicker = false
         mapView.addGestureRecognizer(touches)
@@ -89,8 +90,15 @@ private final class AppGoogleMap: NSObject, GoogleMap, GMSMapViewDelegate {
         mapView.padding = UIEdgeInsets(top: top, left: left, bottom: bottom, right: right)
     }
 
-    func moveCamera(latitude: Double, longitude: Double, zoom: Float, animated: Bool) {
-        let camera = GMSCameraPosition(latitude: latitude, longitude: longitude, zoom: zoom)
+    func turnNorthUp() {
+        CATransaction.begin()
+        CATransaction.setAnimationDuration(0.18)
+        mapView.animate(toBearing: 0)
+        CATransaction.commit()
+    }
+
+    func moveCamera(latitude: Double, longitude: Double, zoom: Float, bearing: Double, animated: Bool) {
+        let camera = GMSCameraPosition(latitude: latitude, longitude: longitude, zoom: zoom, bearing: bearing, viewingAngle: mapView.camera.viewingAngle)
         if animated {
             // As fast as on Android (180 ms).
             CATransaction.begin()
@@ -212,6 +220,7 @@ private final class AppGoogleMap: NSObject, GoogleMap, GMSMapViewDelegate {
     }
 
     func mapView(_ mapView: GMSMapView, idleAt position: GMSCameraPosition) {
+        listener.onBearingChange(bearing: position.bearing)
         let corners = viewCorners()
         listener.onCameraIdle(
             latitude: position.target.latitude,
@@ -225,6 +234,7 @@ private final class AppGoogleMap: NSObject, GoogleMap, GMSMapViewDelegate {
     }
 
     func mapView(_ mapView: GMSMapView, didChange position: GMSCameraPosition) {
+        listener.onBearingChange(bearing: position.bearing)
         let corners = viewCorners()
         listener.onCameraChange(
             zoom: position.zoom,

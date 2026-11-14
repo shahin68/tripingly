@@ -48,7 +48,7 @@ internal fun MapLine.themed(): MapLine =
 /** [bearing] in degrees clockwise from north, the way the line runs here. */
 data class PathArrow(val position: Coordinates, val bearing: Float)
 
-/** A real route along streets: one soft, pastel color per way of travelling. */
+/** A real route along streets: one jewel colour per way of travelling. */
 internal val TravelMode.lineColor: Color
     get() = when (this) {
         TravelMode.Walking -> MapColors.Walk

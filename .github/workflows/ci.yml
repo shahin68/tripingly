@@ -67,7 +67,8 @@ jobs:
         run: ./gradlew :shared:linkDebugFrameworkIosSimulatorArm64
 
       - name: Unit tests on the iOS simulator
-        run: ./gradlew iosSimulatorArm64Test
+        # Two workers: three test binaries linking at once ran the 4 GB Gradle heap out of memory.
+        run: ./gradlew iosSimulatorArm64Test --max-workers=2
 
       # Compiles the app's Swift code (sign-in, Google Maps) against the shared framework.
       - name: Build the iOS app for the simulator

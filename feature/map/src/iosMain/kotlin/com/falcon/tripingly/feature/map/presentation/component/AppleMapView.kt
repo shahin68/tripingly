@@ -17,6 +17,7 @@ import kotlin.math.pow
 import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.cinterop.useContents
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.filterIsInstance
 import platform.CoreLocation.CLLocationCoordinate2DMake
 import platform.MapKit.MKAnnotationProtocol
 import platform.MapKit.MKAnnotationView
@@ -40,7 +41,7 @@ internal fun AppleMapView(
     modifier: Modifier,
     initialTarget: Coordinates,
     initialZoom: Float,
-    cameraCommands: Flow<CameraCommand.MoveTo>,
+    cameraCommands: Flow<CameraCommand.Move>,
     markers: List<MapMarker>,
     placePins: List<PlacePin>,
     placeClusters: List<PlaceCluster>,
@@ -127,7 +128,8 @@ internal fun AppleMapView(
     }
     // MapKit has no padding for the camera, so the target sits in the middle of the whole view.
     LaunchedEffect(cameraCommands) {
-        cameraCommands.collect { command ->
+        // The fallback map keeps Apple's own compass; it has none of ours to turn back.
+        cameraCommands.filterIsInstance<CameraCommand.MoveTo>().collect { command ->
             mapView.setRegion(mapView.regionThatFits(regionAround(command.target, command.zoom)), animated = true)
         }
     }

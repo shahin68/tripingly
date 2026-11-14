@@ -4,6 +4,8 @@
     <string name="map_hide_places">Hide places</string>
     <string name="map_show_places">Show places</string>
     <string name="map_fit_day">Show the whole day</string>
+    <string name="map_compass_north">N</string>
+    <string name="map_north_up">Turn the map north up</string>
     <string name="map_plan_handle">Show or hide the whole plan</string>
     <string name="map_remove_stop">Remove stop</string>
     <string name="map_back">Back</string>

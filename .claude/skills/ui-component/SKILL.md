@@ -38,3 +38,7 @@ Lives in `core/designsystem/src/commonMain/kotlin/com/falcon/tripingly/core/desi
 3. Strings in `core/designsystem/.../composeResources` (+ de, hu).
 4. Previews for all states, light and dark, and a landscape preview for anything that takes height (cards, sheets, dialogs).
 5. Replace the duplicated feature-level versions in the same PR only if they are in scope; otherwise note them.
+
+## Showing and hiding (Shahin, 2026-11-14)
+
+A component that hides and shows animates its container and its content together: the space glides open and shut (`expand…`/`shrink…` or `animateContentSize`), so neighbours glide along, and the content fades and scales or slides. No plain `if`, no fade alone. It must make sense and cause no visual bug: content grows from the side its space opens from, no clipped shadows or corners mid-way, no jump at the start or end, interruptions reverse smoothly, no overlap with neighbours. See `docs/knowledge/07-architecture.md`, "Showing and hiding".

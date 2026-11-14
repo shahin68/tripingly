@@ -366,6 +366,18 @@ class MapViewModelTest {
     }
 
     @Test
+    fun `the compass turns the map north up where it is`() = runTest(testDispatcher) {
+        val viewModel = viewModel()
+        testScheduler.advanceUntilIdle()
+
+        viewModel.cameraCommands.test {
+            viewModel.onAction(MapAction.MapView.NorthUp)
+            testScheduler.advanceUntilIdle()
+            assertEquals(CameraCommand.NorthUp, expectMostRecentItem())
+        }
+    }
+
+    @Test
     fun `the location button flies to the user once the location is known`() = runTest(testDispatcher) {
         val userCoords = Coordinates(52.5200, 13.4050) // Berlin
         fakeLocationRepository.locationResult = userCoords.asSuccess()

@@ -72,6 +72,11 @@ internal class MapCamera(private val context: MapContext) {
     }
 
     /** A finger moved the map: it no longer shows a fit, nor follows me. */
+    /** The compass: north up where the map is, keeping its center and zoom. */
+    fun northUp() {
+        _commands.trySend(CameraCommand.NorthUp)
+    }
+
     fun onUserMove() {
         shownFit = null
         stopFollowing()

@@ -11,20 +11,15 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.shape.ZeroCornerSize
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Add
@@ -66,8 +61,6 @@ import com.falcon.tripingly.core.designsystem.component.DropdownAction
 import com.falcon.tripingly.core.designsystem.component.GlassDefaults
 import com.falcon.tripingly.core.designsystem.component.GlassSurface
 import com.falcon.tripingly.core.designsystem.component.NewIndicator
-import com.falcon.tripingly.core.designsystem.component.bottomSystemBar
-import com.falcon.tripingly.core.designsystem.component.floatingBottom
 import com.falcon.tripingly.core.designsystem.component.onTopEndCorner
 import com.falcon.tripingly.core.designsystem.component.rememberHaptics
 import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
@@ -87,19 +80,16 @@ import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.stringResource
 
 /**
- * The trip's days as pills on a floating glass bar at the bottom, the open one filled; owners and editors add a day
- * with +. [isJoined]: the plan sheet sits on top, so the bar is its bottom part (square top corners, no shadow).
+ * The trip's days as pills, the open one filled; owners and editors add a day with +. The bottom part of the bottom
+ * card, whose glass BottomCards draws (with the plan sheet on top while there's a plan).
  */
 @Composable
 internal fun DayTabs(
     tabs: DayTabsState,
-    isJoined: Boolean,
     canAddDay: Boolean,
     onAction: (MapAction) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    if (tabs.days.isEmpty()) return Spacer(modifier.windowInsetsPadding(WindowInsets.bottomSystemBar))
-    val corner = MaterialTheme.shapes.extraLarge.topStart
     val listState = rememberLazyListState()
     val haptics = rememberHaptics()
     // Read by the drag on the open day, which outlives recompositions.
@@ -139,63 +129,53 @@ internal fun DayTabs(
     val pillShape = MaterialTheme.shapes.large
     // Keeps the open day in view, e.g. after adding one at the end.
     LaunchedEffect(tabs.activeIndex) { listState.reveal(tabs.activeIndex) }
-    GlassSurface(
-        modifier = modifier
-            .windowInsetsPadding(WindowInsets.floatingBottom)
-            .padding(start = MaterialTheme.spacing.medium, end = MaterialTheme.spacing.medium, bottom = MaterialTheme.spacing.small)
-            .fillMaxWidth(),
-        shape = if (isJoined) RoundedCornerShape(topStart = ZeroCornerSize, topEnd = ZeroCornerSize, bottomStart = corner, bottomEnd = corner) else MaterialTheme.shapes.extraLarge,
-        shadowElevation = if (isJoined) 0.dp else GlassDefaults.ShadowElevation,
-        blur = false,
+    Row(
+        modifier = modifier.fillMaxWidth().padding(MaterialTheme.spacing.small),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        Row(
-            modifier = Modifier.padding(MaterialTheme.spacing.small),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            LazyRow(
-                state = listState,
-                modifier = Modifier
-                    .weight(1f)
-                    .clip(MaterialTheme.shapes.extraLarge)
-                    .drawBehind {
-                        val bounds = listState.pillBounds(pillAt()) ?: return@drawBehind
-                        translate(left = bounds.first) {
-                            drawOutline(pillShape.createOutline(Size(bounds.second, size.height), layoutDirection, this), pillColor)
-                        }
+        LazyRow(
+            state = listState,
+            modifier = Modifier
+                .weight(1f)
+                .clip(MaterialTheme.shapes.extraLarge)
+                .drawBehind {
+                    val bounds = listState.pillBounds(pillAt()) ?: return@drawBehind
+                    translate(left = bounds.first) {
+                        drawOutline(pillShape.createOutline(Size(bounds.second, size.height), layoutDirection, this), pillColor)
                     }
-                    .dragOpenDay(
-                        listState = listState,
-                        active = { activeIndex },
-                        onDrag = { onDayDrag(it) },
-                        onDragEnd = { onDayDragEnd() },
-                    ),
-                horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraSmall),
-            ) {
-                itemsIndexed(tabs.days, key = { _, day -> day.id }) { index, day ->
-                    DayPill(
-                        day = day,
-                        selected = index == tabs.activeIndex,
-                        // How much of the pill is on this day right now, read while drawing (no recomposition per frame).
-                        onPill = { pillAt().roundToInt() == index },
-                        onClick = { onAction(MapAction.Days.Select(index)) },
-                        onDelete = {
-                            // The confirmation (and the delete) is about the open day.
-                            onAction(MapAction.Days.Select(index))
-                            onAction(MapAction.Header.DeleteDay)
-                        }.takeIf { day.canDelete },
-                        modifier = Modifier.animateItem(),
-                    )
                 }
+                .dragOpenDay(
+                    listState = listState,
+                    active = { activeIndex },
+                    onDrag = { onDayDrag(it) },
+                    onDragEnd = { onDayDragEnd() },
+                ),
+            horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraSmall),
+        ) {
+            itemsIndexed(tabs.days, key = { _, day -> day.id }) { index, day ->
+                DayPill(
+                    day = day,
+                    selected = index == tabs.activeIndex,
+                    // How much of the pill is on this day right now, read while drawing (no recomposition per frame).
+                    onPill = { pillAt().roundToInt() == index },
+                    onClick = { onAction(MapAction.Days.Select(index)) },
+                    onDelete = {
+                        // The confirmation (and the delete) is about the open day.
+                        onAction(MapAction.Days.Select(index))
+                        onAction(MapAction.Header.DeleteDay)
+                    }.takeIf { day.canDelete },
+                    modifier = Modifier.animateItem(),
+                )
             }
-            if (canAddDay) {
-                // A round button as tall as the day pills, so it sits as far in from the end as they do from the start.
-                FilledTonalIconButton(
-                    onClick = { onAction(MapAction.Header.AddDay) },
-                    modifier = Modifier.padding(start = MaterialTheme.spacing.extraSmall).size(DayPillHeight),
-                    colors = IconButtonDefaults.filledTonalIconButtonColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
-                ) {
-                    Icon(Icons.Outlined.Add, contentDescription = stringResource(Res.string.map_add_day))
-                }
+        }
+        if (canAddDay) {
+            // A round button as tall as the day pills, so it sits as far in from the end as they do from the start.
+            FilledTonalIconButton(
+                onClick = { onAction(MapAction.Header.AddDay) },
+                modifier = Modifier.padding(start = MaterialTheme.spacing.extraSmall).size(DayPillHeight),
+                colors = IconButtonDefaults.filledTonalIconButtonColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+            ) {
+                Icon(Icons.Outlined.Add, contentDescription = stringResource(Res.string.map_add_day))
             }
         }
     }
@@ -321,15 +301,9 @@ private val DayPillHeight = 48.dp
 @Composable
 private fun DayTabsPreview(@PreviewParameter(DayTabsPreviewStates::class) tabs: DayTabsState) {
     TripinglyTheme {
-        Box(Modifier.background(MaterialTheme.colorScheme.surfaceContainerHigh)) { DayTabs(tabs = tabs, isJoined = false, canAddDay = true, onAction = {}) }
-    }
-}
-
-@Preview
-@Composable
-private fun DayTabsJoinedPreview(@PreviewParameter(DayTabsPreviewStates::class) tabs: DayTabsState) {
-    TripinglyTheme {
-        Box(Modifier.background(MaterialTheme.colorScheme.surfaceContainerHigh)) { DayTabs(tabs = tabs, isJoined = true, canAddDay = true, onAction = {}) }
+        Box(Modifier.background(MaterialTheme.colorScheme.surfaceContainerHigh).padding(MaterialTheme.spacing.medium)) {
+            GlassSurface(blur = false) { DayTabs(tabs = tabs, canAddDay = true, onAction = {}) }
+        }
     }
 }
 
@@ -337,8 +311,8 @@ private fun DayTabsJoinedPreview(@PreviewParameter(DayTabsPreviewStates::class) 
 @Composable
 private fun DayTabsDarkPreview() {
     TripinglyTheme(darkTheme = true) {
-        Box(Modifier.background(MaterialTheme.colorScheme.surfaceContainerHigh)) {
-            DayTabs(tabs = DayTabsPreviewStates().values.first(), isJoined = false, canAddDay = false, onAction = {})
+        Box(Modifier.background(MaterialTheme.colorScheme.surfaceContainerHigh).padding(MaterialTheme.spacing.medium)) {
+            GlassSurface(blur = false) { DayTabs(tabs = DayTabsPreviewStates().values.first(), canAddDay = false, onAction = {}) }
         }
     }
 }
