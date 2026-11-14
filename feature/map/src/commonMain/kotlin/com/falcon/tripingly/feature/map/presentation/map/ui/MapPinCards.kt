@@ -45,6 +45,7 @@ internal fun MapPinCards(
                 address = card.address,
                 add = card.add,
                 addedBy = card.addedBy,
+                images = card.images,
                 onAdd = { onAction(MapAction.PlaceCard.Add) },
                 onOpenImage = { index -> onAction(MapAction.PlaceCard.OpenImage(index)) },
                 onOpenPhotos = { onAction(MapAction.PlaceCard.OpenPhotos) },

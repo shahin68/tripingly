@@ -6,6 +6,7 @@ import com.falcon.tripingly.core.data.trips.MarkerChangeFailure
 import com.falcon.tripingly.core.location.model.Coordinates
 import com.falcon.tripingly.core.location.permission.LocationPermission
 import com.falcon.tripingly.core.model.photo.Photo
+import com.falcon.tripingly.core.model.photo.PhotoOwner
 import com.falcon.tripingly.core.model.place.GeoBounds
 import com.falcon.tripingly.core.model.place.MapPlace
 import com.falcon.tripingly.core.model.place.PlaceCluster
@@ -44,8 +45,8 @@ internal data class MapModel(
      * and its opening hours and website in the details sheet.
      */
     val stopPlaces: Map<String, PlaceDetails> = emptyMap(),
-    /** Stops' photo grids, by marker ID, loaded when a stop's card opens: its photo swipes through them. */
-    val stopPhotos: Map<String, List<Photo>> = emptyMap(),
+    /** Stops' photo grids and places' galleries, loaded when their card opens: its photo swipes through them. */
+    val cardPhotos: Map<PhotoOwner, List<Photo>> = emptyMap(),
     val search: SearchModel? = null,
     val route: RouteModel = RouteModel(),
     val location: LocationModel = LocationModel(),

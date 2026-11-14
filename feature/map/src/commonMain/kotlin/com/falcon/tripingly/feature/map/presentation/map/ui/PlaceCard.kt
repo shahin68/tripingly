@@ -22,6 +22,7 @@ import com.falcon.tripingly.core.designsystem.theme.spacing
 import com.falcon.tripingly.core.model.place.MapPlace
 import com.falcon.tripingly.core.model.place.PlaceCategory
 import com.falcon.tripingly.core.model.place.PlaceDetails
+import com.falcon.tripingly.core.model.place.PlaceImage
 import com.falcon.tripingly.core.model.trip.UserSummary
 import com.falcon.tripingly.feature.map.generated.resources.*
 import com.falcon.tripingly.feature.map.generated.resources.Res
@@ -49,6 +50,8 @@ internal fun PinCardScope.PlaceCard(
     add: PinAdd?,
     /** Who made it, for a custom spot. */
     addedBy: AddedBy?,
+    /** What its photo swipes through; null while they load, none for an address from search. */
+    images: List<PlaceImage>?,
     onAdd: () -> Unit,
     onOpenImage: (index: Int) -> Unit,
     onOpenPhotos: () -> Unit,
@@ -58,8 +61,6 @@ internal fun PinCardScope.PlaceCard(
     onRoute: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    // An address from search is no place of ours, so it has no images to wait for and no photos.
-    val images = if (address != null) emptyList() else details?.images
     val pagerState = rememberPagerState { images.orEmpty().size }
     BigPinCard(
         modifier = modifier.widthIn(max = MapCardMaxWidth),
@@ -149,6 +150,7 @@ private fun PlaceCardPreviewContent(card: PlaceCardPreview) {
                 address = shown.address,
                 add = shown.add,
                 addedBy = shown.details?.addedBy?.let { AddedBy(it, isMe = false) },
+                images = if (shown.address != null) emptyList() else shown.details?.images,
                 onAdd = {},
                 onOpenImage = {},
                 onOpenPhotos = {},

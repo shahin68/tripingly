@@ -204,6 +204,8 @@ data class PlaceCardState(
     val routes: PinRoutesState,
     /** Who made it, for a custom spot. */
     val addedBy: AddedBy? = null,
+    /** What its photo swipes through: the same photos as its Photos sheet; null while they load. */
+    val images: List<PlaceImage>? = null,
 )
 
 /**

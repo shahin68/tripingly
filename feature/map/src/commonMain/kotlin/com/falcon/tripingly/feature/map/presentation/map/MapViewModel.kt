@@ -39,7 +39,7 @@ import com.falcon.tripingly.feature.map.presentation.map.state.MapRouting
 import com.falcon.tripingly.feature.map.presentation.map.state.MapSearch
 import com.falcon.tripingly.feature.map.presentation.map.state.MapSelection
 import com.falcon.tripingly.feature.map.presentation.map.state.MapSharing
-import com.falcon.tripingly.feature.map.presentation.map.state.MapStopPhotos
+import com.falcon.tripingly.feature.map.presentation.map.state.MapCardPhotos
 import com.falcon.tripingly.feature.map.presentation.map.state.Sheet
 import com.falcon.tripingly.feature.map.presentation.map.state.activeDayIndex
 import kotlinx.coroutines.CoroutineDispatcher
@@ -114,7 +114,7 @@ class MapViewModel(
     private val opening = MapOpening(context, camera, tripRepository, mapViews, ::hasRoutes, stopId, showMembers, showComments)
     private val joinRequests = MapJoinRequests(context, tripRepository)
     private val addToTrip = MapAddToTrip(context, selection, tripRepository, markerRepository) { sendEvent(MapEvent.AddedToMyTrip) }
-    private val stopPhotos = MapStopPhotos(context, photoRepository)
+    private val cardPhotos = MapCardPhotos(context, photoRepository)
     private val newActivity = MapNewActivity(context, newActivityRepository, pushedStopId = stopId, pushedAboutComments = showComments)
 
     /** The map's layers and what they were built from, kept until one of those changes. */
@@ -127,7 +127,7 @@ class MapViewModel(
         opening.start()
         newActivity.start()
         joinRequests.start()
-        stopPhotos.start()
+        cardPhotos.start()
     }
 
     fun onAction(action: MapAction) {

@@ -8,6 +8,7 @@ import com.falcon.tripingly.core.location.permission.LocationPermission
 import com.falcon.tripingly.core.model.account.TripVisibility
 import com.falcon.tripingly.core.model.config.AppConfig
 import com.falcon.tripingly.core.model.photo.Photo
+import com.falcon.tripingly.core.model.photo.PhotoOwner
 import com.falcon.tripingly.core.model.photo.PhotoStatus
 import com.falcon.tripingly.core.model.place.MapPlace
 import com.falcon.tripingly.core.model.place.PlaceImage
@@ -183,6 +184,7 @@ internal class MapStateMapper(
         add = copyAdd ?: dayNumber?.takeIf { canEdit }?.let(PinAdd::ToDay),
         routes = pinRoutes(selection.place.location),
         addedBy = selection.details?.addedBy?.let { AddedBy(it, isMe = it.id == myUserId) },
+        images = placeImages(selection),
     )
 
     private fun stopCard(): StopCardState? {
@@ -198,7 +200,7 @@ internal class MapStateMapper(
         val creatorId = marker?.createdById
         return StopCardState(
             stop = stop,
-            images = stopImages(stop, model.stopPhotos[stop.id], place?.images.orEmpty()),
+            images = stopImages(stop, model.cardPhotos[PhotoOwner.Stop(stop.id)], place?.images.orEmpty()),
             place = place,
             canEdit = canEdit,
             canReport = role == TripRole.VIEWER,
@@ -317,9 +319,8 @@ internal class MapStateMapper(
     /** A card image opens in the place's photo viewer, so its heart is the same like as in the Photos sheet. */
     private fun placeImage(): MapSheet? {
         val selection = model.selection as? Selection.Place ?: return null
-        val details = selection.details?.takeIf { it.id == selection.place.id } ?: return null
-        val image = selection.imageIndex?.let { details.images.getOrNull(it) } ?: return null
-        return MapSheet.PlaceImage(details.id, image.id)
+        val image = selection.imageIndex?.let { placeImages(selection)?.getOrNull(it) } ?: return null
+        return MapSheet.PlaceImage(selection.place.id, image.id)
     }
 
     private fun dialog(): MapDialog? = when (val dialog = model.dialog) {
@@ -346,12 +347,23 @@ internal class MapStateMapper(
      * neither is shown from its thumbnail, the only size the stop knows.
      */
     private fun stopImages(stop: MapMarker, gallery: List<Photo>?, placeImages: List<PlaceImage>): List<PlaceImage> {
-        val shown = gallery?.filter { it.status == PhotoStatus.Ready }?.map { it.toPlaceImage() } ?: placeImages
+        val shown = gallery?.readyImages() ?: placeImages
         val coverId = stop.coverPhotoId ?: return shown
         val cover = (shown + placeImages).firstOrNull { it.id == coverId }
             ?: PlaceImage(coverId, PlaceImageSource.Trip, thumbUrl = stop.coverThumbUrl, displayUrl = null, width = null, height = null, credit = null)
         return listOf(cover) + shown.filter { it.id != coverId }
     }
+
+    /**
+     * What a place's card swipes through: its gallery, the same photos as its Photos sheet (Shahin, 2026-11-14), or its
+     * own images until the gallery is loaded (null while those load too); none for an address from search.
+     */
+    private fun placeImages(selection: Selection.Place): List<PlaceImage>? = when {
+        selection.address != null -> emptyList()
+        else -> model.cardPhotos[PhotoOwner.Place(selection.place.id)]?.readyImages() ?: selection.details?.images
+    }
+
+    private fun List<Photo>.readyImages() = filter { it.status == PhotoStatus.Ready }.map { it.toPlaceImage() }
 
     private fun Photo.toPlaceImage() = PlaceImage(
         id = id,

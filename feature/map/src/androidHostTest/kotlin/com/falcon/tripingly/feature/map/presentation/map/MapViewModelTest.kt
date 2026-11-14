@@ -1536,6 +1536,8 @@ class MapViewModelTest {
     @Test
     fun `a place's images open full screen, and a Commons image is reported as the place's image`() = runTest(testDispatcher) {
         places.images["fake-louvre"] = listOf(TRIP_PHOTO, COMMONS_IMAGE)
+        // The gallery, as the Photos sheet shows it, also has a photo too few people liked to stand for the place.
+        photos.seed(PhotoOwner.Place("fake-louvre"), listOf(TRIP_PHOTO.asPhoto(), COMMONS_IMAGE.asPhoto(), TRIP_PHOTO.asPhoto().copy(id = "unliked")))
         val viewModel = viewModel()
         testScheduler.advanceUntilIdle()
         viewModel.onAction(MapAction.MapView.CameraRest(Coordinates(48.86, 2.32), 15f, PARIS_CENTER))
@@ -1544,6 +1546,8 @@ class MapViewModelTest {
         restOnTarget(viewModel)
         testScheduler.advanceUntilIdle()
         assertEquals(listOf(TRIP_PHOTO, COMMONS_IMAGE), viewModel.uiState.value.placeCard?.details?.images)
+        // The card swipes through the same photos as the sheet (Shahin, 2026-11-14).
+        assertEquals(listOf("ph1", "pi1", "unliked"), viewModel.uiState.value.placeCard?.images?.map { it.id })
 
         viewModel.onAction(MapAction.PlaceCard.OpenImage(1))
         testScheduler.advanceUntilIdle()

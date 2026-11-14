@@ -185,7 +185,7 @@ private val Standard = CubicBezierEasing(0.2f, 0f, 0f, 1f)
 private fun PinCardPreview() {
     TripinglyTheme {
         PinCard(card = previewPlace, key = { it.id }, pinClearance = 24.dp) { place ->
-            PlaceCard(place, details = null, address = null, add = PinAdd.ToDay(1), addedBy = null, onAdd = {}, onOpenImage = {}, onOpenPhotos = {}, onOpenDetails = {}, routes = PinRoutesState(), onGoHere = {}, onRoute = {})
+            PlaceCard(place, details = null, address = null, add = PinAdd.ToDay(1), addedBy = null, images = null, onAdd = {}, onOpenImage = {}, onOpenPhotos = {}, onOpenDetails = {}, routes = PinRoutesState(), onGoHere = {}, onRoute = {})
         }
     }
 }
@@ -195,7 +195,7 @@ private fun PinCardPreview() {
 private fun PinCardDarkPreview() {
     TripinglyTheme(darkTheme = true) {
         PinCard(card = previewPlace, key = { it.id }, pinClearance = 24.dp) { place ->
-            PlaceCard(place, details = null, address = null, add = PinAdd.ToMyTrip, addedBy = null, onAdd = {}, onOpenImage = {}, onOpenPhotos = {}, onOpenDetails = {}, routes = PinRoutesState(isRouteTo = true), onGoHere = {}, onRoute = {})
+            PlaceCard(place, details = null, address = null, add = PinAdd.ToMyTrip, addedBy = null, images = null, onAdd = {}, onOpenImage = {}, onOpenPhotos = {}, onOpenDetails = {}, routes = PinRoutesState(isRouteTo = true), onGoHere = {}, onRoute = {})
         }
     }
 }
