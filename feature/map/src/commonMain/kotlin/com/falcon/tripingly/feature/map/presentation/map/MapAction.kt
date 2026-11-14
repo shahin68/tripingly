@@ -34,6 +34,8 @@ sealed interface MapAction {
         data object ScreenTouch : MapView
         /** A finger started moving the camera: it stops following me. */
         data object UserMove : MapView
+        /** The screen switched between its portrait and landscape layouts (a rotation, a split screen). */
+        data object LayoutChange : MapView
     }
 
     /** The top bar and its menu. */

@@ -783,6 +783,27 @@ class MapViewModelTest {
     }
 
     @Test
+    fun `a layout change fits a fit still showing again, but not a camera a finger moved since`() = runTest(testDispatcher) {
+        backend.addMarker(trip.trip.id, trip.days[0].id, NewMarker("Stop #1", GeoPoint(48.85, 2.35)))
+        val viewModel = viewModel()
+        testScheduler.advanceUntilIdle()
+        viewModel.cameraCommands.test {
+            viewModel.onAction(MapAction.Days.FitDay)
+            testScheduler.advanceUntilIdle()
+            val fit = assertIs<CameraCommand.Fit>(expectMostRecentItem())
+            viewModel.onAction(MapAction.MapView.LayoutChange)
+            testScheduler.advanceUntilIdle()
+            assertEquals(fit, awaitItem())
+            // A map built anew (Android rebuilds it on a rotation) opens on it already fitted.
+            assertEquals(fit.bounds, viewModel.uiState.value.camera.openingBounds)
+            viewModel.onAction(MapAction.MapView.UserMove)
+            viewModel.onAction(MapAction.MapView.LayoutChange)
+            testScheduler.advanceUntilIdle()
+            expectNoEvents()
+        }
+    }
+
+    @Test
     fun `a push opens the trip on its stop's day, the camera on the stop and its new mark showing`() = runTest(testDispatcher) {
         backend.addMarker(trip.trip.id, trip.days[0].id, NewMarker("Stop #1", GeoPoint(48.85, 2.35)))
         val pushed = backend.addMarker(trip.trip.id, trip.days[1].id, NewMarker("Colosseum", GeoPoint(41.89, 12.49)))

@@ -26,6 +26,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -63,6 +64,7 @@ import com.falcon.tripingly.feature.map.presentation.component.fittedCamera
 import com.falcon.tripingly.feature.map.presentation.map.preview.MapScreenPreviewStates
 import com.falcon.tripingly.feature.map.presentation.map.ui.BottomCards
 import com.falcon.tripingly.feature.map.presentation.map.ui.JoinRequestsPill
+import com.falcon.tripingly.feature.map.presentation.component.isSplitScreen
 import com.falcon.tripingly.feature.map.presentation.map.ui.MapButtons
 import com.falcon.tripingly.feature.map.presentation.map.ui.MapCredits
 import com.falcon.tripingly.feature.map.presentation.map.ui.SmallCreditsStyle
@@ -153,15 +155,28 @@ internal fun MapScreen(
         // The pulled-up sheet doesn't count: only the part that always shows.
         val hasDays = state.dayTabs.days.isNotEmpty()
         val coveredBottom = (tabsHeight?.second ?: 0.dp) + (if (plan != null) PlanSheetPeek else 0.dp) + (creditsHeight ?: 0.dp)
-        val isWide = maxWidth > maxHeight
+        // Landscape only on a full screen: a split screen has no room for two halves and keeps the portrait layout.
+        val isWide = maxWidth > maxHeight && !isSplitScreen()
+        // A rotation (or a split screen) changes the free part of the map: a fit still showing is fitted again. Saved,
+        // since Android builds the screen anew on a rotation.
+        var shownWide by rememberSaveable { mutableStateOf(isWide) }
+        LaunchedEffect(isWide) {
+            if (isWide != shownWide) {
+                shownWide = isWide
+                onAction(MapAction.MapView.LayoutChange)
+            }
+        }
         val sides = WindowInsets.safeSides.asPaddingValues()
         val layoutDirection = LocalLayoutDirection.current
         val start = sides.calculateStartPadding(layoutDirection)
         val end = sides.calculateEndPadding(layoutDirection)
         val panelWidth = (maxWidth - start - end) / 2
+        // In landscape the map's free part ends where the day tabs' card does, so its Google logo lines up with the
+        // card's bottom (Shahin, 2026-11-14), and the map buttons float down to that line.
+        val cardBottom = WindowInsets.floatingBottom.asPaddingValues().calculateBottomPadding() + MaterialTheme.spacing.small
         // What the header and the cards cover: the top and the bottom, or in landscape the left half (Shahin, 2026-11-14).
         val covered = if (isWide) {
-            PaddingValues(start = start + panelWidth, top = statusBar, end = end)
+            PaddingValues(start = start + panelWidth, top = statusBar, end = end, bottom = cardBottom)
         } else {
             PaddingValues(top = coveredTop, bottom = coveredBottom)
         }
@@ -169,9 +184,9 @@ internal fun MapScreen(
         // card has more room (Shahin, 2026-11-14: "centring a pin" always means this), and in landscape low down, so
         // the card above the pin has the height it needs (Shahin, 2026-11-08). Only the camera's padding moves; fits
         // still use all that's free ([raise] puts them back in its middle).
-        val pinLowering = if (isWide) (maxHeight - LandscapePinArea - statusBar).coerceAtLeast(0.dp) else PortraitPinDrop * 2
+        val pinLowering = if (isWide) (maxHeight - LandscapePinArea - statusBar - cardBottom).coerceAtLeast(0.dp) else PortraitPinDrop * 2
         val cameraPadding = if (isWide) {
-            PaddingValues(start = start + panelWidth, top = statusBar + pinLowering, end = end)
+            PaddingValues(start = start + panelWidth, top = statusBar + pinLowering, end = end, bottom = cardBottom)
         } else {
             PaddingValues(top = coveredTop + pinLowering, bottom = coveredBottom)
         }
@@ -299,15 +314,14 @@ internal fun MapScreen(
 
         // In landscape the map's credits and buttons sit on the map half, so the plan sheet has the left half's whole
         // height (Shahin, 2026-11-09, option 1); in portrait they ride on the sheet. The buttons float at the map's
-        // bottom end, their bottom in line with the plan card's (the day tabs' floating bottom inset), the credits a
-        // little smaller at its top end (Shahin, 2026-11-14); both 16 dp in from the screen's end.
+        // bottom end, their bottom in line with the day tabs' card (the free part's bottom), the credits a little
+        // smaller at its top end (Shahin, 2026-11-14); both 16 dp in from the screen's end (or its cutout).
         if (isWide) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(covered)
-                    .windowInsetsPadding(WindowInsets.floatingBottom)
-                    .padding(horizontal = MaterialTheme.spacing.medium, vertical = MaterialTheme.spacing.small),
+                    .padding(start = MaterialTheme.spacing.medium, top = MaterialTheme.spacing.small, end = MaterialTheme.spacing.medium),
             ) {
                 MapCredits(
                     routeAttribution = state.routeAttribution,
@@ -384,7 +398,7 @@ private fun MapScreenLoadErrorPreview() {
     }
 }
 
-/** In landscape, the strip at the bottom of the free map whose middle a tapped pin goes to (64 dp up). */
+/** In landscape, the strip at the bottom of the free map whose middle a tapped pin goes to (64 dp above the card's bottom). */
 private val LandscapePinArea = 128.dp
 
 /** In portrait, how far below the middle of the free map a tapped pin goes. */

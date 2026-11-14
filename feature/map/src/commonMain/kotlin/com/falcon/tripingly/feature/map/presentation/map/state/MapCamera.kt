@@ -20,6 +20,9 @@ internal class MapCamera(private val context: MapContext) {
     private val _commands = Channel<CameraCommand>(capacity = Channel.BUFFERED)
     val commands: Flow<CameraCommand> = _commands.receiveAsFlow()
 
+    /** The bounds the camera last fitted, while it still shows them: no finger or other move since. */
+    private var shownFit: CameraCommand.Fit? = null
+
     val target: Coordinates get() = context.model.value.camera.target
     val zoom: Float get() = context.model.value.camera.zoom
 
@@ -31,6 +34,7 @@ internal class MapCamera(private val context: MapContext) {
 
     /** Moves the camera to where I am, following me (see [MapLocation]). */
     fun follow(target: Coordinates, zoom: Float) {
+        shownFit = null
         context.update { it.copy(camera = it.camera.copy(target = target, zoom = zoom, isReady = true)) }
         _commands.trySend(CameraCommand.MoveTo(target, zoom))
     }
@@ -43,6 +47,7 @@ internal class MapCamera(private val context: MapContext) {
         if (points.isEmpty()) return
         stopFollowing()
         val fit = CameraCommand.fit(points)
+        shownFit = fit
         if (context.model.value.camera.isReady) {
             _commands.trySend(fit)
         } else {
@@ -64,6 +69,23 @@ internal class MapCamera(private val context: MapContext) {
             destination != null -> moveTo(Coordinates(destination.location.lat, destination.location.lng), DESTINATION_ZOOM)
             else -> showAsItIs()
         }
+    }
+
+    /** A finger moved the map: it no longer shows a fit, nor follows me. */
+    fun onUserMove() {
+        shownFit = null
+        stopFollowing()
+    }
+
+    /**
+     * The screen switched layouts (a rotation, a split screen), so the free part of the map has another shape: a fit
+     * still showing is fitted again to it, and a map built anew opens on it already fitted (Shahin, 2026-11-14). A
+     * camera moved since stays where it is.
+     */
+    fun onLayoutChange() {
+        val fit = shownFit ?: return
+        context.update { it.copy(camera = it.camera.copy(openingBounds = fit.bounds)) }
+        _commands.trySend(fit)
     }
 
     /** The map opens where it is: it has nothing to show first. */
