@@ -43,13 +43,13 @@ import com.falcon.tripingly.core.model.place.GeoBounds
 import com.falcon.tripingly.core.model.place.MapPlace
 import com.falcon.tripingly.core.model.place.PlaceCategory
 import com.falcon.tripingly.core.model.place.PlaceCluster
-import kotlinx.collections.immutable.toImmutableList
-import kotlinx.coroutines.flow.Flow
 import platform.UIKit.UIColor
 import platform.UIKit.UIImage
 import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.sin
+import kotlinx.collections.immutable.toImmutableList
+import kotlinx.coroutines.flow.Flow
 
 /**
  * Google's map on iOS, driven like the Android one: place pins as markers that keep their size on
@@ -353,7 +353,7 @@ internal fun GoogleSdkMapView(
     val coverThumbs = rememberCoverThumbs(markers)
     val stopTitles = markers.map { it.title.asString() }
     // The rings round the route's ends, one per pin size and way of travelling's colour.
-    val rings = remember(density) { mutableMapOf<Pair<Dp, Color>, UIImage>() }
+    val rings = remember(density) { mutableMapOf<Triple<Dp, Color, Boolean>, Pair<UIImage, Float>>() }
     LaunchedEffect(markers, stopTitles, coverThumbs, pinPhotos, selectedPlace, placePins, placeClusters, pinIcons, clusterIcons, isDots, routeEnds) {
         val stops = markers.mapIndexed { index, marker ->
             GoogleMapMarker(
@@ -444,16 +444,18 @@ internal fun GoogleSdkMapView(
         }
         // The route's ends: a thick ring in the way of travelling's colour round each end's pin, under it.
         val ends = routeEnds.map { end ->
+            // The destination's has its flag on top.
+            val (icon, anchorY) = rings.getOrPut(Triple(end.pinSize, end.color, end.isStart)) {
+                drawRouteEndRing(end.pinSize, end.color, end.isStart, density, layoutDirection).let { it.bitmap.toUIImage(density.density) to it.anchorY }
+            }
             GoogleMapMarker(
                 key = ROUTE_END_KEY + end.isStart,
                 latitude = end.position.lat,
                 longitude = end.position.lng,
                 title = "",
-                icon = rings.getOrPut(end.pinSize to end.color) {
-                    drawRouteEndRing(end.pinSize, end.color, density, layoutDirection).toUIImage(density.density)
-                },
+                icon = icon,
                 anchorX = 0.5,
-                anchorY = 0.5,
+                anchorY = anchorY.toDouble(),
                 zIndex = ROUTE_END_Z,
                 showsInfoWindow = false,
                 fadesIn = false,

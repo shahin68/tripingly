@@ -460,15 +460,18 @@ actual fun GoogleMapView(
                 }
             }
             // The route's ends: a thick ring in the way of travelling's colour round each end's pin, under it.
-            val rings = remember(density, layoutDirection) { mutableMapOf<Pair<Dp, Color>, BitmapDescriptor>() }
+            // The destination's has its flag on top.
+            val rings = remember(density, layoutDirection) { mutableMapOf<Triple<Dp, Color, Boolean>, Pair<BitmapDescriptor, Float>>() }
             layers.routeEnds.forEach { end ->
                 key(end.isStart) {
+                    val (icon, anchorY) = rings.getOrPut(Triple(end.pinSize, end.color, end.isStart)) {
+                        drawRouteEndRing(end.pinSize, end.color, end.isStart, density, layoutDirection)
+                            .let { BitmapDescriptorFactory.fromBitmap(it.bitmap.asAndroidBitmap()) to it.anchorY }
+                    }
                     Marker(
                         state = rememberUpdatedMarkerState(position = LatLng(end.position.lat, end.position.lng)),
-                        icon = rings.getOrPut(end.pinSize to end.color) {
-                            BitmapDescriptorFactory.fromBitmap(drawRouteEndRing(end.pinSize, end.color, density, layoutDirection).asAndroidBitmap())
-                        },
-                        anchor = Offset(0.5f, 0.5f),
+                        icon = icon,
+                        anchor = Offset(0.5f, anchorY),
                         zIndex = ROUTE_END_Z,
                         // Only a mark: the map neither moves nor opens anything.
                         onClick = { true },

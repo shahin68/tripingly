@@ -81,7 +81,6 @@ import com.falcon.tripingly.feature.map.generated.resources.map_route_from
 import com.falcon.tripingly.feature.map.generated.resources.map_route_swap
 import com.falcon.tripingly.feature.map.generated.resources.map_route_to
 import com.falcon.tripingly.feature.map.generated.resources.map_route_to_placeholder
-import com.falcon.tripingly.feature.map.presentation.component.lineColor
 import com.falcon.tripingly.feature.map.presentation.map.MapAction
 import com.falcon.tripingly.feature.map.presentation.map.RouteBarState
 import com.falcon.tripingly.feature.map.presentation.map.SearchState
@@ -111,7 +110,6 @@ internal fun RouteBar(
 ) {
     @OptIn(ExperimentalComposeUiApi::class)
     BackHandler(enabled = transition.targetState && LocalScreenOnTop.current) { onAction(MapAction.PinRoute.Close) }
-    val color = bar.mode.lineColor
     // The names glide to each other's pill when the ends switch; the gap they cross is a pill and the space between.
     val swapDistance = with(LocalDensity.current) { (RouteHeight + MaterialTheme.spacing.small).roundToPx() }
     PillGrowthPanel(transition, progress, pill, pillContent, modifier.fillMaxWidth()) {
@@ -120,7 +118,6 @@ internal fun RouteBar(
             RouteRow(transition.rowMotion(0), RouteIcon(Icons.Default.Close, close) { onAction(MapAction.PinRoute.Close) }) {
                 RouteEnd(
                     icon = Icons.Outlined.TripOrigin,
-                    tint = color,
                     label = stringResource(Res.string.map_route_from),
                     bar = bar,
                     name = { it.from },
@@ -135,7 +132,6 @@ internal fun RouteBar(
             RouteRow(transition.rowMotion(1), swap.takeIf { bar.from != null && bar.to != null }) {
                 RouteEnd(
                     icon = Icons.Outlined.Flag,
-                    tint = color,
                     label = stringResource(Res.string.map_route_to),
                     bar = bar,
                     name = { it.to },
@@ -174,14 +170,13 @@ private fun RouteRow(modifier: Modifier, button: RouteIcon?, end: @Composable ()
 
 /**
  * One end's pill: its [icon] (read out as [label]) as far in as a round button's, then the end's [name] in [bar] (a tap
- * picks it again: [onEdit]), or while it's being picked the search field or "Search or tap a pin"; outlined in [tint]
- * while its field is typed in. When the ends switch, the names glide [swapDistance] px (down, or up when negative):
+ * picks it again: [onEdit]), or while it's being picked the search field or "Search or tap a pin"; outlined while its
+ * field is typed in. Icon and outline are the surface's own neutral colours, not the route's (Shahin, 2026-11-14). When the ends switch, the names glide [swapDistance] px (down, or up when negative):
  * the name leaving goes to the other pill and the one coming arrives from it, so the two names cross on the way.
  */
 @Composable
 private fun RouteEnd(
     icon: ImageVector,
-    tint: Color,
     label: String,
     bar: RouteBarState,
     name: (RouteBarState) -> UiText?,
@@ -197,11 +192,11 @@ private fun RouteEnd(
             .fillMaxWidth()
             .height(RouteHeight)
             .background(MaterialTheme.colorScheme.surfaceVariant, CircleShape)
-            .then(if (isPicked && search != null) Modifier.border(FocusWidth, tint, CircleShape) else Modifier)
+            .then(if (isPicked && search != null) Modifier.border(FocusWidth, MaterialTheme.colorScheme.outline, CircleShape) else Modifier)
             .padding(start = (RouteHeight - JoinedButtonDefaults.IconSize) / 2),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Icon(icon, contentDescription = label, tint = tint, modifier = Modifier.size(JoinedButtonDefaults.IconSize))
+        Icon(icon, contentDescription = label, tint = MaterialTheme.colorScheme.onSurface, modifier = Modifier.size(JoinedButtonDefaults.IconSize))
         // The search goes with what's shown, so a field fading out stays the field, its text where it was.
         AnimatedContent(
             targetState = bar to search,
