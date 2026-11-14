@@ -82,7 +82,7 @@ data class MapLayersState(
     /** A real route, or the day's stops joined in order; null for none. */
     val line: MapLine? = null,
     val isMyLocationEnabled: Boolean = false,
-    /** The ends of the route shown or being set up, each marked with its badge in the way of travelling's colour. */
+    /** The ends of the route shown or being set up, each marked with its badge in the route's colour. */
     val routeEnds: ImmutableList<RouteEndMark> = persistentListOf(),
 )
 

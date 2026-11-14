@@ -51,11 +51,12 @@ class MapLineTest {
     }
 
     @Test
-    fun eachWayOfTravellingHasItsOwnColor() {
-        val colors = TravelMode.entries.map { routeLine(streets, listOf(opera, prater), it).style.color }
+    fun eachWayOfTravellingHasItsOwnPatternInTheStopsColour() {
+        val styles = TravelMode.entries.map { routeLine(streets, listOf(opera, prater), it).style }
 
-        assertEquals(colors.size, colors.toSet().size)
-        assertTrue(colors.none { it == StopPathStyle.color })
-        assertNotEquals(StopPathStyle, routeLine(streets, listOf(opera, prater), TravelMode.Walking).style)
+        assertEquals(styles.size, styles.map { it.pattern }.toSet().size)
+        assertTrue(styles.all { it.color == StopPathStyle.color })
+        assertEquals(LinePattern.Dotted, styles[TravelMode.entries.indexOf(TravelMode.Walking)].pattern)
+        assertNotEquals(StopPathStyle, routeLine(streets, listOf(opera, prater), TravelMode.Driving).style)
     }
 }

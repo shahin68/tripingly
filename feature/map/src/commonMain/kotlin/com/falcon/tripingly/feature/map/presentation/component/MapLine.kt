@@ -16,7 +16,6 @@ import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
-import com.falcon.tripingly.core.designsystem.theme.MapColors
 import com.falcon.tripingly.core.designsystem.theme.extendedColors
 import com.falcon.tripingly.core.location.model.Coordinates
 import com.falcon.tripingly.core.model.route.TravelMode
@@ -33,14 +32,24 @@ import kotlin.math.roundToInt
  * progress bar. Then nothing moves: no lasting animation, so no battery cost. Lines differ only by [MapLineStyle].
  */
 
-/** How a line looks. */
-data class MapLineStyle(val color: Color, val width: Dp)
+/** How a line looks: [color] unspecified takes the stops' colour ([themed]). */
+data class MapLineStyle(val color: Color, val width: Dp, val pattern: LinePattern = LinePattern.Solid)
+
+/**
+ * A line's pattern: solid, or dashes [dash] long (0: round dots as wide as the line) with [gap] between them. Plain,
+ * no edge around them (Shahin, 2026-11-14).
+ */
+enum class LinePattern(val dash: Dp, val gap: Dp) {
+    Solid(0.dp, 0.dp),
+    Dotted(0.dp, 8.dp),
+    Dashed(12.dp, 8.dp),
+}
 
 /** A line to draw: its [points] from start to end and the [arrows] pointing the way. A new value runs the streak again. */
 @Immutable
 data class MapLine(val points: List<Coordinates>, val arrows: List<PathArrow>, val style: MapLineStyle)
 
-/** This line in the theme's colours: the plan, which has no colour of its own, takes the stops' colour. */
+/** This line in the theme's colours: the plan and routes, which have no colour of their own, take the stops' colour. */
 @Composable
 internal fun MapLine.themed(): MapLine =
     if (style.color.isSpecified) this else copy(style = style.copy(color = MaterialTheme.extendedColors.stop))
@@ -48,12 +57,19 @@ internal fun MapLine.themed(): MapLine =
 /** [bearing] in degrees clockwise from north, the way the line runs here. */
 data class PathArrow(val position: Coordinates, val bearing: Float)
 
-/** A real route along streets: one soft, pastel color per way of travelling. */
-internal val TravelMode.lineColor: Color
+/**
+ * A real route along streets is drawn in the app's own Ivy green (the stops' colour), as are its ends' rings, the
+ * places along it and the route controls; the way of travelling shows in its pattern: walking dotted, cycling dashed,
+ * driving solid (Shahin, 2026-11-14, C4 of the route colour canvas).
+ */
+internal val routeColor: Color
+    @Composable get() = MaterialTheme.extendedColors.stop
+
+internal val TravelMode.linePattern: LinePattern
     get() = when (this) {
-        TravelMode.Walking -> MapColors.Walk
-        TravelMode.Cycling -> MapColors.Bike
-        TravelMode.Driving -> MapColors.Car
+        TravelMode.Walking -> LinePattern.Dotted
+        TravelMode.Cycling -> LinePattern.Dashed
+        TravelMode.Driving -> LinePattern.Solid
     }
 
 internal val RouteWidth = 5.dp
@@ -77,7 +93,7 @@ private val ArrowStroke = 2.dp
  * and last stop, not where the street nearest them is, and has an arrow halfway between each two stops.
  */
 internal fun routeLine(points: List<Coordinates>, stops: List<Coordinates>, mode: TravelMode): MapLine {
-    val style = MapLineStyle(mode.lineColor, RouteWidth)
+    val style = MapLineStyle(Color.Unspecified, RouteWidth, mode.linePattern)
     if (points.size < 2) return MapLine(points, emptyList(), style)
     val ends = buildList {
         stops.firstOrNull()?.takeIf { it != points.first() }?.let(::add)

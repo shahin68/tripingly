@@ -32,9 +32,9 @@ Read `docs/knowledge/05-maps-places-routing.md` first. Check `06-current-state.m
 
 **Long press:** custom pin → sheet asking for a name and the target day → `POST /days/{id}/markers` with name + location.
 
-**Routes:** decode the encoded polyline (precision 5) in shared code; draw every line as a `MapLine` (`MapLine.kt`: points, arrows, `MapLineStyle`) through the one line drawer per platform, so routes and direction lines share rounded ends, arrows and the one-time streak; a route is 5 dp in its travel mode's color (`TravelMode.lineColor`, also on the mode chips) and starts and ends on the first and last stop; a new kind of line only needs a style; fit the camera to the route with padding for sheets. Leg times appear as small labels between pins or in the day list.
+**Routes:** decode the encoded polyline (precision 5) in shared code; draw every line as a `MapLine` (`MapLine.kt`: points, arrows, `MapLineStyle`) through the one line drawer per platform, so routes and direction lines share rounded ends, arrows and the one-time streak; a route is 5 dp in the stops' Ivy green (`routeColor`, also on the route controls), its travel mode shown by the pattern (`TravelMode.linePattern`: walking dotted, cycling dashed, driving solid; no edge) and starts and ends on the first and last stop; a new kind of line only needs a style; fit the camera to the route with padding for sheets. Leg times appear as small labels between pins or in the day list.
 
-**Along the way:** violet pins (`AlongTheWayPinColor`) + horizontal list under the map, ordered by `positionAlongRoute`; list item tap ↔ pin selection stay in sync.
+**Along the way:** pins in the route's colour (the stops' green) + horizontal list under the map, ordered by `positionAlongRoute`; list item tap ↔ pin selection stay in sync.
 
 **Zoomed out:** below `pinDotBelowZoom` (from `GET /app-config`) place pins turn into dots and back at once (no animation for now, owner's call); never animate pin icons frame by frame. Every map look value and where it lives is in the "Map look: where to change it" table of `docs/knowledge/05-maps-places-routing.md`; add new ones there.
 

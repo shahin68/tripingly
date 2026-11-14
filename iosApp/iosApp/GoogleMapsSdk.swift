@@ -43,6 +43,11 @@ private final class AppGoogleMap: NSObject, GoogleMap, GMSMapViewDelegate {
     private var line: GMSPolyline?
     private var lineMarkers: [GMSMarker] = []
     private var lineSweep: GMSPolyline?
+    /// The line's dashes and gaps in points (gap 0: solid) and the zoom they were last laid out for.
+    private var lineDash = 0.0
+    private var lineGap = 0.0
+    private var lineColor = UIColor.clear
+    private var lineDashZoom: Float = -1
     private let touches = TouchRecorder()
     /// A pin is held (the shared code took the long press): the finger pulls its line, the map's gestures are off.
     private var isHoldingPin = false
@@ -122,7 +127,7 @@ private final class AppGoogleMap: NSObject, GoogleMap, GMSMapViewDelegate {
         markers = kept
     }
 
-    func setLine(points: [GoogleMapPoint], color: UIColor, width: Double, arrows: [GoogleMapArrow], arrowIcon: UIImage?, capIcon: UIImage?) {
+    func setLine(points: [GoogleMapPoint], color: UIColor, width: Double, dash: Double, gap: Double, arrows: [GoogleMapArrow], arrowIcon: UIImage?, capIcon: UIImage?) {
         line?.map = nil
         line = nil
         lineMarkers.forEach { $0.map = nil }
@@ -133,6 +138,11 @@ private final class AppGoogleMap: NSObject, GoogleMap, GMSMapViewDelegate {
         polyline.strokeWidth = CGFloat(width)
         polyline.map = mapView
         line = polyline
+        // Dots are as long as the line is wide (square: GMSPolyline has no round dashes).
+        lineDash = gap > 0 && dash == 0 ? width : dash
+        lineGap = gap
+        lineColor = color
+        layOutLineDashes(force: true)
         // Flat, so the arrows turn with the map and keep pointing along the line.
         let arrowMarkers: [GMSMarker] = arrowIcon.map { icon in
             arrows.map { arrow in
@@ -144,6 +154,23 @@ private final class AppGoogleMap: NSObject, GoogleMap, GMSMapViewDelegate {
             [first, last].map { point in flatMarker(latitude: point.latitude, longitude: point.longitude, icon: icon, rotation: 0) }
         } ?? []
         lineMarkers = capMarkers + arrowMarkers
+    }
+
+    /// Breaks the line into dashes of a fixed size on screen: spans are measured on the ground, so they are worked out
+    /// again for the zoom the map is at, once it has changed by a quarter of a level.
+    private func layOutLineDashes(force: Bool = false) {
+        guard let line, let path = line.path, lineGap > 0 else { return }
+        let zoom = mapView.camera.zoom
+        guard force || abs(zoom - lineDashZoom) >= 0.25 else { return }
+        lineDashZoom = zoom
+        let latitude = mapView.camera.target.latitude * Double.pi / 180
+        let metresPerPoint = 156_543.033_92 * cos(latitude) / pow(2, Double(zoom))
+        line.spans = GMSStyleSpans(
+            path,
+            [GMSStrokeStyle.solidColor(lineColor), GMSStrokeStyle.solidColor(.clear)],
+            [NSNumber(value: lineDash * metresPerPoint), NSNumber(value: lineGap * metresPerPoint)],
+            .rhumb
+        )
     }
 
     private func flatMarker(latitude: Double, longitude: Double, icon: UIImage, rotation: Double) -> GMSMarker {
@@ -212,6 +239,7 @@ private final class AppGoogleMap: NSObject, GoogleMap, GMSMapViewDelegate {
     }
 
     func mapView(_ mapView: GMSMapView, idleAt position: GMSCameraPosition) {
+        layOutLineDashes()
         let corners = viewCorners()
         listener.onCameraIdle(
             latitude: position.target.latitude,
@@ -225,6 +253,7 @@ private final class AppGoogleMap: NSObject, GoogleMap, GMSMapViewDelegate {
     }
 
     func mapView(_ mapView: GMSMapView, didChange position: GMSCameraPosition) {
+        layOutLineDashes()
         let corners = viewCorners()
         listener.onCameraChange(
             zoom: position.zoom,

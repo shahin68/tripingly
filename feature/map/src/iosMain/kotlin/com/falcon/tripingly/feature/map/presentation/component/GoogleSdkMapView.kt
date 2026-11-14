@@ -274,7 +274,7 @@ internal fun GoogleSdkMapView(
     val themedLine = line?.themed()
     LaunchedEffect(themedLine) {
         if (themedLine == null || themedLine.points.size < 2) {
-            map.setLine(emptyList(), stopColor.toUIColor(), 0.0, emptyList(), null, null)
+            map.setLine(emptyList(), stopColor.toUIColor(), 0.0, 0.0, 0.0, emptyList(), null, null)
             map.setLineSweep(emptyList(), MapLineSweepColor.toUIColor(), 0.0)
             return@LaunchedEffect
         }
@@ -284,6 +284,8 @@ internal fun GoogleSdkMapView(
             points = points,
             color = themedLine.style.color.toUIColor(),
             width = width,
+            dash = themedLine.style.pattern.dash.value.toDouble(),
+            gap = themedLine.style.pattern.gap.value.toDouble(),
             arrows = themedLine.arrows.map { GoogleMapArrow(it.position.latitude, it.position.longitude, it.bearing.toDouble()) },
             arrowIcon = drawPathArrow(density, layoutDirection, themedLine.style.color).toUIImage(density.density),
             capIcon = drawLineCap(density, layoutDirection, themedLine.style).toUIImage(density.density),
@@ -297,10 +299,10 @@ internal fun GoogleSdkMapView(
     }
     val textMeasurer = rememberTextMeasurer()
     val pinPhotos = rememberPinPhotos(placePins)
-    val pinIcons = remember(placeColor, hotSpotColor, density) { mutableMapOf<PlacePinLook, UIImage>() }
+    val pinIcons = remember(placeColor, hotSpotColor, stopColor, density) { mutableMapOf<PlacePinLook, UIImage>() }
     fun pinIcon(look: PlacePinLook) = pinIcons.getOrPut(look) {
         val fill = when {
-            look.isAlongTheWay -> AlongTheWayPinColor
+            look.isAlongTheWay -> stopColor
             look.isTripinly -> hotSpotColor
             else -> placeColor
         }
@@ -315,7 +317,7 @@ internal fun GoogleSdkMapView(
                 size = look.size,
                 fill = fill,
                 iconColor = when {
-                    look.isAlongTheWay -> Color.White
+                    look.isAlongTheWay -> onStopColor
                     look.isTripinly -> onHotSpotColor
                     else -> onPlaceColor
                 },
@@ -334,8 +336,8 @@ internal fun GoogleSdkMapView(
     val stopIcons = remember(density, stopColor) { mutableMapOf<Triple<Int, String?, Boolean>, UIImage>() }
     val coverThumbs = rememberCoverThumbs(markers)
     val stopTitles = markers.map { it.title.asString() }
-    // The rings round the route's ends, one per pin size and way of travelling's colour.
-    val rings = remember(density) { mutableMapOf<Pair<Dp, Color>, UIImage>() }
+    // The rings round the route's ends, one per pin size, in the route's colour (the stops' green).
+    val rings = remember(density, stopColor) { mutableMapOf<Dp, UIImage>() }
     LaunchedEffect(markers, stopTitles, coverThumbs, pinPhotos, selectedPlace, placePins, placeClusters, pinIcons, clusterIcons, isDots, routeEnds) {
         val stops = markers.mapIndexed { index, marker ->
             GoogleMapMarker(
@@ -424,15 +426,15 @@ internal fun GoogleSdkMapView(
                 fadesIn = false,
             )
         }
-        // The route's ends: a thick ring in the way of travelling's colour round each end's pin, under it.
+        // The route's ends: a thick ring in the route's colour round each end's pin, under it.
         val ends = routeEnds.map { end ->
             GoogleMapMarker(
                 key = ROUTE_END_KEY + end.isStart,
                 latitude = end.position.lat,
                 longitude = end.position.lng,
                 title = "",
-                icon = rings.getOrPut(end.pinSize to end.color) {
-                    drawRouteEndRing(end.pinSize, end.color, density, layoutDirection).toUIImage(density.density)
+                icon = rings.getOrPut(end.pinSize) {
+                    drawRouteEndRing(end.pinSize, stopColor, density, layoutDirection).toUIImage(density.density)
                 },
                 anchorX = 0.5,
                 anchorY = 0.5,

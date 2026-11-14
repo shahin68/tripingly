@@ -41,9 +41,11 @@ interface GoogleMap {
     /**
      * Replaces the line drawn under the markers (a route, or the stops joined in order) and its [arrows]: flat
      * markers showing [arrowIcon] (pointing north) turned by their bearing. [capIcon], a dot as wide as the line,
-     * sits on both ends to round them. [width] is in points; fewer than two points draw none.
+     * sits on both ends to round them. [width] is in points; fewer than two points draw none. A [gap] above zero
+     * breaks the line into dashes [dash] points long (dots as long as the line is wide when [dash] is 0) with [gap]
+     * points between them, kept that size on screen as the map zooms; 0 draws it solid.
      */
-    fun setLine(points: List<GoogleMapPoint>, color: UIColor, width: Double, arrows: List<GoogleMapArrow>, arrowIcon: UIImage?, capIcon: UIImage?)
+    fun setLine(points: List<GoogleMapPoint>, color: UIColor, width: Double, dash: Double, gap: Double, arrows: List<GoogleMapArrow>, arrowIcon: UIImage?, capIcon: UIImage?)
 
     /** Replaces the streak running along the line, on top of it; fewer than two points draw none. */
     fun setLineSweep(points: List<GoogleMapPoint>, color: UIColor, width: Double)

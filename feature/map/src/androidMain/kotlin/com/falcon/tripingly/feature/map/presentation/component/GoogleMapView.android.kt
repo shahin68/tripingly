@@ -24,7 +24,6 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.ui.input.pointer.PointerEventPass
@@ -49,6 +48,9 @@ import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.model.BitmapDescriptor
 import com.google.android.gms.maps.model.BitmapDescriptorFactory
 import com.google.android.gms.maps.model.CameraPosition
+import com.google.android.gms.maps.model.Dash
+import com.google.android.gms.maps.model.Dot
+import com.google.android.gms.maps.model.Gap
 import com.google.android.gms.maps.model.JointType
 import com.google.android.gms.maps.model.LatLng
 import com.google.android.gms.maps.model.MapStyleOptions
@@ -285,13 +287,16 @@ actual fun GoogleMapView(
             val onPlaceColor = MaterialTheme.colorScheme.onSecondary
             val hotSpotColor = MaterialTheme.extendedColors.place
             val onHotSpotColor = MaterialTheme.colorScheme.onTertiary
+            // Places along the route, and the route's ends' rings, in the route's colour.
+            val alongColor = routeColor
+            val onAlongColor = MaterialTheme.extendedColors.onStop
             val layoutDirection = LocalLayoutDirection.current
             val textMeasurer = rememberTextMeasurer()
             val pinPhotos = rememberPinPhotos(placePins)
-            val pinIcons = remember(placeColor, hotSpotColor, density) { mutableMapOf<PlacePinLook, BitmapDescriptor>() }
+            val pinIcons = remember(placeColor, hotSpotColor, alongColor, density) { mutableMapOf<PlacePinLook, BitmapDescriptor>() }
             fun pinIcon(look: PlacePinLook) = pinIcons.getOrPut(look) {
                 val fill = when {
-                    look.isAlongTheWay -> AlongTheWayPinColor
+                    look.isAlongTheWay -> alongColor
                     look.isTripinly -> hotSpotColor
                     else -> placeColor
                 }
@@ -306,7 +311,7 @@ actual fun GoogleMapView(
                         size = look.size,
                         fill = fill,
                         iconColor = when {
-                            look.isAlongTheWay -> Color.White
+                            look.isAlongTheWay -> onAlongColor
                             look.isTripinly -> onHotSpotColor
                             else -> onPlaceColor
                         },
@@ -442,14 +447,14 @@ actual fun GoogleMapView(
                     )
                 }
             }
-            // The route's ends: a thick ring in the way of travelling's colour round each end's pin, under it.
-            val rings = remember(density, layoutDirection) { mutableMapOf<Pair<Dp, Color>, BitmapDescriptor>() }
+            // The route's ends: a thick ring in the route's colour round each end's pin, under it.
+            val rings = remember(density, layoutDirection, alongColor) { mutableMapOf<Dp, BitmapDescriptor>() }
             layers.routeEnds.forEach { end ->
                 key(end.isStart) {
                     Marker(
                         state = rememberUpdatedMarkerState(position = LatLng(end.position.lat, end.position.lng)),
-                        icon = rings.getOrPut(end.pinSize to end.color) {
-                            BitmapDescriptorFactory.fromBitmap(drawRouteEndRing(end.pinSize, end.color, density, layoutDirection).asAndroidBitmap())
+                        icon = rings.getOrPut(end.pinSize) {
+                            BitmapDescriptorFactory.fromBitmap(drawRouteEndRing(end.pinSize, alongColor, density, layoutDirection).asAndroidBitmap())
                         },
                         anchor = Offset(0.5f, 0.5f),
                         zIndex = ROUTE_END_Z,
@@ -525,7 +530,16 @@ private fun MapLineView(line: MapLine) {
     val layoutDirection = LocalLayoutDirection.current
     val points = remember(line) { line.points.map { LatLng(it.latitude, it.longitude) } }
     val width = with(density) { line.style.width.toPx() }
-    Polyline(points = points, color = line.style.color, width = width, jointType = JointType.ROUND, startCap = RoundCap(), endCap = RoundCap())
+    val pattern = remember(line.style.pattern, density) {
+        with(density) {
+            when (line.style.pattern) {
+                LinePattern.Solid -> null
+                LinePattern.Dotted -> listOf(Dot(), Gap(LinePattern.Dotted.gap.toPx()))
+                LinePattern.Dashed -> listOf(Dash(LinePattern.Dashed.dash.toPx()), Gap(LinePattern.Dashed.gap.toPx()))
+            }
+        }
+    }
+    Polyline(points = points, color = line.style.color, width = width, jointType = JointType.ROUND, startCap = RoundCap(), endCap = RoundCap(), pattern = pattern)
 
     // Flat, so they turn with the map and keep pointing along the line; under every pin (z 0).
     val arrowColor = line.style.color

@@ -81,7 +81,7 @@ import com.falcon.tripingly.feature.map.generated.resources.map_route_from
 import com.falcon.tripingly.feature.map.generated.resources.map_route_swap
 import com.falcon.tripingly.feature.map.generated.resources.map_route_to
 import com.falcon.tripingly.feature.map.generated.resources.map_route_to_placeholder
-import com.falcon.tripingly.feature.map.presentation.component.lineColor
+import com.falcon.tripingly.feature.map.presentation.component.routeColor
 import com.falcon.tripingly.feature.map.presentation.map.MapAction
 import com.falcon.tripingly.feature.map.presentation.map.RouteBarState
 import com.falcon.tripingly.feature.map.presentation.map.SearchState
@@ -92,7 +92,7 @@ import org.jetbrains.compose.resources.stringResource
  * 2026-11-13): grown out of the title pill like the trip card ([PillGrowthPanel]), pushing the header's buttons out.
  * Two pills: where from, by its start mark, with ✕ beside it (✕ and back close the route and the start); where to, by a
  * flag, with ⇅ beside it once both ends are set, which switches them (the names glide past each other). The marks take
- * the way of travelling's colour, like the route. A tap on a set end's pill picks it again (Shahin, 2026-11-13): its
+ * the route's colour, like the route. A tap on a set end's pill picks it again (Shahin, 2026-11-13): its
  * pill becomes the search field holding its name ([search] open, the keyboard up, outlined while it's typed in), or
  * "Search or tap a pin", which opens it; the route stays until another place is picked, and ✕ or back then cancels
  * the change. The pills show no ripple. Every pill and button is the same small spacing apart and in from the bar's
@@ -111,7 +111,7 @@ internal fun RouteBar(
 ) {
     @OptIn(ExperimentalComposeUiApi::class)
     BackHandler(enabled = transition.targetState && LocalScreenOnTop.current) { onAction(MapAction.PinRoute.Close) }
-    val color = bar.mode.lineColor
+    val color = routeColor
     // The names glide to each other's pill when the ends switch; the gap they cross is a pill and the space between.
     val swapDistance = with(LocalDensity.current) { (RouteHeight + MaterialTheme.spacing.small).roundToPx() }
     PillGrowthPanel(transition, progress, pill, pillContent, modifier.fillMaxWidth()) {
