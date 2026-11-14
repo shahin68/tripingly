@@ -69,8 +69,8 @@ internal val GlassEdgeDark = Color(0x14FFFFFF)
 object MapColors {
     /** The dot on a stop (and its day tab) with something I haven't seen: the accent red, in a white ring on pins. */
     val NewActivity = Color(0xFFE53935)
-    /** Routes: one soft, pastel color per way of travelling. */
-    val Walk = Color(0xFF7CC49A)
-    val Bike = Color(0xFFF2A86B)
-    val Car = Color(0xFF7FA8E6)
+    /** Routes: one sharp jewel colour per way of travelling (emerald, amber, sapphire), plain solid lines. */
+    val Walk = Color(0xFF1E9E6A)
+    val Bike = Color(0xFFE07B1F)
+    val Car = Color(0xFF3355CC)
 }

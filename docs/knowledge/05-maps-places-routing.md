@@ -66,9 +66,9 @@ data class MapState(
 | Zoom below which place pins are dots | 14 (0–22) | Railway api `APP_PIN_DOT_BELOW_ZOOM` → `pinDotBelowZoom` |
 | Dot size | 10 dp | `PlaceDotSize`, `PlacePins.kt` |
 | Pin ↔ dot change | instant, no animation | `GoogleMapView.android.kt` (`isDots`), Swift `setMarkers` |
-| Along-the-way pin color | violet `0xFF8E24AA` | `AlongTheWayPinColor`, `PlacePins.kt` |
+| Along-the-way pin color | soft violet `0xFF8A5AAB` | `AlongTheWayPinColor`, `PlacePins.kt` |
 | Place pin sizes | 18 / 30 / 36 dp by prominence (`pinMediumMinProminence` 60, `pinLargeMinProminence` 95 from the server) | `PinSizes`, `PlacePins.kt` |
-| Route line | by way of travelling: walk green `0xFF2E7D32`, bike orange `0xFFEF6C00`, car blue `0xFF1E88E5` (also the mode chip's color), 5 dp, arrows, rounded ends, one 1.2 s streak | `TravelMode.lineColor`, `RouteWidth`, `routeLine()`, `MapLine.kt` |
+| Route line | by way of travelling: "Jewel": walk emerald `0xFF1E9E6A`, bike amber `0xFFE07B1F`, car sapphire `0xFF3355CC`, solid with no edge (also the mode chip's color), 5 dp, arrows, rounded ends, one 1.2 s streak | `TravelMode.lineColor`, `RouteWidth`, `routeLine()`, `MapLine.kt` |
 | Direction lines (no route) | slate blue `0xFF3D5A80`, 3 dp, arrows, rounded ends, one 1.2 s streak | `StopPathStyle`, `MAP_LINE_SWEEP_MILLIS`, `StopPath.kt` |
 | Room around a fit's points | 48 dp, inside the map's padding | `FitMargin`, `GoogleMapView.kt` |
 | Camera move and fit time | 180 ms | `CAMERA_MOVE_MILLIS`, `GoogleMapView.kt` |

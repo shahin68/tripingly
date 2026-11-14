@@ -157,7 +157,7 @@ val SelectedPinSize: Dp = 44.dp
 val PlaceDotSize: Dp = 10.dp
 
 /** Places along the shown route: violet, apart from the map's places and from the hot spots. */
-val AlongTheWayPinColor = Color(0xFF8E24AA)
+val AlongTheWayPinColor = Color(0xFF8A5AAB)
 
 /** The look of [this] pin as a dot: only its color matters, so every dot of a color shares one bitmap. */
 internal fun PlacePin.dotLook() = PlacePinLook(PlaceCategory.Other, place.isTripinly, PlaceDotSize, isAlongTheWay = isAlongTheWay, isDot = true)
