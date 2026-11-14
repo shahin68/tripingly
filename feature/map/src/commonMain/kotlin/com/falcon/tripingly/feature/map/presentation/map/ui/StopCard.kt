@@ -117,7 +117,7 @@ internal fun PinCardScope.StopCard(
                     PhotoBanner(
                         title = stop.title.asString(),
                         subtitle = stopSubtitle(card, position = imagePosition(images.size, pagerState.currentPage)),
-                        afterSubtitle = { card.addedBy?.let { AddedByInline(it, Modifier.weight(1f, fill = false)) } },
+                        afterSubtitle = { card.addedBy?.let { AddedByInline(it, it.text()) } },
                         image = if (images.isEmpty()) null else pagerImages(images, pagerState, description, onOpen = { onOpenPhotos() }),
                         onClick = onOpenPhotos,
                         mark = { PinMark(card.place?.category, isStop = true) },
@@ -195,12 +195,13 @@ internal fun stopSubtitle(card: StopCardState, numberColor: Color = Color.Unspec
     }
 }
 
-/** OpenStreetMap's credit for a stop at one of its places, then the shown image's ([page]) when it's a Commons image. */
+/** OpenStreetMap's credit for a stop at one of its places, then the shown image's ([page]): a Commons credit or "Photo by @handle". */
 @Composable
 internal fun StopCredit(card: StopCardState, modifier: Modifier = Modifier, page: Int = 0) {
     CreditLine(
         osm = card.place?.isFromOsm == true,
         credit = card.images.getOrNull(page)?.credit,
+        photoBy = card.images.getOrNull(page)?.uploader?.username,
         cropped = true,
         maxLines = 2,
         modifier = modifier.padding(horizontal = MaterialTheme.spacing.extraSmall),

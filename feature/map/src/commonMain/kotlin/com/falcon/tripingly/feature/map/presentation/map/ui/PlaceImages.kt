@@ -2,7 +2,7 @@ package com.falcon.tripingly.feature.map.presentation.map.ui
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.BoxScope
-import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.FlowRowScope
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.pager.HorizontalPager
@@ -43,7 +43,7 @@ internal fun PlaceBanner(
     onOpen: (index: Int) -> Unit,
     onOpenPhotos: (() -> Unit)?,
     modifier: Modifier = Modifier,
-    afterSubtitle: @Composable RowScope.() -> Unit = {},
+    afterSubtitle: @Composable FlowRowScope.() -> Unit = {},
 ) {
     val position = imagePosition(images.orEmpty().size, pagerState.currentPage)
     val description = stringResource(Res.string.map_place_images)

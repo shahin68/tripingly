@@ -82,6 +82,8 @@ data class PlaceImage(
     val height: Int?,
     /** Shown with every Commons image; null for trip photos. */
     val credit: ImageCredit?,
+    /** Who uploaded a trip photo, credited as "Photo by @username"; null for Commons images and across a block. */
+    val uploader: UserSummary? = null,
 )
 
 /** Who to credit for a Wikimedia Commons image, and under which licence. */

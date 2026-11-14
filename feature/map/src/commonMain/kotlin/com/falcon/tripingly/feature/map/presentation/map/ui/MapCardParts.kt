@@ -8,6 +8,8 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.FlowRowScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxSize
@@ -175,7 +177,7 @@ internal fun PhotoBanner(
     image: (@Composable BoxScope.() -> Unit)?,
     modifier: Modifier = Modifier,
     onClick: (() -> Unit)? = null,
-    afterSubtitle: @Composable RowScope.() -> Unit = {},
+    afterSubtitle: @Composable FlowRowScope.() -> Unit = {},
     trailing: @Composable RowScope.() -> Unit = {},
     topEnd: @Composable () -> Unit = {},
     /** Without an image: the pin's own mark ([PinMark]), mirroring [topEnd]. */
@@ -207,8 +209,9 @@ internal fun PhotoBanner(
             ) {
                 Column(Modifier.weight(1f)) {
                     Text(title, style = MaterialTheme.typography.titleLarge)
-                    Row(horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraSmall), verticalAlignment = Alignment.CenterVertically) {
-                        Text(subtitle, style = MaterialTheme.typography.bodySmall, modifier = Modifier.weight(1f, fill = false))
+                    // Who added it goes on as long as there's room, then whole onto the next line (Shahin, 2026-11-14).
+                    FlowRow(horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraSmall)) {
+                        Text(subtitle, style = MaterialTheme.typography.bodySmall, modifier = Modifier.align(Alignment.CenterVertically))
                         afterSubtitle()
                     }
                 }

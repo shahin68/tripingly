@@ -361,6 +361,7 @@ internal class MapStateMapper(
         width = width,
         height = height,
         credit = credit,
+        uploader = uploader,
     )
 
     /**

@@ -13,23 +13,23 @@ import com.falcon.tripingly.core.designsystem.component.AvatarSize
 import com.falcon.tripingly.core.designsystem.theme.spacing
 import com.falcon.tripingly.feature.map.generated.resources.Res
 import com.falcon.tripingly.feature.map.generated.resources.map_added_by_you
-import com.falcon.tripingly.feature.map.generated.resources.map_by_you
 import com.falcon.tripingly.feature.map.generated.resources.map_place_added_by
 import com.falcon.tripingly.feature.map.generated.resources.map_spot_by
 import com.falcon.tripingly.feature.map.presentation.map.AddedBy
 import org.jetbrains.compose.resources.stringResource
 
 /**
- * Who added a pin, inline after its type on the big card (Shahin's B, 2026-11-13): "· ", their face and @handle, or "you".
- * The handle ends in "…" when it doesn't fit; the face stays.
+ * Who added a pin, inline after its type on the big card (Shahin's B, 2026-11-13): "· ", their face and [text], the same
+ * words as in the details ("Added by @handle", "Added by you", "Spot by @handle"; Shahin, 2026-11-14). The text ends in
+ * "…" when it doesn't fit; the face stays.
  */
 @Composable
-internal fun AddedByInline(addedBy: AddedBy, modifier: Modifier = Modifier) {
+internal fun AddedByInline(addedBy: AddedBy, text: String, modifier: Modifier = Modifier) {
     Row(modifier, horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraSmall), verticalAlignment = Alignment.CenterVertically) {
         Text("·", style = MaterialTheme.typography.bodySmall)
         addedBy.user?.let { AvatarCircle(it, size = AvatarSize.Tiny) }
         Text(
-            if (addedBy.isMe) stringResource(Res.string.map_by_you) else "@${addedBy.user?.username.orEmpty()}",
+            text,
             style = MaterialTheme.typography.bodySmall,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,

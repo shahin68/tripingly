@@ -73,7 +73,7 @@ internal fun PinCardScope.PlaceCard(
                 pagerState = pagerState,
                 onOpen = onOpenImage,
                 onOpenPhotos = onOpenPhotos.takeIf { address == null },
-                afterSubtitle = { addedBy?.let { AddedByInline(it, Modifier.weight(1f, fill = false)) } },
+                afterSubtitle = { addedBy?.let { AddedByInline(it, it.spotText()) } },
             )
         },
         credit = {
@@ -81,6 +81,7 @@ internal fun PinCardScope.PlaceCard(
                 // Our places come from OpenStreetMap or from people; an address from search comes from OpenStreetMap too.
                 osm = address != null || details?.isFromOsm == true,
                 credit = images?.getOrNull(pagerState.currentPage)?.credit,
+                photoBy = images?.getOrNull(pagerState.currentPage)?.uploader?.username,
                 cropped = true,
                 maxLines = 2,
                 modifier = Modifier.padding(top = MaterialTheme.spacing.small).padding(horizontal = MaterialTheme.spacing.extraSmall),
