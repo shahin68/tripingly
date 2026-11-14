@@ -70,7 +70,7 @@ import com.falcon.tripingly.feature.map.generated.resources.map_place_add_to_day
 import com.falcon.tripingly.feature.map.generated.resources.map_route_from_here
 import com.falcon.tripingly.feature.map.generated.resources.map_route_go_here
 import com.falcon.tripingly.feature.map.generated.resources.map_route_to_here
-import com.falcon.tripingly.feature.map.presentation.component.routeColor
+import com.falcon.tripingly.feature.map.presentation.component.lineColor
 import com.falcon.tripingly.feature.map.presentation.map.PinAdd
 import com.falcon.tripingly.feature.map.presentation.map.PinRoutesState
 import org.jetbrains.compose.resources.stringResource
@@ -143,7 +143,7 @@ internal fun pinAction(onDelete: (() -> Unit)?, onAdd: (() -> Unit)?, addLabel: 
 
 /**
  * Go here (dimmed until where I am is known; a tap then asks for it) and Route from, or Route to here while another pin
- * is the start. Each takes the route's colour, the route's, while its route shows (Tripinly Pro; the
+ * is the start. Each takes the way of travelling's colour, the route's, while its route shows (Tripinly Pro; the
  * paywall otherwise).
  */
 @Composable
@@ -151,7 +151,7 @@ internal fun routeButtons(routes: PinRoutesState, onGoHere: () -> Unit, onRoute:
     val goHere = stringResource(Res.string.map_route_go_here)
     val route = stringResource(if (routes.isRouteTo) Res.string.map_route_to_here else Res.string.map_route_from_here)
     val neutral = JoinedButtonDefaults.neutral()
-    val color = routeColor
+    val color = routes.mode.lineColor
     val on = JoinedButtonColors(color.copy(alpha = ROUTE_TINT), color)
     val goHereColors = when {
         routes.isGoHereOn -> on

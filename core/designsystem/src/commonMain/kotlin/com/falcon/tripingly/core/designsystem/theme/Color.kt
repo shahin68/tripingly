@@ -63,10 +63,14 @@ internal val GlassEdgeLight = Color(0x99FFFFFF)
 internal val GlassEdgeDark = Color(0x14FFFFFF)
 
 /**
- * What the map draws the same in light and dark: the new dot. Stops, the plan line, routes and places follow the
- * theme ([ExtendedColors.stop], [ExtendedColors.place]).
+ * What the map draws the same in light and dark: the new dot and the routes. Stops, the plan line and places
+ * follow the theme ([ExtendedColors.stop], [ExtendedColors.place]).
  */
 object MapColors {
     /** The dot on a stop (and its day tab) with something I haven't seen: the accent red, in a white ring on pins. */
     val NewActivity = Color(0xFFE53935)
+    /** Routes: one soft, pastel color per way of travelling. */
+    val Walk = Color(0xFF7CC49A)
+    val Bike = Color(0xFFF2A86B)
+    val Car = Color(0xFF7FA8E6)
 }

@@ -37,7 +37,7 @@ import kotlin.math.roundToInt
 
 /**
  * A place's pin on the map, how big it is drawn, whether it shows the place's photo and whether the place is
- * along the shown route (drawn in the route's colour, the stops' Ivy green).
+ * along the shown route (drawn in [AlongTheWayPinColor]).
  */
 @Immutable
 data class PlacePin(
@@ -155,6 +155,9 @@ val SelectedPinSize: Dp = 44.dp
 
 /** A pin while zoomed out below [AppConfig.pinDotBelowZoom]: a small dot, so route lines and stops stay readable. */
 val PlaceDotSize: Dp = 10.dp
+
+/** Places along the shown route: violet, apart from the map's places and from the hot spots. */
+val AlongTheWayPinColor = Color(0xFF8E24AA)
 
 /** The look of [this] pin as a dot: only its color matters, so every dot of a color shares one bitmap. */
 internal fun PlacePin.dotLook() = PlacePinLook(PlaceCategory.Other, place.isTripinly, PlaceDotSize, isAlongTheWay = isAlongTheWay, isDot = true)
@@ -275,11 +278,11 @@ fun drawClusterPin(
 
 /**
  * One end of a route on the map ([isStart]: where it starts): the end's pin, a place's grown, with a thick ring round it
- * in the route's colour, the stops' Ivy green since 2026-11-14 (Shahin, 2026-11-13: for now, to be redesigned after a few rounds of refinements).
+ * in the way of travelling's [color] (Shahin, 2026-11-13: for now, to be redesigned after a few rounds of refinements).
  * [pinSize] is the pin's size, so the ring hugs it.
  */
 @Immutable
-data class RouteEndMark(val position: GeoPoint, val isStart: Boolean, val pinSize: Dp)
+data class RouteEndMark(val position: GeoPoint, val isStart: Boolean, val pinSize: Dp, val color: Color)
 
 /**
  * Draws a route end's ring, drawn under the end's pin: a [color] disc [RouteEndRingWidth] wider than the pin all round,

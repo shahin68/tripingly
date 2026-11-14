@@ -86,7 +86,7 @@ import com.falcon.tripingly.feature.map.generated.resources.map_route_close
 import com.falcon.tripingly.feature.map.generated.resources.map_route_retry
 import com.falcon.tripingly.feature.map.generated.resources.map_stop_count
 import com.falcon.tripingly.feature.map.presentation.component.MapMarker
-import com.falcon.tripingly.feature.map.presentation.component.routeColor
+import com.falcon.tripingly.feature.map.presentation.component.lineColor
 import com.falcon.tripingly.feature.map.presentation.map.EditorMenu
 import com.falcon.tripingly.feature.map.presentation.map.MapAction
 import com.falcon.tripingly.feature.map.presentation.map.PointRouteCardState
@@ -153,7 +153,7 @@ private fun StopChips(card: StopsCardState, onAction: (MapAction) -> Unit) {
     val listState = rememberLazyListState(initialFirstVisibleItemIndex = selectedIndex.coerceAtLeast(0))
     val onScreen = remember { OnScreen() }
     LaunchedEffect(card.selectedStopId) { listState.reveal(selectedIndex, onScreen, toStart = true) }
-    val legColor = if (card.route != null) routeColor else MaterialTheme.colorScheme.outlineVariant
+    val legColor = card.route?.mode?.lineColor ?: MaterialTheme.colorScheme.outlineVariant
     LazyRow(
         state = listState,
         modifier = Modifier.padding(top = RowGap).horizontalFadingEdge(listState).trackOnScreen(onScreen),

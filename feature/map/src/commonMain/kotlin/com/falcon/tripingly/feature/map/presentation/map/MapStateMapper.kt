@@ -30,6 +30,7 @@ import com.falcon.tripingly.feature.map.presentation.component.PIN_SIZE
 import com.falcon.tripingly.feature.map.presentation.component.PlacePin
 import com.falcon.tripingly.feature.map.presentation.component.RouteEndMark
 import com.falcon.tripingly.feature.map.presentation.component.SelectedPinSize
+import com.falcon.tripingly.feature.map.presentation.component.lineColor
 import com.falcon.tripingly.feature.map.presentation.component.placePinSize
 import com.falcon.tripingly.feature.map.presentation.component.routeLine
 import com.falcon.tripingly.feature.map.presentation.component.stopPathShape
@@ -263,6 +264,7 @@ internal class MapStateMapper(
             kept.values.filter { it.id !in shown && it.id !in endPlaces }.map { PlacePin(it, placePinSize(it, config), isAlongTheWay = it.id in alongIds, isKept = true) } +
             alongTheWay.filter { it.place.id !in shown && it.place.id !in endPlaces && it.place.id !in kept }.map { it.toPin() }
         val stopPath = stops.map { it.position }.takeIf { routePoints.isEmpty() && route.between == null }.orEmpty()
+        val endColor = route.travelMode.lineColor
         return MapLayersState(
             stops = stops.toImmutableList(),
             placePins = placePins.toImmutableList(),
@@ -270,7 +272,7 @@ internal class MapStateMapper(
             placeClusters = model.pins.clusters.takeUnless { model.arePlacesHidden }.orEmpty().toImmutableList(),
             // A place from search knows no cover image, so its pin's place draws it, photo included.
             selectedPlace = (model.selection as? Selection.Place)?.place?.let { place -> placePins.firstOrNull { it.place.id == place.id }?.place ?: place },
-            // A real route in its route's color, or else the stops joined in order.
+            // A real route in its way of travelling's color, or else the stops joined in order.
             line = when {
                 routePoints.size > 1 -> routeLine(routePoints, route.planStops.map { Coordinates(it.lat, it.lng) }, route.planMode)
                 stopPath.size > 1 -> stopPathShape(stopPath)
@@ -279,7 +281,7 @@ internal class MapStateMapper(
             isMyLocationEnabled = model.location.permission == LocationPermission.Granted,
             routeEnds = ends.map { end ->
                 val size = end.stop?.let { if (it.coverPhotoId != null) COVER_PIN_SIZE else PIN_SIZE } ?: SelectedPinSize
-                RouteEndMark(end.place.location, end.isStart, size)
+                RouteEndMark(end.place.location, end.isStart, size, endColor)
             }.toImmutableList(),
         )
     }
