@@ -205,7 +205,7 @@ internal fun MapScreen(
             cameraCommands.map { command ->
                 when (command) {
                     is CameraCommand.MoveTo -> command
-                    is CameraCommand.Fit -> fit(command.bounds).let { (target, zoom) -> CameraCommand.MoveTo(target, zoom) }
+                    is CameraCommand.Fit -> fit(command.bounds).let { (target, zoom) -> CameraCommand.MoveTo(target, zoom, upright = true) }
                 }
             }
         }

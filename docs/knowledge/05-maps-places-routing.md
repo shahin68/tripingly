@@ -75,7 +75,7 @@ data class MapState(
 | Smallest area a fit shows | about 500 m (0.005°) around one stop | `MIN_SPAN_DEGREES`, `CameraCommand.kt` |
 | Zoom on a trip's destination (no stops) | 12, a city | `DESTINATION_ZOOM`, `MapCamera.kt` |
 | Pulled-down plan sheet | 72 dp (handle and title row) | `PlanSheetPeek`, `MapPlanSheet.kt` |
-| Fit math (opening and fit-day button) | 256 dp world at zoom 0, zoom 2–21 (the map SDKs' own, don't tune) | `fittedCamera`, `GoogleMapView.kt` |
+| Fit math (opening and fit-day button) | 256 dp world at zoom 0, zoom 2–21 (the map SDKs' own, don't tune); every fit also turns the map north up (`MoveTo.upright`; Shahin, 2026-11-14), since the math is for an unturned map. iOS moves are always north up | `fittedCamera`, `GoogleMapView.kt` |
 
 - Use the Google Maps utility libraries for **client-side clustering** of trip markers only if needed. Place clusters come from the server.
 

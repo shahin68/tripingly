@@ -9,9 +9,13 @@ import com.falcon.tripingly.core.model.place.GeoBounds
  * header and cards cover.
  */
 sealed interface CameraCommand {
-    data class MoveTo(val target: Coordinates, val zoom: Float) : CameraCommand
+    /**
+     * With [upright] the map also turns back to north up: a fit is worked out for an unturned map, so it turns it back
+     * (Shahin, 2026-11-14). Other moves keep the map turned as the fingers left it.
+     */
+    data class MoveTo(val target: Coordinates, val zoom: Float, val upright: Boolean = false) : CameraCommand
 
-    /** Shows all of [bounds], with a margin, in the part of the map nothing covers. */
+    /** Shows all of [bounds], with a margin, in the part of the map nothing covers, north up. */
     data class Fit(val bounds: GeoBounds) : CameraCommand
 
     companion object {

@@ -219,7 +219,11 @@ actual fun GoogleMapView(
 
     LaunchedEffect(cameraCommands) {
         cameraCommands.collect { command ->
-            runCamera(CameraUpdateFactory.newLatLngZoom(LatLng(command.target.latitude, command.target.longitude), command.zoom))
+            val target = LatLng(command.target.latitude, command.target.longitude)
+            runCamera(
+                if (command.upright) CameraUpdateFactory.newCameraPosition(CameraPosition(target, command.zoom, cameraPositionState.position.tilt, 0f))
+                else CameraUpdateFactory.newLatLngZoom(target, command.zoom),
+            )
         }
     }
 
