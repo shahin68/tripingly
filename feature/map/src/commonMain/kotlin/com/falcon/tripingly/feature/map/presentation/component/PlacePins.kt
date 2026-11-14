@@ -309,10 +309,11 @@ fun drawRouteEndRing(pinSize: Dp, color: Color, isStart: Boolean, density: Densi
         if (!isStart) {
             // The Material flag (24 units = 24 dp): its pole's foot (x 6, y 21) stands on the ring's top.
             val unit = 1.dp.toPx()
+            val flag = PathParser().parsePathString(ROUTE_END_FLAG).toPath()
             translate(left = center.x - 6 * unit, top = flagRoom - 21 * unit) {
                 scale(unit, unit, pivot = Offset.Zero) {
-                    drawPath(RouteEndFlag, Color.White, style = Stroke(width = 2.5f, join = StrokeJoin.Round))
-                    drawPath(RouteEndFlag, color)
+                    drawPath(flag, Color.White, style = Stroke(width = 2.5f, join = StrokeJoin.Round))
+                    drawPath(flag, color)
                 }
             }
         }
@@ -320,8 +321,11 @@ fun drawRouteEndRing(pinSize: Dp, color: Color, isStart: Boolean, density: Densi
     return RouteEndIcon(bitmap, anchorY = (flagRoom + ring / 2f) / (ring + flagRoom))
 }
 
-/** Material's filled flag (Icons.Filled.Flag), the route bar's destination icon, in its 24-unit box. */
-private val RouteEndFlag = PathParser().parsePathString("M14.4,6L14,4H5v17h2v-7h5.6l0.4,2h7V6z").toPath()
+/**
+ * Material's filled flag (Icons.Filled.Flag), the route bar's destination icon, in its 24-unit box. Kept as path data,
+ * not a `Path`: a top-level platform path would be made as the file loads, which the JVM unit tests can't.
+ */
+private const val ROUTE_END_FLAG = "M14.4,6L14,4H5v17h2v-7h5.6l0.4,2h7V6z"
 
 /** How much a destination's flag rises above its ring (the flag's 17 units and a little for its white edge). */
 private val RouteEndFlagHeight = 19.dp
