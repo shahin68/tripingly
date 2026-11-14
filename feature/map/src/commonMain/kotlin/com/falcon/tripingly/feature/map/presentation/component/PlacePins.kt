@@ -58,7 +58,7 @@ data class PlacePin(
 internal fun PlacePin.isDotAt(isZoomedOut: Boolean) = isDot || (isZoomedOut && !isKept)
 
 /**
- * The place pins for the squares in view: places inside [area] that aren't stops of the trip ([hiddenPlaceIds]),
+ * The place pins for the squares in view: places inside [area] that aren't stops of the open day ([hiddenPlaceIds]),
  * liked places first (the most liked first), then the best known, at most [AppConfig.mapMaxPins]. Pins keep their
  * size on screen, so each one costs the map; the server already puts a square's best places first. The first
  * [AppConfig.mapMaxPhotoPins] places that have a photo and are well known or liked enough show it ([showsPhoto]).
