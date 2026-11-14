@@ -401,8 +401,11 @@ private fun MapScreenLoadErrorPreview() {
     }
 }
 
-/** In landscape, the strip at the bottom of the free map whose middle a tapped pin goes to (64 dp above the card's bottom). */
-private val LandscapePinArea = 128.dp
+/**
+ * In landscape, the strip at the bottom of the free map whose middle a tapped pin goes to: 48 dp above the card's
+ * bottom, so the stop card above it has more room (Shahin, 2026-11-14; 64 dp before).
+ */
+private val LandscapePinArea = 96.dp
 
 /** In portrait, how far below the middle of the free map a tapped pin goes. */
 private val PortraitPinDrop = 24.dp
