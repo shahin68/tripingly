@@ -2,9 +2,13 @@ package com.falcon.tripingly.core.data.trips
 
 import com.falcon.tripingly.core.common.error.DataError
 import com.falcon.tripingly.core.common.result.AppResult
+import com.falcon.tripingly.core.data.photos.FakePhotoRepository
 import com.falcon.tripingly.core.model.account.TripVisibility
+import com.falcon.tripingly.core.model.photo.PhotoOwner
+import com.falcon.tripingly.core.model.photo.PickedImage
 import com.falcon.tripingly.core.model.place.OsmRef
 import com.falcon.tripingly.core.model.place.OsmType
+import com.falcon.tripingly.core.model.place.PlaceCategory
 import com.falcon.tripingly.core.model.route.TravelMode
 import com.falcon.tripingly.core.model.trip.Destination
 import com.falcon.tripingly.core.model.trip.GeoPoint
@@ -86,12 +90,13 @@ class TripRepositoryTest {
             config,
         )
         val pending = PendingTripWrites()
+        val photos = FakePhotoRepository()
         val realtime = FakeRealtimeClient()
         val mapViews = FakeTripMapViewRepository()
         val trips = OfflineFirstTripRepository(ktorfit.createTripsApi(), local, pending, realtime, mapViews, currentUserId = { ME })
 
         /** Sends on a real dispatcher, like the app. */
-        fun markers() = DefaultMarkerRepository(ktorfit.createMarkersApi(), trips, local, pending, failureScope, currentUserId = { ME })
+        fun markers() = DefaultMarkerRepository(ktorfit.createMarkersApi(), trips, local, pending, photos, failureScope, currentUserId = { ME })
 
         suspend fun awaitTrip(condition: (TripDetails) -> Boolean) {
             realTime { local.trips.first { all -> all["t1"]?.let(condition) == true } }
@@ -464,6 +469,41 @@ class TripRepositoryTest {
         )
         // The name the app already shows stays.
         assertEquals("Kärntner Straße 38", harness.local.trip("t1")!!.days[0].markers.single().name)
+    }
+
+    @Test
+    fun addMarker_newSpot_sendsItsCategory_andUploadsItsPhotoOnceSaved() = runTest {
+        val harness = Harness { request ->
+            json(TripJson.marker(request.sentId(), "t1", "d0", 0, name = "Rooftop view"), HttpStatusCode.Created)
+        }
+        harness.local.saveTrip(details(TripJson.trip("t1")))
+        val photo = PickedImage { byteArrayOf(1) }
+
+        val created = harness.markers().addMarker(
+            "t1",
+            "d0",
+            NewMarker("Rooftop view", GeoPoint(48.1915, 16.3809), category = PlaceCategory.Viewpoint, photo = photo),
+        )
+
+        harness.awaitQueueEmpty()
+        assertEquals(
+            """{"id":"${created.id}","name":"Rooftop view","location":{"lat":48.1915,"lng":16.3809},"category":"viewpoint"}""",
+            harness.requests[0].bodyText(),
+        )
+        assertEquals(1, harness.photos.photos(PhotoOwner.Stop(created.id)).first()?.size)
+    }
+
+    @Test
+    fun addMarker_newSpotRefused_uploadsNoPhoto() = runTest {
+        val harness = Harness { json(TripJson.error("FORBIDDEN", "Only editors can add stops."), HttpStatusCode.Forbidden) }
+        harness.local.saveTrip(details(TripJson.trip("t1")))
+        val markers = harness.markers()
+        val failures = markers.collectFailures()
+
+        val created = markers.addMarker("t1", "d0", NewMarker("Rooftop view", GeoPoint(48.1915, 16.3809), photo = PickedImage { byteArrayOf(1) }))
+        failures.next()
+
+        assertNull(harness.photos.photos(PhotoOwner.Stop(created.id)).first())
     }
 
     @Test

@@ -44,7 +44,7 @@ internal class MapAddToTrip(
         val item = when (val selected = context.model.value.selection) {
             is Selection.Stop -> CopyItem.Stop(selected.markerId)
             is Selection.Place -> CopyItem.Place(selected.toNewMarker())
-            null -> return
+            is Selection.NewSpot, null -> return
         }
         context.scope.launch {
             val trips = tripRepository.observeMyTrips().first().filter { it.role.canEdit && it.id != context.tripId }

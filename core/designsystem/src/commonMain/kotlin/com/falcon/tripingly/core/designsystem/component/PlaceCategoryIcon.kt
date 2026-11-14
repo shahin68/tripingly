@@ -3,14 +3,22 @@ package com.falcon.tripingly.core.designsystem.component
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountBalance
 import androidx.compose.material.icons.filled.Attractions
+import androidx.compose.material.icons.filled.BakeryDining
+import androidx.compose.material.icons.filled.BeachAccess
 import androidx.compose.material.icons.filled.Castle
+import androidx.compose.material.icons.filled.Hotel
 import androidx.compose.material.icons.filled.Landscape
 import androidx.compose.material.icons.filled.LocalBar
 import androidx.compose.material.icons.filled.LocalCafe
+import androidx.compose.material.icons.filled.LunchDining
 import androidx.compose.material.icons.filled.Museum
+import androidx.compose.material.icons.filled.Panorama
 import androidx.compose.material.icons.filled.Park
 import androidx.compose.material.icons.filled.Place
 import androidx.compose.material.icons.filled.Restaurant
+import androidx.compose.material.icons.filled.ShoppingBag
+import androidx.compose.material.icons.filled.TheaterComedy
+import androidx.compose.material.icons.filled.Train
 import androidx.compose.ui.graphics.vector.ImageVector
 import com.falcon.tripingly.core.model.place.PlaceCategory
 
@@ -27,4 +35,12 @@ val PlaceCategory.icon: ImageVector
         PlaceCategory.Nature -> Icons.Default.Landscape
         PlaceCategory.Landmark -> Icons.Default.AccountBalance
         PlaceCategory.Other -> Icons.Default.Place
+        PlaceCategory.Bakery -> Icons.Default.BakeryDining
+        PlaceCategory.FastFood -> Icons.Default.LunchDining
+        PlaceCategory.Viewpoint -> Icons.Default.Panorama
+        PlaceCategory.Beach -> Icons.Default.BeachAccess
+        PlaceCategory.Entertainment -> Icons.Default.TheaterComedy
+        PlaceCategory.Shopping -> Icons.Default.ShoppingBag
+        PlaceCategory.Stay -> Icons.Default.Hotel
+        PlaceCategory.Transport -> Icons.Default.Train
     }

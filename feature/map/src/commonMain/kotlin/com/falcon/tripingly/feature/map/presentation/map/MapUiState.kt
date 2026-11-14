@@ -4,7 +4,9 @@ import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.runtime.Immutable
 import com.falcon.tripingly.core.location.model.Coordinates
 import com.falcon.tripingly.core.model.place.GeoBounds
+import com.falcon.tripingly.core.model.photo.PickedImage
 import com.falcon.tripingly.core.model.place.MapPlace
+import com.falcon.tripingly.core.model.place.PlaceCategory
 import com.falcon.tripingly.core.model.place.PlaceDetails
 import com.falcon.tripingly.core.model.place.PlaceImage
 import com.falcon.tripingly.core.model.place.PlaceSearchResult
@@ -42,6 +44,8 @@ data class MapUiState(
     val placeCard: PlaceCardState? = null,
     /** The card over the tapped stop's pin, once the camera has centered it; it stays under a sheet. */
     val stopCard: StopCardState? = null,
+    /** The card over a long-pressed point, making a new spot there, once the camera has centered it. */
+    val newSpotCard: NewSpotCardState? = null,
     val layers: MapLayersState = MapLayersState(),
     val camera: CameraState = CameraState(),
     val location: LocationState = LocationState(),
@@ -188,6 +192,15 @@ data class RouteSummaryState(
     val addToDayNumber: Int?,
 )
 
+/** A spot being made: its [name] (the card's text field), its kind of place and the photo picked for it. */
+@Immutable
+data class NewSpotCardState(
+    val location: Coordinates,
+    val name: TextFieldState,
+    val category: PlaceCategory,
+    val photo: PickedImage?,
+)
+
 /**
  * A place's card and details sheet: ⓘ opens the details, + adds the place to the open day or one of my trips ([add]), and
  * from OpenStreetMap (once [details] say so) it credits "© OpenStreetMap contributors".
@@ -313,8 +326,6 @@ sealed interface MapDialog {
     data class DeleteOthersContent(val message: UiText) : MapDialog
     /** Reports the trip, a stop or a photo; [isSending] while the server answers; [details] is the text field. */
     data class Report(val isSending: Boolean, val details: TextFieldState) : MapDialog
-    /** A long press dropped a pin, waiting for its [name] (the text field). */
-    data class NamePin(val name: TextFieldState) : MapDialog
     /** The location button can't simply ask: explain first (Android), or send the user to Settings. */
     data class Location(val prompt: LocationPrompt) : MapDialog
     /** The best order for the open day, waiting for Apply. */

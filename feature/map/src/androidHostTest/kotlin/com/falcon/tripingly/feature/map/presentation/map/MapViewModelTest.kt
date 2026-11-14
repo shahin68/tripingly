@@ -2071,24 +2071,60 @@ class MapViewModelTest {
     }
 
     @Test
-    fun `a long press drops a pin with the name the user gives`() = runTest(testDispatcher) {
+    fun `a long press opens a new spot card, Spot until another kind is picked, and Create spot adds it`() = runTest(testDispatcher) {
         val viewModel = viewModel()
         testScheduler.advanceUntilIdle()
 
         viewModel.onAction(MapAction.MapView.LongClick(Coordinates(48.85, 2.35)))
         testScheduler.runCurrent()
-        assertIs<MapDialog.NamePin>(viewModel.uiState.value.dialog).name.setTextAndPlaceCursorAtEnd("Our hotel")
+        // The pin shows at once; the card once the camera has centered it.
+        assertEquals(PlaceCategory.Other, viewModel.uiState.value.layers.selectedPlace?.category)
+        assertNull(viewModel.uiState.value.newSpotCard)
+        viewModel.onAction(MapAction.MapView.CameraRest(Coordinates(48.85, 2.35), 15f))
+        testScheduler.runCurrent()
+        val card = assertNotNull(viewModel.uiState.value.newSpotCard)
+        assertEquals(PlaceCategory.Other, card.category)
+
+        viewModel.onAction(MapAction.NewSpot.PickCategory(PlaceCategory.Viewpoint))
+        testScheduler.runCurrent()
+        assertEquals(PlaceCategory.Viewpoint, viewModel.uiState.value.newSpotCard?.category)
+        assertEquals(PlaceCategory.Viewpoint, viewModel.uiState.value.layers.selectedPlace?.category)
+
+        // Without a name there is nothing to create.
+        viewModel.onAction(MapAction.NewSpot.Create)
+        testScheduler.runCurrent()
+        assertNotNull(viewModel.uiState.value.newSpotCard)
+
+        card.name.setTextAndPlaceCursorAtEnd("Rooftop view")
         viewModel.events.test {
-            viewModel.onAction(MapAction.Dialog.ConfirmPinName)
+            viewModel.onAction(MapAction.NewSpot.Create)
             testScheduler.advanceUntilIdle()
             // Felt as done, and the plan opens all the way.
             assertEquals(MapEvent.StopAdded, awaitItem())
         }
 
-        assertNull(viewModel.uiState.value.dialog)
+        assertNull(viewModel.uiState.value.newSpotCard)
+        assertNull(viewModel.uiState.value.layers.selectedPlace)
         val stop = (backend.refreshTrip(trip.trip.id) as AppResult.Success).data.days[0].markers.single()
-        assertEquals("Our hotel", stop.name)
+        assertEquals("Rooftop view", stop.name)
         assertEquals(GeoPoint(48.85, 2.35), stop.location)
+    }
+
+    @Test
+    fun `a touch on the map closes a new spot card without adding a stop`() = runTest(testDispatcher) {
+        val viewModel = viewModel()
+        testScheduler.advanceUntilIdle()
+        viewModel.onAction(MapAction.MapView.LongClick(Coordinates(48.85, 2.35)))
+        viewModel.onAction(MapAction.MapView.CameraRest(Coordinates(48.85, 2.35), 15f))
+        testScheduler.runCurrent()
+        assertNotNull(viewModel.uiState.value.newSpotCard)
+
+        viewModel.onAction(MapAction.MapView.ScreenTouch)
+        viewModel.onAction(MapAction.MapView.Click(Coordinates(48.86, 2.36)))
+        testScheduler.advanceUntilIdle()
+
+        assertNull(viewModel.uiState.value.newSpotCard)
+        assertTrue((backend.refreshTrip(trip.trip.id) as AppResult.Success).data.days[0].markers.isEmpty())
     }
 
     private companion object {

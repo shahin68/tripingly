@@ -112,8 +112,10 @@ internal fun MapScreen(
     // Where the open cards are, so a touch on them doesn't close them.
     var placeCardBounds by remember { mutableStateOf(Rect.Zero) }
     var stopCardBounds by remember { mutableStateOf(Rect.Zero) }
+    var newSpotCardBounds by remember { mutableStateOf(Rect.Zero) }
     val isPlaceCardOpen by rememberUpdatedState(state.placeCard != null)
     val isStopCardOpen by rememberUpdatedState(state.stopCard != null)
+    val isNewSpotCardOpen by rememberUpdatedState(state.newSpotCard != null)
     // The trip card that grows out of the title pill, and where that pill is on the screen.
     // Where the pill is inside the header's padding, which is where the card starts too.
     var isTripCardOpen by rememberSaveable { mutableStateOf(false) }
@@ -144,7 +146,8 @@ internal fun MapScreen(
                 awaitEachGesture {
                     val down = awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
                     val isOnCard = (isPlaceCardOpen && placeCardBounds.contains(down.position)) ||
-                        (isStopCardOpen && stopCardBounds.contains(down.position))
+                        (isStopCardOpen && stopCardBounds.contains(down.position)) ||
+                        (isNewSpotCardOpen && newSpotCardBounds.contains(down.position))
                     if (!isOnCard) onAction(MapAction.MapView.ScreenTouch)
                 }
             }
@@ -335,10 +338,12 @@ internal fun MapScreen(
         MapPinCards(
             placeCard = state.placeCard,
             stopCard = state.stopCard,
+            newSpotCard = state.newSpotCard,
             pinBelowMiddle = pinLowering / 2,
             onAction = onAction,
             onPlaceCardBounds = { placeCardBounds = it },
             onStopCardBounds = { stopCardBounds = it },
+            onNewSpotCardBounds = { newSpotCardBounds = it },
             modifier = Modifier.fillMaxSize().padding(covered),
         )
 

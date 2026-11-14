@@ -192,7 +192,6 @@ internal class MapDialogPreviewStates : PreviewParameterProvider<MapDialog> {
         MapDialog.DeleteOthersStop(UiText.Server("Palais Pereira")),
         MapDialog.DeleteOthersContent(UiText.Server("This stop has 3 photos and 2 comments by other people.")),
         MapDialog.Report(isSending = true, details = TextFieldState()),
-        MapDialog.NamePin(TextFieldState()),
         MapDialog.Location(LocationPrompt.Explain),
         MapDialog.Location(LocationPrompt.OpenSettings),
         MapDialog.BestOrder(BestOrderPreview(previewStops.reversed().toPersistentList(), byTravelTime = true, savedMinutes = 18)),

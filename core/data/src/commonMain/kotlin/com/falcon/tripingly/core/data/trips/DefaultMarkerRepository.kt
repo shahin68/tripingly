@@ -2,6 +2,9 @@ package com.falcon.tripingly.core.data.trips
 
 import com.falcon.tripingly.core.common.error.DataError
 import com.falcon.tripingly.core.common.result.AppResult
+import com.falcon.tripingly.core.data.photos.PhotoRepository
+import com.falcon.tripingly.core.data.places.toCreateDto
+import com.falcon.tripingly.core.model.photo.PhotoOwner
 import com.falcon.tripingly.core.model.place.OsmType
 import com.falcon.tripingly.core.model.trip.MarkerUpdate
 import com.falcon.tripingly.core.model.trip.NewMarker
@@ -47,6 +50,8 @@ internal class DefaultMarkerRepository(
     private val trips: TripRepository,
     private val local: TripLocalDataSource,
     private val pending: PendingTripWrites,
+    /** Uploads a new stop's photo once the stop is saved. */
+    private val photos: PhotoRepository,
     private val scope: CoroutineScope,
     /** Set as the creator of stops added here. */
     private val currentUserId: () -> String?,
@@ -74,7 +79,7 @@ internal class DefaultMarkerRepository(
             position = day?.markers?.nextPosition() ?: 0,
             createdById = currentUserId(),
         )
-        submit(MarkerChange.Add(created, marker.osm))
+        submit(MarkerChange.Add(created, marker.osm, marker.category, marker.photo))
         return created
     }
 
@@ -170,6 +175,8 @@ internal class DefaultMarkerRepository(
             if (change !is MarkerChange.Reorder && change.markerId in state.failedAdds) return
             val error = state.offline ?: sendWithRetries(change, state)
             if (error == null && change.waitsForServer) local.apply(change)
+            // A photo needs the stop on the server first; a failed add takes it along to the retry.
+            if (error == null && change is MarkerChange.Add) change.photo?.let { photos.upload(PhotoOwner.Stop(change.markerId), listOf(it)) }
             if (error != null) {
                 if (error.isConnectionProblem()) state.offline = error
                 if (change is MarkerChange.Add) state.failedAdds += change.markerId
@@ -218,6 +225,7 @@ internal class DefaultMarkerRepository(
                         null -> null
                     },
                     osmId = change.osm?.id,
+                    category = change.category?.toCreateDto(),
                 ),
                 // A retry after a lost answer gets the first answer back instead of a duplicate.
                 change.marker.id,

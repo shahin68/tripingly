@@ -1,7 +1,9 @@
 package com.falcon.tripingly.core.model.trip
 
 import com.falcon.tripingly.core.model.account.TripVisibility
+import com.falcon.tripingly.core.model.photo.PickedImage
 import com.falcon.tripingly.core.model.place.OsmRef
+import com.falcon.tripingly.core.model.place.PlaceCategory
 import kotlinx.datetime.LocalDate
 
 /**
@@ -41,6 +43,10 @@ data class NewMarker(
     val placeId: String? = null,
     /** An address from search, so stops at the same address share a place. */
     val osm: OsmRef? = null,
+    /** The kind of place for a new spot (a long press); the server makes it "Spot" when none is given. */
+    val category: PlaceCategory? = null,
+    /** A photo for the new stop, uploaded once the server has the stop. */
+    val photo: PickedImage? = null,
 )
 
 /** Changes to a marker; null fields stay unchanged. [dayId] moves it to another day of the same trip. */

@@ -119,6 +119,14 @@ internal fun PlaceCategory.label(): StringResource = when (this) {
     PlaceCategory.Nature -> Res.string.map_place_category_nature
     PlaceCategory.Landmark -> Res.string.map_place_category_landmark
     PlaceCategory.Other -> Res.string.map_place_category_other
+    PlaceCategory.Bakery -> Res.string.map_place_category_bakery
+    PlaceCategory.FastFood -> Res.string.map_place_category_fast_food
+    PlaceCategory.Viewpoint -> Res.string.map_place_category_viewpoint
+    PlaceCategory.Beach -> Res.string.map_place_category_beach
+    PlaceCategory.Entertainment -> Res.string.map_place_category_entertainment
+    PlaceCategory.Shopping -> Res.string.map_place_category_shopping
+    PlaceCategory.Stay -> Res.string.map_place_category_stay
+    PlaceCategory.Transport -> Res.string.map_place_category_transport
 }
 
 /** A place loading, loaded with images, hours and website, an address from search, one offering Route to here with Go here dimmed, and a custom spot crediting its creator. */

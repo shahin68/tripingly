@@ -75,6 +75,22 @@ internal class MapSelection(
         camera.moveTo(Coordinates(result.location.lat, result.location.lng), zoom)
     }
 
+    /** A long press: a new spot there, Spot until another kind is picked; its card opens once the camera has centered it. */
+    fun openNewSpot(location: Coordinates) {
+        placeDetailsJob?.cancel()
+        val zoom = camera.zoom
+        val isThere = camera.isAt(GeoPoint(location.latitude, location.longitude), zoom)
+        context.update { it.copy(selection = Selection.NewSpot(location, isCardShown = isThere)) }
+        camera.moveTo(location, zoom)
+    }
+
+    /** The open new spot, changed by [change]; nothing when no new spot is open. */
+    fun updateNewSpot(change: (Selection.NewSpot) -> Selection.NewSpot) = context.update { model ->
+        (model.selection as? Selection.NewSpot)?.let { model.copy(selection = change(it)) } ?: model
+    }
+
+    fun closeNewSpot() = context.update { if (it.selection is Selection.NewSpot) it.unselected() else it }
+
     fun closePlace() {
         placeDetailsJob?.cancel()
         context.update { if (it.selection is Selection.Place) it.unselected() else it }
@@ -98,18 +114,20 @@ internal class MapSelection(
         when (val selection = model.selection) {
             is Selection.Place -> model.copy(selection = selection.copy(isCardShown = true))
             is Selection.Stop -> model.copy(selection = selection.copy(isCardShown = true))
+            is Selection.NewSpot -> model.copy(selection = selection.copy(isCardShown = true))
             null -> model
         }
     }
 
     /**
-     * A finger went down anywhere but on the open card: an open place or stop closes. A tap that closes one
+     * A finger went down anywhere but on the open card: an open place, stop or new spot closes. A tap that closes one
      * still opens another pin, but doesn't add a stop.
      */
     fun onScreenTouch() {
         isClosingTouch = context.model.value.selection != null
         closePlace()
         closeStop()
+        closeNewSpot()
     }
 
     /**

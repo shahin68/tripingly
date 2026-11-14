@@ -7,8 +7,10 @@ import com.falcon.tripingly.core.location.model.Coordinates
 import com.falcon.tripingly.core.location.permission.LocationPermission
 import com.falcon.tripingly.core.model.photo.Photo
 import com.falcon.tripingly.core.model.photo.PhotoOwner
+import com.falcon.tripingly.core.model.photo.PickedImage
 import com.falcon.tripingly.core.model.place.GeoBounds
 import com.falcon.tripingly.core.model.place.MapPlace
+import com.falcon.tripingly.core.model.place.PlaceCategory
 import com.falcon.tripingly.core.model.place.PlaceCluster
 import com.falcon.tripingly.core.model.place.PlaceDetails
 import com.falcon.tripingly.core.model.place.PlaceSearchResult
@@ -77,7 +79,7 @@ internal data class CameraModel(
     val openingBounds: GeoBounds? = null,
 )
 
-/** The tapped stop or place. Its card shows once the camera has centered it ([isCardShown]). */
+/** The tapped stop or place, or a spot being made. Its card shows once the camera has centered it ([isCardShown]). */
 internal sealed interface Selection {
     val isCardShown: Boolean
 
@@ -90,6 +92,18 @@ internal sealed interface Selection {
         val details: PlaceDetails? = null,
         /** The image of [details] open full screen. */
         val imageIndex: Int? = null,
+        override val isCardShown: Boolean,
+    ) : Selection
+
+    /**
+     * A spot being made where the map was long-pressed: its [name] (the card's text field), its kind of place (Spot
+     * until another is picked) and an optional [photo], uploaded once the stop is saved.
+     */
+    data class NewSpot(
+        val location: Coordinates,
+        val name: TextFieldState = TextFieldState(),
+        val category: PlaceCategory = PlaceCategory.Other,
+        val photo: PickedImage? = null,
         override val isCardShown: Boolean,
     ) : Selection
 }
@@ -253,8 +267,6 @@ internal sealed interface Dialog {
     }
     /** [details] is the report dialog's text field. */
     data class Report(val target: ReportTarget, val id: String, val isSending: Boolean = false, val details: TextFieldState = TextFieldState()) : Dialog
-    /** Where a long press dropped a pin that waits for its [name], the dialog's text field. */
-    data class NamePin(val location: Coordinates, val name: TextFieldState = TextFieldState()) : Dialog
     data class Location(val prompt: LocationPrompt) : Dialog
     data class BestOrder(val order: com.falcon.tripingly.core.model.route.BestOrder) : Dialog
 }

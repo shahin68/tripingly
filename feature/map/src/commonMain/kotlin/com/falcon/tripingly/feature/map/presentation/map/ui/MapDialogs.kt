@@ -1,15 +1,10 @@
 package com.falcon.tripingly.feature.map.presentation.map.ui
 
 import androidx.compose.foundation.layout.heightIn
-import androidx.compose.runtime.LaunchedEffect
 import com.falcon.tripingly.core.designsystem.component.rememberHaptics
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.foundation.text.input.InputTransformation
-import androidx.compose.foundation.text.input.TextFieldState
-import androidx.compose.foundation.text.input.maxLength
 import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
@@ -18,12 +13,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.tooling.preview.PreviewParameter
 import androidx.compose.ui.unit.dp
 import com.falcon.tripingly.core.designsystem.component.AppDialog
-import com.falcon.tripingly.core.designsystem.component.AppTextField
 import com.falcon.tripingly.core.designsystem.component.ReportDialog
 import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
 import com.falcon.tripingly.core.designsystem.theme.spacing
@@ -46,9 +39,6 @@ import com.falcon.tripingly.feature.map.generated.resources.map_location_explain
 import com.falcon.tripingly.feature.map.generated.resources.map_location_open_settings
 import com.falcon.tripingly.feature.map.generated.resources.map_location_settings_message
 import com.falcon.tripingly.feature.map.generated.resources.map_location_settings_title
-import com.falcon.tripingly.feature.map.generated.resources.map_pin_add
-import com.falcon.tripingly.feature.map.generated.resources.map_pin_name_label
-import com.falcon.tripingly.feature.map.generated.resources.map_pin_name_title
 import com.falcon.tripingly.feature.map.presentation.map.BestOrderPreview
 import com.falcon.tripingly.feature.map.presentation.map.LocationPrompt
 import com.falcon.tripingly.feature.map.presentation.map.MapAction
@@ -93,7 +83,6 @@ internal fun MapDialogs(dialog: MapDialog, onAction: (MapAction) -> Unit) {
             onDismiss = { onAction(MapAction.Dialog.DismissReport) },
             isSending = dialog.isSending,
         )
-        is MapDialog.NamePin -> NamePinDialog(dialog.name, onAction)
         is MapDialog.Location -> AppDialog(
             title = stringResource(
                 when (dialog.prompt) {
@@ -163,33 +152,6 @@ private fun BestOrderDialog(order: BestOrderPreview, onAction: (MapAction) -> Un
     }
 }
 
-/** Names a dropped pin; [name] is the view model's field. Done on the keyboard adds the stop. */
-@Composable
-private fun NamePinDialog(name: TextFieldState, onAction: (MapAction) -> Unit) {
-    // The long press that dropped the pin is felt as it opens.
-    val haptics = rememberHaptics()
-    LaunchedEffect(Unit) { haptics.longPress() }
-    val canAdd = name.text.isNotBlank()
-    AppDialog(
-        title = stringResource(Res.string.map_pin_name_title),
-        confirmLabel = stringResource(Res.string.map_pin_add),
-        confirmEnabled = canAdd,
-        onConfirm = { onAction(MapAction.Dialog.ConfirmPinName) },
-        onDismiss = { onAction(MapAction.Dialog.DismissPinName) },
-    ) {
-        AppTextField(
-            state = name,
-            placeholder = stringResource(Res.string.map_pin_name_label),
-            onImeAction = { if (canAdd) onAction(MapAction.Dialog.ConfirmPinName) },
-            keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Words),
-            inputTransformation = InputTransformation.maxLength(MAX_PIN_NAME_LENGTH),
-        )
-    }
-}
-
-/** The server's limit for a stop's name. */
-private const val MAX_PIN_NAME_LENGTH = 120
-
 @Preview
 @Composable
 private fun MapDialogsPreview(@PreviewParameter(MapDialogPreviewStates::class) dialog: MapDialog) {
@@ -199,13 +161,13 @@ private fun MapDialogsPreview(@PreviewParameter(MapDialogPreviewStates::class) d
 @Preview
 @Composable
 private fun MapDialogsDarkPreview() {
-    TripinglyTheme(darkTheme = true) { MapDialogs(dialog = MapDialog.NamePin(rememberTextFieldState("Our hotel")), onAction = {}) }
+    TripinglyTheme(darkTheme = true) { MapDialogs(dialog = MapDialog.Report(isSending = false, details = rememberTextFieldState("Spam")), onAction = {}) }
 }
 
 @Preview(widthDp = 800, heightDp = 360)
 @Composable
 private fun BestOrderDialogLandscapePreview() {
-    TripinglyTheme(darkTheme = true) { MapDialogs(dialog = MapDialogPreviewStates().values.elementAt(8), onAction = {}) }
+    TripinglyTheme(darkTheme = true) { MapDialogs(dialog = MapDialogPreviewStates().values.elementAt(7), onAction = {}) }
 }
 
 private val BestOrderMaxHeight = 480.dp

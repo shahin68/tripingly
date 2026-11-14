@@ -94,6 +94,7 @@ internal class MapStateMapper(
         // The card stays open under a sheet, so closing the sheet comes back to it.
         placeCard = placeCard(),
         stopCard = stopCard(),
+        newSpotCard = (model.selection as? Selection.NewSpot)?.takeIf { it.isCardShown }?.let { NewSpotCardState(it.location, it.name, it.category, it.photo) },
         layers = layers,
         camera = CameraState(model.camera.isReady, model.camera.target, model.camera.zoom, model.camera.openingBounds),
         location = model.location.let {
@@ -271,7 +272,20 @@ internal class MapStateMapper(
             pinDotBelowZoom = config.pinDotBelowZoom,
             placeClusters = model.pins.clusters.takeUnless { model.arePlacesHidden }.orEmpty().toImmutableList(),
             // A place from search knows no cover image, so its pin's place draws it, photo included.
-            selectedPlace = (model.selection as? Selection.Place)?.place?.let { place -> placePins.firstOrNull { it.place.id == place.id }?.place ?: place },
+            selectedPlace = when (val selection = model.selection) {
+                is Selection.Place -> selection.place.let { place -> placePins.firstOrNull { it.place.id == place.id }?.place ?: place }
+                // A new spot's pin shows the kind of place picked for it.
+                is Selection.NewSpot -> MapPlace(
+                    id = "",
+                    name = "",
+                    category = selection.category,
+                    location = GeoPoint(selection.location.latitude, selection.location.longitude),
+                    isTripinly = false,
+                    hotCount = 0,
+                    prominence = 0,
+                )
+                else -> null
+            },
             // A real route in its way of travelling's color, or else the stops joined in order.
             line = when {
                 routePoints.size > 1 -> routeLine(routePoints, route.planStops.map { Coordinates(it.lat, it.lng) }, route.planMode)
@@ -307,7 +321,7 @@ internal class MapStateMapper(
         is Sheet.Details -> when (val selection = model.selection) {
             is Selection.Stop -> stopDetails(selection)?.let { MapSheet.StopDetails(it) }
             is Selection.Place -> MapSheet.PlaceDetails(placeDetails(selection))
-            null -> null
+            is Selection.NewSpot, null -> null
         }
         null -> placeImage()
     }
@@ -329,7 +343,6 @@ internal class MapStateMapper(
         is Dialog.DeleteOthersStop -> stops.firstOrNull { it.id == dialog.markerId }?.let { MapDialog.DeleteOthersStop(it.title) }
         is Dialog.OthersContent -> MapDialog.DeleteOthersContent(dialog.message)
         is Dialog.Report -> MapDialog.Report(dialog.isSending, dialog.details)
-        is Dialog.NamePin -> MapDialog.NamePin(dialog.name)
         is Dialog.Location -> MapDialog.Location(dialog.prompt)
         is Dialog.BestOrder -> MapDialog.BestOrder(
             BestOrderPreview(
