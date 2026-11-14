@@ -12,6 +12,7 @@ import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.LocalContentColor
@@ -99,7 +100,7 @@ private fun CompassNeedle(modifier: Modifier = Modifier) {
     Box(modifier) {
         Text(
             stringResource(Res.string.map_compass_north),
-            modifier = Modifier.align(Alignment.TopCenter),
+            modifier = Modifier.align(Alignment.TopCenter).offset(y = (-5).dp),
             color = north,
             fontSize = 10.sp,
             lineHeight = 10.sp,
@@ -108,9 +109,9 @@ private fun CompassNeedle(modifier: Modifier = Modifier) {
         Canvas(Modifier.fillMaxSize()) {
             val cx = size.width / 2
             // The needle sits low enough to leave a gap under the N.
-            val cy = size.height / 2 + 6.dp.toPx()
-            val half = 3.5.dp.toPx()
-            val tip = 9.dp.toPx()
+            val cy = size.height / 2
+            val half = 4.dp.toPx()
+            val tip = 10.dp.toPx()
             drawPath(Path().apply { moveTo(cx, cy - tip); lineTo(cx + half, cy); lineTo(cx - half, cy); close() }, north)
             drawPath(Path().apply { moveTo(cx, cy + tip); lineTo(cx - half, cy); lineTo(cx + half, cy); close() }, south)
         }
