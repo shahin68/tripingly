@@ -8,6 +8,8 @@ import com.falcon.tripingly.core.location.permission.LocationPermission
 import com.falcon.tripingly.core.model.account.TripVisibility
 import com.falcon.tripingly.core.model.config.AppConfig
 import com.falcon.tripingly.core.model.place.MapPlace
+import com.falcon.tripingly.core.model.place.PlaceImage
+import com.falcon.tripingly.core.model.place.PlaceImageSource
 import com.falcon.tripingly.core.model.route.AlongTheWayPlace
 import com.falcon.tripingly.core.model.trip.GeoPoint
 import com.falcon.tripingly.core.model.trip.TripDetails
@@ -194,7 +196,7 @@ internal class MapStateMapper(
         val creatorId = marker?.createdById
         return StopCardState(
             stop = stop,
-            coverCredit = place?.images?.firstOrNull { it.id == stop.coverPhotoId }?.credit,
+            images = stopImages(stop, place?.images.orEmpty()),
             place = place,
             canEdit = canEdit,
             canReport = role == TripRole.VIEWER,
@@ -334,6 +336,17 @@ internal class MapStateMapper(
             ),
         )
         null -> null
+    }
+
+    /**
+     * A stop's images: its cover first (one of its place's images, or its own photo, of which only the thumbnail is
+     * known), then the place's other images; only the place's while it has no cover.
+     */
+    private fun stopImages(stop: MapMarker, placeImages: List<PlaceImage>): List<PlaceImage> {
+        val coverId = stop.coverPhotoId ?: return placeImages
+        val cover = placeImages.firstOrNull { it.id == coverId }
+            ?: PlaceImage(coverId, PlaceImageSource.Trip, thumbUrl = stop.coverThumbUrl, displayUrl = null, width = null, height = null, credit = null)
+        return listOf(cover) + placeImages.filter { it.id != coverId }
     }
 
     /**

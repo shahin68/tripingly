@@ -221,7 +221,7 @@ private val FactHeight = 48.dp
 private fun PinDetailsPreviewContent() {
     Column(Modifier.background(MaterialTheme.colorScheme.surfaceContainerLow)) {
         StopDetailsContent(
-            card = StopCardState(previewStop.copy(canDelete = false), coverCredit = previewPlaceImages.first().credit, place = previewPlaceDetails, canEdit = false, canReport = true, add = PinAdd.ToMyTrip, addedBy = AddedBy(UserSummary("u-2", "anna", "Anna"), isMe = false)),
+            card = StopCardState(previewStop.copy(canDelete = false), images = previewPlaceImages, place = previewPlaceDetails, canEdit = false, canReport = true, add = PinAdd.ToMyTrip, addedBy = AddedBy(UserSummary("u-2", "anna", "Anna"), isMe = false)),
             onAction = {},
             onClose = {},
             photoStrip = { Text("Photos") },

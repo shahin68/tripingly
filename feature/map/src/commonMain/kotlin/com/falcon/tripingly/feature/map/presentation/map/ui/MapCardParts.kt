@@ -46,7 +46,9 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.falcon.tripingly.core.designsystem.component.CountButton
 import com.falcon.tripingly.core.designsystem.component.CountLabel
+import com.falcon.tripingly.core.designsystem.component.HotButton
 import com.falcon.tripingly.core.designsystem.component.JoinedButton
 import com.falcon.tripingly.core.designsystem.component.JoinedButtonColors
 import com.falcon.tripingly.core.designsystem.component.JoinedButtonDefaults
@@ -161,8 +163,8 @@ internal fun routeButtons(routes: PinRoutesState, onGoHere: () -> Unit, onRoute:
 
 /**
  * A photo [image] filling a rounded banner (tapped: [onClick]) with the [title] (wrapping) and [subtitle] in white over
- * a dark fade at the bottom, [afterSubtitle] on its line (e.g. who added it), a quiet count at the bottom end ([trailing],
- * e.g. the flames), and a [topEnd] button.
+ * a dark fade at the bottom, [afterSubtitle] on its line (e.g. who added it), a row [below] them (the flames and comments,
+ * Shahin 2026-11-14), and a [topEnd] button.
  * Without an image ([image] null) it is a tinted panel with the pin icon at the top start and the text dark.
  */
 @Composable
@@ -173,7 +175,7 @@ internal fun PhotoBanner(
     modifier: Modifier = Modifier,
     onClick: (() -> Unit)? = null,
     afterSubtitle: @Composable RowScope.() -> Unit = {},
-    trailing: @Composable () -> Unit = {},
+    below: @Composable RowScope.() -> Unit = {},
     topEnd: @Composable () -> Unit = {},
     /** Without an image: the pin's own mark ([PinMark]), mirroring [topEnd]. */
     mark: @Composable () -> Unit = {},
@@ -199,13 +201,11 @@ internal fun PhotoBanner(
             // The same inset on every side the text has: start, end and bottom.
             Column(Modifier.align(Alignment.BottomStart).fillMaxWidth().padding(BannerInset)) {
                 Text(title, style = MaterialTheme.typography.titleLarge)
-                Row(horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small), verticalAlignment = Alignment.CenterVertically) {
-                    Row(Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraSmall), verticalAlignment = Alignment.CenterVertically) {
-                        Text(subtitle, style = MaterialTheme.typography.bodySmall, modifier = Modifier.weight(1f, fill = false))
-                        afterSubtitle()
-                    }
-                    trailing()
+                Row(horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraSmall), verticalAlignment = Alignment.CenterVertically) {
+                    Text(subtitle, style = MaterialTheme.typography.bodySmall, modifier = Modifier.weight(1f, fill = false))
+                    afterSubtitle()
                 }
+                Row(horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium), verticalAlignment = Alignment.CenterVertically, content = below)
             }
         }
     }
@@ -245,7 +245,8 @@ internal fun BannerButton(onClick: () -> Unit, icon: ImageVector, contentDescrip
 
 /** The cards' widest, so they don't stretch across a tablet or a landscape phone. */
 internal val MapCardMaxWidth = 360.dp
-private val BannerHeight = 160.dp
+// Tall enough for the title, its line and the flames and comments under them over the photo (Shahin, 2026-11-14).
+private val BannerHeight = 200.dp
 private val BannerInset = 14.dp
 private val BannerButtonInset = 8.dp
 private const val ON_PHOTO_TINT = 0.26f
@@ -256,18 +257,21 @@ private const val DIMMED_ALPHA = 0.38f
 @Composable
 private fun MapCardPartsPreviewContent() {
     Column(Modifier.background(MaterialTheme.colorScheme.surface).padding(MaterialTheme.spacing.medium).width(340.dp), verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small)) {
-        PhotoBanner(title = "Hofburg", subtitle = AnnotatedString("Historic site"), image = null, mark = { PinMark(PlaceCategory.Historic, isStop = false) }, trailing = { BannerCount(Icons.Outlined.LocalFireDepartment, 40) })
+        PhotoBanner(title = "Hofburg", subtitle = AnnotatedString("Historic site"), image = null, mark = { PinMark(PlaceCategory.Historic, isStop = false) }, below = { BannerCount(Icons.Outlined.LocalFireDepartment, 40) })
         PhotoBanner(
             title = "Lunch at Anna's, a long name that wraps",
             subtitle = AnnotatedString("Custom spot"),
             image = null,
             mark = { PinMark(PlaceCategory.Restaurant, isStop = true) },
             topEnd = { BannerButton({}, Icons.Outlined.ExpandMore, "Collapse") },
+            below = {
+                HotButton(hot = true, count = 12, onToggle = {}, tint = MaterialTheme.extendedColors.attention)
+                CountButton(Icons.AutoMirrored.Outlined.Comment, "Comments", 3, onClick = {}, isNew = true)
+            },
         )
         PinCardButtons(
             group = listOf<JoinedButtonSlot>(
-                { JoinedButton(Icons.AutoMirrored.Outlined.Comment, "Comments", it, onClick = {}, count = 2) },
-                { JoinedButton(Icons.Outlined.PhotoLibrary, "Photos", it, onClick = {}, count = 3) },
+                { JoinedButton(Icons.Outlined.PhotoLibrary, "Photos", it, onClick = {}) },
             ),
             onDetails = {},
             onDelete = {},

@@ -60,7 +60,7 @@ import com.falcon.tripingly.feature.map.presentation.map.preview.previewPlace
  */
 
 /**
- * A card over the camera's middle, where the tapped pin is ([pinBelowMiddle] lower, in landscape): it blooms out of the
+ * A card over the camera's middle, where the tapped pin is ([pinBelowMiddle] lower: a little in portrait, much in landscape): it blooms out of the
  * pin, just above it, and goes back into it when it closes. A card for another pin replaces it; the same pin's card
  * only updates. The card is drawn as glass here, so its [content] draws none of its own; the content's rows take
  * [PinCardScope.bloomRow].

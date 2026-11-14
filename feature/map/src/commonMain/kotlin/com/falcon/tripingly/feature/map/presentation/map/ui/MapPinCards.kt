@@ -19,7 +19,7 @@ import com.falcon.tripingly.feature.map.presentation.map.StopCardState
 
 /**
  * The tapped place's and stop's cards over the part of the map nothing covers (its middle is where the camera puts a
- * tapped pin, [pinBelowMiddle] lower in landscape). Each reports where it is, so a touch on it doesn't close it.
+ * tapped pin, [pinBelowMiddle] lower: a little in portrait, much in landscape). Each reports where it is, so a touch on it doesn't close it.
  */
 @Composable
 internal fun MapPinCards(

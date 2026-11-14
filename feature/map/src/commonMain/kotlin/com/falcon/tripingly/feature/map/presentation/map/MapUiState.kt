@@ -4,9 +4,9 @@ import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.runtime.Immutable
 import com.falcon.tripingly.core.location.model.Coordinates
 import com.falcon.tripingly.core.model.place.GeoBounds
-import com.falcon.tripingly.core.model.place.ImageCredit
 import com.falcon.tripingly.core.model.place.MapPlace
 import com.falcon.tripingly.core.model.place.PlaceDetails
+import com.falcon.tripingly.core.model.place.PlaceImage
 import com.falcon.tripingly.core.model.place.PlaceSearchResult
 import com.falcon.tripingly.core.model.route.AlongTheWayPlace
 import com.falcon.tripingly.core.model.route.TravelMode
@@ -220,8 +220,11 @@ data class AddedBy(val user: UserSummary?, val isMe: Boolean)
 @Immutable
 data class StopCardState(
     val stop: MapMarker,
-    /** The cover's credit, when it is one of the place's Wikimedia Commons images. */
-    val coverCredit: ImageCredit?,
+    /**
+     * What the card's photo swipes through: the cover first, then the place's other images (Shahin, 2026-11-14); a
+     * Commons image carries its credit.
+     */
+    val images: List<PlaceImage>,
     /** The stop's place, once loaded. */
     val place: PlaceDetails?,
     /** An owner or editor: photos can be added and managed. */

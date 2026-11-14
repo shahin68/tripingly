@@ -23,14 +23,13 @@ import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
 import com.falcon.tripingly.core.model.place.PlaceCategory
 import com.falcon.tripingly.core.model.place.PlaceImage
 import com.falcon.tripingly.feature.map.generated.resources.Res
-import com.falcon.tripingly.feature.map.generated.resources.map_place_image_position
 import com.falcon.tripingly.feature.map.generated.resources.map_place_images
 import com.falcon.tripingly.feature.map.presentation.map.preview.previewPlaceImages
 import org.jetbrains.compose.resources.stringResource
 
 /**
  * The top of the place card: its images swiped through in a photo banner ([pagerState]), with its name, its [subtitle]
- * and which image shows ("1 / 2"), who made a custom spot ([afterSubtitle]), and its flames, only counted. A tapped image opens full screen ([onOpen]). [images]
+ * and which image shows ("1 / 2"), who made a custom spot ([afterSubtitle]), and under them its flames, only counted. A tapped image opens full screen ([onOpen]). [images]
  * is null while the place loads; a place without images is a tinted panel, whose tap opens its photos ([onOpenPhotos]).
  */
 @Composable
@@ -46,7 +45,7 @@ internal fun PlaceBanner(
     modifier: Modifier = Modifier,
     afterSubtitle: @Composable RowScope.() -> Unit = {},
 ) {
-    val position = images?.takeIf { it.size > 1 }?.let { stringResource(Res.string.map_place_image_position, pagerState.currentPage + 1, it.size) }
+    val position = imagePosition(images.orEmpty().size, pagerState.currentPage)
     val description = stringResource(Res.string.map_place_images)
     PhotoBanner(
         title = name,
@@ -57,19 +56,23 @@ internal fun PlaceBanner(
         image = if (images?.isEmpty() == true) null else pagerImages(images, pagerState, description, onOpen),
         onClick = onOpenPhotos.takeIf { images?.isEmpty() == true },
         mark = { PinMark(category, isStop = false) },
-        trailing = { if (hotCount > 0) BannerCount(Icons.Outlined.LocalFireDepartment, hotCount) },
+        below = { if (hotCount > 0) BannerCount(Icons.Outlined.LocalFireDepartment, hotCount) },
     )
 }
 
-/** The place's [images] swiped through; while they load (null), the photo's grey waits. */
-private fun pagerImages(images: List<PlaceImage>?, pagerState: PagerState, description: String, onOpen: (index: Int) -> Unit): @Composable BoxScope.() -> Unit = {
+/**
+ * [images] swiped through (a place's, or a stop's cover then its place's); while they load (null), the photo's grey
+ * waits. An image with only a thumbnail (a stop's own cover) shows that.
+ */
+internal fun pagerImages(images: List<PlaceImage>?, pagerState: PagerState, description: String, onOpen: (index: Int) -> Unit): @Composable BoxScope.() -> Unit = {
     if (images != null) {
         HorizontalPager(state = pagerState, modifier = Modifier.fillMaxSize(), key = { images[it].id }) { page ->
             // The display size: a thumbnail is too small for the card, and the viewer opens from cache.
+            val image = images[page]
             PhotoImage(
-                photoId = images[page].id,
-                url = images[page].displayUrl,
-                size = PhotoSize.Display,
+                photoId = image.id,
+                url = image.displayUrl ?: image.thumbUrl,
+                size = if (image.displayUrl != null) PhotoSize.Display else PhotoSize.Thumb,
                 contentDescription = description,
                 modifier = Modifier.fillMaxSize().clickable { onOpen(page) },
             )

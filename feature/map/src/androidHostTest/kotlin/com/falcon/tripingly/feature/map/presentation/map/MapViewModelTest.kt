@@ -1593,11 +1593,36 @@ class MapViewModelTest {
         viewModel.onAction(MapAction.MapView.MarkerClick(stop))
         restOnTarget(viewModel)
         testScheduler.advanceUntilIdle()
-        assertEquals(COMMONS_IMAGE.credit, viewModel.uiState.value.stopCard?.coverCredit)
+        assertEquals(listOf(COMMONS_IMAGE), viewModel.uiState.value.stopCard?.images)
 
         viewModel.onAction(MapAction.MapView.MarkerClick(stop))
         testScheduler.advanceUntilIdle()
         assertEquals(listOf("fake-louvre"), places.detailRequests)
+    }
+
+    @Test
+    fun `a stop's photo swipes from its own cover to its place's images`() = runTest(testDispatcher) {
+        val second = COMMONS_IMAGE.copy(id = "pi2")
+        places.images["fake-louvre"] = listOf(COMMONS_IMAGE, second)
+        backend.addMarker(trip.trip.id, trip.days[0].id, NewMarker("Louvre", LOUVRE, placeId = "fake-louvre"))
+        val withStop = (backend.refreshTrip(trip.trip.id) as AppResult.Success).data
+        backend.seed(
+            withStop.copy(
+                days = withStop.days.map { day ->
+                    day.copy(markers = day.markers.map { it.copy(coverPhotoId = "my-photo", coverThumbUrl = "https://r2/my-photo/thumb") })
+                },
+            ),
+        )
+        val viewModel = viewModel()
+        testScheduler.advanceUntilIdle()
+
+        viewModel.onAction(MapAction.MapView.MarkerClick(viewModel.uiState.value.layers.stops.single()))
+        restOnTarget(viewModel)
+        testScheduler.advanceUntilIdle()
+        val images = viewModel.uiState.value.stopCard?.images.orEmpty()
+        assertEquals(listOf("my-photo", "pi1", "pi2"), images.map { it.id })
+        // Only the own cover's thumbnail is known, and it has no credit.
+        assertEquals(PlaceImage("my-photo", PlaceImageSource.Trip, "https://r2/my-photo/thumb", null, null, null, null), images.first())
     }
 
     @Test

@@ -163,11 +163,16 @@ internal fun MapScreen(
         } else {
             PaddingValues(top = coveredTop, bottom = coveredBottom)
         }
-        // Where the camera puts a tapped pin, with its card above it: the middle of what's free, but in landscape low
-        // down, so the card above the pin has the height it needs (Shahin, 2026-11-08). Only the camera's padding
-        // moves; fits still use all that's free ([raise] puts them back in its middle).
-        val pinLowering = if (isWide) (maxHeight - LandscapePinArea - statusBar).coerceAtLeast(0.dp) else 0.dp
-        val cameraPadding = if (isWide) PaddingValues(start = start, top = statusBar + pinLowering, end = end + panelWidth) else covered
+        // Where the camera puts a tapped pin, with its card above it: a little below the middle of what's free, so the
+        // card has more room (Shahin, 2026-11-14: "centring a pin" always means this), and in landscape low down, so
+        // the card above the pin has the height it needs (Shahin, 2026-11-08). Only the camera's padding moves; fits
+        // still use all that's free ([raise] puts them back in its middle).
+        val pinLowering = if (isWide) (maxHeight - LandscapePinArea - statusBar).coerceAtLeast(0.dp) else PortraitPinDrop * 2
+        val cameraPadding = if (isWide) {
+            PaddingValues(start = start, top = statusBar + pinLowering, end = end + panelWidth)
+        } else {
+            PaddingValues(top = coveredTop + pinLowering, bottom = coveredBottom)
+        }
         // The header and the cards: full width, or the right half in landscape; never under the camera cutout.
         val panel = Modifier.windowInsetsPadding(WindowInsets.safeSides).then(if (isWide) Modifier.width(panelWidth) else Modifier.fillMaxWidth())
         // Not before the camera knows where the trip is: the map opens there, fitted to the open day, instead of
@@ -378,3 +383,6 @@ private fun MapScreenLoadErrorPreview() {
 
 /** In landscape, the strip at the bottom of the free map whose middle a tapped pin goes to (64 dp up). */
 private val LandscapePinArea = 128.dp
+
+/** In portrait, how far below the middle of the free map a tapped pin goes. */
+private val PortraitPinDrop = 48.dp
