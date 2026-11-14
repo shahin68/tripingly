@@ -48,6 +48,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.falcon.tripingly.core.designsystem.component.CountButton
 import com.falcon.tripingly.core.designsystem.component.CountLabel
+import com.falcon.tripingly.core.designsystem.component.CountLabelSize
 import com.falcon.tripingly.core.designsystem.component.HotButton
 import com.falcon.tripingly.core.designsystem.component.JoinedButton
 import com.falcon.tripingly.core.designsystem.component.JoinedButtonColors
@@ -270,8 +271,8 @@ private fun MapCardPartsPreviewContent() {
             mark = { PinMark(PlaceCategory.Restaurant, isStop = true) },
             topEnd = { BannerButton({}, Icons.Outlined.ExpandMore, "Collapse") },
             trailing = {
-                HotButton(hot = true, count = 12, onToggle = {}, tint = MaterialTheme.extendedColors.attention)
-                CountButton(Icons.AutoMirrored.Outlined.Comment, "Comments", 3, onClick = {}, isNew = true)
+                HotButton(hot = true, count = 12, onToggle = {}, modifier = Modifier.height(CountLabelSize.Large.iconSize), tint = MaterialTheme.extendedColors.attention)
+                CountButton(Icons.AutoMirrored.Outlined.Comment, "Comments", 3, onClick = {}, modifier = Modifier.height(CountLabelSize.Large.iconSize), isNew = true)
             },
         )
         PinCardButtons(

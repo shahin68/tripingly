@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
@@ -20,6 +21,7 @@ import androidx.compose.material.icons.outlined.ExpandMore
 import androidx.compose.material.icons.outlined.PhotoLibrary
 import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -43,6 +45,7 @@ import androidx.compose.ui.tooling.preview.PreviewParameter
 import androidx.compose.ui.tooling.preview.PreviewParameterProvider
 import androidx.compose.ui.unit.dp
 import com.falcon.tripingly.core.designsystem.component.CountButton
+import com.falcon.tripingly.core.designsystem.component.CountLabelSize
 import com.falcon.tripingly.core.designsystem.component.CreditLine
 import com.falcon.tripingly.core.designsystem.component.HotButton
 import com.falcon.tripingly.core.designsystem.component.HotJoinedButton
@@ -120,9 +123,14 @@ internal fun PinCardScope.StopCard(
                         mark = { PinMark(card.place?.category, isStop = true) },
                         topEnd = { BannerButton({ isExpanded = false }, Icons.Outlined.ExpandMore, stringResource(Res.string.map_stop_collapse)) },
                         trailing = {
-                            // Bigger and brighter than a place's flames, which only count: these are buttons.
-                            if (stop.canMarkHot) HotButton(hot = stop.hotByMe, count = stop.hotCount, onToggle = onToggleHot, tint = MaterialTheme.extendedColors.attention)
-                            CountButton(Icons.AutoMirrored.Outlined.Comment, stringResource(Res.string.map_stop_comment), stop.commentCount, onClick = onOpenComments, isNew = card.news.comments)
+                            // Bigger and brighter than a place's flames, which only count: these are buttons. Like a heart,
+                            // the flame is white until marked, then its own colour; only as high as their icons, so they keep
+                            // the text's inset from the photo's edge (Shahin, 2026-11-14).
+                            val tight = Modifier.height(CountLabelSize.Large.iconSize)
+                            if (stop.canMarkHot) {
+                                HotButton(stop.hotByMe, stop.hotCount, onToggleHot, tight, tint = if (stop.hotByMe) MaterialTheme.extendedColors.attention else LocalContentColor.current)
+                            }
+                            CountButton(Icons.AutoMirrored.Outlined.Comment, stringResource(Res.string.map_stop_comment), stop.commentCount, onClick = onOpenComments, modifier = tight, isNew = card.news.comments)
                         },
                     )
                 },

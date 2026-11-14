@@ -154,7 +154,8 @@ fun HotJoinedButton(
             BurstIcon(
                 icon = if (hot) Icons.Filled.LocalFireDepartment else Icons.Outlined.LocalFireDepartment,
                 contentDescription = stringResource(Res.string.mark_hot),
-                tint = flame,
+                // Like a heart: the content colour until marked, then the flame's own (Shahin, 2026-11-14).
+                tint = if (hot) flame else MaterialTheme.colorScheme.onSurface,
                 burst = burst,
                 modifier = Modifier.size(JoinedButtonDefaults.IconSize),
             )
