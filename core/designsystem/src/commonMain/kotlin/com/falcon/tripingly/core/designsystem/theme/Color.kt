@@ -70,7 +70,7 @@ object MapColors {
     /** The dot on a stop (and its day tab) with something I haven't seen: the accent red, in a white ring on pins. */
     val NewActivity = Color(0xFFE53935)
 
-    /** Our compass needle's north tip, the classic red (its south tip is the theme's outline grey). */
+    /** Our compass needle's north tip, the classic red (its south tip takes the map buttons' icon colour). */
     val CompassNorth = Color(0xFFE53935)
     /** Routes: one sharp jewel colour per way of travelling (emerald, amber, sapphire), plain solid lines. */
     val Walk = Color(0xFF1E9E6A)

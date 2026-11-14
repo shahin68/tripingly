@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -48,7 +49,7 @@ import org.jetbrains.compose.resources.stringResource
 
 /**
  * Our compass (Shahin, 2026-11-14, look B of the compass canvas): a glass button over the map buttons with a needle,
- * red north tip and grey south tip, and a small N at the tip, all turning so they point north while the map turns.
+ * red north tip and a south tip in the map buttons' icon colour, and an N just above the tip, all turning so they point north while the map turns.
  * It shows once the map is turned and leaves [HIDE_DELAY_MILLIS] after it is north up again; its place glides open and
  * shut with it, so the buttons under it never jump. A tap turns the map north up ([onNorthUp]) with a tick.
  *
@@ -93,21 +94,23 @@ internal fun MapCompass(bearing: () -> Float, onNorthUp: () -> Unit, modifier: M
 @Composable
 private fun CompassNeedle(modifier: Modifier = Modifier) {
     val north = MapColors.CompassNorth
-    val south = MaterialTheme.colorScheme.outline
+    // The grey tip in the map buttons' own icon colour (the fit button's), from the glass it sits on.
+    val south = LocalContentColor.current
     Box(modifier) {
         Text(
             stringResource(Res.string.map_compass_north),
             modifier = Modifier.align(Alignment.TopCenter),
             color = north,
-            fontSize = 8.sp,
-            lineHeight = 8.sp,
+            fontSize = 10.sp,
+            lineHeight = 10.sp,
             fontWeight = FontWeight.ExtraBold,
         )
         Canvas(Modifier.fillMaxSize()) {
             val cx = size.width / 2
-            val cy = size.height / 2 + 2.dp.toPx()
-            val half = 3.dp.toPx()
-            val tip = 8.dp.toPx()
+            // The needle sits low enough to leave a gap under the N.
+            val cy = size.height / 2 + 6.dp.toPx()
+            val half = 3.5.dp.toPx()
+            val tip = 9.dp.toPx()
             drawPath(Path().apply { moveTo(cx, cy - tip); lineTo(cx + half, cy); lineTo(cx - half, cy); close() }, north)
             drawPath(Path().apply { moveTo(cx, cy + tip); lineTo(cx - half, cy); lineTo(cx + half, cy); close() }, south)
         }
@@ -126,7 +129,7 @@ private const val MOVE_MILLIS = 300
 private const val FADE_MILLIS = 200
 private val Emphasized = CubicBezierEasing(0.2f, 0f, 0f, 1f)
 private val GrowFromBottom = TransformOrigin(0.5f, 1f)
-private val NeedleBoxSize = 28.dp
+private val NeedleBoxSize = 34.dp
 
 @Preview
 @Composable
