@@ -223,6 +223,9 @@ internal fun MapScreen(
                 initialZoom = zoom,
                 cameraCommands = moves,
                 contentPadding = cameraPadding,
+                // In landscape the camera's padding keeps a tapped pin low down, which would leave a held pin only a
+                // strip to rest in; it pulls the camera near the free half's edges instead (Shahin, 2026-11-14).
+                freePadding = if (isWide) covered else cameraPadding,
                 layers = state.layers,
                 onCameraMove = { coords, zoom, bounds -> onAction(MapAction.MapView.CameraRest(coords, zoom, bounds)) },
                 onCameraMoving = { bounds, zoom -> onAction(MapAction.MapView.CameraMoving(bounds, zoom)) },

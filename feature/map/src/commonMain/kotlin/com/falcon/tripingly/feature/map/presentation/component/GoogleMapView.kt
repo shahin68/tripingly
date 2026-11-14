@@ -35,6 +35,11 @@ expect fun GoogleMapView(
      * logo stays clear of them.
      */
     contentPadding: PaddingValues,
+    /**
+     * What the header and cards really cover, without the camera's own room for a tapped pin's card: a held pin pulls
+     * the camera only near the edges of the rest.
+     */
+    freePadding: PaddingValues,
     layers: MapLayersState,
     /** The camera's center, zoom and visible area (null while the map can't tell yet). */
     onCameraMove: (Coordinates, Float, GeoBounds?) -> Unit,

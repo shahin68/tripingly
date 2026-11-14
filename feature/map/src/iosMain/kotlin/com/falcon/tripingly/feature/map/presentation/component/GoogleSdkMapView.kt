@@ -60,6 +60,7 @@ internal fun GoogleSdkMapView(
     initialZoom: Float,
     cameraCommands: Flow<CameraCommand.MoveTo>,
     contentPadding: PaddingValues,
+    freePadding: PaddingValues,
     markers: List<MapMarker>,
     placePins: List<PlacePin>,
     pinDotBelowZoom: Float,
@@ -458,7 +459,7 @@ internal fun GoogleSdkMapView(
         )
         PinHoldLayer(
             holder = holder,
-            freeArea = freeArea(viewSize, contentPadding, density, LocalLayoutDirection.current),
+            freeArea = freeArea(viewSize, freePadding, density, LocalLayoutDirection.current),
             project = { point ->
                 // Read, so the line follows the camera.
                 cameraFrame

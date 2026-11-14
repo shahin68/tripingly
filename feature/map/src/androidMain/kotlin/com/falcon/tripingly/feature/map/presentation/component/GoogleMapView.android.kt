@@ -78,6 +78,7 @@ actual fun GoogleMapView(
     initialZoom: Float,
     cameraCommands: Flow<CameraCommand.MoveTo>,
     contentPadding: PaddingValues,
+    freePadding: PaddingValues,
     layers: MapLayersState,
     onCameraMove: (Coordinates, Float, GeoBounds?) -> Unit,
     onCameraMoving: (GeoBounds, Float) -> Unit,
@@ -504,7 +505,7 @@ actual fun GoogleMapView(
         }
         PinHoldLayer(
             holder = holder,
-            freeArea = freeArea(Size(mapSize.width.toFloat(), mapSize.height.toFloat()), contentPadding, density, LocalLayoutDirection.current),
+            freeArea = freeArea(Size(mapSize.width.toFloat(), mapSize.height.toFloat()), freePadding, density, LocalLayoutDirection.current),
             project = { point ->
                 // Read, so the line follows the camera.
                 cameraPositionState.position

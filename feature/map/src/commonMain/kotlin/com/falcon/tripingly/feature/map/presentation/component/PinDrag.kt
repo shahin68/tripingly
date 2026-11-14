@@ -135,7 +135,7 @@ private fun PinEnd.isSameSpot(other: PinEnd): Boolean = when {
 
 /**
  * How fast the camera moves while a held pin is pulled, in px per second toward the finger. [free] is the part of the
- * map nothing covers (between the header and the plan, left of the panel in landscape): the camera stays still in its
+ * map nothing covers (between the header and the plan; right of the panel in landscape): the camera stays still in its
  * middle ([PAN_STILL_SHARE_X] and [PAN_STILL_SHARE_Y] of the way to its edges), then moves faster the nearer the
  * finger gets to an edge, up to [PAN_MAX_SPEED] there and beyond.
  */
