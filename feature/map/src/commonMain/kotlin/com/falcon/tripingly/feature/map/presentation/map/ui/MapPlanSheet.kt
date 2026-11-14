@@ -6,8 +6,8 @@ import com.falcon.tripingly.core.designsystem.component.rememberHaptics
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.EnterExitState
 import androidx.compose.animation.SizeTransform
-import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -19,7 +19,6 @@ import androidx.compose.foundation.gestures.animateTo
 import androidx.compose.foundation.gestures.snapTo
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -27,7 +26,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.shape.ZeroCornerSize
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
@@ -53,7 +51,6 @@ import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
 import com.falcon.tripingly.core.designsystem.theme.spacing
 import com.falcon.tripingly.feature.map.generated.resources.Res
 import com.falcon.tripingly.feature.map.generated.resources.map_plan_handle
-import com.falcon.tripingly.feature.map.presentation.map.LocationState
 import com.falcon.tripingly.feature.map.presentation.map.preview.StopsCardPreviewStates
 import kotlin.math.roundToInt
 import kotlinx.coroutines.launch
@@ -76,17 +73,17 @@ internal fun AnchoredDraggableState<PlanSheetValue>.pulledUp(): Float =
     (anchors.maxPosition() - offset).takeIf { it.isFinite() }?.coerceAtLeast(0f) ?: 0f
 
 /**
- * The open day's [plan] in a sheet that rests on the day tabs. A drag anywhere on it pulls it up to show all of it, or
- * down to leave [PlanSheetPeek] of it; a tap on its handle does the same. It isn't modal: the map stays usable around
- * it, and the map keeps out of the peek only, so pulling the sheet doesn't move the map; a fit keeps out of all that
- * shows of it (see [pulledUp]). [above] (the credits, the location button) rides on the sheet's top. The sheet slides up
- * all the way when a plan comes, and down when it goes.
+ * The open day's [plan] in a sheet, the top part of the bottom card whose bottom part is the day tabs (BottomCards
+ * draws the card's glass). A drag anywhere on it pulls it up to show all of it, or down to leave [PlanSheetPeek] of it;
+ * a tap on its handle does the same. It isn't modal: the map stays usable around it, and the map keeps out of the peek
+ * only, so pulling the sheet doesn't move the map; a fit keeps out of all that shows of it (see [pulledUp]). When a
+ * plan comes the card grows up from the tabs with the sheet on its top edge; when it goes the card shrinks back and
+ * the sheet slides into the tabs, cut off at their top line (Shahin, 2026-11-14, D2a).
  */
 @Composable
 internal fun <T : Any> PlanSheet(
     plan: T?,
     state: AnchoredDraggableState<PlanSheetValue>,
-    above: @Composable ColumnScope.() -> Unit,
     modifier: Modifier = Modifier,
     content: @Composable (T) -> Unit,
 ) {
@@ -95,55 +92,48 @@ internal fun <T : Any> PlanSheet(
     // A tick as the sheet settles up or down.
     LaunchedEffect(state) { snapshotFlow { state.settledValue }.drop(1).collect { haptics.tick() } }
     val handleLabel = stringResource(Res.string.map_plan_handle)
-    // The pulled-down part of the sheet sits below this box, behind the day tabs.
-    Column(modifier = modifier.fillMaxWidth().clipToBounds()) {
-        above()
-        AnimatedContent(
-            targetState = plan,
-            // A plan replacing another (stops, a route from A to B) only updates; slides are for coming and going.
-            contentKey = { it != null },
-            // The column clips what's below it; the sheet's shadow on top stays.
-            transitionSpec = { (slideInVertically { it } togetherWith slideOutVertically { it }).using(SizeTransform(clip = false)) },
-        ) { shown ->
-            if (shown == null) return@AnimatedContent
-            // A sheet that comes in (not one shown again after a rotation) comes in all the way up.
-            val isComingIn = transition.currentState == EnterExitState.PreEnter
-            LaunchedEffect(Unit) { if (isComingIn) state.snapTo(PlanSheetValue.Expanded) }
-            val corner = MaterialTheme.shapes.extraLarge.topStart
-            // Glass over the native map, which can't be blurred; the day tabs below are its bottom part.
-            GlassSurface(
+    AnimatedContent(
+        targetState = plan,
+        // The pulled-down part of the sheet sits below this box and is cut off there, at the day tabs' top line.
+        modifier = modifier.fillMaxWidth().clipToBounds(),
+        // A plan replacing another (stops, a route from A to B) only updates; the card grows and shrinks for coming and going.
+        contentKey = { it != null },
+        // The sheet keeps its top on the card's top edge: it's uncovered from the top coming, cut from the bottom going.
+        transitionSpec = {
+            (expandVertically(expandFrom = Alignment.Top) togetherWith shrinkVertically(shrinkTowards = Alignment.Top)).using(SizeTransform(clip = true))
+        },
+    ) { shown ->
+        if (shown == null) return@AnimatedContent
+        // A sheet that comes in (not one shown again after a rotation) comes in all the way up.
+        val isComingIn = transition.currentState == EnterExitState.PreEnter
+        LaunchedEffect(Unit) { if (isComingIn) state.snapTo(PlanSheetValue.Expanded) }
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                // Dragging anywhere on the sheet pulls it; the plan scrolls only once it's pulled all the way up.
+                .nestedScroll(remember(state) { state.pullFirst() })
+                .anchoredDraggable(state, Orientation.Vertical)
+                .pulledDown(state),
+        ) {
+            Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = MaterialTheme.spacing.medium)
-                    // Dragging anywhere on the sheet pulls it; the plan scrolls only once it's pulled all the way up.
-                    .nestedScroll(remember(state) { state.pullFirst() })
-                    .anchoredDraggable(state, Orientation.Vertical)
-                    .pulledDown(state),
-                shape = RoundedCornerShape(topStart = corner, topEnd = corner, bottomStart = ZeroCornerSize, bottomEnd = ZeroCornerSize),
-                blur = false,
+                    .height(HandleAreaHeight)
+                    .semantics { contentDescription = handleLabel }
+                    .clickable {
+                        val next = if (state.settledValue == PlanSheetValue.Expanded) PlanSheetValue.Collapsed else PlanSheetValue.Expanded
+                        scope.launch { state.animateTo(next) }
+                    },
+                contentAlignment = Alignment.Center,
             ) {
-                Column {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(HandleAreaHeight)
-                            .semantics { contentDescription = handleLabel }
-                            .clickable {
-                                val next = if (state.settledValue == PlanSheetValue.Expanded) PlanSheetValue.Collapsed else PlanSheetValue.Expanded
-                                scope.launch { state.animateTo(next) }
-                            },
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .size(width = 32.dp, height = 4.dp)
-                                .background(MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f), RoundedCornerShape(2.dp)),
-                        )
-                    }
-                    // In a short window (landscape) the expanded plan scrolls.
-                    Box(modifier = Modifier.verticalScroll(rememberScrollState())) { content(shown) }
-                }
+                Box(
+                    modifier = Modifier
+                        .size(width = 32.dp, height = 4.dp)
+                        .background(MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f), RoundedCornerShape(2.dp)),
+                )
             }
+            // In a short window (landscape) the expanded plan scrolls.
+            Box(modifier = Modifier.verticalScroll(rememberScrollState())) { content(shown) }
         }
     }
 }
@@ -195,7 +185,7 @@ private fun AnchoredDraggableState<PlanSheetValue>.pullFirst() = object : Nested
     }
 }
 
-/** The plan sheet with the day's stops, its credits and location button riding on top. */
+/** The plan sheet with the day's stops, on the card's glass. */
 @Preview(heightDp = 400)
 @Composable
 private fun PlanSheetPreview() {
@@ -211,10 +201,10 @@ private fun PlanSheetDarkPreview() {
 @Composable
 private fun PlanSheetPreviewContent() {
     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.BottomCenter) {
-        PlanSheet(
-            plan = StopsCardPreviewStates().values.elementAt(1),
-            state = rememberPlanSheetState(),
-            above = { MapButtons(LocationState(), arePlacesHidden = false, onAction = {}, modifier = Modifier.align(Alignment.End).padding(MaterialTheme.spacing.medium)) },
-        ) { card -> StopsCard(card = card, dayNumber = 1, editorMenu = null, onAction = {}) }
+        GlassSurface(modifier = Modifier.padding(MaterialTheme.spacing.medium), blur = false) {
+            PlanSheet(plan = StopsCardPreviewStates().values.elementAt(1), state = rememberPlanSheetState()) { card ->
+                StopsCard(card = card, dayNumber = 1, editorMenu = null, onAction = {})
+            }
+        }
     }
 }
