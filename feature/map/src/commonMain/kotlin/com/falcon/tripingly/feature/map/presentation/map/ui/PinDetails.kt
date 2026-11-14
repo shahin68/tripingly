@@ -3,7 +3,6 @@ package com.falcon.tripingly.feature.map.presentation.map.ui
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
-import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -159,15 +158,7 @@ private fun PinDetails(
     photoStrip: @Composable () -> Unit,
     facts: @Composable () -> Unit,
 ) {
-    // What arrives late (the place's facts, who added it, the photos) makes the sheet glide to its new height instead of
-    // jumping (Shahin, 2026-11-14).
-    Column(
-        Modifier
-            .fillMaxWidth()
-            .animateContentSize()
-            .verticalScroll(rememberScrollState())
-            .windowInsetsPadding(WindowInsets.bottomSystemBar),
-    ) {
+    Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).windowInsetsPadding(WindowInsets.bottomSystemBar)) {
         SheetHeader(title = title, subtitle = subtitle, onClose = onClose, joinedActions = listOfNotNull(action))
         Column(
             modifier = Modifier.padding(horizontal = MaterialTheme.spacing.large).padding(bottom = MaterialTheme.spacing.large),
