@@ -11,7 +11,6 @@ import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.CanvasDrawScope
-import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.graphics.painter.Painter
@@ -32,6 +31,7 @@ import com.falcon.tripingly.core.model.place.MapPlace
 import com.falcon.tripingly.core.model.place.PlaceCategory
 import com.falcon.tripingly.core.model.place.PlaceCluster
 import com.falcon.tripingly.core.model.place.PlacesInView
+import com.falcon.tripingly.core.model.trip.GeoPoint
 import kotlin.math.ceil
 import kotlin.math.roundToInt
 
@@ -47,7 +47,15 @@ data class PlacePin(
     val isAlongTheWay: Boolean = false,
     /** Drawn as its dot at any zoom, as every other pin is while a route shows. */
     val isDot: Boolean = false,
+    /**
+     * A route's end or a place tapped while routing: a pin at any zoom, never its dot, until the route closes
+     * (Shahin, 2026-11-13).
+     */
+    val isKept: Boolean = false,
 )
+
+/** Drawn as its dot: zoomed out ([isZoomedOut]) unless it's kept, or a dot anyway while a route shows. */
+internal fun PlacePin.isDotAt(isZoomedOut: Boolean) = isDot || (isZoomedOut && !isKept)
 
 /**
  * The place pins for the squares in view: places inside [area] that aren't stops of the trip ([hiddenPlaceIds]),
@@ -269,26 +277,31 @@ fun drawClusterPin(
 }
 
 /**
- * Draws the ring around a route's start (Route from): a [color] ring, white inside and out so it shows on any map,
- * wide enough to go round the biggest pin.
+ * One end of a route on the map ([isStart]: where it starts): the end's pin, a place's grown, with a thick ring round it
+ * in the way of travelling's [color] (Shahin, 2026-11-13: for now, to be redesigned after a few rounds of refinements).
+ * [pinSize] is the pin's size, so the ring hugs it.
  */
-fun drawRouteStartRing(color: Color, density: Density, layoutDirection: LayoutDirection): ImageBitmap {
-    val diameter = with(density) { ROUTE_START_RING.toPx() }
-    val stroke = with(density) { ROUTE_START_STROKE.toPx() }
-    val edge = with(density) { ROUTE_START_EDGE.toPx() }
-    val px = ceil(diameter).toInt()
+@Immutable
+data class RouteEndMark(val position: GeoPoint, val isStart: Boolean, val pinSize: Dp, val color: Color)
+
+/**
+ * Draws a route end's ring, drawn under the end's pin: a [color] disc [RouteEndRingWidth] wider than the pin all round,
+ * in a thin white edge so it shows on any map. The pin covers its middle.
+ */
+fun drawRouteEndRing(pinSize: Dp, color: Color, density: Density, layoutDirection: LayoutDirection): ImageBitmap {
+    val px = with(density) { (pinSize + RouteEndRingWidth * 2).roundToPx() }
+    val edge = with(density) { RouteEndRingEdge.toPx() }
     val bitmap = ImageBitmap(px, px)
     CanvasDrawScope().draw(density, layoutDirection, Canvas(bitmap), Size(px.toFloat(), px.toFloat())) {
-        val ring = (diameter - stroke) / 2 - edge
-        drawCircle(Color.White, radius = ring, style = Stroke(stroke + edge * 2))
-        drawCircle(color, radius = ring, style = Stroke(stroke))
+        drawCircle(Color.White)
+        drawCircle(color, radius = this.size.minDimension / 2 - edge)
     }
     return bitmap
 }
 
-private val ROUTE_START_RING = 64.dp
-private val ROUTE_START_STROKE = 3.dp
-private val ROUTE_START_EDGE = 1.5.dp
+/** How far a route end's ring reaches out from its pin. */
+private val RouteEndRingWidth = 5.dp
+private val RouteEndRingEdge = 1.dp
 
 private val CLUSTER_RADIUS = 18.dp
 private val CLUSTER_PADDING = 8.dp

@@ -50,7 +50,7 @@ fun ExploreRoute(
     viewModel: ExploreViewModel = koinViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
-    val locationPermission = rememberLocationPermissionController { viewModel.onAction(Action.LocationPermissionResult(it)) }
+    val locationPermission = rememberLocationPermissionController(onResult = { viewModel.onAction(Action.LocationPermissionResult(it)) })
     ObserveAsEvents(viewModel.events) { event ->
         when (event) {
             is Event.OpenTrip -> onOpenTrip(event.tripId)

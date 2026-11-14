@@ -229,7 +229,7 @@ class PlaceRepositoryTest {
 
         assertEquals(
             listOf(
-                PlaceImage("ph1", PlaceImageSource.Trip, "https://r2/ph1/thumb", "https://r2/ph1/display", 1600, 1200, credit = null),
+                PlaceImage("ph1", PlaceImageSource.Trip, "https://r2/ph1/thumb", "https://r2/ph1/display", 1600, 1200, credit = null, uploader = UserSummary("u1", "anna", "Anna")),
                 PlaceImage(
                     id = "pi1",
                     source = PlaceImageSource.Commons,
@@ -284,7 +284,8 @@ class PlaceRepositoryTest {
               "photoThumbUrls": ["https://r2/ph1/thumb"],
               "images": [
                 {"id": "ph1", "source": "trip", "thumbUrl": "https://r2/ph1/thumb", "displayUrl": "https://r2/ph1/display",
-                 "width": 1600, "height": 1200, "credit": null},
+                 "width": 1600, "height": 1200, "credit": null,
+                 "uploader": {"id": "u1", "username": "anna", "displayName": "Anna", "avatarPhotoId": null, "avatarThumbUrl": null}},
                 {"id": "pi1", "source": "commons", "thumbUrl": "https://r2/pi1/thumb", "displayUrl": "https://r2/pi1/display",
                  "width": 1280, "height": 960,
                  "credit": {"author": "Jane Doe", "title": null, "license": "CC BY-SA 4.0",

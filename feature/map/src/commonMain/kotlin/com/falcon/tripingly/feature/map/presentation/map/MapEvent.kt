@@ -4,6 +4,8 @@ package com.falcon.tripingly.feature.map.presentation.map
 sealed interface MapEvent {
     data object RequestPermission : MapEvent
     data object OpenAppSettings : MapEvent
+    /** Android's one-tap dialog that switches location on; iOS Settings. */
+    data object TurnOnLocation : MapEvent
     data object NavigateBack : MapEvent
     data class OpenProfile(val username: String) : MapEvent
     data object OpenPaywall : MapEvent
@@ -13,4 +15,7 @@ sealed interface MapEvent {
 
     /** The user added a stop: felt, and the plan sheet opens all the way as for [ShowWholePlan]. */
     data object StopAdded : MapEvent
+
+    /** A stop or place went to one of my trips: felt; a note says where. */
+    data object AddedToMyTrip : MapEvent
 }

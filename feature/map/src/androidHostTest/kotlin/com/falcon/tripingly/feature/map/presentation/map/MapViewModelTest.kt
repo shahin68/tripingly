@@ -1,5 +1,6 @@
 package com.falcon.tripingly.feature.map.presentation.map
 
+import androidx.compose.foundation.text.input.clearText
 import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
 import app.cash.turbine.test
 import com.falcon.tripingly.core.common.error.DataError
@@ -10,9 +11,11 @@ import com.falcon.tripingly.core.common.result.map
 import com.falcon.tripingly.core.common.util.DateUtils
 import com.falcon.tripingly.core.data.account.FakeAccountBackend
 import com.falcon.tripingly.core.data.config.FakeAppConfigRepository
+import com.falcon.tripingly.core.data.photos.FakePhotoRepository
 import com.falcon.tripingly.core.data.places.FakePlaceRepository
 import com.falcon.tripingly.core.data.places.PlaceRepository
 import com.falcon.tripingly.core.data.push.FakeNewActivityRepository
+import com.falcon.tripingly.core.data.push.NewsKind
 import com.falcon.tripingly.core.data.push.StopNews
 import com.falcon.tripingly.core.data.routing.FakeRouteRepository
 import com.falcon.tripingly.core.data.routing.RouteErrorCodes
@@ -58,26 +61,31 @@ import com.falcon.tripingly.core.model.trip.NewTrip
 import com.falcon.tripingly.core.model.trip.TripDay
 import com.falcon.tripingly.core.model.trip.TripDetails
 import com.falcon.tripingly.core.model.trip.TripMapView
+import com.falcon.tripingly.core.model.trip.TripMember
 import com.falcon.tripingly.core.model.trip.TripRole
 import com.falcon.tripingly.core.model.trip.UserSummary
 import com.falcon.tripingly.core.ui.UiText
-import com.falcon.tripingly.feature.map.presentation.map.state.withPinMargin
 import com.falcon.tripingly.feature.map.generated.resources.Res
 import com.falcon.tripingly.feature.map.generated.resources.error_location_denied_manual
 import com.falcon.tripingly.feature.map.generated.resources.error_location_permission_required
-import com.falcon.tripingly.feature.map.generated.resources.map_trip_card_more
+import com.falcon.tripingly.feature.map.generated.resources.map_add_to_trip_added
+import com.falcon.tripingly.feature.map.generated.resources.map_add_to_trip_no_trips
 import com.falcon.tripingly.feature.map.generated.resources.map_best_order_already
 import com.falcon.tripingly.feature.map.generated.resources.map_change_not_saved
 import com.falcon.tripingly.feature.map.generated.resources.map_error_load_trip
 import com.falcon.tripingly.feature.map.generated.resources.map_error_stop_change
 import com.falcon.tripingly.feature.map.generated.resources.map_join_requested
 import com.falcon.tripingly.feature.map.generated.resources.map_route_my_location
+import com.falcon.tripingly.feature.map.generated.resources.map_trip_card_more
 import com.falcon.tripingly.feature.map.presentation.FakeTripMapViewRepository
 import com.falcon.tripingly.feature.map.presentation.component.CameraCommand
 import com.falcon.tripingly.feature.map.presentation.component.PinEnd
 import com.falcon.tripingly.feature.map.presentation.component.PinSizes
+import com.falcon.tripingly.feature.map.presentation.component.SelectedPinSize
+import com.falcon.tripingly.feature.map.presentation.component.isDotAt
 import com.falcon.tripingly.feature.map.presentation.component.routeLine
 import com.falcon.tripingly.feature.map.presentation.component.stopPathShape
+import com.falcon.tripingly.feature.map.presentation.map.state.withPinMargin
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
@@ -93,6 +101,7 @@ import kotlin.time.Instant
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.launch
@@ -121,6 +130,7 @@ class MapViewModelTest {
     private lateinit var session: FakeAccountBackend
     private lateinit var mapViews: FakeTripMapViewRepository
     private lateinit var newActivity: FakeNewActivityRepository
+    private lateinit var photos: FakePhotoRepository
 
     /** The fake's sights (Eiffel Tower, Louvre …), counting the squares asked for. */
     private class CountingPlaceRepository(
@@ -156,6 +166,8 @@ class MapViewModelTest {
     ) : RouteRepository by fake {
         val dayRoutes = mutableListOf<Pair<List<String>, TravelMode>>()
         val pointRoutes = mutableListOf<Pair<GeoPoint, GeoPoint>>()
+        /** The places at the ends sent with each route between two points. */
+        val pointRoutePlaces = mutableListOf<Pair<String?, String?>>()
         /** Answers every route with this error when set. */
         var error: DataError.Network? = null
         /** The best order to propose; the fake's (nearest stop next) when null. */
@@ -168,9 +180,10 @@ class MapViewModelTest {
             return error?.asError() ?: fake.dayRoute(tripId, day, mode).map { it.copy(alongTheWay = alongTheWay) }
         }
 
-        override suspend fun route(from: GeoPoint, to: GeoPoint, mode: TravelMode, tripId: String?): AppResult<RoutePlan, DataError.Network> {
+        override suspend fun route(from: GeoPoint, to: GeoPoint, mode: TravelMode, tripId: String?, fromPlaceId: String?, toPlaceId: String?): AppResult<RoutePlan, DataError.Network> {
             pointRoutes += from to to
-            return error?.asError() ?: fake.route(from, to, mode, tripId)
+            pointRoutePlaces += fromPlaceId to toPlaceId
+            return error?.asError() ?: fake.route(from, to, mode, tripId, fromPlaceId, toPlaceId)
         }
 
         override suspend fun bestOrder(tripId: String, day: TripDay, mode: TravelMode): AppResult<BestOrder, DataError.Network> =
@@ -193,8 +206,11 @@ class MapViewModelTest {
         var locationResult: AppResult<Coordinates, DataError.Location> =
             Coordinates(48.8566, 2.3522).asSuccess()
 
+        /** Locations that come one by one as the test sends them, instead of [locationResult] once. */
+        var live: Flow<AppResult<Coordinates, DataError.Location>>? = null
+
         override fun getLocationStream(): Flow<AppResult<Coordinates, DataError.Location>> {
-            return flowOf(locationResult)
+            return live ?: flowOf(locationResult)
         }
     }
 
@@ -209,6 +225,7 @@ class MapViewModelTest {
         routes = RecordingRouteRepository()
         mapViews = FakeTripMapViewRepository()
         newActivity = FakeNewActivityRepository()
+        photos = FakePhotoRepository()
         // With Tripinly Pro, for the routes.
         session = signedIn(setOf(ROUTES_ENTITLEMENT))
         trip = (backend.createTrip(NewTrip("Test Trip", LocalDate(2024, 1, 1), LocalDate(2024, 1, 3))) as AppResult.Success).data
@@ -242,10 +259,14 @@ class MapViewModelTest {
         sessionRepository = session,
         getCurrentLocationUseCase = GetCurrentLocationUseCase(fakeLocationRepository),
         newActivityRepository = newActivity,
+        photoRepository = photos,
         computation = testDispatcher,
     ).also { viewModel -> backgroundScope.launch { viewModel.uiState.collect {} } }
 
     /** The place of the pin named [name] on the map. */
+    /** Where the route's start badge is: its start pin. */
+    private val MapUiState.startMark get() = layers.routeEnds.firstOrNull { it.isStart }?.position
+
     private fun MapViewModel.pin(name: String): MapPlace = uiState.value.layers.placePins.single { it.place.name == name }.place
 
     private val MapUiState.locationPrompt get() = (dialog as? MapDialog.Location)?.prompt
@@ -356,6 +377,93 @@ class MapViewModelTest {
             viewModel.onAction(MapAction.Location.CenterOnUser)
             testScheduler.advanceUntilIdle()
             assertEquals(CameraCommand.MoveTo(userCoords, 15f), expectMostRecentItem())
+        }
+    }
+
+    @Test
+    fun `the location button follows me until the map is moved, and waits through a lost signal`() = runTest(testDispatcher) {
+        val fixes = MutableSharedFlow<AppResult<Coordinates, DataError.Location>>(replay = 1)
+        fakeLocationRepository.live = fixes
+        val viewModel = viewModel()
+        viewModel.onAction(MapAction.Location.PermissionChecked(LocationPermission.Granted))
+        fixes.emit(Coordinates(52.52, 13.40).asSuccess())
+        testScheduler.advanceUntilIdle()
+
+        viewModel.cameraCommands.test {
+            viewModel.onAction(MapAction.Location.CenterOnUser)
+            testScheduler.runCurrent()
+            // The latest: the trip opening sent its own before.
+            assertEquals(CameraCommand.MoveTo(Coordinates(52.52, 13.40), 15f), expectMostRecentItem())
+            assertTrue(viewModel.uiState.value.location.isFollowing)
+
+            // Each new location moves the camera along.
+            fixes.emit(Coordinates(52.53, 13.41).asSuccess())
+            testScheduler.runCurrent()
+            assertEquals(CameraCommand.MoveTo(Coordinates(52.53, 13.41), 15f), awaitItem())
+
+            // No location for a while: a note says it's waiting, and the next one carries on.
+            testScheduler.advanceTimeBy(13_000)
+            assertTrue(viewModel.uiState.value.location.isSignalLost)
+            fixes.emit(Coordinates(52.54, 13.42).asSuccess())
+            testScheduler.runCurrent()
+            assertEquals(CameraCommand.MoveTo(Coordinates(52.54, 13.42), 15f), awaitItem())
+            assertFalse(viewModel.uiState.value.location.isSignalLost)
+
+            // A finger moves the map: following stops, and locations no longer move it.
+            viewModel.onAction(MapAction.MapView.UserMove)
+            fixes.emit(Coordinates(52.55, 13.43).asSuccess())
+            testScheduler.runCurrent()
+            assertFalse(viewModel.uiState.value.location.isFollowing)
+            expectNoEvents()
+
+            // The button again: back to me and following; once more, it stops.
+            viewModel.onAction(MapAction.Location.CenterOnUser)
+            testScheduler.runCurrent()
+            assertEquals(CameraCommand.MoveTo(Coordinates(52.55, 13.43), 15f), awaitItem())
+            viewModel.onAction(MapAction.Location.CenterOnUser)
+            testScheduler.runCurrent()
+            assertFalse(viewModel.uiState.value.location.isFollowing)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `with location switched off the button says so, turns it on and follows once it's back`() = runTest(testDispatcher) {
+        val fixes = MutableSharedFlow<AppResult<Coordinates, DataError.Location>>(replay = 1)
+        fakeLocationRepository.live = fixes
+        val viewModel = viewModel()
+        // As iOS reports it: switched-off location reads as a denial.
+        viewModel.onAction(MapAction.Location.PermissionChecked(LocationPermission.Blocked))
+        viewModel.onAction(MapAction.Location.LocationSwitched(isOn = false))
+        testScheduler.advanceUntilIdle()
+        assertFalse(viewModel.uiState.value.location.isSwitchedOff)
+
+        viewModel.events.test {
+            viewModel.onAction(MapAction.Location.CenterOnUser)
+            testScheduler.runCurrent()
+            // The note instead of the Settings dialog.
+            assertTrue(viewModel.uiState.value.location.isSwitchedOff)
+            assertTrue(viewModel.uiState.value.location.isFollowing)
+            assertNull(viewModel.uiState.value.dialog)
+            testScheduler.advanceTimeBy(13_000)
+            assertFalse(viewModel.uiState.value.location.isSignalLost)
+
+            viewModel.onAction(MapAction.Location.TurnOn)
+            testScheduler.runCurrent()
+            assertEquals(MapEvent.TurnOnLocation, awaitItem())
+            cancelAndIgnoreRemainingEvents()
+        }
+
+        viewModel.cameraCommands.test {
+            // Back from Settings: allowed and on, and the first location starts following.
+            viewModel.onAction(MapAction.Location.PermissionChecked(LocationPermission.Granted))
+            viewModel.onAction(MapAction.Location.LocationSwitched(isOn = true))
+            fixes.emit(Coordinates(52.52, 13.40).asSuccess())
+            testScheduler.runCurrent()
+            assertEquals(CameraCommand.MoveTo(Coordinates(52.52, 13.40), 15f), expectMostRecentItem())
+            assertFalse(viewModel.uiState.value.location.isSwitchedOff)
+            assertTrue(viewModel.uiState.value.location.isFollowing)
+            cancelAndIgnoreRemainingEvents()
         }
     }
 
@@ -492,31 +600,43 @@ class MapViewModelTest {
         assertEquals(stop.id, assertIs<MapSheet.StopDetails>(viewModel.uiState.value.sheet).card.stop.id)
         assertEquals(stop.id, viewModel.uiState.value.stopCard?.stop?.id)
 
-        // One sheet at a time: comments take the details' place, and closing them brings the details back.
+        // One sheet at a time: comments take the details' place, with a back arrow that brings the details back.
         viewModel.onAction(MapAction.StopCard.OpenComments)
         testScheduler.advanceUntilIdle()
         assertIs<MapSheet.StopComments>(viewModel.uiState.value.sheet)
-        viewModel.onAction(MapAction.Sheet.CloseStopComments)
+        viewModel.onAction(MapAction.Sheet.Back)
         testScheduler.advanceUntilIdle()
         assertIs<MapSheet.StopDetails>(viewModel.uiState.value.sheet)
 
         viewModel.onAction(MapAction.StopCard.OpenPhotos)
         testScheduler.advanceUntilIdle()
         assertIs<MapSheet.StopPhotos>(viewModel.uiState.value.sheet)
-        viewModel.onAction(MapAction.Sheet.CloseStopPhotos)
+        viewModel.onAction(MapAction.Sheet.Back)
         testScheduler.advanceUntilIdle()
         assertIs<MapSheet.StopDetails>(viewModel.uiState.value.sheet)
 
-        viewModel.onAction(MapAction.Sheet.CloseDetails)
+        viewModel.onAction(MapAction.Sheet.CloseAll)
         testScheduler.advanceUntilIdle()
         assertNull(viewModel.uiState.value.sheet)
         assertEquals(stop.id, viewModel.uiState.value.stopCard?.stop?.id)
 
         // Opened from the card, comments close to the map.
         viewModel.onAction(MapAction.StopCard.OpenComments)
-        viewModel.onAction(MapAction.Sheet.CloseStopComments)
+        testScheduler.advanceUntilIdle()
+        assertEquals(false, viewModel.uiState.value.sheet?.hasBack)
+        viewModel.onAction(MapAction.Sheet.CloseAll)
         testScheduler.advanceUntilIdle()
         assertNull(viewModel.uiState.value.sheet)
+
+        // ✕ or a swipe on photos opened from the details closes the details too.
+        viewModel.onAction(MapAction.StopCard.OpenDetails)
+        viewModel.onAction(MapAction.StopCard.OpenPhotos)
+        testScheduler.advanceUntilIdle()
+        assertEquals(true, viewModel.uiState.value.sheet?.hasBack)
+        viewModel.onAction(MapAction.Sheet.CloseAll)
+        testScheduler.advanceUntilIdle()
+        assertNull(viewModel.uiState.value.sheet)
+        assertEquals(stop.id, viewModel.uiState.value.stopCard?.stop?.id)
     }
 
     @Test
@@ -577,11 +697,11 @@ class MapViewModelTest {
         viewModel.onAction(MapAction.PlaceCard.OpenPhotos)
         testScheduler.advanceUntilIdle()
         assertIs<MapSheet.PlacePhotos>(viewModel.uiState.value.sheet)
-        viewModel.onAction(MapAction.Sheet.ClosePlacePhotos)
+        viewModel.onAction(MapAction.Sheet.Back)
         testScheduler.advanceUntilIdle()
         assertIs<MapSheet.PlaceDetails>(viewModel.uiState.value.sheet)
 
-        viewModel.onAction(MapAction.Sheet.CloseDetails)
+        viewModel.onAction(MapAction.Sheet.CloseAll)
         testScheduler.advanceUntilIdle()
         assertEquals("Louvre", viewModel.uiState.value.placeCard?.place?.name)
     }
@@ -663,6 +783,27 @@ class MapViewModelTest {
     }
 
     @Test
+    fun `a layout change fits a fit still showing again, but not a camera a finger moved since`() = runTest(testDispatcher) {
+        backend.addMarker(trip.trip.id, trip.days[0].id, NewMarker("Stop #1", GeoPoint(48.85, 2.35)))
+        val viewModel = viewModel()
+        testScheduler.advanceUntilIdle()
+        viewModel.cameraCommands.test {
+            viewModel.onAction(MapAction.Days.FitDay)
+            testScheduler.advanceUntilIdle()
+            val fit = assertIs<CameraCommand.Fit>(expectMostRecentItem())
+            viewModel.onAction(MapAction.MapView.LayoutChange)
+            testScheduler.advanceUntilIdle()
+            assertEquals(fit, awaitItem())
+            // A map built anew (Android rebuilds it on a rotation) opens on it already fitted.
+            assertEquals(fit.bounds, viewModel.uiState.value.camera.openingBounds)
+            viewModel.onAction(MapAction.MapView.UserMove)
+            viewModel.onAction(MapAction.MapView.LayoutChange)
+            testScheduler.advanceUntilIdle()
+            expectNoEvents()
+        }
+    }
+
+    @Test
     fun `a push opens the trip on its stop's day, the camera on the stop and its new mark showing`() = runTest(testDispatcher) {
         backend.addMarker(trip.trip.id, trip.days[0].id, NewMarker("Stop #1", GeoPoint(48.85, 2.35)))
         val pushed = backend.addMarker(trip.trip.id, trip.days[1].id, NewMarker("Colosseum", GeoPoint(41.89, 12.49)))
@@ -708,7 +849,7 @@ class MapViewModelTest {
     fun `stops with new activity carry a mark until they are opened, and new ones come live`() = runTest(testDispatcher) {
         val first = backend.addMarker(trip.trip.id, trip.days[0].id, NewMarker("Stop #1", GeoPoint(48.85, 2.35)))
         val second = backend.addMarker(trip.trip.id, trip.days[0].id, NewMarker("Stop #2", GeoPoint(48.86, 2.29)))
-        newActivity.marked[trip.trip.id] = setOf(first.id)
+        newActivity.news[trip.trip.id] = setOf(StopNews(first.id, NewsKind.Other))
         val viewModel = viewModel()
         testScheduler.advanceUntilIdle()
         assertEquals(listOf(true, false), viewModel.uiState.value.layers.stops.map { it.isNew })
@@ -717,46 +858,74 @@ class MapViewModelTest {
         viewModel.onAction(MapAction.MapView.MarkerClick(viewModel.uiState.value.layers.stops[0]))
         testScheduler.advanceUntilIdle()
         assertEquals(listOf(false, false), viewModel.uiState.value.layers.stops.map { it.isNew })
-        assertEquals(listOf(StopNews(first.id, false)), newActivity.seen)
+        assertEquals(listOf(StopNews(first.id, NewsKind.Other)), newActivity.seen)
 
         // A like on the open stop is seen at once; one on another stop marks it.
         newActivity.arrive(trip.trip.id, first.id)
         newActivity.arrive(trip.trip.id, second.id)
         testScheduler.advanceUntilIdle()
         assertEquals(listOf(false, true), viewModel.uiState.value.layers.stops.map { it.isNew })
-        assertEquals(listOf(StopNews(first.id, false), StopNews(first.id, false)), newActivity.seen)
+        assertEquals(listOf(StopNews(first.id, NewsKind.Other), StopNews(first.id, NewsKind.Other)), newActivity.seen)
         assertTrue(viewModel.uiState.value.dayTabs.days[0].hasNew)
     }
 
     @Test
     fun `a stop with new comments keeps its mark until its comments are seen`() = runTest(testDispatcher) {
         val first = backend.addMarker(trip.trip.id, trip.days[0].id, NewMarker("Stop #1", GeoPoint(48.85, 2.35)))
-        newActivity.commentMarked[trip.trip.id] = setOf(first.id)
+        newActivity.news[trip.trip.id] = setOf(StopNews(first.id, NewsKind.Comments))
         val viewModel = viewModel()
         testScheduler.advanceUntilIdle()
 
-        // Opening the stop card doesn't read its comments.
-        viewModel.onAction(MapAction.MapView.MarkerClick(viewModel.uiState.value.layers.stops[0]))
-        testScheduler.advanceUntilIdle()
+        // Opening the stop card doesn't read its comments: their button carries the dot.
+        assertEquals(StopCardNews(comments = true), openStopCard(viewModel, 0).news)
         assertTrue(viewModel.uiState.value.layers.stops[0].isNew)
         assertTrue(newActivity.seen.isEmpty())
 
         viewModel.onAction(MapAction.StopCard.OpenComments)
         testScheduler.advanceUntilIdle()
         assertFalse(viewModel.uiState.value.layers.stops[0].isNew)
-        assertEquals(listOf(StopNews(first.id, true)), newActivity.seen)
+        assertEquals(listOf(StopNews(first.id, NewsKind.Comments)), newActivity.seen)
 
         // A new comment while they're open is seen at once.
-        newActivity.arrive(trip.trip.id, first.id, aboutComments = true)
+        newActivity.arrive(trip.trip.id, first.id, NewsKind.Comments)
         testScheduler.advanceUntilIdle()
         assertFalse(viewModel.uiState.value.layers.stops[0].isNew)
-        assertEquals(listOf(StopNews(first.id, true), StopNews(first.id, true)), newActivity.seen)
+        assertEquals(listOf(StopNews(first.id, NewsKind.Comments), StopNews(first.id, NewsKind.Comments)), newActivity.seen)
+    }
+
+    @Test
+    fun `photos keep their dot until they open, and flames mark the pin until the flame shows`() = runTest(testDispatcher) {
+        val first = backend.addMarker(trip.trip.id, trip.days[0].id, NewMarker("Stop #1", GeoPoint(48.85, 2.35)))
+        val second = backend.addMarker(trip.trip.id, trip.days[0].id, NewMarker("Stop #2", GeoPoint(48.86, 2.29)))
+        newActivity.news[trip.trip.id] = setOf(StopNews(first.id, NewsKind.Photos), StopNews(second.id, NewsKind.Hot))
+        val viewModel = viewModel()
+        testScheduler.advanceUntilIdle()
+        // Flames mark the pin like any news.
+        assertEquals(listOf(true, true), viewModel.uiState.value.layers.stops.map { it.isNew })
+
+        assertEquals(StopCardNews(photos = true), openStopCard(viewModel, 0).news)
+        viewModel.onAction(MapAction.StopCard.OpenPhotos)
+        testScheduler.advanceUntilIdle()
+        assertEquals(StopCardNews(), viewModel.uiState.value.stopCard?.news)
+        assertFalse(viewModel.uiState.value.layers.stops[0].isNew)
+        assertEquals(listOf(StopNews(first.id, NewsKind.Photos)), newActivity.seen)
+
+        // The flame shows on the expanded card: the flames count as seen.
+        viewModel.onAction(MapAction.Sheet.CloseAll)
+        assertEquals(StopCardNews(hot = true), openStopCard(viewModel, 1).news)
+        // The slim card doesn't show the flame: the pin keeps its mark until the flame shows.
+        assertTrue(viewModel.uiState.value.layers.stops[1].isNew)
+        viewModel.onAction(MapAction.StopCard.HotSeen(second.id))
+        testScheduler.advanceUntilIdle()
+        assertFalse(viewModel.uiState.value.layers.stops[1].isNew)
+        assertEquals(StopCardNews(), viewModel.uiState.value.stopCard?.news)
+        assertEquals(StopNews(second.id, NewsKind.Hot), newActivity.seen.last())
     }
 
     @Test
     fun `news read elsewhere takes its mark off`() = runTest(testDispatcher) {
         val first = backend.addMarker(trip.trip.id, trip.days[0].id, NewMarker("Stop #1", GeoPoint(48.85, 2.35)))
-        newActivity.commentMarked[trip.trip.id] = setOf(first.id)
+        newActivity.news[trip.trip.id] = setOf(StopNews(first.id, NewsKind.Comments))
         val viewModel = viewModel()
         testScheduler.advanceUntilIdle()
         assertTrue(viewModel.uiState.value.layers.stops[0].isNew)
@@ -942,6 +1111,48 @@ class MapViewModelTest {
         assertEquals(0, viewModel.uiState.value.layers.stops.size)
         assertNull(viewModel.uiState.value.dialog)
         assertNull(viewModel.uiState.value.stopsCard?.selectedStopId)
+    }
+
+    @Test
+    fun `a stop's card says who added it once the trip has editors and me as me`() = runTest(testDispatcher) {
+        backend.addMarker(trip.trip.id, trip.days[0].id, NewMarker("Mine", GeoPoint(48.2085, 16.3721)))
+        backend.addMarker(trip.trip.id, trip.days[0].id, NewMarker("Anna's", GeoPoint(48.21, 16.37)))
+        val alone = viewModel()
+        testScheduler.advanceUntilIdle()
+        // Only its owner on the trip: the header already names them.
+        assertNull(openStopCard(alone, 0).addedBy)
+
+        val anna = UserSummary("anna-id", "anna", "Anna")
+        val shared = backend.observeTrip(trip.trip.id).first()!!
+        backend.seed(
+            shared.copy(
+                members = shared.members + TripMember(anna, TripRole.EDITOR),
+                days = shared.days.map { day -> day.copy(markers = day.markers.mapIndexed { i, it -> if (i == 1) it.copy(createdById = anna.id, createdBy = anna) else it }) },
+            ),
+        )
+        val viewModel = viewModel()
+        testScheduler.advanceUntilIdle()
+        assertEquals(true, openStopCard(viewModel, 0).addedBy?.isMe)
+        viewModel.onAction(MapAction.MapView.ScreenTouch)
+        assertEquals(AddedBy(anna, isMe = false), openStopCard(viewModel, 1).addedBy)
+    }
+
+    @Test
+    fun `no one is named when the server names no one, after a block or a deleted account`() = runTest(testDispatcher) {
+        backend.addMarker(trip.trip.id, trip.days[0].id, NewMarker("Hidden", GeoPoint(48.2085, 16.3721)))
+        val shared = backend.observeTrip(trip.trip.id).first()!!
+        backend.seed(shared.copy(days = shared.days.map { day -> day.copy(markers = day.markers.map { it.copy(createdById = "blocked-id", createdBy = null) }) }))
+        val viewModel = viewModel()
+        testScheduler.advanceUntilIdle()
+        assertNull(openStopCard(viewModel, 0).addedBy)
+    }
+
+    private fun TestScope.openStopCard(viewModel: MapViewModel, index: Int): StopCardState {
+        val stop = viewModel.uiState.value.layers.stops[index]
+        viewModel.onAction(MapAction.MapView.MarkerClick(stop))
+        viewModel.onAction(MapAction.MapView.CameraRest(stop.position, 15f, PARIS_CENTER))
+        testScheduler.advanceUntilIdle()
+        return assertNotNull(viewModel.uiState.value.stopCard)
     }
 
     @Test
@@ -1346,6 +1557,8 @@ class MapViewModelTest {
     @Test
     fun `a place's images open full screen, and a Commons image is reported as the place's image`() = runTest(testDispatcher) {
         places.images["fake-louvre"] = listOf(TRIP_PHOTO, COMMONS_IMAGE)
+        // The gallery, as the Photos sheet shows it, also has a photo too few people liked to stand for the place.
+        photos.seed(PhotoOwner.Place("fake-louvre"), listOf(TRIP_PHOTO.asPhoto(), COMMONS_IMAGE.asPhoto(), TRIP_PHOTO.asPhoto().copy(id = "unliked")))
         val viewModel = viewModel()
         testScheduler.advanceUntilIdle()
         viewModel.onAction(MapAction.MapView.CameraRest(Coordinates(48.86, 2.32), 15f, PARIS_CENTER))
@@ -1354,6 +1567,8 @@ class MapViewModelTest {
         restOnTarget(viewModel)
         testScheduler.advanceUntilIdle()
         assertEquals(listOf(TRIP_PHOTO, COMMONS_IMAGE), viewModel.uiState.value.placeCard?.details?.images)
+        // The card swipes through the same photos as the sheet (Shahin, 2026-11-14).
+        assertEquals(listOf("ph1", "pi1", "unliked"), viewModel.uiState.value.placeCard?.images?.map { it.id })
 
         viewModel.onAction(MapAction.PlaceCard.OpenImage(1))
         testScheduler.advanceUntilIdle()
@@ -1371,6 +1586,8 @@ class MapViewModelTest {
         testScheduler.advanceUntilIdle()
         assertNull(viewModel.uiState.value.sheet)
     }
+
+    private fun gridPhoto(id: String, owner: PhotoOwner) = COMMONS_IMAGE.asPhoto().copy(id = id, owner = owner, credit = null)
 
     /** The image as the place's photo viewer has it. */
     private fun PlaceImage.asPhoto() = Photo(
@@ -1407,11 +1624,40 @@ class MapViewModelTest {
         viewModel.onAction(MapAction.MapView.MarkerClick(stop))
         restOnTarget(viewModel)
         testScheduler.advanceUntilIdle()
-        assertEquals(COMMONS_IMAGE.credit, viewModel.uiState.value.stopCard?.coverCredit)
+        assertEquals(listOf(COMMONS_IMAGE), viewModel.uiState.value.stopCard?.images)
 
         viewModel.onAction(MapAction.MapView.MarkerClick(stop))
         testScheduler.advanceUntilIdle()
         assertEquals(listOf("fake-louvre"), places.detailRequests)
+    }
+
+    @Test
+    fun `a stop's photo swipes from its cover through its photo grid`() = runTest(testDispatcher) {
+        places.images["fake-louvre"] = listOf(COMMONS_IMAGE)
+        backend.addMarker(trip.trip.id, trip.days[0].id, NewMarker("Louvre", LOUVRE, placeId = "fake-louvre"))
+        val withStop = (backend.refreshTrip(trip.trip.id) as AppResult.Success).data
+        backend.seed(
+            withStop.copy(
+                days = withStop.days.map { day ->
+                    day.copy(markers = day.markers.map { it.copy(coverPhotoId = "my-photo", coverThumbUrl = "https://r2/my-photo/thumb") })
+                },
+            ),
+        )
+        val viewModel = viewModel()
+        testScheduler.advanceUntilIdle()
+        val stop = viewModel.uiState.value.layers.stops.single()
+        // The grid has someone's trip photo the place's images don't (too few likes), a Commons image and an upload still processing.
+        val owner = PhotoOwner.Stop(stop.id)
+        photos.seed(owner, listOf(COMMONS_IMAGE.asPhoto().copy(owner = owner), gridPhoto("their-photo", owner), gridPhoto("processing", owner).copy(status = PhotoStatus.Processing)))
+
+        viewModel.onAction(MapAction.MapView.MarkerClick(stop))
+        restOnTarget(viewModel)
+        testScheduler.advanceUntilIdle()
+        val images = viewModel.uiState.value.stopCard?.images.orEmpty()
+        assertEquals(listOf("my-photo", "pi1", "their-photo"), images.map { it.id })
+        assertEquals(COMMONS_IMAGE.credit, images[1].credit)
+        // Only the own cover's thumbnail is known, and it has no credit.
+        assertEquals(PlaceImage("my-photo", PlaceImageSource.Trip, "https://r2/my-photo/thumb", null, null, null, null), images.first())
     }
 
     @Test
@@ -1433,7 +1679,7 @@ class MapViewModelTest {
         assertEquals("Mo-Su 09:00-18:00", viewModel.uiState.value.placeCard?.details?.openingHours)
         assertTrue((backend.refreshTrip(trip.trip.id) as AppResult.Success).data.days[0].markers.isEmpty())
 
-        viewModel.onAction(MapAction.PlaceCard.AddToDay)
+        viewModel.onAction(MapAction.PlaceCard.Add)
         testScheduler.advanceUntilIdle()
 
         val state = viewModel.uiState.value
@@ -1596,19 +1842,162 @@ class MapViewModelTest {
     }
 
     @Test
-    fun `a viewer can't add a place`() = runTest(testDispatcher) {
+    fun `a viewer's + puts a place on a day of one of my trips, and the map stays`() = runTest(testDispatcher) {
+        backend.seed(trip.copy(trip = trip.trip.copy(role = TripRole.VIEWER)))
+        val mine = (backend.createTrip(NewTrip("Mine", LocalDate(2024, 2, 1), LocalDate(2024, 2, 2))) as AppResult.Success).data
+        val viewModel = viewModel()
+        testScheduler.advanceUntilIdle()
+        viewModel.onAction(MapAction.MapView.CameraRest(Coordinates(48.86, 2.32), 15f, PARIS_CENTER))
+        testScheduler.advanceUntilIdle()
+        viewModel.onAction(MapAction.MapView.PlacePinClick(viewModel.pin("Louvre")))
+        restOnTarget(viewModel)
+        assertEquals(PinAdd.ToMyTrip, viewModel.uiState.value.placeCard?.add)
+
+        viewModel.onAction(MapAction.PlaceCard.Add)
+        testScheduler.advanceUntilIdle()
+        // Only my trips I can edit: not the one I'm viewing.
+        val picker = assertIs<MapSheet.AddToTrip>(viewModel.uiState.value.sheet).picker
+        assertEquals(listOf(mine.trip.id), picker.trips.map { it.id })
+        viewModel.onAction(MapAction.Sheet.PickTrip(mine.trip.id))
+        testScheduler.advanceUntilIdle()
+        val days = assertNotNull(assertIs<MapSheet.AddToTrip>(viewModel.uiState.value.sheet).picker.days)
+        viewModel.onAction(MapAction.Sheet.PickDay(days[1].id))
+        testScheduler.advanceUntilIdle()
+
+        val state = viewModel.uiState.value
+        assertNull(state.sheet)
+        assertNull(state.placeCard)
+        assertEquals(UiText.Note(UiText.Resource(Res.string.map_add_to_trip_added, "Mine", 2)), state.message?.text)
+        val stop = (backend.refreshTrip(mine.trip.id) as AppResult.Success).data.days[1].markers.single()
+        assertEquals("Louvre", stop.name)
+        assertTrue((backend.refreshTrip(trip.trip.id) as AppResult.Success).data.days[0].markers.isEmpty())
+    }
+
+    @Test
+    fun `a viewer's + copies a stop from its details to one of my trips`() = runTest(testDispatcher) {
+        backend.addMarker(trip.trip.id, trip.days[0].id, NewMarker("Stephansdom", GeoPoint(48.2085, 16.3721)))
+        val withStop = (backend.refreshTrip(trip.trip.id) as AppResult.Success).data
+        backend.seed(withStop.copy(trip = withStop.trip.copy(role = TripRole.VIEWER)))
+        val mine = (backend.createTrip(NewTrip("Mine", LocalDate(2024, 2, 1), LocalDate(2024, 2, 2))) as AppResult.Success).data
+        val viewModel = viewModel()
+        testScheduler.advanceUntilIdle()
+        viewModel.onAction(MapAction.MapView.MarkerClick(viewModel.uiState.value.layers.stops.single()))
+        restOnTarget(viewModel)
+        assertEquals(PinAdd.ToMyTrip, viewModel.uiState.value.stopCard?.add)
+        viewModel.onAction(MapAction.StopCard.OpenDetails)
+        viewModel.onAction(MapAction.StopCard.Add)
+        testScheduler.advanceUntilIdle()
+        viewModel.onAction(MapAction.Sheet.PickTrip(mine.trip.id))
+        testScheduler.advanceUntilIdle()
+
+        viewModel.onAction(MapAction.Sheet.PickDay(mine.days[0].id))
+        testScheduler.advanceUntilIdle()
+
+        // Done: the details it came from close too.
+        assertNull(viewModel.uiState.value.sheet)
+        assertEquals("Stephansdom", (backend.refreshTrip(mine.trip.id) as AppResult.Success).data.days[0].markers.single().name)
+    }
+
+    @Test
+    fun `the trip picker opened from the details goes back to them`() = runTest(testDispatcher) {
+        backend.addMarker(trip.trip.id, trip.days[0].id, NewMarker("Stephansdom", GeoPoint(48.2085, 16.3721)))
+        val withStop = (backend.refreshTrip(trip.trip.id) as AppResult.Success).data
+        backend.seed(withStop.copy(trip = withStop.trip.copy(role = TripRole.VIEWER)))
+        backend.createTrip(NewTrip("Mine", LocalDate(2024, 2, 1), LocalDate(2024, 2, 2)))
+        val viewModel = viewModel()
+        testScheduler.advanceUntilIdle()
+        viewModel.onAction(MapAction.MapView.MarkerClick(viewModel.uiState.value.layers.stops.single()))
+        restOnTarget(viewModel)
+        viewModel.onAction(MapAction.StopCard.OpenDetails)
+        viewModel.onAction(MapAction.StopCard.Add)
+        testScheduler.advanceUntilIdle()
+        assertIs<MapSheet.AddToTrip>(viewModel.uiState.value.sheet)
+
+        viewModel.onAction(MapAction.Sheet.Back)
+        testScheduler.advanceUntilIdle()
+
+        assertIs<MapSheet.StopDetails>(viewModel.uiState.value.sheet)
+    }
+
+    @Test
+    fun `closing the days sheet closes the trips and the details too`() = runTest(testDispatcher) {
+        backend.addMarker(trip.trip.id, trip.days[0].id, NewMarker("Stephansdom", GeoPoint(48.2085, 16.3721)))
+        val withStop = (backend.refreshTrip(trip.trip.id) as AppResult.Success).data
+        backend.seed(withStop.copy(trip = withStop.trip.copy(role = TripRole.VIEWER)))
+        val mine = (backend.createTrip(NewTrip("Mine", LocalDate(2024, 2, 1), LocalDate(2024, 2, 2))) as AppResult.Success).data
+        val viewModel = viewModel()
+        testScheduler.advanceUntilIdle()
+        viewModel.onAction(MapAction.MapView.MarkerClick(viewModel.uiState.value.layers.stops.single()))
+        restOnTarget(viewModel)
+        viewModel.onAction(MapAction.StopCard.OpenDetails)
+        viewModel.onAction(MapAction.StopCard.Add)
+        testScheduler.advanceUntilIdle()
+        viewModel.onAction(MapAction.Sheet.PickTrip(mine.trip.id))
+        testScheduler.advanceUntilIdle()
+
+        viewModel.onAction(MapAction.Sheet.CloseAll)
+        testScheduler.advanceUntilIdle()
+
+        assertNull(viewModel.uiState.value.sheet)
+        // The card stays, as under any sheet.
+        assertNotNull(viewModel.uiState.value.stopCard)
+    }
+
+    @Test
+    fun `the days sheet goes back to the trips`() = runTest(testDispatcher) {
+        backend.seed(trip.copy(trip = trip.trip.copy(role = TripRole.VIEWER)))
+        val mine = (backend.createTrip(NewTrip("Mine", LocalDate(2024, 2, 1), LocalDate(2024, 2, 2))) as AppResult.Success).data
+        val viewModel = viewModel()
+        testScheduler.advanceUntilIdle()
+        viewModel.onAction(MapAction.MapView.CameraRest(Coordinates(48.86, 2.32), 15f, PARIS_CENTER))
+        testScheduler.advanceUntilIdle()
+        viewModel.onAction(MapAction.MapView.PlacePinClick(viewModel.pin("Louvre")))
+        restOnTarget(viewModel)
+        viewModel.onAction(MapAction.PlaceCard.Add)
+        testScheduler.advanceUntilIdle()
+        viewModel.onAction(MapAction.Sheet.PickTrip(mine.trip.id))
+        testScheduler.advanceUntilIdle()
+
+        viewModel.onAction(MapAction.Sheet.Back)
+        testScheduler.advanceUntilIdle()
+
+        val picker = assertIs<MapSheet.AddToTrip>(viewModel.uiState.value.sheet).picker
+        assertNull(picker.trip)
+        assertEquals(listOf(mine.trip.id), picker.trips.map { it.id })
+    }
+
+    @Test
+    fun `a viewer without trips of their own is told to create one`() = runTest(testDispatcher) {
         backend.seed(trip.copy(trip = trip.trip.copy(role = TripRole.VIEWER)))
         val viewModel = viewModel()
         testScheduler.advanceUntilIdle()
         viewModel.onAction(MapAction.MapView.CameraRest(Coordinates(48.86, 2.32), 15f, PARIS_CENTER))
         testScheduler.advanceUntilIdle()
-
         viewModel.onAction(MapAction.MapView.PlacePinClick(viewModel.pin("Louvre")))
         testScheduler.advanceUntilIdle()
-        viewModel.onAction(MapAction.PlaceCard.AddToDay)
+
+        viewModel.onAction(MapAction.PlaceCard.Add)
         testScheduler.advanceUntilIdle()
 
+        assertNull(viewModel.uiState.value.sheet)
+        assertEquals(UiText.Resource(Res.string.map_add_to_trip_no_trips), viewModel.uiState.value.message?.text)
         assertTrue((backend.refreshTrip(trip.trip.id) as AppResult.Success).data.days[0].markers.isEmpty())
+    }
+
+    @Test
+    fun `an editor's stop card has no + and a place's + adds to the open day`() = runTest(testDispatcher) {
+        backend.addMarker(trip.trip.id, trip.days[0].id, NewMarker("Stephansdom", GeoPoint(48.2085, 16.3721)))
+        val viewModel = viewModel()
+        testScheduler.advanceUntilIdle()
+        viewModel.onAction(MapAction.MapView.MarkerClick(viewModel.uiState.value.layers.stops.single()))
+        restOnTarget(viewModel)
+        assertNull(viewModel.uiState.value.stopCard?.add)
+
+        viewModel.onAction(MapAction.MapView.CameraRest(Coordinates(48.86, 2.32), 15f, PARIS_CENTER))
+        testScheduler.advanceUntilIdle()
+        viewModel.onAction(MapAction.MapView.PlacePinClick(viewModel.pin("Louvre")))
+        restOnTarget(viewModel)
+        assertEquals(PinAdd.ToDay(1), viewModel.uiState.value.placeCard?.add)
     }
 
     @Test
@@ -1672,7 +2061,7 @@ class MapViewModelTest {
         assertEquals(Coordinates(48.2052, 16.3696), state.camera.target)
         assertEquals(17f, state.camera.zoom)
 
-        viewModel.onAction(MapAction.PlaceCard.AddToDay)
+        viewModel.onAction(MapAction.PlaceCard.Add)
         testScheduler.advanceUntilIdle()
 
         assertNull(viewModel.uiState.value.layers.selectedPlace)
@@ -1815,6 +2204,12 @@ class MapViewModelTest {
         assertTrue(viewModel.uiState.value.layers.placePins.single { it.place.id == "cafe" }.isAlongTheWay)
         assertEquals(1, viewModel.uiState.value.layers.placePins.count { it.isAlongTheWay })
         assertEquals(listOf(cafe), viewModel.uiState.value.stopsCard?.route?.alongTheWay?.map { it.place })
+        assertNull(viewModel.uiState.value.stopsCard?.route?.selectedPlaceId)
+
+        // Its pin tapped on the map, the list keeps it in view.
+        viewModel.onAction(MapAction.MapView.PlacePinClick(viewModel.uiState.value.layers.placePins.single { it.place.id == "cafe" }.place))
+        testScheduler.advanceUntilIdle()
+        assertEquals("cafe", viewModel.uiState.value.stopsCard?.route?.selectedPlaceId)
     }
 
     @Test
@@ -1912,7 +2307,7 @@ class MapViewModelTest {
         // The pin is ringed as the start, its card closes, and the header asks where to, searching.
         assertEquals(RouteBarState(UiText.Server("Oper"), to = null), viewModel.uiState.value.routeBar)
         assertNotNull(viewModel.uiState.value.search)
-        assertEquals(from.location, viewModel.uiState.value.layers.routeStart)
+        assertEquals(from.location, viewModel.uiState.value.startMark)
         assertNull(viewModel.uiState.value.layers.selectedPlace)
 
         viewModel.onAction(MapAction.MapView.PlacePinClick(to))
@@ -1930,16 +2325,74 @@ class MapViewModelTest {
         assertNull(state.stopsCard)
         assertEquals(RouteBarState(UiText.Server("Oper"), UiText.Server("Prater")), state.routeBar)
         assertNull(state.search)
-        assertEquals(from.location, state.layers.routeStart)
+        assertEquals(from.location, state.startMark)
         assertEquals(listOf(from.location to to.location), routes.pointRoutes)
+        // The two places are left out of the places along the way by their ids.
+        assertEquals(listOf<Pair<String?, String?>>("a" to "b"), routes.pointRoutePlaces)
         state.assertRoute(listOf(Coordinates(48.2031, 16.3691), Coordinates(48.2166, 16.3958)))
+
+        // ⇅ asks for the same route the other way round.
+        viewModel.onAction(MapAction.PinRoute.Swap)
+        testScheduler.advanceUntilIdle()
+        assertEquals(RouteBarState(UiText.Server("Prater"), UiText.Server("Oper")), viewModel.uiState.value.routeBar)
+        assertEquals(to.location, viewModel.uiState.value.startMark)
+        assertEquals(to.location to from.location, routes.pointRoutes.last())
+        // Both ends are pins at any zoom, grown, though the map loaded neither, and each has its badge.
+        viewModel.uiState.value.layers.placePins.filter { it.place.id in setOf("a", "b") }.let { ends ->
+            assertEquals(2, ends.size)
+            assertTrue(ends.all { it.isKept && it.size == SelectedPinSize && !it.isDotAt(isZoomedOut = true) })
+        }
+        assertEquals(listOf(true to to.location, false to from.location), viewModel.uiState.value.layers.routeEnds.map { it.isStart to it.position })
+
+        // A place tapped while the route shows stays a pin until the route closes.
+        val rathaus = MapPlace("c", "Rathaus", PlaceCategory.Attraction, GeoPoint(48.2108, 16.3572), isTripinly = false, hotCount = 0, prominence = 80)
+        viewModel.onAction(MapAction.MapView.PlacePinClick(rathaus))
+        restOnTarget(viewModel)
+        viewModel.onAction(MapAction.MapView.ScreenTouch)
+        testScheduler.advanceUntilIdle()
+        assertNull(viewModel.uiState.value.layers.selectedPlace)
+        assertTrue(viewModel.uiState.value.layers.placePins.single { it.place.id == "c" }.isKept)
+
+        // A tap on "from" picks where it starts again: its field holds its name and the route stays as it is.
+        viewModel.onAction(MapAction.PinRoute.EditEnd(isFrom = true))
+        testScheduler.advanceUntilIdle()
+        assertEquals(RouteBarState(from = null, UiText.Server("Oper"), isEditing = true), viewModel.uiState.value.routeBar)
+        assertEquals("Prater", viewModel.uiState.value.search?.query?.text?.toString())
+        assertNotNull(viewModel.uiState.value.pointRouteCard)
+        assertEquals(2, viewModel.uiState.value.layers.routeEnds.size)
+        // The keyboard's search on the name untouched, or ✕, keeps the end as it was and closes only the field.
+        viewModel.onAction(MapAction.PinRoute.SubmitEnd)
+        testScheduler.advanceUntilIdle()
+        assertEquals(RouteBarState(UiText.Server("Prater"), UiText.Server("Oper")), viewModel.uiState.value.routeBar)
+        assertNull(viewModel.uiState.value.search)
+        viewModel.onAction(MapAction.PinRoute.EditEnd(isFrom = true))
+        viewModel.onAction(MapAction.PinRoute.Close)
+        testScheduler.advanceUntilIdle()
+        assertEquals(RouteBarState(UiText.Server("Prater"), UiText.Server("Oper")), viewModel.uiState.value.routeBar)
+        assertEquals(to.location to from.location, routes.pointRoutes.last())
+
+        // Picked again, a pin's Route from here replaces it; the other end stays.
+        viewModel.onAction(MapAction.PinRoute.EditEnd(isFrom = true))
+        testScheduler.advanceUntilIdle()
+        viewModel.onAction(MapAction.MapView.PlacePinClick(rathaus))
+        restOnTarget(viewModel)
+        assertEquals(false, viewModel.uiState.value.placeCard?.routes?.isRouteTo)
+        viewModel.onAction(MapAction.PinRoute.Route)
+        testScheduler.advanceUntilIdle()
+        assertEquals(RouteBarState(UiText.Server("Rathaus"), UiText.Server("Oper")), viewModel.uiState.value.routeBar)
+        assertEquals(rathaus.location to from.location, routes.pointRoutes.last())
 
         viewModel.onAction(MapAction.Plan.ClosePointRoute)
         testScheduler.advanceUntilIdle()
         assertNull(viewModel.uiState.value.pointRouteCard)
         assertNull(viewModel.uiState.value.routeBar)
-        assertNull(viewModel.uiState.value.layers.routeStart)
+        assertNull(viewModel.uiState.value.startMark)
         viewModel.uiState.value.assertRoute(viewModel.uiState.value.stopPositions)
+        // The day's route still shows, so the places tapped keep their pins; with no route at all they go back.
+        assertTrue(viewModel.uiState.value.layers.placePins.single { it.place.id == "c" }.isKept)
+        viewModel.onAction(MapAction.Plan.ToggleRoute)
+        testScheduler.advanceUntilIdle()
+        assertTrue(viewModel.uiState.value.layers.placePins.none { it.isKept })
     }
 
     @Test
@@ -1962,6 +2415,24 @@ class MapViewModelTest {
         assertEquals(listOf(GeoPoint(48.2085, 16.3731) to prater.location), routes.pointRoutes)
         // The search result opened no card: the route is what was asked for.
         assertNull(viewModel.uiState.value.placeCard)
+
+        // "To" picked again: an emptied field changes nothing; the keyboard's search on a name typed picks its first result.
+        viewModel.onAction(MapAction.PinRoute.EditEnd(isFrom = false))
+        testScheduler.advanceUntilIdle()
+        val field = assertNotNull(viewModel.uiState.value.search).query
+        field.clearText()
+        viewModel.onAction(MapAction.Search.QueryChanged(""))
+        viewModel.onAction(MapAction.PinRoute.SubmitEnd)
+        testScheduler.advanceUntilIdle()
+        assertEquals(RouteBarState(stop.title, to = null, isEditing = true), viewModel.uiState.value.routeBar)
+        assertEquals(1, routes.pointRoutes.size)
+        field.setTextAndPlaceCursorAtEnd("Vi")
+        viewModel.onAction(MapAction.Search.QueryChanged("Vi"))
+        testScheduler.advanceUntilIdle()
+        viewModel.onAction(MapAction.PinRoute.SubmitEnd)
+        testScheduler.advanceUntilIdle()
+        assertEquals(RouteBarState(stop.title, UiText.Server("Vienna")), viewModel.uiState.value.routeBar)
+        assertEquals(GeoPoint(48.2085, 16.3731) to GeoPoint(48.2082, 16.3738), routes.pointRoutes.last())
 
         // The start's card shows its Route button on; a tap closes the route and the bar.
         viewModel.onAction(MapAction.MapView.MarkerClick(stop))
@@ -1986,7 +2457,7 @@ class MapViewModelTest {
         testScheduler.advanceUntilIdle()
         assertNull(viewModel.uiState.value.routeBar)
         assertNull(viewModel.uiState.value.search)
-        assertNull(viewModel.uiState.value.layers.routeStart)
+        assertNull(viewModel.uiState.value.startMark)
 
         viewModel.onAction(MapAction.MapView.PlacePinClick(oper))
         viewModel.onAction(MapAction.PinRoute.Route)
@@ -2022,8 +2493,10 @@ class MapViewModelTest {
         testScheduler.advanceUntilIdle()
         assertEquals(RouteBarState(UiText.Resource(Res.string.map_route_my_location), UiText.Server("Oper")), viewModel.uiState.value.routeBar)
         assertEquals(listOf(GeoPoint(me.latitude, me.longitude) to oper.location), routes.pointRoutes)
+        // Where I am is no place.
+        assertEquals(listOf<Pair<String?, String?>>(null to "a"), routes.pointRoutePlaces)
         // Where I am isn't a pin: nothing is ringed.
-        assertNull(viewModel.uiState.value.layers.routeStart)
+        assertNull(viewModel.uiState.value.startMark)
 
         // On again on the pin's card: Go here is on, and a tap closes it.
         viewModel.onAction(MapAction.MapView.PlacePinClick(oper))

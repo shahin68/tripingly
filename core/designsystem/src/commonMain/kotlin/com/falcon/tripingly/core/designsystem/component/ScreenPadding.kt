@@ -40,12 +40,12 @@ fun screenContentPadding(
 }
 
 /**
- * The screen's sides that content keeps clear of, each as the system reports it: the camera cutout and the system bars
- * in landscape, only on the side they're on (Shahin, 2026-11-08). Use it for anything laid over an edge-to-edge
- * screen: bars, cards, buttons.
+ * The screen's sides that content keeps clear of: the camera cutout and the system bars in landscape, only on the side
+ * they're on (Shahin, 2026-11-08). Android reports them so; iOS pads both sides alike in landscape, so there only the
+ * notch's side keeps its padding (Shahin, 2026-11-14). Use it for anything laid over an edge-to-edge screen: bars,
+ * cards, buttons.
  */
-val WindowInsets.Companion.safeSides: WindowInsets
-    @Composable get() = safeDrawing.only(WindowInsetsSides.Horizontal)
+expect val WindowInsets.Companion.safeSides: WindowInsets
 
 /** The top of the screen (status bar, notch) plus [WindowInsets.Companion.safeSides]: for headers. */
 val WindowInsets.Companion.safeTopAndSides: WindowInsets

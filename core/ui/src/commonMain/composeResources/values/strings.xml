@@ -3,10 +3,10 @@
     <string name="error_timeout">Tripinly is taking too long to respond. Try again.</string>
     <string name="error_server">Tripinly is having trouble right now. Try again shortly.</string>
     <string name="error_unknown">Something went wrong. Try again.</string>
-    <string name="error_not_available">This trip isn't available.</string>
-    <string name="error_forbidden">You can't change this trip.</string>
-    <string name="error_reason_not_available">It isn't available.</string>
-    <string name="error_reason_forbidden">You don't have permission.</string>
+    <string name="error_not_available">This trip isn’t available.</string>
+    <string name="error_forbidden">You can’t change this trip.</string>
+    <string name="error_reason_not_available">It isn’t available.</string>
+    <string name="error_reason_forbidden">You don’t have permission.</string>
     <string name="error_try_again">Try again.</string>
     <string name="time_ago_just_now">just now</string>
     <plurals name="time_ago_minutes">

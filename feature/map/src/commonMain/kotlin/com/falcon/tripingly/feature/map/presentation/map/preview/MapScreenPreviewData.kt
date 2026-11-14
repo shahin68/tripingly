@@ -113,6 +113,7 @@ internal val previewRoute = RouteSummaryState(
     isEstimated = false,
     isLoading = false,
     alongTheWay = previewAlongTheWay,
+    selectedPlaceId = null,
     addToDayNumber = 1,
 )
 

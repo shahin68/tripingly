@@ -5,7 +5,6 @@
     <string name="map_show_places">Helyek mutatása</string>
     <string name="map_fit_day">Az egész nap megjelenítése</string>
     <string name="map_plan_handle">A teljes terv megjelenítése vagy elrejtése</string>
-    <string name="map_stop_title_format">%1$d. megálló</string>
     <string name="map_remove_stop">Megálló eltávolítása</string>
     <string name="map_back">Vissza</string>
     <string name="map_day_menu">Nap beállításai</string>
@@ -35,9 +34,12 @@
     <string name="map_place_add_to_day">Hozzáadás a(z) %1$d. naphoz</string>
     <string name="map_place_opening_hours">Nyitvatartás</string>
     <string name="map_place_added_by">Hozzáadta: @%1$s</string>
+    <string name="map_added_by_you">Te adtad hozzá</string>
+    <string name="map_spot_by">Létrehozta: @%1$s</string>
     <string name="map_place_image_position">%1$d / %2$d</string>
     <string name="map_place_image_report">Kép jelentése</string>
     <string name="map_photos_commons_note">Képek a Wikimedia Commonsról: nyiss meg egyet a szerző és a licenc megtekintéséhez.</string>
+    <string name="map_photos_commons_note_some">Néhány kép a Wikimedia Commonsról származik: nyiss meg egyet a szerző és a licenc megtekintéséhez.</string>
     <string name="map_place_images">A hely képei</string>
     <string name="map_place_category_cafe">Kávézó</string>
     <string name="map_place_category_restaurant">Étterem</string>
@@ -55,10 +57,11 @@
     <string name="map_pin_name_label">Név</string>
     <string name="map_pin_add">Hozzáadás</string>
     <string name="map_stop_no_photos">Még nincs fotó</string>
+    <string name="map_photos_add_first">Első fotó hozzáadása</string>
     <string name="map_stop_photos">Fotók</string>
     <string name="map_photo_make_cover">Legyen borítókép</string>
     <string name="map_photo_cover">Borítókép</string>
-    <string name="map_photo_this_trip">Ez az út</string>
+    <string name="map_photo_this_trip">Ez az utazás</string>
     <string name="map_photo_delete">Fotó törlése</string>
     <string name="map_photo_delete_title">Törlöd ezt a fotót?</string>
     <string name="map_photo_delete_message">A fotó mindenki számára törlődik az utazásban.</string>
@@ -164,8 +167,13 @@
     <string name="map_route_to_placeholder">Keress, vagy koppints egy tűre</string>
     <string name="map_route_from">Innen</string>
     <string name="map_route_to">Ide</string>
+    <string name="map_route_change_from">Kiindulópont módosítása</string>
+    <string name="map_route_change_to">Úti cél módosítása</string>
     <string name="map_route_between">%1$s → %2$s</string>
     <string name="map_route_close">Útvonal bezárása</string>
+    <string name="map_route_cancel_edit">Ez a pont marad</string>
+    <string name="map_route_clear">Törlés</string>
+    <string name="map_route_swap">Irány megfordítása</string>
     <string name="map_best_order">Legjobb sorrend</string>
     <string name="map_ordering">Rendezés…</string>
     <string name="map_best_order_title">A nap legjobb sorrendje</string>
@@ -183,14 +191,18 @@
     </plurals>
     <string name="map_trip_members">Tagok · %1$d</string>
     <string name="map_clear_day">%1$d. nap ürítése</string>
-    <string name="map_my_location">Saját hely mutatása</string>
+    <string name="map_follow_location">Helyzetem követése</string>
+    <string name="map_stop_following">Követés leállítása</string>
+    <string name="map_gps_lost">GPS-jelre vár…</string>
+    <string name="map_location_off">A helyadatok ki vannak kapcsolva</string>
+    <string name="map_location_turn_on">Bekapcsolás</string>
     <string name="map_stop_expand">Több</string>
     <string name="map_stop_collapse">Kevesebb</string>
     <string name="map_stop_number">%1$d. megálló</string>
 
     <!-- Redesign -->
     <string name="map_comments">Hozzászólások</string>
-    <string name="map_trip_card_by">%1$s útja</string>
+    <string name="map_trip_card_by">%1$s utazása</string>
     <string name="map_trip_card_dates">Dátum</string>
     <string name="map_trip_card_no_dates">Nincs dátum</string>
     <string name="map_trip_card_likes">Kedvelések</string>
@@ -207,4 +219,11 @@
     <string name="map_photos_add">Hozzáadás</string>
     <string name="map_photos_more">+%1$d</string>
     <string name="map_details_comments">Hozzászólások · %1$d</string>
+    <string name="map_add_to_my_trip">Hozzáadás az utazásomhoz</string>
+    <string name="map_add_to_trip_pick_trip">Melyik utazáshoz add hozzá: %1$s?</string>
+    <string name="map_add_to_trip_pick_day">%1$s melyik napjára?</string>
+    <string name="map_add_to_trip_no_trips">Előbb hozz létre egy utazást, aztán adj hozzá megállókat.</string>
+    <string name="map_add_to_trip_added">Hozzáadva: %1$s, %2$d. nap.</string>
+    <string name="map_error_add_to_trip">Nem sikerült hozzáadni az utazásodhoz.</string>
+    <string name="map_error_load_days">Nem sikerült betölteni az utazás napjait.</string>
 </resources>

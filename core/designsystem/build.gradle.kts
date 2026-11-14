@@ -11,6 +11,8 @@ kotlin {
             // Photos: the app's image loader (set up in shared/App.kt), used through PhotoImage.
             api(libs.coil.compose)
             implementation(libs.haze)
+            // The sheet's back goes to the sheet it was opened from (AppBottomSheet).
+            implementation(libs.compose.uiBackhandler)
             implementation(libs.kotlinx.coroutines.core)
         }
         androidMain.dependencies {

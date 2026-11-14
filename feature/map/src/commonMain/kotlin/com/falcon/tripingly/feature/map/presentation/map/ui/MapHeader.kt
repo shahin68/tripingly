@@ -102,7 +102,7 @@ import org.jetbrains.compose.resources.stringResource
  * back. Tapping the title opens the trip card ([onTitleClick]; [onTitlePlaced] gives the pill's bounds inside the
  * header's padding, where the card grows out of it; the pill hides meanwhile, [isTitleHidden]). As the card grows
  * ([cardProgress], 0 to 1) it pushes the back button out to the start and search and ⋮ out to the end, cut at the
- * header's sides (the right half in landscape). Over the native map, so no blur.
+ * header's sides (the left half in landscape). Over the native map, so no blur.
  * [showDayActions]: the day has no plan sheet, so its day actions are in ⋮.
  */
 @Composable
@@ -120,7 +120,7 @@ internal fun MapHeader(
     val progress by animateFloatAsState(if (search != null) 1f else 0f, tween(SEARCH_MOTION_MILLIS))
     val actions = tripMenuActions(header, showDayActions, onAction)
     val gap = MaterialTheme.spacing.small
-    // How far past the header's padding the trip card pushes the buttons: off the screen, or out of the right half.
+    // How far past the header's padding the trip card pushes the buttons: off the screen, or out of the left half.
     val pushedOut = MaterialTheme.spacing.medium
     // The search pill's width with just its buttons, kept while the field is open.
     val collapsedWidth = remember { intArrayOf(0) }

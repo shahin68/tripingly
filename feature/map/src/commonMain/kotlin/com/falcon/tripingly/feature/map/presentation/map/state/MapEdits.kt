@@ -80,8 +80,7 @@ internal class MapEdits(
         val place = selection.selectedPlace ?: return
         if (context.activeDay() == null) return
         selection.closePlace()
-        val address = place.address
-        add(if (address != null) NewMarker(address.name, address.location, osm = address.osm) else NewMarker(place.place.name, place.place.location, placeId = place.place.id))
+        add(place.toNewMarker())
     }
 
     /** My own stop goes at once; someone else's (only the owner may) only once the user agreed in a dialog. */
@@ -175,3 +174,8 @@ internal class MapEdits(
     /** The server's localized explanation, for the warning before deleting other people's content. */
     private fun DataError.Network.serverMessage(): UiText = UiText.Server((this as? DataError.Network.Api)?.message.orEmpty())
 }
+
+/** A stop for the place, or for the address from search, named after it. */
+internal fun Selection.Place.toNewMarker(): NewMarker = address
+    ?.let { NewMarker(it.name, it.location, osm = it.osm) }
+    ?: NewMarker(place.name, place.location, placeId = place.id)

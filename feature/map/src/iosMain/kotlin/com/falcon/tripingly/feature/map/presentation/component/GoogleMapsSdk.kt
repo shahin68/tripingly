@@ -30,8 +30,8 @@ interface GoogleMap {
 
     fun setMyLocationEnabled(enabled: Boolean)
 
-    /** Points at the top and bottom the map keeps its logo and controls out of. */
-    fun setPadding(top: Double, bottom: Double)
+    /** Points at the top, sides and bottom the map keeps its logo and controls out of. */
+    fun setPadding(top: Double, left: Double, bottom: Double, right: Double)
 
     fun moveCamera(latitude: Double, longitude: Double, zoom: Float, animated: Boolean)
 

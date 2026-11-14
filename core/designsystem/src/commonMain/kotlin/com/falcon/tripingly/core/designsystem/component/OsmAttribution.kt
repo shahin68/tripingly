@@ -7,6 +7,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.unit.dp
@@ -22,11 +23,11 @@ import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
  * Opens OpenStreetMap's copyright page.
  */
 @Composable
-fun OsmAttribution(modifier: Modifier = Modifier) {
+fun OsmAttribution(modifier: Modifier = Modifier, style: TextStyle = MaterialTheme.typography.labelSmall) {
     val uriHandler = LocalUriHandler.current
     Text(
         text = stringResource(Res.string.osm_attribution),
-        style = MaterialTheme.typography.labelSmall,
+        style = style,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
         modifier = modifier
             .clip(RoundedCornerShape(4.dp))

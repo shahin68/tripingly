@@ -19,7 +19,7 @@ enum class LocationPermission {
     Blocked,
 }
 
-/** Reads and requests the location permission, and opens the app's settings. */
+/** Reads and requests the location permission, opens the app's settings, and reads and turns on the device's location. */
 interface LocationPermissionController {
     fun status(): LocationPermission
 
@@ -27,9 +27,17 @@ interface LocationPermissionController {
     fun request()
 
     fun openSettings()
+
+    /** The device's location (GPS) is switched on. Off the main thread where the system asks for it. */
+    suspend fun isLocationOn(): Boolean
+
+    /** Android: the system's one-tap dialog that switches location on (its Settings page where there is none); iOS: Settings. */
+    fun turnOnLocation()
 }
 
+/** [onLocationSwitched]: the device's location was switched on or off, or the permission changed, while the screen shows. */
 @Composable
 expect fun rememberLocationPermissionController(
-    onResult: (LocationPermission) -> Unit
+    onResult: (LocationPermission) -> Unit,
+    onLocationSwitched: () -> Unit = {},
 ): LocationPermissionController

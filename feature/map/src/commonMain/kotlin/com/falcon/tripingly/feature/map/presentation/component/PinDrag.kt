@@ -50,7 +50,7 @@ internal fun MapLayersState.shownPins(zoom: Float, density: Density, project: (C
     }
     val places = placePins.filter { it.place.id != selectedPlace?.id }.mapNotNull { pin ->
         val end = PinEnd.Place(pin.place)
-        val size = if (zoom < pinDotBelowZoom || pin.isDot) PlaceDotSize else pin.size
+        val size = if (pin.isDotAt(zoom < pinDotBelowZoom)) PlaceDotSize else pin.size
         project(end.position)?.let { ShownPin(end, it, size.toPx() / 2 + slop) }
     }
     stopPins + listOfNotNull(selected) + places

@@ -19,7 +19,7 @@ import com.falcon.tripingly.feature.map.presentation.map.StopCardState
 
 /**
  * The tapped place's and stop's cards over the part of the map nothing covers (its middle is where the camera puts a
- * tapped pin, [pinBelowMiddle] lower in landscape). Each reports where it is, so a touch on it doesn't close it.
+ * tapped pin, [pinBelowMiddle] lower: a little in portrait, much in landscape). Each reports where it is, so a touch on it doesn't close it.
  */
 @Composable
 internal fun MapPinCards(
@@ -43,8 +43,10 @@ internal fun MapPinCards(
                 place = card.place,
                 details = card.details,
                 address = card.address,
-                dayNumber = card.addToDayNumber,
-                onAdd = { onAction(MapAction.PlaceCard.AddToDay) },
+                add = card.add,
+                addedBy = card.addedBy,
+                images = card.images,
+                onAdd = { onAction(MapAction.PlaceCard.Add) },
                 onOpenImage = { index -> onAction(MapAction.PlaceCard.OpenImage(index)) },
                 onOpenPhotos = { onAction(MapAction.PlaceCard.OpenPhotos) },
                 onOpenDetails = { onAction(MapAction.PlaceCard.OpenDetails) },
@@ -63,10 +65,12 @@ internal fun MapPinCards(
             StopCard(
                 card = card,
                 onToggleHot = { onAction(MapAction.StopCard.ToggleHot(card.stop.id)) },
+                onHotSeen = { onAction(MapAction.StopCard.HotSeen(card.stop.id)) },
                 onOpenComments = { onAction(MapAction.StopCard.OpenComments) },
                 onOpenPhotos = { onAction(MapAction.StopCard.OpenPhotos) },
                 onOpenDetails = { onAction(MapAction.StopCard.OpenDetails) },
                 onDelete = { onAction(MapAction.Plan.RemoveStop(card.stop.id)) },
+                onAdd = { onAction(MapAction.StopCard.Add) },
                 onGoHere = { onAction(MapAction.PinRoute.GoHere) },
                 onRoute = { onAction(MapAction.PinRoute.Route) },
             )

@@ -284,6 +284,7 @@ class FakeTripBackend(
             time = marker.time,
             position = trips.value[tripId]?.days?.firstOrNull { it.id == dayId }?.markers?.size ?: 0,
             createdById = me.id,
+            createdBy = me,
         )
         run(MarkerChange.Add(created))
         return created

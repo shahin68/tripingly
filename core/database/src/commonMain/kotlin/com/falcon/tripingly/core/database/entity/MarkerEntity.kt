@@ -33,4 +33,9 @@ data class MarkerEntity(
     val canMarkHot: Boolean,
     val commentCount: Int,
     val createdById: String?,
+    /** Who added it, as shown; null when the server names no one (a deleted account, a block). */
+    val creatorUsername: String? = null,
+    val creatorDisplayName: String? = null,
+    val creatorPhotoId: String? = null,
+    val creatorPhotoUrl: String? = null,
 )

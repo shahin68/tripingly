@@ -15,6 +15,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.foundation.layout.height
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.remember
@@ -33,7 +34,7 @@ import org.jetbrains.compose.resources.stringResource
 /**
  * A flame with a place's hot count, in the same quiet color as every count; filled while I marked it hot, and marking
  * it pops the flame with a burst of dots. No padding at the start, so the flame lines up with the text above it.
- * Never a like.
+ * Never a like. [tint] is the flame's colour (e.g. on a photo, white, or the flame's own colour once marked).
  */
 @Composable
 fun HotButton(
@@ -41,6 +42,7 @@ fun HotButton(
     count: Int,
     onToggle: () -> Unit,
     modifier: Modifier = Modifier,
+    tint: Color = if (hot) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant,
 ) {
     var burst by remember { mutableIntStateOf(0) }
     val haptics = rememberHaptics()
@@ -64,7 +66,7 @@ fun HotButton(
         BurstIcon(
             icon = if (hot) Icons.Filled.LocalFireDepartment else Icons.Outlined.LocalFireDepartment,
             contentDescription = stringResource(Res.string.mark_hot),
-            tint = if (hot) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant,
+            tint = tint,
             burst = burst,
             modifier = Modifier.size(20.dp).skeleton(CircleShape),
         )

@@ -5,7 +5,6 @@
     <string name="map_show_places">Show places</string>
     <string name="map_fit_day">Show the whole day</string>
     <string name="map_plan_handle">Show or hide the whole plan</string>
-    <string name="map_stop_title_format">Stop #%1$d</string>
     <string name="map_remove_stop">Remove stop</string>
     <string name="map_back">Back</string>
     <string name="map_day_menu">Day options</string>
@@ -18,7 +17,7 @@
     <string name="map_confirm_delete">Delete</string>
 
     <!-- Location errors -->
-    <string name="error_location_permission_required">Location permission required to detect your location.</string>
+    <string name="error_location_permission_required">Location permission is needed to show where you are.</string>
     <string name="error_location_services_disabled">Location services are disabled on your device.</string>
     <string name="error_location_unavailable">Unable to determine current location. Showing default view.</string>
     <string name="error_location_unknown">Failed to acquire location.</string>
@@ -35,9 +34,12 @@
     <string name="map_place_add_to_day">Add to day %1$d</string>
     <string name="map_place_opening_hours">Opening hours</string>
     <string name="map_place_added_by">Added by @%1$s</string>
+    <string name="map_added_by_you">Added by you</string>
+    <string name="map_spot_by">Spot by @%1$s</string>
     <string name="map_place_image_position">%1$d / %2$d</string>
     <string name="map_place_image_report">Report image</string>
     <string name="map_photos_commons_note">Images from Wikimedia Commons: open one to see its author and licence.</string>
+    <string name="map_photos_commons_note_some">Some images are from Wikimedia Commons: open one to see its author and licence.</string>
     <string name="map_place_images">Images of this place</string>
     <string name="map_place_category_cafe">Café</string>
     <string name="map_place_category_restaurant">Restaurant</string>
@@ -55,6 +57,7 @@
     <string name="map_pin_name_label">Name</string>
     <string name="map_pin_add">Add</string>
     <string name="map_stop_no_photos">No photos yet</string>
+    <string name="map_photos_add_first">Add the first photo</string>
     <string name="map_stop_photos">Photos</string>
     <string name="map_photo_make_cover">Make cover</string>
     <string name="map_photo_cover">Cover</string>
@@ -62,9 +65,9 @@
     <string name="map_photo_delete">Delete photo</string>
     <string name="map_photo_delete_title">Delete this photo?</string>
     <string name="map_photo_delete_message">The photo will be deleted for everyone in the trip.</string>
-    <string name="map_photo_failed">This photo couldn't be processed</string>
+    <string name="map_photo_failed">This photo couldn’t be processed</string>
     <string name="map_photo_not_uploaded">Not uploaded</string>
-    <string name="map_photo_unreadable">This photo can't be read</string>
+    <string name="map_photo_unreadable">This photo can’t be read</string>
     <string name="map_photo_remove">Remove</string>
     <string name="map_close">Close</string>
     <string name="map_camera_take_photo">Take photo</string>
@@ -73,10 +76,10 @@
     <string name="map_camera_settings_message">The camera is off for Tripinly. Allow it in Settings to take photos for your stops.</string>
     <string name="map_camera_open_settings">Open settings</string>
     <string name="map_camera_unavailable">This device has no camera.</string>
-    <string name="map_camera_failed">The photo couldn't be taken. Try again.</string>
+    <string name="map_camera_failed">The photo couldn’t be taken. Try again.</string>
 
     <!-- Social -->
-    <string name="map_reported">Thanks. We'll take a look.</string>
+    <string name="map_reported">Thanks. We’ll take a look.</string>
     <string name="map_trip_menu">Trip options</string>
     <string name="map_save_trip">Save to my trips</string>
     <string name="map_unsave_trip">Remove from my trips</string>
@@ -138,8 +141,8 @@
     <!-- Place photos and deleting stops -->
     <string name="map_place_photos">Photos</string>
     <string name="map_error_like_photo">Couldn’t save your like on the photo.</string>
-    <string name="map_delete_others_stop_title">Delete someone else\'s stop?</string>
-    <string name="map_delete_others_stop_message">%1$s was added by someone else. It goes for everyone, with its photos, comments and likes.</string>
+    <string name="map_delete_others_stop_title">Delete someone else’s stop?</string>
+    <string name="map_delete_others_stop_message">%1$s was added by someone else. It’s deleted for everyone, with its photos, comments and likes.</string>
     <string name="map_delete_others_content_title">Delete for everyone?</string>
 
     <!-- Routes -->
@@ -164,8 +167,13 @@
     <string name="map_route_to_placeholder">Search or tap a pin</string>
     <string name="map_route_from">From</string>
     <string name="map_route_to">To</string>
+    <string name="map_route_change_from">Change where it starts</string>
+    <string name="map_route_change_to">Change where it goes</string>
     <string name="map_route_between">%1$s → %2$s</string>
     <string name="map_route_close">Close the route</string>
+    <string name="map_route_cancel_edit">Keep this end</string>
+    <string name="map_route_clear">Clear</string>
+    <string name="map_route_swap">Switch directions</string>
     <string name="map_best_order">Best order</string>
     <string name="map_ordering">Ordering…</string>
     <string name="map_best_order_title">Best order for this day</string>
@@ -183,7 +191,11 @@
     </plurals>
     <string name="map_trip_members">Trip members · %1$d</string>
     <string name="map_clear_day">Clear day %1$d</string>
-    <string name="map_my_location">Show my location</string>
+    <string name="map_follow_location">Follow my location</string>
+    <string name="map_stop_following">Stop following my location</string>
+    <string name="map_gps_lost">Waiting for GPS…</string>
+    <string name="map_location_off">Location is off</string>
+    <string name="map_location_turn_on">Turn on</string>
     <string name="map_stop_expand">Show more</string>
     <string name="map_stop_collapse">Show less</string>
     <string name="map_stop_number">Stop %1$d</string>
@@ -208,4 +220,11 @@
     <string name="map_photos_add">Add</string>
     <string name="map_photos_more">+%1$d</string>
     <string name="map_details_comments">Comments · %1$d</string>
+    <string name="map_add_to_my_trip">Add to my trip</string>
+    <string name="map_add_to_trip_pick_trip">Add %1$s to which trip?</string>
+    <string name="map_add_to_trip_pick_day">Which day of %1$s?</string>
+    <string name="map_add_to_trip_no_trips">Create a trip first, then add stops to it.</string>
+    <string name="map_add_to_trip_added">Added to %1$s, day %2$d.</string>
+    <string name="map_error_add_to_trip">Couldn’t add it to your trip.</string>
+    <string name="map_error_load_days">Couldn’t load the trip’s days.</string>
 </resources>

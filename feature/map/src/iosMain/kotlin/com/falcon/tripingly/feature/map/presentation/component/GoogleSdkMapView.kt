@@ -26,22 +26,22 @@ import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.text.rememberTextMeasurer
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.LayoutDirection
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.UIKitInteropInteractionMode
 import androidx.compose.ui.viewinterop.UIKitInteropProperties
 import androidx.compose.ui.viewinterop.UIKitView
 import androidx.lifecycle.compose.LifecycleStartEffect
 import com.falcon.tripingly.core.designsystem.component.icon
 import com.falcon.tripingly.core.designsystem.component.rememberHaptics
-import com.falcon.tripingly.core.designsystem.theme.MapColors
 import com.falcon.tripingly.core.designsystem.theme.extendedColors
 import com.falcon.tripingly.core.location.model.Coordinates
 import com.falcon.tripingly.core.model.place.GeoBounds
 import com.falcon.tripingly.core.model.place.MapPlace
 import com.falcon.tripingly.core.model.place.PlaceCategory
 import com.falcon.tripingly.core.model.place.PlaceCluster
-import com.falcon.tripingly.core.model.trip.GeoPoint
 import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.flow.Flow
 import platform.UIKit.UIColor
@@ -67,10 +67,11 @@ internal fun GoogleSdkMapView(
     selectedPlace: MapPlace?,
     line: MapLine?,
     isMyLocationEnabled: Boolean,
-    routeStart: GeoPoint?,
+    routeEnds: List<RouteEndMark>,
     onCameraMove: (Coordinates, Float, GeoBounds?) -> Unit,
     onCameraMoving: (GeoBounds, Float) -> Unit,
     onMapTouch: () -> Unit,
+    onUserMove: () -> Unit,
     onMapClick: (Coordinates) -> Unit,
     onPlacePinClick: (MapPlace) -> Unit,
     onClusterClick: (PlaceCluster) -> Unit,
@@ -89,20 +90,22 @@ internal fun GoogleSdkMapView(
     val currentOnCameraMove by rememberUpdatedState(onCameraMove)
     val currentOnCameraMoving by rememberUpdatedState(onCameraMoving)
     val currentOnMapTouch by rememberUpdatedState(onMapTouch)
+    val currentOnUserMove by rememberUpdatedState(onUserMove)
     val currentOnMapClick by rememberUpdatedState(onMapClick)
     val currentOnMapLongClick by rememberUpdatedState(onMapLongClick)
     val currentOnMarkerClick by rememberUpdatedState(onMarkerClick)
 
     // The SDK keeps its camera in the middle of its padding and moves the map whenever the padding changes, a frame
-    // apart from any move that would undo it. So the map gets the same padding at the top and the bottom and none at
-    // the sides, and its camera stays in the middle of the view; the target the screen means (the middle of what its
-    // padding leaves free: above the cards, or left of the panel in landscape) is that far from it.
+    // apart from any move that would undo it. So the map gets the same padding at the top and the bottom, and its
+    // camera stays in the middle of the view's height; the target the screen means (the middle of what its padding
+    // leaves free: above the cards) is that far from it. The sides get the screen's own padding (the panel in
+    // landscape), which only changes on a rotation, so the camera is in the free middle sideways and the Google logo
+    // sits beside the panel, not under it.
     val top = contentPadding.calculateTopPadding()
     val bottom = contentPadding.calculateBottomPadding()
-    val freeMiddle = DpOffset(
-        x = (contentPadding.calculateLeftPadding(LayoutDirection.Ltr) - contentPadding.calculateRightPadding(LayoutDirection.Ltr)) / 2,
-        y = (top - bottom) / 2,
-    )
+    val left = contentPadding.calculateLeftPadding(LayoutDirection.Ltr)
+    val right = contentPadding.calculateRightPadding(LayoutDirection.Ltr)
+    val freeMiddle = DpOffset(x = 0.dp, y = (top - bottom) / 2)
     val currentFreeMiddle by rememberUpdatedState(freeMiddle)
     // Where the camera last rested, to report it again when the free middle moves.
     var rest by remember { mutableStateOf<Triple<Coordinates, Float, GeoBounds>?>(null) }
@@ -152,6 +155,7 @@ internal fun GoogleSdkMapView(
 
                 override fun onGestureStart() {
                     currentOnMapTouch()
+                    currentOnUserMove()
                 }
 
                 override fun onCameraChange(zoom: Float, south: Double, west: Double, north: Double, east: Double) {
@@ -239,16 +243,16 @@ internal fun GoogleSdkMapView(
     // As much at the top as at the bottom, so the camera stays in the middle: what the logo needs to sit above the cards.
     // Not the top's: in landscape it's most of the height (a tapped pin goes low), which would leave the map no middle.
     val padding = bottom.value.toDouble()
-    LaunchedEffect(padding) { map.setPadding(padding, padding) }
-    // The middle of what's free moved. A rotation moves it sideways (the panel takes or gives back the right half):
-    // like Android's map with its padding, what was in the middle of what's free goes back there. Otherwise the map
-    // stays put and the view model learns where the target now is.
-    var shownMiddle by remember { mutableStateOf(freeMiddle) }
-    LaunchedEffect(freeMiddle) {
-        val before = shownMiddle
-        shownMiddle = freeMiddle
+    LaunchedEffect(padding, left, right) { map.setPadding(padding, left.value.toDouble(), padding, right.value.toDouble()) }
+    // The middle of what's free moved. A rotation moves the sides (the panel takes or gives back the left half): like
+    // Android's map with its padding, what was in the middle of what's free goes back there. Otherwise the map stays
+    // put and the view model learns where the target now is.
+    var shown by remember { mutableStateOf(Triple(freeMiddle, left, right)) }
+    LaunchedEffect(freeMiddle, left, right) {
+        val (before, leftBefore, rightBefore) = shown
+        shown = Triple(freeMiddle, left, right)
         val (center, zoom, bounds) = rest ?: return@LaunchedEffect
-        if (freeMiddle.x != before.x) {
+        if (left != leftBefore || right != rightBefore) {
             moveCamera(center.shiftedBy(before, zoom), zoom, animated = false)
         } else {
             currentOnCameraMove(center.shiftedBy(freeMiddle, zoom), zoom, bounds)
@@ -329,8 +333,9 @@ internal fun GoogleSdkMapView(
     val stopIcons = remember(density, stopColor) { mutableMapOf<Triple<Int, String?, Boolean>, UIImage>() }
     val coverThumbs = rememberCoverThumbs(markers)
     val stopTitles = markers.map { it.title.asString() }
-    val startRing = remember(density) { drawRouteStartRing(MapColors.Car, density, layoutDirection).toUIImage(density.density) }
-    LaunchedEffect(markers, stopTitles, coverThumbs, pinPhotos, selectedPlace, placePins, placeClusters, pinIcons, clusterIcons, isDots, routeStart) {
+    // The rings round the route's ends, one per pin size and way of travelling's colour.
+    val rings = remember(density) { mutableMapOf<Pair<Dp, Color>, UIImage>() }
+    LaunchedEffect(markers, stopTitles, coverThumbs, pinPhotos, selectedPlace, placePins, placeClusters, pinIcons, clusterIcons, isDots, routeEnds) {
         val stops = markers.mapIndexed { index, marker ->
             GoogleMapMarker(
                 key = marker.id,
@@ -367,11 +372,12 @@ internal fun GoogleSdkMapView(
                 longitude = pin.place.location.lng,
                 title = pin.place.name,
                 icon = pinIcon(
-                    if (isDots || pin.isDot) pin.dotLook() else PlacePinLook(pin.place.category, pin.place.isTripinly, pin.size, photoId(pin.place, pin.photo), pin.isAlongTheWay),
+                    if (pin.isDotAt(isDots)) pin.dotLook() else PlacePinLook(pin.place.category, pin.place.isTripinly, pin.size, photoId(pin.place, pin.photo), pin.isAlongTheWay),
                 ),
                 anchorX = 0.5,
                 anchorY = 0.5,
-                zIndex = -1 - index,
+                // A route's end and the places tapped while routing on top of the other places.
+                zIndex = if (pin.isKept) KEPT_PIN_Z else -1 - index,
                 showsInfoWindow = false,
                 // Places along the way show at once with their route (Shahin, 2026-11-10).
                 fadesIn = !pin.isAlongTheWay,
@@ -417,22 +423,24 @@ internal fun GoogleSdkMapView(
                 fadesIn = false,
             )
         }
-        // A route's start (Route from), ringed in the routes' blue around its pin; under every pin, so taps reach the pin.
-        val ring = routeStart?.let {
+        // The route's ends: a thick ring in the way of travelling's colour round each end's pin, under it.
+        val ends = routeEnds.map { end ->
             GoogleMapMarker(
-                key = ROUTE_START_KEY,
-                latitude = it.lat,
-                longitude = it.lng,
+                key = ROUTE_END_KEY + end.isStart,
+                latitude = end.position.lat,
+                longitude = end.position.lng,
                 title = "",
-                icon = startRing,
+                icon = rings.getOrPut(end.pinSize to end.color) {
+                    drawRouteEndRing(end.pinSize, end.color, density, layoutDirection).toUIImage(density.density)
+                },
                 anchorX = 0.5,
                 anchorY = 0.5,
-                zIndex = ROUTE_START_Z,
+                zIndex = ROUTE_END_Z,
                 showsInfoWindow = false,
                 fadesIn = false,
             )
         }
-        map.setMarkers(listOfNotNull(ring) + pins + clusters + stops + listOfNotNull(place))
+        map.setMarkers(pins + clusters + stops + listOfNotNull(place) + ends)
     }
 
     // Stopped (another screen covers the map, or the app is in the background): the map draws nothing.
@@ -467,10 +475,13 @@ private fun PlaceCluster.key() = "$CLUSTER_KEY${location.lat},${location.lng}"
 
 // Marker keys that aren't stop ids: stop ids are UUIDs.
 private const val SELECTED_PLACE_KEY = "selected-place"
-private const val ROUTE_START_KEY = "route-start"
+private const val ROUTE_END_KEY = "route-end:"
 
-/** Below the place pins, which count down from -1. */
-private const val ROUTE_START_Z = -1_000_000
+/** The rings round a route's ends: under their pins (kept places and stops at 1), over the other places. */
+private const val ROUTE_END_Z = 0
+
+/** A route's ends and the places kept while routing: over the other places (and the rings), with the stops. */
+private const val KEPT_PIN_Z = 1
 private const val PLACE_KEY = "place:"
 private const val CLUSTER_KEY = "cluster:"
 

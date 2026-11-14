@@ -4,9 +4,9 @@ import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.runtime.Immutable
 import com.falcon.tripingly.core.location.model.Coordinates
 import com.falcon.tripingly.core.model.place.GeoBounds
-import com.falcon.tripingly.core.model.place.ImageCredit
 import com.falcon.tripingly.core.model.place.MapPlace
 import com.falcon.tripingly.core.model.place.PlaceDetails
+import com.falcon.tripingly.core.model.place.PlaceImage
 import com.falcon.tripingly.core.model.place.PlaceSearchResult
 import com.falcon.tripingly.core.model.route.AlongTheWayPlace
 import com.falcon.tripingly.core.model.route.TravelMode
@@ -182,12 +182,14 @@ data class RouteSummaryState(
     val isLoading: Boolean,
     /** Places near the route, in the order the route passes them. */
     val alongTheWay: ImmutableList<AlongTheWayPlace>,
+    /** The place along the way whose pin is picked on the map, kept in view in the list. */
+    val selectedPlaceId: String?,
     /** The open day they are added to; null when this user can't add stops. */
     val addToDayNumber: Int?,
 )
 
 /**
- * A place's card and details sheet: ⓘ opens the details, + adds the place to the open day ([addToDayNumber]), and
+ * A place's card and details sheet: ⓘ opens the details, + adds the place to the open day or one of my trips ([add]), and
  * from OpenStreetMap (once [details] say so) it credits "© OpenStreetMap contributors".
  */
 @Immutable
@@ -197,10 +199,21 @@ data class PlaceCardState(
     val details: PlaceDetails?,
     /** Street, city and country when the card is for an address from search. */
     val address: String?,
-    /** The open day "Add" puts the place on; null when this user can't add stops. */
-    val addToDayNumber: Int?,
+    /** What its + does; null when this user can't add it anywhere (an editor's trip without days). */
+    val add: PinAdd?,
     val routes: PinRoutesState,
+    /** Who made it, for a custom spot. */
+    val addedBy: AddedBy? = null,
+    /** What its photo swipes through: the same photos as its Photos sheet; null while they load. */
+    val images: List<PlaceImage>? = null,
 )
+
+/**
+ * Who added a stop or made a custom spot: [user]'s face and @handle after the type on the big card, "Added by" in the
+ * details (a tap opens the profile), or "you" ([isMe]; [user] may not be known yet for a stop added offline).
+ */
+@Immutable
+data class AddedBy(val user: UserSummary?, val isMe: Boolean)
 
 /**
  * A stop's card and details sheet: ⓘ opens the details, Delete shows for whoever may delete it ([MapMarker.canDelete]).
@@ -209,8 +222,11 @@ data class PlaceCardState(
 @Immutable
 data class StopCardState(
     val stop: MapMarker,
-    /** The cover's credit, when it is one of the place's Wikimedia Commons images. */
-    val coverCredit: ImageCredit?,
+    /**
+     * What the card's photo swipes through: the cover first, then the place's other images (Shahin, 2026-11-14); a
+     * Commons image carries its credit.
+     */
+    val images: List<PlaceImage>,
     /** The stop's place, once loaded. */
     val place: PlaceDetails?,
     /** An owner or editor: photos can be added and managed. */
@@ -218,7 +234,21 @@ data class StopCardState(
     /** Someone else's public trip: the stop can be reported (in its details). */
     val canReport: Boolean,
     val routes: PinRoutesState = PinRoutesState(),
+    /** [PinAdd.ToMyTrip] on a trip I only view; null otherwise. */
+    val add: PinAdd? = null,
+    /** Who put it on the trip; null on a trip only its owner edits, after a deleted account or with a block. */
+    val addedBy: AddedBy? = null,
+    /** Who made its custom spot, when that's someone else than [addedBy]. */
+    val spotBy: AddedBy? = null,
+    val news: StopCardNews = StopCardNews(),
 )
+
+/**
+ * What's new about the open stop (Shahin, 2026-11-13): a dot on its [comments] and [photos] buttons until they're seen;
+ * [hot]: flames came, so its flame pops once, with no dot.
+ */
+@Immutable
+data class StopCardNews(val comments: Boolean = false, val photos: Boolean = false, val hot: Boolean = false)
 
 /**
  * Where a new map view starts. Later moves come from [MapViewModel.cameraCommands]; the map reports where it
@@ -241,17 +271,26 @@ data class CameraState(
 data class LocationState(
     /** The location is on its way: the button shows a spinner. */
     val isLoading: Boolean = false,
+    /** The camera follows me: the button is lit; a tap stops it. */
+    val isFollowing: Boolean = false,
+    /** Following me, no location for a while: a quiet note beside the button says it waits for the signal. */
+    val isSignalLost: Boolean = false,
+    /** The button is on but the device's location is switched off: the note says so, with "Turn on", instead. */
+    val isSwitchedOff: Boolean = false,
 )
 
 /** At most one sheet or full-screen view over the map. */
 @Immutable
 sealed interface MapSheet {
+    /** Opened from another sheet (the details, the trips): a back arrow takes its ✕'s place and goes back to it. */
+    val hasBack: Boolean get() = false
+
     /** [canEdit]: photos can be added and managed. */
-    data class StopPhotos(val stop: MapMarker, val canEdit: Boolean) : MapSheet
+    data class StopPhotos(val stop: MapMarker, val canEdit: Boolean, override val hasBack: Boolean = false) : MapSheet
     /** A place's photos, which anyone can add to. */
-    data class PlacePhotos(val place: MapPlace) : MapSheet
+    data class PlacePhotos(val place: MapPlace, override val hasBack: Boolean = false) : MapSheet
     /** [people]: the trip's owner and members, who can be @mentioned. */
-    data class StopComments(val stop: MapMarker, val people: ImmutableList<UserSummary>) : MapSheet
+    data class StopComments(val stop: MapMarker, val people: ImmutableList<UserSummary>, override val hasBack: Boolean = false) : MapSheet
     /** The owner's members sheet, with the requests to join. */
     data object Members : MapSheet
     /** An image of the place card, full screen in the place's photo viewer. */
@@ -260,6 +299,7 @@ sealed interface MapSheet {
     data class StopDetails(val card: StopCardState) : MapSheet
     /** The selected place's details, half high. Its photos open in their own sheet in its place. */
     data class PlaceDetails(val card: PlaceCardState) : MapSheet
+    data class AddToTrip(val picker: AddToTripState, override val hasBack: Boolean = false) : MapSheet
 }
 
 @Immutable

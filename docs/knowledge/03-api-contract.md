@@ -151,7 +151,7 @@ REST over HTTPS, JSON, base path `/v1`.
 ### Routing
 | Method | Path | Notes |
 |---|---|---|
-| GET | `/routes?from=lat,lng&to=lat,lng&mode=walking\|cycling\|driving&categories=` | Route line + places along the way |
+| GET | `/routes?from=lat,lng&to=lat,lng&mode=walking\|cycling\|driving&categories=&excludeTripId=&fromPlaceId=&toPlaceId=` | Route line + places along the way, leaving out the trip's places and the places at the ends by id (`fromPlaceId`, `toPlaceId`: only for a place end, not where I am, an address or a stop; backend#75, 2026-11-13) |
 | GET | `/days/{id}/route?mode=&categories=` | Route through the day's markers in order + places along the way |
 
 Response shapes and behaviour: see `05-maps-places-routing.md`.
@@ -170,7 +170,7 @@ Response shapes and behaviour: see `05-maps-places-routing.md`.
 | DELETE | `/notifications/{id}` | Swiped away in the center: only the entry goes, never what it is about (the comment, the like); someone else's or an unknown id is a 204 too (backend#73) |
 | DELETE | `/notifications` | "Clear all" in the center → 204 (backend#73) |
 | POST | `/notifications/read` | Body: IDs, `markerId` (everything about one stop: clears its "new" mark; with `kind` `comments` only the news about its comments, `other` the rest) or `all` |
-| GET | `/trips/{id}/new-activity` | `{ markerIds, commentMarkerIds }`: the trip's stops with unread notifications for me, drawn as "new" marks; `commentMarkerIds` those with unread news about their comments (a new comment or a like on one; `aboutComments` on each notification) |
+| GET | `/trips/{id}/new-activity` | `{ markerIds, commentMarkerIds, photoMarkerIds, hotMarkerIds, otherMarkerIds }`: the trip's stops with unread notifications for me other than flames, drawn as "new" marks, and the stops per kind of news (`newsKind` on each notification: `comments`, `photos`, `hot`, `other`; backend#76, 2026-11-13). `POST /notifications/read { markerId, kind }` takes the same kinds |
 | GET/PATCH | `/me/notification-settings` | Per-type push on/off: `commentOnMarker`, `addedToTrip`, `tripChangedByCollaborator`, `likesGrouped` (likes, saves and hot-spot milestones), `joinRequested`, `newFollowers` (follows and new friends); PATCH sends only the one that changed |
 
 ### Moderation
@@ -198,7 +198,7 @@ Field names the client relies on (full schemas in OpenAPI):
 - **User summary** (the one person shape everywhere; the app's `UserSummary`): `id`, `username`, `displayName`, `avatarPhotoId` and `avatarThumbUrl` (the profile photo, 256 px square, cached by its id; both null shows the first-letter avatar). `GET /me` carries the same two fields
 - Places and search results carry `hotCount` and (in-view, nearby, detail) `hotByMe` instead of likes; `isTripinly` means a hot spot (backend#59).
 - **Place** (in-view/search/along-the-way): see `05-maps-places-routing.md`. Every Place shape (tiles, nearby, detail) has `coverImageId`, `coverSource` (`trip`\|`commons`\|null) and `coverThumbUrl`; `coverPhotoId` is set only for a Tripinly photo (`coverSource: trip`, a place photo or a public trip photo). The cover is the most liked photo that 3 people other than its uploader liked, else a Commons image (backend#45); it's also the pin's photo. Cache a cover by `coverImageId`.
-- **Place detail** (`GET /places/{id}`): adds `tags` (`openingHours`, `website`, …) and `images[]` → `{ id, source (trip|commons), thumbUrl, displayUrl, width, height, credit }`. The first image is the cover. `credit` is null for trip photos; for Commons it's `{ author, title, license, licenseUrl, sourceUrl }` and must show under the image (`CommonsCredit`). `photoThumbUrls` is deprecated (backend#38). `addedBy` (a user summary or null) credits a custom spot's creator as "Added by @name" on the place card; the server sets it only while one of the creator's public trips has the spot and never across a block, and it's null for OSM places (backend#58).
+- **Place detail** (`GET /places/{id}`): adds `tags` (`openingHours`, `website`, …) and `images[]` → `{ id, source (trip|commons), thumbUrl, displayUrl, width, height, credit, uploader }`. The first image is the cover. `credit` is null for trip photos; for Commons it's `{ author, title, license, licenseUrl, sourceUrl }` and must show under the image (`CommonsCredit`). `uploader` (a user summary or null) is who uploaded a trip photo, shown as "Photo by @name" after the OSM credit; null for Commons and across a block (backend#77). `photoThumbUrls` is deprecated (backend#38). `addedBy` (a user summary or null) credits a custom spot's creator as "Added by @name" on the place card; the server sets it only while one of the creator's public trips has the spot and never across a block, and it's null for OSM places (backend#58).
 - **Me**: profile fields, `onboarding` state, `defaultTripVisibility`, `locale`, `entitlements[]` (e.g. `routes`: route lines, A→B and places along the way; 403 `PREMIUM_REQUIRED` without it). A purchase reaches the server through RevenueCat's webhook (`POST /billing/revenuecat/webhook`, backend#54; the app never calls it): after buying, the app re-reads `GET /me` until `entitlements` has Pro.
 
 ## Stable error codes (starter set)

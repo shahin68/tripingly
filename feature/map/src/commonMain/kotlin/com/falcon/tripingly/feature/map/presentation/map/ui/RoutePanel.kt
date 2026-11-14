@@ -43,8 +43,11 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.platform.LocalUriHandler
@@ -172,10 +175,14 @@ private fun AnimatedVisibilityScope.RouteCardContent(route: RouteSummaryState, i
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(horizontal = inset).then(rowMotion(2, isAnimated)),
             )
-            val listState = rememberLazyListState()
+            val selectedIndex = route.alongTheWay.indexOfFirst { it.place.id == route.selectedPlaceId }
+            // A place picked on the map is the card in view, also when the plan first shows.
+            val listState = rememberLazyListState(initialFirstVisibleItemIndex = selectedIndex.coerceAtLeast(0))
+            val onScreen = remember { OnScreen() }
+            LaunchedEffect(route.selectedPlaceId) { listState.reveal(selectedIndex, onScreen, toStart = true) }
             LazyRow(
                 state = listState,
-                modifier = Modifier.horizontalFadingEdge(listState),
+                modifier = Modifier.horizontalFadingEdge(listState).trackOnScreen(onScreen),
                 contentPadding = PaddingValues(horizontal = inset),
                 horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
             ) {
@@ -312,11 +319,11 @@ private const val CARD_SHADE = 0.05f
 
 /** The routes' credits ("© openrouteservice.org | © OpenStreetMap contributors"), tappable like the map's. */
 @Composable
-fun RouteAttribution(text: String, modifier: Modifier = Modifier) {
+fun RouteAttribution(text: String, modifier: Modifier = Modifier, style: TextStyle = MaterialTheme.typography.labelSmall) {
     val uriHandler = LocalUriHandler.current
     Text(
         text = text,
-        style = MaterialTheme.typography.labelSmall,
+        style = style,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
         modifier = modifier
             .clickable { runCatching { uriHandler.openUri(COPYRIGHT_URL) } }

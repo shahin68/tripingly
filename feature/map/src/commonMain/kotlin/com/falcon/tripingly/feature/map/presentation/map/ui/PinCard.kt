@@ -44,6 +44,7 @@ import com.falcon.tripingly.core.designsystem.component.GlassDefaults
 import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
 import com.falcon.tripingly.core.designsystem.theme.extendedColors
 import com.falcon.tripingly.core.designsystem.theme.spacing
+import com.falcon.tripingly.feature.map.presentation.map.PinAdd
 import com.falcon.tripingly.feature.map.presentation.map.PinRoutesState
 import com.falcon.tripingly.feature.map.presentation.map.preview.previewPlace
 
@@ -59,7 +60,7 @@ import com.falcon.tripingly.feature.map.presentation.map.preview.previewPlace
  */
 
 /**
- * A card over the camera's middle, where the tapped pin is ([pinBelowMiddle] lower, in landscape): it blooms out of the
+ * A card over the camera's middle, where the tapped pin is ([pinBelowMiddle] lower: a little in portrait, much in landscape): it blooms out of the
  * pin, just above it, and goes back into it when it closes. A card for another pin replaces it; the same pin's card
  * only updates. The card is drawn as glass here, so its [content] draws none of its own; the content's rows take
  * [PinCardScope.bloomRow].
@@ -184,7 +185,7 @@ private val Standard = CubicBezierEasing(0.2f, 0f, 0f, 1f)
 private fun PinCardPreview() {
     TripinglyTheme {
         PinCard(card = previewPlace, key = { it.id }, pinClearance = 24.dp) { place ->
-            PlaceCard(place, details = null, address = null, dayNumber = 1, onAdd = {}, onOpenImage = {}, onOpenPhotos = {}, onOpenDetails = {}, routes = PinRoutesState(), onGoHere = {}, onRoute = {})
+            PlaceCard(place, details = null, address = null, add = PinAdd.ToDay(1), addedBy = null, images = null, onAdd = {}, onOpenImage = {}, onOpenPhotos = {}, onOpenDetails = {}, routes = PinRoutesState(), onGoHere = {}, onRoute = {})
         }
     }
 }
@@ -194,7 +195,7 @@ private fun PinCardPreview() {
 private fun PinCardDarkPreview() {
     TripinglyTheme(darkTheme = true) {
         PinCard(card = previewPlace, key = { it.id }, pinClearance = 24.dp) { place ->
-            PlaceCard(place, details = null, address = null, dayNumber = null, onAdd = {}, onOpenImage = {}, onOpenPhotos = {}, onOpenDetails = {}, routes = PinRoutesState(isRouteTo = true), onGoHere = {}, onRoute = {})
+            PlaceCard(place, details = null, address = null, add = PinAdd.ToMyTrip, addedBy = null, images = null, onAdd = {}, onOpenImage = {}, onOpenPhotos = {}, onOpenDetails = {}, routes = PinRoutesState(isRouteTo = true), onGoHere = {}, onRoute = {})
         }
     }
 }

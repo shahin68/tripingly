@@ -33,11 +33,11 @@ import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.text.rememberTextMeasurer
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import com.falcon.tripingly.core.designsystem.component.icon
 import com.falcon.tripingly.core.designsystem.component.rememberHaptics
-import com.falcon.tripingly.core.designsystem.theme.MapColors
 import com.falcon.tripingly.core.designsystem.theme.extendedColors
 import com.falcon.tripingly.core.location.model.Coordinates
 import com.falcon.tripingly.core.model.place.GeoBounds
@@ -53,6 +53,7 @@ import com.google.android.gms.maps.model.JointType
 import com.google.android.gms.maps.model.LatLng
 import com.google.android.gms.maps.model.MapStyleOptions
 import com.google.android.gms.maps.model.RoundCap
+import com.google.maps.android.compose.CameraMoveStartedReason
 import com.google.maps.android.compose.ComposeMapColorScheme
 import com.google.maps.android.compose.GoogleMap
 import com.google.maps.android.compose.GoogleMapComposable
@@ -81,6 +82,7 @@ actual fun GoogleMapView(
     onCameraMove: (Coordinates, Float, GeoBounds?) -> Unit,
     onCameraMoving: (GeoBounds, Float) -> Unit,
     onMapTouch: () -> Unit,
+    onUserMove: () -> Unit,
     onMapClick: (Coordinates) -> Unit,
     onPlacePinClick: (MapPlace) -> Unit,
     onClusterClick: (PlaceCluster) -> Unit,
@@ -165,6 +167,12 @@ actual fun GoogleMapView(
         snapshotFlow { cameraPositionState.position }.collect { position ->
             if (cameraPositionState.isMoving || holder.hold != null) viewBounds()?.let { currentOnCameraMoving(it, position.zoom) }
         }
+    }
+
+    // A finger moving the map, not a flight the screen asked for nor a held pin pulling it.
+    val currentOnUserMove by rememberUpdatedState(onUserMove)
+    LaunchedEffect(cameraPositionState.isMoving) {
+        if (cameraPositionState.isMoving && cameraPositionState.cameraMoveStartedReason == CameraMoveStartedReason.GESTURE) currentOnUserMove()
     }
 
     // Not while a held pin moves the camera: once it's let go.
@@ -333,7 +341,7 @@ actual fun GoogleMapView(
                         pin to hypot(point.x - touch.x, point.y - touch.y)
                     }
                     .filter { (pin, distance) ->
-                        val size = if (isDots || pin.isDot) PlaceDotSize else pin.size
+                        val size = if (pin.isDotAt(isDots)) PlaceDotSize else pin.size
                         distance <= with(density) { size.toPx() } / 2 + slop
                     }
                     .minByOrNull { (_, distance) -> distance }
@@ -354,7 +362,8 @@ actual fun GoogleMapView(
                     val position = LatLng(pin.place.location.lat, pin.place.location.lng)
                     // Under the clusters and the stops. Taken from the place, not from its place in the list, so a pin's
                     // z-order stays the same when pins come and go: changing it makes pins vanish for a frame.
-                    val zIndex = PLACE_PINS_Z * pinRank(pin.place)
+                    // A route's end and the places tapped while routing on top of the other places.
+                    val zIndex = if (pin.isKept) KEPT_PINS_Z else PLACE_PINS_Z * pinRank(pin.place)
                     // No info window and no camera move of the map's own: the card and the camera are ours.
                     fun onClick(): Boolean {
                         if (isTapHandled) return true
@@ -369,7 +378,7 @@ actual fun GoogleMapView(
                             title = pin.place.name,
                             anchor = Offset(0.5f, 0.5f),
                             alpha = fadeIn.value,
-                            visible = isShown && !isDots && !pin.isDot,
+                            visible = isShown && !pin.isDotAt(isDots),
                             zIndex = zIndex,
                             onClick = { onClick() },
                         )
@@ -381,7 +390,7 @@ actual fun GoogleMapView(
                             title = pin.place.name,
                             anchor = Offset(0.5f, 0.5f),
                             alpha = fadeIn.value,
-                            visible = isShown && (isDots || pin.isDot),
+                            visible = isShown && pin.isDotAt(isDots),
                             zIndex = zIndex,
                             onClick = { onClick() },
                         )
@@ -432,17 +441,17 @@ actual fun GoogleMapView(
                     )
                 }
             }
-            // A route's start (Route from), ringed in the routes' blue around its pin.
-            layers.routeStart?.let { start ->
-                val ring = remember(density, layoutDirection) {
-                    BitmapDescriptorFactory.fromBitmap(drawRouteStartRing(MapColors.Car, density, layoutDirection).asAndroidBitmap())
-                }
-                key(start) {
+            // The route's ends: a thick ring in the way of travelling's colour round each end's pin, under it.
+            val rings = remember(density, layoutDirection) { mutableMapOf<Pair<Dp, Color>, BitmapDescriptor>() }
+            layers.routeEnds.forEach { end ->
+                key(end.isStart) {
                     Marker(
-                        state = rememberUpdatedMarkerState(position = LatLng(start.lat, start.lng)),
-                        icon = ring,
+                        state = rememberUpdatedMarkerState(position = LatLng(end.position.lat, end.position.lng)),
+                        icon = rings.getOrPut(end.pinSize to end.color) {
+                            BitmapDescriptorFactory.fromBitmap(drawRouteEndRing(end.pinSize, end.color, density, layoutDirection).asAndroidBitmap())
+                        },
                         anchor = Offset(0.5f, 0.5f),
-                        zIndex = ROUTE_START_Z,
+                        zIndex = ROUTE_END_Z,
                         // Only a mark: the map neither moves nor opens anything.
                         onClick = { true },
                     )
@@ -593,6 +602,9 @@ private val PIN_TAP_SLOP = 4.dp
 /** Place pins sit under this, the stops at 1 and the tapped place at 2. */
 private const val PLACE_PINS_Z = 0.5f
 
-/** Under every pin, so a tap on the pin inside the ring still reaches the pin. */
-private const val ROUTE_START_Z = -1f
+/** A route's ends and the places kept while routing: over the other places, under the stops. */
+private const val KEPT_PINS_Z = 0.75f
+
+/** The rings round a route's ends: under their pins (kept places and stops), over the other places. */
+private const val ROUTE_END_Z = 0.7f
 

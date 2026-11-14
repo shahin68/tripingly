@@ -4,8 +4,8 @@
     <string name="common_cancel">Cancel</string>
 
     <!-- Home -->
-    <string name="home_search_placeholder_trips">Search trips...</string>
-    <string name="home_fab_add_trip">Add Trip</string>
+    <string name="home_search_placeholder_trips">Search trips…</string>
+    <string name="home_fab_add_trip">Add trip</string>
     <string name="home_list_empty">No trips yet. Tap + to create one!</string>
     <string name="home_list_no_matches">No trips match your search.</string>
     <string name="home_offline_cached">You’re offline. These are your saved trips; changes need a connection.</string>
@@ -29,14 +29,14 @@
     </plurals>
 
     <!-- Trip actions -->
-    <string name="trip_action_rename">Rename Trip</string>
-    <string name="trip_action_reschedule">Reschedule Trip</string>
-    <string name="trip_action_make_private">Make Private</string>
-    <string name="trip_action_make_public">Make Public</string>
+    <string name="trip_action_rename">Rename trip</string>
+    <string name="trip_action_reschedule">Reschedule trip</string>
+    <string name="trip_action_make_private">Make private</string>
+    <string name="trip_action_make_public">Make public</string>
     <string name="trip_action_members">Members</string>
-    <string name="trip_action_share">Share Trip</string>
-    <string name="trip_action_delete">Delete Trip</string>
-    <string name="trip_action_leave">Leave Trip</string>
+    <string name="trip_action_share">Share trip</string>
+    <string name="trip_action_delete">Delete trip</string>
+    <string name="trip_action_leave">Leave trip</string>
     <string name="trip_action_remove_saved">Remove from my trips</string>
 
     <!-- Share -->
@@ -47,7 +47,7 @@
     <string name="create_trip_title">New trip</string>
     <string name="create_trip_name_label">Trip name</string>
     <string name="create_trip_button_create">Create trip</string>
-    <string name="create_trip_picker_title">Select Trip Dates</string>
+    <string name="create_trip_picker_title">Select trip dates</string>
     <string name="create_trip_picker_headline">Choose the range</string>
     <string name="create_trip_destination_placeholder">Where are you going?</string>
     <string name="create_trip_dates_add">Add dates</string>
@@ -56,12 +56,12 @@
     <string name="create_trip_error_members">Some friends can’t be added anymore, so they were unchecked. Try again.</string>
 
     <!-- Rename trip dialog -->
-    <string name="rename_trip_title">Rename Trip</string>
+    <string name="rename_trip_title">Rename trip</string>
     <string name="rename_trip_button_rename">Rename</string>
 
     <!-- Reschedule trip dialog -->
-    <string name="reschedule_trip_title">Reschedule Trip</string>
-    <string name="reschedule_trip_dates_label">New Dates</string>
+    <string name="reschedule_trip_title">Reschedule trip</string>
+    <string name="reschedule_trip_dates_label">New dates</string>
     <string name="reschedule_trip_button_reschedule">Reschedule</string>
     <string name="reschedule_trip_picker_headline">Choose new dates</string>
     <string name="reschedule_error_days_not_empty">Some of the days you’d remove still have stops. Delete or move those stops first.</string>
@@ -127,5 +127,5 @@
     <string name="create_trip_destination_label">Destination (optional)</string>
     <string name="create_trip_dates_label">Dates</string>
     <string name="create_trip_visibility_label">Who can see it</string>
-    <string name="create_trip_friends_label">Add Friends</string>
+    <string name="create_trip_friends_label">Add friends</string>
 </resources>

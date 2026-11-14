@@ -73,7 +73,7 @@ fun NearbyRoute(
     viewModel: NearbyViewModel = koinViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
-    val locationPermission = rememberLocationPermissionController { viewModel.onAction(Action.PermissionResult(it)) }
+    val locationPermission = rememberLocationPermissionController(onResult = { viewModel.onAction(Action.PermissionResult(it)) })
     // When Nearby opens and on every return to the app, e.g. from Settings.
     LifecycleResumeEffect(locationPermission) {
         viewModel.onAction(Action.PermissionChecked(locationPermission.status()))
@@ -103,7 +103,16 @@ fun NearbyRoute(
             isSending = report.isSending,
         )
     }
-    AppBottomSheet(value = state.addPlace, onDismiss = { viewModel.onAction(Action.AddToTrip.Dismiss) }) { addPlace, close ->
+    // My trips, then the picked trip's days in a sheet of their own in their place; the days' back arrow goes back to the trips.
+    AppBottomSheet(value = state.addPlace?.takeIf { it.trip == null }, onDismiss = { viewModel.onAction(Action.AddToTrip.Dismiss) }) { addPlace, close ->
+        AddPlaceSheet(addPlace = addPlace, onAction = viewModel::onAction, onClose = close)
+    }
+    AppBottomSheet(
+        value = state.addPlace?.takeIf { it.trip != null },
+        // ✕, a swipe or a tap outside closes both; its back arrow goes back to the trips.
+        onDismiss = { viewModel.onAction(Action.AddToTrip.Dismiss) },
+        onBack = { viewModel.onAction(Action.AddToTrip.BackToTrips) },
+    ) { addPlace, close ->
         AddPlaceSheet(addPlace = addPlace, onAction = viewModel::onAction, onClose = close)
     }
 }

@@ -1,9 +1,12 @@
 package com.falcon.tripingly.feature.map.presentation.map.state
 
 import androidx.compose.foundation.text.input.TextFieldState
+import com.falcon.tripingly.core.data.push.StopNews
 import com.falcon.tripingly.core.data.trips.MarkerChangeFailure
 import com.falcon.tripingly.core.location.model.Coordinates
 import com.falcon.tripingly.core.location.permission.LocationPermission
+import com.falcon.tripingly.core.model.photo.Photo
+import com.falcon.tripingly.core.model.photo.PhotoOwner
 import com.falcon.tripingly.core.model.place.GeoBounds
 import com.falcon.tripingly.core.model.place.MapPlace
 import com.falcon.tripingly.core.model.place.PlaceCluster
@@ -14,6 +17,9 @@ import com.falcon.tripingly.core.model.route.RoutePlan
 import com.falcon.tripingly.core.model.route.TravelMode
 import com.falcon.tripingly.core.model.social.ReportTarget
 import com.falcon.tripingly.core.model.trip.GeoPoint
+import com.falcon.tripingly.core.model.trip.NewMarker
+import com.falcon.tripingly.core.model.trip.Trip
+import com.falcon.tripingly.core.model.trip.TripDay
 import com.falcon.tripingly.core.model.trip.UserSummary
 import com.falcon.tripingly.core.ui.UiText
 import com.falcon.tripingly.feature.map.presentation.component.PlacePin
@@ -39,6 +45,8 @@ internal data class MapModel(
      * and its opening hours and website in the details sheet.
      */
     val stopPlaces: Map<String, PlaceDetails> = emptyMap(),
+    /** Stops' photo grids and places' galleries, loaded when their card opens: its photo swipes through them. */
+    val cardPhotos: Map<PhotoOwner, List<Photo>> = emptyMap(),
     val search: SearchModel? = null,
     val route: RouteModel = RouteModel(),
     val location: LocationModel = LocationModel(),
@@ -49,11 +57,10 @@ internal data class MapModel(
     /** Stop changes undone because the connection failed; Retry sends them again. */
     val failedChanges: List<MarkerChangeFailure> = emptyList(),
     /**
-     * Stops with notifications I haven't seen: their pins and days carry a "new" mark ([MapNewActivity]) while they're
-     * in either set. [newStopIds]: news seen by opening the stop; [newCommentStopIds]: news seen in its comments.
+     * News about stops I haven't seen, by where it is seen ([MapNewActivity]): their pins and days carry a "new" mark for
+     * any but flames; the comments and photos buttons a dot for theirs; flames pop the open stop's flame.
      */
-    val newStopIds: Set<String> = emptySet(),
-    val newCommentStopIds: Set<String> = emptySet(),
+    val news: Set<StopNews> = emptySet(),
     /** The places button: only the trip's stops and its route's places show, nothing loads ([MapPins]). Every map opens with them shown. */
     val arePlacesHidden: Boolean = false,
     /** The trip's newest people asking to join, for its owner ([MapJoinRequests]); the pill shows while one isn't [dismissedJoinRequesterIds]. */
@@ -121,7 +128,26 @@ internal data class RouteModel(
     /** Retry was tapped this many times: each asks for the same route again. */
     val attempt: Int = 0,
     val isFindingBestOrder: Boolean = false,
+    /**
+     * A tapped end of [between] is being picked again (Shahin, 2026-11-13): the route, its line and both pins stay until
+     * a new place is picked; ✕ or back puts the end back as it was.
+     */
+    val editing: RouteSide? = null,
+    /**
+     * Places tapped while a route shows: their pins stay on the map, as pins, until the route closes, whatever the zoom,
+     * the way of travelling or the places loaded (Shahin, 2026-11-13).
+     */
+    val kept: List<MapPlace> = emptyList(),
 )
+
+/** The route bar's search picks an end: where to go from a start, or an end of a route picked again. */
+internal val RouteModel.isPicking get() = start != null || (between != null && editing != null)
+
+/** One end of a route between two points. */
+internal enum class RouteSide { From, To }
+
+/** A route shows, or one is being set up: the day's, one between two points, or a start waiting for where to go. */
+internal val RouteModel.isActive get() = isDayRouteShown || start != null || between != null
 
 /** A route between two places; a stop's end carries its stop's title ([fromLabel], [toLabel]) for the card. */
 internal data class PointRoute(val from: MapPlace, val to: MapPlace, val fromLabel: UiText? = null, val toLabel: UiText? = null) {
@@ -134,13 +160,25 @@ internal const val MY_LOCATION_ID = "my-location"
 /** Go here's route to the pin at [at] shows. */
 internal fun RouteModel.isGoingTo(at: GeoPoint) = between?.isFromMe == true && between.to.location == at
 
-/** The pin at [at] is the start picked with Route from, or an end of a route between two pins: its Route button is on. */
-internal fun RouteModel.isRouteEnd(at: GeoPoint) =
-    start?.location == at || (between != null && !between.isFromMe && (between.from.location == at || between.to.location == at))
+/**
+ * The pin at [at] is the start picked with Route from, or an end of a route between two pins, but not the end being
+ * picked again: its Route button is on.
+ */
+internal fun RouteModel.isRouteEnd(at: GeoPoint) = start?.location == at ||
+    (between != null && !between.isFromMe && ((editing != RouteSide.From && between.from.location == at) || (editing != RouteSide.To && between.to.location == at)))
 
-/** The pin at [at]'s Route button says Route to here: another pin is the start, or it is where the route goes. */
-internal fun RouteModel.isRouteTo(at: GeoPoint) =
-    (start != null && start.location != at) || (between != null && !between.isFromMe && between.to.location == at)
+/**
+ * The pin at [at]'s Route button says Route to here: another pin is the start, or the route's "to" is picked again, or
+ * it is where the route goes.
+ */
+internal fun RouteModel.isRouteTo(at: GeoPoint) = (start != null && start.location != at) ||
+    (between != null && editing == RouteSide.To && between.from.location != at) ||
+    (between != null && editing == null && !between.isFromMe && between.to.location == at)
+
+/**
+ * The pin at [at]'s Route from here replaces the start of [between] while that is picked again.
+ */
+internal fun RouteModel.isRouteFrom(at: GeoPoint) = between != null && editing == RouteSide.From && between.to.location != at
 
 internal data class LocationModel(
     /** Null until the screen has read it. */
@@ -149,6 +187,15 @@ internal data class LocationModel(
     val isLoading: Boolean = false,
     /** The location button was tapped: the camera moves to the first location that comes. */
     val isWaitingForFirst: Boolean = false,
+    /**
+     * The location button is on (Shahin, 2026-11-13): the camera follows me as I move, until a finger moves the map,
+     * the screen shows something else or the button is tapped again.
+     */
+    val isFollowing: Boolean = false,
+    /** Following me, but no location came for a while (a tunnel, underground): a quiet note says it waits for one. */
+    val isSignalLost: Boolean = false,
+    /** The device's location (GPS) is switched off (Shahin, 2026-11-13): while the button is on, a note offers to turn it on. */
+    val isSwitchedOff: Boolean = false,
 )
 
 internal data class PinsModel(
@@ -174,6 +221,22 @@ internal sealed interface Sheet {
     data object Members : Sheet
     /** The selected stop's or place's details. */
     data object Details : Sheet
+    /** The + on a trip I only view: one of my [trips], then the picked [trip]'s [days] (null while they load). */
+    data class AddToTrip(
+        val item: CopyItem,
+        val trips: List<Trip>,
+        val trip: Trip? = null,
+        val days: List<TripDay>? = null,
+        override val fromDetails: Boolean = false,
+    ) : Sheet
+}
+
+/** What the + on a trip I only view puts on one of my trips. */
+internal sealed interface CopyItem {
+    /** Copied by the server, which keeps where it came from. */
+    data class Stop(val markerId: String) : CopyItem
+    /** A place, or an address from search, added like a stop added on the map. */
+    data class Place(val marker: NewMarker) : CopyItem
 }
 
 internal sealed interface Dialog {

@@ -44,8 +44,10 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -146,11 +148,15 @@ private fun Modifier.topGap(gap: () -> Dp) = layout { measurable, constraints ->
  */
 @Composable
 private fun StopChips(card: StopsCardState, onAction: (MapAction) -> Unit) {
-    val listState = rememberLazyListState()
+    val selectedIndex = card.stops.indexOfFirst { it.id == card.selectedStopId }
+    // A stop picked on the map is the chip in view, also when the plan first shows.
+    val listState = rememberLazyListState(initialFirstVisibleItemIndex = selectedIndex.coerceAtLeast(0))
+    val onScreen = remember { OnScreen() }
+    LaunchedEffect(card.selectedStopId) { listState.reveal(selectedIndex, onScreen, toStart = true) }
     val legColor = card.route?.mode?.lineColor ?: MaterialTheme.colorScheme.outlineVariant
     LazyRow(
         state = listState,
-        modifier = Modifier.padding(top = RowGap).horizontalFadingEdge(listState),
+        modifier = Modifier.padding(top = RowGap).horizontalFadingEdge(listState).trackOnScreen(onScreen),
         contentPadding = PaddingValues(horizontal = MaterialTheme.spacing.medium),
         verticalAlignment = Alignment.CenterVertically,
     ) {

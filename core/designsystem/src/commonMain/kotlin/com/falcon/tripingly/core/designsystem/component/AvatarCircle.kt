@@ -172,6 +172,8 @@ private const val MAX_STACKED = 3
 private const val STACK_STEP = 0.15f
 
 object AvatarSize {
+    /** Inline in a line of small text, e.g. who added a stop on its card. */
+    val Tiny = 18.dp
     val Small = 24.dp
     val Row = 40.dp
     val Medium = 56.dp

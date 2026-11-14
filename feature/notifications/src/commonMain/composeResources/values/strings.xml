@@ -1,7 +1,7 @@
 <resources>
     <string name="notifications_title">Notifications</string>
     <string name="notifications_empty">Nothing yet. Likes, comments and invitations show up here.</string>
-    <string name="notifications_error_load">Couldn't load your notifications.</string>
+    <string name="notifications_error_load">Couldn’t load your notifications.</string>
     <string name="notifications_retry">Try again</string>
     <string name="notifications_unread">Unread</string>
     <string name="notifications_clear_all">Clear all</string>

@@ -210,11 +210,13 @@ fun PhotosScreen(
                     onAction = onAction,
                 )
             }
-            // Commons images are cropped in the grid; each shows its full credit in the viewer.
+            // Commons images are cropped in the grid; each shows its full credit in the viewer. "Some" once our own
+            // photos share the grid.
             if (state.photos.any { it.credit != null }) {
+                val allCommons = state.uploads.isEmpty() && state.photos.all { it.credit != null }
                 item(span = fullWidth) {
                     Text(
-                        text = stringResource(Res.string.map_photos_commons_note),
+                        text = stringResource(if (allCommons) Res.string.map_photos_commons_note else Res.string.map_photos_commons_note_some),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(vertical = MaterialTheme.spacing.small),

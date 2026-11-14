@@ -5,7 +5,6 @@
     <string name="map_show_places">Orte einblenden</string>
     <string name="map_fit_day">Ganzen Tag zeigen</string>
     <string name="map_plan_handle">Ganzen Plan zeigen oder ausblenden</string>
-    <string name="map_stop_title_format">Stopp %1$d</string>
     <string name="map_remove_stop">Stopp entfernen</string>
     <string name="map_back">Zurück</string>
     <string name="map_day_menu">Tagesoptionen</string>
@@ -35,9 +34,12 @@
     <string name="map_place_add_to_day">Zu Tag %1$d hinzufügen</string>
     <string name="map_place_opening_hours">Öffnungszeiten</string>
     <string name="map_place_added_by">Hinzugefügt von @%1$s</string>
+    <string name="map_added_by_you">Von dir hinzugefügt</string>
+    <string name="map_spot_by">Ort von @%1$s</string>
     <string name="map_place_image_position">%1$d / %2$d</string>
     <string name="map_place_image_report">Bild melden</string>
     <string name="map_photos_commons_note">Bilder von Wikimedia Commons: Öffne eines, um Urheber und Lizenz zu sehen.</string>
+    <string name="map_photos_commons_note_some">Einige Bilder sind von Wikimedia Commons: Öffne eines, um Urheber und Lizenz zu sehen.</string>
     <string name="map_place_images">Bilder dieses Ortes</string>
     <string name="map_place_category_cafe">Café</string>
     <string name="map_place_category_restaurant">Restaurant</string>
@@ -55,6 +57,7 @@
     <string name="map_pin_name_label">Name</string>
     <string name="map_pin_add">Hinzufügen</string>
     <string name="map_stop_no_photos">Noch keine Fotos</string>
+    <string name="map_photos_add_first">Erstes Foto hinzufügen</string>
     <string name="map_stop_photos">Fotos</string>
     <string name="map_photo_make_cover">Als Titelbild</string>
     <string name="map_photo_cover">Titelbild</string>
@@ -97,7 +100,7 @@
     <string name="map_stop_comment">Kommentieren</string>
     <string name="map_stop_report">Stopp melden</string>
     <string name="map_comments_empty">Noch keine Kommentare. Schreib etwas!</string>
-    <string name="map_comment_placeholder">Kommentar schreiben …</string>
+    <string name="map_comment_placeholder">Kommentar schreiben…</string>
     <string name="map_comment_send">Senden</string>
     <string name="map_comment_menu">Kommentaroptionen</string>
     <string name="map_comment_delete">Kommentar löschen</string>
@@ -132,7 +135,7 @@
     <string name="map_error_delete_comment">Der Kommentar konnte nicht gelöscht werden.</string>
     <string name="map_error_load_photos">Die Fotos konnten nicht geladen werden.</string>
     <string name="map_photo_gone">Dieses Foto ist nicht mehr verfügbar.</string>
-    <string name="map_error_cover">Das Titelfoto konnte nicht festgelegt werden.</string>
+    <string name="map_error_cover">Das Titelbild konnte nicht festgelegt werden.</string>
     <string name="map_error_delete_photo">Das Foto konnte nicht gelöscht werden.</string>
 
     <!-- Place photos and deleting stops -->
@@ -164,8 +167,13 @@
     <string name="map_route_to_placeholder">Suchen oder Pin antippen</string>
     <string name="map_route_from">Von</string>
     <string name="map_route_to">Nach</string>
+    <string name="map_route_change_from">Start ändern</string>
+    <string name="map_route_change_to">Ziel ändern</string>
     <string name="map_route_between">%1$s → %2$s</string>
     <string name="map_route_close">Route schließen</string>
+    <string name="map_route_cancel_edit">Diesen Punkt behalten</string>
+    <string name="map_route_clear">Leeren</string>
+    <string name="map_route_swap">Richtung tauschen</string>
     <string name="map_best_order">Beste Reihenfolge</string>
     <string name="map_ordering">Wird sortiert…</string>
     <string name="map_best_order_title">Beste Reihenfolge für diesen Tag</string>
@@ -183,7 +191,11 @@
     </plurals>
     <string name="map_trip_members">Mitglieder · %1$d</string>
     <string name="map_clear_day">Tag %1$d leeren</string>
-    <string name="map_my_location">Meinen Standort zeigen</string>
+    <string name="map_follow_location">Meinem Standort folgen</string>
+    <string name="map_stop_following">Nicht mehr folgen</string>
+    <string name="map_gps_lost">Warte auf GPS…</string>
+    <string name="map_location_off">Standort ist aus</string>
+    <string name="map_location_turn_on">Einschalten</string>
     <string name="map_stop_expand">Mehr zeigen</string>
     <string name="map_stop_collapse">Weniger zeigen</string>
     <string name="map_stop_number">Stopp %1$d</string>
@@ -207,4 +219,11 @@
     <string name="map_photos_add">Hinzufügen</string>
     <string name="map_photos_more">+%1$d</string>
     <string name="map_details_comments">Kommentare · %1$d</string>
+    <string name="map_add_to_my_trip">Zu meiner Reise hinzufügen</string>
+    <string name="map_add_to_trip_pick_trip">%1$s zu welcher Reise hinzufügen?</string>
+    <string name="map_add_to_trip_pick_day">Welcher Tag von %1$s?</string>
+    <string name="map_add_to_trip_no_trips">Erstelle zuerst eine Reise und füge dann Stopps hinzu.</string>
+    <string name="map_add_to_trip_added">Zu %1$s hinzugefügt, Tag %2$d.</string>
+    <string name="map_error_add_to_trip">Konnte nicht zu deiner Reise hinzugefügt werden.</string>
+    <string name="map_error_load_days">Die Tage der Reise konnten nicht geladen werden.</string>
 </resources>

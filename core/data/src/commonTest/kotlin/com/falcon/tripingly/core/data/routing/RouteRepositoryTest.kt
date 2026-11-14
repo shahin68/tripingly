@@ -31,6 +31,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertIs
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class RouteRepositoryTest {
@@ -93,15 +94,18 @@ class RouteRepositoryTest {
     fun anEstimatedRouteIsAskedForAgain() = runTest {
         body = ROUTE.replace("\"degraded\": false", "\"degraded\": true")
         val plan = assertIs<AppResult.Success<RoutePlan>>(
-            repository.route(GeoPoint(48.2, 16.3), GeoPoint(48.3, 16.4), TravelMode.Walking, TRIP_ID),
+            repository.route(GeoPoint(48.2, 16.3), GeoPoint(48.3, 16.4), TravelMode.Walking, TRIP_ID, fromPlaceId = "p-1", toPlaceId = null),
         ).data
-        repository.route(GeoPoint(48.2, 16.3), GeoPoint(48.3, 16.4), TravelMode.Walking, TRIP_ID)
+        repository.route(GeoPoint(48.2, 16.3), GeoPoint(48.3, 16.4), TravelMode.Walking, TRIP_ID, fromPlaceId = "p-1", toPlaceId = null)
 
         assertTrue(plan.isEstimated)
         assertEquals(2, requests.size)
         assertEquals("48.2,16.3", requests.first().url.parameters["from"])
         assertEquals("48.3,16.4", requests.first().url.parameters["to"])
         assertEquals(TRIP_ID, requests.first().url.parameters["excludeTripId"])
+        // The start's place is left out of the places along the way; an end with no place sends nothing.
+        assertEquals("p-1", requests.first().url.parameters["fromPlaceId"])
+        assertNull(requests.first().url.parameters["toPlaceId"])
     }
 
     @Test

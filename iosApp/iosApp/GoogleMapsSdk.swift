@@ -83,10 +83,10 @@ private final class AppGoogleMap: NSObject, GoogleMap, GMSMapViewDelegate {
         mapView.isMyLocationEnabled = enabled
     }
 
-    func setPadding(top: Double, bottom: Double) {
-        // The screen's padding already counts the status bar and the home indicator.
+    func setPadding(top: Double, left: Double, bottom: Double, right: Double) {
+        // The screen's padding already counts the status bar, the home indicator and the camera cutout.
         mapView.paddingAdjustmentBehavior = .never
-        mapView.padding = UIEdgeInsets(top: top, left: 0, bottom: bottom, right: 0)
+        mapView.padding = UIEdgeInsets(top: top, left: left, bottom: bottom, right: right)
     }
 
     func moveCamera(latitude: Double, longitude: Double, zoom: Float, animated: Bool) {

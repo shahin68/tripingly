@@ -40,7 +40,7 @@
     <string name="trip_when_yesterday">Tegnap</string>
     <string name="trip_when_next_month">Jövő hónapban</string>
     <string name="trip_when_in_year">%1$s</string>
-    <string name="trip_when_this_winter">Ezen a télen</string>
+    <string name="trip_when_this_winter">Idén télen</string>
     <string name="trip_when_this_spring">Idén tavasszal</string>
     <string name="trip_when_this_summer">Idén nyáron</string>
     <string name="trip_when_this_fall">Idén ősszel</string>

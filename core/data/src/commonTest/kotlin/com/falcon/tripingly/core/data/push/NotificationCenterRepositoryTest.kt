@@ -54,7 +54,7 @@ class NotificationCenterRepositoryTest {
             } else {
                 respond(
                     // A kind this app doesn't know reads like any other.
-                    """{"items":[{"id":"n1","type":"some_new_kind","actor":{"id":"u1","username":"anna","displayName":"Anna"},"actors":[{"id":"u1","username":"anna","displayName":"Anna"},{"id":"u2","username":"jonas","displayName":"Jonas"}],"trip":null,"markerId":null,"aboutComments":false,"count":3,"title":"Anna and 2 others liked your photo","body":"Albertina","deepLink":"tripinly://notifications","read":false,"createdAt":"2026-11-07T10:00:00.000Z","updatedAt":"2026-11-07T10:00:00.000Z"}],"nextCursor":"c1","unreadCount":1,"unseenCount":$unseenCount}""",
+                    """{"items":[{"id":"n1","type":"some_new_kind","actor":{"id":"u1","username":"anna","displayName":"Anna"},"actors":[{"id":"u1","username":"anna","displayName":"Anna"},{"id":"u2","username":"jonas","displayName":"Jonas"}],"trip":null,"markerId":null,"aboutComments":false,"newsKind":"other","count":3,"title":"Anna and 2 others liked your photo","body":"Albertina","deepLink":"tripinly://notifications","read":false,"createdAt":"2026-11-07T10:00:00.000Z","updatedAt":"2026-11-07T10:00:00.000Z"}],"nextCursor":"c1","unreadCount":1,"unseenCount":$unseenCount}""",
                     HttpStatusCode.OK,
                     headersOf("Content-Type", "application/json"),
                 )

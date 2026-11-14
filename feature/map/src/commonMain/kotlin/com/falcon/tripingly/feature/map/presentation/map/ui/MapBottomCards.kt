@@ -1,5 +1,8 @@
 package com.falcon.tripingly.feature.map.presentation.map.ui
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.gestures.AnchoredDraggableState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -8,10 +11,18 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.NearMe
 import androidx.compose.material.icons.outlined.CenterFocusStrong
+import androidx.compose.material.icons.outlined.GpsOff
+import com.falcon.tripingly.feature.map.generated.resources.map_location_turn_on
+import com.falcon.tripingly.feature.map.generated.resources.map_location_off
+import androidx.compose.material3.TextButton
+import androidx.compose.material.icons.outlined.LocationOff
 import androidx.compose.material.icons.outlined.Layers
 import androidx.compose.material.icons.outlined.LayersClear
 import androidx.compose.material.icons.outlined.NearMe
@@ -19,13 +30,17 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.falcon.tripingly.core.designsystem.component.GlassButtonColumn
+import com.falcon.tripingly.core.designsystem.component.GlassButtonDefaults
 import com.falcon.tripingly.core.designsystem.component.GlassButtonColumnDivider
 import com.falcon.tripingly.core.designsystem.component.GlassSurface
 import com.falcon.tripingly.core.designsystem.component.OsmAttribution
@@ -33,9 +48,11 @@ import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
 import com.falcon.tripingly.core.designsystem.theme.spacing
 import com.falcon.tripingly.feature.map.generated.resources.Res
 import com.falcon.tripingly.feature.map.generated.resources.map_fit_day
+import com.falcon.tripingly.feature.map.generated.resources.map_follow_location
+import com.falcon.tripingly.feature.map.generated.resources.map_gps_lost
 import com.falcon.tripingly.feature.map.generated.resources.map_hide_places
-import com.falcon.tripingly.feature.map.generated.resources.map_my_location
 import com.falcon.tripingly.feature.map.generated.resources.map_show_places
+import com.falcon.tripingly.feature.map.generated.resources.map_stop_following
 import com.falcon.tripingly.feature.map.presentation.map.DayTabsState
 import com.falcon.tripingly.feature.map.presentation.map.EditorMenu
 import com.falcon.tripingly.feature.map.presentation.map.LocationState
@@ -115,20 +132,40 @@ internal fun BottomCards(
 
 /** OpenStreetMap's credit, or the route's while one shows, on a small glass label. */
 @Composable
-internal fun MapCredits(routeAttribution: String?, modifier: Modifier = Modifier) {
+internal fun MapCredits(routeAttribution: String?, modifier: Modifier = Modifier, style: TextStyle = MaterialTheme.typography.labelSmall) {
     GlassSurface(modifier = modifier, shape = MaterialTheme.shapes.extraSmall, shadowElevation = 0.dp, blur = false) {
         // The route's two credits on two lines, so the label stays narrow.
-        if (routeAttribution != null) RouteAttribution(routeAttribution.replace(CreditsSeparator, "\n")) else OsmAttribution()
+        if (routeAttribution != null) {
+            RouteAttribution(routeAttribution.replace(CreditsSeparator, "\n"), style = style)
+        } else {
+            OsmAttribution(style = style)
+        }
     }
 }
 
+/** The credits in landscape, at the map's top end: a little smaller than elsewhere, still legible (Shahin, 2026-11-14). */
+internal val SmallCreditsStyle: TextStyle
+    @Composable get() = MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp, lineHeight = 12.sp)
+
 /**
  * Hides or shows the places (crossed out while hidden), over the button that fits the camera to the open day (its
- * stops, else the whole trip's, else the destination), over the location button.
+ * stops, else the whole trip's, else the destination), over the location button, which follows me while lit (filled,
+ * in the accent colour). Following without a signal, a quiet note beside it says it waits for one.
  */
 @Composable
 internal fun MapButtons(location: LocationState, arePlacesHidden: Boolean, onAction: (MapAction) -> Unit, modifier: Modifier = Modifier) {
-    GlassButtonColumn(modifier = modifier, blur = false) {
+    Row(modifier, horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small), verticalAlignment = Alignment.Bottom) {
+        AnimatedVisibility(location.isSignalLost, enter = fadeIn(), exit = fadeOut()) { GpsLostNote() }
+        AnimatedVisibility(location.isSwitchedOff, enter = fadeIn(), exit = fadeOut()) {
+            LocationOffNote(onTurnOn = { onAction(MapAction.Location.TurnOn) })
+        }
+        MapButtonColumn(location, arePlacesHidden, onAction)
+    }
+}
+
+@Composable
+private fun MapButtonColumn(location: LocationState, arePlacesHidden: Boolean, onAction: (MapAction) -> Unit) {
+    GlassButtonColumn(blur = false) {
         IconButton(onClick = { onAction(MapAction.Days.TogglePlaces) }) {
             if (arePlacesHidden) {
                 Icon(Icons.Outlined.LayersClear, contentDescription = stringResource(Res.string.map_show_places))
@@ -142,11 +179,42 @@ internal fun MapButtons(location: LocationState, arePlacesHidden: Boolean, onAct
         }
         GlassButtonColumnDivider()
         IconButton(onClick = { onAction(MapAction.Location.CenterOnUser) }) {
-            if (location.isLoading) {
-                CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
-            } else {
-                Icon(Icons.Outlined.NearMe, contentDescription = stringResource(Res.string.map_my_location))
+            when {
+                location.isLoading -> CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+                location.isFollowing -> Icon(Icons.Filled.NearMe, contentDescription = stringResource(Res.string.map_stop_following), tint = MaterialTheme.colorScheme.primary)
+                else -> Icon(Icons.Outlined.NearMe, contentDescription = stringResource(Res.string.map_follow_location))
             }
+        }
+    }
+}
+
+/** Following me, no location for a while (a tunnel, underground): a small glass note, as high as one button. */
+@Composable
+private fun GpsLostNote() {
+    GlassSurface(shape = CircleShape, blur = false) {
+        Row(
+            modifier = Modifier.height(GlassButtonDefaults.Size).padding(horizontal = MaterialTheme.spacing.medium),
+            horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(Icons.Outlined.GpsOff, contentDescription = null, modifier = Modifier.size(18.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(stringResource(Res.string.map_gps_lost), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+    }
+}
+
+/** The button is on but the device's location is switched off: a glass note, as high as one button, that turns it on. */
+@Composable
+private fun LocationOffNote(onTurnOn: () -> Unit) {
+    GlassSurface(shape = CircleShape, blur = false) {
+        Row(
+            modifier = Modifier.height(GlassButtonDefaults.Size).padding(start = MaterialTheme.spacing.medium, end = MaterialTheme.spacing.extraSmall),
+            horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(Icons.Outlined.LocationOff, contentDescription = null, modifier = Modifier.size(18.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(stringResource(Res.string.map_location_off), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            TextButton(onClick = onTurnOn) { Text(stringResource(Res.string.map_location_turn_on)) }
         }
     }
 }
@@ -158,21 +226,29 @@ private fun MapControlsPreviewContent() {
             MapCredits(routeAttribution = null)
             MapCredits(routeAttribution = "© openrouteservice.org | © OpenStreetMap contributors")
         }
-        Row(Modifier.align(Alignment.BottomEnd), horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small)) {
-            MapButtons(location = LocationState(), arePlacesHidden = false, onAction = {})
-            MapButtons(location = LocationState(isLoading = true), arePlacesHidden = true, onAction = {})
+        Column(
+            Modifier.align(Alignment.BottomEnd),
+            horizontalAlignment = Alignment.End,
+            verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
+        ) {
+            Row(horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small)) {
+                MapButtons(location = LocationState(), arePlacesHidden = false, onAction = {})
+                MapButtons(location = LocationState(isLoading = true), arePlacesHidden = true, onAction = {})
+            }
+            MapButtons(location = LocationState(isFollowing = true, isSignalLost = true), arePlacesHidden = false, onAction = {})
+            MapButtons(location = LocationState(isFollowing = true, isSwitchedOff = true), arePlacesHidden = false, onAction = {})
         }
     }
 }
 
-/** The credits, and the map buttons idle and while the location is on its way. */
-@Preview(widthDp = 360, heightDp = 360)
+/** The credits, and the map buttons idle, while the location is on its way, without signal and with location off. */
+@Preview(widthDp = 360, heightDp = 640)
 @Composable
 private fun MapControlsPreview() {
     TripinglyTheme { MapControlsPreviewContent() }
 }
 
-@Preview(widthDp = 360, heightDp = 360)
+@Preview(widthDp = 360, heightDp = 640)
 @Composable
 private fun MapControlsDarkPreview() {
     TripinglyTheme(darkTheme = true) { MapControlsPreviewContent() }

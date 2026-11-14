@@ -21,7 +21,7 @@
     <string name="paywall_manage">Előfizetés kezelése</string>
     <string name="paywall_fine_print">A fizetés az áruházi fiókodon keresztül történik. Az előfizetés automatikusan megújul, hacsak nem mondod le legalább 24 órával az aktuális időszak vége előtt; bármikor lemondhatod az áruházi fiókod beállításaiban.</string>
     <string name="paywall_terms">Felhasználási feltételek</string>
-    <string name="paywall_privacy">Adatvédelmi irányelvek</string>
+    <string name="paywall_privacy">Adatvédelmi tájékoztató</string>
     <string name="paywall_welcome">Üdv a Tripinly Pro-ban!</string>
     <string name="paywall_confirming">Köszönjük! A vásárlásod megerősítése folyamatban van; a Pro hamarosan bekapcsol.</string>
     <string name="paywall_pending">A fizetésed jóváhagyásra vár. A Pro a fizetés után kapcsol be.</string>

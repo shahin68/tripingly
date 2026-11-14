@@ -28,7 +28,9 @@ import kotlinx.coroutines.sync.withLock
 
 /**
  * Applies marker changes to the cache at once and sends them to the server one
- * at a time per trip, from [scope] so leaving the map doesn't cancel them.
+ * at a time per trip, from [scope] so leaving the map doesn't cancel them. A
+ * delete that may need the user's confirmation shows only once the server took
+ * it ([waitsForServer]).
  *
  * A dropped connection is retried after 1 s and again after 2 s; if it still
  * fails, the trip counts as offline and its remaining queued changes fail at
@@ -136,7 +138,7 @@ internal class DefaultMarkerRepository(
     }
 
     private suspend fun submit(change: MarkerChange) {
-        pending.begin(change.tripId) { local.apply(change) }
+        pending.begin(change.tripId) { if (!change.waitsForServer) local.apply(change) }
         queueOf(change.tripId).send(change)
     }
 
@@ -167,10 +169,11 @@ internal class DefaultMarkerRepository(
             // Undoing the failed add already removed this marker.
             if (change !is MarkerChange.Reorder && change.markerId in state.failedAdds) return
             val error = state.offline ?: sendWithRetries(change, state)
+            if (error == null && change.waitsForServer) local.apply(change)
             if (error != null) {
                 if (error.isConnectionProblem()) state.offline = error
                 if (change is MarkerChange.Add) state.failedAdds += change.markerId
-                local.undo(change)
+                if (!change.waitsForServer) local.undo(change)
                 failure = MarkerChangeFailure(change.tripId, change.markerName, error, change)
             }
         } finally {

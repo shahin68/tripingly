@@ -259,6 +259,7 @@ internal class DefaultPlaceRepository(
                 width = image.width?.toInt(),
                 height = image.height?.toInt(),
                 credit = image.credit?.let { ImageCredit(it.author, it.title, it.license, it.licenseUrl, it.sourceUrl) },
+                uploader = image.uploader?.toUser(),
             )
         },
         addedBy = addedBy?.toUser(),

@@ -186,6 +186,9 @@ private fun MarkerEntity.toMarker() = TripMarker(
     canMarkHot = canMarkHot,
     commentCount = commentCount,
     createdById = createdById,
+    createdBy = createdById?.let { id ->
+        UserSummary(id, creatorUsername ?: return@let null, creatorDisplayName.orEmpty(), profilePhotoOf(creatorPhotoId, creatorPhotoUrl))
+    },
 )
 
 private fun TripMarker.toEntity() = MarkerEntity(
@@ -206,6 +209,10 @@ private fun TripMarker.toEntity() = MarkerEntity(
     canMarkHot = canMarkHot,
     commentCount = commentCount,
     createdById = createdById,
+    creatorUsername = createdBy?.username,
+    creatorDisplayName = createdBy?.displayName,
+    creatorPhotoId = createdBy?.photo?.id,
+    creatorPhotoUrl = createdBy?.photo?.thumbUrl,
 )
 
 internal val TripRole.wireName: String get() = name.lowercase()

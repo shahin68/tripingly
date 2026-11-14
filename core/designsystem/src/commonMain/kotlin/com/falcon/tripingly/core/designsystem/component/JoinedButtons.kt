@@ -2,8 +2,10 @@ package com.falcon.tripingly.core.designsystem.component
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -71,7 +73,8 @@ fun joinedShape(index: Int, count: Int): Shape {
 /**
  * One button of a [JoinedButtons] group: an [icon], with a [count] after it where it has one; as wide as its content,
  * with the same padding on every side (the count's line is as high as the icon).
- * [onClick] null draws it without a touch (a count to read only). Neutral unless given [colors].
+ * [onClick] null draws it without a touch (a count to read only). Neutral unless given [colors]. [isNew]: something new
+ * waits behind it (a stop's comments or photos), a [NewIndicator] on the icon's top end until it's seen.
  */
 @Composable
 fun JoinedButton(
@@ -83,6 +86,7 @@ fun JoinedButton(
     count: Int? = null,
     enabled: Boolean = true,
     colors: JoinedButtonColors = JoinedButtonDefaults.neutral(),
+    isNew: Boolean = false,
 ) {
     val content: @Composable () -> Unit = {
         Row(
@@ -92,7 +96,11 @@ fun JoinedButton(
             horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraSmall, Alignment.CenterHorizontally),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Icon(icon, contentDescription = contentDescription, modifier = Modifier.size(JoinedButtonDefaults.IconSize))
+            Box {
+                Icon(icon, contentDescription = contentDescription, modifier = Modifier.size(JoinedButtonDefaults.IconSize))
+                // Cut into the button's own colour, half over the icon's corner.
+                if (isNew) NewIndicator(Modifier.align(Alignment.TopEnd).offset(x = NewDotOffset, y = -NewDotOffset), strokeColor = colors.container)
+            }
             count?.let { Text(compactCount(it), style = MaterialTheme.typography.labelLarge) }
         }
     }
@@ -113,10 +121,16 @@ fun JoinedButton(
 
 /**
  * The flame of a [JoinedButtons] group, which marks the place hot ([hot]: I did): tinted, filled while marked, and
- * marking it pops the flame like [HotButton] does.
+ * marking it pops the flame like [HotButton] does (only on my own tap).
  */
 @Composable
-fun HotJoinedButton(hot: Boolean, count: Int, shape: Shape, onToggle: () -> Unit, modifier: Modifier = Modifier) {
+fun HotJoinedButton(
+    hot: Boolean,
+    count: Int,
+    shape: Shape,
+    onToggle: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
     var burst by remember { mutableIntStateOf(0) }
     val haptics = rememberHaptics()
     val flame = MaterialTheme.extendedColors.attention
@@ -140,7 +154,8 @@ fun HotJoinedButton(hot: Boolean, count: Int, shape: Shape, onToggle: () -> Unit
             BurstIcon(
                 icon = if (hot) Icons.Filled.LocalFireDepartment else Icons.Outlined.LocalFireDepartment,
                 contentDescription = stringResource(Res.string.mark_hot),
-                tint = flame,
+                // Like a heart: the content colour until marked, then the flame's own (Shahin, 2026-11-14).
+                tint = if (hot) flame else MaterialTheme.colorScheme.onSurface,
                 burst = burst,
                 modifier = Modifier.size(JoinedButtonDefaults.IconSize),
             )
@@ -176,6 +191,8 @@ object JoinedButtonDefaults {
 private const val DISABLED_ALPHA = 0.38f
 private const val DESTRUCTIVE_TINT = 0.14f
 private const val HOT_TINT = 0.16f
+/** How far the "new" dot sits out over the icon's top end corner. */
+private val NewDotOffset = 4.dp
 
 @Composable
 private fun JoinedButtonsPreviewContent() {
@@ -186,7 +203,7 @@ private fun JoinedButtonsPreviewContent() {
         JoinedButtons(
             listOf<JoinedButtonSlot>(
                 { HotJoinedButton(hot = true, count = 12, shape = it, onToggle = {}) },
-                { JoinedButton(Icons.AutoMirrored.Outlined.Comment, "Comments", it, onClick = {}, count = 1_204) },
+                { JoinedButton(Icons.AutoMirrored.Outlined.Comment, "Comments", it, onClick = {}, count = 1_204, isNew = true) },
                 { JoinedButton(Icons.Outlined.PhotoLibrary, "Photos", it, onClick = {}, count = 3, enabled = false) },
             ),
         )

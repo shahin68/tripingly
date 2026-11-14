@@ -21,10 +21,10 @@ internal object TripJson {
     fun page(nextCursor: String?, vararg items: String) =
         """{"items":[${items.joinToString(",")}],"nextCursor":${nextCursor?.let { "\"$it\"" } ?: "null"}}"""
 
-    fun marker(id: String, tripId: String, dayId: String, position: Int, name: String = "Stop #${position + 1}") = """
+    fun marker(id: String, tripId: String, dayId: String, position: Int, name: String = "Stop #${position + 1}", photoCount: Int = 0) = """
         {"id":"$id","tripId":"$tripId","dayId":"$dayId","placeId":"99999999-9999-4999-8999-99999999999$position",
          "name":"$name","location":{"lat":48.8584,"lng":2.2945},"time":null,"position":$position,
-         "coverPhotoId":null,"coverThumbUrl":null,"photoCount":0,"hotCount":0,"hotByMe":false,"canMarkHot":true,
+         "coverPhotoId":null,"coverThumbUrl":null,"photoCount":$photoCount,"hotCount":0,"hotByMe":false,"canMarkHot":true,
          "commentCount":0,"createdBy":$OWNER,"createdAt":"2026-10-04T10:00:00.000Z","updatedAt":"2026-10-04T10:00:00.000Z"}
     """.trimIndent()
 

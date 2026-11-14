@@ -17,6 +17,7 @@ import com.falcon.tripingly.core.common.result.AppResult
 import com.falcon.tripingly.core.common.result.asSuccess
 import com.falcon.tripingly.core.data.account.FakeAccountBackend
 import com.falcon.tripingly.core.data.config.FakeAppConfigRepository
+import com.falcon.tripingly.core.data.photos.FakePhotoRepository
 import com.falcon.tripingly.core.data.places.FakePlaceRepository
 import com.falcon.tripingly.core.data.push.FakeNewActivityRepository
 import com.falcon.tripingly.core.data.routing.FakeRouteRepository
@@ -89,6 +90,7 @@ class MapFlowTest {
             },
         ),
         newActivityRepository = FakeNewActivityRepository(),
+        photoRepository = FakePhotoRepository(),
         computation = Dispatchers.Unconfined,
     )
 

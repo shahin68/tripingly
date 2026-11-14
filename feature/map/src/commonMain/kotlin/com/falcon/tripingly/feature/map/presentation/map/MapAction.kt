@@ -32,6 +32,10 @@ sealed interface MapAction {
         data class PinDrop(val from: PinEnd, val to: PinEnd) : MapView
         /** A touch began anywhere outside the place card, on the map or on the screen's other controls. */
         data object ScreenTouch : MapView
+        /** A finger started moving the camera: it stops following me. */
+        data object UserMove : MapView
+        /** The screen switched between its portrait and landscape layouts (a rotation, a split screen). */
+        data object LayoutChange : MapView
     }
 
     /** The top bar and its menu. */
@@ -64,6 +68,10 @@ sealed interface MapAction {
     /** The location button and the permission it needs. */
     sealed interface Location : MapAction {
         data class PermissionChecked(val permission: LocationPermission) : Location
+        /** The device's location (GPS) is on or off, read on open, on return and whenever it's switched. */
+        data class LocationSwitched(val isOn: Boolean) : Location
+        /** "Turn on" on the location-off note. */
+        data object TurnOn : Location
         data class PermissionResult(val permission: LocationPermission) : Location
         data object ConfirmPrompt : Location
         data object DismissPrompt : Location
@@ -103,11 +111,19 @@ sealed interface MapAction {
         data object Route : PinRoute
         /** The from/to bar's ✕ or back. */
         data object Close : PinRoute
+        /** The from/to bar's ⇅: the route the other way round. */
+        data object Swap : PinRoute
+        /** A tap on an end's pill in the from/to bar: that end is picked again ([isFrom]: where it starts). */
+        data class EditEnd(val isFrom: Boolean) : PinRoute
+        /** The keyboard's search in an end's field: its first result is picked. */
+        data object SubmitEnd : PinRoute
     }
 
     /** The card over the selected stop, and its details sheet. */
     sealed interface StopCard : MapAction {
         data class ToggleHot(val markerId: String) : StopCard
+        /** The stop's flame popped for flames I hadn't seen. */
+        data class HotSeen(val markerId: String) : StopCard
         /** The stop's photos open in a sheet, where photos are added too. */
         data object OpenPhotos : StopCard
         /** The stop's comments open in a sheet. */
@@ -116,11 +132,14 @@ sealed interface MapAction {
         data object OpenDetails : StopCard
         /** From the details sheet, on someone else's public trip. */
         data object Report : StopCard
+        /** The + on a trip I only view: to one of my trips. */
+        data object Add : StopCard
     }
 
     /** The card over the selected place. */
     sealed interface PlaceCard : MapAction {
-        data object AddToDay : PlaceCard
+        /** The +: to the open day, or on a trip I only view to one of my trips. */
+        data object Add : PlaceCard
         /** The place's photos, which anyone can add to (not for an address from search). */
         data object OpenPhotos : PlaceCard
         /** A tapped image opens full screen. */
@@ -131,14 +150,18 @@ sealed interface MapAction {
 
     /** The sheet or full-screen viewer open over the map. */
     sealed interface Sheet : MapAction {
-        data object CloseStopPhotos : Sheet
-        data object ClosePlacePhotos : Sheet
-        data object CloseStopComments : Sheet
-        data object CloseMembers : Sheet
+        /** ✕, a swipe or a tap outside: every sheet closes, also those it was opened from (Shahin, 2026-11-13). */
+        data object CloseAll : Sheet
+        /** A sheet's back arrow or the system back: back to the sheet it was opened from. */
+        data object Back : Sheet
         data object ClosePlaceImage : Sheet
-        data object CloseDetails : Sheet
+        /** The add-to-trip sheet's rows: one of my trips, then its day. */
+        data class PickTrip(val tripId: String) : Sheet
+        data class PickDay(val dayId: String) : Sheet
         /** Reports the photo open in a viewer: a Commons image as the place's image, anything else as a photo. */
         data class ReportPhoto(val photo: Photo) : Sheet
+        /** "Added by" in a pin's details: that person's profile. */
+        data class OpenProfile(val username: String) : Sheet
     }
 
     sealed interface Dialog : MapAction {

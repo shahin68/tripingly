@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.falcon.tripingly.core.common.result.AppResult
 import com.falcon.tripingly.core.data.account.SessionRepository
 import com.falcon.tripingly.core.data.config.AppConfigRepository
+import com.falcon.tripingly.core.data.photos.PhotoRepository
 import com.falcon.tripingly.core.data.places.PlaceRepository
 import com.falcon.tripingly.core.data.push.NewActivityRepository
 import com.falcon.tripingly.core.data.routing.RouteRepository
@@ -24,6 +25,7 @@ import com.falcon.tripingly.feature.map.generated.resources.map_error_hot
 import com.falcon.tripingly.feature.map.presentation.component.CameraCommand
 import com.falcon.tripingly.feature.map.presentation.component.MapLayersState
 import com.falcon.tripingly.feature.map.presentation.map.state.Dialog
+import com.falcon.tripingly.feature.map.presentation.map.state.MapAddToTrip
 import com.falcon.tripingly.feature.map.presentation.map.state.MapCamera
 import com.falcon.tripingly.feature.map.presentation.map.state.MapContext
 import com.falcon.tripingly.feature.map.presentation.map.state.MapEdits
@@ -37,6 +39,7 @@ import com.falcon.tripingly.feature.map.presentation.map.state.MapRouting
 import com.falcon.tripingly.feature.map.presentation.map.state.MapSearch
 import com.falcon.tripingly.feature.map.presentation.map.state.MapSelection
 import com.falcon.tripingly.feature.map.presentation.map.state.MapSharing
+import com.falcon.tripingly.feature.map.presentation.map.state.MapCardPhotos
 import com.falcon.tripingly.feature.map.presentation.map.state.Sheet
 import com.falcon.tripingly.feature.map.presentation.map.state.activeDayIndex
 import kotlinx.coroutines.CoroutineDispatcher
@@ -75,6 +78,7 @@ class MapViewModel(
     sessionRepository: SessionRepository,
     getCurrentLocationUseCase: GetCurrentLocationUseCase,
     newActivityRepository: NewActivityRepository,
+    photoRepository: PhotoRepository,
     /** Where heavier work runs off the main thread: the place pins, worked out while the camera moves. */
     computation: CoroutineDispatcher,
 ) : ViewModel() {
@@ -109,6 +113,8 @@ class MapViewModel(
     private val sharing = MapSharing(context, tripRepository, socialRepository)
     private val opening = MapOpening(context, camera, tripRepository, mapViews, ::hasRoutes, stopId, showMembers, showComments)
     private val joinRequests = MapJoinRequests(context, tripRepository)
+    private val addToTrip = MapAddToTrip(context, selection, tripRepository, markerRepository) { sendEvent(MapEvent.AddedToMyTrip) }
+    private val cardPhotos = MapCardPhotos(context, photoRepository)
     private val newActivity = MapNewActivity(context, newActivityRepository, pushedStopId = stopId, pushedAboutComments = showComments)
 
     /** The map's layers and what they were built from, kept until one of those changes. */
@@ -121,6 +127,7 @@ class MapViewModel(
         opening.start()
         newActivity.start()
         joinRequests.start()
+        cardPhotos.start()
     }
 
     fun onAction(action: MapAction) {
@@ -139,6 +146,9 @@ class MapViewModel(
             is MapAction.PinRoute.GoHere -> routes.goHere()
             is MapAction.PinRoute.Route -> routes.onRouteButton()
             is MapAction.PinRoute.Close -> routes.closeRouteBar()
+            is MapAction.PinRoute.Swap -> routes.swapEnds()
+            is MapAction.PinRoute.EditEnd -> routes.editEnd(action.isFrom)
+            is MapAction.PinRoute.SubmitEnd -> routes.submitEnd()
         }
     }
 
@@ -156,6 +166,8 @@ class MapViewModel(
             is MapAction.MapView.CameraRest -> onCameraRest(action)
             is MapAction.MapView.CameraMoving -> pins.onCameraMoving(action.bounds, action.zoom)
             is MapAction.MapView.ScreenTouch -> selection.onScreenTouch()
+            is MapAction.MapView.UserMove -> camera.onUserMove()
+            is MapAction.MapView.LayoutChange -> camera.onLayoutChange()
         }
     }
 
@@ -190,6 +202,8 @@ class MapViewModel(
     private fun onLocation(action: MapAction.Location) {
         when (action) {
             is MapAction.Location.PermissionChecked -> location.onPermissionChecked(action.permission)
+            is MapAction.Location.LocationSwitched -> location.onLocationSwitched(action.isOn)
+            MapAction.Location.TurnOn -> location.turnOn()
             is MapAction.Location.PermissionResult -> location.onPermissionResult(action.permission)
             is MapAction.Location.ConfirmPrompt -> location.confirmPrompt()
             is MapAction.Location.DismissPrompt -> location.dismissPrompt()
@@ -222,16 +236,18 @@ class MapViewModel(
     private fun onStopCard(action: MapAction.StopCard) {
         when (action) {
             is MapAction.StopCard.ToggleHot -> toggleStopHot(action.markerId)
+            is MapAction.StopCard.HotSeen -> newActivity.seenHot(action.markerId)
             is MapAction.StopCard.OpenPhotos -> selection.selectedMarkerId?.let { openSheet(Sheet.StopPhotos(it, fromDetails = isDetailsOpen())) }
             is MapAction.StopCard.OpenComments -> selection.selectedMarkerId?.let { openSheet(Sheet.StopComments(it, fromDetails = isDetailsOpen())) }
             is MapAction.StopCard.OpenDetails -> if (selection.selectedMarkerId != null) openSheet(Sheet.Details)
             is MapAction.StopCard.Report -> selection.selectedMarkerId?.let { sharing.report(ReportTarget.Marker, it) }
+            is MapAction.StopCard.Add -> addToTrip.open(fromDetails = isDetailsOpen())
         }
     }
 
     private fun onPlaceCard(action: MapAction.PlaceCard) {
         when (action) {
-            is MapAction.PlaceCard.AddToDay -> edits.addPlace()
+            is MapAction.PlaceCard.Add -> if (context.canEdit()) edits.addPlace() else addToTrip.open(fromDetails = isDetailsOpen())
             // Not for an address from search: it isn't one of our places yet.
             is MapAction.PlaceCard.OpenPhotos -> selection.selectedPlace?.takeIf { it.address == null }?.let { openSheet(Sheet.PlacePhotos(it.place, fromDetails = isDetailsOpen())) }
             is MapAction.PlaceCard.OpenImage -> selection.openPlaceImage(action.index)
@@ -243,11 +259,12 @@ class MapViewModel(
         when (action) {
             is MapAction.Sheet.ClosePlaceImage -> selection.openPlaceImage(null)
             is MapAction.Sheet.ReportPhoto -> sharing.reportPhoto(action.photo)
-            is MapAction.Sheet.CloseStopPhotos,
-            is MapAction.Sheet.ClosePlacePhotos,
-            is MapAction.Sheet.CloseStopComments,
-            is MapAction.Sheet.CloseMembers,
-            is MapAction.Sheet.CloseDetails -> closeSheet()
+            is MapAction.Sheet.OpenProfile -> sendEvent(MapEvent.OpenProfile(action.username))
+            is MapAction.Sheet.PickTrip -> addToTrip.pickTrip(action.tripId)
+            is MapAction.Sheet.PickDay -> addToTrip.pickDay(action.dayId)
+            is MapAction.Sheet.CloseAll -> context.update { it.copy(sheet = null) }
+            // The days go back to the trips; the rest to the details they were opened from.
+            is MapAction.Sheet.Back -> if ((model.sheet as? Sheet.AddToTrip)?.trip != null) addToTrip.backToTrips() else backToDetails()
         }
     }
 
@@ -277,7 +294,7 @@ class MapViewModel(
         val config = appConfigRepository.config.value
         val mapper = MapStateMapper(details, model, config, myUserId)
         // Most changes (a search keystroke, a message, a sheet) don't touch the map: its ~150 pins aren't built again.
-        val inputs = listOf(details, model.activeDayIndex, model.route, model.pins, model.selection, model.location.permission, model.newStopIds, model.newCommentStopIds, model.arePlacesHidden, config)
+        val inputs = listOf(details, model.activeDayIndex, model.route, model.pins, model.selection, model.location.permission, model.news, model.arePlacesHidden, config)
         val layers = layers?.takeIf { it.first == inputs }?.second ?: mapper.layers().also { layers = inputs to it }
         return mapper.map(layers)
     }
@@ -297,7 +314,7 @@ class MapViewModel(
     private fun openSheet(sheet: Sheet) = context.update { it.copy(sheet = sheet) }
 
     /** One sheet at a time: one opened from the details goes back to them, while their stop or place is still open. */
-    private fun closeSheet() = context.update { model ->
+    private fun backToDetails() = context.update { model ->
         model.copy(sheet = if (model.sheet?.fromDetails == true && model.selection != null) Sheet.Details else null)
     }
 
