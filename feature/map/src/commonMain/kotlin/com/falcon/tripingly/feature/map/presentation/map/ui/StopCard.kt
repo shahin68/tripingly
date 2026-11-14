@@ -76,7 +76,7 @@ import org.jetbrains.compose.resources.stringResource
 
 /**
  * A stop tapped on the map, floating above its pin: a slim pill (its image, name, "Stop 2 · Attraction", Delete or +,
- * and ⌃) that grows into the big card: the photo with the name and type, its flame and comments to tap under them
+ * and ⌃) that grows into the big card: the photo with the name and type, its flame and comments to tap on their right
  * (Shahin, 2026-11-14), ⌄ to go back, the credit, and the buttons. The photo swipes through the stop's images ("1 / 3")
  * when it has more than one, and a tap on it opens the stop's photos; ⓘ its details sheet. Delete shows for whoever may
  * delete the stop. Go here and Route follow its photos.
@@ -119,7 +119,7 @@ internal fun PinCardScope.StopCard(
                         onClick = onOpenPhotos,
                         mark = { PinMark(card.place?.category, isStop = true) },
                         topEnd = { BannerButton({ isExpanded = false }, Icons.Outlined.ExpandMore, stringResource(Res.string.map_stop_collapse)) },
-                        below = {
+                        trailing = {
                             // Bigger and brighter than a place's flames, which only count: these are buttons.
                             if (stop.canMarkHot) HotButton(hot = stop.hotByMe, count = stop.hotCount, onToggle = onToggleHot, tint = MaterialTheme.extendedColors.attention)
                             CountButton(Icons.AutoMirrored.Outlined.Comment, stringResource(Res.string.map_stop_comment), stop.commentCount, onClick = onOpenComments, isNew = card.news.comments)

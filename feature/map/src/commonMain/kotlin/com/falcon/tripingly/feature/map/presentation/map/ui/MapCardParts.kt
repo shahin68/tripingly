@@ -163,8 +163,8 @@ internal fun routeButtons(routes: PinRoutesState, onGoHere: () -> Unit, onRoute:
 
 /**
  * A photo [image] filling a rounded banner (tapped: [onClick]) with the [title] (wrapping) and [subtitle] in white over
- * a dark fade at the bottom, [afterSubtitle] on its line (e.g. who added it), a row [below] them (the flames and comments,
- * Shahin 2026-11-14), and a [topEnd] button.
+ * a dark fade at the bottom, [afterSubtitle] on its line (e.g. who added it), [trailing] on their right at the bottom
+ * (a stop's flame and comments to tap, or a place's flames only counted; Shahin 2026-11-14), and a [topEnd] button.
  * Without an image ([image] null) it is a tinted panel with the pin icon at the top start and the text dark.
  */
 @Composable
@@ -175,7 +175,7 @@ internal fun PhotoBanner(
     modifier: Modifier = Modifier,
     onClick: (() -> Unit)? = null,
     afterSubtitle: @Composable RowScope.() -> Unit = {},
-    below: @Composable RowScope.() -> Unit = {},
+    trailing: @Composable RowScope.() -> Unit = {},
     topEnd: @Composable () -> Unit = {},
     /** Without an image: the pin's own mark ([PinMark]), mirroring [topEnd]. */
     mark: @Composable () -> Unit = {},
@@ -199,13 +199,19 @@ internal fun PhotoBanner(
         CompositionLocalProvider(LocalContentColor provides textColor) {
             Box(Modifier.align(Alignment.TopEnd).padding(BannerButtonInset)) { topEnd() }
             // The same inset on every side the text has: start, end and bottom.
-            Column(Modifier.align(Alignment.BottomStart).fillMaxWidth().padding(BannerInset)) {
-                Text(title, style = MaterialTheme.typography.titleLarge)
-                Row(horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraSmall), verticalAlignment = Alignment.CenterVertically) {
-                    Text(subtitle, style = MaterialTheme.typography.bodySmall, modifier = Modifier.weight(1f, fill = false))
-                    afterSubtitle()
+            Row(
+                Modifier.align(Alignment.BottomStart).fillMaxWidth().padding(BannerInset),
+                horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
+                verticalAlignment = Alignment.Bottom,
+            ) {
+                Column(Modifier.weight(1f)) {
+                    Text(title, style = MaterialTheme.typography.titleLarge)
+                    Row(horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraSmall), verticalAlignment = Alignment.CenterVertically) {
+                        Text(subtitle, style = MaterialTheme.typography.bodySmall, modifier = Modifier.weight(1f, fill = false))
+                        afterSubtitle()
+                    }
                 }
-                Row(horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium), verticalAlignment = Alignment.CenterVertically, content = below)
+                Row(horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium), verticalAlignment = Alignment.CenterVertically, content = trailing)
             }
         }
     }
@@ -245,8 +251,7 @@ internal fun BannerButton(onClick: () -> Unit, icon: ImageVector, contentDescrip
 
 /** The cards' widest, so they don't stretch across a tablet or a landscape phone. */
 internal val MapCardMaxWidth = 360.dp
-// Tall enough for the title, its line and the flames and comments under them over the photo (Shahin, 2026-11-14).
-private val BannerHeight = 200.dp
+private val BannerHeight = 180.dp
 private val BannerInset = 14.dp
 private val BannerButtonInset = 8.dp
 private const val ON_PHOTO_TINT = 0.26f
@@ -257,14 +262,14 @@ private const val DIMMED_ALPHA = 0.38f
 @Composable
 private fun MapCardPartsPreviewContent() {
     Column(Modifier.background(MaterialTheme.colorScheme.surface).padding(MaterialTheme.spacing.medium).width(340.dp), verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small)) {
-        PhotoBanner(title = "Hofburg", subtitle = AnnotatedString("Historic site"), image = null, mark = { PinMark(PlaceCategory.Historic, isStop = false) }, below = { BannerCount(Icons.Outlined.LocalFireDepartment, 40) })
+        PhotoBanner(title = "Hofburg", subtitle = AnnotatedString("Historic site"), image = null, mark = { PinMark(PlaceCategory.Historic, isStop = false) }, trailing = { BannerCount(Icons.Outlined.LocalFireDepartment, 40) })
         PhotoBanner(
             title = "Lunch at Anna's, a long name that wraps",
             subtitle = AnnotatedString("Custom spot"),
             image = null,
             mark = { PinMark(PlaceCategory.Restaurant, isStop = true) },
             topEnd = { BannerButton({}, Icons.Outlined.ExpandMore, "Collapse") },
-            below = {
+            trailing = {
                 HotButton(hot = true, count = 12, onToggle = {}, tint = MaterialTheme.extendedColors.attention)
                 CountButton(Icons.AutoMirrored.Outlined.Comment, "Comments", 3, onClick = {}, isNew = true)
             },

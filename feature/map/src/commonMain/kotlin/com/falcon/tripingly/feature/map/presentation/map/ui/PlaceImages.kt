@@ -29,7 +29,7 @@ import org.jetbrains.compose.resources.stringResource
 
 /**
  * The top of the place card: its images swiped through in a photo banner ([pagerState]), with its name, its [subtitle]
- * and which image shows ("1 / 2"), who made a custom spot ([afterSubtitle]), and under them its flames, only counted. A tapped image opens full screen ([onOpen]). [images]
+ * and which image shows ("1 / 2"), who made a custom spot ([afterSubtitle]), and on their right its flames, only counted. A tapped image opens full screen ([onOpen]). [images]
  * is null while the place loads; a place without images is a tinted panel, whose tap opens its photos ([onOpenPhotos]).
  */
 @Composable
@@ -56,7 +56,7 @@ internal fun PlaceBanner(
         image = if (images?.isEmpty() == true) null else pagerImages(images, pagerState, description, onOpen),
         onClick = onOpenPhotos.takeIf { images?.isEmpty() == true },
         mark = { PinMark(category, isStop = false) },
-        below = { if (hotCount > 0) BannerCount(Icons.Outlined.LocalFireDepartment, hotCount) },
+        trailing = { if (hotCount > 0) BannerCount(Icons.Outlined.LocalFireDepartment, hotCount) },
     )
 }
 

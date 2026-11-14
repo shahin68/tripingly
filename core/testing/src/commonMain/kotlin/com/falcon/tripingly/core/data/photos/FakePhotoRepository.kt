@@ -19,6 +19,9 @@ class FakePhotoRepository : PhotoRepository {
 
     override fun photos(owner: PhotoOwner): Flow<List<Photo>?> = galleries.map { it[owner] }
 
+    /** What the server would send as [owner]'s grid. */
+    fun seed(owner: PhotoOwner, photos: List<Photo>) = galleries.update { it + (owner to photos) }
+
     override fun uploads(owner: PhotoOwner): Flow<List<PhotoUpload>> = flowOf(emptyList())
 
     override suspend fun loadPhotos(owner: PhotoOwner): AppResult<List<Photo>, DataError.Network> {

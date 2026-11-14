@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.falcon.tripingly.core.common.result.AppResult
 import com.falcon.tripingly.core.data.account.SessionRepository
 import com.falcon.tripingly.core.data.config.AppConfigRepository
+import com.falcon.tripingly.core.data.photos.PhotoRepository
 import com.falcon.tripingly.core.data.places.PlaceRepository
 import com.falcon.tripingly.core.data.push.NewActivityRepository
 import com.falcon.tripingly.core.data.routing.RouteRepository
@@ -76,6 +77,7 @@ class MapViewModel(
     sessionRepository: SessionRepository,
     getCurrentLocationUseCase: GetCurrentLocationUseCase,
     newActivityRepository: NewActivityRepository,
+    photoRepository: PhotoRepository,
     /** Where heavier work runs off the main thread: the place pins, worked out while the camera moves. */
     computation: CoroutineDispatcher,
 ) : ViewModel() {
@@ -111,6 +113,7 @@ class MapViewModel(
     private val opening = MapOpening(context, camera, tripRepository, mapViews, ::hasRoutes, stopId, showMembers, showComments)
     private val joinRequests = MapJoinRequests(context, tripRepository)
     private val addToTrip = MapAddToTrip(context, selection, tripRepository, markerRepository) { sendEvent(MapEvent.AddedToMyTrip) }
+    private val stopPhotos = MapStopPhotos(context, photoRepository)
     private val newActivity = MapNewActivity(context, newActivityRepository, pushedStopId = stopId, pushedAboutComments = showComments)
 
     /** The map's layers and what they were built from, kept until one of those changes. */
@@ -123,6 +126,7 @@ class MapViewModel(
         opening.start()
         newActivity.start()
         joinRequests.start()
+        stopPhotos.start()
     }
 
     fun onAction(action: MapAction) {

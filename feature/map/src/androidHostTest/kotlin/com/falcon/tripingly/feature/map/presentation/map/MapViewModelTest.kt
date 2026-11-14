@@ -11,6 +11,7 @@ import com.falcon.tripingly.core.common.result.map
 import com.falcon.tripingly.core.common.util.DateUtils
 import com.falcon.tripingly.core.data.account.FakeAccountBackend
 import com.falcon.tripingly.core.data.config.FakeAppConfigRepository
+import com.falcon.tripingly.core.data.photos.FakePhotoRepository
 import com.falcon.tripingly.core.data.places.FakePlaceRepository
 import com.falcon.tripingly.core.data.places.PlaceRepository
 import com.falcon.tripingly.core.data.push.FakeNewActivityRepository
@@ -129,6 +130,7 @@ class MapViewModelTest {
     private lateinit var session: FakeAccountBackend
     private lateinit var mapViews: FakeTripMapViewRepository
     private lateinit var newActivity: FakeNewActivityRepository
+    private lateinit var photos: FakePhotoRepository
 
     /** The fake's sights (Eiffel Tower, Louvre …), counting the squares asked for. */
     private class CountingPlaceRepository(
@@ -223,6 +225,7 @@ class MapViewModelTest {
         routes = RecordingRouteRepository()
         mapViews = FakeTripMapViewRepository()
         newActivity = FakeNewActivityRepository()
+        photos = FakePhotoRepository()
         // With Tripinly Pro, for the routes.
         session = signedIn(setOf(ROUTES_ENTITLEMENT))
         trip = (backend.createTrip(NewTrip("Test Trip", LocalDate(2024, 1, 1), LocalDate(2024, 1, 3))) as AppResult.Success).data
@@ -256,6 +259,7 @@ class MapViewModelTest {
         sessionRepository = session,
         getCurrentLocationUseCase = GetCurrentLocationUseCase(fakeLocationRepository),
         newActivityRepository = newActivity,
+        photoRepository = photos,
         computation = testDispatcher,
     ).also { viewModel -> backgroundScope.launch { viewModel.uiState.collect {} } }
 
@@ -1558,6 +1562,8 @@ class MapViewModelTest {
         assertNull(viewModel.uiState.value.sheet)
     }
 
+    private fun gridPhoto(id: String, owner: PhotoOwner) = COMMONS_IMAGE.asPhoto().copy(id = id, owner = owner, credit = null)
+
     /** The image as the place's photo viewer has it. */
     private fun PlaceImage.asPhoto() = Photo(
         id = id,
@@ -1601,9 +1607,8 @@ class MapViewModelTest {
     }
 
     @Test
-    fun `a stop's photo swipes from its own cover to its place's images`() = runTest(testDispatcher) {
-        val second = COMMONS_IMAGE.copy(id = "pi2")
-        places.images["fake-louvre"] = listOf(COMMONS_IMAGE, second)
+    fun `a stop's photo swipes from its cover through its photo grid`() = runTest(testDispatcher) {
+        places.images["fake-louvre"] = listOf(COMMONS_IMAGE)
         backend.addMarker(trip.trip.id, trip.days[0].id, NewMarker("Louvre", LOUVRE, placeId = "fake-louvre"))
         val withStop = (backend.refreshTrip(trip.trip.id) as AppResult.Success).data
         backend.seed(
@@ -1615,12 +1620,17 @@ class MapViewModelTest {
         )
         val viewModel = viewModel()
         testScheduler.advanceUntilIdle()
+        val stop = viewModel.uiState.value.layers.stops.single()
+        // The grid has someone's trip photo the place's images don't (too few likes), a Commons image and an upload still processing.
+        val owner = PhotoOwner.Stop(stop.id)
+        photos.seed(owner, listOf(COMMONS_IMAGE.asPhoto().copy(owner = owner), gridPhoto("their-photo", owner), gridPhoto("processing", owner).copy(status = PhotoStatus.Processing)))
 
-        viewModel.onAction(MapAction.MapView.MarkerClick(viewModel.uiState.value.layers.stops.single()))
+        viewModel.onAction(MapAction.MapView.MarkerClick(stop))
         restOnTarget(viewModel)
         testScheduler.advanceUntilIdle()
         val images = viewModel.uiState.value.stopCard?.images.orEmpty()
-        assertEquals(listOf("my-photo", "pi1", "pi2"), images.map { it.id })
+        assertEquals(listOf("my-photo", "pi1", "their-photo"), images.map { it.id })
+        assertEquals(COMMONS_IMAGE.credit, images[1].credit)
         // Only the own cover's thumbnail is known, and it has no credit.
         assertEquals(PlaceImage("my-photo", PlaceImageSource.Trip, "https://r2/my-photo/thumb", null, null, null, null), images.first())
     }

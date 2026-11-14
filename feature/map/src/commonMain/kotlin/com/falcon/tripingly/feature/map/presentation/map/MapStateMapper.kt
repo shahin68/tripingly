@@ -7,6 +7,8 @@ import com.falcon.tripingly.core.location.model.Coordinates
 import com.falcon.tripingly.core.location.permission.LocationPermission
 import com.falcon.tripingly.core.model.account.TripVisibility
 import com.falcon.tripingly.core.model.config.AppConfig
+import com.falcon.tripingly.core.model.photo.Photo
+import com.falcon.tripingly.core.model.photo.PhotoStatus
 import com.falcon.tripingly.core.model.place.MapPlace
 import com.falcon.tripingly.core.model.place.PlaceImage
 import com.falcon.tripingly.core.model.place.PlaceImageSource
@@ -196,7 +198,7 @@ internal class MapStateMapper(
         val creatorId = marker?.createdById
         return StopCardState(
             stop = stop,
-            images = stopImages(stop, place?.images.orEmpty()),
+            images = stopImages(stop, model.stopPhotos[stop.id], place?.images.orEmpty()),
             place = place,
             canEdit = canEdit,
             canReport = role == TripRole.VIEWER,
@@ -339,15 +341,27 @@ internal class MapStateMapper(
     }
 
     /**
-     * A stop's images: its cover first (one of its place's images, or its own photo, of which only the thumbnail is
-     * known), then the place's other images; only the place's while it has no cover.
+     * A stop's images: its cover first, then the rest of its photo grid's ready photos ([gallery]: its trip's, its
+     * place's popular ones and its Commons images), or its place's images until the grid is loaded. A cover found in
+     * neither is shown from its thumbnail, the only size the stop knows.
      */
-    private fun stopImages(stop: MapMarker, placeImages: List<PlaceImage>): List<PlaceImage> {
-        val coverId = stop.coverPhotoId ?: return placeImages
-        val cover = placeImages.firstOrNull { it.id == coverId }
+    private fun stopImages(stop: MapMarker, gallery: List<Photo>?, placeImages: List<PlaceImage>): List<PlaceImage> {
+        val shown = gallery?.filter { it.status == PhotoStatus.Ready }?.map { it.toPlaceImage() } ?: placeImages
+        val coverId = stop.coverPhotoId ?: return shown
+        val cover = (shown + placeImages).firstOrNull { it.id == coverId }
             ?: PlaceImage(coverId, PlaceImageSource.Trip, thumbUrl = stop.coverThumbUrl, displayUrl = null, width = null, height = null, credit = null)
-        return listOf(cover) + placeImages.filter { it.id != coverId }
+        return listOf(cover) + shown.filter { it.id != coverId }
     }
+
+    private fun Photo.toPlaceImage() = PlaceImage(
+        id = id,
+        source = if (credit != null) PlaceImageSource.Commons else PlaceImageSource.Trip,
+        thumbUrl = thumbUrl,
+        displayUrl = displayUrl,
+        width = width,
+        height = height,
+        credit = credit,
+    )
 
     /**
      * [orderNumber] is the place in the day's list, which stays 1, 2, 3 while a delete waits for the reload.

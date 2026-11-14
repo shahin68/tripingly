@@ -26,6 +26,7 @@ val mapModule = module {
             sessionRepository = get(),
             getCurrentLocationUseCase = get(),
             newActivityRepository = get(),
+            photoRepository = get(),
             computation = get<CoroutineDispatchers>().default,
         )
     }

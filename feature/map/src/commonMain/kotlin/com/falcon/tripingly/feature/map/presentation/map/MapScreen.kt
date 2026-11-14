@@ -385,4 +385,4 @@ private fun MapScreenLoadErrorPreview() {
 private val LandscapePinArea = 128.dp
 
 /** In portrait, how far below the middle of the free map a tapped pin goes. */
-private val PortraitPinDrop = 48.dp
+private val PortraitPinDrop = 24.dp
