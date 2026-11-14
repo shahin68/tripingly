@@ -142,7 +142,8 @@ fun HotJoinedButton(
             onToggle()
         },
         shape = shape,
-        color = if (hot) flame.copy(alpha = HOT_TINT) else MaterialTheme.colorScheme.surfaceVariant,
+        // Only the icon shows it's marked, like a heart; the button stays grey.
+        color = MaterialTheme.colorScheme.surfaceVariant,
         contentColor = MaterialTheme.colorScheme.onSurface,
         modifier = modifier,
     ) {
@@ -190,7 +191,6 @@ object JoinedButtonDefaults {
 
 private const val DISABLED_ALPHA = 0.38f
 private const val DESTRUCTIVE_TINT = 0.14f
-private const val HOT_TINT = 0.16f
 /** How far the "new" dot sits out over the icon's top end corner. */
 private val NewDotOffset = 4.dp
 
