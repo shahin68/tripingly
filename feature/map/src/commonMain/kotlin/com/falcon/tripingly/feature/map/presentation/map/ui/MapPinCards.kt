@@ -14,6 +14,7 @@ import com.falcon.tripingly.core.designsystem.theme.spacing
 import com.falcon.tripingly.feature.map.presentation.component.SelectedPinSize
 import com.falcon.tripingly.feature.map.presentation.component.stopPinRadius
 import com.falcon.tripingly.feature.map.presentation.map.MapAction
+import com.falcon.tripingly.feature.map.presentation.map.NewSpotCardState
 import com.falcon.tripingly.feature.map.presentation.map.PlaceCardState
 import com.falcon.tripingly.feature.map.presentation.map.StopCardState
 
@@ -25,10 +26,12 @@ import com.falcon.tripingly.feature.map.presentation.map.StopCardState
 internal fun MapPinCards(
     placeCard: PlaceCardState?,
     stopCard: StopCardState?,
+    newSpotCard: NewSpotCardState?,
     pinBelowMiddle: Dp,
     onAction: (MapAction) -> Unit,
     onPlaceCardBounds: (Rect) -> Unit,
     onStopCardBounds: (Rect) -> Unit,
+    onNewSpotCardBounds: (Rect) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Box(modifier) {
@@ -73,6 +76,20 @@ internal fun MapPinCards(
                 onAdd = { onAction(MapAction.StopCard.Add) },
                 onGoHere = { onAction(MapAction.PinRoute.GoHere) },
                 onRoute = { onAction(MapAction.PinRoute.Route) },
+            )
+        }
+        PinCard(
+            card = newSpotCard,
+            key = { it.location },
+            pinClearance = SelectedPinSize / 2 + MaterialTheme.spacing.small,
+            pinBelowMiddle = pinBelowMiddle,
+            modifier = Modifier.onGloballyPositioned { onNewSpotCardBounds(it.unclippedBounds()) },
+        ) { card ->
+            NewSpotCard(
+                card = card,
+                onPickCategory = { onAction(MapAction.NewSpot.PickCategory(it)) },
+                onPhoto = { onAction(MapAction.NewSpot.SetPhoto(it)) },
+                onCreate = { onAction(MapAction.NewSpot.Create) },
             )
         }
     }
