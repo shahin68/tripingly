@@ -4,6 +4,8 @@
     <string name="map_hide_places">Orte ausblenden</string>
     <string name="map_show_places">Orte einblenden</string>
     <string name="map_fit_day">Ganzen Tag zeigen</string>
+    <string name="map_compass_north">N</string>
+    <string name="map_north_up">Karte nach Norden ausrichten</string>
     <string name="map_plan_handle">Ganzen Plan zeigen oder ausblenden</string>
     <string name="map_remove_stop">Stopp entfernen</string>
     <string name="map_back">Zurück</string>

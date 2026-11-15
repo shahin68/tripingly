@@ -75,7 +75,7 @@ internal class MapStateMapper(
     private val isDayRoute = route.between == null && route.isDayRouteShown
     private val routePoints = plan?.route?.points.orEmpty().map { Coordinates(it.lat, it.lng) }
         .takeIf { isDayRoute || route.between != null }.orEmpty()
-    private val alongTheWay = stopPlaceIds(details).let { stopIds ->
+    private val alongTheWay = stopPlaceIds(days.getOrNull(activeIndex)).let { stopIds ->
         // A place added from the list is a stop now, until the route reloads without it; the route's own ends never are
         // (an older server lists them).
         val endIds = route.endPlaces().mapTo(HashSet()) { (place, _) -> place.id }

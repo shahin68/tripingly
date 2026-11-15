@@ -12,6 +12,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
@@ -42,10 +43,13 @@ import com.falcon.tripingly.core.model.place.GeoBounds
 import com.falcon.tripingly.core.model.place.MapPlace
 import com.falcon.tripingly.core.model.place.PlaceCategory
 import com.falcon.tripingly.core.model.place.PlaceCluster
-import kotlinx.collections.immutable.toImmutableList
-import kotlinx.coroutines.flow.Flow
 import platform.UIKit.UIColor
 import platform.UIKit.UIImage
+import kotlin.math.PI
+import kotlin.math.cos
+import kotlin.math.sin
+import kotlinx.collections.immutable.toImmutableList
+import kotlinx.coroutines.flow.Flow
 
 /**
  * Google's map on iOS, driven like the Android one: place pins as markers that keep their size on
@@ -58,8 +62,9 @@ internal fun GoogleSdkMapView(
     modifier: Modifier,
     initialTarget: Coordinates,
     initialZoom: Float,
-    cameraCommands: Flow<CameraCommand.MoveTo>,
+    cameraCommands: Flow<CameraCommand.Move>,
     contentPadding: PaddingValues,
+    freePadding: PaddingValues,
     markers: List<MapMarker>,
     placePins: List<PlacePin>,
     pinDotBelowZoom: Float,
@@ -70,6 +75,7 @@ internal fun GoogleSdkMapView(
     routeEnds: List<RouteEndMark>,
     onCameraMove: (Coordinates, Float, GeoBounds?) -> Unit,
     onCameraMoving: (GeoBounds, Float) -> Unit,
+    onBearingChange: (Float) -> Unit,
     onMapTouch: () -> Unit,
     onUserMove: () -> Unit,
     onMapClick: (Coordinates) -> Unit,
@@ -89,6 +95,7 @@ internal fun GoogleSdkMapView(
     val currentOnClusterClick by rememberUpdatedState(onClusterClick)
     val currentOnCameraMove by rememberUpdatedState(onCameraMove)
     val currentOnCameraMoving by rememberUpdatedState(onCameraMoving)
+    val currentOnBearingChange by rememberUpdatedState(onBearingChange)
     val currentOnMapTouch by rememberUpdatedState(onMapTouch)
     val currentOnUserMove by rememberUpdatedState(onUserMove)
     val currentOnMapClick by rememberUpdatedState(onMapClick)
@@ -113,6 +120,8 @@ internal fun GoogleSdkMapView(
     var isMapReady by remember { mutableStateOf(false) }
     // The camera's zoom as it moves, read only to tell when the pins turn into dots and back.
     var liveZoom by remember { mutableStateOf(initialZoom) }
+    // Which way the map is turned now: the free middle's offset turns with it, and moves keep it (as on Android).
+    var liveBearing by remember { mutableFloatStateOf(0f) }
     val isDots by remember(pinDotBelowZoom) { derivedStateOf { liveZoom < pinDotBelowZoom } }
     // Counts the camera's moves, read where something on top of the map has to follow it.
     var cameraFrame by remember { mutableStateOf(0) }
@@ -132,7 +141,7 @@ internal fun GoogleSdkMapView(
     ).shownPins(liveZoom, density, ::project)
     fun reportRest() {
         val (center, zoom, bounds) = rest ?: return
-        currentOnCameraMove(center.shiftedBy(currentFreeMiddle, zoom), zoom, bounds)
+        currentOnCameraMove(center.shiftedBy(currentFreeMiddle, zoom, liveBearing), zoom, bounds)
     }
     map = remember(googleMaps) {
         googleMaps.createMap(
@@ -151,6 +160,11 @@ internal fun GoogleSdkMapView(
                     rest = Triple(Coordinates(latitude, longitude), zoom, bounds)
                     // Not while a held pin moves the camera: once it's let go.
                     if (holder.hold == null) reportRest()
+                }
+
+                override fun onBearingChange(bearing: Double) {
+                    liveBearing = bearing.toFloat()
+                    currentOnBearingChange(liveBearing)
                 }
 
                 override fun onGestureStart() {
@@ -225,15 +239,20 @@ internal fun GoogleSdkMapView(
         )
     }
 
-    fun moveCamera(target: Coordinates, zoom: Float, animated: Boolean) {
-        val center = target.shiftedBy(DpOffset(-currentFreeMiddle.x, -currentFreeMiddle.y), zoom)
-        map.moveCamera(center.latitude, center.longitude, zoom, animated)
+    /** Keeps the map turned as it is, unless [bearing] says otherwise (a fit turns it north up). */
+    fun moveCamera(target: Coordinates, zoom: Float, animated: Boolean, bearing: Float = liveBearing) {
+        val center = target.shiftedBy(DpOffset(-currentFreeMiddle.x, -currentFreeMiddle.y), zoom, bearing)
+        map.moveCamera(center.latitude, center.longitude, zoom, bearing.toDouble(), animated)
     }
     LaunchedEffect(map) { moveCamera(initialTarget, initialZoom, animated = false) }
     LaunchedEffect(cameraCommands) {
         cameraCommands.collect { command ->
-            // Until the map has rested once, it starts there instead of flying there.
-            moveCamera(command.target, command.zoom, animated = isMapReady)
+            when (command) {
+                // Until the map has rested once, it starts there instead of flying there.
+                is CameraCommand.MoveTo ->
+                    moveCamera(command.target, command.zoom, animated = isMapReady, bearing = if (command.upright) 0f else liveBearing)
+                CameraCommand.NorthUp -> map.turnNorthUp()
+            }
         }
     }
 
@@ -253,9 +272,9 @@ internal fun GoogleSdkMapView(
         shown = Triple(freeMiddle, left, right)
         val (center, zoom, bounds) = rest ?: return@LaunchedEffect
         if (left != leftBefore || right != rightBefore) {
-            moveCamera(center.shiftedBy(before, zoom), zoom, animated = false)
+            moveCamera(center.shiftedBy(before, zoom, liveBearing), zoom, animated = false)
         } else {
-            currentOnCameraMove(center.shiftedBy(freeMiddle, zoom), zoom, bounds)
+            currentOnCameraMove(center.shiftedBy(freeMiddle, zoom, liveBearing), zoom, bounds)
         }
     }
 
@@ -334,7 +353,7 @@ internal fun GoogleSdkMapView(
     val coverThumbs = rememberCoverThumbs(markers)
     val stopTitles = markers.map { it.title.asString() }
     // The rings round the route's ends, one per pin size and way of travelling's colour.
-    val rings = remember(density) { mutableMapOf<Pair<Dp, Color>, UIImage>() }
+    val rings = remember(density) { mutableMapOf<Triple<Dp, Color, Boolean>, Pair<UIImage, Float>>() }
     LaunchedEffect(markers, stopTitles, coverThumbs, pinPhotos, selectedPlace, placePins, placeClusters, pinIcons, clusterIcons, isDots, routeEnds) {
         val stops = markers.mapIndexed { index, marker ->
             GoogleMapMarker(
@@ -425,16 +444,18 @@ internal fun GoogleSdkMapView(
         }
         // The route's ends: a thick ring in the way of travelling's colour round each end's pin, under it.
         val ends = routeEnds.map { end ->
+            // The destination's has its flag on top.
+            val (icon, anchorY) = rings.getOrPut(Triple(end.pinSize, end.color, end.isStart)) {
+                drawRouteEndRing(end.pinSize, end.color, end.isStart, density, layoutDirection).let { it.bitmap.toUIImage(density.density) to it.anchorY }
+            }
             GoogleMapMarker(
                 key = ROUTE_END_KEY + end.isStart,
                 latitude = end.position.lat,
                 longitude = end.position.lng,
                 title = "",
-                icon = rings.getOrPut(end.pinSize to end.color) {
-                    drawRouteEndRing(end.pinSize, end.color, density, layoutDirection).toUIImage(density.density)
-                },
+                icon = icon,
                 anchorX = 0.5,
-                anchorY = 0.5,
+                anchorY = anchorY.toDouble(),
                 zIndex = ROUTE_END_Z,
                 showsInfoWindow = false,
                 fadesIn = false,
@@ -458,7 +479,7 @@ internal fun GoogleSdkMapView(
         )
         PinHoldLayer(
             holder = holder,
-            freeArea = freeArea(viewSize, contentPadding, density, LocalLayoutDirection.current),
+            freeArea = freeArea(viewSize, freePadding, density, LocalLayoutDirection.current),
             project = { point ->
                 // Read, so the line follows the camera.
                 cameraFrame
@@ -487,5 +508,13 @@ private const val CLUSTER_KEY = "cluster:"
 
 private fun Color.toUIColor(): UIColor = UIColor.colorWithRed(red.toDouble(), green.toDouble(), blue.toDouble(), alpha.toDouble())
 
-/** The point [offset] from this one on a map at [zoom]: right and down for positive x and y. */
-private fun Coordinates.shiftedBy(offset: DpOffset, zoom: Float): Coordinates = shiftedEast(offset.x, zoom).shiftedSouth(offset.y, zoom)
+/**
+ * The point [offset] from this one on a map at [zoom] turned by [bearing] (degrees clockwise from north): right and down
+ * on the screen for positive x and y.
+ */
+private fun Coordinates.shiftedBy(offset: DpOffset, zoom: Float, bearing: Float = 0f): Coordinates {
+    val turn = bearing * PI.toFloat() / 180f
+    val east = offset.x * cos(turn) - offset.y * sin(turn)
+    val south = offset.x * sin(turn) + offset.y * cos(turn)
+    return shiftedEast(east, zoom).shiftedSouth(south, zoom)
+}

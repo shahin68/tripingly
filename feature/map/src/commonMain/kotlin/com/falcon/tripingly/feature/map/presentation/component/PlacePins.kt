@@ -10,10 +10,14 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.CanvasDrawScope
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.clipPath
+import androidx.compose.ui.graphics.drawscope.scale
 import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.graphics.painter.Painter
+import androidx.compose.ui.graphics.vector.PathParser
 import androidx.compose.ui.text.TextMeasurer
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.drawText
@@ -58,7 +62,7 @@ data class PlacePin(
 internal fun PlacePin.isDotAt(isZoomedOut: Boolean) = isDot || (isZoomedOut && !isKept)
 
 /**
- * The place pins for the squares in view: places inside [area] that aren't stops of the trip ([hiddenPlaceIds]),
+ * The place pins for the squares in view: places inside [area] that aren't stops of the open day ([hiddenPlaceIds]),
  * liked places first (the most liked first), then the best known, at most [AppConfig.mapMaxPins]. Pins keep their
  * size on screen, so each one costs the map; the server already puts a square's best places first. The first
  * [AppConfig.mapMaxPhotoPins] places that have a photo and are well known or liked enough show it ([showsPhoto]).
@@ -157,7 +161,7 @@ val SelectedPinSize: Dp = 44.dp
 val PlaceDotSize: Dp = 10.dp
 
 /** Places along the shown route: violet, apart from the map's places and from the hot spots. */
-val AlongTheWayPinColor = Color(0xFF8E24AA)
+val AlongTheWayPinColor = Color(0xFF8A5AAB)
 
 /** The look of [this] pin as a dot: only its color matters, so every dot of a color shares one bitmap. */
 internal fun PlacePin.dotLook() = PlacePinLook(PlaceCategory.Other, place.isTripinly, PlaceDotSize, isAlongTheWay = isAlongTheWay, isDot = true)
@@ -284,20 +288,47 @@ fun drawClusterPin(
 @Immutable
 data class RouteEndMark(val position: GeoPoint, val isStart: Boolean, val pinSize: Dp, val color: Color)
 
+/** A route end's look and where on it the end's point is: [anchorY] as a share of its height (x is the middle). */
+class RouteEndIcon(val bitmap: ImageBitmap, val anchorY: Float)
+
 /**
  * Draws a route end's ring, drawn under the end's pin: a [color] disc [RouteEndRingWidth] wider than the pin all round,
- * in a thin white edge so it shows on any map. The pin covers its middle.
+ * in a thin white edge so it shows on any map. The pin covers its middle. The destination ([isStart] false) also has
+ * the route bar's flag standing on the ring's top, in [color] with a white edge (Shahin, 2026-11-14: "we can't tell
+ * which pin is start and which is destination").
  */
-fun drawRouteEndRing(pinSize: Dp, color: Color, density: Density, layoutDirection: LayoutDirection): ImageBitmap {
-    val px = with(density) { (pinSize + RouteEndRingWidth * 2).roundToPx() }
+fun drawRouteEndRing(pinSize: Dp, color: Color, isStart: Boolean, density: Density, layoutDirection: LayoutDirection): RouteEndIcon {
+    val ring = with(density) { (pinSize + RouteEndRingWidth * 2).roundToPx() }
+    val flagRoom = if (isStart) 0 else with(density) { RouteEndFlagHeight.roundToPx() }
     val edge = with(density) { RouteEndRingEdge.toPx() }
-    val bitmap = ImageBitmap(px, px)
-    CanvasDrawScope().draw(density, layoutDirection, Canvas(bitmap), Size(px.toFloat(), px.toFloat())) {
-        drawCircle(Color.White)
-        drawCircle(color, radius = this.size.minDimension / 2 - edge)
+    val bitmap = ImageBitmap(ring, ring + flagRoom)
+    CanvasDrawScope().draw(density, layoutDirection, Canvas(bitmap), Size(ring.toFloat(), (ring + flagRoom).toFloat())) {
+        val center = Offset(ring / 2f, flagRoom + ring / 2f)
+        drawCircle(Color.White, radius = ring / 2f, center = center)
+        drawCircle(color, radius = ring / 2f - edge, center = center)
+        if (!isStart) {
+            // The Material flag (24 units = 24 dp): its pole's foot (x 6, y 21) stands on the ring's top.
+            val unit = 1.dp.toPx()
+            val flag = PathParser().parsePathString(ROUTE_END_FLAG).toPath()
+            translate(left = center.x - 6 * unit, top = flagRoom - 21 * unit) {
+                scale(unit, unit, pivot = Offset.Zero) {
+                    drawPath(flag, Color.White, style = Stroke(width = 2.5f, join = StrokeJoin.Round))
+                    drawPath(flag, color)
+                }
+            }
+        }
     }
-    return bitmap
+    return RouteEndIcon(bitmap, anchorY = (flagRoom + ring / 2f) / (ring + flagRoom))
 }
+
+/**
+ * Material's filled flag (Icons.Filled.Flag), the route bar's destination icon, in its 24-unit box. Kept as path data,
+ * not a `Path`: a top-level platform path would be made as the file loads, which the JVM unit tests can't.
+ */
+private const val ROUTE_END_FLAG = "M14.4,6L14,4H5v17h2v-7h5.6l0.4,2h7V6z"
+
+/** How much a destination's flag rises above its ring (the flag's 17 units and a little for its white edge). */
+private val RouteEndFlagHeight = 19.dp
 
 /** How far a route end's ring reaches out from its pin. */
 private val RouteEndRingWidth = 5.dp

@@ -3,8 +3,11 @@ package com.falcon.tripingly.feature.map.presentation.map.state
 import com.falcon.tripingly.core.data.config.AppConfigRepository
 import com.falcon.tripingly.core.data.places.PlaceRepository
 import com.falcon.tripingly.core.model.place.GeoBounds
+import com.falcon.tripingly.core.model.place.MapPlace
+import com.falcon.tripingly.core.model.place.PlaceCategory
 import com.falcon.tripingly.core.model.place.PlaceSquare
-import com.falcon.tripingly.core.model.trip.TripDetails
+import com.falcon.tripingly.core.model.place.PlacesInView
+import com.falcon.tripingly.core.model.trip.TripDay
 import com.falcon.tripingly.feature.map.presentation.component.placeClusters
 import com.falcon.tripingly.feature.map.presentation.component.placePins
 import kotlin.math.floor
@@ -13,6 +16,7 @@ import kotlin.time.TimeSource
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.map
@@ -21,7 +25,8 @@ import kotlinx.coroutines.withContext
 
 /**
  * Place pins load by map square once the camera rests: liked places first, then the best known, without the
- * trip's stops, at most as many as the server allows. The map loads the squares it shows by itself; the ring
+ * open day's stops, at most as many as the server allows. A place that is a stop on another day stays a place here,
+ * so it can be added to this day too (Shahin, 2026-11-14: "visit the Eiffel tower multiple times in a trip"). The map loads the squares it shows by itself; the ring
  * of squares around the view loads too (the ones not loaded yet, in one request), so a pan finds its places ready.
  */
 internal class MapPins(
@@ -46,14 +51,17 @@ internal class MapPins(
     private var keepUnlisted = false
 
     init {
-        // Pins change when a square in view reloads with new places, and when stops come or go (a stop hides its place).
+        // Pins change when a square in view reloads with new places, and when the open day's stops come or go or another
+        // day opens (a stop hides its place on its own day only).
         context.scope.launch {
             placeRepository.changedSquares.collect { square ->
                 if (context.model.value.pins.area?.squares?.contains(square) == true) show()
             }
         }
         context.scope.launch {
-            context.trip.map(::stopPlaceIds).distinctUntilChanged().drop(1).collect { show() }
+            combine(context.trip, context.model.map { it.activeDayIndex }) { trip, _ -> trip }
+                .map { trip -> context.activeDay().let { day -> stopPlaceIds(day) to tripStopPlaces(trip?.days.orEmpty(), day) } }
+                .distinctUntilChanged().drop(1).collect { show() }
         }
     }
 
@@ -109,8 +117,10 @@ internal class MapPins(
     /** The pins of the squares the camera rests on, from what the repository keeps. */
     private suspend fun show(addOnly: Boolean = false) {
         val area = context.model.value.pins.area ?: return
-        val squares = placeRepository.loadedPlacesIn(area.squares).values
-        val hidden = stopPlaceIds(context.trip.value)
+        val day = context.activeDay()
+        // Other days' stops come along as places: a custom spot only on this private trip is in no square.
+        val squares = placeRepository.loadedPlacesIn(area.squares).values + PlacesInView(tripStopPlaces(context.days(), day), emptyList())
+        val hidden = stopPlaceIds(day)
         val config = appConfigRepository.config.value
         val shown = context.model.value.pins
         val (pins, clusters) = withContext(computation) {
@@ -142,9 +152,17 @@ internal class MapPins(
     }
 }
 
-/** A place that is already a stop shows as the stop only. */
-internal fun stopPlaceIds(details: TripDetails?): Set<String> =
-    details?.days.orEmpty().flatMapTo(HashSet()) { day -> day.markers.map { it.placeId } }
+/** A place that is already a stop of the open [day] shows as the stop only; on other days it is a place again. */
+internal fun stopPlaceIds(day: TripDay?): Set<String> = day?.markers.orEmpty().mapTo(HashSet()) { it.placeId }
+
+/** The places of the trip's stops on days other than [day], as places to add to it. */
+internal fun tripStopPlaces(days: List<TripDay>, day: TripDay?): List<MapPlace> =
+    days.asSequence()
+        .filter { it.id != day?.id }
+        .flatMap { it.markers }
+        .distinctBy { it.placeId }
+        .map { MapPlace(it.placeId, it.name, PlaceCategory.Other, it.location, isTripinly = false, hotCount = it.hotCount, prominence = 0) }
+        .toList()
 
 /**
  * Pins count as in view a little beyond the screen ([PIN_MARGIN_SHARE] of its width and height on each side), so a pin
