@@ -2395,7 +2395,7 @@ class MapViewModelTest {
         testScheduler.advanceUntilIdle()
         assertEquals(2, routes.transitTimes.size)
         assertEquals(TravelMode.Transit, viewModel.uiState.value.pointRouteCard?.route?.mode)
-        assertEquals(RouteBarState(UiText.Server("Oper"), UiText.Server("Prater")), viewModel.uiState.value.routeBar)
+        assertEquals(RouteBarState(UiText.Server("Oper"), UiText.Server("Prater"), TravelMode.Transit), viewModel.uiState.value.routeBar)
 
         // A time picked is the person's new ask.
         viewModel.onAction(MapAction.Plan.OpenLeaveAt)
