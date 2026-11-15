@@ -7,6 +7,9 @@ import com.falcon.tripingly.core.data.trips.hasCode
 import com.falcon.tripingly.core.model.place.PlaceCategory
 import com.falcon.tripingly.core.model.route.BestOrder
 import com.falcon.tripingly.core.model.route.RoutePlan
+import com.falcon.tripingly.core.model.route.TransitLine
+import com.falcon.tripingly.core.model.route.TransitTime
+import com.falcon.tripingly.core.model.route.TransitVehicle
 import com.falcon.tripingly.core.model.route.TravelMode
 import com.falcon.tripingly.core.model.trip.GeoPoint
 import com.falcon.tripingly.core.model.trip.TripDay
@@ -33,6 +36,7 @@ import kotlin.test.assertFalse
 import kotlin.test.assertIs
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
+import kotlin.time.Instant
 
 class RouteRepositoryTest {
 
@@ -76,6 +80,37 @@ class RouteRepositoryTest {
         assertEquals(80, along.distanceFromRouteMeters)
         assertEquals(720, along.etaFromStartSeconds)
         assertFalse(plan.isEstimated)
+    }
+
+    @Test
+    fun publicTransportSendsTheTimeAndReadsTheSteps() = runTest {
+        body = TRANSIT_ROUTE
+        val leave = Instant.parse("2026-11-17T09:42:00Z")
+        val plan = assertIs<AppResult.Success<RoutePlan>>(
+            repository.route(GeoPoint(48.2027, 16.3594), GeoPoint(48.2038, 16.3697), TravelMode.Transit, null, null, null, TransitTime(leave)),
+        ).data
+        val request = requests.single().url.parameters
+        assertEquals("transit", request["mode"])
+        assertEquals("2026-11-17T09:42:00Z", request["departAt"])
+        assertNull(request["arriveBy"])
+
+        val route = plan.route!!
+        assertEquals(Instant.parse("2026-11-17T09:44:00Z"), route.departure)
+        assertEquals(Instant.parse("2026-11-17T09:57:00Z"), route.arrival)
+        assertFalse(route.isTypicalTimes)
+        val (walk, ride) = route.legs.single().steps
+        assertFalse(walk.isRide)
+        assertNull(walk.from.name)
+        assertTrue(ride.isRide)
+        assertEquals(TransitVehicle.Subway, ride.vehicle)
+        assertEquals(TransitLine("U2", 0xFFA862A4, 0xFFFFFFFF), ride.line)
+        assertEquals("Museumsquartier", ride.from.name)
+        assertEquals(listOf(GeoPoint(38.5, -120.2), GeoPoint(40.7, -120.95), GeoPoint(43.252, -126.453)), ride.points)
+
+        // Arriving by a time is another question.
+        repository.route(GeoPoint(48.2027, 16.3594), GeoPoint(48.2038, 16.3697), TravelMode.Transit, null, null, null, TransitTime(leave, isArriveBy = true))
+        assertEquals("2026-11-17T09:42:00Z", requests.last().url.parameters["arriveBy"])
+        assertEquals(2, requests.size)
     }
 
     @Test
@@ -169,6 +204,30 @@ class RouteRepositoryTest {
 
     private companion object {
         const val TRIP_ID = "t1"
+
+        val TRANSIT_ROUTE = """
+            {
+              "route": {
+                "polyline": "_p~iF~ps|U_ulLnnqC_mqNvxq`@", "distanceMeters": 1500, "durationSeconds": 780,
+                "departure": "2026-11-17T09:44:00.000Z", "arrival": "2026-11-17T09:57:00.000Z", "transfers": 0, "typicalTimes": false,
+                "legs": [{
+                  "fromMarkerId": null, "toMarkerId": null, "distanceMeters": 1500, "durationSeconds": 780,
+                  "departure": "2026-11-17T09:44:00.000Z", "arrival": "2026-11-17T09:57:00.000Z", "transfers": 0,
+                  "steps": [
+                    {"kind": "walk", "vehicle": null, "line": null, "headsign": null,
+                     "from": {"name": null, "lat": 48.2027, "lng": 16.3594, "time": "2026-11-17T09:44:00.000Z"},
+                     "to": {"name": "Museumsquartier", "lat": 48.2027, "lng": 16.3612, "time": "2026-11-17T09:49:00.000Z"},
+                     "stops": 0, "distanceMeters": 292, "durationSeconds": 300, "polyline": "_p~iF~ps|U"},
+                    {"kind": "ride", "vehicle": "subway", "line": {"name": "U2", "color": "#A862A4", "textColor": "#FFFFFF"}, "headsign": "Karlsplatz",
+                     "from": {"name": "Museumsquartier", "lat": 48.2027, "lng": 16.3612, "time": "2026-11-17T09:49:00.000Z"},
+                     "to": {"name": "Karlsplatz", "lat": 48.2009, "lng": 16.3692, "time": "2026-11-17T09:51:00.000Z"},
+                     "stops": 0, "distanceMeters": 650, "durationSeconds": 120, "polyline": "_p~iF~ps|U_ulLnnqC_mqNvxq`@"}
+                  ]
+                }]
+              },
+              "alongTheWay": [], "degraded": false, "attribution": "Timetables: Wiener Linien | © OpenStreetMap contributors"
+            }
+        """.trimIndent()
 
         val ROUTE = """
             {

@@ -10,15 +10,23 @@ import com.falcon.tripingly.core.model.route.BestOrder
 import com.falcon.tripingly.core.model.route.Route
 import com.falcon.tripingly.core.model.route.RouteLeg
 import com.falcon.tripingly.core.model.route.RoutePlan
+import com.falcon.tripingly.core.model.route.TransitLine
+import com.falcon.tripingly.core.model.route.TransitStep
+import com.falcon.tripingly.core.model.route.TransitStop
+import com.falcon.tripingly.core.model.route.TransitTime
+import com.falcon.tripingly.core.model.route.TransitVehicle
 import com.falcon.tripingly.core.model.route.TravelMode
 import com.falcon.tripingly.core.model.trip.GeoPoint
 import com.falcon.tripingly.core.model.trip.TripDay
 import com.falcon.tripingly.core.network.model.OptimizeResultDto
 import com.falcon.tripingly.core.network.model.RouteResponseDto
+import com.falcon.tripingly.core.network.model.TransitPlaceDto
+import com.falcon.tripingly.core.network.model.TransitStepDto
 import com.falcon.tripingly.core.network.routing.RoutingApi
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlin.math.roundToInt
+import kotlin.time.Instant
 
 internal class DefaultRouteRepository(
     private val api: RoutingApi,
@@ -30,19 +38,38 @@ internal class DefaultRouteRepository(
     /** Answered routes by what was asked, least recently used first. */
     private val routes = LinkedHashMap<RouteKey, RoutePlan>()
 
-    override suspend fun dayRoute(tripId: String, day: TripDay, mode: TravelMode): AppResult<RoutePlan, DataError.Network> {
-        val key = RouteKey(day.id, mode, day.markers.map { it.id to it.location })
+    override suspend fun dayRoute(tripId: String, day: TripDay, mode: TravelMode, departAt: Instant?): AppResult<RoutePlan, DataError.Network> {
+        val time = departAt?.let { TransitTime(it) }.takeIf { mode == TravelMode.Transit }
+        val key = RouteKey(day.id, mode, day.markers.map { it.id to it.location }, time)
         return cached(key) {
             pending.awaitSent(tripId)
-            api.dayRoute(day.id, mode.value).map { it.toRoutePlan() }
+            api.dayRoute(day.id, mode.value, time?.at?.toString()).map { it.toRoutePlan() }
         }
     }
 
-    override suspend fun route(from: GeoPoint, to: GeoPoint, mode: TravelMode, tripId: String?, fromPlaceId: String?, toPlaceId: String?): AppResult<RoutePlan, DataError.Network> {
+    override suspend fun route(
+        from: GeoPoint,
+        to: GeoPoint,
+        mode: TravelMode,
+        tripId: String?,
+        fromPlaceId: String?,
+        toPlaceId: String?,
+        time: TransitTime?,
+    ): AppResult<RoutePlan, DataError.Network> {
+        val transitTime = time.takeIf { mode == TravelMode.Transit }
         // The ends' places change the places along the way, so they're part of what was asked.
-        val key = RouteKey(tripId, mode, listOf("from:$fromPlaceId" to from, "to:$toPlaceId" to to))
+        val key = RouteKey(tripId, mode, listOf("from:$fromPlaceId" to from, "to:$toPlaceId" to to), transitTime)
         return cached(key) {
-            api.route(from.query(), to.query(), mode.value, tripId, fromPlaceId, toPlaceId).map { it.toRoutePlan() }
+            api.route(
+                from = from.query(),
+                to = to.query(),
+                mode = mode.value,
+                excludeTripId = tripId,
+                fromPlaceId = fromPlaceId,
+                toPlaceId = toPlaceId,
+                departAt = transitTime?.takeUnless { it.isArriveBy }?.at?.toString(),
+                arriveBy = transitTime?.takeIf { it.isArriveBy }?.at?.toString(),
+            ).map { it.toRoutePlan() }
         }
     }
 
@@ -73,7 +100,8 @@ internal class DefaultRouteRepository(
     /** Forgets the routes, whose places along the way were for the account signed in. */
     suspend fun clear() = lock.withLock { routes.clear() }
 
-    private data class RouteKey(val owner: String?, val mode: TravelMode, val points: List<Pair<String, GeoPoint>>)
+    /** Public transport answers depend on the time asked ([time]); a route asked for "now" ([time] null) is kept like the rest. */
+    private data class RouteKey(val owner: String?, val mode: TravelMode, val points: List<Pair<String, GeoPoint>>, val time: TransitTime? = null)
 
     private fun GeoPoint.query() = "$lat,$lng"
 
@@ -82,6 +110,7 @@ internal class DefaultRouteRepository(
             TravelMode.Walking -> "walking"
             TravelMode.Cycling -> "cycling"
             TravelMode.Driving -> "driving"
+            TravelMode.Transit -> "transit"
         }
 
     private fun RouteResponseDto.toRoutePlan() = RoutePlan(
@@ -90,7 +119,13 @@ internal class DefaultRouteRepository(
                 points = decodePolyline(route.polyline),
                 distanceMeters = route.distanceMeters.roundToInt(),
                 durationSeconds = route.durationSeconds.roundToInt(),
-                legs = route.legs.map { RouteLeg(it.fromMarkerId, it.toMarkerId, it.distanceMeters.roundToInt(), it.durationSeconds.roundToInt()) },
+                legs = route.legs.map { leg ->
+                    RouteLeg(leg.fromMarkerId, leg.toMarkerId, leg.distanceMeters.roundToInt(), leg.durationSeconds.roundToInt(), leg.steps.orEmpty().map { it.toStep() })
+                },
+                departure = route.departure,
+                arrival = route.arrival,
+                transfers = route.transfers?.roundToInt() ?: 0,
+                isTypicalTimes = route.typicalTimes == true,
             )
         },
         alongTheWay = alongTheWay.map {
@@ -99,6 +134,34 @@ internal class DefaultRouteRepository(
         isEstimated = degraded,
         attribution = attribution,
     )
+
+    private fun TransitStepDto.toStep() = TransitStep(
+        isRide = kind == TransitStepDto.Kind.RIDE,
+        vehicle = vehicle?.let {
+            when (it) {
+                TransitStepDto.Vehicle.TRAM -> TransitVehicle.Tram
+                TransitStepDto.Vehicle.SUBWAY -> TransitVehicle.Subway
+                TransitStepDto.Vehicle.BUS -> TransitVehicle.Bus
+                TransitStepDto.Vehicle.TRAIN -> TransitVehicle.Train
+                TransitStepDto.Vehicle.FERRY -> TransitVehicle.Ferry
+                TransitStepDto.Vehicle.CABLE_CAR -> TransitVehicle.CableCar
+                TransitStepDto.Vehicle.OTHER -> TransitVehicle.Other
+            }
+        },
+        line = line?.let { TransitLine(it.name, it.color?.let(::argb), it.textColor?.let(::argb)) },
+        headsign = headsign,
+        from = from.toStop(),
+        to = to.toStop(),
+        stops = stops.roundToInt(),
+        distanceMeters = distanceMeters.roundToInt(),
+        durationSeconds = durationSeconds.roundToInt(),
+        points = decodePolyline(polyline),
+    )
+
+    private fun TransitPlaceDto.toStop() = TransitStop(name, GeoPoint(lat, lng), time)
+
+    /** "#A862A4" as an opaque ARGB colour; null when it isn't one. */
+    private fun argb(hex: String): Long? = hex.removePrefix("#").takeIf { it.length == 6 }?.toLongOrNull(16)?.let { 0xFF000000 or it }
 
     private companion object {
         /** A few trips' days in every mode. */
