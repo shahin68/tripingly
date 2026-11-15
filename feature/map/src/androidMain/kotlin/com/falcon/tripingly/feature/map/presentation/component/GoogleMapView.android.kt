@@ -615,7 +615,7 @@ private fun MapLineView(line: MapLine) {
                 state = rememberUpdatedMarkerState(position = LatLng(mark.position.latitude, mark.position.longitude)),
                 icon = icon,
                 anchor = Offset(0.5f, 0.5f),
-                // Badges over rings, both over the line's streak.
+                // Badges over rings, under the stops.
                 zIndex = if (mark is LineMark.Badge) LINE_BADGE_Z else LINE_RING_Z,
                 onClick = { true },
             )
@@ -663,9 +663,9 @@ private fun rememberHiddenPins(shown: List<PlacePin>): List<PlacePin> {
 /** Hidden markers cost a little memory and nothing to draw; enough for a pan back and forth over a full map. */
 private const val MAX_HIDDEN_PINS = 300
 
-/** Line marks' zIndex: above the line and its streak (1), under the stops (1) drawn later and the tapped place (2). */
-private const val LINE_RING_Z = 1.1f
-private const val LINE_BADGE_Z = 1.2f
+/** Line marks' zIndex: markers always draw over lines; above the kept pins (0.75), under the stops (1) and the tapped place (2). */
+private const val LINE_RING_Z = 0.8f
+private const val LINE_BADGE_Z = 0.85f
 
 /** A mark's look without its place, to share one drawn icon. */
 private val NoPosition = Coordinates(0.0, 0.0)
