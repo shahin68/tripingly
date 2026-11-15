@@ -221,7 +221,7 @@ class MapViewModel(
     private fun onDays(action: MapAction.Days) {
         when (action) {
             is MapAction.Days.Select -> selectDay(action.dayIndex)
-            is MapAction.Days.FitDay -> camera.showOpenDay()
+            is MapAction.Days.FitDay -> if (!routes.frameShownRoute()) camera.showOpenDay()
             is MapAction.Days.TogglePlaces -> pins.setHidden(!model.arePlacesHidden)
         }
     }

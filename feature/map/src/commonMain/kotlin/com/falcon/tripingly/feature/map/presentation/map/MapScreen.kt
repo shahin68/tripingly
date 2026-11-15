@@ -28,6 +28,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -211,7 +212,12 @@ internal fun MapScreen(
             cameraCommands.map { command ->
                 when (command) {
                     is CameraCommand.Move -> command
-                    is CameraCommand.Fit -> fit(command.bounds).let { (target, zoom) -> CameraCommand.MoveTo(target, zoom, upright = true) }
+                    // Worked out once what changed with it (the route bar, the route's card coming or growing) is laid
+                    // out, so the fit keeps out of them as they are now, not as they were (Shahin, 2026-11-15).
+                    is CameraCommand.Fit -> {
+                        repeat(FIT_LAYOUT_FRAMES) { withFrameNanos { } }
+                        fit(command.bounds).let { (target, zoom) -> CameraCommand.MoveTo(target, zoom, upright = true) }
+                    }
                 }
             }
         }
@@ -419,3 +425,9 @@ private val LandscapePinArea = 96.dp
 
 /** In portrait, how far below the middle of the free map a tapped pin goes. */
 private val PortraitPinDrop = 24.dp
+
+/**
+ * Frames a fit waits before it is worked out: the change that came with it is composed, laid out (the header's and
+ * the sheet's new sizes measured) and composed again with those sizes.
+ */
+private const val FIT_LAYOUT_FRAMES = 3

@@ -279,8 +279,23 @@ internal class MapRouting(
         selection.closeStop()
         context.update { it.copy(route = it.route.copy(start = null, startLabel = null, between = route, editing = null), search = null) }
         showWholePlan()
-        camera.frame(listOf(route.from.location, route.to.location).map { Coordinates(it.lat, it.lng) })
+        camera.frame(routePoints(route, plan = null))
     }
+
+    /**
+     * The fit button while a route from A to B shows: the whole route, not the open day (Shahin, 2026-11-15). False
+     * while none shows.
+     */
+    fun frameShownRoute(): Boolean {
+        val route = context.model.value.route
+        val between = route.between ?: return false
+        camera.frame(routePoints(between, route.plan))
+        return true
+    }
+
+    /** A route's ends and, once it has come, its line, so a route bending out past its ends still fits. */
+    private fun routePoints(route: PointRoute, plan: RoutePlan?): List<Coordinates> =
+        (listOf(route.from.location, route.to.location) + plan?.route?.points.orEmpty()).map { Coordinates(it.lat, it.lng) }
 
     private fun PinEnd.toPlace(): MapPlace = when (this) {
         is PinEnd.Place -> place
@@ -387,7 +402,9 @@ internal class MapRouting(
         // also after swapping the ends or another way of travelling and back; only a new ask asks the server (Shahin, 2026-11-15:
         // fine if a "now" is a little old). Kept in this screen's memory only.
         transitRoutes[request]?.let { (plan, at) ->
-            return update { it.copy(plan = plan, planMode = request.mode, planStops = request.stops, isUnavailable = false, isLoading = false, transitAt = at, transitNote = null) }
+            update { it.copy(plan = plan, planMode = request.mode, planStops = request.stops, isUnavailable = false, isLoading = false, transitAt = at, transitNote = null) }
+            if (request is RouteRequest.Between) reframe(plan)
+            return
         }
         update { it.copy(isLoading = true, plan = it.plan.takeIf { isSameRoute }, isUnavailable = it.isUnavailable && isSameRoute, transitNote = null) }
         val time = request.transit?.let { transitTime(it, isBetween = request is RouteRequest.Between) }
@@ -436,6 +453,17 @@ internal class MapRouting(
                 else -> it
             }
         }
+        if (result is AppResult.Success && request is RouteRequest.Between) reframe(result.data)
+    }
+
+    /**
+     * A route from A to B that came (or changed its way of travelling) is fitted again with its whole line, unless the
+     * map was moved since it was shown: the first fit only had the ends (Shahin, 2026-11-15: the route went under the
+     * header and the card).
+     */
+    private fun reframe(plan: RoutePlan) {
+        val between = context.model.value.route.between ?: return
+        camera.reframe(routePoints(between, plan))
     }
 
     /**

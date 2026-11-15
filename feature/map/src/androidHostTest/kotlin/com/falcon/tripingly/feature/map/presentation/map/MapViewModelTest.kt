@@ -2367,6 +2367,35 @@ class MapViewModelTest {
     }
 
     @Test
+    fun `the fit button frames a route from A to B while it shows, else the open day`() = runTest(testDispatcher) {
+        addStops(GeoPoint(48.2085, 16.3731), GeoPoint(48.2104, 16.3655))
+        val viewModel = viewModel()
+        testScheduler.advanceUntilIdle()
+        val from = MapPlace("a", "Oper", PlaceCategory.Attraction, GeoPoint(48.2031, 16.3691), isTripinly = false, hotCount = 0, prominence = 80)
+        val to = MapPlace("b", "Prater", PlaceCategory.Park, GeoPoint(48.2166, 16.3958), isTripinly = false, hotCount = 0, prominence = 80)
+        viewModel.onAction(MapAction.MapView.PlacePinClick(from))
+        viewModel.onAction(MapAction.PinRoute.Route)
+        testScheduler.advanceUntilIdle()
+        viewModel.onAction(MapAction.MapView.PlacePinClick(to))
+        restOnTarget(viewModel)
+        viewModel.onAction(MapAction.PinRoute.Route)
+        testScheduler.advanceUntilIdle()
+        val route = CameraCommand.fit(listOf(Coordinates(48.2031, 16.3691), Coordinates(48.2166, 16.3958)))
+
+        viewModel.cameraCommands.test {
+            viewModel.onAction(MapAction.MapView.UserMove)
+            viewModel.onAction(MapAction.Days.FitDay)
+            testScheduler.advanceUntilIdle()
+            assertEquals(route, expectMostRecentItem())
+
+            viewModel.onAction(MapAction.Plan.ClosePointRoute)
+            viewModel.onAction(MapAction.Days.FitDay)
+            testScheduler.advanceUntilIdle()
+            assertEquals(CameraCommand.fit(listOf(Coordinates(48.2085, 16.3731), Coordinates(48.2104, 16.3655))), expectMostRecentItem())
+        }
+    }
+
+    @Test
     fun `public transport routes are kept, so swapping back or switching modes back asks nothing new`() = runTest(testDispatcher) {
         val viewModel = viewModel(config = AppConfig(transitAreas = listOf(VIENNA)))
         testScheduler.advanceUntilIdle()

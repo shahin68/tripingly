@@ -55,6 +55,11 @@ internal class MapCamera(private val context: MapContext) {
         }
     }
 
+    /** Shows [points] again only while the camera still shows the last fit (no finger or other move since). */
+    fun reframe(points: List<Coordinates>) {
+        if (shownFit != null) frame(points)
+    }
+
     /**
      * Shows the open day: its stops; the whole trip's while that day has none; the trip's destination while the
      * trip has no stops at all; else the map stays where it is. Opening a trip and tapping a day tab both show a day
