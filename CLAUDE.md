@@ -73,7 +73,7 @@ A modular KMP app: `androidApp` and `iosApp` shells, `shared` as the umbrella, `
 11. Paywall (once billing is decided).
 12. Redesign and full code review: looks, smoothness, accessibility, every screen size and landscape; Shahin hands over the review criteria at the start.
 13. Documentation, legal pages and decision audit (before production, never skipped; Shahin, 2026-10-25): a full decision audit and report across code, knowledge files and the three decision logs; the product handbook; legal drafts (Terms of Service explaining how hot spots, likes, ranking and moderation work, Privacy Policy, Community Guidelines, Imprint, subscription terms, attributions and licences) set up at stable URLs as versioned legal documents and linked in onboarding, Settings and the paywall; Shahin's lawyer reviews every legal text before publishing. Details in the backend `CLAUDE.md`, build order stage 11.
-14. Store release checklist.
+14. Store release checklist, including a re-check of every paid service, storage and RAM cost (Shahin, 2026-11-15; see the `release-checklist` skill).
 
 Report to the user after each stage.
 
