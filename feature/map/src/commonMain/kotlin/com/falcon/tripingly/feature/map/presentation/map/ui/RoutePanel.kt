@@ -1,6 +1,7 @@
 package com.falcon.tripingly.feature.map.presentation.map.ui
 
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.AnimatedVisibilityScope
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
@@ -13,6 +14,8 @@ import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -158,7 +161,9 @@ internal fun RouteCardSlot(route: RouteSummaryState?, onAction: (MapAction) -> U
 @Composable
 private fun AnimatedVisibilityScope.RouteCardContent(route: RouteSummaryState, isAnimated: Boolean, onAction: (MapAction) -> Unit) {
     val inset = MaterialTheme.spacing.small
-    Column(Modifier.fillMaxWidth().padding(vertical = inset), verticalArrangement = Arrangement.spacedBy(inset)) {
+    // Every row below the first keeps [inset] above itself, inside it, so a gliding row's gap glides with it.
+    val below = Modifier.padding(start = inset, end = inset, top = inset)
+    Column(Modifier.fillMaxWidth().padding(vertical = inset)) {
         Row(
             modifier = Modifier.padding(horizontal = inset).then(rowMotion(0, isAnimated)),
             verticalAlignment = Alignment.CenterVertically,
@@ -168,17 +173,16 @@ private fun AnimatedVisibilityScope.RouteCardContent(route: RouteSummaryState, i
             RouteTotals(route, Modifier.weight(1f))
             TravelModeToggle(route.mode, onModeSelected = { onAction(MapAction.Plan.SelectTravelMode(it)) }, modifier = Modifier.width(ModesWidth), isTransitCovered = route.isTransitCovered)
         }
-        route.transitNote?.let { TransitNoteText(it, Modifier.padding(horizontal = inset).then(rowMotion(1, isAnimated))) }
-        if (route.transitLegs.isNotEmpty()) {
-            TransitLegsButton(route.transitLegs, onAction, Modifier.padding(horizontal = inset).then(rowMotion(1, isAnimated)))
-        }
-        route.leaveAt?.let { LeaveAtButton(it, onAction, Modifier.padding(horizontal = inset).then(rowMotion(2, isAnimated))) }
+        // Public transport's rows come and go as its way of travelling is picked: they glide open and shut.
+        GlidingRow(route.transitNote, rowMotion(1, isAnimated)) { TransitNoteText(it, below) }
+        GlidingRow(route.transitLegs.takeIf { it.isNotEmpty() }, rowMotion(1, isAnimated)) { TransitLegsButton(it, onAction, below) }
+        GlidingRow(route.leaveAt, rowMotion(2, isAnimated)) { LeaveAtButton(it, onAction, below) }
         if (route.isEstimated) {
             Text(
                 text = stringResource(Res.string.map_route_estimated),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(horizontal = inset).then(rowMotion(1, isAnimated)),
+                modifier = below.then(rowMotion(1, isAnimated)),
             )
         }
         if (route.alongTheWay.isNotEmpty()) {
@@ -186,7 +190,7 @@ private fun AnimatedVisibilityScope.RouteCardContent(route: RouteSummaryState, i
                 text = stringResource(Res.string.map_along_the_way),
                 style = MaterialTheme.typography.labelLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(horizontal = inset).then(rowMotion(2, isAnimated)),
+                modifier = below.then(rowMotion(2, isAnimated)),
             )
             val selectedIndex = route.alongTheWay.indexOfFirst { it.place.id == route.selectedPlaceId }
             // A place picked on the map is the card in view, also when the plan first shows.
@@ -195,7 +199,7 @@ private fun AnimatedVisibilityScope.RouteCardContent(route: RouteSummaryState, i
             LaunchedEffect(route.selectedPlaceId) { listState.reveal(selectedIndex, onScreen, toStart = true) }
             LazyRow(
                 state = listState,
-                modifier = Modifier.horizontalFadingEdge(listState).trackOnScreen(onScreen),
+                modifier = Modifier.padding(top = inset).horizontalFadingEdge(listState).trackOnScreen(onScreen),
                 contentPadding = PaddingValues(horizontal = inset),
                 horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
             ) {
@@ -214,6 +218,31 @@ private fun AnimatedVisibilityScope.RouteCardContent(route: RouteSummaryState, i
         }
     }
 }
+
+/**
+ * A row of the card while [value] is there: its space glides open from the top as it slides down a little and fades in,
+ * and glides shut as it fades out, the rows below gliding along (the show and hide rule). It keeps showing the last value
+ * while it goes.
+ */
+@Composable
+private fun <T : Any> GlidingRow(value: T?, modifier: Modifier = Modifier, content: @Composable (T) -> Unit) {
+    val kept = remember { Kept(value) }
+    if (value != null) kept.value = value
+    AnimatedVisibility(
+        visible = value != null,
+        modifier = modifier,
+        enter = expandVertically(tween(ROUTE_GROW_MILLIS, easing = RouteGrowEasing), expandFrom = Alignment.Top, clip = false) +
+            fadeIn(tween(ROW_FADE_MILLIS, GLIDE_FADE_DELAY_MILLIS)) +
+            slideInVertically(tween(ROUTE_GROW_MILLIS, easing = RouteGrowEasing)) { -it / ROW_SLIDE_FRACTION },
+        exit = shrinkVertically(tween(ROUTE_GROW_MILLIS, easing = RouteGrowEasing), shrinkTowards = Alignment.Top, clip = false) +
+            fadeOut(tween(ROW_EXIT_MILLIS)),
+    ) {
+        kept.value?.let { content(it) }
+    }
+}
+
+/** The last value a gliding row showed, kept while it goes; not state, as the row recomposes with every new value anyway. */
+private class Kept<T>(var value: T?)
 
 /** Row [index] of the card slides down a little into place after the one before; it only fades on the way out. */
 private fun AnimatedVisibilityScope.rowMotion(index: Int, isAnimated: Boolean): Modifier {
@@ -326,6 +355,7 @@ private const val ROW_STAGGER_MILLIS = 40
 private const val ROW_FADE_MILLIS = 180
 private const val ROW_SLIDE_MILLIS = 260
 private const val ROW_EXIT_MILLIS = 80
+private const val GLIDE_FADE_DELAY_MILLIS = 60
 private const val ROW_SLIDE_FRACTION = 8
 private const val ALONG_DELAY_MILLIS = 170
 private const val ALONG_STAGGER_MILLIS = 45

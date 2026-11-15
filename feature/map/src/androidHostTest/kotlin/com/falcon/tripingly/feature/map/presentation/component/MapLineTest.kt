@@ -93,6 +93,14 @@ class MapLineTest {
         assertEquals(listOf(true, false, false), line.parts.map { it.isDotted })
         assertEquals(listOf(MapColors.Walk, Color(0xFFE3000F), MapColors.Transit), line.parts.map { it.color })
         assertTrue(line.arrows.isEmpty())
+        // Each ride's badge, and its rings: in its colour where the route gets on first and off last, in ink at the change.
+        assertEquals(listOf("U1", "5A"), line.marks.filterIsInstance<LineMark.Badge>().map { it.name })
+        val rings = line.marks.filterIsInstance<LineMark.Ring>()
+        assertEquals(listOf(stephansdom, prater, prater, opera), rings.map { it.position })
+        assertEquals(Color(0xFFE3000F), rings.first().color)
+        assertEquals(MapColors.Transit, rings.last().color)
+        assertEquals(1, rings.map { it.color }.drop(1).dropLast(1).distinct().size)
+        assertNotEquals(Color(0xFFE3000F), rings[1].color)
         // Steps without lines of their own: the whole route in one colour.
         assertTrue(transitLine(streets, steps.map { it.copy(points = emptyList()) }, listOf(opera, prater)).parts.isEmpty())
     }

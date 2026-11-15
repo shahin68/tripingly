@@ -33,6 +33,7 @@ import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.text.rememberTextMeasurer
+import androidx.compose.ui.graphics.takeOrElse
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
@@ -40,6 +41,7 @@ import com.falcon.tripingly.core.designsystem.component.icon
 import com.falcon.tripingly.core.designsystem.component.rememberHaptics
 import com.falcon.tripingly.core.designsystem.theme.extendedColors
 import com.falcon.tripingly.core.location.model.Coordinates
+import com.falcon.tripingly.core.model.trip.GeoPoint
 import com.falcon.tripingly.core.model.place.GeoBounds
 import com.falcon.tripingly.core.model.place.MapPlace
 import com.falcon.tripingly.core.model.place.PlaceCategory
@@ -463,18 +465,26 @@ actual fun GoogleMapView(
             }
             // The route's ends: a thick ring in the way of travelling's colour round each end's pin, under it.
             // The destination's has its flag on top.
-            val rings = remember(density, layoutDirection) { mutableMapOf<Triple<Dp, Color, Boolean>, Pair<BitmapDescriptor, Float>>() }
+            // By public transport they are pointed pins instead, in the stops' colour.
+            val endStopColor = MaterialTheme.extendedColors.stop
+            val rings = remember(density, layoutDirection) { mutableMapOf<RouteEndMark, Pair<BitmapDescriptor, Float>>() }
             layers.routeEnds.forEach { end ->
                 key(end.isStart) {
-                    val (icon, anchorY) = rings.getOrPut(Triple(end.pinSize, end.color, end.isStart)) {
-                        drawRouteEndRing(end.pinSize, end.color, end.isStart, density, layoutDirection)
-                            .let { BitmapDescriptorFactory.fromBitmap(it.bitmap.asAndroidBitmap()) to it.anchorY }
+                    val look = end.copy(position = GeoPoint(0.0, 0.0), color = end.color.takeOrElse { endStopColor })
+                    val (icon, anchorY) = rings.getOrPut(look) {
+                        val drawn = if (look.isPointed) {
+                            drawRouteEndPin(look.color, look.isStart, density, layoutDirection)
+                        } else {
+                            drawRouteEndRing(look.pinSize, look.color, look.isStart, density, layoutDirection)
+                        }
+                        BitmapDescriptorFactory.fromBitmap(drawn.bitmap.asAndroidBitmap()) to drawn.anchorY
                     }
                     Marker(
                         state = rememberUpdatedMarkerState(position = LatLng(end.position.lat, end.position.lng)),
                         icon = icon,
                         anchor = Offset(0.5f, anchorY),
-                        zIndex = ROUTE_END_Z,
+                        // A pointed end stands on top of everything near it.
+                        zIndex = if (end.isPointed) POINTED_END_Z else ROUTE_END_Z,
                         // Only a mark: the map neither moves nor opens anything.
                         onClick = { true },
                     )
@@ -585,6 +595,33 @@ private fun MapLineView(line: MapLine) {
         }
     }
 
+    // Public transport: the rides' badges and their rings, standing up, above the line and under the pins.
+    val textMeasurer = rememberTextMeasurer()
+    val markIcons = remember(density) { mutableMapOf<LineMark, BitmapDescriptor>() }
+    line.marks.forEach { mark ->
+        key(mark) {
+            val look = when (mark) {
+                is LineMark.Ring -> mark.copy(position = NoPosition)
+                is LineMark.Badge -> mark.copy(position = NoPosition)
+            }
+            val icon = markIcons.getOrPut(look) {
+                val bitmap = when (mark) {
+                    is LineMark.Ring -> drawLineRing(mark.color, density, layoutDirection)
+                    is LineMark.Badge -> drawLineBadge(mark.name, mark.color, mark.textColor, textMeasurer, density, layoutDirection)
+                }
+                BitmapDescriptorFactory.fromBitmap(bitmap.asAndroidBitmap())
+            }
+            Marker(
+                state = rememberUpdatedMarkerState(position = LatLng(mark.position.latitude, mark.position.longitude)),
+                icon = icon,
+                anchor = Offset(0.5f, 0.5f),
+                // Badges over rings, both over the line's streak.
+                zIndex = if (mark is LineMark.Badge) LINE_BADGE_Z else LINE_RING_Z,
+                onClick = { true },
+            )
+        }
+    }
+
     // Once, like a progress bar; then nothing moves.
     val sweep = remember(line) { Animatable(0f) }
     LaunchedEffect(line) { sweep.animateTo(1f, tween(MAP_LINE_SWEEP_MILLIS, easing = LinearEasing)) }
@@ -626,6 +663,13 @@ private fun rememberHiddenPins(shown: List<PlacePin>): List<PlacePin> {
 /** Hidden markers cost a little memory and nothing to draw; enough for a pan back and forth over a full map. */
 private const val MAX_HIDDEN_PINS = 300
 
+/** Line marks' zIndex: above the line and its streak (1), under the stops (1) drawn later and the tapped place (2). */
+private const val LINE_RING_Z = 1.1f
+private const val LINE_BADGE_Z = 1.2f
+
+/** A mark's look without its place, to share one drawn icon. */
+private val NoPosition = Coordinates(0.0, 0.0)
+
 /** A dotted walk's gaps, in line widths. */
 private const val DOT_GAP_WIDTHS = 1.5f
 
@@ -651,4 +695,5 @@ private const val KEPT_PINS_Z = 0.75f
 
 /** The rings round a route's ends: under their pins (kept places and stops), over the other places. */
 private const val ROUTE_END_Z = 0.7f
+private const val POINTED_END_Z = 3f
 

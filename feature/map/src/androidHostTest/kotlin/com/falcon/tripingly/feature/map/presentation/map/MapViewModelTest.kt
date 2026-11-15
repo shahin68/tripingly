@@ -78,6 +78,7 @@ import com.falcon.tripingly.feature.map.generated.resources.map_join_requested
 import com.falcon.tripingly.feature.map.generated.resources.map_route_my_location
 import com.falcon.tripingly.feature.map.generated.resources.map_trip_card_more
 import com.falcon.tripingly.feature.map.presentation.FakeTripMapViewRepository
+import com.falcon.tripingly.feature.map.presentation.component.LineMark
 import com.falcon.tripingly.feature.map.presentation.component.CameraCommand
 import com.falcon.tripingly.feature.map.presentation.component.PinEnd
 import com.falcon.tripingly.feature.map.presentation.component.PinSizes
@@ -2345,6 +2346,13 @@ class MapViewModelTest {
         viewModel.onAction(MapAction.Plan.SelectTravelMode(TravelMode.Transit))
         testScheduler.advanceUntilIdle()
         assertEquals(false, routes.transitTimes.single()?.isArriveBy)
+        // The ends are pointed pins standing in their pins' place: the Oper's own pin is gone while the route shows.
+        val layers = viewModel.uiState.value.layers
+        assertTrue(layers.routeEnds.isNotEmpty() && layers.routeEnds.all { it.isPointed })
+        assertTrue(layers.placePins.none { it.place.id == oper.id })
+        assertNull(layers.selectedPlace)
+        // The fake's ride has its badge and rings on the line.
+        assertEquals(listOf("U1"), assertNotNull(layers.line).marks.filterIsInstance<LineMark.Badge>().map { it.name })
 
         viewModel.onAction(MapAction.Plan.OpenLeaveAt)
         testScheduler.advanceUntilIdle()

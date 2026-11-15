@@ -28,6 +28,8 @@ import androidx.compose.material.icons.automirrored.filled.DirectionsWalk
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Flag
+import androidx.compose.material.icons.filled.MyLocation
+import androidx.compose.material.icons.filled.Place
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -56,6 +58,11 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.falcon.tripingly.core.designsystem.component.AppDialog
+import com.falcon.tripingly.core.designsystem.component.PhotoImage
+import com.falcon.tripingly.core.designsystem.component.PhotoSize
+import com.falcon.tripingly.core.designsystem.component.icon
+import com.falcon.tripingly.core.designsystem.theme.extendedColors
+import com.falcon.tripingly.core.model.place.PlaceCategory
 import com.falcon.tripingly.core.designsystem.component.SegmentedToggle
 import com.falcon.tripingly.core.designsystem.component.SegmentedToggleOption
 import com.falcon.tripingly.core.designsystem.component.SheetHeader
@@ -87,6 +94,8 @@ import com.falcon.tripingly.feature.map.presentation.map.MapAction
 import com.falcon.tripingly.feature.map.presentation.map.MapDialog
 import com.falcon.tripingly.feature.map.presentation.map.MapSheet
 import com.falcon.tripingly.feature.map.presentation.map.TransitChip
+import com.falcon.tripingly.feature.map.presentation.map.TransitEnd
+import com.falcon.tripingly.feature.map.presentation.map.TransitPlaceIcon
 import com.falcon.tripingly.feature.map.presentation.map.TransitMark
 import com.falcon.tripingly.feature.map.presentation.map.TransitNote
 import com.falcon.tripingly.feature.map.presentation.map.TransitPath
@@ -238,7 +247,12 @@ private fun TransitTimelineRow(row: TransitStepRow, modifier: Modifier = Modifie
             modifier = Modifier.weight(1f).padding(bottom = if (row.path != null) MaterialTheme.spacing.medium else 0.dp),
             verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraSmall),
         ) {
-            row.place?.let { Text(it.asString(), style = BoldTitle, maxLines = 2, overflow = TextOverflow.Ellipsis) }
+            row.place?.let { place ->
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small)) {
+                    row.icon?.let { PlaceCircle(it) }
+                    Text(place.asString(), style = BoldTitle, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                }
+            }
             row.ride?.let { ride ->
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small)) {
                     ride.line?.let { LineBadge(it) }
@@ -258,10 +272,32 @@ private fun TimelineMark(mark: TransitMark, modifier: Modifier = Modifier) {
         TransitMark.Change -> MaterialTheme.colorScheme.onSurface
         is TransitMark.Line -> lineColor(mark.color)
         TransitMark.Stop -> MaterialTheme.colorScheme.primary
-        TransitMark.End -> return Icon(Icons.Default.Flag, contentDescription = null, modifier = modifier.size(TrackWidth))
+        // In the stops' colour, like the route's end on the map.
+        TransitMark.End -> return Icon(Icons.Default.Flag, contentDescription = null, tint = MaterialTheme.extendedColors.stop, modifier = modifier.size(TrackWidth))
     }
     val fill = if (mark == TransitMark.Stop) ring else MaterialTheme.colorScheme.surface
     Box(modifier.size(MarkSize).clip(CircleShape).background(fill).border(RingWidth, ring, CircleShape))
+}
+
+/** A place of the route next to its name: its photo in a circle, or its kind of place (or where I am) on a tint. */
+@Composable
+private fun PlaceCircle(icon: TransitPlaceIcon) {
+    val modifier = Modifier.size(PlaceCircleSize).clip(CircleShape)
+    if (icon.photoId != null && icon.photoUrl != null) {
+        PhotoImage(photoId = icon.photoId, url = icon.photoUrl, size = PhotoSize.Thumb, contentDescription = null, modifier = modifier)
+        return
+    }
+    Box(modifier.background(MaterialTheme.colorScheme.surfaceVariant), contentAlignment = Alignment.Center) {
+        Icon(
+            imageVector = when {
+                icon.isMyLocation -> Icons.Default.MyLocation
+                else -> icon.category?.icon ?: Icons.Default.Place
+            },
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.size(PlaceIconSize),
+        )
+    }
 }
 
 /** The line down to the next row: dotted for walks (quiet at a change), a solid bar in the line's colour for rides. */
@@ -334,6 +370,8 @@ private val MarkTop = 4.dp
 private val RingWidth = 3.dp
 private val BarWidth = 5.dp
 private val PathGap = 2.dp
+private val PlaceCircleSize = 24.dp
+private val PlaceIconSize = 14.dp
 
 private val previewSteps = listOf(
     TransitStep(false, null, null, null, previewStop(null, 12), previewStop("Neubaugasse", 16), 0, 300, 240, emptyList()),
@@ -359,7 +397,11 @@ private fun TransitPreviewContent() {
             LeaveAtButton(LeaveAtState("09:12", isArriveBy = false), onAction = {})
             TransitNoteText(TransitNote.NotHere)
             val (title, subtitle) = transitStepsHeader(previewRoute)
-            val rows = transitStepRows(previewRoute.legs, fromTitle = { UiText.Server("Mariahilfer Kirche") }, toTitle = { UiText.Server("Wiener Riesenrad") })
+            val rows = transitStepRows(
+                previewRoute.legs,
+                fromEnd = { TransitEnd(UiText.Server("Mariahilfer Kirche"), TransitPlaceIcon(category = PlaceCategory.Historic)) },
+                toEnd = { TransitEnd(UiText.Server("Wiener Riesenrad"), TransitPlaceIcon(category = PlaceCategory.Attraction)) },
+            )
             TransitStepsSheet(MapSheet.TransitSteps(title, subtitle, rows.toImmutableList(), isTypicalTimes = true, attribution = "Timetables: Wiener Linien · © OpenStreetMap contributors"), onClose = {})
         }
     }

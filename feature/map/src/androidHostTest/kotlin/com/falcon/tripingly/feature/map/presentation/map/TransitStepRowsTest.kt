@@ -1,5 +1,6 @@
 package com.falcon.tripingly.feature.map.presentation.map
 
+import com.falcon.tripingly.core.model.place.PlaceCategory
 import com.falcon.tripingly.core.model.route.Route
 import com.falcon.tripingly.core.model.route.RouteLeg
 import com.falcon.tripingly.core.model.route.TransitLine
@@ -36,7 +37,7 @@ class TransitStepRowsTest {
 
     @Test
     fun aRouteFromAToBIsATimelineFromItsStartToAFlag() {
-        val rows = transitStepRows(listOf(leg), fromTitle = { UiText.Server("Mariahilfer Kirche") }, toTitle = { UiText.Server("Wiener Riesenrad") })
+        val rows = transitStepRows(listOf(leg), fromEnd = { TransitEnd(UiText.Server("Mariahilfer Kirche"), TransitPlaceIcon(category = PlaceCategory.Historic)) }, toEnd = { TransitEnd(UiText.Server("Wiener Riesenrad"), null) })
 
         assertEquals(
             listOf(TransitMark.Walk, TransitMark.Line(u3.color), TransitMark.Change, TransitMark.Line(u1.color), TransitMark.Line(u1.color), TransitMark.End),
@@ -54,17 +55,21 @@ class TransitStepRowsTest {
         assertEquals(Res.string.map_transit_walk_detail, (rows[0].detail as UiText.Resource).resource)
         assertEquals(Res.string.map_transit_change_walk, (rows[2].detail as UiText.Resource).resource)
         assertNull(rows.last().detail)
+        // Only the route's own places carry their circle.
+        assertEquals(PlaceCategory.Historic, rows[0].icon?.category)
+        assertEquals(listOf(true, false, false, false, false, false), rows.map { it.icon != null })
     }
 
     @Test
     fun aDaysStopOnTheWayIsOneRowWhereTheNextLegSetsOff() {
         val second = RouteLeg("m2", "m3", 2000, 600, listOf(walk(null, 40, null, 50)))
-        val rows = transitStepRows(listOf(leg.copy(fromMarkerId = "m1", toMarkerId = "m2"), second), fromTitle = { UiText.Server(it.fromMarkerId!!) }, toTitle = { UiText.Server(it.toMarkerId!!) })
+        val rows = transitStepRows(listOf(leg.copy(fromMarkerId = "m1", toMarkerId = "m2"), second), fromEnd = { TransitEnd(UiText.Server(it.fromMarkerId!!), TransitPlaceIcon(photoId = it.fromMarkerId)) }, toEnd = { TransitEnd(UiText.Server(it.toMarkerId!!), null) })
 
         // Leg one's six rows lose their end; the day's second stop sets off on foot; the third ends it.
         assertEquals(7, rows.size)
         assertEquals(TransitMark.Stop, rows[5].mark)
         assertEquals("m2", (rows[5].place as UiText.Server).text)
+        assertEquals("m2", rows[5].icon?.photoId)
         assertEquals(TransitMark.End, rows[6].mark)
         assertEquals("m3", (rows[6].place as UiText.Server).text)
         assertEquals(rows.size, rows.map { it.key }.distinct().size)

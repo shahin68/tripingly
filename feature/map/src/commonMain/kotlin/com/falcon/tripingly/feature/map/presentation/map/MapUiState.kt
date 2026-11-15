@@ -239,7 +239,17 @@ data class TransitStepRow(
     val ride: TransitRide? = null,
     /** "Walk 4 min · 300 m", "Change · walk 2 min" or "4 stops · 6 min"; null at the end. */
     val detail: UiText? = null,
+    /** Where the route starts, ends or reaches a day's stop: that place's circle next to its name. */
+    val icon: TransitPlaceIcon? = null,
 )
+
+/** One of the route's own places, next to its name: its photo in a circle, or else its kind of place (or where I am). */
+@Immutable
+data class TransitPlaceIcon(val photoId: String? = null, val photoUrl: String? = null, val category: PlaceCategory? = null, val isMyLocation: Boolean = false)
+
+/** A start or end of a public transport leg: its name and its circle. */
+@Immutable
+data class TransitEnd(val title: UiText?, val icon: TransitPlaceIcon?)
 
 /** A ride's [line] (its badge) going [towards] its last stop. */
 @Immutable

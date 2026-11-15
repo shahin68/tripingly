@@ -286,7 +286,18 @@ fun drawClusterPin(
  * [pinSize] is the pin's size, so the ring hugs it.
  */
 @Immutable
-data class RouteEndMark(val position: GeoPoint, val isStart: Boolean, val pinSize: Dp, val color: Color)
+data class RouteEndMark(
+    val position: GeoPoint,
+    val isStart: Boolean,
+    val pinSize: Dp,
+    /** Unspecified: the stops' colour of the theme. */
+    val color: Color,
+    /**
+     * By public transport: a pointed pin, like Google Maps', standing on the end in place of its own pin, a white dot in
+     * the start's and the flag in the destination's (Shahin, 2026-11-15: "so we can see the start and end").
+     */
+    val isPointed: Boolean = false,
+)
 
 /** A route end's look and where on it the end's point is: [anchorY] as a share of its height (x is the middle). */
 class RouteEndIcon(val bitmap: ImageBitmap, val anchorY: Float)
@@ -320,6 +331,43 @@ fun drawRouteEndRing(pinSize: Dp, color: Color, isStart: Boolean, density: Densi
     }
     return RouteEndIcon(bitmap, anchorY = (flagRoom + ring / 2f) / (ring + flagRoom))
 }
+
+/**
+ * Draws a pointed route end ([RouteEndMark.isPointed]): a [color] drop with a thin white edge, its tip on the end (the
+ * icon's bottom middle), a white dot in its head at the start, the white flag at the destination.
+ */
+fun drawRouteEndPin(color: Color, isStart: Boolean, density: Density, layoutDirection: LayoutDirection): RouteEndIcon {
+    val width = with(density) { RouteEndPinWidth.roundToPx() }
+    val height = with(density) { RouteEndPinHeight.roundToPx() }
+    val edge = with(density) { RouteEndRingEdge.toPx() * 1.5f }
+    val bitmap = ImageBitmap(width, height)
+    CanvasDrawScope().draw(density, layoutDirection, Canvas(bitmap), Size(width.toFloat(), height.toFloat())) {
+        val radius = width / 2f
+        val drop = Path().apply {
+            // The head's circle from the left of its middle round over the top to the right, then down to the tip.
+            arcTo(Rect(0f, 0f, width.toFloat(), width.toFloat()), startAngleDegrees = 150f, sweepAngleDegrees = 240f, forceMoveTo = true)
+            lineTo(radius, height.toFloat())
+            close()
+        }
+        drawPath(drop, Color.White)
+        scale((width - edge * 2) / width, (height - edge * 2) / height, pivot = Offset(radius, height / 2f)) { drawPath(drop, color) }
+        val center = Offset(radius, radius)
+        if (isStart) {
+            drawCircle(Color.White, radius = radius * 0.36f, center = center)
+        } else {
+            // The flag in a 14-unit box in the head's middle.
+            val unit = radius * 2 * 0.6f / 24
+            val flag = PathParser().parsePathString(ROUTE_END_FLAG).toPath()
+            translate(left = center.x - 12 * unit, top = center.y - 12.5f * unit) {
+                scale(unit, unit, pivot = Offset.Zero) { drawPath(flag, Color.White) }
+            }
+        }
+    }
+    return RouteEndIcon(bitmap, anchorY = 1f)
+}
+
+private val RouteEndPinWidth = 32.dp
+private val RouteEndPinHeight = 42.dp
 
 /**
  * Material's filled flag (Icons.Filled.Flag), the route bar's destination icon, in its 24-unit box. Kept as path data,

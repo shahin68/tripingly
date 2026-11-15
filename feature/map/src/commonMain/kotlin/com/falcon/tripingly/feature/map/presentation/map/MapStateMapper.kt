@@ -11,6 +11,7 @@ import com.falcon.tripingly.core.model.config.covers
 import com.falcon.tripingly.core.model.photo.Photo
 import com.falcon.tripingly.core.model.photo.PhotoOwner
 import com.falcon.tripingly.core.model.photo.PhotoStatus
+import androidx.compose.ui.graphics.Color
 import com.falcon.tripingly.core.model.place.MapPlace
 import com.falcon.tripingly.core.model.place.PlaceImage
 import com.falcon.tripingly.core.model.place.PlaceImageSource
@@ -39,6 +40,7 @@ import com.falcon.tripingly.feature.map.presentation.component.transitLine
 import com.falcon.tripingly.feature.map.presentation.component.stopPathShape
 import com.falcon.tripingly.feature.map.presentation.map.state.Dialog
 import com.falcon.tripingly.feature.map.presentation.map.state.MapModel
+import com.falcon.tripingly.feature.map.presentation.map.state.MY_LOCATION_ID
 import com.falcon.tripingly.feature.map.presentation.map.state.Selection
 import com.falcon.tripingly.feature.map.presentation.map.state.Sheet
 import com.falcon.tripingly.feature.map.presentation.map.state.activeDayIndex
@@ -263,9 +265,12 @@ internal class MapStateMapper(
         // The places along the way show on the map too, also where the map's own pins leave them out, in their own color.
         // While a route shows, the other pins are dots, so the route, its two ends, the stops and the places along it stand out.
         val routeShows = routePoints.size > 1
+        // By public transport the ends are pointed pins standing in their pins' place (Shahin, 2026-11-15).
+        val isPointed = routeShows && route.planMode == TravelMode.Transit
+        val pointedIds = if (isPointed) ends.flatMapTo(HashSet()) { listOfNotNull(it.place.id, it.stop?.id) } else emptySet()
         // Hidden places come first: only the route's places stay, then the route makes the rest dots as always.
         val isRoutes = { id: String -> id in alongIds || id in endPlaces || id in kept }
-        val visible = if (model.arePlacesHidden) pins.filter { isRoutes(it.place.id) } else pins
+        val visible = (if (model.arePlacesHidden) pins.filter { isRoutes(it.place.id) } else pins).filter { it.place.id !in pointedIds }
         val shown = visible.mapTo(HashSet()) { it.place.id }
         val placePins = visible.map {
             when {
@@ -276,19 +281,19 @@ internal class MapStateMapper(
                 else -> it
             }
         } +
-            endPlaces.values.filter { it.place.id !in shown }.map { PlacePin(it.place, SelectedPinSize, isKept = true) } +
+            endPlaces.values.filter { it.place.id !in shown && it.place.id !in pointedIds }.map { PlacePin(it.place, SelectedPinSize, isKept = true) } +
             kept.values.filter { it.id !in shown && it.id !in endPlaces }.map { PlacePin(it, placePinSize(it, config), isAlongTheWay = it.id in alongIds, isKept = true) } +
             alongTheWay.filter { it.place.id !in shown && it.place.id !in endPlaces && it.place.id !in kept }.map { it.toPin() }
         val stopPath = stops.map { it.position }.takeIf { routePoints.isEmpty() && route.between == null }.orEmpty()
         val endColor = route.travelMode.lineColor
         return MapLayersState(
-            stops = stops.toImmutableList(),
+            stops = stops.filter { it.id !in pointedIds }.toImmutableList(),
             placePins = placePins.toImmutableList(),
             pinDotBelowZoom = config.pinDotBelowZoom,
             placeClusters = model.pins.clusters.takeUnless { model.arePlacesHidden }.orEmpty().toImmutableList(),
             // A place from search knows no cover image, so its pin's place draws it, photo included.
             selectedPlace = when (val selection = model.selection) {
-                is Selection.Place -> selection.place.let { place -> placePins.firstOrNull { it.place.id == place.id }?.place ?: place }
+                is Selection.Place -> selection.place.takeIf { it.id !in pointedIds }?.let { place -> placePins.firstOrNull { it.place.id == place.id }?.place ?: place }
                 // A new spot's pin shows the kind of place picked for it.
                 is Selection.NewSpot -> MapPlace(
                     id = "",
@@ -312,7 +317,7 @@ internal class MapStateMapper(
             isMyLocationEnabled = model.location.permission == LocationPermission.Granted,
             routeEnds = ends.map { end ->
                 val size = end.stop?.let { if (it.coverPhotoId != null) COVER_PIN_SIZE else PIN_SIZE } ?: SelectedPinSize
-                RouteEndMark(end.place.location, end.isStart, size, endColor)
+                if (isPointed) RouteEndMark(end.place.location, end.isStart, size, Color.Unspecified, isPointed = true) else RouteEndMark(end.place.location, end.isStart, size, endColor)
             }.toImmutableList(),
         )
     }
@@ -348,15 +353,25 @@ internal class MapStateMapper(
     private fun transitSteps(): MapSheet? {
         val transit = plan?.route?.takeIf { route.planMode == TravelMode.Transit && it.legs.any { leg -> leg.steps.isNotEmpty() } } ?: return null
         val between = route.between
-        val stopTitle = { id: String? -> id?.let { stops.firstOrNull { stop -> stop.id == it }?.title } }
+        val stopEnd = { id: String? -> id?.let { stops.firstOrNull { stop -> stop.id == it } }?.let { TransitEnd(it.title, it.transitIcon()) } }
+        val placeEnd = { place: MapPlace, label: UiText? ->
+            TransitEnd(label ?: UiText.Server(place.name), stopAt(place)?.transitIcon() ?: place.transitIcon())
+        }
         val rows = transitStepRows(
             legs = transit.legs,
-            fromTitle = { leg -> stopTitle(leg.fromMarkerId) ?: between?.let { it.fromLabel ?: UiText.Server(it.from.name) } },
-            toTitle = { leg -> stopTitle(leg.toMarkerId) ?: between?.let { it.toLabel ?: UiText.Server(it.to.name) } },
+            fromEnd = { leg -> stopEnd(leg.fromMarkerId) ?: between?.let { placeEnd(it.from, it.fromLabel) } },
+            toEnd = { leg -> stopEnd(leg.toMarkerId) ?: between?.let { placeEnd(it.to, it.toLabel) } },
         )
         val (title, subtitle) = transitStepsHeader(transit)
         return MapSheet.TransitSteps(title, subtitle, rows.toImmutableList(), transit.isTypicalTimes, plan.attribution)
     }
+
+    /** A stop's circle in the steps: its cover photo, or the plain place mark. */
+    private fun MapMarker.transitIcon() = TransitPlaceIcon(photoId = coverPhotoId, photoUrl = coverThumbUrl)
+
+    /** A place's circle in the steps: its image, or its kind of place; where I am has my location's mark. */
+    private fun MapPlace.transitIcon() =
+        if (id == MY_LOCATION_ID) TransitPlaceIcon(isMyLocation = true) else TransitPlaceIcon(coverImageId, coverThumbUrl, category)
 
     /** The trip's owner and members but me: the people my comment can @mention. */
     private fun tripPeople(): ImmutableList<UserSummary> =

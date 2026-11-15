@@ -22,6 +22,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.takeOrElse
 import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
@@ -39,6 +40,7 @@ import com.falcon.tripingly.core.designsystem.component.icon
 import com.falcon.tripingly.core.designsystem.component.rememberHaptics
 import com.falcon.tripingly.core.designsystem.theme.extendedColors
 import com.falcon.tripingly.core.location.model.Coordinates
+import com.falcon.tripingly.core.model.trip.GeoPoint
 import com.falcon.tripingly.core.model.place.GeoBounds
 import com.falcon.tripingly.core.model.place.MapPlace
 import com.falcon.tripingly.core.model.place.PlaceCategory
@@ -356,8 +358,11 @@ internal fun GoogleSdkMapView(
     val coverThumbs = rememberCoverThumbs(markers)
     val stopTitles = markers.map { it.title.asString() }
     // The rings round the route's ends, one per pin size and way of travelling's colour.
-    val rings = remember(density) { mutableMapOf<Triple<Dp, Color, Boolean>, Pair<UIImage, Float>>() }
-    LaunchedEffect(markers, stopTitles, coverThumbs, pinPhotos, selectedPlace, placePins, placeClusters, pinIcons, clusterIcons, isDots, routeEnds) {
+    val rings = remember(density) { mutableMapOf<RouteEndMark, Pair<UIImage, Float>>() }
+    // Public transport: the rides' badges and their rings, one icon per look.
+    val lineMarks = themedLine?.marks.orEmpty()
+    val markIcons = remember(density) { mutableMapOf<LineMark, UIImage>() }
+    LaunchedEffect(markers, stopTitles, coverThumbs, pinPhotos, selectedPlace, placePins, placeClusters, pinIcons, clusterIcons, isDots, routeEnds, lineMarks) {
         val stops = markers.mapIndexed { index, marker ->
             GoogleMapMarker(
                 key = marker.id,
@@ -448,8 +453,15 @@ internal fun GoogleSdkMapView(
         // The route's ends: a thick ring in the way of travelling's colour round each end's pin, under it.
         val ends = routeEnds.map { end ->
             // The destination's has its flag on top.
-            val (icon, anchorY) = rings.getOrPut(Triple(end.pinSize, end.color, end.isStart)) {
-                drawRouteEndRing(end.pinSize, end.color, end.isStart, density, layoutDirection).let { it.bitmap.toUIImage(density.density) to it.anchorY }
+            // By public transport a pointed pin instead, in the stops' colour.
+            val look = end.copy(position = GeoPoint(0.0, 0.0), color = end.color.takeOrElse { stopColor })
+            val (icon, anchorY) = rings.getOrPut(look) {
+                val drawn = if (look.isPointed) {
+                    drawRouteEndPin(look.color, look.isStart, density, layoutDirection)
+                } else {
+                    drawRouteEndRing(look.pinSize, look.color, look.isStart, density, layoutDirection)
+                }
+                drawn.bitmap.toUIImage(density.density) to drawn.anchorY
             }
             GoogleMapMarker(
                 key = ROUTE_END_KEY + end.isStart,
@@ -459,12 +471,38 @@ internal fun GoogleSdkMapView(
                 icon = icon,
                 anchorX = 0.5,
                 anchorY = anchorY.toDouble(),
-                zIndex = ROUTE_END_Z,
+                zIndex = if (end.isPointed) POINTED_END_Z else ROUTE_END_Z,
                 showsInfoWindow = false,
                 fadesIn = false,
             )
         }
-        map.setMarkers(pins + clusters + stops + listOfNotNull(place) + ends)
+        // Rings first, so the badges come later and draw over them at the same zIndex.
+        val marks = lineMarks.sortedBy { it is LineMark.Badge }.mapIndexed { index, mark ->
+            val look = when (mark) {
+                is LineMark.Ring -> mark.copy(position = Coordinates(0.0, 0.0))
+                is LineMark.Badge -> mark.copy(position = Coordinates(0.0, 0.0))
+            }
+            val icon = markIcons.getOrPut(look) {
+                when (mark) {
+                    is LineMark.Ring -> drawLineRing(mark.color, density, layoutDirection)
+                    is LineMark.Badge -> drawLineBadge(mark.name, mark.color, mark.textColor, textMeasurer, density, layoutDirection)
+                }.toUIImage(density.density)
+            }
+            GoogleMapMarker(
+                key = LINE_MARK_KEY + index,
+                latitude = mark.position.latitude,
+                longitude = mark.position.longitude,
+                title = "",
+                icon = icon,
+                anchorX = 0.5,
+                anchorY = 0.5,
+                // Over the line, under the stops.
+                zIndex = 0,
+                showsInfoWindow = false,
+                fadesIn = false,
+            )
+        }
+        map.setMarkers(marks + pins + clusters + stops + listOfNotNull(place) + ends)
     }
 
     // Stopped (another screen covers the map, or the app is in the background): the map draws nothing.
@@ -500,6 +538,8 @@ private fun PlaceCluster.key() = "$CLUSTER_KEY${location.lat},${location.lng}"
 // Marker keys that aren't stop ids: stop ids are UUIDs.
 private const val SELECTED_PLACE_KEY = "selected-place"
 private const val ROUTE_END_KEY = "route-end:"
+private const val LINE_MARK_KEY = "line-mark:"
+private const val POINTED_END_Z = 3
 
 /** The rings round a route's ends: under their pins (kept places and stops at 1), over the other places. */
 private const val ROUTE_END_Z = 0

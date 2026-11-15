@@ -98,16 +98,17 @@ internal fun transitStepsHeader(route: Route): Pair<UiText, UiText?> {
 
 /**
  * A public transport route's [legs] as the canvas's timeline: a row where each walk or ride sets off (its time, place
- * and mark), then one where the route ends. A leg's start is [fromTitle] (a day's stop, or where A to B starts), the end
- * [toTitle]; a day's stops on the way show as stops, their arrival and departure one row.
+ * and mark), then one where the route ends. A leg's start is [fromEnd] (a day's stop, or where A to B starts), the end
+ * [toEnd], each with its circle; a day's stops on the way show as stops, their arrival and departure one row.
  */
-internal fun transitStepRows(legs: List<RouteLeg>, fromTitle: (RouteLeg) -> UiText?, toTitle: (RouteLeg) -> UiText?): List<TransitStepRow> {
+internal fun transitStepRows(legs: List<RouteLeg>, fromEnd: (RouteLeg) -> TransitEnd?, toEnd: (RouteLeg) -> TransitEnd?): List<TransitStepRow> {
     val withSteps = legs.filter { it.steps.isNotEmpty() }
     val rows = withSteps.flatMapIndexed { legIndex, leg ->
         leg.steps.mapIndexed { index, step ->
             val before = leg.steps.getOrNull(index - 1)
             val isChange = !step.isRide && before?.isRide == true && leg.steps.getOrNull(index + 1)?.isRide == true
-            val place = (if (index == 0) fromTitle(leg) else null) ?: step.from.name?.let(UiText::Server)
+            val start = if (index == 0) fromEnd(leg) else null
+            val place = start?.title ?: step.from.name?.let(UiText::Server)
             val mark = when {
                 index == 0 && legIndex > 0 -> TransitMark.Stop
                 isChange -> TransitMark.Change
@@ -132,17 +133,20 @@ internal fun transitStepRows(legs: List<RouteLeg>, fromTitle: (RouteLeg) -> UiTe
                     isChange -> UiText.Resource(Res.string.map_transit_change_walk, duration)
                     else -> UiText.Resource(Res.string.map_transit_walk_detail, duration, distanceText(step.distanceMeters))
                 },
+                icon = start?.icon,
             )
         }
     }
     val lastLeg = withSteps.lastOrNull() ?: return rows
     val last = lastLeg.steps.last()
+    val destination = toEnd(lastLeg)
     val end = TransitStepRow(
         key = "end",
         time = clockTime(last.to.time),
-        place = toTitle(lastLeg) ?: last.to.name?.let(UiText::Server),
+        place = destination?.title ?: last.to.name?.let(UiText::Server),
         mark = TransitMark.End,
         path = null,
+        icon = destination?.icon,
     )
     return rows + end
 }
