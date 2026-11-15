@@ -2244,9 +2244,11 @@ class MapViewModelTest {
         viewModel.onAction(MapAction.Plan.OpenTransitSteps)
         testScheduler.advanceUntilIdle()
         val steps = assertIs<MapSheet.TransitSteps>(viewModel.uiState.value.sheet)
-        // Each leg starts with the stop it goes to, then its ride.
-        assertEquals(2, steps.rows.count { it is TransitStepRow.Leg })
-        assertEquals(2, steps.rows.count { it is TransitStepRow.Ride })
+        // A timeline: the first stop gets on the red line, the second (a day's stop on the way) gets on again, the third ends it.
+        assertEquals(listOf(TransitMark.Line(0xFFE3000F), TransitMark.Stop, TransitMark.End), steps.rows.map { it.mark })
+        assertEquals(listOf(TransitPath.Ride(0xFFE3000F), TransitPath.Ride(0xFFE3000F), null), steps.rows.map { it.path })
+        assertEquals(listOf("Stop 1", "Stop 2", "Stop 3"), steps.rows.map { (it.place as UiText.Server).text })
+        assertEquals(2, steps.rows.count { it.ride?.line?.name == "U1" })
         assertTrue(steps.hasBack)
         viewModel.onAction(MapAction.Sheet.Back)
         testScheduler.advanceUntilIdle()

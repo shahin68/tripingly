@@ -2,20 +2,21 @@ package com.falcon.tripingly.feature.map.presentation.map
 
 import com.falcon.tripingly.core.model.place.MapPlace
 import com.falcon.tripingly.core.model.route.AlongTheWayPlace
+import com.falcon.tripingly.core.model.route.Route
 import com.falcon.tripingly.core.model.route.RoutePlan
 import com.falcon.tripingly.core.model.route.RouteLeg
 import com.falcon.tripingly.feature.map.generated.resources.Res
-import com.falcon.tripingly.feature.map.generated.resources.map_transit_ride_detail
-import com.falcon.tripingly.feature.map.generated.resources.map_transit_ride_times
+import com.falcon.tripingly.feature.map.generated.resources.map_transit_change_walk
+import com.falcon.tripingly.feature.map.generated.resources.map_transit_changes
+import com.falcon.tripingly.feature.map.generated.resources.map_transit_joined
+import com.falcon.tripingly.feature.map.generated.resources.map_transit_no_change
 import com.falcon.tripingly.feature.map.generated.resources.map_transit_stops
-import com.falcon.tripingly.feature.map.generated.resources.map_transit_to_stop
+import com.falcon.tripingly.feature.map.generated.resources.map_transit_times
 import com.falcon.tripingly.feature.map.generated.resources.map_transit_towards
-import com.falcon.tripingly.feature.map.generated.resources.map_transit_walk
 import com.falcon.tripingly.feature.map.generated.resources.map_transit_walk_detail
-import com.falcon.tripingly.feature.map.generated.resources.map_transit_walk_to
+import com.falcon.tripingly.feature.map.generated.resources.map_transit_walk_total
 import com.falcon.tripingly.feature.map.presentation.map.ui.distanceText
 import com.falcon.tripingly.feature.map.presentation.map.ui.durationText
-import com.falcon.tripingly.core.model.route.TransitVehicle
 import com.falcon.tripingly.core.model.route.TravelMode
 import com.falcon.tripingly.core.model.trip.GeoPoint
 import com.falcon.tripingly.core.ui.UiText
@@ -48,9 +49,12 @@ internal fun RouteModel.summary(plan: RoutePlan?, alongTheWay: List<AlongTheWayP
     isTransitCovered = isTransitCovered,
     leaveAt = leaveAt(),
     transitNote = transitNote,
+    transitTimes = plan?.route?.takeIf { planMode == TravelMode.Transit }?.let { route ->
+        route.times()?.let { UiText.Resource(Res.string.map_transit_joined, it, changesText(route.transfers)) }
+    },
     transitLegs = plan?.takeIf { planMode == TravelMode.Transit }?.route?.legs.orEmpty().flatMap { it.steps }.mapNotNull { step ->
         when {
-            step.isRide -> step.line?.let { TransitChip.Ride(it, step.vehicle ?: TransitVehicle.Other) }
+            step.isRide -> step.line?.let { TransitChip.Ride(it, step.durationSeconds) }
             // A step across the street between two rides isn't worth a chip.
             step.durationSeconds >= MIN_WALK_CHIP_SECONDS -> TransitChip.Walk(step.durationSeconds)
             else -> null
@@ -68,29 +72,79 @@ private fun RouteModel.leaveAt(): LeaveAtState? {
     return LeaveAtState(clockTime(time), isArriveBy = transitPick?.isArriveBy == true && between != null)
 }
 
-/** A public transport route's legs as the steps sheet's rows; a day's leg starts with the stop it goes to ([stopTitle]). */
-internal fun transitStepRows(legs: List<RouteLeg>, stopTitle: (String) -> UiText?): List<TransitStepRow> = legs.flatMapIndexed { legIndex, leg ->
-    val header = leg.toMarkerId?.let(stopTitle)?.let { TransitStepRow.Leg("leg-$legIndex", UiText.Resource(Res.string.map_transit_to_stop, it)) }
-    listOfNotNull(header) + leg.steps.mapIndexed { index, step ->
-        val key = "step-$legIndex-$index"
-        val duration = durationText(step.durationSeconds)
-        if (step.isRide) {
-            TransitStepRow.Ride(
-                key = key,
-                line = step.line,
-                vehicle = step.vehicle ?: TransitVehicle.Other,
-                towards = step.headsign?.let { UiText.Resource(Res.string.map_transit_towards, it) },
-                times = UiText.Resource(Res.string.map_transit_ride_times, step.from.name.orEmpty(), clockTime(step.from.time), step.to.name.orEmpty(), clockTime(step.to.time)),
-                detail = UiText.Resource(Res.string.map_transit_ride_detail, UiText.Plural(Res.plurals.map_transit_stops, step.stops, step.stops), duration),
-            )
-        } else {
-            TransitStepRow.Walk(
-                key = key,
-                title = step.to.name?.let { UiText.Resource(Res.string.map_transit_walk_to, duration, it) } ?: UiText.Resource(Res.string.map_transit_walk, duration),
-                detail = UiText.Resource(Res.string.map_transit_walk_detail, distanceText(step.distanceMeters), clockTime(step.from.time), clockTime(step.to.time)),
+/** "09:12 – 09:36": when a public transport route sets off and arrives, once both are known. */
+internal fun Route.times(): UiText? {
+    val departure = departure ?: return null
+    val arrival = arrival ?: return null
+    return UiText.Resource(Res.string.map_transit_times, clockTime(departure), clockTime(arrival))
+}
+
+/** "no change", "1 change", "3 changes". */
+internal fun changesText(transfers: Int): UiText =
+    if (transfers == 0) UiText.Resource(Res.string.map_transit_no_change) else UiText.Plural(Res.plurals.map_transit_changes, transfers, transfers)
+
+/** The steps sheet's top of [route]: "24 min · 1 change" over "09:12 – 09:36 · walk 10 min". */
+internal fun transitStepsHeader(route: Route): Pair<UiText, UiText?> {
+    val title = UiText.Resource(Res.string.map_transit_joined, durationText(route.durationSeconds), changesText(route.transfers))
+    val walking = route.legs.flatMap { it.steps }.filter { !it.isRide }.sumOf { it.durationSeconds }
+    val walk = UiText.Resource(Res.string.map_transit_walk_total, durationText(walking)).takeIf { walking > 0 }
+    val times = route.times()
+    val subtitle = when {
+        times != null && walk != null -> UiText.Resource(Res.string.map_transit_joined, times, walk)
+        else -> times ?: walk
+    }
+    return title to subtitle
+}
+
+/**
+ * A public transport route's [legs] as the canvas's timeline: a row where each walk or ride sets off (its time, place
+ * and mark), then one where the route ends. A leg's start is [fromTitle] (a day's stop, or where A to B starts), the end
+ * [toTitle]; a day's stops on the way show as stops, their arrival and departure one row.
+ */
+internal fun transitStepRows(legs: List<RouteLeg>, fromTitle: (RouteLeg) -> UiText?, toTitle: (RouteLeg) -> UiText?): List<TransitStepRow> {
+    val withSteps = legs.filter { it.steps.isNotEmpty() }
+    val rows = withSteps.flatMapIndexed { legIndex, leg ->
+        leg.steps.mapIndexed { index, step ->
+            val before = leg.steps.getOrNull(index - 1)
+            val isChange = !step.isRide && before?.isRide == true && leg.steps.getOrNull(index + 1)?.isRide == true
+            val place = (if (index == 0) fromTitle(leg) else null) ?: step.from.name?.let(UiText::Server)
+            val mark = when {
+                index == 0 && legIndex > 0 -> TransitMark.Stop
+                isChange -> TransitMark.Change
+                step.isRide -> TransitMark.Line(step.line?.color)
+                before != null && before.isRide -> TransitMark.Line(before.line?.color)
+                else -> TransitMark.Walk
+            }
+            val duration = durationText(step.durationSeconds)
+            TransitStepRow(
+                key = "step-$legIndex-$index",
+                time = clockTime(step.from.time),
+                place = place,
+                mark = mark,
+                path = when {
+                    step.isRide -> TransitPath.Ride(step.line?.color)
+                    isChange -> TransitPath.Change
+                    else -> TransitPath.Walk
+                },
+                ride = if (step.isRide) TransitRide(step.line, step.headsign?.let { UiText.Resource(Res.string.map_transit_towards, it) }) else null,
+                detail = when {
+                    step.isRide -> UiText.Resource(Res.string.map_transit_joined, UiText.Plural(Res.plurals.map_transit_stops, step.stops, step.stops), duration)
+                    isChange -> UiText.Resource(Res.string.map_transit_change_walk, duration)
+                    else -> UiText.Resource(Res.string.map_transit_walk_detail, duration, distanceText(step.distanceMeters))
+                },
             )
         }
     }
+    val lastLeg = withSteps.lastOrNull() ?: return rows
+    val last = lastLeg.steps.last()
+    val end = TransitStepRow(
+        key = "end",
+        time = clockTime(last.to.time),
+        place = toTitle(lastLeg) ?: last.to.name?.let(UiText::Server),
+        mark = TransitMark.End,
+        path = null,
+    )
+    return rows + end
 }
 
 /** The time "Leave at" opens on: the one picked, or the one the route was asked for, or now. */

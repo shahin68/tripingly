@@ -193,15 +193,18 @@
     <string name="map_transit_time_title">Időpont ezen a napon</string>
     <string name="map_transit_time_done">Kész</string>
     <string name="map_transit_show_steps">Lépések mutatása</string>
-    <string name="map_transit_steps_title">Lépésről lépésre</string>
-    <string name="map_transit_walk">%1$s gyalog</string>
-    <string name="map_transit_walk_to">%1$s gyalog ide: %2$s</string>
     <string name="map_transit_towards">%1$s felé</string>
-    <string name="map_transit_ride_times">%1$s %2$s → %3$s %4$s</string>
-    <string name="map_transit_to_stop">Cél: %1$s</string>
     <string name="map_transit_typical">Az időpontok a hét ezen napjának szokásos menetrendjét követik.</string>
-    <string name="map_transit_walk_detail">%1$s · %2$s → %3$s</string>
-    <string name="map_transit_ride_detail">%1$s · %2$s</string>
+    <string name="map_transit_walk_detail">%1$s gyalog · %2$s</string>
+    <string name="map_transit_change_walk">Átszállás · %1$s gyalog</string>
+    <string name="map_transit_walk_total">%1$s gyalog</string>
+    <string name="map_transit_times">%1$s – %2$s</string>
+    <string name="map_transit_joined">%1$s · %2$s</string>
+    <string name="map_transit_no_change">átszállás nélkül</string>
+    <plurals name="map_transit_changes">
+        <item quantity="one">%1$d átszállás</item>
+        <item quantity="other">%1$d átszállás</item>
+    </plurals>
     <plurals name="map_transit_stops">
         <item quantity="one">%1$d megálló</item>
         <item quantity="other">%1$d megálló</item>

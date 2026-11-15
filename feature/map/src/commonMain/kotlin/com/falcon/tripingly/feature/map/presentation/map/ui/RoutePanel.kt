@@ -169,7 +169,10 @@ private fun AnimatedVisibilityScope.RouteCardContent(route: RouteSummaryState, i
             TravelModeToggle(route.mode, onModeSelected = { onAction(MapAction.Plan.SelectTravelMode(it)) }, modifier = Modifier.width(ModesWidth), isTransitCovered = route.isTransitCovered)
         }
         route.transitNote?.let { TransitNoteText(it, Modifier.padding(horizontal = inset).then(rowMotion(1, isAnimated))) }
-        route.leaveAt?.let { TransitRow(it, route.transitLegs, onAction, inset, Modifier.then(rowMotion(1, isAnimated))) }
+        if (route.transitLegs.isNotEmpty()) {
+            TransitLegsButton(route.transitLegs, onAction, Modifier.padding(horizontal = inset).then(rowMotion(1, isAnimated)))
+        }
+        route.leaveAt?.let { LeaveAtButton(it, onAction, Modifier.padding(horizontal = inset).then(rowMotion(2, isAnimated))) }
         if (route.isEstimated) {
             Text(
                 text = stringResource(Res.string.map_route_estimated),
@@ -253,15 +256,18 @@ private fun RouteIcon(isLoading: Boolean) {
     }
 }
 
-/** The route's time over its length ("1 h 53 min" over "9.4 km"); empty until the first route arrives. */
+/**
+ * The route's time, bold, over its length ("1 h 53 min" over "9.4 km"), or by public transport over its times and changes
+ * ("09:12 – 09:36 · 1 change"); empty until the first route arrives.
+ */
 @Composable
 private fun RouteTotals(route: RouteSummaryState, modifier: Modifier = Modifier) {
     Column(modifier) {
         route.durationSeconds?.let {
-            Text(durationLabel(it), style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(durationLabel(it), style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
-        route.distanceMeters?.let {
-            Text(distanceText(it).asString(), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
+        (route.transitTimes ?: route.distanceMeters?.let(::distanceText))?.let {
+            Text(it.asString(), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
     }
 }

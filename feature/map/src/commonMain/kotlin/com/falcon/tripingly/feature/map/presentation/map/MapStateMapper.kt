@@ -344,11 +344,18 @@ internal class MapStateMapper(
         null -> placeImage()
     }
 
-    /** The public transport route's legs step by step; a day's leg goes to its next stop. */
+    /** The public transport route step by step, from A to B or from stop to stop of the day. */
     private fun transitSteps(): MapSheet? {
         val transit = plan?.route?.takeIf { route.planMode == TravelMode.Transit && it.legs.any { leg -> leg.steps.isNotEmpty() } } ?: return null
-        val rows = transitStepRows(transit.legs) { id -> stops.firstOrNull { it.id == id }?.title }
-        return MapSheet.TransitSteps(rows.toImmutableList(), transit.isTypicalTimes, plan.attribution)
+        val between = route.between
+        val stopTitle = { id: String? -> id?.let { stops.firstOrNull { stop -> stop.id == it }?.title } }
+        val rows = transitStepRows(
+            legs = transit.legs,
+            fromTitle = { leg -> stopTitle(leg.fromMarkerId) ?: between?.let { it.fromLabel ?: UiText.Server(it.from.name) } },
+            toTitle = { leg -> stopTitle(leg.toMarkerId) ?: between?.let { it.toLabel ?: UiText.Server(it.to.name) } },
+        )
+        val (title, subtitle) = transitStepsHeader(transit)
+        return MapSheet.TransitSteps(title, subtitle, rows.toImmutableList(), transit.isTypicalTimes, plan.attribution)
     }
 
     /** The trip's owner and members but me: the people my comment can @mention. */

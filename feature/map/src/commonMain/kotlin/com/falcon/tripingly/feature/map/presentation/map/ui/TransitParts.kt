@@ -1,36 +1,44 @@
 package com.falcon.tripingly.feature.map.presentation.map.ui
 
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.DirectionsWalk
-import androidx.compose.material.icons.filled.DirectionsBoat
-import androidx.compose.material.icons.filled.DirectionsBus
-import androidx.compose.material.icons.filled.DirectionsSubway
-import androidx.compose.material.icons.filled.DirectionsTransit
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material.icons.filled.Flag
 import androidx.compose.material.icons.filled.Schedule
-import androidx.compose.material.icons.filled.Train
-import androidx.compose.material.icons.filled.Tram
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TimePicker
 import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -38,15 +46,16 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.falcon.tripingly.core.designsystem.component.AppDialog
-import com.falcon.tripingly.core.designsystem.component.PillChip
-import com.falcon.tripingly.core.designsystem.component.SectionLabel
 import com.falcon.tripingly.core.designsystem.component.SegmentedToggle
 import com.falcon.tripingly.core.designsystem.component.SegmentedToggleOption
 import com.falcon.tripingly.core.designsystem.component.SheetHeader
@@ -54,11 +63,14 @@ import com.falcon.tripingly.core.designsystem.component.horizontalFadingEdge
 import com.falcon.tripingly.core.designsystem.theme.MapColors
 import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
 import com.falcon.tripingly.core.designsystem.theme.spacing
+import com.falcon.tripingly.core.model.route.Route
+import com.falcon.tripingly.core.model.route.RouteLeg
 import com.falcon.tripingly.core.model.route.TransitLine
 import com.falcon.tripingly.core.model.route.TransitStep
 import com.falcon.tripingly.core.model.route.TransitStop
 import com.falcon.tripingly.core.model.route.TransitVehicle
 import com.falcon.tripingly.core.model.trip.GeoPoint
+import com.falcon.tripingly.core.ui.UiText
 import com.falcon.tripingly.feature.map.generated.resources.Res
 import com.falcon.tripingly.feature.map.generated.resources.map_transit_arrive
 import com.falcon.tripingly.feature.map.generated.resources.map_transit_arrive_by
@@ -67,7 +79,6 @@ import com.falcon.tripingly.feature.map.generated.resources.map_transit_leave_at
 import com.falcon.tripingly.feature.map.generated.resources.map_transit_no_connection
 import com.falcon.tripingly.feature.map.generated.resources.map_transit_not_here
 import com.falcon.tripingly.feature.map.generated.resources.map_transit_show_steps
-import com.falcon.tripingly.feature.map.generated.resources.map_transit_steps_title
 import com.falcon.tripingly.feature.map.generated.resources.map_transit_time_done
 import com.falcon.tripingly.feature.map.generated.resources.map_transit_time_title
 import com.falcon.tripingly.feature.map.generated.resources.map_transit_typical
@@ -76,62 +87,88 @@ import com.falcon.tripingly.feature.map.presentation.map.MapAction
 import com.falcon.tripingly.feature.map.presentation.map.MapDialog
 import com.falcon.tripingly.feature.map.presentation.map.MapSheet
 import com.falcon.tripingly.feature.map.presentation.map.TransitChip
+import com.falcon.tripingly.feature.map.presentation.map.TransitMark
+import com.falcon.tripingly.feature.map.presentation.map.TransitNote
+import com.falcon.tripingly.feature.map.presentation.map.TransitPath
 import com.falcon.tripingly.feature.map.presentation.map.TransitStepRow
 import com.falcon.tripingly.feature.map.presentation.map.transitStepRows
-import com.falcon.tripingly.core.model.route.RouteLeg
-import kotlinx.collections.immutable.toImmutableList
-import androidx.compose.foundation.lazy.items
-import com.falcon.tripingly.feature.map.presentation.map.TransitNote
+import com.falcon.tripingly.feature.map.presentation.map.transitStepsHeader
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
+import kotlinx.collections.immutable.toImmutableList
 import org.jetbrains.compose.resources.stringResource
+import kotlin.math.roundToInt
 import kotlin.time.Instant
 
 /**
- * The public transport row of the route card: "Leave at 14:05" (never "Leave now"; Shahin, 2026-11-15), then the route's
- * walks and rides, which open step by step in their own sheet.
+ * The route's walks and rides in one rounded button, as the canvas's live demo draws them: walk minutes, line badges with
+ * their ride minutes, › between them and a chevron at the end. A tap opens them step by step.
  */
 @Composable
-internal fun TransitRow(leaveAt: LeaveAtState, legs: ImmutableList<TransitChip>, onAction: (MapAction) -> Unit, inset: Dp, modifier: Modifier = Modifier) {
-    Row(modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-        PillChip(
-            label = stringResource(if (leaveAt.isArriveBy) Res.string.map_transit_arrive_by else Res.string.map_transit_leave_at, leaveAt.time),
-            onClick = { onAction(MapAction.Plan.OpenLeaveAt) },
-            leading = { Icon(Icons.Default.Schedule, contentDescription = null, modifier = Modifier.padding(start = MaterialTheme.spacing.small).size(18.dp)) },
-            modifier = Modifier.padding(start = inset),
-        )
-        if (legs.isNotEmpty()) {
+internal fun TransitLegsButton(legs: ImmutableList<TransitChip>, onAction: (MapAction) -> Unit, modifier: Modifier = Modifier) {
+    val shape = RoundedCornerShape(LegsHeight / 2)
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .height(LegsHeight)
+            .clip(shape)
+            .background(MaterialTheme.colorScheme.surfaceVariant)
+            .clickable(onClickLabel = stringResource(Res.string.map_transit_show_steps), role = Role.Button) { onAction(MapAction.Plan.OpenTransitSteps) }
+            .padding(start = MaterialTheme.spacing.small + MaterialTheme.spacing.extraSmall, end = MaterialTheme.spacing.small),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        // A hand-drawn container: its text and icons take its colour.
+        CompositionLocalProvider(LocalContentColor provides MaterialTheme.colorScheme.onSurfaceVariant) {
             val listState = rememberLazyListState()
-            val showSteps = stringResource(Res.string.map_transit_show_steps)
             LazyRow(
                 state = listState,
                 modifier = Modifier.weight(1f).horizontalFadingEdge(listState),
-                contentPadding = PaddingValues(start = MaterialTheme.spacing.small, end = inset),
-                horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraSmall),
+                horizontalArrangement = Arrangement.spacedBy(LegGap),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                // One chip per walk or ride, in order; a route's chips only change with the route, so the index is their key.
-                itemsIndexed(legs, key = { index, _ -> index }) { _, chip ->
-                    TransitChipItem(chip, Modifier.animateItem().clip(MaterialTheme.shapes.small).clickable(onClickLabel = showSteps) { onAction(MapAction.Plan.OpenTransitSteps) })
-                }
+                // One per walk or ride, in order; a route's chips only change with the route, so the index is their key.
+                itemsIndexed(legs, key = { index, _ -> index }) { index, chip -> TransitChipItem(chip, isFirst = index == 0) }
+            }
+            Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null, modifier = Modifier.size(20.dp))
+        }
+    }
+}
+
+/** A walk as its icon and minutes ("🚶 4"), a ride as its line's badge and minutes ("U3 6 min"), after a › but the first. */
+@Composable
+private fun TransitChipItem(chip: TransitChip, isFirst: Boolean) {
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(LegGap)) {
+        if (!isFirst) Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null, tint = MaterialTheme.colorScheme.outline, modifier = Modifier.size(16.dp))
+        when (chip) {
+            is TransitChip.Walk -> {
+                Icon(Icons.AutoMirrored.Filled.DirectionsWalk, contentDescription = null, modifier = Modifier.size(18.dp))
+                Text(wholeMinutes(chip.durationSeconds).toString(), style = BoldLabel, maxLines = 1)
+            }
+            is TransitChip.Ride -> {
+                LineBadge(chip.line)
+                Text(durationLabel(chip.durationSeconds), style = BoldLabel, maxLines = 1)
             }
         }
     }
 }
 
-/** A walk as its minutes, a ride as its vehicle and its line's badge. */
+/** "Leave at 14:05 ⌄" (never "Leave now"; Shahin, 2026-11-15), or "Arrive by 14:05 ⌄": opens the time picker. */
 @Composable
-private fun TransitChipItem(chip: TransitChip, modifier: Modifier = Modifier) {
-    Row(modifier.heightIn(min = ChipHeight).padding(horizontal = MaterialTheme.spacing.extraSmall), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(2.dp)) {
-        when (chip) {
-            is TransitChip.Walk -> {
-                Icon(Icons.AutoMirrored.Filled.DirectionsWalk, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(16.dp))
-                Text(durationLabel(chip.durationSeconds), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
-            }
-            is TransitChip.Ride -> {
-                Icon(chip.vehicle.icon, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(16.dp))
-                LineBadge(chip.line)
-            }
+internal fun LeaveAtButton(leaveAt: LeaveAtState, onAction: (MapAction) -> Unit, modifier: Modifier = Modifier) {
+    Surface(
+        onClick = { onAction(MapAction.Plan.OpenLeaveAt) },
+        shape = RoundedCornerShape(LeaveAtHeight / 2),
+        color = MaterialTheme.colorScheme.surfaceVariant,
+        modifier = modifier.height(LeaveAtHeight),
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = MaterialTheme.spacing.small + MaterialTheme.spacing.extraSmall),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(LegGap),
+        ) {
+            Icon(Icons.Default.Schedule, contentDescription = null, modifier = Modifier.size(16.dp))
+            Text(stringResource(if (leaveAt.isArriveBy) Res.string.map_transit_arrive_by else Res.string.map_transit_leave_at, leaveAt.time), style = BoldLabel, maxLines = 1)
+            Icon(Icons.Default.ExpandMore, contentDescription = null, modifier = Modifier.size(16.dp))
         }
     }
 }
@@ -139,14 +176,12 @@ private fun TransitChipItem(chip: TransitChip, modifier: Modifier = Modifier) {
 /** A line's name on its own colour (U1 in red), or on slate when the timetable gives none. */
 @Composable
 private fun LineBadge(line: TransitLine, modifier: Modifier = Modifier) {
-    val color = line.color?.let { Color(it) } ?: MapColors.Transit
-    val text = line.textColor?.let { Color(it) } ?: Color.White
     Text(
         text = line.name,
-        style = MaterialTheme.typography.labelMedium,
-        color = text,
+        style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.ExtraBold),
+        color = line.textColor?.let { Color(it) } ?: Color.White,
         maxLines = 1,
-        modifier = modifier.clip(MaterialTheme.shapes.extraSmall).background(color).padding(horizontal = 6.dp, vertical = 1.dp),
+        modifier = modifier.clip(BadgeShape).background(lineColor(line.color)).padding(horizontal = 6.dp, vertical = 1.dp),
     )
 }
 
@@ -166,63 +201,96 @@ internal fun TransitNoteText(note: TransitNote, modifier: Modifier = Modifier) {
     )
 }
 
-/** The way public transport travels, as its icon. */
-internal val TransitVehicle.icon: ImageVector
-    get() = when (this) {
-        TransitVehicle.Tram -> Icons.Default.Tram
-        TransitVehicle.Subway -> Icons.Default.DirectionsSubway
-        TransitVehicle.Bus -> Icons.Default.DirectionsBus
-        TransitVehicle.Train -> Icons.Default.Train
-        TransitVehicle.Ferry -> Icons.Default.DirectionsBoat
-        TransitVehicle.CableCar, TransitVehicle.Other -> Icons.Default.DirectionsTransit
-    }
-
 /**
- * The public transport route step by step: each walk with its minutes and where it goes, each ride with its line, its
- * direction, where to get on and off and when. A day's legs each start with the stop they go to.
+ * The public transport route step by step, as the canvas's timeline: "24 min · 1 change" over its times at the top (the
+ * back arrow on the right, like every sheet's), then a row per walk or ride: its time, its mark on the line, the place in
+ * bold and what happens there, the line on to the next row dotted for walks and solid in the line's colour for rides; a
+ * flag where it ends, the timetables' credit at the foot.
  */
 @Composable
 internal fun TransitStepsSheet(sheet: MapSheet.TransitSteps, onClose: () -> Unit, modifier: Modifier = Modifier) {
     Column(modifier.padding(bottom = MaterialTheme.spacing.large)) {
-        SheetHeader(title = stringResource(Res.string.map_transit_steps_title), onClose = onClose)
-        LazyColumn(contentPadding = PaddingValues(horizontal = MaterialTheme.spacing.large), verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium)) {
-            items(sheet.rows, key = { it.key }) { row -> TransitStepRowItem(row, Modifier.animateItem()) }
-            if (sheet.isTypicalTimes) {
-                item(key = "typical") { Text(stringResource(Res.string.map_transit_typical), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
-            }
-            sheet.attribution?.let { credit ->
-                item(key = "credit") { RouteAttribution(credit) }
+        SheetHeader(title = sheet.title.asString(), subtitle = sheet.subtitle?.asString(), onClose = onClose)
+        LazyColumn(contentPadding = PaddingValues(horizontal = MaterialTheme.spacing.large, vertical = MaterialTheme.spacing.small)) {
+            items(sheet.rows, key = { it.key }) { row -> TransitTimelineRow(row, Modifier.animateItem()) }
+            item(key = "foot") {
+                Column(Modifier.padding(top = MaterialTheme.spacing.medium), verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraSmall)) {
+                    if (sheet.isTypicalTimes) {
+                        Text(stringResource(Res.string.map_transit_typical), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                    sheet.attribution?.let { RouteAttribution(it) }
+                }
             }
         }
     }
 }
 
+/** One row of the timeline: the time, the mark with the line down to the next row, then the place and what happens. */
 @Composable
-private fun TransitStepRowItem(row: TransitStepRow, modifier: Modifier = Modifier) {
-    if (row is TransitStepRow.Leg) return SectionLabel(row.toStop.asString(), modifier)
-    Row(modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium)) {
-        Box(Modifier.size(StepIconSize).clip(MaterialTheme.shapes.small).background(MaterialTheme.colorScheme.surfaceVariant), contentAlignment = Alignment.Center) {
-            Icon(if (row is TransitStepRow.Ride) row.vehicle.icon else Icons.AutoMirrored.Filled.DirectionsWalk, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+private fun TransitTimelineRow(row: TransitStepRow, modifier: Modifier = Modifier) {
+    Row(modifier.fillMaxWidth().height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small)) {
+        Text(row.time, style = BoldTitle, maxLines = 1, modifier = Modifier.width(TimeWidth))
+        Column(Modifier.width(TrackWidth).fillMaxHeight(), horizontalAlignment = Alignment.CenterHorizontally) {
+            TimelineMark(row.mark, Modifier.padding(top = MarkTop))
+            row.path?.let { TimelinePath(it, Modifier.weight(1f).padding(top = PathGap)) }
         }
-        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            when (row) {
-                is TransitStepRow.Ride -> {
-                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small)) {
-                        row.line?.let { LineBadge(it) }
-                        row.towards?.let { Text(it.asString(), style = MaterialTheme.typography.titleSmall, maxLines = 2, overflow = TextOverflow.Ellipsis) }
-                    }
-                    Text(row.times.asString(), style = MaterialTheme.typography.bodyMedium)
-                    Text(row.detail.asString(), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Column(
+            modifier = Modifier.weight(1f).padding(bottom = if (row.path != null) MaterialTheme.spacing.medium else 0.dp),
+            verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraSmall),
+        ) {
+            row.place?.let { Text(it.asString(), style = BoldTitle, maxLines = 2, overflow = TextOverflow.Ellipsis) }
+            row.ride?.let { ride ->
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small)) {
+                    ride.line?.let { LineBadge(it) }
+                    ride.towards?.let { Text(it.asString(), style = BoldLabel, maxLines = 1, overflow = TextOverflow.Ellipsis) }
                 }
-                is TransitStepRow.Walk -> {
-                    Text(row.title.asString(), style = MaterialTheme.typography.titleSmall)
-                    Text(row.detail.asString(), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-                is TransitStepRow.Leg -> Unit
+            }
+            row.detail?.let { Text(it.asString(), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+        }
+    }
+}
+
+/** Where a row sits on the line: a ring (walk green, the line's colour, the text colour at a change), a dot for a day's stop, a flag at the end. */
+@Composable
+private fun TimelineMark(mark: TransitMark, modifier: Modifier = Modifier) {
+    val ring = when (mark) {
+        TransitMark.Walk -> MapColors.Walk
+        TransitMark.Change -> MaterialTheme.colorScheme.onSurface
+        is TransitMark.Line -> lineColor(mark.color)
+        TransitMark.Stop -> MaterialTheme.colorScheme.primary
+        TransitMark.End -> return Icon(Icons.Default.Flag, contentDescription = null, modifier = modifier.size(TrackWidth))
+    }
+    val fill = if (mark == TransitMark.Stop) ring else MaterialTheme.colorScheme.surface
+    Box(modifier.size(MarkSize).clip(CircleShape).background(fill).border(RingWidth, ring, CircleShape))
+}
+
+/** The line down to the next row: dotted for walks (quiet at a change), a solid bar in the line's colour for rides. */
+@Composable
+private fun TimelinePath(path: TransitPath, modifier: Modifier = Modifier) {
+    when (path) {
+        is TransitPath.Ride -> Box(modifier.width(BarWidth).clip(RoundedCornerShape(BarWidth / 2)).background(lineColor(path.color)))
+        TransitPath.Walk, TransitPath.Change -> {
+            val color = if (path == TransitPath.Walk) MapColors.Walk else MaterialTheme.colorScheme.outlineVariant
+            Canvas(modifier.width(RingWidth)) {
+                val dot = RingWidth.toPx()
+                // Round caps on dashes of no length draw dots, one dot wide and two apart.
+                drawLine(
+                    color = color,
+                    start = Offset(size.width / 2, dot / 2),
+                    end = Offset(size.width / 2, size.height),
+                    strokeWidth = dot,
+                    cap = StrokeCap.Round,
+                    pathEffect = PathEffect.dashPathEffect(floatArrayOf(0f, dot * 2)),
+                )
             }
         }
     }
 }
+
+private fun lineColor(color: Long?): Color = color?.let { Color(it) } ?: MapColors.Transit
+
+/** A walk's minutes as a bare number, as the legs row shows them; at least one. */
+private fun wholeMinutes(seconds: Int): Int = (seconds / 60.0).roundToInt().coerceAtLeast(1)
 
 /**
  * "Leave at": a time on the open day (the date stays the day's; Shahin, 2026-11-15), leaving then or, from A to B,
@@ -249,31 +317,50 @@ internal fun LeaveAtDialog(dialog: MapDialog.LeaveAt, onAction: (MapAction) -> U
     }
 }
 
-private val ChipHeight = 32.dp
-private val StepIconSize = 36.dp
+/** The canvas's bold labels: 14 sp, bold. */
+private val BoldLabel @Composable get() = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold)
 
-private val previewSteps = persistentListOf(
-    TransitStep(false, null, null, null, previewStop(null, 0), previewStop("Stephansplatz", 4), 0, 320, 240, emptyList()),
-    TransitStep(true, TransitVehicle.Subway, TransitLine("U1", 0xFFE3000FL, 0xFFFFFFFFL), "Leopoldau", previewStop("Stephansplatz", 6), previewStop("Praterstern", 10), 2, 2100, 240, emptyList()),
-    TransitStep(true, TransitVehicle.Tram, TransitLine("O", null, null), "Raxstraße", previewStop("Praterstern", 13), previewStop("Hauptbahnhof", 30), 11, 4800, 1020, emptyList()),
-    TransitStep(false, null, null, null, previewStop("Hauptbahnhof", 30), previewStop(null, 35), 0, 380, 300, emptyList()),
+/** The canvas's boldest text: times and places, 14 sp, extra bold. */
+private val BoldTitle @Composable get() = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.ExtraBold)
+
+private val LegsHeight = 40.dp
+private val LeaveAtHeight = 36.dp
+private val LegGap = 4.dp
+private val BadgeShape = RoundedCornerShape(6.dp)
+private val TimeWidth = 44.dp
+private val TrackWidth = 18.dp
+private val MarkSize = 12.dp
+private val MarkTop = 4.dp
+private val RingWidth = 3.dp
+private val BarWidth = 5.dp
+private val PathGap = 2.dp
+
+private val previewSteps = listOf(
+    TransitStep(false, null, null, null, previewStop(null, 12), previewStop("Neubaugasse", 16), 0, 300, 240, emptyList()),
+    TransitStep(true, TransitVehicle.Subway, TransitLine("U3", 0xFFEF7C00L, 0xFFFFFFFFL), "Simmering", previewStop("Neubaugasse", 16), previewStop("Stephansplatz", 22), 4, 2100, 360, emptyList()),
+    TransitStep(false, null, null, null, previewStop("Stephansplatz", 22), previewStop("Stephansplatz", 25), 0, 120, 180, emptyList()),
+    TransitStep(true, TransitVehicle.Subway, TransitLine("U1", 0xFFE3000FL, 0xFFFFFFFFL), "Leopoldau", previewStop("Stephansplatz", 25), previewStop("Praterstern", 30), 3, 1900, 300, emptyList()),
+    TransitStep(false, null, null, null, previewStop("Praterstern", 30), previewStop(null, 36), 0, 450, 360, emptyList()),
 )
 
 private fun previewStop(name: String?, minute: Int) =
-    TransitStop(name, GeoPoint(48.2, 16.37), Instant.parse("2026-11-16T13:${minute.toString().padStart(2, '0')}:00Z"))
+    TransitStop(name, GeoPoint(48.2, 16.37), Instant.parse("2026-11-16T08:${minute.toString().padStart(2, '0')}:00Z"))
+
+private val previewRoute = Route(emptyList(), 5000, 1440, listOf(RouteLeg(null, null, 5000, 1440, previewSteps)), previewSteps.first().from.time, previewSteps.last().to.time, transfers = 1)
 
 @Composable
 private fun TransitPreviewContent() {
     PlanPreviewSheet {
-        Column(Modifier.padding(MaterialTheme.spacing.medium), verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium)) {
-            TransitRow(
-                LeaveAtState("14:00", isArriveBy = false),
-                persistentListOf(TransitChip.Walk(240), TransitChip.Ride(previewSteps[1].line!!, TransitVehicle.Subway), TransitChip.Ride(previewSteps[2].line!!, TransitVehicle.Tram), TransitChip.Walk(300)),
+        Column(Modifier.padding(MaterialTheme.spacing.medium), verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small)) {
+            TransitLegsButton(
+                persistentListOf(TransitChip.Walk(240), TransitChip.Ride(previewSteps[1].line!!, 360), TransitChip.Ride(previewSteps[3].line!!, 300), TransitChip.Walk(360)),
                 onAction = {},
-                inset = MaterialTheme.spacing.small,
             )
+            LeaveAtButton(LeaveAtState("09:12", isArriveBy = false), onAction = {})
             TransitNoteText(TransitNote.NotHere)
-            TransitStepsSheet(MapSheet.TransitSteps(transitStepRows(listOf(RouteLeg(null, null, 7600, 1800, previewSteps))) { null }.toImmutableList(), isTypicalTimes = true, attribution = "© Wiener Linien"), onClose = {})
+            val (title, subtitle) = transitStepsHeader(previewRoute)
+            val rows = transitStepRows(previewRoute.legs, fromTitle = { UiText.Server("Mariahilfer Kirche") }, toTitle = { UiText.Server("Wiener Riesenrad") })
+            TransitStepsSheet(MapSheet.TransitSteps(title, subtitle, rows.toImmutableList(), isTypicalTimes = true, attribution = "Timetables: Wiener Linien · © OpenStreetMap contributors"), onClose = {})
         }
     }
 }
