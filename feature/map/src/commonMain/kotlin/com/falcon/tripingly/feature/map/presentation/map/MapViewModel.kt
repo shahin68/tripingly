@@ -143,6 +143,9 @@ class MapViewModel(
             is MapAction.Plan -> onPlan(action)
             is MapAction.StopCard -> onStopCard(action)
             is MapAction.PlaceCard -> onPlaceCard(action)
+            is MapAction.NewSpot.PickCategory -> edits.pickSpotCategory(action.category)
+            is MapAction.NewSpot.SetPhoto -> edits.setSpotPhoto(action.photo)
+            is MapAction.NewSpot.Create -> edits.createSpot()
             is MapAction.Sheet -> onSheet(action)
             is MapAction.Dialog -> onDialog(action)
             is MapAction.Message -> onMessage(action)
@@ -276,13 +279,11 @@ class MapViewModel(
 
     private fun onDialog(action: MapAction.Dialog) {
         when (action) {
-            MapAction.Dialog.ConfirmPinName -> edits.addNamedPin()
             is MapAction.Dialog.Confirm -> edits.confirm()
             is MapAction.Dialog.DeleteAnyway -> edits.deleteAnyway()
             is MapAction.Dialog.SendReport -> sharing.sendReport(action.reason)
             is MapAction.Dialog.ApplyBestOrder -> routes.applyBestOrder()
             is MapAction.Dialog.PickTransitTime -> routes.pickTransitTime(LocalTime(action.hour, action.minute), action.isArriveBy)
-            is MapAction.Dialog.DismissPinName,
             is MapAction.Dialog.DismissConfirm,
             is MapAction.Dialog.DismissDeleteAnyway,
             is MapAction.Dialog.DismissReport,

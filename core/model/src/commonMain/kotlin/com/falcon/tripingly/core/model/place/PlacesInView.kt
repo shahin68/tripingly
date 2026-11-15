@@ -20,7 +20,16 @@ data class GeoBounds(
         point.lat in south..north && point.lng in west..east
 }
 
-enum class PlaceCategory { Cafe, Restaurant, Bar, Attraction, Museum, Historic, Park, Nature, Landmark, Other }
+/**
+ * What kind of place it is: the backend's 38 categories, our own list that OpenStreetMap tags map into. [Other] is shown as
+ * "Spot": anything else. Parking to [Romantic] are never imported, only picked for people's own spots.
+ */
+enum class PlaceCategory {
+    Cafe, Restaurant, Bar, Attraction, Museum, Historic, Park, Nature, Landmark, Other,
+    Bakery, FastFood, Viewpoint, Beach, Entertainment, Shopping, Stay, Transport,
+    Cinema, Nightlife, Health, Pharmacy, Groceries, Market, Sports, Spa, Zoo, Kids, Library, Camping, Winery,
+    Parking, Fuel, Money, Toilets, Rental, PhotoSpot, Romantic,
+}
 
 /** A place drawn on the map: a hot spot on Tripinly, or one from OpenStreetMap when zoomed in. */
 data class MapPlace(

@@ -108,7 +108,7 @@ REST over HTTPS, JSON, base path `/v1`.
 ### Markers
 | Method | Path | Notes |
 |---|---|---|
-| POST | `/days/{id}/markers` | Either `placeId`, or `name` + `location` (+ optional `osmType`/`osmId` from a Photon result), or `location` alone for a tap on the map: the server names the stop (our place within 25 m, else the address, else the coordinates) and the app takes that name from the answer (backend#28). Optional `time`. Optional `id`: a UUID the app chose so the marker shows before the server answers; `409 ID_CONFLICT` if that ID is taken (the app treats it as "already saved"). Google IDs not accepted |
+| POST | `/days/{id}/markers` | Either `placeId`, or `name` + `location` (+ optional `osmType`/`osmId` from a Photon result, or `category` for a new spot from a long press, `other` = Spot when left out), or `location` alone for a tap on the map: the server names the stop (our place within 25 m, else the address, else the coordinates) and the app takes that name from the answer (backend#28). Optional `time`. Optional `id`: a UUID the app chose so the marker shows before the server answers; `409 ID_CONFLICT` if that ID is taken (the app treats it as "already saved"). Google IDs not accepted |
 | GET | `/markers/{id}` | Marker with photos, like state, comment count |
 | PATCH | `/markers/{id}` | Name, time, location, move to another day of the same trip |
 | DELETE | `/markers/{id}` | The stop's creator (`createdBy`) or the trip owner, else `403`. A stop with other people's photos, comments or likes answers `409 STOP_HAS_OTHERS_CONTENT` (`details`: counts); the app shows the server's message and sends `?confirm=true` once the user agrees (backend#42) |

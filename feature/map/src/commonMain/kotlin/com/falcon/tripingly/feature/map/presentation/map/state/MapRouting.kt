@@ -262,7 +262,7 @@ internal class MapRouting(
         is Selection.Stop -> context.activeDay()?.markers?.firstOrNull { it.id == selected.markerId }?.let { stop ->
             RouteEnd(stopPlace(stop.placeId ?: stop.id, stop.location), UiText.Server(stop.name))
         }
-        null -> null
+        is Selection.NewSpot, null -> null
     }
 
     private data class RouteEnd(val place: MapPlace, val label: UiText?)

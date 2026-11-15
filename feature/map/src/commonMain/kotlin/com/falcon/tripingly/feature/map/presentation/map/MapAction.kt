@@ -3,8 +3,10 @@ package com.falcon.tripingly.feature.map.presentation.map
 import com.falcon.tripingly.core.location.model.Coordinates
 import com.falcon.tripingly.core.location.permission.LocationPermission
 import com.falcon.tripingly.core.model.photo.Photo
+import com.falcon.tripingly.core.model.photo.PickedImage
 import com.falcon.tripingly.core.model.place.GeoBounds
 import com.falcon.tripingly.core.model.place.MapPlace
+import com.falcon.tripingly.core.model.place.PlaceCategory
 import com.falcon.tripingly.core.model.place.PlaceCluster
 import com.falcon.tripingly.core.model.place.PlaceSearchResult
 import com.falcon.tripingly.core.model.route.TravelMode
@@ -154,6 +156,15 @@ sealed interface MapAction {
         data object OpenDetails : PlaceCard
     }
 
+    /** The card over a long-pressed point that makes a new spot there. */
+    sealed interface NewSpot : MapAction {
+        data class PickCategory(val category: PlaceCategory) : NewSpot
+        /** A photo picked for the spot, or null when it was taken off again. */
+        data class SetPhoto(val photo: PickedImage?) : NewSpot
+        /** Create: the place and its stop on the open day. */
+        data object Create : NewSpot
+    }
+
     /** The sheet or full-screen viewer open over the map. */
     sealed interface Sheet : MapAction {
         /** ✕, a swipe or a tap outside: every sheet closes, also those it was opened from (Shahin, 2026-11-13). */
@@ -171,8 +182,6 @@ sealed interface MapAction {
     }
 
     sealed interface Dialog : MapAction {
-        data object ConfirmPinName : Dialog
-        data object DismissPinName : Dialog
         data object Confirm : Dialog
         data object DismissConfirm : Dialog
         /** Deletes the stop or day although other people's content goes with it. */

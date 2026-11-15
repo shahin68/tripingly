@@ -15,6 +15,8 @@ Go through every item; report which pass, which fail, and what the user must do 
 - [ ] Version name/code and build number bumped.
 - [ ] Android: R8/ProGuard rules for serialization, Ktor, Socket.IO; release signing config (user holds the keys).
 
+- [ ] **Re-check every paid service, storage and RAM cost** (Shahin, 2026-11-15) with the review doc (https://claude.ai/artifact/MEB4CZ7y68DDbkWENJnUuC): Railway usage per service and Hobby vs Pro, Postgres volume (5 GB on Hobby) and table sizes, Cloudflare R2 storage and operations vs the free tier, MOTIS transit, self-hosted Photon, FCM, Resend, RevenueCat, openrouteservice, Google Maps billing account. Replace the doc's estimates with measured numbers and bring the totals to Shahin.
+
 ## Store requirements
 
 - [ ] **Sign in with Apple** available on iOS (required because Google sign-in is offered).

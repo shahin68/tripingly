@@ -7,6 +7,8 @@ import com.falcon.tripingly.core.data.trips.TripErrorCodes
 import com.falcon.tripingly.core.data.trips.TripRepository
 import com.falcon.tripingly.core.data.trips.hasCode
 import com.falcon.tripingly.core.location.model.Coordinates
+import com.falcon.tripingly.core.model.photo.PickedImage
+import com.falcon.tripingly.core.model.place.PlaceCategory
 import com.falcon.tripingly.core.model.trip.GeoPoint
 import com.falcon.tripingly.core.model.trip.NewMarker
 import com.falcon.tripingly.core.ui.UiText
@@ -63,16 +65,22 @@ internal class MapEdits(
         add(NewMarker("", GeoPoint(coordinates.latitude, coordinates.longitude)))
     }
 
-    /** A long press drops a pin the user names. */
+    /** A long press drops a new spot there, made in the card over it (name, kind of place, photo). */
     fun onMapLongClick(coordinates: Coordinates) {
-        if (context.canEdit() && context.activeDay() != null) context.update { it.copy(dialog = Dialog.NamePin(coordinates)) }
+        if (context.canEdit() && context.activeDay() != null) selection.openNewSpot(coordinates)
     }
 
-    fun addNamedPin() {
-        val pin = context.model.value.dialog as? Dialog.NamePin ?: return
-        val name = pin.name.text.toString().trim()
-        context.update { it.copy(dialog = null) }
-        if (name.isNotEmpty()) add(NewMarker(name, GeoPoint(pin.location.latitude, pin.location.longitude)))
+    fun pickSpotCategory(category: PlaceCategory) = selection.updateNewSpot { it.copy(category = category) }
+
+    fun setSpotPhoto(photo: PickedImage?) = selection.updateNewSpot { it.copy(photo = photo) }
+
+    /** Create: the place with its kind and the stop on the open day at once, its photo once the server has the stop. */
+    fun createSpot() {
+        val spot = context.model.value.selection as? Selection.NewSpot ?: return
+        val name = spot.name.text.toString().trim()
+        if (name.isEmpty()) return
+        selection.closeNewSpot()
+        add(NewMarker(name, GeoPoint(spot.location.latitude, spot.location.longitude), category = spot.category, photo = spot.photo))
     }
 
     /** A stop at the open place or address, named after it. */

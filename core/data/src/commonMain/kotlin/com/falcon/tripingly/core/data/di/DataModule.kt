@@ -69,6 +69,7 @@ val dataModule = module {
             trips = get(),
             local = get(),
             pending = get(),
+            photos = get(),
             scope = get(ApplicationScope),
             currentUserId = { get<SessionRepository>().currentUserId() },
         )
