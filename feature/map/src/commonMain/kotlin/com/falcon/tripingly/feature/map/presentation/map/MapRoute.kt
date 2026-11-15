@@ -18,6 +18,7 @@ import com.falcon.tripingly.core.model.place.MapPlace
 import com.falcon.tripingly.core.ui.ObserveAsEvents
 import com.falcon.tripingly.feature.map.presentation.comments.StopCommentsRoute
 import com.falcon.tripingly.feature.map.presentation.map.ui.AddToTripSheet
+import com.falcon.tripingly.feature.map.presentation.map.ui.TransitStepsSheet
 import com.falcon.tripingly.feature.map.presentation.map.ui.MapDialogs
 import com.falcon.tripingly.feature.map.presentation.map.ui.PlaceDetailsContent
 import com.falcon.tripingly.feature.map.presentation.map.ui.StopDetailsContent
@@ -118,6 +119,7 @@ fun MapRoute(
             is MapSheet.StopComments -> StopCommentsRoute(marker = shown.stop, people = shown.people, onOpenProfile = onOpenProfile, onDismiss = close)
             MapSheet.Members -> membersContent(tripId, close)
             is MapSheet.AddToTrip -> AddToTripSheet(shown.picker, onAction, onClose = close)
+            is MapSheet.TransitSteps -> TransitStepsSheet(shown, onClose = close)
             is MapSheet.PlaceImage, is MapSheet.StopDetails, is MapSheet.PlaceDetails -> Unit
         }
     }

@@ -49,6 +49,8 @@ import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.model.BitmapDescriptor
 import com.google.android.gms.maps.model.BitmapDescriptorFactory
 import com.google.android.gms.maps.model.CameraPosition
+import com.google.android.gms.maps.model.Dot
+import com.google.android.gms.maps.model.Gap
 import com.google.android.gms.maps.model.JointType
 import com.google.android.gms.maps.model.LatLng
 import com.google.android.gms.maps.model.MapStyleOptions
@@ -545,7 +547,25 @@ private fun MapLineView(line: MapLine) {
     val layoutDirection = LocalLayoutDirection.current
     val points = remember(line) { line.points.map { LatLng(it.latitude, it.longitude) } }
     val width = with(density) { line.style.width.toPx() }
-    Polyline(points = points, color = line.style.color, width = width, jointType = JointType.ROUND, startCap = RoundCap(), endCap = RoundCap())
+    if (line.parts.isEmpty()) {
+        Polyline(points = points, color = line.style.color, width = width, jointType = JointType.ROUND, startCap = RoundCap(), endCap = RoundCap())
+    } else {
+        // Public transport: each ride in its line's colour, each walk dotted.
+        val dotted = remember(width) { listOf(Dot(), Gap(width * DOT_GAP_WIDTHS)) }
+        line.parts.forEachIndexed { index, part ->
+            key(index) {
+                Polyline(
+                    points = remember(part) { part.points.map { LatLng(it.latitude, it.longitude) } },
+                    color = part.color,
+                    width = width,
+                    jointType = JointType.ROUND,
+                    startCap = RoundCap(),
+                    endCap = RoundCap(),
+                    pattern = dotted.takeIf { part.isDotted },
+                )
+            }
+        }
+    }
 
     // Flat, so they turn with the map and keep pointing along the line; under every pin (z 0).
     val arrowColor = line.style.color
@@ -605,6 +625,9 @@ private fun rememberHiddenPins(shown: List<PlacePin>): List<PlacePin> {
 
 /** Hidden markers cost a little memory and nothing to draw; enough for a pan back and forth over a full map. */
 private const val MAX_HIDDEN_PINS = 300
+
+/** A dotted walk's gaps, in line widths. */
+private const val DOT_GAP_WIDTHS = 1.5f
 
 /** A new place pin fades in, as Google's own pins do. */
 private const val PIN_FADE_MILLIS = 250

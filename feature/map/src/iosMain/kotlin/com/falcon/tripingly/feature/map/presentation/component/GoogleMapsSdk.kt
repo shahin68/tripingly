@@ -49,6 +49,12 @@ interface GoogleMap {
      */
     fun setLine(points: List<GoogleMapPoint>, color: UIColor, width: Double, arrows: List<GoogleMapArrow>, arrowIcon: UIImage?, capIcon: UIImage?)
 
+    /**
+     * Replaces the public transport route's [parts], drawn instead of the line: rides solid in their colours, walks dotted;
+     * none draws none. [width] is in points.
+     */
+    fun setLineParts(parts: List<GoogleMapLinePart>, width: Double)
+
     /** Replaces the streak running along the line, on top of it; fewer than two points draw none. */
     fun setLineSweep(points: List<GoogleMapPoint>, color: UIColor, width: Double)
 
@@ -68,6 +74,10 @@ class GoogleMapPoint(val latitude: Double, val longitude: Double)
 /** A point on the map view, in points from its top left. */
 @ObjCName("GoogleMapScreenPoint", exact = true)
 class GoogleMapScreenPoint(val x: Double, val y: Double)
+
+/** A public transport ride in its line's [color], or a walk ([isDotted]). */
+@ObjCName("GoogleMapLinePart", exact = true)
+class GoogleMapLinePart(val points: List<GoogleMapPoint>, val color: UIColor, val isDotted: Boolean)
 
 /** [bearing] in degrees clockwise from north. */
 @ObjCName("GoogleMapArrow", exact = true)

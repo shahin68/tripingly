@@ -76,4 +76,9 @@ object MapColors {
     val Walk = Color(0xFF1E9E6A)
     val Bike = Color(0xFFE07B1F)
     val Car = Color(0xFF3355CC)
+    /**
+     * Public transport: its rides are drawn in their lines' own colours (Shahin, 2026-11-15); this slate is for a line the
+     * timetable gives no colour, and the route's ends.
+     */
+    val Transit = Color(0xFF55606E)
 }

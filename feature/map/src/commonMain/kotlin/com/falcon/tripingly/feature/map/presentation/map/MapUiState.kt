@@ -9,6 +9,9 @@ import com.falcon.tripingly.core.model.place.PlaceDetails
 import com.falcon.tripingly.core.model.place.PlaceImage
 import com.falcon.tripingly.core.model.place.PlaceSearchResult
 import com.falcon.tripingly.core.model.route.AlongTheWayPlace
+import com.falcon.tripingly.core.model.route.TransitLine
+import com.falcon.tripingly.core.model.route.TransitStep
+import com.falcon.tripingly.core.model.route.TransitVehicle
 import com.falcon.tripingly.core.model.route.TravelMode
 import com.falcon.tripingly.core.model.trip.JoinRequestStatus
 import com.falcon.tripingly.core.model.trip.UserSummary
@@ -186,7 +189,37 @@ data class RouteSummaryState(
     val selectedPlaceId: String?,
     /** The open day they are added to; null when this user can't add stops. */
     val addToDayNumber: Int?,
+    /** Public transport goes between the route's ends: its option isn't dimmed. */
+    val isTransitCovered: Boolean = true,
+    /** By public transport: the "Leave at" button; null by any other way. */
+    val leaveAt: LeaveAtState? = null,
+    /** Why there is no public transport route: a note in the card, never a banner. */
+    val transitNote: TransitNote? = null,
+    /** By public transport: its walks and rides in a row; a tap opens them step by step. */
+    val transitLegs: ImmutableList<TransitChip> = persistentListOf(),
 )
+
+/** "Leave at 14:05" or "Arrive by 14:05" ([time] as HH:mm). */
+@Immutable
+data class LeaveAtState(val time: String, val isArriveBy: Boolean)
+
+enum class TransitNote {
+    /** Not inside one city with public transport routes (Vienna for now), tapped or answered by the server. */
+    NotHere,
+    /** No connection at the time asked; another time may have one. */
+    NoConnection,
+}
+
+/** One walk or ride in the route card's row. */
+@Immutable
+sealed interface TransitChip {
+    data class Walk(val durationSeconds: Int) : TransitChip
+    data class Ride(val line: TransitLine, val vehicle: TransitVehicle) : TransitChip
+}
+
+/** One leg of a public transport route in the steps sheet: to [toStop] (a day's next stop; null from A to B). */
+@Immutable
+data class TransitLegSteps(val toStop: UiText?, val steps: ImmutableList<TransitStep>)
 
 /**
  * A place's card and details sheet: ⓘ opens the details, + adds the place to the open day or one of my trips ([add]), and
@@ -300,6 +333,10 @@ sealed interface MapSheet {
     /** The selected place's details, half high. Its photos open in their own sheet in its place. */
     data class PlaceDetails(val card: PlaceCardState) : MapSheet
     data class AddToTrip(val picker: AddToTripState, override val hasBack: Boolean = false) : MapSheet
+    /** The public transport route step by step, opened from the route card; its back arrow goes back to the plan. */
+    data class TransitSteps(val legs: ImmutableList<TransitLegSteps>, val isTypicalTimes: Boolean, val attribution: String?) : MapSheet {
+        override val hasBack get() = true
+    }
 }
 
 @Immutable
@@ -319,6 +356,8 @@ sealed interface MapDialog {
     data class Location(val prompt: LocationPrompt) : MapDialog
     /** The best order for the open day, waiting for Apply. */
     data class BestOrder(val preview: BestOrderPreview) : MapDialog
+    /** "Leave at": the time on the open day, as [hour] and [minute]; arriving by it only from A to B ([canArriveBy]). */
+    data class LeaveAt(val hour: Int, val minute: Int, val isArriveBy: Boolean, val canArriveBy: Boolean) : MapDialog
 }
 
 enum class LocationPrompt { Explain, OpenSettings }

@@ -43,6 +43,7 @@ private final class AppGoogleMap: NSObject, GoogleMap, GMSMapViewDelegate {
     private var line: GMSPolyline?
     private var lineMarkers: [GMSMarker] = []
     private var lineSweep: GMSPolyline?
+    private var lineParts: [GMSPolyline] = []
     private let touches = TouchRecorder()
     /// A pin is held (the shared code took the long press): the finger pulls its line, the map's gestures are off.
     private var isHoldingPin = false
@@ -165,6 +166,30 @@ private final class AppGoogleMap: NSObject, GoogleMap, GMSMapViewDelegate {
         marker.map = mapView
         return marker
     }
+
+    func setLineParts(parts: [GoogleMapLinePart], width: Double) {
+        lineParts.forEach { $0.map = nil }
+        lineParts = parts.filter { $0.points.count > 1 }.map { part in
+            let polyline = GMSPolyline(path: path(of: part.points))
+            polyline.strokeWidth = CGFloat(width)
+            if part.isDotted {
+                // A walk: short dashes of its colour with gaps between, in metres along the way.
+                polyline.spans = GMSStyleSpans(
+                    polyline.path!,
+                    [GMSStrokeStyle.solidColor(part.color), GMSStrokeStyle.solidColor(.clear)],
+                    [NSNumber(value: Self.dotMeters), NSNumber(value: Self.dotMeters)],
+                    .rhumb
+                )
+            } else {
+                polyline.strokeColor = part.color
+            }
+            polyline.map = mapView
+            return polyline
+        }
+    }
+
+    /// A dotted walk's dashes and gaps.
+    private static let dotMeters = 8.0
 
     func setLineSweep(points: [GoogleMapPoint], color: UIColor, width: Double) {
         guard points.count > 1 else {

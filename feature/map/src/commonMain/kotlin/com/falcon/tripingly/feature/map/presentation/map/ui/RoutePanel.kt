@@ -35,6 +35,7 @@ import androidx.compose.material.icons.automirrored.filled.DirectionsBike
 import androidx.compose.material.icons.automirrored.filled.DirectionsWalk
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.DirectionsCar
+import androidx.compose.material.icons.filled.Tram
 import androidx.compose.material.icons.outlined.Directions
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilledIconButton
@@ -48,6 +49,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.platform.LocalUriHandler
@@ -73,6 +75,7 @@ import com.falcon.tripingly.feature.map.generated.resources.map_along_the_way
 import com.falcon.tripingly.feature.map.generated.resources.map_along_the_way_item
 import com.falcon.tripingly.feature.map.generated.resources.map_mode_cycling
 import com.falcon.tripingly.feature.map.generated.resources.map_mode_driving
+import com.falcon.tripingly.feature.map.generated.resources.map_mode_transit
 import com.falcon.tripingly.feature.map.generated.resources.map_mode_walking
 import com.falcon.tripingly.feature.map.generated.resources.map_route_estimated
 import com.falcon.tripingly.feature.map.generated.resources.map_route_hours
@@ -92,12 +95,16 @@ internal val RouteGrowEasing = CubicBezierEasing(0.2f, 0.6f, 0.1f, 1f)
 /** How long the route card takes to grow or shrink. */
 internal const val ROUTE_GROW_MILLIS = 280
 
-/** How to travel: walk, bike or car as icons, uncolored; the names are their descriptions. */
+/**
+ * How to travel: walk, bike, car or public transport as icons, uncolored; the names are their descriptions. Where public
+ * transport doesn't go ([isTransitCovered] off) its tram is dimmed, and a tap only shows a note (Shahin, 2026-11-15).
+ */
 @Composable
 internal fun TravelModeToggle(
     mode: TravelMode,
     onModeSelected: (TravelMode) -> Unit,
     modifier: Modifier = Modifier,
+    isTransitCovered: Boolean = true,
 ) {
     SegmentedToggle(modifier) {
         TravelMode.entries.forEach { entry ->
@@ -107,6 +114,7 @@ internal fun TravelModeToggle(
                 onClick = { onModeSelected(entry) },
                 icon = entry.icon(),
                 showLabel = false,
+                modifier = Modifier.alpha(if (entry == TravelMode.Transit && !isTransitCovered) DIMMED_ALPHA else 1f),
             )
         }
     }
@@ -158,8 +166,10 @@ private fun AnimatedVisibilityScope.RouteCardContent(route: RouteSummaryState, i
         ) {
             RouteIcon(route.isLoading)
             RouteTotals(route, Modifier.weight(1f))
-            TravelModeToggle(route.mode, onModeSelected = { onAction(MapAction.Plan.SelectTravelMode(it)) }, modifier = Modifier.width(ModesWidth))
+            TravelModeToggle(route.mode, onModeSelected = { onAction(MapAction.Plan.SelectTravelMode(it)) }, modifier = Modifier.width(ModesWidth), isTransitCovered = route.isTransitCovered)
         }
+        route.transitNote?.let { TransitNoteText(it, Modifier.padding(horizontal = inset).then(rowMotion(1, isAnimated))) }
+        route.leaveAt?.let { TransitRow(it, route.transitLegs, onAction, inset, Modifier.then(rowMotion(1, isAnimated))) }
         if (route.isEstimated) {
             Text(
                 text = stringResource(Res.string.map_route_estimated),
@@ -292,8 +302,11 @@ private fun AlongTheWayCard(item: AlongTheWayPlace, dayNumber: Int?, onOpen: (Ma
 
 /** The travel modes' height (40 dp options in 4 dp of track), which the route icon matches. */
 private val RowHeight = 48.dp
-/** Three 40 dp options in 4 dp of track and gaps: each picked option is a circle. */
-private val ModesWidth = 136.dp
+/** Four 40 dp options in 4 dp of track and gaps: each picked option is a circle. */
+private val ModesWidth = 180.dp
+
+/** The tram where public transport doesn't go. */
+private const val DIMMED_ALPHA = 0.38f
 private val SpinnerSize = 20.dp
 private val AlongCardMaxWidth = 240.dp
 private val AddButtonSize = 36.dp
@@ -357,12 +370,14 @@ private fun TravelMode.label() = when (this) {
     TravelMode.Walking -> Res.string.map_mode_walking
     TravelMode.Cycling -> Res.string.map_mode_cycling
     TravelMode.Driving -> Res.string.map_mode_driving
+    TravelMode.Transit -> Res.string.map_mode_transit
 }
 
 private fun TravelMode.icon() = when (this) {
     TravelMode.Walking -> Icons.AutoMirrored.Filled.DirectionsWalk
     TravelMode.Cycling -> Icons.AutoMirrored.Filled.DirectionsBike
     TravelMode.Driving -> Icons.Default.DirectionsCar
+    TravelMode.Transit -> Icons.Default.Tram
 }
 
 private const val COPYRIGHT_URL = "https://www.openstreetmap.org/copyright"

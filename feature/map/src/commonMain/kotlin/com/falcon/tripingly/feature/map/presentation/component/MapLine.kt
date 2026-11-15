@@ -19,6 +19,7 @@ import androidx.compose.ui.unit.dp
 import com.falcon.tripingly.core.designsystem.theme.MapColors
 import com.falcon.tripingly.core.designsystem.theme.extendedColors
 import com.falcon.tripingly.core.location.model.Coordinates
+import com.falcon.tripingly.core.model.route.TransitStep
 import com.falcon.tripingly.core.model.route.TravelMode
 import kotlin.math.PI
 import kotlin.math.atan2
@@ -36,9 +37,15 @@ import kotlin.math.roundToInt
 /** How a line looks. */
 data class MapLineStyle(val color: Color, val width: Dp)
 
-/** A line to draw: its [points] from start to end and the [arrows] pointing the way. A new value runs the streak again. */
+/**
+ * A line to draw: its [points] from start to end and the [arrows] pointing the way. A new value runs the streak again.
+ * With [parts] (public transport) they are drawn instead of one line in [style]'s colour; [points] still carry the streak.
+ */
 @Immutable
-data class MapLine(val points: List<Coordinates>, val arrows: List<PathArrow>, val style: MapLineStyle)
+data class MapLine(val points: List<Coordinates>, val arrows: List<PathArrow>, val style: MapLineStyle, val parts: List<MapLinePart> = emptyList())
+
+/** A public transport route's ride in its line's colour, solid, or a walk, dotted (Shahin, 2026-11-15: no edge round them). */
+data class MapLinePart(val points: List<Coordinates>, val color: Color, val isDotted: Boolean)
 
 /** This line in the theme's colours: the plan, which has no colour of its own, takes the stops' colour. */
 @Composable
@@ -54,6 +61,7 @@ internal val TravelMode.lineColor: Color
         TravelMode.Walking -> MapColors.Walk
         TravelMode.Cycling -> MapColors.Bike
         TravelMode.Driving -> MapColors.Car
+        TravelMode.Transit -> MapColors.Transit
     }
 
 internal val RouteWidth = 5.dp
@@ -97,6 +105,23 @@ internal fun routeLine(points: List<Coordinates>, stops: List<Coordinates>, mode
     }
     val arrows = stopIndices.zipWithNext().mapNotNull { (start, end) -> arrowBetween(line, start, end, xScale) }
     return MapLine(line, arrows, style)
+}
+
+/**
+ * A public transport route through [stops]: each ride in its line's own colour, each walk dotted in the walking colour.
+ * No arrows: the lines' colours and the steps sheet show the way, and an arrow in one colour would sit on every other.
+ */
+internal fun transitLine(points: List<Coordinates>, steps: List<TransitStep>, stops: List<Coordinates>): MapLine {
+    val parts = steps.filter { it.points.size > 1 }.map { step ->
+        MapLinePart(
+            points = step.points.map { Coordinates(it.lat, it.lng) },
+            color = if (step.isRide) step.line?.color?.let { Color(it) } ?: MapColors.Transit else MapColors.Walk,
+            isDotted = !step.isRide,
+        )
+    }
+    // Steps without their own lines: the whole route in one colour.
+    if (parts.isEmpty()) return routeLine(points, stops, TravelMode.Transit)
+    return routeLine(parts.flatMap { it.points }, stops, TravelMode.Transit).copy(arrows = emptyList(), parts = parts)
 }
 
 /** The point halfway along [line] from [start] to [end], pointing the way the line runs there. */

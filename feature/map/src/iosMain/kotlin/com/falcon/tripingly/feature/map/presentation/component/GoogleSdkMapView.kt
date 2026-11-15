@@ -293,13 +293,16 @@ internal fun GoogleSdkMapView(
     LaunchedEffect(themedLine) {
         if (themedLine == null || themedLine.points.size < 2) {
             map.setLine(emptyList(), stopColor.toUIColor(), 0.0, emptyList(), null, null)
+            map.setLineParts(emptyList(), 0.0)
             map.setLineSweep(emptyList(), MapLineSweepColor.toUIColor(), 0.0)
             return@LaunchedEffect
         }
         val points = themedLine.points.map { GoogleMapPoint(it.latitude, it.longitude) }
         val width = themedLine.style.width.value.toDouble()
+        // Public transport: its rides and walks instead of one line.
+        map.setLineParts(themedLine.parts.map { part -> GoogleMapLinePart(part.points.map { GoogleMapPoint(it.latitude, it.longitude) }, part.color.toUIColor(), part.isDotted) }, width)
         map.setLine(
-            points = points,
+            points = points.takeIf { themedLine.parts.isEmpty() }.orEmpty(),
             color = themedLine.style.color.toUIColor(),
             width = width,
             arrows = themedLine.arrows.map { GoogleMapArrow(it.position.latitude, it.position.longitude, it.bearing.toDouble()) },

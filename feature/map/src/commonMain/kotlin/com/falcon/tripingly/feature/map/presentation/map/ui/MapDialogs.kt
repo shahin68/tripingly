@@ -117,6 +117,7 @@ internal fun MapDialogs(dialog: MapDialog, onAction: (MapAction) -> Unit) {
             onDismiss = { onAction(MapAction.Location.DismissPrompt) },
         )
         is MapDialog.BestOrder -> BestOrderDialog(dialog.preview, onAction)
+        is MapDialog.LeaveAt -> LeaveAtDialog(dialog, onAction)
     }
 }
 

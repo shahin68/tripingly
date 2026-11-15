@@ -3,6 +3,8 @@ package com.falcon.tripingly.feature.map.presentation.map
 import com.falcon.tripingly.core.model.place.MapPlace
 import com.falcon.tripingly.core.model.route.AlongTheWayPlace
 import com.falcon.tripingly.core.model.route.RoutePlan
+import com.falcon.tripingly.core.model.route.TransitVehicle
+import com.falcon.tripingly.core.model.route.TravelMode
 import com.falcon.tripingly.core.model.trip.GeoPoint
 import com.falcon.tripingly.core.ui.UiText
 import com.falcon.tripingly.feature.map.presentation.map.state.MY_LOCATION_ID
@@ -12,9 +14,17 @@ import com.falcon.tripingly.feature.map.presentation.map.state.isGoingTo
 import com.falcon.tripingly.feature.map.presentation.map.state.isRouteEnd
 import com.falcon.tripingly.feature.map.presentation.map.state.isRouteTo
 import kotlinx.collections.immutable.toImmutableList
+import kotlinx.datetime.LocalTime
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toLocalDateTime
+import kotlin.time.Clock
+import kotlin.time.Instant
 
-/** The route card's summary of [plan] (a real one, or null while there is none). */
-internal fun RouteModel.summary(plan: RoutePlan?, alongTheWay: List<AlongTheWayPlace>, selectedPlaceId: String?, addToDayNumber: Int?) = RouteSummaryState(
+/**
+ * The route card's summary of [plan] (a real one, or null while there is none); [isTransitCovered]: public transport goes
+ * between the route's ends.
+ */
+internal fun RouteModel.summary(plan: RoutePlan?, alongTheWay: List<AlongTheWayPlace>, selectedPlaceId: String?, addToDayNumber: Int?, isTransitCovered: Boolean) = RouteSummaryState(
     mode = travelMode,
     durationSeconds = plan?.route?.durationSeconds,
     distanceMeters = plan?.route?.distanceMeters,
@@ -23,7 +33,40 @@ internal fun RouteModel.summary(plan: RoutePlan?, alongTheWay: List<AlongTheWayP
     alongTheWay = alongTheWay.toImmutableList(),
     selectedPlaceId = selectedPlaceId,
     addToDayNumber = addToDayNumber,
+    isTransitCovered = isTransitCovered,
+    leaveAt = leaveAt(),
+    transitNote = transitNote,
+    transitLegs = plan?.takeIf { planMode == TravelMode.Transit }?.route?.legs.orEmpty().flatMap { it.steps }.mapNotNull { step ->
+        when {
+            step.isRide -> step.line?.let { TransitChip.Ride(it, step.vehicle ?: TransitVehicle.Other) }
+            // A step across the street between two rides isn't worth a chip.
+            step.durationSeconds >= MIN_WALK_CHIP_SECONDS -> TransitChip.Walk(step.durationSeconds)
+            else -> null
+        }
+    }.toImmutableList(),
 )
+
+/**
+ * "Leave at" by public transport, once a time is known: the one picked, or the one the route was asked for (now, or now's
+ * time on the open day); never "Leave now" (Shahin, 2026-11-15). Not where public transport doesn't go.
+ */
+private fun RouteModel.leaveAt(): LeaveAtState? {
+    if (travelMode != TravelMode.Transit || transitNote == TransitNote.NotHere) return null
+    val time = transitPick?.time ?: transitAt?.at?.toLocalDateTime(TimeZone.currentSystemDefault())?.time ?: return null
+    return LeaveAtState(clockTime(time), isArriveBy = transitPick?.isArriveBy == true && between != null)
+}
+
+/** The time "Leave at" opens on: the one picked, or the one the route was asked for, or now. */
+internal fun RouteModel.leaveAtTime(): LocalTime =
+    transitPick?.time ?: (transitAt?.at ?: Clock.System.now()).toLocalDateTime(TimeZone.currentSystemDefault()).time
+
+/** "14:05": hours and minutes, as public transport times show. */
+internal fun clockTime(time: LocalTime): String = "${time.hour.toString().padStart(2, '0')}:${time.minute.toString().padStart(2, '0')}"
+
+/** [clockTime] of a moment, on this device's clock. */
+internal fun clockTime(at: Instant): String = clockTime(at.toLocalDateTime(TimeZone.currentSystemDefault()).time)
+
+private const val MIN_WALK_CHIP_SECONDS = 60
 
 /** The Go here and Route buttons of the pin [at]. */
 internal fun RouteModel.pinRoutes(at: GeoPoint, hasLocation: Boolean) = PinRoutesState(

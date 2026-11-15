@@ -153,6 +153,27 @@
     <string name="map_mode_walking">Walk</string>
     <string name="map_mode_cycling">Bike</string>
     <string name="map_mode_driving">Car</string>
+    <string name="map_mode_transit">Public transport</string>
+    <string name="map_transit_not_here">Public transport isn’t available here yet</string>
+    <string name="map_transit_no_connection">No connection at this time. Try another time.</string>
+    <string name="map_transit_leave_at">Leave at %1$s</string>
+    <string name="map_transit_arrive_by">Arrive by %1$s</string>
+    <string name="map_transit_leave">Leave at</string>
+    <string name="map_transit_arrive">Arrive by</string>
+    <string name="map_transit_time_title">Time on this day</string>
+    <string name="map_transit_time_done">Done</string>
+    <string name="map_transit_show_steps">Show the steps</string>
+    <string name="map_transit_steps_title">Step by step</string>
+    <string name="map_transit_walk">Walk %1$s</string>
+    <string name="map_transit_walk_to">Walk %1$s to %2$s</string>
+    <string name="map_transit_towards">towards %1$s</string>
+    <string name="map_transit_ride_times">%1$s %2$s → %3$s %4$s</string>
+    <string name="map_transit_to_stop">To %1$s</string>
+    <string name="map_transit_typical">Times follow the usual timetable for this weekday.</string>
+    <plurals name="map_transit_stops">
+        <item quantity="one">%1$d stop</item>
+        <item quantity="other">%1$d stops</item>
+    </plurals>
     <string name="map_route_minutes">%1$d min</string>
     <string name="map_route_hours">%1$d h %2$d min</string>
     <string name="map_route_meters">%1$d m</string>

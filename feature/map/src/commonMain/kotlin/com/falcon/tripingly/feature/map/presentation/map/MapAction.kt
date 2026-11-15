@@ -103,6 +103,10 @@ sealed interface MapAction {
         /** Adds a place along the way to the open day. */
         data class AddAlongTheWay(val place: MapPlace) : Plan
         data object ClosePointRoute : Plan
+        /** By public transport, "Leave at": the time picker opens. */
+        data object OpenLeaveAt : Plan
+        /** By public transport, the walks and rides open step by step in a sheet. */
+        data object OpenTransitSteps : Plan
     }
 
     /** The route buttons of a stop's or a place's card and details, and the header's from/to bar. */
@@ -178,6 +182,9 @@ sealed interface MapAction {
         data object DismissReport : Dialog
         data object ApplyBestOrder : Dialog
         data object DismissBestOrder : Dialog
+        /** The time picked for public transport on the open day: it leaves then, or arrives by then ([isArriveBy]). */
+        data class PickTransitTime(val hour: Int, val minute: Int, val isArriveBy: Boolean) : Dialog
+        data object DismissLeaveAt : Dialog
     }
 
     /** The banner at the bottom. */

@@ -51,6 +51,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.datetime.LocalTime
 
 /**
  * One trip on the map. Days and stops come from the cached trip, reloaded from the server on open. The work is
@@ -108,6 +109,7 @@ class MapViewModel(
         askForLocation = location::askForRoute,
         showRoutesArePro = { sendEvent(MapEvent.OpenPaywall) },
         showWholePlan = { sendEvent(MapEvent.ShowWholePlan) },
+        transitAreas = { appConfigRepository.config.value.transitAreas },
     )
     private val search = MapSearch(context, camera, selection, placeRepository, routeTo = routes::routeToResult)
     private val sharing = MapSharing(context, tripRepository, socialRepository)
@@ -231,6 +233,8 @@ class MapViewModel(
             is MapAction.Plan.AlongTheWayClick -> selection.openPlace(action.place)
             is MapAction.Plan.AddAlongTheWay -> routes.addAlongTheWay(action.place)
             is MapAction.Plan.ClosePointRoute -> routes.closePointRoute()
+            is MapAction.Plan.OpenLeaveAt -> routes.openLeaveAt()
+            is MapAction.Plan.OpenTransitSteps -> if (model.route.plan?.route?.legs.orEmpty().any { it.steps.isNotEmpty() }) openSheet(Sheet.TransitSteps)
         }
     }
 
@@ -276,11 +280,13 @@ class MapViewModel(
             is MapAction.Dialog.DeleteAnyway -> edits.deleteAnyway()
             is MapAction.Dialog.SendReport -> sharing.sendReport(action.reason)
             is MapAction.Dialog.ApplyBestOrder -> routes.applyBestOrder()
+            is MapAction.Dialog.PickTransitTime -> routes.pickTransitTime(LocalTime(action.hour, action.minute), action.isArriveBy)
             is MapAction.Dialog.DismissPinName,
             is MapAction.Dialog.DismissConfirm,
             is MapAction.Dialog.DismissDeleteAnyway,
             is MapAction.Dialog.DismissReport,
-            is MapAction.Dialog.DismissBestOrder -> closeDialog()
+            is MapAction.Dialog.DismissBestOrder,
+            is MapAction.Dialog.DismissLeaveAt -> closeDialog()
         }
     }
 
