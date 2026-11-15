@@ -127,6 +127,26 @@ internal fun PlaceCategory.label(): StringResource = when (this) {
     PlaceCategory.Shopping -> Res.string.map_place_category_shopping
     PlaceCategory.Stay -> Res.string.map_place_category_stay
     PlaceCategory.Transport -> Res.string.map_place_category_transport
+    PlaceCategory.Cinema -> Res.string.map_place_category_cinema
+    PlaceCategory.Nightlife -> Res.string.map_place_category_nightlife
+    PlaceCategory.Health -> Res.string.map_place_category_health
+    PlaceCategory.Pharmacy -> Res.string.map_place_category_pharmacy
+    PlaceCategory.Groceries -> Res.string.map_place_category_groceries
+    PlaceCategory.Market -> Res.string.map_place_category_market
+    PlaceCategory.Sports -> Res.string.map_place_category_sports
+    PlaceCategory.Spa -> Res.string.map_place_category_spa
+    PlaceCategory.Zoo -> Res.string.map_place_category_zoo
+    PlaceCategory.Kids -> Res.string.map_place_category_kids
+    PlaceCategory.Library -> Res.string.map_place_category_library
+    PlaceCategory.Camping -> Res.string.map_place_category_camping
+    PlaceCategory.Winery -> Res.string.map_place_category_winery
+    PlaceCategory.Parking -> Res.string.map_place_category_parking
+    PlaceCategory.Fuel -> Res.string.map_place_category_fuel
+    PlaceCategory.Money -> Res.string.map_place_category_money
+    PlaceCategory.Toilets -> Res.string.map_place_category_toilets
+    PlaceCategory.Rental -> Res.string.map_place_category_rental
+    PlaceCategory.PhotoSpot -> Res.string.map_place_category_photo_spot
+    PlaceCategory.Romantic -> Res.string.map_place_category_romantic
 }
 
 /** A place loading, loaded with images, hours and website, an address from search, one offering Route to here with Go here dimmed, and a custom spot crediting its creator. */

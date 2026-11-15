@@ -192,26 +192,49 @@ private fun SpotPhotoButton(photo: PickedImage?, onAdd: () -> Unit, onRemove: ()
     }
 }
 
-/** Spot first, the default; then food and drink, sights, nature, things to do and the practical ones. */
+/**
+ * Spot first, the default, then our own Photo spot and Romantic spot; then food and drink, sights, nature, things to do,
+ * shopping, staying and getting around, and the practical ones last.
+ */
 private val SpotCategories = listOf(
     PlaceCategory.Other,
+    PlaceCategory.PhotoSpot,
+    PlaceCategory.Romantic,
     PlaceCategory.Cafe,
     PlaceCategory.Restaurant,
     PlaceCategory.Bar,
     PlaceCategory.Bakery,
     PlaceCategory.FastFood,
+    PlaceCategory.Nightlife,
+    PlaceCategory.Winery,
     PlaceCategory.Attraction,
     PlaceCategory.Viewpoint,
     PlaceCategory.Museum,
     PlaceCategory.Historic,
     PlaceCategory.Landmark,
+    PlaceCategory.Zoo,
     PlaceCategory.Park,
     PlaceCategory.Nature,
     PlaceCategory.Beach,
     PlaceCategory.Entertainment,
+    PlaceCategory.Cinema,
+    PlaceCategory.Sports,
+    PlaceCategory.Spa,
+    PlaceCategory.Kids,
+    PlaceCategory.Library,
     PlaceCategory.Shopping,
+    PlaceCategory.Market,
+    PlaceCategory.Groceries,
     PlaceCategory.Stay,
+    PlaceCategory.Camping,
     PlaceCategory.Transport,
+    PlaceCategory.Rental,
+    PlaceCategory.Fuel,
+    PlaceCategory.Parking,
+    PlaceCategory.Money,
+    PlaceCategory.Health,
+    PlaceCategory.Pharmacy,
+    PlaceCategory.Toilets,
 )
 
 /** The server's limit for a stop's name. */

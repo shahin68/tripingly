@@ -37,6 +37,26 @@ internal fun PlaceItemDto.Category.toCategory() = when (this) {
     PlaceItemDto.Category.SHOPPING -> PlaceCategory.Shopping
     PlaceItemDto.Category.STAY -> PlaceCategory.Stay
     PlaceItemDto.Category.TRANSPORT -> PlaceCategory.Transport
+    PlaceItemDto.Category.CINEMA -> PlaceCategory.Cinema
+    PlaceItemDto.Category.NIGHTLIFE -> PlaceCategory.Nightlife
+    PlaceItemDto.Category.HEALTH -> PlaceCategory.Health
+    PlaceItemDto.Category.PHARMACY -> PlaceCategory.Pharmacy
+    PlaceItemDto.Category.GROCERIES -> PlaceCategory.Groceries
+    PlaceItemDto.Category.MARKET -> PlaceCategory.Market
+    PlaceItemDto.Category.SPORTS -> PlaceCategory.Sports
+    PlaceItemDto.Category.SPA -> PlaceCategory.Spa
+    PlaceItemDto.Category.ZOO -> PlaceCategory.Zoo
+    PlaceItemDto.Category.KIDS -> PlaceCategory.Kids
+    PlaceItemDto.Category.LIBRARY -> PlaceCategory.Library
+    PlaceItemDto.Category.CAMPING -> PlaceCategory.Camping
+    PlaceItemDto.Category.WINERY -> PlaceCategory.Winery
+    PlaceItemDto.Category.PARKING -> PlaceCategory.Parking
+    PlaceItemDto.Category.FUEL -> PlaceCategory.Fuel
+    PlaceItemDto.Category.MONEY -> PlaceCategory.Money
+    PlaceItemDto.Category.TOILETS -> PlaceCategory.Toilets
+    PlaceItemDto.Category.RENTAL -> PlaceCategory.Rental
+    PlaceItemDto.Category.PHOTO_SPOT -> PlaceCategory.PhotoSpot
+    PlaceItemDto.Category.ROMANTIC -> PlaceCategory.Romantic
 }
 
 /** A new spot's category as the server names it. */
@@ -59,4 +79,24 @@ internal fun PlaceCategory.toCreateDto() = when (this) {
     PlaceCategory.Shopping -> CreateMarkerDto.Category.SHOPPING
     PlaceCategory.Stay -> CreateMarkerDto.Category.STAY
     PlaceCategory.Transport -> CreateMarkerDto.Category.TRANSPORT
+    PlaceCategory.Cinema -> CreateMarkerDto.Category.CINEMA
+    PlaceCategory.Nightlife -> CreateMarkerDto.Category.NIGHTLIFE
+    PlaceCategory.Health -> CreateMarkerDto.Category.HEALTH
+    PlaceCategory.Pharmacy -> CreateMarkerDto.Category.PHARMACY
+    PlaceCategory.Groceries -> CreateMarkerDto.Category.GROCERIES
+    PlaceCategory.Market -> CreateMarkerDto.Category.MARKET
+    PlaceCategory.Sports -> CreateMarkerDto.Category.SPORTS
+    PlaceCategory.Spa -> CreateMarkerDto.Category.SPA
+    PlaceCategory.Zoo -> CreateMarkerDto.Category.ZOO
+    PlaceCategory.Kids -> CreateMarkerDto.Category.KIDS
+    PlaceCategory.Library -> CreateMarkerDto.Category.LIBRARY
+    PlaceCategory.Camping -> CreateMarkerDto.Category.CAMPING
+    PlaceCategory.Winery -> CreateMarkerDto.Category.WINERY
+    PlaceCategory.Parking -> CreateMarkerDto.Category.PARKING
+    PlaceCategory.Fuel -> CreateMarkerDto.Category.FUEL
+    PlaceCategory.Money -> CreateMarkerDto.Category.MONEY
+    PlaceCategory.Toilets -> CreateMarkerDto.Category.TOILETS
+    PlaceCategory.Rental -> CreateMarkerDto.Category.RENTAL
+    PlaceCategory.PhotoSpot -> CreateMarkerDto.Category.PHOTO_SPOT
+    PlaceCategory.Romantic -> CreateMarkerDto.Category.ROMANTIC
 }
