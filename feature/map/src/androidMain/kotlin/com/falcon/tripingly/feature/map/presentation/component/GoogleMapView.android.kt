@@ -318,7 +318,7 @@ actual fun GoogleMapView(
                 val bitmap = if (look.isDot) {
                     drawPlaceDot(look.size, fill, density, layoutDirection)
                 } else if (photo != null) {
-                    drawPlacePhotoPin(photo, look.size, density, layoutDirection)
+                    drawPlacePhotoPin(photo, look.size, fill, density, layoutDirection)
                 } else {
                     drawPlacePin(
                         icon = categoryIcons.getValue(look.category),

@@ -206,12 +206,14 @@ fun drawPlaceDot(size: Dp, fill: Color, density: Density, layoutDirection: Layou
 }
 
 /**
- * Draws a photo pin into a bitmap: the place's photo, cropped to a circle, in the pins' one thin ring (Shahin,
- * 2026-11-15: a single stroke, not a white and a coloured one).
+ * Draws a photo pin into a bitmap: the place's photo, cropped to a circle, in one thin ring of the pin's [fill] color, so
+ * a hot spot or a place along the way still tells itself apart (Shahin, 2026-11-15: a single stroke, not a white and a
+ * coloured one; "make these thin strokes colored").
  */
 fun drawPlacePhotoPin(
     photo: ImageBitmap,
     size: Dp,
+    fill: Color,
     density: Density,
     layoutDirection: LayoutDirection,
 ): ImageBitmap {
@@ -219,7 +221,7 @@ fun drawPlacePhotoPin(
     val border = with(density) { PIN_STROKE.toPx() }
     val bitmap = ImageBitmap(px, px)
     CanvasDrawScope().draw(density, layoutDirection, Canvas(bitmap), Size(px.toFloat(), px.toFloat())) {
-        drawCircle(MapColors.PinStroke)
+        drawCircle(fill)
         val inset = border.roundToInt().coerceAtLeast(1)
         val side = px - inset * 2
         val crop = minOf(photo.width, photo.height)
