@@ -32,6 +32,15 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.add
+import androidx.compose.foundation.layout.only
+import androidx.compose.foundation.layout.windowInsetsBottomHeight
+import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.runtime.remember
+import com.falcon.tripingly.core.designsystem.component.bottomSystemBar
+import com.falcon.tripingly.core.designsystem.component.floatingBottom
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.onSizeChanged
@@ -63,16 +72,19 @@ import com.falcon.tripingly.feature.map.presentation.map.StopsCardState
 import org.jetbrains.compose.resources.stringResource
 
 /**
- * The credits and the map buttons and the open day's [plan] (the stops, or a route from A to
- * B) in its sheet, over the day tabs at the bottom: one floating glass card while there's a plan, the tabs alone
- * without. [onTabsHeight] and [onCreditsHeight] report what always covers the map; the map buttons and a pulled-up
- * sheet only float over it. [editorMenu]: an owner's or editor's day actions, in the sheet's ⋯ and the tabs' +.
+ * The credits and the map buttons over one floating glass card: the open day's [plan] (the stops, or a route from A
+ * to B) in its sheet on top, the day tabs at the bottom. The card grows up from the tabs when a plan comes and shrinks
+ * back when it goes, so its corners stay round (Shahin, 2026-11-14, D2a). [onTabsHeight] and [onCreditsHeight] report
+ * what always covers the map; the map buttons and a pulled-up sheet only float over it. [editorMenu]: an owner's or
+ * editor's day actions, in the sheet's ⋯ and the tabs' +.
  */
 @Composable
 internal fun BottomCards(
     routeAttribution: String?,
     location: LocationState,
     arePlacesHidden: Boolean,
+    /** Which way the map is turned, for the compass; read only while drawing. */
+    bearing: () -> Float,
     dayTabs: DayTabsState,
     plan: PlanCardState?,
     editorMenu: EditorMenu?,
@@ -85,48 +97,65 @@ internal fun BottomCards(
 ) {
     val dayNumber = dayTabs.days.getOrNull(dayTabs.activeIndex)?.number ?: 1
     Column(modifier = modifier.fillMaxWidth()) {
-        PlanSheet(
-            plan = plan,
-            state = planSheet,
-            above = {
-                // In landscape they sit on the map half instead (MapScreen), so the plan has the panel's whole height.
-                if (!isWide) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = MaterialTheme.spacing.medium),
-                        verticalAlignment = Alignment.Bottom,
-                    ) {
-                        // Our places come from OpenStreetMap, routes from openrouteservice too. The credits and the gap
-                        // under them are what this row covers of the map.
-                        MapCredits(
-                            routeAttribution = routeAttribution,
-                            modifier = Modifier
-                                .weight(1f, fill = false)
-                                .onSizeChanged { onCreditsHeight(it.height) }
-                                .padding(bottom = MaterialTheme.spacing.small),
-                        )
-                        Spacer(modifier = Modifier.weight(1f))
-                        MapButtons(location, arePlacesHidden, onAction, Modifier.padding(bottom = MaterialTheme.spacing.small))
-                    }
-                }
-            },
-            modifier = Modifier.weight(1f, fill = false),
-        ) { shown ->
-            // A route from A to B takes the stops' place until it's closed.
-            when (shown) {
-                is PointRouteCardState -> PointRouteCard(card = shown, onAction = onAction)
-                is StopsCardState -> StopsCard(card = shown, dayNumber = dayNumber, editorMenu = editorMenu, onAction = onAction)
+        // They ride on the card's top. In landscape they sit on the map half instead (MapScreen), so the plan has the
+        // panel's whole height.
+        if (!isWide) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = MaterialTheme.spacing.medium),
+                verticalAlignment = Alignment.Bottom,
+            ) {
+                // Our places come from OpenStreetMap, routes from openrouteservice too. The credits and the gap
+                // under them are what this row covers of the map.
+                MapCredits(
+                    routeAttribution = routeAttribution,
+                    modifier = Modifier
+                        .weight(1f, fill = false)
+                        .onSizeChanged { onCreditsHeight(it.height) }
+                        .padding(bottom = MaterialTheme.spacing.small),
+                )
+                Spacer(modifier = Modifier.weight(1f))
+                MapButtons(location, arePlacesHidden, bearing, onAction, Modifier.padding(bottom = MaterialTheme.spacing.small))
             }
         }
-        // The day tabs stay at the bottom; everything else opens above them.
-        DayTabs(
-            tabs = dayTabs,
-            isJoined = plan != null,
-            canAddDay = editorMenu != null,
-            onAction = onAction,
-            modifier = Modifier.onSizeChanged { onTabsHeight(it.height) },
-        )
+        // What always covers the map: the tabs (none without days) and the gap under the card, each measured.
+        val covered = remember { IntArray(2) }
+        val reportCovered = { onTabsHeight(covered.sum()) }
+        val hasCard = dayTabs.days.isNotEmpty() || plan != null
+        // Without the card nothing of it covers the map; the gap below changes then and reports this.
+        if (!hasCard) covered[0] = 0
+        if (hasCard) {
+            GlassSurface(
+                modifier = Modifier
+                    .weight(1f, fill = false)
+                    .windowInsetsPadding(WindowInsets.floatingBottom.only(WindowInsetsSides.Horizontal))
+                    .padding(horizontal = MaterialTheme.spacing.medium)
+                    .fillMaxWidth(),
+                blur = false,
+            ) {
+                Column {
+                    PlanSheet(plan = plan, state = planSheet, modifier = Modifier.weight(1f, fill = false)) { shown ->
+                        // A route from A to B takes the stops' place until it's closed.
+                        when (shown) {
+                            is PointRouteCardState -> PointRouteCard(card = shown, onAction = onAction)
+                            is StopsCardState -> StopsCard(card = shown, dayNumber = dayNumber, editorMenu = editorMenu, onAction = onAction)
+                        }
+                    }
+                    // The day tabs stay at the bottom; the sheet opens above them.
+                    Box(Modifier.onSizeChanged { covered[0] = it.height; reportCovered() }) {
+                        if (dayTabs.days.isNotEmpty()) DayTabs(tabs = dayTabs, canAddDay = editorMenu != null, onAction = onAction)
+                    }
+                }
+            }
+        }
+        // Under the card: the navigation bar's room and a small gap; without days or a plan, the navigation bar's only.
+        val gap = if (hasCard) {
+            WindowInsets.floatingBottom.add(WindowInsets(bottom = MaterialTheme.spacing.small))
+        } else {
+            WindowInsets.bottomSystemBar
+        }
+        Spacer(Modifier.windowInsetsBottomHeight(gap).onSizeChanged { covered[1] = it.height; reportCovered() })
     }
 }
 
@@ -150,16 +179,20 @@ internal val SmallCreditsStyle: TextStyle
 /**
  * Hides or shows the places (crossed out while hidden), over the button that fits the camera to the open day (its
  * stops, else the whole trip's, else the destination), over the location button, which follows me while lit (filled,
- * in the accent colour). Following without a signal, a quiet note beside it says it waits for one.
+ * in the accent colour). Following without a signal, a quiet note beside it says it waits for one. Our compass rides on
+ * top while the map is turned ([MapCompass]).
  */
 @Composable
-internal fun MapButtons(location: LocationState, arePlacesHidden: Boolean, onAction: (MapAction) -> Unit, modifier: Modifier = Modifier) {
+internal fun MapButtons(location: LocationState, arePlacesHidden: Boolean, bearing: () -> Float, onAction: (MapAction) -> Unit, modifier: Modifier = Modifier) {
     Row(modifier, horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small), verticalAlignment = Alignment.Bottom) {
         AnimatedVisibility(location.isSignalLost, enter = fadeIn(), exit = fadeOut()) { GpsLostNote() }
         AnimatedVisibility(location.isSwitchedOff, enter = fadeIn(), exit = fadeOut()) {
             LocationOffNote(onTurnOn = { onAction(MapAction.Location.TurnOn) })
         }
-        MapButtonColumn(location, arePlacesHidden, onAction)
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            MapCompass(bearing, onNorthUp = { onAction(MapAction.MapView.NorthUp) })
+            MapButtonColumn(location, arePlacesHidden, onAction)
+        }
     }
 }
 
@@ -232,11 +265,11 @@ private fun MapControlsPreviewContent() {
             verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
         ) {
             Row(horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small)) {
-                MapButtons(location = LocationState(), arePlacesHidden = false, onAction = {})
-                MapButtons(location = LocationState(isLoading = true), arePlacesHidden = true, onAction = {})
+                MapButtons(location = LocationState(), arePlacesHidden = false, bearing = { 30f }, onAction = {})
+                MapButtons(location = LocationState(isLoading = true), arePlacesHidden = true, bearing = { 0f }, onAction = {})
             }
-            MapButtons(location = LocationState(isFollowing = true, isSignalLost = true), arePlacesHidden = false, onAction = {})
-            MapButtons(location = LocationState(isFollowing = true, isSwitchedOff = true), arePlacesHidden = false, onAction = {})
+            MapButtons(location = LocationState(isFollowing = true, isSignalLost = true), arePlacesHidden = false, bearing = { 0f }, onAction = {})
+            MapButtons(location = LocationState(isFollowing = true, isSwitchedOff = true), arePlacesHidden = false, bearing = { 0f }, onAction = {})
         }
     }
 }

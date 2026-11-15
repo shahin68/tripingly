@@ -32,4 +32,5 @@ private object NoListener : GoogleMapListener {
     override fun onPinTap(x: Double, y: Double) = false
     override fun onPinHoldMove(x: Double, y: Double) = Unit
     override fun onPinHoldEnd() = Unit
+    override fun onBearingChange(bearing: Double) = Unit
 }
