@@ -275,6 +275,7 @@ class MapViewModelTest {
         showMembers: Boolean = false,
         showComments: Boolean = false,
         config: AppConfig = AppConfig(),
+        configRepository: FakeAppConfigRepository = FakeAppConfigRepository(config),
     ) = MapViewModel(
         tripId = tripId,
         stopId = stopId,
@@ -285,7 +286,7 @@ class MapViewModelTest {
         placeRepository = places,
         routeRepository = routes,
         socialRepository = social,
-        appConfigRepository = FakeAppConfigRepository(config),
+        appConfigRepository = configRepository,
         mapViews = mapViews,
         sessionRepository = session,
         getCurrentLocationUseCase = GetCurrentLocationUseCase(fakeLocationRepository),
@@ -2207,7 +2208,9 @@ class MapViewModelTest {
         viewModel.onAction(MapAction.Plan.OpenTransitSteps)
         testScheduler.advanceUntilIdle()
         val steps = assertIs<MapSheet.TransitSteps>(viewModel.uiState.value.sheet)
-        assertEquals(2, steps.legs.size)
+        // Each leg starts with the stop it goes to, then its ride.
+        assertEquals(2, steps.rows.count { it is TransitStepRow.Leg })
+        assertEquals(2, steps.rows.count { it is TransitStepRow.Ride })
         assertTrue(steps.hasBack)
         viewModel.onAction(MapAction.Sheet.Back)
         testScheduler.advanceUntilIdle()
@@ -2250,6 +2253,71 @@ class MapViewModelTest {
         assertEquals(LocalDate(2099, 6, 1), at.date)
         val now = Clock.System.now().toLocalDateTime(zone).time
         assertTrue(abs(now.toSecondOfDay() - at.time.toSecondOfDay()) < 60)
+    }
+
+    @Test
+    fun `the server saying public transport doesn't go there is the same note in the card, without a time`() = runTest(testDispatcher) {
+        addStops(GeoPoint(48.2085, 16.3731), GeoPoint(48.2104, 16.3655))
+        val viewModel = viewModel(config = AppConfig(transitAreas = listOf(VIENNA)))
+        testScheduler.advanceUntilIdle()
+        viewModel.onAction(MapAction.Plan.ToggleRoute)
+        testScheduler.advanceUntilIdle()
+        routes.error = DataError.Network.Api(422, RouteErrorCodes.TRANSIT_NO_COVERAGE, "Not here")
+        viewModel.onAction(MapAction.Plan.SelectTravelMode(TravelMode.Transit))
+        testScheduler.advanceUntilIdle()
+
+        val state = viewModel.uiState.value
+        val card = assertNotNull(state.stopsCard)
+        assertEquals(TransitNote.NotHere, card.route?.transitNote)
+        assertNull(card.route?.leaveAt)
+        assertFalse(card.isRouteFailed)
+        assertNull(state.message)
+    }
+
+    @Test
+    fun `covered cities arriving after the map opened ask for the public transport route again`() = runTest(testDispatcher) {
+        addStops(GeoPoint(48.2085, 16.3731), GeoPoint(48.2104, 16.3655))
+        mapViews.views[trip.trip.id] = TripMapView(trip.days[0].id, isRouteShown = true, TravelMode.Transit)
+        val config = FakeAppConfigRepository()
+        val viewModel = viewModel(configRepository = config)
+        testScheduler.advanceUntilIdle()
+        assertEquals(TransitNote.NotHere, viewModel.uiState.value.stopsCard?.route?.transitNote)
+        assertTrue(routes.transitTimes.isEmpty())
+
+        config.config.value = AppConfig(transitAreas = listOf(VIENNA))
+        testScheduler.advanceUntilIdle()
+        assertEquals(1, routes.transitTimes.size)
+        val route = assertNotNull(viewModel.uiState.value.stopsCard?.route)
+        assertNull(route.transitNote)
+        assertTrue(route.transitLegs.isNotEmpty())
+    }
+
+    @Test
+    fun `public transport from A to B can arrive by the time picked`() = runTest(testDispatcher) {
+        val viewModel = viewModel(config = AppConfig(transitAreas = listOf(VIENNA)))
+        testScheduler.advanceUntilIdle()
+        val oper = MapPlace("a", "Oper", PlaceCategory.Attraction, GeoPoint(48.2031, 16.3691), isTripinly = false, hotCount = 0, prominence = 80)
+        fakeLocationRepository.locationResult = Coordinates(48.2000, 16.3700).asSuccess()
+        viewModel.onAction(MapAction.Location.PermissionResult(LocationPermission.Granted))
+        testScheduler.advanceUntilIdle()
+        viewModel.onAction(MapAction.MapView.PlacePinClick(oper))
+        restOnTarget(viewModel)
+        viewModel.onAction(MapAction.PinRoute.GoHere)
+        testScheduler.advanceUntilIdle()
+        viewModel.onAction(MapAction.Plan.SelectTravelMode(TravelMode.Transit))
+        testScheduler.advanceUntilIdle()
+        assertEquals(false, routes.transitTimes.single()?.isArriveBy)
+
+        viewModel.onAction(MapAction.Plan.OpenLeaveAt)
+        testScheduler.advanceUntilIdle()
+        assertEquals(true, assertIs<MapDialog.LeaveAt>(viewModel.uiState.value.dialog).canArriveBy)
+        viewModel.onAction(MapAction.Dialog.PickTransitTime(18, 0, isArriveBy = true))
+        testScheduler.advanceUntilIdle()
+
+        val picked = assertNotNull(routes.transitTimes.last())
+        assertTrue(picked.isArriveBy)
+        assertEquals(LocalTime(18, 0), picked.at.toLocalDateTime(TimeZone.currentSystemDefault()).time)
+        assertEquals(LeaveAtState("18:00", isArriveBy = true), viewModel.uiState.value.pointRouteCard?.route?.leaveAt)
     }
 
     @Test

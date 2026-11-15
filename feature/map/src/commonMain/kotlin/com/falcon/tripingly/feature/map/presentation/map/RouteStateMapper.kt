@@ -3,6 +3,18 @@ package com.falcon.tripingly.feature.map.presentation.map
 import com.falcon.tripingly.core.model.place.MapPlace
 import com.falcon.tripingly.core.model.route.AlongTheWayPlace
 import com.falcon.tripingly.core.model.route.RoutePlan
+import com.falcon.tripingly.core.model.route.RouteLeg
+import com.falcon.tripingly.feature.map.generated.resources.Res
+import com.falcon.tripingly.feature.map.generated.resources.map_transit_ride_detail
+import com.falcon.tripingly.feature.map.generated.resources.map_transit_ride_times
+import com.falcon.tripingly.feature.map.generated.resources.map_transit_stops
+import com.falcon.tripingly.feature.map.generated.resources.map_transit_to_stop
+import com.falcon.tripingly.feature.map.generated.resources.map_transit_towards
+import com.falcon.tripingly.feature.map.generated.resources.map_transit_walk
+import com.falcon.tripingly.feature.map.generated.resources.map_transit_walk_detail
+import com.falcon.tripingly.feature.map.generated.resources.map_transit_walk_to
+import com.falcon.tripingly.feature.map.presentation.map.ui.distanceText
+import com.falcon.tripingly.feature.map.presentation.map.ui.durationText
 import com.falcon.tripingly.core.model.route.TransitVehicle
 import com.falcon.tripingly.core.model.route.TravelMode
 import com.falcon.tripingly.core.model.trip.GeoPoint
@@ -54,6 +66,31 @@ private fun RouteModel.leaveAt(): LeaveAtState? {
     if (travelMode != TravelMode.Transit || transitNote == TransitNote.NotHere) return null
     val time = transitPick?.time ?: transitAt?.at?.toLocalDateTime(TimeZone.currentSystemDefault())?.time ?: return null
     return LeaveAtState(clockTime(time), isArriveBy = transitPick?.isArriveBy == true && between != null)
+}
+
+/** A public transport route's legs as the steps sheet's rows; a day's leg starts with the stop it goes to ([stopTitle]). */
+internal fun transitStepRows(legs: List<RouteLeg>, stopTitle: (String) -> UiText?): List<TransitStepRow> = legs.flatMapIndexed { legIndex, leg ->
+    val header = leg.toMarkerId?.let(stopTitle)?.let { TransitStepRow.Leg("leg-$legIndex", UiText.Resource(Res.string.map_transit_to_stop, it)) }
+    listOfNotNull(header) + leg.steps.mapIndexed { index, step ->
+        val key = "step-$legIndex-$index"
+        val duration = durationText(step.durationSeconds)
+        if (step.isRide) {
+            TransitStepRow.Ride(
+                key = key,
+                line = step.line,
+                vehicle = step.vehicle ?: TransitVehicle.Other,
+                towards = step.headsign?.let { UiText.Resource(Res.string.map_transit_towards, it) },
+                times = UiText.Resource(Res.string.map_transit_ride_times, step.from.name.orEmpty(), clockTime(step.from.time), step.to.name.orEmpty(), clockTime(step.to.time)),
+                detail = UiText.Resource(Res.string.map_transit_ride_detail, UiText.Plural(Res.plurals.map_transit_stops, step.stops, step.stops), duration),
+            )
+        } else {
+            TransitStepRow.Walk(
+                key = key,
+                title = step.to.name?.let { UiText.Resource(Res.string.map_transit_walk_to, duration, it) } ?: UiText.Resource(Res.string.map_transit_walk, duration),
+                detail = UiText.Resource(Res.string.map_transit_walk_detail, distanceText(step.distanceMeters), clockTime(step.from.time), clockTime(step.to.time)),
+            )
+        }
+    }
 }
 
 /** The time "Leave at" opens on: the one picked, or the one the route was asked for, or now. */

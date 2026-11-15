@@ -170,6 +170,8 @@
     <string name="map_transit_ride_times">%1$s %2$s → %3$s %4$s</string>
     <string name="map_transit_to_stop">Cél: %1$s</string>
     <string name="map_transit_typical">Az időpontok a hét ezen napjának szokásos menetrendjét követik.</string>
+    <string name="map_transit_walk_detail">%1$s · %2$s → %3$s</string>
+    <string name="map_transit_ride_detail">%1$s · %2$s</string>
     <plurals name="map_transit_stops">
         <item quantity="one">%1$d megálló</item>
         <item quantity="other">%1$d megálló</item>

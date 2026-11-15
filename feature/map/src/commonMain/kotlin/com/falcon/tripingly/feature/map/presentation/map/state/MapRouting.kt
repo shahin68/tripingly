@@ -28,6 +28,7 @@ import com.falcon.tripingly.feature.map.generated.resources.map_route_my_locatio
 import com.falcon.tripingly.feature.map.generated.resources.map_route_need_location
 import com.falcon.tripingly.feature.map.presentation.component.PinEnd
 import com.falcon.tripingly.feature.map.presentation.map.TransitNote
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -60,8 +61,8 @@ internal class MapRouting(
     private val showRoutesArePro: () -> Unit,
     /** A stop was added or a route asked for: the plan sheet opens all the way. */
     private val showWholePlan: () -> Unit,
-    /** The cities with public transport routes, from the server's settings. */
-    private val transitAreas: () -> List<TransitArea>,
+    /** The cities with public transport routes, from the server's settings, which may arrive after the map opens. */
+    private val transitAreas: StateFlow<List<TransitArea>>,
     private val clock: Clock = Clock.System,
 ) {
     /** What the route on the map was last asked for. */
@@ -69,7 +70,7 @@ internal class MapRouting(
 
     init {
         context.scope.launch {
-            combine(context.trip, context.model, ::requestOf).distinctUntilChanged().collectLatest(::load)
+            combine(context.trip, context.model, transitAreas, ::requestOf).distinctUntilChanged().collectLatest(::load)
         }
         // A place tapped while routing keeps its pin until the route closes; then they all go back to what they were.
         context.scope.launch {
@@ -116,7 +117,7 @@ internal class MapRouting(
 
     /** Public transport goes between the ends of the route that shows, or would show. */
     private fun isTransitCovered(model: MapModel): Boolean =
-        requestOf(context.trip.value, model.copy(route = model.route.copy(travelMode = TravelMode.Transit)))?.stops?.let { transitAreas().covers(it) } == true
+        requestOf(context.trip.value, model.copy(route = model.route.copy(travelMode = TravelMode.Transit)), transitAreas.value)?.transit?.isCovered == true
 
     /** "Leave at": the time picker opens on the time the route was asked for. */
     fun openLeaveAt() {
@@ -351,19 +352,21 @@ internal class MapRouting(
         context.scope.launch { markerRepository.reorderMarkers(context.tripId, day.id, ids) }
     }
 
-    private fun requestOf(details: TripDetails?, model: MapModel): RouteRequest? {
+    private fun requestOf(details: TripDetails?, model: MapModel, areas: List<TransitArea>): RouteRequest? {
         val route = model.route
         val days = details?.days.orEmpty()
         val openDay = days.getOrNull(activeDayIndex(days.size, model.activeDayIndex))
         // By public transport: the time picked and the open day's date, which the route leaves on when it's ahead.
-        val time = TransitRequest(openDay?.date, route.transitPick).takeIf { route.travelMode == TravelMode.Transit }
+        // Covered is part of the request: the cities arriving after the map opened ask again.
+        fun time(stops: List<GeoPoint>) = TransitRequest(openDay?.date, route.transitPick, areas.covers(stops)).takeIf { route.travelMode == TravelMode.Transit }
         route.between?.let {
-            return RouteRequest.Between(it.from.location, it.to.location, route.travelMode, route.attempt, it.from.endPlaceId(details), it.to.endPlaceId(details), time)
+            val ends = listOf(it.from.location, it.to.location)
+            return RouteRequest.Between(it.from.location, it.to.location, route.travelMode, route.attempt, it.from.endPlaceId(details), it.to.endPlaceId(details), time(ends))
         }
         if (!route.isDayRouteShown) return null
         val day = openDay ?: return null
         if (day.markers.size < 2) return null
-        return RouteRequest.Day(day.id, day.markers.map { it.id to it.location }, route.travelMode, route.attempt, time)
+        return RouteRequest.Day(day.id, day.markers.map { it.id to it.location }, route.travelMode, route.attempt, time(day.markers.map { it.location }))
     }
 
     private suspend fun load(request: RouteRequest?) {
@@ -376,7 +379,7 @@ internal class MapRouting(
         // The line stays while the same day or the same two places load again; another one's goes at once.
         val isSameRoute = before != null && before.subject == request.subject
         // Public transport outside a covered city isn't asked for: a note says so, the day keeps its own lines.
-        if (request.mode == TravelMode.Transit && !transitAreas().covers(request.stops)) {
+        if (request.transit?.isCovered == false) {
             return update { it.copy(plan = null, isUnavailable = false, isLoading = false, transitAt = null, transitNote = TransitNote.NotHere) }
         }
         update { it.copy(isLoading = true, plan = it.plan.takeIf { isSameRoute }, isUnavailable = it.isUnavailable && isSameRoute, transitNote = null) }
@@ -478,8 +481,11 @@ internal class MapRouting(
     }
 }
 
-/** The open day's [date] and the time picked: what a public transport route's time is worked out from as it loads. */
-private data class TransitRequest(val date: LocalDate?, val pick: TransitPick?)
+/**
+ * The open day's [date] and the time picked: what a public transport route's time is worked out from as it loads; [isCovered]:
+ * its stops are in one covered city.
+ */
+private data class TransitRequest(val date: LocalDate?, val pick: TransitPick?, val isCovered: Boolean)
 
 /** How an address picked from search starts its id as a route's end. */
 private const val ADDRESS_ID_PREFIX = "address:"

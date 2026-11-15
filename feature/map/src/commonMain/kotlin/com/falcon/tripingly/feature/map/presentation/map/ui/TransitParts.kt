@@ -33,7 +33,7 @@ import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -66,28 +66,24 @@ import com.falcon.tripingly.feature.map.generated.resources.map_transit_leave
 import com.falcon.tripingly.feature.map.generated.resources.map_transit_leave_at
 import com.falcon.tripingly.feature.map.generated.resources.map_transit_no_connection
 import com.falcon.tripingly.feature.map.generated.resources.map_transit_not_here
-import com.falcon.tripingly.feature.map.generated.resources.map_transit_ride_times
 import com.falcon.tripingly.feature.map.generated.resources.map_transit_show_steps
 import com.falcon.tripingly.feature.map.generated.resources.map_transit_steps_title
-import com.falcon.tripingly.feature.map.generated.resources.map_transit_stops
 import com.falcon.tripingly.feature.map.generated.resources.map_transit_time_done
 import com.falcon.tripingly.feature.map.generated.resources.map_transit_time_title
-import com.falcon.tripingly.feature.map.generated.resources.map_transit_to_stop
-import com.falcon.tripingly.feature.map.generated.resources.map_transit_towards
 import com.falcon.tripingly.feature.map.generated.resources.map_transit_typical
-import com.falcon.tripingly.feature.map.generated.resources.map_transit_walk
-import com.falcon.tripingly.feature.map.generated.resources.map_transit_walk_to
 import com.falcon.tripingly.feature.map.presentation.map.LeaveAtState
 import com.falcon.tripingly.feature.map.presentation.map.MapAction
 import com.falcon.tripingly.feature.map.presentation.map.MapDialog
 import com.falcon.tripingly.feature.map.presentation.map.MapSheet
 import com.falcon.tripingly.feature.map.presentation.map.TransitChip
-import com.falcon.tripingly.feature.map.presentation.map.TransitLegSteps
+import com.falcon.tripingly.feature.map.presentation.map.TransitStepRow
+import com.falcon.tripingly.feature.map.presentation.map.transitStepRows
+import com.falcon.tripingly.core.model.route.RouteLeg
+import kotlinx.collections.immutable.toImmutableList
+import androidx.compose.foundation.lazy.items
 import com.falcon.tripingly.feature.map.presentation.map.TransitNote
-import com.falcon.tripingly.feature.map.presentation.map.clockTime
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
-import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
 import kotlin.time.Instant
 
@@ -190,12 +186,7 @@ internal fun TransitStepsSheet(sheet: MapSheet.TransitSteps, onClose: () -> Unit
     Column(modifier.padding(bottom = MaterialTheme.spacing.large)) {
         SheetHeader(title = stringResource(Res.string.map_transit_steps_title), onClose = onClose)
         LazyColumn(contentPadding = PaddingValues(horizontal = MaterialTheme.spacing.large), verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium)) {
-            sheet.legs.forEachIndexed { legIndex, leg ->
-                leg.toStop?.let { stop ->
-                    item(key = "leg-$legIndex") { SectionLabel(stringResource(Res.string.map_transit_to_stop, stop.asString()), Modifier.animateItem()) }
-                }
-                itemsIndexed(leg.steps, key = { index, _ -> "step-$legIndex-$index" }) { _, step -> TransitStepRow(step, Modifier.animateItem()) }
-            }
+            items(sheet.rows, key = { it.key }) { row -> TransitStepRowItem(row, Modifier.animateItem()) }
             if (sheet.isTypicalTimes) {
                 item(key = "typical") { Text(stringResource(Res.string.map_transit_typical), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
             }
@@ -207,37 +198,27 @@ internal fun TransitStepsSheet(sheet: MapSheet.TransitSteps, onClose: () -> Unit
 }
 
 @Composable
-private fun TransitStepRow(step: TransitStep, modifier: Modifier = Modifier) {
+private fun TransitStepRowItem(row: TransitStepRow, modifier: Modifier = Modifier) {
+    if (row is TransitStepRow.Leg) return SectionLabel(row.toStop.asString(), modifier)
     Row(modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium)) {
         Box(Modifier.size(StepIconSize).clip(MaterialTheme.shapes.small).background(MaterialTheme.colorScheme.surfaceVariant), contentAlignment = Alignment.Center) {
-            Icon(if (step.isRide) (step.vehicle ?: TransitVehicle.Other).icon else Icons.AutoMirrored.Filled.DirectionsWalk, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+            Icon(if (row is TransitStepRow.Ride) row.vehicle.icon else Icons.AutoMirrored.Filled.DirectionsWalk, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            if (step.isRide) {
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small)) {
-                    step.line?.let { LineBadge(it) }
-                    step.headsign?.let { Text(stringResource(Res.string.map_transit_towards, it), style = MaterialTheme.typography.titleSmall, maxLines = 2, overflow = TextOverflow.Ellipsis) }
+            when (row) {
+                is TransitStepRow.Ride -> {
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small)) {
+                        row.line?.let { LineBadge(it) }
+                        row.towards?.let { Text(it.asString(), style = MaterialTheme.typography.titleSmall, maxLines = 2, overflow = TextOverflow.Ellipsis) }
+                    }
+                    Text(row.times.asString(), style = MaterialTheme.typography.bodyMedium)
+                    Text(row.detail.asString(), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
-                Text(
-                    stringResource(Res.string.map_transit_ride_times, step.from.name.orEmpty(), clockTime(step.from.time), step.to.name.orEmpty(), clockTime(step.to.time)),
-                    style = MaterialTheme.typography.bodyMedium,
-                )
-                Text(
-                    "${pluralStringResource(Res.plurals.map_transit_stops, step.stops, step.stops)} · ${durationLabel(step.durationSeconds)}",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            } else {
-                val minutes = durationLabel(step.durationSeconds)
-                Text(
-                    step.to.name?.let { stringResource(Res.string.map_transit_walk_to, minutes, it) } ?: stringResource(Res.string.map_transit_walk, minutes),
-                    style = MaterialTheme.typography.titleSmall,
-                )
-                Text(
-                    "${distanceText(step.distanceMeters).asString()} · ${clockTime(step.from.time)} → ${clockTime(step.to.time)}",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
+                is TransitStepRow.Walk -> {
+                    Text(row.title.asString(), style = MaterialTheme.typography.titleSmall)
+                    Text(row.detail.asString(), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                is TransitStepRow.Leg -> Unit
             }
         }
     }
@@ -251,7 +232,7 @@ private fun TransitStepRow(step: TransitStep, modifier: Modifier = Modifier) {
 @Composable
 internal fun LeaveAtDialog(dialog: MapDialog.LeaveAt, onAction: (MapAction) -> Unit) {
     val time = rememberTimePickerState(initialHour = dialog.hour, initialMinute = dialog.minute, is24Hour = true)
-    var isArriveBy by remember { mutableStateOf(dialog.isArriveBy) }
+    var isArriveBy by rememberSaveable { mutableStateOf(dialog.isArriveBy) }
     AppDialog(
         title = stringResource(Res.string.map_transit_time_title),
         confirmLabel = stringResource(Res.string.map_transit_time_done),
@@ -292,7 +273,7 @@ private fun TransitPreviewContent() {
                 inset = MaterialTheme.spacing.small,
             )
             TransitNoteText(TransitNote.NotHere)
-            TransitStepsSheet(MapSheet.TransitSteps(persistentListOf(TransitLegSteps(null, previewSteps)), isTypicalTimes = true, attribution = "© Wiener Linien"), onClose = {})
+            TransitStepsSheet(MapSheet.TransitSteps(transitStepRows(listOf(RouteLeg(null, null, 7600, 1800, previewSteps))) { null }.toImmutableList(), isTypicalTimes = true, attribution = "© Wiener Linien"), onClose = {})
         }
     }
 }

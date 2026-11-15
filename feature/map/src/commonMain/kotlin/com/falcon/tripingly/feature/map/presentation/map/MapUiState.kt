@@ -10,7 +10,6 @@ import com.falcon.tripingly.core.model.place.PlaceImage
 import com.falcon.tripingly.core.model.place.PlaceSearchResult
 import com.falcon.tripingly.core.model.route.AlongTheWayPlace
 import com.falcon.tripingly.core.model.route.TransitLine
-import com.falcon.tripingly.core.model.route.TransitStep
 import com.falcon.tripingly.core.model.route.TransitVehicle
 import com.falcon.tripingly.core.model.route.TravelMode
 import com.falcon.tripingly.core.model.trip.JoinRequestStatus
@@ -217,9 +216,20 @@ sealed interface TransitChip {
     data class Ride(val line: TransitLine, val vehicle: TransitVehicle) : TransitChip
 }
 
-/** One leg of a public transport route in the steps sheet: to [toStop] (a day's next stop; null from A to B). */
+/** One row of the public transport steps sheet, its texts built by the mapper; [key] keeps it in the list. */
 @Immutable
-data class TransitLegSteps(val toStop: UiText?, val steps: ImmutableList<TransitStep>)
+sealed interface TransitStepRow {
+    val key: String
+
+    /** A day's leg starts: it goes to [toStop]. */
+    data class Leg(override val key: String, val toStop: UiText) : TransitStepRow
+
+    /** "Walk 4 min to Stephansplatz" over "320 m · 14:00 → 14:04". */
+    data class Walk(override val key: String, val title: UiText, val detail: UiText) : TransitStepRow
+
+    /** The line's badge and "towards Leopoldau", "Stephansplatz 14:06 → Praterstern 14:10", "2 stops · 4 min". */
+    data class Ride(override val key: String, val line: TransitLine?, val vehicle: TransitVehicle, val towards: UiText?, val times: UiText, val detail: UiText) : TransitStepRow
+}
 
 /**
  * A place's card and details sheet: ⓘ opens the details, + adds the place to the open day or one of my trips ([add]), and
@@ -334,7 +344,7 @@ sealed interface MapSheet {
     data class PlaceDetails(val card: PlaceCardState) : MapSheet
     data class AddToTrip(val picker: AddToTripState, override val hasBack: Boolean = false) : MapSheet
     /** The public transport route step by step, opened from the route card; its back arrow goes back to the plan. */
-    data class TransitSteps(val legs: ImmutableList<TransitLegSteps>, val isTypicalTimes: Boolean, val attribution: String?) : MapSheet {
+    data class TransitSteps(val rows: ImmutableList<TransitStepRow>, val isTypicalTimes: Boolean, val attribution: String?) : MapSheet {
         override val hasBack get() = true
     }
 }

@@ -48,6 +48,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -109,7 +110,7 @@ class MapViewModel(
         askForLocation = location::askForRoute,
         showRoutesArePro = { sendEvent(MapEvent.OpenPaywall) },
         showWholePlan = { sendEvent(MapEvent.ShowWholePlan) },
-        transitAreas = { appConfigRepository.config.value.transitAreas },
+        transitAreas = appConfigRepository.config.map { it.transitAreas }.stateIn(viewModelScope, SharingStarted.Eagerly, appConfigRepository.config.value.transitAreas),
     )
     private val search = MapSearch(context, camera, selection, placeRepository, routeTo = routes::routeToResult)
     private val sharing = MapSharing(context, tripRepository, socialRepository)

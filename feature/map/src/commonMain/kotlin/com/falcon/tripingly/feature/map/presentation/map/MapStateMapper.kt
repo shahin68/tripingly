@@ -333,8 +333,8 @@ internal class MapStateMapper(
     /** The public transport route's legs step by step; a day's leg goes to its next stop. */
     private fun transitSteps(): MapSheet? {
         val transit = plan?.route?.takeIf { route.planMode == TravelMode.Transit && it.legs.any { leg -> leg.steps.isNotEmpty() } } ?: return null
-        val legs = transit.legs.map { leg -> TransitLegSteps(leg.toMarkerId?.let { id -> stops.firstOrNull { it.id == id }?.title }, leg.steps.toImmutableList()) }
-        return MapSheet.TransitSteps(legs.toImmutableList(), transit.isTypicalTimes, plan.attribution)
+        val rows = transitStepRows(transit.legs) { id -> stops.firstOrNull { it.id == id }?.title }
+        return MapSheet.TransitSteps(rows.toImmutableList(), transit.isTypicalTimes, plan.attribution)
     }
 
     /** The trip's owner and members but me: the people my comment can @mention. */
