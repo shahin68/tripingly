@@ -173,13 +173,10 @@ private final class AppGoogleMap: NSObject, GoogleMap, GMSMapViewDelegate {
             let polyline = GMSPolyline(path: path(of: part.points))
             polyline.strokeWidth = CGFloat(width)
             if part.isDotted {
-                // A walk: short dashes of its colour with gaps between, in metres along the way.
-                polyline.spans = GMSStyleSpans(
-                    polyline.path!,
-                    [GMSStrokeStyle.solidColor(part.color), GMSStrokeStyle.solidColor(.clear)],
-                    [NSNumber(value: Self.dotMeters), NSNumber(value: Self.dotMeters)],
-                    .rhumb
-                )
+                // A walk: round dots as wide as the line, a dot and a half apart, stamped along it the same on screen
+                // at every zoom (Shahin, 2026-11-15: dots, not dashes), as Android's Dot and Gap draw them.
+                let stamp = GMSSpriteStyle(image: Self.dotImage(color: part.color, width: CGFloat(width)))
+                polyline.spans = [GMSStyleSpan(style: GMSStrokeStyle.transparentStroke(withStamp: stamp))]
             } else {
                 polyline.strokeColor = part.color
             }
@@ -188,8 +185,17 @@ private final class AppGoogleMap: NSObject, GoogleMap, GMSMapViewDelegate {
         }
     }
 
-    /// A dotted walk's dashes and gaps.
-    private static let dotMeters = 8.0
+    /// One dot of a walk and the gap after it: the sprite repeats along the line, scaled to the line's width.
+    private static func dotImage(color: UIColor, width: CGFloat) -> UIImage {
+        let size = CGSize(width: width, height: width * (1 + dotGapWidths))
+        return UIGraphicsImageRenderer(size: size).image { _ in
+            color.setFill()
+            UIBezierPath(ovalIn: CGRect(x: 0, y: 0, width: width, height: width)).fill()
+        }
+    }
+
+    /// A dotted walk's gaps, in line widths (as on Android).
+    private static let dotGapWidths: CGFloat = 1.5
 
     func setLineSweep(points: [GoogleMapPoint], color: UIColor, width: Double) {
         guard points.count > 1 else {

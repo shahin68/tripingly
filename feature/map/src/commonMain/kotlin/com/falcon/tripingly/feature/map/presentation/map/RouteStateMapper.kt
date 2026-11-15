@@ -17,6 +17,7 @@ import com.falcon.tripingly.feature.map.generated.resources.map_transit_walk_det
 import com.falcon.tripingly.feature.map.generated.resources.map_transit_walk_total
 import com.falcon.tripingly.feature.map.presentation.map.ui.distanceText
 import com.falcon.tripingly.feature.map.presentation.map.ui.durationText
+import com.falcon.tripingly.core.model.route.TransitVehicle
 import com.falcon.tripingly.core.model.route.TravelMode
 import com.falcon.tripingly.core.model.trip.GeoPoint
 import com.falcon.tripingly.core.ui.UiText
@@ -127,7 +128,7 @@ internal fun transitStepRows(legs: List<RouteLeg>, fromEnd: (RouteLeg) -> Transi
                     isChange -> TransitPath.Change
                     else -> TransitPath.Walk
                 },
-                ride = if (step.isRide) TransitRide(step.line, step.headsign?.let { UiText.Resource(Res.string.map_transit_towards, it) }) else null,
+                ride = if (step.isRide) TransitRide(step.line, step.headsign?.let { UiText.Resource(Res.string.map_transit_towards, it) }, step.vehicle ?: TransitVehicle.Other) else null,
                 detail = when {
                     step.isRide -> UiText.Resource(Res.string.map_transit_joined, UiText.Plural(Res.plurals.map_transit_stops, step.stops, step.stops), duration)
                     isChange -> UiText.Resource(Res.string.map_transit_change_walk, duration)

@@ -298,7 +298,7 @@ class MapViewModelTest {
 
     /** The place of the pin named [name] on the map. */
     /** Where the route's start badge is: its start pin. */
-    private val MapUiState.startMark get() = layers.routeEnds.firstOrNull { it.isStart }?.position
+    private val MapUiState.endFlag get() = layers.routeEnds.singleOrNull()?.position
 
     private fun MapViewModel.pin(name: String): MapPlace = uiState.value.layers.placePins.single { it.place.name == name }.place
 
@@ -2346,10 +2346,10 @@ class MapViewModelTest {
         viewModel.onAction(MapAction.Plan.SelectTravelMode(TravelMode.Transit))
         testScheduler.advanceUntilIdle()
         assertEquals(false, routes.transitTimes.single()?.isArriveBy)
-        // The ends are pointed pins standing in their pins' place: the Oper's own pin is gone while the route shows.
+        // The Oper keeps its own pin, with the flag over it as where the route ends.
         val layers = viewModel.uiState.value.layers
-        assertTrue(layers.routeEnds.isNotEmpty() && layers.routeEnds.all { it.isPointed })
-        assertTrue(layers.placePins.none { it.place.id == oper.id })
+        assertEquals(listOf(oper.location), layers.routeEnds.map { it.position })
+        assertTrue(layers.placePins.single { it.place.id == oper.id }.isKept)
         assertNull(layers.selectedPlace)
         // The fake's ride has its badge and rings on the line.
         assertEquals(listOf("U1"), assertNotNull(layers.line).marks.filterIsInstance<LineMark.Badge>().map { it.name })
@@ -2364,6 +2364,45 @@ class MapViewModelTest {
         assertTrue(picked.isArriveBy)
         assertEquals(LocalTime(18, 0), picked.at.toLocalDateTime(TimeZone.currentSystemDefault()).time)
         assertEquals(LeaveAtState("18:00", isArriveBy = true), viewModel.uiState.value.pointRouteCard?.route?.leaveAt)
+    }
+
+    @Test
+    fun `public transport routes are kept, so swapping back or switching modes back asks nothing new`() = runTest(testDispatcher) {
+        val viewModel = viewModel(config = AppConfig(transitAreas = listOf(VIENNA)))
+        testScheduler.advanceUntilIdle()
+        val from = MapPlace("a", "Oper", PlaceCategory.Attraction, GeoPoint(48.2031, 16.3691), isTripinly = false, hotCount = 0, prominence = 80)
+        val to = MapPlace("b", "Prater", PlaceCategory.Park, GeoPoint(48.2166, 16.3958), isTripinly = false, hotCount = 0, prominence = 80)
+        viewModel.onAction(MapAction.MapView.PlacePinClick(from))
+        viewModel.onAction(MapAction.PinRoute.Route)
+        testScheduler.advanceUntilIdle()
+        viewModel.onAction(MapAction.MapView.PlacePinClick(to))
+        restOnTarget(viewModel)
+        viewModel.onAction(MapAction.PinRoute.Route)
+        testScheduler.advanceUntilIdle()
+        viewModel.onAction(MapAction.Plan.SelectTravelMode(TravelMode.Transit))
+        testScheduler.advanceUntilIdle()
+        assertEquals(1, routes.transitTimes.size)
+
+        // The other way round is a new ask; back again, and to walking and back, is the route already found.
+        viewModel.onAction(MapAction.PinRoute.Swap)
+        testScheduler.advanceUntilIdle()
+        assertEquals(2, routes.transitTimes.size)
+        viewModel.onAction(MapAction.PinRoute.Swap)
+        testScheduler.advanceUntilIdle()
+        viewModel.onAction(MapAction.Plan.SelectTravelMode(TravelMode.Walking))
+        testScheduler.advanceUntilIdle()
+        viewModel.onAction(MapAction.Plan.SelectTravelMode(TravelMode.Transit))
+        testScheduler.advanceUntilIdle()
+        assertEquals(2, routes.transitTimes.size)
+        assertEquals(TravelMode.Transit, viewModel.uiState.value.pointRouteCard?.route?.mode)
+        assertEquals(RouteBarState(UiText.Server("Oper"), UiText.Server("Prater")), viewModel.uiState.value.routeBar)
+
+        // A time picked is the person's new ask.
+        viewModel.onAction(MapAction.Plan.OpenLeaveAt)
+        testScheduler.advanceUntilIdle()
+        viewModel.onAction(MapAction.Dialog.PickTransitTime(18, 0, isArriveBy = false))
+        testScheduler.advanceUntilIdle()
+        assertEquals(3, routes.transitTimes.size)
     }
 
     @Test
@@ -2579,10 +2618,10 @@ class MapViewModelTest {
         viewModel.onAction(MapAction.MapView.PlacePinClick(from))
         viewModel.onAction(MapAction.PinRoute.Route)
         testScheduler.advanceUntilIdle()
-        // The pin is ringed as the start, its card closes, and the header asks where to, searching.
+        // Its card closes and the header asks where to, searching; no flag until there is an end.
         assertEquals(RouteBarState(UiText.Server("Oper"), to = null), viewModel.uiState.value.routeBar)
         assertNotNull(viewModel.uiState.value.search)
-        assertEquals(from.location, viewModel.uiState.value.startMark)
+        assertNull(viewModel.uiState.value.endFlag)
         assertNull(viewModel.uiState.value.layers.selectedPlace)
 
         viewModel.onAction(MapAction.MapView.PlacePinClick(to))
@@ -2600,7 +2639,7 @@ class MapViewModelTest {
         assertNull(state.stopsCard)
         assertEquals(RouteBarState(UiText.Server("Oper"), UiText.Server("Prater")), state.routeBar)
         assertNull(state.search)
-        assertEquals(from.location, state.startMark)
+        assertEquals(to.location, state.endFlag)
         assertEquals(listOf(from.location to to.location), routes.pointRoutes)
         // The two places are left out of the places along the way by their ids.
         assertEquals(listOf<Pair<String?, String?>>("a" to "b"), routes.pointRoutePlaces)
@@ -2610,14 +2649,14 @@ class MapViewModelTest {
         viewModel.onAction(MapAction.PinRoute.Swap)
         testScheduler.advanceUntilIdle()
         assertEquals(RouteBarState(UiText.Server("Prater"), UiText.Server("Oper")), viewModel.uiState.value.routeBar)
-        assertEquals(to.location, viewModel.uiState.value.startMark)
+        assertEquals(from.location, viewModel.uiState.value.endFlag)
         assertEquals(to.location to from.location, routes.pointRoutes.last())
         // Both ends are pins at any zoom, grown, though the map loaded neither, and each has its badge.
         viewModel.uiState.value.layers.placePins.filter { it.place.id in setOf("a", "b") }.let { ends ->
             assertEquals(2, ends.size)
             assertTrue(ends.all { it.isKept && it.size == SelectedPinSize && !it.isDotAt(isZoomedOut = true) })
         }
-        assertEquals(listOf(true to to.location, false to from.location), viewModel.uiState.value.layers.routeEnds.map { it.isStart to it.position })
+        assertEquals(listOf(from.location), viewModel.uiState.value.layers.routeEnds.map { it.position })
 
         // A place tapped while the route shows stays a pin until the route closes.
         val rathaus = MapPlace("c", "Rathaus", PlaceCategory.Attraction, GeoPoint(48.2108, 16.3572), isTripinly = false, hotCount = 0, prominence = 80)
@@ -2634,7 +2673,7 @@ class MapViewModelTest {
         assertEquals(RouteBarState(from = null, UiText.Server("Oper"), isEditing = true), viewModel.uiState.value.routeBar)
         assertEquals("Prater", viewModel.uiState.value.search?.query?.text?.toString())
         assertNotNull(viewModel.uiState.value.pointRouteCard)
-        assertEquals(2, viewModel.uiState.value.layers.routeEnds.size)
+        assertEquals(1, viewModel.uiState.value.layers.routeEnds.size)
         // The keyboard's search on the name untouched, or ✕, keeps the end as it was and closes only the field.
         viewModel.onAction(MapAction.PinRoute.SubmitEnd)
         testScheduler.advanceUntilIdle()
@@ -2661,7 +2700,7 @@ class MapViewModelTest {
         testScheduler.advanceUntilIdle()
         assertNull(viewModel.uiState.value.pointRouteCard)
         assertNull(viewModel.uiState.value.routeBar)
-        assertNull(viewModel.uiState.value.startMark)
+        assertNull(viewModel.uiState.value.endFlag)
         viewModel.uiState.value.assertRoute(viewModel.uiState.value.stopPositions)
         // The day's route still shows, so the places tapped keep their pins; with no route at all they go back.
         assertTrue(viewModel.uiState.value.layers.placePins.single { it.place.id == "c" }.isKept)
@@ -2732,7 +2771,7 @@ class MapViewModelTest {
         testScheduler.advanceUntilIdle()
         assertNull(viewModel.uiState.value.routeBar)
         assertNull(viewModel.uiState.value.search)
-        assertNull(viewModel.uiState.value.startMark)
+        assertNull(viewModel.uiState.value.endFlag)
 
         viewModel.onAction(MapAction.MapView.PlacePinClick(oper))
         viewModel.onAction(MapAction.PinRoute.Route)
@@ -2770,8 +2809,8 @@ class MapViewModelTest {
         assertEquals(listOf(GeoPoint(me.latitude, me.longitude) to oper.location), routes.pointRoutes)
         // Where I am is no place.
         assertEquals(listOf<Pair<String?, String?>>(null to "a"), routes.pointRoutePlaces)
-        // Where I am isn't a pin: nothing is ringed.
-        assertNull(viewModel.uiState.value.startMark)
+        // Only the destination carries the flag.
+        assertEquals(oper.location, viewModel.uiState.value.endFlag)
 
         // On again on the pin's card: Go here is on, and a tap closes it.
         viewModel.onAction(MapAction.MapView.PlacePinClick(oper))

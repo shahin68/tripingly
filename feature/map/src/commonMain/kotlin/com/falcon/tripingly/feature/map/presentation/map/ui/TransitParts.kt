@@ -26,7 +26,13 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.DirectionsWalk
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.filled.DirectionsBoat
+import androidx.compose.material.icons.filled.DirectionsBus
+import androidx.compose.material.icons.filled.DirectionsSubway
+import androidx.compose.material.icons.filled.DirectionsTransit
 import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material.icons.filled.Train
+import androidx.compose.material.icons.filled.Tram
 import androidx.compose.material.icons.filled.Flag
 import androidx.compose.material.icons.filled.MyLocation
 import androidx.compose.material.icons.filled.Place
@@ -52,6 +58,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -259,7 +266,18 @@ private fun TransitTimelineRow(row: TransitStepRow, modifier: Modifier = Modifie
                     ride.towards?.let { Text(it.asString(), style = BoldLabel, maxLines = 1, overflow = TextOverflow.Ellipsis) }
                 }
             }
-            row.detail?.let { Text(it.asString(), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+            // How this stretch goes by its minutes: walking, or the ride's tram, bus, U-Bahn… (Shahin, 2026-11-15).
+            row.detail?.let { detail ->
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraSmall)) {
+                    Icon(
+                        imageVector = row.ride?.vehicle?.icon ?: Icons.AutoMirrored.Filled.DirectionsWalk,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(DetailIconSize),
+                    )
+                    Text(detail.asString(), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
         }
     }
 }
@@ -323,6 +341,17 @@ private fun TimelinePath(path: TransitPath, modifier: Modifier = Modifier) {
     }
 }
 
+/** The way public transport travels, as its icon. */
+private val TransitVehicle.icon: ImageVector
+    get() = when (this) {
+        TransitVehicle.Tram -> Icons.Default.Tram
+        TransitVehicle.Subway -> Icons.Default.DirectionsSubway
+        TransitVehicle.Bus -> Icons.Default.DirectionsBus
+        TransitVehicle.Train -> Icons.Default.Train
+        TransitVehicle.Ferry -> Icons.Default.DirectionsBoat
+        TransitVehicle.CableCar, TransitVehicle.Other -> Icons.Default.DirectionsTransit
+    }
+
 private fun lineColor(color: Long?): Color = color?.let { Color(it) } ?: MapColors.Transit
 
 /** A walk's minutes as a bare number, as the legs row shows them; at least one. */
@@ -372,6 +401,7 @@ private val BarWidth = 5.dp
 private val PathGap = 2.dp
 private val PlaceCircleSize = 24.dp
 private val PlaceIconSize = 14.dp
+private val DetailIconSize = 16.dp
 
 private val previewSteps = listOf(
     TransitStep(false, null, null, null, previewStop(null, 12), previewStop("Neubaugasse", 16), 0, 300, 240, emptyList()),

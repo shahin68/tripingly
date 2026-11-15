@@ -13,6 +13,7 @@ import com.falcon.tripingly.core.model.place.PlaceCategory
 import com.falcon.tripingly.core.model.place.PlaceSearchResult
 import com.falcon.tripingly.core.model.config.TransitArea
 import com.falcon.tripingly.core.model.config.covers
+import com.falcon.tripingly.core.model.route.RoutePlan
 import com.falcon.tripingly.core.model.route.TransitTime
 import com.falcon.tripingly.core.model.route.TravelMode
 import com.falcon.tripingly.core.model.trip.GeoPoint
@@ -382,6 +383,12 @@ internal class MapRouting(
         if (request.transit?.isCovered == false) {
             return update { it.copy(plan = null, isUnavailable = false, isLoading = false, transitAt = null, transitNote = TransitNote.NotHere) }
         }
+        // Public transport answered before for the same ask (the same ends, day, time picked or "now") shows again at once,
+        // also after swapping the ends or another way of travelling and back; only a new ask asks the server (Shahin, 2026-11-15:
+        // fine if a "now" is a little old). Kept in this screen's memory only.
+        transitRoutes[request]?.let { (plan, at) ->
+            return update { it.copy(plan = plan, planMode = request.mode, planStops = request.stops, isUnavailable = false, isLoading = false, transitAt = at, transitNote = null) }
+        }
         update { it.copy(isLoading = true, plan = it.plan.takeIf { isSameRoute }, isUnavailable = it.isUnavailable && isSameRoute, transitNote = null) }
         val time = request.transit?.let { transitTime(it, isBetween = request is RouteRequest.Between) }
         val result = when (request) {
@@ -391,6 +398,7 @@ internal class MapRouting(
             }
             is RouteRequest.Between -> routeRepository.route(request.from, request.to, request.mode, context.tripId, request.fromPlaceId, request.toPlaceId, time)
         }
+        if (result is AppResult.Success && time != null && !result.data.isEstimated) transitRoutes[request] = result.data to time
         val transitNote = (result as? AppResult.Error)?.error?.let { error ->
             when {
                 error.hasCode(RouteErrorCodes.TRANSIT_NO_COVERAGE) -> TransitNote.NotHere
@@ -445,6 +453,9 @@ internal class MapRouting(
     }
 
     private fun update(change: (RouteModel) -> RouteModel) = context.update { it.copy(route = change(it.route)) }
+
+    /** Public transport routes answered while this screen is open, by what was asked, with the time they were asked for. */
+    private val transitRoutes = HashMap<RouteRequest, Pair<RoutePlan, TransitTime>>()
 
     /** What a route is asked for; [subject] is the same for the same day or the same two places; a new [attempt] asks again. */
     private sealed interface RouteRequest {

@@ -29,6 +29,7 @@ import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.falcon.tripingly.core.designsystem.theme.MapColors
 import com.falcon.tripingly.core.model.config.AppConfig
 import com.falcon.tripingly.core.model.place.GeoBounds
 import com.falcon.tripingly.core.model.place.MapPlace
@@ -179,10 +180,10 @@ fun drawPlacePin(
     layoutDirection: LayoutDirection,
 ): ImageBitmap {
     val px = with(density) { size.roundToPx() }
-    val border = with(density) { 2.dp.toPx() }
+    val border = with(density) { PIN_STROKE.toPx() }
     val bitmap = ImageBitmap(px, px)
     CanvasDrawScope().draw(density, layoutDirection, Canvas(bitmap), Size(px.toFloat(), px.toFloat())) {
-        drawCircle(Color.White)
+        drawCircle(MapColors.PinStroke)
         drawCircle(fill, radius = this.size.minDimension / 2 - border)
         val iconSize = this.size * 0.6f
         translate((this.size.width - iconSize.width) / 2, (this.size.height - iconSize.height) / 2) {
@@ -192,36 +193,34 @@ fun drawPlacePin(
     return bitmap
 }
 
-/** Draws a dot pin into a bitmap: a small circle of the pin's [fill] color in a white ring. */
+/** Draws a dot pin into a bitmap: a small circle of the pin's [fill] color in the pins' thin ring. */
 fun drawPlaceDot(size: Dp, fill: Color, density: Density, layoutDirection: LayoutDirection): ImageBitmap {
     val px = with(density) { size.roundToPx() }
-    val border = with(density) { 1.5.dp.toPx() }
+    val border = with(density) { PIN_STROKE.toPx() }
     val bitmap = ImageBitmap(px, px)
     CanvasDrawScope().draw(density, layoutDirection, Canvas(bitmap), Size(px.toFloat(), px.toFloat())) {
-        drawCircle(Color.White)
+        drawCircle(MapColors.PinStroke)
         drawCircle(fill, radius = this.size.minDimension / 2 - border)
     }
     return bitmap
 }
 
 /**
- * Draws a photo pin into a bitmap: the place's photo, cropped to a circle, in a white ring and a ring of the
- * pin's [fill] color.
+ * Draws a photo pin into a bitmap: the place's photo, cropped to a circle, in the pins' one thin ring (Shahin,
+ * 2026-11-15: a single stroke, not a white and a coloured one).
  */
 fun drawPlacePhotoPin(
     photo: ImageBitmap,
     size: Dp,
-    fill: Color,
     density: Density,
     layoutDirection: LayoutDirection,
 ): ImageBitmap {
     val px = with(density) { size.roundToPx() }
-    val border = with(density) { 2.dp.toPx() }
+    val border = with(density) { PIN_STROKE.toPx() }
     val bitmap = ImageBitmap(px, px)
     CanvasDrawScope().draw(density, layoutDirection, Canvas(bitmap), Size(px.toFloat(), px.toFloat())) {
-        drawCircle(Color.White)
-        drawCircle(fill, radius = this.size.minDimension / 2 - border)
-        val inset = (border * 2).roundToInt()
+        drawCircle(MapColors.PinStroke)
+        val inset = border.roundToInt().coerceAtLeast(1)
         val side = px - inset * 2
         val crop = minOf(photo.width, photo.height)
         clipPath(Path().apply { addOval(Rect(inset.toFloat(), inset.toFloat(), (inset + side).toFloat(), (inset + side).toFloat())) }) {
@@ -251,7 +250,7 @@ internal data class PlacePinLook(
 )
 
 /**
- * Draws a cluster of liked places: a bubble with their count in bold, in a white ring, at least
+ * Draws a cluster of liked places: a bubble with their count in bold, in the pins' thin ring, at least
  * [CLUSTER_RADIUS] round and wider for long counts.
  */
 fun drawClusterPin(
@@ -269,11 +268,11 @@ fun drawClusterPin(
         layoutDirection = layoutDirection,
     )
     val radius = with(density) { maxOf(CLUSTER_RADIUS.toPx(), text.size.width / 2f + CLUSTER_PADDING.toPx()) }
-    val border = with(density) { CLUSTER_BORDER.toPx() }
+    val border = with(density) { PIN_STROKE.toPx() }
     val px = ceil(radius * 2).toInt()
     val bitmap = ImageBitmap(px, px)
     CanvasDrawScope().draw(density, layoutDirection, Canvas(bitmap), Size(px.toFloat(), px.toFloat())) {
-        drawCircle(Color.White, radius)
+        drawCircle(MapColors.PinStroke, radius)
         drawCircle(fill, radius - border)
         drawText(text, topLeft = Offset((size.width - text.size.width) / 2, (size.height - text.size.height) / 2))
     }
@@ -281,93 +280,32 @@ fun drawClusterPin(
 }
 
 /**
- * One end of a route on the map ([isStart]: where it starts): the end's pin, a place's grown, with a thick ring round it
- * in the way of travelling's [color] (Shahin, 2026-11-13: for now, to be redesigned after a few rounds of refinements).
- * [pinSize] is the pin's size, so the ring hugs it.
+ * A route's destination on the map: the route bar's flag in the way of travelling's [color] standing on the top of the
+ * destination's pin ([pinSize] round), so the end tells itself from the start (Shahin, 2026-11-14). No ring round the
+ * pin and no edge on the flag (Shahin, 2026-11-15: the big circle under the ends and the thin stroke had to go).
  */
 @Immutable
-data class RouteEndMark(
-    val position: GeoPoint,
-    val isStart: Boolean,
-    val pinSize: Dp,
-    /** Unspecified: the stops' colour of the theme. */
-    val color: Color,
-    /**
-     * By public transport: a pointed pin, like Google Maps', standing on the end in place of its own pin, a white dot in
-     * the start's and the flag in the destination's (Shahin, 2026-11-15: "so we can see the start and end").
-     */
-    val isPointed: Boolean = false,
-)
+data class RouteEndMark(val position: GeoPoint, val pinSize: Dp, val color: Color)
 
 /** A route end's look and where on it the end's point is: [anchorY] as a share of its height (x is the middle). */
 class RouteEndIcon(val bitmap: ImageBitmap, val anchorY: Float)
 
-/**
- * Draws a route end's ring, drawn under the end's pin: a [color] disc [RouteEndRingWidth] wider than the pin all round,
- * in a thin white edge so it shows on any map. The pin covers its middle. The destination ([isStart] false) also has
- * the route bar's flag standing on the ring's top, in [color] with a white edge (Shahin, 2026-11-14: "we can't tell
- * which pin is start and which is destination").
- */
-fun drawRouteEndRing(pinSize: Dp, color: Color, isStart: Boolean, density: Density, layoutDirection: LayoutDirection): RouteEndIcon {
-    val ring = with(density) { (pinSize + RouteEndRingWidth * 2).roundToPx() }
-    val flagRoom = if (isStart) 0 else with(density) { RouteEndFlagHeight.roundToPx() }
-    val edge = with(density) { RouteEndRingEdge.toPx() }
-    val bitmap = ImageBitmap(ring, ring + flagRoom)
-    CanvasDrawScope().draw(density, layoutDirection, Canvas(bitmap), Size(ring.toFloat(), (ring + flagRoom).toFloat())) {
-        val center = Offset(ring / 2f, flagRoom + ring / 2f)
-        drawCircle(Color.White, radius = ring / 2f, center = center)
-        drawCircle(color, radius = ring / 2f - edge, center = center)
-        if (!isStart) {
-            // The Material flag (24 units = 24 dp): its pole's foot (x 6, y 21) stands on the ring's top.
-            val unit = 1.dp.toPx()
-            val flag = PathParser().parsePathString(ROUTE_END_FLAG).toPath()
-            translate(left = center.x - 6 * unit, top = flagRoom - 21 * unit) {
-                scale(unit, unit, pivot = Offset.Zero) {
-                    drawPath(flag, Color.White, style = Stroke(width = 2.5f, join = StrokeJoin.Round))
-                    drawPath(flag, color)
-                }
-            }
+/** Draws [RouteEndMark]: its flag above a transparent space as big as the pin, the pin's middle being the anchor. */
+fun drawRouteEndFlag(pinSize: Dp, color: Color, density: Density, layoutDirection: LayoutDirection): RouteEndIcon {
+    val width = with(density) { maxOf(pinSize, RouteEndFlagWidth).roundToPx() }
+    val pin = with(density) { pinSize.roundToPx() }
+    val flagRoom = with(density) { RouteEndFlagHeight.roundToPx() }
+    val bitmap = ImageBitmap(width, flagRoom + pin)
+    CanvasDrawScope().draw(density, layoutDirection, Canvas(bitmap), Size(width.toFloat(), (flagRoom + pin).toFloat())) {
+        // The Material flag (24 units = 24 dp): its pole's foot (x 6, y 21) stands on the pin's top.
+        val unit = 1.dp.toPx()
+        val flag = PathParser().parsePathString(ROUTE_END_FLAG).toPath()
+        translate(left = width / 2f - 6 * unit, top = flagRoom - 21 * unit) {
+            scale(unit, unit, pivot = Offset.Zero) { drawPath(flag, color) }
         }
     }
-    return RouteEndIcon(bitmap, anchorY = (flagRoom + ring / 2f) / (ring + flagRoom))
+    return RouteEndIcon(bitmap, anchorY = (flagRoom + pin / 2f) / (flagRoom + pin))
 }
-
-/**
- * Draws a pointed route end ([RouteEndMark.isPointed]): a [color] drop with a thin white edge, its tip on the end (the
- * icon's bottom middle), a white dot in its head at the start, the white flag at the destination.
- */
-fun drawRouteEndPin(color: Color, isStart: Boolean, density: Density, layoutDirection: LayoutDirection): RouteEndIcon {
-    val width = with(density) { RouteEndPinWidth.roundToPx() }
-    val height = with(density) { RouteEndPinHeight.roundToPx() }
-    val edge = with(density) { RouteEndRingEdge.toPx() * 1.5f }
-    val bitmap = ImageBitmap(width, height)
-    CanvasDrawScope().draw(density, layoutDirection, Canvas(bitmap), Size(width.toFloat(), height.toFloat())) {
-        val radius = width / 2f
-        val drop = Path().apply {
-            // The head's circle from the left of its middle round over the top to the right, then down to the tip.
-            arcTo(Rect(0f, 0f, width.toFloat(), width.toFloat()), startAngleDegrees = 150f, sweepAngleDegrees = 240f, forceMoveTo = true)
-            lineTo(radius, height.toFloat())
-            close()
-        }
-        drawPath(drop, Color.White)
-        scale((width - edge * 2) / width, (height - edge * 2) / height, pivot = Offset(radius, height / 2f)) { drawPath(drop, color) }
-        val center = Offset(radius, radius)
-        if (isStart) {
-            drawCircle(Color.White, radius = radius * 0.36f, center = center)
-        } else {
-            // The flag in a 14-unit box in the head's middle.
-            val unit = radius * 2 * 0.6f / 24
-            val flag = PathParser().parsePathString(ROUTE_END_FLAG).toPath()
-            translate(left = center.x - 12 * unit, top = center.y - 12.5f * unit) {
-                scale(unit, unit, pivot = Offset.Zero) { drawPath(flag, Color.White) }
-            }
-        }
-    }
-    return RouteEndIcon(bitmap, anchorY = 1f)
-}
-
-private val RouteEndPinWidth = 32.dp
-private val RouteEndPinHeight = 42.dp
 
 /**
  * Material's filled flag (Icons.Filled.Flag), the route bar's destination icon, in its 24-unit box. Kept as path data,
@@ -375,14 +313,10 @@ private val RouteEndPinHeight = 42.dp
  */
 private const val ROUTE_END_FLAG = "M14.4,6L14,4H5v17h2v-7h5.6l0.4,2h7V6z"
 
-/** How much a destination's flag rises above its ring (the flag's 17 units and a little for its white edge). */
-private val RouteEndFlagHeight = 19.dp
-
-/** How far a route end's ring reaches out from its pin. */
-private val RouteEndRingWidth = 5.dp
-private val RouteEndRingEdge = 1.dp
+/** How much a destination's flag rises above its pin (the flag's 17 units). */
+private val RouteEndFlagHeight = 17.dp
+private val RouteEndFlagWidth = 24.dp
 
 private val CLUSTER_RADIUS = 18.dp
 private val CLUSTER_PADDING = 8.dp
-private val CLUSTER_BORDER = 2.dp
 private val CLUSTER_TEXT = 14.sp

@@ -74,7 +74,7 @@ internal fun MapLine.themed(): MapLine =
 sealed interface LineMark {
     val position: Coordinates
 
-    /** A white circle with a [color] ring: a ride's first or last stop in its line's colour, a change in ink. */
+    /** A white circle with a ring in its line's [color]: where a ride gets on or off. */
     data class Ring(override val position: Coordinates, val color: Color) : LineMark
 
     /** The line's [name] ("U1", "6") on its [color], in a rounded rectangle. */
@@ -93,8 +93,8 @@ internal val TravelMode.lineColor: Color
         TravelMode.Transit -> MapColors.Transit
     }
 
-/** A route's width: a little thicker than the plan line (Shahin, 2026-11-15: "all the routing lines a bit thicker"). */
-internal val RouteWidth = 7.dp
+/** A route's width (Shahin, 2026-11-15: 5 was thin, 7 too thick). */
+internal val RouteWidth = 6.dp
 
 /** The streak that runs along a line once. */
 internal val MapLineSweepColor = Color.White.copy(alpha = 0.85f)
@@ -154,18 +154,15 @@ internal fun transitLine(points: List<Coordinates>, steps: List<TransitStep>, st
     return routeLine(parts.flatMap { it.points }, stops, TravelMode.Transit).copy(arrows = emptyList(), parts = parts, marks = transitMarks(steps))
 }
 
-/**
- * Each ride's badge halfway along it and a ring at each of its ends: in its line's colour where the route gets on first
- * or off last, in ink where it changes to or from another ride.
- */
+/** Each ride's badge halfway along it and a ring in its line's colour at each of its ends, changes too (Shahin, 2026-11-15). */
 private fun transitMarks(steps: List<TransitStep>): List<LineMark> {
     val rides = steps.filter { it.isRide && it.points.size > 1 }
-    return rides.flatMapIndexed { index, ride ->
+    return rides.flatMap { ride ->
         val points = ride.points.map { Coordinates(it.lat, it.lng) }
         val color = ride.line?.color?.let { Color(it) } ?: MapColors.Transit
         listOfNotNull(
-            LineMark.Ring(points.first(), if (index > 0) ChangeInk else color),
-            LineMark.Ring(points.last(), if (index < rides.lastIndex) ChangeInk else color),
+            LineMark.Ring(points.first(), color),
+            LineMark.Ring(points.last(), color),
             ride.line?.let { line -> LineMark.Badge(halfway(points), line.name, color, line.textColor?.let { Color(it) } ?: Color.White) },
         )
     }
@@ -186,9 +183,6 @@ private fun halfway(points: List<Coordinates>): Coordinates {
     return points[points.size / 2]
 }
 
-/** A change's rings: the canvas's ink, dark on the light map and clear on the dark one with its white middle. */
-private val ChangeInk = Color(0xFF15171C)
-
 /** A ring on a public transport line: white inside a [color] ring, a thin white edge round it so it shows on any map. */
 internal fun drawLineRing(color: Color, density: Density, layoutDirection: LayoutDirection): ImageBitmap {
     val px = ceil(with(density) { RingSize.toPx() }).toInt()
@@ -201,7 +195,7 @@ internal fun drawLineRing(color: Color, density: Density, layoutDirection: Layou
     return bitmap
 }
 
-/** A line's badge on the map: its [name] in bold on its [color], a rounded rectangle with a thin white edge. */
+/** A line's badge on the map: its [name] in bold on its [color], a rounded rectangle with no edge (Shahin, 2026-11-15). */
 internal fun drawLineBadge(
     name: String,
     color: Color,
@@ -211,14 +205,12 @@ internal fun drawLineBadge(
     layoutDirection: LayoutDirection,
 ): ImageBitmap {
     val text = textMeasurer.measure(name, TextStyle(color = textColor, fontSize = BadgeText, fontWeight = FontWeight.ExtraBold), density = density, layoutDirection = layoutDirection)
-    val edge = with(density) { BadgeEdge.toPx() }
-    val width = ceil(text.size.width + with(density) { (BadgePaddingX * 2).toPx() } + edge * 2).toInt()
-    val height = ceil(text.size.height + with(density) { (BadgePaddingY * 2).toPx() } + edge * 2).toInt()
+    val width = ceil(text.size.width + with(density) { (BadgePaddingX * 2).toPx() }).toInt()
+    val height = ceil(text.size.height + with(density) { (BadgePaddingY * 2).toPx() }).toInt()
     val corner = with(density) { BadgeCorner.toPx() }
     val bitmap = ImageBitmap(width, height)
     CanvasDrawScope().draw(density, layoutDirection, Canvas(bitmap), Size(width.toFloat(), height.toFloat())) {
-        drawRoundRect(Color.White, cornerRadius = CornerRadius(corner + edge))
-        drawRoundRect(color, topLeft = Offset(edge, edge), size = Size(size.width - edge * 2, size.height - edge * 2), cornerRadius = CornerRadius(corner))
+        drawRoundRect(color, cornerRadius = CornerRadius(corner))
         drawText(text, topLeft = Offset((size.width - text.size.width) / 2, (size.height - text.size.height) / 2))
     }
     return bitmap
@@ -230,7 +222,6 @@ private val BadgeText = 13.sp
 private val BadgePaddingX = 7.dp
 private val BadgePaddingY = 2.dp
 private val BadgeCorner = 6.dp
-private val BadgeEdge = 1.5.dp
 
 /** The point halfway along [line] from [start] to [end], pointing the way the line runs there. */
 private fun arrowBetween(line: List<Coordinates>, start: Int, end: Int, xScale: Double): PathArrow? {

@@ -12,6 +12,7 @@ import com.falcon.tripingly.core.model.place.PlaceImage
 import com.falcon.tripingly.core.model.place.PlaceSearchResult
 import com.falcon.tripingly.core.model.route.AlongTheWayPlace
 import com.falcon.tripingly.core.model.route.TransitLine
+import com.falcon.tripingly.core.model.route.TransitVehicle
 import com.falcon.tripingly.core.model.route.TravelMode
 import com.falcon.tripingly.core.model.trip.JoinRequestStatus
 import com.falcon.tripingly.core.model.trip.UserSummary
@@ -251,9 +252,9 @@ data class TransitPlaceIcon(val photoId: String? = null, val photoUrl: String? =
 @Immutable
 data class TransitEnd(val title: UiText?, val icon: TransitPlaceIcon?)
 
-/** A ride's [line] (its badge) going [towards] its last stop. */
+/** A ride's [line] (its badge) going [towards] its last stop, by [vehicle] (its icon by the minutes). */
 @Immutable
-data class TransitRide(val line: TransitLine?, val towards: UiText?)
+data class TransitRide(val line: TransitLine?, val towards: UiText?, val vehicle: TransitVehicle)
 
 /** The circle a timeline row sits on. */
 @Immutable

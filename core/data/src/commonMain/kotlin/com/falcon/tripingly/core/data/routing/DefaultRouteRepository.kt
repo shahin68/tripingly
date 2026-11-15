@@ -40,7 +40,7 @@ internal class DefaultRouteRepository(
 
     override suspend fun dayRoute(tripId: String, day: TripDay, mode: TravelMode, departAt: Instant?): AppResult<RoutePlan, DataError.Network> {
         val time = departAt?.let { TransitTime(it) }.takeIf { mode == TravelMode.Transit }
-        val key = RouteKey(day.id, mode, day.markers.map { it.id to it.location }, time)
+        val key = RouteKey(day.id, mode, day.markers.map { it.id to it.location })
         return cached(key) {
             pending.awaitSent(tripId)
             api.dayRoute(day.id, mode.value, time?.at?.toString()).map { it.toRoutePlan() }
@@ -58,7 +58,7 @@ internal class DefaultRouteRepository(
     ): AppResult<RoutePlan, DataError.Network> {
         val transitTime = time.takeIf { mode == TravelMode.Transit }
         // The ends' places change the places along the way, so they're part of what was asked.
-        val key = RouteKey(tripId, mode, listOf("from:$fromPlaceId" to from, "to:$toPlaceId" to to), transitTime)
+        val key = RouteKey(tripId, mode, listOf("from:$fromPlaceId" to from, "to:$toPlaceId" to to))
         return cached(key) {
             api.route(
                 from = from.query(),
@@ -84,8 +84,12 @@ internal class DefaultRouteRepository(
         }
     }
 
-    /** Only real routes are kept: a straight-line estimate is asked for again next time. */
+    /**
+     * Only real routes are kept: a straight-line estimate is asked for again next time. Public transport isn't kept here:
+     * its answers depend on the time, and the map keeps them in its own memory (Shahin, 2026-11-15).
+     */
     private suspend fun cached(key: RouteKey, load: suspend () -> AppResult<RoutePlan, DataError.Network>): AppResult<RoutePlan, DataError.Network> {
+        if (key.mode == TravelMode.Transit) return load()
         lock.withLock { routes.remove(key)?.let { routes[key] = it; return AppResult.Success(it) } }
         val result = load()
         if (result is AppResult.Success && !result.data.isEstimated) {
@@ -100,8 +104,7 @@ internal class DefaultRouteRepository(
     /** Forgets the routes, whose places along the way were for the account signed in. */
     suspend fun clear() = lock.withLock { routes.clear() }
 
-    /** Public transport answers depend on the time asked ([time]); a route asked for "now" ([time] null) is kept like the rest. */
-    private data class RouteKey(val owner: String?, val mode: TravelMode, val points: List<Pair<String, GeoPoint>>, val time: TransitTime? = null)
+    private data class RouteKey(val owner: String?, val mode: TravelMode, val points: List<Pair<String, GeoPoint>>)
 
     private fun GeoPoint.query() = "$lat,$lng"
 

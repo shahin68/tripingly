@@ -33,7 +33,6 @@ import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.text.rememberTextMeasurer
-import androidx.compose.ui.graphics.takeOrElse
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
@@ -41,7 +40,6 @@ import com.falcon.tripingly.core.designsystem.component.icon
 import com.falcon.tripingly.core.designsystem.component.rememberHaptics
 import com.falcon.tripingly.core.designsystem.theme.extendedColors
 import com.falcon.tripingly.core.location.model.Coordinates
-import com.falcon.tripingly.core.model.trip.GeoPoint
 import com.falcon.tripingly.core.model.place.GeoBounds
 import com.falcon.tripingly.core.model.place.MapPlace
 import com.falcon.tripingly.core.model.place.PlaceCategory
@@ -320,7 +318,7 @@ actual fun GoogleMapView(
                 val bitmap = if (look.isDot) {
                     drawPlaceDot(look.size, fill, density, layoutDirection)
                 } else if (photo != null) {
-                    drawPlacePhotoPin(photo, look.size, fill, density, layoutDirection)
+                    drawPlacePhotoPin(photo, look.size, density, layoutDirection)
                 } else {
                     drawPlacePin(
                         icon = categoryIcons.getValue(look.category),
@@ -463,28 +461,19 @@ actual fun GoogleMapView(
                     )
                 }
             }
-            // The route's ends: a thick ring in the way of travelling's colour round each end's pin, under it.
-            // The destination's has its flag on top.
-            // By public transport they are pointed pins instead, in the stops' colour.
-            val endStopColor = MaterialTheme.extendedColors.stop
-            val rings = remember(density, layoutDirection) { mutableMapOf<RouteEndMark, Pair<BitmapDescriptor, Float>>() }
+            // The route's destination: its flag standing on its pin.
+            val flags = remember(density, layoutDirection) { mutableMapOf<Pair<Dp, Color>, Pair<BitmapDescriptor, Float>>() }
             layers.routeEnds.forEach { end ->
-                key(end.isStart) {
-                    val look = end.copy(position = GeoPoint(0.0, 0.0), color = end.color.takeOrElse { endStopColor })
-                    val (icon, anchorY) = rings.getOrPut(look) {
-                        val drawn = if (look.isPointed) {
-                            drawRouteEndPin(look.color, look.isStart, density, layoutDirection)
-                        } else {
-                            drawRouteEndRing(look.pinSize, look.color, look.isStart, density, layoutDirection)
-                        }
-                        BitmapDescriptorFactory.fromBitmap(drawn.bitmap.asAndroidBitmap()) to drawn.anchorY
+                key("route-end") {
+                    val (icon, anchorY) = flags.getOrPut(end.pinSize to end.color) {
+                        drawRouteEndFlag(end.pinSize, end.color, density, layoutDirection)
+                            .let { BitmapDescriptorFactory.fromBitmap(it.bitmap.asAndroidBitmap()) to it.anchorY }
                     }
                     Marker(
                         state = rememberUpdatedMarkerState(position = LatLng(end.position.lat, end.position.lng)),
                         icon = icon,
                         anchor = Offset(0.5f, anchorY),
-                        // A pointed end stands on top of everything near it.
-                        zIndex = if (end.isPointed) POINTED_END_Z else ROUTE_END_Z,
+                        zIndex = ROUTE_END_Z,
                         // Only a mark: the map neither moves nor opens anything.
                         onClick = { true },
                     )
@@ -693,7 +682,6 @@ private const val PLACE_PINS_Z = 0.5f
 /** A route's ends and the places kept while routing: over the other places, under the stops. */
 private const val KEPT_PINS_Z = 0.75f
 
-/** The rings round a route's ends: under their pins (kept places and stops), over the other places. */
+/** The destination's flag: under the pins (kept places and stops), over the other places. */
 private const val ROUTE_END_Z = 0.7f
-private const val POINTED_END_Z = 3f
 
