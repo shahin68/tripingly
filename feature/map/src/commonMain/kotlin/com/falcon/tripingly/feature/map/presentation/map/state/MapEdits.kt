@@ -74,7 +74,7 @@ internal class MapEdits(
 
     fun setSpotPhoto(photo: PickedImage?) = selection.updateNewSpot { it.copy(photo = photo) }
 
-    /** Create spot: the place with its kind and the stop on the open day at once, its photo once the server has the stop. */
+    /** Create: the place with its kind and the stop on the open day at once, its photo once the server has the stop. */
     fun createSpot() {
         val spot = context.model.value.selection as? Selection.NewSpot ?: return
         val name = spot.name.text.toString().trim()

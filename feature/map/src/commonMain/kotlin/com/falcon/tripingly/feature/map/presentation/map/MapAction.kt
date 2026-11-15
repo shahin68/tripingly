@@ -155,7 +155,7 @@ sealed interface MapAction {
         data class PickCategory(val category: PlaceCategory) : NewSpot
         /** A photo picked for the spot, or null when it was taken off again. */
         data class SetPhoto(val photo: PickedImage?) : NewSpot
-        /** Create spot: the place and its stop on the open day. */
+        /** Create: the place and its stop on the open day. */
         data object Create : NewSpot
     }
 

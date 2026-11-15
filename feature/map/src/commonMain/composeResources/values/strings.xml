@@ -62,7 +62,7 @@
     <string name="map_search">Search places</string>
     <string name="map_search_placeholder">Places, addresses, cities</string>
     <string name="map_new_spot_name">Name this spot</string>
-    <string name="map_new_spot_create">Create spot</string>
+    <string name="map_new_spot_create">Create</string>
     <string name="map_new_spot_add_photo">Add a photo</string>
     <string name="map_new_spot_remove_photo">Remove photo</string>
     <string name="map_new_spot_categories">Category</string>

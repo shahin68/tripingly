@@ -2071,7 +2071,7 @@ class MapViewModelTest {
     }
 
     @Test
-    fun `a long press opens a new spot card, Spot until another kind is picked, and Create spot adds it`() = runTest(testDispatcher) {
+    fun `a long press opens a new spot card, Spot until another kind is picked, and Create adds it`() = runTest(testDispatcher) {
         val viewModel = viewModel()
         testScheduler.advanceUntilIdle()
 

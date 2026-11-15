@@ -62,7 +62,7 @@
     <string name="map_search">Orte suchen</string>
     <string name="map_search_placeholder">Orte, Adressen, Städte</string>
     <string name="map_new_spot_name">Spot benennen</string>
-    <string name="map_new_spot_create">Spot erstellen</string>
+    <string name="map_new_spot_create">Erstellen</string>
     <string name="map_new_spot_add_photo">Foto hinzufügen</string>
     <string name="map_new_spot_remove_photo">Foto entfernen</string>
     <string name="map_new_spot_categories">Kategorie</string>

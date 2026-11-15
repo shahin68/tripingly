@@ -62,7 +62,7 @@
     <string name="map_search">Helyek keresése</string>
     <string name="map_search_placeholder">Helyek, címek, városok</string>
     <string name="map_new_spot_name">Nevezd el a helyet</string>
-    <string name="map_new_spot_create">Hely létrehozása</string>
+    <string name="map_new_spot_create">Létrehozás</string>
     <string name="map_new_spot_add_photo">Fotó hozzáadása</string>
     <string name="map_new_spot_remove_photo">Fotó eltávolítása</string>
     <string name="map_new_spot_categories">Kategória</string>

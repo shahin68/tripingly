@@ -70,7 +70,7 @@ import org.jetbrains.compose.resources.stringResource
 /**
  * The card over a long-pressed point (design: layout C of the place categories canvas, Shahin 2026-11-14): the spot's
  * name with a photo button beside it, one sideways row of every kind of place (Spot first, picked until another is),
- * and Create spot, which makes the place and adds it as a stop on the open day. Rows are counted from the pin for
+ * and Create, which makes the place and adds it as a stop on the open day. Rows are counted from the pin for
  * [PinCardScope.bloomRow]: the button is nearest.
  */
 @Composable
