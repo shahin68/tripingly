@@ -40,11 +40,6 @@ expect fun GoogleMapView(
      * the camera only near the edges of the rest.
      */
     freePadding: PaddingValues,
-    /**
-     * The part of [contentPadding]'s bottom that is the pulled-up plan sheet (portrait): when it changes, the map stays
-     * where it is, only Google's logo rides up or down with the sheet (Shahin, 2026-11-16).
-     */
-    sheetLift: Dp,
     layers: MapLayersState,
     /** The camera's center, zoom and visible area (null while the map can't tell yet). */
     onCameraMove: (Coordinates, Float, GeoBounds?) -> Unit,

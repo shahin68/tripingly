@@ -91,7 +91,6 @@ import com.falcon.tripingly.feature.map.presentation.map.ui.TripCardScrim
 import com.falcon.tripingly.feature.map.presentation.map.ui.TripTitleContent
 import com.falcon.tripingly.feature.map.presentation.map.ui.animatePillGrowth
 import com.falcon.tripingly.feature.map.presentation.map.ui.pulledUp
-import com.falcon.tripingly.feature.map.presentation.map.ui.settledLift
 import com.falcon.tripingly.feature.map.presentation.map.ui.rememberPlanSheetState
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emptyFlow
@@ -171,13 +170,11 @@ internal fun MapScreen(
         val plan = state.plan
         val statusBar = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
         val coveredTop = statusBar + (headerHeight ?: 0.dp)
+        // The pulled-up sheet doesn't count: only the part that always shows.
+        val hasDays = state.dayTabs.days.isNotEmpty()
+        val coveredBottom = (tabsHeight?.second ?: 0.dp) + (if (plan != null) PlanSheetPeek else 0.dp) + (creditsHeight ?: 0.dp)
         // Landscape only on a full screen: a split screen has no room for two halves and keeps the portrait layout.
         val isWide = maxWidth > maxHeight && !isSplitScreen()
-        val hasDays = state.dayTabs.days.isNotEmpty()
-        // In portrait the sheet, settled up, counts too, so Google's logo always rides just above it (Shahin, 2026-11-16,
-        // option A; landscape unchanged): the map itself stays put as it settles (see GoogleMapView's sheetLift).
-        val sheetLift = if (plan != null && !isWide) with(density) { planSheet.settledLift().toDp() } else 0.dp
-        val coveredBottom = (tabsHeight?.second ?: 0.dp) + (if (plan != null) PlanSheetPeek else 0.dp) + sheetLift + (creditsHeight ?: 0.dp)
         // A rotation (or a split screen) changes the free part of the map: a fit still showing is fitted again. Saved,
         // since Android builds the screen anew on a rotation.
         var shownWide by rememberSaveable { mutableStateOf(isWide) }
@@ -217,8 +214,7 @@ internal fun MapScreen(
         // starting somewhere and then fitting.
         // A fit frames the bounds in the map that shows right now: above the sheet as far as it's pulled up.
         val fit by rememberUpdatedState { bounds: GeoBounds ->
-            // Beyond the settled sheet the padding already counts: only while it's dragged.
-            val pulledUp = if (plan != null && !isWide) (with(density) { planSheet.pulledUp().toDp() } - sheetLift).coerceAtLeast(0.dp) else 0.dp
+            val pulledUp = if (plan != null && !isWide) with(density) { planSheet.pulledUp().toDp() } else 0.dp
             val width = maxWidth - covered.calculateLeftPadding(LayoutDirection.Ltr) - covered.calculateRightPadding(LayoutDirection.Ltr)
             val height = maxHeight - covered.calculateTopPadding() - covered.calculateBottomPadding() - pulledUp
             fittedCamera(bounds, width, height, raise = pulledUp / 2 + pinLowering / 2)
@@ -250,7 +246,6 @@ internal fun MapScreen(
                 initialZoom = zoom,
                 cameraCommands = moves,
                 contentPadding = cameraPadding,
-                sheetLift = sheetLift,
                 // In landscape the camera's padding keeps a tapped pin low down, which would leave a held pin only a
                 // strip to rest in; it pulls the camera near the free half's edges instead (Shahin, 2026-11-14).
                 freePadding = if (isWide) covered else cameraPadding,
