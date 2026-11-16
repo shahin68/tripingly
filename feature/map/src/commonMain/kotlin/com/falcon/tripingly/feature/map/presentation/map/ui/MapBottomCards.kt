@@ -1,10 +1,12 @@
 package com.falcon.tripingly.feature.map.presentation.map.ui
 
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.expandIn
+import androidx.compose.ui.platform.LocalAccessibilityManager
+import androidx.compose.animation.togetherWith
+import androidx.compose.animation.SizeTransform
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.shrinkOut
 import androidx.compose.foundation.gestures.AnchoredDraggableState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -115,21 +117,23 @@ internal fun BottomCards(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = MaterialTheme.spacing.medium),
-                // The buttons stay at the end however wide the credits are, folded or open.
-                horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.Bottom,
             ) {
                 // Our places come from OpenStreetMap, routes from openrouteservice too. The open credits and the gap
                 // under them are what this row covers of the map, also while folded, so the map (and Google's logo
-                // above them) doesn't move as they fold and open.
+                // above them) doesn't move as they fold and open. Their own row always takes all the room the buttons
+                // leave, so the buttons stay put however wide the credits are (at most half of it, as before).
                 val gap = with(LocalDensity.current) { MaterialTheme.spacing.small.roundToPx() }
-                MapCredits(
-                    routeAttribution = routeAttribution,
-                    onOpenHeight = { onCreditsHeight(it + gap) },
-                    modifier = Modifier
-                        .weight(1f, fill = false)
-                        .padding(bottom = MaterialTheme.spacing.small),
-                )
+                Row(modifier = Modifier.weight(1f), verticalAlignment = Alignment.Bottom) {
+                    MapCredits(
+                        routeAttribution = routeAttribution,
+                        onOpenHeight = { onCreditsHeight(it + gap) },
+                        modifier = Modifier
+                            .weight(1f, fill = false)
+                            .padding(bottom = MaterialTheme.spacing.small),
+                    )
+                    Spacer(modifier = Modifier.weight(1f))
+                }
                 MapButtons(location, arePlacesHidden, bearing, onAction, Modifier.padding(bottom = MaterialTheme.spacing.small))
             }
         }
@@ -174,11 +178,11 @@ internal fun BottomCards(
 }
 
 /**
- * OpenStreetMap's credit, or the route's while one shows, on a small glass label behind an ⓘ: shown when the map
- * opens and whenever the credits change (a route comes or goes), it folds into the ⓘ after [CreditsShownMillis], and
- * a tap on the ⓘ opens or folds it again (Shahin, 2026-11-16, as OSM's guidelines allow on mobile). [atEnd]: the ⓘ is
- * on the end side and the credit opens toward the start (landscape, at the map's top end). [onOpenHeight]: the label's
- * height open, which stays the same while it folds.
+ * OpenStreetMap's credit, or the route's while one shows, on a small glass label, as it always looked, that folds into an
+ * ⓘ (Shahin, 2026-11-16, as OSM's guidelines allow on mobile): open when the map opens, whenever the credits change (a
+ * route comes or goes) and on a tap on the ⓘ, each time for the time the system recommends for reading it (longer
+ * with the accessibility setting for it). [atEnd]: the ⓘ sits at the end (landscape, at the map's top end).
+ * [onOpenHeight]: the label's height open, which stays while it's folded.
  */
 @Composable
 internal fun MapCredits(
@@ -189,44 +193,42 @@ internal fun MapCredits(
     onOpenHeight: (Int) -> Unit = {},
 ) {
     var isOpen by remember { mutableStateOf(true) }
-    LaunchedEffect(routeAttribution) {
-        isOpen = true
-        delay(CreditsShownMillis)
+    LaunchedEffect(routeAttribution) { isOpen = true }
+    val accessibility = LocalAccessibilityManager.current
+    LaunchedEffect(isOpen, routeAttribution) {
+        if (!isOpen) return@LaunchedEffect
+        delay(accessibility?.calculateRecommendedTimeoutMillis(CreditsShownMillis, containsText = true, containsControls = true) ?: CreditsShownMillis)
         isOpen = false
     }
-    GlassSurface(modifier = modifier, shape = MaterialTheme.shapes.extraSmall, shadowElevation = 0.dp, blur = false, onClick = { isOpen = !isOpen }) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            var iconHeight by remember { mutableIntStateOf(0) }
-            var textHeight by remember { mutableIntStateOf(0) }
-            LaunchedEffect(iconHeight, textHeight) { if (iconHeight > 0) onOpenHeight(maxOf(iconHeight, textHeight)) }
-            val icon = @Composable {
-                Icon(
-                    Icons.Outlined.Info,
-                    contentDescription = stringResource(Res.string.map_credits),
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.onSizeChanged { iconHeight = it.height }.padding(CreditsIconPadding).size(CreditsIconSize),
-                )
-            }
-            if (!atEnd) icon()
-            AnimatedVisibility(
-                visible = isOpen,
-                enter = expandIn(expandFrom = if (atEnd) Alignment.TopEnd else Alignment.BottomStart) + fadeIn(),
-                exit = shrinkOut(shrinkTowards = if (atEnd) Alignment.TopEnd else Alignment.BottomStart) + fadeOut(),
-            ) {
+    GlassSurface(modifier = modifier, shape = MaterialTheme.shapes.extraSmall, shadowElevation = 0.dp, blur = false) {
+        AnimatedContent(
+            targetState = isOpen,
+            contentAlignment = if (atEnd) Alignment.TopEnd else Alignment.BottomStart,
+            transitionSpec = { fadeIn() togetherWith fadeOut() using SizeTransform(clip = true) },
+        ) { open ->
+            if (open) {
                 // The route's two credits on two lines, so the label stays narrow.
-                val measured = Modifier.onSizeChanged { textHeight = it.height }
+                val measured = Modifier.onSizeChanged { onOpenHeight(it.height) }
                 if (routeAttribution != null) {
                     RouteAttribution(routeAttribution.replace(CreditsSeparator, "\n"), modifier = measured, style = style)
                 } else {
                     OsmAttribution(modifier = measured, style = style)
                 }
+            } else {
+                IconButton(onClick = { isOpen = true }, modifier = Modifier.size(CreditsIconSize + CreditsIconPadding * 2)) {
+                    Icon(
+                        Icons.Outlined.Info,
+                        contentDescription = stringResource(Res.string.map_credits),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(CreditsIconSize),
+                    )
+                }
             }
-            if (atEnd) icon()
         }
     }
 }
 
-/** How long the credits show before they fold into their ⓘ. */
+/** How long the credits show before they fold into their ⓘ, before the system's accessibility timeout adjusts it. */
 private const val CreditsShownMillis = 5_000L
 private val CreditsIconSize = 16.dp
 private val CreditsIconPadding = 4.dp
