@@ -381,7 +381,7 @@ internal fun GoogleSdkMapView(
                 anchorX = 0.5,
                 anchorY = 0.5,
                 // Above the places.
-                zIndex = STOP_Z,
+                zIndex = 1,
                 // The stop's card shows instead.
                 showsInfoWindow = false,
                 fadesIn = false,
@@ -403,7 +403,7 @@ internal fun GoogleSdkMapView(
                 anchorX = 0.5,
                 anchorY = 0.5,
                 // A route's end and the places tapped while routing on top of the other places.
-                zIndex = if (pin.isKept) KEPT_PIN_Z else PLACE_PINS_Z - index,
+                zIndex = if (pin.isKept) KEPT_PIN_Z else -1 - index,
                 showsInfoWindow = false,
                 // Places along the way show at once with their route (Shahin, 2026-11-10).
                 fadesIn = !pin.isAlongTheWay,
@@ -420,7 +420,7 @@ internal fun GoogleSdkMapView(
                 },
                 anchorX = 0.5,
                 anchorY = 0.5,
-                zIndex = CLUSTER_Z,
+                zIndex = 0,
                 showsInfoWindow = false,
                 fadesIn = true,
             )
@@ -444,7 +444,7 @@ internal fun GoogleSdkMapView(
                 ),
                 anchorX = 0.5,
                 anchorY = 0.5,
-                zIndex = SELECTED_PLACE_Z,
+                zIndex = 2,
                 showsInfoWindow = false,
                 fadesIn = false,
             )
@@ -485,7 +485,7 @@ internal fun GoogleSdkMapView(
                 anchorX = 0.5,
                 anchorY = 0.5,
                 // Over the line, under the stops.
-                zIndex = LINE_MARK_Z,
+                zIndex = 0,
                 showsInfoWindow = false,
                 fadesIn = false,
             )
@@ -528,11 +528,11 @@ private const val SELECTED_PLACE_KEY = "selected-place"
 private const val ROUTE_END_KEY = "route-end:"
 private const val LINE_MARK_KEY = "line-mark:"
 
-/** A route end's halo: under its own pin (kept places and stops at -1), over the other places. */
-private const val ROUTE_END_Z = -2
+/** A route end's halo: under its own pin (kept places and stops at 1), over the other places. */
+private const val ROUTE_END_Z = 0
 
 /** A route's ends and the places kept while routing: over the other places (and the flag), with the stops. */
-private const val KEPT_PIN_Z = -1
+private const val KEPT_PIN_Z = 1
 private const val PLACE_KEY = "place:"
 private const val CLUSTER_KEY = "cluster:"
 
@@ -548,14 +548,3 @@ private fun Coordinates.shiftedBy(offset: DpOffset, zoom: Float, bearing: Float 
     val south = offset.x * sin(turn) + offset.y * cos(turn)
     return shiftedEast(east, zoom).shiftedSouth(south, zoom)
 }
-
-/*
- * Every pin's zIndex is 0 or below: the iOS SDK is said to draw the blue location dot above markers at 0 and below, and
- * under any higher one (Android draws it on top anyway). Same order as before, all shifted down by 2 (Shahin,
- * 2026-11-16, a trial to revert if it goes wrong). Markers always draw over lines whatever their zIndex.
- */
-private const val SELECTED_PLACE_Z = 0
-private const val STOP_Z = -1
-private const val CLUSTER_Z = -2
-private const val LINE_MARK_Z = -2
-private const val PLACE_PINS_Z = -3
