@@ -361,7 +361,7 @@ actual fun GoogleMapView(
                         pin to hypot(point.x - touch.x, point.y - touch.y)
                     }
                     .filter { (pin, distance) ->
-                        val size = if (pin.isDotAt(isDots)) PlaceDotSize else pin.size
+                        val size = if (pin.isDotAt(isDots)) pin.dotSize else pin.size
                         distance <= with(density) { size.toPx() } / 2 + slop
                     }
                     .minByOrNull { (_, distance) -> distance }

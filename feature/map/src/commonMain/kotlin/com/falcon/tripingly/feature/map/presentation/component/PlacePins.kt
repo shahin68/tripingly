@@ -161,11 +161,17 @@ val SelectedPinSize: Dp = 44.dp
 /** A pin while zoomed out below [AppConfig.pinDotBelowZoom]: a small dot, so route lines and stops stay readable. */
 val PlaceDotSize: Dp = 10.dp
 
+/** A pin while a route shows ([PlacePin.isDot]): a tiny bit smaller than a zoomed-out dot (Shahin, 2026-11-16). */
+val RouteDotSize: Dp = 8.dp
+
+/** How big [this] pin is as its dot. */
+internal val PlacePin.dotSize: Dp get() = if (isDot) RouteDotSize else PlaceDotSize
+
 /** Places along the shown route: violet, apart from the map's places and from the hot spots. */
 val AlongTheWayPinColor = Color(0xFF8A5AAB)
 
 /** The look of [this] pin as a dot: only its color matters, so every dot of a color shares one bitmap. */
-internal fun PlacePin.dotLook() = PlacePinLook(PlaceCategory.Other, place.isTripinly, PlaceDotSize, isAlongTheWay = isAlongTheWay, isDot = true)
+internal fun PlacePin.dotLook() = PlacePinLook(PlaceCategory.Other, place.isTripinly, dotSize, isAlongTheWay = isAlongTheWay, isDot = true)
 
 /**
  * Draws a place pin into a bitmap: a round badge with the place's category icon. The map reuses one
