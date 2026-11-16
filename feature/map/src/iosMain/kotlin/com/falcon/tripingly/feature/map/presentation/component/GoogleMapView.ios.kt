@@ -1,5 +1,6 @@
 package com.falcon.tripingly.feature.map.presentation.component
 
+import androidx.compose.ui.unit.Dp
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
@@ -20,6 +21,9 @@ actual fun GoogleMapView(
     cameraCommands: Flow<CameraCommand.Move>,
     contentPadding: PaddingValues,
     freePadding: PaddingValues,
+    // The SDK view keeps its camera in the middle with the same padding at the top and the bottom, so a padding
+    // change never moves the map here.
+    sheetLift: Dp,
     layers: MapLayersState,
     onCameraMove: (Coordinates, Float, GeoBounds?) -> Unit,
     onCameraMoving: (GeoBounds, Float) -> Unit,

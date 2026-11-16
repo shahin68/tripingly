@@ -81,6 +81,7 @@ actual fun GoogleMapView(
     cameraCommands: Flow<CameraCommand.Move>,
     contentPadding: PaddingValues,
     freePadding: PaddingValues,
+    sheetLift: Dp,
     layers: MapLayersState,
     onCameraMove: (Coordinates, Float, GeoBounds?) -> Unit,
     onCameraMoving: (GeoBounds, Float) -> Unit,
@@ -154,6 +155,14 @@ actual fun GoogleMapView(
     // A camera animation started before the map has loaded doesn't run (on a fresh start the trip's stops arrive
     // first), so until then the camera jumps instead.
     var isMapLoaded by remember { mutableStateOf(false) }
+    // The SDK keeps its camera's target in the middle of its padding, so the sheet's part of the padding changing would
+    // move the map by half of it: the camera moves back by as much, and only Google's logo rides with the sheet.
+    var shownLift by remember { mutableStateOf(sheetLift) }
+    LaunchedEffect(sheetLift) {
+        val change = sheetLift - shownLift
+        shownLift = sheetLift
+        if (isMapLoaded && change != 0.dp) cameraPositionState.move(CameraUpdateFactory.scrollBy(0f, -with(density) { change.toPx() } / 2))
+    }
 
     fun reportCamera() {
         val position = cameraPositionState.position

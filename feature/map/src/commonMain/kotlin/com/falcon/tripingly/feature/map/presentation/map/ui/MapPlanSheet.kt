@@ -72,6 +72,11 @@ internal fun rememberPlanSheetState(): AnchoredDraggableState<PlanSheetValue> =
 internal fun AnchoredDraggableState<PlanSheetValue>.pulledUp(): Float =
     (anchors.maxPosition() - offset).takeIf { it.isFinite() }?.coerceAtLeast(0f) ?: 0f
 
+/** How far, in px, the sheet rests pulled up above its peek: all of it while it's settled up, else 0 (not while dragged). */
+internal fun AnchoredDraggableState<PlanSheetValue>.settledLift(): Float =
+    if (settledValue != PlanSheetValue.Expanded) 0f
+    else (anchors.maxPosition() - anchors.positionOf(PlanSheetValue.Expanded)).takeIf { it.isFinite() }?.coerceAtLeast(0f) ?: 0f
+
 /**
  * The open day's [plan] in a sheet, the top part of the bottom card whose bottom part is the day tabs (BottomCards
  * draws the card's glass). A drag anywhere on it pulls it up to show all of it, or down to leave [PlanSheetPeek] of it;
