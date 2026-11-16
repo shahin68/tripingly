@@ -58,6 +58,8 @@ sealed interface MapAction {
         data object OpenMembers : Header
         /** The "wants to join" pill or the trip card's members strip: the pill and the strip's red dot go, the members sheet opens. */
         data object OpenJoinRequests : Header
+        /** The "wants to join" pill has shown its people in full for a while: it shrinks to their faces for good. */
+        data object JoinRequestsSeen : Header
         data object OpenOwnerProfile : Header
         data object ReportTrip : Header
     }

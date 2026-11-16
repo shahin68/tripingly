@@ -5,6 +5,7 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
+import androidx.datastore.preferences.core.stringSetPreferencesKey
 import com.falcon.tripingly.core.model.route.TravelMode
 import com.falcon.tripingly.core.model.trip.TripMapView
 import kotlinx.coroutines.flow.first
@@ -14,12 +15,16 @@ interface TripMapViewRepository {
     suspend fun get(tripId: String): TripMapView?
     suspend fun save(tripId: String, view: TripMapView)
 
+    /** The people whose join requests the owner has seen in full on the map's pill; the pill stays small for them. */
+    suspend fun seenJoinRequesters(tripId: String): Set<String>
+    suspend fun saveSeenJoinRequesters(tripId: String, userIds: Set<String>)
+
     /** The trip was deleted or left. */
     suspend fun remove(tripId: String)
     suspend fun clear()
 }
 
-/** Three values per trip in the UI state DataStore, under `tripMap:<tripId>:…`. */
+/** Four values per trip in the UI state DataStore, under `tripMap:<tripId>:…`. */
 internal class DataStoreTripMapViewRepository(private val store: DataStore<Preferences>) : TripMapViewRepository {
 
     override suspend fun get(tripId: String): TripMapView? {
@@ -41,12 +46,19 @@ internal class DataStoreTripMapViewRepository(private val store: DataStore<Prefe
         }
     }
 
+    override suspend fun seenJoinRequesters(tripId: String): Set<String> = store.data.first()[Keys(tripId).seenJoinRequesters].orEmpty()
+
+    override suspend fun saveSeenJoinRequesters(tripId: String, userIds: Set<String>) {
+        store.edit { it[Keys(tripId).seenJoinRequesters] = userIds }
+    }
+
     override suspend fun remove(tripId: String) {
         val keys = Keys(tripId)
         store.edit {
             it.remove(keys.day)
             it.remove(keys.route)
             it.remove(keys.mode)
+            it.remove(keys.seenJoinRequesters)
         }
     }
 
@@ -58,5 +70,6 @@ internal class DataStoreTripMapViewRepository(private val store: DataStore<Prefe
         val day = stringPreferencesKey("tripMap:$tripId:day")
         val route = booleanPreferencesKey("tripMap:$tripId:route")
         val mode = stringPreferencesKey("tripMap:$tripId:mode")
+        val seenJoinRequesters = stringSetPreferencesKey("tripMap:$tripId:seenJoinRequesters")
     }
 }

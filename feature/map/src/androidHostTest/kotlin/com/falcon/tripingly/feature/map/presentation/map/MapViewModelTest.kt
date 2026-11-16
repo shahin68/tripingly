@@ -1025,6 +1025,30 @@ class MapViewModelTest {
         assertTrue(viewModel.uiState.value.header.card.hasNewJoinRequests)
     }
 
+    @Test
+    fun `the join pill shows people in full once, then only their faces, also on the next visit`() = runTest(testDispatcher) {
+        fun ask(id: String, username: String) = backend.seedJoinRequest(
+            JoinRequest("r-$id", trip.trip.id, UserSummary(id, username, username), Instant.parse("2026-11-07T10:00:00Z")),
+        )
+        ask("u2", "anna")
+        val viewModel = viewModel()
+        testScheduler.advanceUntilIdle()
+        assertEquals(false, viewModel.uiState.value.joinRequests?.isCompact)
+
+        viewModel.onAction(MapAction.Header.JoinRequestsSeen)
+        testScheduler.advanceUntilIdle()
+        assertEquals(true, viewModel.uiState.value.joinRequests?.isCompact)
+        assertEquals(setOf("u2"), mapViews.seenJoinRequesters[trip.trip.id])
+
+        // Opened again: small at once; someone new shows it in full again.
+        val again = viewModel()
+        testScheduler.advanceUntilIdle()
+        assertEquals(true, again.uiState.value.joinRequests?.isCompact)
+        ask("u3", "jonas")
+        testScheduler.advanceUntilIdle()
+        assertEquals(false, again.uiState.value.joinRequests?.isCompact)
+    }
+
 
     @Test
     fun `a day without stops shows the whole trip, as when a trip opens on it`() = runTest(testDispatcher) {

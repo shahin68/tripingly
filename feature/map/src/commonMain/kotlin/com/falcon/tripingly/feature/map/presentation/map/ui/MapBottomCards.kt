@@ -1,8 +1,10 @@
 package com.falcon.tripingly.feature.map.presentation.map.ui
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandIn
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkOut
 import androidx.compose.foundation.gestures.AnchoredDraggableState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -19,6 +21,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.NearMe
 import androidx.compose.material.icons.outlined.CenterFocusStrong
 import androidx.compose.material.icons.outlined.GpsOff
+import androidx.compose.material.icons.outlined.Info
 import com.falcon.tripingly.feature.map.generated.resources.map_location_turn_on
 import com.falcon.tripingly.feature.map.generated.resources.map_location_off
 import androidx.compose.material3.TextButton
@@ -38,7 +41,12 @@ import androidx.compose.foundation.layout.add
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.windowInsetsBottomHeight
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import kotlinx.coroutines.delay
 import com.falcon.tripingly.core.designsystem.component.bottomSystemBar
 import com.falcon.tripingly.core.designsystem.component.floatingBottom
 import androidx.compose.ui.Alignment
@@ -56,6 +64,7 @@ import com.falcon.tripingly.core.designsystem.component.OsmAttribution
 import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
 import com.falcon.tripingly.core.designsystem.theme.spacing
 import com.falcon.tripingly.feature.map.generated.resources.Res
+import com.falcon.tripingly.feature.map.generated.resources.map_credits
 import com.falcon.tripingly.feature.map.generated.resources.map_fit_day
 import com.falcon.tripingly.feature.map.generated.resources.map_follow_location
 import com.falcon.tripingly.feature.map.generated.resources.map_gps_lost
@@ -159,18 +168,57 @@ internal fun BottomCards(
     }
 }
 
-/** OpenStreetMap's credit, or the route's while one shows, on a small glass label. */
+/**
+ * OpenStreetMap's credit, or the route's while one shows, on a small glass label behind an ⓘ: shown when the map
+ * opens and whenever the credits change (a route comes or goes), it folds into the ⓘ after [CreditsShownMillis], and
+ * a tap on the ⓘ opens or folds it again (Shahin, 2026-11-16, as OSM's guidelines allow on mobile). [atEnd]: the ⓘ is
+ * on the end side and the credit opens toward the start (landscape, at the map's top end).
+ */
 @Composable
-internal fun MapCredits(routeAttribution: String?, modifier: Modifier = Modifier, style: TextStyle = MaterialTheme.typography.labelSmall) {
-    GlassSurface(modifier = modifier, shape = MaterialTheme.shapes.extraSmall, shadowElevation = 0.dp, blur = false) {
-        // The route's two credits on two lines, so the label stays narrow.
-        if (routeAttribution != null) {
-            RouteAttribution(routeAttribution.replace(CreditsSeparator, "\n"), style = style)
-        } else {
-            OsmAttribution(style = style)
+internal fun MapCredits(
+    routeAttribution: String?,
+    modifier: Modifier = Modifier,
+    style: TextStyle = MaterialTheme.typography.labelSmall,
+    atEnd: Boolean = false,
+) {
+    var isOpen by remember { mutableStateOf(true) }
+    LaunchedEffect(routeAttribution) {
+        isOpen = true
+        delay(CreditsShownMillis)
+        isOpen = false
+    }
+    GlassSurface(modifier = modifier, shape = MaterialTheme.shapes.extraSmall, shadowElevation = 0.dp, blur = false, onClick = { isOpen = !isOpen }) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            val icon = @Composable {
+                Icon(
+                    Icons.Outlined.Info,
+                    contentDescription = stringResource(Res.string.map_credits),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(CreditsIconPadding).size(CreditsIconSize),
+                )
+            }
+            if (!atEnd) icon()
+            AnimatedVisibility(
+                visible = isOpen,
+                enter = expandIn(expandFrom = if (atEnd) Alignment.TopEnd else Alignment.BottomStart) + fadeIn(),
+                exit = shrinkOut(shrinkTowards = if (atEnd) Alignment.TopEnd else Alignment.BottomStart) + fadeOut(),
+            ) {
+                // The route's two credits on two lines, so the label stays narrow.
+                if (routeAttribution != null) {
+                    RouteAttribution(routeAttribution.replace(CreditsSeparator, "\n"), style = style)
+                } else {
+                    OsmAttribution(style = style)
+                }
+            }
+            if (atEnd) icon()
         }
     }
 }
+
+/** How long the credits show before they fold into their ⓘ. */
+private const val CreditsShownMillis = 5_000L
+private val CreditsIconSize = 16.dp
+private val CreditsIconPadding = 4.dp
 
 /** The credits in landscape, at the map's top end: a little smaller than elsewhere, still legible (Shahin, 2026-11-14). */
 internal val SmallCreditsStyle: TextStyle

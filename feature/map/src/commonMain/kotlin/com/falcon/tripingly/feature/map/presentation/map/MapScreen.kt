@@ -1,7 +1,12 @@
 package com.falcon.tripingly.feature.map.presentation.map
 
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.MutableTransitionState
 import androidx.compose.animation.core.rememberTransition
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.gestures.AnchoredDraggableState
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
@@ -289,12 +294,24 @@ internal fun MapScreen(
                     )
                 }
             }
-            state.joinRequests?.let { requests ->
-                JoinRequestsPill(
-                    requests = requests,
-                    onClick = { onAction(MapAction.Header.OpenJoinRequests) },
-                    modifier = Modifier.align(Alignment.Start).padding(horizontal = MaterialTheme.spacing.medium),
-                )
+            // Under the route bar or the search it fades and folds away, and comes back the same way (Shahin, 2026-11-16);
+            // while it goes it keeps the people it had.
+            var shownJoinRequests by remember { mutableStateOf(state.joinRequests) }
+            state.joinRequests?.let { shownJoinRequests = it }
+            AnimatedVisibility(
+                visible = state.joinRequests != null && !isRouteBarShown,
+                enter = expandVertically(expandFrom = Alignment.Top) + fadeIn(),
+                exit = shrinkVertically(shrinkTowards = Alignment.Top) + fadeOut(),
+                modifier = Modifier.align(Alignment.Start),
+            ) {
+                shownJoinRequests?.let { requests ->
+                    JoinRequestsPill(
+                        requests = requests,
+                        onClick = { onAction(MapAction.Header.OpenJoinRequests) },
+                        onSeen = { onAction(MapAction.Header.JoinRequestsSeen) },
+                        modifier = Modifier.padding(horizontal = MaterialTheme.spacing.medium),
+                    )
+                }
             }
             state.search?.results?.takeIf { it.isNotEmpty() }?.let { results ->
                 SearchResults(results = results, onAction = onAction, modifier = Modifier.padding(horizontal = MaterialTheme.spacing.medium))
@@ -343,6 +360,7 @@ internal fun MapScreen(
                 MapCredits(
                     routeAttribution = state.routeAttribution,
                     style = SmallCreditsStyle,
+                    atEnd = true,
                     modifier = Modifier.align(Alignment.TopEnd).onSizeChanged { creditsHeight = with(density) { it.height.toDp() } },
                 )
                 MapButtons(state.location, state.arePlacesHidden, { bearing }, onAction, Modifier.align(Alignment.BottomEnd))

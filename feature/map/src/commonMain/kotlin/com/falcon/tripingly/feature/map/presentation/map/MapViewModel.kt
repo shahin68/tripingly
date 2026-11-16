@@ -115,7 +115,7 @@ class MapViewModel(
     private val search = MapSearch(context, camera, selection, placeRepository, routeTo = routes::routeToResult)
     private val sharing = MapSharing(context, tripRepository, socialRepository)
     private val opening = MapOpening(context, camera, tripRepository, mapViews, ::hasRoutes, stopId, showMembers, showComments)
-    private val joinRequests = MapJoinRequests(context, tripRepository)
+    private val joinRequests = MapJoinRequests(context, tripRepository, mapViews)
     private val addToTrip = MapAddToTrip(context, selection, tripRepository, markerRepository) { sendEvent(MapEvent.AddedToMyTrip) }
     private val cardPhotos = MapCardPhotos(context, photoRepository)
     private val newActivity = MapNewActivity(context, newActivityRepository, pushedStopId = stopId, pushedAboutComments = showComments)
@@ -188,6 +188,7 @@ class MapViewModel(
             is MapAction.Header.RequestToJoin -> sharing.requestToJoin()
             is MapAction.Header.CancelJoinRequest -> sharing.cancelJoinRequest()
             is MapAction.Header.OpenMembers -> openSheet(Sheet.Members)
+            is MapAction.Header.JoinRequestsSeen -> joinRequests.markSeen()
             is MapAction.Header.OpenJoinRequests -> {
                 joinRequests.dismiss()
                 openSheet(Sheet.Members)

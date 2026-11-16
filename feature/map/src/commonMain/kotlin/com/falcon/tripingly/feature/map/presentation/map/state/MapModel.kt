@@ -71,6 +71,8 @@ internal data class MapModel(
     /** The trip's newest people asking to join, for its owner ([MapJoinRequests]); the pill shows while one isn't [dismissedJoinRequesterIds]. */
     val joinRequesters: List<UserSummary> = emptyList(),
     val dismissedJoinRequesterIds: Set<String> = emptySet(),
+    /** The requesters the pill has shown in full, on this device (null until read): for them it stays a small circle. */
+    val seenJoinRequesterIds: Set<String>? = null,
 )
 
 /** Where the camera rests, as the map last reported it, or where it was last sent. */

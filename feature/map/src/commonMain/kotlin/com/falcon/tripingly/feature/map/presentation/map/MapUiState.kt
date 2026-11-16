@@ -62,7 +62,12 @@ data class MapUiState(
 
 /** "@[people] first and [othersCount] others want to join", with [people]'s faces stacked. */
 @Immutable
-data class JoinRequestsState(val people: ImmutableList<UserSummary>, val othersCount: Int)
+data class JoinRequestsState(
+    val people: ImmutableList<UserSummary>,
+    val othersCount: Int,
+    /** Every one of [people] was shown in full before: only their faces, in a small circle. */
+    val isCompact: Boolean = false,
+)
 
 @Immutable
 data class HeaderState(
