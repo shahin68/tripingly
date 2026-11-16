@@ -365,8 +365,8 @@ internal class MapStateMapper(
         return MapSheet.TransitSteps(title, subtitle, rows.toImmutableList(), transit.isTypicalTimes, plan.attribution)
     }
 
-    /** A stop's circle in the steps: its cover photo, or the plain place mark. */
-    private fun MapMarker.transitIcon() = TransitPlaceIcon(photoId = coverPhotoId, photoUrl = coverThumbUrl)
+    /** A stop's circle in the steps: its cover photo, or its kind of place, with its number. */
+    private fun MapMarker.transitIcon() = TransitPlaceIcon(coverPhotoId, coverThumbUrl, category, stopNumber = orderNumber)
 
     /** A place's circle in the steps: its image, or its kind of place; where I am has my location's mark. */
     private fun MapPlace.transitIcon() =
@@ -447,6 +447,7 @@ internal class MapStateMapper(
         position = Coordinates(location.lat, location.lng),
         title = UiText.Server(name),
         orderNumber = orderNumber,
+        category = category,
         snippet = time,
         coverPhotoId = coverPhotoId,
         coverThumbUrl = coverThumbUrl,

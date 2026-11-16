@@ -8,6 +8,7 @@ import com.falcon.tripingly.core.database.entity.TripEntity
 import com.falcon.tripingly.core.database.entity.TripMemberEntity
 import com.falcon.tripingly.core.database.entity.TripWithDetails
 import com.falcon.tripingly.core.model.account.TripVisibility
+import com.falcon.tripingly.core.model.place.PlaceCategory
 import com.falcon.tripingly.core.model.trip.Destination
 import com.falcon.tripingly.core.model.trip.GeoPoint
 import com.falcon.tripingly.core.model.trip.JoinRequestStatus
@@ -73,7 +74,7 @@ internal class RoomTripLocalDataSource(
     override suspend fun saveMarkers(markers: List<TripMarker>) = dao.saveMarkers(markers.map { it.toEntity() })
 
     override suspend fun savePlaceOfMarker(marker: TripMarker) = with(marker) {
-        dao.updateMarkerPlace(id, placeId, name, coverPhotoId, coverThumbUrl, hotCount, hotByMe, canMarkHot)
+        dao.updateMarkerPlace(id, placeId, name, category?.name, coverPhotoId, coverThumbUrl, hotCount, hotByMe, canMarkHot)
     }
 
     override suspend fun tripIdOfMarker(markerId: String): String? = dao.marker(markerId)?.tripId
@@ -175,6 +176,7 @@ private fun MarkerEntity.toMarker() = TripMarker(
     dayId = dayId,
     placeId = placeId,
     name = name,
+    category = category?.let { name -> PlaceCategory.entries.firstOrNull { it.name == name } },
     location = GeoPoint(lat, lng),
     time = time,
     position = position,
@@ -197,6 +199,7 @@ private fun TripMarker.toEntity() = MarkerEntity(
     dayId = dayId,
     placeId = placeId,
     name = name,
+    category = category?.name,
     lat = location.lat,
     lng = location.lng,
     time = time,

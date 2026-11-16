@@ -89,15 +89,18 @@ private fun PinBody(orderNumber: Int, cover: ImageBitmap?) {
     }
 }
 
-/** [orderNumber] in the middle of a circle [height] round, stretched into a pill when the number is wider. */
+/**
+ * [orderNumber] in the middle of a circle [height] round, stretched into a pill when the number is wider, edged in [ring]
+ * (white on the map, the sheet's colour where it sits on one).
+ */
 @Composable
-private fun NumberPill(orderNumber: Int, height: Dp, fontSize: Int, padding: Dp, modifier: Modifier = Modifier) {
+internal fun NumberPill(orderNumber: Int, height: Dp, fontSize: Int, padding: Dp, modifier: Modifier = Modifier, ring: Color = MapColors.PinStroke) {
     Box(
         modifier = modifier
             .height(height)
             .widthIn(min = height)
             .background(MaterialTheme.extendedColors.stop, CircleShape)
-            .border(PIN_STROKE, MapColors.PinStroke, CircleShape)
+            .border(PIN_STROKE, ring, CircleShape)
             .padding(horizontal = padding),
         contentAlignment = Alignment.Center,
     ) {

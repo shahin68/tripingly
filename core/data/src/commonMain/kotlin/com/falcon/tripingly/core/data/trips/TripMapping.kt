@@ -1,5 +1,6 @@
 package com.falcon.tripingly.core.data.trips
 
+import com.falcon.tripingly.core.data.places.toCategory
 import com.falcon.tripingly.core.model.account.TripVisibility
 import com.falcon.tripingly.core.model.trip.Destination
 import com.falcon.tripingly.core.model.trip.GeoPoint
@@ -21,6 +22,7 @@ import com.falcon.tripingly.core.network.model.InvitePreviewDto
 import com.falcon.tripingly.core.network.model.JoinRequestDto
 import com.falcon.tripingly.core.network.model.LocationDto
 import com.falcon.tripingly.core.network.model.MarkerDto
+import com.falcon.tripingly.core.network.model.PlaceItemDto
 import com.falcon.tripingly.core.network.model.TripDayDto
 import com.falcon.tripingly.core.network.model.TripDto
 import com.falcon.tripingly.core.network.model.TripMemberDto
@@ -111,6 +113,7 @@ internal fun MarkerDto.toMarker() = TripMarker(
     dayId = dayId,
     placeId = placeId,
     name = name,
+    category = category?.let { PlaceItemDto.Category.valueOf(it.name).toCategory() },
     location = location.toGeoPoint(),
     time = time,
     position = position.toInt(),

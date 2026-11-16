@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -37,6 +38,7 @@ import androidx.compose.material.icons.filled.Flag
 import androidx.compose.material.icons.filled.MyLocation
 import androidx.compose.material.icons.filled.Place
 import androidx.compose.material.icons.filled.Schedule
+import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LocalContentColor
@@ -115,6 +117,7 @@ import kotlinx.collections.immutable.toImmutableList
 import org.jetbrains.compose.resources.stringResource
 import kotlin.math.roundToInt
 import kotlin.time.Instant
+import com.falcon.tripingly.feature.map.presentation.component.NumberPill
 
 /**
  * The route's walks and rides in one rounded button, as the canvas's live demo draws them: walk minutes, line badges with
@@ -297,24 +300,41 @@ private fun TimelineMark(mark: TransitMark, modifier: Modifier = Modifier) {
     Box(modifier.size(MarkSize).clip(CircleShape).background(fill).border(RingWidth, ring, CircleShape))
 }
 
-/** A place of the route next to its name: its photo in a circle, or its kind of place (or where I am) on a tint. */
+/**
+ * A place of the route next to its name: its photo in a circle, or its kind of place (or where I am) on a tint; a day's
+ * stop has its number in a badge on the circle's top end, like its pin, stretching for big numbers (Shahin, 2026-11-16, N2).
+ */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun PlaceCircle(icon: TransitPlaceIcon) {
-    val modifier = Modifier.size(PlaceCircleSize).clip(CircleShape)
-    if (icon.photoId != null && icon.photoUrl != null) {
-        PhotoImage(photoId = icon.photoId, url = icon.photoUrl, size = PhotoSize.Thumb, contentDescription = null, modifier = modifier)
-        return
-    }
-    Box(modifier.background(MaterialTheme.colorScheme.surfaceVariant), contentAlignment = Alignment.Center) {
-        Icon(
-            imageVector = when {
-                icon.isMyLocation -> Icons.Default.MyLocation
-                else -> icon.category?.icon ?: Icons.Default.Place
-            },
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.size(PlaceIconSize),
-        )
+    Box {
+        val modifier = Modifier.size(PlaceCircleSize).clip(CircleShape)
+        if (icon.photoId != null && icon.photoUrl != null) {
+            PhotoImage(photoId = icon.photoId, url = icon.photoUrl, size = PhotoSize.Thumb, contentDescription = null, modifier = modifier)
+        } else {
+            Box(modifier.background(MaterialTheme.colorScheme.surfaceVariant), contentAlignment = Alignment.Center) {
+                Icon(
+                    imageVector = when {
+                        icon.isMyLocation -> Icons.Default.MyLocation
+                        else -> icon.category?.icon ?: Icons.Default.Place
+                    },
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(PlaceIconSize),
+                )
+            }
+        }
+        icon.stopNumber?.let {
+            NumberPill(
+                orderNumber = it,
+                height = StopBadgeSize,
+                fontSize = 9,
+                padding = StopBadgePadding,
+                // Edged in the sheet's own colour, so it reads as cut out of the circle in light and dark.
+                ring = BottomSheetDefaults.ContainerColor,
+                modifier = Modifier.align(Alignment.TopEnd).offset(x = StopBadgeOffset, y = -StopBadgeOffset),
+            )
+        }
     }
 }
 
@@ -401,6 +421,9 @@ private val BarWidth = 5.dp
 private val PathGap = 2.dp
 private val PlaceCircleSize = 24.dp
 private val PlaceIconSize = 14.dp
+private val StopBadgeSize = 14.dp
+private val StopBadgePadding = 3.dp
+private val StopBadgeOffset = 5.dp
 private val DetailIconSize = 16.dp
 
 private val previewSteps = listOf(

@@ -2276,6 +2276,8 @@ class MapViewModelTest {
         assertEquals(listOf(TransitMark.Line(0xFFE3000F), TransitMark.Stop, TransitMark.End), steps.rows.map { it.mark })
         assertEquals(listOf(TransitPath.Ride(0xFFE3000F), TransitPath.Ride(0xFFE3000F), null), steps.rows.map { it.path })
         assertEquals(listOf("Stop 1", "Stop 2", "Stop 3"), steps.rows.map { (it.place as UiText.Server).text })
+        // Each stop's circle has its number badge, as on its pin.
+        assertEquals(listOf(1, 2, 3), steps.rows.map { it.icon?.stopNumber })
         assertEquals(2, steps.rows.count { it.ride?.line?.name == "U1" })
         assertTrue(steps.hasBack)
         viewModel.onAction(MapAction.Sheet.Back)

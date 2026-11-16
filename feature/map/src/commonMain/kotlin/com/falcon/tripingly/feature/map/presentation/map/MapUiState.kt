@@ -251,7 +251,14 @@ data class TransitStepRow(
 
 /** One of the route's own places, next to its name: its photo in a circle, or else its kind of place (or where I am). */
 @Immutable
-data class TransitPlaceIcon(val photoId: String? = null, val photoUrl: String? = null, val category: PlaceCategory? = null, val isMyLocation: Boolean = false)
+data class TransitPlaceIcon(
+    val photoId: String? = null,
+    val photoUrl: String? = null,
+    val category: PlaceCategory? = null,
+    val isMyLocation: Boolean = false,
+    /** A day's stop: its number, in a badge on the circle like on its pin (Shahin, 2026-11-16, N2). */
+    val stopNumber: Int? = null,
+)
 
 /** A start or end of a public transport leg: its name and its circle. */
 @Immutable
@@ -355,7 +362,10 @@ data class StopCardState(
     /** Who made its custom spot, when that's someone else than [addedBy]. */
     val spotBy: AddedBy? = null,
     val news: StopCardNews = StopCardNews(),
-)
+) {
+    /** The stop's kind of place: it comes with the stop, so the card never waits for [place] to show it. */
+    val category: PlaceCategory? get() = stop.category ?: place?.category
+}
 
 /**
  * What's new about the open stop (Shahin, 2026-11-13): a dot on its [comments] and [photos] buttons until they're seen;

@@ -1,5 +1,6 @@
 package com.falcon.tripingly.core.model.trip
 
+import com.falcon.tripingly.core.model.place.PlaceCategory
 import kotlinx.datetime.LocalDate
 import kotlin.time.Instant
 
@@ -56,6 +57,8 @@ data class TripMarker(
     val createdById: String? = null,
     /** [createdById]'s name, @handle and photo, shown as "added by"; null after a deleted account or a block either way. */
     val createdBy: UserSummary? = null,
+    /** Its place's kind, for the stop's icon; null from a server that doesn't send it yet. */
+    val category: PlaceCategory? = null,
 )
 
 data class GeoPoint(val lat: Double, val lng: Double)

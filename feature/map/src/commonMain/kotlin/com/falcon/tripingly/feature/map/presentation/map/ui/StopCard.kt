@@ -120,7 +120,7 @@ internal fun PinCardScope.StopCard(
                         afterSubtitle = { card.addedBy?.let { AddedByInline(it, it.text()) } },
                         image = if (images.isEmpty()) null else pagerImages(images, pagerState, description, onOpen = { onOpenPhotos() }),
                         onClick = onOpenPhotos,
-                        mark = { PinMark(card.place?.category, isStop = true) },
+                        mark = { PinMark(card.category, isStop = true) },
                         topEnd = { BannerButton({ isExpanded = false }, Icons.Outlined.ExpandMore, stringResource(Res.string.map_stop_collapse)) },
                         trailing = {
                             // Bigger and brighter than a place's flames, which only count: these are buttons. Like a heart,
@@ -187,7 +187,7 @@ internal fun imagePosition(count: Int, page: Int): String? =
 @Composable
 internal fun stopSubtitle(card: StopCardState, numberColor: Color = Color.Unspecified, position: String? = null): AnnotatedString {
     val number = stringResource(Res.string.map_stop_number, card.stop.orderNumber)
-    val type = card.place?.category?.let { stringResource(it.label()) }
+    val type = card.category?.let { stringResource(it.label()) }
     return buildAnnotatedString {
         withStyle(SpanStyle(fontWeight = FontWeight.ExtraBold, color = numberColor)) { append(number) }
         type?.let { append(" · $it") }
@@ -244,7 +244,7 @@ private fun StopImage(card: StopCardState, modifier: Modifier) {
     if (image != null) {
         PhotoImage(photoId = image.id, url = image.thumbUrl, size = PhotoSize.Thumb, contentDescription = null, modifier = modifier)
     } else {
-        PinMark(card.place?.category, isStop = true, modifier = modifier)
+        PinMark(card.category, isStop = true, modifier = modifier)
     }
 }
 

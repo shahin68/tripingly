@@ -175,7 +175,7 @@ class TripRepositoryTest {
                     "t1",
                     days = listOf(
                         TripJson.day("d1", 1, "2026-06-02"),
-                        TripJson.day("d0", 0, "2026-06-01", TripJson.marker("m1", "t1", "d0", 1), TripJson.marker("m0", "t1", "d0", 0)),
+                        TripJson.day("d0", 0, "2026-06-01", TripJson.marker("m1", "t1", "d0", 1, category = "cafe"), TripJson.marker("m0", "t1", "d0", 0)),
                     ),
                     endDate = "2026-06-02",
                 ),
@@ -187,6 +187,8 @@ class TripRepositoryTest {
         assertEquals(listOf("d0", "d1"), details.days.map { it.id })
         assertEquals(LocalDate(2026, 6, 1), details.days[0].date)
         assertEquals(listOf("m0", "m1"), details.days[0].markers.map { it.id })
+        // A stop carries its place's kind; a server that sends none leaves it unknown.
+        assertEquals(listOf(null, PlaceCategory.Cafe), details.days[0].markers.map { it.category })
         assertEquals(2, details.trip.markerCount)
         assertEquals(TripVisibility.PRIVATE, details.trip.visibility)
         assertEquals(listOf(TripRole.OWNER, TripRole.EDITOR), details.members.map { it.role })
