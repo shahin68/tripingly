@@ -25,6 +25,8 @@ data class ExtendedColors(
     val onStopIcon: Color,
     /** A place's pin (and a hot spot's) on the map: slate grey, softer on the dark map. */
     val place: Color,
+    /** The fill of a tappable pill on a card (a toggle's track, the Leave at and legs buttons): stands out of the card in both themes. */
+    val controlFill: Color,
     /** Something switched on that failed and can be tried again: orange, with [onAttention] on it. */
     val attention: Color,
     val onAttention: Color,
@@ -37,6 +39,7 @@ internal val LightExtendedColors = ExtendedColors(
     onStop = OnIvyLight,
     onStopIcon = OnIvyLight,
     place = SecondaryLight,
+    controlFill = SurfaceContainerHighLight,
     attention = AttentionLight,
     onAttention = OnAttentionLight,
 )
@@ -47,6 +50,7 @@ internal val DarkExtendedColors = ExtendedColors(
     onStop = OnIvyDark,
     onStopIcon = IvyDeepDark,
     place = MapPlaceDark,
+    controlFill = ControlFillDark,
     attention = AttentionDark,
     onAttention = OnAttentionDark,
 )

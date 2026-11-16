@@ -32,12 +32,15 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.falcon.tripingly.core.designsystem.theme.ExtendedColors
 import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
+import com.falcon.tripingly.core.designsystem.theme.extendedColors
 import com.falcon.tripingly.core.designsystem.theme.spacing
 
 /**
- * A pill-shaped control for picking one of a few options, e.g. Public / Private: a quiet track with the
- * picked option lifted out as a white (dark: deepest surface) pill.
+ * A pill-shaped control for picking one of a few options, e.g. Public / Private: a quiet track ([ExtendedColors.controlFill])
+ * with the picked option as a pill in the theme's opposite: dark with a light icon in the light theme, white with a dark
+ * icon in the dark theme (Shahin, 2026-11-16).
  * Put one [SegmentedToggleOption] per option in [content].
  */
 @Composable
@@ -48,7 +51,7 @@ fun SegmentedToggle(
     Row(
         modifier = modifier
             .clip(CircleShape)
-            .background(MaterialTheme.colorScheme.surfaceVariant)
+            .background(MaterialTheme.extendedColors.controlFill)
             .padding(SegmentPadding)
             .selectableGroup(),
         horizontalArrangement = Arrangement.spacedBy(SegmentPadding),
@@ -72,10 +75,10 @@ fun RowScope.SegmentedToggleOption(
 ) {
     val haptics = rememberHaptics()
     val container by animateColorAsState(
-        if (selected) MaterialTheme.colorScheme.surfaceContainerLowest else MaterialTheme.colorScheme.surfaceVariant,
+        if (selected) MaterialTheme.colorScheme.onSurface else MaterialTheme.extendedColors.controlFill,
     )
     val content by animateColorAsState(
-        if (selected) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant,
+        if (selected) MaterialTheme.colorScheme.surfaceContainerLowest else MaterialTheme.colorScheme.onSurfaceVariant,
     )
     Box(
         modifier = modifier

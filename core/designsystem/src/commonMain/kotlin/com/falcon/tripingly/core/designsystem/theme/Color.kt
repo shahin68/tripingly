@@ -55,6 +55,10 @@ internal val AttentionDark = Color(0xFFF2A65E)
 internal val OnAttentionDark = Color(0xFF3A1E00)
 internal val OnErrorContainerDark = Color(0xFFFFDAD5)
 
+// A control's fill on a card in the dark theme (a toggle's track, a pill button): lighter than the card, so it reads as
+// something to tap (Shahin, 2026-11-16). The light theme keeps its surfaceVariant.
+internal val ControlFillDark = Color(0xFF3A403C)
+
 // A place's pin on the dark map: softer than the secondary grey, so the stops lead.
 internal val MapPlaceDark = Color(0xFF8E9A92)
 

@@ -131,7 +131,7 @@ internal fun TransitLegsButton(legs: ImmutableList<TransitChip>, onAction: (MapA
             .fillMaxWidth()
             .height(LegsHeight)
             .clip(shape)
-            .background(MaterialTheme.colorScheme.surfaceVariant)
+            .background(MaterialTheme.extendedColors.controlFill)
             .clickable(onClickLabel = stringResource(Res.string.map_transit_show_steps), role = Role.Button) { onAction(MapAction.Plan.OpenTransitSteps) }
             .padding(start = MaterialTheme.spacing.small + MaterialTheme.spacing.extraSmall, end = MaterialTheme.spacing.small),
         verticalAlignment = Alignment.CenterVertically,
@@ -177,7 +177,8 @@ internal fun LeaveAtButton(leaveAt: LeaveAtState, onAction: (MapAction) -> Unit,
     Surface(
         onClick = { onAction(MapAction.Plan.OpenLeaveAt) },
         shape = RoundedCornerShape(LeaveAtHeight / 2),
-        color = MaterialTheme.colorScheme.surfaceVariant,
+        color = MaterialTheme.extendedColors.controlFill,
+        contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
         modifier = modifier.height(LeaveAtHeight),
     ) {
         Row(
