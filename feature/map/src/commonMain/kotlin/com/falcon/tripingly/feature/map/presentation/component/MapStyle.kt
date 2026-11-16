@@ -3,7 +3,8 @@ package com.falcon.tripingly.feature.map.presentation.component
 /**
  * The map's look: "Deep graphite" (G2 on the map styles canvas, Shahin 2026-11-08), Google's monochrome made ours.
  * Light: pale graphite land, white roads with graphite edges, grey highways, very light blue-grey water. Dark: deep
- * graphite land, roads like pencil strokes, black water. Google's own points of interest (shops, cafés, sights) and
+ * graphite land, roads like pencil strokes, black water. Buildings show where Google shows them (close in, from about
+ * zoom 17) as a faint tint with soft outlines, so they don't crowd the map. Google's own points of interest (shops, cafés, sights) and
  * their icons are hidden: places on our map come from our server only. The same JSON goes to Android
  * (`MapStyleOptions`) and iOS (`GMSMapStyle`).
  */
@@ -15,6 +16,8 @@ internal const val LIGHT_MAP_STYLE = """
   {"elementType": "labels.text.stroke", "stylers": [{"color": "#ecedee"}]},
   {"featureType": "administrative", "elementType": "labels.text.fill", "stylers": [{"color": "#7e848a"}]},
   {"featureType": "administrative.land_parcel", "elementType": "labels", "stylers": [{"visibility": "off"}]},
+  {"featureType": "landscape.man_made", "elementType": "geometry.fill", "stylers": [{"color": "#e8e9eb"}]},
+  {"featureType": "landscape.man_made", "elementType": "geometry.stroke", "stylers": [{"color": "#d9dcdf"}]},
   {"featureType": "poi", "elementType": "geometry", "stylers": [{"color": "#e1e3e5"}]},
   {"featureType": "poi", "elementType": "labels", "stylers": [{"visibility": "off"}]},
   {"featureType": "poi.park", "elementType": "geometry", "stylers": [{"color": "#e1e3e5"}]},
@@ -41,6 +44,8 @@ internal const val DARK_MAP_STYLE = """
   {"elementType": "labels.text.stroke", "stylers": [{"color": "#1a1c1e"}]},
   {"featureType": "administrative", "elementType": "labels.text.fill", "stylers": [{"color": "#80868c"}]},
   {"featureType": "administrative.land_parcel", "elementType": "labels", "stylers": [{"visibility": "off"}]},
+  {"featureType": "landscape.man_made", "elementType": "geometry.fill", "stylers": [{"color": "#1d1f22"}]},
+  {"featureType": "landscape.man_made", "elementType": "geometry.stroke", "stylers": [{"color": "#2a2d31"}]},
   {"featureType": "poi", "elementType": "geometry", "stylers": [{"color": "#16181a"}]},
   {"featureType": "poi", "elementType": "labels", "stylers": [{"visibility": "off"}]},
   {"featureType": "poi.park", "elementType": "geometry", "stylers": [{"color": "#16181a"}]},
