@@ -38,7 +38,8 @@ import com.falcon.tripingly.core.designsystem.theme.extendedColors
  * A stop's pin centered on the stop: its number on ivy in the pins' one thin ring, or, once the stop has a cover
  * photo, the photo in that ring with the number in a small badge. A number too wide for its circle stretches the
  * circle into a pill, so every number fits in the middle (Shahin, 2026-11-15). [isNew]: a dot at the top left says
- * something happened here I haven't seen.
+ * something happened here I haven't seen. [halo]: the day's route shows, so the pin stands in a soft halo of the route's
+ * colour (see [STOP_HALO_WIDTH]).
  */
 @Composable
 fun TripMarkerIcon(
@@ -46,15 +47,26 @@ fun TripMarkerIcon(
     modifier: Modifier = Modifier,
     cover: ImageBitmap? = null,
     isNew: Boolean = false,
+    halo: Color? = null,
 ) {
-    Box(modifier) {
-        PinBody(orderNumber, cover)
-        if (isNew) {
-            val inset = newDotInset(hasCover = cover != null)
-            NewIndicator(Modifier.offset(inset, inset), size = NEW_DOT_SIZE - NEW_DOT_RING * 2, strokeColor = MapColors.PinStroke, strokeWidth = NEW_DOT_RING)
+    val haloModifier = if (halo != null) Modifier.background(halo.copy(alpha = STOP_HALO_ALPHA), CircleShape).padding(STOP_HALO_WIDTH) else Modifier
+    Box(modifier.then(haloModifier)) {
+        Box {
+            PinBody(orderNumber, cover)
+            if (isNew) {
+                val inset = newDotInset(hasCover = cover != null)
+                NewIndicator(Modifier.offset(inset, inset), size = NEW_DOT_SIZE - NEW_DOT_RING * 2, strokeColor = MapColors.PinStroke, strokeWidth = NEW_DOT_RING)
+            }
         }
     }
 }
+
+/**
+ * The soft halo round each stop while the day's route shows: this wide, of the route's colour at [STOP_HALO_ALPHA], in
+ * the pin's own shape, so the stops stand out among the places along the line (Shahin, 2026-11-16, S3).
+ */
+internal val STOP_HALO_WIDTH = 9.dp
+internal const val STOP_HALO_ALPHA = 0.32f
 
 @Composable
 private fun PinBody(orderNumber: Int, cover: ImageBitmap?) {
@@ -154,6 +166,8 @@ private fun TripMarkerIconPreview() {
             TripMarkerIcon(orderNumber = 3, cover = ImageBitmap(64, 64))
             TripMarkerIcon(orderNumber = 2, isNew = true)
             TripMarkerIcon(orderNumber = 6, cover = ImageBitmap(64, 64), isNew = true)
+            TripMarkerIcon(orderNumber = 4, halo = Color(0xFF1F9E6B))
+            TripMarkerIcon(orderNumber = 5, cover = ImageBitmap(64, 64), isNew = true, halo = Color(0xFF1F9E6B))
         }
     }
 }

@@ -4,12 +4,14 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.falcon.tripingly.core.location.model.Coordinates
 import com.falcon.tripingly.core.model.place.GeoBounds
 import com.falcon.tripingly.core.model.place.MapPlace
 import com.falcon.tripingly.core.model.place.PlaceCluster
+import com.falcon.tripingly.core.model.trip.GeoPoint
 import kotlin.math.PI
 import kotlin.math.atan
 import kotlin.math.ln
@@ -63,6 +65,8 @@ expect fun GoogleMapView(
     onMarkerClick: (MapMarker) -> Unit,
     /** A stop's or a place's pin was held, pulled onto another pin and let go there: a route from one to the other. */
     onPinDrop: (from: PinEnd, to: PinEnd) -> Unit,
+    /** A tap on a route end's mark (see [RouteEndMark]): the map centres on that end. */
+    onRouteEndClick: (GeoPoint) -> Unit,
 )
 
 /** What the map draws. */
@@ -84,8 +88,10 @@ data class MapLayersState(
     /** A real route, or the day's stops joined in order; null for none. */
     val line: MapLine? = null,
     val isMyLocationEnabled: Boolean = false,
-    /** The ends of the route shown or being set up, each marked with its badge in the way of travelling's colour. */
+    /** The ends of an A→B route shown or being set up, each a dot and a pill naming it in the way of travelling's colour. */
     val routeEnds: ImmutableList<RouteEndMark> = persistentListOf(),
+    /** The day's route shows: each stop stands in a soft halo of the route's colour; null for none. */
+    val stopHalo: Color? = null,
 )
 
 /** Room kept free around the points of a fit, inside the content padding. */

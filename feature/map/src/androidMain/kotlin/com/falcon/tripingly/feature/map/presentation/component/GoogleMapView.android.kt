@@ -44,6 +44,7 @@ import com.falcon.tripingly.core.model.place.GeoBounds
 import com.falcon.tripingly.core.model.place.MapPlace
 import com.falcon.tripingly.core.model.place.PlaceCategory
 import com.falcon.tripingly.core.model.place.PlaceCluster
+import com.falcon.tripingly.core.model.trip.GeoPoint
 import com.google.android.gms.maps.CameraUpdate
 import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.model.BitmapDescriptor
@@ -93,6 +94,7 @@ actual fun GoogleMapView(
     onMapLongClick: (Coordinates) -> Unit,
     onMarkerClick: (MapMarker) -> Unit,
     onPinDrop: (from: PinEnd, to: PinEnd) -> Unit,
+    onRouteEndClick: (GeoPoint) -> Unit,
 ) {
     val (markers, placePins, pinDotBelowZoom, placeClusters, selectedPlace, line, isMyLocationEnabled) = layers
     val cameraPositionState = rememberCameraPositionState {
@@ -139,9 +141,13 @@ actual fun GoogleMapView(
         val zoom = cameraPositionState.position.zoom
         return currentLayers.shownPins(zoom, density, ::project)
     }
-    /** A tap on a pin at [touch]: a tick and the pin opens at once. False when no pin is there. */
+    // The route ends' looks, drawn once each (by look and name).
+    val endIcons = remember(density) { mutableMapOf<Pair<RouteEndMark, String>, Pair<RouteEndIcon, BitmapDescriptor>>() }
+    /** A tap on a pin at [touch]: a tick and the pin opens at once. False when no pin is there, or a route end's mark covers the place's. */
     fun tapPin(touch: Offset): Boolean {
         val pin = shownPins().pinAt(touch) ?: return false
+        val isOnEnd = { isOnRouteEnd(touch, currentLayers.routeEnds, endIcons.mapValues { it.value.first }) { project(Coordinates(it.lat, it.lng)) } }
+        if (pin is PinEnd.Place && isOnEnd()) return false
         haptics.tick()
         when (pin) {
             is PinEnd.Stop -> currentOnMarkerClick(pin.stop)
@@ -316,7 +322,7 @@ actual fun GoogleMapView(
                 }
                 val photo = look.photoId?.let { pinPhotos[it] }
                 val bitmap = if (look.isDot) {
-                    drawPlaceDot(look.size, fill, density, layoutDirection)
+                    drawPlaceDot(look.size, fill, density, layoutDirection, alpha = if (look.isSeeThrough) RouteDotAlpha else 1f)
                 } else if (photo != null) {
                     drawPlacePhotoPin(photo, look.size, fill, density, layoutDirection)
                 } else {
@@ -461,21 +467,29 @@ actual fun GoogleMapView(
                     )
                 }
             }
-            // The route's destination: its flag standing on its pin.
-            val flags = remember(density, layoutDirection) { mutableMapOf<Pair<Dp, Color>, Pair<BitmapDescriptor, Float>>() }
+            // The route's ends: a dot (or the stop's own pin) with a pill naming it; a tap centres the map on it.
             layers.routeEnds.forEach { end ->
-                key("route-end") {
-                    val (icon, anchorY) = flags.getOrPut(end.pinSize to end.color) {
-                        drawRouteEndFlag(end.pinSize, end.color, density, layoutDirection)
-                            .let { BitmapDescriptorFactory.fromBitmap(it.bitmap.asAndroidBitmap()) to it.anchorY }
+                val name = end.name.asString()
+                val look = end.copy(position = NoEndPosition) to name
+                // A new look comes back as a new marker: changing a marker's icon makes every pin blink.
+                key("route-end", end.isStart, look) {
+                    val (drawn, icon) = endIcons.getOrPut(look) {
+                        drawRouteEnd(end, name, textMeasurer, density, layoutDirection)
+                            .let { it to BitmapDescriptorFactory.fromBitmap(it.bitmap.asAndroidBitmap()) }
                     }
                     Marker(
                         state = rememberUpdatedMarkerState(position = LatLng(end.position.lat, end.position.lng)),
                         icon = icon,
-                        anchor = Offset(0.5f, anchorY),
+                        title = name,
+                        anchor = Offset(drawn.anchorX, drawn.anchorY),
                         zIndex = ROUTE_END_Z,
-                        // Only a mark: the map neither moves nor opens anything.
-                        onClick = { true },
+                        onClick = {
+                            if (!isTapHandled) {
+                                haptics.tick()
+                                onRouteEndClick(end.position)
+                            }
+                            true
+                        },
                     )
                 }
             }
@@ -500,6 +514,7 @@ actual fun GoogleMapView(
                         // Empty until the cover's thumbnail has loaded.
                         marker.coverPhotoId.takeIf { cover != null }.orEmpty(),
                         marker.isNew,
+                        layers.stopHalo ?: Color.Unspecified,
                         state = markerState,
                         title = marker.title.asString(),
                         // The pin is a circle centered on the stop.
@@ -519,6 +534,7 @@ actual fun GoogleMapView(
                             orderNumber = marker.orderNumber,
                             cover = cover,
                             isNew = marker.isNew,
+                            halo = layers.stopHalo,
                         )
                     }
                 }
@@ -682,6 +698,7 @@ private const val PLACE_PINS_Z = 0.5f
 /** A route's ends and the places kept while routing: over the other places, under the stops. */
 private const val KEPT_PINS_Z = 0.75f
 
-/** The destination's flag: under the pins (kept places and stops), over the other places. */
-private const val ROUTE_END_Z = 0.7f
+/** A route's ends: over every place pin, under the stops, so a stop's own pin still takes a tap on it. */
+private const val ROUTE_END_Z = 0.9f
+
 

@@ -11,6 +11,7 @@ import com.falcon.tripingly.core.model.place.PlaceCluster
 import com.falcon.tripingly.core.model.place.PlaceSearchResult
 import com.falcon.tripingly.core.model.route.TravelMode
 import com.falcon.tripingly.core.model.social.ReportReason
+import com.falcon.tripingly.core.model.trip.GeoPoint
 import com.falcon.tripingly.feature.map.presentation.component.MapMarker
 import com.falcon.tripingly.feature.map.presentation.component.PinEnd
 
@@ -26,6 +27,8 @@ sealed interface MapAction {
         data class ClusterClick(val cluster: PlaceCluster) : MapView
         /** A stop's pin, or its chip on the plan. */
         data class MarkerClick(val marker: MapMarker) : MapView
+        /** A route end's pill: the map centres on that end (Shahin, 2026-11-16). */
+        data class RouteEndClick(val at: GeoPoint) : MapView
         /** The camera moves: what the whole view shows now, every frame. */
         data class CameraMoving(val bounds: GeoBounds, val zoom: Float) : MapView
         /** The camera came to rest. */

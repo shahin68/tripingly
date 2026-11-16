@@ -43,13 +43,13 @@ internal fun boldFont(points: Float): Font = Font(FontMgr.default.legacyMakeType
 /**
  * A stop's pin: its [onStop] number on the [stop] colour in the pins' thin ring, centered on the stop and stretched
  * into a pill when the number is wider than the circle, with the "new" dot when [isNew], as `TripMarkerIcon` draws it
- * on Android.
+ * on Android; in its [halo] while the day's route shows.
  */
-internal fun drawTripPin(orderNumber: Int, isNew: Boolean, stop: Color, onStop: Color, density: Float, fontScale: Float): UIImage {
+internal fun drawTripPin(orderNumber: Int, isNew: Boolean, stop: Color, onStop: Color, halo: Color?, density: Float, fontScale: Float): UIImage {
     val pin = PIN_SIZE.value * density
     val font = boldFont(13 * density * fontScale)
     val width = pillWidth(orderNumber, font, pin, PIN_NUMBER_PADDING.value * density)
-    val surface = Surface.makeRasterN32Premul(ceil(width).toInt(), pin.toInt())
+    val surface = haloSurface(ceil(width).toInt(), pin.toInt(), halo, density)
     surface.canvas.apply {
         drawNumberPill(orderNumber, Rect.makeXYWH(0f, 0f, width, pin), font, stop.toArgb(), onStop.toArgb(), density)
         if (isNew) drawNewDot(density, hasCover = false)
@@ -59,15 +59,15 @@ internal fun drawTripPin(orderNumber: Int, isNew: Boolean, stop: Color, onStop: 
 
 /**
  * A stop's pin with its cover photo: the photo in an [onStop] ring with the number in a small badge on it, and the
- * "new" dot when [isNew], as `TripMarkerIcon` draws it on Android.
+ * "new" dot when [isNew], as `TripMarkerIcon` draws it on Android; in its [halo] while the day's route shows.
  */
-internal fun drawCoverPin(orderNumber: Int, cover: ImageBitmap, isNew: Boolean, stop: Color, onStop: Color, density: Float, fontScale: Float): UIImage {
+internal fun drawCoverPin(orderNumber: Int, cover: ImageBitmap, isNew: Boolean, stop: Color, onStop: Color, halo: Color?, density: Float, fontScale: Float): UIImage {
     val pin = COVER_PIN_SIZE.value * density
     val ring = PIN_STROKE.value * density
     val badge = COVER_BADGE_SIZE.value * density
     val font = boldFont(10 * density * fontScale)
     val badgeWidth = pillWidth(orderNumber, font, badge, BADGE_NUMBER_PADDING.value * density)
-    val surface = Surface.makeRasterN32Premul(pin.toInt(), pin.toInt())
+    val surface = haloSurface(pin.toInt(), pin.toInt(), halo, density)
     val photo = Image.makeFromBitmap(cover.asSkiaBitmap())
     surface.canvas.apply {
         drawCircle(pin / 2, pin / 2, pin / 2, fill(PIN_STROKE_COLOR))
@@ -83,6 +83,20 @@ internal fun drawCoverPin(orderNumber: Int, cover: ImageBitmap, isNew: Boolean, 
         if (isNew) drawNewDot(density, hasCover = true)
     }
     return UIImage(data = surface.makeImageSnapshot().png(), scale = density.toDouble())
+}
+
+/**
+ * A surface for a stop's pin [width] by [height]: as it is, or with [halo] round it (see [STOP_HALO_WIDTH]) in the pin's
+ * shape and the canvas moved in, so the pin draws as without it.
+ */
+private fun haloSurface(width: Int, height: Int, halo: Color?, density: Float): Surface {
+    if (halo == null) return Surface.makeRasterN32Premul(width, height)
+    val pad = STOP_HALO_WIDTH.value * density
+    val surface = Surface.makeRasterN32Premul(ceil(width + 2 * pad).toInt(), ceil(height + 2 * pad).toInt())
+    val outer = height / 2f + pad
+    surface.canvas.drawRRect(RRect.makeLTRB(0f, 0f, width + 2 * pad, height + 2 * pad, outer), fill(halo.copy(alpha = STOP_HALO_ALPHA).toArgb()))
+    surface.canvas.translate(pad, pad)
+    return surface
 }
 
 /** The "new" dot at the pin's top left (see [newDotInset]): the accent red in the pins' ring colour. */

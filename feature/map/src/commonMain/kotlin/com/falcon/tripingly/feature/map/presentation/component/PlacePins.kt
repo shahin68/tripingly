@@ -14,10 +14,8 @@ import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.CanvasDrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.clipPath
-import androidx.compose.ui.graphics.drawscope.scale
 import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.graphics.painter.Painter
-import androidx.compose.ui.graphics.vector.PathParser
 import androidx.compose.ui.text.TextMeasurer
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.drawText
@@ -36,7 +34,6 @@ import com.falcon.tripingly.core.model.place.MapPlace
 import com.falcon.tripingly.core.model.place.PlaceCategory
 import com.falcon.tripingly.core.model.place.PlaceCluster
 import com.falcon.tripingly.core.model.place.PlacesInView
-import com.falcon.tripingly.core.model.trip.GeoPoint
 import kotlin.math.ceil
 import kotlin.math.roundToInt
 
@@ -171,7 +168,14 @@ internal val PlacePin.dotSize: Dp get() = if (isDot) RouteDotSize else PlaceDotS
 val AlongTheWayPinColor = Color(0xFF8A5AAB)
 
 /** The look of [this] pin as a dot: only its color matters, so every dot of a color shares one bitmap. */
-internal fun PlacePin.dotLook() = PlacePinLook(PlaceCategory.Other, place.isTripinly, dotSize, isAlongTheWay = isAlongTheWay, isDot = true)
+internal fun PlacePin.dotLook() =
+    PlacePinLook(PlaceCategory.Other, place.isTripinly, dotSize, isAlongTheWay = isAlongTheWay, isDot = true, isSeeThrough = isDot)
+
+/**
+ * How much of a place's dot shows while a route shows ([PlacePin.isDot]): see-through, so the line, its ends, the stops
+ * and the places along it lead; every other pin stays as it is (Shahin, 2026-11-16, D1/D2).
+ */
+const val RouteDotAlpha = 0.3f
 
 /**
  * Draws a place pin into a bitmap: a round badge with the place's category icon. The map reuses one
@@ -199,14 +203,18 @@ fun drawPlacePin(
     return bitmap
 }
 
-/** Draws a dot pin into a bitmap: a small circle of the pin's [fill] color in the pins' thin ring. */
-fun drawPlaceDot(size: Dp, fill: Color, density: Density, layoutDirection: LayoutDirection): ImageBitmap {
+/**
+ * Draws a dot pin into a bitmap: a small circle of the pin's [fill] color in the pins' thin ring, the whole dot [alpha]
+ * strong (the ring is drawn round the fill, not under it, so a see-through dot is evenly see-through).
+ */
+fun drawPlaceDot(size: Dp, fill: Color, density: Density, layoutDirection: LayoutDirection, alpha: Float = 1f): ImageBitmap {
     val px = with(density) { size.roundToPx() }
     val border = with(density) { PIN_STROKE.toPx() }
     val bitmap = ImageBitmap(px, px)
     CanvasDrawScope().draw(density, layoutDirection, Canvas(bitmap), Size(px.toFloat(), px.toFloat())) {
-        drawCircle(MapColors.PinStroke)
-        drawCircle(fill, radius = this.size.minDimension / 2 - border)
+        val radius = this.size.minDimension / 2
+        drawCircle(MapColors.PinStroke, radius = radius - border / 2, style = Stroke(border), alpha = alpha)
+        drawCircle(fill, radius = radius - border, alpha = alpha)
     }
     return bitmap
 }
@@ -255,6 +263,8 @@ internal data class PlacePinLook(
     val photoId: String? = null,
     val isAlongTheWay: Boolean = false,
     val isDot: Boolean = false,
+    /** A dot drawn see-through ([RouteDotAlpha]) while a route shows. */
+    val isSeeThrough: Boolean = false,
 )
 
 /**
@@ -286,44 +296,6 @@ fun drawClusterPin(
     }
     return bitmap
 }
-
-/**
- * A route's destination on the map: the route bar's flag in the way of travelling's [color] standing on the top of the
- * destination's pin ([pinSize] round), so the end tells itself from the start (Shahin, 2026-11-14). No ring round the
- * pin and no edge on the flag (Shahin, 2026-11-15: the big circle under the ends and the thin stroke had to go).
- */
-@Immutable
-data class RouteEndMark(val position: GeoPoint, val pinSize: Dp, val color: Color)
-
-/** A route end's look and where on it the end's point is: [anchorY] as a share of its height (x is the middle). */
-class RouteEndIcon(val bitmap: ImageBitmap, val anchorY: Float)
-
-/** Draws [RouteEndMark]: its flag above a transparent space as big as the pin, the pin's middle being the anchor. */
-fun drawRouteEndFlag(pinSize: Dp, color: Color, density: Density, layoutDirection: LayoutDirection): RouteEndIcon {
-    val width = with(density) { maxOf(pinSize, RouteEndFlagWidth).roundToPx() }
-    val pin = with(density) { pinSize.roundToPx() }
-    val flagRoom = with(density) { RouteEndFlagHeight.roundToPx() }
-    val bitmap = ImageBitmap(width, flagRoom + pin)
-    CanvasDrawScope().draw(density, layoutDirection, Canvas(bitmap), Size(width.toFloat(), (flagRoom + pin).toFloat())) {
-        // The Material flag (24 units = 24 dp): its pole's foot (x 6, y 21) stands on the pin's top.
-        val unit = 1.dp.toPx()
-        val flag = PathParser().parsePathString(ROUTE_END_FLAG).toPath()
-        translate(left = width / 2f - 6 * unit, top = flagRoom - 21 * unit) {
-            scale(unit, unit, pivot = Offset.Zero) { drawPath(flag, color) }
-        }
-    }
-    return RouteEndIcon(bitmap, anchorY = (flagRoom + pin / 2f) / (flagRoom + pin))
-}
-
-/**
- * Material's filled flag (Icons.Filled.Flag), the route bar's destination icon, in its 24-unit box. Kept as path data,
- * not a `Path`: a top-level platform path would be made as the file loads, which the JVM unit tests can't.
- */
-private const val ROUTE_END_FLAG = "M14.4,6L14,4H5v17h2v-7h5.6l0.4,2h7V6z"
-
-/** How much a destination's flag rises above its pin (the flag's 17 units). */
-private val RouteEndFlagHeight = 17.dp
-private val RouteEndFlagWidth = 24.dp
 
 private val CLUSTER_RADIUS = 18.dp
 private val CLUSTER_PADDING = 8.dp

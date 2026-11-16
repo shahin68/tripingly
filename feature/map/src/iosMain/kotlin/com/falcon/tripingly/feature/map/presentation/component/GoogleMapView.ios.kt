@@ -8,6 +8,7 @@ import com.falcon.tripingly.core.location.model.Coordinates
 import com.falcon.tripingly.core.model.place.GeoBounds
 import com.falcon.tripingly.core.model.place.MapPlace
 import com.falcon.tripingly.core.model.place.PlaceCluster
+import com.falcon.tripingly.core.model.trip.GeoPoint
 import kotlinx.coroutines.flow.Flow
 import org.koin.compose.getKoin
 
@@ -32,6 +33,7 @@ actual fun GoogleMapView(
     onMapLongClick: (Coordinates) -> Unit,
     onMarkerClick: (MapMarker) -> Unit,
     onPinDrop: (from: PinEnd, to: PinEnd) -> Unit,
+    onRouteEndClick: (GeoPoint) -> Unit,
 ) {
     val koin = getKoin()
     val googleMaps = remember(koin) { koin.getOrNull<GoogleMapsSdk>() }
@@ -52,6 +54,7 @@ actual fun GoogleMapView(
             line = layers.line,
             isMyLocationEnabled = layers.isMyLocationEnabled,
             routeEnds = layers.routeEnds,
+            stopHalo = layers.stopHalo,
             onCameraMove = onCameraMove,
             onCameraMoving = onCameraMoving,
             onBearingChange = onBearingChange,
@@ -63,6 +66,7 @@ actual fun GoogleMapView(
             onMapLongClick = onMapLongClick,
             onMarkerClick = onMarkerClick,
             onPinDrop = onPinDrop,
+            onRouteEndClick = onRouteEndClick,
         )
     } else {
         AppleMapView(

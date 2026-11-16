@@ -31,7 +31,6 @@ import com.falcon.tripingly.feature.map.presentation.component.MapMarker
 import com.falcon.tripingly.feature.map.presentation.component.PIN_SIZE
 import com.falcon.tripingly.feature.map.presentation.component.PlacePin
 import com.falcon.tripingly.feature.map.presentation.component.RouteEndMark
-import com.falcon.tripingly.feature.map.presentation.component.SelectedPinSize
 import com.falcon.tripingly.feature.map.presentation.component.lineColor
 import com.falcon.tripingly.feature.map.presentation.component.placePinSize
 import com.falcon.tripingly.feature.map.presentation.component.routeLine
@@ -257,7 +256,8 @@ internal class MapStateMapper(
     fun layers(): MapLayersState {
         val pins = model.pins.pins
         val alongIds = alongTheWay.mapTo(HashSet()) { it.place.id }
-        // The route's ends: a stop keeps its own pin; a place's pin grows (Shahin, 2026-11-13); the destination has its flag.
+        // The route's ends: a stop keeps its own pin, a place's pin gives way to its end's dot; both get a pill naming
+        // them (Shahin, 2026-11-16, E11).
         val ends = route.endPlaces().map { (place, isStart) -> RouteEnd(place, isStart, stopAt(place)) }
         val endPlaces = ends.filter { it.stop == null }.associateBy { it.place.id }
         // Places tapped while routing stay pins until the route closes.
@@ -269,16 +269,14 @@ internal class MapStateMapper(
         val isRoutes = { id: String -> id in alongIds || id in endPlaces || id in kept }
         val visible = if (model.arePlacesHidden) pins.filter { isRoutes(it.place.id) } else pins
         val shown = visible.mapTo(HashSet()) { it.place.id }
-        val placePins = visible.map {
+        val placePins = visible.filter { it.place.id !in endPlaces }.map {
             when {
-                it.place.id in endPlaces -> it.copy(size = SelectedPinSize, isAlongTheWay = false, isKept = true)
                 it.place.id in kept -> it.copy(isAlongTheWay = it.place.id in alongIds, isKept = true)
                 it.place.id in alongIds -> it.copy(isAlongTheWay = true)
                 routeShows -> it.copy(isDot = true)
                 else -> it
             }
         } +
-            endPlaces.values.filter { it.place.id !in shown }.map { PlacePin(it.place, SelectedPinSize, isKept = true) } +
             kept.values.filter { it.id !in shown && it.id !in endPlaces }.map { PlacePin(it, placePinSize(it, config), isAlongTheWay = it.id in alongIds, isKept = true) } +
             alongTheWay.filter { it.place.id !in shown && it.place.id !in endPlaces && it.place.id !in kept }.map { it.toPin() }
         val stopPath = stops.map { it.position }.takeIf { routePoints.isEmpty() && route.between == null }.orEmpty()
@@ -312,13 +310,24 @@ internal class MapStateMapper(
                 else -> null
             },
             isMyLocationEnabled = model.location.permission == LocationPermission.Granted,
-            // The destination's flag on its pin.
-            routeEnds = ends.filter { !it.isStart }.map { end ->
-                val size = end.stop?.let { if (it.coverPhotoId != null) COVER_PIN_SIZE else PIN_SIZE } ?: SelectedPinSize
-                RouteEndMark(end.place.location, size, endColor)
+            routeEnds = ends.map { end ->
+                // Each pill on the side away from the other end, so it doesn't lie on the line.
+                val other = ends.firstOrNull { it !== end }?.place?.location
+                RouteEndMark(
+                    position = end.place.location,
+                    name = endLabel(end.isStart) ?: UiText.Server(end.place.name),
+                    isStart = end.isStart,
+                    color = endColor,
+                    stopPinSize = end.stop?.let { if (it.coverPhotoId != null) COVER_PIN_SIZE else PIN_SIZE },
+                    isPillLeft = other != null && end.place.location.lng < other.lng,
+                )
             }.toImmutableList(),
+            stopHalo = route.planMode.lineColor.takeIf { routeShows && route.isDayRouteShown && route.between == null },
         )
     }
+
+    /** The name the route bar gives the route's start ([isStart]) or destination: a stop's title, where I am; null: the place's own. */
+    private fun endLabel(isStart: Boolean): UiText? = if (isStart) route.startLabel ?: route.between?.fromLabel else route.between?.toLabel
 
     /** One end of the route on the map: a stop's ([stop]) or a place's. */
     private class RouteEnd(val place: MapPlace, val isStart: Boolean, val stop: MapMarker?)

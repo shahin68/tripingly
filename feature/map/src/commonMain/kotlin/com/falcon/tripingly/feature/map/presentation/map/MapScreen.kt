@@ -261,6 +261,7 @@ internal fun MapScreen(
                 onMapLongClick = { coords -> onAction(MapAction.MapView.LongClick(coords)) },
                 onMarkerClick = { marker -> onAction(MapAction.MapView.MarkerClick(marker)) },
                 onPinDrop = { from, to -> onAction(MapAction.MapView.PinDrop(from, to)) },
+                onRouteEndClick = { at -> onAction(MapAction.MapView.RouteEndClick(at)) },
             )
         }
 
