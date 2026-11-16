@@ -91,9 +91,9 @@
     <string name="members_join_requests_title">Csatlakozni szeretnének</string>
     <string name="members_join_accept">Elfogadás</string>
     <string name="members_join_decline">Elutasítás</string>
-    <string name="members_invites_title">Meghívó linkek</string>
+    <string name="members_invites_title">Meghívólinkek</string>
     <string name="members_invite_hint">Aki megkapja a linket, a lejáratig szerkesztőként csatlakozhat.</string>
-    <string name="members_invite_create">Meghívó link létrehozása</string>
+    <string name="members_invite_create">Meghívólink létrehozása</string>
     <string name="members_invite_expires">Lejár: %1$s</string>
     <string name="members_invite_share">Megosztás</string>
     <string name="members_invite_revoke">Visszavonás</string>
@@ -107,10 +107,10 @@
     <string name="members_error_load">Nem sikerült betölteni a tagokat.</string>
     <string name="members_error_load_requests">Nem sikerült betölteni a csatlakozási kéréseket.</string>
     <string name="members_error_answer_request">Nem sikerült válaszolni a csatlakozási kérésre.</string>
-    <string name="members_error_load_invites">Nem sikerült betölteni a meghívó linkeket.</string>
+    <string name="members_error_load_invites">Nem sikerült betölteni a meghívólinkeket.</string>
     <string name="members_error_add">Nem sikerült hozzáadni őket az utazáshoz.</string>
-    <string name="members_error_create_invite">Nem sikerült meghívó linket létrehozni.</string>
-    <string name="members_error_revoke_invite">Nem sikerült kikapcsolni a meghívó linket.</string>
+    <string name="members_error_create_invite">Nem sikerült meghívólinket létrehozni.</string>
+    <string name="members_error_revoke_invite">Nem sikerült kikapcsolni a meghívólinket.</string>
     <string name="members_error_remove">Nem sikerült eltávolítani őket az utazásból.</string>
     <string name="trip_created">Létrehozva %1$s</string>
 

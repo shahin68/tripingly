@@ -1,8 +1,18 @@
 package com.falcon.tripingly.feature.map.presentation.map.ui
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.ui.platform.LocalAccessibilityManager
+import androidx.compose.animation.togetherWith
+import androidx.compose.animation.SizeTransform
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.core.CubicBezierEasing
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.expandVertically
 import androidx.compose.foundation.gestures.AnchoredDraggableState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -19,6 +29,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.NearMe
 import androidx.compose.material.icons.outlined.CenterFocusStrong
 import androidx.compose.material.icons.outlined.GpsOff
+import androidx.compose.material.icons.outlined.Info
 import com.falcon.tripingly.feature.map.generated.resources.map_location_turn_on
 import com.falcon.tripingly.feature.map.generated.resources.map_location_off
 import androidx.compose.material3.TextButton
@@ -38,12 +49,19 @@ import androidx.compose.foundation.layout.add
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.windowInsetsBottomHeight
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import kotlinx.coroutines.delay
 import com.falcon.tripingly.core.designsystem.component.bottomSystemBar
 import com.falcon.tripingly.core.designsystem.component.floatingBottom
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
@@ -56,6 +74,7 @@ import com.falcon.tripingly.core.designsystem.component.OsmAttribution
 import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
 import com.falcon.tripingly.core.designsystem.theme.spacing
 import com.falcon.tripingly.feature.map.generated.resources.Res
+import com.falcon.tripingly.feature.map.generated.resources.map_credits
 import com.falcon.tripingly.feature.map.generated.resources.map_fit_day
 import com.falcon.tripingly.feature.map.generated.resources.map_follow_location
 import com.falcon.tripingly.feature.map.generated.resources.map_gps_lost
@@ -106,16 +125,21 @@ internal fun BottomCards(
                     .padding(horizontal = MaterialTheme.spacing.medium),
                 verticalAlignment = Alignment.Bottom,
             ) {
-                // Our places come from OpenStreetMap, routes from openrouteservice too. The credits and the gap
-                // under them are what this row covers of the map.
-                MapCredits(
-                    routeAttribution = routeAttribution,
-                    modifier = Modifier
-                        .weight(1f, fill = false)
-                        .onSizeChanged { onCreditsHeight(it.height) }
-                        .padding(bottom = MaterialTheme.spacing.small),
-                )
-                Spacer(modifier = Modifier.weight(1f))
+                // Our places come from OpenStreetMap, routes from openrouteservice too. The open credits and the gap
+                // under them are what this row covers of the map, also while folded, so the map (and Google's logo
+                // above them) doesn't move as they fold and open. Their own row always takes all the room the buttons
+                // leave, so the buttons stay put however wide the credits are (at most half of it, as before).
+                val gap = with(LocalDensity.current) { MaterialTheme.spacing.small.roundToPx() }
+                Row(modifier = Modifier.weight(1f), verticalAlignment = Alignment.Bottom) {
+                    MapCredits(
+                        routeAttribution = routeAttribution,
+                        onOpenHeight = { onCreditsHeight(it + gap) },
+                        modifier = Modifier
+                            .weight(1f, fill = false)
+                            .padding(bottom = MaterialTheme.spacing.small),
+                    )
+                    Spacer(modifier = Modifier.weight(1f))
+                }
                 MapButtons(location, arePlacesHidden, bearing, onAction, Modifier.padding(bottom = MaterialTheme.spacing.small))
             }
         }
@@ -125,10 +149,19 @@ internal fun BottomCards(
         val hasCard = dayTabs.days.isNotEmpty() || plan != null
         // Without the card nothing of it covers the map; the gap below changes then and reports this.
         if (!hasCard) covered[0] = 0
-        if (hasCard) {
+        // Once the trip has loaded, the card (the plan and the day tabs) glides up from the bottom instead of popping
+        // in: its space opens upwards, lifting the credits and buttons along, while the card slides up into it
+        // (Shahin, 2026-11-16). No clipping, so the glass shadow isn't cut on the way.
+        AnimatedVisibility(
+            visible = hasCard,
+            modifier = Modifier.weight(1f, fill = false),
+            enter = expandVertically(tween(GLIDE_MILLIS, easing = Emphasized), expandFrom = Alignment.Bottom, clip = false) +
+                slideInVertically(tween(GLIDE_MILLIS, easing = Emphasized)) { it / 2 } + fadeIn(tween(GLIDE_MILLIS / 2)),
+            exit = shrinkVertically(tween(GLIDE_MILLIS, easing = Emphasized), shrinkTowards = Alignment.Bottom, clip = false) +
+                slideOutVertically(tween(GLIDE_MILLIS, easing = Emphasized)) { it / 2 } + fadeOut(tween(GLIDE_MILLIS / 2)),
+        ) {
             GlassSurface(
                 modifier = Modifier
-                    .weight(1f, fill = false)
                     .windowInsetsPadding(WindowInsets.floatingBottom.only(WindowInsetsSides.Horizontal))
                     .padding(horizontal = MaterialTheme.spacing.medium)
                     .fillMaxWidth(),
@@ -159,18 +192,61 @@ internal fun BottomCards(
     }
 }
 
-/** OpenStreetMap's credit, or the route's while one shows, on a small glass label. */
+/**
+ * OpenStreetMap's credit, or the route's while one shows, on a small glass label, as it always looked, that folds into an
+ * ⓘ (Shahin, 2026-11-16, as OSM's guidelines allow on mobile): open when the map opens, whenever the credits change (a
+ * route comes or goes) and on a tap on the ⓘ, each time for the time the system recommends for reading it (longer
+ * with the accessibility setting for it). [atEnd]: the ⓘ sits at the end (landscape, at the map's top end).
+ * [onOpenHeight]: the label's height open, which stays while it's folded.
+ */
 @Composable
-internal fun MapCredits(routeAttribution: String?, modifier: Modifier = Modifier, style: TextStyle = MaterialTheme.typography.labelSmall) {
+internal fun MapCredits(
+    routeAttribution: String?,
+    modifier: Modifier = Modifier,
+    style: TextStyle = MaterialTheme.typography.labelSmall,
+    atEnd: Boolean = false,
+    onOpenHeight: (Int) -> Unit = {},
+) {
+    var isOpen by remember { mutableStateOf(true) }
+    LaunchedEffect(routeAttribution) { isOpen = true }
+    val accessibility = LocalAccessibilityManager.current
+    LaunchedEffect(isOpen, routeAttribution) {
+        if (!isOpen) return@LaunchedEffect
+        delay(accessibility?.calculateRecommendedTimeoutMillis(CreditsShownMillis, containsText = true, containsControls = true) ?: CreditsShownMillis)
+        isOpen = false
+    }
     GlassSurface(modifier = modifier, shape = MaterialTheme.shapes.extraSmall, shadowElevation = 0.dp, blur = false) {
-        // The route's two credits on two lines, so the label stays narrow.
-        if (routeAttribution != null) {
-            RouteAttribution(routeAttribution.replace(CreditsSeparator, "\n"), style = style)
-        } else {
-            OsmAttribution(style = style)
+        AnimatedContent(
+            targetState = isOpen,
+            contentAlignment = if (atEnd) Alignment.TopEnd else Alignment.BottomStart,
+            transitionSpec = { fadeIn() togetherWith fadeOut() using SizeTransform(clip = true) },
+        ) { open ->
+            if (open) {
+                // The route's two credits on two lines, so the label stays narrow.
+                val measured = Modifier.onSizeChanged { onOpenHeight(it.height) }
+                if (routeAttribution != null) {
+                    RouteAttribution(routeAttribution.replace(CreditsSeparator, "\n"), modifier = measured, style = style)
+                } else {
+                    OsmAttribution(modifier = measured, style = style)
+                }
+            } else {
+                IconButton(onClick = { isOpen = true }, modifier = Modifier.size(CreditsIconSize + CreditsIconPadding * 2)) {
+                    Icon(
+                        Icons.Outlined.Info,
+                        contentDescription = stringResource(Res.string.map_credits),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(CreditsIconSize),
+                    )
+                }
+            }
         }
     }
 }
+
+/** How long the credits show before they fold into their ⓘ, before the system's accessibility timeout adjusts it. */
+private const val CreditsShownMillis = 5_000L
+private val CreditsIconSize = 16.dp
+private val CreditsIconPadding = 4.dp
 
 /** The credits in landscape, at the map's top end: a little smaller than elsewhere, still legible (Shahin, 2026-11-14). */
 internal val SmallCreditsStyle: TextStyle
@@ -289,3 +365,6 @@ private fun MapControlsDarkPreview() {
 
 /** Between openrouteservice's and OpenStreetMap's credit in the route's attribution. */
 private val CreditsSeparator = Regex("""\s*\|\s*""")
+
+private const val GLIDE_MILLIS = 400
+private val Emphasized = CubicBezierEasing(0.2f, 0f, 0f, 1f)

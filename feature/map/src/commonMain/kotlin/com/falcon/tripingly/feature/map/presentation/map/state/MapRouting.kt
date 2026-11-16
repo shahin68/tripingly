@@ -11,6 +11,10 @@ import com.falcon.tripingly.core.location.model.Coordinates
 import com.falcon.tripingly.core.model.place.MapPlace
 import com.falcon.tripingly.core.model.place.PlaceCategory
 import com.falcon.tripingly.core.model.place.PlaceSearchResult
+import com.falcon.tripingly.core.model.config.TransitArea
+import com.falcon.tripingly.core.model.config.covers
+import com.falcon.tripingly.core.model.route.RoutePlan
+import com.falcon.tripingly.core.model.route.TransitTime
 import com.falcon.tripingly.core.model.route.TravelMode
 import com.falcon.tripingly.core.model.trip.GeoPoint
 import com.falcon.tripingly.core.model.trip.NewMarker
@@ -24,11 +28,20 @@ import com.falcon.tripingly.feature.map.generated.resources.map_error_route
 import com.falcon.tripingly.feature.map.generated.resources.map_route_my_location
 import com.falcon.tripingly.feature.map.generated.resources.map_route_need_location
 import com.falcon.tripingly.feature.map.presentation.component.PinEnd
+import com.falcon.tripingly.feature.map.presentation.map.TransitNote
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
+import kotlinx.datetime.LocalDate
+import kotlinx.datetime.LocalDateTime
+import kotlinx.datetime.LocalTime
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toInstant
+import kotlinx.datetime.toLocalDateTime
+import kotlin.time.Clock
 
 /**
  * The route the map shows: the open day's (the Route button), or one from A to B, which takes its place while
@@ -49,13 +62,16 @@ internal class MapRouting(
     private val showRoutesArePro: () -> Unit,
     /** A stop was added or a route asked for: the plan sheet opens all the way. */
     private val showWholePlan: () -> Unit,
+    /** The cities with public transport routes, from the server's settings, which may arrive after the map opens. */
+    private val transitAreas: StateFlow<List<TransitArea>>,
+    private val clock: Clock = Clock.System,
 ) {
     /** What the route on the map was last asked for. */
     private var request: RouteRequest? = null
 
     init {
         context.scope.launch {
-            combine(context.trip, context.model, ::requestOf).distinctUntilChanged().collectLatest(::load)
+            combine(context.trip, context.model, transitAreas, ::requestOf).distinctUntilChanged().collectLatest(::load)
         }
         // A place tapped while routing keeps its pin until the route closes; then they all go back to what they were.
         context.scope.launch {
@@ -65,6 +81,12 @@ internal class MapRouting(
         }
         context.scope.launch {
             context.model.map { it.route.isActive }.distinctUntilChanged().collect { isActive -> if (!isActive) update { it.copy(kept = emptyList(), editing = null) } }
+        }
+        // The steps sheet goes with the public transport route it shows.
+        context.scope.launch {
+            context.model.map { it.route.isActive && it.route.travelMode == TravelMode.Transit }.distinctUntilChanged().collect { isTransit ->
+                if (!isTransit) context.update { it.copy(sheet = it.sheet.takeUnless { sheet -> sheet == Sheet.TransitSteps }) }
+            }
         }
     }
 
@@ -85,7 +107,27 @@ internal class MapRouting(
     /** The Route button's Retry after the route failed: asks for it again at once, the route stays on. */
     fun retryRoute() = update { it.copy(attempt = it.attempt + 1) }
 
-    fun selectTravelMode(mode: TravelMode) = update { it.copy(travelMode = mode) }
+    /**
+     * Another way to travel. Public transport only routes inside one covered city (Vienna for now): elsewhere its dimmed
+     * option only shows a note in the card, and the way picked stays (Shahin, 2026-11-15).
+     */
+    fun selectTravelMode(mode: TravelMode) {
+        if (mode == TravelMode.Transit && !isTransitCovered(context.model.value)) return update { it.copy(transitNote = TransitNote.NotHere) }
+        update { it.copy(travelMode = mode, transitNote = null) }
+    }
+
+    /** Public transport goes between the ends of the route that shows, or would show. */
+    private fun isTransitCovered(model: MapModel): Boolean =
+        requestOf(context.trip.value, model.copy(route = model.route.copy(travelMode = TravelMode.Transit)), transitAreas.value)?.transit?.isCovered == true
+
+    /** "Leave at": the time picker opens on the time the route was asked for. */
+    fun openLeaveAt() {
+        if (context.model.value.route.travelMode == TravelMode.Transit) context.update { it.copy(dialog = Dialog.LeaveAt) }
+    }
+
+    /** The time picked: the route is asked for again, leaving then (or arriving by then) on the open day. */
+    fun pickTransitTime(time: LocalTime, isArriveBy: Boolean) =
+        context.update { it.copy(dialog = null, route = it.route.copy(transitPick = TransitPick(time, isArriveBy && it.route.between != null))) }
 
     /**
      * Go here on a pin's card: the route from where I am to the pin (on again: off). Without my location yet, the
@@ -237,8 +279,23 @@ internal class MapRouting(
         selection.closeStop()
         context.update { it.copy(route = it.route.copy(start = null, startLabel = null, between = route, editing = null), search = null) }
         showWholePlan()
-        camera.frame(listOf(route.from.location, route.to.location).map { Coordinates(it.lat, it.lng) })
+        camera.frame(routePoints(route, plan = null))
     }
+
+    /**
+     * The fit button while a route from A to B shows: the whole route, not the open day (Shahin, 2026-11-15). False
+     * while none shows.
+     */
+    fun frameShownRoute(): Boolean {
+        val route = context.model.value.route
+        val between = route.between ?: return false
+        camera.frame(routePoints(between, route.plan))
+        return true
+    }
+
+    /** A route's ends and, once it has come, its line, so a route bending out past its ends still fits. */
+    private fun routePoints(route: PointRoute, plan: RoutePlan?): List<Coordinates> =
+        (listOf(route.from.location, route.to.location) + plan?.route?.points.orEmpty()).map { Coordinates(it.lat, it.lng) }
 
     private fun PinEnd.toPlace(): MapPlace = when (this) {
         is PinEnd.Place -> place
@@ -281,7 +338,9 @@ internal class MapRouting(
         if (!context.canEdit() || context.model.value.route.isFindingBestOrder) return
         update { it.copy(isFindingBestOrder = true) }
         context.scope.launch {
-            val result = routeRepository.bestOrder(context.tripId, day, context.model.value.route.travelMode)
+            // Public transport has no travel times between every two stops: walking times order them.
+            val mode = context.model.value.route.travelMode.takeUnless { it == TravelMode.Transit } ?: TravelMode.Walking
+            val result = routeRepository.bestOrder(context.tripId, day, mode)
             val current = context.activeDay()?.markers?.map { it.id }
             context.update {
                 val model = it.copy(route = it.route.copy(isFindingBestOrder = false))
@@ -309,16 +368,21 @@ internal class MapRouting(
         context.scope.launch { markerRepository.reorderMarkers(context.tripId, day.id, ids) }
     }
 
-    private fun requestOf(details: TripDetails?, model: MapModel): RouteRequest? {
+    private fun requestOf(details: TripDetails?, model: MapModel, areas: List<TransitArea>): RouteRequest? {
         val route = model.route
+        val days = details?.days.orEmpty()
+        val openDay = days.getOrNull(activeDayIndex(days.size, model.activeDayIndex))
+        // By public transport: the time picked and the open day's date, which the route leaves on when it's ahead.
+        // Covered is part of the request: the cities arriving after the map opened ask again.
+        fun time(stops: List<GeoPoint>) = TransitRequest(openDay?.date, route.transitPick, areas.covers(stops)).takeIf { route.travelMode == TravelMode.Transit }
         route.between?.let {
-            return RouteRequest.Between(it.from.location, it.to.location, route.travelMode, route.attempt, it.from.endPlaceId(details), it.to.endPlaceId(details))
+            val ends = listOf(it.from.location, it.to.location)
+            return RouteRequest.Between(it.from.location, it.to.location, route.travelMode, route.attempt, it.from.endPlaceId(details), it.to.endPlaceId(details), time(ends))
         }
         if (!route.isDayRouteShown) return null
-        val days = details?.days.orEmpty()
-        val day = days.getOrNull(activeDayIndex(days.size, model.activeDayIndex)) ?: return null
+        val day = openDay ?: return null
         if (day.markers.size < 2) return null
-        return RouteRequest.Day(day.id, day.markers.map { it.id to it.location }, route.travelMode, route.attempt)
+        return RouteRequest.Day(day.id, day.markers.map { it.id to it.location }, route.travelMode, route.attempt, time(day.markers.map { it.location }))
     }
 
     private suspend fun load(request: RouteRequest?) {
@@ -330,27 +394,51 @@ internal class MapRouting(
         }
         // The line stays while the same day or the same two places load again; another one's goes at once.
         val isSameRoute = before != null && before.subject == request.subject
-        update { it.copy(isLoading = true, plan = it.plan.takeIf { isSameRoute }, isUnavailable = it.isUnavailable && isSameRoute) }
+        // Public transport outside a covered city isn't asked for: a note says so, the day keeps its own lines.
+        if (request.transit?.isCovered == false) {
+            return update { it.copy(plan = null, isUnavailable = false, isLoading = false, transitAt = null, transitNote = TransitNote.NotHere) }
+        }
+        // Public transport answered before for the same ask (the same ends, day, time picked or "now") shows again at once,
+        // also after swapping the ends or another way of travelling and back; only a new ask asks the server (Shahin, 2026-11-15:
+        // fine if a "now" is a little old). Kept in this screen's memory only.
+        transitRoutes[request]?.let { (plan, at) ->
+            update { it.copy(plan = plan, planMode = request.mode, planStops = request.stops, isUnavailable = false, isLoading = false, transitAt = at, transitNote = null) }
+            if (request is RouteRequest.Between) reframe(plan)
+            return
+        }
+        update { it.copy(isLoading = true, plan = it.plan.takeIf { isSameRoute }, isUnavailable = it.isUnavailable && isSameRoute, transitNote = null) }
+        val time = request.transit?.let { transitTime(it, isBetween = request is RouteRequest.Between) }
         val result = when (request) {
             is RouteRequest.Day -> {
                 val day = context.days().firstOrNull { it.id == request.dayId } ?: return update { it.copy(isLoading = false) }
-                routeRepository.dayRoute(context.tripId, day, request.mode)
+                routeRepository.dayRoute(context.tripId, day, request.mode, time?.at)
             }
-            is RouteRequest.Between -> routeRepository.route(request.from, request.to, request.mode, context.tripId, request.fromPlaceId, request.toPlaceId)
+            is RouteRequest.Between -> routeRepository.route(request.from, request.to, request.mode, context.tripId, request.fromPlaceId, request.toPlaceId, time)
+        }
+        if (result is AppResult.Success && time != null && !result.data.isEstimated) transitRoutes[request] = result.data to time
+        val transitNote = (result as? AppResult.Error)?.error?.let { error ->
+            when {
+                error.hasCode(RouteErrorCodes.TRANSIT_NO_COVERAGE) -> TransitNote.NotHere
+                error.hasCode(RouteErrorCodes.TRANSIT_NO_CONNECTION) -> TransitNote.NoConnection
+                else -> null
+            }
         }
         context.update {
-            when (result) {
-                is AppResult.Success -> it.copy(
+            when {
+                result is AppResult.Success -> it.copy(
                     route = it.route.copy(
                         plan = result.data,
                         planMode = request.mode,
                         planStops = request.stops,
                         isUnavailable = false,
                         isLoading = false,
+                        transitAt = time,
                     ),
                 )
+                // No public transport here or at this time: a note in the card, never a banner (Shahin, 2026-11-15).
+                transitNote != null -> it.copy(route = it.route.copy(plan = null, isUnavailable = false, isLoading = false, transitAt = time, transitNote = transitNote))
                 // Not Pro after all (the account changed): the route closes with the server's message.
-                is AppResult.Error -> if (result.error.hasCode(RouteErrorCodes.PREMIUM_REQUIRED)) {
+                result is AppResult.Error -> if (result.error.hasCode(RouteErrorCodes.PREMIUM_REQUIRED)) {
                     it.copy(
                         route = it.route.copy(plan = null, isDayRouteShown = false, between = null, isLoading = false),
                         message = result.error.toUiText(Res.string.map_error_route),
@@ -362,20 +450,57 @@ internal class MapRouting(
                         message = if (result.error.hasCode(RouteErrorCodes.ROUTING_UNAVAILABLE)) it.message else result.error.toUiText(Res.string.map_error_route),
                     )
                 }
+                else -> it
             }
         }
+        if (result is AppResult.Success && request is RouteRequest.Between) reframe(result.data)
+    }
+
+    /**
+     * A route from A to B that came (or changed its way of travelling) is fitted again with its whole line, unless the
+     * map was moved since it was shown: the first fit only had the ends (Shahin, 2026-11-15: the route went under the
+     * header and the card).
+     */
+    private fun reframe(plan: RoutePlan) {
+        val between = context.model.value.route.between ?: return
+        camera.reframe(routePoints(between, plan))
+    }
+
+    /**
+     * When public transport leaves (or arrives by, only from A to B): at the time picked, or the clock's time now, on the
+     * open day when it's ahead, else today; nothing picked on a day not ahead leaves now (Shahin, 2026-11-15).
+     */
+    private fun transitTime(request: TransitRequest, isBetween: Boolean): TransitTime {
+        val zone = TimeZone.currentSystemDefault()
+        val now = clock.now()
+        val local = now.toLocalDateTime(zone)
+        val day = request.date?.takeIf { it > local.date }
+        if (request.pick == null && day == null) return TransitTime(now)
+        val at = LocalDateTime(day ?: local.date, request.pick?.time ?: local.time).toInstant(zone)
+        return TransitTime(at, isArriveBy = isBetween && request.pick?.isArriveBy == true)
     }
 
     private fun update(change: (RouteModel) -> RouteModel) = context.update { it.copy(route = change(it.route)) }
+
+    /** Public transport routes answered while this screen is open, by what was asked, with the time they were asked for. */
+    private val transitRoutes = HashMap<RouteRequest, Pair<RoutePlan, TransitTime>>()
 
     /** What a route is asked for; [subject] is the same for the same day or the same two places; a new [attempt] asks again. */
     private sealed interface RouteRequest {
         val subject: Any
         val mode: TravelMode
+        /** By public transport: when it goes; null by any other way. */
+        val transit: TransitRequest?
         /** The stops the route goes through in order. */
         val stops: List<GeoPoint>
 
-        data class Day(val dayId: String, val markers: List<Pair<String, GeoPoint>>, override val mode: TravelMode, val attempt: Int) : RouteRequest {
+        data class Day(
+            val dayId: String,
+            val markers: List<Pair<String, GeoPoint>>,
+            override val mode: TravelMode,
+            val attempt: Int,
+            override val transit: TransitRequest?,
+        ) : RouteRequest {
             override val subject get() = dayId
             override val stops get() = markers.map { it.second }
         }
@@ -387,12 +512,19 @@ internal class MapRouting(
             val attempt: Int,
             val fromPlaceId: String?,
             val toPlaceId: String?,
+            override val transit: TransitRequest?,
         ) : RouteRequest {
             override val subject get() = from to to
             override val stops get() = listOf(from, to)
         }
     }
 }
+
+/**
+ * The open day's [date] and the time picked: what a public transport route's time is worked out from as it loads; [isCovered]:
+ * its stops are in one covered city.
+ */
+private data class TransitRequest(val date: LocalDate?, val pick: TransitPick?, val isCovered: Boolean)
 
 /** How an address picked from search starts its id as a route's end. */
 private const val ADDRESS_ID_PREFIX = "address:"

@@ -1,4 +1,4 @@
 <resources>
-    <string name="app_name">Tripingly</string>
+    <string name="app_name">Tripinly</string>
     <string name="notification_channel_updates">Trip updates</string>
 </resources>

@@ -13,10 +13,12 @@ import com.falcon.tripingly.core.ui.generated.resources.error_server
 import com.falcon.tripingly.core.ui.generated.resources.error_timeout
 import com.falcon.tripingly.core.ui.generated.resources.error_try_again
 import com.falcon.tripingly.core.ui.generated.resources.error_unknown
+import org.jetbrains.compose.resources.PluralStringResource
 import org.jetbrains.compose.resources.StringResource
+import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
 
-/** Text for the user: one of our strings, or text the server already localized. */
+/** Text for the user: one of our strings, or text the server already localized. An argument that is a [UiText] is resolved too. */
 @Immutable
 sealed interface UiText {
     class Resource(val resource: StringResource, vararg val args: Any) : UiText {
@@ -24,6 +26,14 @@ sealed interface UiText {
             other is Resource && other.resource == resource && other.args.contentEquals(args)
 
         override fun hashCode(): Int = 31 * resource.hashCode() + args.contentHashCode()
+    }
+
+    /** A plural string for [quantity] ("3 stops"). */
+    class Plural(val resource: PluralStringResource, val quantity: Int, vararg val args: Any) : UiText {
+        override fun equals(other: Any?): Boolean =
+            other is Plural && other.resource == resource && other.quantity == quantity && other.args.contentEquals(args)
+
+        override fun hashCode(): Int = 31 * (31 * resource.hashCode() + quantity) + args.contentHashCode()
     }
 
     data class Server(val text: String) : UiText
@@ -36,7 +46,8 @@ sealed interface UiText {
 
     @Composable
     fun asString(): String = when (this) {
-        is Resource -> stringResource(resource, *args)
+        is Resource -> stringResource(resource, *args.map { if (it is UiText) it.asString() else it }.toTypedArray())
+        is Plural -> pluralStringResource(resource, quantity, *args.map { if (it is UiText) it.asString() else it }.toTypedArray())
         is Server -> text
         is Joined -> "${first.asString()} ${second.asString()}"
         is Note -> text.asString()

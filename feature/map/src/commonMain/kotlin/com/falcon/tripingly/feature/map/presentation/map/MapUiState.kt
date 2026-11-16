@@ -11,6 +11,8 @@ import com.falcon.tripingly.core.model.place.PlaceDetails
 import com.falcon.tripingly.core.model.place.PlaceImage
 import com.falcon.tripingly.core.model.place.PlaceSearchResult
 import com.falcon.tripingly.core.model.route.AlongTheWayPlace
+import com.falcon.tripingly.core.model.route.TransitLine
+import com.falcon.tripingly.core.model.route.TransitVehicle
 import com.falcon.tripingly.core.model.route.TravelMode
 import com.falcon.tripingly.core.model.trip.JoinRequestStatus
 import com.falcon.tripingly.core.model.trip.UserSummary
@@ -60,7 +62,12 @@ data class MapUiState(
 
 /** "@[people] first and [othersCount] others want to join", with [people]'s faces stacked. */
 @Immutable
-data class JoinRequestsState(val people: ImmutableList<UserSummary>, val othersCount: Int)
+data class JoinRequestsState(
+    val people: ImmutableList<UserSummary>,
+    val othersCount: Int,
+    /** Every one of [people] was shown in full before: only their faces, in a small circle. */
+    val isCompact: Boolean = false,
+)
 
 @Immutable
 data class HeaderState(
@@ -190,7 +197,108 @@ data class RouteSummaryState(
     val selectedPlaceId: String?,
     /** The open day they are added to; null when this user can't add stops. */
     val addToDayNumber: Int?,
+    /** Public transport goes between the route's ends: its option isn't dimmed. */
+    val isTransitCovered: Boolean = true,
+    /** By public transport: the "Leave at" button; null by any other way. */
+    val leaveAt: LeaveAtState? = null,
+    /** Why there is no public transport route: a note in the card, never a banner. */
+    val transitNote: TransitNote? = null,
+    /** By public transport: "09:12 – 09:36 · 1 change" under the time, in place of the length. */
+    val transitTimes: UiText? = null,
+    /** By public transport: its walks and rides in a row; a tap opens them step by step. */
+    val transitLegs: ImmutableList<TransitChip> = persistentListOf(),
 )
+
+/** "Leave at 14:05" or "Arrive by 14:05" ([time] as HH:mm). */
+@Immutable
+data class LeaveAtState(val time: String, val isArriveBy: Boolean)
+
+enum class TransitNote {
+    /** Not inside one city with public transport routes (Vienna for now), tapped or answered by the server. */
+    NotHere,
+    /** No connection at the time asked; another time may have one. */
+    NoConnection,
+}
+
+/** One walk or ride in the route card's row: a walk's minutes, a ride's line badge and minutes. */
+@Immutable
+sealed interface TransitChip {
+    val durationSeconds: Int
+
+    data class Walk(override val durationSeconds: Int) : TransitChip
+    data class Ride(val line: TransitLine, override val durationSeconds: Int) : TransitChip
+}
+
+/**
+ * One row of the public transport timeline (the canvas's steps sheet): when, at which place ([place] bold), its [mark] on
+ * the line, the [path] on to the next row (none on the last) and what happens there; its texts built by the mapper.
+ */
+@Immutable
+data class TransitStepRow(
+    val key: String,
+    /** "09:12". */
+    val time: String,
+    val place: UiText?,
+    val mark: TransitMark,
+    val path: TransitPath?,
+    /** The ride from here: its line's badge and "to Simmering"; null on a walk. */
+    val ride: TransitRide? = null,
+    /** "Walk 4 min · 300 m", "Change · walk 2 min" or "4 stops · 6 min"; null at the end. */
+    val detail: UiText? = null,
+    /** Where the route starts, ends or reaches a day's stop: that place's circle next to its name. */
+    val icon: TransitPlaceIcon? = null,
+)
+
+/** One of the route's own places, next to its name: its photo in a circle, or else its kind of place (or where I am). */
+@Immutable
+data class TransitPlaceIcon(
+    val photoId: String? = null,
+    val photoUrl: String? = null,
+    val category: PlaceCategory? = null,
+    val isMyLocation: Boolean = false,
+    /** A day's stop: its number, in a badge on the circle like on its pin (Shahin, 2026-11-16, N2). */
+    val stopNumber: Int? = null,
+)
+
+/** A start or end of a public transport leg: its name and its circle. */
+@Immutable
+data class TransitEnd(val title: UiText?, val icon: TransitPlaceIcon?)
+
+/** A ride's [line] (its badge) going [towards] its last stop, by [vehicle] (its icon by the minutes). */
+@Immutable
+data class TransitRide(val line: TransitLine?, val towards: UiText?, val vehicle: TransitVehicle)
+
+/** The circle a timeline row sits on. */
+@Immutable
+sealed interface TransitMark {
+    /** Setting off on foot: a ring in the walk colour. */
+    data object Walk : TransitMark
+
+    /** Getting off to change: a ring in the text colour. */
+    data object Change : TransitMark
+
+    /** Getting on or off a line: a ring in its colour (null: the timetable gives none). */
+    data class Line(val color: Long?) : TransitMark
+
+    /** One of the day's stops, on the way. */
+    data object Stop : TransitMark
+
+    /** Where the route ends: a flag. */
+    data object End : TransitMark
+}
+
+/** The line from a timeline row down to the next one. */
+@Immutable
+sealed interface TransitPath {
+    /** A walk: dotted in the walk colour. */
+    data object Walk : TransitPath
+
+    /** A walk to change lines: dotted and quiet. */
+    data object Change : TransitPath
+
+    /** A ride: a solid bar in its line's colour. */
+    data class Ride(val color: Long?) : TransitPath
+}
 
 /** A spot being made: its [name] (the card's text field), its kind of place and the photo picked for it. */
 @Immutable
@@ -254,7 +362,10 @@ data class StopCardState(
     /** Who made its custom spot, when that's someone else than [addedBy]. */
     val spotBy: AddedBy? = null,
     val news: StopCardNews = StopCardNews(),
-)
+) {
+    /** The stop's kind of place: it comes with the stop, so the card never waits for [place] to show it. */
+    val category: PlaceCategory? get() = stop.category ?: place?.category
+}
 
 /**
  * What's new about the open stop (Shahin, 2026-11-13): a dot on its [comments] and [photos] buttons until they're seen;
@@ -313,6 +424,18 @@ sealed interface MapSheet {
     /** The selected place's details, half high. Its photos open in their own sheet in its place. */
     data class PlaceDetails(val card: PlaceCardState) : MapSheet
     data class AddToTrip(val picker: AddToTripState, override val hasBack: Boolean = false) : MapSheet
+    /** The public transport route step by step, opened from the route card; its back arrow goes back to the plan. */
+    data class TransitSteps(
+        /** "24 min · 1 change". */
+        val title: UiText,
+        /** "09:12 – 09:36 · walk 10 min". */
+        val subtitle: UiText?,
+        val rows: ImmutableList<TransitStepRow>,
+        val isTypicalTimes: Boolean,
+        val attribution: String?,
+    ) : MapSheet {
+        override val hasBack get() = true
+    }
 }
 
 @Immutable
@@ -330,6 +453,8 @@ sealed interface MapDialog {
     data class Location(val prompt: LocationPrompt) : MapDialog
     /** The best order for the open day, waiting for Apply. */
     data class BestOrder(val preview: BestOrderPreview) : MapDialog
+    /** "Leave at": the time on the open day, as [hour] and [minute]; arriving by it only from A to B ([canArriveBy]). */
+    data class LeaveAt(val hour: Int, val minute: Int, val isArriveBy: Boolean, val canArriveBy: Boolean) : MapDialog
 }
 
 enum class LocationPrompt { Explain, OpenSettings }

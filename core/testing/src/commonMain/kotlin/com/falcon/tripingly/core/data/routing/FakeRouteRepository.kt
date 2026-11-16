@@ -6,6 +6,11 @@ import com.falcon.tripingly.core.model.route.BestOrder
 import com.falcon.tripingly.core.model.route.Route
 import com.falcon.tripingly.core.model.route.RouteLeg
 import com.falcon.tripingly.core.model.route.RoutePlan
+import com.falcon.tripingly.core.model.route.TransitLine
+import com.falcon.tripingly.core.model.route.TransitStep
+import com.falcon.tripingly.core.model.route.TransitStop
+import com.falcon.tripingly.core.model.route.TransitTime
+import com.falcon.tripingly.core.model.route.TransitVehicle
 import com.falcon.tripingly.core.model.route.TravelMode
 import com.falcon.tripingly.core.model.trip.GeoPoint
 import com.falcon.tripingly.core.model.trip.TripDay
@@ -13,19 +18,34 @@ import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.roundToInt
 import kotlin.math.sqrt
+import kotlin.time.Instant
 
 /** Straight lines between the stops, for building and demoing without the server. */
 class FakeRouteRepository : RouteRepository {
 
-    override suspend fun dayRoute(tripId: String, day: TripDay, mode: TravelMode): AppResult<RoutePlan, DataError.Network> {
+    /** The public transport times asked for, in order: a day route's `departAt` as a leaving time. */
+    val transitTimes = mutableListOf<TransitTime?>()
+
+    override suspend fun dayRoute(tripId: String, day: TripDay, mode: TravelMode, departAt: Instant?): AppResult<RoutePlan, DataError.Network> {
+        if (mode == TravelMode.Transit) transitTimes += departAt?.let { TransitTime(it) }
         val stops = day.markers
         if (stops.size < 2) return AppResult.Success(RoutePlan(null, emptyList(), isEstimated = false, ATTRIBUTION))
         val legs = stops.zipWithNext { from, to -> leg(from.location, to.location, mode, from.id, to.id) }
         return AppResult.Success(RoutePlan(route(stops.map { it.location }, legs), emptyList(), isEstimated = false, ATTRIBUTION))
     }
 
-    override suspend fun route(from: GeoPoint, to: GeoPoint, mode: TravelMode, tripId: String?, fromPlaceId: String?, toPlaceId: String?): AppResult<RoutePlan, DataError.Network> =
-        AppResult.Success(RoutePlan(route(listOf(from, to), listOf(leg(from, to, mode, null, null))), emptyList(), isEstimated = false, ATTRIBUTION))
+    override suspend fun route(
+        from: GeoPoint,
+        to: GeoPoint,
+        mode: TravelMode,
+        tripId: String?,
+        fromPlaceId: String?,
+        toPlaceId: String?,
+        time: TransitTime?,
+    ): AppResult<RoutePlan, DataError.Network> {
+        if (mode == TravelMode.Transit) transitTimes += time
+        return AppResult.Success(RoutePlan(route(listOf(from, to), listOf(leg(from, to, mode, null, null))), emptyList(), isEstimated = false, ATTRIBUTION))
+    }
 
     /** Nearest stop next, from the first. */
     override suspend fun bestOrder(tripId: String, day: TripDay, mode: TravelMode): AppResult<BestOrder, DataError.Network> {
@@ -48,8 +68,30 @@ class FakeRouteRepository : RouteRepository {
             TravelMode.Walking -> 1.4
             TravelMode.Cycling -> 4.2
             TravelMode.Driving -> 11.0
+            TravelMode.Transit -> 6.0
         }
-        return RouteLeg(fromId, toId, meters.roundToInt(), (meters / metersPerSecond).roundToInt())
+        val seconds = (meters / metersPerSecond).roundToInt()
+        // By public transport: one ride on a red line the whole way.
+        val steps = if (mode == TravelMode.Transit) {
+            val start = Instant.fromEpochSeconds(0)
+            listOf(
+                TransitStep(
+                    isRide = true,
+                    vehicle = TransitVehicle.Subway,
+                    line = TransitLine("U1", 0xFFE3000F, 0xFFFFFFFF),
+                    headsign = null,
+                    from = TransitStop(null, from, start),
+                    to = TransitStop(null, to, Instant.fromEpochSeconds(seconds.toLong())),
+                    stops = 0,
+                    distanceMeters = meters.roundToInt(),
+                    durationSeconds = seconds,
+                    points = listOf(from, to),
+                ),
+            )
+        } else {
+            emptyList()
+        }
+        return RouteLeg(fromId, toId, meters.roundToInt(), seconds, steps)
     }
 
     private fun meters(a: GeoPoint, b: GeoPoint): Double {

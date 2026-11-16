@@ -49,6 +49,7 @@ import com.falcon.tripingly.core.designsystem.component.PhotoImage
 import com.falcon.tripingly.core.designsystem.component.PhotoSize
 import com.falcon.tripingly.core.designsystem.component.icon
 import com.falcon.tripingly.core.designsystem.component.rememberHaptics
+import com.falcon.tripingly.core.designsystem.theme.MapColors
 import com.falcon.tripingly.core.designsystem.theme.extendedColors
 import com.falcon.tripingly.core.location.model.Coordinates
 import kotlin.math.PI
@@ -166,12 +167,13 @@ internal fun PinHoldLayer(
                 clip = true
             }
             .background(color, CircleShape)
-            .border(2.dp, Color.White, CircleShape),
+            .border(2.dp, MapColors.PinStroke, CircleShape),
     ) {
         Icon(
             imageVector = Icons.Filled.ArrowUpward,
             contentDescription = null,
-            tint = Color.White,
+            // White on the light theme's dark green; the one deep green on the dark theme's light green (Shahin, 2026-11-16).
+            tint = MaterialTheme.extendedColors.onStopIcon,
             modifier = Modifier.fillMaxSize().graphicsLayer {
                 // Along the line, from the pin out through the handle.
                 val pin = currentProject(hold.from.position)
@@ -252,7 +254,15 @@ private fun NameTagMark(end: PinEnd) {
         is PinEnd.Place -> end.place.coverImageId to end.place.coverThumbUrl
     }
     if (imageId != null && imageUrl != null) {
-        PhotoImage(photoId = imageId, url = imageUrl, size = PhotoSize.Thumb, contentDescription = null, modifier = Modifier.size(NAME_TAG_MARK).clip(CircleShape))
+        // On the tag's light glass the usual grey barely shows: a darker circle shimmers until the image is there (Shahin, 2026-11-16).
+        PhotoImage(
+            photoId = imageId,
+            url = imageUrl,
+            size = PhotoSize.Thumb,
+            contentDescription = null,
+            modifier = Modifier.size(NAME_TAG_MARK).clip(CircleShape),
+            placeholderColor = MaterialTheme.colorScheme.outlineVariant,
+        )
         return
     }
     val fill = when (end) {
@@ -264,7 +274,7 @@ private fun NameTagMark(end: PinEnd) {
             is PinEnd.Stop -> Text(
                 text = end.stop.orderNumber.toString(),
                 style = MaterialTheme.typography.labelSmall,
-                color = Color.White,
+                color = MaterialTheme.extendedColors.onStop,
             )
             is PinEnd.Place -> Icon(
                 imageVector = end.place.category.icon,

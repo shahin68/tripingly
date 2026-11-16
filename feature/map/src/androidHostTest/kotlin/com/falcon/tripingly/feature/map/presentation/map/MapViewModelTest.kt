@@ -78,11 +78,15 @@ import com.falcon.tripingly.feature.map.generated.resources.map_join_requested
 import com.falcon.tripingly.feature.map.generated.resources.map_route_my_location
 import com.falcon.tripingly.feature.map.generated.resources.map_trip_card_more
 import com.falcon.tripingly.feature.map.presentation.FakeTripMapViewRepository
+import com.falcon.tripingly.feature.map.presentation.component.LineMark
 import com.falcon.tripingly.feature.map.presentation.component.CameraCommand
 import com.falcon.tripingly.feature.map.presentation.component.PinEnd
 import com.falcon.tripingly.feature.map.presentation.component.PinSizes
 import com.falcon.tripingly.feature.map.presentation.component.SelectedPinSize
+import com.falcon.tripingly.feature.map.presentation.component.dotLook
 import com.falcon.tripingly.feature.map.presentation.component.isDotAt
+import com.falcon.tripingly.feature.map.presentation.component.RouteEndMark
+import com.falcon.tripingly.feature.map.presentation.component.lineColor
 import com.falcon.tripingly.feature.map.presentation.component.routeLine
 import com.falcon.tripingly.feature.map.presentation.component.stopPathShape
 import com.falcon.tripingly.feature.map.presentation.map.state.withPinMargin
@@ -112,6 +116,16 @@ import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import kotlinx.datetime.LocalDate
+import androidx.compose.ui.graphics.Color
+import com.falcon.tripingly.core.model.config.AppConfig
+import com.falcon.tripingly.core.model.config.TransitArea
+import com.falcon.tripingly.core.model.route.TransitTime
+import kotlin.math.abs
+import kotlin.time.Clock
+import kotlinx.datetime.LocalTime
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.todayIn
+import kotlinx.datetime.toLocalDateTime
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 
@@ -174,20 +188,35 @@ class MapViewModelTest {
         var bestOrder: List<String>? = null
         /** The places along every day route. */
         var alongTheWay: List<AlongTheWayPlace> = emptyList()
+        /** By public transport: the times asked for, a day route's as a leaving time. */
+        val transitTimes = mutableListOf<TransitTime?>()
+        val bestOrderModes = mutableListOf<TravelMode>()
 
-        override suspend fun dayRoute(tripId: String, day: TripDay, mode: TravelMode): AppResult<RoutePlan, DataError.Network> {
+        override suspend fun dayRoute(tripId: String, day: TripDay, mode: TravelMode, departAt: Instant?): AppResult<RoutePlan, DataError.Network> {
             dayRoutes += day.markers.map { it.id } to mode
-            return error?.asError() ?: fake.dayRoute(tripId, day, mode).map { it.copy(alongTheWay = alongTheWay) }
+            if (mode == TravelMode.Transit) transitTimes += departAt?.let { TransitTime(it) }
+            return error?.asError() ?: fake.dayRoute(tripId, day, mode, departAt).map { it.copy(alongTheWay = alongTheWay) }
         }
 
-        override suspend fun route(from: GeoPoint, to: GeoPoint, mode: TravelMode, tripId: String?, fromPlaceId: String?, toPlaceId: String?): AppResult<RoutePlan, DataError.Network> {
+        override suspend fun route(
+            from: GeoPoint,
+            to: GeoPoint,
+            mode: TravelMode,
+            tripId: String?,
+            fromPlaceId: String?,
+            toPlaceId: String?,
+            time: TransitTime?,
+        ): AppResult<RoutePlan, DataError.Network> {
             pointRoutes += from to to
             pointRoutePlaces += fromPlaceId to toPlaceId
-            return error?.asError() ?: fake.route(from, to, mode, tripId, fromPlaceId, toPlaceId)
+            if (mode == TravelMode.Transit) transitTimes += time
+            return error?.asError() ?: fake.route(from, to, mode, tripId, fromPlaceId, toPlaceId, time)
         }
 
-        override suspend fun bestOrder(tripId: String, day: TripDay, mode: TravelMode): AppResult<BestOrder, DataError.Network> =
-            bestOrder?.let { BestOrder(it, byTravelTime = false, savedMinutes = null).asSuccess() } ?: fake.bestOrder(tripId, day, mode)
+        override suspend fun bestOrder(tripId: String, day: TripDay, mode: TravelMode): AppResult<BestOrder, DataError.Network> {
+            bestOrderModes += mode
+            return bestOrder?.let { BestOrder(it, byTravelTime = false, savedMinutes = null).asSuccess() } ?: fake.bestOrder(tripId, day, mode)
+        }
     }
 
     /** Keeps what was reported. */
@@ -244,7 +273,14 @@ class MapViewModelTest {
             it.accept((it.legalDocuments("en") as AppResult.Success).data)
         }
 
-    private fun TestScope.viewModel(tripId: String = trip.trip.id, stopId: String? = null, showMembers: Boolean = false, showComments: Boolean = false) = MapViewModel(
+    private fun TestScope.viewModel(
+        tripId: String = trip.trip.id,
+        stopId: String? = null,
+        showMembers: Boolean = false,
+        showComments: Boolean = false,
+        config: AppConfig = AppConfig(),
+        configRepository: FakeAppConfigRepository = FakeAppConfigRepository(config),
+    ) = MapViewModel(
         tripId = tripId,
         stopId = stopId,
         showMembers = showMembers,
@@ -254,7 +290,7 @@ class MapViewModelTest {
         placeRepository = places,
         routeRepository = routes,
         socialRepository = social,
-        appConfigRepository = FakeAppConfigRepository(),
+        appConfigRepository = configRepository,
         mapViews = mapViews,
         sessionRepository = session,
         getCurrentLocationUseCase = GetCurrentLocationUseCase(fakeLocationRepository),
@@ -264,8 +300,8 @@ class MapViewModelTest {
     ).also { viewModel -> backgroundScope.launch { viewModel.uiState.collect {} } }
 
     /** The place of the pin named [name] on the map. */
-    /** Where the route's start badge is: its start pin. */
-    private val MapUiState.startMark get() = layers.routeEnds.firstOrNull { it.isStart }?.position
+    /** Where the route's ends stand in their halos. */
+    private val MapUiState.endHalos get() = layers.routeEnds.map { it.position }
 
     private fun MapViewModel.pin(name: String): MapPlace = uiState.value.layers.placePins.single { it.place.name == name }.place
 
@@ -990,6 +1026,30 @@ class MapViewModelTest {
         assertEquals("mia", viewModel.uiState.value.joinRequests?.people?.first()?.username)
         assertEquals(2, viewModel.uiState.value.joinRequests?.othersCount)
         assertTrue(viewModel.uiState.value.header.card.hasNewJoinRequests)
+    }
+
+    @Test
+    fun `the join pill shows people in full once, then only their faces, also on the next visit`() = runTest(testDispatcher) {
+        fun ask(id: String, username: String) = backend.seedJoinRequest(
+            JoinRequest("r-$id", trip.trip.id, UserSummary(id, username, username), Instant.parse("2026-11-07T10:00:00Z")),
+        )
+        ask("u2", "anna")
+        val viewModel = viewModel()
+        testScheduler.advanceUntilIdle()
+        assertEquals(false, viewModel.uiState.value.joinRequests?.isCompact)
+
+        viewModel.onAction(MapAction.Header.JoinRequestsSeen)
+        testScheduler.advanceUntilIdle()
+        assertEquals(true, viewModel.uiState.value.joinRequests?.isCompact)
+        assertEquals(setOf("u2"), mapViews.seenJoinRequesters[trip.trip.id])
+
+        // Opened again: small at once; someone new shows it in full again.
+        val again = viewModel()
+        testScheduler.advanceUntilIdle()
+        assertEquals(true, again.uiState.value.joinRequests?.isCompact)
+        ask("u3", "jonas")
+        testScheduler.advanceUntilIdle()
+        assertEquals(false, again.uiState.value.joinRequests?.isCompact)
     }
 
 
@@ -2143,6 +2203,7 @@ class MapViewModelTest {
         val PARIS_CENTER = GeoBounds(48.84, 2.28, 48.87, 2.35)
         /** Where the fake's Louvre is. */
         val LOUVRE = GeoPoint(48.8606, 2.3376)
+        val VIENNA = TransitArea("vienna", "Vienna", south = 48.11, west = 16.18, north = 48.33, east = 16.58)
         val TRIP_PHOTO = PlaceImage("ph1", PlaceImageSource.Trip, "https://r2/ph1/thumb", "https://r2/ph1/display", 1600, 1200, credit = null)
         val COMMONS_IMAGE = PlaceImage(
             id = "pi1",
@@ -2157,6 +2218,269 @@ class MapViewModelTest {
 
     private suspend fun addStops(vararg points: GeoPoint) = points.forEachIndexed { index, point ->
         backend.addMarker(trip.trip.id, trip.days[0].id, NewMarker("Stop ${index + 1}", point))
+    }
+
+    @Test
+    fun `public transport outside a covered city only shows a note in the card, the way picked staying`() = runTest(testDispatcher) {
+        addStops(GeoPoint(48.2085, 16.3731), GeoPoint(48.2104, 16.3655))
+        // No covered city: the server has public transport switched off.
+        val viewModel = viewModel()
+        testScheduler.advanceUntilIdle()
+        viewModel.onAction(MapAction.Plan.ToggleRoute)
+        testScheduler.advanceUntilIdle()
+        assertEquals(false, viewModel.uiState.value.stopsCard?.route?.isTransitCovered)
+
+        viewModel.onAction(MapAction.Plan.SelectTravelMode(TravelMode.Transit))
+        testScheduler.advanceUntilIdle()
+        val route = assertNotNull(viewModel.uiState.value.stopsCard?.route)
+        assertEquals(TravelMode.Walking, route.mode)
+        assertEquals(TransitNote.NotHere, route.transitNote)
+        assertNull(route.leaveAt)
+        assertNull(viewModel.uiState.value.message)
+        assertTrue(routes.transitTimes.isEmpty())
+
+        viewModel.onAction(MapAction.Plan.SelectTravelMode(TravelMode.Cycling))
+        testScheduler.advanceUntilIdle()
+        assertNull(viewModel.uiState.value.stopsCard?.route?.transitNote)
+    }
+
+    @Test
+    fun `public transport leaves now on a day not ahead, then at the time picked, its rides drawn in their lines' colours`() = runTest(testDispatcher) {
+        addStops(GeoPoint(48.2085, 16.3731), GeoPoint(48.2104, 16.3655), GeoPoint(48.2166, 16.3958))
+        val viewModel = viewModel(config = AppConfig(transitAreas = listOf(VIENNA)))
+        testScheduler.advanceUntilIdle()
+        viewModel.onAction(MapAction.Plan.ToggleRoute)
+        testScheduler.advanceUntilIdle()
+        val before = Clock.System.now()
+        viewModel.onAction(MapAction.Plan.SelectTravelMode(TravelMode.Transit))
+        testScheduler.advanceUntilIdle()
+
+        // The trip's days are in 2024: it leaves now.
+        val now = assertNotNull(routes.transitTimes.single())
+        assertTrue(now.at in before..Clock.System.now())
+        val state = viewModel.uiState.value
+        val route = assertNotNull(state.stopsCard?.route)
+        assertEquals(TravelMode.Transit, route.mode)
+        assertEquals(clockTime(now.at), route.leaveAt?.time)
+        assertEquals(false, route.leaveAt?.isArriveBy)
+        // The fake rides one red line from stop to stop.
+        assertEquals(2, route.transitLegs.count { it is TransitChip.Ride })
+        val parts = assertNotNull(state.layers.line).parts
+        assertEquals(2, parts.size)
+        assertTrue(parts.all { it.color == Color(0xFFE3000F) && !it.isDotted })
+
+        viewModel.onAction(MapAction.Plan.OpenTransitSteps)
+        testScheduler.advanceUntilIdle()
+        val steps = assertIs<MapSheet.TransitSteps>(viewModel.uiState.value.sheet)
+        // A timeline: the first stop gets on the red line, the second (a day's stop on the way) gets on again, the third ends it.
+        assertEquals(listOf(TransitMark.Line(0xFFE3000F), TransitMark.Stop, TransitMark.End), steps.rows.map { it.mark })
+        assertEquals(listOf(TransitPath.Ride(0xFFE3000F), TransitPath.Ride(0xFFE3000F), null), steps.rows.map { it.path })
+        assertEquals(listOf("Stop 1", "Stop 2", "Stop 3"), steps.rows.map { (it.place as UiText.Server).text })
+        // Each stop's circle has its number badge, as on its pin.
+        assertEquals(listOf(1, 2, 3), steps.rows.map { it.icon?.stopNumber })
+        assertEquals(2, steps.rows.count { it.ride?.line?.name == "U1" })
+        assertTrue(steps.hasBack)
+        viewModel.onAction(MapAction.Sheet.Back)
+        testScheduler.advanceUntilIdle()
+        assertNull(viewModel.uiState.value.sheet)
+
+        viewModel.onAction(MapAction.Plan.OpenLeaveAt)
+        testScheduler.advanceUntilIdle()
+        // A day's route only leaves at a time.
+        assertEquals(false, assertIs<MapDialog.LeaveAt>(viewModel.uiState.value.dialog).canArriveBy)
+        viewModel.onAction(MapAction.Dialog.PickTransitTime(9, 30, isArriveBy = true))
+        testScheduler.advanceUntilIdle()
+        assertNull(viewModel.uiState.value.dialog)
+        val picked = assertNotNull(routes.transitTimes.last())
+        val local = picked.at.toLocalDateTime(TimeZone.currentSystemDefault())
+        assertEquals(LocalTime(9, 30), local.time)
+        assertEquals(Clock.System.todayIn(TimeZone.currentSystemDefault()), local.date)
+        assertFalse(picked.isArriveBy)
+        assertEquals("09:30", viewModel.uiState.value.stopsCard?.route?.leaveAt?.time)
+
+        // Public transport has no times between every two stops: the best order walks.
+        viewModel.onAction(MapAction.Plan.FindBestOrder)
+        testScheduler.advanceUntilIdle()
+        assertEquals(TravelMode.Walking, routes.bestOrderModes.single())
+    }
+
+    @Test
+    fun `public transport leaves on the open day when it's ahead, at the clock's time now`() = runTest(testDispatcher) {
+        val later = (backend.createTrip(NewTrip("Later", LocalDate(2099, 6, 1), LocalDate(2099, 6, 2))) as AppResult.Success).data
+        backend.addMarker(later.trip.id, later.days[0].id, NewMarker("Opera", GeoPoint(48.2030, 16.3690)))
+        backend.addMarker(later.trip.id, later.days[0].id, NewMarker("Prater", GeoPoint(48.2166, 16.3958)))
+        val viewModel = viewModel(tripId = later.trip.id, config = AppConfig(transitAreas = listOf(VIENNA)))
+        testScheduler.advanceUntilIdle()
+        viewModel.onAction(MapAction.Plan.ToggleRoute)
+        testScheduler.advanceUntilIdle()
+        viewModel.onAction(MapAction.Plan.SelectTravelMode(TravelMode.Transit))
+        testScheduler.advanceUntilIdle()
+
+        val zone = TimeZone.currentSystemDefault()
+        val at = assertNotNull(routes.transitTimes.single()).at.toLocalDateTime(zone)
+        assertEquals(LocalDate(2099, 6, 1), at.date)
+        val now = Clock.System.now().toLocalDateTime(zone).time
+        assertTrue(abs(now.toSecondOfDay() - at.time.toSecondOfDay()) < 60)
+    }
+
+    @Test
+    fun `the server saying public transport doesn't go there is the same note in the card, without a time`() = runTest(testDispatcher) {
+        addStops(GeoPoint(48.2085, 16.3731), GeoPoint(48.2104, 16.3655))
+        val viewModel = viewModel(config = AppConfig(transitAreas = listOf(VIENNA)))
+        testScheduler.advanceUntilIdle()
+        viewModel.onAction(MapAction.Plan.ToggleRoute)
+        testScheduler.advanceUntilIdle()
+        routes.error = DataError.Network.Api(422, RouteErrorCodes.TRANSIT_NO_COVERAGE, "Not here")
+        viewModel.onAction(MapAction.Plan.SelectTravelMode(TravelMode.Transit))
+        testScheduler.advanceUntilIdle()
+
+        val state = viewModel.uiState.value
+        val card = assertNotNull(state.stopsCard)
+        assertEquals(TransitNote.NotHere, card.route?.transitNote)
+        assertNull(card.route?.leaveAt)
+        assertFalse(card.isRouteFailed)
+        assertNull(state.message)
+    }
+
+    @Test
+    fun `covered cities arriving after the map opened ask for the public transport route again`() = runTest(testDispatcher) {
+        addStops(GeoPoint(48.2085, 16.3731), GeoPoint(48.2104, 16.3655))
+        mapViews.views[trip.trip.id] = TripMapView(trip.days[0].id, isRouteShown = true, TravelMode.Transit)
+        val config = FakeAppConfigRepository()
+        val viewModel = viewModel(configRepository = config)
+        testScheduler.advanceUntilIdle()
+        assertEquals(TransitNote.NotHere, viewModel.uiState.value.stopsCard?.route?.transitNote)
+        assertTrue(routes.transitTimes.isEmpty())
+
+        config.config.value = AppConfig(transitAreas = listOf(VIENNA))
+        testScheduler.advanceUntilIdle()
+        assertEquals(1, routes.transitTimes.size)
+        val route = assertNotNull(viewModel.uiState.value.stopsCard?.route)
+        assertNull(route.transitNote)
+        assertTrue(route.transitLegs.isNotEmpty())
+    }
+
+    @Test
+    fun `public transport from A to B can arrive by the time picked`() = runTest(testDispatcher) {
+        val viewModel = viewModel(config = AppConfig(transitAreas = listOf(VIENNA)))
+        testScheduler.advanceUntilIdle()
+        val oper = MapPlace("a", "Oper", PlaceCategory.Attraction, GeoPoint(48.2031, 16.3691), isTripinly = false, hotCount = 0, prominence = 80)
+        fakeLocationRepository.locationResult = Coordinates(48.2000, 16.3700).asSuccess()
+        viewModel.onAction(MapAction.Location.PermissionResult(LocationPermission.Granted))
+        testScheduler.advanceUntilIdle()
+        viewModel.onAction(MapAction.MapView.PlacePinClick(oper))
+        restOnTarget(viewModel)
+        viewModel.onAction(MapAction.PinRoute.GoHere)
+        testScheduler.advanceUntilIdle()
+        viewModel.onAction(MapAction.Plan.SelectTravelMode(TravelMode.Transit))
+        testScheduler.advanceUntilIdle()
+        assertEquals(false, routes.transitTimes.single()?.isArriveBy)
+        // The Oper keeps its own pin, in the route's halo as where the route ends.
+        val layers = viewModel.uiState.value.layers
+        assertEquals(listOf(oper.location), layers.routeEnds.map { it.position })
+        assertTrue(layers.placePins.single { it.place.id == oper.id }.isKept)
+        assertNull(layers.selectedPlace)
+        // The fake's ride has its badge and rings on the line.
+        assertEquals(listOf("U1"), assertNotNull(layers.line).marks.filterIsInstance<LineMark.Badge>().map { it.name })
+
+        viewModel.onAction(MapAction.Plan.OpenLeaveAt)
+        testScheduler.advanceUntilIdle()
+        assertEquals(true, assertIs<MapDialog.LeaveAt>(viewModel.uiState.value.dialog).canArriveBy)
+        viewModel.onAction(MapAction.Dialog.PickTransitTime(18, 0, isArriveBy = true))
+        testScheduler.advanceUntilIdle()
+
+        val picked = assertNotNull(routes.transitTimes.last())
+        assertTrue(picked.isArriveBy)
+        assertEquals(LocalTime(18, 0), picked.at.toLocalDateTime(TimeZone.currentSystemDefault()).time)
+        assertEquals(LeaveAtState("18:00", isArriveBy = true), viewModel.uiState.value.pointRouteCard?.route?.leaveAt)
+    }
+
+    @Test
+    fun `the fit button frames a route from A to B while it shows, else the open day`() = runTest(testDispatcher) {
+        addStops(GeoPoint(48.2085, 16.3731), GeoPoint(48.2104, 16.3655))
+        val viewModel = viewModel()
+        testScheduler.advanceUntilIdle()
+        val from = MapPlace("a", "Oper", PlaceCategory.Attraction, GeoPoint(48.2031, 16.3691), isTripinly = false, hotCount = 0, prominence = 80)
+        val to = MapPlace("b", "Prater", PlaceCategory.Park, GeoPoint(48.2166, 16.3958), isTripinly = false, hotCount = 0, prominence = 80)
+        viewModel.onAction(MapAction.MapView.PlacePinClick(from))
+        viewModel.onAction(MapAction.PinRoute.Route)
+        testScheduler.advanceUntilIdle()
+        viewModel.onAction(MapAction.MapView.PlacePinClick(to))
+        restOnTarget(viewModel)
+        viewModel.onAction(MapAction.PinRoute.Route)
+        testScheduler.advanceUntilIdle()
+        val route = CameraCommand.fit(listOf(Coordinates(48.2031, 16.3691), Coordinates(48.2166, 16.3958)))
+
+        viewModel.cameraCommands.test {
+            viewModel.onAction(MapAction.MapView.UserMove)
+            viewModel.onAction(MapAction.Days.FitDay)
+            testScheduler.advanceUntilIdle()
+            assertEquals(route, expectMostRecentItem())
+
+            viewModel.onAction(MapAction.Plan.ClosePointRoute)
+            viewModel.onAction(MapAction.Days.FitDay)
+            testScheduler.advanceUntilIdle()
+            assertEquals(CameraCommand.fit(listOf(Coordinates(48.2085, 16.3731), Coordinates(48.2104, 16.3655))), expectMostRecentItem())
+        }
+    }
+
+    @Test
+    fun `public transport routes are kept, so swapping back or switching modes back asks nothing new`() = runTest(testDispatcher) {
+        val viewModel = viewModel(config = AppConfig(transitAreas = listOf(VIENNA)))
+        testScheduler.advanceUntilIdle()
+        val from = MapPlace("a", "Oper", PlaceCategory.Attraction, GeoPoint(48.2031, 16.3691), isTripinly = false, hotCount = 0, prominence = 80)
+        val to = MapPlace("b", "Prater", PlaceCategory.Park, GeoPoint(48.2166, 16.3958), isTripinly = false, hotCount = 0, prominence = 80)
+        viewModel.onAction(MapAction.MapView.PlacePinClick(from))
+        viewModel.onAction(MapAction.PinRoute.Route)
+        testScheduler.advanceUntilIdle()
+        viewModel.onAction(MapAction.MapView.PlacePinClick(to))
+        restOnTarget(viewModel)
+        viewModel.onAction(MapAction.PinRoute.Route)
+        testScheduler.advanceUntilIdle()
+        viewModel.onAction(MapAction.Plan.SelectTravelMode(TravelMode.Transit))
+        testScheduler.advanceUntilIdle()
+        assertEquals(1, routes.transitTimes.size)
+
+        // The other way round is a new ask; back again, and to walking and back, is the route already found.
+        viewModel.onAction(MapAction.PinRoute.Swap)
+        testScheduler.advanceUntilIdle()
+        assertEquals(2, routes.transitTimes.size)
+        viewModel.onAction(MapAction.PinRoute.Swap)
+        testScheduler.advanceUntilIdle()
+        viewModel.onAction(MapAction.Plan.SelectTravelMode(TravelMode.Walking))
+        testScheduler.advanceUntilIdle()
+        viewModel.onAction(MapAction.Plan.SelectTravelMode(TravelMode.Transit))
+        testScheduler.advanceUntilIdle()
+        assertEquals(2, routes.transitTimes.size)
+        assertEquals(TravelMode.Transit, viewModel.uiState.value.pointRouteCard?.route?.mode)
+        assertEquals(RouteBarState(UiText.Server("Oper"), UiText.Server("Prater"), TravelMode.Transit), viewModel.uiState.value.routeBar)
+
+        // A time picked is the person's new ask.
+        viewModel.onAction(MapAction.Plan.OpenLeaveAt)
+        testScheduler.advanceUntilIdle()
+        viewModel.onAction(MapAction.Dialog.PickTransitTime(18, 0, isArriveBy = false))
+        testScheduler.advanceUntilIdle()
+        assertEquals(3, routes.transitTimes.size)
+    }
+
+    @Test
+    fun `no public transport connection at the time asked is a note in the card, not a banner`() = runTest(testDispatcher) {
+        addStops(GeoPoint(48.2085, 16.3731), GeoPoint(48.2104, 16.3655))
+        val viewModel = viewModel(config = AppConfig(transitAreas = listOf(VIENNA)))
+        testScheduler.advanceUntilIdle()
+        viewModel.onAction(MapAction.Plan.ToggleRoute)
+        testScheduler.advanceUntilIdle()
+        routes.error = DataError.Network.Api(422, RouteErrorCodes.TRANSIT_NO_CONNECTION, "No connection")
+        viewModel.onAction(MapAction.Plan.SelectTravelMode(TravelMode.Transit))
+        testScheduler.advanceUntilIdle()
+
+        val state = viewModel.uiState.value
+        val card = assertNotNull(state.stopsCard)
+        assertEquals(TransitNote.NoConnection, card.route?.transitNote)
+        // Another time may have one: the time stays to pick.
+        assertNotNull(card.route?.leaveAt)
+        assertFalse(card.isRouteFailed)
+        assertNull(state.message)
     }
 
     @Test
@@ -2352,10 +2676,10 @@ class MapViewModelTest {
         viewModel.onAction(MapAction.MapView.PlacePinClick(from))
         viewModel.onAction(MapAction.PinRoute.Route)
         testScheduler.advanceUntilIdle()
-        // The pin is ringed as the start, its card closes, and the header asks where to, searching.
+        // Its card closes and the header asks where to, searching; only the start has its halo until there is an end.
         assertEquals(RouteBarState(UiText.Server("Oper"), to = null), viewModel.uiState.value.routeBar)
         assertNotNull(viewModel.uiState.value.search)
-        assertEquals(from.location, viewModel.uiState.value.startMark)
+        assertEquals(listOf(from.location), viewModel.uiState.value.endHalos)
         assertNull(viewModel.uiState.value.layers.selectedPlace)
 
         viewModel.onAction(MapAction.MapView.PlacePinClick(to))
@@ -2373,7 +2697,7 @@ class MapViewModelTest {
         assertNull(state.stopsCard)
         assertEquals(RouteBarState(UiText.Server("Oper"), UiText.Server("Prater")), state.routeBar)
         assertNull(state.search)
-        assertEquals(from.location, state.startMark)
+        assertEquals(listOf(from.location, to.location), state.endHalos)
         assertEquals(listOf(from.location to to.location), routes.pointRoutes)
         // The two places are left out of the places along the way by their ids.
         assertEquals(listOf<Pair<String?, String?>>("a" to "b"), routes.pointRoutePlaces)
@@ -2383,14 +2707,17 @@ class MapViewModelTest {
         viewModel.onAction(MapAction.PinRoute.Swap)
         testScheduler.advanceUntilIdle()
         assertEquals(RouteBarState(UiText.Server("Prater"), UiText.Server("Oper")), viewModel.uiState.value.routeBar)
-        assertEquals(to.location, viewModel.uiState.value.startMark)
+        assertEquals(listOf(to.location, from.location), viewModel.uiState.value.endHalos)
         assertEquals(to.location to from.location, routes.pointRoutes.last())
-        // Both ends are pins at any zoom, grown, though the map loaded neither, and each has its badge.
+        // Both ends are pins at any zoom, grown, though the map loaded neither, each in the route's halo.
         viewModel.uiState.value.layers.placePins.filter { it.place.id in setOf("a", "b") }.let { ends ->
             assertEquals(2, ends.size)
             assertTrue(ends.all { it.isKept && it.size == SelectedPinSize && !it.isDotAt(isZoomedOut = true) })
         }
-        assertEquals(listOf(true to to.location, false to from.location), viewModel.uiState.value.layers.routeEnds.map { it.isStart to it.position })
+        assertEquals(
+            listOf(RouteEndMark(to.location, SelectedPinSize, TravelMode.Walking.lineColor), RouteEndMark(from.location, SelectedPinSize, TravelMode.Walking.lineColor)),
+            viewModel.uiState.value.layers.routeEnds,
+        )
 
         // A place tapped while the route shows stays a pin until the route closes.
         val rathaus = MapPlace("c", "Rathaus", PlaceCategory.Attraction, GeoPoint(48.2108, 16.3572), isTripinly = false, hotCount = 0, prominence = 80)
@@ -2434,13 +2761,30 @@ class MapViewModelTest {
         testScheduler.advanceUntilIdle()
         assertNull(viewModel.uiState.value.pointRouteCard)
         assertNull(viewModel.uiState.value.routeBar)
-        assertNull(viewModel.uiState.value.startMark)
+        assertEquals(emptyList(), viewModel.uiState.value.endHalos)
         viewModel.uiState.value.assertRoute(viewModel.uiState.value.stopPositions)
         // The day's route still shows, so the places tapped keep their pins; with no route at all they go back.
         assertTrue(viewModel.uiState.value.layers.placePins.single { it.place.id == "c" }.isKept)
         viewModel.onAction(MapAction.Plan.ToggleRoute)
         testScheduler.advanceUntilIdle()
         assertTrue(viewModel.uiState.value.layers.placePins.none { it.isKept })
+    }
+
+    @Test
+    fun `the day's route puts its stops in a halo of its colour, and the places off it in see-through dots`() = runTest(testDispatcher) {
+        addStops(GeoPoint(48.2085, 16.3731), GeoPoint(48.2104, 16.3655))
+        val viewModel = viewModel()
+        testScheduler.advanceUntilIdle()
+        assertNull(viewModel.uiState.value.layers.stopHalo)
+
+        viewModel.onAction(MapAction.Plan.ToggleRoute)
+        testScheduler.advanceUntilIdle()
+        assertEquals(TravelMode.Walking.lineColor, viewModel.uiState.value.layers.stopHalo)
+        assertTrue(viewModel.uiState.value.layers.placePins.filter { it.isDot }.all { it.dotLook().isSeeThrough })
+
+        viewModel.onAction(MapAction.Plan.ToggleRoute)
+        testScheduler.advanceUntilIdle()
+        assertNull(viewModel.uiState.value.layers.stopHalo)
     }
 
     @Test
@@ -2505,7 +2849,7 @@ class MapViewModelTest {
         testScheduler.advanceUntilIdle()
         assertNull(viewModel.uiState.value.routeBar)
         assertNull(viewModel.uiState.value.search)
-        assertNull(viewModel.uiState.value.startMark)
+        assertEquals(emptyList(), viewModel.uiState.value.endHalos)
 
         viewModel.onAction(MapAction.MapView.PlacePinClick(oper))
         viewModel.onAction(MapAction.PinRoute.Route)
@@ -2543,8 +2887,8 @@ class MapViewModelTest {
         assertEquals(listOf(GeoPoint(me.latitude, me.longitude) to oper.location), routes.pointRoutes)
         // Where I am is no place.
         assertEquals(listOf<Pair<String?, String?>>(null to "a"), routes.pointRoutePlaces)
-        // Where I am isn't a pin: nothing is ringed.
-        assertNull(viewModel.uiState.value.startMark)
+        // Only the destination has a halo: where I am has my own dot.
+        assertEquals(listOf(oper.location), viewModel.uiState.value.endHalos)
 
         // On again on the pin's card: Go here is on, and a tap closes it.
         viewModel.onAction(MapAction.MapView.PlacePinClick(oper))

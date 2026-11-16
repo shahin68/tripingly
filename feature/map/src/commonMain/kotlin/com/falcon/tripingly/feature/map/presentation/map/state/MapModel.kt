@@ -16,6 +16,7 @@ import com.falcon.tripingly.core.model.place.PlaceDetails
 import com.falcon.tripingly.core.model.place.PlaceSearchResult
 import com.falcon.tripingly.core.model.place.PlaceSquare
 import com.falcon.tripingly.core.model.route.RoutePlan
+import com.falcon.tripingly.core.model.route.TransitTime
 import com.falcon.tripingly.core.model.route.TravelMode
 import com.falcon.tripingly.core.model.social.ReportTarget
 import com.falcon.tripingly.core.model.trip.GeoPoint
@@ -26,6 +27,8 @@ import com.falcon.tripingly.core.model.trip.UserSummary
 import com.falcon.tripingly.core.ui.UiText
 import com.falcon.tripingly.feature.map.presentation.component.PlacePin
 import com.falcon.tripingly.feature.map.presentation.map.LocationPrompt
+import com.falcon.tripingly.feature.map.presentation.map.TransitNote
+import kotlinx.datetime.LocalTime
 
 /**
  * What [MapViewModel] keeps besides the trip itself, grouped like [MapUiState]: each part has one owner
@@ -68,6 +71,8 @@ internal data class MapModel(
     /** The trip's newest people asking to join, for its owner ([MapJoinRequests]); the pill shows while one isn't [dismissedJoinRequesterIds]. */
     val joinRequesters: List<UserSummary> = emptyList(),
     val dismissedJoinRequesterIds: Set<String> = emptySet(),
+    /** The requesters the pill has shown in full, on this device (null until read): for them it stays a small circle. */
+    val seenJoinRequesterIds: Set<String>? = null,
 )
 
 /** Where the camera rests, as the map last reported it, or where it was last sent. */
@@ -152,7 +157,19 @@ internal data class RouteModel(
      * the way of travelling or the places loaded (Shahin, 2026-11-13).
      */
     val kept: List<MapPlace> = emptyList(),
+    /**
+     * By public transport, the time picked with "Leave at" on the open day (Shahin, 2026-11-15); null leaves at the clock's
+     * time now, on the open day when it's ahead, else today.
+     */
+    val transitPick: TransitPick? = null,
+    /** By public transport: when [plan] was asked to leave or arrive, which the "Leave at" button shows. */
+    val transitAt: TransitTime? = null,
+    /** By public transport, why there is no route: a note in the card, never a banner. */
+    val transitNote: TransitNote? = null,
 )
+
+/** A time picked for public transport: it leaves then, or arrives by then ([isArriveBy], only from A to B). */
+internal data class TransitPick(val time: LocalTime, val isArriveBy: Boolean = false)
 
 /** The route bar's search picks an end: where to go from a start, or an end of a route picked again. */
 internal val RouteModel.isPicking get() = start != null || (between != null && editing != null)
@@ -236,6 +253,8 @@ internal sealed interface Sheet {
     /** The selected stop's or place's details. */
     data object Details : Sheet
     /** The + on a trip I only view: one of my [trips], then the picked [trip]'s [days] (null while they load). */
+    /** The public transport route's walks and rides, opened from the route card; its back arrow goes back to the plan. */
+    data object TransitSteps : Sheet
     data class AddToTrip(
         val item: CopyItem,
         val trips: List<Trip>,
@@ -269,4 +288,6 @@ internal sealed interface Dialog {
     data class Report(val target: ReportTarget, val id: String, val isSending: Boolean = false, val details: TextFieldState = TextFieldState()) : Dialog
     data class Location(val prompt: LocationPrompt) : Dialog
     data class BestOrder(val order: com.falcon.tripingly.core.model.route.BestOrder) : Dialog
+    /** "Leave at": the time public transport leaves or arrives by, on the open day. */
+    data object LeaveAt : Dialog
 }

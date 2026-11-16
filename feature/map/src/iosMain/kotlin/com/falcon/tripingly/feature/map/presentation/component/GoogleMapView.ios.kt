@@ -52,6 +52,7 @@ actual fun GoogleMapView(
             line = layers.line,
             isMyLocationEnabled = layers.isMyLocationEnabled,
             routeEnds = layers.routeEnds,
+            stopHalo = layers.stopHalo,
             onCameraMove = onCameraMove,
             onCameraMoving = onCameraMoving,
             onBearingChange = onBearingChange,

@@ -4,6 +4,7 @@
     <string name="map_hide_places">Hide places</string>
     <string name="map_show_places">Show places</string>
     <string name="map_fit_day">Show the whole day</string>
+    <string name="map_credits">Map credits</string>
     <string name="map_compass_north">N</string>
     <string name="map_north_up">Turn the map north up</string>
     <string name="map_plan_handle">Show or hide the whole plan</string>
@@ -21,9 +22,9 @@
     <!-- Location errors -->
     <string name="error_location_permission_required">Location permission is needed to show where you are.</string>
     <string name="error_location_services_disabled">Location services are disabled on your device.</string>
-    <string name="error_location_unavailable">Unable to determine current location. Showing default view.</string>
-    <string name="error_location_unknown">Failed to acquire location.</string>
-    <string name="error_location_unexpected">An unexpected error occurred while fetching location.</string>
+    <string name="error_location_unavailable">Couldn’t find your location. Showing the default view.</string>
+    <string name="error_location_unknown">Couldn’t find your location.</string>
+    <string name="error_location_unexpected">Something went wrong while finding your location.</string>
     <string name="error_location_denied_manual">Location permission was denied. You can still explore destinations manually.</string>
     <string name="map_change_not_saved">Your change to the stops was not saved. Check your connection and try again.</string>
     <string name="map_retry">Retry</string>
@@ -183,6 +184,32 @@
     <string name="map_mode_walking">Walk</string>
     <string name="map_mode_cycling">Bike</string>
     <string name="map_mode_driving">Car</string>
+    <string name="map_mode_transit">Public transport</string>
+    <string name="map_transit_not_here">Public transport isn’t available here yet</string>
+    <string name="map_transit_no_connection">No connection at this time. Try another time.</string>
+    <string name="map_transit_leave_at">Leave at %1$s</string>
+    <string name="map_transit_arrive_by">Arrive by %1$s</string>
+    <string name="map_transit_leave">Leave at</string>
+    <string name="map_transit_arrive">Arrive by</string>
+    <string name="map_transit_time_title">Time on this day</string>
+    <string name="map_transit_time_done">Done</string>
+    <string name="map_transit_show_steps">Show the steps</string>
+    <string name="map_transit_towards">to %1$s</string>
+    <string name="map_transit_typical">Times follow the usual timetable for this weekday.</string>
+    <string name="map_transit_walk_detail">Walk %1$s · %2$s</string>
+    <string name="map_transit_change_walk">Change · walk %1$s</string>
+    <string name="map_transit_walk_total">walk %1$s</string>
+    <string name="map_transit_times">%1$s – %2$s</string>
+    <string name="map_transit_joined">%1$s · %2$s</string>
+    <string name="map_transit_no_change">no change</string>
+    <plurals name="map_transit_changes">
+        <item quantity="one">%1$d change</item>
+        <item quantity="other">%1$d changes</item>
+    </plurals>
+    <plurals name="map_transit_stops">
+        <item quantity="one">%1$d stop</item>
+        <item quantity="other">%1$d stops</item>
+    </plurals>
     <string name="map_route_minutes">%1$d min</string>
     <string name="map_route_hours">%1$d h %2$d min</string>
     <string name="map_route_meters">%1$d m</string>

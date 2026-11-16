@@ -73,6 +73,7 @@ internal fun GoogleSdkMapView(
     line: MapLine?,
     isMyLocationEnabled: Boolean,
     routeEnds: List<RouteEndMark>,
+    stopHalo: Color?,
     onCameraMove: (Coordinates, Float, GeoBounds?) -> Unit,
     onCameraMoving: (GeoBounds, Float) -> Unit,
     onBearingChange: (Float) -> Unit,
@@ -293,13 +294,16 @@ internal fun GoogleSdkMapView(
     LaunchedEffect(themedLine) {
         if (themedLine == null || themedLine.points.size < 2) {
             map.setLine(emptyList(), stopColor.toUIColor(), 0.0, emptyList(), null, null)
+            map.setLineParts(emptyList(), 0.0)
             map.setLineSweep(emptyList(), MapLineSweepColor.toUIColor(), 0.0)
             return@LaunchedEffect
         }
         val points = themedLine.points.map { GoogleMapPoint(it.latitude, it.longitude) }
         val width = themedLine.style.width.value.toDouble()
+        // Public transport: its rides and walks instead of one line.
+        map.setLineParts(themedLine.parts.map { part -> GoogleMapLinePart(part.points.map { GoogleMapPoint(it.latitude, it.longitude) }, part.color.toUIColor(), part.isDotted) }, width)
         map.setLine(
-            points = points,
+            points = points.takeIf { themedLine.parts.isEmpty() }.orEmpty(),
             color = themedLine.style.color.toUIColor(),
             width = width,
             arrows = themedLine.arrows.map { GoogleMapArrow(it.position.latitude, it.position.longitude, it.bearing.toDouble()) },
@@ -324,7 +328,7 @@ internal fun GoogleSdkMapView(
         }
         val photo = look.photoId?.let { pinPhotos[it] }
         val bitmap = if (look.isDot) {
-            drawPlaceDot(look.size, fill, density, layoutDirection)
+            drawPlaceDot(look.size, fill, density, layoutDirection, alpha = if (look.isSeeThrough) RouteDotAlpha else 1f)
         } else if (photo != null) {
             drawPlacePhotoPin(photo, look.size, fill, density, layoutDirection)
         } else {
@@ -349,12 +353,15 @@ internal fun GoogleSdkMapView(
 
     // A stop's pin is drawn once per number and color.
     // By number, cover photo (once its thumbnail has loaded) and "new" dot.
-    val stopIcons = remember(density, stopColor) { mutableMapOf<Triple<Int, String?, Boolean>, UIImage>() }
+    val stopIcons = remember(density, stopColor, stopHalo) { mutableMapOf<Triple<Int, String?, Boolean>, UIImage>() }
     val coverThumbs = rememberCoverThumbs(markers)
     val stopTitles = markers.map { it.title.asString() }
-    // The rings round the route's ends, one per pin size and way of travelling's colour.
-    val rings = remember(density) { mutableMapOf<Triple<Dp, Color, Boolean>, Pair<UIImage, Float>>() }
-    LaunchedEffect(markers, stopTitles, coverThumbs, pinPhotos, selectedPlace, placePins, placeClusters, pinIcons, clusterIcons, isDots, routeEnds) {
+    // The route ends' halos, one per pin size and way of travelling's colour.
+    val halos = remember(density) { mutableMapOf<Pair<Dp, Color>, UIImage>() }
+    // Public transport: the rides' badges and their rings, one icon per look.
+    val lineMarks = themedLine?.marks.orEmpty()
+    val markIcons = remember(density) { mutableMapOf<LineMark, UIImage>() }
+    LaunchedEffect(markers, stopTitles, coverThumbs, pinPhotos, selectedPlace, placePins, placeClusters, pinIcons, clusterIcons, isDots, routeEnds, lineMarks, stopIcons) {
         val stops = markers.mapIndexed { index, marker ->
             GoogleMapMarker(
                 key = marker.id,
@@ -364,9 +371,9 @@ internal fun GoogleSdkMapView(
                 icon = marker.coverPhotoId?.let { coverThumbs[it] }.let { cover ->
                     stopIcons.getOrPut(Triple(marker.orderNumber, marker.coverPhotoId.takeIf { cover != null }, marker.isNew)) {
                         if (cover == null) {
-                            drawTripPin(marker.orderNumber, marker.isNew, stopColor, onStopColor, density.density, density.fontScale)
+                            drawTripPin(marker.orderNumber, marker.isNew, stopColor, onStopColor, stopHalo, density.density, density.fontScale)
                         } else {
-                            drawCoverPin(marker.orderNumber, cover, marker.isNew, stopColor, onStopColor, density.density, density.fontScale)
+                            drawCoverPin(marker.orderNumber, cover, marker.isNew, stopColor, onStopColor, stopHalo, density.density, density.fontScale)
                         }
                     }
                 },
@@ -442,26 +449,48 @@ internal fun GoogleSdkMapView(
                 fadesIn = false,
             )
         }
-        // The route's ends: a thick ring in the way of travelling's colour round each end's pin, under it.
-        val ends = routeEnds.map { end ->
-            // The destination's has its flag on top.
-            val (icon, anchorY) = rings.getOrPut(Triple(end.pinSize, end.color, end.isStart)) {
-                drawRouteEndRing(end.pinSize, end.color, end.isStart, density, layoutDirection).let { it.bitmap.toUIImage(density.density) to it.anchorY }
-            }
+        // The route's ends: a halo under each end's pin, in the route's colour.
+        val ends = routeEnds.mapIndexed { index, end ->
             GoogleMapMarker(
-                key = ROUTE_END_KEY + end.isStart,
+                key = ROUTE_END_KEY + index,
                 latitude = end.position.lat,
                 longitude = end.position.lng,
                 title = "",
-                icon = icon,
+                icon = halos.getOrPut(end.pinSize to end.color) { drawRouteEndHalo(end.pinSize, end.color, density, layoutDirection).toUIImage(density.density) },
                 anchorX = 0.5,
-                anchorY = anchorY.toDouble(),
+                anchorY = 0.5,
                 zIndex = ROUTE_END_Z,
                 showsInfoWindow = false,
                 fadesIn = false,
             )
         }
-        map.setMarkers(pins + clusters + stops + listOfNotNull(place) + ends)
+        // Rings first, so the badges come later and draw over them at the same zIndex.
+        val marks = lineMarks.sortedBy { it is LineMark.Badge }.mapIndexed { index, mark ->
+            val look = when (mark) {
+                is LineMark.Ring -> mark.copy(position = Coordinates(0.0, 0.0))
+                is LineMark.Badge -> mark.copy(position = Coordinates(0.0, 0.0))
+            }
+            val icon = markIcons.getOrPut(look) {
+                when (mark) {
+                    is LineMark.Ring -> drawLineRing(mark.color, density, layoutDirection)
+                    is LineMark.Badge -> drawLineBadge(mark.name, mark.color, mark.textColor, textMeasurer, density, layoutDirection)
+                }.toUIImage(density.density)
+            }
+            GoogleMapMarker(
+                key = LINE_MARK_KEY + index,
+                latitude = mark.position.latitude,
+                longitude = mark.position.longitude,
+                title = "",
+                icon = icon,
+                anchorX = 0.5,
+                anchorY = 0.5,
+                // Over the line, under the stops.
+                zIndex = 0,
+                showsInfoWindow = false,
+                fadesIn = false,
+            )
+        }
+        map.setMarkers(marks + pins + clusters + stops + listOfNotNull(place) + ends)
     }
 
     // Stopped (another screen covers the map, or the app is in the background): the map draws nothing.
@@ -497,11 +526,12 @@ private fun PlaceCluster.key() = "$CLUSTER_KEY${location.lat},${location.lng}"
 // Marker keys that aren't stop ids: stop ids are UUIDs.
 private const val SELECTED_PLACE_KEY = "selected-place"
 private const val ROUTE_END_KEY = "route-end:"
+private const val LINE_MARK_KEY = "line-mark:"
 
-/** The rings round a route's ends: under their pins (kept places and stops at 1), over the other places. */
+/** A route end's halo: under its own pin (kept places and stops at 1), over the other places. */
 private const val ROUTE_END_Z = 0
 
-/** A route's ends and the places kept while routing: over the other places (and the rings), with the stops. */
+/** A route's ends and the places kept while routing: over the other places (and the flag), with the stops. */
 private const val KEPT_PIN_Z = 1
 private const val PLACE_KEY = "place:"
 private const val CLUSTER_KEY = "cluster:"

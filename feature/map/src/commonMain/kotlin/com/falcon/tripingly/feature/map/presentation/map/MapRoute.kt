@@ -18,6 +18,7 @@ import com.falcon.tripingly.core.model.place.MapPlace
 import com.falcon.tripingly.core.ui.ObserveAsEvents
 import com.falcon.tripingly.feature.map.presentation.comments.StopCommentsRoute
 import com.falcon.tripingly.feature.map.presentation.map.ui.AddToTripSheet
+import com.falcon.tripingly.feature.map.presentation.map.ui.TransitStepsSheet
 import com.falcon.tripingly.feature.map.presentation.map.ui.MapDialogs
 import com.falcon.tripingly.feature.map.presentation.map.ui.PlaceDetailsContent
 import com.falcon.tripingly.feature.map.presentation.map.ui.StopDetailsContent
@@ -118,6 +119,7 @@ fun MapRoute(
             is MapSheet.StopComments -> StopCommentsRoute(marker = shown.stop, people = shown.people, onOpenProfile = onOpenProfile, onDismiss = close)
             MapSheet.Members -> membersContent(tripId, close)
             is MapSheet.AddToTrip -> AddToTripSheet(shown.picker, onAction, onClose = close)
+            is MapSheet.TransitSteps -> TransitStepsSheet(shown, onClose = close)
             is MapSheet.PlaceImage, is MapSheet.StopDetails, is MapSheet.PlaceDetails -> Unit
         }
     }
@@ -126,7 +128,14 @@ fun MapRoute(
     AppBottomSheet(value = sheet?.takeIf { it.isDetails }, onDismiss = closeAll, halfHigh = true) { shown, close ->
         when (shown) {
             is MapSheet.StopDetails -> StopDetailsContent(shown.card, onAction, onClose = close) {
-                PhotoStripRoute(PhotoOwner.Stop(shown.card.stop.id), canAdd = shown.card.canEdit, onShowAll = { onAction(MapAction.StopCard.OpenPhotos) }, onReport = onReportPhoto)
+                PhotoStripRoute(
+                    PhotoOwner.Stop(shown.card.stop.id),
+                    canAdd = shown.card.canEdit,
+                    onShowAll = { onAction(MapAction.StopCard.OpenPhotos) },
+                    onReport = onReportPhoto,
+                    canManage = shown.card.canEdit,
+                    coverPhotoId = shown.card.stop.coverPhotoId,
+                )
             }
             is MapSheet.PlaceDetails -> PlaceDetailsContent(shown.card, onAction, onClose = close) {
                 // An address from search isn't one of our places: it has no photos.

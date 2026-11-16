@@ -11,7 +11,8 @@ import de.jensklingenberg.ktorfit.http.Query
 
 /**
  * Routes by openrouteservice, with places along the way. Free for everyone. `503 ROUTING_UNAVAILABLE` when
- * routing fails; straight lines with `degraded` when it's out of quota. [mode] is `walking`, `cycling` or `driving`.
+ * routing fails; straight lines with `degraded` when it's out of quota. [mode] is `walking`, `cycling`, `driving` or
+ * `transit` (public transport: `422 TRANSIT_NO_COVERAGE` outside the covered cities, `TRANSIT_NO_CONNECTION` when nothing runs).
  */
 interface RoutingApi {
     /**
@@ -26,6 +27,9 @@ interface RoutingApi {
         @Query("excludeTripId") excludeTripId: String?,
         @Query("fromPlaceId") fromPlaceId: String?,
         @Query("toPlaceId") toPlaceId: String?,
+        /** Transit only: leave then (ISO), or arrive by [arriveBy] instead. */
+        @Query("departAt") departAt: String? = null,
+        @Query("arriveBy") arriveBy: String? = null,
     ): AppResult<RouteResponseDto, DataError.Network>
 
     /** Through the day's stops in order; `route` is null for fewer than two stops. */
@@ -33,6 +37,8 @@ interface RoutingApi {
     suspend fun dayRoute(
         @Path("id") dayId: String,
         @Query("mode") mode: String,
+        /** Transit only: the first leg leaves then (ISO), each next one when the one before arrives. */
+        @Query("departAt") departAt: String? = null,
     ): AppResult<RouteResponseDto, DataError.Network>
 
     /**

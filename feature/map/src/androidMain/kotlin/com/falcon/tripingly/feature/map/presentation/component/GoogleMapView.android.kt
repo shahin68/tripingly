@@ -49,6 +49,8 @@ import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.model.BitmapDescriptor
 import com.google.android.gms.maps.model.BitmapDescriptorFactory
 import com.google.android.gms.maps.model.CameraPosition
+import com.google.android.gms.maps.model.Dot
+import com.google.android.gms.maps.model.Gap
 import com.google.android.gms.maps.model.JointType
 import com.google.android.gms.maps.model.LatLng
 import com.google.android.gms.maps.model.MapStyleOptions
@@ -314,7 +316,7 @@ actual fun GoogleMapView(
                 }
                 val photo = look.photoId?.let { pinPhotos[it] }
                 val bitmap = if (look.isDot) {
-                    drawPlaceDot(look.size, fill, density, layoutDirection)
+                    drawPlaceDot(look.size, fill, density, layoutDirection, alpha = if (look.isSeeThrough) RouteDotAlpha else 1f)
                 } else if (photo != null) {
                     drawPlacePhotoPin(photo, look.size, fill, density, layoutDirection)
                 } else {
@@ -359,7 +361,7 @@ actual fun GoogleMapView(
                         pin to hypot(point.x - touch.x, point.y - touch.y)
                     }
                     .filter { (pin, distance) ->
-                        val size = if (pin.isDotAt(isDots)) PlaceDotSize else pin.size
+                        val size = if (pin.isDotAt(isDots)) pin.dotSize else pin.size
                         distance <= with(density) { size.toPx() } / 2 + slop
                     }
                     .minByOrNull { (_, distance) -> distance }
@@ -459,21 +461,18 @@ actual fun GoogleMapView(
                     )
                 }
             }
-            // The route's ends: a thick ring in the way of travelling's colour round each end's pin, under it.
-            // The destination's has its flag on top.
-            val rings = remember(density, layoutDirection) { mutableMapOf<Triple<Dp, Color, Boolean>, Pair<BitmapDescriptor, Float>>() }
-            layers.routeEnds.forEach { end ->
-                key(end.isStart) {
-                    val (icon, anchorY) = rings.getOrPut(Triple(end.pinSize, end.color, end.isStart)) {
-                        drawRouteEndRing(end.pinSize, end.color, end.isStart, density, layoutDirection)
-                            .let { BitmapDescriptorFactory.fromBitmap(it.bitmap.asAndroidBitmap()) to it.anchorY }
-                    }
+            // The route's ends: a halo under each end's pin, in the route's colour.
+            val halos = remember(density, layoutDirection) { mutableMapOf<Pair<Dp, Color>, BitmapDescriptor>() }
+            layers.routeEnds.forEachIndexed { index, end ->
+                key("route-end", index) {
                     Marker(
                         state = rememberUpdatedMarkerState(position = LatLng(end.position.lat, end.position.lng)),
-                        icon = icon,
-                        anchor = Offset(0.5f, anchorY),
+                        icon = halos.getOrPut(end.pinSize to end.color) {
+                            BitmapDescriptorFactory.fromBitmap(drawRouteEndHalo(end.pinSize, end.color, density, layoutDirection).asAndroidBitmap())
+                        },
+                        anchor = Offset(0.5f, 0.5f),
                         zIndex = ROUTE_END_Z,
-                        // Only a mark: the map neither moves nor opens anything.
+                        // Only a mark: its pin above takes the taps.
                         onClick = { true },
                     )
                 }
@@ -499,6 +498,7 @@ actual fun GoogleMapView(
                         // Empty until the cover's thumbnail has loaded.
                         marker.coverPhotoId.takeIf { cover != null }.orEmpty(),
                         marker.isNew,
+                        layers.stopHalo ?: Color.Unspecified,
                         state = markerState,
                         title = marker.title.asString(),
                         // The pin is a circle centered on the stop.
@@ -518,6 +518,7 @@ actual fun GoogleMapView(
                             orderNumber = marker.orderNumber,
                             cover = cover,
                             isNew = marker.isNew,
+                            halo = layers.stopHalo,
                         )
                     }
                 }
@@ -545,7 +546,25 @@ private fun MapLineView(line: MapLine) {
     val layoutDirection = LocalLayoutDirection.current
     val points = remember(line) { line.points.map { LatLng(it.latitude, it.longitude) } }
     val width = with(density) { line.style.width.toPx() }
-    Polyline(points = points, color = line.style.color, width = width, jointType = JointType.ROUND, startCap = RoundCap(), endCap = RoundCap())
+    if (line.parts.isEmpty()) {
+        Polyline(points = points, color = line.style.color, width = width, jointType = JointType.ROUND, startCap = RoundCap(), endCap = RoundCap())
+    } else {
+        // Public transport: each ride in its line's colour, each walk dotted.
+        val dotted = remember(width) { listOf(Dot(), Gap(width * DOT_GAP_WIDTHS)) }
+        line.parts.forEachIndexed { index, part ->
+            key(index) {
+                Polyline(
+                    points = remember(part) { part.points.map { LatLng(it.latitude, it.longitude) } },
+                    color = part.color,
+                    width = width,
+                    jointType = JointType.ROUND,
+                    startCap = RoundCap(),
+                    endCap = RoundCap(),
+                    pattern = dotted.takeIf { part.isDotted },
+                )
+            }
+        }
+    }
 
     // Flat, so they turn with the map and keep pointing along the line; under every pin (z 0).
     val arrowColor = line.style.color
@@ -560,6 +579,33 @@ private fun MapLineView(line: MapLine) {
                 rotation = arrow.bearing,
                 flat = true,
                 anchor = Offset(0.5f, 0.5f),
+                onClick = { true },
+            )
+        }
+    }
+
+    // Public transport: the rides' badges and their rings, standing up, above the line and under the pins.
+    val textMeasurer = rememberTextMeasurer()
+    val markIcons = remember(density) { mutableMapOf<LineMark, BitmapDescriptor>() }
+    line.marks.forEach { mark ->
+        key(mark) {
+            val look = when (mark) {
+                is LineMark.Ring -> mark.copy(position = NoPosition)
+                is LineMark.Badge -> mark.copy(position = NoPosition)
+            }
+            val icon = markIcons.getOrPut(look) {
+                val bitmap = when (mark) {
+                    is LineMark.Ring -> drawLineRing(mark.color, density, layoutDirection)
+                    is LineMark.Badge -> drawLineBadge(mark.name, mark.color, mark.textColor, textMeasurer, density, layoutDirection)
+                }
+                BitmapDescriptorFactory.fromBitmap(bitmap.asAndroidBitmap())
+            }
+            Marker(
+                state = rememberUpdatedMarkerState(position = LatLng(mark.position.latitude, mark.position.longitude)),
+                icon = icon,
+                anchor = Offset(0.5f, 0.5f),
+                // Badges over rings, under the stops.
+                zIndex = if (mark is LineMark.Badge) LINE_BADGE_Z else LINE_RING_Z,
                 onClick = { true },
             )
         }
@@ -606,6 +652,16 @@ private fun rememberHiddenPins(shown: List<PlacePin>): List<PlacePin> {
 /** Hidden markers cost a little memory and nothing to draw; enough for a pan back and forth over a full map. */
 private const val MAX_HIDDEN_PINS = 300
 
+/** Line marks' zIndex: markers always draw over lines; above the kept pins (0.75), under the stops (1) and the tapped place (2). */
+private const val LINE_RING_Z = 0.8f
+private const val LINE_BADGE_Z = 0.85f
+
+/** A mark's look without its place, to share one drawn icon. */
+private val NoPosition = Coordinates(0.0, 0.0)
+
+/** A dotted walk's gaps, in line widths. */
+private const val DOT_GAP_WIDTHS = 1.5f
+
 /** A new place pin fades in, as Google's own pins do. */
 private const val PIN_FADE_MILLIS = 250
 
@@ -626,6 +682,7 @@ private const val PLACE_PINS_Z = 0.5f
 /** A route's ends and the places kept while routing: over the other places, under the stops. */
 private const val KEPT_PINS_Z = 0.75f
 
-/** The rings round a route's ends: under their pins (kept places and stops), over the other places. */
+/** A route end's halo: over the other places, under its own pin (kept places and stops). */
 private const val ROUTE_END_Z = 0.7f
+
 

@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.falcon.tripingly.core.location.model.Coordinates
@@ -84,8 +85,10 @@ data class MapLayersState(
     /** A real route, or the day's stops joined in order; null for none. */
     val line: MapLine? = null,
     val isMyLocationEnabled: Boolean = false,
-    /** The ends of the route shown or being set up, each marked with its badge in the way of travelling's colour. */
+    /** The ends of an A→B route shown or being set up, each its pin in a halo of the way of travelling's colour. */
     val routeEnds: ImmutableList<RouteEndMark> = persistentListOf(),
+    /** The day's route shows: each stop stands in a soft halo of the route's colour; null for none. */
+    val stopHalo: Color? = null,
 )
 
 /** Room kept free around the points of a fit, inside the content padding. */

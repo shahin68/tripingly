@@ -2,6 +2,7 @@ package com.falcon.tripingly.feature.map.presentation.component
 
 import androidx.compose.runtime.Immutable
 import com.falcon.tripingly.core.location.model.Coordinates
+import com.falcon.tripingly.core.model.place.PlaceCategory
 import com.falcon.tripingly.core.ui.UiText
 
 @Immutable
@@ -11,6 +12,8 @@ data class MapMarker(
     /** The stop's name; empty while it has none (its number is in the bold "Stop 3" under it, Shahin 2026-11-13). */
     val title: UiText,
     val orderNumber: Int,
+    /** Its place's kind, for its icon in the card and the public transport steps; null while unknown. */
+    val category: PlaceCategory? = null,
     val snippet: String? = null,
     /** The cover photo, drawn inside the pin; see [coverThumbUrl]. */
     val coverPhotoId: String? = null,

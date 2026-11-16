@@ -9,6 +9,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.painter.ColorPainter
 import androidx.compose.ui.layout.ContentScale
@@ -44,10 +45,11 @@ fun PhotoImage(
     contentDescription: String?,
     modifier: Modifier = Modifier,
     contentScale: ContentScale = ContentScale.Crop,
+    placeholderColor: Color = MaterialTheme.colorScheme.surfaceVariant,
 ) {
-    val placeholder = ColorPainter(MaterialTheme.colorScheme.surfaceVariant)
+    val placeholder = ColorPainter(placeholderColor)
     if (url == null) {
-        Box(modifier.background(MaterialTheme.colorScheme.surfaceVariant))
+        Box(modifier.background(placeholderColor))
         return
     }
     val context = LocalPlatformContext.current
@@ -55,7 +57,7 @@ fun PhotoImage(
     // Shimmers like the photo lists' skeletons until the image is there (Shahin, 2026-11-14); a failed one stays grey.
     var isLoading by remember(request) { mutableStateOf(true) }
     Box(modifier, propagateMinConstraints = true) {
-        if (isLoading) SkeletonBox(shape = RectangleShape)
+        if (isLoading) SkeletonBox(shape = RectangleShape, base = placeholderColor)
         AsyncImage(
             model = request,
             contentDescription = contentDescription,

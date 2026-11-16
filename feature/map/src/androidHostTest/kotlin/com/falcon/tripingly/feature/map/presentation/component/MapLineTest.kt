@@ -1,7 +1,15 @@
 package com.falcon.tripingly.feature.map.presentation.component
 
 import com.falcon.tripingly.core.location.model.Coordinates
+import androidx.compose.ui.graphics.Color
+import com.falcon.tripingly.core.designsystem.theme.MapColors
+import com.falcon.tripingly.core.model.route.TransitLine
+import com.falcon.tripingly.core.model.route.TransitStep
+import com.falcon.tripingly.core.model.route.TransitStop
+import com.falcon.tripingly.core.model.route.TransitVehicle
 import com.falcon.tripingly.core.model.route.TravelMode
+import com.falcon.tripingly.core.model.trip.GeoPoint
+import kotlin.time.Instant
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotEquals
@@ -57,5 +65,40 @@ class MapLineTest {
         assertEquals(colors.size, colors.toSet().size)
         assertTrue(colors.none { it == StopPathStyle.color })
         assertNotEquals(StopPathStyle, routeLine(streets, listOf(opera, prater), TravelMode.Walking).style)
+    }
+
+    @Test
+    fun publicTransportDrawsItsRidesInTheirLinesColoursAndItsWalksDotted() {
+        fun stop(at: Coordinates) = TransitStop(null, GeoPoint(at.latitude, at.longitude), Instant.fromEpochSeconds(0))
+        fun step(from: Coordinates, to: Coordinates, line: TransitLine?) = TransitStep(
+            isRide = line != null,
+            vehicle = TransitVehicle.Subway.takeIf { line != null },
+            line = line,
+            headsign = null,
+            from = stop(from),
+            to = stop(to),
+            stops = 0,
+            distanceMeters = 500,
+            durationSeconds = 300,
+            points = listOf(from, to).map { GeoPoint(it.latitude, it.longitude) },
+        )
+        val steps = listOf(
+            step(opera, stephansdom, line = null),
+            step(stephansdom, prater, TransitLine("U1", 0xFFE3000F, 0xFFFFFFFF)),
+            step(prater, opera, TransitLine("5A", color = null, textColor = null)),
+        )
+
+        val line = transitLine(streets, steps, listOf(opera, prater))
+
+        assertEquals(listOf(true, false, false), line.parts.map { it.isDotted })
+        assertEquals(listOf(MapColors.Walk, Color(0xFFE3000F), MapColors.Transit), line.parts.map { it.color })
+        assertTrue(line.arrows.isEmpty())
+        // Each ride's badge, and a ring in its line's colour at each of its ends, the change too.
+        assertEquals(listOf("U1", "5A"), line.marks.filterIsInstance<LineMark.Badge>().map { it.name })
+        val rings = line.marks.filterIsInstance<LineMark.Ring>()
+        assertEquals(listOf(stephansdom, prater, prater, opera), rings.map { it.position })
+        assertEquals(listOf(Color(0xFFE3000F), Color(0xFFE3000F), MapColors.Transit, MapColors.Transit), rings.map { it.color })
+        // Steps without lines of their own: the whole route in one colour.
+        assertTrue(transitLine(streets, steps.map { it.copy(points = emptyList()) }, listOf(opera, prater)).parts.isEmpty())
     }
 }

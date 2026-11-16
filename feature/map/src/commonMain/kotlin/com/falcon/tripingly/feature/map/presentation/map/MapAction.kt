@@ -58,6 +58,8 @@ sealed interface MapAction {
         data object OpenMembers : Header
         /** The "wants to join" pill or the trip card's members strip: the pill and the strip's red dot go, the members sheet opens. */
         data object OpenJoinRequests : Header
+        /** The "wants to join" pill has shown its people in full for a while: it shrinks to their faces for good. */
+        data object JoinRequestsSeen : Header
         data object OpenOwnerProfile : Header
         data object ReportTrip : Header
     }
@@ -105,6 +107,10 @@ sealed interface MapAction {
         /** Adds a place along the way to the open day. */
         data class AddAlongTheWay(val place: MapPlace) : Plan
         data object ClosePointRoute : Plan
+        /** By public transport, "Leave at": the time picker opens. */
+        data object OpenLeaveAt : Plan
+        /** By public transport, the walks and rides open step by step in a sheet. */
+        data object OpenTransitSteps : Plan
     }
 
     /** The route buttons of a stop's or a place's card and details, and the header's from/to bar. */
@@ -187,6 +193,9 @@ sealed interface MapAction {
         data object DismissReport : Dialog
         data object ApplyBestOrder : Dialog
         data object DismissBestOrder : Dialog
+        /** The time picked for public transport on the open day: it leaves then, or arrives by then ([isArriveBy]). */
+        data class PickTransitTime(val hour: Int, val minute: Int, val isArriveBy: Boolean) : Dialog
+        data object DismissLeaveAt : Dialog
     }
 
     /** The banner at the bottom. */

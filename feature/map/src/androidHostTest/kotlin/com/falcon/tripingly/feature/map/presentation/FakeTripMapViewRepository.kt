@@ -13,9 +13,21 @@ class FakeTripMapViewRepository : TripMapViewRepository {
         views[tripId] = view
     }
 
-    override suspend fun remove(tripId: String) {
-        views.remove(tripId)
+    val seenJoinRequesters = mutableMapOf<String, Set<String>>()
+
+    override suspend fun seenJoinRequesters(tripId: String) = seenJoinRequesters[tripId].orEmpty()
+
+    override suspend fun saveSeenJoinRequesters(tripId: String, userIds: Set<String>) {
+        seenJoinRequesters[tripId] = userIds
     }
 
-    override suspend fun clear() = views.clear()
+    override suspend fun remove(tripId: String) {
+        views.remove(tripId)
+        seenJoinRequesters.remove(tripId)
+    }
+
+    override suspend fun clear() {
+        views.clear()
+        seenJoinRequesters.clear()
+    }
 }

@@ -45,7 +45,8 @@ import org.koin.core.parameter.parametersOf
  * The first photos of [owner] in a row, for its details sheet: a tapped one opens full screen in the same viewer as the
  * Photos sheet's, the last shows how many more there are and opens them all ([onShowAll]). [onReport] reports the photo
  * open in the viewer. Without photos, whoever may add some ([canAdd]) gets "Add the first photo": the picked ones upload
- * and the Photos sheet opens to show them.
+ * and the Photos sheet opens to show them. [canManage] and [coverPhotoId] are the Photos sheet's, so the viewer shows the
+ * same Cover / Make cover and delete as there.
  */
 @Composable
 fun PhotoStripRoute(
@@ -54,6 +55,8 @@ fun PhotoStripRoute(
     onShowAll: () -> Unit,
     onReport: (Photo) -> Unit,
     modifier: Modifier = Modifier,
+    canManage: Boolean = false,
+    coverPhotoId: String? = null,
     viewModel: PhotosViewModel = koinViewModel(key = "photos:$owner") { parametersOf(owner) },
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -63,7 +66,7 @@ fun PhotoStripRoute(
     }
     PhotoStrip(state, onShowAll = onShowAll, onAction = viewModel::onAction, onAddFirst = pickPhotos.takeIf { canAdd }, modifier = modifier)
     state.openPhotoIndex?.let { index ->
-        GalleryViewer(state = state, initialIndex = index, coverPhotoId = null, canManage = false, onReport = onReport, onAction = viewModel::onAction)
+        GalleryViewer(state = state, initialIndex = index, coverPhotoId = coverPhotoId, canManage = canManage, onReport = onReport, onAction = viewModel::onAction)
     }
 }
 

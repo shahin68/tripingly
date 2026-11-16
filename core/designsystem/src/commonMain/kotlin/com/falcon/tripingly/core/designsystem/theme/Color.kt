@@ -32,6 +32,8 @@ internal val OnErrorContainerLight = Color(0xFF5C0E08)
 // Dark
 internal val IvyDark = Color(0xFF86C79A)
 internal val OnIvyDark = Color(0xFF062512)
+// The one deep green, for icons on the light dark-theme stop green that should still read green (Shahin, 2026-11-16).
+internal val IvyDeepDark = Color(0xFF14512B)
 internal val IvyContainerDark = Color(0xFF213A2A)
 internal val OnIvyContainerDark = Color(0xFFCDEBD6)
 internal val SecondaryDark = Color(0xFFB4C0B7)
@@ -53,6 +55,10 @@ internal val AttentionDark = Color(0xFFF2A65E)
 internal val OnAttentionDark = Color(0xFF3A1E00)
 internal val OnErrorContainerDark = Color(0xFFFFDAD5)
 
+// A control's fill on a card in the dark theme (a toggle's track, a pill button): lighter than the card, so it reads as
+// something to tap (Shahin, 2026-11-16). The light theme keeps its surfaceVariant.
+internal val ControlFillDark = Color(0xFF3A403C)
+
 // A place's pin on the dark map: softer than the secondary grey, so the stops lead.
 internal val MapPlaceDark = Color(0xFF8E9A92)
 
@@ -70,10 +76,18 @@ object MapColors {
     /** The dot on a stop (and its day tab) with something I haven't seen: the accent red, in a white ring on pins. */
     val NewActivity = Color(0xFFE53935)
 
+    /** The one thin ring round every pin on the map (stops, places, photos, clusters, dots): change it here for all. */
+    val PinStroke = Color.White
+
     /** Our compass needle's north tip, the classic red (its south tip takes the map buttons' icon colour). */
     val CompassNorth = Color(0xFFE53935)
     /** Routes: one sharp jewel colour per way of travelling (emerald, amber, sapphire), plain solid lines. */
     val Walk = Color(0xFF1E9E6A)
     val Bike = Color(0xFFE07B1F)
     val Car = Color(0xFF3355CC)
+    /**
+     * Public transport: its rides are drawn in their lines' own colours (Shahin, 2026-11-15); this slate is for a line the
+     * timetable gives no colour, and the route's ends.
+     */
+    val Transit = Color(0xFF55606E)
 }

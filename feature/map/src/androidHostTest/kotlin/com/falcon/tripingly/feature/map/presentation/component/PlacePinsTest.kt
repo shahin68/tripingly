@@ -96,4 +96,16 @@ class PlacePinsTest {
         assertEquals(listOf("big"), placePins(squares, area, setOf("small"), config, shown, keepUnlisted = true).map { it.place.id })
         assertEquals(listOf("big"), placePins(squares, area, emptySet(), config, shown).map { it.place.id })
     }
+
+    @Test
+    fun `only a place's dot while a route shows is see-through, at its own small size`() {
+        val pin = PlacePin(place("cafe"), PinSizes[0])
+        assertEquals(PlacePinLook(PlaceCategory.Other, isTripinly = false, PlaceDotSize, isDot = true), pin.dotLook())
+        assertEquals(
+            PlacePinLook(PlaceCategory.Other, isTripinly = false, RouteDotSize, isDot = true, isSeeThrough = true),
+            pin.copy(isDot = true).dotLook(),
+        )
+        // A place along the way stays solid, also as its dot when zoomed out.
+        assertEquals(false, pin.copy(isAlongTheWay = true).dotLook().isSeeThrough)
+    }
 }

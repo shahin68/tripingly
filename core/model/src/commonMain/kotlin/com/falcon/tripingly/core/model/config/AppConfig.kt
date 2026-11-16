@@ -1,5 +1,6 @@
 package com.falcon.tripingly.core.model.config
 
+import com.falcon.tripingly.core.model.trip.GeoPoint
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
 
@@ -30,4 +31,14 @@ data class AppConfig(
     val mapMaxPhotoPins: Int = 100,
     /** Below this camera zoom, place pins are drawn as small dots; they grow back to pins when zoomed in. */
     val pinDotBelowZoom: Float = 14f,
+    /** Cities with public transport routes; none until the server says so (switched off). */
+    val transitAreas: List<TransitArea> = emptyList(),
 )
+
+/** A city with public transport routes: a route goes by transit only when both its ends are inside one. */
+data class TransitArea(val id: String, val name: String, val south: Double, val west: Double, val north: Double, val east: Double) {
+    operator fun contains(point: GeoPoint) = point.lat in south..north && point.lng in west..east
+}
+
+/** Whether public transport can route between [points]: all inside the same covered city. */
+fun List<TransitArea>.covers(points: List<GeoPoint>) = points.isNotEmpty() && any { area -> points.all { it in area } }

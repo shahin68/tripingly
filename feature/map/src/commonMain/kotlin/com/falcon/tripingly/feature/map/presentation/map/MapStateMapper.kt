@@ -7,6 +7,7 @@ import com.falcon.tripingly.core.location.model.Coordinates
 import com.falcon.tripingly.core.location.permission.LocationPermission
 import com.falcon.tripingly.core.model.account.TripVisibility
 import com.falcon.tripingly.core.model.config.AppConfig
+import com.falcon.tripingly.core.model.config.covers
 import com.falcon.tripingly.core.model.photo.Photo
 import com.falcon.tripingly.core.model.photo.PhotoOwner
 import com.falcon.tripingly.core.model.photo.PhotoStatus
@@ -14,6 +15,7 @@ import com.falcon.tripingly.core.model.place.MapPlace
 import com.falcon.tripingly.core.model.place.PlaceImage
 import com.falcon.tripingly.core.model.place.PlaceImageSource
 import com.falcon.tripingly.core.model.route.AlongTheWayPlace
+import com.falcon.tripingly.core.model.route.TravelMode
 import com.falcon.tripingly.core.model.trip.GeoPoint
 import com.falcon.tripingly.core.model.trip.TripDetails
 import com.falcon.tripingly.core.model.trip.TripMarker
@@ -33,9 +35,11 @@ import com.falcon.tripingly.feature.map.presentation.component.SelectedPinSize
 import com.falcon.tripingly.feature.map.presentation.component.lineColor
 import com.falcon.tripingly.feature.map.presentation.component.placePinSize
 import com.falcon.tripingly.feature.map.presentation.component.routeLine
+import com.falcon.tripingly.feature.map.presentation.component.transitLine
 import com.falcon.tripingly.feature.map.presentation.component.stopPathShape
 import com.falcon.tripingly.feature.map.presentation.map.state.Dialog
 import com.falcon.tripingly.feature.map.presentation.map.state.MapModel
+import com.falcon.tripingly.feature.map.presentation.map.state.MY_LOCATION_ID
 import com.falcon.tripingly.feature.map.presentation.map.state.Selection
 import com.falcon.tripingly.feature.map.presentation.map.state.Sheet
 import com.falcon.tripingly.feature.map.presentation.map.state.activeDayIndex
@@ -141,9 +145,10 @@ internal class MapStateMapper(
 
     private fun joinRequests(): JoinRequestsState? {
         val people = model.joinRequesters
+        val seen = model.seenJoinRequesterIds ?: return null
         if (model.search != null || people.all { it.id in model.dismissedJoinRequesterIds }) return null
         val count = maxOf(details?.pendingJoinRequestCount ?: 0, people.size)
-        return JoinRequestsState(people.toImmutableList(), othersCount = count - 1)
+        return JoinRequestsState(people.toImmutableList(), othersCount = count - 1, isCompact = people.all { it.id in seen })
     }
 
     /** Like the server: an editor only when every stop on the day is theirs. */
@@ -233,14 +238,27 @@ internal class MapStateMapper(
         }
     }
 
-    private fun routeSummary() = route.summary(plan, alongTheWay, selectedPlaceId = (model.selection as? Selection.Place)?.place?.id, addToDayNumber = dayNumber?.takeIf { canEdit })
+    private fun routeSummary() = route.summary(
+        plan,
+        alongTheWay,
+        selectedPlaceId = (model.selection as? Selection.Place)?.place?.id,
+        addToDayNumber = dayNumber?.takeIf { canEdit },
+        isTransitCovered = isTransitCovered(),
+    )
+
+    /** Public transport goes between the route's ends: both ends, or all the open day's stops, in one covered city. */
+    private fun isTransitCovered(): Boolean {
+        val ends = route.between?.let { listOf(it.from.location, it.to.location) } ?: days.getOrNull(activeIndex)?.markers.orEmpty().map { it.location }
+        return config.transitAreas.covers(ends)
+    }
 
     private fun pinRoutes(at: GeoPoint) = route.pinRoutes(at, hasLocation = model.location.current != null)
 
     fun layers(): MapLayersState {
         val pins = model.pins.pins
         val alongIds = alongTheWay.mapTo(HashSet()) { it.place.id }
-        // The route's ends: a stop keeps its own pin and gets the ring round it; a place's pin grows (Shahin, 2026-11-13).
+        // The route's ends: a stop keeps its own pin; a place's pin grows (Shahin, 2026-11-13); both stand in the route's
+        // halo, as the stops of a day's route do (Shahin, 2026-11-16).
         val ends = route.endPlaces().map { (place, isStart) -> RouteEnd(place, isStart, stopAt(place)) }
         val endPlaces = ends.filter { it.stop == null }.associateBy { it.place.id }
         // Places tapped while routing stay pins until the route closes.
@@ -288,6 +306,8 @@ internal class MapStateMapper(
             },
             // A real route in its way of travelling's color, or else the stops joined in order.
             line = when {
+                routePoints.size > 1 && route.planMode == TravelMode.Transit ->
+                    transitLine(routePoints, plan?.route?.legs.orEmpty().flatMap { it.steps }, route.planStops.map { Coordinates(it.lat, it.lng) })
                 routePoints.size > 1 -> routeLine(routePoints, route.planStops.map { Coordinates(it.lat, it.lng) }, route.planMode)
                 stopPath.size > 1 -> stopPathShape(stopPath)
                 else -> null
@@ -295,8 +315,9 @@ internal class MapStateMapper(
             isMyLocationEnabled = model.location.permission == LocationPermission.Granted,
             routeEnds = ends.map { end ->
                 val size = end.stop?.let { if (it.coverPhotoId != null) COVER_PIN_SIZE else PIN_SIZE } ?: SelectedPinSize
-                RouteEndMark(end.place.location, end.isStart, size, endColor)
+                RouteEndMark(end.place.location, size, endColor)
             }.toImmutableList(),
+            stopHalo = route.planMode.lineColor.takeIf { routeShows && route.isDayRouteShown && route.between == null },
         )
     }
 
@@ -316,6 +337,7 @@ internal class MapStateMapper(
         is Sheet.PlacePhotos -> MapSheet.PlacePhotos(sheet.place, sheet.fromOpenDetails)
         is Sheet.StopComments -> stops.firstOrNull { it.id == sheet.markerId }?.let { MapSheet.StopComments(it, tripPeople(), sheet.fromOpenDetails) }
         Sheet.Members -> MapSheet.Members
+        Sheet.TransitSteps -> transitSteps()
         // The days go back to the trips, the trips to the details they were opened from.
         is Sheet.AddToTrip -> MapSheet.AddToTrip(sheet.toState(stops), hasBack = sheet.trip != null || sheet.fromOpenDetails)
         is Sheet.Details -> when (val selection = model.selection) {
@@ -325,6 +347,30 @@ internal class MapStateMapper(
         }
         null -> placeImage()
     }
+
+    /** The public transport route step by step, from A to B or from stop to stop of the day. */
+    private fun transitSteps(): MapSheet? {
+        val transit = plan?.route?.takeIf { route.planMode == TravelMode.Transit && it.legs.any { leg -> leg.steps.isNotEmpty() } } ?: return null
+        val between = route.between
+        val stopEnd = { id: String? -> id?.let { stops.firstOrNull { stop -> stop.id == it } }?.let { TransitEnd(it.title, it.transitIcon()) } }
+        val placeEnd = { place: MapPlace, label: UiText? ->
+            TransitEnd(label ?: UiText.Server(place.name), stopAt(place)?.transitIcon() ?: place.transitIcon())
+        }
+        val rows = transitStepRows(
+            legs = transit.legs,
+            fromEnd = { leg -> stopEnd(leg.fromMarkerId) ?: between?.let { placeEnd(it.from, it.fromLabel) } },
+            toEnd = { leg -> stopEnd(leg.toMarkerId) ?: between?.let { placeEnd(it.to, it.toLabel) } },
+        )
+        val (title, subtitle) = transitStepsHeader(transit)
+        return MapSheet.TransitSteps(title, subtitle, rows.toImmutableList(), transit.isTypicalTimes, plan.attribution)
+    }
+
+    /** A stop's circle in the steps: its cover photo, or its kind of place, with its number. */
+    private fun MapMarker.transitIcon() = TransitPlaceIcon(coverPhotoId, coverThumbUrl, category, stopNumber = orderNumber)
+
+    /** A place's circle in the steps: its image, or its kind of place; where I am has my location's mark. */
+    private fun MapPlace.transitIcon() =
+        if (id == MY_LOCATION_ID) TransitPlaceIcon(isMyLocation = true) else TransitPlaceIcon(coverImageId, coverThumbUrl, category)
 
     /** The trip's owner and members but me: the people my comment can @mention. */
     private fun tripPeople(): ImmutableList<UserSummary> =
@@ -351,6 +397,9 @@ internal class MapStateMapper(
                 savedMinutes = dialog.order.savedMinutes,
             ),
         )
+        Dialog.LeaveAt -> route.leaveAtTime().let { time ->
+            MapDialog.LeaveAt(time.hour, time.minute, isArriveBy = route.transitPick?.isArriveBy == true && route.between != null, canArriveBy = route.between != null)
+        }
         null -> null
     }
 
@@ -398,6 +447,7 @@ internal class MapStateMapper(
         position = Coordinates(location.lat, location.lng),
         title = UiText.Server(name),
         orderNumber = orderNumber,
+        category = category,
         snippet = time,
         coverPhotoId = coverPhotoId,
         coverThumbUrl = coverThumbUrl,

@@ -229,7 +229,7 @@ internal fun PhotoBanner(
 internal fun PinMark(category: PlaceCategory?, isStop: Boolean, modifier: Modifier = Modifier.size(JoinedButtonDefaults.Height)) {
     val fill = if (isStop) MaterialTheme.extendedColors.stop else MaterialTheme.extendedColors.place
     Box(modifier.background(fill, CircleShape), contentAlignment = Alignment.Center) {
-        Icon((category ?: PlaceCategory.Other).icon, contentDescription = null, tint = if (isStop) Color.White else MaterialTheme.colorScheme.onSecondary, modifier = Modifier.size(JoinedButtonDefaults.IconSize))
+        Icon((category ?: PlaceCategory.Other).icon, contentDescription = null, tint = if (isStop) MaterialTheme.extendedColors.onStop else MaterialTheme.colorScheme.onSecondary, modifier = Modifier.size(JoinedButtonDefaults.IconSize))
     }
 }
 

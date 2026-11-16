@@ -22,6 +22,7 @@ import org.jetbrains.skia.Surface
 import platform.Foundation.NSData
 import platform.Foundation.create
 import platform.UIKit.UIImage
+import kotlin.math.ceil
 
 /** The Google map takes images, so pins drawn by Compose or Skia go to it as PNG. */
 internal fun ImageBitmap.toUIImage(scale: Float): UIImage =
@@ -40,35 +41,36 @@ internal fun ByteArray.toNSData(): NSData =
 internal fun boldFont(points: Float): Font = Font(FontMgr.default.legacyMakeTypeface("", FontStyle.BOLD), points)
 
 /**
- * A stop's pin: its number on the [stop] colour in an [onStop] ring, centered on the stop, with the "new" dot when
- * [isNew], as `TripMarkerIcon` draws it on Android.
+ * A stop's pin: its [onStop] number on the [stop] colour in the pins' thin ring, centered on the stop and stretched
+ * into a pill when the number is wider than the circle, with the "new" dot when [isNew], as `TripMarkerIcon` draws it
+ * on Android; in its [halo] while the day's route shows.
  */
-internal fun drawTripPin(orderNumber: Int, isNew: Boolean, stop: Color, onStop: Color, density: Float, fontScale: Float): UIImage {
-    val (pinColor, on) = stop.toArgb() to onStop.toArgb()
+internal fun drawTripPin(orderNumber: Int, isNew: Boolean, stop: Color, onStop: Color, halo: Color?, density: Float, fontScale: Float): UIImage {
     val pin = PIN_SIZE.value * density
-    val surface = Surface.makeRasterN32Premul(pin.toInt(), pin.toInt())
+    val font = boldFont(13 * density * fontScale)
+    val width = pillWidth(orderNumber, font, pin, PIN_NUMBER_PADDING.value * density)
+    val surface = haloSurface(ceil(width).toInt(), pin.toInt(), halo, density)
     surface.canvas.apply {
-        drawCircle(pin / 2, pin / 2, pin / 2, fill(on))
-        drawCircle(pin / 2, pin / 2, pin / 2 - PIN_RING.value * density, fill(pinColor))
-        drawNumber(orderNumber, pin / 2, pin / 2, boldFont(13 * density * fontScale), on)
-        if (isNew) drawNewDot(density, hasCover = false, on)
+        drawNumberPill(orderNumber, Rect.makeXYWH(0f, 0f, width, pin), font, stop.toArgb(), onStop.toArgb(), density)
+        if (isNew) drawNewDot(density, hasCover = false)
     }
     return UIImage(data = surface.makeImageSnapshot().png(), scale = density.toDouble())
 }
 
 /**
  * A stop's pin with its cover photo: the photo in an [onStop] ring with the number in a small badge on it, and the
- * "new" dot when [isNew], as `TripMarkerIcon` draws it on Android.
+ * "new" dot when [isNew], as `TripMarkerIcon` draws it on Android; in its [halo] while the day's route shows.
  */
-internal fun drawCoverPin(orderNumber: Int, cover: ImageBitmap, isNew: Boolean, stop: Color, onStop: Color, density: Float, fontScale: Float): UIImage {
-    val (pinColor, on) = stop.toArgb() to onStop.toArgb()
+internal fun drawCoverPin(orderNumber: Int, cover: ImageBitmap, isNew: Boolean, stop: Color, onStop: Color, halo: Color?, density: Float, fontScale: Float): UIImage {
     val pin = COVER_PIN_SIZE.value * density
-    val ring = COVER_RING.value * density
+    val ring = PIN_STROKE.value * density
     val badge = COVER_BADGE_SIZE.value * density
-    val surface = Surface.makeRasterN32Premul(pin.toInt(), pin.toInt())
+    val font = boldFont(10 * density * fontScale)
+    val badgeWidth = pillWidth(orderNumber, font, badge, BADGE_NUMBER_PADDING.value * density)
+    val surface = haloSurface(pin.toInt(), pin.toInt(), halo, density)
     val photo = Image.makeFromBitmap(cover.asSkiaBitmap())
     surface.canvas.apply {
-        drawCircle(pin / 2, pin / 2, pin / 2, fill(on))
+        drawCircle(pin / 2, pin / 2, pin / 2, fill(PIN_STROKE_COLOR))
         save()
         val inner = Rect.makeXYWH(ring, ring, pin - 2 * ring, pin - 2 * ring)
         clipRRect(RRect.makeOvalLTRB(inner.left, inner.top, inner.right, inner.bottom), antiAlias = true)
@@ -77,20 +79,45 @@ internal fun drawCoverPin(orderNumber: Int, cover: ImageBitmap, isNew: Boolean, 
         val source = Rect.makeXYWH((photo.width - side) / 2, (photo.height - side) / 2, side, side)
         drawImageRect(photo, source, inner, SamplingMode.LINEAR, Paint().apply { isAntiAlias = true }, true)
         restore()
-        drawCircle(pin - badge / 2, badge / 2, badge / 2, fill(on))
-        drawCircle(pin - badge / 2, badge / 2, badge / 2 - PIN_RING.value * density, fill(pinColor))
-        drawNumber(orderNumber, pin - badge / 2, badge / 2, boldFont(10 * density * fontScale), on)
-        if (isNew) drawNewDot(density, hasCover = true, on)
+        drawNumberPill(orderNumber, Rect.makeXYWH(pin - badgeWidth, 0f, badgeWidth, badge), font, stop.toArgb(), onStop.toArgb(), density)
+        if (isNew) drawNewDot(density, hasCover = true)
     }
     return UIImage(data = surface.makeImageSnapshot().png(), scale = density.toDouble())
 }
 
-/** The "new" dot at the pin's top left (see [newDotInset]): the accent red in the pin's [ring] colour. */
-private fun org.jetbrains.skia.Canvas.drawNewDot(density: Float, hasCover: Boolean, ring: Int) {
+/**
+ * A surface for a stop's pin [width] by [height]: as it is, or with [halo] round it (see [STOP_HALO_WIDTH]) in the pin's
+ * shape and the canvas moved in, so the pin draws as without it.
+ */
+private fun haloSurface(width: Int, height: Int, halo: Color?, density: Float): Surface {
+    if (halo == null) return Surface.makeRasterN32Premul(width, height)
+    val pad = STOP_HALO_WIDTH.value * density
+    val surface = Surface.makeRasterN32Premul(ceil(width + 2 * pad).toInt(), ceil(height + 2 * pad).toInt())
+    val outer = height / 2f + pad
+    surface.canvas.drawRRect(RRect.makeLTRB(0f, 0f, width + 2 * pad, height + 2 * pad, outer), fill(halo.copy(alpha = STOP_HALO_ALPHA).toArgb()))
+    surface.canvas.translate(pad, pad)
+    return surface
+}
+
+/** The "new" dot at the pin's top left (see [newDotInset]): the accent red in the pins' ring colour. */
+private fun org.jetbrains.skia.Canvas.drawNewDot(density: Float, hasCover: Boolean) {
     val radius = NEW_DOT_SIZE.value * density / 2
     val center = radius + newDotInset(hasCover).value * density
-    drawCircle(center, center, radius, fill(ring))
-    drawCircle(center, center, radius - PIN_RING.value * density, fill(NEW_ACTIVITY))
+    drawCircle(center, center, radius, fill(PIN_STROKE_COLOR))
+    drawCircle(center, center, radius - NEW_DOT_RING.value * density, fill(NEW_ACTIVITY))
+}
+
+/** A circle [height] round, or wider as a pill when [orderNumber] and [padding] on either side need more. */
+private fun pillWidth(orderNumber: Int, font: Font, height: Float, padding: Float): Float =
+    maxOf(height, font.measureTextWidth(orderNumber.toString()) + 2 * padding)
+
+/** [orderNumber] in [on] in the middle of a [color] pill filling [bounds], in the pins' thin ring. */
+private fun org.jetbrains.skia.Canvas.drawNumberPill(orderNumber: Int, bounds: Rect, font: Font, color: Int, on: Int, density: Float) {
+    val ring = PIN_STROKE.value * density
+    val radius = bounds.height / 2
+    drawRRect(RRect.makeLTRB(bounds.left, bounds.top, bounds.right, bounds.bottom, radius), fill(PIN_STROKE_COLOR))
+    drawRRect(RRect.makeLTRB(bounds.left + ring, bounds.top + ring, bounds.right - ring, bounds.bottom - ring, radius - ring), fill(color))
+    drawNumber(orderNumber, (bounds.left + bounds.right) / 2, (bounds.top + bounds.bottom) / 2, font, on)
 }
 
 private fun fill(color: Int) = Paint().apply {
@@ -98,11 +125,16 @@ private fun fill(color: Int) = Paint().apply {
     isAntiAlias = true
 }
 
-/** [orderNumber] in [color], centered on ([x], [y]). */
+/**
+ * [orderNumber] in [color], its ink centered on ([x], [y]): the digits' own bounds, not the font's line box (whose
+ * descender room set them low) or their advance (whose side bearings set them off to one side), as Android's trimmed
+ * line centers them.
+ */
 private fun org.jetbrains.skia.Canvas.drawNumber(orderNumber: Int, x: Float, y: Float, font: Font, color: Int) {
     val label = orderNumber.toString()
-    val metrics = font.metrics
-    drawString(label, x - font.measureTextWidth(label) / 2, y - (metrics.ascent + metrics.descent) / 2, font, fill(color))
+    val ink = font.measureText(label)
+    drawString(label, x - (ink.left + ink.right) / 2, y - (ink.top + ink.bottom) / 2, font, fill(color))
 }
 
 private val NEW_ACTIVITY = MapColors.NewActivity.toArgb()
+private val PIN_STROKE_COLOR = MapColors.PinStroke.toArgb()

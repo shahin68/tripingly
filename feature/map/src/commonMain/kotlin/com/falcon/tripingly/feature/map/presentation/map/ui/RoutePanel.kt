@@ -1,6 +1,7 @@
 package com.falcon.tripingly.feature.map.presentation.map.ui
 
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.AnimatedVisibilityScope
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
@@ -13,6 +14,8 @@ import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -35,6 +38,7 @@ import androidx.compose.material.icons.automirrored.filled.DirectionsBike
 import androidx.compose.material.icons.automirrored.filled.DirectionsWalk
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.DirectionsCar
+import androidx.compose.material.icons.filled.Tram
 import androidx.compose.material.icons.outlined.Directions
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilledIconButton
@@ -48,6 +52,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.platform.LocalUriHandler
@@ -73,6 +78,7 @@ import com.falcon.tripingly.feature.map.generated.resources.map_along_the_way
 import com.falcon.tripingly.feature.map.generated.resources.map_along_the_way_item
 import com.falcon.tripingly.feature.map.generated.resources.map_mode_cycling
 import com.falcon.tripingly.feature.map.generated.resources.map_mode_driving
+import com.falcon.tripingly.feature.map.generated.resources.map_mode_transit
 import com.falcon.tripingly.feature.map.generated.resources.map_mode_walking
 import com.falcon.tripingly.feature.map.generated.resources.map_route_estimated
 import com.falcon.tripingly.feature.map.generated.resources.map_route_hours
@@ -92,12 +98,16 @@ internal val RouteGrowEasing = CubicBezierEasing(0.2f, 0.6f, 0.1f, 1f)
 /** How long the route card takes to grow or shrink. */
 internal const val ROUTE_GROW_MILLIS = 280
 
-/** How to travel: walk, bike or car as icons, uncolored; the names are their descriptions. */
+/**
+ * How to travel: walk, bike, car or public transport as icons, uncolored; the names are their descriptions. Where public
+ * transport doesn't go ([isTransitCovered] off) its tram is dimmed, and a tap only shows a note (Shahin, 2026-11-15).
+ */
 @Composable
 internal fun TravelModeToggle(
     mode: TravelMode,
     onModeSelected: (TravelMode) -> Unit,
     modifier: Modifier = Modifier,
+    isTransitCovered: Boolean = true,
 ) {
     SegmentedToggle(modifier) {
         TravelMode.entries.forEach { entry ->
@@ -107,6 +117,7 @@ internal fun TravelModeToggle(
                 onClick = { onModeSelected(entry) },
                 icon = entry.icon(),
                 showLabel = false,
+                modifier = Modifier.alpha(if (entry == TravelMode.Transit && !isTransitCovered) DIMMED_ALPHA else 1f),
             )
         }
     }
@@ -150,7 +161,9 @@ internal fun RouteCardSlot(route: RouteSummaryState?, onAction: (MapAction) -> U
 @Composable
 private fun AnimatedVisibilityScope.RouteCardContent(route: RouteSummaryState, isAnimated: Boolean, onAction: (MapAction) -> Unit) {
     val inset = MaterialTheme.spacing.small
-    Column(Modifier.fillMaxWidth().padding(vertical = inset), verticalArrangement = Arrangement.spacedBy(inset)) {
+    // Every row below the first keeps [inset] above itself, inside it, so a gliding row's gap glides with it.
+    val below = Modifier.padding(start = inset, end = inset, top = inset)
+    Column(Modifier.fillMaxWidth().padding(vertical = inset)) {
         Row(
             modifier = Modifier.padding(horizontal = inset).then(rowMotion(0, isAnimated)),
             verticalAlignment = Alignment.CenterVertically,
@@ -158,14 +171,18 @@ private fun AnimatedVisibilityScope.RouteCardContent(route: RouteSummaryState, i
         ) {
             RouteIcon(route.isLoading)
             RouteTotals(route, Modifier.weight(1f))
-            TravelModeToggle(route.mode, onModeSelected = { onAction(MapAction.Plan.SelectTravelMode(it)) }, modifier = Modifier.width(ModesWidth))
+            TravelModeToggle(route.mode, onModeSelected = { onAction(MapAction.Plan.SelectTravelMode(it)) }, modifier = Modifier.width(ModesWidth), isTransitCovered = route.isTransitCovered)
         }
+        // Public transport's rows come and go as its way of travelling is picked: they glide open and shut.
+        GlidingRow(route.transitNote, rowMotion(1, isAnimated)) { TransitNoteText(it, below) }
+        GlidingRow(route.transitLegs.takeIf { it.isNotEmpty() }, rowMotion(1, isAnimated)) { TransitLegsButton(it, onAction, below) }
+        GlidingRow(route.leaveAt, rowMotion(2, isAnimated)) { LeaveAtButton(it, onAction, below) }
         if (route.isEstimated) {
             Text(
                 text = stringResource(Res.string.map_route_estimated),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(horizontal = inset).then(rowMotion(1, isAnimated)),
+                modifier = below.then(rowMotion(1, isAnimated)),
             )
         }
         if (route.alongTheWay.isNotEmpty()) {
@@ -173,7 +190,7 @@ private fun AnimatedVisibilityScope.RouteCardContent(route: RouteSummaryState, i
                 text = stringResource(Res.string.map_along_the_way),
                 style = MaterialTheme.typography.labelLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(horizontal = inset).then(rowMotion(2, isAnimated)),
+                modifier = below.then(rowMotion(2, isAnimated)),
             )
             val selectedIndex = route.alongTheWay.indexOfFirst { it.place.id == route.selectedPlaceId }
             // A place picked on the map is the card in view, also when the plan first shows.
@@ -182,7 +199,7 @@ private fun AnimatedVisibilityScope.RouteCardContent(route: RouteSummaryState, i
             LaunchedEffect(route.selectedPlaceId) { listState.reveal(selectedIndex, onScreen, toStart = true) }
             LazyRow(
                 state = listState,
-                modifier = Modifier.horizontalFadingEdge(listState).trackOnScreen(onScreen),
+                modifier = Modifier.padding(top = inset).horizontalFadingEdge(listState).trackOnScreen(onScreen),
                 contentPadding = PaddingValues(horizontal = inset),
                 horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
             ) {
@@ -201,6 +218,31 @@ private fun AnimatedVisibilityScope.RouteCardContent(route: RouteSummaryState, i
         }
     }
 }
+
+/**
+ * A row of the card while [value] is there: its space glides open from the top as it slides down a little and fades in,
+ * and glides shut as it fades out, the rows below gliding along (the show and hide rule). It keeps showing the last value
+ * while it goes.
+ */
+@Composable
+private fun <T : Any> GlidingRow(value: T?, modifier: Modifier = Modifier, content: @Composable (T) -> Unit) {
+    val kept = remember { Kept(value) }
+    if (value != null) kept.value = value
+    AnimatedVisibility(
+        visible = value != null,
+        modifier = modifier,
+        enter = expandVertically(tween(ROUTE_GROW_MILLIS, easing = RouteGrowEasing), expandFrom = Alignment.Top, clip = false) +
+            fadeIn(tween(ROW_FADE_MILLIS, GLIDE_FADE_DELAY_MILLIS)) +
+            slideInVertically(tween(ROUTE_GROW_MILLIS, easing = RouteGrowEasing)) { -it / ROW_SLIDE_FRACTION },
+        exit = shrinkVertically(tween(ROUTE_GROW_MILLIS, easing = RouteGrowEasing), shrinkTowards = Alignment.Top, clip = false) +
+            fadeOut(tween(ROW_EXIT_MILLIS)),
+    ) {
+        kept.value?.let { content(it) }
+    }
+}
+
+/** The last value a gliding row showed, kept while it goes; not state, as the row recomposes with every new value anyway. */
+private class Kept<T>(var value: T?)
 
 /** Row [index] of the card slides down a little into place after the one before; it only fades on the way out. */
 private fun AnimatedVisibilityScope.rowMotion(index: Int, isAnimated: Boolean): Modifier {
@@ -243,15 +285,18 @@ private fun RouteIcon(isLoading: Boolean) {
     }
 }
 
-/** The route's time over its length ("1 h 53 min" over "9.4 km"); empty until the first route arrives. */
+/**
+ * The route's time, bold, over its length ("1 h 53 min" over "9.4 km"), or by public transport over its times and changes
+ * ("09:12 – 09:36 · 1 change"); empty until the first route arrives.
+ */
 @Composable
 private fun RouteTotals(route: RouteSummaryState, modifier: Modifier = Modifier) {
     Column(modifier) {
         route.durationSeconds?.let {
-            Text(durationLabel(it), style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(durationLabel(it), style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
-        route.distanceMeters?.let {
-            Text(distanceText(it).asString(), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
+        (route.transitTimes ?: route.distanceMeters?.let(::distanceText))?.let {
+            Text(it.asString(), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
     }
 }
@@ -292,8 +337,11 @@ private fun AlongTheWayCard(item: AlongTheWayPlace, dayNumber: Int?, onOpen: (Ma
 
 /** The travel modes' height (40 dp options in 4 dp of track), which the route icon matches. */
 private val RowHeight = 48.dp
-/** Three 40 dp options in 4 dp of track and gaps: each picked option is a circle. */
-private val ModesWidth = 136.dp
+/** Four 40 dp options in 4 dp of track and gaps: each picked option is a circle. */
+private val ModesWidth = 180.dp
+
+/** The tram where public transport doesn't go. */
+private const val DIMMED_ALPHA = 0.38f
 private val SpinnerSize = 20.dp
 private val AlongCardMaxWidth = 240.dp
 private val AddButtonSize = 36.dp
@@ -307,6 +355,7 @@ private const val ROW_STAGGER_MILLIS = 40
 private const val ROW_FADE_MILLIS = 180
 private const val ROW_SLIDE_MILLIS = 260
 private const val ROW_EXIT_MILLIS = 80
+private const val GLIDE_FADE_DELAY_MILLIS = 60
 private const val ROW_SLIDE_FRACTION = 8
 private const val ALONG_DELAY_MILLIS = 170
 private const val ALONG_STAGGER_MILLIS = 45
@@ -357,12 +406,14 @@ private fun TravelMode.label() = when (this) {
     TravelMode.Walking -> Res.string.map_mode_walking
     TravelMode.Cycling -> Res.string.map_mode_cycling
     TravelMode.Driving -> Res.string.map_mode_driving
+    TravelMode.Transit -> Res.string.map_mode_transit
 }
 
 private fun TravelMode.icon() = when (this) {
     TravelMode.Walking -> Icons.AutoMirrored.Filled.DirectionsWalk
     TravelMode.Cycling -> Icons.AutoMirrored.Filled.DirectionsBike
     TravelMode.Driving -> Icons.Default.DirectionsCar
+    TravelMode.Transit -> Icons.Default.Tram
 }
 
 private const val COPYRIGHT_URL = "https://www.openstreetmap.org/copyright"

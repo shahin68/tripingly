@@ -3,6 +3,8 @@ package com.falcon.tripingly.feature.map.presentation.component
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Canvas
 import androidx.compose.ui.graphics.Color
@@ -12,6 +14,11 @@ import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.CanvasDrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.isSpecified
+import androidx.compose.ui.text.TextMeasurer
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.drawText
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.LayoutDirection
@@ -19,6 +26,7 @@ import androidx.compose.ui.unit.dp
 import com.falcon.tripingly.core.designsystem.theme.MapColors
 import com.falcon.tripingly.core.designsystem.theme.extendedColors
 import com.falcon.tripingly.core.location.model.Coordinates
+import com.falcon.tripingly.core.model.route.TransitStep
 import com.falcon.tripingly.core.model.route.TravelMode
 import kotlin.math.PI
 import kotlin.math.atan2
@@ -36,14 +44,42 @@ import kotlin.math.roundToInt
 /** How a line looks. */
 data class MapLineStyle(val color: Color, val width: Dp)
 
-/** A line to draw: its [points] from start to end and the [arrows] pointing the way. A new value runs the streak again. */
+/**
+ * A line to draw: its [points] from start to end and the [arrows] pointing the way. A new value runs the streak again.
+ * With [parts] (public transport) they are drawn instead of one line in [style]'s colour; [points] still carry the streak.
+ */
 @Immutable
-data class MapLine(val points: List<Coordinates>, val arrows: List<PathArrow>, val style: MapLineStyle)
+data class MapLine(
+    val points: List<Coordinates>,
+    val arrows: List<PathArrow>,
+    val style: MapLineStyle,
+    val parts: List<MapLinePart> = emptyList(),
+    /** Public transport: the rides' line badges and the rings where they start, change and end. */
+    val marks: List<LineMark> = emptyList(),
+)
+
+/** A public transport route's ride in its line's colour, solid, or a walk, dotted (Shahin, 2026-11-15: no edge round them). */
+data class MapLinePart(val points: List<Coordinates>, val color: Color, val isDotted: Boolean)
 
 /** This line in the theme's colours: the plan, which has no colour of its own, takes the stops' colour. */
 @Composable
 internal fun MapLine.themed(): MapLine =
     if (style.color.isSpecified) this else copy(style = style.copy(color = MaterialTheme.extendedColors.stop))
+
+/**
+ * A mark on a public transport line (the canvas's lines board, Shahin 2026-11-15): in place of the arrows, which show the
+ * way on the other routes, each ride has its line's rounded badge halfway along, and a ring where it starts and ends.
+ */
+@Immutable
+sealed interface LineMark {
+    val position: Coordinates
+
+    /** A white circle with a ring in its line's [color]: where a ride gets on or off. */
+    data class Ring(override val position: Coordinates, val color: Color) : LineMark
+
+    /** The line's [name] ("U1", "6") on its [color], in a rounded rectangle. */
+    data class Badge(override val position: Coordinates, val name: String, val color: Color, val textColor: Color) : LineMark
+}
 
 /** [bearing] in degrees clockwise from north, the way the line runs here. */
 data class PathArrow(val position: Coordinates, val bearing: Float)
@@ -54,9 +90,11 @@ internal val TravelMode.lineColor: Color
         TravelMode.Walking -> MapColors.Walk
         TravelMode.Cycling -> MapColors.Bike
         TravelMode.Driving -> MapColors.Car
+        TravelMode.Transit -> MapColors.Transit
     }
 
-internal val RouteWidth = 5.dp
+/** A route's width (Shahin, 2026-11-15: 5 was thin, 7 too thick). */
+internal val RouteWidth = 6.dp
 
 /** The streak that runs along a line once. */
 internal val MapLineSweepColor = Color.White.copy(alpha = 0.85f)
@@ -98,6 +136,92 @@ internal fun routeLine(points: List<Coordinates>, stops: List<Coordinates>, mode
     val arrows = stopIndices.zipWithNext().mapNotNull { (start, end) -> arrowBetween(line, start, end, xScale) }
     return MapLine(line, arrows, style)
 }
+
+/**
+ * A public transport route through [stops]: each ride in its line's own colour, each walk dotted in the walking colour.
+ * No arrows: the lines' colours and the steps sheet show the way, and an arrow in one colour would sit on every other.
+ */
+internal fun transitLine(points: List<Coordinates>, steps: List<TransitStep>, stops: List<Coordinates>): MapLine {
+    val parts = steps.filter { it.points.size > 1 }.map { step ->
+        MapLinePart(
+            points = step.points.map { Coordinates(it.lat, it.lng) },
+            color = if (step.isRide) step.line?.color?.let { Color(it) } ?: MapColors.Transit else MapColors.Walk,
+            isDotted = !step.isRide,
+        )
+    }
+    // Steps without their own lines: the whole route in one colour.
+    if (parts.isEmpty()) return routeLine(points, stops, TravelMode.Transit)
+    return routeLine(parts.flatMap { it.points }, stops, TravelMode.Transit).copy(arrows = emptyList(), parts = parts, marks = transitMarks(steps))
+}
+
+/** Each ride's badge halfway along it and a ring in its line's colour at each of its ends, changes too (Shahin, 2026-11-15). */
+private fun transitMarks(steps: List<TransitStep>): List<LineMark> {
+    val rides = steps.filter { it.isRide && it.points.size > 1 }
+    return rides.flatMap { ride ->
+        val points = ride.points.map { Coordinates(it.lat, it.lng) }
+        val color = ride.line?.color?.let { Color(it) } ?: MapColors.Transit
+        listOfNotNull(
+            LineMark.Ring(points.first(), color),
+            LineMark.Ring(points.last(), color),
+            ride.line?.let { line -> LineMark.Badge(halfway(points), line.name, color, line.textColor?.let { Color(it) } ?: Color.White) },
+        )
+    }
+}
+
+/** The point halfway along [points] by length. */
+private fun halfway(points: List<Coordinates>): Coordinates {
+    val xScale = xScale(points)
+    var left = points.zipWithNext { a, b -> distance(a, b, xScale) }.sum() / 2
+    for ((a, b) in points.zipWithNext()) {
+        val length = distance(a, b, xScale)
+        if (left <= length && length > 0) {
+            val t = left / length
+            return Coordinates(a.latitude + (b.latitude - a.latitude) * t, a.longitude + (b.longitude - a.longitude) * t)
+        }
+        left -= length
+    }
+    return points[points.size / 2]
+}
+
+/** A ring on a public transport line: white inside a [color] ring, a thin white edge round it so it shows on any map. */
+internal fun drawLineRing(color: Color, density: Density, layoutDirection: LayoutDirection): ImageBitmap {
+    val px = ceil(with(density) { RingSize.toPx() }).toInt()
+    val ring = with(density) { RingStroke.toPx() }
+    val bitmap = ImageBitmap(px, px)
+    CanvasDrawScope().draw(density, layoutDirection, Canvas(bitmap), Size(px.toFloat(), px.toFloat())) {
+        drawCircle(color, radius = size.minDimension / 2)
+        drawCircle(Color.White, radius = size.minDimension / 2 - ring)
+    }
+    return bitmap
+}
+
+/** A line's badge on the map: its [name] in bold on its [color], a rounded rectangle with no edge (Shahin, 2026-11-15). */
+internal fun drawLineBadge(
+    name: String,
+    color: Color,
+    textColor: Color,
+    textMeasurer: TextMeasurer,
+    density: Density,
+    layoutDirection: LayoutDirection,
+): ImageBitmap {
+    val text = textMeasurer.measure(name, TextStyle(color = textColor, fontSize = BadgeText, fontWeight = FontWeight.ExtraBold), density = density, layoutDirection = layoutDirection)
+    val width = ceil(text.size.width + with(density) { (BadgePaddingX * 2).toPx() }).toInt()
+    val height = ceil(text.size.height + with(density) { (BadgePaddingY * 2).toPx() }).toInt()
+    val corner = with(density) { BadgeCorner.toPx() }
+    val bitmap = ImageBitmap(width, height)
+    CanvasDrawScope().draw(density, layoutDirection, Canvas(bitmap), Size(width.toFloat(), height.toFloat())) {
+        drawRoundRect(color, cornerRadius = CornerRadius(corner))
+        drawText(text, topLeft = Offset((size.width - text.size.width) / 2, (size.height - text.size.height) / 2))
+    }
+    return bitmap
+}
+
+private val RingSize = 16.dp
+private val RingStroke = 4.dp
+private val BadgeText = 13.sp
+private val BadgePaddingX = 7.dp
+private val BadgePaddingY = 2.dp
+private val BadgeCorner = 6.dp
 
 /** The point halfway along [line] from [start] to [end], pointing the way the line runs there. */
 private fun arrowBetween(line: List<Coordinates>, start: Int, end: Int, xScale: Double): PathArrow? {

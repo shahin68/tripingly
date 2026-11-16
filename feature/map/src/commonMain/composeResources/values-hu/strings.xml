@@ -4,6 +4,7 @@
     <string name="map_hide_places">Helyek elrejtése</string>
     <string name="map_show_places">Helyek mutatása</string>
     <string name="map_fit_day">Az egész nap megjelenítése</string>
+    <string name="map_credits">Térkép forrásai</string>
     <string name="map_compass_north">É</string>
     <string name="map_north_up">Térkép északra fordítása</string>
     <string name="map_plan_handle">A teljes terv megjelenítése vagy elrejtése</string>
@@ -183,6 +184,32 @@
     <string name="map_mode_walking">Gyalog</string>
     <string name="map_mode_cycling">Bicikli</string>
     <string name="map_mode_driving">Autó</string>
+    <string name="map_mode_transit">Tömegközlekedés</string>
+    <string name="map_transit_not_here">Itt még nincs tömegközlekedés</string>
+    <string name="map_transit_no_connection">Ebben az időpontban nincs járat. Próbálj másik időpontot.</string>
+    <string name="map_transit_leave_at">Indulás: %1$s</string>
+    <string name="map_transit_arrive_by">Érkezés: %1$s</string>
+    <string name="map_transit_leave">Indulás</string>
+    <string name="map_transit_arrive">Érkezés</string>
+    <string name="map_transit_time_title">Időpont ezen a napon</string>
+    <string name="map_transit_time_done">Kész</string>
+    <string name="map_transit_show_steps">Lépések mutatása</string>
+    <string name="map_transit_towards">%1$s felé</string>
+    <string name="map_transit_typical">Az időpontok a hét ezen napjának szokásos menetrendjét követik.</string>
+    <string name="map_transit_walk_detail">%1$s gyalog · %2$s</string>
+    <string name="map_transit_change_walk">Átszállás · %1$s gyalog</string>
+    <string name="map_transit_walk_total">%1$s gyalog</string>
+    <string name="map_transit_times">%1$s – %2$s</string>
+    <string name="map_transit_joined">%1$s · %2$s</string>
+    <string name="map_transit_no_change">átszállás nélkül</string>
+    <plurals name="map_transit_changes">
+        <item quantity="one">%1$d átszállás</item>
+        <item quantity="other">%1$d átszállás</item>
+    </plurals>
+    <plurals name="map_transit_stops">
+        <item quantity="one">%1$d megálló</item>
+        <item quantity="other">%1$d megálló</item>
+    </plurals>
     <string name="map_route_minutes">%1$d perc</string>
     <string name="map_route_hours">%1$d óra %2$d perc</string>
     <string name="map_route_meters">%1$d m</string>

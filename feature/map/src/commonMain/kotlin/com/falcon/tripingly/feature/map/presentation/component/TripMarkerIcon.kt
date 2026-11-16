@@ -8,7 +8,9 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -28,13 +30,16 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
 import com.falcon.tripingly.core.designsystem.component.NewIndicator
+import com.falcon.tripingly.core.designsystem.theme.MapColors
 import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
 import com.falcon.tripingly.core.designsystem.theme.extendedColors
 
 /**
- * A stop's pin, a circle centered on the stop: its number on near-black ivy in a white ring, or, once the stop
- * has a cover photo, the photo in the white ring with the number in a small badge. [isNew]: a dot at the top left
- * says something happened here I haven't seen.
+ * A stop's pin centered on the stop: its number on ivy in the pins' one thin ring, or, once the stop has a cover
+ * photo, the photo in that ring with the number in a small badge. A number too wide for its circle stretches the
+ * circle into a pill, so every number fits in the middle (Shahin, 2026-11-15). [isNew]: a dot at the top left says
+ * something happened here I haven't seen. [halo]: the day's route shows, so the pin stands in a soft halo of the route's
+ * colour (see [STOP_HALO_WIDTH]).
  */
 @Composable
 fun TripMarkerIcon(
@@ -42,29 +47,31 @@ fun TripMarkerIcon(
     modifier: Modifier = Modifier,
     cover: ImageBitmap? = null,
     isNew: Boolean = false,
+    halo: Color? = null,
 ) {
-    Box(modifier) {
-        PinBody(orderNumber, cover)
-        if (isNew) {
-            val inset = newDotInset(hasCover = cover != null)
-            NewIndicator(Modifier.offset(inset, inset), size = NEW_DOT_SIZE - PIN_RING * 2, strokeColor = MaterialTheme.extendedColors.onStop, strokeWidth = PIN_RING)
+    val haloModifier = if (halo != null) Modifier.background(halo.copy(alpha = STOP_HALO_ALPHA), CircleShape).padding(STOP_HALO_WIDTH) else Modifier
+    Box(modifier.then(haloModifier)) {
+        Box {
+            PinBody(orderNumber, cover)
+            if (isNew) {
+                val inset = newDotInset(hasCover = cover != null)
+                NewIndicator(Modifier.offset(inset, inset), size = NEW_DOT_SIZE - NEW_DOT_RING * 2, strokeColor = MapColors.PinStroke, strokeWidth = NEW_DOT_RING)
+            }
         }
     }
 }
 
+/**
+ * The soft halo round each stop while the day's route shows: this wide, of the route's colour at [STOP_HALO_ALPHA], in
+ * the pin's own shape, so the stops stand out among the places along the line (Shahin, 2026-11-16, S3).
+ */
+internal val STOP_HALO_WIDTH = 9.dp
+internal const val STOP_HALO_ALPHA = 0.32f
+
 @Composable
 private fun PinBody(orderNumber: Int, cover: ImageBitmap?) {
     if (cover == null) {
-        Box(
-            modifier = Modifier
-                .size(PIN_SIZE)
-                .background(MaterialTheme.extendedColors.onStop, CircleShape)
-                .padding(PIN_RING)
-                .background(MaterialTheme.extendedColors.stop, CircleShape),
-            contentAlignment = Alignment.Center,
-        ) {
-            PinNumber(orderNumber, fontSize = 13)
-        }
+        NumberPill(orderNumber, height = PIN_SIZE, fontSize = 13, padding = PIN_NUMBER_PADDING)
     } else {
         Box(modifier = Modifier.size(COVER_PIN_SIZE)) {
             Image(
@@ -73,21 +80,31 @@ private fun PinBody(orderNumber: Int, cover: ImageBitmap?) {
                 contentScale = ContentScale.Crop,
                 modifier = Modifier
                     .matchParentSize()
-                    .background(MaterialTheme.extendedColors.onStop, CircleShape)
-                    .padding(COVER_RING)
+                    .background(MapColors.PinStroke, CircleShape)
+                    .padding(PIN_STROKE)
                     .clip(CircleShape),
             )
-            Box(
-                modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .size(COVER_BADGE_SIZE)
-                    .background(MaterialTheme.extendedColors.stop, CircleShape)
-                    .border(PIN_RING, MaterialTheme.extendedColors.onStop, CircleShape),
-                contentAlignment = Alignment.Center,
-            ) {
-                PinNumber(orderNumber, fontSize = 10)
-            }
+            NumberPill(orderNumber, height = COVER_BADGE_SIZE, fontSize = 10, padding = BADGE_NUMBER_PADDING, modifier = Modifier.align(Alignment.TopEnd))
         }
+    }
+}
+
+/**
+ * [orderNumber] in the middle of a circle [height] round, stretched into a pill when the number is wider, edged in [ring]
+ * (white on the map, the sheet's colour where it sits on one).
+ */
+@Composable
+internal fun NumberPill(orderNumber: Int, height: Dp, fontSize: Int, padding: Dp, modifier: Modifier = Modifier, ring: Color = MapColors.PinStroke) {
+    Box(
+        modifier = modifier
+            .height(height)
+            .widthIn(min = height)
+            .background(MaterialTheme.extendedColors.stop, CircleShape)
+            .border(PIN_STROKE, ring, CircleShape)
+            .padding(horizontal = padding),
+        contentAlignment = Alignment.Center,
+    ) {
+        PinNumber(orderNumber, fontSize)
     }
 }
 
@@ -109,18 +126,24 @@ private val PinNumberStyle = TextStyle(
 )
 
 internal val PIN_SIZE = 32.dp
-internal val PIN_RING = 2.dp
+
+/** The one ring round every pin on the map, in [MapColors.PinStroke] (Shahin, 2026-11-15: 1 dp, a single ring). */
+internal val PIN_STROKE = 1.dp
+
+/** Room on either side of a stop's number before its circle stretches into a pill. */
+internal val PIN_NUMBER_PADDING = 6.dp
+internal val BADGE_NUMBER_PADDING = 4.dp
 
 /** From the stop, at the pin's center, to the pin's top edge. */
 internal fun stopPinRadius(hasCover: Boolean): Dp = (if (hasCover) COVER_PIN_SIZE else PIN_SIZE) / 2
 
 /** A pin with a cover photo: the photo's circle, its white ring and the number badge on it. */
 internal val COVER_PIN_SIZE = 44.dp
-internal val COVER_RING = 3.dp
 internal val COVER_BADGE_SIZE = 18.dp
 
 /** The "new" dot with its white ring, in the pin's top left corner on the pin's edge, clear of the number. */
 internal val NEW_DOT_SIZE = 12.dp // an 8 dp red dot in its 2 dp ring (Shahin, 2026-11-08)
+internal val NEW_DOT_RING = 2.dp
 
 /**
  * How far the "new" dot's box sits in from the pin's top left corner: a photo pin's dot is centred on its circle's
@@ -141,9 +164,13 @@ private fun TripMarkerIconPreview() {
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.background(Color(0xFFECEDEE)).padding(8.dp)) {
             TripMarkerIcon(orderNumber = 1)
             TripMarkerIcon(orderNumber = 12)
+            TripMarkerIcon(orderNumber = 108)
+            TripMarkerIcon(orderNumber = 11, cover = ImageBitmap(64, 64))
             TripMarkerIcon(orderNumber = 3, cover = ImageBitmap(64, 64))
             TripMarkerIcon(orderNumber = 2, isNew = true)
             TripMarkerIcon(orderNumber = 6, cover = ImageBitmap(64, 64), isNew = true)
+            TripMarkerIcon(orderNumber = 4, halo = Color(0xFF1F9E6B))
+            TripMarkerIcon(orderNumber = 5, cover = ImageBitmap(64, 64), isNew = true, halo = Color(0xFF1F9E6B))
         }
     }
 }

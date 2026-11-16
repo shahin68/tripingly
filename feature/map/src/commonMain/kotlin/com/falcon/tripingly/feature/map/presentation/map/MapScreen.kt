@@ -1,7 +1,16 @@
 package com.falcon.tripingly.feature.map.presentation.map
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.ui.zIndex
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.foundation.layout.offset
 import androidx.compose.animation.core.MutableTransitionState
 import androidx.compose.animation.core.rememberTransition
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.gestures.AnchoredDraggableState
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
@@ -28,6 +37,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -107,6 +117,8 @@ internal fun MapScreen(
     // Layout only: what the header, the day tabs and the credits cover of the map, handed to it as its padding. Each is
     // measured when its size changes; the map waits for all three, so it opens already fitted to what's left.
     var headerHeight by remember { mutableStateOf<Dp?>(null) }
+    // The header's own height, without the route bar over it: where the join pill sits.
+    var titleHeight by remember { mutableIntStateOf(0) }
     // The tabs' height with whether there were days to show, so the map doesn't open on the height without tabs.
     var tabsHeight by remember { mutableStateOf<Pair<Boolean, Dp>?>(null) }
     var creditsHeight by remember { mutableStateOf<Dp?>(null) }
@@ -211,7 +223,12 @@ internal fun MapScreen(
             cameraCommands.map { command ->
                 when (command) {
                     is CameraCommand.Move -> command
-                    is CameraCommand.Fit -> fit(command.bounds).let { (target, zoom) -> CameraCommand.MoveTo(target, zoom, upright = true) }
+                    // Worked out once what changed with it (the route bar, the route's card coming or growing) is laid
+                    // out, so the fit keeps out of them as they are now, not as they were (Shahin, 2026-11-15).
+                    is CameraCommand.Fit -> {
+                        repeat(FIT_LAYOUT_FRAMES) { withFrameNanos { } }
+                        fit(command.bounds).let { (target, zoom) -> CameraCommand.MoveTo(target, zoom, upright = true) }
+                    }
                 }
             }
         }
@@ -254,8 +271,9 @@ internal fun MapScreen(
                 .then(panel)
         ) {
             // The route bar over the header it pushes away: the taller of the two is what the header covers.
-            Box(Modifier.onSizeChanged { headerHeight = with(density) { it.height.toDp() } }) {
+            Box(Modifier.zIndex(1f).onSizeChanged { headerHeight = with(density) { it.height.toDp() } }) {
                 MapHeader(
+                    modifier = Modifier.onSizeChanged { titleHeight = it.height },
                     header = state.header,
                     // While routing, the search is the route bar's "to".
                     search = state.search.takeUnless { isRouteBarShown },
@@ -283,15 +301,31 @@ internal fun MapScreen(
                     )
                 }
             }
-            state.joinRequests?.let { requests ->
-                JoinRequestsPill(
-                    requests = requests,
-                    onClick = { onAction(MapAction.Header.OpenJoinRequests) },
-                    modifier = Modifier.align(Alignment.Start).padding(horizontal = MaterialTheme.spacing.medium),
-                )
-            }
-            state.search?.results?.takeIf { it.isNotEmpty() }?.let { results ->
-                SearchResults(results = results, onAction = onAction, modifier = Modifier.padding(horizontal = MaterialTheme.spacing.medium))
+            // The join pill and the search results share the space under the header, the results over the pill, so
+            // neither moves the other. The pill stays under the header's own part, under the route bar coming over it
+            // (not pushed down by it), and scales and fades away under the route bar or the search (Shahin, 2026-11-16);
+            // while it goes it keeps the people it had.
+            Box {
+                var shownJoinRequests by remember { mutableStateOf(state.joinRequests) }
+                state.joinRequests?.let { shownJoinRequests = it }
+                androidx.compose.animation.AnimatedVisibility(
+                    visible = state.joinRequests != null && !isRouteBarShown,
+                    enter = scaleIn() + fadeIn(),
+                    exit = scaleOut() + fadeOut(),
+                    modifier = Modifier.offset { IntOffset(0, titleHeight - with(density) { (headerHeight ?: 0.dp).roundToPx() }) },
+                ) {
+                    shownJoinRequests?.let { requests ->
+                        JoinRequestsPill(
+                            requests = requests,
+                            onClick = { onAction(MapAction.Header.OpenJoinRequests) },
+                            onSeen = { onAction(MapAction.Header.JoinRequestsSeen) },
+                            modifier = Modifier.padding(horizontal = MaterialTheme.spacing.medium),
+                        )
+                    }
+                }
+                state.search?.results?.takeIf { it.isNotEmpty() }?.let { results ->
+                    SearchResults(results = results, onAction = onAction, modifier = Modifier.padding(horizontal = MaterialTheme.spacing.medium))
+                }
             }
         }
 
@@ -337,7 +371,9 @@ internal fun MapScreen(
                 MapCredits(
                     routeAttribution = state.routeAttribution,
                     style = SmallCreditsStyle,
-                    modifier = Modifier.align(Alignment.TopEnd).onSizeChanged { creditsHeight = with(density) { it.height.toDp() } },
+                    atEnd = true,
+                    onOpenHeight = { creditsHeight = with(density) { it.toDp() } },
+                    modifier = Modifier.align(Alignment.TopEnd),
                 )
                 MapButtons(state.location, state.arePlacesHidden, { bearing }, onAction, Modifier.align(Alignment.BottomEnd))
             }
@@ -419,3 +455,9 @@ private val LandscapePinArea = 96.dp
 
 /** In portrait, how far below the middle of the free map a tapped pin goes. */
 private val PortraitPinDrop = 24.dp
+
+/**
+ * Frames a fit waits before it is worked out: the change that came with it is composed, laid out (the header's and
+ * the sheet's new sizes measured) and composed again with those sizes.
+ */
+private const val FIT_LAYOUT_FRAMES = 3

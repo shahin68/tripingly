@@ -4,7 +4,7 @@
     <string name="paywall_benefit_routes">Routes along streets for walking, cycling and driving</string>
     <string name="paywall_benefit_times">Travel times for every leg of your day</string>
     <string name="paywall_benefit_along">Places worth a stop along the way</string>
-    <string name="paywall_benefit_between">Routes from any place to another</string>
+    <string name="paywall_benefit_between">Routes from any place to any other</string>
     <string name="paywall_monthly">Monthly</string>
     <string name="paywall_monthly_price">%1$s per month</string>
     <string name="paywall_yearly">Yearly</string>

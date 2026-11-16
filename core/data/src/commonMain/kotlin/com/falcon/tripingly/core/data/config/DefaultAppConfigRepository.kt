@@ -2,6 +2,7 @@ package com.falcon.tripingly.core.data.config
 
 import com.falcon.tripingly.core.common.result.onSuccess
 import com.falcon.tripingly.core.model.config.AppConfig
+import com.falcon.tripingly.core.model.config.TransitArea
 import com.falcon.tripingly.core.network.config.AppConfigApi
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -33,6 +34,7 @@ internal class DefaultAppConfigRepository(
                     photoPinMinHotCount = it.photoPinMinHotCount.toInt(),
                     mapMaxPhotoPins = it.mapMaxPhotoPins.toInt(),
                     pinDotBelowZoom = it.pinDotBelowZoom.toFloat(),
+                    transitAreas = it.transitAreas.map { area -> TransitArea(area.id, area.name, area.south, area.west, area.north, area.east) },
                 )
             }
         }

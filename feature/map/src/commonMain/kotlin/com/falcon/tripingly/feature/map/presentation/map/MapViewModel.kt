@@ -48,9 +48,11 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.datetime.LocalTime
 
 /**
  * One trip on the map. Days and stops come from the cached trip, reloaded from the server on open. The work is
@@ -108,11 +110,12 @@ class MapViewModel(
         askForLocation = location::askForRoute,
         showRoutesArePro = { sendEvent(MapEvent.OpenPaywall) },
         showWholePlan = { sendEvent(MapEvent.ShowWholePlan) },
+        transitAreas = appConfigRepository.config.map { it.transitAreas }.stateIn(viewModelScope, SharingStarted.Eagerly, appConfigRepository.config.value.transitAreas),
     )
     private val search = MapSearch(context, camera, selection, placeRepository, routeTo = routes::routeToResult)
     private val sharing = MapSharing(context, tripRepository, socialRepository)
     private val opening = MapOpening(context, camera, tripRepository, mapViews, ::hasRoutes, stopId, showMembers, showComments)
-    private val joinRequests = MapJoinRequests(context, tripRepository)
+    private val joinRequests = MapJoinRequests(context, tripRepository, mapViews)
     private val addToTrip = MapAddToTrip(context, selection, tripRepository, markerRepository) { sendEvent(MapEvent.AddedToMyTrip) }
     private val cardPhotos = MapCardPhotos(context, photoRepository)
     private val newActivity = MapNewActivity(context, newActivityRepository, pushedStopId = stopId, pushedAboutComments = showComments)
@@ -185,6 +188,7 @@ class MapViewModel(
             is MapAction.Header.RequestToJoin -> sharing.requestToJoin()
             is MapAction.Header.CancelJoinRequest -> sharing.cancelJoinRequest()
             is MapAction.Header.OpenMembers -> openSheet(Sheet.Members)
+            is MapAction.Header.JoinRequestsSeen -> joinRequests.markSeen()
             is MapAction.Header.OpenJoinRequests -> {
                 joinRequests.dismiss()
                 openSheet(Sheet.Members)
@@ -218,7 +222,7 @@ class MapViewModel(
     private fun onDays(action: MapAction.Days) {
         when (action) {
             is MapAction.Days.Select -> selectDay(action.dayIndex)
-            is MapAction.Days.FitDay -> camera.showOpenDay()
+            is MapAction.Days.FitDay -> if (!routes.frameShownRoute()) camera.showOpenDay()
             is MapAction.Days.TogglePlaces -> pins.setHidden(!model.arePlacesHidden)
         }
     }
@@ -234,6 +238,8 @@ class MapViewModel(
             is MapAction.Plan.AlongTheWayClick -> selection.openPlace(action.place)
             is MapAction.Plan.AddAlongTheWay -> routes.addAlongTheWay(action.place)
             is MapAction.Plan.ClosePointRoute -> routes.closePointRoute()
+            is MapAction.Plan.OpenLeaveAt -> routes.openLeaveAt()
+            is MapAction.Plan.OpenTransitSteps -> if (model.route.plan?.route?.legs.orEmpty().any { it.steps.isNotEmpty() }) openSheet(Sheet.TransitSteps)
         }
     }
 
@@ -278,10 +284,12 @@ class MapViewModel(
             is MapAction.Dialog.DeleteAnyway -> edits.deleteAnyway()
             is MapAction.Dialog.SendReport -> sharing.sendReport(action.reason)
             is MapAction.Dialog.ApplyBestOrder -> routes.applyBestOrder()
+            is MapAction.Dialog.PickTransitTime -> routes.pickTransitTime(LocalTime(action.hour, action.minute), action.isArriveBy)
             is MapAction.Dialog.DismissConfirm,
             is MapAction.Dialog.DismissDeleteAnyway,
             is MapAction.Dialog.DismissReport,
-            is MapAction.Dialog.DismissBestOrder -> closeDialog()
+            is MapAction.Dialog.DismissBestOrder,
+            is MapAction.Dialog.DismissLeaveAt -> closeDialog()
         }
     }
 
