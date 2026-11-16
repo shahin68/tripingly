@@ -1,12 +1,16 @@
 package com.falcon.tripingly.feature.map.presentation.map
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.ui.zIndex
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.foundation.layout.offset
 import androidx.compose.animation.core.MutableTransitionState
 import androidx.compose.animation.core.rememberTransition
-import androidx.compose.animation.expandVertically
+import androidx.compose.animation.scaleIn
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.gestures.AnchoredDraggableState
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
@@ -113,6 +117,8 @@ internal fun MapScreen(
     // Layout only: what the header, the day tabs and the credits cover of the map, handed to it as its padding. Each is
     // measured when its size changes; the map waits for all three, so it opens already fitted to what's left.
     var headerHeight by remember { mutableStateOf<Dp?>(null) }
+    // The header's own height, without the route bar over it: where the join pill sits.
+    var titleHeight by remember { mutableIntStateOf(0) }
     // The tabs' height with whether there were days to show, so the map doesn't open on the height without tabs.
     var tabsHeight by remember { mutableStateOf<Pair<Boolean, Dp>?>(null) }
     var creditsHeight by remember { mutableStateOf<Dp?>(null) }
@@ -265,8 +271,9 @@ internal fun MapScreen(
                 .then(panel)
         ) {
             // The route bar over the header it pushes away: the taller of the two is what the header covers.
-            Box(Modifier.onSizeChanged { headerHeight = with(density) { it.height.toDp() } }) {
+            Box(Modifier.zIndex(1f).onSizeChanged { headerHeight = with(density) { it.height.toDp() } }) {
                 MapHeader(
+                    modifier = Modifier.onSizeChanged { titleHeight = it.height },
                     header = state.header,
                     // While routing, the search is the route bar's "to".
                     search = state.search.takeUnless { isRouteBarShown },
@@ -294,27 +301,31 @@ internal fun MapScreen(
                     )
                 }
             }
-            // Under the route bar or the search it fades and folds away, and comes back the same way (Shahin, 2026-11-16);
+            // The join pill and the search results share the space under the header, the results over the pill, so
+            // neither moves the other. The pill stays under the header's own part, under the route bar coming over it
+            // (not pushed down by it), and scales and fades away under the route bar or the search (Shahin, 2026-11-16);
             // while it goes it keeps the people it had.
-            var shownJoinRequests by remember { mutableStateOf(state.joinRequests) }
-            state.joinRequests?.let { shownJoinRequests = it }
-            AnimatedVisibility(
-                visible = state.joinRequests != null && !isRouteBarShown,
-                enter = expandVertically(expandFrom = Alignment.Top) + fadeIn(),
-                exit = shrinkVertically(shrinkTowards = Alignment.Top) + fadeOut(),
-                modifier = Modifier.align(Alignment.Start),
-            ) {
-                shownJoinRequests?.let { requests ->
-                    JoinRequestsPill(
-                        requests = requests,
-                        onClick = { onAction(MapAction.Header.OpenJoinRequests) },
-                        onSeen = { onAction(MapAction.Header.JoinRequestsSeen) },
-                        modifier = Modifier.padding(horizontal = MaterialTheme.spacing.medium),
-                    )
+            Box {
+                var shownJoinRequests by remember { mutableStateOf(state.joinRequests) }
+                state.joinRequests?.let { shownJoinRequests = it }
+                androidx.compose.animation.AnimatedVisibility(
+                    visible = state.joinRequests != null && !isRouteBarShown,
+                    enter = scaleIn() + fadeIn(),
+                    exit = scaleOut() + fadeOut(),
+                    modifier = Modifier.offset { IntOffset(0, titleHeight - with(density) { (headerHeight ?: 0.dp).roundToPx() }) },
+                ) {
+                    shownJoinRequests?.let { requests ->
+                        JoinRequestsPill(
+                            requests = requests,
+                            onClick = { onAction(MapAction.Header.OpenJoinRequests) },
+                            onSeen = { onAction(MapAction.Header.JoinRequestsSeen) },
+                            modifier = Modifier.padding(horizontal = MaterialTheme.spacing.medium),
+                        )
+                    }
                 }
-            }
-            state.search?.results?.takeIf { it.isNotEmpty() }?.let { results ->
-                SearchResults(results = results, onAction = onAction, modifier = Modifier.padding(horizontal = MaterialTheme.spacing.medium))
+                state.search?.results?.takeIf { it.isNotEmpty() }?.let { results ->
+                    SearchResults(results = results, onAction = onAction, modifier = Modifier.padding(horizontal = MaterialTheme.spacing.medium))
+                }
             }
         }
 
@@ -361,7 +372,8 @@ internal fun MapScreen(
                     routeAttribution = state.routeAttribution,
                     style = SmallCreditsStyle,
                     atEnd = true,
-                    modifier = Modifier.align(Alignment.TopEnd).onSizeChanged { creditsHeight = with(density) { it.height.toDp() } },
+                    onOpenHeight = { creditsHeight = with(density) { it.toDp() } },
+                    modifier = Modifier.align(Alignment.TopEnd),
                 )
                 MapButtons(state.location, state.arePlacesHidden, { bearing }, onAction, Modifier.align(Alignment.BottomEnd))
             }
