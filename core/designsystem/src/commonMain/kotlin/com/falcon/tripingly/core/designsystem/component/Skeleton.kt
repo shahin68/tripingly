@@ -57,13 +57,14 @@ import org.jetbrains.compose.resources.stringResource
  * Shows [content] as its own loading skeleton: the real composables, filled with placeholder data of a typical
  * length, where every element marked with [Modifier.skeleton] draws as a shimmering grey block of its own size and
  * shape. Everything else (cards, spacing) stays as it is, so the skeleton is true to the design and nothing jumps
- * when the real content arrives. Nothing in it can be tapped, and screen readers hear "Loading".
+ * when the real content arrives. Nothing in it can be tapped, and screen readers hear "Loading". [base] is the blocks'
+ * grey: darker than the default where they sit on something as light as it (glass).
  */
 @Composable
-fun Skeleton(modifier: Modifier = Modifier, content: @Composable () -> Unit) {
+fun Skeleton(modifier: Modifier = Modifier, base: Color = MaterialTheme.colorScheme.surfaceVariant, content: @Composable () -> Unit) {
     val loading = stringResource(Res.string.loading)
     val paint = SkeletonPaint(
-        base = MaterialTheme.colorScheme.surfaceVariant,
+        base = base,
         shine = MaterialTheme.colorScheme.surfaceContainerLowest.copy(alpha = SHINE_ALPHA),
         // Previews stay still so screenshots are stable.
         sweep = if (LocalInspectionMode.current) null else shimmerProgress(),
@@ -101,8 +102,9 @@ fun Modifier.skeletonText(): Modifier = this then SkeletonElement(CircleShape, i
 fun SkeletonBox(
     modifier: Modifier = Modifier,
     shape: Shape = MaterialTheme.shapes.small,
+    base: Color = MaterialTheme.colorScheme.surfaceVariant,
 ) {
-    Skeleton { Box(modifier.skeleton(shape)) }
+    Skeleton(base = base) { Box(modifier.skeleton(shape)) }
 }
 
 /** How a [Skeleton]'s blocks are painted: their colour, the light's colour and where the light is (null: still). */

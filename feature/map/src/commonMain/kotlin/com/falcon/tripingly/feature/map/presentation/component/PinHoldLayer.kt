@@ -254,7 +254,15 @@ private fun NameTagMark(end: PinEnd) {
         is PinEnd.Place -> end.place.coverImageId to end.place.coverThumbUrl
     }
     if (imageId != null && imageUrl != null) {
-        PhotoImage(photoId = imageId, url = imageUrl, size = PhotoSize.Thumb, contentDescription = null, modifier = Modifier.size(NAME_TAG_MARK).clip(CircleShape))
+        // On the tag's light glass the usual grey barely shows: a darker circle shimmers until the image is there (Shahin, 2026-11-16).
+        PhotoImage(
+            photoId = imageId,
+            url = imageUrl,
+            size = PhotoSize.Thumb,
+            contentDescription = null,
+            modifier = Modifier.size(NAME_TAG_MARK).clip(CircleShape),
+            placeholderColor = MaterialTheme.colorScheme.outlineVariant,
+        )
         return
     }
     val fill = when (end) {
