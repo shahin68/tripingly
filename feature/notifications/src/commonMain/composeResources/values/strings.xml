@@ -6,7 +6,7 @@
     <string name="notifications_unread">Unread</string>
     <string name="notifications_clear_all">Clear all</string>
     <string name="notifications_clear_title">Clear all notifications?</string>
-    <string name="notifications_clear_message">They go on all your devices. The comments, likes and follows they are about stay.</string>
+    <string name="notifications_clear_message">They disappear from all your devices. The comments, likes and follows they’re about stay.</string>
     <string name="notifications_clear_confirm">Clear</string>
     <string name="notifications_delete">Delete</string>
     <string name="notifications_error_remove">Couldn’t remove it.</string>

@@ -49,6 +49,7 @@ import com.falcon.tripingly.core.designsystem.component.PhotoImage
 import com.falcon.tripingly.core.designsystem.component.PhotoSize
 import com.falcon.tripingly.core.designsystem.component.icon
 import com.falcon.tripingly.core.designsystem.component.rememberHaptics
+import com.falcon.tripingly.core.designsystem.theme.MapColors
 import com.falcon.tripingly.core.designsystem.theme.extendedColors
 import com.falcon.tripingly.core.location.model.Coordinates
 import kotlin.math.PI
@@ -166,12 +167,13 @@ internal fun PinHoldLayer(
                 clip = true
             }
             .background(color, CircleShape)
-            .border(2.dp, Color.White, CircleShape),
+            .border(2.dp, MapColors.PinStroke, CircleShape),
     ) {
         Icon(
             imageVector = Icons.Filled.ArrowUpward,
             contentDescription = null,
-            tint = Color.White,
+            // The stop green is light in the dark theme: its own on-colour keeps the arrow readable.
+            tint = MaterialTheme.extendedColors.onStop,
             modifier = Modifier.fillMaxSize().graphicsLayer {
                 // Along the line, from the pin out through the handle.
                 val pin = currentProject(hold.from.position)
@@ -264,7 +266,7 @@ private fun NameTagMark(end: PinEnd) {
             is PinEnd.Stop -> Text(
                 text = end.stop.orderNumber.toString(),
                 style = MaterialTheme.typography.labelSmall,
-                color = Color.White,
+                color = MaterialTheme.extendedColors.onStop,
             )
             is PinEnd.Place -> Icon(
                 imageVector = end.place.category.icon,
