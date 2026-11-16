@@ -7,6 +7,12 @@ import androidx.compose.animation.SizeTransform
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.core.CubicBezierEasing
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.expandVertically
 import androidx.compose.foundation.gestures.AnchoredDraggableState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -143,10 +149,19 @@ internal fun BottomCards(
         val hasCard = dayTabs.days.isNotEmpty() || plan != null
         // Without the card nothing of it covers the map; the gap below changes then and reports this.
         if (!hasCard) covered[0] = 0
-        if (hasCard) {
+        // Once the trip has loaded, the card (the plan and the day tabs) glides up from the bottom instead of popping
+        // in: its space opens upwards, lifting the credits and buttons along, while the card slides up into it
+        // (Shahin, 2026-11-16). No clipping, so the glass shadow isn't cut on the way.
+        AnimatedVisibility(
+            visible = hasCard,
+            modifier = Modifier.weight(1f, fill = false),
+            enter = expandVertically(tween(GLIDE_MILLIS, easing = Emphasized), expandFrom = Alignment.Bottom, clip = false) +
+                slideInVertically(tween(GLIDE_MILLIS, easing = Emphasized)) { it / 2 } + fadeIn(tween(GLIDE_MILLIS / 2)),
+            exit = shrinkVertically(tween(GLIDE_MILLIS, easing = Emphasized), shrinkTowards = Alignment.Bottom, clip = false) +
+                slideOutVertically(tween(GLIDE_MILLIS, easing = Emphasized)) { it / 2 } + fadeOut(tween(GLIDE_MILLIS / 2)),
+        ) {
             GlassSurface(
                 modifier = Modifier
-                    .weight(1f, fill = false)
                     .windowInsetsPadding(WindowInsets.floatingBottom.only(WindowInsetsSides.Horizontal))
                     .padding(horizontal = MaterialTheme.spacing.medium)
                     .fillMaxWidth(),
@@ -350,3 +365,6 @@ private fun MapControlsDarkPreview() {
 
 /** Between openrouteservice's and OpenStreetMap's credit in the route's attribution. */
 private val CreditsSeparator = Regex("""\s*\|\s*""")
+
+private const val GLIDE_MILLIS = 400
+private val Emphasized = CubicBezierEasing(0.2f, 0f, 0f, 1f)
