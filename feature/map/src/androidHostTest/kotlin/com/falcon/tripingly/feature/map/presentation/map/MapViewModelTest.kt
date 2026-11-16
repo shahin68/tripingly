@@ -82,7 +82,9 @@ import com.falcon.tripingly.feature.map.presentation.component.LineMark
 import com.falcon.tripingly.feature.map.presentation.component.CameraCommand
 import com.falcon.tripingly.feature.map.presentation.component.PinEnd
 import com.falcon.tripingly.feature.map.presentation.component.PinSizes
+import com.falcon.tripingly.feature.map.presentation.component.SelectedPinSize
 import com.falcon.tripingly.feature.map.presentation.component.dotLook
+import com.falcon.tripingly.feature.map.presentation.component.isDotAt
 import com.falcon.tripingly.feature.map.presentation.component.RouteEndMark
 import com.falcon.tripingly.feature.map.presentation.component.lineColor
 import com.falcon.tripingly.feature.map.presentation.component.routeLine
@@ -298,8 +300,8 @@ class MapViewModelTest {
     ).also { viewModel -> backgroundScope.launch { viewModel.uiState.collect {} } }
 
     /** The place of the pin named [name] on the map. */
-    /** Where the route's start badge is: its start pin. */
-    private val MapUiState.endFlag get() = layers.routeEnds.singleOrNull { !it.isStart }?.position
+    /** Where the route's ends stand in their halos. */
+    private val MapUiState.endHalos get() = layers.routeEnds.map { it.position }
 
     private fun MapViewModel.pin(name: String): MapPlace = uiState.value.layers.placePins.single { it.place.name == name }.place
 
@@ -2371,10 +2373,10 @@ class MapViewModelTest {
         viewModel.onAction(MapAction.Plan.SelectTravelMode(TravelMode.Transit))
         testScheduler.advanceUntilIdle()
         assertEquals(false, routes.transitTimes.single()?.isArriveBy)
-        // The Oper's pin gives way to the end's dot and pill; where I am has my own dot.
+        // The Oper keeps its own pin, in the route's halo as where the route ends.
         val layers = viewModel.uiState.value.layers
         assertEquals(listOf(oper.location), layers.routeEnds.map { it.position })
-        assertTrue(layers.placePins.none { it.place.id == oper.id })
+        assertTrue(layers.placePins.single { it.place.id == oper.id }.isKept)
         assertNull(layers.selectedPlace)
         // The fake's ride has its badge and rings on the line.
         assertEquals(listOf("U1"), assertNotNull(layers.line).marks.filterIsInstance<LineMark.Badge>().map { it.name })
@@ -2672,10 +2674,10 @@ class MapViewModelTest {
         viewModel.onAction(MapAction.MapView.PlacePinClick(from))
         viewModel.onAction(MapAction.PinRoute.Route)
         testScheduler.advanceUntilIdle()
-        // Its card closes and the header asks where to, searching; no flag until there is an end.
+        // Its card closes and the header asks where to, searching; only the start has its halo until there is an end.
         assertEquals(RouteBarState(UiText.Server("Oper"), to = null), viewModel.uiState.value.routeBar)
         assertNotNull(viewModel.uiState.value.search)
-        assertNull(viewModel.uiState.value.endFlag)
+        assertEquals(listOf(from.location), viewModel.uiState.value.endHalos)
         assertNull(viewModel.uiState.value.layers.selectedPlace)
 
         viewModel.onAction(MapAction.MapView.PlacePinClick(to))
@@ -2693,7 +2695,7 @@ class MapViewModelTest {
         assertNull(state.stopsCard)
         assertEquals(RouteBarState(UiText.Server("Oper"), UiText.Server("Prater")), state.routeBar)
         assertNull(state.search)
-        assertEquals(to.location, state.endFlag)
+        assertEquals(listOf(from.location, to.location), state.endHalos)
         assertEquals(listOf(from.location to to.location), routes.pointRoutes)
         // The two places are left out of the places along the way by their ids.
         assertEquals(listOf<Pair<String?, String?>>("a" to "b"), routes.pointRoutePlaces)
@@ -2703,24 +2705,17 @@ class MapViewModelTest {
         viewModel.onAction(MapAction.PinRoute.Swap)
         testScheduler.advanceUntilIdle()
         assertEquals(RouteBarState(UiText.Server("Prater"), UiText.Server("Oper")), viewModel.uiState.value.routeBar)
-        assertEquals(from.location, viewModel.uiState.value.endFlag)
+        assertEquals(listOf(to.location, from.location), viewModel.uiState.value.endHalos)
         assertEquals(to.location to from.location, routes.pointRoutes.last())
-        // Both ends are their dots with pills naming them, though the map loaded neither, each pill on the side away from
-        // the other end (Prater is east of the Oper): no place pins of their own.
-        assertTrue(viewModel.uiState.value.layers.placePins.none { it.place.id in setOf("a", "b") })
+        // Both ends are pins at any zoom, grown, though the map loaded neither, each in the route's halo.
+        viewModel.uiState.value.layers.placePins.filter { it.place.id in setOf("a", "b") }.let { ends ->
+            assertEquals(2, ends.size)
+            assertTrue(ends.all { it.isKept && it.size == SelectedPinSize && !it.isDotAt(isZoomedOut = true) })
+        }
         assertEquals(
-            listOf(
-                RouteEndMark(to.location, UiText.Server("Prater"), isStart = true, color = TravelMode.Walking.lineColor, isPillLeft = false),
-                RouteEndMark(from.location, UiText.Server("Oper"), isStart = false, color = TravelMode.Walking.lineColor, isPillLeft = true),
-            ),
+            listOf(RouteEndMark(to.location, SelectedPinSize, TravelMode.Walking.lineColor), RouteEndMark(from.location, SelectedPinSize, TravelMode.Walking.lineColor)),
             viewModel.uiState.value.layers.routeEnds,
         )
-        // A tap on a pill centres the map on its end.
-        viewModel.cameraCommands.test {
-            viewModel.onAction(MapAction.MapView.RouteEndClick(from.location))
-            testScheduler.advanceUntilIdle()
-            assertEquals(Coordinates(48.2031, 16.3691), assertIs<CameraCommand.MoveTo>(expectMostRecentItem()).target)
-        }
 
         // A place tapped while the route shows stays a pin until the route closes.
         val rathaus = MapPlace("c", "Rathaus", PlaceCategory.Attraction, GeoPoint(48.2108, 16.3572), isTripinly = false, hotCount = 0, prominence = 80)
@@ -2764,7 +2759,7 @@ class MapViewModelTest {
         testScheduler.advanceUntilIdle()
         assertNull(viewModel.uiState.value.pointRouteCard)
         assertNull(viewModel.uiState.value.routeBar)
-        assertNull(viewModel.uiState.value.endFlag)
+        assertEquals(emptyList(), viewModel.uiState.value.endHalos)
         viewModel.uiState.value.assertRoute(viewModel.uiState.value.stopPositions)
         // The day's route still shows, so the places tapped keep their pins; with no route at all they go back.
         assertTrue(viewModel.uiState.value.layers.placePins.single { it.place.id == "c" }.isKept)
@@ -2852,7 +2847,7 @@ class MapViewModelTest {
         testScheduler.advanceUntilIdle()
         assertNull(viewModel.uiState.value.routeBar)
         assertNull(viewModel.uiState.value.search)
-        assertNull(viewModel.uiState.value.endFlag)
+        assertEquals(emptyList(), viewModel.uiState.value.endHalos)
 
         viewModel.onAction(MapAction.MapView.PlacePinClick(oper))
         viewModel.onAction(MapAction.PinRoute.Route)
@@ -2890,8 +2885,8 @@ class MapViewModelTest {
         assertEquals(listOf(GeoPoint(me.latitude, me.longitude) to oper.location), routes.pointRoutes)
         // Where I am is no place.
         assertEquals(listOf<Pair<String?, String?>>(null to "a"), routes.pointRoutePlaces)
-        // Only the destination carries the flag.
-        assertEquals(oper.location, viewModel.uiState.value.endFlag)
+        // Only the destination has a halo: where I am has my own dot.
+        assertEquals(listOf(oper.location), viewModel.uiState.value.endHalos)
 
         // On again on the pin's card: Go here is on, and a tap closes it.
         viewModel.onAction(MapAction.MapView.PlacePinClick(oper))

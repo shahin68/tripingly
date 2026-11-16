@@ -84,7 +84,4 @@ object MapColors {
      * timetable gives no colour, and the route's ends.
      */
     val Transit = Color(0xFF55606E)
-
-    /** Text and icons on a route-coloured mark (a route end's pill): white on every route colour. */
-    val OnRoute = Color.White
 }
