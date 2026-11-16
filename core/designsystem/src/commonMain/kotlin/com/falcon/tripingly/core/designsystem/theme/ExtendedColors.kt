@@ -21,6 +21,8 @@ data class ExtendedColors(
     val stop: Color,
     /** A stop's number and ring. */
     val onStop: Color,
+    /** An icon on [stop] that keeps a green tint: white in light, the one deep green in dark (the drag handle's arrow). */
+    val onStopIcon: Color,
     /** A place's pin (and a hot spot's) on the map: slate grey, softer on the dark map. */
     val place: Color,
     /** Something switched on that failed and can be tried again: orange, with [onAttention] on it. */
@@ -33,6 +35,7 @@ internal val LightExtendedColors = ExtendedColors(
     glassEdge = GlassEdgeLight,
     stop = IvyLight,
     onStop = OnIvyLight,
+    onStopIcon = OnIvyLight,
     place = SecondaryLight,
     attention = AttentionLight,
     onAttention = OnAttentionLight,
@@ -42,6 +45,7 @@ internal val DarkExtendedColors = ExtendedColors(
     glassEdge = GlassEdgeDark,
     stop = IvyDark,
     onStop = OnIvyDark,
+    onStopIcon = IvyDeepDark,
     place = MapPlaceDark,
     attention = AttentionDark,
     onAttention = OnAttentionDark,

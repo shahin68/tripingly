@@ -172,8 +172,8 @@ internal fun PinHoldLayer(
         Icon(
             imageVector = Icons.Filled.ArrowUpward,
             contentDescription = null,
-            // The stop green is light in the dark theme: its own on-colour keeps the arrow readable.
-            tint = MaterialTheme.extendedColors.onStop,
+            // White on the light theme's dark green; the one deep green on the dark theme's light green (Shahin, 2026-11-16).
+            tint = MaterialTheme.extendedColors.onStopIcon,
             modifier = Modifier.fillMaxSize().graphicsLayer {
                 // Along the line, from the pin out through the handle.
                 val pin = currentProject(hold.from.position)

@@ -32,6 +32,8 @@ internal val OnErrorContainerLight = Color(0xFF5C0E08)
 // Dark
 internal val IvyDark = Color(0xFF86C79A)
 internal val OnIvyDark = Color(0xFF062512)
+// The one deep green, for icons on the light dark-theme stop green that should still read green (Shahin, 2026-11-16).
+internal val IvyDeepDark = Color(0xFF14512B)
 internal val IvyContainerDark = Color(0xFF213A2A)
 internal val OnIvyContainerDark = Color(0xFFCDEBD6)
 internal val SecondaryDark = Color(0xFFB4C0B7)
