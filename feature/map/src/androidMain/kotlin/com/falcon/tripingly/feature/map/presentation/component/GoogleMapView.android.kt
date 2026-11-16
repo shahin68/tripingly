@@ -207,6 +207,8 @@ actual fun GoogleMapView(
     val isDark = isSystemInDarkTheme()
     val mapProperties = remember(isMyLocationEnabled, isDark) {
         MapProperties(
+            // maps-compose turns buildings off by default (the SDK and iOS have them on); the style draws them faintly.
+            isBuildingEnabled = true,
             isMyLocationEnabled = isMyLocationEnabled,
             mapStyleOptions = MapStyleOptions(if (isDark) DARK_MAP_STYLE else LIGHT_MAP_STYLE),
         )
