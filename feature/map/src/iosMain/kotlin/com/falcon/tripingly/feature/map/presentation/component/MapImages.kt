@@ -125,11 +125,15 @@ private fun fill(color: Int) = Paint().apply {
     isAntiAlias = true
 }
 
-/** [orderNumber] in [color], centered on ([x], [y]). */
+/**
+ * [orderNumber] in [color], its ink centered on ([x], [y]): the digits' own bounds, not the font's line box (whose
+ * descender room set them low) or their advance (whose side bearings set them off to one side), as Android's trimmed
+ * line centers them.
+ */
 private fun org.jetbrains.skia.Canvas.drawNumber(orderNumber: Int, x: Float, y: Float, font: Font, color: Int) {
     val label = orderNumber.toString()
-    val metrics = font.metrics
-    drawString(label, x - font.measureTextWidth(label) / 2, y - (metrics.ascent + metrics.descent) / 2, font, fill(color))
+    val ink = font.measureText(label)
+    drawString(label, x - (ink.left + ink.right) / 2, y - (ink.top + ink.bottom) / 2, font, fill(color))
 }
 
 private val NEW_ACTIVITY = MapColors.NewActivity.toArgb()
