@@ -47,6 +47,18 @@ private final class AppGoogleMap: NSObject, GoogleMap, GMSMapViewDelegate {
     private let touches = TouchRecorder()
     /// A pin is held (the shared code took the long press): the finger pulls its line, the map's gestures are off.
     private var isHoldingPin = false
+    /// The SDK draws its blue location dot under every marker (Android draws it on top), so pins hid it. This copy of
+    /// the dot sits above all pins, where the SDK's own one is; the SDK's accuracy circle and heading stay under it.
+    private let locationDot: GMSMarker = {
+        let marker = GMSMarker()
+        marker.icon = AppGoogleMap.locationDotImage()
+        marker.groundAnchor = CGPoint(x: 0.5, y: 0.5)
+        marker.isFlat = true
+        marker.isTappable = false
+        marker.zIndex = Int32.max
+        return marker
+    }()
+    private var locationWatch: NSKeyValueObservation?
 
     var view: UIView { mapView }
 
@@ -83,6 +95,35 @@ private final class AppGoogleMap: NSObject, GoogleMap, GMSMapViewDelegate {
 
     func setMyLocationEnabled(enabled: Bool) {
         mapView.isMyLocationEnabled = enabled
+        locationWatch = nil
+        locationDot.map = nil
+        guard enabled else { return }
+        locationWatch = mapView.observe(\.myLocation, options: [.initial, .new]) { [weak self] mapView, _ in
+            guard let self else { return }
+            guard let location = mapView.myLocation else {
+                self.locationDot.map = nil
+                return
+            }
+            self.locationDot.position = location.coordinate
+            if self.locationDot.map == nil { self.locationDot.map = mapView }
+        }
+    }
+
+    /// The SDK's location dot: a blue disc in a white ring with a soft shadow, the size of the SDK's own.
+    private static func locationDotImage() -> UIImage {
+        let size: CGFloat = 24
+        let ring: CGFloat = 3
+        let inset: CGFloat = 2
+        return UIGraphicsImageRenderer(size: CGSize(width: size, height: size)).image { context in
+            let outer = CGRect(x: inset, y: inset, width: size - inset * 2, height: size - inset * 2)
+            context.cgContext.setShadow(offset: .zero, blur: 2, color: UIColor.black.withAlphaComponent(0.3).cgColor)
+            UIColor.white.setFill()
+            UIBezierPath(ovalIn: outer).fill()
+            context.cgContext.setShadow(offset: .zero, blur: 0, color: nil)
+            // The SDK's location blue.
+            UIColor(red: 0.26, green: 0.52, blue: 0.96, alpha: 1).setFill()
+            UIBezierPath(ovalIn: outer.insetBy(dx: ring, dy: ring)).fill()
+        }
     }
 
     func setPadding(top: Double, left: Double, bottom: Double, right: Double) {
