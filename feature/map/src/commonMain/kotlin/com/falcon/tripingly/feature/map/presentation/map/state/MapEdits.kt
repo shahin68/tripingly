@@ -2,6 +2,7 @@ package com.falcon.tripingly.feature.map.presentation.map.state
 
 import com.falcon.tripingly.core.common.error.DataError
 import com.falcon.tripingly.core.common.result.AppResult
+import com.falcon.tripingly.core.data.trips.MarkerChange
 import com.falcon.tripingly.core.data.trips.MarkerRepository
 import com.falcon.tripingly.core.data.trips.TripErrorCodes
 import com.falcon.tripingly.core.data.trips.TripRepository
@@ -18,7 +19,10 @@ import com.falcon.tripingly.feature.map.generated.resources.map_change_not_saved
 import com.falcon.tripingly.feature.map.generated.resources.map_error_add_day
 import com.falcon.tripingly.feature.map.generated.resources.map_error_delete_day
 import com.falcon.tripingly.feature.map.generated.resources.map_error_stop_change
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlin.time.Duration.Companion.seconds
 import org.jetbrains.compose.resources.StringResource
 
 /**
@@ -38,6 +42,7 @@ internal class MapEdits(
         context.scope.launch {
             markerRepository.failures.collect { failure ->
                 if (failure.tripId != context.tripId) return@collect
+                stopNaming(failure.change.markerId)
                 context.update {
                     if (failure.needsConfirm) {
                         it.copy(dialog = Dialog.OthersContent.Change(failure.error.serverMessage(), failure))
@@ -50,11 +55,37 @@ internal class MapEdits(
                 }
             }
         }
+        // A name the server gave ends the wait; so does the stop going (deleted here or by someone else).
+        context.scope.launch {
+            context.trip.collect { details ->
+                val markers = details?.days?.flatMap { it.markers }?.associateBy { it.id } ?: return@collect
+                context.model.value.namingStopIds.filter { markers[it]?.name?.isNotBlank() == true }.forEach(::stopNaming)
+            }
+        }
+    }
+
+    /** The stops being named, each with its wait: a stop the server can't name stops spinning after [NAMING_TIMEOUT]. */
+    private val namingJobs = mutableMapOf<String, Job>()
+
+    private fun startNaming(markerId: String) {
+        namingJobs.remove(markerId)?.cancel()
+        context.update { it.copy(namingStopIds = it.namingStopIds + markerId) }
+        namingJobs[markerId] = context.scope.launch {
+            delay(NAMING_TIMEOUT)
+            stopNaming(markerId)
+        }
+    }
+
+    private fun stopNaming(markerId: String) {
+        namingJobs.remove(markerId)?.cancel()
+        if (markerId in context.model.value.namingStopIds) context.update { it.copy(namingStopIds = it.namingStopIds - markerId) }
     }
 
     fun retryFailedChanges() {
         val failed = context.model.value.failedChanges
         context.update { it.copy(message = null, failedChanges = emptyList()) }
+        // A nameless stop sent again waits for its name again.
+        failed.filter { it.change is MarkerChange.Add && it.markerName.isBlank() }.forEach { startNaming(it.change.markerId) }
         context.scope.launch { failed.forEach { markerRepository.retry(it) } }
     }
 
@@ -103,6 +134,7 @@ internal class MapEdits(
     }
 
     private fun deleteMarker(markerId: String, confirm: Boolean) {
+        stopNaming(markerId)
         selection.closeStop(markerId)
         context.scope.launch { markerRepository.deleteMarker(markerId, confirm) }
     }
@@ -150,7 +182,13 @@ internal class MapEdits(
     private fun add(marker: NewMarker) {
         val day = context.activeDay() ?: return
         if (!context.canEdit()) return
-        context.scope.launch { markerRepository.addMarker(context.tripId, day.id, marker) }
+        context.scope.launch {
+            val added = markerRepository.addMarker(context.tripId, day.id, marker)
+            // A tap sends no name: the server names the stop; the trip may already carry the name by now.
+            if (marker.name.isBlank() && context.trip.value?.days?.flatMap { it.markers }?.firstOrNull { it.id == added.id }?.name?.isNotBlank() != true) {
+                startNaming(added.id)
+            }
+        }
         onStopAdded()
     }
 
@@ -187,3 +225,6 @@ internal class MapEdits(
 internal fun Selection.Place.toNewMarker(): NewMarker = address
     ?.let { NewMarker(it.name, it.location, osm = it.osm) }
     ?: NewMarker(place.name, place.location, placeId = place.id)
+
+/** How long a nameless stop's title spins at most, when the server gives it no name. */
+private val NAMING_TIMEOUT = 20.seconds

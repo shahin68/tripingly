@@ -561,6 +561,20 @@ class MapViewModelTest {
     }
 
     @Test
+    fun `a stop tapped on the map spins its title only until the server named it`() = runTest(testDispatcher) {
+        val viewModel = viewModel()
+        testScheduler.advanceUntilIdle()
+
+        viewModel.onAction(MapAction.MapView.Click(Coordinates.Paris))
+        testScheduler.advanceUntilIdle()
+
+        // The fake names it at once, like a quick server: no spinner left, and no wait still running.
+        val stop = viewModel.uiState.value.stopsCard?.stops?.single()
+        assertEquals(UiText.Server("48.8566, 2.3522"), stop?.title)
+        assertEquals(false, stop?.isNaming)
+    }
+
+    @Test
     fun `typing a search keeps the map's layers as they were`() = runTest(testDispatcher) {
         val viewModel = viewModel()
         testScheduler.advanceUntilIdle()

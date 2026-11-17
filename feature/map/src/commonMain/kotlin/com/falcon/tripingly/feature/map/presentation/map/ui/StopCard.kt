@@ -118,6 +118,7 @@ internal fun PinCardScope.StopCard(
                     PhotoBanner(
                         title = stop.title.asString(),
                         subtitle = stopSubtitle(card, position = imagePosition(images.size, pagerState.currentPage)),
+                        isTitleLoading = stop.isNaming,
                         afterSubtitle = { card.addedBy?.let { AddedByInline(it, it.text()) } },
                         image = if (images.isEmpty()) null else pagerImages(images, pagerState, description, onOpen = { onOpenPhotos() }),
                         onClick = onOpenPhotos,
@@ -227,7 +228,7 @@ private fun StopPill(card: StopCardState, onDelete: (() -> Unit)?, onAdd: (() ->
     ) {
         StopImage(card, Modifier.size(PillImageSize).clip(CircleShape))
         Column(Modifier.weight(1f, fill = false).padding(end = MaterialTheme.spacing.extraSmall)) {
-            Text(stop.title.asString(), style = MaterialTheme.typography.titleSmall, maxLines = 2)
+            LoadingTitle(stop.title.asString(), stop.isNaming, MaterialTheme.typography.titleSmall, maxLines = 2)
             Text(stopSubtitle(card, MaterialTheme.colorScheme.onSurface), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
         }
         // Delete is for whoever added the stop or owns the trip; a viewer's + puts it on one of their trips.

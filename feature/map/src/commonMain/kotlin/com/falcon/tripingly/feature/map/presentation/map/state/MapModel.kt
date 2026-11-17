@@ -67,6 +67,11 @@ internal data class MapModel(
      * any but flames; the comments and photos buttons a dot for theirs; flames pop the open stop's flame.
      */
     val news: Set<StopNews> = emptySet(),
+    /**
+     * Stops added without a name, while the server is naming them after their place or address ([MapEdits]): their
+     * title shows a small spinner until the name comes, the add fails or is removed, or [MapEdits] stops waiting.
+     */
+    val namingStopIds: Set<String> = emptySet(),
     /** The places button: only the trip's stops and its route's places show, nothing loads ([MapPins]). Every map opens with them shown. */
     val arePlacesHidden: Boolean = false,
     /** The trip's newest people asking to join, for its owner ([MapJoinRequests]); the pill shows while one isn't [dismissedJoinRequesterIds]. */

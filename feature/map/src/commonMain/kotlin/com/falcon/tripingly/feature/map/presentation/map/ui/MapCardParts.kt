@@ -77,6 +77,15 @@ import com.falcon.tripingly.feature.map.presentation.component.lineColor
 import com.falcon.tripingly.feature.map.presentation.map.PinAdd
 import com.falcon.tripingly.feature.map.presentation.map.PinRoutesState
 import org.jetbrains.compose.resources.stringResource
+import androidx.compose.ui.unit.isSpecified
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.animation.togetherWith
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.AnimatedContent
 
 /*
  * What the stop and place cards share (design: the "Final" board of the pin card canvas, Shahin, 2026-11-12): the photo
@@ -187,6 +196,8 @@ internal fun PhotoBanner(
     subtitle: AnnotatedString,
     image: (@Composable BoxScope.() -> Unit)?,
     modifier: Modifier = Modifier,
+    /** The name is still coming: a small spinner in its place ([LoadingTitle]). */
+    isTitleLoading: Boolean = false,
     onClick: (() -> Unit)? = null,
     afterSubtitle: @Composable FlowRowScope.() -> Unit = {},
     trailing: @Composable RowScope.() -> Unit = {},
@@ -219,7 +230,7 @@ internal fun PhotoBanner(
                 verticalAlignment = Alignment.Bottom,
             ) {
                 Column(Modifier.weight(1f)) {
-                    Text(title, style = MaterialTheme.typography.titleLarge)
+                    LoadingTitle(title, isTitleLoading, MaterialTheme.typography.titleLarge)
                     // Who added it goes on as long as there's room, then whole onto the next line (Shahin, 2026-11-14).
                     FlowRow(horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraSmall)) {
                         Text(subtitle, style = MaterialTheme.typography.bodySmall, modifier = Modifier.align(Alignment.CenterVertically))
@@ -231,6 +242,40 @@ internal fun PhotoBanner(
         }
     }
 }
+
+/**
+ * A pin's title, or while its name is still coming ([isLoading]) a small spinner a line high in its place, fading
+ * into the name when it comes (Shahin, 2026-11-17). Only drawn state: nothing keeps running once the card goes.
+ */
+@Composable
+internal fun LoadingTitle(
+    text: String,
+    isLoading: Boolean,
+    style: TextStyle,
+    modifier: Modifier = Modifier,
+    maxLines: Int = Int.MAX_VALUE,
+    overflow: TextOverflow = TextOverflow.Clip,
+) {
+    AnimatedContent(
+        targetState = isLoading,
+        transitionSpec = { fadeIn() togetherWith fadeOut() },
+        contentAlignment = Alignment.CenterStart,
+        modifier = modifier,
+        label = "title loading",
+    ) { loading ->
+        if (loading) {
+            val lineHeight = with(LocalDensity.current) { style.lineHeight.takeIf { it.isSpecified }?.toDp() ?: TitleSpinnerSize }
+            Box(Modifier.height(lineHeight), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator(modifier = Modifier.size(TitleSpinnerSize), strokeWidth = TitleSpinnerStroke, color = LocalContentColor.current)
+            }
+        } else {
+            Text(text, style = style, maxLines = maxLines, overflow = overflow)
+        }
+    }
+}
+
+private val TitleSpinnerSize = 12.dp
+private val TitleSpinnerStroke = 1.5.dp
 
 /**
  * The mark of a card without an image: its place's category icon, on the place colour or on stop green for a stop

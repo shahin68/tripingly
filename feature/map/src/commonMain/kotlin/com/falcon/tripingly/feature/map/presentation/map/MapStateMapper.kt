@@ -475,6 +475,7 @@ internal class MapStateMapper(
         placeId = placeId,
         canDelete = role == TripRole.OWNER || (canEdit && myUserId != null && createdById == myUserId),
         isNew = id in markedStopIds,
+        isNaming = name.isBlank() && id in model.namingStopIds,
     )
 
     private companion object {
