@@ -30,7 +30,7 @@ internal class MapAround(
 
     init {
         context.scope.launch {
-            context.model.map { it.route.isActive }.distinctUntilChanged().drop(1).collect { isActive -> if (isActive) close() }
+            context.model.map { it.route.isActive }.distinctUntilChanged().drop(1).collect { isActive -> if (isActive) dismiss() }
         }
     }
 
@@ -40,7 +40,15 @@ internal class MapAround(
         val (center, pinPlaceId) = selectedPin() ?: return
         context.update {
             it.copy(
-                around = AroundModel(center, pinPlaceId, it.around?.radiusMeters ?: DEFAULT_RADIUS_METERS, it.around?.categories.orEmpty()),
+                // Moved to another pin, it keeps what was before it first opened.
+                around = AroundModel(
+                    center = center,
+                    pinPlaceId = pinPlaceId,
+                    radiusMeters = it.around?.radiusMeters ?: DEFAULT_RADIUS_METERS,
+                    categories = it.around?.categories.orEmpty(),
+                    routeBefore = it.around?.routeBefore ?: it.route,
+                    wasFilterOpen = it.around?.wasFilterOpen ?: it.placeFilter.isOpen,
+                ),
                 route = it.route.copy(isDayRouteShown = false, start = null, startLabel = null, between = null, editing = null),
                 placeFilter = it.placeFilter.copy(isOpen = false),
             )
@@ -49,8 +57,17 @@ internal class MapAround(
         showWholePlan()
     }
 
-    /** The ✕ of the Around box. */
+    /** The ✕ of the Around box: the map goes back to what it showed before, a route as it was too (its plan is cached). */
     fun close() {
+        loadJob?.cancel()
+        context.update { model ->
+            val around = model.around ?: return@update model
+            model.copy(around = null, route = around.routeBefore, placeFilter = model.placeFilter.copy(isOpen = around.wasFilterOpen))
+        }
+    }
+
+    /** A route came on: Around goes, the route stays. */
+    private fun dismiss() {
         loadJob?.cancel()
         context.update { it.copy(around = null) }
     }

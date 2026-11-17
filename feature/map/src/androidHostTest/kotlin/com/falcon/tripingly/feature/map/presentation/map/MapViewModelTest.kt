@@ -2767,6 +2767,30 @@ class MapViewModelTest {
     }
 
     @Test
+    fun `closing Around brings back what the map showed before, the route too`() = runTest(testDispatcher) {
+        val viewModel = openFirstStopCard()
+        viewModel.onAction(MapAction.Plan.ToggleRoute)
+        testScheduler.advanceUntilIdle()
+        viewModel.onAction(MapAction.Around.Open)
+        testScheduler.advanceUntilIdle()
+        assertEquals(false, viewModel.uiState.value.stopsCard?.isRouteOn, "route off")
+
+        viewModel.onAction(MapAction.Around.Close)
+        testScheduler.advanceUntilIdle()
+        assertNull(viewModel.uiState.value.stopsCard?.around, "Around closed")
+        assertEquals(true, viewModel.uiState.value.stopsCard?.isRouteOn, "route back")
+
+        // Opened on a map without a route, ✕ leaves it without one.
+        viewModel.onAction(MapAction.Plan.ToggleRoute)
+        testScheduler.advanceUntilIdle()
+        viewModel.onAction(MapAction.Around.Open)
+        testScheduler.advanceUntilIdle()
+        viewModel.onAction(MapAction.Around.Close)
+        testScheduler.advanceUntilIdle()
+        assertEquals(false, viewModel.uiState.value.stopsCard?.isRouteOn, "still no route")
+    }
+
+    @Test
     fun `Around works around any place, leaving the place itself out and as it is`() = runTest(testDispatcher) {
         addStops(GeoPoint(48.8580, 2.2950))
         val viewModel = viewModel()
