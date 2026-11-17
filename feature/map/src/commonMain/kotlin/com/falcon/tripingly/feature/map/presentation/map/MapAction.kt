@@ -60,6 +60,8 @@ sealed interface MapAction {
         data object OpenJoinRequests : Header
         /** The "wants to join" pill has shown its people in full for a while: it shrinks to their faces for good. */
         data object JoinRequestsSeen : Header
+        /** A long press on the join pill: it shows its people in full again for a while (Shahin, 2026-11-17). */
+        data object ShowJoinRequests : Header
         data object OpenOwnerProfile : Header
         data object ReportTrip : Header
     }

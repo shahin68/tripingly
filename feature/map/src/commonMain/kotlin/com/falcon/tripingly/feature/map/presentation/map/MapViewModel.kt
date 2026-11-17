@@ -194,6 +194,7 @@ class MapViewModel(
             is MapAction.Header.CancelJoinRequest -> sharing.cancelJoinRequest()
             is MapAction.Header.OpenMembers -> openSheet(Sheet.Members)
             is MapAction.Header.JoinRequestsSeen -> joinRequests.markSeen()
+            is MapAction.Header.ShowJoinRequests -> joinRequests.showAgain()
             is MapAction.Header.OpenJoinRequests -> {
                 joinRequests.dismiss()
                 openSheet(Sheet.Members)

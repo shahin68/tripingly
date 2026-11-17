@@ -8,6 +8,8 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.foundation.layout.offset
 import androidx.compose.animation.core.MutableTransitionState
 import androidx.compose.animation.core.rememberTransition
+import androidx.compose.animation.expandHorizontally
+import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -16,7 +18,6 @@ import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.gestures.AnchoredDraggableState
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -318,8 +319,8 @@ internal fun MapScreen(
                 // The filter circle mirrors the join pill at the end, at the same height, and opens up to the join pill
                 // with a small gap (Shahin, 2026-11-17); it scales away while a route, Around or the route bar shows,
                 // keeping its last look while it goes.
+                // The join pill's space glides open and shut with it, the gap too, so the filter beside it glides along.
                 Row(
-                    horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
                     modifier = Modifier
                         .fillMaxWidth()
                         .offset { IntOffset(0, titleHeight - with(density) { (headerHeight ?: 0.dp).roundToPx() }) }
@@ -327,14 +328,16 @@ internal fun MapScreen(
                 ) {
                     androidx.compose.animation.AnimatedVisibility(
                         visible = state.joinRequests != null && !isRouteBarShown,
-                        enter = scaleIn() + fadeIn(),
-                        exit = scaleOut() + fadeOut(),
+                        enter = expandHorizontally(expandFrom = Alignment.Start, clip = false) + scaleIn() + fadeIn(),
+                        exit = shrinkHorizontally(shrinkTowards = Alignment.Start, clip = false) + scaleOut() + fadeOut(),
                     ) {
                         shownJoinRequests?.let { requests ->
                             JoinRequestsPill(
                                 requests = requests,
                                 onClick = { onAction(MapAction.Header.OpenJoinRequests) },
+                                onLongClick = { onAction(MapAction.Header.ShowJoinRequests) },
                                 onSeen = { onAction(MapAction.Header.JoinRequestsSeen) },
+                                modifier = Modifier.padding(end = MaterialTheme.spacing.small),
                             )
                         }
                     }

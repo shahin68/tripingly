@@ -1051,6 +1051,14 @@ class MapViewModelTest {
         assertEquals(true, viewModel.uiState.value.joinRequests?.isCompact)
         assertEquals(setOf("u2"), mapViews.seenJoinRequesters[trip.trip.id])
 
+        // A long press shows them in full again, until it has shown them a while.
+        viewModel.onAction(MapAction.Header.ShowJoinRequests)
+        testScheduler.advanceUntilIdle()
+        assertEquals(false, viewModel.uiState.value.joinRequests?.isCompact)
+        viewModel.onAction(MapAction.Header.JoinRequestsSeen)
+        testScheduler.advanceUntilIdle()
+        assertEquals(true, viewModel.uiState.value.joinRequests?.isCompact)
+
         // Opened again: small at once; someone new shows it in full again.
         val again = viewModel()
         testScheduler.advanceUntilIdle()

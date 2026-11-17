@@ -151,7 +151,7 @@ internal class MapStateMapper(
         val seen = model.seenJoinRequesterIds ?: return null
         if (model.search != null || people.all { it.id in model.dismissedJoinRequesterIds }) return null
         val count = maxOf(details?.pendingJoinRequestCount ?: 0, people.size)
-        return JoinRequestsState(people.toImmutableList(), othersCount = count - 1, isCompact = people.all { it.id in seen })
+        return JoinRequestsState(people.toImmutableList(), othersCount = count - 1, isCompact = !model.isJoinRequestsShownAgain && people.all { it.id in seen })
     }
 
     /** Like the server: an editor only when every stop on the day is theirs. */

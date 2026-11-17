@@ -74,6 +74,8 @@ internal data class MapModel(
     val dismissedJoinRequesterIds: Set<String> = emptySet(),
     /** The requesters the pill has shown in full, on this device (null until read): for them it stays a small circle. */
     val seenJoinRequesterIds: Set<String>? = null,
+    /** The join pill shows its seen people in full again, after a long press, until it shrinks once more. */
+    val isJoinRequestsShownAgain: Boolean = false,
     /** The map's filter by kind of place ([MapPlaceFilter]). */
     val placeFilter: PlaceFilterModel = PlaceFilterModel(),
     /** The places around a pin, while its ring shows ([MapAround]). */
