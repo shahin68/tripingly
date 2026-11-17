@@ -14,6 +14,7 @@ import com.falcon.tripingly.core.model.photo.PhotoStatus
 import com.falcon.tripingly.core.model.place.MapPlace
 import com.falcon.tripingly.core.model.place.PlaceImage
 import com.falcon.tripingly.core.model.place.PlaceImageSource
+import com.falcon.tripingly.core.model.place.PlaceSearchResult
 import com.falcon.tripingly.core.model.route.AlongTheWayPlace
 import com.falcon.tripingly.core.model.route.TravelMode
 import com.falcon.tripingly.core.model.trip.GeoPoint
@@ -36,11 +37,11 @@ import com.falcon.tripingly.feature.map.presentation.component.SelectedPinSize
 import com.falcon.tripingly.feature.map.presentation.component.lineColor
 import com.falcon.tripingly.feature.map.presentation.component.placePinSize
 import com.falcon.tripingly.feature.map.presentation.component.routeLine
-import com.falcon.tripingly.feature.map.presentation.component.transitLine
 import com.falcon.tripingly.feature.map.presentation.component.stopPathShape
+import com.falcon.tripingly.feature.map.presentation.component.transitLine
 import com.falcon.tripingly.feature.map.presentation.map.state.Dialog
-import com.falcon.tripingly.feature.map.presentation.map.state.MapModel
 import com.falcon.tripingly.feature.map.presentation.map.state.MY_LOCATION_ID
+import com.falcon.tripingly.feature.map.presentation.map.state.MapModel
 import com.falcon.tripingly.feature.map.presentation.map.state.Selection
 import com.falcon.tripingly.feature.map.presentation.map.state.Sheet
 import com.falcon.tripingly.feature.map.presentation.map.state.activeDayIndex
@@ -49,6 +50,11 @@ import com.falcon.tripingly.feature.map.presentation.map.state.stopPlaceIds
 import com.falcon.tripingly.feature.map.presentation.map.state.toState
 import com.falcon.tripingly.feature.map.presentation.map.ui.distanceText
 import com.falcon.tripingly.feature.map.presentation.map.ui.durationText
+import kotlin.math.PI
+import kotlin.math.asin
+import kotlin.math.cos
+import kotlin.math.sin
+import kotlin.math.sqrt
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.toImmutableList
 import kotlinx.collections.immutable.toImmutableMap
@@ -88,13 +94,18 @@ internal class MapStateMapper(
         plan?.alongTheWay.orEmpty().filter { it.place.id !in stopIds && it.place.id !in endIds }
     }
 
+    private fun searchResultItem(result: PlaceSearchResult) = SearchResultItem(
+        result,
+        distanceMeters = if (result.address.isNullOrBlank()) model.camera.target.let { GeoPoint(it.latitude, it.longitude) }.metersTo(result.location) else null,
+    )
+
     /** [layers] can be ones built before from the same trip and model; see [MapViewModel]. */
     fun map(layers: MapLayersState = layers()): MapUiState = MapUiState(
         loadError = model.loadError,
         header = header(),
         joinRequests = joinRequests(),
         // The field's spinner also turns while the places named so load on the map.
-        search = model.search?.let { SearchState(it.query, it.results.toImmutableList(), it.isSearching || (model.placeFilter.name != null && model.placeFilter.isLoading)) },
+        search = model.search?.let { SearchState(it.query, it.results.map(::searchResultItem).toImmutableList(), it.isSearching || (model.placeFilter.name != null && model.placeFilter.isLoading)) },
         dayTabs = DayTabsState(days.map { day -> DayTab(day.id, day.position + 1, day.date?.let(DateUtils::formatAbbreviated), hasNew = day.markers.any { it.id in markedStopIds }, canDelete = canEdit && days.size > 1 && canDeleteDay(day.markers)) }.toImmutableList(), activeIndex),
         plan = route.between?.let { PointRouteCardState(it.from, it.to, routeSummary(), it.fromLabel, it.toLabel) } ?: stopsCard(),
         routeBar = route.routeBar(),
@@ -499,3 +510,14 @@ internal class MapStateMapper(
 
 /** The trip card shows at most this many members' faces; the rest as "and 2 more". */
 private const val TRIP_CARD_FACES = 3
+
+/** Metres along the earth's surface (haversine), for "2.3 km" on a search result. */
+private fun GeoPoint.metersTo(other: GeoPoint): Int {
+    fun rad(degrees: Double) = degrees * PI / 180
+    val dLat = rad(other.lat - lat)
+    val dLng = rad(other.lng - lng)
+    val h = sin(dLat / 2).let { it * it } + cos(rad(lat)) * cos(rad(other.lat)) * sin(dLng / 2).let { it * it }
+    return (2 * EARTH_RADIUS_METERS * asin(sqrt(h))).toInt()
+}
+
+private const val EARTH_RADIUS_METERS = 6_371_000.0

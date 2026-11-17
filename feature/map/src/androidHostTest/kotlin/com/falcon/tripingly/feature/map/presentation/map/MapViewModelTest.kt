@@ -2115,6 +2115,25 @@ class MapViewModelTest {
     }
 
     @Test
+    fun `a search result without an address shows how far it is from the map's centre`() = runTest(testDispatcher) {
+        val viewModel = viewModel()
+        testScheduler.advanceUntilIdle()
+        // Vienna's centre; the KFC is 0.0082° (about 912 m) south of it.
+        viewModel.onAction(MapAction.MapView.CameraRest(Coordinates(48.2082, 16.3738), 15f, PARIS_CENTER))
+        viewModel.onAction(MapAction.Search.Open)
+        testScheduler.runCurrent()
+
+        viewModel.onAction(MapAction.Search.QueryChanged("KFC"))
+        testScheduler.advanceUntilIdle()
+        val meters = viewModel.uiState.value.search?.results.orEmpty().single().distanceMeters
+        assertTrue(meters != null && meters in 900..925, "about 912 m, got $meters")
+
+        viewModel.onAction(MapAction.Search.QueryChanged("Vienna"))
+        testScheduler.advanceUntilIdle()
+        assertNull(viewModel.uiState.value.search?.results.orEmpty().single().distanceMeters, "an address says where it is")
+    }
+
+    @Test
     fun `search asks once typing pauses and moves the camera to the pick`() = runTest(testDispatcher) {
         val viewModel = viewModel()
         testScheduler.advanceUntilIdle()
@@ -2125,7 +2144,7 @@ class MapViewModelTest {
         viewModel.onAction(MapAction.Search.QueryChanged("Vi"))
         testScheduler.advanceUntilIdle()
 
-        val vienna = viewModel.uiState.value.search?.results.orEmpty().single()
+        val vienna = viewModel.uiState.value.search?.results.orEmpty().single().result
         assertEquals("Vienna", vienna.name)
         viewModel.onAction(MapAction.Search.ResultClick(vienna))
         testScheduler.advanceUntilIdle()

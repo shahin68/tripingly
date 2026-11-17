@@ -131,10 +131,14 @@ data class EditorMenu(val canDeleteDay: Boolean)
 @Immutable
 data class SearchState(
     val query: TextFieldState = TextFieldState(),
-    val results: ImmutableList<PlaceSearchResult> = persistentListOf(),
+    val results: ImmutableList<SearchResultItem> = persistentListOf(),
     /** A search is waiting for the server. */
     val isSearching: Boolean = false,
 )
+
+/** A search result; one without an address shows [distanceMeters] from the map's centre instead, to tell same-named places apart. */
+@Immutable
+data class SearchResultItem(val result: PlaceSearchResult, val distanceMeters: Int? = null)
 
 @Immutable
 data class DayTabsState(

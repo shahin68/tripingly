@@ -1,6 +1,5 @@
 package com.falcon.tripingly.feature.map.presentation.map.ui
 
-import com.falcon.tripingly.core.designsystem.component.rememberHaptics
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
@@ -69,9 +68,9 @@ import com.falcon.tripingly.core.designsystem.component.GlassSurface
 import com.falcon.tripingly.core.designsystem.component.OsmAttribution
 import com.falcon.tripingly.core.designsystem.component.SearchKeyboard
 import com.falcon.tripingly.core.designsystem.component.SuggestionItem
+import com.falcon.tripingly.core.designsystem.component.rememberHaptics
 import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
 import com.falcon.tripingly.core.designsystem.theme.spacing
-import com.falcon.tripingly.core.model.place.PlaceSearchResult
 import com.falcon.tripingly.core.model.trip.JoinRequestStatus
 import com.falcon.tripingly.feature.map.generated.resources.Res
 import com.falcon.tripingly.feature.map.generated.resources.map_add_day
@@ -89,6 +88,7 @@ import com.falcon.tripingly.feature.map.generated.resources.map_trip_menu
 import com.falcon.tripingly.feature.map.generated.resources.map_unsave_trip
 import com.falcon.tripingly.feature.map.presentation.map.HeaderState
 import com.falcon.tripingly.feature.map.presentation.map.MapAction
+import com.falcon.tripingly.feature.map.presentation.map.SearchResultItem
 import com.falcon.tripingly.feature.map.presentation.map.SearchState
 import com.falcon.tripingly.feature.map.presentation.map.preview.MapHeaderPreview
 import com.falcon.tripingly.feature.map.presentation.map.preview.MapHeaderPreviewStates
@@ -276,16 +276,17 @@ private fun SearchField(search: SearchState, onAction: (MapAction) -> Unit, modi
 /** The search's results under the header, with the credits for OpenStreetMap and Photon. */
 @Composable
 internal fun SearchResults(
-    results: ImmutableList<PlaceSearchResult>,
+    results: ImmutableList<SearchResultItem>,
     onAction: (MapAction) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     GlassSurface(modifier = modifier.fillMaxWidth(), shape = MaterialTheme.shapes.large, blur = false) {
         Column(modifier = Modifier.heightIn(max = SearchResultsMaxHeight).verticalScroll(rememberScrollState()).padding(vertical = MaterialTheme.spacing.small)) {
-            results.forEach { result ->
+            results.forEach { (result, distanceMeters) ->
                 SuggestionItem(
                     title = result.name,
-                    subtitle = result.address,
+                    // No address (OpenStreetMap has none): how far it is from the map's centre.
+                    subtitle = result.address?.takeIf { it.isNotBlank() } ?: distanceMeters?.let { distanceText(it).asString() },
                     onClick = { onAction(MapAction.Search.ResultClick(result)) },
                 )
             }

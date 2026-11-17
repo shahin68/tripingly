@@ -30,6 +30,7 @@ import com.falcon.tripingly.feature.map.presentation.map.MembersEntry
 import com.falcon.tripingly.feature.map.presentation.map.MessageState
 import com.falcon.tripingly.feature.map.presentation.map.PointRouteCardState
 import com.falcon.tripingly.feature.map.presentation.map.RouteSummaryState
+import com.falcon.tripingly.feature.map.presentation.map.SearchResultItem
 import com.falcon.tripingly.feature.map.presentation.map.SearchState
 import com.falcon.tripingly.feature.map.presentation.map.StopsCardState
 import com.falcon.tripingly.feature.map.presentation.map.TripCardState
@@ -160,9 +161,9 @@ internal class DayTabsPreviewStates : PreviewParameterProvider<DayTabsState> {
 }
 
 private val previewSearchResults = persistentListOf(
-    PlaceSearchResult(name = previewPlace.name, address = null, location = previewPlace.location, type = SearchResultType.Place, place = previewPlace),
-    PlaceSearchResult(name = "Rue de Rivoli", address = "75004 Paris, France", location = GeoPoint(48.8556, 2.3601), type = SearchResultType.Street),
-    PlaceSearchResult(name = "Paris", address = "Île-de-France, France", location = GeoPoint(48.8566, 2.3522), type = SearchResultType.City),
+    SearchResultItem(PlaceSearchResult(name = previewPlace.name, address = null, location = previewPlace.location, type = SearchResultType.Place, place = previewPlace), distanceMeters = 2300),
+    SearchResultItem(PlaceSearchResult(name = "Rue de Rivoli", address = "75004 Paris, France", location = GeoPoint(48.8556, 2.3601), type = SearchResultType.Street)),
+    SearchResultItem(PlaceSearchResult(name = "Paris", address = "Île-de-France, France", location = GeoPoint(48.8566, 2.3522), type = SearchResultType.City)),
 )
 
 /** An editor's header, a viewer's with the owner, a header while busy, and the search open with results. */

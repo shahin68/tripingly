@@ -29,6 +29,8 @@ class FakePlaceRepository : PlaceRepository {
         PlaceSearchResult("Vienna", "Austria", GeoPoint(48.2082, 16.3738), SearchResultType.City),
         PlaceSearchResult("Budapest", "Hungary", GeoPoint(47.4979, 19.0402), SearchResultType.City),
         PlaceSearchResult("Berlin", "Germany", GeoPoint(52.52, 13.405), SearchResultType.City),
+        // OpenStreetMap has no address for it: the app shows how far it is instead.
+        PlaceSearchResult("KFC", null, GeoPoint(48.2000, 16.3738), SearchResultType.Place),
     )
 
     private val sights = listOf(
