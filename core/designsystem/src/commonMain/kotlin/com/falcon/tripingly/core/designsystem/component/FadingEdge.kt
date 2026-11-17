@@ -26,18 +26,36 @@ fun Modifier.horizontalFadingEdge(state: ScrollableState, length: Dp = FadingEdg
             drawContent()
             val edge = length.toPx().coerceAtMost(size.width / 2)
             val rtl = layoutDirection == LayoutDirection.Rtl
-            if (state.canScrollBackward) fadeOut(atLeft = !rtl, edge)
-            if (state.canScrollForward) fadeOut(atLeft = rtl, edge)
+            if (state.canScrollBackward) fadeOut(Side.Left.takeUnless { rtl } ?: Side.Right, edge)
+            if (state.canScrollForward) fadeOut(Side.Right.takeUnless { rtl } ?: Side.Left, edge)
         }
 
-/** Erases the content towards the left or right side, fully at the edge, not at all [edge] in. */
-private fun ContentDrawScope.fadeOut(atLeft: Boolean, edge: Float) {
-    val start = if (atLeft) 0f else size.width
-    val end = if (atLeft) edge else size.width - edge
+/** The same for a vertically scrolling list: it fades out at the top or bottom while more of it is hidden there. */
+fun Modifier.verticalFadingEdge(state: ScrollableState, length: Dp = FadingEdgeLength): Modifier =
+    graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
+        .drawWithContent {
+            drawContent()
+            val edge = length.toPx().coerceAtMost(size.height / 2)
+            if (state.canScrollBackward) fadeOut(Side.Top, edge)
+            if (state.canScrollForward) fadeOut(Side.Bottom, edge)
+        }
+
+private enum class Side { Left, Right, Top, Bottom }
+
+/** Erases the content towards [side], fully at the edge, not at all [edge] in. */
+private fun ContentDrawScope.fadeOut(side: Side, edge: Float) {
+    val fade = listOf(Color.Black, Color.Transparent)
+    val (brush, topLeft) = when (side) {
+        Side.Left -> Brush.horizontalGradient(fade, startX = 0f, endX = edge) to Offset.Zero
+        Side.Right -> Brush.horizontalGradient(fade, startX = size.width, endX = size.width - edge) to Offset(size.width - edge, 0f)
+        Side.Top -> Brush.verticalGradient(fade, startY = 0f, endY = edge) to Offset.Zero
+        Side.Bottom -> Brush.verticalGradient(fade, startY = size.height, endY = size.height - edge) to Offset(0f, size.height - edge)
+    }
+    val isHorizontal = side == Side.Left || side == Side.Right
     drawRect(
-        brush = Brush.horizontalGradient(listOf(Color.Black, Color.Transparent), startX = start, endX = end),
-        topLeft = Offset(if (atLeft) 0f else size.width - edge, 0f),
-        size = Size(edge, size.height),
+        brush = brush,
+        topLeft = topLeft,
+        size = if (isHorizontal) Size(edge, size.height) else Size(size.width, edge),
         blendMode = BlendMode.DstOut,
     )
 }

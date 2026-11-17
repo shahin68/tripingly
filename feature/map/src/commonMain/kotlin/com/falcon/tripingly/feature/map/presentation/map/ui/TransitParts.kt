@@ -77,6 +77,7 @@ import com.falcon.tripingly.core.designsystem.component.SegmentedToggle
 import com.falcon.tripingly.core.designsystem.component.SegmentedToggleOption
 import com.falcon.tripingly.core.designsystem.component.SheetHeader
 import com.falcon.tripingly.core.designsystem.component.horizontalFadingEdge
+import com.falcon.tripingly.core.designsystem.component.verticalFadingEdge
 import com.falcon.tripingly.core.designsystem.theme.MapColors
 import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
 import com.falcon.tripingly.core.designsystem.theme.spacing
@@ -235,7 +236,13 @@ internal fun TransitNoteText(note: TransitNote, modifier: Modifier = Modifier) {
 internal fun TransitStepsSheet(sheet: MapSheet.TransitSteps, onClose: () -> Unit, modifier: Modifier = Modifier) {
     Column(modifier.padding(bottom = MaterialTheme.spacing.large)) {
         SheetHeader(title = sheet.title.asString(), subtitle = sheet.subtitle?.asString(), onClose = onClose)
-        LazyColumn(contentPadding = PaddingValues(horizontal = MaterialTheme.spacing.large, vertical = MaterialTheme.spacing.small)) {
+        val listState = rememberLazyListState()
+        LazyColumn(
+            state = listState,
+            // Fades out under the header and at the foot while more of the timeline is hidden there.
+            modifier = Modifier.verticalFadingEdge(listState),
+            contentPadding = PaddingValues(horizontal = MaterialTheme.spacing.large, vertical = MaterialTheme.spacing.small),
+        ) {
             items(sheet.rows, key = { it.key }) { row -> TransitTimelineRow(row, Modifier.animateItem()) }
             item(key = "foot") {
                 Column(Modifier.padding(top = MaterialTheme.spacing.medium), verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraSmall)) {
