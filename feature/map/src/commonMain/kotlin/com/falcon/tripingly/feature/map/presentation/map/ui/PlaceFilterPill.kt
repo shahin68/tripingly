@@ -1,6 +1,8 @@
 package com.falcon.tripingly.feature.map.presentation.map.ui
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandHorizontally
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -11,6 +13,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
@@ -44,26 +47,28 @@ import org.jetbrains.compose.resources.stringResource
 /**
  * The map's filter at the top end, mirroring the join pill at the start: a glass circle that grows toward the start
  * into a pill of chips (All and every kind), its circle staying at the end as the close button (the canvas, Shahin
- * 2026-11-17). While kinds are picked the closed circle is lit, so a filtered map is never a surprise.
+ * 2026-11-17). While kinds are picked the closed circle is lit, so a filtered map is never a surprise. Open, it is as tall
+ * as closed, its chips as big as the lit disc, and it grows fast (Shahin, 2026-11-17).
  */
 @Composable
 internal fun PlaceFilterPill(filter: PlaceFilterState, onAction: (MapAction) -> Unit, modifier: Modifier = Modifier) {
     val haptics = rememberHaptics()
     GlassSurface(modifier = modifier, shape = CircleShape, blur = false) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
+        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.height(ButtonSize)) {
             AnimatedVisibility(
                 visible = filter.isOpen,
                 // The weight lets the chips take what room there is, scrolling within it.
                 modifier = Modifier.weight(1f, fill = false),
-                enter = expandHorizontally(expandFrom = Alignment.End) + fadeIn(),
-                exit = shrinkHorizontally(shrinkTowards = Alignment.End) + fadeOut(),
+                enter = expandHorizontally(tween(GROW_MILLIS, easing = FastOutSlowInEasing), expandFrom = Alignment.End) + fadeIn(tween(GROW_MILLIS)),
+                exit = shrinkHorizontally(tween(GROW_MILLIS, easing = FastOutSlowInEasing), shrinkTowards = Alignment.End) + fadeOut(tween(GROW_MILLIS)),
             ) {
                 CategoryChipRow(
                     chips = filter.chips,
                     onToggle = { onAction(MapAction.PlaceFilter.ToggleCategory(it)) },
-                    // As far from the pill's start as the chips are from each other and from the circle.
+                    // As far from the pill's start as the chips are from each other and from the circle; as tall as the lit
+                    // disc, so the pill keeps the circle's height.
                     edgePadding = MaterialTheme.spacing.extraSmall,
-                    modifier = Modifier.padding(vertical = MaterialTheme.spacing.extraSmall),
+                    chipHeight = CircleSize,
                 )
             }
             val label = stringResource(if (filter.isOpen) Res.string.map_filter_close else Res.string.map_filter_open)
@@ -100,6 +105,7 @@ internal fun PlaceFilterPill(filter: PlaceFilterState, onAction: (MapAction) -> 
 private val CircleSize = 32.dp
 private val ButtonSize = 40.dp
 private val IconSize = 20.dp
+private const val GROW_MILLIS = 200
 
 @Composable
 private fun PlaceFilterPreviewContent() {

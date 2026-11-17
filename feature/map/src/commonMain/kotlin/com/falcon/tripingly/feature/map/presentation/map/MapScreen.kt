@@ -16,6 +16,8 @@ import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.gestures.AnchoredDraggableState
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
@@ -312,34 +314,39 @@ internal fun MapScreen(
             Box(Modifier.fillMaxWidth()) {
                 var shownJoinRequests by remember { mutableStateOf(state.joinRequests) }
                 state.joinRequests?.let { shownJoinRequests = it }
-                androidx.compose.animation.AnimatedVisibility(
-                    visible = state.joinRequests != null && !isRouteBarShown,
-                    enter = scaleIn() + fadeIn(),
-                    exit = scaleOut() + fadeOut(),
-                    modifier = Modifier.offset { IntOffset(0, titleHeight - with(density) { (headerHeight ?: 0.dp).roundToPx() }) },
-                ) {
-                    shownJoinRequests?.let { requests ->
-                        JoinRequestsPill(
-                            requests = requests,
-                            onClick = { onAction(MapAction.Header.OpenJoinRequests) },
-                            onSeen = { onAction(MapAction.Header.JoinRequestsSeen) },
-                            modifier = Modifier.padding(horizontal = MaterialTheme.spacing.medium),
-                        )
-                    }
-                }
-                // The filter circle mirrors the join pill at the end, at the same height; it scales away while a route,
-                // Around or the route bar shows, keeping its last look while it goes.
-                AnimatedContent(
-                    targetState = state.placeFilter.takeUnless { isRouteBarShown },
-                    contentKey = { it != null },
-                    transitionSpec = { (scaleIn() + fadeIn()) togetherWith (scaleOut() + fadeOut()) },
-                    contentAlignment = Alignment.TopEnd,
+                // The filter circle mirrors the join pill at the end, at the same height, and opens up to the join pill
+                // with a small gap (Shahin, 2026-11-17); it scales away while a route, Around or the route bar shows,
+                // keeping its last look while it goes.
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
                     modifier = Modifier
-                        .align(Alignment.TopEnd)
-                        .offset { IntOffset(0, titleHeight - with(density) { (headerHeight ?: 0.dp).roundToPx() }) },
-                    label = "map filter",
-                ) { filter ->
-                    if (filter != null) PlaceFilterPill(filter = filter, onAction = onAction, modifier = Modifier.padding(horizontal = MaterialTheme.spacing.medium))
+                        .fillMaxWidth()
+                        .offset { IntOffset(0, titleHeight - with(density) { (headerHeight ?: 0.dp).roundToPx() }) }
+                        .padding(horizontal = MaterialTheme.spacing.medium),
+                ) {
+                    androidx.compose.animation.AnimatedVisibility(
+                        visible = state.joinRequests != null && !isRouteBarShown,
+                        enter = scaleIn() + fadeIn(),
+                        exit = scaleOut() + fadeOut(),
+                    ) {
+                        shownJoinRequests?.let { requests ->
+                            JoinRequestsPill(
+                                requests = requests,
+                                onClick = { onAction(MapAction.Header.OpenJoinRequests) },
+                                onSeen = { onAction(MapAction.Header.JoinRequestsSeen) },
+                            )
+                        }
+                    }
+                    AnimatedContent(
+                        targetState = state.placeFilter.takeUnless { isRouteBarShown },
+                        contentKey = { it != null },
+                        transitionSpec = { (scaleIn() + fadeIn()) togetherWith (scaleOut() + fadeOut()) },
+                        contentAlignment = Alignment.TopEnd,
+                        modifier = Modifier.weight(1f),
+                        label = "map filter",
+                    ) { filter ->
+                        if (filter != null) PlaceFilterPill(filter = filter, onAction = onAction)
+                    }
                 }
                 state.search?.results?.takeIf { it.isNotEmpty() }?.let { results ->
                     SearchResults(results = results, onAction = onAction, modifier = Modifier.padding(horizontal = MaterialTheme.spacing.medium))

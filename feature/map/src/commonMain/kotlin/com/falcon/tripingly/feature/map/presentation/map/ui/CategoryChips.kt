@@ -2,6 +2,7 @@ package com.falcon.tripingly.feature.map.presentation.map.ui
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyRow
@@ -32,7 +33,7 @@ import org.jetbrains.compose.resources.stringResource
 /**
  * Kinds of places to pick, scrolling out to the edges: All first, then each kind with its icon and, where known, how many
  * there are ("Café 4"). One tap picks or unpicks a kind; All clears the pick. Used by the route card, the map filter and
- * Around (the canvas, Shahin 2026-11-17).
+ * Around (the canvas, Shahin 2026-11-17). [chipHeight] makes the chips smaller where the row sits in a slim pill.
  */
 @Composable
 internal fun CategoryChipRow(
@@ -40,6 +41,7 @@ internal fun CategoryChipRow(
     onToggle: (PlaceCategory?) -> Unit,
     modifier: Modifier = Modifier,
     edgePadding: Dp = MaterialTheme.spacing.small,
+    chipHeight: Dp = Dp.Unspecified,
 ) {
     val haptics = rememberHaptics()
     val listState = rememberLazyListState()
@@ -62,7 +64,7 @@ internal fun CategoryChipRow(
                 leading = chip.category?.let { category ->
                     { Icon(category.icon, contentDescription = null, modifier = Modifier.padding(start = MaterialTheme.spacing.medium - MaterialTheme.spacing.extraSmall).size(ChipIconSize)) }
                 },
-                modifier = Modifier.animateItem(),
+                modifier = Modifier.animateItem().height(chipHeight),
             )
         }
     }
