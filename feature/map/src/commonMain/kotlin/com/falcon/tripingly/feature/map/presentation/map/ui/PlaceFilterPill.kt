@@ -19,7 +19,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
@@ -102,7 +102,7 @@ internal fun PlaceFilterPill(filter: PlaceFilterState, onAction: (MapAction) -> 
                     } else {
                         Crossfade(filter.isOpen, animationSpec = tween(GROW_MILLIS), label = "filter icon") { isOpen ->
                             Icon(
-                                imageVector = if (isOpen) Icons.AutoMirrored.Filled.ArrowForward else Icons.Default.FilterList,
+                                imageVector = if (isOpen) Icons.AutoMirrored.Filled.KeyboardArrowRight else Icons.Default.FilterList,
                                 contentDescription = label,
                                 tint = tint,
                                 modifier = Modifier.size(IconSize),
