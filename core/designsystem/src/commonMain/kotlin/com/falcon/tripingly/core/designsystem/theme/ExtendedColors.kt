@@ -33,6 +33,12 @@ data class ExtendedColors(
     /** Something switched on that failed and can be tried again: orange, with [onAttention] on it. */
     val attention: Color,
     val onAttention: Color,
+    /**
+     * An avatar without a photo, its letter in [onAvatar]: a quiet grey in light, a lighter grey in dark so faces stand out
+     * on the dark map and glass (Shahin, 2026-11-17).
+     */
+    val avatar: Color,
+    val onAvatar: Color,
 )
 
 internal val LightExtendedColors = ExtendedColors(
@@ -47,6 +53,8 @@ internal val LightExtendedColors = ExtendedColors(
     onHighlight = OnHighlightLight,
     attention = AttentionLight,
     onAttention = OnAttentionLight,
+    avatar = SurfaceContainerHighestLight,
+    onAvatar = OnSurfaceVariantLight,
 )
 internal val DarkExtendedColors = ExtendedColors(
     glass = GlassDark,
@@ -60,6 +68,8 @@ internal val DarkExtendedColors = ExtendedColors(
     onHighlight = OnHighlightDark,
     attention = AttentionDark,
     onAttention = OnAttentionDark,
+    avatar = AvatarDark,
+    onAvatar = OnAvatarDark,
 )
 
 val LocalExtendedColors = staticCompositionLocalOf { LightExtendedColors }
