@@ -11,6 +11,9 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -115,12 +118,14 @@ fun SecondaryButton(
  * with the brand colour like [PrimaryButton] while on. Its [icon] stays the same either way; the colour says it's on.
  * [isFailed]: on, but what it shows couldn't be had; orange, and the caller gives it a "Retry" [text] and tap.
  * [tint]: the button stands for something else for now (the plan's Route turning into Around's ✕): that colour's glass
- * look (a light shade of it, the icon and text in it), no on/off. Colours and content glide from one look to the
- * next, the width easing with the text, so the button turns into the other one instead of being swapped.
+ * look (a light shade of it, a thin stroke and the icon in it), no on/off. Without [text] it is a circle with its
+ * [icon] (the caller gives it a content description). Colours, stroke and content glide from one look to the next,
+ * the width easing with them, so the button turns into the other one; callers keep ONE call site for all its looks,
+ * since a second call is another button that can't morph.
  */
 @Composable
 fun ToggleButton(
-    text: String,
+    text: String?,
     checked: Boolean,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
@@ -149,6 +154,8 @@ fun ToggleButton(
     val look = tween<Color>(MORPH_MILLIS)
     val containerColor = animateColorAsState(container, look, label = "toggle container")
     val contentColor = animateColorAsState(content, look, label = "toggle content")
+    // The stroke is always there, clear unless tinted, so it fades in and out instead of changing the button's size.
+    val strokeColor = animateColorAsState(tint ?: container.copy(alpha = 0f), look, label = "toggle stroke")
     // One button that only changes colour, so switching doesn't replace it (and its ripple) with another.
     Button(
         onClick = {
@@ -156,10 +163,14 @@ fun ToggleButton(
             onClick()
         },
         shape = CircleShape,
-        contentPadding = size.padding,
+        // The padding is part of the content below, so it glides with the width.
+        contentPadding = PaddingValues(0.dp),
+        border = BorderStroke(StrokeWidth, strokeColor.value),
         colors = ButtonDefaults.buttonColors(containerColor = containerColor.value, contentColor = contentColor.value),
         modifier = modifier
             .then(if (isToggle) Modifier.semantics { toggleableState = ToggleableState(checked) } else Modifier)
+            // As small as a circle: Material's own minimum width is wider than a 40 dp circle.
+            .widthIn(min = size.height)
             .heightIn(min = size.height)
             .skeleton(CircleShape),
     ) {
@@ -167,9 +178,16 @@ fun ToggleButton(
         AnimatedContent(
             targetState = text to icon,
             transitionSpec = { fadeIn(tween(MORPH_MILLIS)) togetherWith fadeOut(tween(MORPH_MILLIS / 2)) using SizeTransform(clip = false) { _, _ -> tween(MORPH_MILLIS) } },
+            contentAlignment = Alignment.Center,
             label = "toggle content",
         ) { (shownText, shownIcon) ->
-            Row(verticalAlignment = Alignment.CenterVertically) { ButtonContent(shownText, isLoading = false, size, shownIcon) }
+            if (shownText != null) {
+                Row(Modifier.padding(size.padding), verticalAlignment = Alignment.CenterVertically) { ButtonContent(shownText, isLoading = false, size, shownIcon) }
+            } else {
+                Box(Modifier.size(size.height), contentAlignment = Alignment.Center) {
+                    shownIcon?.let { Icon(it, contentDescription = null, modifier = Modifier.size(CircleIconSize)) }
+                }
+            }
         }
     }
 }
@@ -197,6 +215,8 @@ private fun ButtonContent(text: String, isLoading: Boolean, size: ButtonSize, ic
 
 private const val MORPH_MILLIS = 250
 private const val TINT_SHADE = 0.18f
+private val StrokeWidth = 1.dp
+private val CircleIconSize = 20.dp
 private val SpinnerSize = 22.dp
 private val IconSize = 18.dp
 
@@ -217,7 +237,7 @@ private fun ButtonsPreviewContent() {
         ToggleButton("Route", checked = false, onClick = {}, icon = Icons.Outlined.AutoAwesome)
         ToggleButton("Route", checked = true, onClick = {}, icon = Icons.Outlined.AutoAwesome)
         ToggleButton("Retry", checked = true, onClick = {}, icon = Icons.Outlined.Refresh, isFailed = true)
-        ToggleButton("Around", checked = false, onClick = {}, icon = Icons.Default.Close, tint = Color(0xFF8A5AAB))
+        ToggleButton(null, checked = false, onClick = {}, icon = Icons.Default.Close, tint = Color(0xFF8A5AAB))
     }
 }
 

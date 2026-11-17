@@ -97,7 +97,6 @@ import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
 import com.falcon.tripingly.feature.map.presentation.component.AlongTheWayPinColor
 import com.falcon.tripingly.feature.map.generated.resources.map_around_close
-import com.falcon.tripingly.feature.map.generated.resources.map_around
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.contentDescription
 
@@ -121,29 +120,36 @@ internal fun StopsCard(
             pluralStringResource(Res.plurals.map_stop_count, card.stops.size, card.stops.size)
         }
         PlanTitleRow(title = { ScrambleText(title, it, style = MaterialTheme.typography.titleMedium) }) {
-            val around = card.around
-            if (around != null) {
-                // While Around shows, Route turns into its purple ✕ (Shahin 2026-11-17): the same button gliding over.
+            // ONE button for Route, Retry and Around's ✕, so it morphs from one to the next (Shahin 2026-11-17): while
+            // Around shows, Route turns into its purple glass circle ✕.
+            val isAround = card.around != null
+            if (isAround || card.isRouteOn != null) {
                 val closeLabel = stringResource(Res.string.map_around_close)
                 ToggleButton(
-                    text = stringResource(Res.string.map_around),
-                    checked = false,
-                    onClick = { onAction(MapAction.Around.Close) },
-                    icon = Icons.Default.Close,
-                    tint = AlongTheWayPinColor,
-                    modifier = Modifier.semantics { contentDescription = closeLabel },
+                    text = when {
+                        isAround -> null
+                        card.isRouteFailed -> stringResource(Res.string.map_route_retry)
+                        else -> stringResource(Res.string.map_route)
+                    },
+                    checked = !isAround && card.isRouteOn == true,
+                    onClick = {
+                        onAction(
+                            when {
+                                isAround -> MapAction.Around.Close
+                                card.isRouteFailed -> MapAction.Plan.RetryRoute
+                                else -> MapAction.Plan.ToggleRoute
+                            },
+                        )
+                    },
+                    icon = when {
+                        isAround -> Icons.Default.Close
+                        card.isRouteFailed -> Icons.Outlined.Refresh
+                        else -> Icons.Outlined.Directions
+                    },
+                    isFailed = card.isRouteFailed,
+                    tint = AlongTheWayPinColor.takeIf { isAround },
+                    modifier = if (isAround) Modifier.semantics { contentDescription = closeLabel } else Modifier,
                 )
-            } else {
-                card.isRouteOn?.let { isOn ->
-                    // Neutral like ⋯ while off; green once on; orange Retry when the route failed (a tap asks again, it stays on).
-                    ToggleButton(
-                        text = stringResource(if (card.isRouteFailed) Res.string.map_route_retry else Res.string.map_route),
-                        checked = isOn,
-                        onClick = { onAction(if (card.isRouteFailed) MapAction.Plan.RetryRoute else MapAction.Plan.ToggleRoute) },
-                        icon = if (card.isRouteFailed) Icons.Outlined.Refresh else Icons.Outlined.Directions,
-                        isFailed = card.isRouteFailed,
-                    )
-                }
             }
             DayMenuButton(dayNumber, card, editorMenu = editorMenu, onAction = onAction)
         }
