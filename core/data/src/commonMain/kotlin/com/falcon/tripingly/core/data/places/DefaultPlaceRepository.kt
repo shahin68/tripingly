@@ -132,18 +132,18 @@ internal class DefaultPlaceRepository(
         }.toMap()
     }
 
-    /** Sends the waiting squares, one request per zoom, filter and 16 squares, once callers stop adding for a moment. */
+    /** Sends the waiting squares, one request per zoom, filter (kinds or name) and 16 squares, once callers stop adding for a moment. */
     private suspend fun send() {
         delay(GATHER_FOR)
         val batch = lock.withLock {
             sending = null
             waiting.toList().also { waiting.clear() }
         }
-        batch.groupBy { (square, _) -> square.zoom to square.categories }.forEach { (key, group) ->
-            val (zoom, categories) = key
+        batch.groupBy { (square, _) -> Triple(square.zoom, square.categories, square.name) }.forEach { (key, group) ->
+            val (zoom, categories, name) = key
             group.chunked(MAX_SQUARES_PER_REQUEST).forEach { chunk ->
                 scope.launch {
-                    val result = api.tiles(chunk.joinToString(",") { (square, _) -> square.id }, zoom, PLACES_PER_SQUARE, categories.query())
+                    val result = api.tiles(chunk.joinToString(",") { (square, _) -> square.id }, zoom, PLACES_PER_SQUARE, categories.query(), name)
                         .map { response -> response.tiles.associate { it.tile to PlacesInView(it.places.map { place -> place.toMapPlace() }, it.clusters.map { cluster -> cluster.toPlaceCluster() }) } }
                     val changed = lock.withLock {
                         chunk.mapNotNull { (square, loaded) ->

@@ -93,7 +93,8 @@ internal class MapStateMapper(
         loadError = model.loadError,
         header = header(),
         joinRequests = joinRequests(),
-        search = model.search?.let { SearchState(it.query, it.results.toImmutableList(), it.isSearching) },
+        // The field's spinner also turns while the places named so load on the map.
+        search = model.search?.let { SearchState(it.query, it.results.toImmutableList(), it.isSearching || (model.placeFilter.name != null && model.placeFilter.isLoading)) },
         dayTabs = DayTabsState(days.map { day -> DayTab(day.id, day.position + 1, day.date?.let(DateUtils::formatAbbreviated), hasNew = day.markers.any { it.id in markedStopIds }, canDelete = canEdit && days.size > 1 && canDeleteDay(day.markers)) }.toImmutableList(), activeIndex),
         plan = route.between?.let { PointRouteCardState(it.from, it.to, routeSummary(), it.fromLabel, it.toLabel) } ?: stopsCard(),
         routeBar = route.routeBar(),
@@ -278,7 +279,11 @@ internal class MapStateMapper(
         // Hidden places come first: only the route's places stay, and the pin Around is around, then the route makes the
         // rest dots as always.
         val isRoutes = { id: String -> id in highlighted || id in endPlaces || id in kept || id == model.around?.pinPlaceId }
-        val visible = if (model.arePlacesHidden) pins.filter { isRoutes(it.place.id) } else pins
+        // The map searched by name shows only the places named so, as full pins at every zoom, also while places are
+        // hidden or a route or Around makes the rest dots: they are what was asked for (Shahin, 2026-11-17).
+        val isNamed = model.placeFilter.name != null
+        val arePlacesHidden = model.arePlacesHidden && !isNamed
+        val visible = if (arePlacesHidden) pins.filter { isRoutes(it.place.id) } else pins
         val shown = visible.mapTo(HashSet()) { it.place.id }
         val placePins = visible.map {
             when {
@@ -287,6 +292,7 @@ internal class MapStateMapper(
                 it.place.id in highlighted -> it.copy(isAlongTheWay = true)
                 // The pin Around is around stays itself, kept on top of the places it found (Shahin 2026-11-17).
                 it.place.id == model.around?.pinPlaceId -> it.copy(isKept = true)
+                isNamed -> it.copy(isKept = true)
                 othersAreDots -> it.copy(isDot = true)
                 else -> it
             }
@@ -303,7 +309,7 @@ internal class MapStateMapper(
             stops = stops.toImmutableList(),
             placePins = placePins.toImmutableList(),
             pinDotBelowZoom = config.pinDotBelowZoom,
-            placeClusters = model.pins.clusters.takeUnless { model.arePlacesHidden }.orEmpty().toImmutableList(),
+            placeClusters = model.pins.clusters.takeUnless { arePlacesHidden }.orEmpty().toImmutableList(),
             // A place from search knows no cover image, so its pin's place draws it, photo included.
             selectedPlace = when (val selection = model.selection) {
                 is Selection.Place -> selection.place.let { place -> placePins.firstOrNull { it.place.id == place.id }?.place ?: place }

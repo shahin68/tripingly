@@ -55,11 +55,12 @@ class FakePlaceRepository : PlaceRepository {
     override suspend fun loadedPlacesIn(squares: Collection<PlaceSquare>): Map<PlaceSquare, PlacesInView> =
         squares.associateWith { square ->
             val bounds = square.bounds
-            // A square of some kinds lists only places of those kinds, as the server's tiles do.
+            // A square of some kinds, or of a name, lists only places of those kinds or named so, as the server's tiles do.
             PlacesInView(
                 sights.filter {
                     it.location.lat >= bounds.south && it.location.lat < bounds.north && it.location.lng >= bounds.west && it.location.lng < bounds.east &&
-                        (square.categories.isEmpty() || it.category in square.categories)
+                        (square.categories.isEmpty() || it.category in square.categories) &&
+                        (square.name == null || it.name.contains(square.name!!, ignoreCase = true))
                 },
                 emptyList(),
             )

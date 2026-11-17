@@ -259,6 +259,8 @@ private fun SearchField(search: SearchState, onAction: (MapAction) -> Unit, modi
             state = search.query,
             placeholder = stringResource(Res.string.map_search_placeholder),
             onTextChange = { onAction(MapAction.Search.QueryChanged(it)) },
+            // The keyboard's search key, no result picked: the map shows only the places named so.
+            onImeAction = { onAction(MapAction.Search.Submit) },
             modifier = Modifier.weight(1f).focusRequester(focusRequester),
             style = AppTextFieldStyle.Inline,
             trailing = if (search.isSearching) {

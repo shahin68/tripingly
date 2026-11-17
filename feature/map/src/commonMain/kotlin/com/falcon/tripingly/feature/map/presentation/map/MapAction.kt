@@ -70,6 +70,9 @@ sealed interface MapAction {
         data object Open : Search
         data class QueryChanged(val query: String) : Search
         data class ResultClick(val result: PlaceSearchResult) : Search
+
+        /** The keyboard's search key, no result picked: the map shows only the places named so. */
+        data object Submit : Search
         data object Close : Search
     }
 

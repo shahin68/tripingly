@@ -115,7 +115,7 @@ class MapViewModel(
         transitAreas = appConfigRepository.config.map { it.transitAreas }.stateIn(viewModelScope, SharingStarted.Eagerly, appConfigRepository.config.value.transitAreas),
     )
     private val around = MapAround(context, placeRepository, ::hasRoutes, showAroundIsPro = { sendEvent(MapEvent.OpenPaywall) }, showWholePlan = { sendEvent(MapEvent.ShowWholePlan) })
-    private val search = MapSearch(context, camera, selection, placeRepository, routeTo = routes::routeToResult)
+    private val search = MapSearch(context, camera, selection, pins, placeRepository, routeTo = routes::routeToResult)
     private val sharing = MapSharing(context, tripRepository, socialRepository)
     private val opening = MapOpening(context, camera, tripRepository, mapViews, ::hasRoutes, stopId, showMembers, showComments)
     private val joinRequests = MapJoinRequests(context, tripRepository, mapViews)
@@ -209,6 +209,7 @@ class MapViewModel(
             is MapAction.Search.Open -> search.open()
             is MapAction.Search.QueryChanged -> search.onQueryChanged(action.query)
             is MapAction.Search.ResultClick -> search.onResultClick(action.result)
+            is MapAction.Search.Submit -> search.submit()
             is MapAction.Search.Close -> search.close()
         }
     }
@@ -332,7 +333,7 @@ class MapViewModel(
         val config = appConfigRepository.config.value
         val mapper = MapStateMapper(details, model, config, myUserId)
         // Most changes (a search keystroke, a message, a sheet) don't touch the map: its ~150 pins aren't built again.
-        val inputs = listOf(details, model.activeDayIndex, model.route, model.pins, model.selection, model.location.permission, model.news, model.arePlacesHidden, model.around, model.placeFilter.categories, config)
+        val inputs = listOf(details, model.activeDayIndex, model.route, model.pins, model.selection, model.location.permission, model.news, model.arePlacesHidden, model.around, model.placeFilter.categories, model.placeFilter.name, config)
         val layers = layers?.takeIf { it.first == inputs }?.second ?: mapper.layers().also { layers = inputs to it }
         return mapper.map(layers)
     }

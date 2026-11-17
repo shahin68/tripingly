@@ -2710,6 +2710,36 @@ class MapViewModelTest {
         assertEquals(false, viewModel.uiState.value.placeFilter?.isLoading)
     }
 
+    @Test
+    fun `the keyboard's search shows only the places named so, as full pins, until the search closes`() = runTest(testDispatcher) {
+        addStops(GeoPoint(48.85, 2.30))
+        val viewModel = viewModel()
+        restOnTarget(viewModel)
+
+        viewModel.onAction(MapAction.Search.Open)
+        viewModel.uiState.value.search!!.query.setTextAndPlaceCursorAtEnd("louv")
+        viewModel.onAction(MapAction.Search.QueryChanged("louv"))
+        places.squaresDelayMillis = 1_000
+        viewModel.onAction(MapAction.Search.Submit)
+        testScheduler.runCurrent()
+        assertEquals(true, viewModel.uiState.value.search?.isSearching, "the field's spinner turns while they load")
+        assertEquals(true, viewModel.uiState.value.search?.results?.isEmpty(), "no results list")
+        testScheduler.advanceUntilIdle()
+
+        assertEquals("louv", places.requests.last().map { it.name }.toSet().single())
+        val pins = viewModel.uiState.value.layers.placePins
+        assertEquals(listOf("Louvre"), pins.map { it.place.name })
+        assertTrue(pins.none { it.isDot } && pins.all { it.isKept }, "full pins, also zoomed out, during a route or Around")
+        assertEquals(false, viewModel.uiState.value.search?.isSearching)
+
+        // Back puts the map as it was: every place, as plain pins.
+        viewModel.onAction(MapAction.Search.Close)
+        testScheduler.advanceUntilIdle()
+        assertNull(places.requests.last().map { it.name }.toSet().single())
+        assertEquals(setOf("Eiffel Tower", "Louvre"), viewModel.uiState.value.layers.placePins.map { it.place.name }.toSet())
+        assertTrue(viewModel.uiState.value.layers.placePins.none { it.isKept })
+    }
+
     /** Stops next to the Eiffel Tower and a walk from the Louvre; the first one's card open. */
     private suspend fun TestScope.openFirstStopCard(): MapViewModel {
         addStops(GeoPoint(48.8580, 2.2950), GeoPoint(48.8600, 2.3300))

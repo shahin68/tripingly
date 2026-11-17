@@ -1,6 +1,7 @@
 package com.falcon.tripingly.feature.map.presentation.map.ui
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandHorizontally
@@ -18,7 +19,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
@@ -71,6 +72,8 @@ internal fun PlaceFilterPill(filter: PlaceFilterState, onAction: (MapAction) -> 
                     // disc, so the pill keeps the circle's height.
                     edgePadding = MaterialTheme.spacing.extraSmall,
                     chipHeight = CircleSize,
+                    // All stays at the start while the kinds scroll, so clearing the pick is always one tap away.
+                    isAllPinned = true,
                 )
             }
             val label = stringResource(if (filter.isOpen) Res.string.map_filter_close else Res.string.map_filter_open)
@@ -92,16 +95,19 @@ internal fun PlaceFilterPill(filter: PlaceFilterState, onAction: (MapAction) -> 
                         .background(if (filter.isActive && !filter.isOpen) MaterialTheme.extendedColors.highlight else Color.Transparent, CircleShape),
                 ) {
                     val tint = if (filter.isActive && !filter.isOpen) MaterialTheme.extendedColors.onHighlight else MaterialTheme.colorScheme.onSurface
-                    // While the kinds picked load, a spinner turns where the icon was; the button still works.
+                    // While the kinds picked load, a spinner turns where the icon was; the button still works. Open, an
+                    // arrow points the way the pill closes, to the end (Shahin, 2026-11-17).
                     if (filter.isLoading) {
                         CircularProgressIndicator(color = tint, strokeWidth = SpinnerStroke, modifier = Modifier.size(IconSize))
                     } else {
-                        Icon(
-                            imageVector = if (filter.isOpen) Icons.Default.Close else Icons.Default.FilterList,
-                            contentDescription = label,
-                            tint = tint,
-                            modifier = Modifier.size(IconSize),
-                        )
+                        Crossfade(filter.isOpen, animationSpec = tween(GROW_MILLIS), label = "filter icon") { isOpen ->
+                            Icon(
+                                imageVector = if (isOpen) Icons.AutoMirrored.Filled.ArrowForward else Icons.Default.FilterList,
+                                contentDescription = label,
+                                tint = tint,
+                                modifier = Modifier.size(IconSize),
+                            )
+                        }
                     }
                 }
             }

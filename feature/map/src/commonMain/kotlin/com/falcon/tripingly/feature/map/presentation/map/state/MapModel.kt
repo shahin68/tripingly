@@ -89,9 +89,15 @@ internal data class MapModel(
 
 /**
  * The map's filter: its pill is [isOpen]; only places of [categories] show (none picked: every kind). The trip's stops
- * always show (Shahin, 2026-11-17).
+ * always show (Shahin, 2026-11-17). While the keyboard's search key searched the map for [name], only places named so
+ * show instead, as full pins also during a route, until the search's ✕ or back puts the map back (Shahin, 2026-11-17).
  */
-internal data class PlaceFilterModel(val isOpen: Boolean = false, val categories: Set<PlaceCategory> = emptySet(), val isLoading: Boolean = false)
+internal data class PlaceFilterModel(
+    val isOpen: Boolean = false,
+    val categories: Set<PlaceCategory> = emptySet(),
+    val isLoading: Boolean = false,
+    val name: String? = null,
+)
 
 /**
  * The places around a pin (Tripinly Pro): the ring around [center] has [radiusMeters], dragged by its handle; only places

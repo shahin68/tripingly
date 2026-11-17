@@ -72,36 +72,62 @@ internal class MapPins(
     }
 
     /**
+     * The map searched by [name] (null: the search closed): only places named so load and show, wherever the camera
+     * goes, also while places are hidden; the kinds picked wait meanwhile and come back with the map as it was.
+     */
+    fun setName(name: String?) {
+        if (context.model.value.placeFilter.name == name) return
+        refilter({ it.copy(name = name) }) { place -> name == null || place.name.contains(name, ignoreCase = true) }
+    }
+
+    /**
      * The map's filter picked [categories]: only places of those kinds load and show (none: every kind), other days'
      * stops too by their kind; the open day's stops always stay. At once the pins shown so far keep only those kinds, so
      * the map answers the tap (Shahin, 2026-11-17); the squares of the camera's last rest load again for the kinds
      * picked, the filter's circle turning meanwhile.
      */
-    fun setFilter(categories: Set<PlaceCategory>) {
-        val keeps = { place: MapPlace -> categories.isEmpty() || place.category in categories }
+    fun setFilter(categories: Set<PlaceCategory>) =
+        refilter({ it.copy(categories = categories) }) { place -> categories.isEmpty() || place.category in categories }
+
+    /** The filter changes: the pins shown keep what it [keeps] at once, the camera's last rest loads for the rest. */
+    private fun refilter(change: (PlaceFilterModel) -> PlaceFilterModel, keeps: (MapPlace) -> Boolean) {
         val rest = lastRest
         context.update { model ->
+            val filter = change(model.placeFilter)
+            val isAll = filter.name == null && filter.categories.isEmpty()
             model.copy(
-                placeFilter = model.placeFilter.copy(categories = categories, isLoading = rest != null && !model.arePlacesHidden),
-                // A cluster counts every kind: it waits for the kinds' own squares. The area goes until they come, so a
-                // square of the old kinds arriving late (a prefetch, a reload) can't bring their pins back for a moment.
-                pins = PinsModel(pins = model.pins.pins.filter { keeps(it.place) }, clusters = if (categories.isEmpty()) model.pins.clusters else emptyList()),
+                placeFilter = filter.copy(isLoading = rest != null && !(model.arePlacesHidden && filter.name == null)),
+                // A cluster counts every place: it waits for the filter's own squares. The area goes until they come, so a
+                // square of the old filter arriving late (a prefetch, a reload) can't bring its pins back for a moment.
+                pins = PinsModel(pins = model.pins.pins.filter { keeps(it.place) }, clusters = if (isAll) model.pins.clusters else emptyList()),
             )
         }
         closestZoom = null
-        rest?.let { (bounds, zoom) -> onCameraRest(bounds, zoom) }
+        if (rest == null) return
+        if (isHidden) {
+            // Places hidden again (the search closed): only the route's places stay, nothing loads.
+            pinsJob?.cancel()
+            prefetchJob?.cancel()
+            context.update { it.copy(placeFilter = it.placeFilter.copy(isLoading = false)) }
+        } else {
+            onCameraRest(rest.first, rest.second)
+        }
     }
 
     private val categories get() = context.model.value.placeFilter.categories
+    private val name get() = context.model.value.placeFilter.name
+
+    /** Places are hidden and nothing loads, unless the map was searched by name. */
+    private val isHidden get() = context.model.value.let { it.arePlacesHidden && it.placeFilter.name == null }
 
     fun onCameraRest(view: GeoBounds, zoom: Float) {
         lastRest = view to zoom
-        if (context.model.value.arePlacesHidden) return
+        if (isHidden) return
         val bounds = view.withPinMargin()
         val closest = closestZoom
         keepUnlisted = closest != null && zoom > closest - TIDY_ZOOM_OUT
         closestZoom = if (keepUnlisted && closest != null) maxOf(closest, zoom) else zoom
-        val squares = PlaceSquare.covering(bounds, floor(zoom).toInt(), categories = categories)
+        val squares = PlaceSquare.covering(bounds, floor(zoom).toInt(), categories = categories, name = name)
         pinsJob?.cancel()
         pinsJob = context.scope.launch {
             // Loaded together with the squares already kept; null while offline, so the pins stay.
@@ -113,7 +139,7 @@ internal class MapPins(
         prefetchJob?.cancel()
         prefetchJob = context.scope.launch {
             delay(PREFETCH_DELAY_MILLIS)
-            placeRepository.placesIn(PlaceSquare.covering(bounds, floor(zoom).toInt(), ring = 1, categories = categories))
+            placeRepository.placesIn(PlaceSquare.covering(bounds, floor(zoom).toInt(), ring = 1, categories = categories, name = name))
         }
     }
 
@@ -124,13 +150,13 @@ internal class MapPins(
      * and loads the ring around the view.
      */
     fun onCameraMoving(view: GeoBounds, zoom: Float) {
-        if (context.model.value.arePlacesHidden) return
+        if (isHidden) return
         val bounds = view.withPinMargin()
         val now = TimeSource.Monotonic.markNow()
         if (lastMoving?.let { now - it < MOVING_PINS_MILLIS.milliseconds } == true) return
         lastMoving = now
         if (pinsJob?.isActive == true) return
-        val squares = PlaceSquare.covering(bounds, floor(zoom).toInt(), categories = categories)
+        val squares = PlaceSquare.covering(bounds, floor(zoom).toInt(), categories = categories, name = name)
         pinsJob = context.scope.launch {
             placeRepository.placesIn(squares)
             update { it.copy(area = PinArea(bounds, squares)) }
@@ -144,8 +170,11 @@ internal class MapPins(
         val day = context.activeDay()
         // Other days' stops come along as places: a custom spot only on this private trip is in no square. With their
         // own kind, they follow the map's filter like any place (Shahin, 2026-11-17).
-        val picked = area.squares.firstOrNull()?.categories.orEmpty()
-        val otherStops = tripStopPlaces(context.days(), day).filter { picked.isEmpty() || it.category in picked }
+        val square = area.squares.firstOrNull()
+        val picked = square?.categories.orEmpty()
+        val named = square?.name
+        val otherStops = tripStopPlaces(context.days(), day)
+            .filter { (picked.isEmpty() || it.category in picked) && (named == null || it.name.contains(named, ignoreCase = true)) }
         val squares = placeRepository.loadedPlacesIn(area.squares).values + PlacesInView(otherStops, emptyList())
         val hidden = stopPlaceIds(day)
         val config = appConfigRepository.config.value

@@ -30,7 +30,9 @@ interface PlacesApi {
      * Places to draw for up to 16 map squares at once, each answered on its own. [tiles] is a comma-separated
      * list of `level/x/y` squares (side `360 / 2^level` degrees); [limit] (10–200) caps each square. Below
      * zoom 14 only Tripinly places (clustered when there are many) and notable OpenStreetMap places; from 14
-     * OpenStreetMap places too. [categories] (comma-separated, null: all) keeps only places of those kinds.
+     * OpenStreetMap places too. [categories] (comma-separated, null: all) keeps only places of those kinds. [name]
+     * (2–100 characters) keeps only places whose name matches as in search, at any zoom and without clusters, and
+     * ignores [categories].
      */
     @GET("places/tiles")
     suspend fun tiles(
@@ -38,6 +40,7 @@ interface PlacesApi {
         @Query("zoom") zoom: Int,
         @Query("limit") limit: Int,
         @Query("categories") categories: String? = null,
+        @Query("q") name: String? = null,
     ): AppResult<TilesResponseDto, DataError.Network>
 
     /** One place, with its OpenStreetMap details. */
