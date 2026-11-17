@@ -2807,6 +2807,13 @@ class MapViewModelTest {
         assertFalse(louvre.isDot || louvre.isAlongTheWay)
         assertTrue(viewModel.uiState.value.layers.placePins.single { it.place.name == "Eiffel Tower" }.isDot)
 
+        // Places hidden, the pin Around is around stays with the places it found.
+        viewModel.onAction(MapAction.Days.TogglePlaces)
+        testScheduler.advanceUntilIdle()
+        assertEquals(listOf("Louvre"), viewModel.uiState.value.layers.placePins.map { it.place.name })
+        viewModel.onAction(MapAction.Days.TogglePlaces)
+        testScheduler.advanceUntilIdle()
+
         // A bigger ring finds the Eiffel Tower, never the Louvre itself.
         viewModel.onAction(MapAction.Around.SetRadius(4000))
         testScheduler.advanceUntilIdle()

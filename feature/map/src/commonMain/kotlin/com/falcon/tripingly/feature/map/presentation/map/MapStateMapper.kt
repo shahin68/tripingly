@@ -275,8 +275,9 @@ internal class MapStateMapper(
         val aroundPlaces = model.around?.result?.places.orEmpty().map { it.place }
         val highlighted = alongIds + aroundPlaces.map { it.id }
         val othersAreDots = routeShows || model.around != null
-        // Hidden places come first: only the route's places stay, then the route makes the rest dots as always.
-        val isRoutes = { id: String -> id in highlighted || id in endPlaces || id in kept }
+        // Hidden places come first: only the route's places stay, and the pin Around is around, then the route makes the
+        // rest dots as always.
+        val isRoutes = { id: String -> id in highlighted || id in endPlaces || id in kept || id == model.around?.pinPlaceId }
         val visible = if (model.arePlacesHidden) pins.filter { isRoutes(it.place.id) } else pins
         val shown = visible.mapTo(HashSet()) { it.place.id }
         val placePins = visible.map {
