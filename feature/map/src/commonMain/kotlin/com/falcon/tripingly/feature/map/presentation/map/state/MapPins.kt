@@ -83,8 +83,9 @@ internal class MapPins(
         context.update { model ->
             model.copy(
                 placeFilter = model.placeFilter.copy(categories = categories, isLoading = rest != null && !model.arePlacesHidden),
-                // A cluster counts every kind: it waits for the kinds' own squares.
-                pins = model.pins.copy(pins = model.pins.pins.filter { keeps(it.place) }, clusters = if (categories.isEmpty()) model.pins.clusters else emptyList()),
+                // A cluster counts every kind: it waits for the kinds' own squares. The area goes until they come, so a
+                // square of the old kinds arriving late (a prefetch, a reload) can't bring their pins back for a moment.
+                pins = PinsModel(pins = model.pins.pins.filter { keeps(it.place) }, clusters = if (categories.isEmpty()) model.pins.clusters else emptyList()),
             )
         }
         closestZoom = null
