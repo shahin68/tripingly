@@ -284,6 +284,8 @@ internal class MapStateMapper(
                 it.place.id in endPlaces -> it.copy(size = SelectedPinSize, isAlongTheWay = false, isKept = true)
                 it.place.id in kept -> it.copy(isAlongTheWay = it.place.id in alongIds, isKept = true)
                 it.place.id in highlighted -> it.copy(isAlongTheWay = true)
+                // The pin Around is around stays itself.
+                it.place.id == model.around?.pinPlaceId -> it
                 othersAreDots -> it.copy(isDot = true)
                 else -> it
             }

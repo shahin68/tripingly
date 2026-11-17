@@ -51,8 +51,8 @@ interface PlaceRepository {
 
     /**
      * Tripinly Pro: every place within [radiusMeters] of [point] (a stop), hot first, Tripinly spots before OpenStreetMap,
-     * then nearest; only of [categories] (empty: every kind), with how many of each kind the circle holds. The point is
-     * used for the request only.
+     * then nearest; only of [categories] (empty: every kind), with how many of each kind the circle holds. The pin itself
+     * ([excludePlaceId]) is neither listed nor counted. The point is used for the request only.
      */
-    suspend fun around(point: GeoPoint, radiusMeters: Int, categories: Set<PlaceCategory> = emptySet()): AppResult<PlacesAround, DataError.Network>
+    suspend fun around(point: GeoPoint, radiusMeters: Int, categories: Set<PlaceCategory> = emptySet(), excludePlaceId: String? = null): AppResult<PlacesAround, DataError.Network>
 }

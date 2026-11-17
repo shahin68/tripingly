@@ -37,10 +37,10 @@ internal class MapAround(
     /** The Around button on a pin's card or details: the ring opens around it (again: it moves there). */
     fun open() {
         if (!hasRoutes()) return showAroundIsPro()
-        val center = selectedPoint() ?: return
+        val (center, pinPlaceId) = selectedPin() ?: return
         context.update {
             it.copy(
-                around = AroundModel(center, it.around?.radiusMeters ?: DEFAULT_RADIUS_METERS, it.around?.categories.orEmpty()),
+                around = AroundModel(center, pinPlaceId, it.around?.radiusMeters ?: DEFAULT_RADIUS_METERS, it.around?.categories.orEmpty()),
                 route = it.route.copy(isDayRouteShown = false, start = null, startLabel = null, between = null, editing = null),
                 placeFilter = it.placeFilter.copy(isOpen = false),
             )
@@ -74,7 +74,7 @@ internal class MapAround(
             if (waitForMore) delay(RADIUS_SETTLE_MILLIS)
             // What the ring is now, after the wait.
             val around = context.model.value.around ?: return@launch
-            val result = placeRepository.around(around.center, around.radiusMeters, around.categories)
+            val result = placeRepository.around(around.center, around.radiusMeters, around.categories, around.pinPlaceId)
             context.update { model ->
                 val current = model.around ?: return@update model
                 when (result) {
@@ -86,10 +86,10 @@ internal class MapAround(
         }
     }
 
-    /** Where the open pin is: a stop of the open day, or a place. */
-    private fun selectedPoint(): GeoPoint? = when (val selected = context.model.value.selection) {
-        is Selection.Stop -> context.activeDay()?.markers?.firstOrNull { it.id == selected.markerId }?.location
-        is Selection.Place -> selected.place.location
+    /** Where the open pin is, and its place: a stop of the open day, or a place (an address from search has none). */
+    private fun selectedPin(): Pair<GeoPoint, String?>? = when (val selected = context.model.value.selection) {
+        is Selection.Stop -> context.activeDay()?.markers?.firstOrNull { it.id == selected.markerId }?.let { it.location to it.placeId.ifEmpty { null } }
+        is Selection.Place -> selected.place.location to selected.place.id.ifEmpty { null }
         is Selection.NewSpot, null -> null
     }
 

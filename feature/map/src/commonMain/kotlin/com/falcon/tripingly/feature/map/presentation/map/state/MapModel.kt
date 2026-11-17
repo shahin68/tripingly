@@ -94,6 +94,8 @@ internal data class PlaceFilterModel(val isOpen: Boolean = false, val categories
  */
 internal data class AroundModel(
     val center: GeoPoint,
+    /** The pin's own place, left out of what is around it and never a dot (Shahin, 2026-11-17). */
+    val pinPlaceId: String?,
     val radiusMeters: Int,
     val categories: Set<PlaceCategory> = emptySet(),
     val result: PlacesAround? = null,

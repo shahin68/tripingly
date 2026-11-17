@@ -59,7 +59,8 @@ interface PlacesApi {
     /**
      * Tripinly Pro (`403 PREMIUM_REQUIRED` otherwise): every place within [radiusMeters] (50–5000) of [lat], [lng],
      * hot first, Tripinly spots before OpenStreetMap, then nearest, at most [limit] (1–50); [categories] (comma-separated,
-     * null: all) keeps only those kinds, while `categoryCounts` always counts every kind. The point isn't stored.
+     * null: all) keeps only those kinds, while `categoryCounts` always counts every kind; [excludePlaceId], the pin the
+     * ring is around, is left out of both. The point isn't stored.
      */
     @GET("places/around")
     suspend fun around(
@@ -67,6 +68,7 @@ interface PlacesApi {
         @Query("lng") lng: Double,
         @Query("radiusMeters") radiusMeters: Int,
         @Query("categories") categories: String?,
+        @Query("excludePlaceId") excludePlaceId: String?,
         @Query("limit") limit: Int,
     ): AppResult<AroundResponseDto, DataError.Network>
 }

@@ -70,9 +70,9 @@ class FakePlaceRepository : PlaceRepository {
         return AppResult.Success(PlaceDetails(place.id, place.name, place.category, place.hotCount, "Mo-Su 09:00-18:00", null, images = emptyList()))
     }
 
-    /** The sights within [radiusMeters] of [point], of [categories], nearest first, with every kind counted. */
-    override suspend fun around(point: GeoPoint, radiusMeters: Int, categories: Set<PlaceCategory>): AppResult<PlacesAround, DataError.Network> {
-        val inCircle = sights.map { PlaceAround(it, distanceMeters(point, it.location)) }.filter { it.distanceMeters <= radiusMeters }
+    /** The sights within [radiusMeters] of [point] but [excludePlaceId], of [categories], nearest first, with every kind counted. */
+    override suspend fun around(point: GeoPoint, radiusMeters: Int, categories: Set<PlaceCategory>, excludePlaceId: String?): AppResult<PlacesAround, DataError.Network> {
+        val inCircle = sights.filter { it.id != excludePlaceId }.map { PlaceAround(it, distanceMeters(point, it.location)) }.filter { it.distanceMeters <= radiusMeters }
         val counts = inCircle.groupingBy { it.place.category }.eachCount().map { (category, count) -> CategoryCount(category, count) }.sortedByDescending { it.count }
         val shown = inCircle.filter { categories.isEmpty() || it.place.category in categories }.sortedBy { it.distanceMeters }
         return AppResult.Success(PlacesAround(shown, counts))

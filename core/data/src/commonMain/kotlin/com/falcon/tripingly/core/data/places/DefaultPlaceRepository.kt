@@ -243,8 +243,8 @@ internal class DefaultPlaceRepository(
             )
         }
 
-    override suspend fun around(point: GeoPoint, radiusMeters: Int, categories: Set<PlaceCategory>): AppResult<PlacesAround, DataError.Network> =
-        api.around(point.lat, point.lng, radiusMeters, categories.query(), AROUND_LIMIT).map { response ->
+    override suspend fun around(point: GeoPoint, radiusMeters: Int, categories: Set<PlaceCategory>, excludePlaceId: String?): AppResult<PlacesAround, DataError.Network> =
+        api.around(point.lat, point.lng, radiusMeters, categories.query(), excludePlaceId, AROUND_LIMIT).map { response ->
             PlacesAround(
                 places = response.items.map { item ->
                     PlaceAround(

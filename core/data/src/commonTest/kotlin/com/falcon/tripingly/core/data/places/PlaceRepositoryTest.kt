@@ -152,7 +152,7 @@ class PlaceRepositoryTest {
         val repository = repository()
 
         val around = assertIs<AppResult.Success<PlacesAround>>(
-            repository.around(GeoPoint(48.2085, 16.3731), radiusMeters = 800, categories = setOf(PlaceCategory.Cafe)),
+            repository.around(GeoPoint(48.2085, 16.3731), radiusMeters = 800, categories = setOf(PlaceCategory.Cafe), excludePlaceId = "pin"),
         ).data
 
         val url = requests.single().url
@@ -161,6 +161,7 @@ class PlaceRepositoryTest {
         assertEquals("16.3731", url.parameters["lng"])
         assertEquals("800", url.parameters["radiusMeters"])
         assertEquals("cafe", url.parameters["categories"])
+        assertEquals("pin", url.parameters["excludePlaceId"])
         assertEquals("30", url.parameters["limit"])
         assertEquals(listOf("Café Central" to 120), around.places.map { it.place.name to it.distanceMeters })
         assertEquals(PlaceCategory.Cafe, around.places.single().place.category)
@@ -171,6 +172,7 @@ class PlaceRepositoryTest {
     fun `places around ask for every kind when none is picked`() = runTest {
         repository().around(GeoPoint(48.2085, 16.3731), radiusMeters = 500)
         assertNull(requests.single().url.parameters["categories"])
+        assertNull(requests.single().url.parameters["excludePlaceId"])
     }
 
     @Test

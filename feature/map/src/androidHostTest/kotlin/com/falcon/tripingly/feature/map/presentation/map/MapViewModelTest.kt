@@ -2767,7 +2767,7 @@ class MapViewModelTest {
     }
 
     @Test
-    fun `Around works around any place, and the place open is the one picked in its list`() = runTest(testDispatcher) {
+    fun `Around works around any place, leaving the place itself out and as it is`() = runTest(testDispatcher) {
         addStops(GeoPoint(48.8580, 2.2950))
         val viewModel = viewModel()
         restOnTarget(viewModel)
@@ -2777,8 +2777,16 @@ class MapViewModelTest {
         testScheduler.advanceUntilIdle()
         assertEquals(Coordinates(48.8606, 2.3376), viewModel.uiState.value.layers.aroundRing?.center)
         assertEquals(true, viewModel.uiState.value.placeCard?.routes?.isAroundOn)
-        assertEquals(listOf("Louvre"), viewModel.uiState.value.stopsCard?.around?.places?.map { it.place.name })
+        assertEquals(emptyList(), viewModel.uiState.value.stopsCard?.around?.places?.map { it.place.name })
         assertEquals("fake-louvre", viewModel.uiState.value.stopsCard?.around?.selectedPlaceId)
+        val louvre = viewModel.uiState.value.layers.placePins.single { it.place.name == "Louvre" }
+        assertFalse(louvre.isDot || louvre.isAlongTheWay)
+        assertTrue(viewModel.uiState.value.layers.placePins.single { it.place.name == "Eiffel Tower" }.isDot)
+
+        // A bigger ring finds the Eiffel Tower, never the Louvre itself.
+        viewModel.onAction(MapAction.Around.SetRadius(4000))
+        testScheduler.advanceUntilIdle()
+        assertEquals(listOf("Eiffel Tower"), viewModel.uiState.value.stopsCard?.around?.places?.map { it.place.name })
     }
 
     @Test
