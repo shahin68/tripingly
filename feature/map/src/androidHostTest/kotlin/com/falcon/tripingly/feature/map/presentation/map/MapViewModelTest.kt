@@ -2717,6 +2717,7 @@ class MapViewModelTest {
         restOnTarget(viewModel)
 
         viewModel.onAction(MapAction.Search.Open)
+        testScheduler.runCurrent()
         viewModel.uiState.value.search!!.query.setTextAndPlaceCursorAtEnd("louv")
         viewModel.onAction(MapAction.Search.QueryChanged("louv"))
         places.squaresDelayMillis = 1_000

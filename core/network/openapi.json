@@ -5719,7 +5719,6 @@
           "dayId",
           "placeId",
           "name",
-          "category",
           "location",
           "time",
           "position",
