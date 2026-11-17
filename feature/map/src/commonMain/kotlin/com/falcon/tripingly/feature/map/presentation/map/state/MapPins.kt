@@ -72,13 +72,13 @@ internal class MapPins(
     }
 
     /**
-     * The map's filter picked [categories]: only places of those kinds load and show (none: every kind), with the trip's
-     * stops. At once the pins shown so far keep only those kinds, so the map answers the tap (Shahin, 2026-11-17); the
-     * squares of the camera's last rest load again for the kinds picked, the filter's circle turning meanwhile.
+     * The map's filter picked [categories]: only places of those kinds load and show (none: every kind), other days'
+     * stops too by their kind; the open day's stops always stay. At once the pins shown so far keep only those kinds, so
+     * the map answers the tap (Shahin, 2026-11-17); the squares of the camera's last rest load again for the kinds
+     * picked, the filter's circle turning meanwhile.
      */
     fun setFilter(categories: Set<PlaceCategory>) {
-        val stops = tripStopPlaces(context.days(), context.activeDay()).mapTo(HashSet()) { it.id }
-        val keeps = { place: MapPlace -> categories.isEmpty() || place.category in categories || place.id in stops }
+        val keeps = { place: MapPlace -> categories.isEmpty() || place.category in categories }
         val rest = lastRest
         context.update { model ->
             model.copy(
@@ -142,9 +142,10 @@ internal class MapPins(
     private suspend fun show(addOnly: Boolean = false) {
         val area = context.model.value.pins.area ?: return
         val day = context.activeDay()
-        // Other days' stops come along as places: a custom spot only on this private trip is in no square. They are the
-        // trip's stops, so they stay while the map is filtered too (Shahin, 2026-11-17).
-        val otherStops = tripStopPlaces(context.days(), day)
+        // Other days' stops come along as places: a custom spot only on this private trip is in no square. With their
+        // own kind, they follow the map's filter like any place (Shahin, 2026-11-17).
+        val picked = area.squares.firstOrNull()?.categories.orEmpty()
+        val otherStops = tripStopPlaces(context.days(), day).filter { picked.isEmpty() || it.category in picked }
         val squares = placeRepository.loadedPlacesIn(area.squares).values + PlacesInView(otherStops, emptyList())
         val hidden = stopPlaceIds(day)
         val config = appConfigRepository.config.value
@@ -187,7 +188,7 @@ internal fun tripStopPlaces(days: List<TripDay>, day: TripDay?): List<MapPlace> 
         .filter { it.id != day?.id }
         .flatMap { it.markers }
         .distinctBy { it.placeId }
-        .map { MapPlace(it.placeId, it.name, PlaceCategory.Other, it.location, isTripinly = false, hotCount = it.hotCount, prominence = 0) }
+        .map { MapPlace(it.placeId, it.name, it.category ?: PlaceCategory.Other, it.location, isTripinly = false, hotCount = it.hotCount, prominence = 0) }
         .toList()
 
 /**
