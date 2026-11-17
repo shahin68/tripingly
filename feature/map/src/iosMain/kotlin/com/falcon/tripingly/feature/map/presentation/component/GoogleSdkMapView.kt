@@ -85,6 +85,8 @@ internal fun GoogleSdkMapView(
     onMapLongClick: (Coordinates) -> Unit,
     onMarkerClick: (MapMarker) -> Unit,
     onPinDrop: (from: PinEnd, to: PinEnd) -> Unit,
+    aroundRing: AroundRing?,
+    onAroundRadius: (Int) -> Unit,
 ) {
     val currentMarkers by rememberUpdatedState(markers)
     val currentSelectedPlace by rememberUpdatedState(selectedPlace)
@@ -506,6 +508,17 @@ internal fun GoogleSdkMapView(
             // The map takes every touch at once, without waiting to see whether Compose scrolls.
             properties = UIKitInteropProperties(interactionMode = UIKitInteropInteractionMode.NonCooperative),
         )
+        aroundRing?.let { ring ->
+            AroundRingLayer(
+                ring = ring,
+                project = { point ->
+                    // Read, so the ring follows the camera.
+                    cameraFrame
+                    project(point)
+                },
+                onRadius = onAroundRadius,
+            )
+        }
         PinHoldLayer(
             holder = holder,
             freeArea = freeArea(viewSize, freePadding, density, LocalLayoutDirection.current),

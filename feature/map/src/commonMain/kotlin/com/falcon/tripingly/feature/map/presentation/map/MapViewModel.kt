@@ -26,6 +26,7 @@ import com.falcon.tripingly.feature.map.presentation.component.CameraCommand
 import com.falcon.tripingly.feature.map.presentation.component.MapLayersState
 import com.falcon.tripingly.feature.map.presentation.map.state.Dialog
 import com.falcon.tripingly.feature.map.presentation.map.state.MapAddToTrip
+import com.falcon.tripingly.feature.map.presentation.map.state.MapAround
 import com.falcon.tripingly.feature.map.presentation.map.state.MapCamera
 import com.falcon.tripingly.feature.map.presentation.map.state.MapContext
 import com.falcon.tripingly.feature.map.presentation.map.state.MapEdits
@@ -42,6 +43,7 @@ import com.falcon.tripingly.feature.map.presentation.map.state.MapSharing
 import com.falcon.tripingly.feature.map.presentation.map.state.MapCardPhotos
 import com.falcon.tripingly.feature.map.presentation.map.state.Sheet
 import com.falcon.tripingly.feature.map.presentation.map.state.activeDayIndex
+import com.falcon.tripingly.feature.map.presentation.map.state.toggled
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
@@ -112,6 +114,7 @@ class MapViewModel(
         showWholePlan = { sendEvent(MapEvent.ShowWholePlan) },
         transitAreas = appConfigRepository.config.map { it.transitAreas }.stateIn(viewModelScope, SharingStarted.Eagerly, appConfigRepository.config.value.transitAreas),
     )
+    private val around = MapAround(context, placeRepository, ::hasRoutes, showAroundIsPro = { sendEvent(MapEvent.OpenPaywall) }, showWholePlan = { sendEvent(MapEvent.ShowWholePlan) })
     private val search = MapSearch(context, camera, selection, placeRepository, routeTo = routes::routeToResult)
     private val sharing = MapSharing(context, tripRepository, socialRepository)
     private val opening = MapOpening(context, camera, tripRepository, mapViews, ::hasRoutes, stopId, showMembers, showComments)
@@ -149,6 +152,8 @@ class MapViewModel(
             is MapAction.Sheet -> onSheet(action)
             is MapAction.Dialog -> onDialog(action)
             is MapAction.Message -> onMessage(action)
+            is MapAction.PlaceFilter -> onPlaceFilter(action)
+            is MapAction.Around -> onAround(action)
             is MapAction.PinRoute.GoHere -> routes.goHere()
             is MapAction.PinRoute.Route -> routes.onRouteButton()
             is MapAction.PinRoute.Close -> routes.closeRouteBar()
@@ -227,6 +232,27 @@ class MapViewModel(
         }
     }
 
+    private fun onPlaceFilter(action: MapAction.PlaceFilter) {
+        when (action) {
+            is MapAction.PlaceFilter.Toggle -> context.update { it.copy(placeFilter = it.placeFilter.copy(isOpen = !it.placeFilter.isOpen)) }
+            is MapAction.PlaceFilter.ToggleCategory -> pins.setFilter(
+                action.category?.let { model.placeFilter.categories.toggled(it) }.orEmpty(),
+            )
+        }
+    }
+
+    private fun onAround(action: MapAction.Around) {
+        when (action) {
+            is MapAction.Around.Open -> around.open()
+            is MapAction.Around.Close -> around.close()
+            is MapAction.Around.ToggleCategory -> around.toggleCategory(action.category)
+            is MapAction.Around.SetRadius -> around.setRadius(action.meters)
+            is MapAction.Around.PlaceClick -> selection.openPlace(action.place)
+            // Adding works as from along the way: to the open day, the whole plan shows.
+            is MapAction.Around.Add -> routes.addAlongTheWay(action.place)
+        }
+    }
+
     private fun onPlan(action: MapAction.Plan) {
         when (action) {
             is MapAction.Plan.RemoveStop -> edits.removeMarker(action.markerId)
@@ -237,6 +263,7 @@ class MapViewModel(
             is MapAction.Plan.FindBestOrder -> routes.findBestOrder()
             is MapAction.Plan.AlongTheWayClick -> selection.openPlace(action.place)
             is MapAction.Plan.AddAlongTheWay -> routes.addAlongTheWay(action.place)
+            is MapAction.Plan.ToggleAlongCategory -> routes.toggleAlongCategory(action.category)
             is MapAction.Plan.ClosePointRoute -> routes.closePointRoute()
             is MapAction.Plan.OpenLeaveAt -> routes.openLeaveAt()
             is MapAction.Plan.OpenTransitSteps -> if (model.route.plan?.route?.legs.orEmpty().any { it.steps.isNotEmpty() }) openSheet(Sheet.TransitSteps)
@@ -304,7 +331,7 @@ class MapViewModel(
         val config = appConfigRepository.config.value
         val mapper = MapStateMapper(details, model, config, myUserId)
         // Most changes (a search keystroke, a message, a sheet) don't touch the map: its ~150 pins aren't built again.
-        val inputs = listOf(details, model.activeDayIndex, model.route, model.pins, model.selection, model.location.permission, model.news, model.arePlacesHidden, config)
+        val inputs = listOf(details, model.activeDayIndex, model.route, model.pins, model.selection, model.location.permission, model.news, model.arePlacesHidden, model.around, model.placeFilter.categories, config)
         val layers = layers?.takeIf { it.first == inputs }?.second ?: mapper.layers().also { layers = inputs to it }
         return mapper.map(layers)
     }

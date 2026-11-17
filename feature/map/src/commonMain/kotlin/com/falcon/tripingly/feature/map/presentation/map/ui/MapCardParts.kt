@@ -30,6 +30,7 @@ import androidx.compose.material.icons.outlined.Flag
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.LocalFireDepartment
 import androidx.compose.material.icons.outlined.NearMe
+import androidx.compose.material.icons.outlined.TravelExplore
 import androidx.compose.material.icons.outlined.PhotoLibrary
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LocalContentColor
@@ -68,8 +69,10 @@ import com.falcon.tripingly.feature.map.generated.resources.map_card_delete
 import com.falcon.tripingly.feature.map.generated.resources.map_card_details
 import com.falcon.tripingly.feature.map.generated.resources.map_place_add_to_day
 import com.falcon.tripingly.feature.map.generated.resources.map_route_from_here
+import com.falcon.tripingly.feature.map.generated.resources.map_around
 import com.falcon.tripingly.feature.map.generated.resources.map_route_go_here
 import com.falcon.tripingly.feature.map.generated.resources.map_route_to_here
+import com.falcon.tripingly.feature.map.presentation.component.AlongTheWayPinColor
 import com.falcon.tripingly.feature.map.presentation.component.lineColor
 import com.falcon.tripingly.feature.map.presentation.map.PinAdd
 import com.falcon.tripingly.feature.map.presentation.map.PinRoutesState
@@ -147,7 +150,7 @@ internal fun pinAction(onDelete: (() -> Unit)?, onAdd: (() -> Unit)?, addLabel: 
  * paywall otherwise).
  */
 @Composable
-internal fun routeButtons(routes: PinRoutesState, onGoHere: () -> Unit, onRoute: () -> Unit): List<JoinedButtonSlot> {
+internal fun routeButtons(routes: PinRoutesState, onGoHere: () -> Unit, onRoute: () -> Unit, onAround: (() -> Unit)? = null): List<JoinedButtonSlot> {
     val goHere = stringResource(Res.string.map_route_go_here)
     val route = stringResource(if (routes.isRouteTo) Res.string.map_route_to_here else Res.string.map_route_from_here)
     val neutral = JoinedButtonDefaults.neutral()
@@ -161,7 +164,15 @@ internal fun routeButtons(routes: PinRoutesState, onGoHere: () -> Unit, onRoute:
     return listOf<JoinedButtonSlot>(
         { shape -> JoinedButton(Icons.Outlined.NearMe, goHere, shape, onClick = onGoHere, colors = goHereColors) },
         { shape -> JoinedButton(if (routes.isRouteTo) Icons.Outlined.Flag else Icons.Outlined.Directions, route, shape, onClick = onRoute, colors = if (routes.isRouteOn) on else neutral) },
-    )
+    ) + listOfNotNull(onAround?.let { aroundButton(routes.isAroundOn, it) })
+}
+
+/** Around (Tripinly Pro; the paywall otherwise): the places in a ring around the pin, its icon only (E1, Shahin 2026-11-17). */
+@Composable
+private fun aroundButton(isOn: Boolean, onClick: () -> Unit): JoinedButtonSlot {
+    val label = stringResource(Res.string.map_around)
+    val colors = if (isOn) JoinedButtonColors(AlongTheWayPinColor.copy(alpha = ROUTE_TINT), AlongTheWayPinColor) else JoinedButtonDefaults.neutral()
+    return { shape -> JoinedButton(Icons.Outlined.TravelExplore, label, shape, onClick = onClick, colors = colors) }
 }
 
 /**

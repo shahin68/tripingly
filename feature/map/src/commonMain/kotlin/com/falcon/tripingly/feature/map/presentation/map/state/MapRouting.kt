@@ -80,7 +80,7 @@ internal class MapRouting(
                 .collect { place -> if (place != null) update { route -> if (route.kept.any { it.id == place.id }) route else route.copy(kept = route.kept + place) } }
         }
         context.scope.launch {
-            context.model.map { it.route.isActive }.distinctUntilChanged().collect { isActive -> if (!isActive) update { it.copy(kept = emptyList(), editing = null) } }
+            context.model.map { it.route.isActive }.distinctUntilChanged().collect { isActive -> if (!isActive) update { it.copy(kept = emptyList(), editing = null, alongCategories = emptySet()) } }
         }
         // The steps sheet goes with the public transport route it shows.
         context.scope.launch {
@@ -119,6 +119,13 @@ internal class MapRouting(
     /** Public transport goes between the ends of the route that shows, or would show. */
     private fun isTransitCovered(model: MapModel): Boolean =
         requestOf(context.trip.value, model.copy(route = model.route.copy(travelMode = TravelMode.Transit)), transitAreas.value)?.transit?.isCovered == true
+
+    /**
+     * A chip over the places along the way: All ([category] null) shows every kind again; a kind is added or taken off.
+     * The route is asked for again with them: its line stays, only the places change.
+     */
+    fun toggleAlongCategory(category: PlaceCategory?) =
+        update { it.copy(alongCategories = if (category == null) emptySet() else it.alongCategories.toggled(category)) }
 
     /** "Leave at": the time picker opens on the time the route was asked for. */
     fun openLeaveAt() {
@@ -377,12 +384,12 @@ internal class MapRouting(
         fun time(stops: List<GeoPoint>) = TransitRequest(openDay?.date, route.transitPick, areas.covers(stops)).takeIf { route.travelMode == TravelMode.Transit }
         route.between?.let {
             val ends = listOf(it.from.location, it.to.location)
-            return RouteRequest.Between(it.from.location, it.to.location, route.travelMode, route.attempt, it.from.endPlaceId(details), it.to.endPlaceId(details), time(ends))
+            return RouteRequest.Between(it.from.location, it.to.location, route.travelMode, route.attempt, it.from.endPlaceId(details), it.to.endPlaceId(details), time(ends), route.alongCategories)
         }
         if (!route.isDayRouteShown) return null
         val day = openDay ?: return null
         if (day.markers.size < 2) return null
-        return RouteRequest.Day(day.id, day.markers.map { it.id to it.location }, route.travelMode, route.attempt, time(day.markers.map { it.location }))
+        return RouteRequest.Day(day.id, day.markers.map { it.id to it.location }, route.travelMode, route.attempt, time(day.markers.map { it.location }), route.alongCategories)
     }
 
     private suspend fun load(request: RouteRequest?) {
@@ -407,13 +414,16 @@ internal class MapRouting(
             return
         }
         update { it.copy(isLoading = true, plan = it.plan.takeIf { isSameRoute }, isUnavailable = it.isUnavailable && isSameRoute, transitNote = null) }
-        val time = request.transit?.let { transitTime(it, isBetween = request is RouteRequest.Between) }
+        // Only other kinds of place along the way: the same public transport route, so the same time (asked for once).
+        val time = request.transit?.let { transit ->
+            context.model.value.route.transitAt.takeIf { before?.withCategories(request.categories) == request } ?: transitTime(transit, isBetween = request is RouteRequest.Between)
+        }
         val result = when (request) {
             is RouteRequest.Day -> {
                 val day = context.days().firstOrNull { it.id == request.dayId } ?: return update { it.copy(isLoading = false) }
-                routeRepository.dayRoute(context.tripId, day, request.mode, time?.at)
+                routeRepository.dayRoute(context.tripId, day, request.mode, time?.at, request.categories)
             }
-            is RouteRequest.Between -> routeRepository.route(request.from, request.to, request.mode, context.tripId, request.fromPlaceId, request.toPlaceId, time)
+            is RouteRequest.Between -> routeRepository.route(request.from, request.to, request.mode, context.tripId, request.fromPlaceId, request.toPlaceId, time, request.categories)
         }
         if (result is AppResult.Success && time != null && !result.data.isEstimated) transitRoutes[request] = result.data to time
         val transitNote = (result as? AppResult.Error)?.error?.let { error ->
@@ -493,6 +503,14 @@ internal class MapRouting(
         val transit: TransitRequest?
         /** The stops the route goes through in order. */
         val stops: List<GeoPoint>
+        /** The kinds of place along the way (none: every kind). */
+        val categories: Set<PlaceCategory>
+
+        /** The same ask with other kinds of place along the way. */
+        fun withCategories(categories: Set<PlaceCategory>): RouteRequest = when (this) {
+            is Day -> copy(categories = categories)
+            is Between -> copy(categories = categories)
+        }
 
         data class Day(
             val dayId: String,
@@ -500,6 +518,7 @@ internal class MapRouting(
             override val mode: TravelMode,
             val attempt: Int,
             override val transit: TransitRequest?,
+            override val categories: Set<PlaceCategory>,
         ) : RouteRequest {
             override val subject get() = dayId
             override val stops get() = markers.map { it.second }
@@ -513,6 +532,7 @@ internal class MapRouting(
             val fromPlaceId: String?,
             val toPlaceId: String?,
             override val transit: TransitRequest?,
+            override val categories: Set<PlaceCategory>,
         ) : RouteRequest {
             override val subject get() = from to to
             override val stops get() = listOf(from, to)
@@ -528,3 +548,6 @@ private data class TransitRequest(val date: LocalDate?, val pick: TransitPick?, 
 
 /** How an address picked from search starts its id as a route's end. */
 private const val ADDRESS_ID_PREFIX = "address:"
+
+/** This set with [item] added, or taken off when it was in. */
+internal fun <T> Set<T>.toggled(item: T): Set<T> = if (item in this) this - item else this + item

@@ -71,6 +71,18 @@ internal class MapPins(
         if (!hidden) lastRest?.let { (bounds, zoom) -> onCameraRest(bounds, zoom) }
     }
 
+    /**
+     * The map's filter picked [categories]: only places of those kinds load and show (none: every kind). The pins shown
+     * so far go at once, the squares of the camera's last rest load again for the kinds picked.
+     */
+    fun setFilter(categories: Set<PlaceCategory>) {
+        context.update { it.copy(placeFilter = it.placeFilter.copy(categories = categories)) }
+        closestZoom = null
+        lastRest?.let { (bounds, zoom) -> onCameraRest(bounds, zoom) }
+    }
+
+    private val categories get() = context.model.value.placeFilter.categories
+
     fun onCameraRest(view: GeoBounds, zoom: Float) {
         lastRest = view to zoom
         if (context.model.value.arePlacesHidden) return
@@ -78,7 +90,7 @@ internal class MapPins(
         val closest = closestZoom
         keepUnlisted = closest != null && zoom > closest - TIDY_ZOOM_OUT
         closestZoom = if (keepUnlisted && closest != null) maxOf(closest, zoom) else zoom
-        val squares = PlaceSquare.covering(bounds, floor(zoom).toInt())
+        val squares = PlaceSquare.covering(bounds, floor(zoom).toInt(), categories = categories)
         pinsJob?.cancel()
         pinsJob = context.scope.launch {
             // Loaded together with the squares already kept; null while offline, so the pins stay.
@@ -89,7 +101,7 @@ internal class MapPins(
         prefetchJob?.cancel()
         prefetchJob = context.scope.launch {
             delay(PREFETCH_DELAY_MILLIS)
-            placeRepository.placesIn(PlaceSquare.covering(bounds, floor(zoom).toInt(), ring = 1))
+            placeRepository.placesIn(PlaceSquare.covering(bounds, floor(zoom).toInt(), ring = 1, categories = categories))
         }
     }
 
@@ -106,7 +118,7 @@ internal class MapPins(
         if (lastMoving?.let { now - it < MOVING_PINS_MILLIS.milliseconds } == true) return
         lastMoving = now
         if (pinsJob?.isActive == true) return
-        val squares = PlaceSquare.covering(bounds, floor(zoom).toInt())
+        val squares = PlaceSquare.covering(bounds, floor(zoom).toInt(), categories = categories)
         pinsJob = context.scope.launch {
             placeRepository.placesIn(squares)
             update { it.copy(area = PinArea(bounds, squares)) }
@@ -118,8 +130,10 @@ internal class MapPins(
     private suspend fun show(addOnly: Boolean = false) {
         val area = context.model.value.pins.area ?: return
         val day = context.activeDay()
-        // Other days' stops come along as places: a custom spot only on this private trip is in no square.
-        val squares = placeRepository.loadedPlacesIn(area.squares).values + PlacesInView(tripStopPlaces(context.days(), day), emptyList())
+        // Other days' stops come along as places: a custom spot only on this private trip is in no square. They don't
+        // know their kind here, so while the map is filtered only the squares' places of the kinds picked show.
+        val otherStops = tripStopPlaces(context.days(), day).takeIf { area.squares.firstOrNull()?.categories.isNullOrEmpty() }.orEmpty()
+        val squares = placeRepository.loadedPlacesIn(area.squares).values + PlacesInView(otherStops, emptyList())
         val hidden = stopPlaceIds(day)
         val config = appConfigRepository.config.value
         val shown = context.model.value.pins

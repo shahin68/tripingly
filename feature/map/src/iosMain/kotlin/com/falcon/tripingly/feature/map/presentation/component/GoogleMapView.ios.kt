@@ -32,6 +32,7 @@ actual fun GoogleMapView(
     onMapLongClick: (Coordinates) -> Unit,
     onMarkerClick: (MapMarker) -> Unit,
     onPinDrop: (from: PinEnd, to: PinEnd) -> Unit,
+    onAroundRadius: (Int) -> Unit,
 ) {
     val koin = getKoin()
     val googleMaps = remember(koin) { koin.getOrNull<GoogleMapsSdk>() }
@@ -53,6 +54,7 @@ actual fun GoogleMapView(
             isMyLocationEnabled = layers.isMyLocationEnabled,
             routeEnds = layers.routeEnds,
             stopHalo = layers.stopHalo,
+            aroundRing = layers.aroundRing,
             onCameraMove = onCameraMove,
             onCameraMoving = onCameraMoving,
             onBearingChange = onBearingChange,
@@ -64,6 +66,7 @@ actual fun GoogleMapView(
             onMapLongClick = onMapLongClick,
             onMarkerClick = onMarkerClick,
             onPinDrop = onPinDrop,
+            onAroundRadius = onAroundRadius,
         )
     } else {
         AppleMapView(

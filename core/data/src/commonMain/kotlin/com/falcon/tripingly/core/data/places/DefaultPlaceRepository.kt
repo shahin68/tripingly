@@ -10,6 +10,7 @@ import com.falcon.tripingly.core.model.place.MapPlace
 import com.falcon.tripingly.core.model.place.OsmRef
 import com.falcon.tripingly.core.model.place.OsmType
 import com.falcon.tripingly.core.model.place.PlaceCategory
+import com.falcon.tripingly.core.model.place.PlaceAround
 import com.falcon.tripingly.core.model.place.PlaceCluster
 import com.falcon.tripingly.core.model.place.ImageCredit
 import com.falcon.tripingly.core.model.place.PlaceDetails
@@ -17,6 +18,7 @@ import com.falcon.tripingly.core.model.place.PlaceImage
 import com.falcon.tripingly.core.model.place.PlaceImageSource
 import com.falcon.tripingly.core.model.place.PlaceSearchResult
 import com.falcon.tripingly.core.model.place.PlaceSquare
+import com.falcon.tripingly.core.model.place.PlacesAround
 import com.falcon.tripingly.core.model.place.PlacesInView
 import com.falcon.tripingly.core.model.place.SearchResultType
 import com.falcon.tripingly.core.model.social.NearbyPlace
@@ -130,17 +132,18 @@ internal class DefaultPlaceRepository(
         }.toMap()
     }
 
-    /** Sends the waiting squares, one request per zoom and per 16 squares, once callers stop adding for a moment. */
+    /** Sends the waiting squares, one request per zoom, filter and 16 squares, once callers stop adding for a moment. */
     private suspend fun send() {
         delay(GATHER_FOR)
         val batch = lock.withLock {
             sending = null
             waiting.toList().also { waiting.clear() }
         }
-        batch.groupBy { (square, _) -> square.zoom }.forEach { (zoom, group) ->
+        batch.groupBy { (square, _) -> square.zoom to square.categories }.forEach { (key, group) ->
+            val (zoom, categories) = key
             group.chunked(MAX_SQUARES_PER_REQUEST).forEach { chunk ->
                 scope.launch {
-                    val result = api.tiles(chunk.joinToString(",") { (square, _) -> square.id }, zoom, PLACES_PER_SQUARE)
+                    val result = api.tiles(chunk.joinToString(",") { (square, _) -> square.id }, zoom, PLACES_PER_SQUARE, categories.query())
                         .map { response -> response.tiles.associate { it.tile to PlacesInView(it.places.map { place -> place.toMapPlace() }, it.clusters.map { cluster -> cluster.toPlaceCluster() }) } }
                     val changed = lock.withLock {
                         chunk.mapNotNull { (square, loaded) ->
@@ -240,6 +243,29 @@ internal class DefaultPlaceRepository(
             )
         }
 
+    override suspend fun around(point: GeoPoint, radiusMeters: Int, categories: Set<PlaceCategory>): AppResult<PlacesAround, DataError.Network> =
+        api.around(point.lat, point.lng, radiusMeters, categories.query(), AROUND_LIMIT).map { response ->
+            PlacesAround(
+                places = response.items.map { item ->
+                    PlaceAround(
+                        MapPlace(
+                            id = item.id,
+                            name = item.name,
+                            category = PlaceItemDto.Category.valueOf(item.category.name).toCategory(),
+                            location = GeoPoint(item.location.lat, item.location.lng),
+                            isTripinly = item.isTripinly,
+                            hotCount = item.hotCount.toInt(),
+                            prominence = item.prominence.toInt(),
+                            coverImageId = item.coverImageId,
+                            coverThumbUrl = item.coverThumbUrl,
+                        ),
+                        item.distanceMeters.toInt(),
+                    )
+                },
+                counts = response.categoryCounts.toCategoryCounts(),
+            )
+        }
+
     private fun PlaceDetailDto.toPlaceDetails() = PlaceDetails(
         id = id,
         name = name,
@@ -279,6 +305,8 @@ internal class DefaultPlaceRepository(
         const val MAX_QUERY_LENGTH = 100
         const val DESTINATION_SCOPE = "destination"
         const val NEARBY_PAGE_SIZE = 20
+        // Around a pin: the server's default, as many as the card's row shows in a few swipes.
+        const val AROUND_LIMIT = 30
         // The server's limit of squares per request.
         const val MAX_SQUARES_PER_REQUEST = 16
         // A square is about four map tiles a side; 200 (the server's most) draws them about as densely as

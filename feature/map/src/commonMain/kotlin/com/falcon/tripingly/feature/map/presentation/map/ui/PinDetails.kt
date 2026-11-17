@@ -90,7 +90,7 @@ internal fun StopDetailsContent(card: StopCardState, onAction: (MapAction) -> Un
                 { onAction(MapAction.StopCard.OpenComments) },
                 showPhotos,
             ) +
-                routeButtons(card.routes, { onAction(MapAction.PinRoute.GoHere) }, { onAction(MapAction.PinRoute.Route) })
+                routeButtons(card.routes, { onAction(MapAction.PinRoute.GoHere) }, { onAction(MapAction.PinRoute.Route) }, { onAction(MapAction.Around.Open) })
             JoinedButtons(group, Modifier.horizontalScroll(rememberScrollState()))
         },
         photoStrip = photoStrip,

@@ -4,6 +4,7 @@ import com.falcon.tripingly.core.common.error.DataError
 import com.falcon.tripingly.core.common.result.AppResult
 import com.falcon.tripingly.core.data.trips.PendingTripWrites
 import com.falcon.tripingly.core.data.trips.hasCode
+import com.falcon.tripingly.core.model.place.CategoryCount
 import com.falcon.tripingly.core.model.place.PlaceCategory
 import com.falcon.tripingly.core.model.route.BestOrder
 import com.falcon.tripingly.core.model.route.RoutePlan
@@ -79,7 +80,19 @@ class RouteRepositoryTest {
         assertEquals(PlaceCategory.Cafe, along.place.category)
         assertEquals(80, along.distanceFromRouteMeters)
         assertEquals(720, along.etaFromStartSeconds)
+        assertEquals(listOf(CategoryCount(PlaceCategory.Cafe, 3), CategoryCount(PlaceCategory.Museum, 1)), plan.alongTheWayCounts)
+        assertNull(requests.single().url.parameters["categories"])
         assertFalse(plan.isEstimated)
+    }
+
+    @Test
+    fun placesAlongTheWayOfSomeKindsAreAnotherQuestion() = runTest {
+        repository.dayRoute(TRIP_ID, day(), TravelMode.Walking)
+        repository.dayRoute(TRIP_ID, day(), TravelMode.Walking, categories = setOf(PlaceCategory.Cafe, PlaceCategory.FastFood))
+        repository.dayRoute(TRIP_ID, day(), TravelMode.Walking, categories = setOf(PlaceCategory.Cafe, PlaceCategory.FastFood))
+
+        assertEquals(2, requests.size)
+        assertEquals("cafe,fast_food", requests.last().url.parameters["categories"])
     }
 
     @Test
@@ -225,7 +238,7 @@ class RouteRepositoryTest {
                   ]
                 }]
               },
-              "alongTheWay": [], "degraded": false, "attribution": "Timetables: Wiener Linien | © OpenStreetMap contributors"
+              "alongTheWay": [], "alongTheWayCounts": [], "degraded": false, "attribution": "Timetables: Wiener Linien | © OpenStreetMap contributors"
             }
         """.trimIndent()
 
@@ -248,6 +261,7 @@ class RouteRepositoryTest {
                 "positionAlongRoute": 0.4,
                 "etaFromStartSeconds": 720
               }],
+              "alongTheWayCounts": [{"category": "cafe", "count": 3}, {"category": "museum", "count": 1}],
               "degraded": false,
               "attribution": "© openrouteservice.org | © OpenStreetMap contributors"
             }

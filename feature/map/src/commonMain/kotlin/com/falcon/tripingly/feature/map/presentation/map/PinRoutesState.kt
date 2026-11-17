@@ -15,4 +15,6 @@ data class PinRoutesState(
     val isRouteTo: Boolean = false,
     val isRouteOn: Boolean = false,
     val mode: TravelMode = TravelMode.Walking,
+    /** Around (Tripinly Pro) shows its ring around this pin. */
+    val isAroundOn: Boolean = false,
 )

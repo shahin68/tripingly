@@ -215,7 +215,6 @@
     <string name="map_route_meters">%1$d m</string>
     <string name="map_route_km">%1$s km</string>
     <string name="map_route_estimated">Routen sind gerade nicht verfügbar.</string>
-    <string name="map_along_the_way">Auf dem Weg</string>
     <string name="map_along_the_way_item">in %1$s · %2$s abseits der Route</string>
     <string name="map_along_add">Zu Tag %1$d hinzufügen</string>
     <string name="map_route_from_here">Route von hier</string>
@@ -285,4 +284,12 @@
     <string name="map_add_to_trip_added">Zu %1$s hinzugefügt, Tag %2$d.</string>
     <string name="map_error_add_to_trip">Konnte nicht zu deiner Reise hinzugefügt werden.</string>
     <string name="map_error_load_days">Die Tage der Reise konnten nicht geladen werden.</string>
+    <string name="map_category_all">Alle</string>
+    <string name="map_category_count">%1$s %2$d</string>
+    <string name="map_filter_open">Orte filtern</string>
+    <string name="map_filter_close">Filter schließen</string>
+    <string name="map_around">In der Nähe</string>
+    <string name="map_around_close">In der Nähe schließen</string>
+    <string name="map_around_none">Keine Orte in diesem Kreis.</string>
+    <string name="map_error_around">Die Orte in der Nähe konnten nicht geladen werden.</string>
 </resources>

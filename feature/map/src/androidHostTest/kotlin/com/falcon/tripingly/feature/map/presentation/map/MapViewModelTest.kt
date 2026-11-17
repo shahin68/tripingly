@@ -31,6 +31,7 @@ import com.falcon.tripingly.core.model.account.ProfileUpdate
 import com.falcon.tripingly.core.model.photo.Photo
 import com.falcon.tripingly.core.model.photo.PhotoOwner
 import com.falcon.tripingly.core.model.photo.PhotoStatus
+import com.falcon.tripingly.core.model.place.CategoryCount
 import com.falcon.tripingly.core.model.place.GeoBounds
 import com.falcon.tripingly.core.model.place.ImageCredit
 import com.falcon.tripingly.core.model.place.MapPlace
@@ -188,14 +189,19 @@ class MapViewModelTest {
         var bestOrder: List<String>? = null
         /** The places along every day route. */
         var alongTheWay: List<AlongTheWayPlace> = emptyList()
+        /** How many of each kind every day route passes. */
+        var alongTheWayCounts: List<CategoryCount> = emptyList()
+        /** The kinds of place along the way asked for with each route. */
+        val categoryRequests = mutableListOf<Set<PlaceCategory>>()
         /** By public transport: the times asked for, a day route's as a leaving time. */
         val transitTimes = mutableListOf<TransitTime?>()
         val bestOrderModes = mutableListOf<TravelMode>()
 
-        override suspend fun dayRoute(tripId: String, day: TripDay, mode: TravelMode, departAt: Instant?): AppResult<RoutePlan, DataError.Network> {
+        override suspend fun dayRoute(tripId: String, day: TripDay, mode: TravelMode, departAt: Instant?, categories: Set<PlaceCategory>): AppResult<RoutePlan, DataError.Network> {
             dayRoutes += day.markers.map { it.id } to mode
+            categoryRequests += categories
             if (mode == TravelMode.Transit) transitTimes += departAt?.let { TransitTime(it) }
-            return error?.asError() ?: fake.dayRoute(tripId, day, mode, departAt).map { it.copy(alongTheWay = alongTheWay) }
+            return error?.asError() ?: fake.dayRoute(tripId, day, mode, departAt, categories).map { it.copy(alongTheWay = alongTheWay, alongTheWayCounts = alongTheWayCounts) }
         }
 
         override suspend fun route(
@@ -206,11 +212,13 @@ class MapViewModelTest {
             fromPlaceId: String?,
             toPlaceId: String?,
             time: TransitTime?,
+            categories: Set<PlaceCategory>,
         ): AppResult<RoutePlan, DataError.Network> {
             pointRoutes += from to to
+            categoryRequests += categories
             pointRoutePlaces += fromPlaceId to toPlaceId
             if (mode == TravelMode.Transit) transitTimes += time
-            return error?.asError() ?: fake.route(from, to, mode, tripId, fromPlaceId, toPlaceId, time)
+            return error?.asError() ?: fake.route(from, to, mode, tripId, fromPlaceId, toPlaceId, time, categories)
         }
 
         override suspend fun bestOrder(tripId: String, day: TripDay, mode: TravelMode): AppResult<BestOrder, DataError.Network> {
@@ -2582,6 +2590,121 @@ class MapViewModelTest {
         viewModel.onAction(MapAction.MapView.PlacePinClick(viewModel.uiState.value.layers.placePins.single { it.place.id == "cafe" }.place))
         testScheduler.advanceUntilIdle()
         assertEquals("cafe", viewModel.uiState.value.stopsCard?.route?.selectedPlaceId)
+    }
+
+    @Test
+    fun `chips over the places along the way count each kind and ask for the route again with the kinds picked`() = runTest(testDispatcher) {
+        addStops(GeoPoint(48.2085, 16.3731), GeoPoint(48.2104, 16.3655))
+        routes.alongTheWayCounts = listOf(CategoryCount(PlaceCategory.Cafe, 3), CategoryCount(PlaceCategory.Museum, 1))
+        val viewModel = viewModel()
+        testScheduler.advanceUntilIdle()
+        viewModel.onAction(MapAction.Plan.ToggleRoute)
+        testScheduler.advanceUntilIdle()
+
+        val chips = viewModel.uiState.value.stopsCard?.route?.alongChips.orEmpty()
+        assertEquals(listOf(CategoryChip(null, 4, isSelected = true), CategoryChip(PlaceCategory.Cafe, 3, isSelected = false), CategoryChip(PlaceCategory.Museum, 1, isSelected = false)), chips)
+        assertEquals(emptySet(), routes.categoryRequests.last())
+
+        viewModel.onAction(MapAction.Plan.ToggleAlongCategory(PlaceCategory.Cafe))
+        testScheduler.advanceUntilIdle()
+        assertEquals(setOf(PlaceCategory.Cafe), routes.categoryRequests.last())
+        assertTrue(viewModel.uiState.value.stopsCard?.route?.alongChips.orEmpty().single { it.category == PlaceCategory.Cafe }.isSelected)
+
+        // All takes the pick off; the route going off forgets it.
+        viewModel.onAction(MapAction.Plan.ToggleAlongCategory(null))
+        testScheduler.advanceUntilIdle()
+        assertEquals(emptySet(), routes.categoryRequests.last())
+        viewModel.onAction(MapAction.Plan.ToggleAlongCategory(PlaceCategory.Museum))
+        viewModel.onAction(MapAction.Plan.ToggleRoute)
+        viewModel.onAction(MapAction.Plan.ToggleRoute)
+        testScheduler.advanceUntilIdle()
+        assertEquals(emptySet(), routes.categoryRequests.last())
+    }
+
+    @Test
+    fun `the map filter loads only the kinds picked and draws them purple, never hiding the stops`() = runTest(testDispatcher) {
+        addStops(GeoPoint(48.85, 2.30))
+        val viewModel = viewModel()
+        restOnTarget(viewModel)
+        assertEquals(setOf("Eiffel Tower", "Louvre"), viewModel.uiState.value.layers.placePins.map { it.place.name }.toSet())
+        assertTrue(viewModel.uiState.value.placeFilter?.isActive == false)
+
+        viewModel.onAction(MapAction.PlaceFilter.Toggle)
+        viewModel.onAction(MapAction.PlaceFilter.ToggleCategory(PlaceCategory.Museum))
+        testScheduler.advanceUntilIdle()
+
+        val filter = viewModel.uiState.value.placeFilter
+        assertTrue(filter?.isOpen == true && filter.isActive)
+        assertEquals(setOf(PlaceCategory.Museum), places.requests.last().map { it.categories }.toSet().single())
+        assertEquals(listOf("Louvre"), viewModel.uiState.value.layers.placePins.map { it.place.name })
+        assertTrue(viewModel.uiState.value.layers.placePins.all { it.isAlongTheWay })
+        assertEquals(1, viewModel.uiState.value.layers.stops.size)
+
+        // All shows every kind again, in the pins' own colours.
+        viewModel.onAction(MapAction.PlaceFilter.ToggleCategory(null))
+        testScheduler.advanceUntilIdle()
+        assertEquals(2, viewModel.uiState.value.layers.placePins.size)
+        assertTrue(viewModel.uiState.value.layers.placePins.none { it.isAlongTheWay })
+    }
+
+    @Test
+    fun `Around lists the places in a ring around a stop, purple, the other places dots, and closes the route`() = runTest(testDispatcher) {
+        // Next to the Eiffel Tower, and a walk from the Louvre.
+        addStops(GeoPoint(48.8580, 2.2950), GeoPoint(48.8600, 2.3300))
+        val viewModel = viewModel()
+        restOnTarget(viewModel)
+        viewModel.onAction(MapAction.Plan.ToggleRoute)
+        testScheduler.advanceUntilIdle()
+        viewModel.onAction(MapAction.MapView.MarkerClick(viewModel.uiState.value.layers.stops[0]))
+        restOnTarget(viewModel)
+
+        viewModel.events.test {
+            viewModel.onAction(MapAction.Around.Open)
+            testScheduler.advanceUntilIdle()
+            assertEquals(MapEvent.ShowWholePlan, awaitItem())
+        }
+        val state = viewModel.uiState.value
+        assertNull(state.stopsCard?.route)
+        assertEquals(listOf("Eiffel Tower"), state.stopsCard?.around?.places?.map { it.place.name })
+        assertTrue(state.stopCard?.routes?.isAroundOn == true)
+        assertEquals(500, state.layers.aroundRing?.radiusMeters)
+        assertNull(state.placeFilter)
+        assertTrue(state.layers.placePins.single { it.place.name == "Eiffel Tower" }.isAlongTheWay)
+        assertTrue(state.layers.placePins.single { it.place.name == "Louvre" }.isDot)
+
+        // A bigger ring reaches the Louvre once the handle rests; a kind picked lists only that kind.
+        viewModel.onAction(MapAction.Around.SetRadius(4000))
+        assertEquals(4000, viewModel.uiState.value.layers.aroundRing?.radiusMeters)
+        testScheduler.advanceUntilIdle()
+        assertEquals(listOf("Eiffel Tower", "Louvre"), viewModel.uiState.value.stopsCard?.around?.places?.map { it.place.name })
+        viewModel.onAction(MapAction.Around.ToggleCategory(PlaceCategory.Museum))
+        testScheduler.advanceUntilIdle()
+        assertEquals(listOf("Louvre"), viewModel.uiState.value.stopsCard?.around?.places?.map { it.place.name })
+        assertEquals(listOf(null, PlaceCategory.Landmark, PlaceCategory.Museum).toSet(), viewModel.uiState.value.stopsCard?.around?.chips?.map { it.category }?.toSet())
+
+        // The route coming on closes Around; the ring is the server's limit at most.
+        viewModel.onAction(MapAction.Around.SetRadius(99_000))
+        assertEquals(5000, viewModel.uiState.value.layers.aroundRing?.radiusMeters)
+        viewModel.onAction(MapAction.Plan.ToggleRoute)
+        testScheduler.advanceUntilIdle()
+        assertNull(viewModel.uiState.value.stopsCard?.around)
+        assertNull(viewModel.uiState.value.layers.aroundRing)
+    }
+
+    @Test
+    fun `Around is Tripinly Pro, so without it the paywall opens`() = runTest(testDispatcher) {
+        session = signedIn(entitlements = emptySet())
+        addStops(GeoPoint(48.8580, 2.2950))
+        val viewModel = viewModel()
+        restOnTarget(viewModel)
+        viewModel.onAction(MapAction.MapView.MarkerClick(viewModel.uiState.value.layers.stops[0]))
+        restOnTarget(viewModel)
+        viewModel.events.test {
+            viewModel.onAction(MapAction.Around.Open)
+            testScheduler.advanceUntilIdle()
+            assertEquals(MapEvent.OpenPaywall, awaitItem())
+        }
+        assertNull(viewModel.uiState.value.layers.aroundRing)
     }
 
     @Test

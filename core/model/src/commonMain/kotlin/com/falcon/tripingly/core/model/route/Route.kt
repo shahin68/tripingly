@@ -1,5 +1,6 @@
 package com.falcon.tripingly.core.model.route
 
+import com.falcon.tripingly.core.model.place.CategoryCount
 import com.falcon.tripingly.core.model.place.MapPlace
 import com.falcon.tripingly.core.model.trip.GeoPoint
 import kotlin.time.Instant
@@ -84,6 +85,8 @@ data class RoutePlan(
     val isEstimated: Boolean,
     /** "© openrouteservice.org | © OpenStreetMap contributors" (or the timetables' credit), shown with the route. */
     val attribution: String,
+    /** How many places of each kind the route passes, whatever kinds were asked for, most first: the filter chips. */
+    val alongTheWayCounts: List<CategoryCount> = emptyList(),
 )
 
 /** The best order for a day's stops; the first stop stays first. */

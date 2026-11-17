@@ -1,10 +1,13 @@
 package com.falcon.tripingly.core.data.places
 
+import com.falcon.tripingly.core.model.place.CategoryCount
 import com.falcon.tripingly.core.model.place.MapPlace
 import com.falcon.tripingly.core.model.place.PlaceCategory
 import com.falcon.tripingly.core.model.trip.GeoPoint
+import com.falcon.tripingly.core.network.model.CategoryCountDto
 import com.falcon.tripingly.core.network.model.CreateMarkerDto
 import com.falcon.tripingly.core.network.model.PlaceItemDto
+import kotlin.math.roundToInt
 
 internal fun PlaceItemDto.toMapPlace() = MapPlace(
     id = id,
@@ -100,3 +103,9 @@ internal fun PlaceCategory.toCreateDto() = when (this) {
     PlaceCategory.PhotoSpot -> CreateMarkerDto.Category.PHOTO_SPOT
     PlaceCategory.Romantic -> CreateMarkerDto.Category.ROMANTIC
 }
+
+/** Kinds of place as a query parameter (`cafe,fast_food`); null for none, which means every kind. */
+internal fun Set<PlaceCategory>.query(): String? = takeIf { it.isNotEmpty() }?.joinToString(",") { it.toCreateDto().value }
+
+/** A filter's counts, most first as the server sends them. */
+internal fun List<CategoryCountDto>.toCategoryCounts() = map { CategoryCount(PlaceItemDto.Category.valueOf(it.category.name).toCategory(), it.count.roundToInt()) }

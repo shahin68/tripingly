@@ -2,6 +2,7 @@ package com.falcon.tripingly.core.network.places
 
 import com.falcon.tripingly.core.common.error.DataError
 import com.falcon.tripingly.core.common.result.AppResult
+import com.falcon.tripingly.core.network.model.AroundResponseDto
 import com.falcon.tripingly.core.network.model.NearbyPageDto
 import com.falcon.tripingly.core.network.model.PlaceDetailDto
 import com.falcon.tripingly.core.network.model.SearchResponseDto
@@ -29,13 +30,14 @@ interface PlacesApi {
      * Places to draw for up to 16 map squares at once, each answered on its own. [tiles] is a comma-separated
      * list of `level/x/y` squares (side `360 / 2^level` degrees); [limit] (10–200) caps each square. Below
      * zoom 14 only Tripinly places (clustered when there are many) and notable OpenStreetMap places; from 14
-     * OpenStreetMap places too.
+     * OpenStreetMap places too. [categories] (comma-separated, null: all) keeps only places of those kinds.
      */
     @GET("places/tiles")
     suspend fun tiles(
         @Query("tiles") tiles: String,
         @Query("zoom") zoom: Int,
         @Query("limit") limit: Int,
+        @Query("categories") categories: String? = null,
     ): AppResult<TilesResponseDto, DataError.Network>
 
     /** One place, with its OpenStreetMap details. */
@@ -53,4 +55,18 @@ interface PlacesApi {
         @Query("cursor") cursor: String?,
         @Query("limit") limit: Int,
     ): AppResult<NearbyPageDto, DataError.Network>
+
+    /**
+     * Tripinly Pro (`403 PREMIUM_REQUIRED` otherwise): every place within [radiusMeters] (50–5000) of [lat], [lng],
+     * hot first, Tripinly spots before OpenStreetMap, then nearest, at most [limit] (1–50); [categories] (comma-separated,
+     * null: all) keeps only those kinds, while `categoryCounts` always counts every kind. The point isn't stored.
+     */
+    @GET("places/around")
+    suspend fun around(
+        @Query("lat") lat: Double,
+        @Query("lng") lng: Double,
+        @Query("radiusMeters") radiusMeters: Int,
+        @Query("categories") categories: String?,
+        @Query("limit") limit: Int,
+    ): AppResult<AroundResponseDto, DataError.Network>
 }

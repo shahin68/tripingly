@@ -3,11 +3,14 @@ package com.falcon.tripingly.core.data.places
 import com.falcon.tripingly.core.common.error.DataError
 import com.falcon.tripingly.core.common.result.AppResult
 import com.falcon.tripingly.core.model.Page
+import com.falcon.tripingly.core.model.place.CategoryCount
 import com.falcon.tripingly.core.model.place.MapPlace
+import com.falcon.tripingly.core.model.place.PlaceAround
 import com.falcon.tripingly.core.model.place.PlaceCategory
 import com.falcon.tripingly.core.model.place.PlaceDetails
 import com.falcon.tripingly.core.model.place.PlaceSearchResult
 import com.falcon.tripingly.core.model.place.PlaceSquare
+import com.falcon.tripingly.core.model.place.PlacesAround
 import com.falcon.tripingly.core.model.place.PlacesInView
 import com.falcon.tripingly.core.model.place.SearchResultType
 import com.falcon.tripingly.core.model.social.NearbyPlace
@@ -52,12 +55,27 @@ class FakePlaceRepository : PlaceRepository {
     override suspend fun loadedPlacesIn(squares: Collection<PlaceSquare>): Map<PlaceSquare, PlacesInView> =
         squares.associateWith { square ->
             val bounds = square.bounds
-            PlacesInView(sights.filter { it.location.lat >= bounds.south && it.location.lat < bounds.north && it.location.lng >= bounds.west && it.location.lng < bounds.east }, emptyList())
+            // A square of some kinds lists only places of those kinds, as the server's tiles do.
+            PlacesInView(
+                sights.filter {
+                    it.location.lat >= bounds.south && it.location.lat < bounds.north && it.location.lng >= bounds.west && it.location.lng < bounds.east &&
+                        (square.categories.isEmpty() || it.category in square.categories)
+                },
+                emptyList(),
+            )
         }
 
     override suspend fun place(id: String): AppResult<PlaceDetails, DataError.Network> {
         val place = sights.firstOrNull { it.id == id } ?: return AppResult.Error(DataError.Network.Api(404, "NOT_FOUND", "This place isn't available."))
         return AppResult.Success(PlaceDetails(place.id, place.name, place.category, place.hotCount, "Mo-Su 09:00-18:00", null, images = emptyList()))
+    }
+
+    /** The sights within [radiusMeters] of [point], of [categories], nearest first, with every kind counted. */
+    override suspend fun around(point: GeoPoint, radiusMeters: Int, categories: Set<PlaceCategory>): AppResult<PlacesAround, DataError.Network> {
+        val inCircle = sights.map { PlaceAround(it, distanceMeters(point, it.location)) }.filter { it.distanceMeters <= radiusMeters }
+        val counts = inCircle.groupingBy { it.place.category }.eachCount().map { (category, count) -> CategoryCount(category, count) }.sortedByDescending { it.count }
+        val shown = inCircle.filter { categories.isEmpty() || it.place.category in categories }.sortedBy { it.distanceMeters }
+        return AppResult.Success(PlacesAround(shown, counts))
     }
 
     /** The sights by distance, as the crow flies. */

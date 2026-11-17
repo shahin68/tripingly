@@ -2025,6 +2025,85 @@
         ]
       }
     },
+    "/v1/places/around": {
+      "get": {
+        "description": "Every place within radiusMeters of the point: hot spots first, Tripinly spots before OSM places, then nearest; categoryCounts says how many of each kind the circle holds (for filter chips). 403 PREMIUM_REQUIRED without Tripinly Pro. The point is used for this query only.",
+        "operationId": "Places_around",
+        "parameters": [
+          {
+            "name": "lat",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "example": 48.2082,
+              "type": "number"
+            }
+          },
+          {
+            "name": "lng",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "example": 16.3738,
+              "type": "number"
+            }
+          },
+          {
+            "name": "radiusMeters",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 50,
+              "maximum": 5000,
+              "default": 500,
+              "type": "number"
+            }
+          },
+          {
+            "name": "categories",
+            "required": false,
+            "in": "query",
+            "description": "Comma-separated: cafe, restaurant, bar, attraction, museum, historic, park, nature, landmark, other, bakery, fast_food, viewpoint, beach, entertainment, shopping, stay, transport, cinema, nightlife, health, pharmacy, groceries, market, sports, spa, zoo, kids, library, camping, winery, parking, fuel, money, toilets, rental, photo_spot, romantic. All when omitted; categoryCounts always counts every kind",
+            "schema": {
+              "example": "cafe,museum",
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 50,
+              "default": 30,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AroundResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Places around a point, by kind (Tripinly Pro)",
+        "tags": [
+          "places"
+        ]
+      }
+    },
     "/v1/places/popular": {
       "get": {
         "description": "Tripinly places only, by popularity. excludeTripId leaves out places already in that trip.",
@@ -4514,6 +4593,8 @@
               "REAUTH_REQUIRED",
               "REAUTH_FAILED",
               "ROUTING_UNAVAILABLE",
+              "TRANSIT_NO_COVERAGE",
+              "TRANSIT_NO_CONNECTION",
               "BBOX_TOO_LARGE",
               "IDEMPOTENCY_KEY_REUSED",
               "IDEMPOTENCY_KEY_IN_PROGRESS",
@@ -4548,6 +4629,43 @@
         },
         "required": [
           "error"
+        ]
+      },
+      "TransitAreaDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "vienna"
+          },
+          "name": {
+            "type": "string",
+            "example": "Vienna"
+          },
+          "south": {
+            "type": "number",
+            "example": 48.11
+          },
+          "west": {
+            "type": "number",
+            "example": 16.18
+          },
+          "north": {
+            "type": "number",
+            "example": 48.33
+          },
+          "east": {
+            "type": "number",
+            "example": 16.58
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "south",
+          "west",
+          "north",
+          "east"
         ]
       },
       "AppConfigDto": {
@@ -6428,6 +6546,90 @@
           "attribution"
         ]
       },
+      "CategoryCountDto": {
+        "type": "object",
+        "properties": {
+          "category": {
+            "type": "string",
+            "enum": [
+              "cafe",
+              "restaurant",
+              "bar",
+              "attraction",
+              "museum",
+              "historic",
+              "park",
+              "nature",
+              "landmark",
+              "other",
+              "bakery",
+              "fast_food",
+              "viewpoint",
+              "beach",
+              "entertainment",
+              "shopping",
+              "stay",
+              "transport",
+              "cinema",
+              "nightlife",
+              "health",
+              "pharmacy",
+              "groceries",
+              "market",
+              "sports",
+              "spa",
+              "zoo",
+              "kids",
+              "library",
+              "camping",
+              "winery",
+              "parking",
+              "fuel",
+              "money",
+              "toilets",
+              "rental",
+              "photo_spot",
+              "romantic"
+            ]
+          },
+          "count": {
+            "type": "number",
+            "minimum": 1
+          }
+        },
+        "required": [
+          "category",
+          "count"
+        ]
+      },
+      "AroundResponseDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "description": "Hot spots first (from APP_PLACE_RANK_MIN_HOT_COUNT, most hot first), Tripinly spots before OSM places, then nearest first",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/NearbyPlaceDto"
+            }
+          },
+          "categoryCounts": {
+            "description": "Places in the circle per kind, ignoring `categories`; most first. Kinds with none are left out",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CategoryCountDto"
+            }
+          },
+          "attribution": {
+            "type": "string",
+            "example": "© OpenStreetMap contributors"
+          }
+        },
+        "required": [
+          "items",
+          "categoryCounts",
+          "attribution"
+        ]
+      },
       "PopularResponseDto": {
         "type": "object",
         "properties": {
@@ -7408,6 +7610,130 @@
           "hotCount"
         ]
       },
+      "TransitLineDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "example": "U2"
+          },
+          "color": {
+            "type": "string",
+            "nullable": true,
+            "example": "#A862A4",
+            "description": "The line's own colour, #RRGGBB; null when the feed has none"
+          },
+          "textColor": {
+            "type": "string",
+            "nullable": true,
+            "example": "#FFFFFF"
+          }
+        },
+        "required": [
+          "name",
+          "color",
+          "textColor"
+        ]
+      },
+      "TransitPlaceDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "nullable": true,
+            "example": "Museumsquartier",
+            "description": "The stop's name; null at the route's own start and end"
+          },
+          "lat": {
+            "type": "number"
+          },
+          "lng": {
+            "type": "number"
+          },
+          "time": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "name",
+          "lat",
+          "lng",
+          "time"
+        ]
+      },
+      "TransitStepDto": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "walk",
+              "ride"
+            ]
+          },
+          "vehicle": {
+            "type": "string",
+            "enum": [
+              "tram",
+              "subway",
+              "bus",
+              "train",
+              "ferry",
+              "cable_car",
+              "other"
+            ],
+            "nullable": true
+          },
+          "line": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/TransitLineDto"
+              }
+            ]
+          },
+          "headsign": {
+            "type": "string",
+            "nullable": true,
+            "example": "Karlsplatz",
+            "description": "Where the ride is heading"
+          },
+          "from": {
+            "$ref": "#/components/schemas/TransitPlaceDto"
+          },
+          "to": {
+            "$ref": "#/components/schemas/TransitPlaceDto"
+          },
+          "stops": {
+            "type": "number",
+            "description": "Stops passed between getting on and off"
+          },
+          "distanceMeters": {
+            "type": "number"
+          },
+          "durationSeconds": {
+            "type": "number"
+          },
+          "polyline": {
+            "type": "string",
+            "description": "Encoded polyline, precision 5"
+          }
+        },
+        "required": [
+          "kind",
+          "vehicle",
+          "line",
+          "headsign",
+          "from",
+          "to",
+          "stops",
+          "distanceMeters",
+          "durationSeconds",
+          "polyline"
+        ]
+      },
       "RouteLegDto": {
         "type": "object",
         "properties": {
@@ -7546,6 +7872,13 @@
               "$ref": "#/components/schemas/AlongTheWayDto"
             }
           },
+          "alongTheWayCounts": {
+            "description": "Places along the route per kind, ignoring `categories` and the APP_ALONG_THE_WAY_MAX_PLACES cap (for filter chips); most first. Kinds with none are left out",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CategoryCountDto"
+            }
+          },
           "degraded": {
             "type": "boolean",
             "description": "True when routing is unavailable (quota used up, not configured): the route is straight lines with estimated times"
@@ -7558,6 +7891,7 @@
         "required": [
           "route",
           "alongTheWay",
+          "alongTheWayCounts",
           "degraded",
           "attribution"
         ]
@@ -8302,167 +8636,6 @@
         },
         "required": [
           "action"
-        ]
-      },
-      "TransitStepDto": {
-        "type": "object",
-        "properties": {
-          "kind": {
-            "type": "string",
-            "enum": [
-              "walk",
-              "ride"
-            ]
-          },
-          "vehicle": {
-            "type": "string",
-            "enum": [
-              "tram",
-              "subway",
-              "bus",
-              "train",
-              "ferry",
-              "cable_car",
-              "other"
-            ],
-            "nullable": true
-          },
-          "line": {
-            "nullable": true,
-            "type": "object",
-            "allOf": [
-              {
-                "$ref": "#/components/schemas/TransitLineDto"
-              }
-            ]
-          },
-          "headsign": {
-            "type": "string",
-            "nullable": true,
-            "example": "Karlsplatz",
-            "description": "Where the ride is heading"
-          },
-          "from": {
-            "$ref": "#/components/schemas/TransitPlaceDto"
-          },
-          "to": {
-            "$ref": "#/components/schemas/TransitPlaceDto"
-          },
-          "stops": {
-            "type": "number",
-            "description": "Stops passed between getting on and off"
-          },
-          "distanceMeters": {
-            "type": "number"
-          },
-          "durationSeconds": {
-            "type": "number"
-          },
-          "polyline": {
-            "type": "string",
-            "description": "Encoded polyline, precision 5"
-          }
-        },
-        "required": [
-          "kind",
-          "vehicle",
-          "line",
-          "headsign",
-          "from",
-          "to",
-          "stops",
-          "distanceMeters",
-          "durationSeconds",
-          "polyline"
-        ]
-      },
-      "TransitLineDto": {
-        "type": "object",
-        "properties": {
-          "name": {
-            "type": "string",
-            "example": "U2"
-          },
-          "color": {
-            "type": "string",
-            "nullable": true,
-            "example": "#A862A4",
-            "description": "The line's own colour, #RRGGBB; null when the feed has none"
-          },
-          "textColor": {
-            "type": "string",
-            "nullable": true,
-            "example": "#FFFFFF"
-          }
-        },
-        "required": [
-          "name",
-          "color",
-          "textColor"
-        ]
-      },
-      "TransitPlaceDto": {
-        "type": "object",
-        "properties": {
-          "name": {
-            "type": "string",
-            "nullable": true,
-            "example": "Museumsquartier",
-            "description": "The stop's name; null at the route's own start and end"
-          },
-          "lat": {
-            "type": "number"
-          },
-          "lng": {
-            "type": "number"
-          },
-          "time": {
-            "type": "string",
-            "format": "date-time"
-          }
-        },
-        "required": [
-          "name",
-          "lat",
-          "lng",
-          "time"
-        ]
-      },
-      "TransitAreaDto": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string",
-            "example": "vienna"
-          },
-          "name": {
-            "type": "string",
-            "example": "Vienna"
-          },
-          "south": {
-            "type": "number",
-            "example": 48.11
-          },
-          "west": {
-            "type": "number",
-            "example": 16.18
-          },
-          "north": {
-            "type": "number",
-            "example": 48.33
-          },
-          "east": {
-            "type": "number",
-            "example": 16.58
-          }
-        },
-        "required": [
-          "id",
-          "name",
-          "south",
-          "west",
-          "north",
-          "east"
         ]
       }
     }

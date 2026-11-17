@@ -4,9 +4,11 @@ import com.falcon.tripingly.core.common.error.DataError
 import com.falcon.tripingly.core.common.result.AppResult
 import com.falcon.tripingly.core.model.Page
 import com.falcon.tripingly.core.model.config.AppConfig
+import com.falcon.tripingly.core.model.place.PlaceCategory
 import com.falcon.tripingly.core.model.place.PlaceDetails
 import com.falcon.tripingly.core.model.place.PlaceSearchResult
 import com.falcon.tripingly.core.model.place.PlaceSquare
+import com.falcon.tripingly.core.model.place.PlacesAround
 import com.falcon.tripingly.core.model.place.PlacesInView
 import com.falcon.tripingly.core.model.social.NearbyPlace
 import com.falcon.tripingly.core.model.trip.GeoPoint
@@ -46,4 +48,11 @@ interface PlaceRepository {
      * sights where Tripinly has few. The point is used for the request only.
      */
     suspend fun nearby(point: GeoPoint, cursor: String?): AppResult<Page<NearbyPlace>, DataError.Network>
+
+    /**
+     * Tripinly Pro: every place within [radiusMeters] of [point] (a stop), hot first, Tripinly spots before OpenStreetMap,
+     * then nearest; only of [categories] (empty: every kind), with how many of each kind the circle holds. The point is
+     * used for the request only.
+     */
+    suspend fun around(point: GeoPoint, radiusMeters: Int, categories: Set<PlaceCategory> = emptySet()): AppResult<PlacesAround, DataError.Network>
 }

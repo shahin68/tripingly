@@ -106,11 +106,35 @@ sealed interface MapAction {
         data class AlongTheWayClick(val place: MapPlace) : Plan
         /** Adds a place along the way to the open day. */
         data class AddAlongTheWay(val place: MapPlace) : Plan
+        /** A chip over the places along the way: a kind on or off, or All ([category] null). */
+        data class ToggleAlongCategory(val category: PlaceCategory?) : Plan
         data object ClosePointRoute : Plan
         /** By public transport, "Leave at": the time picker opens. */
         data object OpenLeaveAt : Plan
         /** By public transport, the walks and rides open step by step in a sheet. */
         data object OpenTransitSteps : Plan
+    }
+
+    /** The filter circle at the map's top end, which opens into chips of kinds of places. */
+    sealed interface PlaceFilter : MapAction {
+        /** The circle: the chips open, or close again (the kinds picked stay). */
+        data object Toggle : PlaceFilter
+        /** A chip: a kind on or off, or All ([category] null). */
+        data class ToggleCategory(val category: PlaceCategory?) : PlaceFilter
+    }
+
+    /** Around a pin (Tripinly Pro): its button on a card or details, the ring on the map and the box in the plan sheet. */
+    sealed interface Around : MapAction {
+        data object Open : Around
+        /** The box's ✕. */
+        data object Close : Around
+        /** A chip: a kind on or off, or All ([category] null). */
+        data class ToggleCategory(val category: PlaceCategory?) : Around
+        /** The ring's handle dragged to [meters] from the pin. */
+        data class SetRadius(val meters: Int) : Around
+        data class PlaceClick(val place: MapPlace) : Around
+        /** Adds a place around the pin to the open day. */
+        data class Add(val place: MapPlace) : Around
     }
 
     /** The route buttons of a stop's or a place's card and details, and the header's from/to bar. */

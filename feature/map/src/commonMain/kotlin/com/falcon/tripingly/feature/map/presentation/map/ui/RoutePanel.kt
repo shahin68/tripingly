@@ -62,6 +62,8 @@ import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import com.falcon.tripingly.core.common.util.NumberUtils
 import com.falcon.tripingly.core.designsystem.component.GlassDefaults
+import com.falcon.tripingly.core.designsystem.component.PhotoImage
+import com.falcon.tripingly.core.designsystem.component.PhotoSize
 import com.falcon.tripingly.core.designsystem.component.SegmentedToggle
 import com.falcon.tripingly.core.designsystem.component.SegmentedToggleOption
 import com.falcon.tripingly.core.designsystem.component.horizontalFadingEdge
@@ -74,7 +76,6 @@ import com.falcon.tripingly.core.model.route.TravelMode
 import com.falcon.tripingly.core.ui.UiText
 import com.falcon.tripingly.feature.map.generated.resources.Res
 import com.falcon.tripingly.feature.map.generated.resources.map_along_add
-import com.falcon.tripingly.feature.map.generated.resources.map_along_the_way
 import com.falcon.tripingly.feature.map.generated.resources.map_along_the_way_item
 import com.falcon.tripingly.feature.map.generated.resources.map_mode_cycling
 import com.falcon.tripingly.feature.map.generated.resources.map_mode_driving
@@ -85,10 +86,13 @@ import com.falcon.tripingly.feature.map.generated.resources.map_route_hours
 import com.falcon.tripingly.feature.map.generated.resources.map_route_km
 import com.falcon.tripingly.feature.map.generated.resources.map_route_meters
 import com.falcon.tripingly.feature.map.generated.resources.map_route_minutes
+import com.falcon.tripingly.feature.map.presentation.map.LeaveAtState
 import com.falcon.tripingly.feature.map.presentation.map.MapAction
+import com.falcon.tripingly.feature.map.presentation.map.TransitChip
 import com.falcon.tripingly.feature.map.presentation.map.RouteSummaryState
 import com.falcon.tripingly.feature.map.presentation.map.preview.previewRoute
 import kotlin.math.roundToInt
+import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
 import org.jetbrains.compose.resources.stringResource
 
@@ -134,8 +138,7 @@ internal fun RouteCardSlot(route: RouteSummaryState?, onAction: (MapAction) -> U
     // The card's background is a plain box around the animation, sized by it, so it grows and shrinks with the card
     // and stays drawn when the animation rests. An opaque colour (a touch darker or lighter than the sheet's glass,
     // worked out once), not a see-through shade: translucent paint on the translucent glass didn't show on devices.
-    val cardColor = MaterialTheme.colorScheme.onSurface.copy(alpha = CARD_SHADE).compositeOver(GlassDefaults.opaqueTint.compositeOver(MaterialTheme.colorScheme.surface))
-    Box(modifier.clip(MaterialTheme.shapes.large).background(cardColor)) {
+    Box(modifier.clip(MaterialTheme.shapes.large).background(planCardColor())) {
         AnimatedContent(
             targetState = route,
             contentKey = { it != null },
@@ -153,6 +156,11 @@ internal fun RouteCardSlot(route: RouteSummaryState?, onAction: (MapAction) -> U
         }
     }
 }
+
+/** The route card's and the Around box's colour in the plan sheet. */
+@Composable
+internal fun planCardColor() =
+    MaterialTheme.colorScheme.onSurface.copy(alpha = CARD_SHADE).compositeOver(GlassDefaults.opaqueTint.compositeOver(MaterialTheme.colorScheme.surface))
 
 /**
  * The route: its icon (a spinner while a way of travelling loads), time and length, how to travel, and the places
@@ -175,8 +183,13 @@ private fun AnimatedVisibilityScope.RouteCardContent(route: RouteSummaryState, i
         }
         // Public transport's rows come and go as its way of travelling is picked: they glide open and shut.
         GlidingRow(route.transitNote, rowMotion(1, isAnimated)) { TransitNoteText(it, below) }
-        GlidingRow(route.transitLegs.takeIf { it.isNotEmpty() }, rowMotion(1, isAnimated)) { TransitLegsButton(it, onAction, below) }
-        GlidingRow(route.leaveAt, rowMotion(2, isAnimated)) { LeaveAtButton(it, onAction, below) }
+        // The steps and when to leave share one row: the steps take the room, the time sits compact at the end.
+        GlidingRow(TransitRow(route.transitLegs, route.leaveAt).takeIf { it.legs.isNotEmpty() || it.leaveAt != null }, rowMotion(1, isAnimated)) { row ->
+            Row(below, horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small), verticalAlignment = Alignment.CenterVertically) {
+                if (row.legs.isNotEmpty()) TransitLegsButton(row.legs, onAction, Modifier.weight(1f))
+                row.leaveAt?.let { LeaveAtButton(it, onAction) }
+            }
+        }
         if (route.isEstimated) {
             Text(
                 text = stringResource(Res.string.map_route_estimated),
@@ -185,13 +198,15 @@ private fun AnimatedVisibilityScope.RouteCardContent(route: RouteSummaryState, i
                 modifier = below.then(rowMotion(1, isAnimated)),
             )
         }
-        if (route.alongTheWay.isNotEmpty()) {
-            Text(
-                text = stringResource(Res.string.map_along_the_way),
-                style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = below.then(rowMotion(2, isAnimated)),
+        // Kinds along the way, with how many of each: picking some reloads the route with only those (no title above).
+        if (route.alongChips.isNotEmpty()) {
+            CategoryChipRow(
+                chips = route.alongChips,
+                onToggle = { onAction(MapAction.Plan.ToggleAlongCategory(it)) },
+                modifier = Modifier.padding(top = inset).then(rowMotion(2, isAnimated)),
             )
+        }
+        if (route.alongTheWay.isNotEmpty()) {
             val selectedIndex = route.alongTheWay.indexOfFirst { it.place.id == route.selectedPlaceId }
             // A place picked on the map is the card in view, also when the plan first shows.
             val listState = rememberLazyListState(initialFirstVisibleItemIndex = selectedIndex.coerceAtLeast(0))
@@ -199,7 +214,9 @@ private fun AnimatedVisibilityScope.RouteCardContent(route: RouteSummaryState, i
             LaunchedEffect(route.selectedPlaceId) { listState.reveal(selectedIndex, onScreen, toStart = true) }
             LazyRow(
                 state = listState,
-                modifier = Modifier.padding(top = inset).horizontalFadingEdge(listState).trackOnScreen(onScreen),
+                // A little more room under the kinds, so the chips and the places read as two rows (the canvas).
+                modifier = Modifier.padding(top = if (route.alongChips.isEmpty()) inset else inset + MaterialTheme.spacing.extraSmall)
+                    .horizontalFadingEdge(listState).trackOnScreen(onScreen),
                 contentPadding = PaddingValues(horizontal = inset),
                 horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
             ) {
@@ -301,11 +318,27 @@ private fun RouteTotals(route: RouteSummaryState, modifier: Modifier = Modifier)
     }
 }
 
-/** A place near the route: its kind, name, when the route gets there and how far off it it is; + adds it to the open day. */
+/** A place near the route: its photo or kind, name, when the route gets there and how far off it it is; + adds it to the open day. */
 @Composable
 private fun AlongTheWayCard(item: AlongTheWayPlace, dayNumber: Int?, onOpen: (MapPlace) -> Unit, onAdd: (MapPlace) -> Unit, modifier: Modifier = Modifier) {
+    NearPlaceCard(
+        place = item.place,
+        subtitle = stringResource(Res.string.map_along_the_way_item, durationLabel(item.etaFromStartSeconds), distanceText(item.distanceFromRouteMeters).asString()),
+        dayNumber = dayNumber,
+        onOpen = onOpen,
+        onAdd = onAdd,
+        modifier = modifier,
+    )
+}
+
+/**
+ * A place in a row of places (along the way, or around a pin): its photo or kind, its name over [subtitle]; + adds it
+ * to day [dayNumber] (none for viewers).
+ */
+@Composable
+internal fun NearPlaceCard(place: MapPlace, subtitle: String, dayNumber: Int?, onOpen: (MapPlace) -> Unit, onAdd: (MapPlace) -> Unit, modifier: Modifier = Modifier) {
     Surface(
-        onClick = { onOpen(item.place) },
+        onClick = { onOpen(place) },
         shape = MaterialTheme.shapes.medium,
         // The sheet's own glass colour, so the places stand out of the shaded card in both themes.
         color = GlassDefaults.opaqueTint,
@@ -316,24 +349,42 @@ private fun AlongTheWayCard(item: AlongTheWayPlace, dayNumber: Int?, onOpen: (Ma
             horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small + MaterialTheme.spacing.extraSmall),
             modifier = Modifier.padding(start = MaterialTheme.spacing.small + MaterialTheme.spacing.extraSmall, end = MaterialTheme.spacing.small),
         ) {
-            Icon(item.place.category.icon, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(20.dp))
+            AlongTheWayImage(place)
             Column(modifier = Modifier.padding(vertical = MaterialTheme.spacing.small).weight(1f, fill = false)) {
-                Text(item.place.name, style = MaterialTheme.typography.labelLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                Text(
-                    text = stringResource(Res.string.map_along_the_way_item, durationLabel(item.etaFromStartSeconds), distanceText(item.distanceFromRouteMeters).asString()),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                )
+                Text(place.name, style = MaterialTheme.typography.labelLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(text = subtitle, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
             }
             if (dayNumber != null) {
-                FilledIconButton(onClick = { onAdd(item.place) }, modifier = Modifier.size(AddButtonSize)) {
+                FilledIconButton(onClick = { onAdd(place) }, modifier = Modifier.size(AddButtonSize)) {
                     Icon(Icons.Default.Add, contentDescription = stringResource(Res.string.map_along_add, dayNumber), modifier = Modifier.size(18.dp))
                 }
             }
         }
     }
 }
+
+/**
+ * The place's photo, rounded, when it has one; its kind's icon otherwise (Shahin, 2026-11-17). The photo is as tall as
+ * the card's text, so cards with and without one stay the same height.
+ */
+@Composable
+private fun AlongTheWayImage(place: MapPlace) {
+    val thumb = place.coverThumbUrl
+    if (thumb != null) {
+        PhotoImage(
+            photoId = place.coverImageId ?: place.id,
+            url = thumb,
+            size = PhotoSize.Thumb,
+            contentDescription = null,
+            modifier = Modifier.size(AlongImageSize).clip(MaterialTheme.shapes.small),
+        )
+    } else {
+        Icon(place.category.icon, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(20.dp))
+    }
+}
+
+/** The legs of a public transport route and when to leave, shown in one row. */
+private data class TransitRow(val legs: ImmutableList<TransitChip>, val leaveAt: LeaveAtState?)
 
 /** The travel modes' height (40 dp options in 4 dp of track), which the route icon matches. */
 private val RowHeight = 48.dp
@@ -345,6 +396,7 @@ private const val DIMMED_ALPHA = 0.38f
 private val SpinnerSize = 20.dp
 private val AlongCardMaxWidth = 240.dp
 private val AddButtonSize = 36.dp
+private val AlongImageSize = 32.dp
 
 // The canvas's timings: the card fades in fast and out late while its height eases; rows follow one after another.
 private const val CARD_FADE_IN_MILLIS = 80

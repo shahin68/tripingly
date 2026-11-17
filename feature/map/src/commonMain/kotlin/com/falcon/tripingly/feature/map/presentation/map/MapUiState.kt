@@ -6,6 +6,7 @@ import com.falcon.tripingly.core.location.model.Coordinates
 import com.falcon.tripingly.core.model.place.GeoBounds
 import com.falcon.tripingly.core.model.photo.PickedImage
 import com.falcon.tripingly.core.model.place.MapPlace
+import com.falcon.tripingly.core.model.place.PlaceAround
 import com.falcon.tripingly.core.model.place.PlaceCategory
 import com.falcon.tripingly.core.model.place.PlaceDetails
 import com.falcon.tripingly.core.model.place.PlaceImage
@@ -51,6 +52,8 @@ data class MapUiState(
     val layers: MapLayersState = MapLayersState(),
     val camera: CameraState = CameraState(),
     val location: LocationState = LocationState(),
+    /** The filter circle at the map's top end; null while a route or Around shows. */
+    val placeFilter: PlaceFilterState? = null,
     /** The places button is off: only the trip's stops and its route's places show. */
     val arePlacesHidden: Boolean = false,
     /** Shown over the map with a route, instead of the OpenStreetMap credit. */
@@ -170,6 +173,8 @@ data class StopsCardState(
     /** An owner or editor, with 3 to 25 stops on the day. */
     val canFindBestOrder: Boolean,
     val isFindingBestOrder: Boolean,
+    /** Around a pin (Tripinly Pro): its box takes the route card's place while it's open. */
+    val around: AroundState? = null,
 ) : PlanCardState
 
 @Immutable
@@ -181,6 +186,26 @@ data class PointRouteCardState(
     val fromLabel: UiText? = null,
     val toLabel: UiText? = null,
 ) : PlanCardState
+
+/**
+ * The map's filter: a circle that opens ([isOpen]) into chips of kinds of places. [isActive]: some kinds are picked, so
+ * the circle is lit while closed and only those places show, in purple.
+ */
+@Immutable
+data class PlaceFilterState(val isOpen: Boolean, val isActive: Boolean, val chips: ImmutableList<CategoryChip>)
+
+/**
+ * The places around a pin, in the plan sheet: chips of kinds with how many of each, then the places, nearest of the
+ * best first. [addToDayNumber]: an owner or editor can add a place to that day; null for viewers.
+ */
+@Immutable
+data class AroundState(
+    val chips: ImmutableList<CategoryChip>,
+    val places: ImmutableList<PlaceAround>,
+    val isLoading: Boolean,
+    val addToDayNumber: Int?,
+    val selectedPlaceId: String?,
+)
 
 /** A route's way of travelling, its time and length, and the places along the way. */
 @Immutable
@@ -207,7 +232,13 @@ data class RouteSummaryState(
     val transitTimes: UiText? = null,
     /** By public transport: its walks and rides in a row; a tap opens them step by step. */
     val transitLegs: ImmutableList<TransitChip> = persistentListOf(),
+    /** The chips over the places along the way: All, then each kind the route passes with how many; empty without places. */
+    val alongChips: ImmutableList<CategoryChip> = persistentListOf(),
 )
+
+/** A chip of a filter by kind of place: All ([category] null) or one kind, with how many there are ([count]; null: not known). */
+@Immutable
+data class CategoryChip(val category: PlaceCategory?, val count: Int?, val isSelected: Boolean)
 
 /** "Leave at 14:05" or "Arrive by 14:05" ([time] as HH:mm). */
 @Immutable

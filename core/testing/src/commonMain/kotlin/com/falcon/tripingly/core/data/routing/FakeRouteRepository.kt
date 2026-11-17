@@ -2,6 +2,7 @@ package com.falcon.tripingly.core.data.routing
 
 import com.falcon.tripingly.core.common.error.DataError
 import com.falcon.tripingly.core.common.result.AppResult
+import com.falcon.tripingly.core.model.place.PlaceCategory
 import com.falcon.tripingly.core.model.route.BestOrder
 import com.falcon.tripingly.core.model.route.Route
 import com.falcon.tripingly.core.model.route.RouteLeg
@@ -26,7 +27,11 @@ class FakeRouteRepository : RouteRepository {
     /** The public transport times asked for, in order: a day route's `departAt` as a leaving time. */
     val transitTimes = mutableListOf<TransitTime?>()
 
-    override suspend fun dayRoute(tripId: String, day: TripDay, mode: TravelMode, departAt: Instant?): AppResult<RoutePlan, DataError.Network> {
+    /** The kinds of place along the way asked for, in order. */
+    val categoryRequests = mutableListOf<Set<PlaceCategory>>()
+
+    override suspend fun dayRoute(tripId: String, day: TripDay, mode: TravelMode, departAt: Instant?, categories: Set<PlaceCategory>): AppResult<RoutePlan, DataError.Network> {
+        categoryRequests += categories
         if (mode == TravelMode.Transit) transitTimes += departAt?.let { TransitTime(it) }
         val stops = day.markers
         if (stops.size < 2) return AppResult.Success(RoutePlan(null, emptyList(), isEstimated = false, ATTRIBUTION))
@@ -42,7 +47,9 @@ class FakeRouteRepository : RouteRepository {
         fromPlaceId: String?,
         toPlaceId: String?,
         time: TransitTime?,
+        categories: Set<PlaceCategory>,
     ): AppResult<RoutePlan, DataError.Network> {
+        categoryRequests += categories
         if (mode == TravelMode.Transit) transitTimes += time
         return AppResult.Success(RoutePlan(route(listOf(from, to), listOf(leg(from, to, mode, null, null))), emptyList(), isEstimated = false, ATTRIBUTION))
     }

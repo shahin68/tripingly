@@ -30,6 +30,8 @@ interface RoutingApi {
         /** Transit only: leave then (ISO), or arrive by [arriveBy] instead. */
         @Query("departAt") departAt: String? = null,
         @Query("arriveBy") arriveBy: String? = null,
+        /** Only places of these kinds along the way (comma-separated); null: all. `alongTheWayCounts` counts every kind. */
+        @Query("categories") categories: String? = null,
     ): AppResult<RouteResponseDto, DataError.Network>
 
     /** Through the day's stops in order; `route` is null for fewer than two stops. */
@@ -39,6 +41,8 @@ interface RoutingApi {
         @Query("mode") mode: String,
         /** Transit only: the first leg leaves then (ISO), each next one when the one before arrives. */
         @Query("departAt") departAt: String? = null,
+        /** Only places of these kinds along the way (comma-separated); null: all. */
+        @Query("categories") categories: String? = null,
     ): AppResult<RouteResponseDto, DataError.Network>
 
     /**

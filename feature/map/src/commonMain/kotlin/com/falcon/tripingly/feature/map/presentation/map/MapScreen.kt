@@ -75,6 +75,7 @@ import com.falcon.tripingly.feature.map.presentation.component.fittedCamera
 import com.falcon.tripingly.feature.map.presentation.map.preview.MapScreenPreviewStates
 import com.falcon.tripingly.feature.map.presentation.map.ui.BottomCards
 import com.falcon.tripingly.feature.map.presentation.map.ui.JoinRequestsPill
+import com.falcon.tripingly.feature.map.presentation.map.ui.PlaceFilterPill
 import com.falcon.tripingly.feature.map.presentation.component.isSplitScreen
 import com.falcon.tripingly.feature.map.presentation.map.ui.MapButtons
 import com.falcon.tripingly.feature.map.presentation.map.ui.MapCredits
@@ -261,6 +262,7 @@ internal fun MapScreen(
                 onMapLongClick = { coords -> onAction(MapAction.MapView.LongClick(coords)) },
                 onMarkerClick = { marker -> onAction(MapAction.MapView.MarkerClick(marker)) },
                 onPinDrop = { from, to -> onAction(MapAction.MapView.PinDrop(from, to)) },
+                onAroundRadius = { meters -> onAction(MapAction.Around.SetRadius(meters)) },
             )
         }
 
@@ -305,7 +307,7 @@ internal fun MapScreen(
             // neither moves the other. The pill stays under the header's own part, under the route bar coming over it
             // (not pushed down by it), and scales and fades away under the route bar or the search (Shahin, 2026-11-16);
             // while it goes it keeps the people it had.
-            Box {
+            Box(Modifier.fillMaxWidth()) {
                 var shownJoinRequests by remember { mutableStateOf(state.joinRequests) }
                 state.joinRequests?.let { shownJoinRequests = it }
                 androidx.compose.animation.AnimatedVisibility(
@@ -321,6 +323,22 @@ internal fun MapScreen(
                             onSeen = { onAction(MapAction.Header.JoinRequestsSeen) },
                             modifier = Modifier.padding(horizontal = MaterialTheme.spacing.medium),
                         )
+                    }
+                }
+                // The filter circle mirrors the join pill at the end, at the same height; it scales away while a route or
+                // Around shows, keeping its last look while it goes.
+                var shownFilter by remember { mutableStateOf(state.placeFilter) }
+                state.placeFilter?.let { shownFilter = it }
+                androidx.compose.animation.AnimatedVisibility(
+                    visible = state.placeFilter != null && !isRouteBarShown,
+                    enter = scaleIn() + fadeIn(),
+                    exit = scaleOut() + fadeOut(),
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .offset { IntOffset(0, titleHeight - with(density) { (headerHeight ?: 0.dp).roundToPx() }) },
+                ) {
+                    shownFilter?.let { filter ->
+                        PlaceFilterPill(filter = filter, onAction = onAction, modifier = Modifier.padding(horizontal = MaterialTheme.spacing.medium))
                     }
                 }
                 state.search?.results?.takeIf { it.isNotEmpty() }?.let { results ->

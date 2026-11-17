@@ -96,6 +96,7 @@ internal fun PinCardScope.StopCard(
     onAdd: () -> Unit,
     onGoHere: () -> Unit,
     onRoute: () -> Unit,
+    onAround: () -> Unit,
     modifier: Modifier = Modifier,
     initiallyExpanded: Boolean = false,
 ) {
@@ -135,7 +136,7 @@ internal fun PinCardScope.StopCard(
                     )
                 },
                 credit = { StopCredit(card, page = pagerState.currentPage, modifier = Modifier.padding(top = MaterialTheme.spacing.small)) },
-                buttons = { PinCardButtons(listOf(photoButton(card.news, onOpenPhotos)) + routeButtons(card.routes, onGoHere, onRoute), onOpenDetails, onDeleteShown, onAddShown, addLabel = addLabel) },
+                buttons = { PinCardButtons(listOf(photoButton(card.news, onOpenPhotos)) + routeButtons(card.routes, onGoHere, onRoute, onAround), onOpenDetails, onDeleteShown, onAddShown, addLabel = addLabel) },
             )
         } else {
             StopPill(card, onDeleteShown, onAddShown, addLabel, onExpand = { isExpanded = true }, modifier = Modifier.bloomRow(fromPin = 0))
@@ -297,6 +298,7 @@ private fun StopCardPreviewContent(preview: StopCardPreview) {
                 onAdd = {},
                 onGoHere = {},
                 onRoute = {},
+                onAround = {},
                 initiallyExpanded = shown.expanded,
             )
         }

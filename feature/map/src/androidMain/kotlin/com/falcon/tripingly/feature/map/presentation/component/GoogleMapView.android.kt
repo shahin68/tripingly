@@ -93,6 +93,7 @@ actual fun GoogleMapView(
     onMapLongClick: (Coordinates) -> Unit,
     onMarkerClick: (MapMarker) -> Unit,
     onPinDrop: (from: PinEnd, to: PinEnd) -> Unit,
+    onAroundRadius: (Int) -> Unit,
 ) {
     val (markers, placePins, pinDotBelowZoom, placeClusters, selectedPlace, line, isMyLocationEnabled) = layers
     val cameraPositionState = rememberCameraPositionState {
@@ -523,6 +524,17 @@ actual fun GoogleMapView(
                     }
                 }
             }
+        }
+        layers.aroundRing?.let { ring ->
+            AroundRingLayer(
+                ring = ring,
+                project = { point ->
+                    // Read, so the ring follows the camera.
+                    cameraPositionState.position
+                    project(point)
+                },
+                onRadius = onAroundRadius,
+            )
         }
         PinHoldLayer(
             holder = holder,

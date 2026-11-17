@@ -64,6 +64,8 @@ expect fun GoogleMapView(
     onMarkerClick: (MapMarker) -> Unit,
     /** A stop's or a place's pin was held, pulled onto another pin and let go there: a route from one to the other. */
     onPinDrop: (from: PinEnd, to: PinEnd) -> Unit,
+    /** The Around ring's handle was dragged to this many metres from its pin. */
+    onAroundRadius: (Int) -> Unit,
 )
 
 /** What the map draws. */
@@ -89,6 +91,8 @@ data class MapLayersState(
     val routeEnds: ImmutableList<RouteEndMark> = persistentListOf(),
     /** The day's route shows: each stop stands in a soft halo of the route's colour; null for none. */
     val stopHalo: Color? = null,
+    /** Around a pin (Tripinly Pro): its ring with a handle; null while Around is closed. */
+    val aroundRing: AroundRing? = null,
 )
 
 /** Room kept free around the points of a fit, inside the content padding. */

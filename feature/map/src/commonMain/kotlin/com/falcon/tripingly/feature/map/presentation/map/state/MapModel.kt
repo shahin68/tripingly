@@ -15,6 +15,7 @@ import com.falcon.tripingly.core.model.place.PlaceCluster
 import com.falcon.tripingly.core.model.place.PlaceDetails
 import com.falcon.tripingly.core.model.place.PlaceSearchResult
 import com.falcon.tripingly.core.model.place.PlaceSquare
+import com.falcon.tripingly.core.model.place.PlacesAround
 import com.falcon.tripingly.core.model.route.RoutePlan
 import com.falcon.tripingly.core.model.route.TransitTime
 import com.falcon.tripingly.core.model.route.TravelMode
@@ -73,6 +74,28 @@ internal data class MapModel(
     val dismissedJoinRequesterIds: Set<String> = emptySet(),
     /** The requesters the pill has shown in full, on this device (null until read): for them it stays a small circle. */
     val seenJoinRequesterIds: Set<String>? = null,
+    /** The map's filter by kind of place ([MapPlaceFilter]). */
+    val placeFilter: PlaceFilterModel = PlaceFilterModel(),
+    /** The places around a pin, while its ring shows ([MapAround]). */
+    val around: AroundModel? = null,
+)
+
+/**
+ * The map's filter: its pill is [isOpen]; only places of [categories] show (none picked: every kind). The trip's stops
+ * always show (Shahin, 2026-11-17).
+ */
+internal data class PlaceFilterModel(val isOpen: Boolean = false, val categories: Set<PlaceCategory> = emptySet())
+
+/**
+ * The places around a pin (Tripinly Pro): the ring around [center] has [radiusMeters], dragged by its handle; only places
+ * of [categories] list (none picked: every kind). [result] is the last answer, kept while the next one loads.
+ */
+internal data class AroundModel(
+    val center: GeoPoint,
+    val radiusMeters: Int,
+    val categories: Set<PlaceCategory> = emptySet(),
+    val result: PlacesAround? = null,
+    val isLoading: Boolean = false,
 )
 
 /** Where the camera rests, as the map last reported it, or where it was last sent. */
@@ -166,6 +189,8 @@ internal data class RouteModel(
     val transitAt: TransitTime? = null,
     /** By public transport, why there is no route: a note in the card, never a banner. */
     val transitNote: TransitNote? = null,
+    /** The kinds of place along the way picked with the card's chips (none: every kind); kept until the route closes. */
+    val alongCategories: Set<PlaceCategory> = emptySet(),
 )
 
 /** A time picked for public transport: it leaves then, or arrives by then ([isArriveBy], only from A to B). */

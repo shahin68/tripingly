@@ -1,6 +1,8 @@
 package com.falcon.tripingly.feature.map.presentation.map
 
+import com.falcon.tripingly.core.model.place.CategoryCount
 import com.falcon.tripingly.core.model.place.MapPlace
+import com.falcon.tripingly.core.model.place.PlaceCategory
 import com.falcon.tripingly.core.model.route.AlongTheWayPlace
 import com.falcon.tripingly.core.model.route.Route
 import com.falcon.tripingly.core.model.route.RoutePlan
@@ -27,6 +29,8 @@ import com.falcon.tripingly.feature.map.presentation.map.state.RouteSide
 import com.falcon.tripingly.feature.map.presentation.map.state.isGoingTo
 import com.falcon.tripingly.feature.map.presentation.map.state.isRouteEnd
 import com.falcon.tripingly.feature.map.presentation.map.state.isRouteTo
+import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.toImmutableList
 import kotlinx.datetime.LocalTime
 import kotlinx.datetime.TimeZone
@@ -61,7 +65,22 @@ internal fun RouteModel.summary(plan: RoutePlan?, alongTheWay: List<AlongTheWayP
             else -> null
         }
     }.toImmutableList(),
+    alongChips = categoryChips(plan?.alongTheWayCounts.orEmpty(), alongCategories),
 )
+
+/**
+ * A filter's chips: All (with every place counted) first, then each kind with how many, most first as the server counts
+ * them; a kind picked that has none left (the route changed) stays, so it can be taken off. None without places.
+ */
+internal fun categoryChips(counts: List<CategoryCount>, selected: Set<PlaceCategory>): ImmutableList<CategoryChip> {
+    if (counts.isEmpty() && selected.isEmpty()) return persistentListOf()
+    val counted = counts.mapTo(HashSet()) { it.category }
+    return (
+        listOf(CategoryChip(null, counts.sumOf { it.count }, isSelected = selected.isEmpty())) +
+            counts.map { CategoryChip(it.category, it.count, isSelected = it.category in selected) } +
+            selected.filter { it !in counted }.map { CategoryChip(it, 0, isSelected = true) }
+        ).toImmutableList()
+}
 
 /**
  * "Leave at" by public transport, once a time is known: the one picked, or the one the route was asked for (now, or now's
