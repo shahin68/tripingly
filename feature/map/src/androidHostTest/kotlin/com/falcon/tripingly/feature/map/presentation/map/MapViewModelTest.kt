@@ -2819,6 +2819,7 @@ class MapViewModelTest {
         assertEquals(emptyList(), viewModel.uiState.value.stopsCard?.around?.places?.map { it.place.name })
         val louvre = viewModel.uiState.value.layers.placePins.single { it.place.name == "Louvre" }
         assertFalse(louvre.isDot || louvre.isAlongTheWay)
+        assertTrue(louvre.isKept, "on top of the places Around found")
         assertTrue(viewModel.uiState.value.layers.placePins.single { it.place.name == "Eiffel Tower" }.isDot)
 
         // Places hidden, the pin Around is around stays with the places it found.

@@ -285,8 +285,8 @@ internal class MapStateMapper(
                 it.place.id in endPlaces -> it.copy(size = SelectedPinSize, isAlongTheWay = false, isKept = true)
                 it.place.id in kept -> it.copy(isAlongTheWay = it.place.id in alongIds, isKept = true)
                 it.place.id in highlighted -> it.copy(isAlongTheWay = true)
-                // The pin Around is around stays itself.
-                it.place.id == model.around?.pinPlaceId -> it
+                // The pin Around is around stays itself, kept on top of the places it found (Shahin 2026-11-17).
+                it.place.id == model.around?.pinPlaceId -> it.copy(isKept = true)
                 othersAreDots -> it.copy(isDot = true)
                 else -> it
             }
@@ -296,7 +296,7 @@ internal class MapStateMapper(
             alongTheWay.filter { it.place.id !in shown && it.place.id !in endPlaces && it.place.id !in kept }.map { it.toPin() } +
             aroundPlaces.filter { it.id !in shown && it.id !in alongIds }.map { PlacePin(it, placePinSize(it, config), isAlongTheWay = true) } +
             // The place Around is around, as itself, where the map's pins don't list it.
-            listOfNotNull(model.around?.pinPlace?.takeIf { it.id !in shown && it.id !in alongIds && it.id !in endPlaces && it.id !in kept }?.let { PlacePin(it, placePinSize(it, config)) })
+            listOfNotNull(model.around?.pinPlace?.takeIf { it.id !in shown && it.id !in alongIds && it.id !in endPlaces && it.id !in kept }?.let { PlacePin(it, placePinSize(it, config), isKept = true) })
         val stopPath = stops.map { it.position }.takeIf { routePoints.isEmpty() && route.between == null }.orEmpty()
         val endColor = route.travelMode.lineColor
         return MapLayersState(
