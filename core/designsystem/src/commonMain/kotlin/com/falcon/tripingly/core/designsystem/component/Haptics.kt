@@ -26,6 +26,23 @@ class Haptics(private val feedback: HapticFeedback) {
         feedback.performHapticFeedback(HapticFeedbackType.SegmentTick)
     }
 
+    /**
+     * A fine step in a fast drag, such as a ring's size: lighter than [tick] and up to 50 a second, so it feels like
+     * a ratchet under the finger (Shahin, 2026-11-17).
+     */
+    fun fineTick() {
+        val now = TimeSource.Monotonic.markNow()
+        if (lastTick?.let { now - it < FineTickGap } == true) return
+        lastTick = now
+        feedback.performHapticFeedback(HapticFeedbackType.SegmentFrequentTick)
+    }
+
+    /**
+     * A drag hitting its end (a ring at its smallest or largest): one sharp, firm tap, the long press's heavy click
+     * (Android's heavy click, iOS's heavy impact), which feels like a stop.
+     */
+    fun end() = feedback.performHapticFeedback(HapticFeedbackType.LongPress)
+
     /** A gesture passing the point where letting go does something (swipe to delete). */
     fun threshold() = feedback.performHapticFeedback(HapticFeedbackType.GestureThresholdActivate)
 
@@ -56,3 +73,4 @@ fun rememberHaptics(): Haptics {
 internal expect fun platformHapticFeedback(): HapticFeedback
 
 private val TickGap = 50.milliseconds
+private val FineTickGap = 20.milliseconds

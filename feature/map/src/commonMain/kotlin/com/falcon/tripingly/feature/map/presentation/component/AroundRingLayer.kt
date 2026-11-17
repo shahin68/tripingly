@@ -14,7 +14,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -43,7 +42,7 @@ import kotlin.math.sin
 /**
  * The Around ring over the map, drawn by Compose on both platforms (the map SDKs' own circles differ): a faint purple disc
  * with a dashed edge, and on it a handle to drag it bigger or smaller, with the ring's size in a tag above it. The handle
- * follows the finger around the ring and stays where it was let go; each new size in the tag ticks (Shahin, 2026-11-17).
+ * follows the finger around the ring and stays where it was let go; dragging ticks like a ratchet and taps sharply at the ends (Shahin, 2026-11-17).
  * [project] places a point on the map view in px and must read the camera's state, so the ring follows the camera.
  * [onRadius] gets the new size in metres while the handle is dragged.
  */
@@ -60,8 +59,6 @@ internal fun AroundRingLayer(ring: AroundRing, project: (Coordinates) -> Offset?
     var finger by remember { mutableStateOf<Offset?>(null) }
     // Where around the ring the handle sits, in radians from east: where the finger last left it.
     var angle by remember { mutableFloatStateOf(0f) }
-    // Each new size the tag shows while dragging is a tick.
-    LaunchedEffect(ring.label) { if (finger != null) haptics.tick() }
 
     // Where the ring is on screen now, its size following the finger while it drags; null while the map can't tell yet.
     fun geometry(): Pair<Offset, Float>? {
@@ -95,11 +92,15 @@ internal fun AroundRingLayer(ring: AroundRing, project: (Coordinates) -> Offset?
                     .size(HandleTouchSize)
                     .pointerInput(Unit) {
                         val half = density.run { HandleTouchSize.toPx() } / 2
+                        // The step the finger last felt: a light tick at every 10 m (100 m from 1 km), a sharp tap at the
+                        // smallest and largest size (Shahin, 2026-11-17), worked out from the finger so the ticks keep up.
+                        var feltStep = -1
                         detectDragGestures(
                             onDragStart = { at ->
                                 val (center, radius) = geometry() ?: return@detectDragGestures
                                 // The touch, in the layer: the handle's centre plus where on it the finger landed.
                                 finger = handleCenter(center, radius) + at - Offset(half, half)
+                                feltStep = feelStep(currentRing.radiusMeters)
                                 haptics.tick()
                             },
                             onDragEnd = { finger = null },
@@ -112,7 +113,15 @@ internal fun AroundRingLayer(ring: AroundRing, project: (Coordinates) -> Offset?
                             val edge = currentProject(currentRing.edge()) ?: return@detectDragGestures
                             val toFinger = moved - center
                             if (toFinger.getDistance() > 0f) angle = atan2(toFinger.y, toFinger.x)
-                            currentRing.radiusAt(center, edge.x - center.x, moved)?.let(currentOnRadius)
+                            currentRing.radiusAt(center, edge.x - center.x, moved)?.let { meters ->
+                                val clamped = meters.coerceIn(MIN_RADIUS_METERS, MAX_RADIUS_METERS)
+                                val step = feelStep(clamped)
+                                if (step != feltStep) {
+                                    if (clamped == MIN_RADIUS_METERS || clamped == MAX_RADIUS_METERS) haptics.end() else haptics.fineTick()
+                                    feltStep = step
+                                }
+                                currentOnRadius(meters)
+                            }
                         }
                     },
             ) {
@@ -140,6 +149,9 @@ internal fun AroundRingLayer(ring: AroundRing, project: (Coordinates) -> Offset?
 }
 
 /** The server's limits for the ring's size (GET /v1/places/around), which the dragged ring keeps to as well. */
+/** The step a size is felt in: every 10 m, every 100 m from 1 km; the ends are steps of their own. */
+private fun feelStep(meters: Int) = if (meters < 1000) meters / 10 else 100 + meters / 100
+
 private const val MIN_RADIUS_METERS = 50
 private const val MAX_RADIUS_METERS = 5000
 /** Almost clear: a slight purple, so the map under it reads as it is. */
