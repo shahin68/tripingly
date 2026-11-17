@@ -159,6 +159,9 @@ internal fun MapScreen(
     @OptIn(ExperimentalComposeUiApi::class)
     // Not while another screen covers the map: back closes that screen.
     BackHandler(enabled = isTripCardOpen && LocalScreenOnTop.current) { isTripCardOpen = false }
+    // The search has no back button: back closes it, as its ✕ does.
+    @OptIn(ExperimentalComposeUiApi::class)
+    BackHandler(enabled = state.search != null && !isTripCardOpen && LocalScreenOnTop.current) { onAction(MapAction.Search.Close) }
 
     BoxWithConstraints(
         modifier = Modifier

@@ -160,8 +160,11 @@ internal fun MapHeader(
                 if (search != null) {
                     SearchField(search, onAction, Modifier.weight(1f))
                 } else {
-                    IconButton(onClick = { onAction(MapAction.Search.Open) }) {
-                        Icon(Icons.Outlined.Search, contentDescription = stringResource(Res.string.map_search))
+                    // At the end while the pill shrinks back, so search and ⋮ stay put and don't glide.
+                    Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.CenterEnd) {
+                        IconButton(onClick = { onAction(MapAction.Search.Open) }) {
+                            Icon(Icons.Outlined.Search, contentDescription = stringResource(Res.string.map_search))
+                        }
                     }
                 }
                 if (actions.isNotEmpty()) {
@@ -246,19 +249,18 @@ private fun TripMenuButton(actions: List<DropdownAction>) {
     }
 }
 
-/** Replaces the back button and the trip's name while searching; back closes the search. */
+/** Replaces the back button and the trip's name while searching; its ✕ (or the system back) closes the search. */
 @Composable
 private fun SearchField(search: SearchState, onAction: (MapAction) -> Unit, modifier: Modifier = Modifier) {
     val focusRequester = remember { FocusRequester() }
     LaunchedEffect(Unit) { focusRequester.requestFocus() }
     Row(modifier = modifier, verticalAlignment = Alignment.CenterVertically) {
-        IconButton(onClick = { onAction(MapAction.Search.Close) }) {
-            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(Res.string.map_back))
-        }
         AppTextField(
             state = search.query,
             placeholder = stringResource(Res.string.map_search_placeholder),
             onTextChange = { onAction(MapAction.Search.QueryChanged(it)) },
+            // ✕ closes the search: its results, the places named so and the keyboard go, the map is as before.
+            onClose = { onAction(MapAction.Search.Close) },
             // The keyboard's search key, no result picked: the map shows only the places named so.
             onImeAction = { onAction(MapAction.Search.Submit) },
             modifier = Modifier.weight(1f).focusRequester(focusRequester),
