@@ -132,8 +132,8 @@ sealed interface MapAction {
         data object Close : Around
         /** A chip: a kind on or off, or All ([category] null). */
         data class ToggleCategory(val category: PlaceCategory?) : Around
-        /** The ring's handle dragged to [meters] from the pin. */
-        data class SetRadius(val meters: Int) : Around
+        /** The ring's handle dragged to [meters] from the pin; [isFinal] once the finger lets go, which asks for its places. */
+        data class SetRadius(val meters: Int, val isFinal: Boolean = true) : Around
         data class PlaceClick(val place: MapPlace) : Around
         /** Adds a place around the pin to the open day. */
         data class Add(val place: MapPlace) : Around

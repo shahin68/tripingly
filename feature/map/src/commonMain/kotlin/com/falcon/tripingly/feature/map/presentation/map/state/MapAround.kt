@@ -12,7 +12,6 @@ import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.roundToInt
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.map
@@ -65,13 +64,14 @@ internal class MapAround(
                 sheet = it.sheet.takeUnless { sheet -> sheet is Sheet.Details },
             )
         }
-        load(waitForMore = false)
+        load()
         showWholePlan()
     }
 
     /** The ✕ of the Around box: the map goes back to what it showed before, a route as it was too (its plan is cached). */
     fun close() {
         loadJob?.cancel()
+        asked = null
         context.update { model ->
             val around = model.around ?: return@update model
             model.copy(around = null, route = around.routeBefore, placeFilter = model.placeFilter.copy(isOpen = around.wasFilterOpen))
@@ -81,35 +81,52 @@ internal class MapAround(
     /** A route came on: Around goes, the route stays. */
     private fun dismiss() {
         loadJob?.cancel()
+        asked = null
         context.update { it.copy(around = null) }
     }
 
     /** A chip: All ([category] null) lists every kind again; a kind is added or taken off. */
     fun toggleCategory(category: PlaceCategory?) {
         update { it.copy(categories = if (category == null) emptySet() else it.categories.toggled(category)) }
-        load(waitForMore = false)
+        load()
     }
 
-    /** The ring's handle dragged: the ring follows at once, the places once the drag rests a moment. */
-    fun setRadius(meters: Int) {
+    /**
+     * The ring's handle dragged: the ring follows at once; its places are asked for only once the finger lets go
+     * ([isFinal]), so a drag is one request however far it goes (Shahin, 2026-11-17).
+     */
+    fun setRadius(meters: Int, isFinal: Boolean) {
         update { it.copy(radiusMeters = meters.coerceIn(MIN_RADIUS_METERS, MAX_RADIUS_METERS)) }
-        load(waitForMore = true)
+        if (isFinal) load()
     }
 
-    private fun load(waitForMore: Boolean) {
+    /** What the places shown (or on their way) were asked for: the same ask again isn't sent. */
+    private var asked: AroundAsk? = null
+
+    private data class AroundAsk(val center: GeoPoint, val radiusMeters: Int, val categories: Set<PlaceCategory>, val pinPlaceId: String?)
+
+    /**
+     * Asks for the places in the ring as it is now, unless they were just asked for the same; a newer ask cancels the
+     * one still on its way (its cancellation ends quietly, see the API call).
+     */
+    private fun load() {
+        val around = context.model.value.around ?: return
+        val ask = AroundAsk(around.center, around.radiusMeters, around.categories, around.pinPlaceId)
+        if (ask == asked) return
+        asked = ask
         loadJob?.cancel()
         update { it.copy(isLoading = true) }
         loadJob = context.scope.launch {
-            if (waitForMore) delay(RADIUS_SETTLE_MILLIS)
-            // What the ring is now, after the wait.
-            val around = context.model.value.around ?: return@launch
-            val result = placeRepository.around(around.center, around.radiusMeters, around.categories, around.pinPlaceId)
+            val result = placeRepository.around(ask.center, ask.radiusMeters, ask.categories, ask.pinPlaceId)
             context.update { model ->
                 val current = model.around ?: return@update model
                 when (result) {
                     is AppResult.Success -> model.copy(around = current.copy(result = result.data, isLoading = false))
-                    // The last places stay; a note says the new ones didn't come.
-                    is AppResult.Error -> model.copy(around = current.copy(isLoading = false), message = result.error.toUiText(Res.string.map_error_around))
+                    // The last places stay; a note says the new ones didn't come. The same ask may be sent again.
+                    is AppResult.Error -> {
+                        asked = null
+                        model.copy(around = current.copy(isLoading = false), message = result.error.toUiText(Res.string.map_error_around))
+                    }
                 }
             }
         }
@@ -146,7 +163,5 @@ internal class MapAround(
         /** The share of the view's shorter side the ring first spans as its radius, with room for its handle and tag. */
         const val FIT_SHARE = 0.25
         const val ROUND_TO_METERS = 10
-        /** How long the handle rests before the places for its new size load. */
-        const val RADIUS_SETTLE_MILLIS = 300L
     }
 }

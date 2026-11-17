@@ -86,7 +86,7 @@ internal fun GoogleSdkMapView(
     onMarkerClick: (MapMarker) -> Unit,
     onPinDrop: (from: PinEnd, to: PinEnd) -> Unit,
     aroundRing: AroundRing?,
-    onAroundRadius: (Int) -> Unit,
+    onAroundRadius: (meters: Int, isFinal: Boolean) -> Unit,
 ) {
     val currentMarkers by rememberUpdatedState(markers)
     val currentSelectedPlace by rememberUpdatedState(selectedPlace)

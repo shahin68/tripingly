@@ -247,7 +247,7 @@ class MapViewModel(
             is MapAction.Around.Open -> around.open()
             is MapAction.Around.Close -> around.close()
             is MapAction.Around.ToggleCategory -> around.toggleCategory(action.category)
-            is MapAction.Around.SetRadius -> around.setRadius(action.meters)
+            is MapAction.Around.SetRadius -> around.setRadius(action.meters, action.isFinal)
             is MapAction.Around.PlaceClick -> selection.openPlace(action.place)
             // Adding works as from along the way: to the open day, the whole plan shows.
             is MapAction.Around.Add -> routes.addAlongTheWay(action.place)

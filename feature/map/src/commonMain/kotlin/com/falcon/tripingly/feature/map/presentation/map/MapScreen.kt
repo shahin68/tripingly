@@ -268,7 +268,7 @@ internal fun MapScreen(
                 onMapLongClick = { coords -> onAction(MapAction.MapView.LongClick(coords)) },
                 onMarkerClick = { marker -> onAction(MapAction.MapView.MarkerClick(marker)) },
                 onPinDrop = { from, to -> onAction(MapAction.MapView.PinDrop(from, to)) },
-                onAroundRadius = { meters -> onAction(MapAction.Around.SetRadius(meters)) },
+                onAroundRadius = { meters, isFinal -> onAction(MapAction.Around.SetRadius(meters, isFinal)) },
             )
         }
 

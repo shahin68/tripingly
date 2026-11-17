@@ -65,7 +65,7 @@ expect fun GoogleMapView(
     /** A stop's or a place's pin was held, pulled onto another pin and let go there: a route from one to the other. */
     onPinDrop: (from: PinEnd, to: PinEnd) -> Unit,
     /** The Around ring's handle was dragged to this many metres from its pin. */
-    onAroundRadius: (Int) -> Unit,
+    onAroundRadius: (meters: Int, isFinal: Boolean) -> Unit,
 )
 
 /** What the map draws. */

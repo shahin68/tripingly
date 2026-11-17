@@ -38,6 +38,7 @@ import com.falcon.tripingly.core.model.place.MapPlace
 import com.falcon.tripingly.core.model.place.OsmRef
 import com.falcon.tripingly.core.model.place.OsmType
 import com.falcon.tripingly.core.model.place.PlaceCategory
+import com.falcon.tripingly.core.model.place.PlacesAround
 import com.falcon.tripingly.core.model.place.PlaceCluster
 import com.falcon.tripingly.core.model.place.PlaceDetails
 import com.falcon.tripingly.core.model.place.PlaceImage
@@ -158,8 +159,15 @@ class MapViewModelTest {
         /** Images of the sights, by place ID. */
         val images = mutableMapOf<String, List<PlaceImage>>()
         val detailRequests = mutableListOf<String>()
+        /** The rings Around asked for, by radius. */
+        val aroundRequests = mutableListOf<Int>()
         /** How long the squares take to come, as from the server. */
         var squaresDelayMillis = 0L
+
+        override suspend fun around(point: GeoPoint, radiusMeters: Int, categories: Set<PlaceCategory>, excludePlaceId: String?): AppResult<PlacesAround, DataError.Network> {
+            aroundRequests += radiusMeters
+            return fake.around(point, radiusMeters, categories, excludePlaceId)
+        }
 
         override suspend fun place(id: String): AppResult<PlaceDetails, DataError.Network> {
             detailRequests += id
@@ -2740,6 +2748,31 @@ class MapViewModelTest {
         testScheduler.advanceUntilIdle()
         assertNull(viewModel.uiState.value.layers.aroundRing, "ring gone")
         assertEquals(false, viewModel.uiState.value.stopCard?.routes?.isAroundOn, "card stays, button off")
+    }
+
+    @Test
+    fun `dragging Around's ring asks for its places once, when the finger lets go`() = runTest(testDispatcher) {
+        val viewModel = openFirstStopCard()
+        viewModel.onAction(MapAction.Around.Open)
+        testScheduler.advanceUntilIdle()
+        val first = places.aroundRequests.size
+
+        // Every metre of a drag only moves the ring, whatever the pauses.
+        listOf(600, 900, 1500, 2500).forEach {
+            viewModel.onAction(MapAction.Around.SetRadius(it, isFinal = false))
+            testScheduler.advanceTimeBy(1_000)
+        }
+        assertEquals(first, places.aroundRequests.size)
+        assertEquals(2500, viewModel.uiState.value.layers.aroundRing?.radiusMeters)
+
+        viewModel.onAction(MapAction.Around.SetRadius(2600, isFinal = true))
+        testScheduler.advanceUntilIdle()
+        assertEquals(listOf(2600), places.aroundRequests.drop(first))
+
+        // Let go again at the same size: nothing new to ask.
+        viewModel.onAction(MapAction.Around.SetRadius(2600, isFinal = true))
+        testScheduler.advanceUntilIdle()
+        assertEquals(listOf(2600), places.aroundRequests.drop(first))
     }
 
     @Test

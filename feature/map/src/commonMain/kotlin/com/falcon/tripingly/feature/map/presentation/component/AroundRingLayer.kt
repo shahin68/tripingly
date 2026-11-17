@@ -45,10 +45,10 @@ import kotlin.math.sin
  * with a dashed edge, and on it a handle to drag it bigger or smaller, with the ring's size in a tag above it. The handle
  * follows the finger around the ring and stays where it was let go; dragging ticks like a ratchet and taps sharply at the ends (Shahin, 2026-11-17).
  * [project] places a point on the map view in px and must read the camera's state, so the ring follows the camera.
- * [onRadius] gets the new size in metres while the handle is dragged.
+ * [onRadius] gets the new size in metres while the handle is dragged, and once more as final when it is let go.
  */
 @Composable
-internal fun AroundRingLayer(ring: AroundRing, project: (Coordinates) -> Offset?, onRadius: (Int) -> Unit) {
+internal fun AroundRingLayer(ring: AroundRing, project: (Coordinates) -> Offset?, onRadius: (meters: Int, isFinal: Boolean) -> Unit) {
     val currentRing by rememberUpdatedState(ring)
     val currentOnRadius by rememberUpdatedState(onRadius)
     val currentProject by rememberUpdatedState(project)
@@ -96,6 +96,13 @@ internal fun AroundRingLayer(ring: AroundRing, project: (Coordinates) -> Offset?
                         // The step the finger last felt: a light tick at every 10 m (100 m from 1 km), a sharp tap at the
                         // smallest and largest size (Shahin, 2026-11-17), worked out from the finger so the ticks keep up.
                         var feltStep = -1
+                        // The size the finger left the ring at: sent as final on letting go, the only time places load.
+                        var dragged: Int? = null
+                        fun letGo() {
+                            finger = null
+                            dragged?.let { currentOnRadius(it, true) }
+                            dragged = null
+                        }
                         detectDragGestures(
                             onDragStart = { at ->
                                 val (center, radius) = geometry() ?: return@detectDragGestures
@@ -104,8 +111,8 @@ internal fun AroundRingLayer(ring: AroundRing, project: (Coordinates) -> Offset?
                                 feltStep = feelStep(currentRing.radiusMeters)
                                 haptics.tick()
                             },
-                            onDragEnd = { finger = null },
-                            onDragCancel = { finger = null },
+                            onDragEnd = { letGo() },
+                            onDragCancel = { letGo() },
                         ) { change, drag ->
                             change.consume()
                             val moved = (finger ?: return@detectDragGestures) + drag
@@ -121,7 +128,8 @@ internal fun AroundRingLayer(ring: AroundRing, project: (Coordinates) -> Offset?
                                     if (clamped == MIN_RADIUS_METERS || clamped == MAX_RADIUS_METERS) haptics.end() else haptics.fineTick()
                                     feltStep = step
                                 }
-                                currentOnRadius(meters)
+                                dragged = meters
+                                currentOnRadius(meters, false)
                             }
                         }
                     },

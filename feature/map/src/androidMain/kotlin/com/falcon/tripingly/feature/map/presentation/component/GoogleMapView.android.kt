@@ -93,7 +93,7 @@ actual fun GoogleMapView(
     onMapLongClick: (Coordinates) -> Unit,
     onMarkerClick: (MapMarker) -> Unit,
     onPinDrop: (from: PinEnd, to: PinEnd) -> Unit,
-    onAroundRadius: (Int) -> Unit,
+    onAroundRadius: (meters: Int, isFinal: Boolean) -> Unit,
 ) {
     val (markers, placePins, pinDotBelowZoom, placeClusters, selectedPlace, line, isMyLocationEnabled) = layers
     val cameraPositionState = rememberCameraPositionState {
