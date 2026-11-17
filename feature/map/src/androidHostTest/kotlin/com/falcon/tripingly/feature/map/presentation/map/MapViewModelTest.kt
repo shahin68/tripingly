@@ -2710,6 +2710,8 @@ class MapViewModelTest {
 
         // A bigger ring reaches the Louvre once the handle rests; a kind picked lists only that kind.
         viewModel.onAction(MapAction.Around.SetRadius(4000))
+        // The ring follows before the places load.
+        testScheduler.runCurrent()
         assertEquals(4000, viewModel.uiState.value.layers.aroundRing?.radiusMeters)
         testScheduler.advanceUntilIdle()
         assertEquals(listOf("Eiffel Tower", "Louvre"), viewModel.uiState.value.stopsCard?.around?.places?.map { it.place.name })
@@ -2720,6 +2722,8 @@ class MapViewModelTest {
 
         // The ring is the server's limit at most.
         viewModel.onAction(MapAction.Around.SetRadius(99_000))
+        // The ring follows before the places load.
+        testScheduler.runCurrent()
         assertEquals(5000, viewModel.uiState.value.layers.aroundRing?.radiusMeters)
     }
 
