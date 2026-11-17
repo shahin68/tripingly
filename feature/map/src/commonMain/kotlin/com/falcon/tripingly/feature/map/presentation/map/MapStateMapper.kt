@@ -285,7 +285,7 @@ internal class MapStateMapper(
         val arePlacesHidden = model.arePlacesHidden && !isNamed
         val visible = if (arePlacesHidden) pins.filter { isRoutes(it.place.id) } else pins
         val shown = visible.mapTo(HashSet()) { it.place.id }
-        val placePins = visible.map {
+        val pinsShown = visible.map {
             when {
                 it.place.id in endPlaces -> it.copy(size = SelectedPinSize, isAlongTheWay = false, isKept = true)
                 it.place.id in kept -> it.copy(isAlongTheWay = it.place.id in alongIds, isKept = true)
@@ -303,6 +303,10 @@ internal class MapStateMapper(
             aroundPlaces.filter { it.id !in shown && it.id !in alongIds }.map { PlacePin(it, placePinSize(it, config), isAlongTheWay = true) } +
             // The place Around is around, as itself, where the map's pins don't list it.
             listOfNotNull(model.around?.pinPlace?.takeIf { it.id !in shown && it.id !in alongIds && it.id !in endPlaces && it.id !in kept }?.let { PlacePin(it, placePinSize(it, config), isKept = true) })
+        // A place picked from the along-the-way or Around list keeps its photo on the map, as it shows in the list, also
+        // where its pin there is a plain one (Shahin, 2026-11-17).
+        val selectedId = (model.selection as? Selection.Place)?.place?.id
+        val placePins = pinsShown.map { if (it.place.id == selectedId && it.place.hasCover) it.copy(photo = true) else it }
         val stopPath = stops.map { it.position }.takeIf { routePoints.isEmpty() && route.between == null }.orEmpty()
         val endColor = route.travelMode.lineColor
         return MapLayersState(
@@ -348,6 +352,8 @@ internal class MapStateMapper(
 
     /** The open day's stop a route's [end] stands for: a stop is an end as its place, or as itself. */
     private fun stopAt(end: MapPlace): MapMarker? = stops.firstOrNull { (it.placeId ?: it.id) == end.id }
+
+    private val MapPlace.hasCover get() = coverImageId != null && coverThumbUrl != null
 
     private fun AlongTheWayPlace.toPin() = PlacePin(place, placePinSize(place, config), isAlongTheWay = true)
 

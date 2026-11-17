@@ -44,9 +44,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.compositeOver
-import androidx.compose.ui.graphics.lerp
-import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
@@ -121,8 +118,9 @@ fun SecondaryButton(
  * A button that switches something on and off (the plan's Route): neutral like [SecondaryButton] while off, filled
  * with the brand colour like [PrimaryButton] while on. Its [icon] stays the same either way; the colour says it's on.
  * [isFailed]: on, but what it shows couldn't be had; orange, and the caller gives it a "Retry" [text] and tap.
- * [tint]: the button stands for something else for now (the plan's Route turning into Around's ✕): that colour's glass
- * look (a light shade of it, a thin stroke and the icon in it), no on/off. Without [text] it is a circle with its
+ * [tint]: the button stands for something else for now (the plan's Route turning into Around's ✕): filled with that
+ * colour, the icon white and a hairline white edge like the pins' ring, in light and dark alike (Shahin, 2026-11-17), no
+ * on/off. Without [text] it is a circle with its
  * [icon] (the caller gives it a content description). Colours, stroke and content glide from one look to the next,
  * the width easing with them, so the button turns into the other one; callers keep ONE call site for all its looks,
  * since a second call is another button that can't morph.
@@ -140,19 +138,17 @@ fun ToggleButton(
 ) {
     val haptics = rememberHaptics()
     val colors = MaterialTheme.colorScheme
-    // On a dark surface a deep tint is lost: it lightens to an almost white shade of itself (Shahin, 2026-11-17).
-    val tint = tint?.let { if (colors.surface.luminance() < HALF) lerp(it, Color.White, DARK_TINT_LIGHTEN) else it }
     val isRetry = checked && isFailed && tint == null
     val isToggle = !isRetry && tint == null
     val primary = ButtonDefaults.buttonColors()
     val container = when {
-        tint != null -> tint.copy(alpha = TINT_SHADE).compositeOver(colors.surface)
+        tint != null -> tint
         isRetry -> MaterialTheme.extendedColors.attention
         checked -> primary.containerColor
         else -> colors.surfaceVariant
     }
     val content = when {
-        tint != null -> tint
+        tint != null -> Color.White
         isRetry -> MaterialTheme.extendedColors.onAttention
         checked -> primary.contentColor
         else -> colors.onSurface
@@ -161,7 +157,7 @@ fun ToggleButton(
     val containerColor = animateColorAsState(container, look, label = "toggle container")
     val contentColor = animateColorAsState(content, look, label = "toggle content")
     // The stroke is always there, clear unless tinted, so it fades in and out instead of changing the button's size.
-    val strokeColor = animateColorAsState(tint?.copy(alpha = STROKE_ALPHA) ?: container.copy(alpha = 0f), look, label = "toggle stroke")
+    val strokeColor = animateColorAsState(if (tint != null) Color.White.copy(alpha = STROKE_ALPHA) else container.copy(alpha = 0f), look, label = "toggle stroke")
     // No room kept around it for the 48 dp touch target: as a circle it would sit 4 dp in from where the pill ended.
     // Taps still reach it over 48 dp, which Compose gives every small touch target on its own.
     CompositionLocalProvider(LocalMinimumInteractiveComponentSize provides Dp.Unspecified) {
@@ -224,11 +220,7 @@ private fun ButtonContent(text: String, isLoading: Boolean, size: ButtonSize, ic
 }
 
 private const val MORPH_MILLIS = 250
-private const val TINT_SHADE = 0.18f
-private const val HALF = 0.5f
-/** How far toward white a tint goes in dark mode: a pale, still clearly purple glass. */
-private const val DARK_TINT_LIGHTEN = 0.65f
-/** A hairline, half see-through: glass's edge, not an outline (Shahin, 2026-11-17). */
+/** A hairline, half see-through white, like the pins' ring: an edge, not an outline (Shahin, 2026-11-17). */
 private val StrokeWidth = 0.5.dp
 private const val STROKE_ALPHA = 0.5f
 private val CircleIconSize = 20.dp
