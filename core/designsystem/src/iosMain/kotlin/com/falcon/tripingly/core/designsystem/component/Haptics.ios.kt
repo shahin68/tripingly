@@ -8,6 +8,7 @@ import platform.UIKit.UIImpactFeedbackGenerator
 import platform.UIKit.UIImpactFeedbackStyle
 import platform.UIKit.UINotificationFeedbackGenerator
 import platform.UIKit.UINotificationFeedbackType
+import platform.UIKit.UISelectionFeedbackGenerator
 
 @Composable
 internal actual fun platformHapticFeedback(): HapticFeedback = remember { TapticFeedback() }
@@ -18,10 +19,14 @@ private class TapticFeedback : HapticFeedback {
     private val medium = UIImpactFeedbackGenerator(UIImpactFeedbackStyle.UIImpactFeedbackStyleMedium)
     private val heavy = UIImpactFeedbackGenerator(UIImpactFeedbackStyle.UIImpactFeedbackStyleHeavy)
     private val notification = UINotificationFeedbackGenerator()
+    private val selection = UISelectionFeedbackGenerator()
 
     override fun performHapticFeedback(hapticFeedbackType: HapticFeedbackType) {
         when (hapticFeedbackType) {
             HapticFeedbackType.SegmentTick, HapticFeedbackType.GestureThresholdActivate -> rigid.impactOccurredWithIntensity(1.0)
+            // A drag's fine steps: the picker's own ratchet; its end: the heaviest tap.
+            HapticFeedbackType.SegmentFrequentTick -> selection.selectionChanged()
+            HapticFeedbackType.GestureEnd -> heavy.impactOccurredWithIntensity(1.0)
             HapticFeedbackType.ToggleOn, HapticFeedbackType.ToggleOff -> medium.impactOccurredWithIntensity(1.0)
             HapticFeedbackType.LongPress -> heavy.impactOccurred()
             HapticFeedbackType.Confirm -> notification.notificationOccurred(UINotificationFeedbackType.UINotificationFeedbackTypeSuccess)
