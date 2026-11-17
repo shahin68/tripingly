@@ -293,8 +293,8 @@ private fun StopChip(stop: MapMarker, isSelected: Boolean, onAction: (MapAction)
         onClick = { onAction(MapAction.MapView.MarkerClick(stop)) },
         shape = CircleShape,
         // The ⋯ button's colour, the same token in light and dark.
-        color = if (isSelected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant,
-        contentColor = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface,
+        color = if (isSelected) MaterialTheme.extendedColors.highlight else MaterialTheme.colorScheme.surfaceVariant,
+        contentColor = if (isSelected) MaterialTheme.extendedColors.onHighlight else MaterialTheme.colorScheme.onSurface,
     ) {
         Row(
             // The number sits as far from the chip's start as from its top and bottom.

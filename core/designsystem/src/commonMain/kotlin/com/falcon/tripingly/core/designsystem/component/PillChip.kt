@@ -30,6 +30,7 @@ import com.falcon.tripingly.core.designsystem.generated.resources.Res
 import com.falcon.tripingly.core.designsystem.generated.resources.chip_remove
 import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
 import com.falcon.tripingly.core.designsystem.theme.spacing
+import com.falcon.tripingly.core.designsystem.theme.extendedColors
 import org.jetbrains.compose.resources.stringResource
 
 /**
@@ -51,12 +52,12 @@ fun PillChip(
     val isError = error != null
     val container = when {
         isError -> MaterialTheme.colorScheme.errorContainer
-        selected -> MaterialTheme.colorScheme.primaryContainer
+        selected -> MaterialTheme.extendedColors.highlight
         else -> MaterialTheme.colorScheme.surfaceVariant
     }
     val content = when {
         isError -> MaterialTheme.colorScheme.onErrorContainer
-        selected -> MaterialTheme.colorScheme.onPrimaryContainer
+        selected -> MaterialTheme.extendedColors.onHighlight
         else -> MaterialTheme.colorScheme.onSurfaceVariant
     }
     val border = if (isError) BorderStroke(1.dp, MaterialTheme.colorScheme.error) else null

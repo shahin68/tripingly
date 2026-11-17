@@ -189,10 +189,11 @@ data class PointRouteCardState(
 
 /**
  * The map's filter: a circle that opens ([isOpen]) into chips of kinds of places. [isActive]: some kinds are picked, so
- * the circle is lit while closed and only those places show, in purple.
+ * the circle is lit while closed and only those places show, in their own colours, with the trip's stops. [isLoading]:
+ * the places of the kinds picked are on their way.
  */
 @Immutable
-data class PlaceFilterState(val isOpen: Boolean, val isActive: Boolean, val chips: ImmutableList<CategoryChip>)
+data class PlaceFilterState(val isOpen: Boolean, val isActive: Boolean, val chips: ImmutableList<CategoryChip>, val isLoading: Boolean = false)
 
 /**
  * The places around a pin, in the plan sheet: chips of kinds with how many of each, then the places, nearest of the

@@ -55,6 +55,13 @@ internal val AttentionDark = Color(0xFFF2A65E)
 internal val OnAttentionDark = Color(0xFF3A1E00)
 internal val OnErrorContainerDark = Color(0xFFFFDAD5)
 
+// What is picked (a selected chip, the open stop in the plan, a lit filter): a lighter ivy that stands out of a chip's
+// grey in both themes (Shahin, 2026-11-17: the container green was too hard to see).
+internal val HighlightLight = Color(0xFFB9DCC4)
+internal val OnHighlightLight = Color(0xFF0F2A18)
+internal val HighlightDark = Color(0xFF3E7A53)
+internal val OnHighlightDark = Color(0xFFE6F5EA)
+
 // A control's fill on a card in the dark theme (a toggle's track, a pill button): lighter than the card, so it reads as
 // something to tap (Shahin, 2026-11-16). The light theme keeps its surfaceVariant.
 internal val ControlFillDark = Color(0xFF3A403C)

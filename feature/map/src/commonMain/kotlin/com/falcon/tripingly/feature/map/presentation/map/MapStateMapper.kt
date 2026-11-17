@@ -270,12 +270,11 @@ internal class MapStateMapper(
         // The places along the way show on the map too, also where the map's own pins leave them out, in their own color.
         // While a route shows, the other pins are dots, so the route, its two ends, the stops and the places along it stand out.
         val routeShows = routePoints.size > 1
-        // Around a pin works the same way: its places in purple, the rest dots. The map's filter only shows places of the
-        // kinds picked, so all of them are purple (Shahin, 2026-11-17).
+        // Around a pin works the same way: its places in purple, the rest dots. The map's filter only leaves the places of the
+        // kinds picked, in their own colours: they are the map's pins, not found ones (Shahin, 2026-11-17).
         val aroundPlaces = model.around?.result?.places.orEmpty().map { it.place }
         val highlighted = alongIds + aroundPlaces.map { it.id }
         val othersAreDots = routeShows || model.around != null
-        val isFiltered = model.placeFilter.categories.isNotEmpty() && !othersAreDots
         // Hidden places come first: only the route's places stay, then the route makes the rest dots as always.
         val isRoutes = { id: String -> id in highlighted || id in endPlaces || id in kept }
         val visible = if (model.arePlacesHidden) pins.filter { isRoutes(it.place.id) } else pins
@@ -286,7 +285,6 @@ internal class MapStateMapper(
                 it.place.id in kept -> it.copy(isAlongTheWay = it.place.id in alongIds, isKept = true)
                 it.place.id in highlighted -> it.copy(isAlongTheWay = true)
                 othersAreDots -> it.copy(isDot = true)
-                isFiltered -> it.copy(isAlongTheWay = true)
                 else -> it
             }
         } +

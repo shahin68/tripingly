@@ -29,7 +29,7 @@ internal fun MapModel.placeFilterState(): PlaceFilterState? {
     val picked = placeFilter.categories
     val chips = listOf(CategoryChip(null, null, isSelected = picked.isEmpty())) +
         FILTER_CATEGORIES.map { CategoryChip(it, null, isSelected = it in picked) }
-    return PlaceFilterState(placeFilter.isOpen, isActive = picked.isNotEmpty(), chips.toImmutableList())
+    return PlaceFilterState(placeFilter.isOpen, isActive = picked.isNotEmpty(), chips.toImmutableList(), isLoading = placeFilter.isLoading)
 }
 
 /** The map filter's kinds, as the places' kinds are listed; Other is no kind to look for. */

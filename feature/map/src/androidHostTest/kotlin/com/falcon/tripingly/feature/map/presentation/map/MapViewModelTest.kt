@@ -110,6 +110,7 @@ import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestDispatcher
 import kotlinx.coroutines.test.TestScope
@@ -157,6 +158,8 @@ class MapViewModelTest {
         /** Images of the sights, by place ID. */
         val images = mutableMapOf<String, List<PlaceImage>>()
         val detailRequests = mutableListOf<String>()
+        /** How long the squares take to come, as from the server. */
+        var squaresDelayMillis = 0L
 
         override suspend fun place(id: String): AppResult<PlaceDetails, DataError.Network> {
             detailRequests += id
@@ -165,6 +168,7 @@ class MapViewModelTest {
 
         override suspend fun placesIn(squares: Collection<PlaceSquare>): AppResult<Map<PlaceSquare, PlacesInView>, DataError.Network> {
             requests += squares.toList()
+            delay(squaresDelayMillis)
             return fake.placesIn(squares)
         }
 
@@ -2650,7 +2654,7 @@ class MapViewModelTest {
     }
 
     @Test
-    fun `the map filter loads only the kinds picked and draws them purple, never hiding the stops`() = runTest(testDispatcher) {
+    fun `the map filter loads only the kinds picked in their own colours, never hiding the stops`() = runTest(testDispatcher) {
         addStops(GeoPoint(48.85, 2.30))
         val viewModel = viewModel()
         restOnTarget(viewModel)
@@ -2665,14 +2669,23 @@ class MapViewModelTest {
         assertTrue(filter?.isOpen == true && filter.isActive)
         assertEquals(setOf(PlaceCategory.Museum), places.requests.last().map { it.categories }.toSet().single())
         assertEquals(listOf("Louvre"), viewModel.uiState.value.layers.placePins.map { it.place.name })
-        assertTrue(viewModel.uiState.value.layers.placePins.all { it.isAlongTheWay })
+        assertTrue(viewModel.uiState.value.layers.placePins.none { it.isAlongTheWay })
+        assertEquals(false, viewModel.uiState.value.placeFilter?.isLoading)
         assertEquals(1, viewModel.uiState.value.layers.stops.size)
 
-        // All shows every kind again, in the pins' own colours.
+        // All shows every kind again.
         viewModel.onAction(MapAction.PlaceFilter.ToggleCategory(null))
         testScheduler.advanceUntilIdle()
         assertEquals(2, viewModel.uiState.value.layers.placePins.size)
-        assertTrue(viewModel.uiState.value.layers.placePins.none { it.isAlongTheWay })
+
+        // A kind picked hides the other places at once, before its own squares come; the circle turns meanwhile.
+        places.squaresDelayMillis = 1_000
+        viewModel.onAction(MapAction.PlaceFilter.ToggleCategory(PlaceCategory.Landmark))
+        testScheduler.runCurrent()
+        assertEquals(listOf("Eiffel Tower"), viewModel.uiState.value.layers.placePins.map { it.place.name })
+        assertEquals(true, viewModel.uiState.value.placeFilter?.isLoading)
+        testScheduler.advanceUntilIdle()
+        assertEquals(false, viewModel.uiState.value.placeFilter?.isLoading)
     }
 
     /** Stops next to the Eiffel Tower and a walk from the Louvre; the first one's card open. */

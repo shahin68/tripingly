@@ -72,13 +72,23 @@ internal class MapPins(
     }
 
     /**
-     * The map's filter picked [categories]: only places of those kinds load and show (none: every kind). The pins shown
-     * so far go at once, the squares of the camera's last rest load again for the kinds picked.
+     * The map's filter picked [categories]: only places of those kinds load and show (none: every kind), with the trip's
+     * stops. At once the pins shown so far keep only those kinds, so the map answers the tap (Shahin, 2026-11-17); the
+     * squares of the camera's last rest load again for the kinds picked, the filter's circle turning meanwhile.
      */
     fun setFilter(categories: Set<PlaceCategory>) {
-        context.update { it.copy(placeFilter = it.placeFilter.copy(categories = categories)) }
+        val stops = tripStopPlaces(context.days(), context.activeDay()).mapTo(HashSet()) { it.id }
+        val keeps = { place: MapPlace -> categories.isEmpty() || place.category in categories || place.id in stops }
+        val rest = lastRest
+        context.update { model ->
+            model.copy(
+                placeFilter = model.placeFilter.copy(categories = categories, isLoading = rest != null && !model.arePlacesHidden),
+                // A cluster counts every kind: it waits for the kinds' own squares.
+                pins = model.pins.copy(pins = model.pins.pins.filter { keeps(it.place) }, clusters = if (categories.isEmpty()) model.pins.clusters else emptyList()),
+            )
+        }
         closestZoom = null
-        lastRest?.let { (bounds, zoom) -> onCameraRest(bounds, zoom) }
+        rest?.let { (bounds, zoom) -> onCameraRest(bounds, zoom) }
     }
 
     private val categories get() = context.model.value.placeFilter.categories
@@ -97,6 +107,7 @@ internal class MapPins(
             placeRepository.placesIn(squares)
             update { it.copy(area = PinArea(bounds, squares)) }
             show()
+            context.update { it.copy(placeFilter = it.placeFilter.copy(isLoading = false)) }
         }
         prefetchJob?.cancel()
         prefetchJob = context.scope.launch {
@@ -130,9 +141,9 @@ internal class MapPins(
     private suspend fun show(addOnly: Boolean = false) {
         val area = context.model.value.pins.area ?: return
         val day = context.activeDay()
-        // Other days' stops come along as places: a custom spot only on this private trip is in no square. They don't
-        // know their kind here, so while the map is filtered only the squares' places of the kinds picked show.
-        val otherStops = tripStopPlaces(context.days(), day).takeIf { area.squares.firstOrNull()?.categories.isNullOrEmpty() }.orEmpty()
+        // Other days' stops come along as places: a custom spot only on this private trip is in no square. They are the
+        // trip's stops, so they stay while the map is filtered too (Shahin, 2026-11-17).
+        val otherStops = tripStopPlaces(context.days(), day)
         val squares = placeRepository.loadedPlacesIn(area.squares).values + PlacesInView(otherStops, emptyList())
         val hidden = stopPlaceIds(day)
         val config = appConfigRepository.config.value

@@ -20,6 +20,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.FilterList
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
@@ -33,6 +34,7 @@ import androidx.compose.ui.unit.dp
 import com.falcon.tripingly.core.designsystem.component.GlassSurface
 import com.falcon.tripingly.core.designsystem.component.rememberHaptics
 import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
+import com.falcon.tripingly.core.designsystem.theme.extendedColors
 import com.falcon.tripingly.core.designsystem.theme.spacing
 import com.falcon.tripingly.core.model.place.PlaceCategory
 import com.falcon.tripingly.feature.map.generated.resources.Res
@@ -87,14 +89,20 @@ internal fun PlaceFilterPill(filter: PlaceFilterState, onAction: (MapAction) -> 
                     contentAlignment = Alignment.Center,
                     modifier = Modifier
                         .size(CircleSize)
-                        .background(if (filter.isActive && !filter.isOpen) MaterialTheme.colorScheme.primaryContainer else Color.Transparent, CircleShape),
+                        .background(if (filter.isActive && !filter.isOpen) MaterialTheme.extendedColors.highlight else Color.Transparent, CircleShape),
                 ) {
-                    Icon(
-                        imageVector = if (filter.isOpen) Icons.Default.Close else Icons.Default.FilterList,
-                        contentDescription = label,
-                        tint = if (filter.isActive && !filter.isOpen) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface,
-                        modifier = Modifier.size(IconSize),
-                    )
+                    val tint = if (filter.isActive && !filter.isOpen) MaterialTheme.extendedColors.onHighlight else MaterialTheme.colorScheme.onSurface
+                    // While the kinds picked load, a spinner turns where the icon was; the button still works.
+                    if (filter.isLoading) {
+                        CircularProgressIndicator(color = tint, strokeWidth = SpinnerStroke, modifier = Modifier.size(IconSize))
+                    } else {
+                        Icon(
+                            imageVector = if (filter.isOpen) Icons.Default.Close else Icons.Default.FilterList,
+                            contentDescription = label,
+                            tint = tint,
+                            modifier = Modifier.size(IconSize),
+                        )
+                    }
                 }
             }
         }
@@ -106,6 +114,7 @@ private val CircleSize = 32.dp
 private val ButtonSize = 40.dp
 private val IconSize = 20.dp
 private const val GROW_MILLIS = 200
+private val SpinnerStroke = 2.dp
 
 @Composable
 private fun PlaceFilterPreviewContent() {
@@ -118,6 +127,7 @@ private fun PlaceFilterPreviewContent() {
         PlaceFilterPill(PlaceFilterState(isOpen = false, isActive = false, chips), onAction = {})
         PlaceFilterPill(PlaceFilterState(isOpen = false, isActive = true, chips), onAction = {})
         PlaceFilterPill(PlaceFilterState(isOpen = true, isActive = true, chips), onAction = {})
+        PlaceFilterPill(PlaceFilterState(isOpen = true, isActive = true, chips, isLoading = true), onAction = {})
     }
 }
 
