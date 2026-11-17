@@ -24,6 +24,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
@@ -129,7 +130,8 @@ internal fun AroundRingLayer(ring: AroundRing, project: (Coordinates) -> Offset?
                     Modifier
                         .size(HandleSize)
                         .shadow(2.dp, CircleShape)
-                        .background(MaterialTheme.colorScheme.surface, CircleShape)
+                        // White in both themes: a dark surface colour got lost on the dark map (Shahin, 2026-11-17).
+                        .background(Color.White, CircleShape)
                         .border(HandleBorder, color, CircleShape),
                 )
             }
@@ -163,7 +165,7 @@ private fun feelStep(meters: Int) = when {
 private const val MIN_RADIUS_METERS = 50
 private const val MAX_RADIUS_METERS = 5000
 /** Almost clear: a slight purple, so the map under it reads as it is. */
-private const val DISC_ALPHA = 0.05f
+private const val DISC_ALPHA = 0.08f
 private val EdgeWidth = 2.dp
 private val DashLength = 8.dp
 private val DashGap = 6.dp
