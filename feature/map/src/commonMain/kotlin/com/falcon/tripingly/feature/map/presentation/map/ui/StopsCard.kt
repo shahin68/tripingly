@@ -156,7 +156,7 @@ internal fun StopsCard(
         StopChips(card, onAction)
         val gap = animateDpAsState(if (card.route != null) RowGap else 0.dp, if (card.isRouteAnimated) tween(ROUTE_GROW_MILLIS, easing = RouteGrowEasing) else snap(), label = "route gap")
         // The gap is read while laying out, so its animation moves the card without recomposing the plan every frame.
-        RouteCardSlot(card.route, onAction, Modifier.topGap { gap.value }.padding(horizontal = MaterialTheme.spacing.medium), isAnimated = card.isRouteAnimated)
+        RouteCardSlot(card.route, onAction, Modifier.topGap { gap.value }.padding(horizontal = MaterialTheme.spacing.medium), isAnimated = card.isRouteAnimated, listKey = dayNumber)
         // Around and a route never show together: one of the two is under the stops.
         AroundCardSlot(card.around, onAction, Modifier.padding(horizontal = MaterialTheme.spacing.medium), gap = RowGap)
     }
@@ -253,7 +253,7 @@ internal fun PointRouteCard(
                 Icon(Icons.Default.Close, contentDescription = stringResource(Res.string.map_route_close))
             }
         }
-        RouteCardSlot(card.route, onAction, Modifier.padding(top = RowGap).padding(horizontal = MaterialTheme.spacing.medium))
+        RouteCardSlot(card.route, onAction, Modifier.padding(top = RowGap).padding(horizontal = MaterialTheme.spacing.medium), listKey = card.from to card.to)
     }
 }
 

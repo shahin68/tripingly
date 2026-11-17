@@ -44,6 +44,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.key
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -126,7 +127,7 @@ internal fun TravelModeToggle(
  * another, the places come in from the end, and on the way out everything only fades.
  */
 @Composable
-internal fun RouteCardSlot(route: RouteSummaryState?, onAction: (MapAction) -> Unit, modifier: Modifier = Modifier, isAnimated: Boolean = true) {
+internal fun RouteCardSlot(route: RouteSummaryState?, onAction: (MapAction) -> Unit, modifier: Modifier = Modifier, isAnimated: Boolean = true, listKey: Any? = null) {
     val grow = tween<IntSize>(ROUTE_GROW_MILLIS, easing = RouteGrowEasing)
     // The card's background is a plain box around the animation, sized by it, so it grows and shrinks with the card
     // and stays drawn when the animation rests. An opaque colour (a touch darker or lighter than the sheet's glass,
@@ -145,7 +146,7 @@ internal fun RouteCardSlot(route: RouteSummaryState?, onAction: (MapAction) -> U
             contentAlignment = Alignment.TopStart,
             label = "route card",
         ) { shown ->
-            if (shown != null) RouteCardContent(shown, isAnimated, onAction)
+            if (shown != null) RouteCardContent(shown, isAnimated, listKey, onAction)
         }
     }
 }
@@ -157,10 +158,10 @@ internal fun planCardColor() =
 
 /**
  * The route: its icon (a spinner while a way of travelling loads), time and length, how to travel, and the places
- * along the way scrolling out to the card's edges. Everything sits [spacing.small] in from every side of the card.
+ * along the way scrolling out to the card's edges. [listKey] says whose route it is (the day, the ends). Everything sits [spacing.small] in from every side of the card.
  */
 @Composable
-private fun AnimatedVisibilityScope.RouteCardContent(route: RouteSummaryState, isAnimated: Boolean, onAction: (MapAction) -> Unit) {
+private fun AnimatedVisibilityScope.RouteCardContent(route: RouteSummaryState, isAnimated: Boolean, listKey: Any?, onAction: (MapAction) -> Unit) {
     val inset = MaterialTheme.spacing.small
     // Every row below the first keeps [inset] above itself, inside it, so a gliding row's gap glides with it.
     val below = Modifier.padding(start = inset, end = inset, top = inset)
@@ -191,39 +192,43 @@ private fun AnimatedVisibilityScope.RouteCardContent(route: RouteSummaryState, i
                 modifier = below.then(rowMotion(1, isAnimated)),
             )
         }
-        // Kinds along the way, with how many of each: picking some reloads the route with only those (no title above).
-        if (route.alongChips.isNotEmpty()) {
-            CategoryChipRow(
-                chips = route.alongChips,
-                onToggle = { onAction(MapAction.Plan.ToggleAlongCategory(it)) },
-                modifier = Modifier.padding(top = inset).then(rowMotion(2, isAnimated)),
-            )
-        }
-        if (route.alongTheWay.isNotEmpty()) {
-            val selectedIndex = route.alongTheWay.indexOfFirst { it.place.id == route.selectedPlaceId }
-            // A place picked on the map is the card in view, also when the plan first shows.
-            val listState = rememberLazyListState(initialFirstVisibleItemIndex = selectedIndex.coerceAtLeast(0))
-            val onScreen = remember { OnScreen() }
-            LaunchedEffect(route.selectedPlaceId) { listState.reveal(selectedIndex, onScreen, toStart = true) }
-            LazyRow(
-                state = listState,
-                // A little more room under the kinds, so the chips and the places read as two rows (the canvas).
-                modifier = Modifier.padding(top = if (route.alongChips.isEmpty()) inset else inset + MaterialTheme.spacing.extraSmall)
-                    .horizontalFadingEdge(listState).trackOnScreen(onScreen),
-                contentPadding = PaddingValues(horizontal = inset),
-                horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
-            ) {
-                itemsIndexed(route.alongTheWay, key = { _, item -> item.place.id }) { index, item ->
-                    AlongTheWayCard(
-                        item = item,
-                        dayNumber = route.addToDayNumber,
-                        isSelected = item.place.id == route.selectedPlaceId,
-                        onOpen = { onAction(MapAction.Plan.AlongTheWayClick(it)) },
-                        onAdd = { onAction(MapAction.Plan.AddAlongTheWay(it)) },
-                        // Places arriving with a route left on from last time just show, like the rest of the card.
-                        modifier = (if (isAnimated) Modifier.animateItem() else Modifier.animateItem(fadeInSpec = null, placementSpec = null, fadeOutSpec = null))
-                            .then(alongMotion(index, isAnimated)),
-                    )
+        // Another day's (or other ends') route brings other places: its lists start afresh instead of every old chip and
+        // card fading out while every new one fades in, which made switching days heavy (Shahin, 2026-11-17).
+        key(listKey) {
+            // Kinds along the way, with how many of each: picking some reloads the route with only those (no title above).
+            if (route.alongChips.isNotEmpty()) {
+                CategoryChipRow(
+                    chips = route.alongChips,
+                    onToggle = { onAction(MapAction.Plan.ToggleAlongCategory(it)) },
+                    modifier = Modifier.padding(top = inset).then(rowMotion(2, isAnimated)),
+                )
+            }
+            if (route.alongTheWay.isNotEmpty()) {
+                val selectedIndex = route.alongTheWay.indexOfFirst { it.place.id == route.selectedPlaceId }
+                // A place picked on the map is the card in view, also when the plan first shows.
+                val listState = rememberLazyListState(initialFirstVisibleItemIndex = selectedIndex.coerceAtLeast(0))
+                val onScreen = remember { OnScreen() }
+                LaunchedEffect(route.selectedPlaceId) { listState.reveal(selectedIndex, onScreen, toStart = true) }
+                LazyRow(
+                    state = listState,
+                    // A little more room under the kinds, so the chips and the places read as two rows (the canvas).
+                    modifier = Modifier.padding(top = if (route.alongChips.isEmpty()) inset else inset + MaterialTheme.spacing.extraSmall)
+                        .horizontalFadingEdge(listState).trackOnScreen(onScreen),
+                    contentPadding = PaddingValues(horizontal = inset),
+                    horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
+                ) {
+                    itemsIndexed(route.alongTheWay, key = { _, item -> item.place.id }) { index, item ->
+                        AlongTheWayCard(
+                            item = item,
+                            dayNumber = route.addToDayNumber,
+                            isSelected = item.place.id == route.selectedPlaceId,
+                            onOpen = { onAction(MapAction.Plan.AlongTheWayClick(it)) },
+                            onAdd = { onAction(MapAction.Plan.AddAlongTheWay(it)) },
+                            // Places arriving with a route left on from last time just show, like the rest of the card.
+                            modifier = (if (isAnimated) Modifier.animateItem() else Modifier.animateItem(fadeInSpec = null, placementSpec = null, fadeOutSpec = null))
+                                .then(alongMotion(index, isAnimated)),
+                        )
+                    }
                 }
             }
         }
