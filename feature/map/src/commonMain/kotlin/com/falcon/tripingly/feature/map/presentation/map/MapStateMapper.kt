@@ -294,7 +294,9 @@ internal class MapStateMapper(
             endPlaces.values.filter { it.place.id !in shown }.map { PlacePin(it.place, SelectedPinSize, isKept = true) } +
             kept.values.filter { it.id !in shown && it.id !in endPlaces }.map { PlacePin(it, placePinSize(it, config), isAlongTheWay = it.id in alongIds, isKept = true) } +
             alongTheWay.filter { it.place.id !in shown && it.place.id !in endPlaces && it.place.id !in kept }.map { it.toPin() } +
-            aroundPlaces.filter { it.id !in shown && it.id !in alongIds }.map { PlacePin(it, placePinSize(it, config), isAlongTheWay = true) }
+            aroundPlaces.filter { it.id !in shown && it.id !in alongIds }.map { PlacePin(it, placePinSize(it, config), isAlongTheWay = true) } +
+            // The place Around is around, as itself, where the map's pins don't list it.
+            listOfNotNull(model.around?.pinPlace?.takeIf { it.id !in shown && it.id !in alongIds && it.id !in endPlaces && it.id !in kept }?.let { PlacePin(it, placePinSize(it, config)) })
         val stopPath = stops.map { it.position }.takeIf { routePoints.isEmpty() && route.between == null }.orEmpty()
         val endColor = route.travelMode.lineColor
         return MapLayersState(

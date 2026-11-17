@@ -2,6 +2,7 @@ package com.falcon.tripingly.feature.map.presentation.map.state
 
 import com.falcon.tripingly.core.common.result.AppResult
 import com.falcon.tripingly.core.data.places.PlaceRepository
+import com.falcon.tripingly.core.model.place.MapPlace
 import com.falcon.tripingly.core.model.place.PlaceCategory
 import com.falcon.tripingly.core.model.trip.GeoPoint
 import com.falcon.tripingly.core.ui.toUiText
@@ -44,7 +45,7 @@ internal class MapAround(
      */
     fun open() {
         if (!hasRoutes()) return showAroundIsPro()
-        val (center, pinPlaceId) = selectedPin() ?: return
+        val (center, pinPlaceId, pinPlace) = selectedPin() ?: return
         if (context.model.value.around?.center == center) return close()
         context.update {
             it.copy(
@@ -52,6 +53,7 @@ internal class MapAround(
                 around = AroundModel(
                     center = center,
                     pinPlaceId = pinPlaceId,
+                    pinPlace = pinPlace,
                     radiusMeters = it.around?.radiusMeters ?: it.fittingRadius(),
                     categories = it.around?.categories.orEmpty(),
                     routeBefore = it.around?.routeBefore ?: it.route,
@@ -113,10 +115,10 @@ internal class MapAround(
         }
     }
 
-    /** Where the open pin is, and its place: a stop of the open day, or a place (an address from search has none). */
-    private fun selectedPin(): Pair<GeoPoint, String?>? = when (val selected = context.model.value.selection) {
-        is Selection.Stop -> context.activeDay()?.markers?.firstOrNull { it.id == selected.markerId }?.let { it.location to it.placeId.ifEmpty { null } }
-        is Selection.Place -> selected.place.location to selected.place.id.ifEmpty { null }
+    /** Where the open pin is, its place's ID, and the place when the pin is one (an address from search has no ID). */
+    private fun selectedPin(): Triple<GeoPoint, String?, MapPlace?>? = when (val selected = context.model.value.selection) {
+        is Selection.Stop -> context.activeDay()?.markers?.firstOrNull { it.id == selected.markerId }?.let { Triple(it.location, it.placeId.ifEmpty { null }, null) }
+        is Selection.Place -> Triple(selected.place.location, selected.place.id.ifEmpty { null }, selected.place.takeIf { it.id.isNotEmpty() })
         is Selection.NewSpot, null -> null
     }
 

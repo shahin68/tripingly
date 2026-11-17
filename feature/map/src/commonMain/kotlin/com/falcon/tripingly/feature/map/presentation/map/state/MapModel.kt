@@ -96,6 +96,11 @@ internal data class AroundModel(
     val center: GeoPoint,
     /** The pin's own place, left out of what is around it and never a dot (Shahin, 2026-11-17). */
     val pinPlaceId: String?,
+    /**
+     * The pin when it is a place (a stop draws itself): drawn as a plain pin while Around shows, also when the map's own
+     * pins don't list it (a place along the way, found around another pin, from search).
+     */
+    val pinPlace: MapPlace? = null,
     val radiusMeters: Int,
     val categories: Set<PlaceCategory> = emptySet(),
     val result: PlacesAround? = null,
