@@ -2681,7 +2681,8 @@ class MapViewModelTest {
         viewModel.events.test {
             viewModel.onAction(MapAction.Around.Open)
             testScheduler.advanceUntilIdle()
-            assertEquals(MapEvent.ShowWholePlan, awaitItem())
+            // The route coming on asked for the whole plan too; Around asks last.
+            assertEquals(MapEvent.ShowWholePlan, expectMostRecentItem())
         }
         val state = viewModel.uiState.value
         assertNull(state.stopsCard?.route)
