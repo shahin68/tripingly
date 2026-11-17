@@ -33,6 +33,7 @@ import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -345,7 +346,8 @@ internal fun MapScreen(
                         modifier = Modifier.weight(1f),
                         label = "map filter",
                     ) { filter ->
-                        if (filter != null) PlaceFilterPill(filter = filter, onAction = onAction)
+                        // The row's weight is the most it may grow; closed it is only its circle, at the end.
+                        if (filter != null) PlaceFilterPill(filter = filter, onAction = onAction, modifier = Modifier.wrapContentWidth(Alignment.End))
                     }
                 }
                 state.search?.results?.takeIf { it.isNotEmpty() }?.let { results ->
