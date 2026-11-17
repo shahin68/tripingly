@@ -2,6 +2,7 @@ package com.falcon.tripingly.feature.map.presentation.map.ui
 
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.SizeTransform
+import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -74,7 +75,9 @@ internal fun AroundCardSlot(around: AroundState?, onAction: (MapAction) -> Unit,
 @Composable
 private fun AroundCard(around: AroundState, onAction: (MapAction) -> Unit) {
     val inset = MaterialTheme.spacing.small
-    Column(Modifier.fillMaxWidth().clip(MaterialTheme.shapes.large).background(planCardColor()).padding(vertical = inset)) {
+    // The places arrive after the box opens (and change with the kinds and the ring): the box eases to their height
+    // instead of jumping (Shahin 2026-11-17).
+    Column(Modifier.fillMaxWidth().animateContentSize(tween(ROUTE_GROW_MILLIS, easing = RouteGrowEasing)).clip(MaterialTheme.shapes.large).background(planCardColor()).padding(vertical = inset)) {
         // The chips scroll under the fading edge up to ✕, which stays put at the end, as tall as a chip.
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(end = inset)) {
             Box(Modifier.weight(1f)) {
