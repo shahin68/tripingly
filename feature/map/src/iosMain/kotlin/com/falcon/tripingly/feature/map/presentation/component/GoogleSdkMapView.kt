@@ -322,7 +322,7 @@ internal fun GoogleSdkMapView(
     val textMeasurer = rememberTextMeasurer()
     val pinPhotos = rememberPinPhotos(placePins)
     val pinIcons = remember(placeColor, hotSpotColor, density) { mutableMapOf<PlacePinLook, UIImage>() }
-    fun pinIcon(look: PlacePinLook) = pinIcons.getOrPut(look) {
+    fun pinIcon(look: PlacePinLook) = pinIcons.getOrPutBounded(look, MAX_PIN_ICONS) {
         val fill = when {
             look.isAlongTheWay -> AlongTheWayPinColor
             look.isTripinly -> hotSpotColor

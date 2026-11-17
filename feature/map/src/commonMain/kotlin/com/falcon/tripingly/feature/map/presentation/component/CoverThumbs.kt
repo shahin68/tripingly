@@ -55,6 +55,12 @@ private fun rememberThumbs(covers: Map<String, String>): Map<String, ImageBitmap
         val loader = SingletonImageLoader.get(context)
         val asked = HashSet<String>()
         snapshotFlow { currentCovers }.collect { now ->
+            // Kept bitmaps stay bounded: past [MAX_KEPT_THUMBS] the ones no pin shows go (a pin that comes back finds its
+            // image in the loader's memory cache), so a long session doesn't pile up hundreds of decoded photos.
+            if (thumbs.size > MAX_KEPT_THUMBS) {
+                thumbs = thumbs.filterKeys { it in now }
+                asked.retainAll(now.keys)
+            }
             val new = now.filterKeys { it !in asked }
             if (new.isEmpty()) return@collect
             asked += new.keys
@@ -71,3 +77,19 @@ private fun rememberThumbs(covers: Map<String, String>): Map<String, ImageBitmap
 
 /** A bitmap that can be drawn into a pin's own (software) canvas. */
 internal expect fun Image.toPinBitmap(): ImageBitmap
+
+/** About twice the photo pins a view shows at most (APP_MAP_MAX_PHOTO_PINS defaults to 100). */
+private const val MAX_KEPT_THUMBS = 250
+
+/**
+ * [getOrPut] for the map's icon caches, which keep at most [max] entries: past that the oldest goes (a pin that needs it
+ * again draws it anew), so looks seen over a long session (every photo, size and colour) don't pile up.
+ */
+internal inline fun <K, V> MutableMap<K, V>.getOrPutBounded(key: K, max: Int, make: () -> V): V =
+    get(key) ?: make().also { value ->
+        put(key, value)
+        if (size > max) remove(keys.first())
+    }
+
+/** Place pin looks kept drawn: every pin a view shows, as pin and as dot, with room to spare. */
+internal const val MAX_PIN_ICONS = 600

@@ -50,6 +50,8 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.conflate
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
@@ -126,7 +128,14 @@ class MapViewModel(
     /** The map's layers and what they were built from, kept until one of those changes. */
     private var layers: Pair<List<Any?>, MapLayersState>? = null
 
+    /**
+     * Built off the main thread (pins, route, cards: a few hundred items on every change, up to every frame while Around's
+     * ring is dragged), only the newest state when several changes come at once (Shahin 2026-11-17: the map lagged on
+     * the main thread after a while).
+     */
     val uiState: StateFlow<MapUiState> = combine(trip, context.model, ::toUiState)
+        .conflate()
+        .flowOn(computation)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), toUiState(null, model))
 
     init {
