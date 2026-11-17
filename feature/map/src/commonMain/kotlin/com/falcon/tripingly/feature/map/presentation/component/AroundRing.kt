@@ -7,22 +7,14 @@ import com.falcon.tripingly.core.ui.UiText
 import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.roundToInt
-import kotlin.math.sin
 
 /** The ring of places around a pin (Around, Tripinly Pro): [radiusMeters] around [center], [label] its size ("500 m"). */
 @Immutable
 data class AroundRing(val center: Coordinates, val radiusMeters: Int, val label: UiText) {
 
-    /** The ring's east edge. */
-    fun edge(): Coordinates = handle(0f)
-
-    /**
-     * Where on the ring the handle is at [angle], in radians from east, south positive (clockwise as on a north-up map).
-     */
-    fun handle(angle: Float): Coordinates = Coordinates(
-        center.latitude - radiusMeters * sin(angle) / METERS_PER_DEGREE,
-        center.longitude + radiusMeters * cos(angle) / (METERS_PER_DEGREE * cos(center.latitude * PI / 180)),
-    )
+    /** The ring's east edge, where its handle is. */
+    fun edge(): Coordinates =
+        Coordinates(center.latitude, center.longitude + radiusMeters / (METERS_PER_DEGREE * cos(center.latitude * PI / 180)))
 
     /**
      * The ring's size in metres for a finger at [finger] px, with the ring drawn at [centerPx] [radiusPx] px wide: the

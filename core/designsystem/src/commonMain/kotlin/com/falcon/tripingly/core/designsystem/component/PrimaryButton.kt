@@ -45,6 +45,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.compositeOver
+import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
@@ -138,6 +140,8 @@ fun ToggleButton(
 ) {
     val haptics = rememberHaptics()
     val colors = MaterialTheme.colorScheme
+    // On a dark surface a deep tint is lost: it lightens to an almost white shade of itself (Shahin, 2026-11-17).
+    val tint = tint?.let { if (colors.surface.luminance() < HALF) lerp(it, Color.White, DARK_TINT_LIGHTEN) else it }
     val isRetry = checked && isFailed && tint == null
     val isToggle = !isRetry && tint == null
     val primary = ButtonDefaults.buttonColors()
@@ -221,6 +225,9 @@ private fun ButtonContent(text: String, isLoading: Boolean, size: ButtonSize, ic
 
 private const val MORPH_MILLIS = 250
 private const val TINT_SHADE = 0.18f
+private const val HALF = 0.5f
+/** How far toward white a tint goes in dark mode: a pale, still clearly purple glass. */
+private const val DARK_TINT_LIGHTEN = 0.65f
 /** A hairline, half see-through: glass's edge, not an outline (Shahin, 2026-11-17). */
 private val StrokeWidth = 0.5.dp
 private const val STROKE_ALPHA = 0.5f

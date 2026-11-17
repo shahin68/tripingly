@@ -14,7 +14,6 @@ import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
@@ -496,40 +495,6 @@ internal fun GoogleSdkMapView(
         map.setMarkers(marks + pins + clusters + stops + listOfNotNull(place) + ends)
     }
 
-    // Around's ring, drawn by the map so it moves with the streets in the same frame (see AroundRingLayer.kt); the handle
-    // sits where the finger left it (radians from east), a new ring starting east.
-    var aroundAngle by remember { mutableFloatStateOf(0f) }
-    LaunchedEffect(aroundRing?.center) { aroundAngle = 0f }
-    val ringLabel = aroundRing?.label?.asString()
-    val ringTextStyle = MaterialTheme.typography.labelMedium.copy(color = MaterialTheme.colorScheme.onSurface)
-    val ringSurface = MaterialTheme.colorScheme.surface
-    val ringOutline = MaterialTheme.colorScheme.outlineVariant
-    val ringIcon = remember(ringLabel, ringTextStyle, ringSurface, ringOutline, density, layoutDirection) {
-        ringLabel?.let { drawAroundHandle(it, ringTextStyle, ringSurface, ringOutline, textMeasurer, density, layoutDirection).toUIImage(density.density) }
-    }
-    LaunchedEffect(aroundRing, aroundAngle, ringIcon) {
-        val ring = aroundRing
-        if (ring == null || ringIcon == null) return@LaunchedEffect map.setRing(null)
-        val handle = ring.handle(aroundAngle)
-        map.setRing(
-            GoogleMapRing(
-                latitude = ring.center.latitude,
-                longitude = ring.center.longitude,
-                radius = ring.radiusMeters.toDouble(),
-                fill = AlongTheWayPinColor.copy(alpha = AroundRingLook.DISC_ALPHA).toUIColor(),
-                edge = AlongTheWayPinColor.toUIColor(),
-                edgeWidth = AroundRingLook.EdgeWidth.value.toDouble(),
-                dash = AroundRingLook.DashLength.value.toDouble(),
-                gap = AroundRingLook.DashGap.value.toDouble(),
-                handleLatitude = handle.latitude,
-                handleLongitude = handle.longitude,
-                handleIcon = ringIcon,
-                handleAnchorY = AroundRingLook.HandleAnchorY.toDouble(),
-            ),
-        )
-    }
-    DisposableEffect(map) { onDispose { map.setRing(null) } }
-
     // Stopped (another screen covers the map, or the app is in the background): the map draws nothing.
     LifecycleStartEffect(map) {
         map.view.hidden = false
@@ -544,12 +509,10 @@ internal fun GoogleSdkMapView(
             properties = UIKitInteropProperties(interactionMode = UIKitInteropInteractionMode.NonCooperative),
         )
         aroundRing?.let { ring ->
-            AroundHandleLayer(
+            AroundRingLayer(
                 ring = ring,
-                angle = aroundAngle,
-                onAngle = { aroundAngle = it },
                 project = { point ->
-                    // Read, so the touch area follows the camera.
+                    // Read, so the ring follows the camera.
                     cameraFrame
                     project(point)
                 },

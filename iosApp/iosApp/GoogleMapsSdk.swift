@@ -44,11 +44,6 @@ private final class AppGoogleMap: NSObject, GoogleMap, GMSMapViewDelegate {
     private var lineMarkers: [GMSMarker] = []
     private var lineSweep: GMSPolyline?
     private var lineParts: [GMSPolyline] = []
-    /// Around's ring: its disc, its dashed edge, the handle, and what the edge's dashes were drawn for.
-    private var ringFill: GMSCircle?
-    private var ringEdge: GMSPolyline?
-    private var ringHandle: GMSMarker?
-    private var ringEdgeLook: (color: UIColor, width: Double, dash: Double, gap: Double)?
     private let touches = TouchRecorder()
     /// A pin is held (the shared code took the long press): the finger pulls its line, the map's gestures are off.
     private var isHoldingPin = false
@@ -238,72 +233,6 @@ private final class AppGoogleMap: NSObject, GoogleMap, GMSMapViewDelegate {
     @objc private func panStep(_ link: CADisplayLink) {
         let seconds = CGFloat(link.targetTimestamp - link.timestamp)
         mapView.moveCamera(GMSCameraUpdate.scrollBy(x: panVelocity.dx * seconds, y: panVelocity.dy * seconds))
-    }
-
-    func setRing(ring: GoogleMapRing?) {
-        guard let ring else {
-            ringFill?.map = nil
-            ringEdge?.map = nil
-            ringHandle?.map = nil
-            ringFill = nil
-            ringEdge = nil
-            ringHandle = nil
-            ringEdgeLook = nil
-            return
-        }
-        let center = CLLocationCoordinate2D(latitude: ring.latitude, longitude: ring.longitude)
-        // The disc: a circle with no stroke of its own.
-        let fill = ringFill ?? GMSCircle()
-        fill.position = center
-        fill.radius = ring.radius
-        fill.fillColor = ring.fill
-        fill.strokeWidth = 0
-        fill.zIndex = 0
-        if fill.map == nil { fill.map = mapView }
-        ringFill = fill
-        // The edge: GMSCircle can't dash, so a polyline round the circle, stamped with a dash and its gap that repeat the
-        // same on screen at every zoom, as Android's Dash and Gap draw them.
-        let edge = ringEdge ?? GMSPolyline()
-        edge.path = Self.circlePath(center: center, radius: ring.radius)
-        edge.strokeWidth = CGFloat(ring.edgeWidth)
-        edge.zIndex = 0
-        let look = (color: ring.edge, width: ring.edgeWidth, dash: ring.dash, gap: ring.gap)
-        if ringEdgeLook.map({ $0.color != look.color || $0.width != look.width || $0.dash != look.dash || $0.gap != look.gap }) ?? true {
-            let stamp = GMSSpriteStyle(image: Self.dashImage(color: ring.edge, width: CGFloat(ring.edgeWidth), dash: CGFloat(ring.dash), gap: CGFloat(ring.gap)))
-            edge.spans = [GMSStyleSpan(style: GMSStrokeStyle.transparentStroke(withStamp: stamp))]
-            ringEdgeLook = look
-        }
-        if edge.map == nil { edge.map = mapView }
-        ringEdge = edge
-        // The handle with the ring's size above it, over every pin; the touch area over it is the shared code's.
-        let handle = ringHandle ?? GMSMarker()
-        handle.position = CLLocationCoordinate2D(latitude: ring.handleLatitude, longitude: ring.handleLongitude)
-        if handle.icon !== ring.handleIcon { handle.icon = ring.handleIcon }
-        handle.groundAnchor = CGPoint(x: 0.5, y: ring.handleAnchorY)
-        handle.isTappable = false
-        handle.tracksViewChanges = false
-        handle.zIndex = Int32.max
-        if handle.map == nil { handle.map = mapView }
-        ringHandle = handle
-    }
-
-    /// A circle [radius] metres round [center], closed, smooth at any size.
-    private static func circlePath(center: CLLocationCoordinate2D, radius: Double) -> GMSPath {
-        let path = GMSMutablePath()
-        for step in 0...ringSteps {
-            path.add(GMSGeometryOffset(center, radius, Double(step) * 360 / Double(ringSteps)))
-        }
-        return path
-    }
-
-    private static let ringSteps = 180
-
-    /// One dash of the ring's edge and the gap after it: the sprite repeats along the edge.
-    private static func dashImage(color: UIColor, width: CGFloat, dash: CGFloat, gap: CGFloat) -> UIImage {
-        UIGraphicsImageRenderer(size: CGSize(width: width, height: dash + gap)).image { _ in
-            color.setFill()
-            UIRectFill(CGRect(x: 0, y: 0, width: width, height: dash))
-        }
     }
 
     private func path(of points: [GoogleMapPoint]) -> GMSPath {
