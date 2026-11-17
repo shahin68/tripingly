@@ -38,6 +38,8 @@ import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.material3.LocalMinimumInteractiveComponentSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -155,37 +157,41 @@ fun ToggleButton(
     val containerColor = animateColorAsState(container, look, label = "toggle container")
     val contentColor = animateColorAsState(content, look, label = "toggle content")
     // The stroke is always there, clear unless tinted, so it fades in and out instead of changing the button's size.
-    val strokeColor = animateColorAsState(tint ?: container.copy(alpha = 0f), look, label = "toggle stroke")
-    // One button that only changes colour, so switching doesn't replace it (and its ripple) with another.
-    Button(
-        onClick = {
-            if (isToggle) haptics.toggle(!checked)
-            onClick()
-        },
-        shape = CircleShape,
-        // The padding is part of the content below, so it glides with the width.
-        contentPadding = PaddingValues(0.dp),
-        border = BorderStroke(StrokeWidth, strokeColor.value),
-        colors = ButtonDefaults.buttonColors(containerColor = containerColor.value, contentColor = contentColor.value),
-        modifier = modifier
-            .then(if (isToggle) Modifier.semantics { toggleableState = ToggleableState(checked) } else Modifier)
-            // As small as a circle: Material's own minimum width is wider than a 40 dp circle.
-            .widthIn(min = size.height)
-            .heightIn(min = size.height)
-            .skeleton(CircleShape),
-    ) {
-        // Only a new text or icon swaps the content; the colour follows on its own above.
-        AnimatedContent(
-            targetState = text to icon,
-            transitionSpec = { fadeIn(tween(MORPH_MILLIS)) togetherWith fadeOut(tween(MORPH_MILLIS / 2)) using SizeTransform(clip = false) { _, _ -> tween(MORPH_MILLIS) } },
-            contentAlignment = Alignment.Center,
-            label = "toggle content",
-        ) { (shownText, shownIcon) ->
-            if (shownText != null) {
-                Row(Modifier.padding(size.padding), verticalAlignment = Alignment.CenterVertically) { ButtonContent(shownText, isLoading = false, size, shownIcon) }
-            } else {
-                Box(Modifier.size(size.height), contentAlignment = Alignment.Center) {
-                    shownIcon?.let { Icon(it, contentDescription = null, modifier = Modifier.size(CircleIconSize)) }
+    val strokeColor = animateColorAsState(tint?.copy(alpha = STROKE_ALPHA) ?: container.copy(alpha = 0f), look, label = "toggle stroke")
+    // No room kept around it for the 48 dp touch target: as a circle it would sit 4 dp in from where the pill ended.
+    // Taps still reach it over 48 dp, which Compose gives every small touch target on its own.
+    CompositionLocalProvider(LocalMinimumInteractiveComponentSize provides Dp.Unspecified) {
+        // One button that only changes colour, so switching doesn't replace it (and its ripple) with another.
+        Button(
+            onClick = {
+                if (isToggle) haptics.toggle(!checked)
+                onClick()
+            },
+            shape = CircleShape,
+            // The padding is part of the content below, so it glides with the width.
+            contentPadding = PaddingValues(0.dp),
+            border = BorderStroke(StrokeWidth, strokeColor.value),
+            colors = ButtonDefaults.buttonColors(containerColor = containerColor.value, contentColor = contentColor.value),
+            modifier = modifier
+                .then(if (isToggle) Modifier.semantics { toggleableState = ToggleableState(checked) } else Modifier)
+                // As small as a circle: Material's own minimum width is wider than a 40 dp circle.
+                .widthIn(min = size.height)
+                .heightIn(min = size.height)
+                .skeleton(CircleShape),
+        ) {
+            // Only a new text or icon swaps the content; the colour follows on its own above.
+            AnimatedContent(
+                targetState = text to icon,
+                transitionSpec = { fadeIn(tween(MORPH_MILLIS)) togetherWith fadeOut(tween(MORPH_MILLIS / 2)) using SizeTransform(clip = false) { _, _ -> tween(MORPH_MILLIS) } },
+                contentAlignment = Alignment.Center,
+                label = "toggle content",
+            ) { (shownText, shownIcon) ->
+                if (shownText != null) {
+                    Row(Modifier.padding(size.padding), verticalAlignment = Alignment.CenterVertically) { ButtonContent(shownText, isLoading = false, size, shownIcon) }
+                } else {
+                    Box(Modifier.size(size.height), contentAlignment = Alignment.Center) {
+                        shownIcon?.let { Icon(it, contentDescription = null, modifier = Modifier.size(CircleIconSize)) }
+                    }
                 }
             }
         }
@@ -215,7 +221,9 @@ private fun ButtonContent(text: String, isLoading: Boolean, size: ButtonSize, ic
 
 private const val MORPH_MILLIS = 250
 private const val TINT_SHADE = 0.18f
-private val StrokeWidth = 1.dp
+/** A hairline, half see-through: glass's edge, not an outline (Shahin, 2026-11-17). */
+private val StrokeWidth = 0.5.dp
+private const val STROKE_ALPHA = 0.5f
 private val CircleIconSize = 20.dp
 private val SpinnerSize = 22.dp
 private val IconSize = 18.dp

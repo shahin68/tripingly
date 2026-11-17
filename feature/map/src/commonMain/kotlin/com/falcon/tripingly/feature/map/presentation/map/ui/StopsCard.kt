@@ -146,7 +146,8 @@ internal fun StopsCard(
                         card.isRouteFailed -> Icons.Outlined.Refresh
                         else -> Icons.Outlined.Directions
                     },
-                    isFailed = card.isRouteFailed,
+                    // Only the route's own failure makes it Retry; Around's shows in its banner and its ✕ stays.
+                    isFailed = !isAround && card.isRouteFailed,
                     tint = AlongTheWayPinColor.takeIf { isAround },
                     modifier = if (isAround) Modifier.semantics { contentDescription = closeLabel } else Modifier,
                 )
@@ -276,7 +277,8 @@ private fun PlanTitleRow(title: @Composable (Modifier) -> Unit, buttons: @Compos
             .heightIn(min = TitleRowHeight)
             .padding(start = MaterialTheme.spacing.medium, end = MaterialTheme.spacing.small + MaterialTheme.spacing.extraSmall),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
+        // The buttons a little closer together (Shahin, 2026-11-17).
+        horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraSmall),
     ) {
         title(Modifier.weight(1f))
         buttons()
