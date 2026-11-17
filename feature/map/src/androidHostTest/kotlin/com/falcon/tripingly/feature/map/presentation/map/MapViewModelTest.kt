@@ -2253,6 +2253,24 @@ class MapViewModelTest {
     }
 
     @Test
+    fun `picking kinds along a public transport route keeps the time it was asked for`() = runTest(testDispatcher) {
+        addStops(GeoPoint(48.2085, 16.3731), GeoPoint(48.2104, 16.3655))
+        routes.alongTheWayCounts = listOf(CategoryCount(PlaceCategory.Cafe, 2))
+        val viewModel = viewModel(config = AppConfig(transitAreas = listOf(VIENNA)))
+        testScheduler.advanceUntilIdle()
+        viewModel.onAction(MapAction.Plan.ToggleRoute)
+        viewModel.onAction(MapAction.Plan.SelectTravelMode(TravelMode.Transit))
+        testScheduler.advanceUntilIdle()
+        val asked = assertNotNull(routes.transitTimes.single())
+
+        viewModel.onAction(MapAction.Plan.ToggleAlongCategory(PlaceCategory.Cafe))
+        testScheduler.advanceUntilIdle()
+
+        assertEquals(setOf(PlaceCategory.Cafe), routes.categoryRequests.last())
+        assertEquals(listOf<TransitTime?>(asked, asked), routes.transitTimes)
+    }
+
+    @Test
     fun `public transport leaves now on a day not ahead, then at the time picked, its rides drawn in their lines' colours`() = runTest(testDispatcher) {
         addStops(GeoPoint(48.2085, 16.3731), GeoPoint(48.2104, 16.3655), GeoPoint(48.2166, 16.3958))
         val viewModel = viewModel(config = AppConfig(transitAreas = listOf(VIENNA)))
@@ -2615,7 +2633,9 @@ class MapViewModelTest {
         testScheduler.advanceUntilIdle()
         assertEquals(emptySet(), routes.categoryRequests.last())
         viewModel.onAction(MapAction.Plan.ToggleAlongCategory(PlaceCategory.Museum))
+        testScheduler.advanceUntilIdle()
         viewModel.onAction(MapAction.Plan.ToggleRoute)
+        testScheduler.advanceUntilIdle()
         viewModel.onAction(MapAction.Plan.ToggleRoute)
         testScheduler.advanceUntilIdle()
         assertEquals(emptySet(), routes.categoryRequests.last())

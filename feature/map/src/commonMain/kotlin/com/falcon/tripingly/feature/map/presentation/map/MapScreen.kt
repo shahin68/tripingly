@@ -1,5 +1,6 @@
 package com.falcon.tripingly.feature.map.presentation.map
 
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.ui.zIndex
@@ -11,6 +12,7 @@ import androidx.compose.animation.scaleIn
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.gestures.AnchoredDraggableState
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
@@ -325,21 +327,19 @@ internal fun MapScreen(
                         )
                     }
                 }
-                // The filter circle mirrors the join pill at the end, at the same height; it scales away while a route or
-                // Around shows, keeping its last look while it goes.
-                var shownFilter by remember { mutableStateOf(state.placeFilter) }
-                state.placeFilter?.let { shownFilter = it }
-                androidx.compose.animation.AnimatedVisibility(
-                    visible = state.placeFilter != null && !isRouteBarShown,
-                    enter = scaleIn() + fadeIn(),
-                    exit = scaleOut() + fadeOut(),
+                // The filter circle mirrors the join pill at the end, at the same height; it scales away while a route,
+                // Around or the route bar shows, keeping its last look while it goes.
+                AnimatedContent(
+                    targetState = state.placeFilter.takeUnless { isRouteBarShown },
+                    contentKey = { it != null },
+                    transitionSpec = { (scaleIn() + fadeIn()) togetherWith (scaleOut() + fadeOut()) },
+                    contentAlignment = Alignment.TopEnd,
                     modifier = Modifier
                         .align(Alignment.TopEnd)
                         .offset { IntOffset(0, titleHeight - with(density) { (headerHeight ?: 0.dp).roundToPx() }) },
-                ) {
-                    shownFilter?.let { filter ->
-                        PlaceFilterPill(filter = filter, onAction = onAction, modifier = Modifier.padding(horizontal = MaterialTheme.spacing.medium))
-                    }
+                    label = "map filter",
+                ) { filter ->
+                    if (filter != null) PlaceFilterPill(filter = filter, onAction = onAction, modifier = Modifier.padding(horizontal = MaterialTheme.spacing.medium))
                 }
                 state.search?.results?.takeIf { it.isNotEmpty() }?.let { results ->
                     SearchResults(results = results, onAction = onAction, modifier = Modifier.padding(horizontal = MaterialTheme.spacing.medium))

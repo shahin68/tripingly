@@ -3,6 +3,7 @@ package com.falcon.tripingly.core.data.places
 import com.falcon.tripingly.core.common.result.AppResult
 import com.falcon.tripingly.core.data.config.AppConfigRepository
 import com.falcon.tripingly.core.model.config.AppConfig
+import com.falcon.tripingly.core.model.place.CategoryCount
 import com.falcon.tripingly.core.model.place.GeoBounds
 import com.falcon.tripingly.core.model.place.ImageCredit
 import com.falcon.tripingly.core.model.place.PlaceDetails
@@ -10,7 +11,9 @@ import com.falcon.tripingly.core.model.place.PlaceImage
 import com.falcon.tripingly.core.model.place.PlaceImageSource
 import com.falcon.tripingly.core.model.place.PlaceCategory
 import com.falcon.tripingly.core.model.place.PlaceSquare
+import com.falcon.tripingly.core.model.place.PlacesAround
 import com.falcon.tripingly.core.model.place.PlacesInView
+import com.falcon.tripingly.core.model.trip.GeoPoint
 import com.falcon.tripingly.core.model.trip.UserSummary
 import com.falcon.tripingly.core.network.ApiConfig
 import com.falcon.tripingly.core.network.auth.InMemoryTokenStore
@@ -65,6 +68,8 @@ class PlaceRepositoryTest {
                 val count = requestsLock.withLock { requests += request; requests.size }
                 val body = if (request.url.encodedPath.endsWith("places/search")) {
                     """{"items":[],"attribution":"© OpenStreetMap contributors"}"""
+                } else if (request.url.encodedPath.endsWith("places/around")) {
+                    AROUND_ANSWER
                 } else if (request.url.encodedPath.endsWith("places/p1")) {
                     PLACE_DETAIL
                 } else if (request.url.encodedPath.endsWith("places/u1")) {
@@ -122,6 +127,50 @@ class PlaceRepositoryTest {
         assertEquals("/v1/places/tiles", url.encodedPath)
         assertEquals(setOf("13/372/1096", "13/373/1096"), url.parameters["tiles"]!!.split(",").toSet())
         assertEquals("15", url.parameters["zoom"])
+    }
+
+    @Test
+    fun `squares of some kinds go in their own request and are kept apart from the squares of every kind`() = runTest {
+        val repository = repository()
+        val cafes = PlaceSquare(15, 372, 1096, categories = setOf(PlaceCategory.Cafe, PlaceCategory.Museum))
+        repository.placesIn(listOf(PlaceSquare(15, 372, 1096), cafes))
+
+        assertEquals(2, requests.size)
+        val (all, filtered) = requests.partition { it.url.parameters["categories"] == null }.let { it.first.single() to it.second.single() }
+        assertNull(all.url.parameters["categories"])
+        assertEquals(setOf("cafe", "museum"), filtered.url.parameters["categories"]!!.split(",").toSet())
+
+        // Both are kept, each as its own square: neither is asked for again.
+        repository.placesIn(listOf(cafes))
+        repository.placesIn(listOf(PlaceSquare(15, 372, 1096)))
+        assertEquals(2, requests.size)
+        assertEquals(2, repository.loadedPlacesIn(listOf(cafes, PlaceSquare(15, 372, 1096))).size)
+    }
+
+    @Test
+    fun `places around a point come with their distance and the count of every kind`() = runTest {
+        val repository = repository()
+
+        val around = assertIs<AppResult.Success<PlacesAround>>(
+            repository.around(GeoPoint(48.2085, 16.3731), radiusMeters = 800, categories = setOf(PlaceCategory.Cafe)),
+        ).data
+
+        val url = requests.single().url
+        assertEquals("/v1/places/around", url.encodedPath)
+        assertEquals("48.2085", url.parameters["lat"])
+        assertEquals("16.3731", url.parameters["lng"])
+        assertEquals("800", url.parameters["radiusMeters"])
+        assertEquals("cafe", url.parameters["categories"])
+        assertEquals("30", url.parameters["limit"])
+        assertEquals(listOf("Café Central" to 120), around.places.map { it.place.name to it.distanceMeters })
+        assertEquals(PlaceCategory.Cafe, around.places.single().place.category)
+        assertEquals(listOf(CategoryCount(PlaceCategory.Cafe, 1), CategoryCount(PlaceCategory.Museum, 2)), around.counts)
+    }
+
+    @Test
+    fun `places around ask for every kind when none is picked`() = runTest {
+        repository().around(GeoPoint(48.2085, 16.3731), radiusMeters = 500)
+        assertNull(requests.single().url.parameters["categories"])
     }
 
     @Test
@@ -293,6 +342,21 @@ class PlaceRepositoryTest {
                             "sourceUrl": "https://commons.wikimedia.org/wiki/File:Stephansdom_Wien.jpg"}}
               ],
               "addedBy": null,
+              "attribution": "© OpenStreetMap contributors"
+            }
+        """.trimIndent()
+
+        /** One café in the circle, with every kind in it counted. */
+        val AROUND_ANSWER = """
+            {
+              "items": [{
+                "id": "cafe-central", "name": "Café Central", "category": "cafe",
+                "location": {"lat": 48.2104, "lng": 16.3655},
+                "isTripinly": false, "hotCount": 0, "prominence": 40, "hotByMe": false,
+                "coverPhotoId": null, "coverImageId": null, "coverSource": null, "coverThumbUrl": null,
+                "distanceMeters": 120
+              }],
+              "categoryCounts": [{"category": "cafe", "count": 1}, {"category": "museum", "count": 2}],
               "attribution": "© OpenStreetMap contributors"
             }
         """.trimIndent()

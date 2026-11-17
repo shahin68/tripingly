@@ -67,24 +67,30 @@ internal fun PlaceFilterPill(filter: PlaceFilterState, onAction: (MapAction) -> 
                 )
             }
             val label = stringResource(if (filter.isOpen) Res.string.map_filter_close else Res.string.map_filter_open)
+            // The whole 40 dp circle is the button, as tall as the join pill; the lit disc sits 4 dp inside it.
             Box(
                 contentAlignment = Alignment.Center,
                 modifier = Modifier
-                    .padding(MaterialTheme.spacing.extraSmall)
-                    .size(CircleSize)
+                    .size(ButtonSize)
                     .clip(CircleShape)
-                    .background(if (filter.isActive && !filter.isOpen) MaterialTheme.colorScheme.primaryContainer else Color.Transparent)
                     .clickable(onClickLabel = label, role = Role.Button) {
                         haptics.tick()
                         onAction(MapAction.PlaceFilter.Toggle)
                     },
             ) {
-                Icon(
-                    imageVector = if (filter.isOpen) Icons.Default.Close else Icons.Default.FilterList,
-                    contentDescription = label,
-                    tint = if (filter.isActive && !filter.isOpen) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface,
-                    modifier = Modifier.size(IconSize),
-                )
+                Box(
+                    contentAlignment = Alignment.Center,
+                    modifier = Modifier
+                        .size(CircleSize)
+                        .background(if (filter.isActive && !filter.isOpen) MaterialTheme.colorScheme.primaryContainer else Color.Transparent, CircleShape),
+                ) {
+                    Icon(
+                        imageVector = if (filter.isOpen) Icons.Default.Close else Icons.Default.FilterList,
+                        contentDescription = label,
+                        tint = if (filter.isActive && !filter.isOpen) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface,
+                        modifier = Modifier.size(IconSize),
+                    )
+                }
             }
         }
     }
@@ -92,6 +98,7 @@ internal fun PlaceFilterPill(filter: PlaceFilterState, onAction: (MapAction) -> 
 
 /** As big as the join pill's faces, so the two circles under the header match. */
 private val CircleSize = 32.dp
+private val ButtonSize = 40.dp
 private val IconSize = 20.dp
 
 @Composable

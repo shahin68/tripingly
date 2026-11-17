@@ -14,7 +14,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
@@ -30,14 +29,7 @@ import androidx.compose.ui.unit.dp
 import com.falcon.tripingly.core.designsystem.component.rememberHaptics
 import com.falcon.tripingly.core.designsystem.theme.spacing
 import com.falcon.tripingly.core.location.model.Coordinates
-import com.falcon.tripingly.core.ui.UiText
-import kotlin.math.PI
-import kotlin.math.cos
 import kotlin.math.roundToInt
-
-/** The ring of places around a pin (Around, Tripinly Pro): [radiusMeters] around [center], [label] its size ("500 m"). */
-@Immutable
-data class AroundRing(val center: Coordinates, val radiusMeters: Int, val label: UiText)
 
 /**
  * The Around ring over the map, drawn by Compose on both platforms (the map SDKs' own circles differ): a soft purple disc
@@ -55,7 +47,7 @@ internal fun AroundRingLayer(ring: AroundRing, project: (Coordinates) -> Offset?
     // Where the ring is on screen now; null while the map can't tell yet.
     fun geometry(): Pair<Offset, Float>? {
         val center = project(currentRing.center) ?: return null
-        val edge = project(currentRing.center.east(currentRing.radiusMeters)) ?: return null
+        val edge = project(currentRing.edge()) ?: return null
         return center to (edge.x - center.x)
     }
     Canvas(Modifier.fillMaxSize()) {
@@ -81,11 +73,8 @@ internal fun AroundRingLayer(ring: AroundRing, project: (Coordinates) -> Offset?
                         detectDragGestures(onDragStart = { haptics.tick() }) { change, _ ->
                             change.consume()
                             val (center, radius) = geometry() ?: return@detectDragGestures
-                            if (radius <= 0f) return@detectDragGestures
-                            // The finger's distance from the pin, in the ring's own metres per pixel.
-                            val metersPerPx = currentRing.radiusMeters / radius
-                            val finger = Offset(change.position.x, change.position.y) + handleTopLeft(center, radius, density.run { HandleTouchSize.toPx() })
-                            currentOnRadius(((finger - center).getDistance() * metersPerPx).roundToInt())
+                            val finger = change.position + handleTopLeft(center, radius, density.run { HandleTouchSize.toPx() })
+                            currentRing.radiusAt(center, radius, finger)?.let(currentOnRadius)
                         }
                     },
             ) {
@@ -117,11 +106,6 @@ internal fun AroundRingLayer(ring: AroundRing, project: (Coordinates) -> Offset?
 /** The top left of the handle's touch area of [size] px, centered on the ring's east edge. */
 private fun handleTopLeft(center: Offset, radius: Float, size: Float) = Offset(center.x + radius - size / 2, center.y - size / 2)
 
-/** The point [meters] east of this one. */
-private fun Coordinates.east(meters: Int): Coordinates =
-    Coordinates(latitude, longitude + meters / (METERS_PER_DEGREE * cos(latitude * PI / 180)))
-
-private const val METERS_PER_DEGREE = 111_320.0
 private const val DISC_ALPHA = 0.12f
 private val EdgeWidth = 2.dp
 private val HandleSize = 22.dp

@@ -12,7 +12,6 @@ import com.falcon.tripingly.core.model.photo.Photo
 import com.falcon.tripingly.core.model.photo.PhotoOwner
 import com.falcon.tripingly.core.model.photo.PhotoStatus
 import com.falcon.tripingly.core.model.place.MapPlace
-import com.falcon.tripingly.core.model.place.PlaceCategory
 import com.falcon.tripingly.core.model.place.PlaceImage
 import com.falcon.tripingly.core.model.place.PlaceImageSource
 import com.falcon.tripingly.core.model.route.AlongTheWayPlace
@@ -108,7 +107,7 @@ internal class MapStateMapper(
             val isSwitchedOff = it.isSwitchedOff && (it.isFollowing || it.isWaitingForFirst)
             LocationState(isLoading = it.isLoading && !it.isSwitchedOff, isFollowing = it.isFollowing, isSignalLost = it.isSignalLost && !isSwitchedOff, isSwitchedOff = isSwitchedOff)
         },
-        placeFilter = placeFilter(),
+        placeFilter = model.placeFilterState(),
         arePlacesHidden = model.arePlacesHidden,
         routeAttribution = plan?.attribution?.takeIf { routePoints.isNotEmpty() },
         sheet = sheet(),
@@ -178,28 +177,8 @@ internal class MapStateMapper(
             isRouteAnimated = route.isAnimated,
             canFindBestOrder = canEdit && stops.size in MIN_BEST_ORDER_STOPS..MAX_BEST_ORDER_STOPS,
             isFindingBestOrder = route.isFindingBestOrder,
-            around = around(),
+            around = model.aroundState(addToDayNumber = dayNumber?.takeIf { canEdit }),
         )
-    }
-
-    private fun around(): AroundState? {
-        val around = model.around ?: return null
-        return AroundState(
-            chips = categoryChips(around.result?.counts.orEmpty(), around.categories),
-            places = around.result?.places.orEmpty().toImmutableList(),
-            isLoading = around.isLoading,
-            addToDayNumber = dayNumber?.takeIf { canEdit },
-            selectedPlaceId = (model.selection as? Selection.Place)?.place?.id,
-        )
-    }
-
-    /** The filter circle, hidden while a route or Around shows (their own places are what counts then). */
-    private fun placeFilter(): PlaceFilterState? {
-        if (route.isActive || model.around != null || model.search != null) return null
-        val picked = model.placeFilter.categories
-        val chips = listOf(CategoryChip(null, null, isSelected = picked.isEmpty())) +
-            FILTER_CATEGORIES.map { CategoryChip(it, null, isSelected = it in picked) }
-        return PlaceFilterState(model.placeFilter.isOpen, isActive = picked.isNotEmpty(), chips.toImmutableList())
     }
 
     private fun placeCard(): PlaceCardState? {
@@ -504,6 +483,3 @@ internal class MapStateMapper(
 
 /** The trip card shows at most this many members' faces; the rest as "and 2 more". */
 private const val TRIP_CARD_FACES = 3
-
-/** The map filter's kinds, as the places' kinds are listed; Other is no kind to look for. */
-private val FILTER_CATEGORIES = PlaceCategory.entries - PlaceCategory.Other

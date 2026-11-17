@@ -1,11 +1,11 @@
 package com.falcon.tripingly.feature.map.presentation.map.ui
 
-import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.SizeTransform
 import androidx.compose.animation.core.tween
-import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -26,7 +26,6 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -56,21 +55,19 @@ import org.jetbrains.compose.resources.stringResource
  */
 @Composable
 internal fun AroundCardSlot(around: AroundState?, onAction: (MapAction) -> Unit, modifier: Modifier = Modifier, gap: Dp = 0.dp) {
-    val kept = remember { KeptAround() }
-    if (around != null) kept.state = around
-    AnimatedVisibility(
-        visible = around != null,
+    // Like the route card: the box keeps showing what it had while it goes, its height easing with it.
+    AnimatedContent(
+        targetState = around,
+        contentKey = { it != null },
+        transitionSpec = { fadeIn() togetherWith fadeOut() using SizeTransform { _, _ -> tween(ROUTE_GROW_MILLIS, easing = RouteGrowEasing) } },
+        contentAlignment = Alignment.TopStart,
         modifier = modifier,
-        enter = expandVertically(tween(ROUTE_GROW_MILLIS, easing = RouteGrowEasing), expandFrom = Alignment.Top) + fadeIn(),
-        exit = shrinkVertically(tween(ROUTE_GROW_MILLIS, easing = RouteGrowEasing), shrinkTowards = Alignment.Top) + fadeOut(),
-    ) {
+        label = "around box",
+    ) { shown ->
         // The gap above glides with the box.
-        kept.state?.let { Box(Modifier.padding(top = gap)) { AroundCard(it, onAction) } }
+        if (shown != null) Box(Modifier.padding(top = gap)) { AroundCard(shown, onAction) }
     }
 }
-
-/** The last state the box showed, kept while it glides shut; not state, as the box recomposes with every new one anyway. */
-private class KeptAround(var state: AroundState? = null)
 
 @Composable
 private fun AroundCard(around: AroundState, onAction: (MapAction) -> Unit) {

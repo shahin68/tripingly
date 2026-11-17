@@ -68,6 +68,8 @@ internal class MapRouting(
 ) {
     /** What the route on the map was last asked for. */
     private var request: RouteRequest? = null
+    /** The public transport time [request] was asked with: a request for other kinds of place only asks with it again. */
+    private var requestTime: TransitTime? = null
 
     init {
         context.scope.launch {
@@ -394,7 +396,9 @@ internal class MapRouting(
 
     private suspend fun load(request: RouteRequest?) {
         val before = this.request
+        val beforeTime = requestTime
         this.request = request
+        requestTime = null
         if (request == null) {
             update { it.copy(plan = null, isUnavailable = false, isLoading = false) }
             return
@@ -409,15 +413,18 @@ internal class MapRouting(
         // also after swapping the ends or another way of travelling and back; only a new ask asks the server (Shahin, 2026-11-15:
         // fine if a "now" is a little old). Kept in this screen's memory only.
         transitRoutes[request]?.let { (plan, at) ->
+            requestTime = at
             update { it.copy(plan = plan, planMode = request.mode, planStops = request.stops, isUnavailable = false, isLoading = false, transitAt = at, transitNote = null) }
             if (request is RouteRequest.Between) reframe(plan)
             return
         }
         update { it.copy(isLoading = true, plan = it.plan.takeIf { isSameRoute }, isUnavailable = it.isUnavailable && isSameRoute, transitNote = null) }
-        // Only other kinds of place along the way: the same public transport route, so the same time (asked for once).
+        // Only other kinds of place along the way: the same public transport route, so the same time the request before
+        // was asked with (also while that one was still loading).
         val time = request.transit?.let { transit ->
-            context.model.value.route.transitAt.takeIf { before?.withCategories(request.categories) == request } ?: transitTime(transit, isBetween = request is RouteRequest.Between)
+            beforeTime.takeIf { before?.withCategories(request.categories) == request } ?: transitTime(transit, isBetween = request is RouteRequest.Between)
         }
+        requestTime = time
         val result = when (request) {
             is RouteRequest.Day -> {
                 val day = context.days().firstOrNull { it.id == request.dayId } ?: return update { it.copy(isLoading = false) }
