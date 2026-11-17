@@ -7,6 +7,9 @@ import com.falcon.tripingly.core.model.trip.GeoPoint
 import com.falcon.tripingly.core.ui.toUiText
 import com.falcon.tripingly.feature.map.generated.resources.Res
 import com.falcon.tripingly.feature.map.generated.resources.map_error_around
+import kotlin.math.PI
+import kotlin.math.cos
+import kotlin.math.roundToInt
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -34,23 +37,30 @@ internal class MapAround(
         }
     }
 
-    /** The Around button on a pin's card or details: the ring opens around it (again: it moves there). */
+    /**
+     * The Around button on a pin's card or details: the ring opens around it (on another pin: it moves there), and the
+     * card and details close so the ring can be reached. Tapped again on the pin it is around, it closes as ✕ does, the
+     * card staying (Shahin, 2026-11-17).
+     */
     fun open() {
         if (!hasRoutes()) return showAroundIsPro()
         val (center, pinPlaceId) = selectedPin() ?: return
+        if (context.model.value.around?.center == center) return close()
         context.update {
             it.copy(
                 // Moved to another pin, it keeps what was before it first opened.
                 around = AroundModel(
                     center = center,
                     pinPlaceId = pinPlaceId,
-                    radiusMeters = it.around?.radiusMeters ?: DEFAULT_RADIUS_METERS,
+                    radiusMeters = it.around?.radiusMeters ?: it.fittingRadius(),
                     categories = it.around?.categories.orEmpty(),
                     routeBefore = it.around?.routeBefore ?: it.route,
                     wasFilterOpen = it.around?.wasFilterOpen ?: it.placeFilter.isOpen,
                 ),
                 route = it.route.copy(isDayRouteShown = false, start = null, startLabel = null, between = null, editing = null),
                 placeFilter = it.placeFilter.copy(isOpen = false),
+                selection = null,
+                sheet = it.sheet.takeUnless { sheet -> sheet is Sheet.Details },
             )
         }
         load(waitForMore = false)
@@ -110,6 +120,19 @@ internal class MapAround(
         is Selection.NewSpot, null -> null
     }
 
+    /**
+     * How big the ring first opens: [DEFAULT_RADIUS_METERS] at most, smaller when the map is zoomed in so the whole ring
+     * and its handle are on screen (a quarter of the view's shorter side, which the pins' area widens by a little).
+     */
+    private fun MapModel.fittingRadius(): Int {
+        val view = pins.area?.bounds ?: return DEFAULT_RADIUS_METERS
+        val metersPerDegree = 111_320.0
+        val height = (view.north - view.south) * metersPerDegree
+        val width = (view.east - view.west) * metersPerDegree * cos((view.north + view.south) / 2 * PI / 180)
+        val fits = (minOf(width, height) * FIT_SHARE).roundToInt() / ROUND_TO_METERS * ROUND_TO_METERS
+        return fits.coerceIn(MIN_RADIUS_METERS, DEFAULT_RADIUS_METERS)
+    }
+
     private fun update(change: (AroundModel) -> AroundModel) = context.update { model -> model.around?.let { model.copy(around = change(it)) } ?: model }
 
     companion object {
@@ -118,6 +141,9 @@ internal class MapAround(
         const val MAX_RADIUS_METERS = 5000
         /** A short walk; the ring opens this big the first time. */
         const val DEFAULT_RADIUS_METERS = 500
+        /** The share of the view's shorter side the ring first spans as its radius, with room for its handle and tag. */
+        const val FIT_SHARE = 0.25
+        const val ROUND_TO_METERS = 10
         /** How long the handle rests before the places for its new size load. */
         const val RADIUS_SETTLE_MILLIS = 300L
     }

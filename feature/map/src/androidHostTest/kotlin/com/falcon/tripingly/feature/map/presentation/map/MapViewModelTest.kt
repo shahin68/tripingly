@@ -2710,7 +2710,22 @@ class MapViewModelTest {
         assertEquals(listOf("Eiffel Tower"), state.stopsCard?.around?.places?.map { it.place.name }, "places around")
         assertEquals(500, state.layers.aroundRing?.radiusMeters, "ring")
         assertNull(state.placeFilter, "filter")
-        assertEquals(true, state.stopCard?.routes?.isAroundOn, "Around button")
+        assertNull(state.stopCard, "the card closes, so the ring can be reached")
+    }
+
+    @Test
+    fun `Around tapped again on its pin closes it, the card staying`() = runTest(testDispatcher) {
+        val viewModel = openFirstStopCard()
+        viewModel.onAction(MapAction.Around.Open)
+        testScheduler.advanceUntilIdle()
+        viewModel.onAction(MapAction.MapView.MarkerClick(viewModel.uiState.value.layers.stops[0]))
+        restOnTarget(viewModel)
+        assertEquals(true, viewModel.uiState.value.stopCard?.routes?.isAroundOn, "Around button on")
+
+        viewModel.onAction(MapAction.Around.Open)
+        testScheduler.advanceUntilIdle()
+        assertNull(viewModel.uiState.value.layers.aroundRing, "ring gone")
+        assertEquals(false, viewModel.uiState.value.stopCard?.routes?.isAroundOn, "card stays, button off")
     }
 
     @Test
@@ -2800,9 +2815,8 @@ class MapViewModelTest {
         viewModel.onAction(MapAction.Around.Open)
         testScheduler.advanceUntilIdle()
         assertEquals(Coordinates(48.8606, 2.3376), viewModel.uiState.value.layers.aroundRing?.center)
-        assertEquals(true, viewModel.uiState.value.placeCard?.routes?.isAroundOn)
+        assertNull(viewModel.uiState.value.placeCard, "the card closes")
         assertEquals(emptyList(), viewModel.uiState.value.stopsCard?.around?.places?.map { it.place.name })
-        assertEquals("fake-louvre", viewModel.uiState.value.stopsCard?.around?.selectedPlaceId)
         val louvre = viewModel.uiState.value.layers.placePins.single { it.place.name == "Louvre" }
         assertFalse(louvre.isDot || louvre.isAlongTheWay)
         assertTrue(viewModel.uiState.value.layers.placePins.single { it.place.name == "Eiffel Tower" }.isDot)

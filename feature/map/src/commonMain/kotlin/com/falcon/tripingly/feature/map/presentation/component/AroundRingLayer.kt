@@ -14,12 +14,18 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.Layout
@@ -29,11 +35,15 @@ import androidx.compose.ui.unit.dp
 import com.falcon.tripingly.core.designsystem.component.rememberHaptics
 import com.falcon.tripingly.core.designsystem.theme.spacing
 import com.falcon.tripingly.core.location.model.Coordinates
+import kotlin.math.atan2
+import kotlin.math.cos
 import kotlin.math.roundToInt
+import kotlin.math.sin
 
 /**
- * The Around ring over the map, drawn by Compose on both platforms (the map SDKs' own circles differ): a soft purple disc
- * with its edge, and on its east side a handle to drag it bigger or smaller, with the ring's size in a tag above it.
+ * The Around ring over the map, drawn by Compose on both platforms (the map SDKs' own circles differ): a faint purple disc
+ * with a dashed edge, and on it a handle to drag it bigger or smaller, with the ring's size in a tag above it. The handle
+ * follows the finger around the ring and stays where it was let go; each new size in the tag ticks (Shahin, 2026-11-17).
  * [project] places a point on the map view in px and must read the camera's state, so the ring follows the camera.
  * [onRadius] gets the new size in metres while the handle is dragged.
  */
@@ -41,21 +51,35 @@ import kotlin.math.roundToInt
 internal fun AroundRingLayer(ring: AroundRing, project: (Coordinates) -> Offset?, onRadius: (Int) -> Unit) {
     val currentRing by rememberUpdatedState(ring)
     val currentOnRadius by rememberUpdatedState(onRadius)
+    val currentProject by rememberUpdatedState(project)
     val haptics = rememberHaptics()
     val density = LocalDensity.current
     val color = AlongTheWayPinColor
-    // Where the ring is on screen now; null while the map can't tell yet.
+    // The finger on the handle, in this layer's px, while it drags: the ring and the handle follow it at once, before the
+    // new size comes back from the screen's state.
+    var finger by remember { mutableStateOf<Offset?>(null) }
+    // Where around the ring the handle sits, in radians from east: where the finger last left it.
+    var angle by remember { mutableFloatStateOf(0f) }
+    // Each new size the tag shows while dragging is a tick.
+    LaunchedEffect(ring.label) { if (finger != null) haptics.tick() }
+
+    // Where the ring is on screen now, its size following the finger while it drags; null while the map can't tell yet.
     fun geometry(): Pair<Offset, Float>? {
-        val center = project(currentRing.center) ?: return null
-        val edge = project(currentRing.edge()) ?: return null
-        return center to (edge.x - center.x)
+        val center = currentProject(currentRing.center) ?: return null
+        val edge = currentProject(currentRing.edge()) ?: return null
+        val shown = edge.x - center.x
+        val dragged = finger?.let { currentRing.radiusAt(center, shown, it) } ?: return center to shown
+        return center to shown * dragged.coerceIn(MIN_RADIUS_METERS, MAX_RADIUS_METERS) / currentRing.radiusMeters
     }
+    fun handleCenter(center: Offset, radius: Float) = center + Offset(cos(angle), sin(angle)) * radius
+
     Canvas(Modifier.fillMaxSize()) {
         val (center, radius) = geometry() ?: return@Canvas
         drawCircle(color.copy(alpha = DISC_ALPHA), radius, center)
-        drawCircle(color, radius, center, style = Stroke(EdgeWidth.toPx()))
+        val dash = DashLength.toPx()
+        drawCircle(color, radius, center, style = Stroke(EdgeWidth.toPx(), pathEffect = PathEffect.dashPathEffect(floatArrayOf(dash, DashGap.toPx()))))
     }
-    // The handle and its tag sit where the ring's east edge is, laid out in px each frame the camera moves.
+    // The handle and its tag sit on the ring where the handle is, laid out in px each frame the camera or finger moves.
     Layout(
         content = {
             Surface(shape = CircleShape, color = MaterialTheme.colorScheme.surface, contentColor = MaterialTheme.colorScheme.onSurface, shadowElevation = 2.dp) {
@@ -70,11 +94,25 @@ internal fun AroundRingLayer(ring: AroundRing, project: (Coordinates) -> Offset?
                 modifier = Modifier
                     .size(HandleTouchSize)
                     .pointerInput(Unit) {
-                        detectDragGestures(onDragStart = { haptics.tick() }) { change, _ ->
+                        val half = density.run { HandleTouchSize.toPx() } / 2
+                        detectDragGestures(
+                            onDragStart = { at ->
+                                val (center, radius) = geometry() ?: return@detectDragGestures
+                                // The touch, in the layer: the handle's centre plus where on it the finger landed.
+                                finger = handleCenter(center, radius) + at - Offset(half, half)
+                                haptics.tick()
+                            },
+                            onDragEnd = { finger = null },
+                            onDragCancel = { finger = null },
+                        ) { change, drag ->
                             change.consume()
-                            val (center, radius) = geometry() ?: return@detectDragGestures
-                            val finger = change.position + handleTopLeft(center, radius, density.run { HandleTouchSize.toPx() })
-                            currentRing.radiusAt(center, radius, finger)?.let(currentOnRadius)
+                            val moved = (finger ?: return@detectDragGestures) + drag
+                            finger = moved
+                            val center = currentProject(currentRing.center) ?: return@detectDragGestures
+                            val edge = currentProject(currentRing.edge()) ?: return@detectDragGestures
+                            val toFinger = moved - center
+                            if (toFinger.getDistance() > 0f) angle = atan2(toFinger.y, toFinger.x)
+                            currentRing.radiusAt(center, edge.x - center.x, moved)?.let(currentOnRadius)
                         }
                     },
             ) {
@@ -93,21 +131,22 @@ internal fun AroundRingLayer(ring: AroundRing, project: (Coordinates) -> Offset?
         val handle = measurables[1].measure(constraints.copy(minWidth = 0, minHeight = 0))
         layout(constraints.maxWidth, constraints.maxHeight) {
             val (center, radius) = geometry() ?: return@layout
-            val handleAt = handleTopLeft(center, radius, handle.width.toFloat())
-            handle.place(IntOffset(handleAt.x.roundToInt(), handleAt.y.roundToInt()))
-            tag.place(
-                x = (center.x + radius - tag.width / 2f).roundToInt(),
-                y = (handleAt.y - tag.height).roundToInt(),
-            )
+            val at = handleCenter(center, radius)
+            val top = at.y - handle.height / 2f
+            handle.place(IntOffset((at.x - handle.width / 2f).roundToInt(), top.roundToInt()))
+            tag.place(x = (at.x - tag.width / 2f).roundToInt(), y = (top - tag.height).roundToInt())
         }
     }
 }
 
-/** The top left of the handle's touch area of [size] px, centered on the ring's east edge. */
-private fun handleTopLeft(center: Offset, radius: Float, size: Float) = Offset(center.x + radius - size / 2, center.y - size / 2)
-
-private const val DISC_ALPHA = 0.12f
+/** The server's limits for the ring's size (GET /v1/places/around), which the dragged ring keeps to as well. */
+private const val MIN_RADIUS_METERS = 50
+private const val MAX_RADIUS_METERS = 5000
+/** Almost clear: a slight purple, so the map under it reads as it is. */
+private const val DISC_ALPHA = 0.05f
 private val EdgeWidth = 2.dp
+private val DashLength = 8.dp
+private val DashGap = 6.dp
 private val HandleSize = 22.dp
 private val HandleBorder = 3.dp
 /** The handle's touch area: a finger's size. */
