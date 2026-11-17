@@ -74,7 +74,7 @@ A modular KMP app: `androidApp` and `iosApp` shells, `shared` as the umbrella, `
 12. Redesign and full code review: looks, smoothness, accessibility, every screen size and landscape; Shahin hands over the review criteria at the start.
 13. Documentation, legal pages and decision audit (before production, never skipped; Shahin, 2026-10-25): a full decision audit and report across code, knowledge files and the three decision logs; the product handbook; legal drafts (Terms of Service explaining how hot spots, likes, ranking and moderation work, Privacy Policy, Community Guidelines, Imprint, subscription terms, attributions and licences) set up at stable URLs as versioned legal documents and linked in onboarding, Settings and the paywall; Shahin's lawyer reviews every legal text before publishing. Details in the backend `CLAUDE.md`, build order stage 11.
 14. Map restyle in Google Cloud Console (Shahin, 2026-11-16): restyle the map and move its style from the app's JSON (`MapStyle.kt`) to cloud-based map styling with a Map ID per platform and theme, so Android can show flat (2D) buildings without the laggy 3D layer; keep Google's POIs hidden and the "Deep graphite" look unless Shahin redesigns it.
-15. Store release checklist, including a re-check of every paid service, storage and RAM cost (Shahin, 2026-11-15; see the `release-checklist` skill).
+15. Store release checklist, including a re-check of every paid service, storage and RAM cost (Shahin, 2026-11-15) and invite links for people without the app: domain, App Links / Universal Links, an invite landing page with store buttons, the invite surviving the install, an optional promo (Shahin, 2026-11-17); see the `release-checklist` skill.
 
 Report to the user after each stage.
 

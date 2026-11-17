@@ -17,6 +17,18 @@ Go through every item; report which pass, which fail, and what the user must do 
 
 - [ ] **Re-check every paid service, storage and RAM cost** (Shahin, 2026-11-15) with the review doc (https://claude.ai/artifact/MEB4CZ7y68DDbkWENJnUuC): Railway usage per service and Hobby vs Pro, Postgres volume (5 GB on Hobby) and table sizes, Cloudflare R2 storage and operations vs the free tier, MOTIS transit, self-hosted Photon, FCM, Resend, RevenueCat, openrouteservice, Google Maps billing account. Replace the doc's estimates with measured numbers and bring the totals to Shahin.
 
+## Invite links and app links (Shahin, 2026-11-17: built here, once the domain and store accounts exist)
+
+Today `APP_LINK_BASE_URL` (api) is still its default `tripinly://app`, so invite links only open for people who already have the app, and chat apps often don't make them tappable. Before release:
+
+- [ ] **Domain** for app links (e.g. `tripinly.app`) pointed at the api; `APP_LINK_BASE_URL=https://<domain>` on Railway api (staging and production).
+- [ ] **Android App Links**: release signing SHA-256 in `/.well-known/assetlinks.json`, `autoVerify` intent filter for `https://<domain>/invite/…`; verified on a device.
+- [ ] **iOS Universal Links**: Apple team ID + bundle ID in `/.well-known/apple-app-site-association`, Associated Domains entitlement `applinks:<domain>`; verified on a device.
+- [ ] **Invite landing page** served by the api at `https://<domain>/invite/{token}` for people without the app: trip name, owner and dates from the invite preview, App Store and Google Play buttons, localized; expired or revoked links say so; no private data beyond what the preview shows.
+- [ ] **The invite survives the install**: Android passes the token through the Play install referrer and opens the invite on first start; iOS asks after onboarding to tap the link again (or a short code). No paid deep-link service (Branch, AppsFlyer); Firebase Dynamic Links is gone.
+- [ ] **Promo for invited people** (optional, Shahin decides): Pro for some days through RevenueCat promotional access on joining by invite, or none. Store offer codes only if he wants them.
+- [ ] End to end on both platforms: share a link, open it with the app installed, without the app (page, store, install, join), expired, revoked, already a member, blocked owner.
+
 ## Store requirements
 
 - [ ] **Sign in with Apple** available on iOS (required because Google sign-in is offered).
