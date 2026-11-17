@@ -30,10 +30,11 @@ private class TapticFeedback : HapticFeedback {
             HapticFeedbackType.SegmentTick, HapticFeedbackType.GestureThresholdActivate -> rigid.impactOccurredWithIntensity(1.0)
             // A drag's fine steps: the picker's own ratchet; its end: the heaviest tap.
             HapticFeedbackType.SegmentFrequentTick -> selection.selectionChanged()
-            // A heavy tap and a quick rigid one off the wall: sharper than any single tap (Shahin, 2026-11-17).
+            // Hitting a wall: a heavy and a rigid tap together, then a second heavy one off it (Shahin, 2026-11-17).
             HapticFeedbackType.GestureEnd -> {
                 heavy.impactOccurredWithIntensity(1.0)
-                dispatch_after(dispatch_time(DISPATCH_TIME_NOW, END_ECHO_DELAY_NANOS), dispatch_get_main_queue()) { rigid.impactOccurredWithIntensity(1.0) }
+                rigid.impactOccurredWithIntensity(1.0)
+                dispatch_after(dispatch_time(DISPATCH_TIME_NOW, END_ECHO_DELAY_NANOS), dispatch_get_main_queue()) { heavy.impactOccurredWithIntensity(1.0) }
             }
             HapticFeedbackType.ToggleOn, HapticFeedbackType.ToggleOff -> medium.impactOccurredWithIntensity(1.0)
             HapticFeedbackType.LongPress -> heavy.impactOccurred()
