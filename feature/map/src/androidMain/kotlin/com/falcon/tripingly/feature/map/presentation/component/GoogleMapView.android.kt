@@ -16,6 +16,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
@@ -50,12 +51,14 @@ import com.google.android.gms.maps.model.BitmapDescriptor
 import com.google.android.gms.maps.model.BitmapDescriptorFactory
 import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.Dot
+import com.google.android.gms.maps.model.Dash
 import com.google.android.gms.maps.model.Gap
 import com.google.android.gms.maps.model.JointType
 import com.google.android.gms.maps.model.LatLng
 import com.google.android.gms.maps.model.MapStyleOptions
 import com.google.android.gms.maps.model.RoundCap
 import com.google.maps.android.compose.CameraMoveStartedReason
+import com.google.maps.android.compose.Circle
 import com.google.maps.android.compose.ComposeMapColorScheme
 import com.google.maps.android.compose.GoogleMap
 import com.google.maps.android.compose.GoogleMapComposable
@@ -242,6 +245,11 @@ actual fun GoogleMapView(
             )
         }
     }
+
+    // Where Around's handle sits on its ring (radians from east), shared by the map's marker and the touch area over it;
+    // a new ring starts east.
+    var aroundAngle by remember { mutableFloatStateOf(0f) }
+    LaunchedEffect(layers.aroundRing?.center) { aroundAngle = 0f }
 
     Box(modifier.fillMaxSize()) {
         GoogleMap(
@@ -524,12 +532,16 @@ actual fun GoogleMapView(
                     }
                 }
             }
+            // Drawn by the map, so it moves with the streets in the same frame (see AroundRingLayer.kt).
+            layers.aroundRing?.let { AroundRingOnMap(it, aroundAngle) }
         }
         layers.aroundRing?.let { ring ->
-            AroundRingLayer(
+            AroundHandleLayer(
                 ring = ring,
+                angle = aroundAngle,
+                onAngle = { aroundAngle = it },
                 project = { point ->
-                    // Read, so the ring follows the camera.
+                    // Read, so the touch area follows the camera.
                     cameraPositionState.position
                     project(point)
                 },
@@ -547,6 +559,38 @@ actual fun GoogleMapView(
             pins = ::shownPins,
             onPan = { velocity, seconds -> if (velocity != Offset.Zero) cameraPositionState.move(CameraUpdateFactory.scrollBy(velocity.x * seconds, velocity.y * seconds)) },
         )
+    }
+}
+
+/** Around's ring as the map draws it: the disc with its dashed edge, and the handle with its size where [angle] puts it. */
+@Composable
+@GoogleMapComposable
+private fun AroundRingOnMap(ring: AroundRing, angle: Float) {
+    val density = LocalDensity.current
+    val edge = remember(density) {
+        with(density) { listOf(Dash(AroundRingLook.DashLength.toPx()), Gap(AroundRingLook.DashGap.toPx())) }
+    }
+    Circle(
+        center = LatLng(ring.center.latitude, ring.center.longitude),
+        radius = ring.radiusMeters.toDouble(),
+        fillColor = AlongTheWayPinColor.copy(alpha = AroundRingLook.DISC_ALPHA),
+        strokeColor = AlongTheWayPinColor,
+        strokeWidth = with(density) { AroundRingLook.EdgeWidth.toPx() },
+        strokePattern = edge,
+        // Under the pins, over the lines.
+        zIndex = 0.4f,
+    )
+    val handle = ring.handle(angle)
+    val label = ring.label.asString()
+    MarkerComposable(
+        label,
+        state = rememberUpdatedMarkerState(position = LatLng(handle.latitude, handle.longitude)),
+        anchor = Offset(0.5f, AroundRingLook.HandleAnchorY),
+        // Over every pin: it's what the finger holds.
+        zIndex = 3f,
+        onClick = { true },
+    ) {
+        AroundHandleMarker(label)
     }
 }
 

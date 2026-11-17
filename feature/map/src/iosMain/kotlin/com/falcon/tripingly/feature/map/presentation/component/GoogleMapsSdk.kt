@@ -58,6 +58,12 @@ interface GoogleMap {
     /** Replaces the streak running along the line, on top of it; fewer than two points draw none. */
     fun setLineSweep(points: List<GoogleMapPoint>, color: UIColor, width: Double)
 
+    /**
+     * Around's ring, drawn by the map so it moves with it in the same frame; null removes it. Updating it keeps its
+     * shapes and only changes what changed.
+     */
+    fun setRing(ring: GoogleMapRing?)
+
     /** Where a point is on the view now, in points from its top left. */
     fun screenPoint(latitude: Double, longitude: Double): GoogleMapScreenPoint
 
@@ -67,6 +73,27 @@ interface GoogleMap {
      */
     fun setPanVelocity(dx: Double, dy: Double)
 }
+
+/**
+ * Around's ring: a [fill] disc [radius] metres round its centre, its [edge] [edgeWidth] points wide in [dash] long dashes
+ * [gap] apart (points, the same on screen at every zoom), and the [handleIcon] marker at the handle, touching it at
+ * [handleAnchorY] of its height (horizontally centred).
+ */
+@ObjCName("GoogleMapRing", exact = true)
+class GoogleMapRing(
+    val latitude: Double,
+    val longitude: Double,
+    val radius: Double,
+    val fill: UIColor,
+    val edge: UIColor,
+    val edgeWidth: Double,
+    val dash: Double,
+    val gap: Double,
+    val handleLatitude: Double,
+    val handleLongitude: Double,
+    val handleIcon: UIImage,
+    val handleAnchorY: Double,
+)
 
 @ObjCName("GoogleMapPoint", exact = true)
 class GoogleMapPoint(val latitude: Double, val longitude: Double)
