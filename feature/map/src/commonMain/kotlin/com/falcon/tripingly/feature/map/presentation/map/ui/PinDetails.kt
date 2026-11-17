@@ -130,6 +130,7 @@ internal fun PlaceDetailsContent(card: PlaceCardState, onAction: (MapAction) -> 
                     routes = card.routes,
                     onGoHere = { onAction(MapAction.PinRoute.GoHere) },
                     onRoute = { onAction(MapAction.PinRoute.Route) },
+                    onAround = { onAction(MapAction.Around.Open) },
                 ),
                 Modifier.horizontalScroll(rememberScrollState()),
             )

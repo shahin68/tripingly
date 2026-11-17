@@ -217,6 +217,7 @@ private fun AnimatedVisibilityScope.RouteCardContent(route: RouteSummaryState, i
                     AlongTheWayCard(
                         item = item,
                         dayNumber = route.addToDayNumber,
+                        isSelected = item.place.id == route.selectedPlaceId,
                         onOpen = { onAction(MapAction.Plan.AlongTheWayClick(it)) },
                         onAdd = { onAction(MapAction.Plan.AddAlongTheWay(it)) },
                         // Places arriving with a route left on from last time just show, like the rest of the card.
@@ -313,11 +314,12 @@ private fun RouteTotals(route: RouteSummaryState, modifier: Modifier = Modifier)
 
 /** A place near the route: its photo or kind, name, when the route gets there and how far off it it is; + adds it to the open day. */
 @Composable
-private fun AlongTheWayCard(item: AlongTheWayPlace, dayNumber: Int?, onOpen: (MapPlace) -> Unit, onAdd: (MapPlace) -> Unit, modifier: Modifier = Modifier) {
+private fun AlongTheWayCard(item: AlongTheWayPlace, dayNumber: Int?, isSelected: Boolean, onOpen: (MapPlace) -> Unit, onAdd: (MapPlace) -> Unit, modifier: Modifier = Modifier) {
     NearPlaceCard(
         place = item.place,
         subtitle = stringResource(Res.string.map_along_the_way_item, durationLabel(item.etaFromStartSeconds), distanceText(item.distanceFromRouteMeters).asString()),
         dayNumber = dayNumber,
+        isSelected = isSelected,
         onOpen = onOpen,
         onAdd = onAdd,
         modifier = modifier,

@@ -59,6 +59,8 @@ internal fun PinCardScope.PlaceCard(
     routes: PinRoutesState,
     onGoHere: () -> Unit,
     onRoute: () -> Unit,
+    /** Around (Pro) on any place, as on a stop (Shahin, 2026-11-17). */
+    onAround: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
     val pagerState = rememberPagerState { images.orEmpty().size }
@@ -90,7 +92,7 @@ internal fun PinCardScope.PlaceCard(
         },
         buttons = {
             PinCardButtons(
-                group = placeButtons(hasPhotos = address == null, onOpenPhotos, routes, onGoHere, onRoute),
+                group = placeButtons(hasPhotos = address == null, onOpenPhotos, routes, onGoHere, onRoute, onAround),
                 onDetails = onOpenDetails,
                 onDelete = null,
                 onAdd = onAdd.takeIf { add != null },
@@ -100,12 +102,12 @@ internal fun PinCardScope.PlaceCard(
     )
 }
 
-/** A place's group: its photos (not for an address from search), then Go here and Route. */
+/** A place's group: its photos (not for an address from search), then Go here, Route and Around. */
 @Composable
-internal fun placeButtons(hasPhotos: Boolean, onOpenPhotos: () -> Unit, routes: PinRoutesState, onGoHere: () -> Unit, onRoute: () -> Unit): List<JoinedButtonSlot> {
+internal fun placeButtons(hasPhotos: Boolean, onOpenPhotos: () -> Unit, routes: PinRoutesState, onGoHere: () -> Unit, onRoute: () -> Unit, onAround: (() -> Unit)? = null): List<JoinedButtonSlot> {
     val photos = stringResource(Res.string.map_place_photos)
     val photo: JoinedButtonSlot = { shape -> JoinedButton(Icons.Outlined.PhotoLibrary, photos, shape, onClick = onOpenPhotos) }
-    return listOfNotNull(photo.takeIf { hasPhotos }) + routeButtons(routes, onGoHere, onRoute)
+    return listOfNotNull(photo.takeIf { hasPhotos }) + routeButtons(routes, onGoHere, onRoute, onAround)
 }
 
 internal fun PlaceCategory.label(): StringResource = when (this) {

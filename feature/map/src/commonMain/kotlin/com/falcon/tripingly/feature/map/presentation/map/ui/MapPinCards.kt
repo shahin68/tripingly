@@ -56,6 +56,7 @@ internal fun MapPinCards(
                 routes = card.routes,
                 onGoHere = { onAction(MapAction.PinRoute.GoHere) },
                 onRoute = { onAction(MapAction.PinRoute.Route) },
+                onAround = { onAction(MapAction.Around.Open) },
             )
         }
         PinCard(

@@ -1,5 +1,7 @@
 package com.falcon.tripingly.feature.map.presentation.map.ui
 
+import com.falcon.tripingly.feature.map.presentation.component.AlongTheWayPinColor
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -31,15 +33,17 @@ import org.jetbrains.compose.resources.stringResource
 
 /**
  * A place in a row of places (along the way, or around a pin): its photo or kind, its name over [subtitle]; + adds it
- * to day [dayNumber] (none for viewers).
+ * to day [dayNumber] (none for viewers). The place open on the map ([isSelected]) has a purple edge, the found places'
+ * colour (Shahin, 2026-11-17).
  */
 @Composable
-internal fun NearPlaceCard(place: MapPlace, subtitle: String, dayNumber: Int?, onOpen: (MapPlace) -> Unit, onAdd: (MapPlace) -> Unit, modifier: Modifier = Modifier) {
+internal fun NearPlaceCard(place: MapPlace, subtitle: String, dayNumber: Int?, isSelected: Boolean, onOpen: (MapPlace) -> Unit, onAdd: (MapPlace) -> Unit, modifier: Modifier = Modifier) {
     Surface(
         onClick = { onOpen(place) },
         shape = MaterialTheme.shapes.medium,
         // The sheet's own glass colour, so the places stand out of the shaded card in both themes.
         color = GlassDefaults.opaqueTint,
+        border = BorderStroke(SelectedEdge, AlongTheWayPinColor).takeIf { isSelected },
         modifier = modifier.widthIn(max = AlongCardMaxWidth),
     ) {
         Row(
@@ -83,4 +87,5 @@ private fun AlongTheWayImage(place: MapPlace) {
 
 private val AlongCardMaxWidth = 240.dp
 private val AddButtonSize = 36.dp
+private val SelectedEdge = 2.dp
 private val AlongImageSize = 32.dp

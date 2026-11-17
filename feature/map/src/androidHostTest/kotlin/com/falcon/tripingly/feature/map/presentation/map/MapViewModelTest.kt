@@ -2767,6 +2767,21 @@ class MapViewModelTest {
     }
 
     @Test
+    fun `Around works around any place, and the place open is the one picked in its list`() = runTest(testDispatcher) {
+        addStops(GeoPoint(48.8580, 2.2950))
+        val viewModel = viewModel()
+        restOnTarget(viewModel)
+        viewModel.onAction(MapAction.MapView.PlacePinClick(viewModel.pin("Louvre")))
+        restOnTarget(viewModel)
+        viewModel.onAction(MapAction.Around.Open)
+        testScheduler.advanceUntilIdle()
+        assertEquals(Coordinates(48.8606, 2.3376), viewModel.uiState.value.layers.aroundRing?.center)
+        assertEquals(true, viewModel.uiState.value.placeCard?.routes?.isAroundOn)
+        assertEquals(listOf("Louvre"), viewModel.uiState.value.stopsCard?.around?.places?.map { it.place.name })
+        assertEquals("fake-louvre", viewModel.uiState.value.stopsCard?.around?.selectedPlaceId)
+    }
+
+    @Test
     fun `Around is Tripinly Pro, so without it the paywall opens`() = runTest(testDispatcher) {
         session = signedIn(entitlements = emptySet())
         addStops(GeoPoint(48.8580, 2.2950))

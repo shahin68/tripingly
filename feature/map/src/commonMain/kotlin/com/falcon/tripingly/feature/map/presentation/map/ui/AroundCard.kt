@@ -26,6 +26,8 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -98,11 +100,15 @@ private fun AroundCard(around: AroundState, onAction: (MapAction) -> Unit) {
                 )
             }
         } else {
-            val listState = rememberLazyListState()
+            val selectedIndex = around.places.indexOfFirst { it.place.id == around.selectedPlaceId }
+            // A place picked on the map is the card in view, as along the way.
+            val listState = rememberLazyListState(initialFirstVisibleItemIndex = selectedIndex.coerceAtLeast(0))
+            val onScreen = remember { OnScreen() }
+            LaunchedEffect(around.selectedPlaceId) { listState.reveal(selectedIndex, onScreen, toStart = true) }
             LazyRow(
                 state = listState,
                 // A little more room under the kinds than between the places, as along the way.
-                modifier = Modifier.padding(top = inset + MaterialTheme.spacing.extraSmall).horizontalFadingEdge(listState),
+                modifier = Modifier.padding(top = inset + MaterialTheme.spacing.extraSmall).horizontalFadingEdge(listState).trackOnScreen(onScreen),
                 contentPadding = PaddingValues(horizontal = inset),
                 horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
             ) {
@@ -111,6 +117,7 @@ private fun AroundCard(around: AroundState, onAction: (MapAction) -> Unit) {
                         place = item.place,
                         subtitle = distanceText(item.distanceMeters).asString(),
                         dayNumber = around.addToDayNumber,
+                        isSelected = item.place.id == around.selectedPlaceId,
                         onOpen = { onAction(MapAction.Around.PlaceClick(it)) },
                         onAdd = { onAction(MapAction.Around.Add(it)) },
                         modifier = Modifier.animateItem(),
