@@ -3,6 +3,13 @@ package com.falcon.tripingly.core.designsystem.component
 import androidx.compose.ui.state.ToggleableState
 import androidx.compose.ui.semantics.toggleableState
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.SizeTransform
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -17,6 +24,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.AddPhotoAlternate
 import androidx.compose.material.icons.outlined.AutoAwesome
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -27,7 +35,11 @@ import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.foundation.layout.Row
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
@@ -102,6 +114,9 @@ fun SecondaryButton(
  * A button that switches something on and off (the plan's Route): neutral like [SecondaryButton] while off, filled
  * with the brand colour like [PrimaryButton] while on. Its [icon] stays the same either way; the colour says it's on.
  * [isFailed]: on, but what it shows couldn't be had; orange, and the caller gives it a "Retry" [text] and tap.
+ * [tint]: the button stands for something else for now (the plan's Route turning into Around's ✕): that colour's glass
+ * look (a light shade of it, the icon and text in it), no on/off. Colours and content glide from one look to the
+ * next, the width easing with the text, so the button turns into the other one instead of being swapped.
  */
 @Composable
 fun ToggleButton(
@@ -112,29 +127,50 @@ fun ToggleButton(
     size: ButtonSize = ButtonSize.Small,
     icon: ImageVector? = null,
     isFailed: Boolean = false,
+    tint: Color? = null,
 ) {
     val haptics = rememberHaptics()
     val colors = MaterialTheme.colorScheme
-    val isRetry = checked && isFailed
+    val isRetry = checked && isFailed && tint == null
+    val isToggle = !isRetry && tint == null
+    val primary = ButtonDefaults.buttonColors()
+    val container = when {
+        tint != null -> tint.copy(alpha = TINT_SHADE).compositeOver(colors.surface)
+        isRetry -> MaterialTheme.extendedColors.attention
+        checked -> primary.containerColor
+        else -> colors.surfaceVariant
+    }
+    val content = when {
+        tint != null -> tint
+        isRetry -> MaterialTheme.extendedColors.onAttention
+        checked -> primary.contentColor
+        else -> colors.onSurface
+    }
+    val look = tween<Color>(MORPH_MILLIS)
+    val containerColor = animateColorAsState(container, look, label = "toggle container")
+    val contentColor = animateColorAsState(content, look, label = "toggle content")
     // One button that only changes colour, so switching doesn't replace it (and its ripple) with another.
     Button(
         onClick = {
-            if (!isRetry) haptics.toggle(!checked)
+            if (isToggle) haptics.toggle(!checked)
             onClick()
         },
         shape = CircleShape,
         contentPadding = size.padding,
-        colors = when {
-            isRetry -> ButtonDefaults.buttonColors(containerColor = MaterialTheme.extendedColors.attention, contentColor = MaterialTheme.extendedColors.onAttention)
-            checked -> ButtonDefaults.buttonColors()
-            else -> ButtonDefaults.buttonColors(containerColor = colors.surfaceVariant, contentColor = colors.onSurface)
-        },
+        colors = ButtonDefaults.buttonColors(containerColor = containerColor.value, contentColor = contentColor.value),
         modifier = modifier
-            .then(if (isRetry) Modifier else Modifier.semantics { toggleableState = ToggleableState(checked) })
+            .then(if (isToggle) Modifier.semantics { toggleableState = ToggleableState(checked) } else Modifier)
             .heightIn(min = size.height)
             .skeleton(CircleShape),
     ) {
-        ButtonContent(text, isLoading = false, size, icon)
+        // Only a new text or icon swaps the content; the colour follows on its own above.
+        AnimatedContent(
+            targetState = text to icon,
+            transitionSpec = { fadeIn(tween(MORPH_MILLIS)) togetherWith fadeOut(tween(MORPH_MILLIS / 2)) using SizeTransform(clip = false) { _, _ -> tween(MORPH_MILLIS) } },
+            label = "toggle content",
+        ) { (shownText, shownIcon) ->
+            Row(verticalAlignment = Alignment.CenterVertically) { ButtonContent(shownText, isLoading = false, size, shownIcon) }
+        }
     }
 }
 
@@ -159,6 +195,8 @@ private fun ButtonContent(text: String, isLoading: Boolean, size: ButtonSize, ic
     }
 }
 
+private const val MORPH_MILLIS = 250
+private const val TINT_SHADE = 0.18f
 private val SpinnerSize = 22.dp
 private val IconSize = 18.dp
 
@@ -179,6 +217,7 @@ private fun ButtonsPreviewContent() {
         ToggleButton("Route", checked = false, onClick = {}, icon = Icons.Outlined.AutoAwesome)
         ToggleButton("Route", checked = true, onClick = {}, icon = Icons.Outlined.AutoAwesome)
         ToggleButton("Retry", checked = true, onClick = {}, icon = Icons.Outlined.Refresh, isFailed = true)
+        ToggleButton("Around", checked = false, onClick = {}, icon = Icons.Default.Close, tint = Color(0xFF8A5AAB))
     }
 }
 

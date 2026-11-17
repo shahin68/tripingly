@@ -1,6 +1,9 @@
 package com.falcon.tripingly.feature.map.presentation.map.ui
 
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandHorizontally
+import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.animation.SizeTransform
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.tween
@@ -19,11 +22,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -43,7 +42,6 @@ import com.falcon.tripingly.core.model.place.PlaceAround
 import com.falcon.tripingly.core.model.place.PlaceCategory
 import com.falcon.tripingly.core.model.trip.GeoPoint
 import com.falcon.tripingly.feature.map.generated.resources.Res
-import com.falcon.tripingly.feature.map.generated.resources.map_around_close
 import com.falcon.tripingly.feature.map.generated.resources.map_around_none
 import com.falcon.tripingly.feature.map.presentation.map.AroundState
 import com.falcon.tripingly.feature.map.presentation.map.CategoryChip
@@ -78,18 +76,19 @@ private fun AroundCard(around: AroundState, onAction: (MapAction) -> Unit) {
     // The places arrive after the box opens (and change with the kinds and the ring): the box eases to their height
     // instead of jumping (Shahin 2026-11-17).
     Column(Modifier.fillMaxWidth().animateContentSize(tween(ROUTE_GROW_MILLIS, easing = RouteGrowEasing)).clip(MaterialTheme.shapes.large).background(planCardColor()).padding(vertical = inset)) {
-        // The chips scroll under the fading edge up to ✕, which stays put at the end, as tall as a chip.
-        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(end = inset)) {
+        // The chips scroll under the fading edge (✕ is the plan's Route button now, Shahin 2026-11-17); a spinner glides
+        // in at their end while the places load.
+        Row(verticalAlignment = Alignment.CenterVertically) {
             Box(Modifier.weight(1f)) {
                 CategoryChipRow(chips = around.chips, onToggle = { onAction(MapAction.Around.ToggleCategory(it)) })
             }
-            Box(contentAlignment = Alignment.Center, modifier = Modifier.size(CloseSize)) {
-                if (around.isLoading) {
+            AnimatedVisibility(
+                visible = around.isLoading,
+                enter = expandHorizontally(expandFrom = Alignment.Start) + fadeIn(),
+                exit = shrinkHorizontally(shrinkTowards = Alignment.Start) + fadeOut(),
+            ) {
+                Box(contentAlignment = Alignment.Center, modifier = Modifier.padding(end = inset).size(SpinnerBoxSize)) {
                     CircularProgressIndicator(modifier = Modifier.size(SpinnerSize), strokeWidth = 2.dp)
-                } else {
-                    IconButton(onClick = { onAction(MapAction.Around.Close) }) {
-                        Icon(Icons.Default.Close, contentDescription = stringResource(Res.string.map_around_close))
-                    }
                 }
             }
         }
@@ -131,8 +130,8 @@ private fun AroundCard(around: AroundState, onAction: (MapAction) -> Unit) {
     }
 }
 
-/** ✕ as tall as a chip. */
-private val CloseSize = 40.dp
+/** The spinner's room, as tall as a chip. */
+private val SpinnerBoxSize = 40.dp
 private val SpinnerSize = 20.dp
 
 @Composable

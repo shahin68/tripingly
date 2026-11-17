@@ -95,6 +95,11 @@ import com.falcon.tripingly.feature.map.presentation.map.preview.PointRouteCardP
 import com.falcon.tripingly.feature.map.presentation.map.preview.StopsCardPreviewStates
 import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
+import com.falcon.tripingly.feature.map.presentation.component.AlongTheWayPinColor
+import com.falcon.tripingly.feature.map.generated.resources.map_around_close
+import com.falcon.tripingly.feature.map.generated.resources.map_around
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.contentDescription
 
 /**
  * The open day's plan: "6 stops" (scrambling to "Ordering…" while the best order is found) with Route and the day's
@@ -116,15 +121,29 @@ internal fun StopsCard(
             pluralStringResource(Res.plurals.map_stop_count, card.stops.size, card.stops.size)
         }
         PlanTitleRow(title = { ScrambleText(title, it, style = MaterialTheme.typography.titleMedium) }) {
-            card.isRouteOn?.let { isOn ->
-                // Neutral like ⋯ while off; green once on; orange Retry when the route failed (a tap asks again, it stays on).
+            val around = card.around
+            if (around != null) {
+                // While Around shows, Route turns into its purple ✕ (Shahin 2026-11-17): the same button gliding over.
+                val closeLabel = stringResource(Res.string.map_around_close)
                 ToggleButton(
-                    text = stringResource(if (card.isRouteFailed) Res.string.map_route_retry else Res.string.map_route),
-                    checked = isOn,
-                    onClick = { onAction(if (card.isRouteFailed) MapAction.Plan.RetryRoute else MapAction.Plan.ToggleRoute) },
-                    icon = if (card.isRouteFailed) Icons.Outlined.Refresh else Icons.Outlined.Directions,
-                    isFailed = card.isRouteFailed,
+                    text = stringResource(Res.string.map_around),
+                    checked = false,
+                    onClick = { onAction(MapAction.Around.Close) },
+                    icon = Icons.Default.Close,
+                    tint = AlongTheWayPinColor,
+                    modifier = Modifier.semantics { contentDescription = closeLabel },
                 )
+            } else {
+                card.isRouteOn?.let { isOn ->
+                    // Neutral like ⋯ while off; green once on; orange Retry when the route failed (a tap asks again, it stays on).
+                    ToggleButton(
+                        text = stringResource(if (card.isRouteFailed) Res.string.map_route_retry else Res.string.map_route),
+                        checked = isOn,
+                        onClick = { onAction(if (card.isRouteFailed) MapAction.Plan.RetryRoute else MapAction.Plan.ToggleRoute) },
+                        icon = if (card.isRouteFailed) Icons.Outlined.Refresh else Icons.Outlined.Directions,
+                        isFailed = card.isRouteFailed,
+                    )
+                }
             }
             DayMenuButton(dayNumber, card, editorMenu = editorMenu, onAction = onAction)
         }
