@@ -171,7 +171,10 @@ internal class MapStateMapper(
         role == TripRole.OWNER || (canEdit && myUserId != null && markers.all { it.createdById == myUserId })
 
     private fun stopsCard(): StopsCardState? {
-        if (stops.isEmpty() || route.between != null) return null
+        if (route.between != null) return null
+        val around = model.aroundState(addToDayNumber = dayNumber?.takeIf { canEdit })
+        // A day without stops has no plan, except while Around shows: then the sheet holds just Around.
+        if (stops.isEmpty() && around == null) return null
         val isRouteShown = route.isDayRouteShown && stops.size >= 2
         return StopsCardState(
             stops = stops.toImmutableList(),
@@ -189,7 +192,7 @@ internal class MapStateMapper(
             isRouteAnimated = route.isAnimated,
             canFindBestOrder = canEdit && stops.size in MIN_BEST_ORDER_STOPS..MAX_BEST_ORDER_STOPS,
             isFindingBestOrder = route.isFindingBestOrder,
-            around = model.aroundState(addToDayNumber = dayNumber?.takeIf { canEdit }),
+            around = around,
         )
     }
 

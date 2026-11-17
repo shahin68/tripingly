@@ -2933,6 +2933,28 @@ class MapViewModelTest {
     }
 
     @Test
+    fun `on a day without stops Around opens the sheet with just Around, and closing it takes the sheet away`() = runTest(testDispatcher) {
+        val viewModel = viewModel()
+        testScheduler.advanceUntilIdle()
+        viewModel.onAction(MapAction.MapView.CameraRest(Coordinates(48.86, 2.32), 15f, PARIS_CENTER))
+        testScheduler.advanceUntilIdle()
+        assertNull(viewModel.uiState.value.stopsCard, "no plan on a day without stops")
+        viewModel.onAction(MapAction.MapView.PlacePinClick(viewModel.pin("Louvre")))
+        restOnTarget(viewModel)
+
+        viewModel.onAction(MapAction.Around.Open)
+        testScheduler.advanceUntilIdle()
+        val card = viewModel.uiState.value.stopsCard
+        assertEquals(true, card?.stops?.isEmpty(), "no stops")
+        assertNull(card?.isRouteOn, "no route button")
+        assertTrue(card?.around != null, "Around in the sheet")
+
+        viewModel.onAction(MapAction.Around.Close)
+        testScheduler.advanceUntilIdle()
+        assertNull(viewModel.uiState.value.stopsCard, "the sheet goes with Around")
+    }
+
+    @Test
     fun `Around is Tripinly Pro, so without it the paywall opens`() = runTest(testDispatcher) {
         session = signedIn(entitlements = emptySet())
         addStops(GeoPoint(48.8580, 2.2950))

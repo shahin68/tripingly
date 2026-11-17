@@ -96,6 +96,7 @@ import com.falcon.tripingly.feature.map.presentation.map.preview.StopsCardPrevie
 import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
 import com.falcon.tripingly.feature.map.presentation.component.AlongTheWayPinColor
+import com.falcon.tripingly.feature.map.generated.resources.map_around
 import com.falcon.tripingly.feature.map.generated.resources.map_around_close
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.contentDescription
@@ -116,6 +117,9 @@ internal fun StopsCard(
     PlanCardColumn(modifier) {
         val title = if (card.isFindingBestOrder) {
             stringResource(Res.string.map_ordering)
+        } else if (card.stops.isEmpty()) {
+            // A day without stops: the sheet holds just Around.
+            stringResource(Res.string.map_around)
         } else {
             pluralStringResource(Res.plurals.map_stop_count, card.stops.size, card.stops.size)
         }
@@ -152,9 +156,10 @@ internal fun StopsCard(
                     modifier = if (isAround) Modifier.semantics { contentDescription = closeLabel } else Modifier,
                 )
             }
-            DayMenuButton(dayNumber, card, editorMenu = editorMenu, onAction = onAction)
+            // No stops: the day's actions stay in the header's ⋮.
+            if (card.stops.isNotEmpty()) DayMenuButton(dayNumber, card, editorMenu = editorMenu, onAction = onAction)
         }
-        StopChips(card, onAction)
+        if (card.stops.isNotEmpty()) StopChips(card, onAction)
         val gap = animateDpAsState(if (card.route != null) RowGap else 0.dp, if (card.isRouteAnimated) tween(ROUTE_GROW_MILLIS, easing = RouteGrowEasing) else snap(), label = "route gap")
         // The gap is read while laying out, so its animation moves the card without recomposing the plan every frame.
         RouteCardSlot(card.route, onAction, Modifier.topGap { gap.value }.padding(horizontal = MaterialTheme.spacing.medium), isAnimated = card.isRouteAnimated, listKey = dayNumber)

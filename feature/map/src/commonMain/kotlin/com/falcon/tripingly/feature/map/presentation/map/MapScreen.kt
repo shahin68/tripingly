@@ -288,7 +288,8 @@ internal fun MapScreen(
                     header = state.header,
                     // While routing, the search is the route bar's "to".
                     search = state.search.takeUnless { isRouteBarShown },
-                    showDayActions = plan == null,
+                    // A day without stops keeps its day actions in ⋮, also while its sheet holds just Around.
+                    showDayActions = plan == null || (plan as? StopsCardState)?.stops?.isEmpty() == true,
                     onAction = onAction,
                     isTitleHidden = isTripCardShown || isRouteBarShown,
                     onTitleClick = {
