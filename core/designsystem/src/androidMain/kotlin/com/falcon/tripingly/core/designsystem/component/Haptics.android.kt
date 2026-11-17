@@ -44,7 +44,11 @@ private class DragFeedback(private val view: HapticFeedback, private val vibrato
 
     private fun end(): VibrationEffect = when {
         Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && vibrator!!.areAllPrimitivesSupported(VibrationEffect.Composition.PRIMITIVE_CLICK) ->
-            VibrationEffect.startComposition().addPrimitive(VibrationEffect.Composition.PRIMITIVE_CLICK, 1f).compose()
+            // A full click and a quick second one off the wall: sharper than any single click (Shahin, 2026-11-17).
+            VibrationEffect.startComposition()
+                .addPrimitive(VibrationEffect.Composition.PRIMITIVE_CLICK, 1f)
+                .addPrimitive(VibrationEffect.Composition.PRIMITIVE_CLICK, END_ECHO_SCALE, END_ECHO_DELAY_MILLIS)
+                .compose()
         Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q -> VibrationEffect.createPredefined(VibrationEffect.EFFECT_HEAVY_CLICK)
         else -> VibrationEffect.createOneShot(END_MILLIS, VibrationEffect.DEFAULT_AMPLITUDE)
     }
@@ -72,3 +76,5 @@ private const val TICK_SCALE = 0.7f
 private const val TICK_MILLIS = 8L
 private const val TICK_AMPLITUDE = 90
 private const val END_MILLIS = 30L
+private const val END_ECHO_SCALE = 0.7f
+private const val END_ECHO_DELAY_MILLIS = 25
