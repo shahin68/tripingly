@@ -149,8 +149,16 @@ internal fun AroundRingLayer(ring: AroundRing, project: (Coordinates) -> Offset?
 }
 
 /** The server's limits for the ring's size (GET /v1/places/around), which the dragged ring keeps to as well. */
-/** The step a size is felt in: every 10 m, every 100 m from 1 km; the ends are steps of their own. */
-private fun feelStep(meters: Int) = if (meters < 1000) meters / 10 else 100 + meters / 100
+/**
+ * The step a size is felt in: every 10 m, every 100 m from 1 km. The smallest and largest sizes are steps of their own,
+ * so reaching 50 m from 51 to 59 m still taps the end.
+ */
+private fun feelStep(meters: Int) = when {
+    meters <= MIN_RADIUS_METERS -> -2
+    meters >= MAX_RADIUS_METERS -> -3
+    meters < 1000 -> meters / 10
+    else -> 100 + meters / 100
+}
 
 private const val MIN_RADIUS_METERS = 50
 private const val MAX_RADIUS_METERS = 5000

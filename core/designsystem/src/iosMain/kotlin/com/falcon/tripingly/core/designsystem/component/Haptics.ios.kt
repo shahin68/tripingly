@@ -22,7 +22,6 @@ private class TapticFeedback : HapticFeedback {
     override fun performHapticFeedback(hapticFeedbackType: HapticFeedbackType) {
         when (hapticFeedbackType) {
             HapticFeedbackType.SegmentTick, HapticFeedbackType.GestureThresholdActivate -> rigid.impactOccurredWithIntensity(1.0)
-            HapticFeedbackType.SegmentFrequentTick -> rigid.impactOccurredWithIntensity(FINE_INTENSITY)
             HapticFeedbackType.ToggleOn, HapticFeedbackType.ToggleOff -> medium.impactOccurredWithIntensity(1.0)
             HapticFeedbackType.LongPress -> heavy.impactOccurred()
             HapticFeedbackType.Confirm -> notification.notificationOccurred(UINotificationFeedbackType.UINotificationFeedbackTypeSuccess)
@@ -31,6 +30,3 @@ private class TapticFeedback : HapticFeedback {
         }
     }
 }
-
-/** Fine ticks come many a second, so each is lighter than a step's. */
-private const val FINE_INTENSITY = 0.6

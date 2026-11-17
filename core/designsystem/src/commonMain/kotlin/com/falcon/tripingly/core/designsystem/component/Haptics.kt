@@ -27,14 +27,14 @@ class Haptics(private val feedback: HapticFeedback) {
     }
 
     /**
-     * A fine step in a fast drag, such as a ring's size: lighter than [tick] and up to 50 a second, so it feels like
-     * a ratchet under the finger (Shahin, 2026-11-17).
+     * A fine step in a fast drag, such as a ring's size: the [tick] click, up to 50 a second, so it feels like a
+     * ratchet under the finger (Shahin, 2026-11-17; a lighter click was barely felt).
      */
     fun fineTick() {
         val now = TimeSource.Monotonic.markNow()
         if (lastTick?.let { now - it < FineTickGap } == true) return
         lastTick = now
-        feedback.performHapticFeedback(HapticFeedbackType.SegmentFrequentTick)
+        feedback.performHapticFeedback(HapticFeedbackType.SegmentTick)
     }
 
     /**
