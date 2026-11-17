@@ -98,6 +98,7 @@ import org.jetbrains.compose.resources.stringResource
 import com.falcon.tripingly.feature.map.presentation.component.AlongTheWayPinColor
 import com.falcon.tripingly.feature.map.generated.resources.map_around
 import com.falcon.tripingly.feature.map.generated.resources.map_around_close
+import com.falcon.tripingly.feature.map.generated.resources.map_around_named
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.contentDescription
 
@@ -118,8 +119,8 @@ internal fun StopsCard(
         val title = if (card.isFindingBestOrder) {
             stringResource(Res.string.map_ordering)
         } else if (card.stops.isEmpty()) {
-            // A day without stops: the sheet holds just Around.
-            stringResource(Res.string.map_around)
+            // A day without stops: the sheet holds just Around, named after its pin ("Around Schönbrunn").
+            card.around?.pinName?.takeIf { it.isNotBlank() }?.let { stringResource(Res.string.map_around_named, it) } ?: stringResource(Res.string.map_around)
         } else {
             pluralStringResource(Res.plurals.map_stop_count, card.stops.size, card.stops.size)
         }

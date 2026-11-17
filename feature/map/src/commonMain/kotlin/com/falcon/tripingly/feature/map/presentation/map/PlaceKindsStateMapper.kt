@@ -15,6 +15,7 @@ import kotlinx.collections.immutable.toImmutableList
 internal fun MapModel.aroundState(addToDayNumber: Int?): AroundState? {
     val around = around ?: return null
     return AroundState(
+        pinName = around.pinName,
         chips = categoryChips(around.result?.counts.orEmpty(), around.categories),
         places = around.result?.places.orEmpty().toImmutableList(),
         isLoading = around.isLoading,

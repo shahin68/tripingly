@@ -53,6 +53,7 @@ internal class MapAround(
                     center = center,
                     pinPlaceId = pinPlaceId,
                     pinPlace = pinPlace,
+                    pinName = selectedPinName(),
                     radiusMeters = it.around?.radiusMeters ?: it.fittingRadius(),
                     categories = it.around?.categories.orEmpty(),
                     routeBefore = it.around?.routeBefore ?: it.route,
@@ -137,6 +138,12 @@ internal class MapAround(
         is Selection.Stop -> context.activeDay()?.markers?.firstOrNull { it.id == selected.markerId }?.let { Triple(it.location, it.placeId.ifEmpty { null }, null) }
         is Selection.Place -> Triple(selected.place.location, selected.place.id.ifEmpty { null }, selected.place.takeIf { it.id.isNotEmpty() })
         is Selection.NewSpot, null -> null
+    }
+
+    private fun selectedPinName(): String = when (val selected = context.model.value.selection) {
+        is Selection.Stop -> context.activeDay()?.markers?.firstOrNull { it.id == selected.markerId }?.name.orEmpty()
+        is Selection.Place -> selected.place.name
+        is Selection.NewSpot, null -> ""
     }
 
     /**

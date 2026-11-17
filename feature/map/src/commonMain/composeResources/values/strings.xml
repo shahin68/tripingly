@@ -290,6 +290,7 @@
     <string name="map_filter_open">Filter places</string>
     <string name="map_filter_close">Close filter</string>
     <string name="map_around">Around</string>
+    <string name="map_around_named">Around %1$s</string>
     <string name="map_around_close">Close Around</string>
     <string name="map_around_none">No places in this circle.</string>
     <string name="map_error_around">Couldn’t load the places around.</string>

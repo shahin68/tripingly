@@ -205,6 +205,8 @@ data class PlaceFilterState(val isOpen: Boolean, val isActive: Boolean, val chip
  */
 @Immutable
 data class AroundState(
+    /** The pin's name, for the title of a sheet that holds just Around (a day without stops); blank when it has none. */
+    val pinName: String,
     val chips: ImmutableList<CategoryChip>,
     val places: ImmutableList<PlaceAround>,
     val isLoading: Boolean,

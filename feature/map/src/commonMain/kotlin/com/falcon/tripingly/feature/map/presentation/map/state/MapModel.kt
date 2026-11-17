@@ -112,6 +112,8 @@ internal data class AroundModel(
      * pins don't list it (a place along the way, found around another pin, from search).
      */
     val pinPlace: MapPlace? = null,
+    /** The pin's name, for the sheet's title ("Around Schönbrunn"); blank for a stop still waiting for its name. */
+    val pinName: String = "",
     val radiusMeters: Int,
     val categories: Set<PlaceCategory> = emptySet(),
     val result: PlacesAround? = null,

@@ -2947,7 +2947,7 @@ class MapViewModelTest {
         val card = viewModel.uiState.value.stopsCard
         assertEquals(true, card?.stops?.isEmpty(), "no stops")
         assertNull(card?.isRouteOn, "no route button")
-        assertTrue(card?.around != null, "Around in the sheet")
+        assertEquals("Louvre", card?.around?.pinName, "named after its pin")
 
         viewModel.onAction(MapAction.Around.Close)
         testScheduler.advanceUntilIdle()

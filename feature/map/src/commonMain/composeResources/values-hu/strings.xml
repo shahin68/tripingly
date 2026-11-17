@@ -289,6 +289,7 @@
     <string name="map_filter_open">Helyek szűrése</string>
     <string name="map_filter_close">Szűrő bezárása</string>
     <string name="map_around">A környéken</string>
+    <string name="map_around_named">%1$s környékén</string>
     <string name="map_around_close">Környék bezárása</string>
     <string name="map_around_none">Ebben a körben nincs hely.</string>
     <string name="map_error_around">Nem sikerült betölteni a környék helyeit.</string>

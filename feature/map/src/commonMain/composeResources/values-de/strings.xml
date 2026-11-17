@@ -289,6 +289,7 @@
     <string name="map_filter_open">Orte filtern</string>
     <string name="map_filter_close">Filter schließen</string>
     <string name="map_around">In der Nähe</string>
+    <string name="map_around_named">Rund um %1$s</string>
     <string name="map_around_close">In der Nähe schließen</string>
     <string name="map_around_none">Keine Orte in diesem Kreis.</string>
     <string name="map_error_around">Die Orte in der Nähe konnten nicht geladen werden.</string>
