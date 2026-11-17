@@ -2667,31 +2667,46 @@ class MapViewModelTest {
         assertTrue(viewModel.uiState.value.layers.placePins.none { it.isAlongTheWay })
     }
 
-    @Test
-    fun `Around lists the places in a ring around a stop, purple, the other places dots, and closes the route`() = runTest(testDispatcher) {
-        // Next to the Eiffel Tower, and a walk from the Louvre.
+    /** Stops next to the Eiffel Tower and a walk from the Louvre; the first one's card open. */
+    private suspend fun TestScope.openFirstStopCard(): MapViewModel {
         addStops(GeoPoint(48.8580, 2.2950), GeoPoint(48.8600, 2.3300))
         val viewModel = viewModel()
         restOnTarget(viewModel)
-        viewModel.onAction(MapAction.Plan.ToggleRoute)
-        testScheduler.advanceUntilIdle()
         viewModel.onAction(MapAction.MapView.MarkerClick(viewModel.uiState.value.layers.stops[0]))
         restOnTarget(viewModel)
+        return viewModel
+    }
 
+    @Test
+    fun `Around lists the places in a ring around a stop and shows the whole plan`() = runTest(testDispatcher) {
+        val viewModel = openFirstStopCard()
         viewModel.events.test {
             viewModel.onAction(MapAction.Around.Open)
             testScheduler.advanceUntilIdle()
-            // The route coming on asked for the whole plan too; Around asks last.
             assertEquals(MapEvent.ShowWholePlan, expectMostRecentItem())
         }
         val state = viewModel.uiState.value
-        assertNull(state.stopsCard?.route)
-        assertEquals(listOf("Eiffel Tower"), state.stopsCard?.around?.places?.map { it.place.name })
-        assertTrue(state.stopCard?.routes?.isAroundOn == true)
-        assertEquals(500, state.layers.aroundRing?.radiusMeters)
-        assertNull(state.placeFilter)
-        assertTrue(state.layers.placePins.single { it.place.name == "Eiffel Tower" }.isAlongTheWay)
-        assertTrue(state.layers.placePins.single { it.place.name == "Louvre" }.isDot)
+        assertEquals(listOf("Eiffel Tower"), state.stopsCard?.around?.places?.map { it.place.name }, "places around")
+        assertEquals(500, state.layers.aroundRing?.radiusMeters, "ring")
+        assertNull(state.placeFilter, "filter")
+        assertEquals(true, state.stopCard?.routes?.isAroundOn, "Around button")
+    }
+
+    @Test
+    fun `Around's places are purple and the other places dots`() = runTest(testDispatcher) {
+        val viewModel = openFirstStopCard()
+        viewModel.onAction(MapAction.Around.Open)
+        testScheduler.advanceUntilIdle()
+        val pins = viewModel.uiState.value.layers.placePins
+        assertEquals(listOf(true), pins.filter { it.place.name == "Eiffel Tower" }.map { it.isAlongTheWay }, "Eiffel purple")
+        assertTrue(pins.filter { it.place.name != "Eiffel Tower" }.all { it.isDot && !it.isAlongTheWay }, "others dots")
+    }
+
+    @Test
+    fun `Around's ring follows the handle and its chips pick kinds`() = runTest(testDispatcher) {
+        val viewModel = openFirstStopCard()
+        viewModel.onAction(MapAction.Around.Open)
+        testScheduler.advanceUntilIdle()
 
         // A bigger ring reaches the Louvre once the handle rests; a kind picked lists only that kind.
         viewModel.onAction(MapAction.Around.SetRadius(4000))
@@ -2701,15 +2716,29 @@ class MapViewModelTest {
         viewModel.onAction(MapAction.Around.ToggleCategory(PlaceCategory.Museum))
         testScheduler.advanceUntilIdle()
         assertEquals(listOf("Louvre"), viewModel.uiState.value.stopsCard?.around?.places?.map { it.place.name })
-        assertEquals(listOf(null, PlaceCategory.Landmark, PlaceCategory.Museum).toSet(), viewModel.uiState.value.stopsCard?.around?.chips?.map { it.category }?.toSet())
+        assertEquals(setOf(null, PlaceCategory.Landmark, PlaceCategory.Museum), viewModel.uiState.value.stopsCard?.around?.chips?.map { it.category }?.toSet())
 
-        // The route coming on closes Around; the ring is the server's limit at most.
+        // The ring is the server's limit at most.
         viewModel.onAction(MapAction.Around.SetRadius(99_000))
         assertEquals(5000, viewModel.uiState.value.layers.aroundRing?.radiusMeters)
+    }
+
+    @Test
+    fun `Around closes the route, and the route coming on closes Around`() = runTest(testDispatcher) {
+        val viewModel = openFirstStopCard()
         viewModel.onAction(MapAction.Plan.ToggleRoute)
         testScheduler.advanceUntilIdle()
-        assertNull(viewModel.uiState.value.stopsCard?.around)
-        assertNull(viewModel.uiState.value.layers.aroundRing)
+        assertEquals(true, viewModel.uiState.value.stopsCard?.isRouteOn, "route on")
+
+        viewModel.onAction(MapAction.Around.Open)
+        testScheduler.advanceUntilIdle()
+        assertEquals(false, viewModel.uiState.value.stopsCard?.isRouteOn, "route off")
+        assertNotNull(viewModel.uiState.value.stopsCard?.around, "Around open")
+
+        viewModel.onAction(MapAction.Plan.ToggleRoute)
+        testScheduler.advanceUntilIdle()
+        assertNull(viewModel.uiState.value.stopsCard?.around, "Around closed")
+        assertNull(viewModel.uiState.value.layers.aroundRing, "ring gone")
     }
 
     @Test
