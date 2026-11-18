@@ -2173,6 +2173,24 @@ class MapViewModelTest {
     }
 
     @Test
+    fun `a place picked in search that is already a stop opens the stop, with no second pin on it`() = runTest(testDispatcher) {
+        backend.addMarker(trip.trip.id, trip.days[0].id, NewMarker("Louvre", LOUVRE, placeId = "fake-louvre"))
+        val viewModel = viewModel()
+        testScheduler.advanceUntilIdle()
+        val stop = viewModel.uiState.value.layers.stops.single()
+        viewModel.onAction(MapAction.Search.Open)
+
+        val place = MapPlace("fake-louvre", "Louvre", PlaceCategory.Museum, LOUVRE, isTripinly = false, hotCount = 0, prominence = 0)
+        viewModel.onAction(MapAction.Search.ResultClick(PlaceSearchResult("Louvre", null, LOUVRE, place = place)))
+        testScheduler.advanceUntilIdle()
+
+        val state = viewModel.uiState.value
+        assertNull(state.search)
+        assertEquals(stop.id, state.stopsCard?.selectedStopId)
+        assertNull(state.layers.selectedPlace)
+    }
+
+    @Test
     fun `an address picked in search opens its card, and adding it makes a stop named after it`() = runTest(testDispatcher) {
         val viewModel = viewModel()
         testScheduler.advanceUntilIdle()

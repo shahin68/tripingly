@@ -265,9 +265,12 @@ private fun PinDetailsDarkPreview() {
 
 private const val CATEGORY_ICON = "categoryIcon"
 
-/** The place type's small icon before its name in a subtitle; [categoryIconContent] draws it. */
+/**
+ * The place type's small icon before its name in a subtitle; [categoryIconContent] draws it. The placeholder keeps
+ * Compose's default alternate text: an empty one throws when the text is built (the details-sheet crash, 2026-11-18).
+ */
 internal fun AnnotatedString.Builder.appendCategoryIcon() {
-    appendInlineContent(CATEGORY_ICON, "")
+    appendInlineContent(CATEGORY_ICON)
     append("\u2009")
 }
 

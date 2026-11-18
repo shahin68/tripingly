@@ -28,11 +28,12 @@ import com.falcon.tripingly.feature.map.presentation.map.state.Dialog
 import com.falcon.tripingly.feature.map.presentation.map.state.MapAddToTrip
 import com.falcon.tripingly.feature.map.presentation.map.state.MapAround
 import com.falcon.tripingly.feature.map.presentation.map.state.MapCamera
+import com.falcon.tripingly.feature.map.presentation.map.state.MapCardPhotos
 import com.falcon.tripingly.feature.map.presentation.map.state.MapContext
 import com.falcon.tripingly.feature.map.presentation.map.state.MapEdits
+import com.falcon.tripingly.feature.map.presentation.map.state.MapJoinRequests
 import com.falcon.tripingly.feature.map.presentation.map.state.MapLocation
 import com.falcon.tripingly.feature.map.presentation.map.state.MapModel
-import com.falcon.tripingly.feature.map.presentation.map.state.MapJoinRequests
 import com.falcon.tripingly.feature.map.presentation.map.state.MapNewActivity
 import com.falcon.tripingly.feature.map.presentation.map.state.MapOpening
 import com.falcon.tripingly.feature.map.presentation.map.state.MapPins
@@ -40,9 +41,9 @@ import com.falcon.tripingly.feature.map.presentation.map.state.MapRouting
 import com.falcon.tripingly.feature.map.presentation.map.state.MapSearch
 import com.falcon.tripingly.feature.map.presentation.map.state.MapSelection
 import com.falcon.tripingly.feature.map.presentation.map.state.MapSharing
-import com.falcon.tripingly.feature.map.presentation.map.state.MapCardPhotos
 import com.falcon.tripingly.feature.map.presentation.map.state.Sheet
 import com.falcon.tripingly.feature.map.presentation.map.state.activeDayIndex
+import com.falcon.tripingly.feature.map.presentation.map.state.isPicking
 import com.falcon.tripingly.feature.map.presentation.map.state.toggled
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.channels.Channel
@@ -217,7 +218,16 @@ class MapViewModel(
         when (action) {
             is MapAction.Search.Open -> search.open()
             is MapAction.Search.QueryChanged -> search.onQueryChanged(action.query)
-            is MapAction.Search.ResultClick -> search.onResultClick(action.result)
+            is MapAction.Search.ResultClick -> {
+                // A place that's already a stop of the open day opens that stop, not a second pin on top of it.
+                val stop = action.result.place?.let { place -> uiState.value.layers.stops.firstOrNull { it.placeId == place.id } }
+                if (stop != null && !context.model.value.route.isPicking) {
+                    search.close()
+                    selection.selectMarker(stop)
+                } else {
+                    search.onResultClick(action.result)
+                }
+            }
             is MapAction.Search.Submit -> search.submit()
             is MapAction.Search.Close -> search.close()
         }
