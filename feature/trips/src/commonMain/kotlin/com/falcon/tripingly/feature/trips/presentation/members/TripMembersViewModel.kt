@@ -75,6 +75,7 @@ class TripMembersViewModel(
             tripName = details?.trip?.name.orEmpty(),
             canManage = details?.trip?.role?.canManage == true,
             isLoading = ui.isLoading,
+            waitingCount = details?.pendingJoinRequestCount ?: 0,
             members = members.toImmutableList(),
             joinRequests = ui.requests,
             friends = ui.friends?.filterNot { it.username in onTrip || it.username in asking }?.toImmutableList(),
@@ -286,6 +287,8 @@ class TripMembersViewModel(
         val tripName: String = "",
         val canManage: Boolean = false,
         val isLoading: Boolean = true,
+        /** How many wait to join by the cached trip: the skeleton draws as many request rows. */
+        val waitingCount: Int = 0,
         val members: ImmutableList<TripMember> = persistentListOf(),
         val joinRequests: JoinRequestsState = JoinRequestsState(),
         /** The owner's friends who aren't on the trip and aren't asking to join; null until they've loaded. */

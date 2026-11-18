@@ -57,6 +57,7 @@ import com.falcon.tripingly.core.designsystem.component.DropdownAction
 import com.falcon.tripingly.core.designsystem.component.NewIndicator
 import com.falcon.tripingly.core.designsystem.component.PrimaryButton
 import com.falcon.tripingly.core.designsystem.component.SecondaryButton
+import com.falcon.tripingly.core.designsystem.component.skeleton
 import com.falcon.tripingly.core.designsystem.component.skeletonText
 import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
 import com.falcon.tripingly.core.designsystem.theme.spacing
@@ -184,6 +185,7 @@ private fun RoleTag(isOwner: Boolean) {
     Box(
         contentAlignment = Alignment.Center,
         modifier = Modifier
+            .skeleton(CircleShape)
             .clip(CircleShape)
             .background(if (isOwner) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainerHigh)
             .padding(horizontal = MaterialTheme.spacing.small + MaterialTheme.spacing.extraSmall, vertical = MaterialTheme.spacing.extraSmall),
@@ -224,10 +226,10 @@ private fun MemberMenu(user: UserSummary, onRemove: () -> Unit) {
 @Composable
 internal fun JoinRequestRow(request: JoinRequest, detail: String, isAnswering: Boolean, onAccept: () -> Unit, onDecline: () -> Unit, modifier: Modifier = Modifier) {
     PersonRow(user = request.user, detail = detail, modifier = modifier) {
-        OutlinedIconButton(onClick = onDecline, enabled = !isAnswering) {
+        OutlinedIconButton(onClick = onDecline, enabled = !isAnswering, modifier = Modifier.skeleton(CircleShape)) {
             Icon(Icons.Default.Close, contentDescription = stringResource(Res.string.members_join_decline))
         }
-        FilledIconButton(onClick = onAccept, enabled = !isAnswering) {
+        FilledIconButton(onClick = onAccept, enabled = !isAnswering, modifier = Modifier.skeleton(CircleShape)) {
             Icon(Icons.Default.Check, contentDescription = stringResource(Res.string.members_join_accept))
         }
     }
@@ -262,6 +264,7 @@ internal fun FriendFace(friend: UserSummary, onAdd: () -> Unit, modifier: Modifi
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
                     .size(FaceBadge)
+                    .skeleton(CircleShape)
                     .background(MaterialTheme.colorScheme.surfaceContainerLowest, CircleShape)
                     .padding(FaceBadgeRing)
                     .background(MaterialTheme.colorScheme.primary, CircleShape)
