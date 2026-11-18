@@ -43,6 +43,7 @@ internal fun NearPlaceCard(place: MapPlace, subtitle: String, dayNumber: Int?, i
         shape = MaterialTheme.shapes.medium,
         // The sheet's own glass colour, so the places stand out of the shaded card in both themes.
         color = GlassDefaults.opaqueTint,
+        contentColor = MaterialTheme.colorScheme.onSurface,
         border = BorderStroke(SelectedEdge, AlongTheWayPinColor).takeIf { isSelected },
         modifier = modifier.widthIn(max = AlongCardMaxWidth),
     ) {

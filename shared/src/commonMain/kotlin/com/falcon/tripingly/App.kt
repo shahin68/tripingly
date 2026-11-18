@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -69,7 +70,12 @@ fun App() {
     setSingletonImageLoaderFactory { imageLoader }
     TripinglyTheme {
         // Links (legal documents and others) open in an in-app browser, not the external one.
-        CompositionLocalProvider(LocalUriHandler provides rememberInAppUriHandler()) {
+        // Text and icons without a colour of their own take the background's "on" colour everywhere, also where no
+        // Surface, Scaffold or sheet sets one, so nothing falls back to black in dark mode.
+        CompositionLocalProvider(
+            LocalUriHandler provides rememberInAppUriHandler(),
+            LocalContentColor provides MaterialTheme.colorScheme.onBackground,
+        ) {
             // Every screen's errors and notes show in one floating banner (see MessageBanner).
             // The window behind is the theme's background too: a screen shrinking back under another shows no edge.
             Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
