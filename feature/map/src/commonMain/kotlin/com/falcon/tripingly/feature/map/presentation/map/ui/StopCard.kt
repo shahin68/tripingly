@@ -187,12 +187,16 @@ internal fun imagePosition(count: Int, page: Int): String? =
  * banner the line's own colour).
  */
 @Composable
-internal fun stopSubtitle(card: StopCardState, numberColor: Color = Color.Unspecified, position: String? = null): AnnotatedString {
+internal fun stopSubtitle(card: StopCardState, numberColor: Color = Color.Unspecified, position: String? = null, withIcon: Boolean = false): AnnotatedString {
     val number = stringResource(Res.string.map_stop_number, card.stop.orderNumber)
     val type = card.category?.let { stringResource(it.label()) }
     return buildAnnotatedString {
         withStyle(SpanStyle(fontWeight = FontWeight.ExtraBold, color = numberColor)) { append(number) }
-        type?.let { append(" · $it") }
+        type?.let {
+            append(" · ")
+            if (withIcon) appendCategoryIcon()
+            append(it)
+        }
         position?.let { append(" · $it") }
     }
 }

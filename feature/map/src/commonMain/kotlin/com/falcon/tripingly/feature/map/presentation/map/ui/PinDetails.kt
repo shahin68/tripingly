@@ -1,6 +1,15 @@
 package com.falcon.tripingly.feature.map.presentation.map.ui
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.text.InlineTextContent
+import androidx.compose.foundation.text.appendInlineContent
+import androidx.compose.ui.text.Placeholder
+import androidx.compose.ui.text.PlaceholderVerticalAlign
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.unit.em
+import com.falcon.tripingly.core.designsystem.component.icon
+import com.falcon.tripingly.core.model.place.PlaceCategory
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -74,7 +83,8 @@ internal fun StopDetailsContent(card: StopCardState, onAction: (MapAction) -> Un
     val showPhotos = { onAction(MapAction.StopCard.OpenPhotos) }
     PinDetails(
         title = stop.title.asString(),
-        subtitle = stopSubtitle(card, MaterialTheme.colorScheme.onSurface),
+        subtitle = stopSubtitle(card, MaterialTheme.colorScheme.onSurface, withIcon = true),
+        category = card.category,
         action = pinAction(
             onDelete = { onAction(MapAction.Plan.RemoveStop(stop.id)) }.takeIf { stop.canDelete },
             onAdd = { onAction(MapAction.StopCard.Add) }.takeIf { card.add != null },
@@ -115,7 +125,11 @@ internal fun StopDetailsContent(card: StopCardState, onAction: (MapAction) -> Un
 internal fun PlaceDetailsContent(card: PlaceCardState, onAction: (MapAction) -> Unit, onClose: () -> Unit, photoStrip: @Composable () -> Unit) {
     PinDetails(
         title = card.place.name,
-        subtitle = AnnotatedString(card.address ?: stringResource(card.place.category.label())),
+        subtitle = card.address?.let(::AnnotatedString) ?: buildAnnotatedString {
+            appendCategoryIcon()
+            append(stringResource(card.place.category.label()))
+        },
+        category = card.place.category.takeIf { card.address == null },
         action = pinAction(
             onDelete = null,
             onAdd = { onAction(MapAction.PlaceCard.Add) }.takeIf { card.add != null },
@@ -153,6 +167,7 @@ internal fun PlaceDetailsContent(card: PlaceCardState, onAction: (MapAction) -> 
 private fun PinDetails(
     title: String,
     subtitle: AnnotatedString,
+    category: PlaceCategory?,
     action: JoinedButtonSlot?,
     onClose: () -> Unit,
     buttons: @Composable () -> Unit,
@@ -160,7 +175,7 @@ private fun PinDetails(
     facts: @Composable () -> Unit,
 ) {
     Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).windowInsetsPadding(WindowInsets.bottomSystemBar)) {
-        SheetHeader(title = title, subtitle = subtitle, onClose = onClose, joinedActions = listOfNotNull(action))
+        SheetHeader(title = title, subtitle = subtitle, onClose = onClose, subtitleInlineContent = categoryIconContent(category), joinedActions = listOfNotNull(action))
         Column(
             modifier = Modifier.padding(horizontal = MaterialTheme.spacing.large).padding(bottom = MaterialTheme.spacing.large),
             verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium),
@@ -246,4 +261,24 @@ private fun PinDetailsPreview() {
 @Composable
 private fun PinDetailsDarkPreview() {
     TripinglyTheme(darkTheme = true) { PinDetailsPreviewContent() }
+}
+
+private const val CATEGORY_ICON = "categoryIcon"
+
+/** The place type's small icon before its name in a subtitle; [categoryIconContent] draws it. */
+internal fun AnnotatedString.Builder.appendCategoryIcon() {
+    appendInlineContent(CATEGORY_ICON, "")
+    append("\u2009")
+}
+
+/** Draws [appendCategoryIcon]'s icon: [category]'s, in the default on-surface colour (light and dark). */
+@Composable
+private fun categoryIconContent(category: PlaceCategory?): Map<String, InlineTextContent> {
+    category ?: return emptyMap()
+    val tint = MaterialTheme.colorScheme.onSurface
+    return mapOf(
+        CATEGORY_ICON to InlineTextContent(Placeholder(1.2.em, 1.2.em, PlaceholderVerticalAlign.TextCenter)) {
+            Icon(category.icon, contentDescription = null, tint = tint, modifier = Modifier.fillMaxSize())
+        },
+    )
 }

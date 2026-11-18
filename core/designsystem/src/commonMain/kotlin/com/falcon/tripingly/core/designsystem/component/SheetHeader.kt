@@ -1,6 +1,7 @@
 package com.falcon.tripingly.core.designsystem.component
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.text.InlineTextContent
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -45,17 +46,18 @@ fun SheetHeader(
     joinedActions: List<JoinedButtonSlot> = emptyList(),
 ) = SheetHeaderContent(title, onClose, modifier, subtitle?.let(::AnnotatedString), closeEnabled, actions, joinedActions)
 
-/** A sheet's top with a styled [subtitle], e.g. a stop's "**Stop 2** · Café". */
+/** A sheet's top with a styled [subtitle], e.g. a stop's "**Stop 2** · Café", with [subtitleInlineContent] for its icons. */
 @Composable
 fun SheetHeader(
     title: String,
     subtitle: AnnotatedString,
     onClose: (() -> Unit)?,
     modifier: Modifier = Modifier,
+    subtitleInlineContent: Map<String, InlineTextContent> = emptyMap(),
     closeEnabled: Boolean = true,
     actions: @Composable RowScope.() -> Unit = {},
     joinedActions: List<JoinedButtonSlot> = emptyList(),
-) = SheetHeaderContent(title, onClose, modifier, subtitle, closeEnabled, actions, joinedActions)
+) = SheetHeaderContent(title, onClose, modifier, subtitle, closeEnabled, actions, joinedActions, subtitleInlineContent)
 
 @Composable
 private fun SheetHeaderContent(
@@ -66,6 +68,7 @@ private fun SheetHeaderContent(
     closeEnabled: Boolean,
     actions: @Composable RowScope.() -> Unit,
     joinedActions: List<JoinedButtonSlot>,
+    subtitleInlineContent: Map<String, InlineTextContent> = emptyMap(),
 ) {
     val joined = joinedActions.isNotEmpty() && onClose != null
     Row(
@@ -82,7 +85,7 @@ private fun SheetHeaderContent(
         Column(Modifier.weight(1f)) {
             Text(title, style = MaterialTheme.typography.titleLarge, maxLines = 3, overflow = TextOverflow.Ellipsis)
             subtitle?.let {
-                Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis, inlineContent = subtitleInlineContent)
             }
         }
         actions()
