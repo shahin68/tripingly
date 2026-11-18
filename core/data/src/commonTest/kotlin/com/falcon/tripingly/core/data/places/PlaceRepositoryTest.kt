@@ -162,7 +162,8 @@ class PlaceRepositoryTest {
         assertEquals("800", url.parameters["radiusMeters"])
         assertEquals("cafe", url.parameters["categories"])
         assertEquals("pin", url.parameters["excludePlaceId"])
-        assertEquals("30", url.parameters["limit"])
+        // How many, spread over the ring, is the server's call (APP_AROUND_MAX_PINS).
+        assertEquals(null, url.parameters["limit"])
         assertEquals(listOf("Café Central" to 120), around.places.map { it.place.name to it.distanceMeters })
         assertEquals(PlaceCategory.Cafe, around.places.single().place.category)
         assertEquals(listOf(CategoryCount(PlaceCategory.Cafe, 1), CategoryCount(PlaceCategory.Museum, 2)), around.counts)

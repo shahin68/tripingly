@@ -244,7 +244,7 @@ internal class DefaultPlaceRepository(
         }
 
     override suspend fun around(point: GeoPoint, radiusMeters: Int, categories: Set<PlaceCategory>, excludePlaceId: String?): AppResult<PlacesAround, DataError.Network> =
-        api.around(point.lat, point.lng, radiusMeters, categories.query(), excludePlaceId, AROUND_LIMIT).map { response ->
+        api.around(point.lat, point.lng, radiusMeters, categories.query(), excludePlaceId).map { response ->
             PlacesAround(
                 places = response.items.map { item ->
                     PlaceAround(
@@ -305,8 +305,6 @@ internal class DefaultPlaceRepository(
         const val MAX_QUERY_LENGTH = 100
         const val DESTINATION_SCOPE = "destination"
         const val NEARBY_PAGE_SIZE = 20
-        // Around a pin: the server's default, as many as the card's row shows in a few swipes.
-        const val AROUND_LIMIT = 30
         // The server's limit of squares per request.
         const val MAX_SQUARES_PER_REQUEST = 16
         // A square is about four map tiles a side; 200 (the server's most) draws them about as densely as
