@@ -279,6 +279,7 @@ private fun AddPeoplePage(state: State, search: SearchState, onAction: (Action) 
         AppTextField(
             state = search.query,
             placeholder = stringResource(Res.string.members_search_hint),
+            onTextChange = { onAction(Action.Search.QueryChanged(it)) },
             style = AppTextFieldStyle.Search,
             modifier = Modifier.padding(horizontal = MaterialTheme.spacing.medium).fillMaxWidth().focusRequester(focus),
         )

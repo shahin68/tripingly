@@ -91,6 +91,7 @@ class TripMembersViewModelTest {
         val anna = viewModel.uiState.value.friends!!.first()
 
         viewModel.onAction(Action.AddPerson(anna))
+        runCurrent()
 
         // On the trip before the server answers, out of the friends, with Undo offered.
         var state = viewModel.uiState.value
@@ -102,6 +103,7 @@ class TripMembersViewModelTest {
 
         viewModel.onAction(Action.DismissAdded)
         viewModel.onAction(Action.Undo(anna))
+        runCurrent()
         state = viewModel.uiState.value
         assertEquals(1, state.members.size)
         assertEquals(listOf("anna", "jonas.k", "lena"), state.friends?.map { it.username })
@@ -118,6 +120,7 @@ class TripMembersViewModelTest {
 
         viewModel.onAction(Action.AddPerson(anna))
         viewModel.onAction(Action.Undo(anna))
+        runCurrent()
         assertEquals(1, viewModel.uiState.value.members.size)
         advanceUntilIdle()
 
@@ -130,14 +133,15 @@ class TripMembersViewModelTest {
         val viewModel = viewModel(newTrip())
         advanceUntilIdle()
 
+        // The fake answers at once; showing them before the answer is covered by the test above.
         viewModel.onAction(Action.AddPerson(UserSummary("u-x", "unknown", "Nobody")))
-        assertEquals(2, viewModel.uiState.value.members.size)
         advanceUntilIdle()
 
         val state = viewModel.uiState.value
         assertEquals(1, state.members.size)
         assertNull(state.added)
-        assertEquals(Res.string.members_error_add, assertIs<UiText.Resource>(state.message).resource)
+        // What failed, then why.
+        assertEquals(Res.string.members_error_add, assertIs<UiText.Resource>(assertIs<UiText.Joined>(state.message).first).resource)
     }
 
     @Test
@@ -171,6 +175,7 @@ class TripMembersViewModelTest {
         advanceUntilIdle()
 
         viewModel.onAction(Action.RemoveMember(viewModel.uiState.value.members[1].user))
+        runCurrent()
         assertEquals(1, viewModel.uiState.value.members.size)
         advanceUntilIdle()
 
@@ -202,6 +207,7 @@ class TripMembersViewModelTest {
         viewModel.onAction(Action.Search.Open)
         runCurrent()
         viewModel.uiState.value.search!!.query.setTextAndPlaceCursorAtEnd("@mar")
+        viewModel.onAction(Action.Search.QueryChanged("@mar"))
         runCurrent()
         advanceTimeBy(100)
         assertTrue(viewModel.uiState.value.search!!.results.isEmpty())
@@ -209,6 +215,7 @@ class TripMembersViewModelTest {
 
         assertEquals(listOf("marton"), viewModel.uiState.value.search!!.results.map { it.username })
         viewModel.onAction(Action.Search.Close)
+        runCurrent()
         assertNull(viewModel.uiState.value.search)
     }
 

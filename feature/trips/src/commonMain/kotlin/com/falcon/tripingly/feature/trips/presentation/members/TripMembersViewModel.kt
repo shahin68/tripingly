@@ -2,7 +2,6 @@ package com.falcon.tripingly.feature.trips.presentation.members
 
 import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.runtime.Immutable
-import androidx.compose.runtime.snapshotFlow
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.falcon.tripingly.core.common.error.DataError
@@ -40,7 +39,6 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.receiveAsFlow
@@ -113,7 +111,11 @@ class TripMembersViewModel(
                 is Action.JoinRequests.Decline -> answerJoinRequest(action.request.id, isAccept = false) { tripRepository.declineJoinRequest(tripId, it) }
             }
             Action.ShareInvite -> shareInvite()
-            Action.Search.Open -> openSearch()
+            Action.Search.Open -> {
+                searchJob?.cancel()
+                ui.update { it.copy(search = SearchState()) }
+            }
+            is Action.Search.QueryChanged -> search(action.query)
             Action.Search.Close -> {
                 searchJob?.cancel()
                 ui.update { it.copy(search = null) }
@@ -240,22 +242,19 @@ class TripMembersViewModel(
     }
 
     /** The Add people page: friends match as you type; anyone else is asked for once typing pauses. */
-    private fun openSearch() {
-        val search = SearchState()
-        ui.update { it.copy(search = search) }
+    private fun search(text: String) {
+        val query = text.trim().removePrefix("@")
         searchJob?.cancel()
+        if (query.length < UserRepository.MIN_SEARCH_LENGTH) {
+            updateSearch { it.copy(results = persistentListOf(), isLoading = false) }
+            return
+        }
         searchJob = viewModelScope.launch {
-            snapshotFlow { search.query.text.trim().removePrefix("@").toString() }.collectLatest { query ->
-                if (query.length < UserRepository.MIN_SEARCH_LENGTH) {
-                    updateSearch { it.copy(results = persistentListOf(), isLoading = false) }
-                    return@collectLatest
-                }
-                delay(SEARCH_DEBOUNCE_MILLIS)
-                updateSearch { it.copy(isLoading = true) }
-                val result = userRepository.search(query)
-                updateSearch { it.copy(results = (result as? AppResult.Success)?.data?.toImmutableList() ?: it.results, isLoading = false) }
-                if (result is AppResult.Error) ui.update { it.copy(message = result.error.toUiText(Res.string.members_error_search)) }
-            }
+            delay(SEARCH_DEBOUNCE_MILLIS)
+            updateSearch { it.copy(isLoading = true) }
+            val result = userRepository.search(query)
+            updateSearch { it.copy(results = (result as? AppResult.Success)?.data?.toImmutableList() ?: it.results, isLoading = false) }
+            if (result is AppResult.Error) ui.update { it.copy(message = result.error.toUiText(Res.string.members_error_search)) }
         }
     }
 
@@ -310,7 +309,7 @@ class TripMembersViewModel(
         val answeringIds: ImmutableSet<String> = persistentSetOf(),
     )
 
-    /** The Add people page: what's typed, and the people the server found for it. */
+    /** The Add people page: what's typed (each change comes back as [Action.Search.QueryChanged]), and the people the server found for it. */
     @Immutable
     data class SearchState(
         val query: TextFieldState = TextFieldState(),
@@ -349,6 +348,9 @@ class TripMembersViewModel(
         sealed interface Search : Action {
             data object Open : Search
             data object Close : Search
+
+            /** The Add people field changed. */
+            data class QueryChanged(val query: String) : Search
         }
     }
 
