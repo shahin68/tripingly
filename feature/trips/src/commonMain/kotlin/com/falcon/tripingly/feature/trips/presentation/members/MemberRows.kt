@@ -24,8 +24,7 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Link
 import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material.icons.outlined.PersonRemove
 import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -40,16 +39,21 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.clickable
+import com.falcon.tripingly.core.designsystem.component.AppDropdownMenu
 import com.falcon.tripingly.core.designsystem.component.AvatarCircle
 import com.falcon.tripingly.core.designsystem.component.AvatarSize
 import com.falcon.tripingly.core.designsystem.component.ButtonSize
+import com.falcon.tripingly.core.designsystem.component.DropdownAction
 import com.falcon.tripingly.core.designsystem.component.NewIndicator
 import com.falcon.tripingly.core.designsystem.component.PrimaryButton
 import com.falcon.tripingly.core.designsystem.component.SecondaryButton
@@ -165,7 +169,7 @@ internal fun PersonRow(
 internal fun MemberRow(member: TripMember, canRemove: Boolean, onRemove: () -> Unit, modifier: Modifier = Modifier, reserveMenu: Boolean = canRemove) {
     val isOwner = member.role == TripRole.OWNER
     PersonRow(user = member.user, detail = "@${member.user.username}", modifier = modifier) {
-        RoleTag(stringResource(if (isOwner) Res.string.members_role_owner else Res.string.members_role_editor), isOwner)
+        RoleTag(isOwner)
         when {
             canRemove -> MemberMenu(member.user, onRemove)
             // Every tag ends at the same place, with or without ⋮ after it.
@@ -174,16 +178,30 @@ internal fun MemberRow(member: TripMember, canRemove: Boolean, onRemove: () -> U
     }
 }
 
+/** Owner or Editor; both labels are laid out in every tag, so the two pills are the same size in every language. */
 @Composable
-private fun RoleTag(text: String, isOwner: Boolean) {
-    Text(
-        text = text,
-        style = MaterialTheme.typography.labelMedium,
-        color = if (isOwner) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
+private fun RoleTag(isOwner: Boolean) {
+    Box(
+        contentAlignment = Alignment.Center,
         modifier = Modifier
             .clip(CircleShape)
             .background(if (isOwner) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainerHigh)
             .padding(horizontal = MaterialTheme.spacing.small + MaterialTheme.spacing.extraSmall, vertical = MaterialTheme.spacing.extraSmall),
+    ) {
+        val color = if (isOwner) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant
+        RoleLabel(stringResource(Res.string.members_role_owner), color, isShown = isOwner)
+        RoleLabel(stringResource(Res.string.members_role_editor), color, isShown = !isOwner)
+    }
+}
+
+/** A hidden label still takes its room (and isn't read out), so it only sets the tag's width. */
+@Composable
+private fun RoleLabel(text: String, color: Color, isShown: Boolean) {
+    Text(
+        text = text,
+        style = MaterialTheme.typography.labelMedium,
+        color = color,
+        modifier = if (isShown) Modifier else Modifier.alpha(0f).clearAndSetSemantics {},
     )
 }
 
@@ -194,15 +212,11 @@ private fun MemberMenu(user: UserSummary, onRemove: () -> Unit) {
         IconButton(onClick = { isOpen = true }) {
             Icon(Icons.Default.MoreVert, contentDescription = stringResource(Res.string.members_more, user.displayName), tint = MaterialTheme.colorScheme.onSurfaceVariant)
         }
-        DropdownMenu(expanded = isOpen, onDismissRequest = { isOpen = false }) {
-            DropdownMenuItem(
-                text = { Text(stringResource(Res.string.members_remove), color = MaterialTheme.colorScheme.error) },
-                onClick = {
-                    isOpen = false
-                    onRemove()
-                },
-            )
-        }
+        AppDropdownMenu(
+            expanded = isOpen,
+            onDismissRequest = { isOpen = false },
+            actions = listOf(DropdownAction(stringResource(Res.string.members_remove), isDestructive = true, icon = Icons.Outlined.PersonRemove, onClick = onRemove)),
+        )
     }
 }
 
