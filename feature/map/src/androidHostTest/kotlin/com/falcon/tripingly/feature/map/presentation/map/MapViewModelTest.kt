@@ -2817,7 +2817,8 @@ class MapViewModelTest {
         viewModel.uiState.value.search!!.query.setTextAndPlaceCursorAtEnd("steph")
         viewModel.cameraCommands.test {
             viewModel.onAction(MapAction.Search.Submit)
-            testScheduler.advanceUntilIdle()
+            // Not until idle: the camera gives up waiting for the neighbourhood after a while.
+            testScheduler.runCurrent()
             // Nothing named so around Paris: the camera goes to the nearest one, a few streets around it.
             val move = assertIs<CameraCommand.MoveTo>(expectMostRecentItem())
             assertEquals(stephansdom.location.lat, move.target.latitude)
@@ -2825,7 +2826,7 @@ class MapViewModelTest {
 
             // Its neighbourhood loads, and the camera fits every result there.
             viewModel.onAction(MapAction.MapView.CameraRest(move.target, move.zoom, GeoBounds(48.19, 16.35, 48.23, 16.40)))
-            testScheduler.advanceUntilIdle()
+            testScheduler.runCurrent()
             val fit = assertIs<CameraCommand.Fit>(expectMostRecentItem())
             assertTrue(stephansdom.location.lat in fit.bounds.south..fit.bounds.north && stephansdom.location.lng in fit.bounds.west..fit.bounds.east)
         }
