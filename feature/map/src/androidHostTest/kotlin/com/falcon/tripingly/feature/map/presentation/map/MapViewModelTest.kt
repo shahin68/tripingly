@@ -1525,6 +1525,7 @@ class MapViewModelTest {
         // Tapped: on at once, with the card's count, and it stays on while the server takes its time.
         social.likeGate = CompletableDeferred()
         viewModel.onAction(MapAction.Header.ToggleLike)
+        testScheduler.runCurrent()
         assertEquals(true, viewModel.uiState.value.header.heartLiked)
         assertEquals(5, viewModel.uiState.value.header.card.likeCount)
         testScheduler.advanceUntilIdle()
@@ -1541,8 +1542,11 @@ class MapViewModelTest {
 
         // Refused: back to what the server last said, with a message.
         social.likeError = DataError.Network.ServerError
+        social.likeGate = CompletableDeferred()
         viewModel.onAction(MapAction.Header.ToggleLike)
+        testScheduler.runCurrent()
         assertEquals(true, viewModel.uiState.value.header.heartLiked)
+        social.likeGate?.complete(Unit)
         testScheduler.advanceUntilIdle()
         assertEquals(false, viewModel.uiState.value.header.heartLiked)
         assertNotNull(viewModel.uiState.value.message)
