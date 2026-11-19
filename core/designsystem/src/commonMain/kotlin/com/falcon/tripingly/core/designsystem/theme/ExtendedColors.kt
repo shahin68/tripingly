@@ -40,9 +40,9 @@ data class ExtendedColors(
     val avatar: Color,
     val onAvatar: Color,
     /**
-     * The one invitation a screen pushes (`GradientButton`, Ask to join on someone's trip): the brand green
-     * ([gradientStart]) warming through a pink ([gradientMiddle]) into orange ([gradientEnd]), [onGradient] on it, edged
-     * in [gradientEdge] like glass (Shahin, 2026-11-19).
+     * The one invitation a screen pushes (`GradientButton`, Ask to join on someone's trip): [gradientStart] (a hint of
+     * teal in light, soft green in dark) warming through a pink ([gradientMiddle]) into orange ([gradientEnd]),
+     * [onGradient] on it, edged in [gradientEdge] like glass (Shahin, 2026-11-19).
      */
     val gradientStart: Color,
     val gradientMiddle: Color,
