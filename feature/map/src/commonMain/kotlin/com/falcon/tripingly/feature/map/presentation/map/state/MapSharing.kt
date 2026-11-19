@@ -14,6 +14,7 @@ import com.falcon.tripingly.core.ui.toUiText
 import com.falcon.tripingly.feature.map.generated.resources.Res
 import com.falcon.tripingly.feature.map.generated.resources.map_error_cancel_join
 import com.falcon.tripingly.feature.map.generated.resources.map_error_join
+import com.falcon.tripingly.feature.map.generated.resources.map_error_leave
 import com.falcon.tripingly.feature.map.generated.resources.map_error_report
 import com.falcon.tripingly.feature.map.generated.resources.map_error_save_trip
 import com.falcon.tripingly.feature.map.generated.resources.map_error_unsave_trip
@@ -31,6 +32,8 @@ internal class MapSharing(
     private val context: MapContext,
     private val tripRepository: TripRepository,
     private val socialRepository: SocialRepository,
+    /** Back to where the trip was opened from, once I left it. */
+    private val onLeft: () -> Unit,
 ) {
     /** Someone else's trip goes into My Trips (read-only, the owner's live trip), or out again. */
     fun toggleSave() {
@@ -62,6 +65,19 @@ internal class MapSharing(
         if (context.model.value.isUpdatingSharing) return
         context.update { it.copy(isAskingToJoin = false) }
         update(Res.string.map_join_withdrawn, Res.string.map_error_cancel_join) { tripRepository.cancelJoinRequest(context.tripId) }
+    }
+
+    /** Leave trip asks first; nothing changes until I agree, then the map closes once the server agreed. */
+    fun askToLeave() = context.update { it.copy(dialog = Dialog.LeaveTrip) }
+
+    fun leave() {
+        if (context.model.value.isUpdatingSharing) return
+        context.update { it.copy(dialog = null, isUpdatingSharing = true) }
+        context.scope.launch {
+            val result = tripRepository.leaveTrip(context.tripId)
+            context.update { it.copy(isUpdatingSharing = false, message = (result as? AppResult.Error)?.error?.toUiText(Res.string.map_error_leave)) }
+            if (result is AppResult.Success) onLeft()
+        }
     }
 
     fun report(target: ReportTarget, id: String) = context.update { it.copy(dialog = Dialog.Report(target, id)) }

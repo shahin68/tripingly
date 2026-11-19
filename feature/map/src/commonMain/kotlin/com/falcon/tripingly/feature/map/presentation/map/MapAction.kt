@@ -64,6 +64,10 @@ sealed interface MapAction {
         data object ShowJoinRequests : Header
         data object OpenOwnerProfile : Header
         data object ReportTrip : Header
+        /** Shares the trip's name and dates through the system's share sheet. */
+        data object ShareTrip : Header
+        /** An editor leaves the trip, once they agree. */
+        data object LeaveTrip : Header
     }
 
     sealed interface Search : MapAction {

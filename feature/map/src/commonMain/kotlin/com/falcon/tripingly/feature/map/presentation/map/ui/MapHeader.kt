@@ -73,6 +73,10 @@ import com.falcon.tripingly.feature.map.generated.resources.map_back
 import com.falcon.tripingly.feature.map.generated.resources.map_cancel_join
 import com.falcon.tripingly.feature.map.generated.resources.map_join_trip
 import com.falcon.tripingly.feature.map.generated.resources.map_report_trip
+import com.falcon.tripingly.feature.map.generated.resources.map_share_trip
+import com.falcon.tripingly.feature.map.generated.resources.map_leave_trip
+import androidx.compose.material.icons.automirrored.outlined.Logout
+import androidx.compose.material.icons.outlined.Share
 import com.falcon.tripingly.feature.map.generated.resources.map_save_trip
 import com.falcon.tripingly.feature.map.generated.resources.map_search
 import com.falcon.tripingly.feature.map.generated.resources.map_search_placeholder
@@ -190,7 +194,7 @@ private const val SEARCH_MOTION_MILLIS = 300
 private fun tripMenuActions(header: HeaderState, onAction: (MapAction) -> Unit): List<DropdownAction> {
     // ⋮ is about the whole trip: who is on it, saving it, asking to join, reporting it. The open day's plan has its own ⋯
     // in the plan sheet, a day comes with + by the day tabs and goes with a long press on its tab (Shahin, 2026-11-19).
-    // The owner's profile opens from their face in the title.
+    // The owner's profile opens from their face in the title. Share trip for everyone, Leave trip for editors.
     val haptics = rememberHaptics()
     val members = header.members?.let {
         DropdownAction(
@@ -199,6 +203,12 @@ private fun tripMenuActions(header: HeaderState, onAction: (MapAction) -> Unit):
             badge = it.requestCount.takeIf { count -> count > 0 }?.toString(),
         ) { onAction(MapAction.Header.OpenMembers) }
     }
+    val share = DropdownAction(stringResource(Res.string.map_share_trip), icon = Icons.Outlined.Share) { onAction(MapAction.Header.ShareTrip) }
+        .takeIf { header.canShare }
+    // An editor's way out; the owner deletes the trip from My Trips.
+    val leave = DropdownAction(stringResource(Res.string.map_leave_trip), isDestructive = true, icon = Icons.AutoMirrored.Outlined.Logout) {
+        onAction(MapAction.Header.LeaveTrip)
+    }.takeIf { header.canLeave }
     val viewer = header.viewerMenu?.let { menu ->
         listOfNotNull(
             DropdownAction(
@@ -219,7 +229,7 @@ private fun tripMenuActions(header: HeaderState, onAction: (MapAction) -> Unit):
             DropdownAction(stringResource(Res.string.map_report_trip), isDestructive = true, icon = Icons.Outlined.Flag) { onAction(MapAction.Header.ReportTrip) },
         )
     }.orEmpty()
-    return listOfNotNull(members) + viewer
+    return listOfNotNull(members, share) + viewer + listOfNotNull(leave)
 }
 
 @Composable

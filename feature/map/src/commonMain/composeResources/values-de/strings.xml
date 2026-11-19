@@ -294,4 +294,12 @@
     <string name="map_around_close">In der Nähe schließen</string>
     <string name="map_around_none">Keine Orte in diesem Kreis.</string>
     <string name="map_error_around">Die Orte in der Nähe konnten nicht geladen werden.</string>
+    <string name="map_share_trip">Reise teilen</string>
+    <string name="map_leave_trip">Reise verlassen</string>
+    <string name="map_leave_trip_title">Reise verlassen?</string>
+    <string name="map_leave_trip_message">Du kannst „%1$s“ dann nicht mehr sehen oder bearbeiten. Die Besitzerin oder der Besitzer kann dich wieder hinzufügen.</string>
+    <string name="map_leave_trip_button">Verlassen</string>
+    <string name="map_share_trip_text">Schau dir diese Reise an: %1$s (%2$s)!</string>
+    <string name="map_share_trip_text_no_dates">Schau dir diese Reise an: %1$s!</string>
+    <string name="map_error_leave">Die Reise konnte nicht verlassen werden.</string>
 </resources>

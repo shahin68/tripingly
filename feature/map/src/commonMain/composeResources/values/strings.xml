@@ -295,4 +295,12 @@
     <string name="map_around_close">Close Around</string>
     <string name="map_around_none">No places in this circle.</string>
     <string name="map_error_around">Couldn’t load the places around.</string>
+    <string name="map_share_trip">Share trip</string>
+    <string name="map_leave_trip">Leave trip</string>
+    <string name="map_leave_trip_title">Leave trip?</string>
+    <string name="map_leave_trip_message">You won’t see or edit “%1$s” anymore. The owner can add you again.</string>
+    <string name="map_leave_trip_button">Leave</string>
+    <string name="map_share_trip_text">Check out this trip: %1$s (%2$s)!</string>
+    <string name="map_share_trip_text_no_dates">Check out this trip: %1$s!</string>
+    <string name="map_error_leave">Couldn’t leave the trip.</string>
 </resources>

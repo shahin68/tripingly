@@ -149,6 +149,8 @@ internal class MapStateMapper(
                 hasNewJoinRequests = model.joinRequesters.any { it.id !in model.dismissedJoinRequesterIds },
             ),
             members = details?.members?.takeIf { it.isNotEmpty() }?.let { MembersEntry(it.size, details.pendingJoinRequestCount) },
+            canShare = trip != null,
+            canLeave = role == TripRole.EDITOR,
             isLoading = days.isEmpty() && model.isLoadingTrip,
             isBusy = model.isSaving || model.isUpdatingSharing,
             viewerMenu = trip?.takeIf { role == TripRole.VIEWER }?.let {
@@ -436,6 +438,7 @@ internal class MapStateMapper(
     }
 
     private fun dialog(): MapDialog? = when (val dialog = model.dialog) {
+        Dialog.LeaveTrip -> MapDialog.LeaveTrip(details?.trip?.name.orEmpty())
         Dialog.ClearDay -> MapDialog.ClearDay(dayNumber ?: 1, stops.size)
         Dialog.DeleteDay -> MapDialog.DeleteDay(dayNumber ?: 1, stops.size)
         is Dialog.DeleteOthersStop -> stops.firstOrNull { it.id == dialog.markerId }?.let { MapDialog.DeleteOthersStop(it.title) }

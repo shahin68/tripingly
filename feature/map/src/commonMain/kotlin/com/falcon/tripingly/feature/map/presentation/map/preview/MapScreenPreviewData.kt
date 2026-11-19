@@ -188,6 +188,7 @@ internal data class MapHeaderPreview(val header: HeaderState, val search: Search
 /** Every dialog of the map screen. */
 internal class MapDialogPreviewStates : PreviewParameterProvider<MapDialog> {
     override val values = sequenceOf(
+        MapDialog.LeaveTrip("Summer in Lisbon"),
         MapDialog.ClearDay(dayNumber = 2, stopCount = 4),
         MapDialog.DeleteDay(dayNumber = 3, stopCount = 1),
         MapDialog.DeleteOthersStop(UiText.Server("Palais Pereira")),

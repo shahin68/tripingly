@@ -326,6 +326,8 @@ internal sealed interface CopyItem {
 }
 
 internal sealed interface Dialog {
+    /** An editor leaves the trip once they agree. */
+    data object LeaveTrip : Dialog
     data object ClearDay : Dialog
     data object DeleteDay : Dialog
     /** The owner deletes a stop someone else added, with everything on it, once they agree. */

@@ -1296,6 +1296,43 @@ class MapViewModelTest {
     }
 
     @Test
+    fun `an editor leaves the trip from the menu only once they agree, then the map closes`() = runTest(testDispatcher) {
+        val shared = backend.observeTrip(trip.trip.id).first()!!
+        backend.seed(shared.copy(trip = shared.trip.copy(role = TripRole.EDITOR)))
+        val viewModel = viewModel()
+        testScheduler.advanceUntilIdle()
+        assertEquals(true, viewModel.uiState.value.header.canLeave)
+        assertEquals(true, viewModel.uiState.value.header.canShare)
+
+        viewModel.events.test {
+            viewModel.onAction(MapAction.Header.ShareTrip)
+            assertEquals(MapEvent.ShareTrip(trip.trip.name, trip.trip.startDate, trip.trip.endDate), awaitItem())
+
+            viewModel.onAction(MapAction.Header.LeaveTrip)
+            testScheduler.advanceUntilIdle()
+            assertEquals(MapDialog.LeaveTrip(trip.trip.name), viewModel.uiState.value.dialog)
+            // Nothing changes before I agree.
+            viewModel.onAction(MapAction.Dialog.DismissConfirm)
+            testScheduler.advanceUntilIdle()
+            assertNotNull(backend.observeTrip(trip.trip.id).first())
+
+            viewModel.onAction(MapAction.Header.LeaveTrip)
+            viewModel.onAction(MapAction.Dialog.Confirm)
+            testScheduler.advanceUntilIdle()
+            assertNull(backend.observeTrip(trip.trip.id).first())
+            assertEquals(MapEvent.NavigateBack, awaitItem())
+        }
+    }
+
+    @Test
+    fun `the owner can share the trip but not leave it`() = runTest(testDispatcher) {
+        val viewModel = viewModel()
+        testScheduler.advanceUntilIdle()
+        assertEquals(true, viewModel.uiState.value.header.canShare)
+        assertEquals(false, viewModel.uiState.value.header.canLeave)
+    }
+
+    @Test
     fun `the header shows the owner, and the trip card the short dates, members and whether it's public`() = runTest(testDispatcher) {
         backend.addMarker(trip.trip.id, trip.days[0].id, NewMarker("Owner's", GeoPoint(48.85, 2.35)))
         backend.addMarker(trip.trip.id, trip.days[0].id, NewMarker("Another editor's", GeoPoint(41.9, 12.49)))

@@ -119,7 +119,7 @@ class MapViewModel(
     )
     private val around = MapAround(context, placeRepository, ::hasRoutes, showAroundIsPro = { sendEvent(MapEvent.OpenPaywall) }, showWholePlan = { sendEvent(MapEvent.ShowWholePlan) })
     private val search = MapSearch(context, camera, selection, pins, placeRepository, routeTo = routes::routeToResult)
-    private val sharing = MapSharing(context, tripRepository, socialRepository)
+    private val sharing = MapSharing(context, tripRepository, socialRepository) { sendEvent(MapEvent.NavigateBack) }
     private val opening = MapOpening(context, camera, tripRepository, mapViews, ::hasRoutes, stopId, showMembers, showComments)
     private val joinRequests = MapJoinRequests(context, tripRepository, mapViews)
     private val addToTrip = MapAddToTrip(context, selection, tripRepository, markerRepository) { sendEvent(MapEvent.AddedToMyTrip) }
@@ -214,6 +214,8 @@ class MapViewModel(
             }
             is MapAction.Header.OpenOwnerProfile -> trip.value?.trip?.owner?.let { sendEvent(MapEvent.OpenProfile(it.username)) }
             is MapAction.Header.ReportTrip -> sharing.report(ReportTarget.Trip, context.tripId)
+            is MapAction.Header.ShareTrip -> trip.value?.trip?.let { sendEvent(MapEvent.ShareTrip(it.name, it.startDate, it.endDate)) }
+            is MapAction.Header.LeaveTrip -> sharing.askToLeave()
         }
     }
 
@@ -331,7 +333,7 @@ class MapViewModel(
 
     private fun onDialog(action: MapAction.Dialog) {
         when (action) {
-            is MapAction.Dialog.Confirm -> edits.confirm()
+            is MapAction.Dialog.Confirm -> if (model.dialog == Dialog.LeaveTrip) sharing.leave() else edits.confirm()
             is MapAction.Dialog.DeleteAnyway -> edits.deleteAnyway()
             is MapAction.Dialog.SendReport -> sharing.sendReport(action.reason)
             is MapAction.Dialog.ApplyBestOrder -> routes.applyBestOrder()

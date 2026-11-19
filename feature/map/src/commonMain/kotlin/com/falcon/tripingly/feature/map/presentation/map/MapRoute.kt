@@ -16,6 +16,13 @@ import com.falcon.tripingly.core.model.photo.Photo
 import com.falcon.tripingly.core.model.photo.PhotoOwner
 import com.falcon.tripingly.core.model.place.MapPlace
 import com.falcon.tripingly.core.ui.ObserveAsEvents
+import com.falcon.tripingly.core.common.util.DateUtils
+import com.falcon.tripingly.core.common.util.ShareManager
+import com.falcon.tripingly.feature.map.generated.resources.Res
+import com.falcon.tripingly.feature.map.generated.resources.map_share_trip_text
+import com.falcon.tripingly.feature.map.generated.resources.map_share_trip_text_no_dates
+import org.jetbrains.compose.resources.getString
+import org.koin.compose.koinInject
 import com.falcon.tripingly.feature.map.presentation.comments.StopCommentsRoute
 import com.falcon.tripingly.feature.map.presentation.map.ui.AddToTripSheet
 import com.falcon.tripingly.feature.map.presentation.map.ui.TransitStepsSheet
@@ -48,7 +55,8 @@ fun MapRoute(
     showComments: Boolean = false,
     // Keyed by trip: the view model store is shared across screens, and the class alone would
     // hand every trip the first trip's view model.
-    viewModel: MapViewModel = koinViewModel(key = "map:$tripId") { parametersOf(tripId, stopId, showMembers, showComments) }
+    viewModel: MapViewModel = koinViewModel(key = "map:$tripId") { parametersOf(tripId, stopId, showMembers, showComments) },
+    shareManager: ShareManager = koinInject(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val onAction = viewModel::onAction
@@ -75,6 +83,12 @@ fun MapRoute(
             MapEvent.OpenAppSettings -> locationPermission.openSettings()
             MapEvent.TurnOnLocation -> locationPermission.turnOnLocation()
             MapEvent.NavigateBack -> onNavigateBack()
+            is MapEvent.ShareTrip -> {
+                val dates = DateUtils.formatRange(event.startDate, event.endDate)
+                shareManager.share(
+                    if (dates != null) getString(Res.string.map_share_trip_text, event.name, dates) else getString(Res.string.map_share_trip_text_no_dates, event.name),
+                )
+            }
             is MapEvent.OpenProfile -> onOpenProfile(event.username)
             // A locked feature (street routes without Pro) is felt as a no before the paywall.
             MapEvent.OpenPaywall -> {

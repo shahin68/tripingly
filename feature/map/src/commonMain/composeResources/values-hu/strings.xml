@@ -294,4 +294,12 @@
     <string name="map_around_close">Környék bezárása</string>
     <string name="map_around_none">Ebben a körben nincs hely.</string>
     <string name="map_error_around">Nem sikerült betölteni a környék helyeit.</string>
+    <string name="map_share_trip">Utazás megosztása</string>
+    <string name="map_leave_trip">Kilépés az utazásból</string>
+    <string name="map_leave_trip_title">Kilépsz az utazásból?</string>
+    <string name="map_leave_trip_message">Ezután nem látod és nem szerkesztheted a(z) „%1$s” utazást. A tulajdonos újra hozzáadhat.</string>
+    <string name="map_leave_trip_button">Kilépés</string>
+    <string name="map_share_trip_text">Nézd meg ezt az utazást: %1$s (%2$s)!</string>
+    <string name="map_share_trip_text_no_dates">Nézd meg ezt az utazást: %1$s!</string>
+    <string name="map_error_leave">Nem sikerült kilépni az utazásból.</string>
 </resources>

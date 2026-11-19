@@ -85,6 +85,10 @@ data class HeaderState(
     val isBusy: Boolean = false,
     /** "Trip members · 4" at the top of the ⋮ menu, which opens the members sheet. */
     val members: MembersEntry? = null,
+    /** ⋮'s Share trip: the trip has loaded. */
+    val canShare: Boolean = false,
+    /** ⋮'s Leave trip: I'm an editor (the owner deletes the trip in My Trips instead). */
+    val canLeave: Boolean = false,
     /** Someone else's public trip: save it, ask to join, see its owner, report it. */
     val viewerMenu: ViewerMenu? = null,
     /**
@@ -490,6 +494,8 @@ sealed interface MapSheet {
 
 @Immutable
 sealed interface MapDialog {
+    /** Leave [tripName]: I won't see or edit it any more. */
+    data class LeaveTrip(val tripName: String) : MapDialog
     /** Clear the open day: [dayNumber] and its [stopCount] stops. */
     data class ClearDay(val dayNumber: Int, val stopCount: Int) : MapDialog
     data class DeleteDay(val dayNumber: Int, val stopCount: Int) : MapDialog
