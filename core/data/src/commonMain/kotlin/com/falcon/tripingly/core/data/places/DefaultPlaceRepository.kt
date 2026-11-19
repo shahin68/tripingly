@@ -87,8 +87,7 @@ internal class DefaultPlaceRepository(
                             location = location,
                             isTripinly = item.isTripinly,
                             hotCount = item.hotCount.toInt(),
-                            // GET /places/search doesn't send prominence. It only sizes pins, and a picked place is drawn as the selected pin.
-                            prominence = 0,
+                            prominence = item.prominence.toInt(),
                         )
                     },
                     osm = item.osmId?.let { osmId -> item.osmType?.let { OsmRef(it.toOsmType(), osmId) } },

@@ -6360,6 +6360,12 @@
           "hotCount": {
             "type": "number"
           },
+          "prominence": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 100,
+            "description": "How well known the place is (OSM/Wikipedia page views, as on map pins); 0 for photon"
+          },
           "type": {
             "type": "string",
             "nullable": true,
@@ -6395,6 +6401,7 @@
           "location",
           "isTripinly",
           "hotCount",
+          "prominence",
           "type",
           "address",
           "osmType",
