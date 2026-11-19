@@ -413,10 +413,11 @@ internal fun FoundPersonRow(
 internal fun InvitePill(isCreating: Boolean, onShare: () -> Unit, modifier: Modifier = Modifier) {
     // Floating over the cards: the app's glass, like the tabs' bar (no blur, nothing behind it is a blur source).
     GlassSurface(modifier = modifier.fillMaxWidth(), shape = CircleShape, blur = false) {
-        // Symmetric in the round pill: one padding all round, so the Share button (no touch margin) sits the same
-        // distance from the top, end and bottom edges (Shahin, 2026-11-19). One line each, so the pill keeps its height.
+        // Symmetric in the round pill: the Share button (no touch margin) sits the same distance from the top, end and
+        // bottom edges, and the link icon as far from the start as from the top (8 dp + the 8 dp it sits inside the
+        // button's height) (Shahin, 2026-11-19). One line each, so the pill keeps its height.
         Row(
-            modifier = Modifier.padding(MaterialTheme.spacing.small),
+            modifier = Modifier.padding(start = MaterialTheme.spacing.medium, top = MaterialTheme.spacing.small, end = MaterialTheme.spacing.small, bottom = MaterialTheme.spacing.small),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
         ) {
