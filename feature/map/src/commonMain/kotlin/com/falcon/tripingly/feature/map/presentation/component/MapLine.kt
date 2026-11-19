@@ -66,6 +66,18 @@ data class MapLinePart(val points: List<Coordinates>, val color: Color, val isDo
 internal fun MapLine.themed(): MapLine =
     if (style.color.isSpecified) this else copy(style = style.copy(color = MaterialTheme.extendedColors.stop))
 
+/** This line see-through at [alpha] (1: as it is): its colour, its rides' and its marks'. */
+internal fun MapLine.withAlpha(alpha: Float): MapLine = if (alpha >= 1f) this else copy(
+    style = style.copy(color = style.color.copy(alpha = alpha)),
+    parts = parts.map { it.copy(color = it.color.copy(alpha = alpha)) },
+    marks = marks.map { mark ->
+        when (mark) {
+            is LineMark.Ring -> mark.copy(color = mark.color.copy(alpha = alpha))
+            is LineMark.Badge -> mark.copy(color = mark.color.copy(alpha = alpha), textColor = mark.textColor.copy(alpha = alpha))
+        }
+    },
+)
+
 /**
  * A mark on a public transport line (the canvas's lines board, Shahin 2026-11-15): in place of the arrows, which show the
  * way on the other routes, each ride has its line's rounded badge halfway along, and a ring where it starts and ends.

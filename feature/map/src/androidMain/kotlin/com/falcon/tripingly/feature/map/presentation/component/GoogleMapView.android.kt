@@ -96,6 +96,8 @@ actual fun GoogleMapView(
     onAroundRadius: (meters: Int, isFinal: Boolean) -> Unit,
 ) {
     val (markers, placePins, pinDotBelowZoom, placeClusters, selectedPlace, line, isMyLocationEnabled) = layers
+    // Everything but the search results see-through while the map is searched by name.
+    val dimAlpha = layers.dimAlpha
     val cameraPositionState = rememberCameraPositionState {
         position = CameraPosition.fromLatLngZoom(LatLng(initialTarget.latitude, initialTarget.longitude), initialZoom)
     }
@@ -311,6 +313,7 @@ actual fun GoogleMapView(
             val pinIcons = remember(placeColor, hotSpotColor, density) { mutableMapOf<PlacePinLook, BitmapDescriptor>() }
             fun pinIcon(look: PlacePinLook) = pinIcons.getOrPutBounded(look, MAX_PIN_ICONS) {
                 val fill = when {
+                    look.isSearchResult -> SearchResultPinColor
                     look.isAlongTheWay -> AlongTheWayPinColor
                     look.isTripinly -> hotSpotColor
                     else -> placeColor
@@ -326,7 +329,7 @@ actual fun GoogleMapView(
                         size = look.size,
                         fill = fill,
                         iconColor = when {
-                            look.isAlongTheWay -> Color.White
+                            look.isSearchResult || look.isAlongTheWay -> Color.White
                             look.isTripinly -> onHotSpotColor
                             else -> onPlaceColor
                         },
@@ -374,8 +377,10 @@ actual fun GoogleMapView(
             // costly part, so a pin coming back (a pan back, the route switched off) just shows again.
             val hiddenPins = rememberHiddenPins(shownPins)
             (shownPins.map { it to true } + hiddenPins.map { it to false }).forEach { (pin, isShown) ->
-                val look = PlacePinLook(pin.place.category, pin.place.isTripinly, pin.size, photoId(pin.place, pin.photo), pin.isAlongTheWay)
+                val look = PlacePinLook(pin.place.category, pin.place.isTripinly, pin.size, photoId(pin.place, pin.photo), pin.isAlongTheWay, isSearchResult = pin.isSearchResult)
                 val dotLook = pin.dotLook()
+                // While the map is searched by name only its results stay clear.
+                val pinAlpha = if (pin.isSearchResult) 1f else dimAlpha
                 key(pin.place.id) {
                     // Places along the way show at once with their route (Shahin, 2026-11-10).
                     val fadeIn = remember { Animatable(if (pin.isAlongTheWay) 1f else 0f) }
@@ -398,7 +403,7 @@ actual fun GoogleMapView(
                             icon = pinIcon(look),
                             title = pin.place.name,
                             anchor = Offset(0.5f, 0.5f),
-                            alpha = fadeIn.value,
+                            alpha = fadeIn.value * pinAlpha,
                             visible = isShown && !pin.isDotAt(isDots),
                             zIndex = zIndex,
                             onClick = { onClick() },
@@ -410,7 +415,7 @@ actual fun GoogleMapView(
                             icon = pinIcon(dotLook),
                             title = pin.place.name,
                             anchor = Offset(0.5f, 0.5f),
-                            alpha = fadeIn.value,
+                            alpha = fadeIn.value * pinAlpha,
                             visible = isShown && pin.isDotAt(isDots),
                             zIndex = zIndex,
                             onClick = { onClick() },
@@ -428,6 +433,7 @@ actual fun GoogleMapView(
                             )
                         },
                         anchor = Offset(0.5f, 0.5f),
+                        alpha = dimAlpha,
                         zIndex = PLACE_PINS_Z,
                         onClick = {
                             haptics.tick()
@@ -439,7 +445,7 @@ actual fun GoogleMapView(
             }
 
             // Under every pin.
-            if (line != null && line.points.size > 1) MapLineView(line.themed())
+            if (line != null && line.points.size > 1) MapLineView(line.themed(), alpha = dimAlpha)
 
             // The tapped place, bigger and on top.
             selectedPlace?.let { place ->
@@ -453,6 +459,7 @@ actual fun GoogleMapView(
                                 SelectedPinSize,
                                 photoId(place, placePins.any { it.photo && it.place.id == place.id }),
                                 isAlongTheWay = placePins.any { it.isAlongTheWay && it.place.id == place.id },
+                                isSearchResult = placePins.any { it.isSearchResult && it.place.id == place.id },
                             ),
                         ),
                         title = place.name,
@@ -472,6 +479,7 @@ actual fun GoogleMapView(
                             BitmapDescriptorFactory.fromBitmap(drawRouteEndHalo(end.pinSize, end.color, density, layoutDirection).asAndroidBitmap())
                         },
                         anchor = Offset(0.5f, 0.5f),
+                        alpha = dimAlpha,
                         zIndex = ROUTE_END_Z,
                         // Only a mark: its pin above takes the taps.
                         onClick = { true },
@@ -504,6 +512,7 @@ actual fun GoogleMapView(
                         title = marker.title.asString(),
                         // The pin is a circle centered on the stop.
                         anchor = Offset(0.5f, 0.5f),
+                        alpha = dimAlpha,
                         // Above the places.
                         zIndex = 1f,
                         onClick = {
@@ -550,16 +559,19 @@ actual fun GoogleMapView(
     }
 }
 
-/** A line with rounded ends and arrows pointing the way; a streak runs along it once when it changes. */
+/**
+ * A line with rounded ends and arrows pointing the way; a streak runs along it once when it changes. [alpha]: how much
+ * of it shows (see-through while the map is searched by name), without running the streak again.
+ */
 @Composable
 @GoogleMapComposable
-private fun MapLineView(line: MapLine) {
+private fun MapLineView(line: MapLine, alpha: Float) {
     val density = LocalDensity.current
     val layoutDirection = LocalLayoutDirection.current
     val points = remember(line) { line.points.map { LatLng(it.latitude, it.longitude) } }
     val width = with(density) { line.style.width.toPx() }
     if (line.parts.isEmpty()) {
-        Polyline(points = points, color = line.style.color, width = width, jointType = JointType.ROUND, startCap = RoundCap(), endCap = RoundCap())
+        Polyline(points = points, color = line.style.color.copy(alpha = alpha), width = width, jointType = JointType.ROUND, startCap = RoundCap(), endCap = RoundCap())
     } else {
         // Public transport: each ride in its line's colour, each walk dotted.
         val dotted = remember(width) { listOf(Dot(), Gap(width * DOT_GAP_WIDTHS)) }
@@ -567,7 +579,7 @@ private fun MapLineView(line: MapLine) {
             key(index) {
                 Polyline(
                     points = remember(part) { part.points.map { LatLng(it.latitude, it.longitude) } },
-                    color = part.color,
+                    color = part.color.copy(alpha = alpha),
                     width = width,
                     jointType = JointType.ROUND,
                     startCap = RoundCap(),
@@ -591,6 +603,7 @@ private fun MapLineView(line: MapLine) {
                 rotation = arrow.bearing,
                 flat = true,
                 anchor = Offset(0.5f, 0.5f),
+                alpha = alpha,
                 onClick = { true },
             )
         }
@@ -616,6 +629,7 @@ private fun MapLineView(line: MapLine) {
                 state = rememberUpdatedMarkerState(position = LatLng(mark.position.latitude, mark.position.longitude)),
                 icon = icon,
                 anchor = Offset(0.5f, 0.5f),
+                alpha = alpha,
                 // Badges over rings, under the stops.
                 zIndex = if (mark is LineMark.Badge) LINE_BADGE_Z else LINE_RING_Z,
                 onClick = { true },

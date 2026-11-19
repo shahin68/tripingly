@@ -74,6 +74,8 @@ internal fun GoogleSdkMapView(
     isMyLocationEnabled: Boolean,
     routeEnds: List<RouteEndMark>,
     stopHalo: Color?,
+    /** How much shows of everything but the search results (see-through while the map is searched by name). */
+    dimAlpha: Float,
     onCameraMove: (Coordinates, Float, GeoBounds?) -> Unit,
     onCameraMoving: (GeoBounds, Float) -> Unit,
     onBearingChange: (Float) -> Unit,
@@ -293,7 +295,11 @@ internal fun GoogleSdkMapView(
 
     // The line under every pin, with its arrows, as on Android.
     val themedLine = line?.themed()
-    LaunchedEffect(themedLine) {
+    // See-through while the map is searched by name; that alone doesn't run the streak again.
+    val shownLine = themedLine?.withAlpha(dimAlpha)
+    val sweptLine = remember { arrayOfNulls<MapLine>(1) }
+    LaunchedEffect(shownLine) {
+        val themedLine = shownLine
         if (themedLine == null || themedLine.points.size < 2) {
             map.setLine(emptyList(), stopColor.toUIColor(), 0.0, emptyList(), null, null)
             map.setLineParts(emptyList(), 0.0)
@@ -314,6 +320,12 @@ internal fun GoogleSdkMapView(
         )
         // Once, like a progress bar; then nothing moves.
         val sweepColor = MapLineSweepColor.toUIColor()
+        val isNewLine = sweptLine[0] != line
+        sweptLine[0] = line
+        if (!isNewLine) {
+            map.setLineSweep(emptyList(), sweepColor, width)
+            return@LaunchedEffect
+        }
         Animatable(0f).animateTo(1f, tween(MAP_LINE_SWEEP_MILLIS, easing = LinearEasing)) {
             map.setLineSweep(sweepOf(points, value), sweepColor, width)
         }
@@ -324,6 +336,7 @@ internal fun GoogleSdkMapView(
     val pinIcons = remember(placeColor, hotSpotColor, density) { mutableMapOf<PlacePinLook, UIImage>() }
     fun pinIcon(look: PlacePinLook) = pinIcons.getOrPutBounded(look, MAX_PIN_ICONS) {
         val fill = when {
+            look.isSearchResult -> SearchResultPinColor
             look.isAlongTheWay -> AlongTheWayPinColor
             look.isTripinly -> hotSpotColor
             else -> placeColor
@@ -339,7 +352,7 @@ internal fun GoogleSdkMapView(
                 size = look.size,
                 fill = fill,
                 iconColor = when {
-                    look.isAlongTheWay -> Color.White
+                    look.isSearchResult || look.isAlongTheWay -> Color.White
                     look.isTripinly -> onHotSpotColor
                     else -> onPlaceColor
                 },
@@ -363,7 +376,7 @@ internal fun GoogleSdkMapView(
     // Public transport: the rides' badges and their rings, one icon per look.
     val lineMarks = themedLine?.marks.orEmpty()
     val markIcons = remember(density) { mutableMapOf<LineMark, UIImage>() }
-    LaunchedEffect(markers, stopTitles, coverThumbs, pinPhotos, selectedPlace, placePins, placeClusters, pinIcons, clusterIcons, isDots, routeEnds, lineMarks, stopIcons) {
+    LaunchedEffect(markers, stopTitles, coverThumbs, pinPhotos, selectedPlace, placePins, placeClusters, pinIcons, clusterIcons, isDots, routeEnds, lineMarks, stopIcons, dimAlpha) {
         val stops = markers.mapIndexed { index, marker ->
             GoogleMapMarker(
                 key = marker.id,
@@ -387,6 +400,7 @@ internal fun GoogleSdkMapView(
                 // The stop's card shows instead.
                 showsInfoWindow = false,
                 fadesIn = false,
+                opacity = dimAlpha,
             )
         }
         // The first pins (the most liked, then the best known) on top. A photo pin waits for its photo. The tapped
@@ -400,7 +414,7 @@ internal fun GoogleSdkMapView(
                 longitude = pin.place.location.lng,
                 title = pin.place.name,
                 icon = pinIcon(
-                    if (pin.isDotAt(isDots)) pin.dotLook() else PlacePinLook(pin.place.category, pin.place.isTripinly, pin.size, photoId(pin.place, pin.photo), pin.isAlongTheWay),
+                    if (pin.isDotAt(isDots)) pin.dotLook() else PlacePinLook(pin.place.category, pin.place.isTripinly, pin.size, photoId(pin.place, pin.photo), pin.isAlongTheWay, isSearchResult = pin.isSearchResult),
                 ),
                 anchorX = 0.5,
                 anchorY = 0.5,
@@ -409,6 +423,8 @@ internal fun GoogleSdkMapView(
                 showsInfoWindow = false,
                 // Places along the way show at once with their route (Shahin, 2026-11-10).
                 fadesIn = !pin.isAlongTheWay,
+                // While the map is searched by name only its results stay clear.
+                opacity = if (pin.isSearchResult) 1f else dimAlpha,
             )
         }
         val clusters = placeClusters.map { cluster ->
@@ -425,6 +441,7 @@ internal fun GoogleSdkMapView(
                 zIndex = 0,
                 showsInfoWindow = false,
                 fadesIn = true,
+                opacity = dimAlpha,
             )
         }
         // The tapped place, bigger and on top. No info window and no camera move of the map's own: the
@@ -442,6 +459,7 @@ internal fun GoogleSdkMapView(
                         SelectedPinSize,
                         photoId(it, placePins.any { pin -> pin.photo && pin.place.id == it.id }),
                         isAlongTheWay = placePins.any { pin -> pin.isAlongTheWay && pin.place.id == it.id },
+                        isSearchResult = placePins.any { pin -> pin.isSearchResult && pin.place.id == it.id },
                     ),
                 ),
                 anchorX = 0.5,
@@ -464,6 +482,7 @@ internal fun GoogleSdkMapView(
                 zIndex = ROUTE_END_Z,
                 showsInfoWindow = false,
                 fadesIn = false,
+                opacity = dimAlpha,
             )
         }
         // Rings first, so the badges come later and draw over them at the same zIndex.
@@ -490,6 +509,7 @@ internal fun GoogleSdkMapView(
                 zIndex = 0,
                 showsInfoWindow = false,
                 fadesIn = false,
+                opacity = dimAlpha,
             )
         }
         map.setMarkers(marks + pins + clusters + stops + listOfNotNull(place) + ends)

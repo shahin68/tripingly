@@ -121,6 +121,8 @@ private final class AppGoogleMap: NSObject, GoogleMap, GMSMapViewDelegate {
             if marker.icon !== item.icon { marker.icon = item.icon }
             marker.groundAnchor = CGPoint(x: item.anchorX, y: item.anchorY)
             marker.zIndex = item.zIndex
+            // See-through while the map is searched by name, unless it's a result.
+            marker.opacity = item.opacity
             marker.userData = item
             if marker.map == nil { marker.map = mapView }
             kept[item.key] = marker

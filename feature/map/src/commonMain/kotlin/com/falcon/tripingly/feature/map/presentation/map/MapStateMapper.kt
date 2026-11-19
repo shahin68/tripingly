@@ -306,7 +306,7 @@ internal class MapStateMapper(
                 it.place.id in highlighted -> it.copy(isAlongTheWay = true)
                 // The pin Around is around stays itself, kept on top of the places it found (Shahin 2026-11-17).
                 it.place.id == model.around?.pinPlaceId -> it.copy(isKept = true)
-                isNamed -> it.copy(isKept = true)
+                isNamed -> it.copy(isKept = true, isSearchResult = true)
                 othersAreDots -> it.copy(isDot = true)
                 else -> it
             }
@@ -358,6 +358,8 @@ internal class MapStateMapper(
             }.toImmutableList(),
             stopHalo = route.planMode.lineColor.takeIf { routeShows && route.isDayRouteShown && route.between == null },
             aroundRing = model.around?.let { AroundRing(Coordinates(it.center.lat, it.center.lng), it.radiusMeters, distanceText(it.radiusMeters)) },
+            // Its results stand out, like Google Maps': everything else goes see-through (Shahin, 2026-11-19).
+            isSearchShown = isNamed,
         )
     }
 

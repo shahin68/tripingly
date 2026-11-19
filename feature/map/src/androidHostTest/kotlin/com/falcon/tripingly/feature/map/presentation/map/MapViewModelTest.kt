@@ -2769,13 +2769,15 @@ class MapViewModelTest {
         assertEquals(listOf("Louvre"), pins.map { it.place.name })
         assertTrue(pins.none { it.isDot } && pins.all { it.isKept }, "full pins, also zoomed out, during a route or Around")
         assertEquals(false, viewModel.uiState.value.search?.isSearching)
+        assertTrue(pins.all { it.isSearchResult } && viewModel.uiState.value.layers.isSearchShown, "red results, the rest see-through")
 
         // Back puts the map as it was: every place, as plain pins.
         viewModel.onAction(MapAction.Search.Close)
         testScheduler.advanceUntilIdle()
         assertNull(places.requests.last().map { it.name }.toSet().single())
         assertEquals(setOf("Eiffel Tower", "Louvre"), viewModel.uiState.value.layers.placePins.map { it.place.name }.toSet())
-        assertTrue(viewModel.uiState.value.layers.placePins.none { it.isKept })
+        assertTrue(viewModel.uiState.value.layers.placePins.none { it.isKept || it.isSearchResult })
+        assertEquals(false, viewModel.uiState.value.layers.isSearchShown, "everything clear again")
     }
 
     /** Stops next to the Eiffel Tower and a walk from the Louvre; the first one's card open. */

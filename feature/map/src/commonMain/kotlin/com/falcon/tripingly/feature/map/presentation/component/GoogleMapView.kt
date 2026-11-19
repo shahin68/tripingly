@@ -93,7 +93,15 @@ data class MapLayersState(
     val stopHalo: Color? = null,
     /** Around a pin (Tripinly Pro): its ring with a handle; null while Around is closed. */
     val aroundRing: AroundRing? = null,
+    /**
+     * The map searched by name: its results ([PlacePin.isSearchResult]) red and clear, everything else (stops, the line,
+     * other pins) see-through at [SearchDimAlpha] until the search closes (Shahin, 2026-11-19).
+     */
+    val isSearchShown: Boolean = false,
 )
+
+/** How much of what isn't a search result shows: see-through while the map is searched by name. */
+internal val MapLayersState.dimAlpha: Float get() = if (isSearchShown) SearchDimAlpha else 1f
 
 /** Room kept free around the points of a fit, inside the content padding. */
 internal val FitMargin = 48.dp

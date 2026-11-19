@@ -54,6 +54,8 @@ data class PlacePin(
      * (Shahin, 2026-11-13).
      */
     val isKept: Boolean = false,
+    /** Found by the map searched by name: red, while everything else is see-through ([SearchDimAlpha]). */
+    val isSearchResult: Boolean = false,
 )
 
 /** Drawn as its dot: zoomed out ([isZoomedOut]) unless it's kept, or a dot anyway while a route shows. */
@@ -167,6 +169,9 @@ internal val PlacePin.dotSize: Dp get() = if (isDot) RouteDotSize else PlaceDotS
 /** Places along the shown route: violet, apart from the map's places and from the hot spots. */
 val AlongTheWayPinColor = Color(0xFF8A5AAB)
 
+/** The places the map was searched for by name: red, like Google Maps' results (Shahin, 2026-11-19). */
+val SearchResultPinColor = Color(0xFFE53935)
+
 /** The look of [this] pin as a dot: only its color matters, so every dot of a color shares one bitmap. */
 internal fun PlacePin.dotLook() =
     PlacePinLook(PlaceCategory.Other, place.isTripinly, dotSize, isAlongTheWay = isAlongTheWay, isDot = true, isSeeThrough = isDot)
@@ -176,6 +181,12 @@ internal fun PlacePin.dotLook() =
  * and the places along it lead; every other pin stays as it is (Shahin, 2026-11-16, D1/D2).
  */
 const val RouteDotAlpha = 0.3f
+
+/**
+ * How much shows of everything that isn't a search result while the map is searched by name (stops, the line, other
+ * pins): as much as a place's dot while a route shows (Shahin, 2026-11-19).
+ */
+const val SearchDimAlpha = RouteDotAlpha
 
 /**
  * Draws a place pin into a bitmap: a round badge with the place's category icon. The map reuses one
@@ -265,6 +276,8 @@ internal data class PlacePinLook(
     val isDot: Boolean = false,
     /** A dot drawn see-through ([RouteDotAlpha]) while a route shows. */
     val isSeeThrough: Boolean = false,
+    /** In [SearchResultPinColor]. */
+    val isSearchResult: Boolean = false,
 )
 
 /**
