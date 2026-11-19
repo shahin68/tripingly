@@ -14,14 +14,17 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LocalMinimumInteractiveComponentSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.Dp
 import com.falcon.tripingly.core.designsystem.generated.resources.Res
 import com.falcon.tripingly.core.designsystem.generated.resources.common_back
 import com.falcon.tripingly.core.designsystem.generated.resources.common_close
@@ -72,14 +75,10 @@ private fun SheetHeaderContent(
 ) {
     val joined = joinedActions.isNotEmpty() && onClose != null
     Row(
-        // The close button's touch area makes up the rest of the end, so its circle sits as far in as the title; a
-        // joined group has no touch area around it, so it sits that far in itself.
-        modifier = modifier.fillMaxWidth().padding(
-            start = MaterialTheme.spacing.large,
-            end = if (joined) MaterialTheme.spacing.large else MaterialTheme.spacing.medium + MaterialTheme.spacing.extraSmall,
-            bottom = MaterialTheme.spacing.small,
-        ),
-        horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
+        // Start and end the same distance in: the buttons keep no 48 dp touch margin around them (taps still reach
+        // them over 48 dp), so their circles sit exactly where they're placed (Shahin, 2026-11-19).
+        modifier = modifier.fillMaxWidth().padding(start = MaterialTheme.spacing.large, end = MaterialTheme.spacing.large, bottom = MaterialTheme.spacing.small),
+        horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small + MaterialTheme.spacing.extraSmall),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(Modifier.weight(1f)) {
@@ -88,20 +87,29 @@ private fun SheetHeaderContent(
                 Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis, inlineContent = subtitleInlineContent)
             }
         }
-        actions()
-        // A sheet opened from another sheet goes back to it with an arrow in the close button's place.
-        val back = LocalSheetBack.current
-        val icon = if (back != null) Icons.AutoMirrored.Filled.ArrowBack else Icons.Default.Close
-        val label = stringResource(if (back != null) Res.string.common_back else Res.string.common_close)
-        val onTap = back ?: onClose
-        when {
-            onClose == null -> Unit
-            joined -> {
-                val closeButton: JoinedButtonSlot = { shape -> JoinedButton(icon, label, shape, onClick = onTap ?: onClose, enabled = closeEnabled) }
-                JoinedButtons(joinedActions + listOf(closeButton))
-            }
-            else -> FilledTonalIconButton(onClick = onTap ?: onClose, enabled = closeEnabled) {
-                Icon(icon, contentDescription = label)
+        CompositionLocalProvider(LocalMinimumInteractiveComponentSize provides Dp.Unspecified) {
+            // The 4 dp above and below keep the header as tall as a 48 dp button made it.
+            Row(
+                modifier = Modifier.padding(vertical = MaterialTheme.spacing.extraSmall),
+                horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                actions()
+                // A sheet opened from another sheet goes back to it with an arrow in the close button's place.
+                val back = LocalSheetBack.current
+                val icon = if (back != null) Icons.AutoMirrored.Filled.ArrowBack else Icons.Default.Close
+                val label = stringResource(if (back != null) Res.string.common_back else Res.string.common_close)
+                val onTap = back ?: onClose
+                when {
+                    onClose == null -> Unit
+                    joined -> {
+                        val closeButton: JoinedButtonSlot = { shape -> JoinedButton(icon, label, shape, onClick = onTap ?: onClose, enabled = closeEnabled) }
+                        JoinedButtons(joinedActions + listOf(closeButton))
+                    }
+                    else -> FilledTonalIconButton(onClick = onTap ?: onClose, enabled = closeEnabled) {
+                        Icon(icon, contentDescription = label)
+                    }
+                }
             }
         }
     }

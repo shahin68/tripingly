@@ -77,10 +77,10 @@ fun PrimaryButton(
     size: ButtonSize = ButtonSize.Large,
     icon: ImageVector? = null,
 ) {
-    // Small (40.dp) buttons shouldn't reserve extra 4.dp margins in compact rows/pills
-    val interactiveSize = if (size == ButtonSize.Small) Dp.Unspecified else LocalMinimumInteractiveComponentSize.current
-
-    CompositionLocalProvider(LocalMinimumInteractiveComponentSize provides interactiveSize) {
+    // No 48 dp touch margin around it: a Small (40 dp) button would sit 4 dp in from where it's placed, which breaks
+    // the insets of the pill or row it ends (Shahin, 2026-11-19). Taps still reach it over 48 dp; Large and Medium are
+    // 48 dp or more anyway.
+    CompositionLocalProvider(LocalMinimumInteractiveComponentSize provides Dp.Unspecified) {
         Button(
             onClick = onClick,
             enabled = enabled && !isLoading,
@@ -104,18 +104,21 @@ fun SecondaryButton(
     size: ButtonSize = ButtonSize.Large,
     icon: ImageVector? = null,
 ) {
-    FilledTonalButton(
-        onClick = onClick,
-        enabled = enabled && !isLoading,
-        shape = CircleShape,
-        contentPadding = size.padding,
-        colors = ButtonDefaults.filledTonalButtonColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant,
-            contentColor = MaterialTheme.colorScheme.onSurface,
-        ),
-        modifier = modifier.heightIn(min = size.height).skeleton(CircleShape),
-    ) {
-        ButtonContent(text, isLoading, size, icon)
+    // No touch margin around it, like [PrimaryButton].
+    CompositionLocalProvider(LocalMinimumInteractiveComponentSize provides Dp.Unspecified) {
+        FilledTonalButton(
+            onClick = onClick,
+            enabled = enabled && !isLoading,
+            shape = CircleShape,
+            contentPadding = size.padding,
+            colors = ButtonDefaults.filledTonalButtonColors(
+                containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                contentColor = MaterialTheme.colorScheme.onSurface,
+            ),
+            modifier = modifier.heightIn(min = size.height).skeleton(CircleShape),
+        ) {
+            ButtonContent(text, isLoading, size, icon)
+        }
     }
 }
 

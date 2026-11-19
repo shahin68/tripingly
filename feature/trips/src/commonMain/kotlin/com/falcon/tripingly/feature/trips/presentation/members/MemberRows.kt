@@ -47,6 +47,9 @@ import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.material3.LocalMinimumInteractiveComponentSize
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.clickable
 import com.falcon.tripingly.core.designsystem.component.AppDropdownMenu
@@ -291,25 +294,31 @@ internal fun JoinRequestRow(
     modifier: Modifier = Modifier,
 ) {
     PersonRow(user = request.user, detail = detail, modifier = modifier) {
-        OutlinedIconButton(
-            onClick = onDecline,
-            enabled = !isAnswering,
-            modifier = Modifier.skeleton(CircleShape)
-        ) {
-            Icon(
-                Icons.Default.Close,
-                contentDescription = stringResource(Res.string.members_join_decline)
-            )
-        }
-        FilledIconButton(
-            onClick = onAccept,
-            enabled = !isAnswering,
-            modifier = Modifier.skeleton(CircleShape)
-        ) {
-            Icon(
-                Icons.Default.Check,
-                contentDescription = stringResource(Res.string.members_join_accept)
-            )
+        // No touch margins, so ✓ sits as far from the card's end as the avatar from its start (taps still reach both
+        // over 48 dp); the gap between them stays as it looked.
+        CompositionLocalProvider(LocalMinimumInteractiveComponentSize provides Dp.Unspecified) {
+            Row(horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium + MaterialTheme.spacing.extraSmall)) {
+                OutlinedIconButton(
+                    onClick = onDecline,
+                    enabled = !isAnswering,
+                    modifier = Modifier.skeleton(CircleShape)
+                ) {
+                    Icon(
+                        Icons.Default.Close,
+                        contentDescription = stringResource(Res.string.members_join_decline)
+                    )
+                }
+                FilledIconButton(
+                    onClick = onAccept,
+                    enabled = !isAnswering,
+                    modifier = Modifier.skeleton(CircleShape)
+                ) {
+                    Icon(
+                        Icons.Default.Check,
+                        contentDescription = stringResource(Res.string.members_join_accept)
+                    )
+                }
+            }
         }
     }
 }
@@ -404,9 +413,8 @@ internal fun FoundPersonRow(
 internal fun InvitePill(isCreating: Boolean, onShare: () -> Unit, modifier: Modifier = Modifier) {
     // Floating over the cards: the app's glass, like the tabs' bar (no blur, nothing behind it is a blur source).
     GlassSurface(modifier = modifier.fillMaxWidth(), shape = CircleShape, blur = false) {
-        // Symmetric in the round pill: the Share button sits the same distance from the top, end and bottom edges, and
-        // the link icon's circle is as far from the start edge as from the top (Shahin, 2026-11-19). One line each, so
-        // the pill keeps its height.
+        // Symmetric in the round pill: one padding all round, so the Share button (no touch margin) sits the same
+        // distance from the top, end and bottom edges (Shahin, 2026-11-19). One line each, so the pill keeps its height.
         Row(
             modifier = Modifier.padding(MaterialTheme.spacing.small),
             verticalAlignment = Alignment.CenterVertically,
@@ -443,9 +451,6 @@ internal fun InvitePill(isCreating: Boolean, onShare: () -> Unit, modifier: Modi
     }
 }
 
-/** [ButtonSize.Small]'s height, and the gap around the button inside the invite pill. */
-private val InviteButtonHeight = 40.dp
-private val InviteInset = 8.dp
 private val InviteIconSize = 24.dp
 
 private val CardRadius = 20.dp

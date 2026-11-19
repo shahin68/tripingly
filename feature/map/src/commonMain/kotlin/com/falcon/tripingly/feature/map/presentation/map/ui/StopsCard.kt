@@ -1,5 +1,7 @@
 package com.falcon.tripingly.feature.map.presentation.map.ui
 
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.material3.LocalMinimumInteractiveComponentSize
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
@@ -272,8 +274,8 @@ private fun PlanCardColumn(modifier: Modifier, content: @Composable ColumnScope.
 
 /**
  * The plan's [title] (given the modifier that lets it take the room left) with its buttons at the end, all one
- * height. The end button's 48 dp touch area makes up the rest of the end padding, so its circle sits as far in as
- * the title.
+ * height. The buttons keep no 48 dp touch margin (taps still reach them over 48 dp), so the end pads as much as the
+ * start and the last circle sits as far in as the title (Shahin, 2026-11-19).
  */
 @Composable
 private fun PlanTitleRow(title: @Composable (Modifier) -> Unit, buttons: @Composable RowScope.() -> Unit) {
@@ -281,13 +283,15 @@ private fun PlanTitleRow(title: @Composable (Modifier) -> Unit, buttons: @Compos
         modifier = Modifier
             .fillMaxWidth()
             .heightIn(min = TitleRowHeight)
-            .padding(start = MaterialTheme.spacing.medium, end = MaterialTheme.spacing.small + MaterialTheme.spacing.extraSmall),
+            .padding(horizontal = MaterialTheme.spacing.medium),
         verticalAlignment = Alignment.CenterVertically,
-        // The buttons a little closer together (Shahin, 2026-11-17).
         horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraSmall),
     ) {
         title(Modifier.weight(1f))
-        buttons()
+        CompositionLocalProvider(LocalMinimumInteractiveComponentSize provides Dp.Unspecified) {
+            // The buttons a little closer together (Shahin, 2026-11-17).
+            Row(horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small), verticalAlignment = Alignment.CenterVertically, content = buttons)
+        }
     }
 }
 
