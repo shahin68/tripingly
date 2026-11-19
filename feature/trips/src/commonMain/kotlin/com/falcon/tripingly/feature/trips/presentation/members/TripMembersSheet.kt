@@ -1,6 +1,5 @@
 package com.falcon.tripingly.feature.trips.presentation.members
 
-import androidx.compose.animation.AnimatedContent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Arrangement
@@ -22,7 +21,6 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -30,9 +28,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.backhandler.BackHandler
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.tooling.preview.Preview
@@ -41,7 +37,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.falcon.tripingly.core.common.util.ShareManager
 import com.falcon.tripingly.core.designsystem.component.AppTextField
 import com.falcon.tripingly.core.designsystem.component.AppTextFieldStyle
-import com.falcon.tripingly.core.designsystem.component.LocalSheetBack
+import com.falcon.tripingly.core.designsystem.component.AppBottomSheet
 import com.falcon.tripingly.core.designsystem.component.MessageBannerHost
 import com.falcon.tripingly.core.designsystem.component.SheetHeader
 import com.falcon.tripingly.core.designsystem.component.ShowMessage
@@ -116,10 +112,9 @@ fun TripMembersRoute(
 /**
  * Who is on the trip (design: the members sheet canvas, board "Search icon in the header", Shahin 2026-11-18). Cards:
  * people asking to join (the owner's, only while there are any), the people on the trip, and the owner's friends to
- * add with a tap; 🔍 opens the Add people page and the invite link is pinned at the bottom. The sheet is as high as
+ * add with a tap; 🔍 opens the Add people sheet and the invite link is pinned at the bottom. The sheet is as high as
  * it can be from the start, so nothing that loads makes it jump; an editor sees only who is on the trip.
  */
-@OptIn(ExperimentalComposeUiApi::class)
 @Composable
 fun TripMembersScreen(
     state: State,
@@ -136,21 +131,27 @@ fun TripMembersScreen(
         actionLabel = stringResource(Res.string.members_undo),
         onAction = { added?.let { onAction(Action.Undo(it)) } },
     )
-    if (state.search != null) BackHandler { onAction(Action.Search.Close) }
-    // The page leaving keeps its own search while it fades out.
-    AnimatedContent(
-        targetState = state.search,
-        modifier = modifier.fillMaxSize().windowInsetsPadding(WindowInsets.bottomSystemBar),
-        contentKey = { it != null },
-        label = "membersPage",
-    ) { search ->
-        if (search != null) AddPeoplePage(state, search, onAction) else MembersPage(state, onAction, onClose)
+    MembersPage(state, onAction, onClose, modifier.fillMaxSize().windowInsetsPadding(WindowInsets.bottomSystemBar))
+    // Add people is a sheet of its own over the members, like a pin's details and its photos: its arrow (and the
+    // system back) goes back to the members, ✕ and a swipe down close both.
+    AppBottomSheet(
+        value = state.search,
+        onDismiss = {
+            onAction(Action.Search.Close)
+            onClose()
+        },
+        onBack = { onAction(Action.Search.Close) },
+    ) { search, close ->
+        Box(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.bottomSystemBar)) {
+            AddPeoplePage(state, search, onAction, onClose = close)
+            MessageBannerHost(Modifier.align(Alignment.TopCenter))
+        }
     }
 }
 
 @Composable
-private fun MembersPage(state: State, onAction: (Action) -> Unit, onClose: () -> Unit) {
-    Column(Modifier.fillMaxSize()) {
+private fun MembersPage(state: State, onAction: (Action) -> Unit, onClose: () -> Unit, modifier: Modifier = Modifier) {
+    Column(modifier) {
         SheetHeader(
             title = stringResource(Res.string.members_title),
             subtitle = listOfNotNull(
@@ -267,10 +268,10 @@ private fun SkeletonCard(rows: Int, row: @Composable (index: Int) -> Unit) {
 /**
  * Add people: a search field for friends (matched as you type) and anyone on Tripinly by name or @username (asked
  * for once typing pauses). Each person shows Add, or that they're on the trip or asking to join already. Back (the
- * header's arrow or the system back) returns to the members.
+ * header's arrow or the system back) returns to the members; ✕ closes both sheets.
  */
 @Composable
-private fun AddPeoplePage(state: State, search: SearchState, onAction: (Action) -> Unit) {
+private fun AddPeoplePage(state: State, search: SearchState, onAction: (Action) -> Unit, onClose: () -> Unit) {
     val focus = remember { FocusRequester() }
     LaunchedEffect(Unit) { focus.requestFocus() }
     val query = search.query.text.trim().removePrefix("@").toString()
@@ -287,9 +288,7 @@ private fun AddPeoplePage(state: State, search: SearchState, onAction: (Action) 
         }
     }
     Column(Modifier.fillMaxSize()) {
-        CompositionLocalProvider(LocalSheetBack provides { onAction(Action.Search.Close) }) {
-            SheetHeader(title = stringResource(Res.string.members_search), onClose = { onAction(Action.Search.Close) })
-        }
+        SheetHeader(title = stringResource(Res.string.members_search), onClose = onClose)
         AppTextField(
             state = search.query,
             placeholder = stringResource(Res.string.members_search_hint),

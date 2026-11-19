@@ -1,6 +1,7 @@
 package com.falcon.tripingly.core.designsystem.component
 
 import androidx.compose.animation.core.FiniteAnimationSpec
+import androidx.compose.foundation.LocalOverscrollFactory
 import androidx.compose.foundation.clickable
 import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -126,7 +127,9 @@ fun <T : Any> AppBottomSheet(
             MaterialTheme(colorScheme = MaterialTheme.colorScheme, motionScheme = motion, shapes = MaterialTheme.shapes, typography = MaterialTheme.typography) {
                 // Back goes to the sheet before, not out of the chain.
                 if (goBack != null) BackHandler(onBack = goBack)
-                CompositionLocalProvider(LocalSheetBack provides goBack) { content(current, close) }
+                // No overscroll inside a sheet: pulled down at the top, a list moves the sheet itself. iOS's bounce kept
+                // the pull in the list, so a full-height sheet sprang back up however hard it was pulled (Shahin, 2026-11-19).
+                CompositionLocalProvider(LocalSheetBack provides goBack, LocalOverscrollFactory provides null) { content(current, close) }
             }
         }
     }
