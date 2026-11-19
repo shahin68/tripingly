@@ -2,6 +2,7 @@ package com.falcon.tripingly.feature.map.presentation.map
 
 import com.falcon.tripingly.core.designsystem.component.rememberHaptics
 import com.falcon.tripingly.core.designsystem.component.AppBottomSheet
+import com.falcon.tripingly.core.designsystem.component.LocalSheetArrived
 import androidx.compose.foundation.gestures.animateTo
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -32,6 +33,7 @@ import com.falcon.tripingly.feature.map.presentation.map.ui.StopDetailsContent
 import com.falcon.tripingly.feature.map.presentation.map.ui.PlanSheetValue
 import com.falcon.tripingly.feature.map.presentation.map.ui.rememberPlanSheetState
 import com.falcon.tripingly.feature.map.presentation.photos.PhotoStripRoute
+import com.falcon.tripingly.feature.map.presentation.photos.PhotoStripSkeleton
 import com.falcon.tripingly.feature.map.presentation.photos.PhotoViewerRoute
 import com.falcon.tripingly.feature.map.presentation.photos.PhotosRoute
 import kotlinx.coroutines.launch
@@ -140,8 +142,11 @@ fun MapRoute(
     // place, one sheet at a time, and their back arrow brings the details back.
     AppBottomSheet(value = sheet?.takeIf { it.isDetails }, onDismiss = closeAll, halfHigh = true) { shown, close ->
         when (shown) {
+            // The photo strip is built once the sheet is up, so the slide (and the photos sheet going away under it) has
+            // less to do; its tiles show as skeletons until then (a stop without photos shows its line at once, no jump;
+            // Shahin, 2026-11-19).
             is MapSheet.StopDetails -> StopDetailsContent(shown.card, onAction, onClose = close) {
-                PhotoStripRoute(
+                if (!LocalSheetArrived.current && shown.card.stop.photoCount > 0) PhotoStripSkeleton() else PhotoStripRoute(
                     PhotoOwner.Stop(shown.card.stop.id),
                     canAdd = shown.card.canEdit,
                     onShowAll = { onAction(MapAction.StopCard.OpenPhotos) },
@@ -153,7 +158,7 @@ fun MapRoute(
             is MapSheet.PlaceDetails -> PlaceDetailsContent(shown.card, onAction, onClose = close) {
                 // An address from search isn't one of our places: it has no photos.
                 if (shown.card.address == null) {
-                    PhotoStripRoute(PhotoOwner.Place(shown.card.place.id), canAdd = true, onShowAll = { onAction(MapAction.PlaceCard.OpenPhotos) }, onReport = onReportPhoto)
+                    if (!LocalSheetArrived.current) PhotoStripSkeleton() else PhotoStripRoute(PhotoOwner.Place(shown.card.place.id), canAdd = true, onShowAll = { onAction(MapAction.PlaceCard.OpenPhotos) }, onReport = onReportPhoto)
                 }
             }
             else -> Unit

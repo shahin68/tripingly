@@ -150,7 +150,15 @@ fun <T : Any> AppBottomSheet(
                 if (goBack != null) BackHandler(onBack = goBack)
                 // No overscroll inside a sheet: pulled down at the top, a list moves the sheet itself. iOS's bounce kept
                 // the pull in the list, so a full-height sheet sprang back up however hard it was pulled (Shahin, 2026-11-19).
-                CompositionLocalProvider(LocalSheetBack provides goBack, LocalOverscrollFactory provides null) { content(current, close) }
+                // Opened, the sheet says so once its slide has ended, until it goes ([LocalSheetArrived]).
+                var arrived by remember { mutableStateOf(false) }
+                LaunchedEffect(Unit) {
+                    snapshotFlow { sheetState.isVisible && !sheetState.isAnimationRunning }.first { it }
+                    arrived = true
+                }
+                CompositionLocalProvider(LocalSheetBack provides goBack, LocalOverscrollFactory provides null, LocalSheetArrived provides arrived) {
+                    content(current, close)
+                }
             }
         }
     }
@@ -163,6 +171,13 @@ private class FastSheetMotion(private val base: MotionScheme) : MotionScheme by 
 
 /** The open sheet's way back to the sheet it was opened from, if it was; [SheetHeader] then shows a back arrow for it. */
 val LocalSheetBack = compositionLocalOf<(() -> Unit)?> { null }
+
+/**
+ * False while the sheet's opening slide still runs, then true for as long as it stays open. Heavy parts of a sheet
+ * (the details' photo strip) wait for it, so building them doesn't skip frames of the slide, above all while the
+ * sheet before slides away (Shahin, 2026-11-19).
+ */
+val LocalSheetArrived = compositionLocalOf { true }
 
 /** False while this screen is under another one on the back stack, so its [AppBottomSheet]s stay hidden. */
 val LocalScreenOnTop = compositionLocalOf { true }
