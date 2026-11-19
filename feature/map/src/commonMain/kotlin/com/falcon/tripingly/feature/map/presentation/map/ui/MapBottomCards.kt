@@ -32,7 +32,7 @@ import androidx.compose.material.icons.filled.NearMe
 import androidx.compose.material.icons.outlined.CenterFocusStrong
 import androidx.compose.material.icons.outlined.GpsOff
 import androidx.compose.material.icons.outlined.Info
-import com.falcon.tripingly.core.designsystem.component.GradientButton
+import com.falcon.tripingly.core.designsystem.component.InviteButton
 import com.falcon.tripingly.feature.map.generated.resources.map_join_sent
 import com.falcon.tripingly.feature.map.generated.resources.map_join_trip
 import com.falcon.tripingly.feature.map.generated.resources.map_location_turn_on
@@ -286,7 +286,7 @@ internal fun MapButtons(
         if (joinButton != null) {
             val isSent = joinButton == JoinButton.Sent
             // Asked, it spins on its icon until the server answers, then plays into Request sent (Shahin, 2026-11-19).
-            GradientButton(
+            InviteButton(
                 text = stringResource(if (isSent) Res.string.map_join_sent else Res.string.map_join_trip),
                 icon = if (isSent) Icons.Outlined.HowToReg else Icons.Outlined.PersonAdd,
                 onClick = { onAction(MapAction.Header.RequestToJoin) }.takeIf { joinButton == JoinButton.Ask },

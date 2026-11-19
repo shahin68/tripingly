@@ -40,15 +40,12 @@ data class ExtendedColors(
     val avatar: Color,
     val onAvatar: Color,
     /**
-     * The one invitation a screen pushes (`GradientButton`, Ask to join on someone's trip): [gradientStart] (a hint of
-     * teal in light, soft green in dark) warming through a pink ([gradientMiddle]) into orange ([gradientEnd]),
-     * [onGradient] on it, edged in [gradientEdge] like glass (Shahin, 2026-11-19).
+     * The one invitation a screen pushes (`InviteButton`, Ask to join on someone's trip): [invite] (black in light, white
+     * in dark), [onInvite] on it, edged in [inviteEdge] like glass (Shahin, 2026-11-19).
      */
-    val gradientStart: Color,
-    val gradientMiddle: Color,
-    val gradientEnd: Color,
-    val onGradient: Color,
-    val gradientEdge: Color,
+    val invite: Color,
+    val onInvite: Color,
+    val inviteEdge: Color,
 )
 
 internal val LightExtendedColors = ExtendedColors(
@@ -65,11 +62,9 @@ internal val LightExtendedColors = ExtendedColors(
     onAttention = OnAttentionLight,
     avatar = SurfaceContainerHighestLight,
     onAvatar = OnSurfaceVariantLight,
-    gradientStart = GradientStartLight,
-    gradientMiddle = GradientMiddleLight,
-    gradientEnd = GradientEndLight,
-    onGradient = OnIvyLight,
-    gradientEdge = GradientEdgeLight,
+    invite = InviteLight,
+    onInvite = OnInviteLight,
+    inviteEdge = InviteEdgeLight,
 )
 internal val DarkExtendedColors = ExtendedColors(
     glass = GlassDark,
@@ -85,11 +80,9 @@ internal val DarkExtendedColors = ExtendedColors(
     onAttention = OnAttentionDark,
     avatar = AvatarDark,
     onAvatar = OnAvatarDark,
-    gradientStart = GradientStartDark,
-    gradientMiddle = GradientMiddleDark,
-    gradientEnd = GradientEndDark,
-    onGradient = OnIvyDark,
-    gradientEdge = GradientEdgeDark,
+    invite = InviteDark,
+    onInvite = OnInviteDark,
+    inviteEdge = InviteEdgeDark,
 )
 
 val LocalExtendedColors = staticCompositionLocalOf { LightExtendedColors }

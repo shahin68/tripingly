@@ -49,23 +49,23 @@ import com.falcon.tripingly.core.designsystem.theme.extendedColors
 import com.falcon.tripingly.core.designsystem.theme.spacing
 
 /**
- * The one invitation a screen pushes (Ask to join on someone's trip): a rounded pill in the brand's green warming into
- * pink and orange, with a thin glassy edge, as high as the map's glass buttons ([GlassButtonDefaults.Size]). Its icon
+ * The one invitation a screen pushes (Ask to join on someone's trip): a rounded pill, black in light and white in dark
+ * (Shahin, 2026-11-19), with a thin glassy edge, as high as the map's glass buttons ([GlassButtonDefaults.Size]). Its icon
  * sits as far from the start as from the top and bottom; the label ends as far from the end (Shahin, 2026-11-19).
  * A new [text] and [icon] (asked: "Request sent") play in: the icon pops in with a little spin, the label rises, and the
  * pill's width glides to fit. Without [onClick] it only shows its state. [isLoading]: a small spinner takes the icon's
  * place while the server answers; the icon that comes after pops in as above.
  */
 @Composable
-fun GradientButton(text: String, icon: ImageVector, onClick: (() -> Unit)?, modifier: Modifier = Modifier, isLoading: Boolean = false) {
+fun InviteButton(text: String, icon: ImageVector, onClick: (() -> Unit)?, modifier: Modifier = Modifier, isLoading: Boolean = false) {
     val colors = MaterialTheme.extendedColors
     val inset = (GlassButtonDefaults.Size - IconSize) / 2
-    val edge = colors.gradientEdge
+    val edge = colors.inviteEdge
     Row(
         modifier = modifier
             .height(GlassButtonDefaults.Size)
             .clip(CircleShape)
-            .background(Brush.linearGradient(listOf(colors.gradientStart, colors.gradientMiddle, colors.gradientEnd)))
+            .background(colors.invite)
             .border(EdgeWidth, Brush.verticalGradient(listOf(edge, edge.copy(alpha = edge.alpha * EDGE_FADE))), CircleShape)
             .then(if (onClick != null) Modifier.clickable(role = Role.Button, onClick = onClick) else Modifier)
             .animateContentSize(spring(stiffness = Spring.StiffnessMediumLow))
@@ -73,14 +73,14 @@ fun GradientButton(text: String, icon: ImageVector, onClick: (() -> Unit)?, modi
         horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        CompositionLocalProvider(LocalContentColor provides colors.onGradient) {
+        CompositionLocalProvider(LocalContentColor provides colors.onInvite) {
             AnimatedContent(
                 targetState = icon.takeUnless { isLoading },
                 transitionSpec = {
                     (scaleIn(spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow)) + fadeIn()) togetherWith
                         (scaleOut() + fadeOut()) using SizeTransform(clip = false)
                 },
-                label = "gradient button icon",
+                label = "invite button icon",
             ) { shown ->
                 if (shown == null) {
                     CircularProgressIndicator(modifier = Modifier.size(IconSize), color = LocalContentColor.current, strokeWidth = SpinnerWidth)
@@ -95,7 +95,7 @@ fun GradientButton(text: String, icon: ImageVector, onClick: (() -> Unit)?, modi
                 transitionSpec = {
                     (slideInVertically { it } + fadeIn()) togetherWith (slideOutVertically { -it } + fadeOut()) using SizeTransform(clip = false)
                 },
-                label = "gradient button label",
+                label = "invite button label",
             ) { shown ->
                 Text(shown, style = MaterialTheme.typography.labelLarge, maxLines = 1)
             }
@@ -118,25 +118,25 @@ private const val EDGE_FADE = 0.3f
 private const val SPIN_DEGREES = 90f
 
 @Composable
-private fun GradientButtonPreviewContent() {
+private fun InviteButtonPreviewContent() {
     Column(
         Modifier.background(MaterialTheme.colorScheme.background).padding(MaterialTheme.spacing.medium),
         verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
     ) {
-        GradientButton(text = "Ask to join", icon = Icons.Outlined.PersonAdd, onClick = {})
-        GradientButton(text = "Ask to join", icon = Icons.Outlined.PersonAdd, onClick = null, isLoading = true)
-        GradientButton(text = "Request sent", icon = Icons.Outlined.HowToReg, onClick = null)
+        InviteButton(text = "Ask to join", icon = Icons.Outlined.PersonAdd, onClick = {})
+        InviteButton(text = "Ask to join", icon = Icons.Outlined.PersonAdd, onClick = null, isLoading = true)
+        InviteButton(text = "Request sent", icon = Icons.Outlined.HowToReg, onClick = null)
     }
 }
 
 @Preview
 @Composable
-private fun GradientButtonPreview() {
-    TripinglyTheme { GradientButtonPreviewContent() }
+private fun InviteButtonPreview() {
+    TripinglyTheme { InviteButtonPreviewContent() }
 }
 
 @Preview
 @Composable
-private fun GradientButtonDarkPreview() {
-    TripinglyTheme(darkTheme = true) { GradientButtonPreviewContent() }
+private fun InviteButtonDarkPreview() {
+    TripinglyTheme(darkTheme = true) { InviteButtonPreviewContent() }
 }

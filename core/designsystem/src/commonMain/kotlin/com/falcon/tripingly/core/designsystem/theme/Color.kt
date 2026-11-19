@@ -101,14 +101,11 @@ object MapColors {
     val Transit = Color(0xFF55606E)
 }
 
-// The gradient button: pink warming into orange (Shahin, 2026-11-19), light on top as glass catches light. Light: a hint
-// of teal first instead of leaf green, deep enough for white text; dark (Shahin: "awesome"): soft green into pink and
-// orange, soft enough for the deep green text.
-internal val GradientStartLight = Color(0xFF2A8F8A)
-internal val GradientMiddleLight = Color(0xFFD45A7E)
-internal val GradientEndLight = Color(0xFFE0773A)
-internal val GradientEdgeLight = Color(0x8CFFFFFF)
-internal val GradientStartDark = Color(0xFF93D4A8)
-internal val GradientMiddleDark = Color(0xFFF2A3BB)
-internal val GradientEndDark = Color(0xFFF6BC84)
-internal val GradientEdgeDark = Color(0x59FFFFFF)
+// The invite button: black in light, white in dark, no gradient (Shahin, 2026-11-19); its hairline edge catches light on
+// top as glass does.
+internal val InviteLight = Color(0xFF000000)
+internal val OnInviteLight = Color(0xFFFFFFFF)
+internal val InviteEdgeLight = Color(0x59FFFFFF)
+internal val InviteDark = Color(0xFFFFFFFF)
+internal val OnInviteDark = Color(0xFF000000)
+internal val InviteEdgeDark = Color(0x33000000)
