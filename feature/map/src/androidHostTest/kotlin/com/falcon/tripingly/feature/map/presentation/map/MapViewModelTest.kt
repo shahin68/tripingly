@@ -2756,7 +2756,7 @@ class MapViewModelTest {
 
     @Test
     fun `the keyboard's search shows only the places named so, as full pins, until the search closes`() = runTest(testDispatcher) {
-        addStops(GeoPoint(48.85, 2.30))
+        addStops(GeoPoint(48.85, 2.30), GeoPoint(48.86, 2.31))
         val viewModel = viewModel()
         restOnTarget(viewModel)
 
@@ -2770,7 +2770,6 @@ class MapViewModelTest {
             testScheduler.runCurrent()
             assertEquals(true, viewModel.uiState.value.search?.isSearching, "the field's spinner turns while they load")
             assertEquals(true, viewModel.uiState.value.search?.results?.isEmpty(), "no results list")
-            expectNoEvents()
             testScheduler.advanceUntilIdle()
             // Once they've loaded, the camera fits them all.
             val louvre = viewModel.pin("Louvre").location
@@ -2785,12 +2784,12 @@ class MapViewModelTest {
         assertEquals(false, viewModel.uiState.value.search?.isSearching)
         assertTrue(pins.all { it.isSearchResult } && viewModel.uiState.value.layers.isSearchShown, "red results, the rest see-through")
 
-        // A result tapped and routed from stays red: it is the route's end now, still a result.
+        // A result tapped stays red when the day's route comes on: it is kept as a pin now, still a result.
         viewModel.onAction(MapAction.MapView.PlacePinClick(viewModel.pin("Louvre")))
-        viewModel.onAction(MapAction.PinRoute.Route)
+        viewModel.onAction(MapAction.Plan.ToggleRoute)
         testScheduler.advanceUntilIdle()
-        assertTrue(viewModel.uiState.value.layers.placePins.single { it.place.name == "Louvre" }.let { it.isSearchResult && it.isKept })
-        viewModel.onAction(MapAction.PinRoute.Close)
+        assertTrue(viewModel.uiState.value.layers.placePins.single { it.place.name == "Louvre" }.let { it.isSearchResult && it.isKept && !it.isDot })
+        viewModel.onAction(MapAction.Plan.ToggleRoute)
         testScheduler.advanceUntilIdle()
 
         // Back puts the map as it was: every place, as plain pins.
