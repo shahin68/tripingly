@@ -4,8 +4,12 @@ import androidx.compose.animation.core.FiniteAnimationSpec
 import androidx.compose.foundation.LocalOverscrollFactory
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.exclude
 import androidx.compose.foundation.layout.ime
+import androidx.compose.foundation.layout.only
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
@@ -129,7 +133,11 @@ fun <T : Any> AppBottomSheet(
         ModalBottomSheet(
             onDismissRequest = dismiss,
             sheetState = sheetState,
-            modifier = modifier,
+            // A tall sheet stops under the status bar instead of padding its content under it. Material pads the content
+            // by the status bar minus how far the sheet has moved down, so a sheet near full height changed height on every
+            // frame of a drag: its anchors moved, the drag snapped back up, and ✕'s slide restarted for seconds
+            // (Shahin, 2026-11-19). Padded outside the sheet, the status bar is already taken and the height stays put.
+            modifier = Modifier.windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top)).then(modifier),
             contentWindowInsets = {
                 if (followsKeyboard) BottomSheetDefaults.windowInsets else BottomSheetDefaults.windowInsets.exclude(WindowInsets.ime)
             },
