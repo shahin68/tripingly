@@ -1519,10 +1519,12 @@ class MapViewModelTest {
         assertEquals(JoinRequestStatus.PENDING, state.header.viewerMenu?.myJoinRequest)
         assertEquals(Res.string.map_join_requested, assertIs<UiText.Resource>(assertIs<UiText.Note>(state.message?.text).text).resource)
         assertEquals(listOf(trip.trip.id), backend.observeMyTrips().first().map { it.id })
-        // Declined, the pill goes; asked again while one is on its way, it shows sent.
+        assertFalse(state.header.viewerMenu?.isAsking == true)
+        // Declined, the pill goes; while the server hasn't answered, it spins; sent wins once the trip says so.
         assertNull(ViewerMenu(isSavedByMe = false, myJoinRequest = JoinRequestStatus.DECLINED).joinButton)
         assertEquals(JoinButton.Ask, ViewerMenu(isSavedByMe = false, myJoinRequest = null).joinButton)
-        assertEquals(JoinButton.Sent, ViewerMenu(isSavedByMe = false, myJoinRequest = null, isAsking = true).joinButton)
+        assertEquals(JoinButton.Sending, ViewerMenu(isSavedByMe = false, myJoinRequest = null, isAsking = true).joinButton)
+        assertEquals(JoinButton.Sent, ViewerMenu(isSavedByMe = false, myJoinRequest = JoinRequestStatus.PENDING, isAsking = true).joinButton)
     }
 
     @Test

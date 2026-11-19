@@ -26,6 +26,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.HowToReg
 import androidx.compose.material.icons.outlined.PersonAdd
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
@@ -52,10 +53,11 @@ import com.falcon.tripingly.core.designsystem.theme.spacing
  * pink and orange, with a thin glassy edge, as high as the map's glass buttons ([GlassButtonDefaults.Size]). Its icon
  * sits as far from the start as from the top and bottom; the label ends as far from the end (Shahin, 2026-11-19).
  * A new [text] and [icon] (asked: "Request sent") play in: the icon pops in with a little spin, the label rises, and the
- * pill's width glides to fit. Without [onClick] it only shows its state.
+ * pill's width glides to fit. Without [onClick] it only shows its state. [isLoading]: a small spinner takes the icon's
+ * place while the server answers; the icon that comes after pops in as above.
  */
 @Composable
-fun GradientButton(text: String, icon: ImageVector, onClick: (() -> Unit)?, modifier: Modifier = Modifier) {
+fun GradientButton(text: String, icon: ImageVector, onClick: (() -> Unit)?, modifier: Modifier = Modifier, isLoading: Boolean = false) {
     val colors = MaterialTheme.extendedColors
     val inset = (GlassButtonDefaults.Size - IconSize) / 2
     val edge = colors.gradientEdge
@@ -73,16 +75,20 @@ fun GradientButton(text: String, icon: ImageVector, onClick: (() -> Unit)?, modi
     ) {
         CompositionLocalProvider(LocalContentColor provides colors.onGradient) {
             AnimatedContent(
-                targetState = icon,
+                targetState = icon.takeUnless { isLoading },
                 transitionSpec = {
                     (scaleIn(spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow)) + fadeIn()) togetherWith
                         (scaleOut() + fadeOut()) using SizeTransform(clip = false)
                 },
                 label = "gradient button icon",
             ) { shown ->
-                val spin = remember { Animatable(if (shown == icon && transition.isRunning) -SPIN_DEGREES else 0f) }
-                LaunchedEffect(Unit) { spin.animateTo(0f, spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow)) }
-                Icon(shown, contentDescription = null, modifier = Modifier.size(IconSize).graphicsLayer { rotationZ = spin.value })
+                if (shown == null) {
+                    CircularProgressIndicator(modifier = Modifier.size(IconSize), color = LocalContentColor.current, strokeWidth = SpinnerWidth)
+                } else {
+                    val spin = remember { Animatable(if (transition.isRunning) -SPIN_DEGREES else 0f) }
+                    LaunchedEffect(Unit) { spin.animateTo(0f, spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow)) }
+                    Icon(shown, contentDescription = null, modifier = Modifier.size(IconSize).graphicsLayer { rotationZ = spin.value })
+                }
             }
             AnimatedContent(
                 targetState = text,
@@ -98,6 +104,9 @@ fun GradientButton(text: String, icon: ImageVector, onClick: (() -> Unit)?, modi
 }
 
 private val IconSize = 20.dp
+
+/** The spinner's ring, thin enough for an icon's place. */
+private val SpinnerWidth = 2.dp
 
 /** A hairline, as glass's edge. */
 private val EdgeWidth = 0.75.dp
@@ -115,6 +124,7 @@ private fun GradientButtonPreviewContent() {
         verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
     ) {
         GradientButton(text = "Ask to join", icon = Icons.Outlined.PersonAdd, onClick = {})
+        GradientButton(text = "Ask to join", icon = Icons.Outlined.PersonAdd, onClick = null, isLoading = true)
         GradientButton(text = "Request sent", icon = Icons.Outlined.HowToReg, onClick = null)
     }
 }

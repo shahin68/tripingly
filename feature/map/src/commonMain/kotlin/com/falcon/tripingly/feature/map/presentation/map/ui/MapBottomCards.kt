@@ -285,10 +285,12 @@ internal fun MapButtons(
         }
         if (joinButton != null) {
             val isSent = joinButton == JoinButton.Sent
+            // Asked, it spins on its icon until the server answers, then plays into Request sent (Shahin, 2026-11-19).
             GradientButton(
                 text = stringResource(if (isSent) Res.string.map_join_sent else Res.string.map_join_trip),
                 icon = if (isSent) Icons.Outlined.HowToReg else Icons.Outlined.PersonAdd,
-                onClick = { onAction(MapAction.Header.RequestToJoin) }.takeUnless { isSent },
+                onClick = { onAction(MapAction.Header.RequestToJoin) }.takeIf { joinButton == JoinButton.Ask },
+                isLoading = joinButton == JoinButton.Sending,
             )
         }
         Column(horizontalAlignment = Alignment.CenterHorizontally) {

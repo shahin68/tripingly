@@ -27,6 +27,7 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.backhandler.BackHandler
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 /**
@@ -59,7 +60,12 @@ fun <T : Any> AppBottomSheet(
 ) {
     val canDismiss by rememberUpdatedState(dismissEnabled)
     val currentOnDismiss by rememberUpdatedState(onDismiss)
-    val currentOnBack by rememberUpdatedState(onBack)
+    // While it slides away, the sheet keeps the way back it had when it was shown: the next sheet's state has none, and
+    // the header's back arrow flipped to ✕ on the way down.
+    val backWhileShown = remember { arrayOfNulls<() -> Unit>(1) }
+    if (value != null) backWhileShown[0] = onBack
+    val sheetBack = if (value != null) onBack else backWhileShown[0]
+    val currentOnBack by rememberUpdatedState(sheetBack)
     // The arrow or the system back started this close, not ✕, a swipe or a tap outside.
     val goingBack = remember { BooleanArray(1) }
     // A sheet is a window over everything: shown under another screen (e.g. the screen a back swipe goes back to), it
@@ -79,7 +85,13 @@ fun <T : Any> AppBottomSheet(
             dismissed = null
             if (sheetState.targetValue == SheetValue.Hidden && sheetState.isVisible) sheetState.show()
         } else if (shown != null) {
-            sheetState.hide()
+            // Already sliding down (back, ✕, a swipe): let that slide finish. Starting it again from where it is restarted
+            // the motion from a standstill, and the sheet hung for a few frames while the next one came up (Shahin, 2026-11-19).
+            if (sheetState.targetValue == SheetValue.Hidden && sheetState.isAnimationRunning) {
+                snapshotFlow { sheetState.isAnimationRunning }.first { !it }
+            }
+            // Caught and held up on the way, it still goes: the view model closed it.
+            if (sheetState.isVisible) sheetState.hide()
             shown = null
         }
     }
@@ -104,7 +116,7 @@ fun <T : Any> AppBottomSheet(
     val current = visible ?: shown ?: return
     val scope = rememberCoroutineScope()
     val close: () -> Unit = { scope.launch { sheetState.hide() } }
-    val goBack: (() -> Unit)? = if (onBack == null) null else {
+    val goBack: (() -> Unit)? = if (sheetBack == null) null else {
         {
             goingBack[0] = true
             scope.launch { sheetState.hide() }

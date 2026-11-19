@@ -24,6 +24,7 @@ import com.falcon.tripingly.feature.map.generated.resources.map_join_withdrawn
 import com.falcon.tripingly.feature.map.generated.resources.map_reported
 import com.falcon.tripingly.feature.map.generated.resources.map_trip_saved
 import com.falcon.tripingly.feature.map.generated.resources.map_trip_unsaved
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.StringResource
 
@@ -48,15 +49,22 @@ internal class MapSharing(
     }
 
     /**
-     * Ask to join shows the request sent at once and keeps showing it (the trip's cached request says so from then on,
-     * also next time); an error puts the button back.
+     * Ask to join waits for the server, spinning on the pill; once it agreed, the trip's cached request shows it sent
+     * (also next time), and an error puts the button back. The spin goes by itself either way.
      */
     fun requestToJoin() {
         if (context.model.value.isUpdatingSharing) return
         context.update { it.copy(isAskingToJoin = true) }
         update(Res.string.map_join_requested, Res.string.map_error_join) {
             tripRepository.requestToJoin(context.tripId).also { result ->
-                if (result is AppResult.Error) context.update { it.copy(isAskingToJoin = false) }
+                when (result) {
+                    is AppResult.Error -> context.update { it.copy(isAskingToJoin = false) }
+                    // Spinning until the cached trip has the request, so the pill doesn't flash Ask to join in between.
+                    is AppResult.Success -> context.scope.launch {
+                        context.trip.first { it?.myJoinRequest != null }
+                        context.update { it.copy(isAskingToJoin = false) }
+                    }
+                }
             }
         }
     }

@@ -121,21 +121,22 @@ data class TripCardState(
 @Immutable
 data class MembersEntry(val count: Int, val requestCount: Int)
 
-/** The Ask to join pill on someone else's trip: asking, or the request sent and waiting for the owner. */
-enum class JoinButton { Ask, Sent }
+/** The Ask to join pill on someone else's trip: asking, waiting for the server, or the request sent and waiting for the owner. */
+enum class JoinButton { Ask, Sending, Sent }
 
 @Immutable
 data class ViewerMenu(
     val isSavedByMe: Boolean,
     val myJoinRequest: JoinRequestStatus?,
-    /** My request to join waits for the server: Ask to join shows it sent at once, and goes back on an error. */
+    /** My request to join waits for the server: the pill spins until it answers (sent), or goes back on an error. */
     val isAsking: Boolean = false,
 ) {
     /** None once the owner declined; accepted, I'm on the trip and there's no viewer menu at all. */
     val joinButton: JoinButton?
         get() = when {
             myJoinRequest == JoinRequestStatus.DECLINED -> null
-            myJoinRequest == JoinRequestStatus.PENDING || isAsking -> JoinButton.Sent
+            myJoinRequest == JoinRequestStatus.PENDING -> JoinButton.Sent
+            isAsking -> JoinButton.Sending
             else -> JoinButton.Ask
         }
 }
