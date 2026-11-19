@@ -50,7 +50,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.backhandler.BackHandler
-import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.Rect
@@ -71,6 +70,7 @@ import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
 import com.falcon.tripingly.core.designsystem.theme.spacing
 import com.falcon.tripingly.core.model.route.TravelMode
 import com.falcon.tripingly.core.ui.UiText
+import com.falcon.tripingly.core.ui.rememberOpeningFocus
 import com.falcon.tripingly.feature.map.generated.resources.Res
 import com.falcon.tripingly.feature.map.generated.resources.map_route_cancel_edit
 import com.falcon.tripingly.feature.map.generated.resources.map_route_change_from
@@ -251,10 +251,9 @@ private fun EndName(name: String, modifier: Modifier, color: Color = Color.Unspe
  */
 @Composable
 private fun EndField(query: TextFieldState, isSearching: Boolean, isEditing: Boolean, onAction: (MapAction) -> Unit) {
-    val focusRequester = remember { FocusRequester() }
+    val focusRequester = rememberOpeningFocus()
     val focusManager = LocalFocusManager.current
     var isFocused by remember { mutableStateOf(false) }
-    LaunchedEffect(Unit) { focusRequester.requestFocus() }
     if (isEditing) {
         // Back first closes the keyboard (the system's, before the app sees it): that cancels too, so one back does it.
         val ime = WindowInsets.ime

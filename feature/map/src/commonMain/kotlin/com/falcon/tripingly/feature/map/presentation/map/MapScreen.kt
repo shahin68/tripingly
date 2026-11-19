@@ -1,6 +1,5 @@
 package com.falcon.tripingly.feature.map.presentation.map
 
-import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.ui.zIndex
@@ -14,7 +13,6 @@ import androidx.compose.animation.scaleIn
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleOut
-import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.gestures.AnchoredDraggableState
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
@@ -34,7 +32,6 @@ import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
-import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -345,16 +342,15 @@ internal fun MapScreen(
                             )
                         }
                     }
-                    AnimatedContent(
-                        targetState = state.placeFilter.takeUnless { isRouteBarShown },
-                        contentKey = { it != null },
-                        transitionSpec = { (scaleIn() + fadeIn()) togetherWith (scaleOut() + fadeOut()) },
-                        contentAlignment = Alignment.TopEnd,
-                        modifier = Modifier.weight(1f),
-                        label = "map filter",
-                    ) { filter ->
-                        // The row's weight is the most it may grow; closed it is only its circle, at the end.
-                        if (filter != null) PlaceFilterPill(filter = filter, onAction = onAction, modifier = Modifier.wrapContentWidth(Alignment.End))
+                    // The row's weight is the most it may grow; closed it is only its circle, at the end. It scales away and
+                    // back where it stands, never gliding in from the side (Shahin, 2026-11-19).
+                    val filter = state.placeFilter.takeUnless { isRouteBarShown }
+                    var shownFilter by remember { mutableStateOf(filter) }
+                    filter?.let { shownFilter = it }
+                    Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.TopEnd) {
+                        androidx.compose.animation.AnimatedVisibility(visible = filter != null, enter = scaleIn() + fadeIn(), exit = scaleOut() + fadeOut()) {
+                            shownFilter?.let { PlaceFilterPill(filter = it, onAction = onAction) }
+                        }
                     }
                 }
                 state.search?.results?.takeIf { it.isNotEmpty() }?.let { results ->

@@ -187,7 +187,10 @@ class MapViewModel(
             is MapAction.MapView.CameraRest -> onCameraRest(action)
             is MapAction.MapView.CameraMoving -> pins.onCameraMoving(action.bounds, action.zoom)
             is MapAction.MapView.ScreenTouch -> selection.onScreenTouch()
-            is MapAction.MapView.UserMove -> camera.onUserMove()
+            is MapAction.MapView.UserMove -> {
+                camera.onUserMove()
+                search.onUserMove()
+            }
             is MapAction.MapView.NorthUp -> camera.northUp()
             is MapAction.MapView.LayoutChange -> camera.onLayoutChange()
         }

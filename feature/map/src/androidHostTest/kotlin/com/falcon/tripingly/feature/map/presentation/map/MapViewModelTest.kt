@@ -2758,11 +2758,18 @@ class MapViewModelTest {
         viewModel.uiState.value.search!!.query.setTextAndPlaceCursorAtEnd("louv")
         viewModel.onAction(MapAction.Search.QueryChanged("louv"))
         places.squaresDelayMillis = 1_000
-        viewModel.onAction(MapAction.Search.Submit)
-        testScheduler.runCurrent()
-        assertEquals(true, viewModel.uiState.value.search?.isSearching, "the field's spinner turns while they load")
-        assertEquals(true, viewModel.uiState.value.search?.results?.isEmpty(), "no results list")
-        testScheduler.advanceUntilIdle()
+        viewModel.cameraCommands.test {
+            viewModel.onAction(MapAction.Search.Submit)
+            testScheduler.runCurrent()
+            assertEquals(true, viewModel.uiState.value.search?.isSearching, "the field's spinner turns while they load")
+            assertEquals(true, viewModel.uiState.value.search?.results?.isEmpty(), "no results list")
+            expectNoEvents()
+            testScheduler.advanceUntilIdle()
+            // Once they've loaded, the camera fits them all.
+            val louvre = viewModel.pin("Louvre").location
+            val fit = assertIs<CameraCommand.Fit>(expectMostRecentItem())
+            assertTrue(louvre.lat in fit.bounds.south..fit.bounds.north && louvre.lng in fit.bounds.west..fit.bounds.east)
+        }
 
         assertEquals("louv", places.requests.last().map { it.name }.toSet().single())
         val pins = viewModel.uiState.value.layers.placePins
@@ -2770,6 +2777,14 @@ class MapViewModelTest {
         assertTrue(pins.none { it.isDot } && pins.all { it.isKept }, "full pins, also zoomed out, during a route or Around")
         assertEquals(false, viewModel.uiState.value.search?.isSearching)
         assertTrue(pins.all { it.isSearchResult } && viewModel.uiState.value.layers.isSearchShown, "red results, the rest see-through")
+
+        // A result tapped and routed from stays red: it is the route's end now, still a result.
+        viewModel.onAction(MapAction.MapView.PlacePinClick(viewModel.pin("Louvre")))
+        viewModel.onAction(MapAction.PinRoute.Route)
+        testScheduler.advanceUntilIdle()
+        assertTrue(viewModel.uiState.value.layers.placePins.single { it.place.name == "Louvre" }.let { it.isSearchResult && it.isKept })
+        viewModel.onAction(MapAction.PinRoute.Close)
+        testScheduler.advanceUntilIdle()
 
         // Back puts the map as it was: every place, as plain pins.
         viewModel.onAction(MapAction.Search.Close)

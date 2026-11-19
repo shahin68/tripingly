@@ -10,6 +10,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 
@@ -30,6 +31,7 @@ internal class MapSearch(
     private val routeTo: (PlaceSearchResult) -> Unit,
 ) {
     private var searchJob: Job? = null
+    private var fitJob: Job? = null
 
     init {
         // However the search goes (back, a result picked, a route taking the field over), the map shows all places again.
@@ -47,6 +49,7 @@ internal class MapSearch(
     /** A cleared field clears the results, and the map searched by name, at once. */
     fun onQueryChanged(query: String) {
         searchJob?.cancel()
+        fitJob?.cancel()
         if (query.isBlank()) {
             update { it.copy(results = emptyList(), isSearching = false) }
             pins.setName(null)
@@ -72,20 +75,34 @@ internal class MapSearch(
     }
 
     /**
-     * The keyboard's search key: the results list goes and the map shows only the places named so. A name the server
-     * can't search (under [MIN_NAME_LENGTH] letters) and the route's "to" field only close the keyboard.
+     * The keyboard's search key: the results list goes and the map shows only the places named so. Once they've loaded,
+     * the camera fits them all, zooming in or out (Shahin, 2026-11-19); none found, or a finger moving the map first,
+     * leaves it where it is. A name the server can't search (under [MIN_NAME_LENGTH] letters) and the route's "to"
+     * field only close the keyboard.
      */
     fun submit() {
         val search = context.model.value.search ?: return
         val name = search.query.text.toString().trim()
         if (name.length < MIN_NAME_LENGTH || context.model.value.route.isPicking) return
         searchJob?.cancel()
+        fitJob?.cancel()
         update { it.copy(results = emptyList(), isSearching = false) }
         pins.setName(name)
+        fitJob = context.scope.launch {
+            val loaded = context.model.first { it.search == null || it.placeFilter.name != name || !it.placeFilter.isLoading }
+            if (loaded.search == null || loaded.placeFilter.name != name) return@launch
+            camera.frame(loaded.pins.pins.map { Coordinates(it.place.location.lat, it.place.location.lng) })
+        }
+    }
+
+    /** A finger moved the map before the results came: it stays where the finger left it. */
+    fun onUserMove() {
+        fitJob?.cancel()
     }
 
     fun close() {
         searchJob?.cancel()
+        fitJob?.cancel()
         context.update { it.copy(search = null) }
     }
 

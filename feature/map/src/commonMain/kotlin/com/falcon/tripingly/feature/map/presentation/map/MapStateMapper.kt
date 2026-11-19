@@ -306,7 +306,8 @@ internal class MapStateMapper(
                 it.place.id in highlighted -> it.copy(isAlongTheWay = true)
                 // The pin Around is around stays itself, kept on top of the places it found (Shahin 2026-11-17).
                 it.place.id == model.around?.pinPlaceId -> it.copy(isKept = true)
-                isNamed -> it.copy(isKept = true, isSearchResult = true)
+                // A result: never a dot, red below.
+                isNamed -> it
                 othersAreDots -> it.copy(isDot = true)
                 else -> it
             }
@@ -320,7 +321,13 @@ internal class MapStateMapper(
         // A place picked from the along-the-way or Around list keeps its photo on the map, as it shows in the list, also
         // where its pin there is a plain one (Shahin, 2026-11-17).
         val selectedId = (model.selection as? Selection.Place)?.place?.id
-        val placePins = pinsShown.map { if (it.place.id == selectedId && it.place.hasCover) it.copy(photo = true) else it }
+        // A result stays a red full pin whatever else it is now, a route's end, kept or along the way (Shahin,
+        // 2026-11-19): while the map is searched by name, the map's own pins are all results.
+        val resultIds = if (isNamed) pins.mapTo(HashSet()) { it.place.id } else emptySet()
+        val placePins = pinsShown.map { pin ->
+            val isResult = pin.place.id in resultIds
+            pin.copy(photo = pin.photo || (pin.place.id == selectedId && pin.place.hasCover), isKept = pin.isKept || isResult, isSearchResult = isResult)
+        }
         val stopPath = stops.map { it.position }.takeIf { routePoints.isEmpty() && route.between == null }.orEmpty()
         val endColor = route.travelMode.lineColor
         return MapLayersState(

@@ -31,7 +31,6 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.tooling.preview.PreviewParameter
@@ -54,6 +53,7 @@ import com.falcon.tripingly.core.model.trip.TripRole
 import com.falcon.tripingly.core.model.trip.UserSummary
 import com.falcon.tripingly.core.ui.ObserveAsEvents
 import com.falcon.tripingly.core.ui.UiText
+import com.falcon.tripingly.core.ui.rememberOpeningFocus
 import com.falcon.tripingly.core.ui.timeAgo
 import com.falcon.tripingly.feature.trips.generated.resources.Res
 import com.falcon.tripingly.feature.trips.generated.resources.members_added
@@ -307,8 +307,7 @@ private fun SkeletonCard(rows: Int, row: @Composable (index: Int) -> Unit) {
  */
 @Composable
 private fun AddPeoplePage(state: State, search: SearchState, onAction: (Action) -> Unit, onClose: () -> Unit) {
-    val focus = remember { FocusRequester() }
-    LaunchedEffect(Unit) { focus.requestFocus() }
+    val focus = rememberOpeningFocus()
     val query = search.query.text.trim().removePrefix("@").toString()
     val friends = state.friends.orEmpty().filter { query.isEmpty() || it.username.contains(query, ignoreCase = true) || it.displayName.contains(query, ignoreCase = true) }
     val friendIds = friends.mapTo(HashSet()) { it.id }
