@@ -7,8 +7,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.material3.Scaffold
-import androidx.compose.ui.graphics.Color
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -32,8 +30,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.tooling.preview.PreviewParameter
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.falcon.tripingly.core.common.util.ShareManager
 import com.falcon.tripingly.core.designsystem.component.AppTextField
@@ -158,8 +159,9 @@ private fun TripMembersRoute(
 /**
  * Who is on the trip (design: the members sheet canvas, board "Search icon in the header", Shahin 2026-11-18). Cards:
  * people asking to join (the owner's, only while there are any), the people on the trip, and the owner's friends to
- * add with a tap; 🔍 opens the Add people sheet in its place and the invite link is pinned at the bottom. The sheet is as high as
- * it can be from the start, so nothing that loads makes it jump; an editor sees only who is on the trip.
+ * add with a tap; 🔍 opens the Add people sheet in its place and the invite link is pinned at the bottom. The sheet is as high
+ * as its cards (Shahin, 2026-11-19), the whole screen only when they need it; while they load, skeletons as many as the
+ * trip's counts keep its height. An editor sees only who is on the trip.
  */
 @Composable
 fun TripMembersScreen(
@@ -168,7 +170,7 @@ fun TripMembersScreen(
     onClose: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    MembersPage(state, onAction, onClose, modifier.fillMaxSize().windowInsetsPadding(WindowInsets.bottomSystemBar))
+    MembersPage(state, onAction, onClose, modifier.fillMaxWidth().windowInsetsPadding(WindowInsets.bottomSystemBar))
 }
 
 @Composable
@@ -190,26 +192,27 @@ private fun MembersPage(state: State, onAction: (Action) -> Unit, onClose: () ->
             },
         )
         // The invite pill floats over the cards at the bottom, as the tabs' bar does on Home (Shahin, 2026-11-19): the
-        // list scrolls under it, and its last card can scroll clear of it.
-        Scaffold(
-            modifier = Modifier.weight(1f),
-            containerColor = Color.Transparent,
-            contentWindowInsets = WindowInsets(0),
-            bottomBar = {
-                if (state.canManage) {
-                    InvitePill(
-                        isCreating = state.isCreatingInvite,
-                        onShare = { onAction(Action.ShareInvite) },
-                        modifier = Modifier.padding(horizontal = MaterialTheme.spacing.medium).padding(bottom = MaterialTheme.spacing.medium),
-                    )
-                }
-            },
-        ) { pillPadding ->
+        // list scrolls under it, and its last card can scroll clear of it. Short, the list and the pill under it are all
+        // the sheet holds.
+        var pillHeight by remember { mutableStateOf(0.dp) }
+        val density = LocalDensity.current
+        Box(Modifier.weight(1f, fill = false)) {
             LazyColumn(
-                Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(bottom = pillPadding.calculateBottomPadding() + MaterialTheme.spacing.small),
+                Modifier.fillMaxWidth(),
+                contentPadding = PaddingValues(bottom = pillHeight + MaterialTheme.spacing.small),
             ) {
                 if (state.isLoading) skeletonCards(state) else memberCards(state, onAction)
+            }
+            if (state.canManage) {
+                InvitePill(
+                    isCreating = state.isCreatingInvite,
+                    onShare = { onAction(Action.ShareInvite) },
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .onSizeChanged { pillHeight = with(density) { it.height.toDp() } }
+                        .padding(horizontal = MaterialTheme.spacing.medium)
+                        .padding(bottom = MaterialTheme.spacing.medium),
+                )
             }
         }
     }

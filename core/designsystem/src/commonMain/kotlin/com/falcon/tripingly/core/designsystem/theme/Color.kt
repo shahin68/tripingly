@@ -100,3 +100,10 @@ object MapColors {
      */
     val Transit = Color(0xFF55606E)
 }
+
+// The gradient button: a lighter leaf green into the brand's, light on top as glass catches light (2026-11-19).
+internal val GradientStartLight = Color(0xFF4F9466)
+internal val GradientEdgeLight = Color(0x8CFFFFFF)
+internal val GradientStartDark = Color(0xFFA6DDB6)
+internal val GradientEndDark = Color(0xFF68AD7F)
+internal val GradientEdgeDark = Color(0x59FFFFFF)

@@ -1476,6 +1476,8 @@ class MapViewModelTest {
         testScheduler.advanceUntilIdle()
 
         val state = viewModel.uiState.value
+        // Asked: no Ask to join button any more, ⋮ withdraws.
+        assertEquals(false, state.header.viewerMenu?.isAsking)
         assertTrue(state.header.viewerMenu?.isSavedByMe == true)
         assertEquals(JoinRequestStatus.PENDING, state.header.viewerMenu?.myJoinRequest)
         assertEquals(Res.string.map_join_requested, assertIs<UiText.Resource>(assertIs<UiText.Note>(state.message?.text).text).resource)

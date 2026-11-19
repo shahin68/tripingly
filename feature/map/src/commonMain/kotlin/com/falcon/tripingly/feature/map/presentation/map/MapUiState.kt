@@ -121,7 +121,8 @@ data class MembersEntry(val count: Int, val requestCount: Int)
 data class ViewerMenu(
     val isSavedByMe: Boolean,
     val myJoinRequest: JoinRequestStatus?,
-    val ownerUsername: String?,
+    /** A request to join (or to withdraw it) waits for the server: Ask to join goes at once and comes back on an error. */
+    val isAsking: Boolean = false,
 )
 
 /** [canDeleteDay]: the trip has more than one day and the owner, or an editor whose stops are all of it, may delete it. */

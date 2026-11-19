@@ -1,6 +1,9 @@
 package com.falcon.tripingly.feature.map.presentation.map.ui
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
+import androidx.compose.material.icons.outlined.PersonAdd
 import androidx.compose.ui.platform.LocalAccessibilityManager
 import androidx.compose.animation.togetherWith
 import androidx.compose.animation.SizeTransform
@@ -30,6 +33,8 @@ import androidx.compose.material.icons.filled.NearMe
 import androidx.compose.material.icons.outlined.CenterFocusStrong
 import androidx.compose.material.icons.outlined.GpsOff
 import androidx.compose.material.icons.outlined.Info
+import com.falcon.tripingly.core.designsystem.component.GradientButton
+import com.falcon.tripingly.feature.map.generated.resources.map_join_trip
 import com.falcon.tripingly.feature.map.generated.resources.map_location_turn_on
 import com.falcon.tripingly.feature.map.generated.resources.map_location_off
 import androidx.compose.material3.TextButton
@@ -104,6 +109,8 @@ internal fun BottomCards(
     arePlacesHidden: Boolean,
     /** Which way the map is turned, for the compass; read only while drawing. */
     bearing: () -> Float,
+    /** Someone else's trip I haven't asked to join yet: the Ask to join button by the map buttons. */
+    canAskToJoin: Boolean,
     dayTabs: DayTabsState,
     plan: PlanCardState?,
     editorMenu: EditorMenu?,
@@ -140,7 +147,7 @@ internal fun BottomCards(
                     )
                     Spacer(modifier = Modifier.weight(1f))
                 }
-                MapButtons(location, arePlacesHidden, bearing, onAction, Modifier.padding(bottom = MaterialTheme.spacing.small))
+                MapButtons(location, arePlacesHidden, bearing, canAskToJoin, onAction, Modifier.padding(bottom = MaterialTheme.spacing.small))
             }
         }
         // What always covers the map: the tabs (none without days) and the gap under the card, each measured.
@@ -256,14 +263,30 @@ internal val SmallCreditsStyle: TextStyle
  * Hides or shows the places (crossed out while hidden), over the button that fits the camera to the open day (its
  * stops, else the whole trip's, else the destination), over the location button, which follows me while lit (filled,
  * in the accent colour). Following without a signal, a quiet note beside it says it waits for one. Our compass rides on
- * top while the map is turned ([MapCompass]).
+ * top while the map is turned ([MapCompass]). On someone else's trip I haven't asked to join ([canAskToJoin]), Ask to
+ * join stands to their left, its bottom in line with the location button's (Shahin, 2026-11-19): the one thing on the
+ * trip worth pushing; asked, it scales away and ⋮ can withdraw the request.
  */
 @Composable
-internal fun MapButtons(location: LocationState, arePlacesHidden: Boolean, bearing: () -> Float, onAction: (MapAction) -> Unit, modifier: Modifier = Modifier) {
+internal fun MapButtons(
+    location: LocationState,
+    arePlacesHidden: Boolean,
+    bearing: () -> Float,
+    canAskToJoin: Boolean,
+    onAction: (MapAction) -> Unit,
+    modifier: Modifier = Modifier,
+) {
     Row(modifier, horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small), verticalAlignment = Alignment.Bottom) {
         AnimatedVisibility(location.isSignalLost, enter = fadeIn(), exit = fadeOut()) { GpsLostNote() }
         AnimatedVisibility(location.isSwitchedOff, enter = fadeIn(), exit = fadeOut()) {
             LocationOffNote(onTurnOn = { onAction(MapAction.Location.TurnOn) })
+        }
+        AnimatedVisibility(canAskToJoin, enter = scaleIn() + fadeIn(), exit = scaleOut() + fadeOut()) {
+            GradientButton(
+                text = stringResource(Res.string.map_join_trip),
+                icon = Icons.Outlined.PersonAdd,
+                onClick = { onAction(MapAction.Header.RequestToJoin) },
+            )
         }
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             MapCompass(bearing, onNorthUp = { onAction(MapAction.MapView.NorthUp) })
@@ -341,11 +364,11 @@ private fun MapControlsPreviewContent() {
             verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
         ) {
             Row(horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small)) {
-                MapButtons(location = LocationState(), arePlacesHidden = false, bearing = { 30f }, onAction = {})
-                MapButtons(location = LocationState(isLoading = true), arePlacesHidden = true, bearing = { 0f }, onAction = {})
+                MapButtons(location = LocationState(), arePlacesHidden = false, bearing = { 30f }, canAskToJoin = true, onAction = {})
+                MapButtons(location = LocationState(isLoading = true), arePlacesHidden = true, bearing = { 0f }, canAskToJoin = false, onAction = {})
             }
-            MapButtons(location = LocationState(isFollowing = true, isSignalLost = true), arePlacesHidden = false, bearing = { 0f }, onAction = {})
-            MapButtons(location = LocationState(isFollowing = true, isSwitchedOff = true), arePlacesHidden = false, bearing = { 0f }, onAction = {})
+            MapButtons(location = LocationState(isFollowing = true, isSignalLost = true), arePlacesHidden = false, bearing = { 0f }, canAskToJoin = false, onAction = {})
+            MapButtons(location = LocationState(isFollowing = true, isSwitchedOff = true), arePlacesHidden = false, bearing = { 0f }, canAskToJoin = false, onAction = {})
         }
     }
 }

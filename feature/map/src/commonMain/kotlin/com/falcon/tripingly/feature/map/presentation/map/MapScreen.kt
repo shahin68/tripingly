@@ -285,8 +285,6 @@ internal fun MapScreen(
                     header = state.header,
                     // While routing, the search is the route bar's "to".
                     search = state.search.takeUnless { isRouteBarShown },
-                    // A day without stops keeps its day actions in ⋮, also while its sheet holds just Around.
-                    showDayActions = plan == null || (plan as? StopsCardState)?.stops?.isEmpty() == true,
                     onAction = onAction,
                     isTitleHidden = isTripCardShown || isRouteBarShown,
                     onTitleClick = {
@@ -360,6 +358,9 @@ internal fun MapScreen(
         }
 
 
+        // Someone else's trip I haven't asked to join: Ask to join by the map buttons.
+        val canAskToJoin = state.header.viewerMenu.let { it != null && it.myJoinRequest == null && !it.isAsking }
+
         // Retry sends every stop change that failed for a connection problem, earlier ones too.
         val message = state.message
         ShowMessage(
@@ -375,6 +376,7 @@ internal fun MapScreen(
             location = state.location,
             arePlacesHidden = state.arePlacesHidden,
             bearing = { bearing },
+            canAskToJoin = canAskToJoin,
             dayTabs = state.dayTabs,
             plan = plan,
             editorMenu = state.header.editorMenu,
@@ -405,7 +407,7 @@ internal fun MapScreen(
                     onOpenHeight = { creditsHeight = with(density) { it.toDp() } },
                     modifier = Modifier.align(Alignment.TopEnd),
                 )
-                MapButtons(state.location, state.arePlacesHidden, { bearing }, onAction, Modifier.align(Alignment.BottomEnd))
+                MapButtons(state.location, state.arePlacesHidden, { bearing }, canAskToJoin, onAction, Modifier.align(Alignment.BottomEnd))
             }
         }
 

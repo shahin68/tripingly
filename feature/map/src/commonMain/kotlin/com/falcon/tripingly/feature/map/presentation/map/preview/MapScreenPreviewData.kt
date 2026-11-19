@@ -175,7 +175,7 @@ internal class MapHeaderPreviewStates : PreviewParameterProvider<MapHeaderPrevie
                 tripName = "A long weekend in Budapest with the whole family",
                 owner = UserSummary(id = "u2", username = "anna", displayName = "Anna Kovács"),
                 card = TripCardState(dates = "Nov 4 – 9", likeCount = 12400, saveCount = 980, faces = persistentListOf(UserSummary(id = "u2", username = "anna", displayName = "Anna Kovács")), memberCount = 1, membersNote = UiText.Resource(Res.string.map_trip_card_only, "Anna Kovács")),
-                viewerMenu = ViewerMenu(isSavedByMe = true, myJoinRequest = null, ownerUsername = "anna"),
+                viewerMenu = ViewerMenu(isSavedByMe = true, myJoinRequest = null),
             ),
         ),
         MapHeaderPreview(withStops.header.copy(isBusy = true)),

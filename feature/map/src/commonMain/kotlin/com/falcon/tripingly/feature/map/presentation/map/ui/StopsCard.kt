@@ -32,7 +32,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.MoreHoriz
-import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.AutoAwesome
 import androidx.compose.material.icons.outlined.CleaningServices
 import androidx.compose.material.icons.outlined.Delete
@@ -75,7 +74,6 @@ import com.falcon.tripingly.core.designsystem.theme.extendedColors
 import com.falcon.tripingly.core.designsystem.theme.spacing
 import com.falcon.tripingly.core.ui.UiText
 import com.falcon.tripingly.feature.map.generated.resources.Res
-import com.falcon.tripingly.feature.map.generated.resources.map_add_day
 import com.falcon.tripingly.feature.map.generated.resources.map_best_order
 import com.falcon.tripingly.feature.map.generated.resources.map_clear_day
 import com.falcon.tripingly.feature.map.generated.resources.map_day_menu
@@ -296,15 +294,14 @@ private fun PlanTitleRow(title: @Composable (Modifier) -> Unit, buttons: @Compos
 }
 
 /**
- * The day's ⋯: Best order (anyone who can reorder, 3 to 25 stops), add a day, clear the open one, delete it. Hidden
- * when none of them is open to this user.
+ * The day's ⋯, about the open day's plan: Best order (anyone who can reorder, 3 to 25 stops), clear the day, delete it
+ * (a new day comes with + by the day tabs). Hidden when none of them is open to this user.
  */
 @Composable
 private fun DayMenuButton(dayNumber: Int, card: StopsCardState, editorMenu: EditorMenu?, onAction: (MapAction) -> Unit) {
     val actions = listOfNotNull(
         DropdownAction(stringResource(Res.string.map_best_order), icon = Icons.Outlined.AutoAwesome) { onAction(MapAction.Plan.FindBestOrder) }
             .takeIf { card.canFindBestOrder && !card.isFindingBestOrder },
-        editorMenu?.let { DropdownAction(stringResource(Res.string.map_add_day), icon = Icons.Outlined.Add) { onAction(MapAction.Header.AddDay) } },
         DropdownAction(stringResource(Res.string.map_clear_day, dayNumber), icon = Icons.Outlined.CleaningServices) { onAction(MapAction.Plan.ClearAll) }
             .takeIf { card.canClear },
         DropdownAction(stringResource(Res.string.map_delete_day), isDestructive = true, icon = Icons.Outlined.Delete) { onAction(MapAction.Header.DeleteDay) }

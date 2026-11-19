@@ -18,13 +18,10 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.Bookmark
 import androidx.compose.material.icons.outlined.BookmarkBorder
-import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Flag
 import androidx.compose.material.icons.outlined.Group
-import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.PersonAdd
 import androidx.compose.material.icons.outlined.PersonRemove
 import androidx.compose.material.icons.outlined.Search
@@ -72,12 +69,9 @@ import com.falcon.tripingly.core.designsystem.theme.spacing
 import com.falcon.tripingly.core.model.trip.JoinRequestStatus
 import com.falcon.tripingly.core.ui.rememberOpeningFocus
 import com.falcon.tripingly.feature.map.generated.resources.Res
-import com.falcon.tripingly.feature.map.generated.resources.map_add_day
 import com.falcon.tripingly.feature.map.generated.resources.map_back
 import com.falcon.tripingly.feature.map.generated.resources.map_cancel_join
-import com.falcon.tripingly.feature.map.generated.resources.map_delete_day
 import com.falcon.tripingly.feature.map.generated.resources.map_join_trip
-import com.falcon.tripingly.feature.map.generated.resources.map_owner_profile
 import com.falcon.tripingly.feature.map.generated.resources.map_report_trip
 import com.falcon.tripingly.feature.map.generated.resources.map_save_trip
 import com.falcon.tripingly.feature.map.generated.resources.map_search
@@ -102,13 +96,11 @@ import org.jetbrains.compose.resources.stringResource
  * header's padding, where the card grows out of it; the pill hides meanwhile, [isTitleHidden]). As the card grows
  * ([cardProgress], 0 to 1) it pushes the back button out to the start and search and ⋮ out to the end, cut at the
  * header's sides (the left half in landscape). Over the native map, so no blur.
- * [showDayActions]: the day has no plan sheet, so its day actions are in ⋮.
  */
 @Composable
 internal fun MapHeader(
     header: HeaderState,
     search: SearchState?,
-    showDayActions: Boolean,
     onAction: (MapAction) -> Unit,
     modifier: Modifier = Modifier,
     isTitleHidden: Boolean = false,
@@ -117,7 +109,7 @@ internal fun MapHeader(
     cardProgress: () -> Float = { 0f },
 ) {
     val progress by animateFloatAsState(if (search != null) 1f else 0f, tween(SEARCH_MOTION_MILLIS))
-    val actions = tripMenuActions(header, showDayActions, onAction)
+    val actions = tripMenuActions(header, onAction)
     val gap = MaterialTheme.spacing.small
     // How far past the header's padding the trip card pushes the buttons: off the screen, or out of the left half.
     val pushedOut = MaterialTheme.spacing.medium
@@ -195,7 +187,10 @@ private const val SEARCH_MOTION_MILLIS = 300
  * report, or an editor's day actions while the day has no plan sheet.
  */
 @Composable
-private fun tripMenuActions(header: HeaderState, showDayActions: Boolean, onAction: (MapAction) -> Unit): List<DropdownAction> {
+private fun tripMenuActions(header: HeaderState, onAction: (MapAction) -> Unit): List<DropdownAction> {
+    // ⋮ is about the whole trip: who is on it, saving it, asking to join, reporting it. The open day's plan has its own ⋯
+    // in the plan sheet, a day comes with + by the day tabs and goes with a long press on its tab (Shahin, 2026-11-19).
+    // The owner's profile opens from their face in the title.
     val haptics = rememberHaptics()
     val members = header.members?.let {
         DropdownAction(
@@ -221,20 +216,10 @@ private fun tripMenuActions(header: HeaderState, showDayActions: Boolean, onActi
                 }
                 JoinRequestStatus.DECLINED -> null
             },
-            menu.ownerUsername?.let { owner ->
-                DropdownAction(stringResource(Res.string.map_owner_profile, owner), icon = Icons.Outlined.Person) { onAction(MapAction.Header.OpenOwnerProfile) }
-            },
             DropdownAction(stringResource(Res.string.map_report_trip), isDestructive = true, icon = Icons.Outlined.Flag) { onAction(MapAction.Header.ReportTrip) },
         )
     }.orEmpty()
-    val days = header.editorMenu?.takeIf { showDayActions }?.let { menu ->
-        listOfNotNull(
-            DropdownAction(stringResource(Res.string.map_add_day), icon = Icons.Outlined.Add) { onAction(MapAction.Header.AddDay) },
-            DropdownAction(stringResource(Res.string.map_delete_day), isDestructive = true, icon = Icons.Outlined.Delete) { onAction(MapAction.Header.DeleteDay) }
-                .takeIf { menu.canDeleteDay },
-        )
-    }.orEmpty()
-    return listOfNotNull(members) + viewer + days
+    return listOfNotNull(members) + viewer
 }
 
 @Composable
@@ -302,7 +287,7 @@ private val SearchResultsMaxHeight = 360.dp
 private fun MapHeaderPreview(@PreviewParameter(MapHeaderPreviewStates::class) preview: MapHeaderPreview) {
     TripinglyTheme {
         Box(Modifier.background(MaterialTheme.colorScheme.surfaceContainerHigh)) {
-            MapHeader(header = preview.header, search = preview.search, showDayActions = false, onAction = {})
+            MapHeader(header = preview.header, search = preview.search, onAction = {})
         }
     }
 }
@@ -313,7 +298,7 @@ private fun MapHeaderDarkPreview() {
     TripinglyTheme(darkTheme = true) {
         val preview = MapHeaderPreviewStates().values.last()
         Column(Modifier.background(MaterialTheme.colorScheme.surfaceContainerHigh)) {
-            MapHeader(header = preview.header, search = null, showDayActions = false, onAction = {})
+            MapHeader(header = preview.header, search = null, onAction = {})
             SearchResults(results = preview.search!!.results, onAction = {}, modifier = Modifier.padding(horizontal = MaterialTheme.spacing.medium))
         }
     }
