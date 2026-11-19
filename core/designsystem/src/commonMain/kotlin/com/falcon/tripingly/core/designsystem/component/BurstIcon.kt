@@ -14,6 +14,12 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.drawscope.translate
+import androidx.compose.ui.graphics.vector.rememberVectorPainter
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.unit.Dp
+import androidx.compose.runtime.Immutable
 import androidx.compose.ui.graphics.vector.ImageVector
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
@@ -32,7 +38,9 @@ internal fun BurstIcon(
     tint: Color,
     burst: Int,
     modifier: Modifier = Modifier,
+    backdrop: Backdrop? = null,
 ) {
+    val backdropPainter = backdrop?.let { rememberVectorPainter(it.icon) }
     val pop = remember { Animatable(1f) }
     val dots = remember { Animatable(1f) }
     LaunchedEffect(burst) {
@@ -71,9 +79,26 @@ internal fun BurstIcon(
             .graphicsLayer {
                 scaleX = pop.value
                 scaleY = pop.value
-            },
+            }
+            .then(
+                if (backdrop == null || backdropPainter == null) {
+                    Modifier
+                } else {
+                    // Inside the pop's layer: the ring pops with the icon.
+                    Modifier.drawBehind {
+                        val grow = backdrop.width.toPx()
+                        translate(-grow, -grow) {
+                            with(backdropPainter) { draw(Size(size.width + grow * 2, size.height + grow * 2), colorFilter = ColorFilter.tint(backdrop.color)) }
+                        }
+                    }
+                },
+            ),
     )
 }
+
+/** A filled [icon], [width] larger on every side, drawn in [color] behind a [BurstIcon]: a ring that sets it apart from what's behind. */
+@Immutable
+internal data class Backdrop(val icon: ImageVector, val color: Color, val width: Dp)
 
 private const val DotCount = 8
 private const val BurstMillis = 450

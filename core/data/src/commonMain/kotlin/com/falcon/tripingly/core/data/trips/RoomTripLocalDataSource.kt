@@ -87,6 +87,8 @@ internal class RoomTripLocalDataSource(
         if (hotByMe == null) dao.updatePlaceHotCount(placeId, hotCount) else dao.updatePlaceHot(placeId, hotCount, hotByMe)
     }
 
+    override suspend fun saveTripLike(tripId: String, liked: Boolean, likeCount: Int) = dao.updateTripLike(tripId, liked, likeCount)
+
     override suspend fun addToCommentCount(markerId: String, delta: Int) = dao.addToMarkerCommentCount(markerId, delta)
 
     override suspend fun deleteMarkers(markerIds: List<String>) = dao.removeMarkers(markerIds)
@@ -122,6 +124,7 @@ internal class RoomTripLocalDataSource(
         destinationLat = details?.destination?.location?.lat,
         destinationLng = details?.destination?.location?.lng,
         likeCount = details?.likeCount ?: 0,
+        likedByMe = details?.likedByMe ?: false,
         saveCount = details?.saveCount ?: 0,
     )
 }
@@ -160,6 +163,7 @@ private fun TripWithDetails.toDetails() = TripDetails(
         Destination(name, GeoPoint(trip.destinationLat ?: 0.0, trip.destinationLng ?: 0.0))
     },
     likeCount = trip.likeCount,
+    likedByMe = trip.likedByMe,
     saveCount = trip.saveCount,
 )
 

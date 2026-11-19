@@ -203,6 +203,7 @@ class MapViewModel(
             is MapAction.Header.AddDay -> edits.addDay()
             is MapAction.Header.DeleteDay -> openDialog(Dialog.DeleteDay)
             is MapAction.Header.ToggleSave -> sharing.toggleSave()
+            is MapAction.Header.ToggleLike -> sharing.toggleLike()
             is MapAction.Header.RequestToJoin -> sharing.requestToJoin()
             is MapAction.Header.CancelJoinRequest -> sharing.cancelJoinRequest()
             is MapAction.Header.OpenMembers -> openSheet(Sheet.Members)

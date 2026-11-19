@@ -95,6 +95,9 @@ import com.falcon.tripingly.feature.map.presentation.map.state.withPinMargin
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
+import kotlinx.coroutines.CompletableDeferred
+import com.falcon.tripingly.core.model.social.LikeTarget
+import com.falcon.tripingly.core.model.social.LikeState
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertIs
@@ -249,6 +252,17 @@ class MapViewModelTest {
         private val fake: FakeSocialRepository = FakeSocialRepository(),
     ) : SocialRepository by fake {
         val reports = mutableListOf<Pair<ReportTarget, String>>()
+
+        /** Set: likes are refused with it. */
+        var likeError: DataError.Network? = null
+
+        /** Set: like answers wait for it. */
+        var likeGate: CompletableDeferred<Unit>? = null
+
+        override suspend fun setLiked(target: LikeTarget, targetId: String, liked: Boolean): AppResult<LikeState, DataError.Network> {
+            likeGate?.await()
+            return likeError?.let { AppResult.Error(it) } ?: fake.setLiked(target, targetId, liked)
+        }
 
         override suspend fun report(target: ReportTarget, targetId: String, reason: ReportReason, details: String?): AppResult<Unit, DataError.Network> {
             reports += target to targetId
@@ -1499,6 +1513,46 @@ class MapViewModelTest {
 
         assertNull(viewModel.uiState.value.header.editorMenu)
         assertTrue(viewModel.uiState.value.layers.stops.isEmpty())
+    }
+
+    @Test
+    fun `a viewer's heart on the title shows a tap at once, keeps it while the server answers, follows likes from elsewhere and only a refusal undoes it`() = runTest(testDispatcher) {
+        backend.seed(trip.copy(trip = trip.trip.copy(role = TripRole.VIEWER), likeCount = 4))
+        val viewModel = viewModel()
+        testScheduler.advanceUntilIdle()
+        assertEquals(false, viewModel.uiState.value.header.heartLiked)
+
+        // Tapped: on at once, with the card's count, and it stays on while the server takes its time.
+        social.likeGate = CompletableDeferred()
+        viewModel.onAction(MapAction.Header.ToggleLike)
+        assertEquals(true, viewModel.uiState.value.header.heartLiked)
+        assertEquals(5, viewModel.uiState.value.header.card.likeCount)
+        testScheduler.advanceUntilIdle()
+        assertEquals(true, viewModel.uiState.value.header.heartLiked)
+        social.likeGate?.complete(Unit)
+        social.likeGate = null
+        testScheduler.advanceUntilIdle()
+        assertEquals(true, viewModel.uiState.value.header.heartLiked)
+
+        // Unliked in Explore: the map follows.
+        social.setLiked(LikeTarget.Trip, trip.trip.id, false)
+        testScheduler.advanceUntilIdle()
+        assertEquals(false, viewModel.uiState.value.header.heartLiked)
+
+        // Refused: back to what the server last said, with a message.
+        social.likeError = DataError.Network.ServerError
+        viewModel.onAction(MapAction.Header.ToggleLike)
+        assertEquals(true, viewModel.uiState.value.header.heartLiked)
+        testScheduler.advanceUntilIdle()
+        assertEquals(false, viewModel.uiState.value.header.heartLiked)
+        assertNotNull(viewModel.uiState.value.message)
+    }
+
+    @Test
+    fun `my own trip has no heart on its title`() = runTest(testDispatcher) {
+        val viewModel = viewModel()
+        testScheduler.advanceUntilIdle()
+        assertNull(viewModel.uiState.value.header.heartLiked)
     }
 
     @Test

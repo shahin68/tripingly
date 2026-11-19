@@ -24,7 +24,13 @@ import com.falcon.tripingly.feature.map.generated.resources.map_join_withdrawn
 import com.falcon.tripingly.feature.map.generated.resources.map_reported
 import com.falcon.tripingly.feature.map.generated.resources.map_trip_saved
 import com.falcon.tripingly.feature.map.generated.resources.map_trip_unsaved
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.mapNotNull
+import kotlinx.coroutines.flow.merge
+import com.falcon.tripingly.core.model.social.LikeState
+import com.falcon.tripingly.core.model.social.LikeTarget
+import com.falcon.tripingly.feature.map.generated.resources.map_error_like
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.StringResource
 
@@ -36,6 +42,40 @@ internal class MapSharing(
     /** Back to where the trip was opened from, once I left it. */
     private val onLeft: () -> Unit,
 ) {
+    private var likeJob: Job? = null
+
+    /** What the server last confirmed, before the taps on their way. */
+    private var confirmedLike: LikeState? = null
+
+    init {
+        // A like from another screen (Explore, a profile), or a count the server sends live, shows here too; a tap still
+        // on its way here wins.
+        context.scope.launch {
+            merge(
+                socialRepository.myLikes.mapNotNull { change -> change.state.takeIf { change.target == LikeTarget.Trip && change.targetId == context.tripId } },
+                socialRepository.likeCounts.mapNotNull { count ->
+                    if (count.target == LikeTarget.Trip && count.targetId == context.tripId) LikeState(shownLike().liked, count.count) else null
+                },
+            ).collect { like -> if (likeJob?.isActive != true) context.update { it.copy(tripLike = like) } }
+        }
+    }
+
+    /** The heart: shows at once and stays; a newer tap cancels the one on its way, and only a refusal puts back the last confirmed one. */
+    fun toggleLike() {
+        val shown = shownLike()
+        if (likeJob?.isActive != true) confirmedLike = shown
+        likeJob?.cancel()
+        val liked = !shown.liked
+        context.update { it.copy(tripLike = LikeState(liked, (shown.likeCount + if (liked) 1 else -1).coerceAtLeast(0))) }
+        likeJob = context.scope.launch {
+            val result = socialRepository.setLiked(LikeTarget.Trip, context.tripId, liked)
+            if (result is AppResult.Error) context.update { it.copy(tripLike = confirmedLike, message = result.error.toUiText(Res.string.map_error_like)) }
+        }
+    }
+
+    private fun shownLike(): LikeState = context.model.value.tripLike
+        ?: LikeState(context.trip.value?.likedByMe == true, context.trip.value?.likeCount ?: 0)
+
     /** Someone else's trip goes into My Trips (read-only, the owner's live trip), or out again. */
     fun toggleSave() {
         val trip = context.trip.value?.trip ?: return

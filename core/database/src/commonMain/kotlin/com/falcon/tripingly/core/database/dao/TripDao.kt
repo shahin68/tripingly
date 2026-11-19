@@ -82,6 +82,9 @@ abstract class TripDao {
     @Query("UPDATE trips SET savedByMe = :saved WHERE id = :tripId")
     abstract suspend fun updateSavedByMe(tripId: String, saved: Boolean)
 
+    @Query("UPDATE trips SET likedByMe = :liked, likeCount = :likeCount WHERE id = :tripId")
+    abstract suspend fun updateTripLike(tripId: String, liked: Boolean, likeCount: Int)
+
     @Query("UPDATE trips SET myJoinRequest = :status WHERE id = :tripId")
     abstract suspend fun updateMyJoinRequest(tripId: String, status: String?)
 
@@ -112,6 +115,7 @@ abstract class TripDao {
                     destinationLat = cached.destinationLat,
                     destinationLng = cached.destinationLng,
                     likeCount = cached.likeCount,
+                    likedByMe = cached.likedByMe,
                     saveCount = cached.saveCount,
                 )
             },

@@ -18,6 +18,8 @@ data class TripDetails(
     val destination: Destination? = null,
     /** People who liked the trip, shown on its trip card. */
     val likeCount: Int = 0,
+    /** I like it (someone else's trip: its heart on the map). */
+    val likedByMe: Boolean = false,
     /** People who saved it to their trips. */
     val saveCount: Int = 0,
 )

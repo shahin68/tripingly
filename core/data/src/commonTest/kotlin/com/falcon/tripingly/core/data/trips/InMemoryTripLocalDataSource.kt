@@ -106,6 +106,9 @@ internal class InMemoryTripLocalDataSource : TripLocalDataSource {
             }
         }
 
+    override suspend fun saveTripLike(tripId: String, liked: Boolean, likeCount: Int) =
+        trips.update { all -> all[tripId]?.let { all + (tripId to it.copy(likedByMe = liked, likeCount = likeCount)) } ?: all }
+
     override suspend fun addToCommentCount(markerId: String, delta: Int) =
         updateMarker(markerId) { it.copy(commentCount = maxOf(0, it.commentCount + delta)) }
 

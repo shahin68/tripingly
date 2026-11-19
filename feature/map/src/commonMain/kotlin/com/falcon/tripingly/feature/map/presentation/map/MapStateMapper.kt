@@ -136,7 +136,7 @@ internal class MapStateMapper(
             owner = trip?.owner,
             card = TripCardState(
                 dates = trip?.let { DateUtils.formatShortRange(it.startDate, it.endDate) },
-                likeCount = details?.likeCount ?: 0,
+                likeCount = model.tripLike?.likeCount ?: details?.likeCount ?: 0,
                 saveCount = details?.saveCount ?: 0,
                 isPublic = trip?.visibility != TripVisibility.PRIVATE,
                 faces = faces,
@@ -153,6 +153,7 @@ internal class MapStateMapper(
             canLeave = role == TripRole.EDITOR,
             isLoading = days.isEmpty() && model.isLoadingTrip,
             isBusy = model.isSaving || model.isUpdatingSharing,
+            heartLiked = trip?.takeIf { role == TripRole.VIEWER }?.let { model.tripLike?.liked ?: details.likedByMe },
             viewerMenu = trip?.takeIf { role == TripRole.VIEWER }?.let {
                 ViewerMenu(isSavedByMe = it.savedByMe, myJoinRequest = details.myJoinRequest, isAsking = model.isAskingToJoin)
             },

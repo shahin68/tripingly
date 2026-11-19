@@ -6,6 +6,7 @@ import com.falcon.tripingly.core.data.trips.MarkerChangeFailure
 import com.falcon.tripingly.core.location.model.Coordinates
 import com.falcon.tripingly.core.location.permission.LocationPermission
 import com.falcon.tripingly.core.model.photo.Photo
+import com.falcon.tripingly.core.model.social.LikeState
 import com.falcon.tripingly.core.model.photo.PhotoOwner
 import com.falcon.tripingly.core.model.photo.PickedImage
 import com.falcon.tripingly.core.model.place.GeoBounds
@@ -45,6 +46,8 @@ internal data class MapModel(
     val isUpdatingSharing: Boolean = false,
     /** My request to join is on its way: Ask to join shows it sent at once. */
     val isAskingToJoin: Boolean = false,
+    /** My like of someone else's trip as shown: a tap shows at once; null until a tap or a like from elsewhere. */
+    val tripLike: LikeState? = null,
     val activeDayIndex: Int = 0,
     val camera: CameraModel = CameraModel(),
     val selection: Selection? = null,
