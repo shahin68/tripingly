@@ -98,7 +98,12 @@ data class MapLayersState(
      * other pins) see-through at [SearchDimAlpha] until the search closes (Shahin, 2026-11-19).
      */
     val isSearchShown: Boolean = false,
+    /** The stop whose card is open: clear while the rest is see-through, so the card never stands over a faded pin. */
+    val selectedStopId: String? = null,
 )
+
+/** How much of [stop] shows: clear while its card is open, else as everything that isn't a search result. */
+internal fun MapLayersState.stopAlpha(stop: MapMarker): Float = if (stop.id == selectedStopId) 1f else dimAlpha
 
 /** How much of what isn't a search result shows: see-through while the map is searched by name. */
 internal val MapLayersState.dimAlpha: Float get() = if (isSearchShown) SearchDimAlpha else 1f

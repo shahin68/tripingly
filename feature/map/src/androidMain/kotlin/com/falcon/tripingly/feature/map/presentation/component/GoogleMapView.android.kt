@@ -512,7 +512,7 @@ actual fun GoogleMapView(
                         title = marker.title.asString(),
                         // The pin is a circle centered on the stop.
                         anchor = Offset(0.5f, 0.5f),
-                        alpha = dimAlpha,
+                        alpha = layers.stopAlpha(marker),
                         // Above the places.
                         zIndex = 1f,
                         onClick = {

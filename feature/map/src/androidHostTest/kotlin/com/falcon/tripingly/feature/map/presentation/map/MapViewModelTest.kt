@@ -163,6 +163,11 @@ class MapViewModelTest {
         val aroundRequests = mutableListOf<Int>()
         /** How long the squares take to come, as from the server. */
         var squaresDelayMillis = 0L
+        /** What the search answers when set; the fake's otherwise. */
+        var searchResults: List<PlaceSearchResult>? = null
+
+        override suspend fun search(query: String, near: GeoPoint?): AppResult<List<PlaceSearchResult>, DataError.Network> =
+            searchResults?.let { AppResult.Success(it) } ?: fake.search(query, near)
 
         override suspend fun around(point: GeoPoint, radiusMeters: Int, categories: Set<PlaceCategory>, excludePlaceId: String?): AppResult<PlacesAround, DataError.Network> {
             aroundRequests += radiusMeters
@@ -2793,6 +2798,37 @@ class MapViewModelTest {
         assertEquals(setOf("Eiffel Tower", "Louvre"), viewModel.uiState.value.layers.placePins.map { it.place.name }.toSet())
         assertTrue(viewModel.uiState.value.layers.placePins.none { it.isKept || it.isSearchResult })
         assertEquals(false, viewModel.uiState.value.layers.isSearchShown, "everything clear again")
+    }
+
+    @Test
+    fun `the keyboard's search with nothing named so in view goes to the nearest one, then fits all around it`() = runTest(testDispatcher) {
+        addStops(GeoPoint(48.85, 2.30))
+        val viewModel = viewModel()
+        restOnTarget(viewModel)
+        val stephansdom = MapPlace("fake-stephansdom", "Stephansdom", PlaceCategory.Attraction, GeoPoint(48.2085, 16.3731), isTripinly = true, hotCount = 5, prominence = 90)
+        places.searchResults = listOf(
+            PlaceSearchResult("Stephansplatz", "Wien", GeoPoint(48.2086, 16.3727), SearchResultType.Street),
+            PlaceSearchResult(stephansdom.name, null, stephansdom.location, SearchResultType.Place, place = stephansdom),
+        )
+
+        viewModel.onAction(MapAction.Search.Open)
+        testScheduler.runCurrent()
+        viewModel.uiState.value.search!!.query.setTextAndPlaceCursorAtEnd("steph")
+        viewModel.cameraCommands.test {
+            viewModel.onAction(MapAction.Search.Submit)
+            testScheduler.advanceUntilIdle()
+            // Nothing named so around Paris: the camera goes to the nearest one, a few streets around it.
+            val move = assertIs<CameraCommand.MoveTo>(expectMostRecentItem())
+            assertEquals(stephansdom.location.lat, move.target.latitude)
+            assertEquals(stephansdom.location.lng, move.target.longitude)
+
+            // Its neighbourhood loads, and the camera fits every result there.
+            viewModel.onAction(MapAction.MapView.CameraRest(move.target, move.zoom, GeoBounds(48.19, 16.35, 48.23, 16.40)))
+            testScheduler.advanceUntilIdle()
+            val fit = assertIs<CameraCommand.Fit>(expectMostRecentItem())
+            assertTrue(stephansdom.location.lat in fit.bounds.south..fit.bounds.north && stephansdom.location.lng in fit.bounds.west..fit.bounds.east)
+        }
+        assertEquals(listOf("Stephansdom"), viewModel.uiState.value.layers.placePins.map { it.place.name })
     }
 
     /** Stops next to the Eiffel Tower and a walk from the Louvre; the first one's card open. */

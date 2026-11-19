@@ -76,6 +76,8 @@ internal fun GoogleSdkMapView(
     stopHalo: Color?,
     /** How much shows of everything but the search results (see-through while the map is searched by name). */
     dimAlpha: Float,
+    /** The stop whose card is open, clear while the rest is see-through. */
+    selectedStopId: String?,
     onCameraMove: (Coordinates, Float, GeoBounds?) -> Unit,
     onCameraMoving: (GeoBounds, Float) -> Unit,
     onBearingChange: (Float) -> Unit,
@@ -376,7 +378,7 @@ internal fun GoogleSdkMapView(
     // Public transport: the rides' badges and their rings, one icon per look.
     val lineMarks = themedLine?.marks.orEmpty()
     val markIcons = remember(density) { mutableMapOf<LineMark, UIImage>() }
-    LaunchedEffect(markers, stopTitles, coverThumbs, pinPhotos, selectedPlace, placePins, placeClusters, pinIcons, clusterIcons, isDots, routeEnds, lineMarks, stopIcons, dimAlpha) {
+    LaunchedEffect(markers, stopTitles, coverThumbs, pinPhotos, selectedPlace, placePins, placeClusters, pinIcons, clusterIcons, isDots, routeEnds, lineMarks, stopIcons, dimAlpha, selectedStopId) {
         val stops = markers.mapIndexed { index, marker ->
             GoogleMapMarker(
                 key = marker.id,
@@ -400,7 +402,7 @@ internal fun GoogleSdkMapView(
                 // The stop's card shows instead.
                 showsInfoWindow = false,
                 fadesIn = false,
-                opacity = dimAlpha,
+                opacity = if (marker.id == selectedStopId) 1f else dimAlpha,
             )
         }
         // The first pins (the most liked, then the best known) on top. A photo pin waits for its photo. The tapped

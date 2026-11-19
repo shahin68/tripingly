@@ -13,6 +13,7 @@ import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 
 /**
  * The search in the header, like the destination search: asks the server once typing pauses, ranked near the
@@ -76,9 +77,10 @@ internal class MapSearch(
 
     /**
      * The keyboard's search key: the results list goes and the map shows only the places named so. Once they've loaded,
-     * the camera fits them all, zooming in or out (Shahin, 2026-11-19); none found, or a finger moving the map first,
-     * leaves it where it is. A name the server can't search (under [MIN_NAME_LENGTH] letters) and the route's "to"
-     * field only close the keyboard.
+     * the camera fits them all, zooming in or out (Shahin, 2026-11-19). None in view: the camera goes to the nearest
+     * place named so (the server's first), then fits all of them around it. Nothing found anywhere, or a finger moving
+     * the map first, leaves it where it is. A name the server can't search (under [MIN_NAME_LENGTH] letters) and the
+     * route's "to" field only close the keyboard.
      */
     fun submit() {
         val search = context.model.value.search ?: return
@@ -86,14 +88,31 @@ internal class MapSearch(
         if (name.length < MIN_NAME_LENGTH || context.model.value.route.isPicking) return
         searchJob?.cancel()
         fitJob?.cancel()
+        val listed = search.results
         update { it.copy(results = emptyList(), isSearching = false) }
         pins.setName(name)
         fitJob = context.scope.launch {
-            val loaded = context.model.first { it.search == null || it.placeFilter.name != name || !it.placeFilter.isLoading }
-            if (loaded.search == null || loaded.placeFilter.name != name) return@launch
-            camera.frame(loaded.pins.pins.map { Coordinates(it.place.location.lat, it.place.location.lng) })
+            context.model.first { !isNamed(name) || !it.placeFilter.isLoading }
+            if (!isNamed(name)) return@launch
+            if (namedPins().isNotEmpty()) return@launch camera.frame(namedPins())
+            val near = camera.target.let { GeoPoint(it.latitude, it.longitude) }
+            val nearest = listed.ifEmpty { (placeRepository.search(name, near) as? AppResult.Success)?.data.orEmpty() }
+                .firstNotNullOfOrNull { it.place } ?: return@launch
+            if (!isNamed(name)) return@launch
+            camera.moveTo(Coordinates(nearest.location.lat, nearest.location.lng), NEAREST_ZOOM)
+            // Its neighbourhood has loaded once the place itself shows.
+            withTimeoutOrNull(NEAREST_LOAD_MILLIS) {
+                context.model.first { model -> !isNamed(name) || model.pins.pins.any { it.place.id == nearest.id } }
+            } ?: return@launch
+            if (isNamed(name)) camera.frame(namedPins())
         }
     }
+
+    /** The search is still open on the map searched by [name]. */
+    private fun isNamed(name: String) = context.model.value.let { it.search != null && it.placeFilter.name == name }
+
+    /** Where the map's pins are; while it's searched by name, they're all results. */
+    private fun namedPins() = context.model.value.pins.pins.map { Coordinates(it.place.location.lat, it.place.location.lng) }
 
     /** A finger moved the map before the results came: it stays where the finger left it. */
     fun onUserMove() {
@@ -114,6 +133,12 @@ internal class MapSearch(
     private companion object {
         /** Typing has paused; see the search rule in 07-architecture. */
         const val SEARCH_DEBOUNCE_MILLIS = 300L
+
+        /** A few streets around the nearest result, its neighbourhood loaded before the camera fits them all. */
+        const val NEAREST_ZOOM = 14f
+
+        /** How long the camera waits for the nearest result's neighbourhood before leaving it be. */
+        const val NEAREST_LOAD_MILLIS = 5_000L
 
         /** The server searches the map by names of two letters or more. */
         const val MIN_NAME_LENGTH = 2

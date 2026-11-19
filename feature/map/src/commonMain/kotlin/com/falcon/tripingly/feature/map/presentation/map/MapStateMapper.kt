@@ -367,6 +367,7 @@ internal class MapStateMapper(
             aroundRing = model.around?.let { AroundRing(Coordinates(it.center.lat, it.center.lng), it.radiusMeters, distanceText(it.radiusMeters)) },
             // Its results stand out, like Google Maps': everything else goes see-through (Shahin, 2026-11-19).
             isSearchShown = isNamed,
+            selectedStopId = (model.selection as? Selection.Stop)?.markerId,
         )
     }
 
