@@ -6,6 +6,7 @@ import com.falcon.tripingly.core.data.account.AccountRepository
 import com.falcon.tripingly.core.data.account.FakeAccountBackend
 import com.falcon.tripingly.core.data.account.SocialSignIn
 import com.falcon.tripingly.core.data.account.SocialSignInResult
+import com.falcon.tripingly.core.data.push.SystemNotificationChannels
 import com.falcon.tripingly.core.model.account.DataExportStatus
 import com.falcon.tripingly.core.model.account.IdentityProof
 import com.falcon.tripingly.core.model.account.NotificationSettings
@@ -63,17 +64,46 @@ class SettingsViewModelTest {
         override suspend fun apple() = SocialSignInResult.NotConfigured
     }
 
+    /** The phone's switches: [blocked] are off there; [opened] records the pages opened. */
+    private class FakeChannels(var blocked: Set<NotificationType> = emptySet()) : SystemNotificationChannels {
+        val opened = mutableListOf<NotificationType>()
+        override fun blocked() = blocked
+        override fun open(type: NotificationType) {
+            opened += type
+        }
+    }
+
     private fun viewModel(
         account: FakeAccountBackend,
         repository: AccountRepository = account,
         socialSignIn: SocialSignIn = FakeSocialSignIn(),
+        systemChannels: SystemNotificationChannels? = null,
     ) = SettingsViewModel(
         sessionRepository = account,
         accountRepository = repository,
         socialSignIn = socialSignIn,
         appVersion = "1.0",
         languageTag = { "en" },
+        systemChannels = systemChannels,
     )
+
+    @Test
+    fun aKindTurnedOffInThePhone_showsOffAndOpensThePhonesPage() = runTest {
+        val channels = FakeChannels(blocked = setOf(NotificationType.LIKES))
+        val viewModel = viewModel(signedIn(), systemChannels = channels)
+        advanceUntilIdle()
+
+        viewModel.onAction(Action.Notifications.Resumed)
+        assertEquals(setOf(NotificationType.LIKES), viewModel.uiState.value.notifications.blockedInPhone)
+
+        viewModel.onAction(Action.Notifications.OpenPhoneSettings(NotificationType.LIKES))
+        assertEquals(listOf(NotificationType.LIKES), channels.opened)
+
+        // Turned back on there: the app's switch shows again once Settings is back.
+        channels.blocked = emptySet()
+        viewModel.onAction(Action.Notifications.Resumed)
+        assertTrue(viewModel.uiState.value.notifications.blockedInPhone.isEmpty())
+    }
 
     @Test
     fun opening_showsTheAccountAndItsSettings() = runTest {

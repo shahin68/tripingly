@@ -1,3 +1,9 @@
 <resources>
-    <string name="notification_channel_updates">Reise-Updates</string>
+    <string name="notification_group_activity">Aktivität</string>
+    <string name="notification_channel_comments">Kommentare zu meinen Stopps</string>
+    <string name="notification_channel_added">Zu einer Reise hinzugefügt werden</string>
+    <string name="notification_channel_changes">Änderungen anderer an meinen Reisen</string>
+    <string name="notification_channel_likes">Likes</string>
+    <string name="notification_channel_join">Beitrittsanfragen zu meinen Reisen</string>
+    <string name="notification_channel_followers">Neue Follower</string>
 </resources>

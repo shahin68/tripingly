@@ -9,6 +9,7 @@ import com.falcon.tripingly.core.data.account.AccountRepository
 import com.falcon.tripingly.core.data.account.SessionRepository
 import com.falcon.tripingly.core.data.account.SocialSignIn
 import com.falcon.tripingly.core.data.account.SocialSignInResult
+import com.falcon.tripingly.core.data.push.SystemNotificationChannels
 import com.falcon.tripingly.core.model.account.DataExport
 import com.falcon.tripingly.core.model.account.IdentityProof
 import com.falcon.tripingly.core.model.account.LegalDocument
@@ -26,8 +27,11 @@ import com.falcon.tripingly.feature.settings.generated.resources.settings_error_
 import com.falcon.tripingly.feature.settings.generated.resources.settings_error_reauth
 import com.falcon.tripingly.feature.settings.generated.resources.settings_error_visibility
 import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.ImmutableSet
 import kotlinx.collections.immutable.persistentListOf
+import kotlinx.collections.immutable.persistentSetOf
 import kotlinx.collections.immutable.toImmutableList
+import kotlinx.collections.immutable.toImmutableSet
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -47,6 +51,8 @@ class SettingsViewModel(
     /** The app's version, shown under About. */
     appVersion: String,
     private val languageTag: () -> String,
+    /** The phone's own switch per kind (Android channels); null where the phone has none (iOS). */
+    private val systemChannels: SystemNotificationChannels? = null,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(State(appVersion = appVersion, appleAvailable = socialSignIn.appleAvailable))
@@ -98,6 +104,11 @@ class SettingsViewModel(
         when (action) {
             is Action.Notifications.Changed -> setNotification(action.type, action.enabled)
             Action.Notifications.Retry -> loadNotifications()
+            // Read again each time Settings shows, since the person may come back from the phone's page.
+            Action.Notifications.Resumed -> systemChannels?.let { channels ->
+                updateNotifications { it.copy(blockedInPhone = channels.blocked().toImmutableSet()) }
+            }
+            is Action.Notifications.OpenPhoneSettings -> systemChannels?.open(action.type)
         }
     }
 
@@ -254,6 +265,8 @@ class SettingsViewModel(
         /** Null until loaded. */
         val settings: NotificationSettings? = null,
         val hasFailed: Boolean = false,
+        /** Turned off in the phone's settings: the switch shows off and opens the phone's page. */
+        val blockedInPhone: ImmutableSet<NotificationType> = persistentSetOf(),
     )
 
     @Immutable
@@ -278,6 +291,8 @@ class SettingsViewModel(
         sealed interface Notifications : Action {
             data class Changed(val type: NotificationType, val enabled: Boolean) : Notifications
             data object Retry : Notifications
+            data object Resumed : Notifications
+            data class OpenPhoneSettings(val type: NotificationType) : Notifications
         }
 
         sealed interface Account : Action {

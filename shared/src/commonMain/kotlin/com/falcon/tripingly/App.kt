@@ -125,6 +125,7 @@ private fun MainNavigation() {
                     null
                 }
                 is DeepLink.Notifications -> Notifications
+                is DeepLink.Settings -> Settings
                 is DeepLink.Home -> null
             }
             if (route != null && backStack.lastOrNull() != route) {

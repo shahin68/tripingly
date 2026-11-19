@@ -1,3 +1,9 @@
 <resources>
-    <string name="notification_channel_updates">Utazási értesítések</string>
+    <string name="notification_group_activity">Tevékenység</string>
+    <string name="notification_channel_comments">Hozzászólások a megállóimhoz</string>
+    <string name="notification_channel_added">Ha hozzáadnak egy utazáshoz</string>
+    <string name="notification_channel_changes">Mások módosításai az utazásaimon</string>
+    <string name="notification_channel_likes">Kedvelések</string>
+    <string name="notification_channel_join">Csatlakozási kérések az utazásaimhoz</string>
+    <string name="notification_channel_followers">Új követők</string>
 </resources>
