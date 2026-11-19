@@ -3,6 +3,9 @@ package com.falcon.tripingly.core.designsystem.component
 import androidx.compose.animation.core.FiniteAnimationSpec
 import androidx.compose.foundation.LocalOverscrollFactory
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.exclude
+import androidx.compose.foundation.layout.ime
 import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
@@ -38,7 +41,9 @@ import kotlinx.coroutines.launch
  * comes back when it is, still open in the view model. [halfHigh]: it opens half high first (Material's peek), and a
  * drag or a tap on its handle takes it to its full height and back. It slides up with Material's fast spatial motion,
  * not the default one, so one sheet handing over to another (the map's details and its photos or comments) is quick
- * (Shahin, 2026-11-12); what's inside the sheet keeps the app's own motion.
+ * (Shahin, 2026-11-12); what's inside the sheet keeps the app's own motion. [followsKeyboard] false: a sheet with no
+ * field to type in doesn't rise over the keyboard, so one coming back from a sheet that typed (the members after Add
+ * people) doesn't open high over the keyboard going away and then drop (Shahin, 2026-11-19).
  */
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalComposeUiApi::class)
 @Composable
@@ -49,6 +54,7 @@ fun <T : Any> AppBottomSheet(
     onBack: (() -> Unit)? = null,
     dismissEnabled: Boolean = true,
     halfHigh: Boolean = false,
+    followsKeyboard: Boolean = true,
     content: @Composable (value: T, close: () -> Unit) -> Unit,
 ) {
     val canDismiss by rememberUpdatedState(dismissEnabled)
@@ -112,6 +118,9 @@ fun <T : Any> AppBottomSheet(
             onDismissRequest = dismiss,
             sheetState = sheetState,
             modifier = modifier,
+            contentWindowInsets = {
+                if (followsKeyboard) BottomSheetDefaults.windowInsets else BottomSheetDefaults.windowInsets.exclude(WindowInsets.ime)
+            },
             dragHandle = {
                 BottomSheetDefaults.DragHandle(
                     modifier = if (halfHigh) {
