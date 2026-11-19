@@ -54,7 +54,7 @@ import com.falcon.tripingly.feature.notifications.presentation.NotificationCente
 import com.falcon.tripingly.feature.paywall.presentation.PaywallRoute
 import com.falcon.tripingly.feature.settings.presentation.SettingsRoute
 import com.falcon.tripingly.feature.social.presentation.profile.ProfileRoute
-import com.falcon.tripingly.feature.trips.presentation.members.TripMembersRoute
+import com.falcon.tripingly.feature.trips.presentation.members.TripMembersSheets
 import com.falcon.tripingly.shell.KeepMapSceneStrategy
 import com.falcon.tripingly.shell.MainTabs
 import com.falcon.tripingly.shell.ScreenTransitions
@@ -185,7 +185,7 @@ private fun MainNavigation() {
                             onNavigateBack = { goBack() },
                             onOpenProfile = { backStack.add(Profile(it)) },
                             onOpenPaywall = { backStack.add(Paywall) },
-                            membersContent = { tripId, onDismiss -> TripMembersRoute(tripId = tripId, onDismiss = onDismiss) },
+                            membersContent = { tripId, onDismiss -> TripMembersSheets(tripId = tripId, onDismiss = onDismiss) },
                         )
                     }
                     is Profile -> ProfileRoute(

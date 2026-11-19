@@ -81,18 +81,40 @@ import org.koin.compose.koinInject
 import org.koin.compose.viewmodel.koinViewModel
 import org.koin.core.parameter.parametersOf
 
+/**
+ * The Members sheet of [tripId] while it isn't null, and its Add people sheet: one sheet at a time, like a pin's details
+ * and its photos (Shahin, 2026-11-19). 🔍 swaps the members for Add people, whose back arrow (and the system back)
+ * brings the members back; ✕, a swipe down or a tap outside closes the chain and tells [onDismiss]. Keep it in the
+ * composition while closed, so the sheet can slide away.
+ */
 @Composable
-fun TripMembersRoute(
+fun TripMembersSheets(tripId: String?, onDismiss: () -> Unit) {
+    // The trip stays while its sheet slides away.
+    var shownTripId by remember { mutableStateOf(tripId) }
+    if (tripId != null && tripId != shownTripId) shownTripId = tripId
+    val id = tripId ?: shownTripId ?: return
+    TripMembersRoute(tripId = id, isOpen = tripId != null, onDismiss = onDismiss)
+}
+
+@Composable
+private fun TripMembersRoute(
     tripId: String,
+    isOpen: Boolean,
     onDismiss: () -> Unit,
     viewModel: TripMembersViewModel = koinViewModel(key = "members:$tripId") { parametersOf(tripId) },
     shareManager: ShareManager = koinInject(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
-    var isOpened by rememberSaveable { mutableStateOf(false) }
-    LaunchedEffect(Unit) {
-        if (!isOpened) viewModel.onAction(Action.Opened)
-        isOpened = true
+    val onAction = viewModel::onAction
+    // Loads afresh on each opening, but not again after a rotation.
+    var openedTripId by rememberSaveable { mutableStateOf<String?>(null) }
+    LaunchedEffect(isOpen, tripId) {
+        if (!isOpen) {
+            openedTripId = null
+        } else if (openedTripId != tripId) {
+            onAction(Action.Opened)
+            openedTripId = tripId
+        }
     }
 
     val haptics = rememberHaptics()
@@ -102,26 +124,7 @@ fun TripMembersRoute(
             Event.Accepted -> haptics.success()
         }
     }
-
-    Box {
-        TripMembersScreen(state = state, onAction = viewModel::onAction, onClose = onDismiss)
-        MessageBannerHost(Modifier.align(Alignment.TopCenter))
-    }
-}
-
-/**
- * Who is on the trip (design: the members sheet canvas, board "Search icon in the header", Shahin 2026-11-18). Cards:
- * people asking to join (the owner's, only while there are any), the people on the trip, and the owner's friends to
- * add with a tap; 🔍 opens the Add people sheet and the invite link is pinned at the bottom. The sheet is as high as
- * it can be from the start, so nothing that loads makes it jump; an editor sees only who is on the trip.
- */
-@Composable
-fun TripMembersScreen(
-    state: State,
-    onAction: (Action) -> Unit,
-    onClose: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
+    // Outside both sheets, so a message (Undo after adding someone) outlives the sheet it came from.
     ShowMessage(message = state.message?.asString(), onShown = { onAction(Action.DismissMessage) }, isError = state.message !is UiText.Note)
     val added = state.added
     ShowMessage(
@@ -131,22 +134,39 @@ fun TripMembersScreen(
         actionLabel = stringResource(Res.string.members_undo),
         onAction = { added?.let { onAction(Action.Undo(it)) } },
     )
-    MembersPage(state, onAction, onClose, modifier.fillMaxSize().windowInsetsPadding(WindowInsets.bottomSystemBar))
-    // Add people is a sheet of its own over the members, like a pin's details and its photos: its arrow (and the
-    // system back) goes back to the members, ✕ and a swipe down close both.
-    AppBottomSheet(
-        value = state.search,
-        onDismiss = {
-            onAction(Action.Search.Close)
-            onClose()
-        },
-        onBack = { onAction(Action.Search.Close) },
-    ) { search, close ->
+
+    val closeAll = {
+        onAction(Action.Search.Close)
+        onDismiss()
+    }
+    AppBottomSheet(value = tripId.takeIf { isOpen && state.search == null }, onDismiss = closeAll) { _, close ->
+        Box {
+            TripMembersScreen(state = state, onAction = onAction, onClose = close)
+            MessageBannerHost(Modifier.align(Alignment.TopCenter))
+        }
+    }
+    AppBottomSheet(value = state.search?.takeIf { isOpen }, onDismiss = closeAll, onBack = { onAction(Action.Search.Close) }) { search, close ->
         Box(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.bottomSystemBar)) {
             AddPeoplePage(state, search, onAction, onClose = close)
             MessageBannerHost(Modifier.align(Alignment.TopCenter))
         }
     }
+}
+
+/**
+ * Who is on the trip (design: the members sheet canvas, board "Search icon in the header", Shahin 2026-11-18). Cards:
+ * people asking to join (the owner's, only while there are any), the people on the trip, and the owner's friends to
+ * add with a tap; 🔍 opens the Add people sheet in its place and the invite link is pinned at the bottom. The sheet is as high as
+ * it can be from the start, so nothing that loads makes it jump; an editor sees only who is on the trip.
+ */
+@Composable
+fun TripMembersScreen(
+    state: State,
+    onAction: (Action) -> Unit,
+    onClose: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    MembersPage(state, onAction, onClose, modifier.fillMaxSize().windowInsetsPadding(WindowInsets.bottomSystemBar))
 }
 
 @Composable

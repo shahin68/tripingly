@@ -38,8 +38,8 @@ fun MapRoute(
     onOpenProfile: (String) -> Unit,
     /** Tripinly Pro's paywall, when a free user taps a route. */
     onOpenPaywall: () -> Unit,
-    /** The trip's members sheet (from the trips feature), where the owner answers requests to join. */
-    membersContent: @Composable (tripId: String, onDismiss: () -> Unit) -> Unit,
+    /** The trip's members sheets (from the trips feature), where the owner answers requests to join; open while the trip id isn't null. */
+    membersContent: @Composable (tripId: String?, onDismiss: () -> Unit) -> Unit,
     /** The stop a push opened the trip on, if any. */
     stopId: String? = null,
     /** A push about a request to join: the Members sheet opens. */
@@ -104,7 +104,7 @@ fun MapRoute(
     val back = { onAction(MapAction.Sheet.Back) }
     val sheet = state.sheet
     val onReportPhoto: (Photo) -> Unit = { photo -> onAction(MapAction.Sheet.ReportPhoto(photo)) }
-    AppBottomSheet(value = sheet?.takeUnless { it is MapSheet.PlaceImage || it.isDetails || it.isPickingDay }, onDismiss = closeAll, onBack = back.takeIf { sheet?.hasBack == true }) { shown, close ->
+    AppBottomSheet(value = sheet?.takeUnless { it is MapSheet.PlaceImage || it is MapSheet.Members || it.isDetails || it.isPickingDay }, onDismiss = closeAll, onBack = back.takeIf { sheet?.hasBack == true }) { shown, close ->
         when (shown) {
             is MapSheet.StopPhotos -> PhotosRoute(
                 owner = PhotoOwner.Stop(shown.stop.id),
@@ -117,10 +117,9 @@ fun MapRoute(
             )
             is MapSheet.PlacePhotos -> PlacePhotos(shown.place, onReportPhoto, onDismiss = close)
             is MapSheet.StopComments -> StopCommentsRoute(marker = shown.stop, people = shown.people, onOpenProfile = onOpenProfile, onDismiss = close)
-            MapSheet.Members -> membersContent(tripId, close)
             is MapSheet.AddToTrip -> AddToTripSheet(shown.picker, onAction, onClose = close)
             is MapSheet.TransitSteps -> TransitStepsSheet(shown, onClose = close)
-            is MapSheet.PlaceImage, is MapSheet.StopDetails, is MapSheet.PlaceDetails -> Unit
+            MapSheet.Members, is MapSheet.PlaceImage, is MapSheet.StopDetails, is MapSheet.PlaceDetails -> Unit
         }
     }
     // A pin's details open half high, in a sheet of their own. Its photos and comments open in their own sheets in its
@@ -146,6 +145,8 @@ fun MapRoute(
             else -> Unit
         }
     }
+    // The members and their Add people page, each a sheet of its own, one at a time; kept composed so they slide away.
+    membersContent(tripId.takeIf { sheet is MapSheet.Members }, closeAll)
     // The picked trip's days, in a sheet of their own in the trips' place; its back arrow goes back to the trips.
     AppBottomSheet(value = (sheet as? MapSheet.AddToTrip)?.takeIf { it.isPickingDay }, onDismiss = closeAll, onBack = back) { shown, close ->
         AddToTripSheet(shown.picker, onAction, onClose = close)
