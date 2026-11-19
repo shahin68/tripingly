@@ -1,18 +1,6 @@
 package com.falcon.tripingly.feature.map.presentation.map.ui
 
 import androidx.compose.animation.core.MutableTransitionState
-import androidx.compose.animation.core.CubicBezierEasing
-import androidx.compose.animation.core.FastOutLinearInEasing
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.tween
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
-import androidx.compose.ui.layout.layout
-import androidx.compose.ui.layout.onSizeChanged
-import androidx.compose.ui.unit.IntSize
-import androidx.compose.ui.util.lerp
-import kotlin.math.roundToInt
 import androidx.compose.animation.core.Transition
 import androidx.compose.animation.core.rememberTransition
 import androidx.compose.foundation.background
@@ -105,62 +93,23 @@ internal fun TripCard(
     onMembersClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    // The heart rides the growing corner: it scales out at once as the card opens, and pops back in, a little past its
-    // size, once the card is the pill again (Shahin, 2026-11-19).
-    val heartScale by transition.animateFloat(
-        transitionSpec = { if (false isTransitioningTo true) tween(HEART_OUT_MILLIS, easing = FastOutLinearInEasing) else tween(HEART_IN_MILLIS, HEART_IN_DELAY_MILLIS, Overshoot) },
-        label = "heart",
-    ) { open -> if (open) 0f else 1f }
-    var size by remember { mutableStateOf(IntSize.Zero) }
-    Box(modifier.onSizeChanged { size = it }) {
-        PillGrowthPanel(
-            transition = transition,
-            progress = progress,
-            pill = pill,
-            pillContent = { TripTitleContent(header = header) },
+    PillGrowthPanel(
+        transition = transition,
+        progress = progress,
+        pill = pill,
+        pillContent = { TripTitleContent(header = header) },
+        modifier = modifier,
+    ) {
+        Column(
+            modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(CardInset),
+            verticalArrangement = Arrangement.spacedBy(RowGap),
         ) {
-            Column(
-                modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(CardInset),
-                verticalArrangement = Arrangement.spacedBy(RowGap),
-            ) {
-                OwnerRow(header, onOwnerClick, onClose, transition.rowMotion(0))
-                DetailTiles(header.card, transition.rowMotion(1))
-                if (header.card.memberCount > 0) MembersStrip(header.card, onMembersClick, transition.rowMotion(2))
-            }
-        }
-        header.heartLiked?.let { liked ->
-            TripHeart(
-                liked = liked,
-                onToggle = {},
-                enabled = false,
-                modifier = Modifier
-                    // At the corner of the panel's outline as it grows (see GrowingShape), as on the title pill.
-                    .layout { measurable, constraints ->
-                        val placeable = measurable.measure(constraints)
-                        layout(placeable.width, placeable.height) {
-                            val p = progress()
-                            val right = lerp(pill.right, size.width.toFloat(), p)
-                            val bottom = lerp(pill.bottom, size.height.toFloat(), p)
-                            placeable.placeWithLayer((right - placeable.width).roundToInt(), (bottom - placeable.height).roundToInt()) {
-                                scaleX = heartScale
-                                scaleY = heartScale
-                                alpha = if (heartScale > 0f) 1f else 0f
-                            }
-                        }
-                    },
-            )
+            OwnerRow(header, onOwnerClick, onClose, transition.rowMotion(0))
+            DetailTiles(header.card, transition.rowMotion(1))
+            if (header.card.memberCount > 0) MembersStrip(header.card, onMembersClick, transition.rowMotion(2))
         }
     }
 }
-
-private const val HEART_OUT_MILLIS = 160
-private const val HEART_IN_MILLIS = 300
-
-/** The card is nearly the pill again by then. */
-private const val HEART_IN_DELAY_MILLIS = 220
-
-/** Past its size a little, then back. */
-private val Overshoot = CubicBezierEasing(0.34f, 1.56f, 0.64f, 1f)
 
 /** The dimmed map behind the open card, following [progress]; a tap on it closes the card ([onClose]). */
 @Composable

@@ -1516,47 +1516,47 @@ class MapViewModelTest {
     }
 
     @Test
-    fun `a viewer's heart on the title shows a tap at once, keeps it while the server answers, follows likes from elsewhere and only a refusal undoes it`() = runTest(testDispatcher) {
+    fun `a viewer's heart beside Ask to join shows a tap at once, keeps it while the server answers, follows likes from elsewhere and only a refusal undoes it`() = runTest(testDispatcher) {
         backend.seed(trip.copy(trip = trip.trip.copy(role = TripRole.VIEWER), likeCount = 4))
         val viewModel = viewModel()
         testScheduler.advanceUntilIdle()
-        assertEquals(false, viewModel.uiState.value.header.heartLiked)
+        assertEquals(false, viewModel.uiState.value.header.viewerMenu?.isLikedByMe)
 
         // Tapped: on at once, with the card's count, and it stays on while the server takes its time.
         social.likeGate = CompletableDeferred()
         viewModel.onAction(MapAction.Header.ToggleLike)
         testScheduler.runCurrent()
-        assertEquals(true, viewModel.uiState.value.header.heartLiked)
+        assertEquals(true, viewModel.uiState.value.header.viewerMenu?.isLikedByMe)
         assertEquals(5, viewModel.uiState.value.header.card.likeCount)
         testScheduler.advanceUntilIdle()
-        assertEquals(true, viewModel.uiState.value.header.heartLiked)
+        assertEquals(true, viewModel.uiState.value.header.viewerMenu?.isLikedByMe)
         social.likeGate?.complete(Unit)
         social.likeGate = null
         testScheduler.advanceUntilIdle()
-        assertEquals(true, viewModel.uiState.value.header.heartLiked)
+        assertEquals(true, viewModel.uiState.value.header.viewerMenu?.isLikedByMe)
 
         // Unliked in Explore: the map follows.
         social.setLiked(LikeTarget.Trip, trip.trip.id, false)
         testScheduler.advanceUntilIdle()
-        assertEquals(false, viewModel.uiState.value.header.heartLiked)
+        assertEquals(false, viewModel.uiState.value.header.viewerMenu?.isLikedByMe)
 
         // Refused: back to what the server last said, with a message.
         social.likeError = DataError.Network.ServerError
         social.likeGate = CompletableDeferred()
         viewModel.onAction(MapAction.Header.ToggleLike)
         testScheduler.runCurrent()
-        assertEquals(true, viewModel.uiState.value.header.heartLiked)
+        assertEquals(true, viewModel.uiState.value.header.viewerMenu?.isLikedByMe)
         social.likeGate?.complete(Unit)
         testScheduler.advanceUntilIdle()
-        assertEquals(false, viewModel.uiState.value.header.heartLiked)
+        assertEquals(false, viewModel.uiState.value.header.viewerMenu?.isLikedByMe)
         assertNotNull(viewModel.uiState.value.message)
     }
 
     @Test
-    fun `my own trip has no heart on its title`() = runTest(testDispatcher) {
+    fun `my own trip has no heart beside Ask to join`() = runTest(testDispatcher) {
         val viewModel = viewModel()
         testScheduler.advanceUntilIdle()
-        assertNull(viewModel.uiState.value.header.heartLiked)
+        assertNull(viewModel.uiState.value.header.viewerMenu)
     }
 
     @Test

@@ -141,22 +141,15 @@ internal fun MapHeader(
                 ) {
                     Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(Res.string.map_back))
                 }
-                Box(
+                TripTitle(
+                    header = header,
+                    onClick = onTitleClick,
+                    onOwnerClick = { onAction(MapAction.Header.OpenOwnerProfile) },
                     modifier = Modifier
                         .weight(1f)
                         .graphicsLayer { alpha = if (isTitleHidden) 0f else 1f }
                         .onGloballyPositioned { onTitlePlaced(it.boundsInParent()) },
-                ) {
-                    TripTitle(
-                        header = header,
-                        onClick = onTitleClick,
-                        onOwnerClick = { onAction(MapAction.Header.OpenOwnerProfile) },
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                    header.heartLiked?.let { liked ->
-                        TripHeart(liked = liked, onToggle = { onAction(MapAction.Header.ToggleLike) }, modifier = Modifier.align(Alignment.BottomEnd))
-                    }
-                }
+                )
             }
             GlassButtonRow(blur = false, height = GlassButtonDefaults.HeaderSize) {
                 if (search != null) {

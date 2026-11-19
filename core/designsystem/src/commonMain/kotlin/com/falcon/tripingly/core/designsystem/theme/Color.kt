@@ -109,3 +109,10 @@ internal val InviteEdgeLight = Color(0x59FFFFFF)
 internal val InviteDark = Color(0xFFFFFFFF)
 internal val OnInviteDark = Color(0xFF000000)
 internal val InviteEdgeDark = Color(0x33000000)
+
+// The heart in the invite pill (Shahin, 2026-11-19): a line between it and the invitation that shows on black and on
+// white, and a red that stands out on each.
+internal val InviteDividerLight = Color(0x66FFFFFF)
+internal val InviteDividerDark = Color(0x4D000000)
+internal val InviteLikedLight = Color(0xFFFF5A5F)
+internal val InviteLikedDark = Color(0xFFC22A1E)

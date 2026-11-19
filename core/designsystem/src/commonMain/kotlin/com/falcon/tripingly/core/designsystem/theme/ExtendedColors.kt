@@ -41,11 +41,14 @@ data class ExtendedColors(
     val onAvatar: Color,
     /**
      * The one invitation a screen pushes (`InviteButton`, Ask to join on someone's trip): [invite] (black in light, white
-     * in dark), [onInvite] on it, edged in [inviteEdge] like glass (Shahin, 2026-11-19).
+     * in dark), [onInvite] on it, edged in [inviteEdge] like glass (Shahin, 2026-11-19). A heart in it is split off by
+     * [inviteDivider] and filled with [inviteLiked] once liked.
      */
     val invite: Color,
     val onInvite: Color,
     val inviteEdge: Color,
+    val inviteDivider: Color,
+    val inviteLiked: Color,
 )
 
 internal val LightExtendedColors = ExtendedColors(
@@ -65,6 +68,8 @@ internal val LightExtendedColors = ExtendedColors(
     invite = InviteLight,
     onInvite = OnInviteLight,
     inviteEdge = InviteEdgeLight,
+    inviteDivider = InviteDividerLight,
+    inviteLiked = InviteLikedLight,
 )
 internal val DarkExtendedColors = ExtendedColors(
     glass = GlassDark,
@@ -83,6 +88,8 @@ internal val DarkExtendedColors = ExtendedColors(
     invite = InviteDark,
     onInvite = OnInviteDark,
     inviteEdge = InviteEdgeDark,
+    inviteDivider = InviteDividerDark,
+    inviteLiked = InviteLikedDark,
 )
 
 val LocalExtendedColors = staticCompositionLocalOf { LightExtendedColors }

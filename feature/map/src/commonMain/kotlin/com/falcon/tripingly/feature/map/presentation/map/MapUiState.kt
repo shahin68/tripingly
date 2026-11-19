@@ -91,8 +91,6 @@ data class HeaderState(
     val canLeave: Boolean = false,
     /** Someone else's public trip: save it, ask to join, see its owner, report it. */
     val viewerMenu: ViewerMenu? = null,
-    /** The heart on the title pill's corner on someone else's trip: whether I like it; null on mine and shared ones. */
-    val heartLiked: Boolean? = null,
     /**
      * An owner's or editor's day actions: add a day, clear and delete the open one. They're in the plan sheet's ⋯,
      * and in the ⋮ menu while the day has no stops (and so no sheet).
@@ -132,6 +130,8 @@ data class ViewerMenu(
     val myJoinRequest: JoinRequestStatus?,
     /** My request to join waits for the server: the pill spins until it answers (sent), or goes back on an error. */
     val isAsking: Boolean = false,
+    /** The heart in the Ask to join pill: I like this trip. It goes with the pill. */
+    val isLikedByMe: Boolean = false,
 ) {
     /** None once the owner declined; accepted, I'm on the trip and there's no viewer menu at all. */
     val joinButton: JoinButton?

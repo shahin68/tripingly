@@ -153,9 +153,13 @@ internal class MapStateMapper(
             canLeave = role == TripRole.EDITOR,
             isLoading = days.isEmpty() && model.isLoadingTrip,
             isBusy = model.isSaving || model.isUpdatingSharing,
-            heartLiked = trip?.takeIf { role == TripRole.VIEWER }?.let { model.tripLike?.liked ?: details.likedByMe },
             viewerMenu = trip?.takeIf { role == TripRole.VIEWER }?.let {
-                ViewerMenu(isSavedByMe = it.savedByMe, myJoinRequest = details.myJoinRequest, isAsking = model.isAskingToJoin)
+                ViewerMenu(
+                    isSavedByMe = it.savedByMe,
+                    myJoinRequest = details.myJoinRequest,
+                    isAsking = model.isAskingToJoin,
+                    isLikedByMe = model.tripLike?.liked ?: details.likedByMe,
+                )
             },
             editorMenu = EditorMenu(canDeleteDay = days.size > 1 && canDeleteDay()).takeIf { canEdit },
         )

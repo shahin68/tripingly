@@ -51,7 +51,7 @@ sealed interface MapAction {
         data object DeleteDay : Header
         /** Saves someone else's trip to My Trips, or removes it. */
         data object ToggleSave : Header
-        /** The heart on the title: like someone else's trip, or not any more. */
+        /** The heart in the Ask to join pill: like someone else's trip, or not any more. */
         data object ToggleLike : Header
         /** Asks the owner to let me edit their trip with them. */
         data object RequestToJoin : Header

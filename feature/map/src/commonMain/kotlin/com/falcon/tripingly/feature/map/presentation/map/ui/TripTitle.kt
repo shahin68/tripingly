@@ -19,9 +19,6 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.foundation.layout.offset
-import com.falcon.tripingly.core.designsystem.component.GlassDefaults
-import com.falcon.tripingly.core.designsystem.component.HeartIndicator
 import com.falcon.tripingly.core.designsystem.component.AvatarCircle
 import com.falcon.tripingly.core.designsystem.component.AvatarSize
 import com.falcon.tripingly.core.designsystem.component.GlassButtonDefaults
@@ -97,23 +94,3 @@ internal fun TripTitleContent(header: HeaderState, modifier: Modifier = Modifier
 private fun TitleLine(name: String, modifier: Modifier = Modifier) {
     Text(name, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = modifier.skeletonText())
 }
-
-/**
- * The heart on someone else's trip, floating on the title pill's bottom-end corner (Shahin, 2026-11-19): set it at
- * that corner of the pill ([Alignment.BottomEnd]) and it hangs a little below and past it, as he placed it on the
- * canvas. Ringed in the pill's own glass. [enabled] false: the copy riding the trip card's corner, which only shows.
- */
-@Composable
-internal fun TripHeart(liked: Boolean, onToggle: () -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true) {
-    HeartIndicator(
-        liked = liked,
-        onToggle = onToggle,
-        ringColor = GlassDefaults.opaqueTint,
-        enabled = enabled,
-        modifier = modifier.offset(x = TripHeartPastEnd, y = TripHeartBelow),
-    )
-}
-
-/** How far the heart's tap box reaches past the pill's end and below its bottom; the heart itself ends 4 dp inside the end. */
-internal val TripHeartPastEnd = 2.dp
-internal val TripHeartBelow = 15.dp

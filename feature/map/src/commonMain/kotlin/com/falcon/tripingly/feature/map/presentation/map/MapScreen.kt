@@ -358,8 +358,8 @@ internal fun MapScreen(
         }
 
 
-        // Someone else's trip: Ask to join by the map buttons, then the request sent until the owner decides.
-        val joinButton = state.header.viewerMenu?.joinButton
+        // Someone else's trip: the heart and Ask to join by the map buttons, then the request sent until the owner decides.
+        val viewerMenu = state.header.viewerMenu
 
         // Retry sends every stop change that failed for a connection problem, earlier ones too.
         val message = state.message
@@ -376,7 +376,7 @@ internal fun MapScreen(
             location = state.location,
             arePlacesHidden = state.arePlacesHidden,
             bearing = { bearing },
-            joinButton = joinButton,
+            viewerMenu = viewerMenu,
             dayTabs = state.dayTabs,
             plan = plan,
             editorMenu = state.header.editorMenu,
@@ -407,7 +407,7 @@ internal fun MapScreen(
                     onOpenHeight = { creditsHeight = with(density) { it.toDp() } },
                     modifier = Modifier.align(Alignment.TopEnd),
                 )
-                MapButtons(state.location, state.arePlacesHidden, { bearing }, joinButton, onAction, Modifier.align(Alignment.BottomEnd))
+                MapButtons(state.location, state.arePlacesHidden, { bearing }, viewerMenu, onAction, Modifier.align(Alignment.BottomEnd))
             }
         }
 
