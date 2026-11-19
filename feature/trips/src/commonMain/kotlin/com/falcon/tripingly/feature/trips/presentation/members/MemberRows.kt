@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyListScope
@@ -299,20 +300,28 @@ internal fun FoundPersonRow(user: UserSummary, status: String?, onAdd: () -> Uni
 internal fun InvitePill(isCreating: Boolean, onShare: () -> Unit, modifier: Modifier = Modifier) {
     // Floating over the cards: the app's glass, like the tabs' bar (no blur, nothing behind it is a blur source).
     GlassSurface(modifier = modifier.fillMaxWidth(), shape = CircleShape, blur = false) {
+        // Symmetric in the round pill: the Share button sits the same distance from the top, end and bottom edges, and
+        // the link icon's circle is as far from the start edge as from the top (Shahin, 2026-11-19). One line each, so
+        // the pill keeps its height.
         Row(
-            modifier = Modifier.padding(start = MaterialTheme.spacing.medium + MaterialTheme.spacing.extraSmall, end = MaterialTheme.spacing.small, top = MaterialTheme.spacing.small, bottom = MaterialTheme.spacing.small),
+            modifier = Modifier.height(InviteButtonHeight + InviteInset * 2).padding(start = (InviteButtonHeight + InviteInset * 2 - InviteIconSize) / 2, end = InviteInset),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small + MaterialTheme.spacing.extraSmall),
         ) {
-            Icon(Icons.Default.Link, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+            Icon(Icons.Default.Link, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(InviteIconSize))
             Column(Modifier.weight(1f)) {
                 Text(stringResource(Res.string.members_invite_title), style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                Text(stringResource(Res.string.members_invite_subtitle), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                Text(stringResource(Res.string.members_invite_subtitle), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
             PrimaryButton(text = stringResource(Res.string.members_invite_share), onClick = onShare, isLoading = isCreating, size = ButtonSize.Small)
         }
     }
 }
+
+/** [ButtonSize.Small]'s height, and the gap around the button inside the invite pill. */
+private val InviteButtonHeight = 40.dp
+private val InviteInset = 8.dp
+private val InviteIconSize = 24.dp
 
 private val CardRadius = 20.dp
 private val CardPadding = 12.dp
