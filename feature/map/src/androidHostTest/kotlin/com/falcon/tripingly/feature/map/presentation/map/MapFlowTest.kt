@@ -1,5 +1,6 @@
 package com.falcon.tripingly.feature.map.presentation.map
 
+import com.falcon.tripingly.core.common.util.ShareManager
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
@@ -94,13 +95,18 @@ class MapFlowTest {
         computation = Dispatchers.Unconfined,
     )
 
+    /** The map's Share trip; these flows never share. */
+    private val noShare = object : ShareManager {
+        override fun share(text: String) = Unit
+    }
+
     private fun dayOneStops() = runBlocking {
         (backend.refreshTrip(trip.trip.id) as AppResult.Success).data.days[0].markers.size
     }
 
     @Test
     fun `opening a trip shows the day's stops as chips`() = runComposeUiTest {
-        setContent { TripinglyTheme { MapRoute(trip.trip.id, onNavigateBack = {}, onOpenProfile = {}, onOpenPaywall = {}, membersContent = { _, _ -> }, viewModel = viewModel()) } }
+        setContent { TripinglyTheme { MapRoute(trip.trip.id, onNavigateBack = {}, onOpenProfile = {}, onOpenPaywall = {}, membersContent = { _, _ -> }, viewModel = viewModel(), shareManager = noShare) } }
 
         onNodeWithText("Vienna weekend").assertExists()
         onNodeWithText("3 stops").assertExists()
@@ -111,7 +117,7 @@ class MapFlowTest {
 
     @Test
     fun `the plan sheet pulls up and down from anywhere on it`() = runComposeUiTest {
-        setContent { TripinglyTheme { MapRoute(trip.trip.id, onNavigateBack = {}, onOpenProfile = {}, onOpenPaywall = {}, membersContent = { _, _ -> }, viewModel = viewModel()) } }
+        setContent { TripinglyTheme { MapRoute(trip.trip.id, onNavigateBack = {}, onOpenProfile = {}, onOpenPaywall = {}, membersContent = { _, _ -> }, viewModel = viewModel(), shareManager = noShare) } }
         // A trip with stops opens with the whole plan showing.
         onAllNodesWithContentDescription("Remove stop")[0].assertIsDisplayed()
 
@@ -128,7 +134,7 @@ class MapFlowTest {
     @Test
     fun `adding a stop pulls the plan sheet all the way up`() = runComposeUiTest {
         val viewModel = viewModel()
-        setContent { TripinglyTheme { MapRoute(trip.trip.id, onNavigateBack = {}, onOpenProfile = {}, onOpenPaywall = {}, membersContent = { _, _ -> }, viewModel = viewModel) } }
+        setContent { TripinglyTheme { MapRoute(trip.trip.id, onNavigateBack = {}, onOpenProfile = {}, onOpenPaywall = {}, membersContent = { _, _ -> }, viewModel = viewModel, shareManager = noShare) } }
         onNodeWithContentDescription("Show or hide the whole plan").performClick()
         waitForIdle()
         onAllNodesWithContentDescription("Remove stop")[0].assertIsNotDisplayed()
@@ -152,7 +158,7 @@ class MapFlowTest {
     @Test
     fun `a pulled-down plan comes back whole after a day without stops`() = runComposeUiTest {
         val viewModel = viewModel()
-        setContent { TripinglyTheme { MapRoute(trip.trip.id, onNavigateBack = {}, onOpenProfile = {}, onOpenPaywall = {}, membersContent = { _, _ -> }, viewModel = viewModel) } }
+        setContent { TripinglyTheme { MapRoute(trip.trip.id, onNavigateBack = {}, onOpenProfile = {}, onOpenPaywall = {}, membersContent = { _, _ -> }, viewModel = viewModel, shareManager = noShare) } }
         onNodeWithContentDescription("Show or hide the whole plan").performClick()
         waitForIdle()
         onAllNodesWithContentDescription("Remove stop")[0].assertIsNotDisplayed()
@@ -168,7 +174,7 @@ class MapFlowTest {
 
     @Test
     fun `removing a chip deletes the stop and renumbers the rest`() = runComposeUiTest {
-        setContent { TripinglyTheme { MapRoute(trip.trip.id, onNavigateBack = {}, onOpenProfile = {}, onOpenPaywall = {}, membersContent = { _, _ -> }, viewModel = viewModel()) } }
+        setContent { TripinglyTheme { MapRoute(trip.trip.id, onNavigateBack = {}, onOpenProfile = {}, onOpenPaywall = {}, membersContent = { _, _ -> }, viewModel = viewModel(), shareManager = noShare) } }
 
         onAllNodesWithContentDescription("Remove stop")[1].performClick()
 
@@ -180,7 +186,7 @@ class MapFlowTest {
 
     @Test
     fun `clear all asks first and cancel keeps the stops`() = runComposeUiTest {
-        setContent { TripinglyTheme { MapRoute(trip.trip.id, onNavigateBack = {}, onOpenProfile = {}, onOpenPaywall = {}, membersContent = { _, _ -> }, viewModel = viewModel()) } }
+        setContent { TripinglyTheme { MapRoute(trip.trip.id, onNavigateBack = {}, onOpenProfile = {}, onOpenPaywall = {}, membersContent = { _, _ -> }, viewModel = viewModel(), shareManager = noShare) } }
 
         onNodeWithContentDescription("Day options").performClick()
         onNodeWithText("Clear day 1").performClick()
@@ -194,7 +200,7 @@ class MapFlowTest {
 
     @Test
     fun `clear all empties the day once confirmed`() = runComposeUiTest {
-        setContent { TripinglyTheme { MapRoute(trip.trip.id, onNavigateBack = {}, onOpenProfile = {}, onOpenPaywall = {}, membersContent = { _, _ -> }, viewModel = viewModel()) } }
+        setContent { TripinglyTheme { MapRoute(trip.trip.id, onNavigateBack = {}, onOpenProfile = {}, onOpenPaywall = {}, membersContent = { _, _ -> }, viewModel = viewModel(), shareManager = noShare) } }
 
         onNodeWithContentDescription("Day options").performClick()
         onNodeWithText("Clear day 1").performClick()
@@ -208,7 +214,7 @@ class MapFlowTest {
     fun `a viewer can't change the stops`() = runComposeUiTest {
         val current = runBlocking { (backend.refreshTrip(trip.trip.id) as AppResult.Success).data }
         backend.seed(current.copy(trip = current.trip.copy(role = TripRole.VIEWER)))
-        setContent { TripinglyTheme { MapRoute(trip.trip.id, onNavigateBack = {}, onOpenProfile = {}, onOpenPaywall = {}, membersContent = { _, _ -> }, viewModel = viewModel()) } }
+        setContent { TripinglyTheme { MapRoute(trip.trip.id, onNavigateBack = {}, onOpenProfile = {}, onOpenPaywall = {}, membersContent = { _, _ -> }, viewModel = viewModel(), shareManager = noShare) } }
 
         onNodeWithText("Stephansdom").assertExists()
         onNodeWithContentDescription("Day options").assertDoesNotExist()
@@ -219,7 +225,7 @@ class MapFlowTest {
     @Test
     fun `the back button leaves the map`() = runComposeUiTest {
         var wentBack = false
-        setContent { TripinglyTheme { MapRoute(trip.trip.id, onNavigateBack = { wentBack = true }, onOpenProfile = {}, onOpenPaywall = {}, membersContent = { _, _ -> }, viewModel = viewModel()) } }
+        setContent { TripinglyTheme { MapRoute(trip.trip.id, onNavigateBack = { wentBack = true }, onOpenProfile = {}, onOpenPaywall = {}, membersContent = { _, _ -> }, viewModel = viewModel(), shareManager = noShare) } }
 
         onNodeWithContentDescription("Back").performClick()
 
@@ -229,7 +235,7 @@ class MapFlowTest {
 
     @Test
     fun `tapping the title opens the trip card with its details, and Close shrinks it back`() = runComposeUiTest {
-        setContent { TripinglyTheme { MapRoute(trip.trip.id, onNavigateBack = {}, onOpenProfile = {}, onOpenPaywall = {}, membersContent = { _, _ -> }, viewModel = viewModel()) } }
+        setContent { TripinglyTheme { MapRoute(trip.trip.id, onNavigateBack = {}, onOpenProfile = {}, onOpenPaywall = {}, membersContent = { _, _ -> }, viewModel = viewModel(), shareManager = noShare) } }
 
         onNodeWithText("Vienna weekend").performClick()
         waitForIdle()
