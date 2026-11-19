@@ -7,6 +7,8 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.material3.Scaffold
+import androidx.compose.ui.graphics.Color
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -187,15 +189,28 @@ private fun MembersPage(state: State, onAction: (Action) -> Unit, onClose: () ->
                 }
             },
         )
-        LazyColumn(Modifier.weight(1f).fillMaxWidth(), contentPadding = PaddingValues(bottom = MaterialTheme.spacing.small)) {
-            if (state.isLoading) skeletonCards(state) else memberCards(state, onAction)
-        }
-        if (state.canManage) {
-            InvitePill(
-                isCreating = state.isCreatingInvite,
-                onShare = { onAction(Action.ShareInvite) },
-                modifier = Modifier.padding(horizontal = MaterialTheme.spacing.medium).padding(bottom = MaterialTheme.spacing.medium),
-            )
+        // The invite pill floats over the cards at the bottom, as the tabs' bar does on Home (Shahin, 2026-11-19): the
+        // list scrolls under it, and its last card can scroll clear of it.
+        Scaffold(
+            modifier = Modifier.weight(1f),
+            containerColor = Color.Transparent,
+            contentWindowInsets = WindowInsets(0),
+            bottomBar = {
+                if (state.canManage) {
+                    InvitePill(
+                        isCreating = state.isCreatingInvite,
+                        onShare = { onAction(Action.ShareInvite) },
+                        modifier = Modifier.padding(horizontal = MaterialTheme.spacing.medium).padding(bottom = MaterialTheme.spacing.medium),
+                    )
+                }
+            },
+        ) { pillPadding ->
+            LazyColumn(
+                Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(bottom = pillPadding.calculateBottomPadding() + MaterialTheme.spacing.small),
+            ) {
+                if (state.isLoading) skeletonCards(state) else memberCards(state, onAction)
+            }
         }
     }
 }

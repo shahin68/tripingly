@@ -30,7 +30,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedIconButton
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -54,6 +53,7 @@ import com.falcon.tripingly.core.designsystem.component.AvatarCircle
 import com.falcon.tripingly.core.designsystem.component.AvatarSize
 import com.falcon.tripingly.core.designsystem.component.ButtonSize
 import com.falcon.tripingly.core.designsystem.component.DropdownAction
+import com.falcon.tripingly.core.designsystem.component.GlassSurface
 import com.falcon.tripingly.core.designsystem.component.NewIndicator
 import com.falcon.tripingly.core.designsystem.component.PrimaryButton
 import com.falcon.tripingly.core.designsystem.component.SecondaryButton
@@ -297,7 +297,8 @@ internal fun FoundPersonRow(user: UserSummary, status: String?, onAdd: () -> Uni
 /** The invite link, pinned under the cards: its link icon, what it does, and Share (which makes a link first if needed). */
 @Composable
 internal fun InvitePill(isCreating: Boolean, onShare: () -> Unit, modifier: Modifier = Modifier) {
-    Surface(modifier = modifier.fillMaxWidth(), shape = CircleShape, color = MaterialTheme.colorScheme.surfaceContainerLowest) {
+    // Floating over the cards: the app's glass, like the tabs' bar (no blur, nothing behind it is a blur source).
+    GlassSurface(modifier = modifier.fillMaxWidth(), shape = CircleShape, blur = false) {
         Row(
             modifier = Modifier.padding(start = MaterialTheme.spacing.medium + MaterialTheme.spacing.extraSmall, end = MaterialTheme.spacing.small, top = MaterialTheme.spacing.small, bottom = MaterialTheme.spacing.small),
             verticalAlignment = Alignment.CenterVertically,
