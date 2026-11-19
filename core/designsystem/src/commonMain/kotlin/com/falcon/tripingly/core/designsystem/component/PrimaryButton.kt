@@ -77,14 +77,19 @@ fun PrimaryButton(
     size: ButtonSize = ButtonSize.Large,
     icon: ImageVector? = null,
 ) {
-    Button(
-        onClick = onClick,
-        enabled = enabled && !isLoading,
-        shape = CircleShape,
-        contentPadding = size.padding,
-        modifier = modifier.heightIn(min = size.height).skeleton(CircleShape),
-    ) {
-        ButtonContent(text, isLoading, size, icon)
+    // Small (40.dp) buttons shouldn't reserve extra 4.dp margins in compact rows/pills
+    val interactiveSize = if (size == ButtonSize.Small) Dp.Unspecified else LocalMinimumInteractiveComponentSize.current
+
+    CompositionLocalProvider(LocalMinimumInteractiveComponentSize provides interactiveSize) {
+        Button(
+            onClick = onClick,
+            enabled = enabled && !isLoading,
+            shape = CircleShape,
+            contentPadding = size.padding,
+            modifier = modifier.heightIn(min = size.height).skeleton(CircleShape),
+        ) {
+            ButtonContent(text, isLoading, size, icon)
+        }
     }
 }
 

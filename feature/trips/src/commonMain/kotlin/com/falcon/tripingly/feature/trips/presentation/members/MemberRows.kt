@@ -97,17 +97,38 @@ internal fun <T> LazyListScope.card(
     empty: (@Composable () -> Unit)? = null,
     entry: @Composable (T) -> Unit,
 ) {
-    item(key = "$key:title") { CardPart(isFirst = true, isLast = entries.isEmpty() && empty == null, Modifier.animateItem()) { title() } }
-    if (entries.isEmpty() && empty != null) item(key = "$key:empty") { CardPart(isFirst = false, isLast = true, Modifier.animateItem()) { empty() } }
+    item(key = "$key:title") {
+        CardPart(
+            isFirst = true,
+            isLast = entries.isEmpty() && empty == null,
+            Modifier.animateItem()
+        ) { title() }
+    }
+    if (entries.isEmpty() && empty != null) item(key = "$key:empty") {
+        CardPart(
+            isFirst = false,
+            isLast = true,
+            Modifier.animateItem()
+        ) { empty() }
+    }
     itemsIndexed(entries, key = { _, it -> "$key:${entryKey(it)}" }) { index, it ->
-        CardPart(isFirst = false, isLast = index == entries.lastIndex, Modifier.animateItem()) { entry(it) }
+        CardPart(
+            isFirst = false,
+            isLast = index == entries.lastIndex,
+            Modifier.animateItem()
+        ) { entry(it) }
     }
     item(key = "$key:gap") { Spacer(Modifier.padding(top = MaterialTheme.spacing.small)) }
 }
 
 /** One slice of a card: the card's colour, its top corners on the [isFirst] slice and its bottom ones on the [isLast]. */
 @Composable
-internal fun CardPart(isFirst: Boolean, isLast: Boolean, modifier: Modifier = Modifier, content: @Composable () -> Unit) {
+internal fun CardPart(
+    isFirst: Boolean,
+    isLast: Boolean,
+    modifier: Modifier = Modifier,
+    content: @Composable () -> Unit,
+) {
     val radius = CardRadius
     Box(
         modifier
@@ -135,7 +156,8 @@ internal fun CardPart(isFirst: Boolean, isLast: Boolean, modifier: Modifier = Mo
 @Composable
 internal fun CardTitle(text: String, hasNews: Boolean = false) {
     Row(
-        modifier = Modifier.heightIn(min = CardTitleHeight).padding(horizontal = MaterialTheme.spacing.extraSmall),
+        modifier = Modifier.heightIn(min = CardTitleHeight)
+            .padding(horizontal = MaterialTheme.spacing.extraSmall),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
     ) {
@@ -153,14 +175,28 @@ internal fun PersonRow(
     actions: @Composable RowScope.() -> Unit = {},
 ) {
     Row(
-        modifier = modifier.fillMaxWidth().heightIn(min = PersonRowHeight).padding(horizontal = MaterialTheme.spacing.extraSmall),
+        modifier = modifier.fillMaxWidth().heightIn(min = PersonRowHeight)
+            .padding(horizontal = MaterialTheme.spacing.extraSmall),
         horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small + MaterialTheme.spacing.extraSmall),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         AvatarCircle(user, size = AvatarSize.Row)
         Column(Modifier.weight(1f)) {
-            Text(user.displayName, style = MaterialTheme.typography.bodyLarge, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.skeletonText())
-            Text(detail, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.skeletonText())
+            Text(
+                user.displayName,
+                style = MaterialTheme.typography.bodyLarge,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.skeletonText()
+            )
+            Text(
+                detail,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.skeletonText()
+            )
         }
         actions()
     }
@@ -168,7 +204,13 @@ internal fun PersonRow(
 
 /** Someone on the trip: their role as a tag, and for an editor the owner can remove, ⋮ with Remove. */
 @Composable
-internal fun MemberRow(member: TripMember, canRemove: Boolean, onRemove: () -> Unit, modifier: Modifier = Modifier, reserveMenu: Boolean = canRemove) {
+internal fun MemberRow(
+    member: TripMember,
+    canRemove: Boolean,
+    onRemove: () -> Unit,
+    modifier: Modifier = Modifier,
+    reserveMenu: Boolean = canRemove,
+) {
     val isOwner = member.role == TripRole.OWNER
     PersonRow(user = member.user, detail = "@${member.user.username}", modifier = modifier) {
         RoleTag(isOwner)
@@ -189,9 +231,13 @@ private fun RoleTag(isOwner: Boolean) {
             .skeleton(CircleShape)
             .clip(CircleShape)
             .background(if (isOwner) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainerHigh)
-            .padding(horizontal = MaterialTheme.spacing.small + MaterialTheme.spacing.extraSmall, vertical = MaterialTheme.spacing.extraSmall),
+            .padding(
+                horizontal = MaterialTheme.spacing.small + MaterialTheme.spacing.extraSmall,
+                vertical = MaterialTheme.spacing.extraSmall
+            ),
     ) {
-        val color = if (isOwner) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant
+        val color =
+            if (isOwner) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant
         RoleLabel(stringResource(Res.string.members_role_owner), color, isShown = isOwner)
         RoleLabel(stringResource(Res.string.members_role_editor), color, isShown = !isOwner)
     }
@@ -213,34 +259,79 @@ private fun MemberMenu(user: UserSummary, onRemove: () -> Unit) {
     var isOpen by remember { mutableStateOf(false) }
     Box {
         IconButton(onClick = { isOpen = true }) {
-            Icon(Icons.Default.MoreVert, contentDescription = stringResource(Res.string.members_more, user.displayName), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+            Icon(
+                Icons.Default.MoreVert,
+                contentDescription = stringResource(Res.string.members_more, user.displayName),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
         AppDropdownMenu(
             expanded = isOpen,
             onDismissRequest = { isOpen = false },
-            actions = listOf(DropdownAction(stringResource(Res.string.members_remove), isDestructive = true, icon = Icons.Outlined.PersonRemove, onClick = onRemove)),
+            actions = listOf(
+                DropdownAction(
+                    stringResource(Res.string.members_remove),
+                    isDestructive = true,
+                    icon = Icons.Outlined.PersonRemove,
+                    onClick = onRemove
+                )
+            ),
         )
     }
 }
 
 /** A request to join with round ✕ and ✓; both wait while the answer is on its way ([isAnswering]). */
 @Composable
-internal fun JoinRequestRow(request: JoinRequest, detail: String, isAnswering: Boolean, onAccept: () -> Unit, onDecline: () -> Unit, modifier: Modifier = Modifier) {
+internal fun JoinRequestRow(
+    request: JoinRequest,
+    detail: String,
+    isAnswering: Boolean,
+    onAccept: () -> Unit,
+    onDecline: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
     PersonRow(user = request.user, detail = detail, modifier = modifier) {
-        OutlinedIconButton(onClick = onDecline, enabled = !isAnswering, modifier = Modifier.skeleton(CircleShape)) {
-            Icon(Icons.Default.Close, contentDescription = stringResource(Res.string.members_join_decline))
+        OutlinedIconButton(
+            onClick = onDecline,
+            enabled = !isAnswering,
+            modifier = Modifier.skeleton(CircleShape)
+        ) {
+            Icon(
+                Icons.Default.Close,
+                contentDescription = stringResource(Res.string.members_join_decline)
+            )
         }
-        FilledIconButton(onClick = onAccept, enabled = !isAnswering, modifier = Modifier.skeleton(CircleShape)) {
-            Icon(Icons.Default.Check, contentDescription = stringResource(Res.string.members_join_accept))
+        FilledIconButton(
+            onClick = onAccept,
+            enabled = !isAnswering,
+            modifier = Modifier.skeleton(CircleShape)
+        ) {
+            Icon(
+                Icons.Default.Check,
+                contentDescription = stringResource(Res.string.members_join_accept)
+            )
         }
     }
 }
 
 /** Friends who aren't on the trip, as faces with a +: a tap adds them at once. */
 @Composable
-internal fun FriendFaces(friends: List<UserSummary>, onAdd: (UserSummary) -> Unit, modifier: Modifier = Modifier) {
-    LazyRow(modifier = modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraSmall)) {
-        items(friends, key = { it.id }) { friend -> FriendFace(friend, onAdd = { onAdd(friend) }, Modifier.animateItem()) }
+internal fun FriendFaces(
+    friends: List<UserSummary>,
+    onAdd: (UserSummary) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    LazyRow(
+        modifier = modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraSmall)
+    ) {
+        items(friends, key = { it.id }) { friend ->
+            FriendFace(
+                friend,
+                onAdd = { onAdd(friend) },
+                Modifier.animateItem()
+            )
+        }
     }
 }
 
@@ -285,12 +376,25 @@ internal fun FriendFace(friend: UserSummary, onAdd: () -> Unit, modifier: Modifi
 
 /** Someone found on the Add people page: Add, or where they already are ([status], e.g. "On this trip"). */
 @Composable
-internal fun FoundPersonRow(user: UserSummary, status: String?, onAdd: () -> Unit, modifier: Modifier = Modifier) {
+internal fun FoundPersonRow(
+    user: UserSummary,
+    status: String?,
+    onAdd: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
     PersonRow(user = user, detail = "@${user.username}", modifier = modifier) {
         if (status != null) {
-            Text(status, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(
+                status,
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         } else {
-            SecondaryButton(text = stringResource(Res.string.members_add_button), onClick = onAdd, size = ButtonSize.Small)
+            SecondaryButton(
+                text = stringResource(Res.string.members_add_button),
+                onClick = onAdd,
+                size = ButtonSize.Small
+            )
         }
     }
 }
@@ -304,16 +408,37 @@ internal fun InvitePill(isCreating: Boolean, onShare: () -> Unit, modifier: Modi
         // the link icon's circle is as far from the start edge as from the top (Shahin, 2026-11-19). One line each, so
         // the pill keeps its height.
         Row(
-            modifier = Modifier.height(InviteButtonHeight + InviteInset * 2).padding(start = (InviteButtonHeight + InviteInset * 2 - InviteIconSize) / 2, end = InviteInset),
+            modifier = Modifier.padding(MaterialTheme.spacing.small),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small + MaterialTheme.spacing.extraSmall),
+            horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
         ) {
-            Icon(Icons.Default.Link, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(InviteIconSize))
+            Icon(
+                Icons.Default.Link,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(InviteIconSize)
+            )
             Column(Modifier.weight(1f)) {
-                Text(stringResource(Res.string.members_invite_title), style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                Text(stringResource(Res.string.members_invite_subtitle), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(
+                    stringResource(Res.string.members_invite_title),
+                    style = MaterialTheme.typography.titleSmall,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Text(
+                    stringResource(Res.string.members_invite_subtitle),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
             }
-            PrimaryButton(text = stringResource(Res.string.members_invite_share), onClick = onShare, isLoading = isCreating, size = ButtonSize.Small)
+            PrimaryButton(
+                text = stringResource(Res.string.members_invite_share),
+                onClick = onShare,
+                isLoading = isCreating,
+                size = ButtonSize.Small
+            )
         }
     }
 }
@@ -337,19 +462,43 @@ private val FaceBadgeRing = 2.dp
 @Composable
 private fun MemberRowsPreview() {
     TripinglyTheme {
-        Column(Modifier.background(MaterialTheme.colorScheme.surfaceContainerLow).padding(vertical = MaterialTheme.spacing.medium)) {
-            CardPart(isFirst = true, isLast = false) { CardTitle("Asking to join · 1", hasNews = true) }
-            CardPart(isFirst = false, isLast = true) { JoinRequestRow(previewJoinRequest, "@mia · yesterday", isAnswering = false, onAccept = {}, onDecline = {}) }
+        Column(
+            Modifier.background(MaterialTheme.colorScheme.surfaceContainerLow)
+                .padding(vertical = MaterialTheme.spacing.medium)
+        ) {
+            CardPart(isFirst = true, isLast = false) {
+                CardTitle(
+                    "Asking to join · 1",
+                    hasNews = true
+                )
+            }
+            CardPart(isFirst = false, isLast = true) {
+                JoinRequestRow(
+                    previewJoinRequest,
+                    "@mia · yesterday",
+                    isAnswering = false,
+                    onAccept = {},
+                    onDecline = {})
+            }
             Spacer(Modifier.padding(top = MaterialTheme.spacing.small))
             CardPart(isFirst = true, isLast = false) { CardTitle("On this trip · 2") }
             previewMembers.forEachIndexed { index, member ->
                 CardPart(isFirst = false, isLast = index == previewMembers.lastIndex) {
-                    MemberRow(member = member, canRemove = member.role != TripRole.OWNER, onRemove = {}, reserveMenu = true)
+                    MemberRow(
+                        member = member,
+                        canRemove = member.role != TripRole.OWNER,
+                        onRemove = {},
+                        reserveMenu = true
+                    )
                 }
             }
             Spacer(Modifier.padding(top = MaterialTheme.spacing.small))
             CardPart(isFirst = true, isLast = true) { FriendFaces(previewFriends, onAdd = {}) }
-            InvitePill(isCreating = false, onShare = {}, modifier = Modifier.padding(MaterialTheme.spacing.medium))
+            InvitePill(
+                isCreating = false,
+                onShare = {},
+                modifier = Modifier.padding(MaterialTheme.spacing.medium)
+            )
         }
     }
 }
@@ -358,10 +507,29 @@ private fun MemberRowsPreview() {
 @Composable
 private fun MemberRowsDarkPreview() {
     TripinglyTheme(darkTheme = true) {
-        Column(Modifier.background(MaterialTheme.colorScheme.surfaceContainerLow).padding(vertical = MaterialTheme.spacing.medium)) {
-            CardPart(isFirst = true, isLast = true) { JoinRequestRow(previewJoinRequest, "@mia · yesterday", isAnswering = true, onAccept = {}, onDecline = {}) }
-            CardPart(isFirst = true, isLast = true) { FoundPersonRow(previewFriends.first(), status = null, onAdd = {}) }
-            InvitePill(isCreating = true, onShare = {}, modifier = Modifier.padding(MaterialTheme.spacing.medium))
+        Column(
+            Modifier.background(MaterialTheme.colorScheme.surfaceContainerLow)
+                .padding(vertical = MaterialTheme.spacing.medium)
+        ) {
+            CardPart(isFirst = true, isLast = true) {
+                JoinRequestRow(
+                    previewJoinRequest,
+                    "@mia · yesterday",
+                    isAnswering = true,
+                    onAccept = {},
+                    onDecline = {})
+            }
+            CardPart(isFirst = true, isLast = true) {
+                FoundPersonRow(
+                    previewFriends.first(),
+                    status = null,
+                    onAdd = {})
+            }
+            InvitePill(
+                isCreating = true,
+                onShare = {},
+                modifier = Modifier.padding(MaterialTheme.spacing.medium)
+            )
         }
     }
 }
