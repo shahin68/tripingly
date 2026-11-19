@@ -44,11 +44,25 @@ internal class MapSharing(
         }
     }
 
-    fun requestToJoin() =
-        update(Res.string.map_join_requested, Res.string.map_error_join) { tripRepository.requestToJoin(context.tripId) }
+    /**
+     * Ask to join shows the request sent at once and keeps showing it (the trip's cached request says so from then on,
+     * also next time); an error puts the button back.
+     */
+    fun requestToJoin() {
+        if (context.model.value.isUpdatingSharing) return
+        context.update { it.copy(isAskingToJoin = true) }
+        update(Res.string.map_join_requested, Res.string.map_error_join) {
+            tripRepository.requestToJoin(context.tripId).also { result ->
+                if (result is AppResult.Error) context.update { it.copy(isAskingToJoin = false) }
+            }
+        }
+    }
 
-    fun cancelJoinRequest() =
+    fun cancelJoinRequest() {
+        if (context.model.value.isUpdatingSharing) return
+        context.update { it.copy(isAskingToJoin = false) }
         update(Res.string.map_join_withdrawn, Res.string.map_error_cancel_join) { tripRepository.cancelJoinRequest(context.tripId) }
+    }
 
     fun report(target: ReportTarget, id: String) = context.update { it.copy(dialog = Dialog.Report(target, id)) }
 

@@ -117,6 +117,7 @@
     <string name="map_save_trip">Save to my trips</string>
     <string name="map_unsave_trip">Remove from my trips</string>
     <string name="map_join_trip">Ask to join</string>
+    <string name="map_join_sent">Request sent</string>
     <string name="map_cancel_join">Withdraw join request</string>
     <string name="map_trip_saved">Saved to My Trips.</string>
     <string name="map_trip_unsaved">Removed from My Trips.</string>

@@ -117,6 +117,7 @@
     <string name="map_save_trip">In meinen Reisen speichern</string>
     <string name="map_unsave_trip">Aus meinen Reisen entfernen</string>
     <string name="map_join_trip">Mitmachen anfragen</string>
+    <string name="map_join_sent">Anfrage gesendet</string>
     <string name="map_cancel_join">Anfrage zurückziehen</string>
     <string name="map_trip_saved">In meinen Reisen gespeichert.</string>
     <string name="map_trip_unsaved">Aus meinen Reisen entfernt.</string>

@@ -1476,12 +1476,16 @@ class MapViewModelTest {
         testScheduler.advanceUntilIdle()
 
         val state = viewModel.uiState.value
-        // Asked: no Ask to join button any more, ⋮ withdraws.
-        assertEquals(false, state.header.viewerMenu?.isAsking)
+        // Asked: the pill shows the request sent until the owner decides; ⋮ withdraws.
+        assertEquals(JoinButton.Sent, state.header.viewerMenu?.joinButton)
         assertTrue(state.header.viewerMenu?.isSavedByMe == true)
         assertEquals(JoinRequestStatus.PENDING, state.header.viewerMenu?.myJoinRequest)
         assertEquals(Res.string.map_join_requested, assertIs<UiText.Resource>(assertIs<UiText.Note>(state.message?.text).text).resource)
         assertEquals(listOf(trip.trip.id), backend.observeMyTrips().first().map { it.id })
+        // Declined, the pill goes; asked again while one is on its way, it shows sent.
+        assertNull(ViewerMenu(isSavedByMe = false, myJoinRequest = JoinRequestStatus.DECLINED).joinButton)
+        assertEquals(JoinButton.Ask, ViewerMenu(isSavedByMe = false, myJoinRequest = null).joinButton)
+        assertEquals(JoinButton.Sent, ViewerMenu(isSavedByMe = false, myJoinRequest = null, isAsking = true).joinButton)
     }
 
     @Test

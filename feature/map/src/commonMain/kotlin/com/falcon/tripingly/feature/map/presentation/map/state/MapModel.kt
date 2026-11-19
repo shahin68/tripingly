@@ -43,6 +43,8 @@ internal data class MapModel(
     val isSaving: Boolean = false,
     /** Saving or joining the trip is waiting for the server. */
     val isUpdatingSharing: Boolean = false,
+    /** My request to join is on its way: Ask to join shows it sent at once. */
+    val isAskingToJoin: Boolean = false,
     val activeDayIndex: Int = 0,
     val camera: CameraModel = CameraModel(),
     val selection: Selection? = null,

@@ -117,6 +117,7 @@
     <string name="map_save_trip">Mentés az utazásaimba</string>
     <string name="map_unsave_trip">Eltávolítás az utazásaimból</string>
     <string name="map_join_trip">Csatlakozás kérése</string>
+    <string name="map_join_sent">Kérés elküldve</string>
     <string name="map_cancel_join">Kérés visszavonása</string>
     <string name="map_trip_saved">Elmentve az utazásaid közé.</string>
     <string name="map_trip_unsaved">Eltávolítva az utazásaid közül.</string>

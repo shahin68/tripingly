@@ -152,7 +152,7 @@ internal class MapStateMapper(
             isLoading = days.isEmpty() && model.isLoadingTrip,
             isBusy = model.isSaving || model.isUpdatingSharing,
             viewerMenu = trip?.takeIf { role == TripRole.VIEWER }?.let {
-                ViewerMenu(isSavedByMe = it.savedByMe, myJoinRequest = details.myJoinRequest, isAsking = model.isUpdatingSharing)
+                ViewerMenu(isSavedByMe = it.savedByMe, myJoinRequest = details.myJoinRequest, isAsking = model.isAskingToJoin)
             },
             editorMenu = EditorMenu(canDeleteDay = days.size > 1 && canDeleteDay()).takeIf { canEdit },
         )

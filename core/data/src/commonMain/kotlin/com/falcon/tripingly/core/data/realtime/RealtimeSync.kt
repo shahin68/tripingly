@@ -54,9 +54,10 @@ internal class RealtimeSync(
             is RealtimeEvent.ToMe -> photos.applyLive(event)
             is RealtimeEvent.MyTripsChanged -> myTripsRefreshes.request(MY_TRIPS)
             // For the screens showing people; nothing cached changes.
-            // Someone asks to join my trip: its count (the map's join pill) comes with the trip.
+            // Someone asks to join my trip: its count (the map's join pill) comes with the trip. The owner decided on my
+            // request: the trip says so (Ask to join goes, or I'm on the trip now) (Shahin, 2026-11-19).
             is RealtimeEvent.NotificationCreated -> event.tripId?.let { tripId ->
-                if (event.entry?.type == "join_requested" && local.trip(tripId) != null) tripRefreshes.request(tripId)
+                if (event.entry?.type in TRIP_RELOADING_NOTIFICATIONS && local.trip(tripId) != null) tripRefreshes.request(tripId)
             }
             is RealtimeEvent.FollowsChanged, is RealtimeEvent.NotificationsChanged -> Unit
         }
@@ -121,5 +122,8 @@ internal class RealtimeSync(
 
     private companion object {
         const val MY_TRIPS = "myTrips"
+
+        /** Notifications whose trip changed for me: a request to join it, or the owner's answer to mine. */
+        val TRIP_RELOADING_NOTIFICATIONS = setOf("join_requested", "join_accepted", "join_declined")
     }
 }
