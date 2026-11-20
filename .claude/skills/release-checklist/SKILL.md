@@ -60,3 +60,7 @@ Today `APP_LINK_BASE_URL` (api) is still its default `tripinly://app`, so invite
 - [ ] Both platforms: sign-in, onboarding, create trip, add marker by search / long press / from map place, upload photos, set cover, route with places along the way, like, comment, save a public trip and ask to join it (owner accepts), invite link, push tap, block, report, delete account.
 - [ ] German and Hungarian UI checked for truncation.
 - [ ] Tests pass.
+
+## Project cookbook (Shahin, 2026-11-20)
+
+- [ ] One ops cookbook for the whole project (backend and app), written from the runbooks (start with the backend's `docs/deploy/railway-staging.md` section 10): every switch and variable per service with default and range, how to run and schedule each job (OSM import, place photos, brand logos, transit builds, tester seeds, key rotation), where to read logs and what each line means, progress and health checks (SQL, endpoints), troubleshooting tables, and the app side (local setup, debug/release builds, signing, store uploads, Firebase, RevenueCat). A copy goes in the project files; every later change keeps it current.
