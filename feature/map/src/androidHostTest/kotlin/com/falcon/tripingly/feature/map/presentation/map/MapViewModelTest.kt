@@ -2942,10 +2942,10 @@ class MapViewModelTest {
         val viewModel = viewModel()
         restOnTarget(viewModel)
         val stephansdom = MapPlace("fake-stephansdom", "Stephansdom", PlaceCategory.Attraction, GeoPoint(48.2085, 16.3731), isTripinly = true, hotCount = 5, prominence = 90)
-        val graz = MapPlace("graz", "Stephanie", PlaceCategory.Cafe, GeoPoint(47.0707, 15.4395), isTripinly = false, hotCount = 0, prominence = 10)
-        places.searchResults = listOf(stephansdom, graz).map { PlaceSearchResult(it.name, null, it.location, SearchResultType.Place, place = it) }
+        val budapest = MapPlace("budapest", "Stephanie", PlaceCategory.Cafe, GeoPoint(47.4979, 19.0402), isTripinly = false, hotCount = 0, prominence = 10)
+        places.searchResults = listOf(stephansdom, budapest).map { PlaceSearchResult(it.name, null, it.location, SearchResultType.Place, place = it) }
 
-        // Nothing named so in Paris, with the server's city box and without one: the nearest result's city, Vienna, not Graz
+        // Nothing named so in Paris, with the server's city box and without one: the nearest result's city, Vienna, not the farther Budapest
         // (Shahin, 2026-11-20).
         for (city in listOf(GeoBounds(48.81, 2.22, 48.91, 2.47), null)) {
             places.searchCity = city
@@ -2957,7 +2957,7 @@ class MapViewModelTest {
                 testScheduler.advanceUntilIdle()
                 val fit = assertIs<CameraCommand.Fit>(expectMostRecentItem())
                 assertTrue(stephansdom.location in fit.bounds)
-                assertTrue(graz.location !in fit.bounds, "Graz left out")
+                assertTrue(budapest.location !in fit.bounds, "Budapest left out")
             }
             viewModel.onAction(MapAction.Search.Close)
             testScheduler.advanceUntilIdle()
