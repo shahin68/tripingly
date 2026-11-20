@@ -171,6 +171,8 @@ internal data class SearchModel(
     /** The search field; a new search starts empty. */
     val query: TextFieldState = TextFieldState(),
     val results: List<PlaceSearchResult> = emptyList(),
+    /** The box of the city the map was in for [results], when the server knows it: the camera stays inside it. */
+    val city: GeoBounds? = null,
     val isSearching: Boolean = false,
 )
 

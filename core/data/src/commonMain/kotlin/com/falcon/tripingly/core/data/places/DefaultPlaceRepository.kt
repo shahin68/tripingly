@@ -12,10 +12,12 @@ import com.falcon.tripingly.core.model.place.OsmType
 import com.falcon.tripingly.core.model.place.PlaceCategory
 import com.falcon.tripingly.core.model.place.PlaceAround
 import com.falcon.tripingly.core.model.place.PlaceCluster
+import com.falcon.tripingly.core.model.place.GeoBounds
 import com.falcon.tripingly.core.model.place.ImageCredit
 import com.falcon.tripingly.core.model.place.PlaceDetails
 import com.falcon.tripingly.core.model.place.PlaceImage
 import com.falcon.tripingly.core.model.place.PlaceImageSource
+import com.falcon.tripingly.core.model.place.PlaceSearch
 import com.falcon.tripingly.core.model.place.PlaceSearchResult
 import com.falcon.tripingly.core.model.place.PlaceSquare
 import com.falcon.tripingly.core.model.place.PlacesAround
@@ -62,37 +64,40 @@ internal class DefaultPlaceRepository(
     private val _changedSquares = MutableSharedFlow<PlaceSquare>(extraBufferCapacity = MAX_SQUARES)
     override val changedSquares: Flow<PlaceSquare> = _changedSquares.asSharedFlow()
 
-    override suspend fun search(query: String, near: GeoPoint?): AppResult<List<PlaceSearchResult>, DataError.Network> =
+    override suspend fun search(query: String, near: GeoPoint?): AppResult<PlaceSearch, DataError.Network> =
         search(query, near, scope = null)
 
     override suspend fun searchDestinations(query: String): AppResult<List<PlaceSearchResult>, DataError.Network> =
-        search(query, near = null, scope = DESTINATION_SCOPE)
+        search(query, near = null, scope = DESTINATION_SCOPE).map { it.results }
 
-    private suspend fun search(query: String, near: GeoPoint?, scope: String?): AppResult<List<PlaceSearchResult>, DataError.Network> {
+    private suspend fun search(query: String, near: GeoPoint?, scope: String?): AppResult<PlaceSearch, DataError.Network> {
         val trimmed = query.trim().take(MAX_QUERY_LENGTH)
-        if (trimmed.isEmpty()) return AppResult.Success(emptyList())
+        if (trimmed.isEmpty()) return AppResult.Success(PlaceSearch(emptyList()))
         return api.search(trimmed, near?.lat, near?.lng, scope).map { response ->
-            response.items.map { item ->
-                val location = GeoPoint(item.location.lat, item.location.lng)
-                PlaceSearchResult(
-                    name = item.name,
-                    address = item.address,
-                    location = location,
-                    type = item.toType(),
-                    place = item.id?.let { id ->
-                        MapPlace(
-                            id = id,
-                            name = item.name,
-                            category = item.category?.let { PlaceItemDto.Category.valueOf(it.name).toCategory() } ?: PlaceCategory.Other,
-                            location = location,
-                            isTripinly = item.isTripinly,
-                            hotCount = item.hotCount.toInt(),
-                            prominence = item.prominence.toInt(),
-                        )
-                    },
-                    osm = item.osmId?.let { osmId -> item.osmType?.let { OsmRef(it.toOsmType(), osmId) } },
-                )
-            }
+            PlaceSearch(
+                city = response.city?.let { GeoBounds(south = it.south, west = it.west, north = it.north, east = it.east) },
+                results = response.items.map { item ->
+                    val location = GeoPoint(item.location.lat, item.location.lng)
+                    PlaceSearchResult(
+                        name = item.name,
+                        address = item.address,
+                        location = location,
+                        type = item.toType(),
+                        place = item.id?.let { id ->
+                            MapPlace(
+                                id = id,
+                                name = item.name,
+                                category = item.category?.let { PlaceItemDto.Category.valueOf(it.name).toCategory() } ?: PlaceCategory.Other,
+                                location = location,
+                                isTripinly = item.isTripinly,
+                                hotCount = item.hotCount.toInt(),
+                                prominence = item.prominence.toInt(),
+                            )
+                        },
+                        osm = item.osmId?.let { osmId -> item.osmType?.let { OsmRef(it.toOsmType(), osmId) } },
+                    )
+                },
+            )
         }
     }
 

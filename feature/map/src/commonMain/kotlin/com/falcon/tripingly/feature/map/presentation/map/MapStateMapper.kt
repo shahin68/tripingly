@@ -533,7 +533,7 @@ internal class MapStateMapper(
 private const val TRIP_CARD_FACES = 3
 
 /** Metres along the earth's surface (haversine), for "2.3 km" on a search result. */
-private fun GeoPoint.metersTo(other: GeoPoint): Int {
+internal fun GeoPoint.metersTo(other: GeoPoint): Int {
     fun rad(degrees: Double) = degrees * PI / 180
     val dLat = rad(other.lat - lat)
     val dLng = rad(other.lng - lng)

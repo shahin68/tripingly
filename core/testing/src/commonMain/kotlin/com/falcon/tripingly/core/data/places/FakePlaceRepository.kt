@@ -2,12 +2,14 @@ package com.falcon.tripingly.core.data.places
 
 import com.falcon.tripingly.core.common.error.DataError
 import com.falcon.tripingly.core.common.result.AppResult
+import com.falcon.tripingly.core.common.result.map
 import com.falcon.tripingly.core.model.Page
 import com.falcon.tripingly.core.model.place.CategoryCount
 import com.falcon.tripingly.core.model.place.MapPlace
 import com.falcon.tripingly.core.model.place.PlaceAround
 import com.falcon.tripingly.core.model.place.PlaceCategory
 import com.falcon.tripingly.core.model.place.PlaceDetails
+import com.falcon.tripingly.core.model.place.PlaceSearch
 import com.falcon.tripingly.core.model.place.PlaceSearchResult
 import com.falcon.tripingly.core.model.place.PlaceSquare
 import com.falcon.tripingly.core.model.place.PlacesAround
@@ -40,14 +42,14 @@ class FakePlaceRepository : PlaceRepository {
         MapPlace("fake-cafe-central", "Café Central", PlaceCategory.Cafe, GeoPoint(48.2104, 16.3655), isTripinly = false, hotCount = 0, prominence = 40),
     )
 
-    override suspend fun search(query: String, near: GeoPoint?): AppResult<List<PlaceSearchResult>, DataError.Network> {
+    override suspend fun search(query: String, near: GeoPoint?): AppResult<PlaceSearch, DataError.Network> {
         val trimmed = query.trim()
-        if (trimmed.isEmpty()) return AppResult.Success(emptyList())
-        return AppResult.Success(places.filter { it.name.startsWith(trimmed, ignoreCase = true) })
+        if (trimmed.isEmpty()) return AppResult.Success(PlaceSearch(emptyList()))
+        return AppResult.Success(PlaceSearch(places.filter { it.name.startsWith(trimmed, ignoreCase = true) }))
     }
 
     override suspend fun searchDestinations(query: String): AppResult<List<PlaceSearchResult>, DataError.Network> =
-        search(query, near = null)
+        search(query, near = null).map { it.results }
 
     override suspend fun placesIn(squares: Collection<PlaceSquare>): AppResult<Map<PlaceSquare, PlacesInView>, DataError.Network> =
         AppResult.Success(loadedPlacesIn(squares))

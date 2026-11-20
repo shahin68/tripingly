@@ -3,9 +3,11 @@ package com.falcon.tripingly.feature.map.presentation.map.state
 import com.falcon.tripingly.core.common.result.AppResult
 import com.falcon.tripingly.core.data.places.PlaceRepository
 import com.falcon.tripingly.core.location.model.Coordinates
+import com.falcon.tripingly.core.model.place.PlaceSearch
 import com.falcon.tripingly.core.model.place.PlaceSearchResult
 import com.falcon.tripingly.core.model.place.SearchResultType
 import com.falcon.tripingly.core.model.trip.GeoPoint
+import com.falcon.tripingly.feature.map.presentation.map.metersTo
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -13,7 +15,6 @@ import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withTimeoutOrNull
 
 /**
  * The search in the header, like the destination search: asks the server once typing pauses, ranked near the
@@ -60,8 +61,8 @@ internal class MapSearch(
             delay(SEARCH_DEBOUNCE_MILLIS)
             update { it.copy(isSearching = true) }
             val center = camera.target
-            val results = (placeRepository.search(query, GeoPoint(center.latitude, center.longitude)) as? AppResult.Success)?.data
-            update { it.copy(results = results ?: it.results, isSearching = false) }
+            val found = (placeRepository.search(query, GeoPoint(center.latitude, center.longitude)) as? AppResult.Success)?.data
+            update { it.copy(results = found?.results ?: it.results, city = found?.city ?: it.city, isSearching = false) }
         }
     }
 
@@ -77,10 +78,11 @@ internal class MapSearch(
 
     /**
      * The keyboard's search key: the results list goes and the map shows only the places named so. Once they've loaded,
-     * the camera fits them all, zooming in or out (Shahin, 2026-11-19). None in view: the camera goes to the nearest
-     * place named so (the server's first), then fits all of them around it. Nothing found anywhere, or a finger moving
-     * the map first, leaves it where it is. A name the server can't search (under [MIN_NAME_LENGTH] letters) and the
-     * route's "to" field only close the keyboard.
+     * the camera fits them and the listed places, zooming in or out, but only those in the city the map is in (the
+     * server's box; without one, [NO_CITY_RADIUS_METERS] around the map's centre): it never goes to another city, and
+     * with nothing named so there it stays where it is (Shahin, 2026-11-20). A finger moving the map first leaves it be
+     * too. A name the server can't search (under [MIN_NAME_LENGTH] letters) and the route's "to" field only close the
+     * keyboard.
      */
     fun submit() {
         val search = context.model.value.search ?: return
@@ -88,23 +90,19 @@ internal class MapSearch(
         if (name.length < MIN_NAME_LENGTH || context.model.value.route.isPicking) return
         searchJob?.cancel()
         fitJob?.cancel()
-        val listed = search.results
+        val center = camera.target.let { GeoPoint(it.latitude, it.longitude) }
+        val listed = PlaceSearch(search.results, search.city).takeIf { search.results.isNotEmpty() }
         update { it.copy(results = emptyList(), isSearching = false) }
         pins.setName(name)
         fitJob = context.scope.launch {
+            val found = listed ?: (placeRepository.search(name, center) as? AppResult.Success)?.data
             context.model.first { !isNamed(name) || !it.placeFilter.isLoading }
             if (!isNamed(name)) return@launch
-            if (namedPins().isNotEmpty()) return@launch camera.frame(namedPins())
-            val near = camera.target.let { GeoPoint(it.latitude, it.longitude) }
-            val nearest = listed.ifEmpty { (placeRepository.search(name, near) as? AppResult.Success)?.data.orEmpty() }
-                .firstNotNullOfOrNull { it.place } ?: return@launch
-            if (!isNamed(name)) return@launch
-            camera.moveTo(Coordinates(nearest.location.lat, nearest.location.lng), NEAREST_ZOOM)
-            // Its neighbourhood has loaded once the place itself shows.
-            withTimeoutOrNull(NEAREST_LOAD_MILLIS) {
-                context.model.first { model -> !isNamed(name) || model.pins.pins.any { it.place.id == nearest.id } }
-            } ?: return@launch
-            if (isNamed(name)) camera.frame(namedPins())
+            val city = found?.city
+            val inCity = { point: GeoPoint -> if (city != null) point in city else point.metersTo(center) <= NO_CITY_RADIUS_METERS }
+            val places = found?.results.orEmpty().filter { it.place != null }.map { it.location }
+            val targets = (namedPins() + places).filter(inCity)
+            camera.frame(targets.map { Coordinates(it.lat, it.lng) })
         }
     }
 
@@ -112,7 +110,7 @@ internal class MapSearch(
     private fun isNamed(name: String) = context.model.value.let { it.search != null && it.placeFilter.name == name }
 
     /** Where the map's pins are; while it's searched by name, they're all results. */
-    private fun namedPins() = context.model.value.pins.pins.map { Coordinates(it.place.location.lat, it.place.location.lng) }
+    private fun namedPins() = context.model.value.pins.pins.map { it.place.location }
 
     /** A finger moved the map before the results came: it stays where the finger left it. */
     fun onUserMove() {
@@ -134,11 +132,8 @@ internal class MapSearch(
         /** Typing has paused; see the search rule in 07-architecture. */
         const val SEARCH_DEBOUNCE_MILLIS = 300L
 
-        /** A few streets around the nearest result, its neighbourhood loaded before the camera fits them all. */
-        const val NEAREST_ZOOM = 14f
-
-        /** How long the camera waits for the nearest result's neighbourhood before leaving it be. */
-        const val NEAREST_LOAD_MILLIS = 5_000L
+        /** The map's city when the server doesn't know it: about a big city's reach around the map's centre. */
+        const val NO_CITY_RADIUS_METERS = 25_000
 
         /** The server searches the map by names of two letters or more. */
         const val MIN_NAME_LENGTH = 2

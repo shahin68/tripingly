@@ -43,6 +43,7 @@ import com.falcon.tripingly.core.model.place.PlaceCluster
 import com.falcon.tripingly.core.model.place.PlaceDetails
 import com.falcon.tripingly.core.model.place.PlaceImage
 import com.falcon.tripingly.core.model.place.PlaceImageSource
+import com.falcon.tripingly.core.model.place.PlaceSearch
 import com.falcon.tripingly.core.model.place.PlaceSearchResult
 import com.falcon.tripingly.core.model.place.PlaceSquare
 import com.falcon.tripingly.core.model.place.PlacesInView
@@ -168,9 +169,11 @@ class MapViewModelTest {
         var squaresDelayMillis = 0L
         /** What the search answers when set; the fake's otherwise. */
         var searchResults: List<PlaceSearchResult>? = null
+        /** The map's city the search answers with. */
+        var searchCity: GeoBounds? = null
 
-        override suspend fun search(query: String, near: GeoPoint?): AppResult<List<PlaceSearchResult>, DataError.Network> =
-            searchResults?.let { AppResult.Success(it) } ?: fake.search(query, near)
+        override suspend fun search(query: String, near: GeoPoint?): AppResult<PlaceSearch, DataError.Network> =
+            searchResults?.let { AppResult.Success(PlaceSearch(it, searchCity)) } ?: fake.search(query, near)
 
         override suspend fun around(point: GeoPoint, radiusMeters: Int, categories: Set<PlaceCategory>, excludePlaceId: String?): AppResult<PlacesAround, DataError.Network> {
             aroundRequests += radiusMeters
@@ -2903,35 +2906,52 @@ class MapViewModelTest {
     }
 
     @Test
-    fun `the keyboard's search with nothing named so in view goes to the nearest one, then fits all around it`() = runTest(testDispatcher) {
+    fun `the keyboard's search never takes the camera to another city`() = runTest(testDispatcher) {
         addStops(GeoPoint(48.85, 2.30))
         val viewModel = viewModel()
         restOnTarget(viewModel)
         val stephansdom = MapPlace("fake-stephansdom", "Stephansdom", PlaceCategory.Attraction, GeoPoint(48.2085, 16.3731), isTripinly = true, hotCount = 5, prominence = 90)
+        places.searchResults = listOf(PlaceSearchResult(stephansdom.name, null, stephansdom.location, SearchResultType.Place, place = stephansdom))
+
+        // Nothing named so in Paris, with the server's city box and without one: the camera stays (Shahin, 2026-11-20).
+        for (city in listOf(GeoBounds(48.81, 2.22, 48.91, 2.47), null)) {
+            places.searchCity = city
+            viewModel.onAction(MapAction.Search.Open)
+            testScheduler.runCurrent()
+            viewModel.uiState.value.search!!.query.setTextAndPlaceCursorAtEnd("steph")
+            viewModel.cameraCommands.test {
+                viewModel.onAction(MapAction.Search.Submit)
+                testScheduler.advanceUntilIdle()
+                expectNoEvents()
+            }
+            viewModel.onAction(MapAction.Search.Close)
+            testScheduler.advanceUntilIdle()
+        }
+    }
+
+    @Test
+    fun `the keyboard's search fits the listed places in the city too, not yet loaded as pins`() = runTest(testDispatcher) {
+        addStops(GeoPoint(48.85, 2.30))
+        val viewModel = viewModel()
+        restOnTarget(viewModel)
+        val orsay = MapPlace("orsay", "Musée d'Orsay", PlaceCategory.Museum, GeoPoint(48.8600, 2.3266), isTripinly = false, hotCount = 0, prominence = 95)
+        val far = MapPlace("far", "Musée Lyon", PlaceCategory.Museum, GeoPoint(45.7640, 4.8357), isTripinly = false, hotCount = 0, prominence = 95)
         places.searchResults = listOf(
-            PlaceSearchResult("Stephansplatz", "Wien", GeoPoint(48.2086, 16.3727), SearchResultType.Street),
-            PlaceSearchResult(stephansdom.name, null, stephansdom.location, SearchResultType.Place, place = stephansdom),
+            PlaceSearchResult(orsay.name, null, orsay.location, SearchResultType.Place, place = orsay),
+            PlaceSearchResult(far.name, null, far.location, SearchResultType.Place, place = far),
         )
+        places.searchCity = GeoBounds(48.81, 2.22, 48.91, 2.47)
 
         viewModel.onAction(MapAction.Search.Open)
         testScheduler.runCurrent()
-        viewModel.uiState.value.search!!.query.setTextAndPlaceCursorAtEnd("steph")
+        viewModel.uiState.value.search!!.query.setTextAndPlaceCursorAtEnd("musee")
         viewModel.cameraCommands.test {
             viewModel.onAction(MapAction.Search.Submit)
-            // Not until idle: the camera gives up waiting for the neighbourhood after a while.
-            testScheduler.runCurrent()
-            // Nothing named so around Paris: the camera goes to the nearest one, a few streets around it.
-            val move = assertIs<CameraCommand.MoveTo>(expectMostRecentItem())
-            assertEquals(stephansdom.location.lat, move.target.latitude)
-            assertEquals(stephansdom.location.lng, move.target.longitude)
-
-            // Its neighbourhood loads, and the camera fits every result there.
-            viewModel.onAction(MapAction.MapView.CameraRest(move.target, move.zoom, GeoBounds(48.19, 16.35, 48.23, 16.40)))
-            testScheduler.runCurrent()
+            testScheduler.advanceUntilIdle()
             val fit = assertIs<CameraCommand.Fit>(expectMostRecentItem())
-            assertTrue(stephansdom.location.lat in fit.bounds.south..fit.bounds.north && stephansdom.location.lng in fit.bounds.west..fit.bounds.east)
+            assertTrue(orsay.location.lat in fit.bounds.south..fit.bounds.north && orsay.location.lng in fit.bounds.west..fit.bounds.east)
+            assertTrue(fit.bounds.south > 48, "Lyon left out")
         }
-        assertEquals(listOf("Stephansdom"), viewModel.uiState.value.layers.placePins.map { it.place.name })
     }
 
     /** Stops next to the Eiffel Tower and a walk from the Louvre; the first one's card open. */

@@ -6,6 +6,7 @@ import com.falcon.tripingly.core.model.Page
 import com.falcon.tripingly.core.model.config.AppConfig
 import com.falcon.tripingly.core.model.place.PlaceCategory
 import com.falcon.tripingly.core.model.place.PlaceDetails
+import com.falcon.tripingly.core.model.place.PlaceSearch
 import com.falcon.tripingly.core.model.place.PlaceSearchResult
 import com.falcon.tripingly.core.model.place.PlaceSquare
 import com.falcon.tripingly.core.model.place.PlacesAround
@@ -18,9 +19,9 @@ import kotlinx.coroutines.flow.Flow
 interface PlaceRepository {
     /**
      * From the first letter; a blank query returns nothing without asking the server. Results [near] a
-     * point (the map's center) rank first; the point isn't stored.
+     * point (the map's center) rank first, and places come from its city only; the point isn't stored.
      */
-    suspend fun search(query: String, near: GeoPoint? = null): AppResult<List<PlaceSearchResult>, DataError.Network>
+    suspend fun search(query: String, near: GeoPoint? = null): AppResult<PlaceSearch, DataError.Network>
 
     /** Where a trip can head: countries, regions, cities and districts, cities first; no addresses or places. */
     suspend fun searchDestinations(query: String): AppResult<List<PlaceSearchResult>, DataError.Network>
