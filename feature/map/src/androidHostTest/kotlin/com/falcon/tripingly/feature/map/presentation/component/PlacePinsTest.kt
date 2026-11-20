@@ -1,6 +1,7 @@
 package com.falcon.tripingly.feature.map.presentation.component
 
 import com.falcon.tripingly.core.model.config.AppConfig
+import com.falcon.tripingly.core.model.place.Brand
 import com.falcon.tripingly.core.model.place.GeoBounds
 import com.falcon.tripingly.core.model.place.MapPlace
 import com.falcon.tripingly.core.model.place.PlaceCategory
@@ -107,5 +108,22 @@ class PlacePinsTest {
         )
         // A place along the way stays solid, also as its dot when zoomed out.
         assertEquals(false, pin.copy(isAlongTheWay = true).dotLook().isSeeThrough)
+    }
+
+    @Test
+    fun `a brand store's pin waits for its logo, then shows it, and stays round without one`() {
+        val logoUrl = "https://api.test/v1/brands/b/logo/3f2a9c01d4e5b6a7"
+        val zara = place("zara", photo = false).copy(brand = Brand("b", "Zara", logoUrl))
+        val pin = PlacePin(zara, PinSizes[1])
+
+        assertEquals(false, pin.isReady(photos = emptyMap(), logos = emptyMap()))
+        assertEquals(null, zara.shownLogo(emptyMap()))
+        // A logo that failed to load: ready, with the round pin.
+        assertEquals(true, pin.isReady(emptyMap(), mapOf(logoUrl to null)))
+        assertEquals(null, zara.shownLogo(mapOf(logoUrl to null)))
+        // A brand the server shows no logo for: a round pin at once.
+        val hidden = PlacePin(zara.copy(brand = Brand("b", "Zara", null)), PinSizes[1])
+        assertEquals(true, hidden.isReady(emptyMap(), emptyMap()))
+        assertEquals(null, hidden.place.shownLogo(emptyMap()))
     }
 }

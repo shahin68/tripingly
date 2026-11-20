@@ -31,6 +31,7 @@ import com.falcon.tripingly.core.network.model.PlaceDetailDto
 import com.falcon.tripingly.core.network.model.PlaceImageDto
 import com.falcon.tripingly.core.network.model.PlaceItemDto
 import com.falcon.tripingly.core.network.model.SearchResultDto
+import com.falcon.tripingly.core.network.ApiConfig
 import com.falcon.tripingly.core.network.places.PlacesApi
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
@@ -48,6 +49,7 @@ import kotlin.time.TimeSource
 internal class DefaultPlaceRepository(
     private val api: PlacesApi,
     private val appConfig: AppConfigRepository,
+    private val apiConfig: ApiConfig,
     /** Requests outlive the caller that started them, so an answer nobody waits for anymore is still kept. */
     private val scope: CoroutineScope,
 ) : PlaceRepository {
@@ -92,6 +94,7 @@ internal class DefaultPlaceRepository(
                                 isTripinly = item.isTripinly,
                                 hotCount = item.hotCount.toInt(),
                                 prominence = item.prominence.toInt(),
+                                brand = item.brand?.toBrand(apiConfig),
                             )
                         },
                         osm = item.osmId?.let { osmId -> item.osmType?.let { OsmRef(it.toOsmType(), osmId) } },
@@ -148,7 +151,7 @@ internal class DefaultPlaceRepository(
             group.chunked(MAX_SQUARES_PER_REQUEST).forEach { chunk ->
                 scope.launch {
                     val result = api.tiles(chunk.joinToString(",") { (square, _) -> square.id }, zoom, PLACES_PER_SQUARE, categories.query(), name)
-                        .map { response -> response.tiles.associate { it.tile to PlacesInView(it.places.map { place -> place.toMapPlace() }, it.clusters.map { cluster -> cluster.toPlaceCluster() }) } }
+                        .map { response -> response.tiles.associate { it.tile to PlacesInView(it.places.map { place -> place.toMapPlace(apiConfig) }, it.clusters.map { cluster -> cluster.toPlaceCluster() }) } }
                     val changed = lock.withLock {
                         chunk.mapNotNull { (square, loaded) ->
                             loaded.isRefreshing = false
@@ -262,6 +265,7 @@ internal class DefaultPlaceRepository(
                             prominence = item.prominence.toInt(),
                             coverImageId = item.coverImageId,
                             coverThumbUrl = item.coverThumbUrl,
+                            brand = item.brand?.toBrand(apiConfig),
                         ),
                         item.distanceMeters.toInt(),
                     )

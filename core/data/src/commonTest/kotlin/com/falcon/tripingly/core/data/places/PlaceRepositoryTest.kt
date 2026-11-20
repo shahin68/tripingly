@@ -3,6 +3,7 @@ package com.falcon.tripingly.core.data.places
 import com.falcon.tripingly.core.common.result.AppResult
 import com.falcon.tripingly.core.data.config.AppConfigRepository
 import com.falcon.tripingly.core.model.config.AppConfig
+import com.falcon.tripingly.core.model.place.Brand
 import com.falcon.tripingly.core.model.place.CategoryCount
 import com.falcon.tripingly.core.model.place.GeoBounds
 import com.falcon.tripingly.core.model.place.ImageCredit
@@ -93,6 +94,7 @@ class PlaceRepositoryTest {
         appConfig = object : AppConfigRepository {
             override val config = MutableStateFlow(AppConfig(placesRefresh = placesRefresh))
         },
+        apiConfig = config,
         scope = backgroundScope,
     )
 
@@ -122,6 +124,8 @@ class PlaceRepositoryTest {
         assertEquals("Stephansdom", places.single().name)
         assertEquals(PlaceCategory.Attraction, places.single().category)
         assertEquals(90, places.single().prominence)
+        // The logo's path on the API becomes a full URL.
+        assertEquals(Brand("b-zara", "Zara", "https://api.test/v1/brands/b-zara/logo/3f2a9c01d4e5b6a7"), places.single().brand)
         assertEquals(2, assertIs<AppResult.Success<Map<PlaceSquare, PlacesInView>>>(second).data.size)
         val url = requests.single().url
         assertEquals("/v1/places/tiles", url.encodedPath)
@@ -380,7 +384,8 @@ class PlaceRepositoryTest {
                     "id": "${placeId ?: "p-$tile"}", "name": "$placeName", "category": "attraction",
                     "location": {"lat": 48.2085, "lng": 16.3731},
                     "isTripinly": true, "hotCount": 3, "prominence": 90, "hotByMe": false,
-                    "coverImageId": "img-${placeId ?: tile}", "coverThumbUrl": "https://images.test/img-${placeId ?: tile}?sig=$signature"
+                    "coverImageId": "img-${placeId ?: tile}", "coverThumbUrl": "https://images.test/img-${placeId ?: tile}?sig=$signature",
+                    "brand": {"id": "b-zara", "name": "Zara", "logoUrl": "/v1/brands/b-zara/logo/3f2a9c01d4e5b6a7"}
                   }],
                   "clusters": []
                 }

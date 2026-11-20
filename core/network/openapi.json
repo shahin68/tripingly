@@ -4502,6 +4502,47 @@
           "moderation"
         ]
       }
+    },
+    "/v1/brands": {
+      "get": {
+        "description": "Brands whose name has a word starting with `q`. People pick from this list; they cannot add brands.",
+        "operationId": "Brands_search",
+        "parameters": [
+          {
+            "name": "q",
+            "required": true,
+            "in": "query",
+            "description": "Start of any word of the brand name, any case",
+            "schema": {
+              "minLength": 1,
+              "maxLength": 60,
+              "example": "zar",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BrandsResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Find a brand for \"This is a brand store\"",
+        "tags": [
+          "brands"
+        ]
+      }
     }
   },
   "info": {
@@ -6173,6 +6214,16 @@
           "hotByMe": {
             "type": "boolean",
             "description": "I marked the place hot"
+          },
+          "brand": {
+            "nullable": true,
+            "description": "The brand this place is a store of; with a logoUrl the pin is a rounded square showing the logo, otherwise round as usual",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PlaceBrandDto"
+              }
+            ]
           }
         },
         "required": [
@@ -6391,6 +6442,16 @@
             "type": "string",
             "nullable": true,
             "example": "240109189"
+          },
+          "brand": {
+            "nullable": true,
+            "description": "Our place's brand (as on in-view places); null for Photon results",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PlaceBrandDto"
+              }
+            ]
           }
         },
         "required": [
@@ -6543,6 +6604,16 @@
           "distanceMeters": {
             "type": "number",
             "description": "From the query point, in metres"
+          },
+          "brand": {
+            "nullable": true,
+            "description": "The brand this place is a store of; with a logoUrl the pin is a rounded square showing the logo, otherwise round as usual",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PlaceBrandDto"
+              }
+            ]
           }
         },
         "required": [
@@ -6979,6 +7050,16 @@
             "nullable": true,
             "example": "© OpenStreetMap contributors",
             "description": "Set for OSM-derived places"
+          },
+          "brand": {
+            "nullable": true,
+            "description": "The brand this place is a store of; with a logoUrl the pin is a rounded square showing the logo, otherwise round as usual",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PlaceBrandDto"
+              }
+            ]
           }
         },
         "required": [
@@ -7099,6 +7180,11 @@
             "type": "number",
             "minimum": 0,
             "description": "Insert position in the day; appended when omitted"
+          },
+          "brandId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "\"This is a brand store\": a brand from GET /brands for a new place (people cannot add brands; 400 `fields.brandId` when it does not exist). Ignored when the stop joins an existing place. Omit when sending placeId."
           }
         }
       },
@@ -8703,6 +8789,45 @@
           "south",
           "east",
           "north"
+        ]
+      },
+      "PlaceBrandDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string",
+            "example": "Zara"
+          },
+          "logoUrl": {
+            "type": "string",
+            "nullable": true,
+            "example": "/v1/brands/0b5e…/logo/3f2a9c01d4e5b6a7",
+            "description": "Path of the brand's logo on this API (prepend the API's base URL): a square WebP of 96 px, a few KB, public, never changing at this path, so cache it forever. Null when there's no logo, logos are off (BRAND_LOGOS_ENABLED) or this brand's is hidden (BRAND_LOGOS_HIDDEN): draw the round pin then"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "logoUrl"
+        ]
+      },
+      "BrandsResponseDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "description": "At most 20, the brands with the most places first",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PlaceBrandDto"
+            }
+          }
+        },
+        "required": [
+          "items"
         ]
       }
     }

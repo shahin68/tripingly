@@ -2906,14 +2906,16 @@ class MapViewModelTest {
     }
 
     @Test
-    fun `the keyboard's search never takes the camera to another city`() = runTest(testDispatcher) {
+    fun `the keyboard's search goes to another city only when the map's city has nothing`() = runTest(testDispatcher) {
         addStops(GeoPoint(48.85, 2.30))
         val viewModel = viewModel()
         restOnTarget(viewModel)
         val stephansdom = MapPlace("fake-stephansdom", "Stephansdom", PlaceCategory.Attraction, GeoPoint(48.2085, 16.3731), isTripinly = true, hotCount = 5, prominence = 90)
-        places.searchResults = listOf(PlaceSearchResult(stephansdom.name, null, stephansdom.location, SearchResultType.Place, place = stephansdom))
+        val graz = MapPlace("graz", "Stephanie", PlaceCategory.Cafe, GeoPoint(47.0707, 15.4395), isTripinly = false, hotCount = 0, prominence = 10)
+        places.searchResults = listOf(stephansdom, graz).map { PlaceSearchResult(it.name, null, it.location, SearchResultType.Place, place = it) }
 
-        // Nothing named so in Paris, with the server's city box and without one: the camera stays (Shahin, 2026-11-20).
+        // Nothing named so in Paris, with the server's city box and without one: the nearest result's city, Vienna, not Graz
+        // (Shahin, 2026-11-20).
         for (city in listOf(GeoBounds(48.81, 2.22, 48.91, 2.47), null)) {
             places.searchCity = city
             viewModel.onAction(MapAction.Search.Open)
@@ -2922,10 +2924,30 @@ class MapViewModelTest {
             viewModel.cameraCommands.test {
                 viewModel.onAction(MapAction.Search.Submit)
                 testScheduler.advanceUntilIdle()
-                expectNoEvents()
+                val fit = assertIs<CameraCommand.Fit>(expectMostRecentItem())
+                assertTrue(stephansdom.location in fit.bounds)
+                assertTrue(graz.location !in fit.bounds, "Graz left out")
             }
             viewModel.onAction(MapAction.Search.Close)
             testScheduler.advanceUntilIdle()
+        }
+    }
+
+    @Test
+    fun `the keyboard's search leaves the camera alone without results`() = runTest(testDispatcher) {
+        addStops(GeoPoint(48.85, 2.30))
+        val viewModel = viewModel()
+        restOnTarget(viewModel)
+        places.searchResults = emptyList()
+        places.searchCity = GeoBounds(48.81, 2.22, 48.91, 2.47)
+
+        viewModel.onAction(MapAction.Search.Open)
+        testScheduler.runCurrent()
+        viewModel.uiState.value.search!!.query.setTextAndPlaceCursorAtEnd("nowhere")
+        viewModel.cameraCommands.test {
+            viewModel.onAction(MapAction.Search.Submit)
+            testScheduler.advanceUntilIdle()
+            expectNoEvents()
         }
     }
 

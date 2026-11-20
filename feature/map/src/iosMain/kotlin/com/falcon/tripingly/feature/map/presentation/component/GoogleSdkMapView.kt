@@ -335,6 +335,7 @@ internal fun GoogleSdkMapView(
     }
     val textMeasurer = rememberTextMeasurer()
     val pinPhotos = rememberPinPhotos(placePins)
+    val brandLogos = rememberBrandLogos(placePins)
     val pinIcons = remember(placeColor, hotSpotColor, density) { mutableMapOf<PlacePinLook, UIImage>() }
     fun pinIcon(look: PlacePinLook) = pinIcons.getOrPutBounded(look, MAX_PIN_ICONS) {
         val fill = when {
@@ -344,8 +345,11 @@ internal fun GoogleSdkMapView(
             else -> placeColor
         }
         val photo = look.photoId?.let { pinPhotos[it] }
+        val logo = look.logoUrl?.let { brandLogos[it] }
         val bitmap = if (look.isDot) {
             drawPlaceDot(look.size, fill, density, layoutDirection, alpha = if (look.isSeeThrough) RouteDotAlpha else 1f)
+        } else if (logo != null) {
+            drawPlaceLogoPin(logo, look.size, fill, density, layoutDirection)
         } else if (photo != null) {
             drawPlacePhotoPin(photo, look.size, fill, density, layoutDirection)
         } else {
@@ -378,7 +382,7 @@ internal fun GoogleSdkMapView(
     // Public transport: the rides' badges and their rings, one icon per look.
     val lineMarks = themedLine?.marks.orEmpty()
     val markIcons = remember(density) { mutableMapOf<LineMark, UIImage>() }
-    LaunchedEffect(markers, stopTitles, coverThumbs, pinPhotos, selectedPlace, placePins, placeClusters, pinIcons, clusterIcons, isDots, routeEnds, lineMarks, stopIcons, dimAlpha, selectedStopId) {
+    LaunchedEffect(markers, stopTitles, coverThumbs, pinPhotos, brandLogos, selectedPlace, placePins, placeClusters, pinIcons, clusterIcons, isDots, routeEnds, lineMarks, stopIcons, dimAlpha, selectedStopId) {
         val stops = markers.mapIndexed { index, marker ->
             GoogleMapMarker(
                 key = marker.id,
@@ -409,14 +413,14 @@ internal fun GoogleSdkMapView(
         // place's pin stays as it is and a bigger copy is drawn over it below, as on Android. Zoomed out below
         // pinDotBelowZoom, or while a route shows ([PlacePin.isDot]), a pin is its dot; the map fades a pin into its new look.
         val pins = placePins.mapIndexedNotNull { index, pin ->
-            if (pin.photo && pin.place.coverImageId !in pinPhotos) return@mapIndexedNotNull null
+            if (!pin.isReady(pinPhotos, brandLogos)) return@mapIndexedNotNull null
             GoogleMapMarker(
                 key = PLACE_KEY + pin.place.id,
                 latitude = pin.place.location.lat,
                 longitude = pin.place.location.lng,
                 title = pin.place.name,
                 icon = pinIcon(
-                    if (pin.isDotAt(isDots)) pin.dotLook() else PlacePinLook(pin.place.category, pin.place.isTripinly, pin.size, photoId(pin.place, pin.photo), pin.isAlongTheWay, isSearchResult = pin.isSearchResult),
+                    if (pin.isDotAt(isDots)) pin.dotLook() else PlacePinLook(pin.place.category, pin.place.isTripinly, pin.size, photoId(pin.place, pin.photo), pin.isAlongTheWay, isSearchResult = pin.isSearchResult, logoUrl = pin.place.shownLogo(brandLogos)),
                 ),
                 anchorX = 0.5,
                 anchorY = 0.5,
@@ -462,6 +466,7 @@ internal fun GoogleSdkMapView(
                         photoId(it, placePins.any { pin -> pin.photo && pin.place.id == it.id }),
                         isAlongTheWay = placePins.any { pin -> pin.isAlongTheWay && pin.place.id == it.id },
                         isSearchResult = placePins.any { pin -> pin.isSearchResult && pin.place.id == it.id },
+                        logoUrl = it.shownLogo(brandLogos),
                     ),
                 ),
                 anchorX = 0.5,

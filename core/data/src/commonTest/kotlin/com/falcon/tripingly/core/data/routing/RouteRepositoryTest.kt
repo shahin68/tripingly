@@ -62,6 +62,7 @@ class RouteRepositoryTest {
             config,
         ).createRoutingApi(),
         pending = pending,
+        apiConfig = config,
     )
 
     @Test

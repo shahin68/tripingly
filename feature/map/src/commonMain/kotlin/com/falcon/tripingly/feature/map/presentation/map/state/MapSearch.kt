@@ -79,8 +79,9 @@ internal class MapSearch(
     /**
      * The keyboard's search key: the results list goes and the map shows only the places named so. Once they've loaded,
      * the camera fits them and the listed places, zooming in or out, but only those in the city the map is in (the
-     * server's box; without one, [NO_CITY_RADIUS_METERS] around the map's centre): it never goes to another city, and
-     * with nothing named so there it stays where it is (Shahin, 2026-11-20). A finger moving the map first leaves it be
+     * server's box; without one, [CITY_RADIUS_METERS] around the map's centre). With nothing named so there it goes to
+     * another city: the result nearest the map and the others within [CITY_RADIUS_METERS] of it (Shahin, 2026-11-20).
+     * With no results at all it stays where it is. A finger moving the map first leaves it be
      * too. A name the server can't search (under [MIN_NAME_LENGTH] letters) and the route's "to" field only close the
      * keyboard.
      */
@@ -99,9 +100,13 @@ internal class MapSearch(
             context.model.first { !isNamed(name) || !it.placeFilter.isLoading }
             if (!isNamed(name)) return@launch
             val city = found?.city
-            val inCity = { point: GeoPoint -> if (city != null) point in city else point.metersTo(center) <= NO_CITY_RADIUS_METERS }
+            val inCity = { point: GeoPoint -> if (city != null) point in city else point.metersTo(center) <= CITY_RADIUS_METERS }
             val places = found?.results.orEmpty().filter { it.place != null }.map { it.location }
-            val targets = (namedPins() + places).filter(inCity)
+            val all = namedPins() + places
+            val targets = all.filter(inCity).ifEmpty {
+                val nearest = all.minByOrNull { it.metersTo(center) } ?: return@ifEmpty emptyList()
+                all.filter { it.metersTo(nearest) <= CITY_RADIUS_METERS }
+            }
             camera.frame(targets.map { Coordinates(it.lat, it.lng) })
         }
     }
@@ -132,8 +137,8 @@ internal class MapSearch(
         /** Typing has paused; see the search rule in 07-architecture. */
         const val SEARCH_DEBOUNCE_MILLIS = 300L
 
-        /** The map's city when the server doesn't know it: about a big city's reach around the map's centre. */
-        const val NO_CITY_RADIUS_METERS = 25_000
+        /** About a big city's reach: the map's city when the server doesn't know it, and the other city's results. */
+        const val CITY_RADIUS_METERS = 25_000
 
         /** The server searches the map by names of two letters or more. */
         const val MIN_NAME_LENGTH = 2

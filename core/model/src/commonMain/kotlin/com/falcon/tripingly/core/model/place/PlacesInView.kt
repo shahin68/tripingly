@@ -46,6 +46,18 @@ data class MapPlace(
     val coverImageId: String? = null,
     /** Its thumbnail (signed, valid about an hour), drawn inside a photo pin. */
     val coverThumbUrl: String? = null,
+    /** The brand it is a store of (Zara, KFC…); with a [Brand.logoUrl] its pin is a rounded square showing the logo. */
+    val brand: Brand? = null,
+)
+
+/**
+ * A brand from our own brands list. [logoUrl] is its logo, a 96 px square WebP of a few KB that never changes at this
+ * URL (so cache it for good); null when it has none or the server doesn't show it, and then the pin stays round.
+ */
+data class Brand(
+    val id: String,
+    val name: String,
+    val logoUrl: String?,
 )
 
 /** Several Tripinly places drawn as one bubble while zoomed out. */

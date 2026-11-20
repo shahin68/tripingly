@@ -310,6 +310,7 @@ actual fun GoogleMapView(
             val layoutDirection = LocalLayoutDirection.current
             val textMeasurer = rememberTextMeasurer()
             val pinPhotos = rememberPinPhotos(placePins)
+            val brandLogos = rememberBrandLogos(placePins)
             val pinIcons = remember(placeColor, hotSpotColor, density) { mutableMapOf<PlacePinLook, BitmapDescriptor>() }
             fun pinIcon(look: PlacePinLook) = pinIcons.getOrPutBounded(look, MAX_PIN_ICONS) {
                 val fill = when {
@@ -319,8 +320,11 @@ actual fun GoogleMapView(
                     else -> placeColor
                 }
                 val photo = look.photoId?.let { pinPhotos[it] }
+                val logo = look.logoUrl?.let { brandLogos[it] }
                 val bitmap = if (look.isDot) {
                     drawPlaceDot(look.size, fill, density, layoutDirection, alpha = if (look.isSeeThrough) RouteDotAlpha else 1f)
+                } else if (logo != null) {
+                    drawPlaceLogoPin(logo, look.size, fill, density, layoutDirection)
                 } else if (photo != null) {
                     drawPlacePhotoPin(photo, look.size, fill, density, layoutDirection)
                 } else {
@@ -346,12 +350,12 @@ actual fun GoogleMapView(
             // Place pins are markers, so they keep their size on screen while the camera zooms. The first ones
             // (the most liked, then the best known) are drawn on top; a new pin fades in. Changing a pin's icon makes
             // every pin on the map blink, so a pin whose look changes comes back as a new pin, a photo pin waits for its
-            // photo, and the tapped place's pin stays as it is under a bigger copy.
+            // photo (and a brand store's pin for its logo), and the tapped place's pin stays as it is under a bigger copy.
             //
             // Zoomed out below pinDotBelowZoom, the pins turn into dots. Each pin has its dot marker from the start, hidden,
             // so the swap only shows one and hides the other, at once: no markers are made or dropped while the fingers move.
             val isDots by remember(pinDotBelowZoom) { derivedStateOf { cameraPositionState.position.zoom < pinDotBelowZoom } }
-            val shownPins = placePins.filter { !it.photo || it.place.coverImageId in pinPhotos }
+            val shownPins = placePins.filter { it.isReady(pinPhotos, brandLogos) }
 
             // The map hands a tap on overlapping pins to the one on top; the pin whose middle is nearest the finger is the
             // one meant, as long as the finger is on it.
@@ -377,7 +381,7 @@ actual fun GoogleMapView(
             // costly part, so a pin coming back (a pan back, the route switched off) just shows again.
             val hiddenPins = rememberHiddenPins(shownPins)
             (shownPins.map { it to true } + hiddenPins.map { it to false }).forEach { (pin, isShown) ->
-                val look = PlacePinLook(pin.place.category, pin.place.isTripinly, pin.size, photoId(pin.place, pin.photo), pin.isAlongTheWay, isSearchResult = pin.isSearchResult)
+                val look = PlacePinLook(pin.place.category, pin.place.isTripinly, pin.size, photoId(pin.place, pin.photo), pin.isAlongTheWay, isSearchResult = pin.isSearchResult, logoUrl = pin.place.shownLogo(brandLogos))
                 val dotLook = pin.dotLook()
                 // While the map is searched by name only its results stay clear.
                 val pinAlpha = if (pin.isSearchResult) 1f else dimAlpha
@@ -460,6 +464,7 @@ actual fun GoogleMapView(
                                 photoId(place, placePins.any { it.photo && it.place.id == place.id }),
                                 isAlongTheWay = placePins.any { it.isAlongTheWay && it.place.id == place.id },
                                 isSearchResult = placePins.any { it.isSearchResult && it.place.id == place.id },
+                                logoUrl = place.shownLogo(brandLogos),
                             ),
                         ),
                         title = place.name,

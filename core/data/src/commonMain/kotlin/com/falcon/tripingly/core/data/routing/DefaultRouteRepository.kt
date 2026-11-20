@@ -21,6 +21,7 @@ import com.falcon.tripingly.core.model.route.TransitVehicle
 import com.falcon.tripingly.core.model.route.TravelMode
 import com.falcon.tripingly.core.model.trip.GeoPoint
 import com.falcon.tripingly.core.model.trip.TripDay
+import com.falcon.tripingly.core.network.ApiConfig
 import com.falcon.tripingly.core.network.model.OptimizeResultDto
 import com.falcon.tripingly.core.network.model.RouteResponseDto
 import com.falcon.tripingly.core.network.model.TransitPlaceDto
@@ -34,6 +35,7 @@ import kotlin.time.Instant
 internal class DefaultRouteRepository(
     private val api: RoutingApi,
     private val pending: PendingTripWrites,
+    private val apiConfig: ApiConfig,
 ) : RouteRepository {
 
     private val lock = Mutex()
@@ -137,7 +139,7 @@ internal class DefaultRouteRepository(
             )
         },
         alongTheWay = alongTheWay.map {
-            AlongTheWayPlace(it.place.toMapPlace(), it.distanceFromRouteMeters.roundToInt(), it.etaFromStartSeconds.roundToInt())
+            AlongTheWayPlace(it.place.toMapPlace(apiConfig), it.distanceFromRouteMeters.roundToInt(), it.etaFromStartSeconds.roundToInt())
         },
         alongTheWayCounts = alongTheWayCounts.toCategoryCounts(),
         isEstimated = degraded,

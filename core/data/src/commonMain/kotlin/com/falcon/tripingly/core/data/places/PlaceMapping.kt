@@ -1,15 +1,18 @@
 package com.falcon.tripingly.core.data.places
 
+import com.falcon.tripingly.core.model.place.Brand
 import com.falcon.tripingly.core.model.place.CategoryCount
 import com.falcon.tripingly.core.model.place.MapPlace
 import com.falcon.tripingly.core.model.place.PlaceCategory
 import com.falcon.tripingly.core.model.trip.GeoPoint
+import com.falcon.tripingly.core.network.ApiConfig
 import com.falcon.tripingly.core.network.model.CategoryCountDto
 import com.falcon.tripingly.core.network.model.CreateMarkerDto
+import com.falcon.tripingly.core.network.model.PlaceBrandDto
 import com.falcon.tripingly.core.network.model.PlaceItemDto
 import kotlin.math.roundToInt
 
-internal fun PlaceItemDto.toMapPlace() = MapPlace(
+internal fun PlaceItemDto.toMapPlace(api: ApiConfig) = MapPlace(
     id = id,
     name = name,
     category = category.toCategory(),
@@ -19,7 +22,11 @@ internal fun PlaceItemDto.toMapPlace() = MapPlace(
     prominence = prominence.toInt(),
     coverImageId = coverImageId,
     coverThumbUrl = coverThumbUrl,
+    brand = brand?.toBrand(api),
 )
+
+/** A brand, its logo path made a full URL on the API. */
+internal fun PlaceBrandDto.toBrand(api: ApiConfig) = Brand(id, name, logoUrl?.let(api::urlOf))
 
 internal fun PlaceItemDto.Category.toCategory() = when (this) {
     PlaceItemDto.Category.CAFE -> PlaceCategory.Cafe

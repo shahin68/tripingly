@@ -2,8 +2,10 @@ package com.falcon.tripingly.feature.map.presentation.component
 
 import androidx.compose.material.icons.filled.Place
 import androidx.compose.runtime.Immutable
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.geometry.RoundRect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Canvas
 import androidx.compose.ui.graphics.Color
@@ -215,6 +217,49 @@ fun drawPlacePin(
 }
 
 /**
+ * Draws a brand store's pin into a bitmap: a rounded square, the brand's [logo] on white inside one thin ring of the pin's
+ * [fill] colour, with a very small margin (Shahin, 2026-11-20: square pins behave like the others, only square; the logo
+ * fits inside with a very small spacing). The tile stays white in dark mode too: logos are made for white.
+ */
+fun drawPlaceLogoPin(
+    logo: ImageBitmap,
+    size: Dp,
+    fill: Color,
+    density: Density,
+    layoutDirection: LayoutDirection,
+): ImageBitmap {
+    val px = with(density) { size.roundToPx() }
+    val border = with(density) { PIN_STROKE.toPx() }
+    val margin = with(density) { LOGO_MARGIN.toPx() }
+    val bitmap = ImageBitmap(px, px)
+    CanvasDrawScope().draw(density, layoutDirection, Canvas(bitmap), Size(px.toFloat(), px.toFloat())) {
+        val corner = this.size.minDimension * LOGO_PIN_CORNER
+        drawRoundRect(fill, cornerRadius = CornerRadius(corner))
+        val tile = Rect(border, border, this.size.width - border, this.size.height - border)
+        val tileCorner = CornerRadius((corner - border).coerceAtLeast(0f))
+        drawRoundRect(Color.White, topLeft = tile.topLeft, size = tile.size, cornerRadius = tileCorner)
+        val inset = (border + margin).roundToInt()
+        val side = px - inset * 2
+        clipPath(Path().apply { addRoundRect(RoundRect(tile, tileCorner)) }) {
+            drawImage(
+                logo,
+                srcOffset = IntOffset.Zero,
+                srcSize = IntSize(logo.width, logo.height),
+                dstOffset = IntOffset(inset, inset),
+                dstSize = IntSize(side, side),
+            )
+        }
+    }
+    return bitmap
+}
+
+/** How round a brand pin's corners are, of its side: a rounded square like Google Maps' brand pins. */
+private const val LOGO_PIN_CORNER = 0.28f
+
+/** The white between a brand pin's ring and its logo: very small, so the logo fills the pin. */
+private val LOGO_MARGIN = 1.5.dp
+
+/**
  * Draws a dot pin into a bitmap: a small circle of the pin's [fill] color in the pins' thin ring, the whole dot [alpha]
  * strong (the ring is drawn round the fill, not under it, so a see-through dot is evenly see-through).
  */
@@ -264,8 +309,8 @@ fun drawPlacePhotoPin(
 }
 
 /**
- * What a pin looks like: its category icon, or the photo with [photoId] once its thumbnail has loaded; a dot
- * ([isDot]) while zoomed out.
+ * What a pin looks like: its category icon, the photo with [photoId] once its thumbnail has loaded, or its brand's logo
+ * ([logoUrl]) on a rounded square; a dot ([isDot]) while zoomed out.
  */
 internal data class PlacePinLook(
     val category: PlaceCategory,
@@ -278,6 +323,8 @@ internal data class PlacePinLook(
     val isSeeThrough: Boolean = false,
     /** In [SearchResultPinColor]. */
     val isSearchResult: Boolean = false,
+    /** A brand store's logo, by its URL once loaded: drawn as a rounded square ([drawPlaceLogoPin]) instead of icon or photo. */
+    val logoUrl: String? = null,
 )
 
 /**
