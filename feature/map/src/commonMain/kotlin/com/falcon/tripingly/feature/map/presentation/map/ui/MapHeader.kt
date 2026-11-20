@@ -49,6 +49,7 @@ import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.tooling.preview.PreviewParameter
 import androidx.compose.ui.unit.Constraints
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.util.lerp
 import com.falcon.tripingly.core.designsystem.component.AppDropdownMenu
@@ -268,15 +269,19 @@ private fun SearchField(search: SearchState, onAction: (MapAction) -> Unit, modi
     }
 }
 
-/** The search's results under the header, with the credits for OpenStreetMap and Photon. */
+/**
+ * The search's results under the header, with the credits for OpenStreetMap and Photon: as tall as they are, at most
+ * [maxHeight], then they scroll.
+ */
 @Composable
 internal fun SearchResults(
     results: ImmutableList<SearchResultItem>,
     onAction: (MapAction) -> Unit,
     modifier: Modifier = Modifier,
+    maxHeight: Dp = SearchResultsMaxHeight,
 ) {
     GlassSurface(modifier = modifier.fillMaxWidth(), shape = MaterialTheme.shapes.large, blur = false) {
-        Column(modifier = Modifier.heightIn(max = SearchResultsMaxHeight).verticalScroll(rememberScrollState()).padding(vertical = MaterialTheme.spacing.small)) {
+        Column(modifier = Modifier.heightIn(max = maxHeight).verticalScroll(rememberScrollState()).padding(vertical = MaterialTheme.spacing.small)) {
             results.forEach { (result, distanceMeters) ->
                 SuggestionItem(
                     title = result.name,
@@ -290,6 +295,7 @@ internal fun SearchResults(
     }
 }
 
+/** Previews only: on the map the room down to the plan sheet decides. */
 private val SearchResultsMaxHeight = 360.dp
 
 @Preview

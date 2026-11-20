@@ -4,6 +4,7 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.ui.zIndex
 import androidx.compose.ui.unit.IntOffset
+import androidx.compose.foundation.gestures.animateTo
 import androidx.compose.foundation.layout.offset
 import androidx.compose.animation.core.MutableTransitionState
 import androidx.compose.animation.core.rememberTransition
@@ -126,6 +127,8 @@ internal fun MapScreen(
     // The tabs' height with whether there were days to show, so the map doesn't open on the height without tabs.
     var tabsHeight by remember { mutableStateOf<Pair<Boolean, Dp>?>(null) }
     var creditsHeight by remember { mutableStateOf<Dp?>(null) }
+    // In portrait, the credits and map buttons riding on the card: the search results end above them.
+    var buttonsHeight by remember { mutableStateOf(0.dp) }
     // Which way the map is turned, every frame it turns: read only by the compass while it draws.
     var bearing by remember { mutableFloatStateOf(0f) }
     // Where the open cards are, so a touch on them doesn't close them.
@@ -308,8 +311,8 @@ internal fun MapScreen(
                     )
                 }
             }
-            // The join pill and the search results share the space under the header, the results over the pill, so
-            // neither moves the other. The pill stays under the header's own part, under the route bar coming over it
+            // The join pill under the header (the search results go over it, further down, so neither moves the
+            // other). The pill stays under the header's own part, under the route bar coming over it
             // (not pushed down by it), and scales and fades away under the route bar or the search (Shahin, 2026-11-16);
             // while it goes it keeps the people it had.
             Box(Modifier.fillMaxWidth()) {
@@ -351,9 +354,6 @@ internal fun MapScreen(
                         }
                     }
                 }
-                state.search?.results?.takeIf { it.isNotEmpty() }?.let { results ->
-                    SearchResults(results = results, onAction = onAction, modifier = Modifier.padding(horizontal = MaterialTheme.spacing.medium))
-                }
             }
         }
 
@@ -385,6 +385,7 @@ internal fun MapScreen(
             onAction = onAction,
             onTabsHeight = { tabsHeight = hasDays to with(density) { it.toDp() } },
             onCreditsHeight = { creditsHeight = with(density) { it.toDp() } },
+            onButtonsHeight = { buttonsHeight = with(density) { it.toDp() } },
             // Only the header limits the sheet: opened, it goes over the join pill and anything else under the header.
             modifier = Modifier.align(Alignment.BottomStart).then(panel).padding(top = coveredTop),
         )
@@ -422,6 +423,27 @@ internal fun MapScreen(
             onNewSpotCardBounds = { newSpotCardBounds = it },
             modifier = Modifier.fillMaxSize().padding(covered),
         )
+
+        // The search results over every other part of the map screen (only the trip card goes over them), under the
+        // header. The plan sheet folds down while they show, and they reach down to just above it: in portrait above
+        // the map buttons riding on it too, in landscape (the buttons on the map half) to the sheet itself (Shahin,
+        // 2026-11-20).
+        val results = state.search?.results?.takeIf { it.isNotEmpty() }
+        LaunchedEffect(results != null) { if (results != null) planSheet.animateTo(PlanSheetValue.Collapsed) }
+        if (results != null) {
+            val belowResults = (tabsHeight?.second ?: 0.dp) + (if (plan != null) PlanSheetPeek else 0.dp) +
+                (if (isWide) 0.dp else buttonsHeight) + MaterialTheme.spacing.small
+            SearchResults(
+                results = results,
+                onAction = onAction,
+                maxHeight = (maxHeight - coveredTop - belowResults).coerceAtLeast(SearchResultsMinHeight),
+                modifier = Modifier
+                    .align(Alignment.TopStart)
+                    .padding(top = coveredTop)
+                    .then(panel)
+                    .padding(horizontal = MaterialTheme.spacing.medium),
+            )
+        }
 
         // Over everything: the dimmed map and the trip card grown out of the title, in the header's place.
         if (isTripCardShown) {
@@ -484,6 +506,9 @@ private fun MapScreenLoadErrorPreview() {
  * bottom, so the stop card above it has more room (Shahin, 2026-11-14; 64 dp before).
  */
 private val LandscapePinArea = 96.dp
+
+/** The least the search results get, however little room the screen leaves them. */
+private val SearchResultsMinHeight = 120.dp
 
 /** In portrait, how far below the middle of the free map a tapped pin goes. */
 private val PortraitPinDrop = 24.dp

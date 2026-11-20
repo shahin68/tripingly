@@ -121,6 +121,8 @@ internal fun BottomCards(
     onAction: (MapAction) -> Unit,
     onTabsHeight: (Int) -> Unit,
     onCreditsHeight: (Int) -> Unit,
+    /** In portrait, the height of the row of credits and map buttons riding on the card. */
+    onButtonsHeight: (Int) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val dayNumber = dayTabs.days.getOrNull(dayTabs.activeIndex)?.number ?: 1
@@ -131,6 +133,7 @@ internal fun BottomCards(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .onSizeChanged { onButtonsHeight(it.height) }
                     .padding(horizontal = MaterialTheme.spacing.medium),
                 verticalAlignment = Alignment.Bottom,
             ) {
