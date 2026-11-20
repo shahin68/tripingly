@@ -9,6 +9,7 @@ import com.falcon.tripingly.core.model.photo.Photo
 import com.falcon.tripingly.core.model.social.LikeState
 import com.falcon.tripingly.core.model.photo.PhotoOwner
 import com.falcon.tripingly.core.model.photo.PickedImage
+import com.falcon.tripingly.core.model.place.Brand
 import com.falcon.tripingly.core.model.place.GeoBounds
 import com.falcon.tripingly.core.model.place.MapPlace
 import com.falcon.tripingly.core.model.place.PlaceCategory
@@ -163,6 +164,10 @@ internal sealed interface Selection {
         val name: TextFieldState = TextFieldState(),
         val category: PlaceCategory = PlaceCategory.Other,
         val photo: PickedImage? = null,
+        /** Brands named like [name], offered for "This is a brand store". */
+        val brands: List<Brand> = emptyList(),
+        /** The brand picked: the spot is one of its stores. */
+        val brand: Brand? = null,
         override val isCardShown: Boolean,
     ) : Selection
 }

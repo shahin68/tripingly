@@ -4,6 +4,7 @@ import com.falcon.tripingly.core.common.error.DataError
 import com.falcon.tripingly.core.common.result.AppResult
 import com.falcon.tripingly.core.common.result.map
 import com.falcon.tripingly.core.model.Page
+import com.falcon.tripingly.core.model.place.Brand
 import com.falcon.tripingly.core.model.place.CategoryCount
 import com.falcon.tripingly.core.model.place.MapPlace
 import com.falcon.tripingly.core.model.place.PlaceAround
@@ -25,6 +26,8 @@ import kotlin.math.sqrt
 
 /** A few cities and sights, for building and demoing without the server. */
 class FakePlaceRepository : PlaceRepository {
+    /** The brands [brands] finds. */
+    val brandList = listOf(Brand("fake-zara", "Zara", null), Brand("fake-kfc", "KFC", null), Brand("fake-saint-laurent", "Saint Laurent", null))
 
     private val places = listOf(
         PlaceSearchResult("Paris", "France", GeoPoint(48.8566, 2.3522), SearchResultType.City),
@@ -74,6 +77,10 @@ class FakePlaceRepository : PlaceRepository {
         val place = sights.firstOrNull { it.id == id } ?: return AppResult.Error(DataError.Network.Api(404, "NOT_FOUND", "This place isn't available."))
         return AppResult.Success(PlaceDetails(place.id, place.name, place.category, place.hotCount, "Mo-Su 09:00-18:00", null, images = emptyList()))
     }
+
+    /** A few brands, found by the start of a word of their name. */
+    override suspend fun brands(query: String): AppResult<List<Brand>, DataError.Network> =
+        AppResult.Success(brandList.filter { brand -> brand.name.split(' ').any { it.startsWith(query.trim(), ignoreCase = true) } })
 
     /** The sights within [radiusMeters] of [point] but [excludePlaceId], of [categories], nearest first, with every kind counted. */
     override suspend fun around(point: GeoPoint, radiusMeters: Int, categories: Set<PlaceCategory>, excludePlaceId: String?): AppResult<PlacesAround, DataError.Network> {

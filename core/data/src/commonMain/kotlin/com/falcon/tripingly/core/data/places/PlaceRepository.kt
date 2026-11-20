@@ -4,6 +4,7 @@ import com.falcon.tripingly.core.common.error.DataError
 import com.falcon.tripingly.core.common.result.AppResult
 import com.falcon.tripingly.core.model.Page
 import com.falcon.tripingly.core.model.config.AppConfig
+import com.falcon.tripingly.core.model.place.Brand
 import com.falcon.tripingly.core.model.place.PlaceCategory
 import com.falcon.tripingly.core.model.place.PlaceDetails
 import com.falcon.tripingly.core.model.place.PlaceSearch
@@ -22,6 +23,9 @@ interface PlaceRepository {
      * point (the map's center) rank first, and places come from its city only; the point isn't stored.
      */
     suspend fun search(query: String, near: GeoPoint? = null): AppResult<PlaceSearch, DataError.Network>
+
+    /** Brands from our list for "This is a brand store", by the start of a word of their name, most places first. */
+    suspend fun brands(query: String): AppResult<List<Brand>, DataError.Network>
 
     /** Where a trip can head: countries, regions, cities and districts, cities first; no addresses or places. */
     suspend fun searchDestinations(query: String): AppResult<List<PlaceSearchResult>, DataError.Network>

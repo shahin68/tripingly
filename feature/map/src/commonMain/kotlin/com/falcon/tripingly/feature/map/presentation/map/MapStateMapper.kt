@@ -112,7 +112,7 @@ internal class MapStateMapper(
         // The card stays open under a sheet, so closing the sheet comes back to it.
         placeCard = placeCard(),
         stopCard = stopCard(),
-        newSpotCard = (model.selection as? Selection.NewSpot)?.takeIf { it.isCardShown }?.let { NewSpotCardState(it.location, it.name, it.category, it.photo) },
+        newSpotCard = (model.selection as? Selection.NewSpot)?.takeIf { it.isCardShown }?.let { NewSpotCardState(it.location, it.name, it.category, it.photo, it.brands, it.brand) },
         layers = layers,
         camera = CameraState(model.camera.isReady, model.camera.target, model.camera.zoom, model.camera.openingBounds),
         location = model.location.let {
