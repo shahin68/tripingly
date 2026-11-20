@@ -2,6 +2,7 @@ package com.falcon.tripingly.feature.trips.presentation.members
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
@@ -78,6 +79,7 @@ import com.falcon.tripingly.feature.trips.presentation.members.TripMembersViewMo
 import org.jetbrains.compose.resources.getString
 import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
+import kotlin.time.Instant
 import org.koin.compose.koinInject
 import org.koin.compose.viewmodel.koinViewModel
 import org.koin.core.parameter.parametersOf
@@ -158,7 +160,8 @@ private fun TripMembersRoute(
  * Who is on the trip (design: the members sheet canvas, board "Search icon in the header", Shahin 2026-11-18). Cards:
  * people asking to join (the owner's, only while there are any), the people on the trip, and the owner's friends to
  * add with a tap; 🔍 opens the Add people sheet in its place and the invite link is pinned at the bottom. The sheet is as high
- * as its cards (Shahin, 2026-11-19), the whole screen only when they need it; while they load, one default skeleton. An editor sees only who is on the trip.
+ * as its cards (Shahin, 2026-11-19), the whole screen only when they need it; while they load, skeletons as many as the
+ * trip's counts keep its height. An editor sees only who is on the trip.
  */
 @Composable
 fun TripMembersScreen(
@@ -176,7 +179,7 @@ private fun MembersPage(state: State, onAction: (Action) -> Unit, onClose: () ->
         SheetHeader(
             title = stringResource(Res.string.members_title),
             subtitle = listOfNotNull(
-                pluralStringResource(Res.plurals.members_count, state.members.size, state.members.size).takeIf { !state.isLoading && state.members.isNotEmpty() },
+                pluralStringResource(Res.plurals.members_count, state.members.size, state.members.size).takeIf { state.members.isNotEmpty() },
                 state.tripName.takeIf { it.isNotBlank() },
             ).joinToString(" · "),
             onClose = onClose,
@@ -198,7 +201,7 @@ private fun MembersPage(state: State, onAction: (Action) -> Unit, onClose: () ->
                 Modifier.fillMaxWidth(),
                 contentPadding = PaddingValues(bottom = pillHeight + MaterialTheme.spacing.small),
             ) {
-                if (state.isLoading) skeletonCards() else memberCards(state, onAction)
+                if (state.isLoading) skeletonCards(state) else memberCards(state, onAction)
             }
             if (state.canManage) {
                 InvitePill(
@@ -265,14 +268,28 @@ private fun LazyListScope.memberCards(state: State, onAction: (Action) -> Unit) 
     }
 }
 
+/** The cards as they will be, with placeholder people, while everything loads together. */
 /**
- * The same skeleton every time while the sheet loads: one card of [SKELETON_ROWS] placeholder rows, whatever the trip
- * holds. It doesn't mimic the coming content (Shahin, 2026-11-20); the cards that replace it animate in (animateItem).
+ * The cards as they will be, from what the cached trip already knows: as many request rows as people wait, a row per
+ * member with their own tag, and the friends' faces. Every part is a real row in [Skeleton], so nothing moves when the
+ * content replaces it.
  */
-private fun LazyListScope.skeletonCards() {
+private fun LazyListScope.skeletonCards(state: State) {
     item(key = "skeleton") {
-        Skeleton(Modifier.animateItem()) {
-            SkeletonCard(rows = SKELETON_ROWS) { MemberRow(PlaceholderMember, canRemove = false, onRemove = {}) }
+        Skeleton {
+            Column(verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small)) {
+                val waiting = if (state.canManage) state.waitingCount.coerceAtMost(SKELETON_MAX_ROWS) else 0
+                if (waiting > 0) {
+                    SkeletonCard(rows = waiting) { JoinRequestRow(PlaceholderRequest, PLACEHOLDER_DETAIL, isAnswering = false, onAccept = {}, onDecline = {}) }
+                }
+                val members = state.members.ifEmpty { listOf(PlaceholderMember) }.take(SKELETON_MAX_ROWS)
+                SkeletonCard(rows = members.size) { index ->
+                    MemberRow(members[index].copy(user = PlaceholderMember.user), canRemove = false, onRemove = {}, reserveMenu = state.canManage)
+                }
+                if (state.canManage) {
+                    SkeletonCard(rows = 1) { FriendFaces(List(SKELETON_FACES) { PlaceholderMember.user.copy(id = "placeholder$it") }, onAdd = {}) }
+                }
+            }
         }
     }
 }
@@ -344,9 +361,12 @@ private fun AddPeoplePage(state: State, search: SearchState, onAction: (Action) 
     }
 }
 
-private const val SKELETON_ROWS = 3
-private const val SKELETON_TITLE = "On this trip"
+private const val SKELETON_MAX_ROWS = 6
+private const val PLACEHOLDER_DETAIL = "@traveller · a week ago"
+private const val SKELETON_FACES = 4
+private const val SKELETON_TITLE = "Asking to join"
 private val PlaceholderMember = TripMember(UserSummary("placeholder", "traveller", "Alex Traveller"), TripRole.EDITOR)
+private val PlaceholderRequest = JoinRequest("placeholder", "", PlaceholderMember.user, Instant.fromEpochMilliseconds(0))
 
 @Preview
 @Composable
