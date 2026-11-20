@@ -1,5 +1,8 @@
 package com.falcon.tripingly.feature.trips.presentation.members
 
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.CubicBezierEasing
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Arrangement
@@ -34,6 +37,7 @@ import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.tooling.preview.PreviewParameter
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.falcon.tripingly.core.common.util.ShareManager
@@ -196,7 +200,10 @@ private fun MembersPage(state: State, onAction: (Action) -> Unit, onClose: () ->
         // the sheet holds.
         var pillHeight by remember { mutableStateOf(0.dp) }
         val density = LocalDensity.current
-        Box(Modifier.weight(1f, fill = false)) {
+        // The sheet is as high as its cards, so a row coming or going (removing someone, accepting a request, the
+        // skeleton giving way) would make the whole sheet jump; its height glides instead, while the rows glide
+        // with animateItem (Shahin, 2026-11-20).
+        Box(Modifier.weight(1f, fill = false).animateContentSize(HeightGlide)) {
             LazyColumn(
                 Modifier.fillMaxWidth(),
                 contentPadding = PaddingValues(bottom = pillHeight + MaterialTheme.spacing.small),
@@ -361,6 +368,7 @@ private fun AddPeoplePage(state: State, search: SearchState, onAction: (Action) 
     }
 }
 
+private val HeightGlide = tween<IntSize>(durationMillis = 300, easing = CubicBezierEasing(0.2f, 0f, 0f, 1f))
 private const val SKELETON_MAX_ROWS = 6
 private const val PLACEHOLDER_DETAIL = "@traveller · a week ago"
 private const val SKELETON_FACES = 4
