@@ -347,7 +347,7 @@ internal fun GoogleSdkMapView(
         val photo = look.photoId?.let { pinPhotos[it] }
         val logo = look.logoUrl?.let { brandLogos[it] }
         val bitmap = if (look.isDot) {
-            drawPlaceDot(look.size, fill, density, layoutDirection, alpha = if (look.isSeeThrough) RouteDotAlpha else 1f)
+            drawPlaceDot(look.size, fill, density, layoutDirection)
         } else if (logo != null) {
             drawPlaceLogoPin(logo, look.size, fill, density, layoutDirection)
         } else if (photo != null) {
@@ -429,8 +429,8 @@ internal fun GoogleSdkMapView(
                 showsInfoWindow = false,
                 // Places along the way show at once with their route (Shahin, 2026-11-10).
                 fadesIn = !pin.isAlongTheWay,
-                // While the map is searched by name only its results stay clear.
-                opacity = if (pin.isSearchResult) 1f else dimAlpha,
+                // While the map is searched by name only its results stay clear; a dot is see-through while a route shows.
+                opacity = (if (pin.isSearchResult) 1f else dimAlpha) * (if (pin.isDotAt(isDots)) pin.dotAlpha else 1f),
             )
         }
         val clusters = placeClusters.map { cluster ->
