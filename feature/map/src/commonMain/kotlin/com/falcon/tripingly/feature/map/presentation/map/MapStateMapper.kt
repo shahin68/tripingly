@@ -105,7 +105,7 @@ internal class MapStateMapper(
         header = header(),
         joinRequests = joinRequests(),
         // The field's spinner also turns while the places named so load on the map.
-        search = model.search?.let { SearchState(it.query, it.results.map(::searchResultItem).toImmutableList(), it.isSearching || (model.placeFilter.name != null && model.placeFilter.isLoading)) },
+        search = model.search?.let { SearchState(it.query, it.results.map(::searchResultItem).distinctBy(SearchResultItem::key).toImmutableList(), it.isSearching || (model.placeFilter.name != null && model.placeFilter.isLoading)) },
         dayTabs = DayTabsState(days.map { day -> DayTab(day.id, day.position + 1, day.date?.let(DateUtils::formatAbbreviated), hasNew = day.markers.any { it.id in markedStopIds }, canDelete = canEdit && days.size > 1 && canDeleteDay(day.markers)) }.toImmutableList(), activeIndex),
         plan = route.between?.let { PointRouteCardState(it.from, it.to, routeSummary(), it.fromLabel, it.toLabel) } ?: stopsCard(),
         routeBar = route.routeBar(),

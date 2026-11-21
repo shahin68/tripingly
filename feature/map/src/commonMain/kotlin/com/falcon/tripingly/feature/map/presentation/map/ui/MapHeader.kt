@@ -1,6 +1,21 @@
 package com.falcon.tripingly.feature.map.presentation.map.ui
 
 import androidx.compose.animation.core.animateFloatAsState
+import com.falcon.tripingly.core.designsystem.component.verticalFadingEdge
+import androidx.compose.ui.graphics.TransformOrigin
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.scaleOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.core.CubicBezierEasing
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -12,8 +27,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Close
@@ -271,8 +284,10 @@ private fun SearchField(search: SearchState, onAction: (MapAction) -> Unit, modi
 }
 
 /**
- * The search's results under the header, with the credits for OpenStreetMap and Photon: as tall as they are, at most
- * [maxHeight], then they scroll.
+ * The search's results under the header: as tall as they are, at most [maxHeight], then they scroll with faded edges;
+ * the credits for OpenStreetMap and Photon stay at the bottom. The card grows in from the top when results come and
+ * shrinks back when they go; while typing, each result fades in or out and the rest glide to their places, and the
+ * card's height glides with them (Shahin, 2026-11-21).
  */
 @Composable
 internal fun SearchResults(
@@ -281,21 +296,52 @@ internal fun SearchResults(
     modifier: Modifier = Modifier,
     maxHeight: Dp = SearchResultsMaxHeight,
 ) {
-    GlassSurface(modifier = modifier.fillMaxWidth(), shape = MaterialTheme.shapes.large, blur = false) {
-        Column(modifier = Modifier.heightIn(max = maxHeight).verticalScroll(rememberScrollState()).padding(vertical = MaterialTheme.spacing.small)) {
-            results.forEach { (result, distanceMeters) ->
-                SuggestionItem(
-                    title = result.name,
-                    // No address (OpenStreetMap has none): how far it is from the map's centre.
-                    subtitle = result.address?.takeIf { it.isNotBlank() } ?: distanceMeters?.let { distanceText(it).asString() },
-                    onClick = { onAction(MapAction.Search.ResultClick(result)) },
-                    icon = result.icon,
+    AnimatedVisibility(
+        visible = results.isNotEmpty(),
+        modifier = modifier,
+        // The card stays inside its space, so nothing clips its shadow or corners on the way.
+        enter = expandVertically(tween(RESULTS_MOTION_MILLIS, easing = Emphasized), expandFrom = Alignment.Top, clip = false) +
+            scaleIn(tween(RESULTS_MOTION_MILLIS, easing = Emphasized), initialScale = 0.9f, transformOrigin = FromTop) + fadeIn(tween(RESULTS_FADE_MILLIS)),
+        exit = shrinkVertically(tween(RESULTS_MOTION_MILLIS, easing = Emphasized), shrinkTowards = Alignment.Top, clip = false) +
+            scaleOut(tween(RESULTS_MOTION_MILLIS, easing = Emphasized), targetScale = 0.9f, transformOrigin = FromTop) + fadeOut(tween(RESULTS_FADE_MILLIS)),
+    ) {
+        val listState = rememberLazyListState()
+        GlassSurface(modifier = Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.large, blur = false) {
+            Column(Modifier.heightIn(max = maxHeight).animateContentSize(tween(RESULTS_MOTION_MILLIS, easing = Emphasized))) {
+                LazyColumn(
+                    state = listState,
+                    modifier = Modifier.weight(1f, fill = false).verticalFadingEdge(listState),
+                    contentPadding = PaddingValues(top = MaterialTheme.spacing.small),
+                ) {
+                    items(results, key = { it.key }) { (result, distanceMeters) ->
+                        SuggestionItem(
+                            title = result.name,
+                            // No address (OpenStreetMap has none): how far it is from the map's centre.
+                            subtitle = result.address?.takeIf { it.isNotBlank() } ?: distanceMeters?.let { distanceText(it).asString() },
+                            onClick = { onAction(MapAction.Search.ResultClick(result)) },
+                            icon = result.icon,
+                            modifier = Modifier.animateItem(),
+                        )
+                    }
+                }
+                // Always in sight under the list, as far from the card's sides and bottom as the first result's text from its top.
+                OsmAttribution(
+                    modifier = Modifier.padding(
+                        start = MaterialTheme.spacing.medium,
+                        end = MaterialTheme.spacing.medium,
+                        top = MaterialTheme.spacing.small,
+                        bottom = MaterialTheme.spacing.medium,
+                    ),
                 )
             }
-            OsmAttribution(modifier = Modifier.padding(horizontal = MaterialTheme.spacing.medium, vertical = MaterialTheme.spacing.small))
         }
     }
 }
+
+private val Emphasized = CubicBezierEasing(0.2f, 0f, 0f, 1f)
+private val FromTop = TransformOrigin(0.5f, 0f)
+private const val RESULTS_MOTION_MILLIS = 300
+private const val RESULTS_FADE_MILLIS = 200
 
 /** Previews only: on the map the room down to the plan sheet decides. */
 private val SearchResultsMaxHeight = 360.dp

@@ -158,7 +158,10 @@ data class SearchState(
 
 /** A search result; one without an address shows [distanceMeters] from the map's centre instead, to tell same-named places apart. */
 @Immutable
-data class SearchResultItem(val result: PlaceSearchResult, val distanceMeters: Int? = null)
+data class SearchResultItem(val result: PlaceSearchResult, val distanceMeters: Int? = null) {
+    /** Its key in the results list: our place, else the OpenStreetMap feature, else its name and spot. */
+    val key: String = result.place?.id ?: result.osm?.let { "${it.type}/${it.id}" } ?: "${result.name}@${result.location}"
+}
 
 @Immutable
 data class DayTabsState(
