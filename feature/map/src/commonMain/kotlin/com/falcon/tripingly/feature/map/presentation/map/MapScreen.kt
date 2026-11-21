@@ -98,7 +98,6 @@ import com.falcon.tripingly.feature.map.presentation.map.ui.TripTitleContent
 import com.falcon.tripingly.feature.map.presentation.map.ui.animatePillGrowth
 import com.falcon.tripingly.feature.map.presentation.map.ui.pulledUp
 import com.falcon.tripingly.feature.map.presentation.map.ui.rememberPlanSheetState
-import kotlinx.collections.immutable.persistentListOf
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.map
@@ -431,21 +430,23 @@ internal fun MapScreen(
         // header. The plan sheet folds down while they show, and they reach down to just above it: in portrait above
         // the map buttons riding on it too, in landscape (the buttons on the map half) to the sheet itself (Shahin,
         // 2026-11-20).
-        val results = state.search?.results ?: persistentListOf()
-        LaunchedEffect(results.isNotEmpty()) { if (results.isNotEmpty()) planSheet.animateTo(PlanSheetValue.Collapsed) }
-        val belowResults = (tabsHeight?.second ?: 0.dp) + (if (plan != null) PlanSheetPeek else 0.dp) +
-            (if (isWide) 0.dp else buttonsHeight) + MaterialTheme.spacing.small
-        // It grows in and out on its own while there are results.
-        SearchResults(
-            results = results,
-            onAction = onAction,
-            maxHeight = (maxHeight - coveredTop - belowResults).coerceAtLeast(SearchResultsMinHeight),
-            modifier = Modifier
-                .align(Alignment.TopStart)
-                .padding(top = coveredTop)
-                .then(panel)
-                .padding(horizontal = MaterialTheme.spacing.medium),
-        )
+        val results = state.search?.results?.takeIf { it.isNotEmpty() }
+        val hasResults = results != null
+        LaunchedEffect(hasResults) { if (hasResults) planSheet.animateTo(PlanSheetValue.Collapsed) }
+        if (results != null) {
+            val belowResults = (tabsHeight?.second ?: 0.dp) + (if (plan != null) PlanSheetPeek else 0.dp) +
+                (if (isWide) 0.dp else buttonsHeight) + MaterialTheme.spacing.small
+            SearchResults(
+                results = results,
+                onAction = onAction,
+                maxHeight = (maxHeight - coveredTop - belowResults).coerceAtLeast(SearchResultsMinHeight),
+                modifier = Modifier
+                    .align(Alignment.TopStart)
+                    .padding(top = coveredTop)
+                    .then(panel)
+                    .padding(horizontal = MaterialTheme.spacing.medium),
+            )
+        }
 
         // Over everything: the dimmed map and the trip card grown out of the title, in the header's place.
         if (isTripCardShown) {
