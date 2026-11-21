@@ -3193,6 +3193,21 @@ class MapViewModelTest {
     }
 
     @Test
+    fun `an Around place tapped over the day's route stays purple, once`() = runTest(testDispatcher) {
+        val viewModel = openFirstStopCard()
+        viewModel.onAction(MapAction.Plan.ToggleRoute)
+        testScheduler.advanceUntilIdle()
+        viewModel.onAction(MapAction.Around.Open)
+        testScheduler.advanceUntilIdle()
+
+        viewModel.onAction(MapAction.MapView.PlacePinClick(viewModel.pin("Eiffel Tower")))
+        restOnTarget(viewModel)
+        val eiffel = viewModel.uiState.value.layers.placePins.filter { it.place.name == "Eiffel Tower" }
+        assertEquals(1, eiffel.size, "one pin")
+        assertTrue(eiffel.single().isAlongTheWay, "still Around's purple, not a plain pin (Shahin, 2026-11-21)")
+    }
+
+    @Test
     fun `another route started while Around shows over the day's route closes Around`() = runTest(testDispatcher) {
         val viewModel = openFirstStopCard()
         viewModel.onAction(MapAction.Plan.ToggleRoute)
