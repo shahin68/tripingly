@@ -12,8 +12,10 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.core.rememberTransition
 import androidx.compose.animation.expandHorizontally
 import androidx.compose.animation.shrinkHorizontally
-import androidx.compose.animation.expandVertically
-import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.EnterExitState
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -63,7 +65,6 @@ import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.tooling.preview.PreviewParameter
 import androidx.compose.ui.unit.Dp
-import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import com.falcon.tripingly.core.designsystem.component.LocalScreenArrived
@@ -103,6 +104,7 @@ import com.falcon.tripingly.feature.map.presentation.map.ui.TripTitleContent
 import com.falcon.tripingly.feature.map.presentation.map.ui.animatePillGrowth
 import com.falcon.tripingly.feature.map.presentation.map.ui.pulledUp
 import com.falcon.tripingly.feature.map.presentation.map.ui.rememberPlanSheetState
+import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emptyFlow
@@ -439,20 +441,29 @@ internal fun MapScreen(
         val results = state.search?.results?.takeIf { it.isNotEmpty() }
         val hasResults = results != null
         LaunchedEffect(hasResults) { if (hasResults) planSheet.animateTo(PlanSheetValue.Collapsed) }
-        // Opens and closes growing down from the header and folding back up; its content stays as it is.
+        // Opens growing down out of its top edge and closes folding back up, like the trip card but only vertically
+        // (Shahin, 2026-11-21): the glass itself grows ([SearchResults]' reveal), nothing fades or scales. While it
+        // folds up the results are gone from the state, so it keeps showing the last ones.
+        val lastResults = remember { mutableStateOf<ImmutableList<SearchResultItem>>(persistentListOf()) }
+        if (results != null) lastResults.value = results
         AnimatedVisibility(
             visible = results != null,
             modifier = Modifier.align(Alignment.TopStart).padding(top = coveredTop).then(panel),
-            enter = expandVertically(SearchResultsMotion, expandFrom = Alignment.Top, clip = false),
-            exit = shrinkVertically(SearchResultsMotion, shrinkTowards = Alignment.Top, clip = false),
+            // No motion of their own: they only keep the card for as long as its growth runs.
+            enter = slideInVertically(SearchResultsHold) { 0 },
+            exit = slideOutVertically(SearchResultsHold) { 0 },
         ) {
+            val reveal = transition.animateFloat(transitionSpec = { tween(SEARCH_RESULTS_MILLIS, easing = SearchResultsEasing) }, label = "search results") { state ->
+                if (state == EnterExitState.Visible) 1f else 0f
+            }
             val belowResults = (tabsHeight?.second ?: 0.dp) + (if (plan != null) PlanSheetPeek else 0.dp) +
                 (if (isWide) 0.dp else buttonsHeight) + MaterialTheme.spacing.small
             SearchResults(
-                results = results ?: persistentListOf(),
+                results = lastResults.value,
                 onAction = onAction,
                 maxHeight = (maxHeight - coveredTop - belowResults).coerceAtLeast(SearchResultsMinHeight),
                 modifier = Modifier.padding(horizontal = MaterialTheme.spacing.medium),
+                reveal = { reveal.value },
             )
         }
 
@@ -518,8 +529,10 @@ private fun MapScreenLoadErrorPreview() {
  */
 private val LandscapePinArea = 96.dp
 
-/** The search results card opening and closing: emphasized, as the app's other show/hide motion. */
-private val SearchResultsMotion = tween<IntSize>(durationMillis = 300, easing = CubicBezierEasing(0.2f, 0f, 0f, 1f))
+/** The search results card growing open and folding shut: the trip card's decelerate, fast at first, easing into place. */
+private const val SEARCH_RESULTS_MILLIS = 300
+private val SearchResultsEasing = CubicBezierEasing(0.05f, 0.7f, 0.1f, 1f)
+private val SearchResultsHold = tween<IntOffset>(SEARCH_RESULTS_MILLIS)
 
 /** The least the search results get, however little room the screen leaves them. */
 private val SearchResultsMinHeight = 120.dp

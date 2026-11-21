@@ -47,6 +47,8 @@ import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.Layout
+import kotlin.math.roundToInt
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.layout.boundsInParent
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.tooling.preview.Preview
@@ -284,10 +286,21 @@ internal fun SearchResults(
     onAction: (MapAction) -> Unit,
     modifier: Modifier = Modifier,
     maxHeight: Dp = SearchResultsMaxHeight,
+    reveal: () -> Float = { 1f },
 ) {
     GlassSurface(modifier = modifier.fillMaxWidth(), shape = MaterialTheme.shapes.large, blur = false) {
         val listState = rememberLazyListState()
-        Column(modifier = Modifier.heightIn(max = maxHeight)) {
+        // [reveal] of its height shows, the rest is cut by the glass: the card grows down out of its top edge with its
+        // corners, edge and shadow whole, like the trip card (only vertically). Read while laying out, so only the
+        // card's size changes each frame.
+        Column(
+            modifier = Modifier
+                .layout { measurable, constraints ->
+                    val placeable = measurable.measure(constraints)
+                    layout(placeable.width, (placeable.height * reveal()).roundToInt()) { placeable.place(0, 0) }
+                }
+                .heightIn(max = maxHeight),
+        ) {
             // Faded at the top or bottom while more results are hidden there.
             LazyColumn(state = listState, modifier = Modifier.animateContentSize().weight(1f, fill = false).verticalFadingEdge(listState)) {
                 items(results, key = { it.key }) { (result, distanceMeters) ->
