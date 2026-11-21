@@ -21,6 +21,7 @@ import com.falcon.tripingly.feature.map.generated.resources.map_change_not_saved
 import com.falcon.tripingly.feature.map.generated.resources.map_error_add_day
 import com.falcon.tripingly.feature.map.generated.resources.map_error_delete_day
 import com.falcon.tripingly.feature.map.generated.resources.map_error_stop_change
+import kotlin.time.Duration.Companion.milliseconds
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -122,7 +123,7 @@ internal class MapEdits(
             return
         }
         brandsJob = context.scope.launch {
-            delay(BRAND_SEARCH_DEBOUNCE_MILLIS)
+            delay(BRAND_SEARCH_DEBOUNCE)
             val found = (placeRepository.brands(query) as? AppResult.Success)?.data ?: return@launch
             selection.updateNewSpot { spot ->
                 // The picked one first, so it doesn't jump away while the name is still being typed.
@@ -261,7 +262,7 @@ internal fun Selection.Place.toNewMarker(): NewMarker = address
 private val NAMING_TIMEOUT = 20.seconds
 
 /** Typing has paused; see the search rule in 07-architecture. */
-private const val BRAND_SEARCH_DEBOUNCE_MILLIS = 300L
+private val BRAND_SEARCH_DEBOUNCE = 300.milliseconds
 
 /** Brands are looked for from two letters. */
 private const val MIN_BRAND_QUERY = 2

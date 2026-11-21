@@ -26,6 +26,7 @@ import com.falcon.tripingly.feature.trips.generated.resources.members_error_load
 import com.falcon.tripingly.feature.trips.generated.resources.members_error_load_requests
 import com.falcon.tripingly.feature.trips.generated.resources.members_error_remove
 import com.falcon.tripingly.feature.trips.generated.resources.members_error_search
+import kotlin.time.Duration.Companion.milliseconds
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.ImmutableSet
 import kotlinx.collections.immutable.persistentListOf
@@ -251,7 +252,7 @@ class TripMembersViewModel(
             return
         }
         searchJob = viewModelScope.launch {
-            delay(SEARCH_DEBOUNCE_MILLIS)
+            delay(SEARCH_DEBOUNCE)
             updateSearch { it.copy(isLoading = true) }
             val result = userRepository.search(query)
             updateSearch { it.copy(results = (result as? AppResult.Success)?.data?.toImmutableList() ?: it.results, isLoading = false) }
@@ -358,6 +359,6 @@ class TripMembersViewModel(
     }
 
     private companion object {
-        const val SEARCH_DEBOUNCE_MILLIS = 300L
+        val SEARCH_DEBOUNCE = 300.milliseconds
     }
 }

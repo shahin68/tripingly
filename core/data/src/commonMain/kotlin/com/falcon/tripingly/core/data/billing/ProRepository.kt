@@ -6,6 +6,8 @@ import com.falcon.tripingly.core.data.account.SessionRepository
 import com.falcon.tripingly.core.model.account.ProOffer
 import com.falcon.tripingly.core.model.account.SessionState
 import com.falcon.tripingly.core.model.account.hasPro
+import kotlin.time.Duration.Companion.minutes
+import kotlin.time.Duration.Companion.seconds
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -111,12 +113,12 @@ internal class DefaultProRepository(
      */
     private suspend fun awaitPro(): PurchaseOutcome {
         repeat(PRO_CHECKS) { check ->
-            if (check > 0) delay(PRO_CHECK_INTERVAL_MILLIS)
+            if (check > 0) delay(PRO_CHECK_INTERVAL)
             if (hasPro()) return PurchaseOutcome.Active
         }
         if (laterChecks?.isActive != true) {
             laterChecks = scope.launch {
-                for (wait in LATER_CHECK_WAITS_MILLIS) {
+                for (wait in LATER_CHECK_WAITS) {
                     delay(wait)
                     if (hasPro()) return@launch
                 }
@@ -135,9 +137,9 @@ internal class DefaultProRepository(
 
     private companion object {
         const val PRO_CHECKS = 5
-        const val PRO_CHECK_INTERVAL_MILLIS = 2_000L
+        val PRO_CHECK_INTERVAL = 2.seconds
 
         /** About 10 minutes in all, which covers RevenueCat's first retries. */
-        val LATER_CHECK_WAITS_MILLIS = listOf(10_000L, 20_000L, 30_000L, 60_000L, 120_000L, 360_000L)
+        val LATER_CHECK_WAITS = listOf(10.seconds, 20.seconds, 30.seconds, 1.minutes, 2.minutes, 6.minutes)
     }
 }

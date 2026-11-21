@@ -29,6 +29,7 @@ import com.falcon.tripingly.feature.map.generated.resources.Res
 import com.falcon.tripingly.feature.map.generated.resources.map_join_request
 import com.falcon.tripingly.feature.map.generated.resources.map_join_requests
 import com.falcon.tripingly.feature.map.presentation.map.JoinRequestsState
+import kotlin.time.Duration.Companion.seconds
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.coroutines.delay
 import org.jetbrains.compose.resources.pluralStringResource
@@ -36,7 +37,7 @@ import org.jetbrains.compose.resources.stringResource
 
 /**
  * "@anna and 2 others want to join" under the map's header at the start, in line with the back button, their faces
- * stacked; a tap opens the members sheet. Shown in full a while ([ShrinkDelayMillis]), it shrinks sideways to its faces
+ * stacked; a tap opens the members sheet. Shown in full a while ([ShrinkDelay]), it shrinks sideways to its faces
  * ([onSeen]), and for people seen before it is only that small circle (Shahin, 2026-11-16); a long press ([onLongClick])
  * shows them in full again for as long (Shahin, 2026-11-17).
  */
@@ -45,7 +46,7 @@ internal fun JoinRequestsPill(requests: JoinRequestsState, onClick: () -> Unit, 
     val haptics = rememberHaptics()
     if (!requests.isCompact) {
         LaunchedEffect(requests.people) {
-            delay(ShrinkDelayMillis)
+            delay(ShrinkDelay)
             onSeen()
         }
     }
@@ -87,7 +88,7 @@ internal fun JoinRequestsPill(requests: JoinRequestsState, onClick: () -> Unit, 
 }
 
 /** How long the pill shows its people in full before it shrinks to their faces. */
-private const val ShrinkDelayMillis = 4_000L
+private val ShrinkDelay = 4.seconds
 
 private val FacesSize = 32.dp
 

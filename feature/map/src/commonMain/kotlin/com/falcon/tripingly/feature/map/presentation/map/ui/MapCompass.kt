@@ -19,12 +19,9 @@ import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Path
@@ -45,7 +42,6 @@ import com.falcon.tripingly.feature.map.generated.resources.Res
 import com.falcon.tripingly.feature.map.generated.resources.map_compass_north
 import com.falcon.tripingly.feature.map.generated.resources.map_north_up
 import kotlin.math.abs
-import kotlinx.coroutines.delay
 import org.jetbrains.compose.resources.stringResource
 
 /**
@@ -59,20 +55,17 @@ import org.jetbrains.compose.resources.stringResource
 @Composable
 internal fun MapCompass(bearing: () -> Float, onNorthUp: () -> Unit, modifier: Modifier = Modifier) {
     val isTurned by remember { derivedStateOf { abs(bearing().normalizedBearing()) > TURNED_DEGREES } }
-    var isShown by remember { mutableStateOf(isTurned) }
-    LaunchedEffect(isTurned) {
-        if (!isTurned) delay(HIDE_DELAY_MILLIS)
-        isShown = isTurned
-    }
     AnimatedVisibility(
-        visible = isShown,
+        visible = isTurned,
         modifier = modifier,
         // The space opens upwards from the buttons and the button grows out of its bottom edge with it, so it never
         // pokes past its space; no clipping, so the glass shadow isn't cut on the way.
         enter = expandVertically(tween(MOVE_MILLIS, easing = Emphasized), expandFrom = Alignment.Bottom, clip = false) +
             scaleIn(tween(MOVE_MILLIS, easing = Emphasized), initialScale = 0.6f, transformOrigin = GrowFromBottom) + fadeIn(tween(FADE_MILLIS)),
-        exit = shrinkVertically(tween(MOVE_MILLIS, easing = Emphasized), shrinkTowards = Alignment.Bottom, clip = false) +
-            scaleOut(tween(MOVE_MILLIS, easing = Emphasized), targetScale = 0.6f, transformOrigin = GrowFromBottom) + fadeOut(tween(FADE_MILLIS)),
+        // It leaves a moment after north up, so a turn that passes north on its way doesn't make it blink.
+        exit = shrinkVertically(tween(MOVE_MILLIS, HIDE_DELAY_MILLIS, Emphasized), shrinkTowards = Alignment.Bottom, clip = false) +
+            scaleOut(tween(MOVE_MILLIS, HIDE_DELAY_MILLIS, Emphasized), targetScale = 0.6f, transformOrigin = GrowFromBottom) +
+            fadeOut(tween(FADE_MILLIS, HIDE_DELAY_MILLIS)),
     ) {
         val haptics = rememberHaptics()
         val description = stringResource(Res.string.map_north_up)
@@ -125,7 +118,7 @@ internal fun Float.normalizedBearing(): Float = ((this + 180f) % 360f + 360f) % 
 private const val TURNED_DEGREES = 1f
 
 /** How long the compass stays after the map is north up again. */
-private const val HIDE_DELAY_MILLIS = 600L
+private const val HIDE_DELAY_MILLIS = 600
 private const val MOVE_MILLIS = 300
 private const val FADE_MILLIS = 200
 private val Emphasized = CubicBezierEasing(0.2f, 0f, 0f, 1f)

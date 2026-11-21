@@ -11,6 +11,7 @@ import com.falcon.tripingly.core.ui.UiText
 import com.falcon.tripingly.core.ui.toUiText
 import com.falcon.tripingly.feature.social.generated.resources.Res
 import com.falcon.tripingly.feature.social.generated.resources.social_error_search_people
+import kotlin.time.Duration.Companion.milliseconds
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.toImmutableList
@@ -59,7 +60,7 @@ class PeopleSearchViewModel(private val userRepository: UserRepository) : ViewMo
             return
         }
         search = viewModelScope.launch {
-            delay(SEARCH_DEBOUNCE_MILLIS)
+            delay(SEARCH_DEBOUNCE)
             _uiState.update { it.copy(isLoading = true) }
             val result = userRepository.search(query)
             _uiState.update {
@@ -88,6 +89,6 @@ class PeopleSearchViewModel(private val userRepository: UserRepository) : ViewMo
     }
 
     private companion object {
-        const val SEARCH_DEBOUNCE_MILLIS = 300L
+        val SEARCH_DEBOUNCE = 300.milliseconds
     }
 }

@@ -15,7 +15,6 @@ import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.TimeSource
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.drop
@@ -129,22 +128,23 @@ internal class MapPins(
         closestZoom = if (keepUnlisted && closest != null) maxOf(closest, zoom) else zoom
         val squares = PlaceSquare.covering(bounds, floor(zoom).toInt(), categories = categories, name = name)
         pinsJob?.cancel()
+        prefetchJob?.cancel()
         pinsJob = context.scope.launch {
             // Loaded together with the squares already kept; null while offline, so the pins stay.
             placeRepository.placesIn(squares)
             update { it.copy(area = PinArea(bounds, squares)) }
             show()
             context.update { it.copy(placeFilter = it.placeFilter.copy(isLoading = false)) }
-        }
-        prefetchJob?.cancel()
-        prefetchJob = context.scope.launch {
-            delay(PREFETCH_DELAY_MILLIS)
-            placeRepository.placesIn(PlaceSquare.covering(bounds, floor(zoom).toInt(), ring = 1, categories = categories, name = name))
+            // The ring around the view once the view's own pins are in, so it never slows them down. Its own job:
+            // a moving camera only waits for the view's pins, never for the ring.
+            prefetchJob = context.scope.launch {
+                placeRepository.placesIn(PlaceSquare.covering(bounds, floor(zoom).toInt(), ring = 1, categories = categories, name = name))
+            }
         }
     }
 
     /**
-     * The camera moves: new places show while it does, not only once it rests. At most every [MOVING_PINS_MILLIS], the
+     * The camera moves: new places show while it does, not only once it rests. At most every [MOVING_PINS], the
      * pins follow the view; squares not loaded yet load, without cancelling a load still on its way (a quick pan would
      * otherwise never finish one). While it moves pins only come, never go, so few markers change; the rest tidies up
      * and loads the ring around the view.
@@ -153,7 +153,7 @@ internal class MapPins(
         if (isHidden) return
         val bounds = view.withPinMargin()
         val now = TimeSource.Monotonic.markNow()
-        if (lastMoving?.let { now - it < MOVING_PINS_MILLIS.milliseconds } == true) return
+        if (lastMoving?.let { now - it < MOVING_PINS } == true) return
         lastMoving = now
         if (pinsJob?.isActive == true) return
         val squares = PlaceSquare.covering(bounds, floor(zoom).toInt(), categories = categories, name = name)
@@ -194,11 +194,8 @@ internal class MapPins(
     private fun update(change: (PinsModel) -> PinsModel) = context.update { it.copy(pins = change(it.pins)) }
 
     private companion object {
-        /** Same wait as for search: the camera has rested. */
-        const val PREFETCH_DELAY_MILLIS = 300L
-
         /** How often the pins follow a moving camera. */
-        const val MOVING_PINS_MILLIS = 250L
+        val MOVING_PINS = 250.milliseconds
 
         /**
          * How far out the camera zooms before the pins the farther squares don't list leave. A whole step, so a pinch

@@ -8,6 +8,7 @@ import com.falcon.tripingly.core.model.place.PlaceSearchResult
 import com.falcon.tripingly.core.model.place.SearchResultType
 import com.falcon.tripingly.core.model.trip.GeoPoint
 import com.falcon.tripingly.feature.map.presentation.map.metersTo
+import kotlin.time.Duration.Companion.milliseconds
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -58,7 +59,7 @@ internal class MapSearch(
             return
         }
         searchJob = context.scope.launch {
-            delay(SEARCH_DEBOUNCE_MILLIS)
+            delay(SEARCH_DEBOUNCE)
             update { it.copy(isSearching = true) }
             val center = camera.target
             val found = (placeRepository.search(query, GeoPoint(center.latitude, center.longitude)) as? AppResult.Success)?.data
@@ -135,7 +136,7 @@ internal class MapSearch(
 
     private companion object {
         /** Typing has paused; see the search rule in 07-architecture. */
-        const val SEARCH_DEBOUNCE_MILLIS = 300L
+        val SEARCH_DEBOUNCE = 300.milliseconds
 
         /** About a big city's reach: the map's city when the server doesn't know it, and the other city's results. */
         const val CITY_RADIUS_METERS = 25_000

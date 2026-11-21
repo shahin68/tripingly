@@ -9,6 +9,7 @@ import com.falcon.tripingly.core.model.trip.TripMapView
 import com.falcon.tripingly.core.ui.toUiText
 import com.falcon.tripingly.feature.map.generated.resources.Res
 import com.falcon.tripingly.feature.map.generated.resources.map_error_load_trip
+import kotlin.time.Duration.Companion.milliseconds
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
@@ -95,7 +96,7 @@ internal class MapOpening(
         context.scope.launch {
             combine(context.trip, context.model, ::viewOf).distinctUntilChanged().collectLatest { view ->
                 view ?: return@collectLatest
-                delay(SAVE_VIEW_DELAY_MILLIS)
+                delay(SAVE_VIEW_DELAY)
                 mapViews.save(context.tripId, view)
             }
         }
@@ -114,7 +115,7 @@ internal class MapOpening(
 
     private companion object {
         /** How long the view stays the same before it's saved. */
-        const val SAVE_VIEW_DELAY_MILLIS = 500L
+        val SAVE_VIEW_DELAY = 500.milliseconds
         /** A stop with its street around it. */
         const val STOP_ZOOM = 16f
     }

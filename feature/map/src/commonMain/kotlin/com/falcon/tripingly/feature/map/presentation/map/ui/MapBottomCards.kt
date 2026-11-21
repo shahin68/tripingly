@@ -62,6 +62,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import com.falcon.tripingly.feature.map.presentation.map.JoinButton
 import com.falcon.tripingly.feature.map.presentation.map.ViewerMenu
+import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.Duration.Companion.seconds
 import kotlinx.coroutines.delay
 import com.falcon.tripingly.core.designsystem.component.bottomSystemBar
 import com.falcon.tripingly.core.designsystem.component.floatingBottom
@@ -224,7 +226,7 @@ internal fun MapCredits(
     val accessibility = LocalAccessibilityManager.current
     LaunchedEffect(isOpen, routeAttribution) {
         if (!isOpen) return@LaunchedEffect
-        delay(accessibility?.calculateRecommendedTimeoutMillis(CreditsShownMillis, containsText = true, containsControls = true) ?: CreditsShownMillis)
+        delay(accessibility?.calculateRecommendedTimeoutMillis(CreditsShown.inWholeMilliseconds, containsText = true, containsControls = true)?.milliseconds ?: CreditsShown)
         isOpen = false
     }
     GlassSurface(modifier = modifier, shape = MaterialTheme.shapes.extraSmall, shadowElevation = 0.dp, blur = false) {
@@ -256,7 +258,7 @@ internal fun MapCredits(
 }
 
 /** How long the credits show before they fold into their ⓘ, before the system's accessibility timeout adjusts it. */
-private const val CreditsShownMillis = 5_000L
+private val CreditsShown = 5.seconds
 private val CreditsIconSize = 16.dp
 private val CreditsIconPadding = 4.dp
 
