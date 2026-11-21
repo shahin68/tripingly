@@ -21,6 +21,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -501,10 +502,18 @@ actual fun GoogleMapView(
                     markers.filter { bounds?.contains(LatLng(it.position.latitude, it.position.longitude)) == true }.mapTo(HashSet()) { it.id }
                 }
             }
-            markers.forEach { marker ->
+            markers.forEachIndexed { index, marker ->
                 key(marker.id, marker.id in stopsOnScreen) {
                     val position = LatLng(marker.position.latitude, marker.position.longitude)
                     val markerState = rememberUpdatedMarkerState(position = position)
+                    // The day's route on or off changes every stop's halo, and each changed icon is laid out and drawn on
+                    // the main thread: one stop per frame takes it, in order, instead of all in one long frame that froze
+                    // the map and the Route button (Shahin's recording, 2026-11-21). A newer toggle starts over.
+                    var halo by remember { mutableStateOf(layers.stopHalo) }
+                    LaunchedEffect(layers.stopHalo) {
+                        repeat(index) { withFrameNanos { } }
+                        halo = layers.stopHalo
+                    }
                     // The icon is drawn once and redrawn only when its number or cover changes.
                     val cover = marker.coverPhotoId?.let { coverThumbs[it] }
                     MarkerComposable(
@@ -512,7 +521,7 @@ actual fun GoogleMapView(
                         // Empty until the cover's thumbnail has loaded.
                         marker.coverPhotoId.takeIf { cover != null }.orEmpty(),
                         marker.isNew,
-                        layers.stopHalo ?: Color.Unspecified,
+                        halo ?: Color.Unspecified,
                         state = markerState,
                         title = marker.title.asString(),
                         // The pin is a circle centered on the stop.
@@ -533,7 +542,7 @@ actual fun GoogleMapView(
                             orderNumber = marker.orderNumber,
                             cover = cover,
                             isNew = marker.isNew,
-                            halo = layers.stopHalo,
+                            halo = halo,
                         )
                     }
                 }
