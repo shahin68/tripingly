@@ -86,8 +86,7 @@ import com.falcon.tripingly.feature.map.presentation.component.CameraCommand
 import com.falcon.tripingly.feature.map.presentation.component.PinEnd
 import com.falcon.tripingly.feature.map.presentation.component.PinSizes
 import com.falcon.tripingly.feature.map.presentation.component.SelectedPinSize
-import com.falcon.tripingly.feature.map.presentation.component.RouteDotAlpha
-import com.falcon.tripingly.feature.map.presentation.component.dotAlpha
+import com.falcon.tripingly.feature.map.presentation.component.dotLook
 import com.falcon.tripingly.feature.map.presentation.component.isDotAt
 import com.falcon.tripingly.feature.map.presentation.component.RouteEndMark
 import com.falcon.tripingly.feature.map.presentation.component.lineColor
@@ -3414,7 +3413,7 @@ class MapViewModelTest {
         viewModel.onAction(MapAction.Plan.ToggleRoute)
         testScheduler.advanceUntilIdle()
         assertEquals(TravelMode.Walking.lineColor, viewModel.uiState.value.layers.stopHalo)
-        assertTrue(viewModel.uiState.value.layers.placePins.filter { it.isDot }.all { it.dotAlpha == RouteDotAlpha })
+        assertTrue(viewModel.uiState.value.layers.placePins.filter { it.isDot }.all { it.dotLook().isSeeThrough })
 
         viewModel.onAction(MapAction.Plan.ToggleRoute)
         testScheduler.advanceUntilIdle()

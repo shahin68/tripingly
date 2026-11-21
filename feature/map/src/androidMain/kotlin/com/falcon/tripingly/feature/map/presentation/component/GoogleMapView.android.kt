@@ -322,7 +322,7 @@ actual fun GoogleMapView(
                 val photo = look.photoId?.let { pinPhotos[it] }
                 val logo = look.logoUrl?.let { brandLogos[it] }
                 val bitmap = if (look.isDot) {
-                    drawPlaceDot(look.size, fill, density, layoutDirection)
+                    drawPlaceDot(look.size, fill, density, layoutDirection, alpha = if (look.isSeeThrough) RouteDotAlpha else 1f)
                 } else if (logo != null) {
                     drawPlaceLogoPin(logo, look.size, fill, density, layoutDirection)
                 } else if (photo != null) {
@@ -369,7 +369,7 @@ actual fun GoogleMapView(
                         pin to hypot(point.x - touch.x, point.y - touch.y)
                     }
                     .filter { (pin, distance) ->
-                        val size = if (pin.isDotAt(isDots)) PlaceDotSize else pin.size
+                        val size = if (pin.isDotAt(isDots)) pin.dotSize else pin.size
                         distance <= with(density) { size.toPx() } / 2 + slop
                     }
                     .minByOrNull { (_, distance) -> distance }
@@ -419,7 +419,7 @@ actual fun GoogleMapView(
                             icon = pinIcon(dotLook),
                             title = pin.place.name,
                             anchor = Offset(0.5f, 0.5f),
-                            alpha = fadeIn.value * pinAlpha * pin.dotAlpha,
+                            alpha = fadeIn.value * pinAlpha,
                             visible = isShown && pin.isDotAt(isDots),
                             zIndex = zIndex,
                             onClick = { onClick() },
