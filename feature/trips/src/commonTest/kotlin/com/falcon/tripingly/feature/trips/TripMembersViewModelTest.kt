@@ -129,6 +129,27 @@ class TripMembersViewModelTest {
     }
 
     @Test
+    fun addUndoAddQuickly_listsThemOnce() = runTest {
+        val tripId = newTrip()
+        val viewModel = viewModel(tripId)
+        advanceUntilIdle()
+        val anna = viewModel.uiState.value.friends!!.first()
+
+        // Shahin's crash: tapped, undone and tapped again before the first add landed listed anna twice.
+        repeat(3) {
+            viewModel.onAction(Action.AddPerson(anna))
+            viewModel.onAction(Action.Undo(anna))
+        }
+        viewModel.onAction(Action.AddPerson(anna))
+        runCurrent()
+        assertEquals(1, viewModel.uiState.value.members.count { it.user.username == anna.username })
+        advanceUntilIdle()
+
+        assertEquals(1, viewModel.uiState.value.members.count { it.user.username == anna.username })
+        assertEquals(1, backend.observeTrip(tripId).first()!!.members.count { it.user.username == anna.username })
+    }
+
+    @Test
     fun anAddTheServerRefuses_leavesTheList_andSaysSo() = runTest {
         val viewModel = viewModel(newTrip())
         advanceUntilIdle()

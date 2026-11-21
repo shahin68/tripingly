@@ -69,7 +69,9 @@ class TripMembersViewModel(
         val undone = ui.undone
         val saved = details?.members.orEmpty().filterNot { it.user.username in undone }
         val savedNames = saved.mapTo(HashSet()) { it.user.username }
-        val members = saved + ui.adding.filterNot { it.username in savedNames || it.username in undone }.map { TripMember(it, TripRole.EDITOR) }
+        // One row per person: a quick add, Undo, add again must never list anyone twice (it crashed the list's keys).
+        val members = (saved + ui.adding.filterNot { it.username in savedNames || it.username in undone }.map { TripMember(it, TripRole.EDITOR) })
+            .distinctBy { it.user.username }
         val onTrip = members.mapTo(HashSet()) { it.user.username }
         val asking = ui.requests.requests.mapTo(HashSet()) { it.user.username }
         State(
@@ -162,7 +164,7 @@ class TripMembersViewModel(
     private fun add(user: UserSummary) {
         val state = uiState.value
         if (user.username in state.onTrip || user.username in state.asking) return
-        ui.update { it.copy(adding = (it.adding + user).toImmutableList(), undone = (it.undone - user.username).toImmutableSet(), added = user, message = null) }
+        ui.update { it.copy(adding = (it.adding.filterNot { added -> added.username == user.username } + user).toImmutableList(), undone = (it.undone - user.username).toImmutableSet(), added = user, message = null) }
         viewModelScope.launch {
             val result = tripRepository.addMember(tripId, user.username)
             if (result is AppResult.Success) awaitCache(user, isMember = true)
@@ -210,7 +212,11 @@ class TripMembersViewModel(
      * sheet blinked on add and remove).
      */
     private suspend fun awaitCache(user: UserSummary, isMember: Boolean) {
-        tripRepository.observeTrip(tripId).first { details -> details?.members.orEmpty().any { it.user.username == user.username } == isMember }
+        // Or until the user turned it around again (Undo of this add, or adding them back during this removal): the
+        // cache may then never show this change, and the newer tap takes over.
+        combine(tripRepository.observeTrip(tripId), ui) { details, ui ->
+            details?.members.orEmpty().any { it.user.username == user.username } == isMember || (user.username in ui.undone) == isMember
+        }.first { it }
     }
 
     /** Accepting or declining; the request leaves the list once the server agreed (or it was gone already). */
