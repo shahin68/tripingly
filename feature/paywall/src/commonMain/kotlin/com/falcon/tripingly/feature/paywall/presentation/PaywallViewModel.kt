@@ -42,7 +42,7 @@ class PaywallViewModel(
     private val languageTag: () -> String,
 ) : ViewModel() {
 
-    private val _uiState = MutableStateFlow(State(isAvailable = proRepository.isAvailable))
+    private val _uiState = MutableStateFlow(State(isAvailable = proRepository.isAvailable, hasPro = proRepository.isPro.value))
     val uiState: StateFlow<State> = _uiState.asStateFlow()
 
     init {

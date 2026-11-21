@@ -191,6 +191,15 @@ class PaywallViewModelTest {
     }
 
     @Test
+    fun aProAccount_seesItActive_fromTheFirstFrame() = runTest {
+        val pro = fakePro(entitlements = setOf("routes"))
+        runCurrent()
+
+        // Read at once, so the screen doesn't swap the offers for "active" while it slides in.
+        assertTrue(viewModel(pro).uiState.value.hasPro)
+    }
+
+    @Test
     fun proEndingWhileOpen_showsTheOffersAgain_atOnce() = runTest {
         val account = signedIn(entitlements = setOf("routes"))
         val start = Instant.parse("2026-11-21T10:00:00Z")

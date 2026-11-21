@@ -43,6 +43,7 @@ import com.falcon.tripingly.core.designsystem.component.FloatingTopBar
 import com.falcon.tripingly.core.designsystem.component.PrimaryButton
 import com.falcon.tripingly.core.designsystem.component.SecondaryButton
 import com.falcon.tripingly.core.designsystem.component.ShowMessage
+import com.falcon.tripingly.core.designsystem.component.LocalScreenArrived
 import com.falcon.tripingly.core.designsystem.component.Skeleton
 import com.falcon.tripingly.core.designsystem.component.screenContentPadding
 import com.falcon.tripingly.core.designsystem.component.skeleton
@@ -79,6 +80,7 @@ import com.falcon.tripingly.feature.paywall.generated.resources.paywall_yearly
 import com.falcon.tripingly.feature.paywall.generated.resources.paywall_yearly_price
 import com.falcon.tripingly.feature.paywall.presentation.PaywallViewModel.Action
 import com.falcon.tripingly.feature.paywall.presentation.PaywallViewModel.State
+import kotlinx.collections.immutable.persistentListOf
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel
@@ -89,8 +91,15 @@ fun PaywallRoute(
     viewModel: PaywallViewModel = koinViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
-    PaywallScreen(state = state, onAction = viewModel::onAction, onBack = onBack)
+    // While the screen slides in it shows the plans loading; what has loaded swaps in once it has arrived, so nothing
+    // lays out again mid-slide (Shahin, 2026-11-21: frames dropped as the plans came in during the slide).
+    val arrived = LocalScreenArrived.current
+    PaywallScreen(state = if (arrived) state else state.arriving(), onAction = viewModel::onAction, onBack = onBack)
 }
+
+/** The screen as it slides in: the plans loading, no links yet. */
+private fun State.arriving(): State =
+    copy(offers = persistentListOf(), isLoadingOffers = true, hasOffersFailed = false, legalDocuments = persistentListOf(), managementUrl = null)
 
 /** Tripinly Pro: what it adds, the offers to pick from (or that it's active), restore, and the fine print. */
 @Composable
