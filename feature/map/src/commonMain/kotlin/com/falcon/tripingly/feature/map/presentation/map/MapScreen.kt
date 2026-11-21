@@ -357,12 +357,13 @@ internal fun MapScreen(
                         }
                     }
                     // Someone else's trip: the heart and Ask to join in the same place, coming and going the same way,
-                    // keeping its last look while it goes (accepted or declined) (Shahin, 2026-11-21).
+                    // keeping its last look while it goes (accepted or declined); away while searching, as the filter
+                    // and the owner's join pill (Shahin, 2026-11-21).
                     val joinButton = state.header.viewerMenu?.joinButton
                     var shownViewerMenu by remember { mutableStateOf(state.header.viewerMenu) }
                     if (joinButton != null) shownViewerMenu = state.header.viewerMenu
                     androidx.compose.animation.AnimatedVisibility(
-                        visible = joinButton != null && !isRouteBarShown,
+                        visible = joinButton != null && !isRouteBarShown && state.search == null,
                         enter = expandHorizontally(expandFrom = Alignment.Start, clip = false) + scaleIn() + fadeIn(),
                         exit = shrinkHorizontally(shrinkTowards = Alignment.Start, clip = false) + scaleOut() + fadeOut(),
                     ) {
