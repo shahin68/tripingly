@@ -443,8 +443,8 @@ internal fun MapScreen(
         AnimatedVisibility(
             visible = results != null,
             modifier = Modifier.align(Alignment.TopStart).padding(top = coveredTop).then(panel),
-            enter = expandVertically(SearchResultsMotion, expandFrom = Alignment.Top),
-            exit = shrinkVertically(SearchResultsMotion, shrinkTowards = Alignment.Top),
+            enter = expandVertically(SearchResultsMotion, expandFrom = Alignment.Top, clip = false),
+            exit = shrinkVertically(SearchResultsMotion, shrinkTowards = Alignment.Top, clip = false),
         ) {
             val belowResults = (tabsHeight?.second ?: 0.dp) + (if (plan != null) PlanSheetPeek else 0.dp) +
                 (if (isWide) 0.dp else buttonsHeight) + MaterialTheme.spacing.small

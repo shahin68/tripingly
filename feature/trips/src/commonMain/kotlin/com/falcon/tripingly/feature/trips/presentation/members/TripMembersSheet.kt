@@ -33,8 +33,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.layout.onSizeChanged
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.tooling.preview.PreviewParameter
 import androidx.compose.ui.unit.IntSize
@@ -195,32 +193,23 @@ private fun MembersPage(state: State, onAction: (Action) -> Unit, onClose: () ->
                 }
             },
         )
-        // The invite pill floats over the cards at the bottom, as the tabs' bar does on Home (Shahin, 2026-11-19): the
-        // list scrolls under it, and its last card can scroll clear of it. Short, the list and the pill under it are all
-        // the sheet holds.
-        var pillHeight by remember { mutableStateOf(0.dp) }
-        val density = LocalDensity.current
-        // The sheet is as high as its cards, so a row coming or going (removing someone, accepting a request, the
-        // skeleton giving way) would make the whole sheet jump; its height glides instead, while the rows glide
-        // with animateItem (Shahin, 2026-11-20).
-        Box(Modifier.weight(1f, fill = false).animateContentSize(HeightGlide)) {
-            LazyColumn(
-                Modifier.fillMaxWidth(),
-                contentPadding = PaddingValues(bottom = pillHeight + MaterialTheme.spacing.small),
-            ) {
-                if (state.isLoading) skeletonCards(state) else memberCards(state, onAction)
-            }
-            if (state.canManage) {
-                InvitePill(
-                    isCreating = state.isCreatingInvite,
-                    onShare = { onAction(Action.ShareInvite) },
-                    modifier = Modifier
-                        .align(Alignment.BottomCenter)
-                        .onSizeChanged { pillHeight = with(density) { it.height.toDp() } }
-                        .padding(horizontal = MaterialTheme.spacing.medium)
-                        .padding(bottom = MaterialTheme.spacing.medium),
-                )
-            }
+        // The list is as high as its cards (the whole sheet only when they need it); a row coming or going glides the
+        // list's height (animateContentSize) while the rows glide with animateItem. The invite pill sits under the list,
+        // always at the sheet's bottom: nothing is measured, so the sheet's height never feeds back on itself while it
+        // opens (Shahin, 2026-11-21: jumps, the pill not anchored, the sheet opening from a snapped spot).
+        LazyColumn(
+            Modifier.fillMaxWidth().weight(1f, fill = false).animateContentSize(HeightGlide),
+            // An editor has no pill: the last card keeps the pill's gap to the sheet's bottom.
+            contentPadding = PaddingValues(bottom = if (state.canManage) 0.dp else MaterialTheme.spacing.medium),
+        ) {
+            if (state.isLoading) skeletonCards(state) else memberCards(state, onAction)
+        }
+        if (state.canManage) {
+            InvitePill(
+                isCreating = state.isCreatingInvite,
+                onShare = { onAction(Action.ShareInvite) },
+                modifier = Modifier.padding(horizontal = MaterialTheme.spacing.medium).padding(top = MaterialTheme.spacing.small, bottom = MaterialTheme.spacing.medium),
+            )
         }
     }
 }
