@@ -47,9 +47,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.backhandler.BackHandler
+import androidx.navigationevent.NavigationEventInfo
+import androidx.navigationevent.compose.NavigationBackHandler
+import androidx.navigationevent.compose.rememberNavigationEventState
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.Rect
@@ -108,8 +109,11 @@ internal fun RouteBar(
     onAction: (MapAction) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    @OptIn(ExperimentalComposeUiApi::class)
-    BackHandler(enabled = transition.targetState && LocalScreenOnTop.current) { onAction(MapAction.PinRoute.Close) }
+    NavigationBackHandler(
+        state = rememberNavigationEventState(NavigationEventInfo.None),
+        isBackEnabled = transition.targetState && LocalScreenOnTop.current,
+        onBackCompleted = { onAction(MapAction.PinRoute.Close) },
+    )
     // The names glide to each other's pill when the ends switch; the gap they cross is a pill and the space between.
     val swapDistance = with(LocalDensity.current) { (RouteHeight + MaterialTheme.spacing.small).roundToPx() }
     PillGrowthPanel(transition, progress, pill, pillContent, modifier.fillMaxWidth()) {

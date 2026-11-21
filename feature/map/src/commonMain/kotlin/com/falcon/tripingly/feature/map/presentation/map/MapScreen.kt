@@ -45,9 +45,10 @@ import androidx.compose.runtime.withFrameNanos
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.backhandler.BackHandler
+import androidx.navigationevent.NavigationEventInfo
+import androidx.navigationevent.compose.NavigationBackHandler
+import androidx.navigationevent.compose.rememberNavigationEventState
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.input.pointer.PointerEventPass
@@ -156,12 +157,13 @@ internal fun MapScreen(
     var shownRouteBar by remember { mutableStateOf(state.routeBar) }
     state.routeBar?.let { shownRouteBar = it }
     val isRouteBarShown = routeBarState.currentState || routeBarState.targetState
-    @OptIn(ExperimentalComposeUiApi::class)
-    // Not while another screen covers the map: back closes that screen.
-    BackHandler(enabled = isTripCardOpen && LocalScreenOnTop.current) { isTripCardOpen = false }
-    // The search has no back button: back closes it, as its ✕ does.
-    @OptIn(ExperimentalComposeUiApi::class)
-    BackHandler(enabled = state.search != null && !isTripCardOpen && LocalScreenOnTop.current) { onAction(MapAction.Search.Close) }
+    // Back closes the trip card, else the search (it has no back button: back does what its ✕ does). Not while
+    // another screen covers the map: back closes that screen.
+    NavigationBackHandler(
+        state = rememberNavigationEventState(NavigationEventInfo.None),
+        isBackEnabled = (isTripCardOpen || state.search != null) && LocalScreenOnTop.current,
+        onBackCompleted = { if (isTripCardOpen) isTripCardOpen = false else onAction(MapAction.Search.Close) },
+    )
 
     BoxWithConstraints(
         modifier = Modifier

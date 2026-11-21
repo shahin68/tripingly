@@ -28,9 +28,10 @@ import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
-import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.backhandler.BackHandler
+import androidx.navigationevent.NavigationEventInfo
+import androidx.navigationevent.compose.NavigationBackHandler
+import androidx.navigationevent.compose.rememberNavigationEventState
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
@@ -50,7 +51,7 @@ import kotlinx.coroutines.launch
  * field to type in doesn't rise over the keyboard, so one coming back from a sheet that typed (the members after Add
  * people) doesn't open high over the keyboard going away and then drop (Shahin, 2026-11-19).
  */
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalComposeUiApi::class)
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun <T : Any> AppBottomSheet(
     value: T?,
@@ -155,7 +156,7 @@ fun <T : Any> AppBottomSheet(
         ) {
             MaterialTheme(colorScheme = MaterialTheme.colorScheme, motionScheme = motion, shapes = MaterialTheme.shapes, typography = MaterialTheme.typography) {
                 // Back goes to the sheet before, not out of the chain.
-                if (goBack != null) BackHandler(onBack = goBack)
+                if (goBack != null) NavigationBackHandler(rememberNavigationEventState(NavigationEventInfo.None), onBackCompleted = goBack)
                 // No overscroll inside a sheet: pulled down at the top, a list moves the sheet itself. iOS's bounce kept
                 // the pull in the list, so a full-height sheet sprang back up however hard it was pulled (Shahin, 2026-11-19).
                 // Opened, the sheet says so once its slide has ended, until it goes ([LocalSheetArrived]).
