@@ -33,7 +33,7 @@ class AppConfigRepositoryTest {
             engine = MockEngine {
                 requests++
                 respond(
-                    """{"placesRefreshSeconds": 60, "photoMaxEdgePx": 2048, "photoJpegQuality": 80, "photoParallelUploads": 3, "pinLargeMinProminence": 90, "pinMediumMinProminence": 50, "mapMaxPins": 200, "photoPinMinProminence": 80, "photoPinMinHotCount": 5, "mapMaxPhotoPins": 10, "pinDotBelowZoom": 13.5, "transitAreas": [{"id": "vienna", "name": "Vienna", "south": 48.11, "west": 16.18, "north": 48.33, "east": 16.58}]}""",
+                    """{"placesRefreshSeconds": 60, "photoMaxEdgePx": 2048, "photoJpegQuality": 80, "photoParallelUploads": 3, "pinLargeMinProminence": 90, "pinMediumMinProminence": 50, "mapMaxPins": 200, "photoPinMinProminence": 80, "photoPinMinHotCount": 5, "mapMaxPhotoPins": 10, "pinDotBelowZoom": 13.5, "osmPinsEnabled": false, "transitAreas": [{"id": "vienna", "name": "Vienna", "south": 48.11, "west": 16.18, "north": 48.33, "east": 16.58}]}""",
                     status,
                     headersOf(HttpHeaders.ContentType, "application/json"),
                 )
@@ -66,6 +66,7 @@ class AppConfigRepositoryTest {
             photoPinMinHotCount = 5,
             mapMaxPhotoPins = 10,
             pinDotBelowZoom = 13.5f,
+            osmPinsEnabled = false,
             transitAreas = listOf(TransitArea("vienna", "Vienna", 48.11, 16.18, 48.33, 16.58)),
         )
         assertEquals(expected, loaded)

@@ -59,6 +59,8 @@ data class MapUiState(
     val arePlacesHidden: Boolean = false,
     /** Shown over the map with a route, instead of the OpenStreetMap credit. */
     val routeAttribution: String? = null,
+    /** The server lists OpenStreetMap places (OSM_PINS_ENABLED): their credit shows. Off, credits show only with a route. */
+    val isOsmCreditShown: Boolean = true,
     val sheet: MapSheet? = null,
     val dialog: MapDialog? = null,
     val message: MessageState? = null,

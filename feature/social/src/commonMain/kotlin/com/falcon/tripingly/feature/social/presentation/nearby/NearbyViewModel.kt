@@ -3,6 +3,7 @@ package com.falcon.tripingly.feature.social.presentation.nearby
 import androidx.compose.runtime.Immutable
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.falcon.tripingly.core.data.config.AppConfigRepository
 import com.falcon.tripingly.core.data.places.PlaceRepository
 import com.falcon.tripingly.core.data.social.SocialRepository
 import com.falcon.tripingly.core.data.trips.MarkerRepository
@@ -38,9 +39,10 @@ class NearbyViewModel(
     tripRepository: TripRepository,
     markerRepository: MarkerRepository,
     getCurrentLocation: GetCurrentLocationUseCase,
+    appConfigRepository: AppConfigRepository,
 ) : ViewModel() {
 
-    private val _uiState = MutableStateFlow(State())
+    private val _uiState = MutableStateFlow(State(isOsmCreditShown = appConfigRepository.config.value.osmPinsEnabled))
     val uiState: StateFlow<State> = _uiState.asStateFlow()
 
     private val _events = Channel<Event>(capacity = Channel.BUFFERED)
@@ -130,6 +132,8 @@ class NearbyViewModel(
         val report: ReportState? = null,
         val addPlace: AddPlaceState? = null,
         val message: UiText? = null,
+        /** The server lists OpenStreetMap places (OSM_PINS_ENABLED); off, Nearby has only users' places and no OSM credit. */
+        val isOsmCreditShown: Boolean = true,
     )
 
     sealed interface Action {

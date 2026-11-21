@@ -167,8 +167,10 @@ private fun NearbyList(state: State, onAction: (Action) -> Unit, contentPadding:
                     modifier = Modifier.animateItem(),
                 )
             }
-            // Nearby lists OpenStreetMap places.
-            item(key = "osm") { OsmAttribution(Modifier.padding(vertical = MaterialTheme.spacing.small).animateItem()) }
+            // Nearby lists OpenStreetMap places, unless the server leaves them out.
+            if (state.isOsmCreditShown) {
+                item(key = "osm") { OsmAttribution(Modifier.padding(vertical = MaterialTheme.spacing.small).animateItem()) }
+            }
         }
     }
 }

@@ -67,6 +67,7 @@ data class MapState(
 | What | Value | Where |
 |---|---|---|
 | Zoom below which place pins are dots | 14 (0–22) | Railway api `APP_PIN_DOT_BELOW_ZOOM` → `pinDotBelowZoom` |
+| OpenStreetMap places listed (off: only users' spots, OSM credit only with a route) | true | Railway api `OSM_PINS_ENABLED` → `osmPinsEnabled` |
 | Dot size | 8 dp (10 dp until 2026-11-21) | `PlaceDotSize`, `PlacePins.kt` |
 | Pin ↔ dot change | instant, no animation | `GoogleMapView.android.kt` (`isDots`), Swift `setMarkers` |
 | Along-the-way pin color | soft violet `0xFF8A5AAB` | `AlongTheWayPinColor`, `PlacePins.kt` |

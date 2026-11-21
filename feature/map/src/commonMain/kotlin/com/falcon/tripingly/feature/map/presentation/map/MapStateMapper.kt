@@ -125,6 +125,7 @@ internal class MapStateMapper(
         placeFilter = model.placeFilterState(),
         arePlacesHidden = model.arePlacesHidden,
         routeAttribution = plan?.attribution?.takeIf { routePoints.isNotEmpty() },
+        isOsmCreditShown = config.osmPinsEnabled,
         sheet = sheet(),
         dialog = dialog(),
         message = model.message?.let { MessageState(it, canRetry = model.failedChanges.isNotEmpty()) },

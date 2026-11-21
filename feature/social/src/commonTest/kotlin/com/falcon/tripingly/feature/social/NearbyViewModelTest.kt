@@ -16,7 +16,9 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
+import com.falcon.tripingly.core.data.config.FakeAppConfigRepository
 import com.falcon.tripingly.core.data.places.FakePlaceRepository
+import com.falcon.tripingly.core.model.config.AppConfig
 import com.falcon.tripingly.feature.social.presentation.nearby.NearbyViewModel
 import com.falcon.tripingly.feature.social.presentation.nearby.NearbyViewModel.Action
 import com.falcon.tripingly.feature.social.presentation.nearby.NearbyViewModel.Event
@@ -25,7 +27,14 @@ import com.falcon.tripingly.feature.social.presentation.nearby.NearbyViewModel.S
 @OptIn(ExperimentalCoroutinesApi::class)
 class NearbyViewModelTest : SocialTestBase() {
 
-    private fun viewModel() = NearbyViewModel(social, FakePlaceRepository(), backend, backend, location)
+    private fun viewModel(config: AppConfig = AppConfig()) =
+        NearbyViewModel(social, FakePlaceRepository(), backend, backend, location, FakeAppConfigRepository(config))
+
+    @Test
+    fun `the OpenStreetMap credit shows unless the server leaves OpenStreetMap places out`() {
+        assertTrue(viewModel().uiState.value.isOsmCreditShown)
+        assertFalse(viewModel(AppConfig(osmPinsEnabled = false)).uiState.value.isOsmCreditShown)
+    }
 
     @Test
     fun nearby_asksFirst_thenSettingsWhenBlocked_andListsPlacesOnceAllowed() = runTest {

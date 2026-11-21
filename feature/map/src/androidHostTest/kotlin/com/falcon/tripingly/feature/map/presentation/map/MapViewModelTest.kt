@@ -2477,6 +2477,17 @@ class MapViewModelTest {
     }
 
     @Test
+    fun `the OpenStreetMap credit shows unless the server leaves OpenStreetMap places out`() = runTest(testDispatcher) {
+        val viewModel = viewModel()
+        testScheduler.advanceUntilIdle()
+        assertTrue(viewModel.uiState.value.isOsmCreditShown)
+
+        val withoutOsm = viewModel(config = AppConfig(osmPinsEnabled = false))
+        testScheduler.advanceUntilIdle()
+        assertFalse(withoutOsm.uiState.value.isOsmCreditShown)
+    }
+
+    @Test
     fun `picking kinds along a public transport route keeps the time it was asked for`() = runTest(testDispatcher) {
         addStops(GeoPoint(48.2085, 16.3731), GeoPoint(48.2104, 16.3655))
         routes.alongTheWayCounts = listOf(CategoryCount(PlaceCategory.Cafe, 2))

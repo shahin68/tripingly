@@ -405,6 +405,7 @@ internal fun MapScreen(
 
         BottomCards(
             routeAttribution = state.routeAttribution,
+            isOsmCreditShown = state.isOsmCreditShown,
             location = state.location,
             arePlacesHidden = state.arePlacesHidden,
             bearing = { bearing },
@@ -435,6 +436,7 @@ internal fun MapScreen(
             ) {
                 MapCredits(
                     routeAttribution = state.routeAttribution,
+                    isOsmCreditShown = state.isOsmCreditShown,
                     style = SmallCreditsStyle,
                     atEnd = true,
                     onOpenHeight = { creditsHeight = with(density) { it.toDp() } },
@@ -482,6 +484,7 @@ internal fun MapScreen(
                 (if (isWide) 0.dp else buttonsHeight) + MaterialTheme.spacing.small
             SearchResults(
                 results = lastResults.value,
+                isOsmCreditShown = state.isOsmCreditShown,
                 onAction = onAction,
                 maxHeight = (maxHeight - coveredTop - belowResults).coerceAtLeast(SearchResultsMinHeight),
                 modifier = Modifier.padding(horizontal = MaterialTheme.spacing.medium),

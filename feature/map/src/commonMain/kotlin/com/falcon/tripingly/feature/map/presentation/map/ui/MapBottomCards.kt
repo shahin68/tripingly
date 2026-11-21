@@ -102,6 +102,7 @@ import org.jetbrains.compose.resources.stringResource
 @Composable
 internal fun BottomCards(
     routeAttribution: String?,
+    isOsmCreditShown: Boolean,
     location: LocationState,
     arePlacesHidden: Boolean,
     /** Which way the map is turned, for the compass; read only while drawing. */
@@ -140,6 +141,7 @@ internal fun BottomCards(
                 Row(modifier = Modifier.weight(1f), verticalAlignment = Alignment.Bottom) {
                     MapCredits(
                         routeAttribution = routeAttribution,
+                        isOsmCreditShown = isOsmCreditShown,
                         onOpenHeight = { onCreditsHeight(it + gap) },
                         modifier = Modifier
                             .weight(1f, fill = false)
@@ -204,16 +206,22 @@ internal fun BottomCards(
  * ⓘ (Shahin, 2026-11-16, as OSM's guidelines allow on mobile): open when the map opens, whenever the credits change (a
  * route comes or goes) and on a tap on the ⓘ, each time for the time the system recommends for reading it (longer
  * with the accessibility setting for it). [atEnd]: the ⓘ sits at the end (landscape, at the map's top end).
- * [onOpenHeight]: the label's height open, which stays while it's folded.
+ * [onOpenHeight]: the label's height open, which stays while it's folded. Without [isOsmCreditShown] (the server lists
+ * no OpenStreetMap places) there is nothing to credit until a route shows.
  */
 @Composable
 internal fun MapCredits(
     routeAttribution: String?,
+    isOsmCreditShown: Boolean,
     modifier: Modifier = Modifier,
     style: TextStyle = MaterialTheme.typography.labelSmall,
     atEnd: Boolean = false,
     onOpenHeight: (Int) -> Unit = {},
 ) {
+    if (routeAttribution == null && !isOsmCreditShown) {
+        LaunchedEffect(Unit) { onOpenHeight(0) }
+        return
+    }
     var isOpen by remember { mutableStateOf(true) }
     LaunchedEffect(routeAttribution) { isOpen = true }
     val accessibility = LocalAccessibilityManager.current
@@ -346,8 +354,8 @@ private fun LocationOffNote(onTurnOn: () -> Unit) {
 private fun MapControlsPreviewContent() {
     Box(Modifier.fillMaxSize().padding(MaterialTheme.spacing.medium)) {
         Column(verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small)) {
-            MapCredits(routeAttribution = null)
-            MapCredits(routeAttribution = "© openrouteservice.org | © OpenStreetMap contributors")
+            MapCredits(routeAttribution = null, isOsmCreditShown = true)
+            MapCredits(routeAttribution = "© openrouteservice.org | © OpenStreetMap contributors", isOsmCreditShown = true)
         }
         Column(
             Modifier.align(Alignment.BottomEnd),

@@ -323,12 +323,13 @@ private fun SearchField(search: SearchState, onAction: (MapAction) -> Unit, modi
 
 /**
  * The search's results under the header: as tall as they are, at most [maxHeight], then they scroll; the credits for
- * OpenStreetMap and Photon stay under the list. While typing, results fade in and out and the list's height follows
+ * OpenStreetMap and Photon stay under the list (none while [isOsmCreditShown] is off: only users' places come). While typing, results fade in and out and the list's height follows
  * (Shahin, 2026-11-21: simple, no animation on the card itself). Shown only while there are results.
  */
 @Composable
 internal fun SearchResults(
     results: ImmutableList<SearchResultItem>,
+    isOsmCreditShown: Boolean,
     onAction: (MapAction) -> Unit,
     modifier: Modifier = Modifier,
     maxHeight: Dp = SearchResultsMaxHeight,
@@ -360,7 +361,9 @@ internal fun SearchResults(
                     )
                 }
             }
-            OsmAttribution(modifier = Modifier.padding(horizontal = MaterialTheme.spacing.medium, vertical = MaterialTheme.spacing.small))
+            if (isOsmCreditShown) {
+                OsmAttribution(modifier = Modifier.padding(horizontal = MaterialTheme.spacing.medium, vertical = MaterialTheme.spacing.small))
+            }
         }
     }
 }
@@ -385,7 +388,7 @@ private fun MapHeaderDarkPreview() {
         val preview = MapHeaderPreviewStates().values.last()
         Column(Modifier.background(MaterialTheme.colorScheme.surfaceContainerHigh)) {
             MapHeader(header = preview.header, search = null, onAction = {})
-            SearchResults(results = preview.search!!.results, onAction = {}, modifier = Modifier.padding(horizontal = MaterialTheme.spacing.medium))
+            SearchResults(results = preview.search!!.results, isOsmCreditShown = true, onAction = {}, modifier = Modifier.padding(horizontal = MaterialTheme.spacing.medium))
         }
     }
 }
@@ -395,7 +398,7 @@ private fun MapHeaderDarkPreview() {
 private fun SearchResultsPreview() {
     TripinglyTheme {
         Box(Modifier.background(MaterialTheme.colorScheme.surfaceContainerHigh).padding(MaterialTheme.spacing.medium)) {
-            SearchResults(results = MapHeaderPreviewStates().values.last().search!!.results, onAction = {})
+            SearchResults(results = MapHeaderPreviewStates().values.last().search!!.results, isOsmCreditShown = true, onAction = {})
         }
     }
 }

@@ -34,6 +34,8 @@ internal class DefaultAppConfigRepository(
                     photoPinMinHotCount = it.photoPinMinHotCount.toInt(),
                     mapMaxPhotoPins = it.mapMaxPhotoPins.toInt(),
                     pinDotBelowZoom = it.pinDotBelowZoom.toFloat(),
+                    // Optional, so a server from before the switch still sends a config the app reads.
+                    osmPinsEnabled = it.osmPinsEnabled ?: true,
                     transitAreas = it.transitAreas.map { area -> TransitArea(area.id, area.name, area.south, area.west, area.north, area.east) },
                 )
             }
