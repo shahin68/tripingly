@@ -21,8 +21,9 @@ import kotlinx.coroutines.launch
 
 /**
  * Around (Tripinly Pro, Shahin 2026-11-17): the places within a ring around the open pin, listed in the plan sheet and
- * purple on the map while the other places turn to dots. The ring's handle sets its size; chips pick kinds. One thing
- * at a time: Around closes the route and a route closes Around. Without Pro the paywall opens.
+ * purple and clear on the map while everything else dims, the map otherwise left as it was: a route stays on, so ✕ has
+ * nothing to bring back (Shahin, 2026-11-21). The ring's handle sets its size; chips pick kinds. A route coming on
+ * closes Around. Without Pro the paywall opens.
  */
 internal class MapAround(
     private val context: MapContext,
@@ -35,7 +36,10 @@ internal class MapAround(
 
     init {
         context.scope.launch {
-            context.model.map { it.route.isActive }.distinctUntilChanged().drop(1).collect { isActive -> if (isActive) dismiss() }
+            // A route coming on closes Around, also when another route was already on (Around leaves it as it is): the
+            // route's day line, start or ends changing while one shows.
+            context.model.map { Triple(it.route.isDayRouteShown, it.route.start, it.route.between) }.distinctUntilChanged().drop(1)
+                .collect { if (context.model.value.route.isActive) dismiss() }
         }
     }
 
@@ -58,10 +62,8 @@ internal class MapAround(
                     pinName = selectedPinName(),
                     radiusMeters = it.around?.radiusMeters ?: it.fittingRadius(),
                     categories = it.around?.categories.orEmpty(),
-                    routeBefore = it.around?.routeBefore ?: it.route,
                     wasFilterOpen = it.around?.wasFilterOpen ?: it.placeFilter.isOpen,
                 ),
-                route = it.route.copy(isDayRouteShown = false, start = null, startLabel = null, between = null, editing = null),
                 placeFilter = it.placeFilter.copy(isOpen = false),
                 selection = null,
                 sheet = it.sheet.takeUnless { sheet -> sheet is Sheet.Details },
@@ -71,13 +73,13 @@ internal class MapAround(
         showWholePlan()
     }
 
-    /** The ✕ of the Around box: the map goes back to what it showed before, a route as it was too (its plan is cached). */
+    /** The ✕ of the Around box: the map shows as before, untouched meanwhile but for the filter. */
     fun close() {
         loadJob?.cancel()
         asked = null
         context.update { model ->
             val around = model.around ?: return@update model
-            model.copy(around = null, route = around.routeBefore, placeFilter = model.placeFilter.copy(isOpen = around.wasFilterOpen))
+            model.copy(around = null, placeFilter = model.placeFilter.copy(isOpen = around.wasFilterOpen))
         }
     }
 
@@ -129,13 +131,9 @@ internal class MapAround(
                     is AppResult.Error -> {
                         asked = null
                         if (isNotPro) {
-                            // Not Pro after all (Pro ended): the ring closes without a route coming back, and as every
-                            // ask here follows a tap, the paywall opens (Shahin, 2026-11-21).
-                            model.copy(
-                                around = null,
-                                route = current.routeBefore.copy(isDayRouteShown = false, between = null),
-                                placeFilter = model.placeFilter.copy(isOpen = current.wasFilterOpen),
-                            )
+                            // Not Pro after all (Pro ended): the ring closes, and as every ask here follows a tap, the
+                            // paywall opens (Shahin, 2026-11-21).
+                            model.copy(around = null, placeFilter = model.placeFilter.copy(isOpen = current.wasFilterOpen))
                         } else {
                             // The last places stay; a note says the new ones didn't come. The same ask may be sent again.
                             model.copy(around = current.copy(isLoading = false), message = result.error.toUiText(Res.string.map_error_around))

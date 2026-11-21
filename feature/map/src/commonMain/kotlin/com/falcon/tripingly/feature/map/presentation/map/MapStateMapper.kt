@@ -56,8 +56,10 @@ import kotlin.math.cos
 import kotlin.math.sin
 import kotlin.math.sqrt
 import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.persistentSetOf
 import kotlinx.collections.immutable.toImmutableList
 import kotlinx.collections.immutable.toImmutableMap
+import kotlinx.collections.immutable.toImmutableSet
 
 /** Builds [MapUiState] from the trip and the screen's [MapModel], one part per thing on screen. */
 internal class MapStateMapper(
@@ -107,7 +109,8 @@ internal class MapStateMapper(
         // The field's spinner also turns while the places named so load on the map.
         search = model.search?.let { SearchState(it.query, it.results.map(::searchResultItem).distinctBy(SearchResultItem::key).toImmutableList(), it.isSearching || (model.placeFilter.name != null && model.placeFilter.isLoading)) },
         dayTabs = DayTabsState(days.map { day -> DayTab(day.id, day.position + 1, day.date?.let(DateUtils::formatAbbreviated), hasNew = day.markers.any { it.id in markedStopIds }, canDelete = canEdit && days.size > 1 && canDeleteDay(day.markers)) }.toImmutableList(), activeIndex),
-        plan = route.between?.let { PointRouteCardState(it.from, it.to, routeSummary(), it.fromLabel, it.toLabel) } ?: stopsCard(),
+        // While Around shows, its box is in the plan sheet; an A to B route's card comes back with ✕.
+        plan = route.between?.takeIf { model.around == null }?.let { PointRouteCardState(it.from, it.to, routeSummary(), it.fromLabel, it.toLabel) } ?: stopsCard(),
         routeBar = route.routeBar(),
         // The card stays open under a sheet, so closing the sheet comes back to it.
         placeCard = placeCard(),
@@ -178,8 +181,8 @@ internal class MapStateMapper(
         role == TripRole.OWNER || (canEdit && myUserId != null && markers.all { it.createdById == myUserId })
 
     private fun stopsCard(): StopsCardState? {
-        if (route.between != null) return null
         val around = model.aroundState(addToDayNumber = dayNumber?.takeIf { canEdit })
+        if (route.between != null && around == null) return null
         // A day without stops has no plan, except while Around shows: then the sheet holds just Around.
         if (stops.isEmpty() && around == null) return null
         val isRouteShown = route.isDayRouteShown && stops.size >= 2
@@ -190,7 +193,8 @@ internal class MapStateMapper(
             // A route needs two stops.
             isRouteOn = route.isDayRouteShown.takeIf { stops.size >= 2 },
             isRouteFailed = isRouteShown && route.isUnavailable && !route.isLoading,
-            route = routeSummary().takeIf { isRouteShown },
+            // Around's box takes the route card's place while it shows; the route itself stays on (Shahin, 2026-11-21).
+            route = routeSummary().takeIf { isRouteShown && around == null },
             legLabels = if (isRouteShown && isDayRoute) {
                 plan?.route?.legs.orEmpty().mapNotNull { leg -> leg.toMarkerId?.let { it to durationText(leg.durationSeconds) } }.toMap().toImmutableMap()
             } else {
@@ -292,11 +296,11 @@ internal class MapStateMapper(
         // The places along the way show on the map too, also where the map's own pins leave them out, in their own color.
         // While a route shows, the other pins are dots, so the route, its two ends, the stops and the places along it stand out.
         val routeShows = routePoints.size > 1
-        // Around a pin works the same way: its places in purple, the rest dots. The map's filter only leaves the places of the
+        // Around a pin: its places in purple, clear while the rest dims, the map otherwise as it was (Shahin, 2026-11-21). The map's filter only leaves the places of the
         // kinds picked, in their own colours: they are the map's pins, not found ones (Shahin, 2026-11-17).
         val aroundPlaces = model.around?.result?.places.orEmpty().map { it.place }
         val highlighted = alongIds + aroundPlaces.map { it.id }
-        val othersAreDots = routeShows || model.around != null
+        val othersAreDots = routeShows
         // Hidden places come first: only the route's places stay, and the pin Around is around, then the route makes the
         // rest dots as always.
         val isRoutes = { id: String -> id in highlighted || id in endPlaces || id in kept || id == model.around?.pinPlaceId }
@@ -375,7 +379,10 @@ internal class MapStateMapper(
             // Its results stand out, like Google Maps': everything else goes see-through (Shahin, 2026-11-19).
             isSearchShown = isNamed,
             selectedStopId = (model.selection as? Selection.Stop)?.markerId,
-            aroundPinId = model.around?.let { around -> stops.firstOrNull { it.position == Coordinates(around.center.lat, around.center.lng) }?.id ?: around.pinPlaceId },
+            aroundIds = model.around?.let { around ->
+                val center = Coordinates(around.center.lat, around.center.lng)
+                (aroundPlaces.map { it.id } + listOfNotNull(around.pinPlaceId) + stops.filter { it.position == center }.map { it.id }).toImmutableSet()
+            } ?: persistentSetOf(),
         )
     }
 

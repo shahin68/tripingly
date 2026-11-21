@@ -69,8 +69,27 @@ class PaywallViewModelTest {
             it.accept((it.legalDocuments("en") as AppResult.Success).data)
         }
 
-    private suspend fun viewModel(pro: ProRepository, account: FakeAccountBackend? = null) =
+    /** The paywall once it has slid in ([arrived]), when its plans load. */
+    private suspend fun viewModel(pro: ProRepository, account: FakeAccountBackend? = null, arrived: Boolean = true) =
         PaywallViewModel(proRepository = pro, accountRepository = account ?: signedIn(), languageTag = { "en" })
+            .also { if (arrived) it.onAction(Action.OnArrived) }
+
+    @Test
+    fun whileSlidingIn_nothingLoads_untilItHasArrived() = runTest {
+        val pro = fakePro(offers = AppResult.Success(listOf(monthly, yearly)))
+        val viewModel = viewModel(pro, arrived = false)
+        advanceUntilIdle()
+        assertTrue(viewModel.uiState.value.isLoadingOffers, "the skeleton shows")
+        assertTrue(viewModel.uiState.value.offers.isEmpty() && viewModel.uiState.value.legalDocuments.isEmpty())
+
+        viewModel.onAction(Action.OnArrived)
+        advanceUntilIdle()
+        assertEquals(listOf(monthly, yearly), viewModel.uiState.value.offers)
+
+        // Arriving again (a rotation) loads nothing more.
+        viewModel.onAction(Action.OnArrived)
+        assertFalse(viewModel.uiState.value.isLoadingOffers)
+    }
 
     @Test
     fun opening_showsTheOffers_withYearlyPicked() = runTest {
@@ -167,7 +186,7 @@ class PaywallViewModelTest {
             override suspend fun legalDocuments(locale: String): AppResult<List<LegalDocument>, DataError.Network> =
                 if (legalFails) AppResult.Error(DataError.Network.NoInternet) else account.legalDocuments(locale)
         }
-        val viewModel = PaywallViewModel(fakePro(offers = AppResult.Success(listOf(yearly))), legal, languageTag = { "en" })
+        val viewModel = PaywallViewModel(fakePro(offers = AppResult.Success(listOf(yearly))), legal, languageTag = { "en" }).also { it.onAction(Action.OnArrived) }
         advanceUntilIdle()
         assertTrue(viewModel.uiState.value.hasOffersFailed)
         assertTrue(viewModel.uiState.value.offers.isEmpty())

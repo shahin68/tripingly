@@ -28,6 +28,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -80,7 +81,6 @@ import com.falcon.tripingly.feature.paywall.generated.resources.paywall_yearly
 import com.falcon.tripingly.feature.paywall.generated.resources.paywall_yearly_price
 import com.falcon.tripingly.feature.paywall.presentation.PaywallViewModel.Action
 import com.falcon.tripingly.feature.paywall.presentation.PaywallViewModel.State
-import kotlinx.collections.immutable.persistentListOf
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel
@@ -91,15 +91,11 @@ fun PaywallRoute(
     viewModel: PaywallViewModel = koinViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
-    // While the screen slides in it shows the plans loading; what has loaded swaps in once it has arrived, so nothing
-    // lays out again mid-slide (Shahin, 2026-11-21: frames dropped as the plans came in during the slide).
+    // The plans load only once the screen has slid in, so nothing lays out again mid-slide (Shahin, 2026-11-21).
     val arrived = LocalScreenArrived.current
-    PaywallScreen(state = if (arrived) state else state.arriving(), onAction = viewModel::onAction, onBack = onBack)
+    LaunchedEffect(arrived) { if (arrived) viewModel.onAction(Action.OnArrived) }
+    PaywallScreen(state = state, onAction = viewModel::onAction, onBack = onBack)
 }
-
-/** The screen as it slides in: the plans loading, no links yet. */
-private fun State.arriving(): State =
-    copy(offers = persistentListOf(), isLoadingOffers = true, hasOffersFailed = false, legalDocuments = persistentListOf(), managementUrl = null)
 
 /** Tripinly Pro: what it adds, the offers to pick from (or that it's active), restore, and the fine print. */
 @Composable

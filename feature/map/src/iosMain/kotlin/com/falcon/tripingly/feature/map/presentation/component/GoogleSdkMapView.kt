@@ -78,8 +78,8 @@ internal fun GoogleSdkMapView(
     dimAlpha: Float,
     /** The stop whose card is open, clear while the rest is see-through. */
     selectedStopId: String?,
-    /** The stop or place Around is around, clear while the rest is see-through, like Around's places. */
-    aroundPinId: String?,
+    /** While Around shows: its places and the stop or place it is around, clear while the rest is see-through. */
+    aroundIds: Set<String>,
     onCameraMove: (Coordinates, Float, GeoBounds?) -> Unit,
     onCameraMoving: (GeoBounds, Float) -> Unit,
     onBearingChange: (Float) -> Unit,
@@ -384,7 +384,7 @@ internal fun GoogleSdkMapView(
     // Public transport: the rides' badges and their rings, one icon per look.
     val lineMarks = themedLine?.marks.orEmpty()
     val markIcons = remember(density) { mutableMapOf<LineMark, UIImage>() }
-    LaunchedEffect(markers, stopTitles, coverThumbs, pinPhotos, brandLogos, selectedPlace, placePins, placeClusters, pinIcons, clusterIcons, isDots, routeEnds, lineMarks, stopIcons, dimAlpha, selectedStopId, aroundPinId, aroundRing != null) {
+    LaunchedEffect(markers, stopTitles, coverThumbs, pinPhotos, brandLogos, selectedPlace, placePins, placeClusters, pinIcons, clusterIcons, isDots, routeEnds, lineMarks, stopIcons, dimAlpha, selectedStopId, aroundIds) {
         val stops = markers.mapIndexed { index, marker ->
             GoogleMapMarker(
                 key = marker.id,
@@ -408,7 +408,7 @@ internal fun GoogleSdkMapView(
                 // The stop's card shows instead.
                 showsInfoWindow = false,
                 fadesIn = false,
-                opacity = if (marker.id == selectedStopId || marker.id == aroundPinId) 1f else dimAlpha,
+                opacity = if (marker.id == selectedStopId || marker.id in aroundIds) 1f else dimAlpha,
             )
         }
         // The first pins (the most liked, then the best known) on top. A photo pin waits for its photo. The tapped
@@ -436,9 +436,9 @@ internal fun GoogleSdkMapView(
                 showsInfoWindow = false,
                 // Places along the way show at once with their route (Shahin, 2026-11-10).
                 fadesIn = !pin.isAlongTheWay,
-                // While the map is searched by name only its results and what Around shows stay clear; a dot is see-through
-                // while a route shows.
-                opacity = (if (pin.isClearWhileSearched(aroundPinId, aroundRing != null)) 1f else dimAlpha) * (if (pin.isDotAt(isDots)) pin.dotAlpha else 1f),
+                // While the map is searched by name or Around shows, only the results and Around's places stay clear; a dot
+                // is see-through while a route shows.
+                opacity = (if (pin.isClearWhileDimmed(aroundIds)) 1f else dimAlpha) * (if (pin.isDotAt(isDots)) pin.dotAlpha else 1f),
             )
         }
         val clusters = placeClusters.map { cluster ->

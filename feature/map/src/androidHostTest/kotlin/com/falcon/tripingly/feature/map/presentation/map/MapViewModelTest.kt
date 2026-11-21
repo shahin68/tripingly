@@ -84,7 +84,10 @@ import com.falcon.tripingly.feature.map.generated.resources.map_join_requested
 import com.falcon.tripingly.feature.map.generated.resources.map_route_my_location
 import com.falcon.tripingly.feature.map.generated.resources.map_trip_card_more
 import com.falcon.tripingly.feature.map.presentation.FakeTripMapViewRepository
-import com.falcon.tripingly.feature.map.presentation.component.isClearWhileSearched
+import com.falcon.tripingly.feature.map.presentation.component.isClearWhileDimmed
+import com.falcon.tripingly.feature.map.presentation.component.dimAlpha
+import com.falcon.tripingly.feature.map.presentation.component.stopAlpha
+import com.falcon.tripingly.feature.map.presentation.component.SearchDimAlpha
 import com.falcon.tripingly.feature.map.presentation.component.LineMark
 import com.falcon.tripingly.feature.map.presentation.component.CameraCommand
 import com.falcon.tripingly.feature.map.presentation.component.PinEnd
@@ -3105,13 +3108,23 @@ class MapViewModelTest {
     }
 
     @Test
-    fun `Around's places are purple and the other places dots`() = runTest(testDispatcher) {
+    fun `Around's places are purple and clear, the rest of the map dims as it is`() = runTest(testDispatcher) {
         val viewModel = openFirstStopCard()
         viewModel.onAction(MapAction.Around.Open)
         testScheduler.advanceUntilIdle()
-        val pins = viewModel.uiState.value.layers.placePins
+        val layers = viewModel.uiState.value.layers
+        val pins = layers.placePins
         assertEquals(listOf(true), pins.filter { it.place.name == "Eiffel Tower" }.map { it.isAlongTheWay }, "Eiffel purple")
-        assertTrue(pins.filter { it.place.name != "Eiffel Tower" }.all { it.isDot && !it.isAlongTheWay }, "others dots")
+        assertTrue(pins.filter { it.place.name != "Eiffel Tower" }.none { it.isDot || it.isAlongTheWay }, "others stay as they were")
+        // Around's places and its stop stay clear; everything else dims (Shahin, 2026-11-21).
+        assertEquals(SearchDimAlpha, layers.dimAlpha)
+        assertTrue(pins.single { it.place.name == "Eiffel Tower" }.isClearWhileDimmed(layers.aroundIds))
+        assertTrue(pins.filter { it.place.name != "Eiffel Tower" }.none { it.isClearWhileDimmed(layers.aroundIds) })
+        assertEquals(1f, layers.stopAlpha(layers.stops.first()), "the stop it is around")
+
+        viewModel.onAction(MapAction.Around.Close)
+        testScheduler.advanceUntilIdle()
+        assertEquals(1f, viewModel.uiState.value.layers.dimAlpha, "clear again")
     }
 
     @Test
@@ -3127,12 +3140,6 @@ class MapViewModelTest {
         assertEquals(4000, viewModel.uiState.value.layers.aroundRing?.radiusMeters)
         testScheduler.advanceUntilIdle()
         assertEquals(listOf("Eiffel Tower", "Louvre"), viewModel.uiState.value.stopsCard?.around?.places?.map { it.place.name })
-        // While the map is searched, Around's pin and places stay clear with the results (Shahin, 2026-11-21).
-        val layers = viewModel.uiState.value.layers
-        assertEquals(layers.stops.first().id, layers.aroundPinId)
-        val aroundPins = layers.placePins.filter { it.isAlongTheWay }
-        assertTrue(aroundPins.isNotEmpty() && aroundPins.all { it.isClearWhileSearched(layers.aroundPinId, isAroundShown = true) })
-        assertTrue(aroundPins.none { it.isClearWhileSearched(aroundPinId = null, isAroundShown = false) }, "without Around they dim")
         viewModel.onAction(MapAction.Around.ToggleCategory(PlaceCategory.Museum))
         testScheduler.advanceUntilIdle()
         assertEquals(listOf("Louvre"), viewModel.uiState.value.stopsCard?.around?.places?.map { it.place.name })
@@ -3160,17 +3167,25 @@ class MapViewModelTest {
     }
 
     @Test
-    fun `Around closes the route, and the route coming on closes Around`() = runTest(testDispatcher) {
+    fun `Around leaves the route on, and a route coming on closes Around`() = runTest(testDispatcher) {
         val viewModel = openFirstStopCard()
         viewModel.onAction(MapAction.Plan.ToggleRoute)
         testScheduler.advanceUntilIdle()
         assertEquals(true, viewModel.uiState.value.stopsCard?.isRouteOn, "route on")
 
+        // The route stays on, only its card gives way to Around's box (Shahin, 2026-11-21).
         viewModel.onAction(MapAction.Around.Open)
         testScheduler.advanceUntilIdle()
-        assertEquals(false, viewModel.uiState.value.stopsCard?.isRouteOn, "route off")
+        assertEquals(true, viewModel.uiState.value.stopsCard?.isRouteOn, "route still on")
+        assertNotNull(viewModel.uiState.value.layers.line, "its line stays")
+        assertNull(viewModel.uiState.value.stopsCard?.route, "Around's box in the route card's place")
         assertNotNull(viewModel.uiState.value.stopsCard?.around, "Around open")
 
+        // The route going off leaves Around open; a route coming on closes it.
+        viewModel.onAction(MapAction.Plan.ToggleRoute)
+        testScheduler.advanceUntilIdle()
+        assertEquals(false, viewModel.uiState.value.stopsCard?.isRouteOn, "route off")
+        assertNotNull(viewModel.uiState.value.stopsCard?.around, "Around still open")
         viewModel.onAction(MapAction.Plan.ToggleRoute)
         testScheduler.advanceUntilIdle()
         assertNull(viewModel.uiState.value.stopsCard?.around, "Around closed")
@@ -3178,18 +3193,39 @@ class MapViewModelTest {
     }
 
     @Test
-    fun `closing Around brings back what the map showed before, the route too`() = runTest(testDispatcher) {
+    fun `another route started while Around shows over the day's route closes Around`() = runTest(testDispatcher) {
         val viewModel = openFirstStopCard()
         viewModel.onAction(MapAction.Plan.ToggleRoute)
         testScheduler.advanceUntilIdle()
         viewModel.onAction(MapAction.Around.Open)
         testScheduler.advanceUntilIdle()
-        assertEquals(false, viewModel.uiState.value.stopsCard?.isRouteOn, "route off")
+        assertNotNull(viewModel.uiState.value.layers.aroundRing)
+
+        // Route from a place on the map: the day's route was already on, Around still goes.
+        viewModel.onAction(MapAction.MapView.PlacePinClick(viewModel.pin("Louvre")))
+        restOnTarget(viewModel)
+        viewModel.onAction(MapAction.PinRoute.Route)
+        testScheduler.advanceUntilIdle()
+        assertNull(viewModel.uiState.value.layers.aroundRing, "Around closed")
+    }
+
+    @Test
+    fun `closing Around shows the map as before, the route and its card too`() = runTest(testDispatcher) {
+        val viewModel = openFirstStopCard()
+        viewModel.onAction(MapAction.Plan.ToggleRoute)
+        testScheduler.advanceUntilIdle()
+        val routeCard = viewModel.uiState.value.stopsCard?.route
+        assertNotNull(routeCard)
+        val requests = routes.categoryRequests.size
+        viewModel.onAction(MapAction.Around.Open)
+        testScheduler.advanceUntilIdle()
 
         viewModel.onAction(MapAction.Around.Close)
         testScheduler.advanceUntilIdle()
         assertNull(viewModel.uiState.value.stopsCard?.around, "Around closed")
-        assertEquals(true, viewModel.uiState.value.stopsCard?.isRouteOn, "route back")
+        assertEquals(true, viewModel.uiState.value.stopsCard?.isRouteOn, "route on")
+        assertEquals(routeCard, viewModel.uiState.value.stopsCard?.route, "its card as it was")
+        assertEquals(requests, routes.categoryRequests.size, "the route never asked for again")
 
         // Opened on a map without a route, ✕ leaves it without one.
         viewModel.onAction(MapAction.Plan.ToggleRoute)
@@ -3216,7 +3252,8 @@ class MapViewModelTest {
         val louvre = viewModel.uiState.value.layers.placePins.single { it.place.name == "Louvre" }
         assertFalse(louvre.isDot || louvre.isAlongTheWay)
         assertTrue(louvre.isKept, "on top of the places Around found")
-        assertTrue(viewModel.uiState.value.layers.placePins.single { it.place.name == "Eiffel Tower" }.isDot)
+        assertFalse(viewModel.uiState.value.layers.placePins.single { it.place.name == "Eiffel Tower" }.isDot, "the map stays as it was, dimmed")
+        assertTrue(louvre.isClearWhileDimmed(viewModel.uiState.value.layers.aroundIds), "the place it is around stays clear")
 
         // Places hidden, the pin Around is around stays with the places it found.
         viewModel.onAction(MapAction.Days.TogglePlaces)

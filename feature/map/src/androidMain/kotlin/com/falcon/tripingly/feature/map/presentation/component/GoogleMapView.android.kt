@@ -408,8 +408,8 @@ actual fun GoogleMapView(
                         dotIcon = pinIcon(dotLook),
                         isShown = isShown,
                         isDot = pin.isDotAt(isDots),
-                        // While the map is searched by name only its results and what Around shows stay clear.
-                        alpha = if (pin.isClearWhileSearched(layers.aroundPinId, layers.aroundRing != null)) 1f else dimAlpha,
+                        // While the map is searched by name or Around shows, only the results and Around's places stay clear.
+                        alpha = if (pin.isClearWhileDimmed(layers.aroundIds)) 1f else dimAlpha,
                         onClick = onPinClick,
                     )
                 }

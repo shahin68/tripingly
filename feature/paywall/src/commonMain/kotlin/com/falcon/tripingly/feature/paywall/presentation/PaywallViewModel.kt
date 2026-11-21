@@ -42,25 +42,41 @@ class PaywallViewModel(
     private val languageTag: () -> String,
 ) : ViewModel() {
 
-    private val _uiState = MutableStateFlow(State(isAvailable = proRepository.isAvailable, hasPro = proRepository.isPro.value))
+    // Pro is read at once; the plans show as loading until the screen has slid in (see Action.OnArrived).
+    private val _uiState = MutableStateFlow(
+        State(isAvailable = proRepository.isAvailable, hasPro = proRepository.isPro.value, isLoadingOffers = proRepository.isAvailable),
+    )
     val uiState: StateFlow<State> = _uiState.asStateFlow()
 
     init {
         viewModelScope.launch {
             proRepository.isPro.collect { hasPro ->
                 _uiState.update { it.copy(hasPro = hasPro) }
-                if (hasPro) loadManagementUrl()
+                if (hasPro && hasArrived) loadManagementUrl()
             }
         }
+    }
+
+    private var hasArrived = false
+
+    /**
+     * The screen has slid in: only now the plans and the links load (remote data, fresh on every open), so nothing lays
+     * out again mid-slide (Shahin, 2026-11-21). Once per screen, also across a rotation.
+     */
+    private fun onArrived() {
+        if (hasArrived) return
+        hasArrived = true
         if (proRepository.isAvailable) {
             loadOffers()
         } else {
             viewModelScope.launch { _uiState.update { it.copy(legalDocuments = legalDocuments().toImmutableList()) } }
         }
+        if (_uiState.value.hasPro) loadManagementUrl()
     }
 
     fun onAction(action: Action) {
         when (action) {
+            Action.OnArrived -> onArrived()
             is Action.OnSelectOffer -> _uiState.update { it.copy(selectedOfferId = action.offerId) }
             Action.OnBuy -> buy()
             Action.OnRestore -> restore()
@@ -158,6 +174,8 @@ class PaywallViewModel(
     }
 
     sealed interface Action {
+        /** The screen has finished sliding in. */
+        data object OnArrived : Action
         data class OnSelectOffer(val offerId: String) : Action
         data object OnBuy : Action
         data object OnRestore : Action

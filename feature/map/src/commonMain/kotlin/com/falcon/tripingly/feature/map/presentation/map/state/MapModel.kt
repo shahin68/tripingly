@@ -124,8 +124,6 @@ internal data class AroundModel(
     val categories: Set<PlaceCategory> = emptySet(),
     val result: PlacesAround? = null,
     val isLoading: Boolean = false,
-    /** The route as it was when Around opened (off, the day's, A to B, by transit …): ✕ brings it back (Shahin, 2026-11-17). */
-    val routeBefore: RouteModel = RouteModel(),
     /** Whether the map's filter was open when Around opened: ✕ opens it again. */
     val wasFilterOpen: Boolean = false,
 )
