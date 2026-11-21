@@ -7,12 +7,16 @@ import com.falcon.tripingly.core.designsystem.component.verticalFadingEdge
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.scaleOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.togetherWith
+import androidx.compose.animation.SizeTransform
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.animation.expandHorizontally
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.Crossfade
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -180,7 +184,16 @@ internal fun MapHeader(
                 // 2026-11-21). Without a ⋮, the ✕ comes and goes with the search.
                 if (actions.isNotEmpty()) {
                     GlassButtonDivider()
-                    Crossfade(targetState = search != null, animationSpec = tween(SEARCH_MOTION_MILLIS)) { isSearching ->
+                    AnimatedContent(
+                        targetState = search != null,
+                        transitionSpec = {
+                            (scaleIn(tween(ICON_SWAP_MILLIS), initialScale = 0.6f) + fadeIn(tween(ICON_SWAP_MILLIS))) togetherWith
+                                (scaleOut(tween(ICON_SWAP_MILLIS), targetScale = 0.6f) + fadeOut(tween(ICON_SWAP_MILLIS))) using
+                                SizeTransform(clip = false)
+                        },
+                        contentAlignment = Alignment.Center,
+                        label = "menu or close",
+                    ) { isSearching ->
                         if (isSearching) CloseSearchButton(onAction) else TripMenuButton(actions)
                     }
                 } else {
@@ -214,6 +227,9 @@ internal fun MapHeader(
 
 /** How long the search pill takes to grow over the header or shrink back. */
 private const val SEARCH_MOTION_MILLIS = 300
+
+/** ⋮ and ✕ swapping: a quick scale, once per open or close. */
+private const val ICON_SWAP_MILLIS = 150
 
 /**
  * The trip's ⋮ menu: the members first (with the requests to join as a badge), then a viewer's save, join, owner and
