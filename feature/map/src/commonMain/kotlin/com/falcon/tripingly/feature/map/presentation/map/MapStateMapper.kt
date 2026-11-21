@@ -375,6 +375,7 @@ internal class MapStateMapper(
             // Its results stand out, like Google Maps': everything else goes see-through (Shahin, 2026-11-19).
             isSearchShown = isNamed,
             selectedStopId = (model.selection as? Selection.Stop)?.markerId,
+            aroundPinId = model.around?.let { around -> stops.firstOrNull { it.position == Coordinates(around.center.lat, around.center.lng) }?.id ?: around.pinPlaceId },
         )
     }
 

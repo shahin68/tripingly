@@ -84,6 +84,7 @@ import com.falcon.tripingly.feature.map.generated.resources.map_join_requested
 import com.falcon.tripingly.feature.map.generated.resources.map_route_my_location
 import com.falcon.tripingly.feature.map.generated.resources.map_trip_card_more
 import com.falcon.tripingly.feature.map.presentation.FakeTripMapViewRepository
+import com.falcon.tripingly.feature.map.presentation.component.isClearWhileSearched
 import com.falcon.tripingly.feature.map.presentation.component.LineMark
 import com.falcon.tripingly.feature.map.presentation.component.CameraCommand
 import com.falcon.tripingly.feature.map.presentation.component.PinEnd
@@ -3123,6 +3124,12 @@ class MapViewModelTest {
         assertEquals(4000, viewModel.uiState.value.layers.aroundRing?.radiusMeters)
         testScheduler.advanceUntilIdle()
         assertEquals(listOf("Eiffel Tower", "Louvre"), viewModel.uiState.value.stopsCard?.around?.places?.map { it.place.name })
+        // While the map is searched, Around's pin and places stay clear with the results (Shahin, 2026-11-21).
+        val layers = viewModel.uiState.value.layers
+        assertEquals(layers.stops.first().id, layers.aroundPinId)
+        val aroundPins = layers.placePins.filter { it.isAlongTheWay }
+        assertTrue(aroundPins.isNotEmpty() && aroundPins.all { it.isClearWhileSearched(layers.aroundPinId, isAroundShown = true) })
+        assertTrue(aroundPins.none { it.isClearWhileSearched(aroundPinId = null, isAroundShown = false) }, "without Around they dim")
         viewModel.onAction(MapAction.Around.ToggleCategory(PlaceCategory.Museum))
         testScheduler.advanceUntilIdle()
         assertEquals(listOf("Louvre"), viewModel.uiState.value.stopsCard?.around?.places?.map { it.place.name })
