@@ -51,6 +51,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.falcon.tripingly.core.designsystem.generated.resources.Res
 import com.falcon.tripingly.core.designsystem.generated.resources.like
@@ -61,7 +62,7 @@ import org.jetbrains.compose.resources.stringResource
 
 /**
  * The one invitation a screen pushes (Ask to join on someone's trip): a rounded pill, black in light and white in dark
- * (Shahin, 2026-11-19), with a thin glassy edge, as high as the map's glass buttons ([GlassButtonDefaults.Size]). Its icon
+ * (Shahin, 2026-11-19), with a thin glassy edge, [height] high (the map's glass buttons by default). Its icon
  * sits as far from the start as from the top and bottom; the label ends as far from the end (Shahin, 2026-11-19).
  * A new [text] and [icon] (asked: "Request sent") play in: the icon pops in with a little spin, the label rises, and the
  * pill's width glides to fit. Without [onClick] it only shows its state. [isLoading]: a small spinner takes the icon's
@@ -79,13 +80,14 @@ fun InviteButton(
     isLoading: Boolean = false,
     liked: Boolean? = null,
     onToggleLike: () -> Unit = {},
+    height: Dp = GlassButtonDefaults.Size,
 ) {
     val colors = MaterialTheme.extendedColors
-    val inset = (GlassButtonDefaults.Size - IconSize) / 2
+    val inset = (height - IconSize) / 2
     val edge = colors.inviteEdge
     Row(
         modifier = modifier
-            .height(GlassButtonDefaults.Size)
+            .height(height)
             .clip(CircleShape)
             .background(colors.invite)
             .border(EdgeWidth, Brush.verticalGradient(listOf(edge, edge.copy(alpha = edge.alpha * EDGE_FADE))), CircleShape)
@@ -94,7 +96,7 @@ fun InviteButton(
     ) {
         CompositionLocalProvider(LocalContentColor provides colors.onInvite) {
             if (liked != null) {
-                InviteHeart(liked, onToggleLike)
+                InviteHeart(liked, onToggleLike, height)
                 Box(Modifier.size(width = DividerWidth, height = DividerHeight).background(colors.inviteDivider))
             }
             Row(
@@ -102,7 +104,7 @@ fun InviteButton(
                     .fillMaxHeight()
                     .then(if (onClick != null) Modifier.clickable(role = Role.Button, onClick = onClick) else Modifier)
                     // After the heart, as far from the line as the heart is.
-                    .padding(start = if (liked != null) HeartInset else inset, end = inset + MaterialTheme.spacing.extraSmall),
+                    .padding(start = if (liked != null) (height - HeartSize) / 2 else inset, end = inset + MaterialTheme.spacing.extraSmall),
                 horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
@@ -136,14 +138,14 @@ fun InviteButton(
     }
 }
 
-/** The pill's heart: a square as high as the pill, the heart in its middle, as far from every side. */
+/** The pill's heart: a square as high as the pill ([size]), the heart in its middle, as far from every side. */
 @Composable
-private fun InviteHeart(liked: Boolean, onToggle: () -> Unit) {
+private fun InviteHeart(liked: Boolean, onToggle: () -> Unit, size: Dp) {
     var burst by remember { mutableIntStateOf(0) }
     val haptics = rememberHaptics()
     Box(
         modifier = Modifier
-            .size(GlassButtonDefaults.Size)
+            .size(size)
             .toggleable(
                 value = liked,
                 role = Role.Checkbox,
@@ -166,9 +168,6 @@ private fun InviteHeart(liked: Boolean, onToggle: () -> Unit) {
 }
 
 private val HeartSize = 24.dp
-
-/** The heart's gap to the pill's start, top, bottom and the line. */
-private val HeartInset = (GlassButtonDefaults.Size - HeartSize) / 2
 
 /** The line between the heart and the invitation. */
 private val DividerWidth = 1.dp

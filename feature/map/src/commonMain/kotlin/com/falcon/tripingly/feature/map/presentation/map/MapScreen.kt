@@ -87,6 +87,7 @@ import com.falcon.tripingly.feature.map.presentation.map.preview.MapScreenPrevie
 import com.falcon.tripingly.feature.map.presentation.map.ui.BottomCards
 import com.falcon.tripingly.feature.map.presentation.map.ui.JoinRequestsPill
 import com.falcon.tripingly.feature.map.presentation.map.ui.PlaceFilterPill
+import com.falcon.tripingly.feature.map.presentation.map.ui.ViewerJoinPill
 import com.falcon.tripingly.feature.map.presentation.component.isSplitScreen
 import com.falcon.tripingly.feature.map.presentation.map.ui.MapButtons
 import com.falcon.tripingly.feature.map.presentation.map.ui.MapCredits
@@ -355,6 +356,27 @@ internal fun MapScreen(
                             )
                         }
                     }
+                    // Someone else's trip: the heart and Ask to join in the same place, coming and going the same way,
+                    // keeping its last look while it goes (accepted or declined) (Shahin, 2026-11-21).
+                    val joinButton = state.header.viewerMenu?.joinButton
+                    var shownViewerMenu by remember { mutableStateOf(state.header.viewerMenu) }
+                    if (joinButton != null) shownViewerMenu = state.header.viewerMenu
+                    androidx.compose.animation.AnimatedVisibility(
+                        visible = joinButton != null && !isRouteBarShown,
+                        enter = expandHorizontally(expandFrom = Alignment.Start, clip = false) + scaleIn() + fadeIn(),
+                        exit = shrinkHorizontally(shrinkTowards = Alignment.Start, clip = false) + scaleOut() + fadeOut(),
+                    ) {
+                        shownViewerMenu?.let { menu ->
+                            menu.joinButton?.let {
+                                ViewerJoinPill(
+                                    joinButton = it,
+                                    isLikedByMe = menu.isLikedByMe,
+                                    onAction = onAction,
+                                    modifier = Modifier.padding(end = MaterialTheme.spacing.small),
+                                )
+                            }
+                        }
+                    }
                     // The row's weight is the most it may grow; closed it is only its circle, at the end. It scales away and
                     // back where it stands, never gliding in from the side (Shahin, 2026-11-19).
                     val filter = state.placeFilter.takeUnless { isRouteBarShown }
@@ -369,9 +391,6 @@ internal fun MapScreen(
             }
         }
 
-
-        // Someone else's trip: the heart and Ask to join by the map buttons, then the request sent until the owner decides.
-        val viewerMenu = state.header.viewerMenu
 
         // Retry sends every stop change that failed for a connection problem, earlier ones too.
         val message = state.message
@@ -388,7 +407,6 @@ internal fun MapScreen(
             location = state.location,
             arePlacesHidden = state.arePlacesHidden,
             bearing = { bearing },
-            viewerMenu = viewerMenu,
             dayTabs = state.dayTabs,
             plan = plan,
             isDayRouteOn = isDayRouteOn,
@@ -421,7 +439,7 @@ internal fun MapScreen(
                     onOpenHeight = { creditsHeight = with(density) { it.toDp() } },
                     modifier = Modifier.align(Alignment.TopEnd),
                 )
-                MapButtons(state.location, state.arePlacesHidden, { bearing }, viewerMenu, onAction, Modifier.align(Alignment.BottomEnd))
+                MapButtons(state.location, state.arePlacesHidden, { bearing }, onAction, Modifier.align(Alignment.BottomEnd))
             }
         }
 
