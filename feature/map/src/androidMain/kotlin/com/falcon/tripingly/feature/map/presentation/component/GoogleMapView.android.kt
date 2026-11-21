@@ -678,8 +678,12 @@ private fun PlacePinMarkers(
     val position = LatLng(pin.place.location.lat, pin.place.location.lng)
     // Under the clusters and the stops. Taken from the place, not from its place in the list, so a pin's z-order stays the
     // same when pins come and go: changing it makes pins vanish for a frame. A route's end and the places tapped while
-    // routing on top of the other places.
-    val zIndex = if (pin.isKept) KEPT_PINS_Z else PLACE_PINS_Z * pinRank(pin.place)
+    // routing on top of the other places; the places searched for over everything but the tapped place.
+    val zIndex = when {
+        pin.isSearchResult -> SEARCH_RESULT_Z
+        pin.isKept -> KEPT_PINS_Z
+        else -> PLACE_PINS_Z * pinRank(pin.place)
+    }
     val onMarkerClick = remember(pin, onClick) { { _: GmsMarker -> onClick(pin) } }
     key(look) {
         Marker(
@@ -760,6 +764,12 @@ private const val PLACE_PINS_Z = 0.5f
 
 /** A route's ends and the places kept while routing: over the other places, under the stops. */
 private const val KEPT_PINS_Z = 0.75f
+
+/**
+ * The places the map was searched for: over the stops (1), the line's badges and the route's ends, under the tapped place
+ * (2), so nothing covers a result (Shahin, 2026-11-21).
+ */
+private const val SEARCH_RESULT_Z = 1.5f
 
 /** A route end's halo: over the other places, under its own pin (kept places and stops). */
 private const val ROUTE_END_Z = 0.7f

@@ -425,7 +425,12 @@ internal fun GoogleSdkMapView(
                 anchorX = 0.5,
                 anchorY = 0.5,
                 // A route's end and the places tapped while routing on top of the other places.
-                zIndex = if (pin.isKept) KEPT_PIN_Z else -1 - index,
+                // The places searched for over everything but the tapped place, so nothing covers a result.
+                zIndex = when {
+                    pin.isSearchResult -> SEARCH_RESULT_Z
+                    pin.isKept -> KEPT_PIN_Z
+                    else -> -1 - index
+                },
                 showsInfoWindow = false,
                 // Places along the way show at once with their route (Shahin, 2026-11-10).
                 fadesIn = !pin.isAlongTheWay,
@@ -471,7 +476,8 @@ internal fun GoogleSdkMapView(
                 ),
                 anchorX = 0.5,
                 anchorY = 0.5,
-                zIndex = 2,
+                // Over everything, the places searched for too.
+                zIndex = 3,
                 showsInfoWindow = false,
                 fadesIn = false,
             )
@@ -573,6 +579,9 @@ private const val ROUTE_END_Z = 0
 
 /** A route's ends and the places kept while routing: over the other places (and the flag), with the stops. */
 private const val KEPT_PIN_Z = 1
+
+/** The places the map was searched for: over the stops (1), under the tapped place (3). */
+private const val SEARCH_RESULT_Z = 2
 private const val PLACE_KEY = "place:"
 private const val CLUSTER_KEY = "cluster:"
 
