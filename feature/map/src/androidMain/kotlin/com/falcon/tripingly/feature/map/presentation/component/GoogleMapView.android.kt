@@ -642,9 +642,18 @@ private fun MapLineView(line: MapLine, alpha: Float) {
         }
     }
 
-    // Once, like a progress bar; then nothing moves.
-    val sweep = remember(line) { Animatable(0f) }
-    LaunchedEffect(line) { sweep.animateTo(1f, tween(MAP_LINE_SWEEP_MILLIS, easing = LinearEasing)) }
+    LineStreak(points, width)
+}
+
+/**
+ * A streak running once along [points], like a progress bar; then nothing moves. Its own composable, so each frame of
+ * the run redraws only the streak, not every ride, badge and arrow of the line (Shahin's recording, 2026-11-21).
+ */
+@Composable
+@GoogleMapComposable
+private fun LineStreak(points: List<LatLng>, width: Float) {
+    val sweep = remember(points) { Animatable(0f) }
+    LaunchedEffect(points) { sweep.animateTo(1f, tween(MAP_LINE_SWEEP_MILLIS, easing = LinearEasing)) }
     val streak = sweepOf(points, sweep.value)
     if (streak.size > 1) {
         Polyline(

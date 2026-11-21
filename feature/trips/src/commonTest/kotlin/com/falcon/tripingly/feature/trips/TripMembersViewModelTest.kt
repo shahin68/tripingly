@@ -150,6 +150,49 @@ class TripMembersViewModelTest {
     }
 
     @Test
+    fun addRemoveAddQuickly_endsAsTheLastTap_withoutAnError() = runTest {
+        val tripId = newTrip()
+        val viewModel = viewModel(tripId)
+        advanceUntilIdle()
+        val anna = viewModel.uiState.value.friends!!.first()
+
+        // Shahin's recording: removing from the ⋮ menu right after adding crossed the add and failed.
+        viewModel.onAction(Action.AddPerson(anna))
+        runCurrent()
+        viewModel.onAction(Action.RemoveMember(anna))
+        runCurrent()
+        assertEquals(1, viewModel.uiState.value.members.size)
+        assertNull(viewModel.uiState.value.added)
+        viewModel.onAction(Action.AddPerson(anna))
+        advanceUntilIdle()
+
+        val state = viewModel.uiState.value
+        assertEquals(listOf("anna"), state.members.drop(1).map { it.user.username })
+        assertEquals(listOf("anna"), backend.observeTrip(tripId).first()!!.members.drop(1).map { it.user.username })
+        assertNull(state.message)
+    }
+
+    @Test
+    fun removingSomeoneJustAdded_takesAwayTheirUndo() = runTest {
+        val tripId = newTrip()
+        val viewModel = viewModel(tripId)
+        advanceUntilIdle()
+        val anna = viewModel.uiState.value.friends!!.first()
+        viewModel.onAction(Action.AddPerson(anna))
+        advanceUntilIdle()
+        assertEquals(anna, viewModel.uiState.value.added)
+
+        viewModel.onAction(Action.RemoveMember(anna))
+        advanceUntilIdle()
+
+        val state = viewModel.uiState.value
+        assertNull(state.added)
+        assertEquals(1, state.members.size)
+        assertEquals(1, backend.observeTrip(tripId).first()!!.members.size)
+        assertNull(state.message)
+    }
+
+    @Test
     fun anAddTheServerRefuses_leavesTheList_andSaysSo() = runTest {
         val viewModel = viewModel(newTrip())
         advanceUntilIdle()

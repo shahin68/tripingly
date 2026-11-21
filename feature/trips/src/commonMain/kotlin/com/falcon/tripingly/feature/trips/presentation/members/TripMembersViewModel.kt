@@ -29,7 +29,9 @@ import com.falcon.tripingly.feature.trips.generated.resources.members_error_sear
 import kotlin.time.Duration.Companion.milliseconds
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.ImmutableSet
+import kotlinx.collections.immutable.PersistentMap
 import kotlinx.collections.immutable.persistentListOf
+import kotlinx.collections.immutable.persistentMapOf
 import kotlinx.collections.immutable.persistentSetOf
 import kotlinx.collections.immutable.toImmutableList
 import kotlinx.collections.immutable.toImmutableSet
@@ -46,7 +48,6 @@ import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import org.jetbrains.compose.resources.StringResource
 import kotlin.time.Clock
 
 /**
@@ -66,12 +67,10 @@ class TripMembersViewModel(
     private val ui = MutableStateFlow(Ui())
 
     val uiState: StateFlow<State> = combine(tripRepository.observeTrip(tripId), ui) { details, ui ->
-        val undone = ui.undone
-        val saved = details?.members.orEmpty().filterNot { it.user.username in undone }
+        // As the latest tap wants them while the server catches up: one row per person however fast the taps come.
+        val saved = details?.members.orEmpty().filter { ui.wanted[it.user.username]?.isOnTrip != false }
         val savedNames = saved.mapTo(HashSet()) { it.user.username }
-        // One row per person: a quick add, Undo, add again must never list anyone twice (it crashed the list's keys).
-        val members = (saved + ui.adding.filterNot { it.username in savedNames || it.username in undone }.map { TripMember(it, TripRole.EDITOR) })
-            .distinctBy { it.user.username }
+        val members = saved + ui.wanted.values.filter { it.isOnTrip && it.user.username !in savedNames }.map { TripMember(it.user, TripRole.EDITOR) }
         val onTrip = members.mapTo(HashSet()) { it.user.username }
         val asking = ui.requests.requests.mapTo(HashSet()) { it.user.username }
         State(
@@ -106,11 +105,18 @@ class TripMembersViewModel(
                 ui.value = Ui()
                 load()
             }
-            is Action.RemoveMember -> remove(action.user, Res.string.members_error_remove)
+            is Action.RemoveMember -> {
+                // The banner can't keep offering Undo for someone who is gone.
+                ui.update { it.copy(added = it.added?.takeUnless { added -> added.username == action.user.username }) }
+                want(action.user, isOnTrip = false)
+            }
             Action.DismissMessage -> ui.update { it.copy(message = null) }
             Action.DismissAdded -> ui.update { it.copy(added = null) }
             is Action.AddPerson -> add(action.user)
-            is Action.Undo -> undo(action.user)
+            is Action.Undo -> {
+                ui.update { it.copy(added = null) }
+                want(action.user, isOnTrip = false)
+            }
             is Action.JoinRequests -> when (action) {
                 is Action.JoinRequests.Accept -> answerJoinRequest(action.request.id, isAccept = true) { tripRepository.acceptJoinRequest(tripId, it) }
                 is Action.JoinRequests.Decline -> answerJoinRequest(action.request.id, isAccept = false) { tripRepository.declineJoinRequest(tripId, it) }
@@ -157,67 +163,72 @@ class TripMembersViewModel(
         }
     }
 
-    /**
-     * A friend tapped or a person found: on the trip at once, with Undo in the banner (the optimistic rule). The server
-     * answer only matters when it fails: then they leave the list again and the banner says why. Undo during the call
-     * removes them once it's done.
-     */
+    /** A friend tapped or a person found: on the trip at once, with Undo in the banner (the optimistic rule). */
     private fun add(user: UserSummary) {
         val state = uiState.value
         if (user.username in state.onTrip || user.username in state.asking) return
-        ui.update { it.copy(adding = (it.adding.filterNot { added -> added.username == user.username } + user).toImmutableList(), undone = (it.undone - user.username).toImmutableSet(), added = user, message = null) }
-        viewModelScope.launch {
-            val result = tripRepository.addMember(tripId, user.username)
-            if (result is AppResult.Success) awaitCache(user, isMember = true)
-            val wasUndone = user.username in ui.value.undone
-            ui.update { state ->
-                state.copy(
-                    adding = state.adding.filterNot { it.username == user.username }.toImmutableList(),
-                    added = if (result is AppResult.Error && state.added?.username == user.username) null else state.added,
-                    message = (result as? AppResult.Error)?.error?.toUiText(Res.string.members_error_add) ?: state.message,
-                )
+        ui.update { it.copy(added = user, message = null) }
+        want(user, isOnTrip = true)
+    }
+
+    /** Running [sync]s, by username. */
+    private val syncing = mutableMapOf<String, Job>()
+
+    /**
+     * Shows [user] on or off the trip at once and brings the server along. The latest tap wins: one [sync] per person
+     * calls the server one step at a time, so quick add, Undo and remove taps never cross on the way (Shahin's recording,
+     * 2026-11-21: a remove crossed an earlier one and failed).
+     */
+    private fun want(user: UserSummary, isOnTrip: Boolean) {
+        ui.update { it.copy(wanted = it.wanted.put(user.username, Wanted(user, isOnTrip))) }
+        if (syncing[user.username]?.isActive == true) return
+        syncing[user.username] = viewModelScope.launch { sync(user.username) }
+    }
+
+    /**
+     * Calls the server until the cached trip has [username] as the latest tap wants, then hands the list back to the
+     * cache. A call the server refuses shows the person as saved again, with the banner saying why.
+     */
+    private suspend fun sync(username: String) {
+        while (true) {
+            val wanted = ui.value.wanted[username] ?: return
+            val saved = tripRepository.observeTrip(tripId).first()?.members.orEmpty().firstOrNull { it.user.username == username }
+            if ((saved != null) == wanted.isOnTrip) {
+                // Done, unless a newer tap came in meanwhile.
+                if (ui.value.wanted[username] == wanted) return ui.update { it.copy(wanted = it.wanted.remove(username)) }
+                continue
             }
-            if (result is AppResult.Success && wasUndone) removeSaved(user, Res.string.members_error_remove)
-        }
-    }
-
-    /** Undo of an add: gone from the list at once; removed on the server once the add has landed. */
-    private fun undo(user: UserSummary) {
-        val isStillAdding = ui.value.adding.any { it.username == user.username }
-        ui.update { it.copy(undone = (it.undone + user.username).toImmutableSet(), added = null) }
-        if (!isStillAdding) viewModelScope.launch { removeSaved(user, Res.string.members_error_remove) }
-    }
-
-    /** An editor removed from the ⋮ menu: gone at once, back with the banner if the server refuses. */
-    private fun remove(user: UserSummary, failed: StringResource) {
-        ui.update { it.copy(undone = (it.undone + user.username).toImmutableSet()) }
-        viewModelScope.launch { removeSaved(user, failed) }
-    }
-
-    /** Removes [user] as the cache knows them (the server's member id) and forgets the local hiding once it's done. */
-    private suspend fun removeSaved(user: UserSummary, failed: StringResource) {
-        val saved = tripRepository.observeTrip(tripId).first()?.members.orEmpty().firstOrNull { it.user.username == user.username }
-        val result = if (saved == null) null else tripRepository.removeMember(tripId, saved.user.id)
-        if (result is AppResult.Success) awaitCache(user, isMember = false)
-        ui.update {
-            it.copy(
-                undone = (it.undone - user.username).toImmutableSet(),
-                message = (result as? AppResult.Error)?.error?.toUiText(failed) ?: it.message,
-            )
+            val result = if (saved == null) tripRepository.addMember(tripId, username) else tripRepository.removeMember(tripId, saved.user.id)
+            when (result) {
+                is AppResult.Success -> {
+                    val isOnTrip = result.data.members.any { it.user.username == username }
+                    awaitCache(username, isOnTrip)
+                    // The server keeps them otherwise than asked: its answer stands, never asked again in a loop.
+                    if (isOnTrip != wanted.isOnTrip && ui.value.wanted[username] == wanted) return ui.update { it.copy(wanted = it.wanted.remove(username)) }
+                }
+                is AppResult.Error -> {
+                    // Removed already, elsewhere: the trip is read again and shows them as the server has them.
+                    val isGone = saved != null && result.error.hasCode(TripErrorCodes.NOT_FOUND)
+                    if (isGone) tripRepository.refreshTrip(tripId)
+                    return ui.update {
+                        it.copy(
+                            wanted = it.wanted.remove(username),
+                            added = if (saved == null) it.added?.takeUnless { added -> added.username == username } else it.added,
+                            message = if (isGone) it.message else result.error.toUiText(if (saved == null) Res.string.members_error_add else Res.string.members_error_remove),
+                        )
+                    }
+                }
+            }
         }
     }
 
     /**
-     * Waits until the cached trip shows the change the server made. The cache emits a moment after it is written, so
-     * dropping the local add or removal before that would show the old list for a frame (Shahin's recording: the
-     * sheet blinked on add and remove).
+     * Waits until the cached trip shows [username] as the server answered (it is written before the answer comes, so
+     * this is a moment). The cache emits a moment after it is written, so handing the list back before that would show
+     * the old list for a frame (Shahin's recording: the sheet blinked on add and remove).
      */
-    private suspend fun awaitCache(user: UserSummary, isMember: Boolean) {
-        // Or until the user turned it around again (Undo of this add, or adding them back during this removal): the
-        // cache may then never show this change, and the newer tap takes over.
-        combine(tripRepository.observeTrip(tripId), ui) { details, ui ->
-            details?.members.orEmpty().any { it.user.username == user.username } == isMember || (user.username in ui.undone) == isMember
-        }.first { it }
+    private suspend fun awaitCache(username: String, isOnTrip: Boolean) {
+        tripRepository.observeTrip(tripId).first { details -> details?.members.orEmpty().any { it.user.username == username } == isOnTrip }
     }
 
     /** Accepting or declining; the request leaves the list once the server agreed (or it was gone already). */
@@ -290,16 +301,17 @@ class TripMembersViewModel(
         val isLoading: Boolean = true,
         val requests: JoinRequestsState = JoinRequestsState(),
         val friends: ImmutableList<UserSummary>? = null,
-        /** Added on the device, waiting for the server. */
-        val adding: ImmutableList<UserSummary> = persistentListOf(),
-        /** Usernames undone or removed on the device, hidden while the server catches up. */
-        val undone: ImmutableSet<String> = persistentSetOf(),
+        /** People added or removed on the device, by username, as the latest tap wants them, while the server catches up. */
+        val wanted: PersistentMap<String, Wanted> = persistentMapOf(),
         val invites: ImmutableList<TripInvite> = persistentListOf(),
         val isCreatingInvite: Boolean = false,
         val search: SearchState? = null,
         val message: UiText? = null,
         val added: UserSummary? = null,
     )
+
+    /** [user] on the trip or off it, as the latest tap wants. */
+    private data class Wanted(val user: UserSummary, val isOnTrip: Boolean)
 
     @Immutable
     data class State(
