@@ -6,10 +6,14 @@ import androidx.compose.ui.zIndex
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.foundation.gestures.animateTo
 import androidx.compose.foundation.layout.offset
+import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.MutableTransitionState
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.core.rememberTransition
 import androidx.compose.animation.expandHorizontally
 import androidx.compose.animation.shrinkHorizontally
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -59,6 +63,7 @@ import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.tooling.preview.PreviewParameter
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import com.falcon.tripingly.core.designsystem.component.LocalScreenArrived
@@ -98,6 +103,7 @@ import com.falcon.tripingly.feature.map.presentation.map.ui.TripTitleContent
 import com.falcon.tripingly.feature.map.presentation.map.ui.animatePillGrowth
 import com.falcon.tripingly.feature.map.presentation.map.ui.pulledUp
 import com.falcon.tripingly.feature.map.presentation.map.ui.rememberPlanSheetState
+import kotlinx.collections.immutable.persistentListOf
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.map
@@ -433,18 +439,20 @@ internal fun MapScreen(
         val results = state.search?.results?.takeIf { it.isNotEmpty() }
         val hasResults = results != null
         LaunchedEffect(hasResults) { if (hasResults) planSheet.animateTo(PlanSheetValue.Collapsed) }
-        if (results != null) {
+        // Opens and closes growing down from the header and folding back up; its content stays as it is.
+        AnimatedVisibility(
+            visible = results != null,
+            modifier = Modifier.align(Alignment.TopStart).padding(top = coveredTop).then(panel),
+            enter = expandVertically(SearchResultsMotion, expandFrom = Alignment.Top),
+            exit = shrinkVertically(SearchResultsMotion, shrinkTowards = Alignment.Top),
+        ) {
             val belowResults = (tabsHeight?.second ?: 0.dp) + (if (plan != null) PlanSheetPeek else 0.dp) +
                 (if (isWide) 0.dp else buttonsHeight) + MaterialTheme.spacing.small
             SearchResults(
-                results = results,
+                results = results ?: persistentListOf(),
                 onAction = onAction,
                 maxHeight = (maxHeight - coveredTop - belowResults).coerceAtLeast(SearchResultsMinHeight),
-                modifier = Modifier
-                    .align(Alignment.TopStart)
-                    .padding(top = coveredTop)
-                    .then(panel)
-                    .padding(horizontal = MaterialTheme.spacing.medium),
+                modifier = Modifier.padding(horizontal = MaterialTheme.spacing.medium),
             )
         }
 
@@ -509,6 +517,9 @@ private fun MapScreenLoadErrorPreview() {
  * bottom, so the stop card above it has more room (Shahin, 2026-11-14; 64 dp before).
  */
 private val LandscapePinArea = 96.dp
+
+/** The search results card opening and closing: emphasized, as the app's other show/hide motion. */
+private val SearchResultsMotion = tween<IntSize>(durationMillis = 300, easing = CubicBezierEasing(0.2f, 0f, 0f, 1f))
 
 /** The least the search results get, however little room the screen leaves them. */
 private val SearchResultsMinHeight = 120.dp
