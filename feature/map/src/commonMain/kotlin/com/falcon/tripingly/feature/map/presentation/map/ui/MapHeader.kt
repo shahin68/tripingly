@@ -3,6 +3,8 @@ package com.falcon.tripingly.feature.map.presentation.map.ui
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.LazyColumn
+import com.falcon.tripingly.core.designsystem.component.verticalFadingEdge
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
@@ -284,8 +286,10 @@ internal fun SearchResults(
     maxHeight: Dp = SearchResultsMaxHeight,
 ) {
     GlassSurface(modifier = modifier.fillMaxWidth(), shape = MaterialTheme.shapes.large, blur = false) {
+        val listState = rememberLazyListState()
         Column(modifier = Modifier.heightIn(max = maxHeight)) {
-            LazyColumn(modifier = Modifier.animateContentSize().weight(1f, fill = false)) {
+            // Faded at the top or bottom while more results are hidden there.
+            LazyColumn(state = listState, modifier = Modifier.animateContentSize().weight(1f, fill = false).verticalFadingEdge(listState)) {
                 items(results, key = { it.key }) { (result, distanceMeters) ->
                     SuggestionItem(
                         title = result.name,
