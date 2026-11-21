@@ -100,19 +100,10 @@ data class MapLayersState(
     val isSearchShown: Boolean = false,
     /** The stop whose card is open: clear while the rest is see-through, so the card never stands over a faded pin. */
     val selectedStopId: String? = null,
-    /** The stop or place Around shows around: clear while the rest is see-through, like its places (Shahin, 2026-11-21). */
-    val aroundPinId: String? = null,
 )
 
-/** How much of [stop] shows: clear while its card is open or Around shows around it, else as everything that isn't a search result. */
-internal fun MapLayersState.stopAlpha(stop: MapMarker): Float = if (stop.id == selectedStopId || stop.id == aroundPinId) 1f else dimAlpha
-
-/**
- * Whether [pin] stays clear while the map is searched by name: a search result, and while Around shows ([isAroundShown])
- * its places (purple, as along the way: Around closes the route) and the pin it is around (Shahin, 2026-11-21).
- */
-internal fun PlacePin.isClearWhileSearched(aroundPinId: String?, isAroundShown: Boolean): Boolean =
-    isSearchResult || place.id == aroundPinId || (isAroundShown && isAlongTheWay)
+/** How much of [stop] shows: clear while its card is open, else as everything that isn't a search result. */
+internal fun MapLayersState.stopAlpha(stop: MapMarker): Float = if (stop.id == selectedStopId) 1f else dimAlpha
 
 /** How much of what isn't a search result shows: see-through while the map is searched by name. */
 internal val MapLayersState.dimAlpha: Float get() = if (isSearchShown) SearchDimAlpha else 1f
