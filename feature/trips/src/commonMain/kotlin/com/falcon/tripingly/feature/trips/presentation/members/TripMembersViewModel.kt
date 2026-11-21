@@ -165,6 +165,7 @@ class TripMembersViewModel(
         ui.update { it.copy(adding = (it.adding + user).toImmutableList(), undone = (it.undone - user.username).toImmutableSet(), added = user, message = null) }
         viewModelScope.launch {
             val result = tripRepository.addMember(tripId, user.username)
+            if (result is AppResult.Success) awaitCache(user, isMember = true)
             val wasUndone = user.username in ui.value.undone
             ui.update { state ->
                 state.copy(
@@ -194,12 +195,22 @@ class TripMembersViewModel(
     private suspend fun removeSaved(user: UserSummary, failed: StringResource) {
         val saved = tripRepository.observeTrip(tripId).first()?.members.orEmpty().firstOrNull { it.user.username == user.username }
         val result = if (saved == null) null else tripRepository.removeMember(tripId, saved.user.id)
+        if (result is AppResult.Success) awaitCache(user, isMember = false)
         ui.update {
             it.copy(
                 undone = (it.undone - user.username).toImmutableSet(),
                 message = (result as? AppResult.Error)?.error?.toUiText(failed) ?: it.message,
             )
         }
+    }
+
+    /**
+     * Waits until the cached trip shows the change the server made. The cache emits a moment after it is written, so
+     * dropping the local add or removal before that would show the old list for a frame (Shahin's recording: the
+     * sheet blinked on add and remove).
+     */
+    private suspend fun awaitCache(user: UserSummary, isMember: Boolean) {
+        tripRepository.observeTrip(tripId).first { details -> details?.members.orEmpty().any { it.user.username == user.username } == isMember }
     }
 
     /** Accepting or declining; the request leaves the list once the server agreed (or it was gone already). */
