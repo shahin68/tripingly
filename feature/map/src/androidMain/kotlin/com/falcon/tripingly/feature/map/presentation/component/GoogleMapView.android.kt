@@ -54,6 +54,7 @@ import com.google.android.gms.maps.model.Gap
 import com.google.android.gms.maps.model.JointType
 import com.google.android.gms.maps.model.LatLng
 import com.google.android.gms.maps.model.MapStyleOptions
+import com.google.android.gms.maps.model.Marker as GmsMarker
 import com.google.android.gms.maps.model.RoundCap
 import com.google.maps.android.compose.CameraMoveStartedReason
 import com.google.maps.android.compose.ComposeMapColorScheme
@@ -356,6 +357,7 @@ actual fun GoogleMapView(
             // so the swap only shows one and hides the other, at once: no markers are made or dropped while the fingers move.
             val isDots by remember(pinDotBelowZoom) { derivedStateOf { cameraPositionState.position.zoom < pinDotBelowZoom } }
             val shownPins = placePins.filter { it.isReady(pinPhotos, brandLogos) }
+            val currentShownPins by rememberUpdatedState(shownPins)
 
             // The map hands a tap on overlapping pins to the one on top; the pin whose middle is nearest the finger is the
             // one meant, as long as the finger is on it.
@@ -363,7 +365,7 @@ actual fun GoogleMapView(
                 val touch = lastTouch ?: return tapped
                 val projection = cameraPositionState.projection ?: return tapped
                 val slop = with(density) { PIN_TAP_SLOP.toPx() }
-                return shownPins
+                return currentShownPins
                     .map { pin ->
                         val point = projection.toScreenLocation(LatLng(pin.place.location.lat, pin.place.location.lng))
                         pin to hypot(point.x - touch.x, point.y - touch.y)
@@ -376,6 +378,20 @@ actual fun GoogleMapView(
                     ?.first ?: tapped
             }
 
+            // One click for every pin, kept across compositions and reading the latest state when tapped: a pin whose
+            // inputs didn't change is skipped instead of being sent to the map again (Shahin's trace, 2026-11-21: every
+            // pin, hidden ones too, went to the map again on each change, as each got a new click lambda).
+            // No info window and no camera move of the map's own: the card and the camera are ours.
+            val onPinClick: (PlacePin) -> Boolean = remember(density, pinDotBelowZoom) {
+                { pin ->
+                    if (!isTapHandled) {
+                        haptics.tick()
+                        currentOnPlacePinClick(aimedPin(pin).place)
+                    }
+                    true
+                }
+            }
+
             // All pins go on the map in the same frame, along-the-way ones too, so a change shows at once (Shahin, 2026-11-10).
             // A pin that leaves is only hidden, up to MAX_HIDDEN_PINS of the latest ones: making a native marker is the
             // costly part, so a pin coming back (a pan back, the route switched off) just shows again.
@@ -383,48 +399,19 @@ actual fun GoogleMapView(
             (shownPins.map { it to true } + hiddenPins.map { it to false }).forEach { (pin, isShown) ->
                 val look = PlacePinLook(pin.place.category, pin.place.isTripinly, pin.size, photoId(pin.place, pin.photo), pin.isAlongTheWay, isSearchResult = pin.isSearchResult, logoUrl = pin.place.shownLogo(brandLogos))
                 val dotLook = pin.dotLook()
-                // While the map is searched by name only its results stay clear.
-                val pinAlpha = if (pin.isSearchResult) 1f else dimAlpha
                 key(pin.place.id) {
-                    // Places along the way show at once with their route (Shahin, 2026-11-10).
-                    val fadeIn = remember { Animatable(if (pin.isAlongTheWay) 1f else 0f) }
-                    LaunchedEffect(Unit) { fadeIn.animateTo(1f, tween(PIN_FADE_MILLIS)) }
-                    val position = LatLng(pin.place.location.lat, pin.place.location.lng)
-                    // Under the clusters and the stops. Taken from the place, not from its place in the list, so a pin's
-                    // z-order stays the same when pins come and go: changing it makes pins vanish for a frame.
-                    // A route's end and the places tapped while routing on top of the other places.
-                    val zIndex = if (pin.isKept) KEPT_PINS_Z else PLACE_PINS_Z * pinRank(pin.place)
-                    // No info window and no camera move of the map's own: the card and the camera are ours.
-                    fun onClick(): Boolean {
-                        if (isTapHandled) return true
-                        haptics.tick()
-                        onPlacePinClick(aimedPin(pin).place)
-                        return true
-                    }
-                    key(look) {
-                        Marker(
-                            state = rememberUpdatedMarkerState(position = position),
-                            icon = pinIcon(look),
-                            title = pin.place.name,
-                            anchor = Offset(0.5f, 0.5f),
-                            alpha = fadeIn.value * pinAlpha,
-                            visible = isShown && !pin.isDotAt(isDots),
-                            zIndex = zIndex,
-                            onClick = { onClick() },
-                        )
-                    }
-                    key(dotLook) {
-                        Marker(
-                            state = rememberUpdatedMarkerState(position = position),
-                            icon = pinIcon(dotLook),
-                            title = pin.place.name,
-                            anchor = Offset(0.5f, 0.5f),
-                            alpha = fadeIn.value * pinAlpha * pin.dotAlpha,
-                            visible = isShown && pin.isDotAt(isDots),
-                            zIndex = zIndex,
-                            onClick = { onClick() },
-                        )
-                    }
+                    PlacePinMarkers(
+                        pin = pin,
+                        look = look,
+                        icon = pinIcon(look),
+                        dotLook = dotLook,
+                        dotIcon = pinIcon(dotLook),
+                        isShown = isShown,
+                        isDot = pin.isDotAt(isDots),
+                        // While the map is searched by name only its results stay clear.
+                        alpha = if (pin.isSearchResult) 1f else dimAlpha,
+                        onClick = onPinClick,
+                    )
                 }
             }
             placeClusters.forEach { cluster ->
@@ -664,6 +651,58 @@ private fun LineStreak(points: List<LatLng>, width: Float) {
             startCap = RoundCap(),
             endCap = RoundCap(),
             zIndex = 1f,
+        )
+    }
+}
+
+/**
+ * A place's pin and its dot, one shown: the dot zoomed out ([isDot]), see-through while a route shows ([PlacePin.dotAlpha]).
+ * Its own composable with stable inputs, so a pin that didn't change is skipped when the map's pins change.
+ */
+@Composable
+@GoogleMapComposable
+private fun PlacePinMarkers(
+    pin: PlacePin,
+    look: PlacePinLook,
+    icon: BitmapDescriptor,
+    dotLook: PlacePinLook,
+    dotIcon: BitmapDescriptor,
+    isShown: Boolean,
+    isDot: Boolean,
+    alpha: Float,
+    onClick: (PlacePin) -> Boolean,
+) {
+    // Places along the way show at once with their route (Shahin, 2026-11-10).
+    val fadeIn = remember { Animatable(if (pin.isAlongTheWay) 1f else 0f) }
+    LaunchedEffect(Unit) { fadeIn.animateTo(1f, tween(PIN_FADE_MILLIS)) }
+    val position = LatLng(pin.place.location.lat, pin.place.location.lng)
+    // Under the clusters and the stops. Taken from the place, not from its place in the list, so a pin's z-order stays the
+    // same when pins come and go: changing it makes pins vanish for a frame. A route's end and the places tapped while
+    // routing on top of the other places.
+    val zIndex = if (pin.isKept) KEPT_PINS_Z else PLACE_PINS_Z * pinRank(pin.place)
+    val onMarkerClick = remember(pin, onClick) { { _: GmsMarker -> onClick(pin) } }
+    key(look) {
+        Marker(
+            state = rememberUpdatedMarkerState(position = position),
+            icon = icon,
+            title = pin.place.name,
+            anchor = Offset(0.5f, 0.5f),
+            alpha = fadeIn.value * alpha,
+            visible = isShown && !isDot,
+            zIndex = zIndex,
+            onClick = onMarkerClick,
+        )
+    }
+    key(dotLook) {
+        Marker(
+            state = rememberUpdatedMarkerState(position = position),
+            icon = dotIcon,
+            title = pin.place.name,
+            anchor = Offset(0.5f, 0.5f),
+            alpha = fadeIn.value * alpha * pin.dotAlpha,
+            visible = isShown && isDot,
+            zIndex = zIndex,
+            onClick = onMarkerClick,
         )
     }
 }
