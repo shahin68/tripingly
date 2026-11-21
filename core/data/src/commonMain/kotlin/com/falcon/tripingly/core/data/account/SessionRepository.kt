@@ -5,6 +5,7 @@ import com.falcon.tripingly.core.common.result.AppResult
 import com.falcon.tripingly.core.model.account.Account
 import com.falcon.tripingly.core.model.account.SessionState
 import com.falcon.tripingly.core.model.account.SignOutReason
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.StateFlow
 
 /** Sign-in, sign-out and who is signed in. The app shows a screen per [session] state. */
@@ -32,6 +33,12 @@ interface SessionRepository {
 
     /** Whether this build can use [signInForDevelopment]. */
     val developerSignInAvailable: Boolean
+
+    /**
+     * The server refused a Pro feature for lack of Pro (Pro ended): the account has already been read again, so
+     * entitlements are current; the app shows the paywall.
+     */
+    val proEnded: Flow<Unit>
 
     /** Re-reads `GET /me`, e.g. after an onboarding step. */
     suspend fun refreshAccount(): AppResult<Account, DataError.Network>

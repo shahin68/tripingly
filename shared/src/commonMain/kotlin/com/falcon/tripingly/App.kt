@@ -29,6 +29,7 @@ import androidx.navigation3.ui.NavDisplay
 import coil3.ImageLoader
 import coil3.compose.setSingletonImageLoaderFactory
 import com.falcon.tripingly.core.common.result.AppResult
+import com.falcon.tripingly.core.data.account.SessionRepository
 import com.falcon.tripingly.core.data.account.SignedInStart
 import com.falcon.tripingly.core.data.push.PushNotifications
 import com.falcon.tripingly.core.data.realtime.LiveUpdates
@@ -134,6 +135,13 @@ private fun MainNavigation() {
                 backStack.add(route)
             }
         }
+    }
+
+    // A Pro feature refused for lack of Pro, anywhere in the app: the paywall, once however many calls were refused
+    // (Shahin, 2026-11-21).
+    val sessions = koinInject<SessionRepository>()
+    LaunchedEffect(sessions) {
+        sessions.proEnded.collect { if (backStack.lastOrNull() != Paywall) backStack.add(Paywall) }
     }
 
     NavDisplay(

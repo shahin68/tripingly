@@ -454,12 +454,10 @@ internal class MapRouting(
                 )
                 // No public transport here or at this time: a note in the card, never a banner (Shahin, 2026-11-15).
                 transitNote != null -> it.copy(route = it.route.copy(plan = null, isUnavailable = false, isLoading = false, transitAt = time, transitNote = transitNote))
-                // Not Pro after all (the account changed): the route closes with the server's message.
+                // Not Pro after all (Pro ended): the route closes; the app shows the paywall instead of a message
+                // (Shahin, 2026-11-21).
                 result is AppResult.Error -> if (result.error.hasCode(RouteErrorCodes.PREMIUM_REQUIRED)) {
-                    it.copy(
-                        route = it.route.copy(plan = null, isDayRouteShown = false, between = null, isLoading = false),
-                        message = result.error.toUiText(Res.string.map_error_route),
-                    )
+                    it.copy(route = it.route.copy(plan = null, isDayRouteShown = false, between = null, isLoading = false))
                 } else {
                     it.copy(
                         route = it.route.copy(plan = null, isUnavailable = true, isLoading = false),

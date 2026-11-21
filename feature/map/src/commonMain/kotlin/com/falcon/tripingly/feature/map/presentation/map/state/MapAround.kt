@@ -2,6 +2,8 @@ package com.falcon.tripingly.feature.map.presentation.map.state
 
 import com.falcon.tripingly.core.common.result.AppResult
 import com.falcon.tripingly.core.data.places.PlaceRepository
+import com.falcon.tripingly.core.data.routing.RouteErrorCodes
+import com.falcon.tripingly.core.data.trips.hasCode
 import com.falcon.tripingly.core.model.place.MapPlace
 import com.falcon.tripingly.core.model.place.PlaceCategory
 import com.falcon.tripingly.core.model.trip.GeoPoint
@@ -123,10 +125,20 @@ internal class MapAround(
                 val current = model.around ?: return@update model
                 when (result) {
                     is AppResult.Success -> model.copy(around = current.copy(result = result.data, isLoading = false))
-                    // The last places stay; a note says the new ones didn't come. The same ask may be sent again.
                     is AppResult.Error -> {
                         asked = null
-                        model.copy(around = current.copy(isLoading = false), message = result.error.toUiText(Res.string.map_error_around))
+                        if (result.error.hasCode(RouteErrorCodes.PREMIUM_REQUIRED)) {
+                            // Not Pro after all (Pro ended): the ring closes without a route coming back; the app shows
+                            // the paywall instead of a message or an empty card (Shahin, 2026-11-21).
+                            model.copy(
+                                around = null,
+                                route = current.routeBefore.copy(isDayRouteShown = false, between = null),
+                                placeFilter = model.placeFilter.copy(isOpen = current.wasFilterOpen),
+                            )
+                        } else {
+                            // The last places stay; a note says the new ones didn't come. The same ask may be sent again.
+                            model.copy(around = current.copy(isLoading = false), message = result.error.toUiText(Res.string.map_error_around))
+                        }
                     }
                 }
             }

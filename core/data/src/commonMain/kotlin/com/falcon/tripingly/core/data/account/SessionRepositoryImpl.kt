@@ -18,7 +18,11 @@ import com.falcon.tripingly.core.network.model.DevSignInDto
 import com.falcon.tripingly.core.network.model.GoogleSignInDto
 import com.falcon.tripingly.core.network.model.LogoutDto
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.channels.BufferOverflow
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
@@ -42,6 +46,9 @@ internal class SessionRepositoryImpl(
 
     override val developerSignInAvailable: Boolean = developerSignIn != null
 
+    private val pro = MutableSharedFlow<Unit>(extraBufferCapacity = 1, onBufferOverflow = BufferOverflow.DROP_OLDEST)
+    override val proEnded: Flow<Unit> = pro.asSharedFlow()
+
     init {
         scope.launch {
             // The refresh already cleared the tokens; the rest of the local data and the screen follow.
@@ -52,6 +59,14 @@ internal class SessionRepositoryImpl(
                         SessionEndReason.ACCOUNT_SUSPENDED -> SignOutReason.ACCOUNT_SUSPENDED
                     },
                 )
+            }
+        }
+        // Pro ended: the account is read again first, so every Pro button opens the paywall from now on without asking
+        // the server, then the app shows it (even offline, where the account stays as it was).
+        scope.launch {
+            sessionEvents.proEnded.collect {
+                refreshAccount()
+                pro.tryEmit(Unit)
             }
         }
     }

@@ -98,7 +98,8 @@ private fun AroundCard(around: AroundState, onAction: (MapAction) -> Unit) {
                     text = stringResource(Res.string.map_around_none),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(start = inset, end = inset, top = inset),
+                    // As far from every side of the box: under the kinds, or alone in it when there are none.
+                    modifier = Modifier.padding(horizontal = inset).padding(top = if (around.chips.isEmpty()) 0.dp else inset),
                 )
             }
         } else {

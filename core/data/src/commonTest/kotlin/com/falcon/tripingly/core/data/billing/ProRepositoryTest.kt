@@ -10,6 +10,8 @@ import com.falcon.tripingly.core.model.account.ProPeriod
 import com.falcon.tripingly.core.model.account.SessionState
 import com.falcon.tripingly.core.model.account.SignOutReason
 import com.falcon.tripingly.core.model.account.TripVisibility
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.runTest
@@ -68,6 +70,7 @@ class ProRepositoryTest {
         )
 
         override val session = MutableStateFlow<SessionState>(SessionState.SignedIn(account(false).copy(id = userId)))
+        override val proEnded: Flow<Unit> = emptyFlow()
         override suspend fun refreshAccount(): AppResult<Account, DataError.Network> {
             refreshes++
             return AppResult.Success(account(refreshes >= proAfter))

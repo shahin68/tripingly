@@ -22,6 +22,8 @@ import com.falcon.tripingly.core.model.account.isAtLeast
 import com.falcon.tripingly.core.model.account.isUsernameFormatValid
 import com.falcon.tripingly.core.model.photo.PickedImage
 import com.falcon.tripingly.core.model.trip.ProfilePhoto
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -40,6 +42,7 @@ class FakeAccountBackend(
     private val state = MutableStateFlow<SessionState>(SessionState.Restoring)
     override val session: StateFlow<SessionState> = state.asStateFlow()
     override val developerSignInAvailable = true
+    override val proEnded: Flow<Unit> = emptyFlow()
 
     private var account: Account? = null
     private var signIns = 0
