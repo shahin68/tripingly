@@ -287,7 +287,7 @@
     <string name="map_add_to_trip_added">Zu %1$s hinzugefügt, Tag %2$d.</string>
     <string name="map_error_add_to_trip">Konnte nicht zu deiner Reise hinzugefügt werden.</string>
     <string name="map_error_load_days">Die Tage der Reise konnten nicht geladen werden.</string>
-    <string name="map_category_all">Alle</string>
+    <string name="map_category_clear">Filter löschen</string>
     <string name="map_category_count">%1$s %2$d</string>
     <string name="map_filter_open">Orte filtern</string>
     <string name="map_filter_close">Filter schließen</string>

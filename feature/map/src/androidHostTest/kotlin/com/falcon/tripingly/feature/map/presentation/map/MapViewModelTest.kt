@@ -2840,7 +2840,7 @@ class MapViewModelTest {
         testScheduler.advanceUntilIdle()
 
         val chips = viewModel.uiState.value.stopsCard?.route?.alongChips.orEmpty()
-        assertEquals(listOf(CategoryChip(null, 4, isSelected = true), CategoryChip(PlaceCategory.Cafe, 3, isSelected = false), CategoryChip(PlaceCategory.Museum, 1, isSelected = false)), chips)
+        assertEquals(listOf(CategoryChip(PlaceCategory.Cafe, 3, isSelected = false), CategoryChip(PlaceCategory.Museum, 1, isSelected = false)), chips)
         assertEquals(emptySet(), routes.categoryRequests.last())
 
         viewModel.onAction(MapAction.Plan.ToggleAlongCategory(PlaceCategory.Cafe))
@@ -2848,7 +2848,17 @@ class MapViewModelTest {
         assertEquals(setOf(PlaceCategory.Cafe), routes.categoryRequests.last())
         assertTrue(viewModel.uiState.value.stopsCard?.route?.alongChips.orEmpty().single { it.category == PlaceCategory.Cafe }.isSelected)
 
-        // All takes the pick off; the route going off forgets it.
+        // One kind at a time: another kind replaces it, and tapped again it goes off.
+        viewModel.onAction(MapAction.Plan.ToggleAlongCategory(PlaceCategory.Museum))
+        testScheduler.advanceUntilIdle()
+        assertEquals(setOf(PlaceCategory.Museum), routes.categoryRequests.last())
+        viewModel.onAction(MapAction.Plan.ToggleAlongCategory(PlaceCategory.Museum))
+        testScheduler.advanceUntilIdle()
+        assertEquals(emptySet(), routes.categoryRequests.last())
+
+        // The clear button takes the pick off; the route going off forgets it.
+        viewModel.onAction(MapAction.Plan.ToggleAlongCategory(PlaceCategory.Cafe))
+        testScheduler.advanceUntilIdle()
         viewModel.onAction(MapAction.Plan.ToggleAlongCategory(null))
         testScheduler.advanceUntilIdle()
         assertEquals(emptySet(), routes.categoryRequests.last())
@@ -2881,7 +2891,18 @@ class MapViewModelTest {
         assertEquals(false, viewModel.uiState.value.placeFilter?.isLoading)
         assertEquals(1, viewModel.uiState.value.layers.stops.size)
 
-        // All shows every kind again.
+        // One kind at a time: another kind replaces it, and tapped again every kind shows.
+        viewModel.onAction(MapAction.PlaceFilter.ToggleCategory(PlaceCategory.Landmark))
+        testScheduler.advanceUntilIdle()
+        assertEquals(setOf(PlaceCategory.Landmark), viewModel.uiState.value.placeFilter?.chips?.filter { it.isSelected }?.map { it.category }?.toSet())
+        assertEquals(listOf("Eiffel Tower"), viewModel.uiState.value.layers.placePins.map { it.place.name })
+        viewModel.onAction(MapAction.PlaceFilter.ToggleCategory(PlaceCategory.Landmark))
+        testScheduler.advanceUntilIdle()
+        assertEquals(2, viewModel.uiState.value.layers.placePins.size)
+
+        // The clear button shows every kind again.
+        viewModel.onAction(MapAction.PlaceFilter.ToggleCategory(PlaceCategory.Museum))
+        testScheduler.advanceUntilIdle()
         viewModel.onAction(MapAction.PlaceFilter.ToggleCategory(null))
         testScheduler.advanceUntilIdle()
         assertEquals(2, viewModel.uiState.value.layers.placePins.size)
@@ -3105,7 +3126,21 @@ class MapViewModelTest {
         viewModel.onAction(MapAction.Around.ToggleCategory(PlaceCategory.Museum))
         testScheduler.advanceUntilIdle()
         assertEquals(listOf("Louvre"), viewModel.uiState.value.stopsCard?.around?.places?.map { it.place.name })
-        assertEquals(setOf(null, PlaceCategory.Landmark, PlaceCategory.Museum), viewModel.uiState.value.stopsCard?.around?.chips?.map { it.category }?.toSet())
+        assertEquals(setOf(PlaceCategory.Landmark, PlaceCategory.Museum), viewModel.uiState.value.stopsCard?.around?.chips?.map { it.category }?.toSet())
+
+        // One kind at a time: another kind replaces it, tapped again it goes off, and the clear button lists every kind.
+        viewModel.onAction(MapAction.Around.ToggleCategory(PlaceCategory.Landmark))
+        testScheduler.advanceUntilIdle()
+        assertEquals(listOf(PlaceCategory.Landmark), viewModel.uiState.value.stopsCard?.around?.chips?.filter { it.isSelected }?.map { it.category })
+        assertEquals(listOf("Eiffel Tower"), viewModel.uiState.value.stopsCard?.around?.places?.map { it.place.name })
+        viewModel.onAction(MapAction.Around.ToggleCategory(PlaceCategory.Landmark))
+        testScheduler.advanceUntilIdle()
+        assertEquals(listOf("Eiffel Tower", "Louvre"), viewModel.uiState.value.stopsCard?.around?.places?.map { it.place.name })
+        viewModel.onAction(MapAction.Around.ToggleCategory(PlaceCategory.Museum))
+        testScheduler.advanceUntilIdle()
+        viewModel.onAction(MapAction.Around.ToggleCategory(null))
+        testScheduler.advanceUntilIdle()
+        assertEquals(listOf("Eiffel Tower", "Louvre"), viewModel.uiState.value.stopsCard?.around?.places?.map { it.place.name })
 
         // The ring is the server's limit at most.
         viewModel.onAction(MapAction.Around.SetRadius(99_000))

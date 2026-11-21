@@ -72,8 +72,6 @@ internal fun PlaceFilterPill(filter: PlaceFilterState, onAction: (MapAction) -> 
                     // disc, so the pill keeps the circle's height.
                     edgePadding = MaterialTheme.spacing.extraSmall,
                     chipHeight = CircleSize,
-                    // All stays at the start while the kinds scroll, so clearing the pick is always one tap away.
-                    isAllPinned = true,
                 )
             }
             val label = stringResource(if (filter.isOpen) Res.string.map_filter_close else Res.string.map_filter_open)
@@ -125,7 +123,6 @@ private val SpinnerStroke = 2.dp
 @Composable
 private fun PlaceFilterPreviewContent() {
     val chips = persistentListOf(
-        CategoryChip(null, null, isSelected = false),
         CategoryChip(PlaceCategory.Cafe, null, isSelected = true),
         CategoryChip(PlaceCategory.Museum, null, isSelected = false),
     )

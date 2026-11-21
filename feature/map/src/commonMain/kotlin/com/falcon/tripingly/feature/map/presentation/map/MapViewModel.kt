@@ -44,7 +44,7 @@ import com.falcon.tripingly.feature.map.presentation.map.state.MapSharing
 import com.falcon.tripingly.feature.map.presentation.map.state.Sheet
 import com.falcon.tripingly.feature.map.presentation.map.state.activeDayIndex
 import com.falcon.tripingly.feature.map.presentation.map.state.isPicking
-import com.falcon.tripingly.feature.map.presentation.map.state.toggled
+import com.falcon.tripingly.feature.map.presentation.map.state.pickedAlone
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
@@ -277,7 +277,7 @@ class MapViewModel(
         when (action) {
             is MapAction.PlaceFilter.Toggle -> context.update { it.copy(placeFilter = it.placeFilter.copy(isOpen = !it.placeFilter.isOpen)) }
             is MapAction.PlaceFilter.ToggleCategory -> pins.setFilter(
-                action.category?.let { model.placeFilter.categories.toggled(it) }.orEmpty(),
+                action.category?.let { model.placeFilter.categories.pickedAlone(it) }.orEmpty(),
             )
         }
     }

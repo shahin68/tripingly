@@ -145,7 +145,7 @@ private fun AroundCardPreviewContent() {
             AroundCardSlot(
                 AroundState(
                     pinName = "Schönbrunn",
-                    chips = persistentListOf(CategoryChip(null, 7, isSelected = true), CategoryChip(PlaceCategory.Cafe, 4, isSelected = false), CategoryChip(PlaceCategory.Museum, 3, isSelected = false)),
+                    chips = persistentListOf(CategoryChip(PlaceCategory.Cafe, 4, isSelected = false), CategoryChip(PlaceCategory.Museum, 3, isSelected = false)),
                     places = persistentListOf(PlaceAround(place("p1", "Café Sperl", PlaceCategory.Cafe), 120), PlaceAround(place("p2", "Albertina", PlaceCategory.Museum), 450)),
                     isLoading = false,
                     addToDayNumber = 2,

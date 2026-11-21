@@ -262,13 +262,13 @@ data class RouteSummaryState(
     val transitTimes: UiText? = null,
     /** By public transport: its walks and rides in a row; a tap opens them step by step. */
     val transitLegs: ImmutableList<TransitChip> = persistentListOf(),
-    /** The chips over the places along the way: All, then each kind the route passes with how many; empty without places. */
+    /** The chips over the places along the way: each kind the route passes with how many; empty without places. */
     val alongChips: ImmutableList<CategoryChip> = persistentListOf(),
 )
 
-/** A chip of a filter by kind of place: All ([category] null) or one kind, with how many there are ([count]; null: not known). */
+/** A chip of a filter by kind of place: one kind, with how many there are ([count]; null: not known). */
 @Immutable
-data class CategoryChip(val category: PlaceCategory?, val count: Int?, val isSelected: Boolean)
+data class CategoryChip(val category: PlaceCategory, val count: Int?, val isSelected: Boolean)
 
 /** "Leave at 14:05" or "Arrive by 14:05" ([time] as HH:mm). */
 @Immutable

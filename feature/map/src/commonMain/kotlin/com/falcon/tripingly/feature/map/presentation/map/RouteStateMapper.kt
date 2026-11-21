@@ -69,15 +69,14 @@ internal fun RouteModel.summary(plan: RoutePlan?, alongTheWay: List<AlongTheWayP
 )
 
 /**
- * A filter's chips: All (with every place counted) first, then each kind with how many, most first as the server counts
+ * A filter's chips: each kind with how many, most first as the server counts
  * them; a kind picked that has none left (the route changed) stays, so it can be taken off. None without places.
  */
 internal fun categoryChips(counts: List<CategoryCount>, selected: Set<PlaceCategory>): ImmutableList<CategoryChip> {
     if (counts.isEmpty() && selected.isEmpty()) return persistentListOf()
     val counted = counts.mapTo(HashSet()) { it.category }
     return (
-        listOf(CategoryChip(null, counts.sumOf { it.count }, isSelected = selected.isEmpty())) +
-            counts.map { CategoryChip(it.category, it.count, isSelected = it.category in selected) } +
+        counts.map { CategoryChip(it.category, it.count, isSelected = it.category in selected) } +
             selected.filter { it !in counted }.map { CategoryChip(it, 0, isSelected = true) }
         ).toImmutableList()
 }

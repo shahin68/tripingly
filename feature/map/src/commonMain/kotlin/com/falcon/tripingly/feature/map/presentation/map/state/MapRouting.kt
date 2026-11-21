@@ -133,11 +133,11 @@ internal class MapRouting(
         requestOf(context.trip.value, model.copy(route = model.route.copy(travelMode = TravelMode.Transit)), transitAreas.value)?.transit?.isCovered == true
 
     /**
-     * A chip over the places along the way: All ([category] null) shows every kind again; a kind is added or taken off.
+     * A chip over the places along the way: the clear button ([category] null) shows every kind again; a kind tapped is the only one picked.
      * The route is asked for again with them: its line stays, only the places change.
      */
     fun toggleAlongCategory(category: PlaceCategory?) {
-        update { it.copy(alongCategories = if (category == null) emptySet() else it.alongCategories.toggled(category)) }
+        update { it.copy(alongCategories = if (category == null) emptySet() else it.alongCategories.pickedAlone(category)) }
         tapped()
     }
 
@@ -580,5 +580,5 @@ private data class TransitRequest(val date: LocalDate?, val pick: TransitPick?, 
 /** How an address picked from search starts its id as a route's end. */
 private const val ADDRESS_ID_PREFIX = "address:"
 
-/** This set with [item] added, or taken off when it was in. */
-internal fun <T> Set<T>.toggled(item: T): Set<T> = if (item in this) this - item else this + item
+/** One kind at a time: a kind tapped is the only one picked; tapped again while picked, every kind shows (Shahin, 2026-11-21). */
+internal fun <T> Set<T>.pickedAlone(item: T): Set<T> = if (item in this) emptySet() else setOf(item)

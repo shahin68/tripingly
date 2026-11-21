@@ -88,9 +88,9 @@ internal class MapAround(
         context.update { it.copy(around = null) }
     }
 
-    /** A chip: All ([category] null) lists every kind again; a kind is added or taken off. */
+    /** A chip: the clear button ([category] null) lists every kind again; a kind tapped is the only one picked. */
     fun toggleCategory(category: PlaceCategory?) {
-        update { it.copy(categories = if (category == null) emptySet() else it.categories.toggled(category)) }
+        update { it.copy(categories = if (category == null) emptySet() else it.categories.pickedAlone(category)) }
         load()
     }
 

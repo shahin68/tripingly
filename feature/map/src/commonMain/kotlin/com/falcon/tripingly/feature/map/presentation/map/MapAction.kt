@@ -118,7 +118,7 @@ sealed interface MapAction {
         data class AlongTheWayClick(val place: MapPlace) : Plan
         /** Adds a place along the way to the open day. */
         data class AddAlongTheWay(val place: MapPlace) : Plan
-        /** A chip over the places along the way: a kind on or off, or All ([category] null). */
+        /** A chip over the places along the way: the only kind picked (tapped again, none), or the clear button ([category] null). */
         data class ToggleAlongCategory(val category: PlaceCategory?) : Plan
         data object ClosePointRoute : Plan
         /** By public transport, "Leave at": the time picker opens. */
@@ -131,7 +131,7 @@ sealed interface MapAction {
     sealed interface PlaceFilter : MapAction {
         /** The circle: the chips open, or close again (the kinds picked stay). */
         data object Toggle : PlaceFilter
-        /** A chip: a kind on or off, or All ([category] null). */
+        /** A chip: the only kind picked (tapped again, none), or the clear button ([category] null). */
         data class ToggleCategory(val category: PlaceCategory?) : PlaceFilter
     }
 
@@ -140,7 +140,7 @@ sealed interface MapAction {
         data object Open : Around
         /** The box's ✕. */
         data object Close : Around
-        /** A chip: a kind on or off, or All ([category] null). */
+        /** A chip: the only kind picked (tapped again, none), or the clear button ([category] null). */
         data class ToggleCategory(val category: PlaceCategory?) : Around
         /** The ring's handle dragged to [meters] from the pin; [isFinal] once the finger lets go, which asks for its places. */
         data class SetRadius(val meters: Int, val isFinal: Boolean = true) : Around

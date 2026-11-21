@@ -28,8 +28,7 @@ internal fun MapModel.aroundState(addToDayNumber: Int?): AroundState? {
 internal fun MapModel.placeFilterState(): PlaceFilterState? {
     if (route.isActive || around != null || search != null) return null
     val picked = placeFilter.categories
-    val chips = listOf(CategoryChip(null, null, isSelected = picked.isEmpty())) +
-        FILTER_CATEGORIES.map { CategoryChip(it, null, isSelected = it in picked) }
+    val chips = FILTER_CATEGORIES.map { CategoryChip(it, null, isSelected = it in picked) }
     return PlaceFilterState(placeFilter.isOpen, isActive = picked.isNotEmpty(), chips.toImmutableList(), isLoading = placeFilter.isLoading)
 }
 
