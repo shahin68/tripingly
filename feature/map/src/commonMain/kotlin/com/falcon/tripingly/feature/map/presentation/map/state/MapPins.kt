@@ -15,6 +15,7 @@ import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.TimeSource
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.drop
@@ -128,18 +129,19 @@ internal class MapPins(
         closestZoom = if (keepUnlisted && closest != null) maxOf(closest, zoom) else zoom
         val squares = PlaceSquare.covering(bounds, floor(zoom).toInt(), categories = categories, name = name)
         pinsJob?.cancel()
-        prefetchJob?.cancel()
         pinsJob = context.scope.launch {
             // Loaded together with the squares already kept; null while offline, so the pins stay.
             placeRepository.placesIn(squares)
             update { it.copy(area = PinArea(bounds, squares)) }
             show()
             context.update { it.copy(placeFilter = it.placeFilter.copy(isLoading = false)) }
-            // The ring around the view once the view's own pins are in, so it never slows them down. Its own job:
-            // a moving camera only waits for the view's pins, never for the ring.
-            prefetchJob = context.scope.launch {
-                placeRepository.placesIn(PlaceSquare.covering(bounds, floor(zoom).toInt(), ring = 1, categories = categories, name = name))
-            }
+        }
+        // The ring around the view only for a view the camera stays on: a pan that rests briefly on its way (a fling
+        // caught, a few quick drags) would otherwise load a ring for every stop, most never seen.
+        prefetchJob?.cancel()
+        prefetchJob = context.scope.launch {
+            delay(PREFETCH_DELAY)
+            placeRepository.placesIn(PlaceSquare.covering(bounds, floor(zoom).toInt(), ring = 1, categories = categories, name = name))
         }
     }
 
@@ -194,6 +196,9 @@ internal class MapPins(
     private fun update(change: (PinsModel) -> PinsModel) = context.update { it.copy(pins = change(it.pins)) }
 
     private companion object {
+        /** How long the camera stays on a view before the ring around it loads. */
+        val PREFETCH_DELAY = 300.milliseconds
+
         /** How often the pins follow a moving camera. */
         val MOVING_PINS = 250.milliseconds
 
