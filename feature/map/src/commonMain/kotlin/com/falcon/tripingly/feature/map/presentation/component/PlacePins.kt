@@ -159,14 +159,12 @@ val PhotoPinSize: Dp = 40.dp
 /** The tapped place, the biggest pin. */
 val SelectedPinSize: Dp = 44.dp
 
-/** A pin while zoomed out below [AppConfig.pinDotBelowZoom]: a small dot, so route lines and stops stay readable. */
-val PlaceDotSize: Dp = 10.dp
-
-/** A pin while a route shows ([PlacePin.isDot]): a tiny bit smaller than a zoomed-out dot (Shahin, 2026-11-16). */
-val RouteDotSize: Dp = 8.dp
-
-/** How big [this] pin is as its dot. */
-internal val PlacePin.dotSize: Dp get() = if (isDot) RouteDotSize else PlaceDotSize
+/**
+ * A pin while zoomed out below [AppConfig.pinDotBelowZoom], or while a route shows: a small dot, so route lines and
+ * stops stay readable. One size for both, so a route never swaps a dot's bitmap (Shahin, 2026-11-21: 8 dp, as the
+ * route's dots were; zoomed-out dots were 10 dp).
+ */
+val PlaceDotSize: Dp = 8.dp
 
 /** Places along the shown route: violet, apart from the map's places and from the hot spots. */
 val AlongTheWayPinColor = Color(0xFF8A5AAB)
@@ -174,9 +172,15 @@ val AlongTheWayPinColor = Color(0xFF8A5AAB)
 /** The places the map was searched for by name: red, like Google Maps' results (Shahin, 2026-11-19). */
 val SearchResultPinColor = Color(0xFFE53935)
 
-/** The look of [this] pin as a dot: only its color matters, so every dot of a color shares one bitmap. */
-internal fun PlacePin.dotLook() =
-    PlacePinLook(PlaceCategory.Other, place.isTripinly, dotSize, isAlongTheWay = isAlongTheWay, isDot = true, isSeeThrough = isDot)
+/**
+ * The look of [this] pin as a dot: only its color matters, so every dot of a color shares one bitmap. The same while a
+ * route shows: its see-through is the marker's own opacity ([dotAlpha]), so a route turning on or off makes no new
+ * markers (Shahin's recording, 2026-11-21: swapping ~150 dots' bitmaps stopped the map for a frame).
+ */
+internal fun PlacePin.dotLook() = PlacePinLook(PlaceCategory.Other, place.isTripinly, PlaceDotSize, isAlongTheWay = isAlongTheWay, isDot = true)
+
+/** How much of [this] pin's dot shows: see-through while a route shows ([PlacePin.isDot]). */
+internal val PlacePin.dotAlpha: Float get() = if (isDot) RouteDotAlpha else 1f
 
 /**
  * How much of a place's dot shows while a route shows ([PlacePin.isDot]): see-through, so the line, its ends, the stops
@@ -263,14 +267,14 @@ private val LOGO_MARGIN = 1.5.dp
  * Draws a dot pin into a bitmap: a small circle of the pin's [fill] color in the pins' thin ring, the whole dot [alpha]
  * strong (the ring is drawn round the fill, not under it, so a see-through dot is evenly see-through).
  */
-fun drawPlaceDot(size: Dp, fill: Color, density: Density, layoutDirection: LayoutDirection, alpha: Float = 1f): ImageBitmap {
+fun drawPlaceDot(size: Dp, fill: Color, density: Density, layoutDirection: LayoutDirection): ImageBitmap {
     val px = with(density) { size.roundToPx() }
     val border = with(density) { PIN_STROKE.toPx() }
     val bitmap = ImageBitmap(px, px)
     CanvasDrawScope().draw(density, layoutDirection, Canvas(bitmap), Size(px.toFloat(), px.toFloat())) {
         val radius = this.size.minDimension / 2
-        drawCircle(MapColors.PinStroke, radius = radius - border / 2, style = Stroke(border), alpha = alpha)
-        drawCircle(fill, radius = radius - border, alpha = alpha)
+        drawCircle(MapColors.PinStroke, radius = radius - border / 2, style = Stroke(border))
+        drawCircle(fill, radius = radius - border)
     }
     return bitmap
 }
@@ -319,8 +323,6 @@ internal data class PlacePinLook(
     val photoId: String? = null,
     val isAlongTheWay: Boolean = false,
     val isDot: Boolean = false,
-    /** A dot drawn see-through ([RouteDotAlpha]) while a route shows. */
-    val isSeeThrough: Boolean = false,
     /** In [SearchResultPinColor]. */
     val isSearchResult: Boolean = false,
     /** A brand store's logo, by its URL once loaded: drawn as a rounded square ([drawPlaceLogoPin]) instead of icon or photo. */

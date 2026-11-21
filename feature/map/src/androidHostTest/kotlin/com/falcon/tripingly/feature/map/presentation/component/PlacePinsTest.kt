@@ -99,15 +99,15 @@ class PlacePinsTest {
     }
 
     @Test
-    fun `only a place's dot while a route shows is see-through, at its own small size`() {
+    fun `only a place's dot while a route shows is see-through, by the marker's opacity with the same look`() {
         val pin = PlacePin(place("cafe"), PinSizes[0])
+        // One look with or without a route, so a route turning on or off makes no new markers.
         assertEquals(PlacePinLook(PlaceCategory.Other, isTripinly = false, PlaceDotSize, isDot = true), pin.dotLook())
-        assertEquals(
-            PlacePinLook(PlaceCategory.Other, isTripinly = false, RouteDotSize, isDot = true, isSeeThrough = true),
-            pin.copy(isDot = true).dotLook(),
-        )
+        assertEquals(pin.dotLook(), pin.copy(isDot = true).dotLook())
+        assertEquals(1f, pin.dotAlpha)
+        assertEquals(RouteDotAlpha, pin.copy(isDot = true).dotAlpha)
         // A place along the way stays solid, also as its dot when zoomed out.
-        assertEquals(false, pin.copy(isAlongTheWay = true).dotLook().isSeeThrough)
+        assertEquals(1f, pin.copy(isAlongTheWay = true).dotAlpha)
     }
 
     @Test
