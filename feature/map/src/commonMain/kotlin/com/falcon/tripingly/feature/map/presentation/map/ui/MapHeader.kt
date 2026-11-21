@@ -1,21 +1,26 @@
 package com.falcon.tripingly.feature.map.presentation.map.ui
 
 import androidx.compose.animation.core.animateFloatAsState
+import com.falcon.tripingly.core.designsystem.theme.extendedColors
+import com.falcon.tripingly.core.designsystem.component.GlassDefaults
+import androidx.compose.ui.unit.LayoutDirection
+import androidx.compose.ui.unit.Density
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawOutline
+import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.graphics.Outline
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.material3.LocalContentColor
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.animation.core.updateTransition
 import com.falcon.tripingly.core.designsystem.component.verticalFadingEdge
-import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.animation.shrinkVertically
-import androidx.compose.animation.scaleOut
-import androidx.compose.animation.scaleIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.expandVertically
 import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.animateContentSize
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -285,9 +290,11 @@ private fun SearchField(search: SearchState, onAction: (MapAction) -> Unit, modi
 
 /**
  * The search's results under the header: as tall as they are, at most [maxHeight], then they scroll with faded edges;
- * the credits for OpenStreetMap and Photon stay at the bottom. The card grows in from the top when results come and
- * shrinks back when they go; while typing, each result fades in or out and the rest glide to their places, and the
- * card's height glides with them (Shahin, 2026-11-21).
+ * the credits for OpenStreetMap and Photon stay at the bottom. The card grows down out of the header's edge when results
+ * come and folds back up when they go, like the trip card but only vertically: the glass (its shadow, edge and clip) is
+ * one shape whose bottom moves, and the content is uncovered, not faded. It is laid out once at full size, so each
+ * frame only draws again. While typing, each result fades in or out, the rest glide to their places, and the card's
+ * height glides with them (Shahin, 2026-11-21).
  */
 @Composable
 internal fun SearchResults(
@@ -296,52 +303,77 @@ internal fun SearchResults(
     modifier: Modifier = Modifier,
     maxHeight: Dp = SearchResultsMaxHeight,
 ) {
-    AnimatedVisibility(
-        visible = results.isNotEmpty(),
-        modifier = modifier,
-        // The card stays inside its space, so nothing clips its shadow or corners on the way.
-        enter = expandVertically(tween(RESULTS_MOTION_MILLIS, easing = Emphasized), expandFrom = Alignment.Top, clip = false) +
-            scaleIn(tween(RESULTS_MOTION_MILLIS, easing = Emphasized), initialScale = 0.9f, transformOrigin = FromTop) + fadeIn(tween(RESULTS_FADE_MILLIS)),
-        exit = shrinkVertically(tween(RESULTS_MOTION_MILLIS, easing = Emphasized), shrinkTowards = Alignment.Top, clip = false) +
-            scaleOut(tween(RESULTS_MOTION_MILLIS, easing = Emphasized), targetScale = 0.9f, transformOrigin = FromTop) + fadeOut(tween(RESULTS_FADE_MILLIS)),
-    ) {
-        val listState = rememberLazyListState()
-        GlassSurface(modifier = Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.large, blur = false) {
-            Column(Modifier.heightIn(max = maxHeight).animateContentSize(tween(RESULTS_MOTION_MILLIS, easing = Emphasized))) {
-                LazyColumn(
-                    state = listState,
-                    modifier = Modifier.weight(1f, fill = false).verticalFadingEdge(listState),
-                    contentPadding = PaddingValues(top = MaterialTheme.spacing.small),
-                ) {
-                    items(results, key = { it.key }) { (result, distanceMeters) ->
-                        SuggestionItem(
-                            title = result.name,
-                            // No address (OpenStreetMap has none): how far it is from the map's centre.
-                            subtitle = result.address?.takeIf { it.isNotBlank() } ?: distanceMeters?.let { distanceText(it).asString() },
-                            onClick = { onAction(MapAction.Search.ResultClick(result)) },
-                            icon = result.icon,
-                            modifier = Modifier.animateItem(),
-                        )
-                    }
-                }
-                // Always in sight under the list, as far from the card's sides and bottom as the first result's text from its top.
-                OsmAttribution(
-                    modifier = Modifier.padding(
-                        start = MaterialTheme.spacing.medium,
-                        end = MaterialTheme.spacing.medium,
-                        top = MaterialTheme.spacing.small,
-                        bottom = MaterialTheme.spacing.medium,
-                    ),
-                )
+    val transition = updateTransition(results.isNotEmpty(), label = "search results")
+    if (!transition.currentState && !transition.targetState) return
+    val reveal = transition.animateFloat(
+        transitionSpec = { tween(if (false isTransitioningTo true) RESULTS_OPEN_MILLIS else RESULTS_CLOSE_MILLIS, easing = Decelerate) },
+        label = "search results reveal",
+    ) { shown -> if (shown) 1f else 0f }
+    val corners = MaterialTheme.shapes.large
+    val tint = GlassDefaults.opaqueTint
+    val edge = MaterialTheme.extendedColors.glassEdge
+    val listState = rememberLazyListState()
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .graphicsLayer {
+                shape = RevealShape(corners, reveal.value)
+                clip = true
+                shadowElevation = GlassDefaults.ShadowElevation.toPx()
+                ambientShadowColor = GlassDefaults.Shadow
+                spotShadowColor = GlassDefaults.Shadow
             }
+            .drawBehind {
+                val outline = RevealShape(corners, reveal.value).createOutline(size, layoutDirection, this)
+                drawOutline(outline, tint)
+                drawOutline(outline, edge, style = Stroke(GlassDefaults.Edge.toPx()))
+            }
+            .heightIn(max = maxHeight)
+            .animateContentSize(tween(RESULTS_OPEN_MILLIS, easing = Emphasized)),
+    ) {
+        // Drawn by hand rather than with GlassSurface, so it sets the glass's content color itself.
+        CompositionLocalProvider(LocalContentColor provides MaterialTheme.colorScheme.onSurface) {
+            LazyColumn(
+                state = listState,
+                modifier = Modifier.weight(1f, fill = false).verticalFadingEdge(listState),
+                contentPadding = PaddingValues(top = MaterialTheme.spacing.small),
+            ) {
+                items(results, key = { it.key }) { (result, distanceMeters) ->
+                    SuggestionItem(
+                        title = result.name,
+                        // No address (OpenStreetMap has none): how far it is from the map's centre.
+                        subtitle = result.address?.takeIf { it.isNotBlank() } ?: distanceMeters?.let { distanceText(it).asString() },
+                        onClick = { onAction(MapAction.Search.ResultClick(result)) },
+                        icon = result.icon,
+                        modifier = Modifier.animateItem(),
+                    )
+                }
+            }
+            // Always in sight under the list, as far from the card's sides and bottom as the first result's text from its top.
+            OsmAttribution(
+                modifier = Modifier.padding(
+                    start = MaterialTheme.spacing.medium,
+                    end = MaterialTheme.spacing.medium,
+                    top = MaterialTheme.spacing.small,
+                    bottom = MaterialTheme.spacing.medium,
+                ),
+            )
         }
     }
 }
 
+/** [base] cut to the top [progress] of the card's height: its bottom edge moves, its corners stay round. */
+private class RevealShape(private val base: Shape, private val progress: Float) : Shape {
+    override fun createOutline(size: Size, layoutDirection: LayoutDirection, density: Density): Outline =
+        base.createOutline(Size(size.width, size.height * progress), layoutDirection, density)
+}
+
 private val Emphasized = CubicBezierEasing(0.2f, 0f, 0f, 1f)
-private val FromTop = TransformOrigin(0.5f, 0f)
-private const val RESULTS_MOTION_MILLIS = 300
-private const val RESULTS_FADE_MILLIS = 200
+
+/** As the trip card's: fast at first, easing into place, both ways. */
+private val Decelerate = CubicBezierEasing(0.05f, 0.7f, 0.1f, 1f)
+private const val RESULTS_OPEN_MILLIS = 320
+private const val RESULTS_CLOSE_MILLIS = 260
 
 /** Previews only: on the map the room down to the plan sheet decides. */
 private val SearchResultsMaxHeight = 360.dp
