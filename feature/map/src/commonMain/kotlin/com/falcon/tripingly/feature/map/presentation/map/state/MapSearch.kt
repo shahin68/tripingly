@@ -115,8 +115,8 @@ internal class MapSearch(
     /** The search is still open on the map searched by [name]. */
     private fun isNamed(name: String) = context.model.value.let { it.search != null && it.placeFilter.name == name }
 
-    /** Where the map's pins are; while it's searched by name, they're all results. */
-    private fun namedPins() = context.model.value.pins.pins.map { it.place.location }
+    /** Where the search's results are on the map (the other pins stay, dimmed). */
+    private fun namedPins() = context.model.value.pins.pins.filter { it.isSearchResult }.map { it.place.location }
 
     /** A finger moved the map before the results came: it stays where the finger left it. */
     fun onUserMove() {

@@ -72,12 +72,14 @@ internal class MapPins(
     }
 
     /**
-     * The map searched by [name] (null: the search closed): only places named so load and show, wherever the camera
-     * goes, also while places are hidden; the kinds picked wait meanwhile and come back with the map as it was.
+     * The map searched by [name] (null: the search closed): the places named so load too, wherever the camera goes, and
+     * show as results; every other pin stays, dimmed (Shahin, 2026-11-21: a search hides no pin). While places are
+     * hidden only the results load. The old results are plain pins again until the new ones come.
      */
     fun setName(name: String?) {
         if (context.model.value.placeFilter.name == name) return
-        refilter({ it.copy(name = name) }) { place -> name == null || place.name.contains(name, ignoreCase = true) }
+        update { it.copy(pins = it.pins.map { pin -> pin.copy(isSearchResult = false) }) }
+        refilter({ it.copy(name = name) }) { true }
     }
 
     /**
@@ -127,7 +129,7 @@ internal class MapPins(
         val closest = closestZoom
         keepUnlisted = closest != null && zoom > closest - TIDY_ZOOM_OUT
         closestZoom = if (keepUnlisted && closest != null) maxOf(closest, zoom) else zoom
-        val squares = PlaceSquare.covering(bounds, floor(zoom).toInt(), categories = categories, name = name)
+        val squares = squaresFor(bounds, zoom)
         pinsJob?.cancel()
         pinsJob = context.scope.launch {
             // Loaded together with the squares already kept; null while offline, so the pins stay.
@@ -141,7 +143,7 @@ internal class MapPins(
         prefetchJob?.cancel()
         prefetchJob = context.scope.launch {
             delay(PREFETCH_DELAY)
-            placeRepository.placesIn(PlaceSquare.covering(bounds, floor(zoom).toInt(), ring = 1, categories = categories, name = name))
+            placeRepository.placesIn(squaresFor(bounds, zoom, ring = 1))
         }
     }
 
@@ -158,7 +160,7 @@ internal class MapPins(
         if (lastMoving?.let { now - it < MOVING_PINS } == true) return
         lastMoving = now
         if (pinsJob?.isActive == true) return
-        val squares = PlaceSquare.covering(bounds, floor(zoom).toInt(), categories = categories, name = name)
+        val squares = squaresFor(bounds, zoom)
         pinsJob = context.scope.launch {
             placeRepository.placesIn(squares)
             update { it.copy(area = PinArea(bounds, squares)) }
@@ -166,24 +168,44 @@ internal class MapPins(
         }
     }
 
-    /** The pins of the squares the camera rests on, from what the repository keeps. */
+    /**
+     * The squares of a view: every place of the kinds picked (none while places are hidden) and, while the map is
+     * searched by name, the places named so as well.
+     */
+    private fun squaresFor(bounds: GeoBounds, zoom: Float, ring: Int = 0): List<PlaceSquare> {
+        val level = floor(zoom).toInt()
+        val all = if (context.model.value.arePlacesHidden) emptyList() else PlaceSquare.covering(bounds, level, ring = ring, categories = categories)
+        return all + name?.let { PlaceSquare.covering(bounds, level, ring = ring, categories = categories, name = it) }.orEmpty()
+    }
+
+    /** The pins of the squares the camera rests on, from what the repository keeps; the named squares' are results. */
     private suspend fun show(addOnly: Boolean = false) {
         val area = context.model.value.pins.area ?: return
         val day = context.activeDay()
         // Other days' stops come along as places: a custom spot only on this private trip is in no square. With their
         // own kind, they follow the map's filter like any place (Shahin, 2026-11-17).
-        val square = area.squares.firstOrNull()
-        val picked = square?.categories.orEmpty()
-        val named = square?.name
-        val otherStops = tripStopPlaces(context.days(), day)
-            .filter { (picked.isEmpty() || it.category in picked) && (named == null || it.name.contains(named, ignoreCase = true)) }
-        val squares = placeRepository.loadedPlacesIn(area.squares).values + PlacesInView(otherStops, emptyList())
+        val picked = area.squares.firstOrNull()?.categories.orEmpty()
+        val named = area.squares.firstNotNullOfOrNull { it.name }
+        val otherStops = tripStopPlaces(context.days(), day).filter { picked.isEmpty() || it.category in picked }
+        val loaded = placeRepository.loadedPlacesIn(area.squares)
+        val all = loaded.filterKeys { it.name == null }.values +
+            PlacesInView(otherStops.takeUnless { context.model.value.arePlacesHidden }.orEmpty(), emptyList())
+        val results = loaded.filterKeys { it.name != null }.values +
+            PlacesInView(otherStops.filter { named != null && it.name.contains(named, ignoreCase = true) }, emptyList())
         val hidden = stopPlaceIds(day)
         val config = appConfigRepository.config.value
         val shown = context.model.value.pins
         val (pins, clusters) = withContext(computation) {
-            val pins = placePins(squares, area.bounds, hidden, config, shown = shown.pins, keepUnlisted = keepUnlisted)
-            val clusters = placeClusters(squares, area.bounds)
+            val found = if (named == null) emptyList() else {
+                placePins(results, area.bounds, hidden, config, shown = shown.pins.filter { it.isSearchResult }, keepUnlisted = keepUnlisted)
+                    .map { it.copy(isSearchResult = true) }
+            }
+            val foundIds = found.mapTo(HashSet()) { it.place.id }
+            // The results first: the rest fill up to the map's most pins.
+            val others = placePins(all, area.bounds, hidden + foundIds, config, shown = shown.pins.filter { !it.isSearchResult }, keepUnlisted = keepUnlisted)
+                .let { if (found.isEmpty()) it else it.take((config.mapMaxPins - found.size).coerceAtLeast(0)) }
+            val pins = found + others
+            val clusters = placeClusters(all, area.bounds)
             if (!addOnly) return@withContext pins to clusters
             val pinIds = pins.mapTo(HashSet()) { it.place.id }
             val clusterSpots = clusters.mapTo(HashSet()) { it.location }

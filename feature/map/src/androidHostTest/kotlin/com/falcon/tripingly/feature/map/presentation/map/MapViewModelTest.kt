@@ -84,6 +84,7 @@ import com.falcon.tripingly.feature.map.generated.resources.map_join_requested
 import com.falcon.tripingly.feature.map.generated.resources.map_route_my_location
 import com.falcon.tripingly.feature.map.generated.resources.map_trip_card_more
 import com.falcon.tripingly.feature.map.presentation.FakeTripMapViewRepository
+import com.falcon.tripingly.feature.map.presentation.component.isClearWhileSearched
 import com.falcon.tripingly.feature.map.presentation.component.LineMark
 import com.falcon.tripingly.feature.map.presentation.component.CameraCommand
 import com.falcon.tripingly.feature.map.presentation.component.PinEnd
@@ -2918,7 +2919,7 @@ class MapViewModelTest {
     }
 
     @Test
-    fun `the keyboard's search shows only the places named so, as full pins, until the search closes`() = runTest(testDispatcher) {
+    fun `the keyboard's search shows the places named so as red full pins over the other pins, dimmed, until the search closes`() = runTest(testDispatcher) {
         addStops(GeoPoint(48.85, 2.30), GeoPoint(48.86, 2.31))
         val viewModel = viewModel()
         restOnTarget(viewModel)
@@ -2940,12 +2941,15 @@ class MapViewModelTest {
             assertTrue(louvre.lat in fit.bounds.south..fit.bounds.north && louvre.lng in fit.bounds.west..fit.bounds.east)
         }
 
-        assertEquals("louv", places.requests.last().map { it.name }.toSet().single())
+        // The map's own places load too: no pin goes (Shahin, 2026-11-21).
+        assertEquals(setOf(null, "louv"), places.requests.last().map { it.name }.toSet())
         val pins = viewModel.uiState.value.layers.placePins
-        assertEquals(listOf("Louvre"), pins.map { it.place.name })
-        assertTrue(pins.none { it.isDot } && pins.all { it.isKept }, "full pins, also zoomed out, during a route or Around")
+        assertEquals(setOf("Eiffel Tower", "Louvre"), pins.map { it.place.name }.toSet(), "the other pins stay")
+        val results = pins.filter { it.isSearchResult }
+        assertEquals(listOf("Louvre"), results.map { it.place.name })
+        assertTrue(results.none { it.isDot } && results.all { it.isKept }, "full pins, also zoomed out, during a route or Around")
         assertEquals(false, viewModel.uiState.value.search?.isSearching)
-        assertTrue(pins.all { it.isSearchResult } && viewModel.uiState.value.layers.isSearchShown, "red results, the rest see-through")
+        assertTrue(viewModel.uiState.value.layers.isSearchShown, "red results, the rest see-through")
 
         // A result tapped stays red when the day's route comes on: it is kept as a pin now, still a result.
         viewModel.onAction(MapAction.MapView.PlacePinClick(viewModel.pin("Louvre")))
@@ -3123,6 +3127,12 @@ class MapViewModelTest {
         assertEquals(4000, viewModel.uiState.value.layers.aroundRing?.radiusMeters)
         testScheduler.advanceUntilIdle()
         assertEquals(listOf("Eiffel Tower", "Louvre"), viewModel.uiState.value.stopsCard?.around?.places?.map { it.place.name })
+        // While the map is searched, Around's pin and places stay clear with the results (Shahin, 2026-11-21).
+        val layers = viewModel.uiState.value.layers
+        assertEquals(layers.stops.first().id, layers.aroundPinId)
+        val aroundPins = layers.placePins.filter { it.isAlongTheWay }
+        assertTrue(aroundPins.isNotEmpty() && aroundPins.all { it.isClearWhileSearched(layers.aroundPinId, isAroundShown = true) })
+        assertTrue(aroundPins.none { it.isClearWhileSearched(aroundPinId = null, isAroundShown = false) }, "without Around they dim")
         viewModel.onAction(MapAction.Around.ToggleCategory(PlaceCategory.Museum))
         testScheduler.advanceUntilIdle()
         assertEquals(listOf("Louvre"), viewModel.uiState.value.stopsCard?.around?.places?.map { it.place.name })

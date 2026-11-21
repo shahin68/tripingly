@@ -56,6 +56,7 @@ actual fun GoogleMapView(
             stopHalo = layers.stopHalo,
             dimAlpha = layers.dimAlpha,
             selectedStopId = layers.selectedStopId,
+            aroundPinId = layers.aroundPinId,
             aroundRing = layers.aroundRing,
             onCameraMove = onCameraMove,
             onCameraMoving = onCameraMoving,
