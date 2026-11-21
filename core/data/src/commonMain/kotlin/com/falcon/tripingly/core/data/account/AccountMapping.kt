@@ -36,6 +36,7 @@ internal fun MeDto.toAccount() = Account(
     isAdmin = role == MeDto.Role.ADMIN,
     onboarding = onboarding.toOnboardingState(),
     entitlements = entitlements.toSet(),
+    proExpiresAt = proExpiresAt,
 )
 
 private fun OnboardingStateDto.toOnboardingState() = OnboardingState(

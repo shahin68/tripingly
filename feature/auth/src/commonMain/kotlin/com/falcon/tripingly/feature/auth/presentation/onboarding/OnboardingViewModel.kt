@@ -28,6 +28,7 @@ import com.falcon.tripingly.feature.auth.generated.resources.onboarding_error_ph
 import com.falcon.tripingly.feature.auth.generated.resources.onboarding_error_save_profile
 import com.falcon.tripingly.feature.auth.presentation.common.UiMessage
 import com.falcon.tripingly.feature.auth.presentation.common.toUiMessage
+import kotlin.time.Duration.Companion.milliseconds
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.toImmutableList
@@ -202,7 +203,7 @@ internal class OnboardingViewModel(
             else -> {
                 _uiState.update { it.copy(usernameStatus = UsernameStatus.CHECKING) }
                 usernameCheck = viewModelScope.launch {
-                    delay(USERNAME_CHECK_DEBOUNCE_MILLIS)
+                    delay(USERNAME_CHECK_DEBOUNCE)
                     val status = when (val result = accountRepository.checkUsername(username)) {
                         is AppResult.Success -> when (result.data) {
                             UsernameAvailability.AVAILABLE -> UsernameStatus.AVAILABLE
@@ -294,7 +295,7 @@ internal class OnboardingViewModel(
     }
 
     private companion object {
-        const val USERNAME_CHECK_DEBOUNCE_MILLIS = 400L
+        val USERNAME_CHECK_DEBOUNCE = 400.milliseconds
         const val USERNAME_TAKEN = "USERNAME_TAKEN"
         const val USERNAME_INVALID = "USERNAME_INVALID"
         const val AGE_REQUIREMENT_NOT_MET = "AGE_REQUIREMENT_NOT_MET"

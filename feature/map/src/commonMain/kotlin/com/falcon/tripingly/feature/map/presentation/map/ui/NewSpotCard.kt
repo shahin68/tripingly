@@ -1,10 +1,13 @@
 package com.falcon.tripingly.feature.map.presentation.map.ui
 
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -22,16 +25,19 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.text.input.InputTransformation
 import androidx.compose.foundation.text.input.maxLength
 import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Storefront
 import androidx.compose.material.icons.outlined.AddAPhoto
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -56,10 +62,12 @@ import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
 import com.falcon.tripingly.core.designsystem.theme.spacing
 import com.falcon.tripingly.core.location.model.Coordinates
 import com.falcon.tripingly.core.model.photo.PickedImage
+import com.falcon.tripingly.core.model.place.Brand
 import com.falcon.tripingly.core.model.place.PlaceCategory
 import com.falcon.tripingly.core.ui.photos.rememberPhotoPicker
 import com.falcon.tripingly.feature.map.generated.resources.Res
 import com.falcon.tripingly.feature.map.generated.resources.map_new_spot_add_photo
+import com.falcon.tripingly.feature.map.generated.resources.map_new_spot_brand_store
 import com.falcon.tripingly.feature.map.generated.resources.map_new_spot_create
 import com.falcon.tripingly.feature.map.generated.resources.map_new_spot_name
 import com.falcon.tripingly.feature.map.generated.resources.map_new_spot_remove_photo
@@ -80,6 +88,8 @@ internal fun PinCardScope.NewSpotCard(
     onPhoto: (PickedImage?) -> Unit,
     onCreate: () -> Unit,
     modifier: Modifier = Modifier,
+    onNameChange: (String) -> Unit = {},
+    onPickBrand: (Brand?) -> Unit = {},
 ) {
     val haptics = rememberHaptics()
     // The long press that dropped the pin is felt as its card opens.
@@ -105,11 +115,27 @@ internal fun PinCardScope.NewSpotCard(
                 state = card.name,
                 placeholder = stringResource(Res.string.map_new_spot_name),
                 modifier = Modifier.weight(1f),
+                onTextChange = onNameChange,
                 onImeAction = create,
                 keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Words, imeAction = ImeAction.Done),
                 inputTransformation = InputTransformation.maxLength(MAX_SPOT_NAME_LENGTH),
             )
             SpotPhotoButton(card.photo, onAdd = pickPhoto, onRemove = { onPhoto(null) })
+        }
+        // Brands named like the spot, once there are any: one picked makes the spot its store (Shahin, 2026-11-20).
+        AnimatedVisibility(
+            visible = card.brands.isNotEmpty(),
+            enter = fadeIn() + expandVertically(),
+            exit = fadeOut() + shrinkVertically(),
+        ) {
+            BrandRow(
+                brands = card.brands,
+                selected = card.brand,
+                onPick = { brand ->
+                    haptics.toggle(on = brand != card.brand)
+                    onPickBrand(brand.takeIf { it != card.brand })
+                },
+            )
         }
         CategoryRow(
             selected = card.category,
@@ -148,6 +174,55 @@ private fun CategoryRow(selected: PlaceCategory, onPick: (PlaceCategory) -> Unit
             )
         }
     }
+}
+
+/**
+ * "Brand store" and the brands named like the spot, each with its logo when it has one, in one sideways row; a tap picks
+ * one (the spot becomes its store), a tap on the picked one unpicks it. People can only pick brands from our list.
+ */
+@Composable
+private fun BrandRow(brands: List<Brand>, selected: Brand?, onPick: (Brand) -> Unit, modifier: Modifier = Modifier) {
+    val state = rememberLazyListState()
+    LazyRow(
+        state = state,
+        modifier = modifier.fillMaxWidth().horizontalFadingEdge(state),
+        contentPadding = PaddingValues(horizontal = MaterialTheme.spacing.small),
+        horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        item(key = "label") {
+            Text(
+                stringResource(Res.string.map_new_spot_brand_store),
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.animateItem(),
+            )
+        }
+        items(brands, key = { it.id }) { brand ->
+            PillChip(
+                label = brand.name,
+                onClick = { onPick(brand) },
+                selected = brand == selected,
+                leading = { BrandLogo(brand) },
+                modifier = Modifier.animateItem(),
+            )
+        }
+    }
+}
+
+/** A brand's logo on white, rounded like its pin, or a shop icon when it has none. */
+@Composable
+private fun BrandLogo(brand: Brand) {
+    val logoUrl = brand.logoUrl
+    if (logoUrl == null) {
+        Icon(Icons.Default.Storefront, contentDescription = null, modifier = Modifier.size(ChipIconSize))
+        return
+    }
+    AsyncImage(
+        model = logoUrl,
+        contentDescription = null,
+        modifier = Modifier.size(ChipIconSize).clip(RoundedCornerShape(BrandLogoCorner)).background(Color.White),
+    )
 }
 
 /**
@@ -242,6 +317,7 @@ private const val MAX_SPOT_NAME_LENGTH = 120
 private val PhotoButtonSize = 56.dp
 private val RemoveBadgeSize = 28.dp
 private val ChipIconSize = 18.dp
+private val BrandLogoCorner = 5.dp
 private val PhotoScrim = Color.Black.copy(alpha = 0.45f)
 
 @Preview(widthDp = 360, heightDp = 640)
@@ -264,7 +340,15 @@ private fun NewSpotCardLandscapePreview() {
 
 @Composable
 private fun NewSpotCardPreviewContent() {
-    val card = NewSpotCardState(Coordinates(48.1915, 16.3809), rememberTextFieldState("Rooftop view"), PlaceCategory.Viewpoint, photo = null)
+    val zara = Brand("zara", "Zara", null)
+    val card = NewSpotCardState(
+        Coordinates(48.1915, 16.3809),
+        rememberTextFieldState("Zara"),
+        PlaceCategory.Shopping,
+        photo = null,
+        brands = listOf(zara, Brand("zara-home", "Zara Home", null)),
+        brand = zara,
+    )
     PinCard(card = card, key = { it.location }, pinClearance = SelectedPinSize / 2) { shown ->
         NewSpotCard(shown, onPickCategory = {}, onPhoto = {}, onCreate = {})
     }

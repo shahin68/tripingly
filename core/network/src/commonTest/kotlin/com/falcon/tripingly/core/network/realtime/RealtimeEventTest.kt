@@ -5,6 +5,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
 import kotlin.test.assertNull
+import kotlin.time.Instant
 
 class RealtimeEventTest {
 
@@ -173,6 +174,19 @@ class RealtimeEventTest {
         // A change this app doesn't know yet, or none at all, is skipped.
         assertNull(changed("""{"change":"archived","ids":["n1"]}"""))
         assertNull(changed("{}"))
+    }
+
+    @Test
+    fun proChanged_carriesTheEntitlementsAndWhenTheyEnd() {
+        fun pro(data: String) = parse("pro.changed", envelope("pro.changed", data, tripId = null, actorId = null))
+        assertEquals(
+            RealtimeEvent.ProChanged(setOf("routes"), Instant.parse("2026-12-01T10:00:00Z")),
+            pro("""{"entitlements":["routes"],"proExpiresAt":"2026-12-01T10:00:00.000Z"}"""),
+        )
+        // Lifetime: no end.
+        assertEquals(RealtimeEvent.ProChanged(setOf("routes"), null), pro("""{"entitlements":["routes"],"proExpiresAt":null}"""))
+        // Pro ended.
+        assertEquals(RealtimeEvent.ProChanged(emptySet(), null), pro("""{"entitlements":[],"proExpiresAt":null}"""))
     }
 
     @Test

@@ -2,6 +2,7 @@ package com.falcon.tripingly.feature.map.presentation.map
 
 import com.falcon.tripingly.core.designsystem.component.rememberHaptics
 import com.falcon.tripingly.core.designsystem.component.AppBottomSheet
+import com.falcon.tripingly.core.designsystem.component.LocalSheetArrived
 import androidx.compose.foundation.gestures.animateTo
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -16,6 +17,13 @@ import com.falcon.tripingly.core.model.photo.Photo
 import com.falcon.tripingly.core.model.photo.PhotoOwner
 import com.falcon.tripingly.core.model.place.MapPlace
 import com.falcon.tripingly.core.ui.ObserveAsEvents
+import com.falcon.tripingly.core.common.util.DateUtils
+import com.falcon.tripingly.core.common.util.ShareManager
+import com.falcon.tripingly.feature.map.generated.resources.Res
+import com.falcon.tripingly.feature.map.generated.resources.map_share_trip_text
+import com.falcon.tripingly.feature.map.generated.resources.map_share_trip_text_no_dates
+import org.jetbrains.compose.resources.getString
+import org.koin.compose.koinInject
 import com.falcon.tripingly.feature.map.presentation.comments.StopCommentsRoute
 import com.falcon.tripingly.feature.map.presentation.map.ui.AddToTripSheet
 import com.falcon.tripingly.feature.map.presentation.map.ui.TransitStepsSheet
@@ -25,6 +33,7 @@ import com.falcon.tripingly.feature.map.presentation.map.ui.StopDetailsContent
 import com.falcon.tripingly.feature.map.presentation.map.ui.PlanSheetValue
 import com.falcon.tripingly.feature.map.presentation.map.ui.rememberPlanSheetState
 import com.falcon.tripingly.feature.map.presentation.photos.PhotoStripRoute
+import com.falcon.tripingly.feature.map.presentation.photos.PhotoStripSkeleton
 import com.falcon.tripingly.feature.map.presentation.photos.PhotoViewerRoute
 import com.falcon.tripingly.feature.map.presentation.photos.PhotosRoute
 import kotlinx.coroutines.launch
@@ -38,8 +47,8 @@ fun MapRoute(
     onOpenProfile: (String) -> Unit,
     /** Tripinly Pro's paywall, when a free user taps a route. */
     onOpenPaywall: () -> Unit,
-    /** The trip's members sheet (from the trips feature), where the owner answers requests to join. */
-    membersContent: @Composable (tripId: String, onDismiss: () -> Unit) -> Unit,
+    /** The trip's members sheets (from the trips feature), where the owner answers requests to join; open while the trip id isn't null. */
+    membersContent: @Composable (tripId: String?, onDismiss: () -> Unit) -> Unit,
     /** The stop a push opened the trip on, if any. */
     stopId: String? = null,
     /** A push about a request to join: the Members sheet opens. */
@@ -48,9 +57,11 @@ fun MapRoute(
     showComments: Boolean = false,
     // Keyed by trip: the view model store is shared across screens, and the class alone would
     // hand every trip the first trip's view model.
-    viewModel: MapViewModel = koinViewModel(key = "map:$tripId") { parametersOf(tripId, stopId, showMembers, showComments) }
+    viewModel: MapViewModel = koinViewModel(key = "map:$tripId") { parametersOf(tripId, stopId, showMembers, showComments) },
+    shareManager: ShareManager = koinInject(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val isDayRouteOn by viewModel.isDayRouteOn.collectAsStateWithLifecycle()
     val onAction = viewModel::onAction
 
     val scope = rememberCoroutineScope()
@@ -75,6 +86,12 @@ fun MapRoute(
             MapEvent.OpenAppSettings -> locationPermission.openSettings()
             MapEvent.TurnOnLocation -> locationPermission.turnOnLocation()
             MapEvent.NavigateBack -> onNavigateBack()
+            is MapEvent.ShareTrip -> {
+                val dates = DateUtils.formatRange(event.startDate, event.endDate)
+                shareManager.share(
+                    if (dates != null) getString(Res.string.map_share_trip_text, event.name, dates) else getString(Res.string.map_share_trip_text_no_dates, event.name),
+                )
+            }
             is MapEvent.OpenProfile -> onOpenProfile(event.username)
             // A locked feature (street routes without Pro) is felt as a no before the paywall.
             MapEvent.OpenPaywall -> {
@@ -92,6 +109,7 @@ fun MapRoute(
 
     MapScreen(
         state = state,
+        isDayRouteOn = isDayRouteOn,
         cameraCommands = viewModel.cameraCommands,
         planSheet = planSheet,
         onAction = onAction,
@@ -104,7 +122,7 @@ fun MapRoute(
     val back = { onAction(MapAction.Sheet.Back) }
     val sheet = state.sheet
     val onReportPhoto: (Photo) -> Unit = { photo -> onAction(MapAction.Sheet.ReportPhoto(photo)) }
-    AppBottomSheet(value = sheet?.takeUnless { it is MapSheet.PlaceImage || it.isDetails || it.isPickingDay }, onDismiss = closeAll, onBack = back.takeIf { sheet?.hasBack == true }) { shown, close ->
+    AppBottomSheet(value = sheet?.takeUnless { it is MapSheet.PlaceImage || it is MapSheet.Members || it.isDetails || it.isPickingDay }, onDismiss = closeAll, onBack = back.takeIf { sheet?.hasBack == true }) { shown, close ->
         when (shown) {
             is MapSheet.StopPhotos -> PhotosRoute(
                 owner = PhotoOwner.Stop(shown.stop.id),
@@ -117,18 +135,20 @@ fun MapRoute(
             )
             is MapSheet.PlacePhotos -> PlacePhotos(shown.place, onReportPhoto, onDismiss = close)
             is MapSheet.StopComments -> StopCommentsRoute(marker = shown.stop, people = shown.people, onOpenProfile = onOpenProfile, onDismiss = close)
-            MapSheet.Members -> membersContent(tripId, close)
             is MapSheet.AddToTrip -> AddToTripSheet(shown.picker, onAction, onClose = close)
             is MapSheet.TransitSteps -> TransitStepsSheet(shown, onClose = close)
-            is MapSheet.PlaceImage, is MapSheet.StopDetails, is MapSheet.PlaceDetails -> Unit
+            MapSheet.Members, is MapSheet.PlaceImage, is MapSheet.StopDetails, is MapSheet.PlaceDetails -> Unit
         }
     }
     // A pin's details open half high, in a sheet of their own. Its photos and comments open in their own sheets in its
     // place, one sheet at a time, and their back arrow brings the details back.
     AppBottomSheet(value = sheet?.takeIf { it.isDetails }, onDismiss = closeAll, halfHigh = true) { shown, close ->
         when (shown) {
+            // The photo strip is built once the sheet is up, so the slide (and the photos sheet going away under it) has
+            // less to do; its tiles show as skeletons until then (a stop without photos shows its line at once, no jump;
+            // Shahin, 2026-11-19).
             is MapSheet.StopDetails -> StopDetailsContent(shown.card, onAction, onClose = close) {
-                PhotoStripRoute(
+                if (!LocalSheetArrived.current && shown.card.stop.photoCount > 0) PhotoStripSkeleton() else PhotoStripRoute(
                     PhotoOwner.Stop(shown.card.stop.id),
                     canAdd = shown.card.canEdit,
                     onShowAll = { onAction(MapAction.StopCard.OpenPhotos) },
@@ -140,12 +160,14 @@ fun MapRoute(
             is MapSheet.PlaceDetails -> PlaceDetailsContent(shown.card, onAction, onClose = close) {
                 // An address from search isn't one of our places: it has no photos.
                 if (shown.card.address == null) {
-                    PhotoStripRoute(PhotoOwner.Place(shown.card.place.id), canAdd = true, onShowAll = { onAction(MapAction.PlaceCard.OpenPhotos) }, onReport = onReportPhoto)
+                    if (!LocalSheetArrived.current) PhotoStripSkeleton() else PhotoStripRoute(PhotoOwner.Place(shown.card.place.id), canAdd = true, onShowAll = { onAction(MapAction.PlaceCard.OpenPhotos) }, onReport = onReportPhoto)
                 }
             }
             else -> Unit
         }
     }
+    // The members and their Add people page, each a sheet of its own, one at a time; kept composed so they slide away.
+    membersContent(tripId.takeIf { sheet is MapSheet.Members }, closeAll)
     // The picked trip's days, in a sheet of their own in the trips' place; its back arrow goes back to the trips.
     AppBottomSheet(value = (sheet as? MapSheet.AddToTrip)?.takeIf { it.isPickingDay }, onDismiss = closeAll, onBack = back) { shown, close ->
         AddToTripSheet(shown.picker, onAction, onClose = close)

@@ -121,6 +121,8 @@ private final class AppGoogleMap: NSObject, GoogleMap, GMSMapViewDelegate {
             if marker.icon !== item.icon { marker.icon = item.icon }
             marker.groundAnchor = CGPoint(x: item.anchorX, y: item.anchorY)
             marker.zIndex = item.zIndex
+            // See-through while the map is searched by name, unless it's a result.
+            marker.opacity = item.opacity
             marker.userData = item
             if marker.map == nil { marker.map = mapView }
             kept[item.key] = marker
@@ -174,7 +176,10 @@ private final class AppGoogleMap: NSObject, GoogleMap, GMSMapViewDelegate {
             polyline.strokeWidth = CGFloat(width)
             if part.isDotted {
                 // A walk: round dots as wide as the line, a dot and a half apart, stamped along it the same on screen
-                // at every zoom (Shahin, 2026-11-15: dots, not dashes), as Android's Dot and Gap draw them.
+                // at every zoom (Shahin, 2026-11-15: dots, not dashes), as Android's Dot and Gap draw them. The SDK
+                // squeezes a stamp into a square as wide as the stroke and lays the squares end to end, so the stroke
+                // is as wide as a dot and its gap, and each square holds one line-wide dot in its middle.
+                polyline.strokeWidth = CGFloat(width) * (1 + Self.dotGapWidths)
                 let stamp = GMSSpriteStyle(image: Self.dotImage(color: part.color, width: CGFloat(width)))
                 polyline.spans = [GMSStyleSpan(style: GMSStrokeStyle.transparentStroke(withStamp: stamp))]
             } else {
@@ -185,12 +190,13 @@ private final class AppGoogleMap: NSObject, GoogleMap, GMSMapViewDelegate {
         }
     }
 
-    /// One dot of a walk and the gap after it: the sprite repeats along the line, scaled to the line's width.
+    /// One dot of a walk with its gap around it: a square (the SDK squeezes any stamp into one), the dot in its middle.
     private static func dotImage(color: UIColor, width: CGFloat) -> UIImage {
-        let size = CGSize(width: width, height: width * (1 + dotGapWidths))
-        return UIGraphicsImageRenderer(size: size).image { _ in
+        let side = width * (1 + dotGapWidths)
+        let inset = (side - width) / 2
+        return UIGraphicsImageRenderer(size: CGSize(width: side, height: side)).image { _ in
             color.setFill()
-            UIBezierPath(ovalIn: CGRect(x: 0, y: 0, width: width, height: width)).fill()
+            UIBezierPath(ovalIn: CGRect(x: inset, y: inset, width: width, height: width)).fill()
         }
     }
 

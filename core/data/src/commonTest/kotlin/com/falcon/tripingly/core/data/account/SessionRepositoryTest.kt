@@ -10,6 +10,7 @@ import com.falcon.tripingly.core.model.account.LegalDocumentType
 import com.falcon.tripingly.core.model.account.ProfileUpdate
 import com.falcon.tripingly.core.model.account.SessionState
 import com.falcon.tripingly.core.model.account.SignOutReason
+import com.falcon.tripingly.core.model.account.TripVisibility
 import com.falcon.tripingly.core.model.trip.ProfilePhoto
 import com.falcon.tripingly.core.network.ApiConfig
 import com.falcon.tripingly.core.network.account.createAccountApi
@@ -43,6 +44,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertIs
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
+import kotlin.time.Instant
 
 class SessionRepositoryTest {
 
@@ -60,14 +62,21 @@ class SessionRepositoryTest {
          "onboardingRequired":true}
     """.trimIndent()
 
-    private fun meJson(completed: Boolean, missingFields: String = "[]", missingConsents: String = "[]", avatar: String? = null) = """
+    private fun meJson(
+        completed: Boolean,
+        missingFields: String = "[]",
+        missingConsents: String = "[]",
+        avatar: String? = null,
+        entitlements: String = "[]",
+        proExpiresAt: String? = null,
+    ) = """
         {"id":"u1","username":${if (completed) "\"jonas.k\"" else "null"},"displayName":"Jonas",
          "avatarPhotoId":${avatar?.let { "\"$it\"" } ?: "null"},
          "avatarThumbUrl":${avatar?.let { "\"https://cdn.test/$it/thumb.webp\"" } ?: "null"},
          "birthDate":${if (completed) "\"1995-04-12\"" else "null"},"locale":"de-AT",
          "defaultTripVisibility":"public","role":"user",
          "onboarding":{"completed":$completed,"missingProfileFields":$missingFields,"missingConsents":$missingConsents},
-         "entitlements":[]}
+         "entitlements":$entitlements,"proExpiresAt":${proExpiresAt?.let { "\"$it\"" } ?: "null"}}
     """.trimIndent()
 
     private inner class Harness(
@@ -248,6 +257,73 @@ class SessionRepositoryTest {
 
         val state = assertIs<SessionState.SignedIn>(harness.session.session.value)
         assertEquals(LocalDate(1995, 4, 12), state.account.birthDate)
+    }
+
+    @Test
+    fun proFromMe_carriesItsEnd() = runTest {
+        val harness = Harness(this) { json(meJson(completed = true, entitlements = """["routes"]""", proExpiresAt = "2026-12-01T10:00:00.000Z")) }
+        harness.tokenStore.save(AuthTokens("access-1", "refresh-1"))
+
+        harness.session.restore()
+
+        val account = assertIs<SessionState.SignedIn>(harness.session.session.value).account
+        assertEquals(setOf("routes"), account.entitlements)
+        assertEquals(Instant.parse("2026-12-01T10:00:00Z"), account.proExpiresAt)
+    }
+
+    @Test
+    fun aRefusedProCall_endsPro_withoutReadingMeAgain() = runTest {
+        val harness = Harness(this) { request ->
+            when (request.method) {
+                HttpMethod.Get -> json(meJson(completed = true, entitlements = """["routes"]"""))
+                else -> apiError(HttpStatusCode.Forbidden, "PREMIUM_REQUIRED")
+            }
+        }
+        harness.tokenStore.save(AuthTokens("access-1", "refresh-1"))
+        harness.session.restore()
+        runCurrent()
+
+        // Any call the server refuses for lack of Pro.
+        harness.account.setDefaultTripVisibility(TripVisibility.PRIVATE)
+        runCurrent()
+
+        assertEquals(emptySet(), assertIs<SessionState.SignedIn>(harness.session.session.value).account.entitlements)
+        assertEquals(listOf("/v1/me"), harness.paths(HttpMethod.Get))
+    }
+
+    @Test
+    fun syncingPro_asksTheServerOnce_andTheAccountFollows() = runTest {
+        val harness = Harness(this) { request ->
+            when (request.url.encodedPath) {
+                "/v1/me/pro/sync" -> json("""{"entitlements":["routes"],"proExpiresAt":"2027-11-21T10:00:00.000Z"}""")
+                else -> json(meJson(completed = true))
+            }
+        }
+        harness.tokenStore.save(AuthTokens("access-1", "refresh-1"))
+        harness.session.restore()
+
+        assertEquals(AppResult.Success(Unit), harness.session.syncPro())
+
+        val account = assertIs<SessionState.SignedIn>(harness.session.session.value).account
+        assertEquals(setOf("routes"), account.entitlements)
+        assertEquals(Instant.parse("2027-11-21T10:00:00Z"), account.proExpiresAt)
+        assertEquals(listOf("/v1/me/pro/sync"), harness.paths(HttpMethod.Post))
+        assertEquals(listOf("/v1/me"), harness.paths(HttpMethod.Get))
+    }
+
+    @Test
+    fun aSyncThatFails_leavesProAsItWas() = runTest {
+        val harness = Harness(this) { request ->
+            when (request.url.encodedPath) {
+                "/v1/me/pro/sync" -> apiError(HttpStatusCode.ServiceUnavailable, "SERVICE_UNAVAILABLE")
+                else -> json(meJson(completed = true))
+            }
+        }
+        harness.tokenStore.save(AuthTokens("access-1", "refresh-1"))
+        harness.session.restore()
+
+        assertIs<AppResult.Error<*>>(harness.session.syncPro())
+        assertEquals(emptySet(), assertIs<SessionState.SignedIn>(harness.session.session.value).account.entitlements)
     }
 
     @Test

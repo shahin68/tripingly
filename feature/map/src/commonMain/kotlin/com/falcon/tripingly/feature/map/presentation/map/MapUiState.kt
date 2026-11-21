@@ -3,9 +3,11 @@ package com.falcon.tripingly.feature.map.presentation.map
 import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.runtime.Immutable
 import com.falcon.tripingly.core.location.model.Coordinates
+import com.falcon.tripingly.core.model.place.Brand
 import com.falcon.tripingly.core.model.place.GeoBounds
 import com.falcon.tripingly.core.model.photo.PickedImage
 import com.falcon.tripingly.core.model.place.MapPlace
+import com.falcon.tripingly.core.model.place.PlaceAround
 import com.falcon.tripingly.core.model.place.PlaceCategory
 import com.falcon.tripingly.core.model.place.PlaceDetails
 import com.falcon.tripingly.core.model.place.PlaceImage
@@ -51,6 +53,8 @@ data class MapUiState(
     val layers: MapLayersState = MapLayersState(),
     val camera: CameraState = CameraState(),
     val location: LocationState = LocationState(),
+    /** The filter circle at the map's top end; null while a route or Around shows. */
+    val placeFilter: PlaceFilterState? = null,
     /** The places button is off: only the trip's stops and its route's places show. */
     val arePlacesHidden: Boolean = false,
     /** Shown over the map with a route, instead of the OpenStreetMap credit. */
@@ -82,6 +86,10 @@ data class HeaderState(
     val isBusy: Boolean = false,
     /** "Trip members · 4" at the top of the ⋮ menu, which opens the members sheet. */
     val members: MembersEntry? = null,
+    /** ⋮'s Share trip: the trip has loaded. */
+    val canShare: Boolean = false,
+    /** ⋮'s Leave trip: I'm an editor (the owner deletes the trip in My Trips instead). */
+    val canLeave: Boolean = false,
     /** Someone else's public trip: save it, ask to join, see its owner, report it. */
     val viewerMenu: ViewerMenu? = null,
     /**
@@ -114,12 +122,27 @@ data class TripCardState(
 @Immutable
 data class MembersEntry(val count: Int, val requestCount: Int)
 
+/** The Ask to join pill on someone else's trip: asking, waiting for the server, or the request sent and waiting for the owner. */
+enum class JoinButton { Ask, Sending, Sent }
+
 @Immutable
 data class ViewerMenu(
     val isSavedByMe: Boolean,
     val myJoinRequest: JoinRequestStatus?,
-    val ownerUsername: String?,
-)
+    /** My request to join waits for the server: the pill spins until it answers (sent), or goes back on an error. */
+    val isAsking: Boolean = false,
+    /** The heart in the Ask to join pill: I like this trip. It goes with the pill. */
+    val isLikedByMe: Boolean = false,
+) {
+    /** None once the owner declined; accepted, I'm on the trip and there's no viewer menu at all. */
+    val joinButton: JoinButton?
+        get() = when {
+            myJoinRequest == JoinRequestStatus.DECLINED -> null
+            myJoinRequest == JoinRequestStatus.PENDING -> JoinButton.Sent
+            isAsking -> JoinButton.Sending
+            else -> JoinButton.Ask
+        }
+}
 
 /** [canDeleteDay]: the trip has more than one day and the owner, or an editor whose stops are all of it, may delete it. */
 @Immutable
@@ -128,10 +151,17 @@ data class EditorMenu(val canDeleteDay: Boolean)
 @Immutable
 data class SearchState(
     val query: TextFieldState = TextFieldState(),
-    val results: ImmutableList<PlaceSearchResult> = persistentListOf(),
+    val results: ImmutableList<SearchResultItem> = persistentListOf(),
     /** A search is waiting for the server. */
     val isSearching: Boolean = false,
 )
+
+/** A search result; one without an address shows [distanceMeters] from the map's centre instead, to tell same-named places apart. */
+@Immutable
+data class SearchResultItem(val result: PlaceSearchResult, val distanceMeters: Int? = null) {
+    /** Its key in the results list: our place, else the OpenStreetMap feature, else its name and spot. */
+    val key: String = result.place?.id ?: result.osm?.let { "${it.type}/${it.id}" } ?: "${result.name}@${result.location}"
+}
 
 @Immutable
 data class DayTabsState(
@@ -170,6 +200,8 @@ data class StopsCardState(
     /** An owner or editor, with 3 to 25 stops on the day. */
     val canFindBestOrder: Boolean,
     val isFindingBestOrder: Boolean,
+    /** Around a pin (Tripinly Pro): its box takes the route card's place while it's open. */
+    val around: AroundState? = null,
 ) : PlanCardState
 
 @Immutable
@@ -181,6 +213,29 @@ data class PointRouteCardState(
     val fromLabel: UiText? = null,
     val toLabel: UiText? = null,
 ) : PlanCardState
+
+/**
+ * The map's filter: a circle that opens ([isOpen]) into chips of kinds of places. [isActive]: some kinds are picked, so
+ * the circle is lit while closed and only those places show, in their own colours, with the trip's stops. [isLoading]:
+ * the places of the kinds picked are on their way.
+ */
+@Immutable
+data class PlaceFilterState(val isOpen: Boolean, val isActive: Boolean, val chips: ImmutableList<CategoryChip>, val isLoading: Boolean = false)
+
+/**
+ * The places around a pin, in the plan sheet: chips of kinds with how many of each, then the places, nearest of the
+ * best first. [addToDayNumber]: an owner or editor can add a place to that day; null for viewers.
+ */
+@Immutable
+data class AroundState(
+    /** The pin's name, for the title of a sheet that holds just Around (a day without stops); blank when it has none. */
+    val pinName: String,
+    val chips: ImmutableList<CategoryChip>,
+    val places: ImmutableList<PlaceAround>,
+    val isLoading: Boolean,
+    val addToDayNumber: Int?,
+    val selectedPlaceId: String?,
+)
 
 /** A route's way of travelling, its time and length, and the places along the way. */
 @Immutable
@@ -207,7 +262,13 @@ data class RouteSummaryState(
     val transitTimes: UiText? = null,
     /** By public transport: its walks and rides in a row; a tap opens them step by step. */
     val transitLegs: ImmutableList<TransitChip> = persistentListOf(),
+    /** The chips over the places along the way: each kind the route passes with how many; empty without places. */
+    val alongChips: ImmutableList<CategoryChip> = persistentListOf(),
 )
+
+/** A chip of a filter by kind of place: one kind, with how many there are ([count]; null: not known). */
+@Immutable
+data class CategoryChip(val category: PlaceCategory, val count: Int?, val isSelected: Boolean)
 
 /** "Leave at 14:05" or "Arrive by 14:05" ([time] as HH:mm). */
 @Immutable
@@ -300,13 +361,18 @@ sealed interface TransitPath {
     data class Ride(val color: Long?) : TransitPath
 }
 
-/** A spot being made: its [name] (the card's text field), its kind of place and the photo picked for it. */
+/**
+ * A spot being made: its [name] (the card's text field), its kind of place, the photo picked for it, and the [brands]
+ * named like it, of which the one picked ([brand]) makes it a brand store.
+ */
 @Immutable
 data class NewSpotCardState(
     val location: Coordinates,
     val name: TextFieldState,
     val category: PlaceCategory,
     val photo: PickedImage?,
+    val brands: List<Brand> = emptyList(),
+    val brand: Brand? = null,
 )
 
 /**
@@ -440,6 +506,8 @@ sealed interface MapSheet {
 
 @Immutable
 sealed interface MapDialog {
+    /** Leave [tripName]: I won't see or edit it any more. */
+    data class LeaveTrip(val tripName: String) : MapDialog
     /** Clear the open day: [dayNumber] and its [stopCount] stops. */
     data class ClearDay(val dayNumber: Int, val stopCount: Int) : MapDialog
     data class DeleteDay(val dayNumber: Int, val stopCount: Int) : MapDialog

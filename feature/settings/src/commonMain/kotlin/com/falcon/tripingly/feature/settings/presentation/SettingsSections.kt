@@ -66,6 +66,7 @@ import com.falcon.tripingly.feature.settings.generated.resources.settings_notifi
 import com.falcon.tripingly.feature.settings.generated.resources.settings_notification_comments
 import com.falcon.tripingly.feature.settings.generated.resources.settings_notification_followers
 import com.falcon.tripingly.feature.settings.generated.resources.settings_notification_join
+import com.falcon.tripingly.feature.settings.generated.resources.settings_notification_off_in_phone
 import com.falcon.tripingly.feature.settings.generated.resources.settings_notification_likes
 import com.falcon.tripingly.feature.settings.generated.resources.settings_notifications_hint
 import com.falcon.tripingly.feature.settings.generated.resources.settings_privacy_policy
@@ -88,11 +89,21 @@ internal fun Notifications(state: NotificationsState, onAction: (Action) -> Unit
         settings != null -> {
             SettingsCard {
                 NotificationType.entries.forEach { type ->
-                    SwitchRow(
-                        label = stringResource(type.label()),
-                        checked = type in settings.enabled,
-                        onCheckedChange = { onAction(Action.Notifications.Changed(type, it)) },
-                    )
+                    if (type in state.blockedInPhone) {
+                        // Only the phone can turn its switch back on, so the row takes the person there.
+                        SwitchRow(
+                            label = stringResource(type.label()),
+                            detail = stringResource(Res.string.settings_notification_off_in_phone),
+                            checked = false,
+                            onCheckedChange = { onAction(Action.Notifications.OpenPhoneSettings(type)) },
+                        )
+                    } else {
+                        SwitchRow(
+                            label = stringResource(type.label()),
+                            checked = type in settings.enabled,
+                            onCheckedChange = { onAction(Action.Notifications.Changed(type, it)) },
+                        )
+                    }
                 }
             }
             Hint(stringResource(Res.string.settings_notifications_hint))
@@ -209,7 +220,7 @@ internal fun LinkRow(label: String, onClick: () -> Unit, detail: String? = null,
 
 /** The whole row toggles, so the target is large enough and screen readers read it as one switch. */
 @Composable
-private fun SwitchRow(label: String, checked: Boolean, onCheckedChange: (Boolean) -> Unit) {
+private fun SwitchRow(label: String, checked: Boolean, onCheckedChange: (Boolean) -> Unit, detail: String? = null) {
     val haptics = rememberHaptics()
     Row(
         modifier = Modifier
@@ -222,7 +233,10 @@ private fun SwitchRow(label: String, checked: Boolean, onCheckedChange: (Boolean
             .padding(horizontal = MaterialTheme.spacing.medium),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(label, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
+        Column(Modifier.weight(1f).padding(vertical = MaterialTheme.spacing.small)) {
+            Text(label, style = MaterialTheme.typography.bodyLarge)
+            detail?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+        }
         Switch(checked = checked, onCheckedChange = null, modifier = Modifier.skeleton(CircleShape))
     }
 }

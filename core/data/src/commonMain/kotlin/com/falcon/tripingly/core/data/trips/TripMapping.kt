@@ -96,6 +96,7 @@ internal fun TripDto.toDetails(): TripDetails {
         pendingJoinRequestCount = pendingJoinRequestCount.toInt(),
         destination = destination?.toDestination(),
         likeCount = likeCount.toInt(),
+        likedByMe = likedByMe,
         saveCount = saveCount.toInt(),
     )
 }

@@ -47,10 +47,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.backhandler.BackHandler
-import androidx.compose.ui.focus.FocusRequester
+import androidx.navigationevent.NavigationEventInfo
+import androidx.navigationevent.compose.NavigationBackHandler
+import androidx.navigationevent.compose.rememberNavigationEventState
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.Rect
@@ -71,6 +71,7 @@ import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
 import com.falcon.tripingly.core.designsystem.theme.spacing
 import com.falcon.tripingly.core.model.route.TravelMode
 import com.falcon.tripingly.core.ui.UiText
+import com.falcon.tripingly.core.ui.rememberOpeningFocus
 import com.falcon.tripingly.feature.map.generated.resources.Res
 import com.falcon.tripingly.feature.map.generated.resources.map_route_cancel_edit
 import com.falcon.tripingly.feature.map.generated.resources.map_route_change_from
@@ -108,8 +109,11 @@ internal fun RouteBar(
     onAction: (MapAction) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    @OptIn(ExperimentalComposeUiApi::class)
-    BackHandler(enabled = transition.targetState && LocalScreenOnTop.current) { onAction(MapAction.PinRoute.Close) }
+    NavigationBackHandler(
+        state = rememberNavigationEventState(NavigationEventInfo.None),
+        isBackEnabled = transition.targetState && LocalScreenOnTop.current,
+        onBackCompleted = { onAction(MapAction.PinRoute.Close) },
+    )
     // The names glide to each other's pill when the ends switch; the gap they cross is a pill and the space between.
     val swapDistance = with(LocalDensity.current) { (RouteHeight + MaterialTheme.spacing.small).roundToPx() }
     PillGrowthPanel(transition, progress, pill, pillContent, modifier.fillMaxWidth()) {
@@ -251,10 +255,9 @@ private fun EndName(name: String, modifier: Modifier, color: Color = Color.Unspe
  */
 @Composable
 private fun EndField(query: TextFieldState, isSearching: Boolean, isEditing: Boolean, onAction: (MapAction) -> Unit) {
-    val focusRequester = remember { FocusRequester() }
+    val focusRequester = rememberOpeningFocus()
     val focusManager = LocalFocusManager.current
     var isFocused by remember { mutableStateOf(false) }
-    LaunchedEffect(Unit) { focusRequester.requestFocus() }
     if (isEditing) {
         // Back first closes the keyboard (the system's, before the app sees it): that cancels too, so one back does it.
         val ime = WindowInsets.ime

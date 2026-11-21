@@ -6,14 +6,11 @@ import androidx.lifecycle.viewModelScope
 import com.falcon.tripingly.core.common.error.DataError
 import com.falcon.tripingly.core.common.result.AppResult
 import com.falcon.tripingly.core.data.account.AccountRepository
-import com.falcon.tripingly.core.data.account.SessionRepository
 import com.falcon.tripingly.core.data.billing.ProRepository
 import com.falcon.tripingly.core.data.billing.PurchaseOutcome
 import com.falcon.tripingly.core.model.account.LegalDocument
 import com.falcon.tripingly.core.model.account.ProOffer
 import com.falcon.tripingly.core.model.account.ProPeriod
-import com.falcon.tripingly.core.model.account.SessionState
-import com.falcon.tripingly.core.model.account.hasPro
 import com.falcon.tripingly.core.ui.UiText
 import com.falcon.tripingly.feature.paywall.generated.resources.Res
 import com.falcon.tripingly.feature.paywall.generated.resources.paywall_confirming
@@ -36,36 +33,50 @@ import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.StringResource
 
 /**
- * Tripinly Pro: what it unlocks, the store's offers, buying and restoring. Pro is on only once the
- * server's `GET /me` says so; the screen then shows it as active.
+ * Tripinly Pro: what it unlocks, the store's offers, buying and restoring. Pro shows as active exactly while
+ * [ProRepository.isPro] says so, the app's one answer.
  */
 class PaywallViewModel(
-    private val sessionRepository: SessionRepository,
     private val proRepository: ProRepository,
     private val accountRepository: AccountRepository,
     private val languageTag: () -> String,
 ) : ViewModel() {
 
-    private val _uiState = MutableStateFlow(State(isAvailable = proRepository.isAvailable))
+    // Pro is read at once; the plans show as loading until the screen has slid in (see Action.OnArrived).
+    private val _uiState = MutableStateFlow(
+        State(isAvailable = proRepository.isAvailable, hasPro = proRepository.isPro.value, isLoadingOffers = proRepository.isAvailable),
+    )
     val uiState: StateFlow<State> = _uiState.asStateFlow()
 
     init {
         viewModelScope.launch {
-            sessionRepository.session.collect { session ->
-                val hasPro = (session as? SessionState.SignedIn)?.account?.hasPro == true
+            proRepository.isPro.collect { hasPro ->
                 _uiState.update { it.copy(hasPro = hasPro) }
-                if (hasPro) loadManagementUrl()
+                if (hasPro && hasArrived) loadManagementUrl()
             }
         }
+    }
+
+    private var hasArrived = false
+
+    /**
+     * The screen has slid in: only now the plans and the links load (remote data, fresh on every open), so nothing lays
+     * out again mid-slide (Shahin, 2026-11-21). Once per screen, also across a rotation.
+     */
+    private fun onArrived() {
+        if (hasArrived) return
+        hasArrived = true
         if (proRepository.isAvailable) {
             loadOffers()
         } else {
             viewModelScope.launch { _uiState.update { it.copy(legalDocuments = legalDocuments().toImmutableList()) } }
         }
+        if (_uiState.value.hasPro) loadManagementUrl()
     }
 
     fun onAction(action: Action) {
         when (action) {
+            Action.OnArrived -> onArrived()
             is Action.OnSelectOffer -> _uiState.update { it.copy(selectedOfferId = action.offerId) }
             Action.OnBuy -> buy()
             Action.OnRestore -> restore()
@@ -163,6 +174,8 @@ class PaywallViewModel(
     }
 
     sealed interface Action {
+        /** The screen has finished sliding in. */
+        data object OnArrived : Action
         data class OnSelectOffer(val offerId: String) : Action
         data object OnBuy : Action
         data object OnRestore : Action

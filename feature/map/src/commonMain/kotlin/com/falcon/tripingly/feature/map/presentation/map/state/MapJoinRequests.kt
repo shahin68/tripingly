@@ -12,7 +12,8 @@ import kotlinx.coroutines.launch
  * "@anna and 2 others want to join": the owner's pill under the header. The newest requests load whenever the trip's
  * count of waiting requests changes (only the owner's is above 0). Tapping the pill dismisses the people it showed and
  * opens the members sheet, where the owner answers them; someone new asking shows it again. Once the pill has shown
- * its people in full it shrinks to their faces, and stays that small for them from then on (Shahin, 2026-11-16).
+ * its people in full it shrinks to their faces, and stays that small for them from then on (Shahin, 2026-11-16); a long
+ * press shows them in full again for a while (Shahin, 2026-11-17).
  */
 internal class MapJoinRequests(
     private val context: MapContext,
@@ -41,9 +42,12 @@ internal class MapJoinRequests(
     fun markSeen() {
         val model = context.model.value
         val seen = model.seenJoinRequesterIds.orEmpty() + model.joinRequesters.map { it.id }
-        context.update { it.copy(seenJoinRequesterIds = seen) }
+        context.update { it.copy(seenJoinRequesterIds = seen, isJoinRequestsShownAgain = false) }
         context.scope.launch { mapViews.saveSeenJoinRequesters(context.tripId, seen) }
     }
+
+    /** A long press on the small pill: it shows its people in full again, then shrinks as before (Shahin, 2026-11-17). */
+    fun showAgain() = context.update { it.copy(isJoinRequestsShownAgain = true) }
 
     fun dismiss() = context.update { it.copy(dismissedJoinRequesterIds = it.dismissedJoinRequesterIds + it.joinRequesters.map { user -> user.id }) }
 }

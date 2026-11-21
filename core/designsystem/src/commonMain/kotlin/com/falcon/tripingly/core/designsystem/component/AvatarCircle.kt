@@ -31,6 +31,7 @@ import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import coil3.compose.LocalPlatformContext
 import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
+import com.falcon.tripingly.core.designsystem.theme.extendedColors
 import com.falcon.tripingly.core.designsystem.theme.spacing
 import com.falcon.tripingly.core.model.trip.ProfilePhoto
 import com.falcon.tripingly.core.model.trip.UserSummary
@@ -51,12 +52,12 @@ fun AvatarCircle(
             .size(size)
             .skeleton(CircleShape)
             .clip(CircleShape)
-            .background(MaterialTheme.colorScheme.surfaceContainerHighest),
+            .background(MaterialTheme.extendedColors.avatar),
         contentAlignment = Alignment.Center,
     ) {
         Text(
             text = name.trim().firstOrNull()?.uppercase().orEmpty(),
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            color = MaterialTheme.extendedColors.onAvatar,
             style = if (size >= AvatarSize.Medium) MaterialTheme.typography.titleLarge else MaterialTheme.typography.labelLarge,
         )
         if (photo != null) {

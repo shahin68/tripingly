@@ -5,6 +5,7 @@ import com.falcon.tripingly.core.common.result.AppResult
 import com.falcon.tripingly.core.model.account.Account
 import com.falcon.tripingly.core.model.account.SessionState
 import com.falcon.tripingly.core.model.account.SignOutReason
+import kotlin.time.Instant
 import kotlinx.coroutines.flow.StateFlow
 
 /** Sign-in, sign-out and who is signed in. The app shows a screen per [session] state. */
@@ -32,6 +33,12 @@ interface SessionRepository {
 
     /** Whether this build can use [signInForDevelopment]. */
     val developerSignInAvailable: Boolean
+
+    /** Pro as the server has it now (`pro.changed`, a refused Pro call): the account changes, nothing is asked. */
+    fun updatePro(entitlements: Set<String>, proExpiresAt: Instant?)
+
+    /** Right after a purchase or restore: the server reads the store once (`POST /me/pro/sync`) and the account follows. */
+    suspend fun syncPro(): AppResult<Unit, DataError.Network>
 
     /** Re-reads `GET /me`, e.g. after an onboarding step. */
     suspend fun refreshAccount(): AppResult<Account, DataError.Network>

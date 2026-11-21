@@ -22,6 +22,7 @@ import com.falcon.tripingly.core.model.account.isAtLeast
 import com.falcon.tripingly.core.model.account.isUsernameFormatValid
 import com.falcon.tripingly.core.model.photo.PickedImage
 import com.falcon.tripingly.core.model.trip.ProfilePhoto
+import kotlin.time.Instant
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -65,6 +66,14 @@ class FakeAccountBackend(
 
     override suspend fun refreshAccount(): AppResult<Account, DataError.Network> =
         account?.let { AppResult.Success(it) } ?: AppResult.Error(DataError.Network.Unauthorized)
+
+    override fun updatePro(entitlements: Set<String>, proExpiresAt: Instant?) {
+        account?.let { publish(it.copy(entitlements = entitlements, proExpiresAt = proExpiresAt)) }
+    }
+
+    /** Pro as the store has it; set it with [updatePro]. */
+    override suspend fun syncPro(): AppResult<Unit, DataError.Network> =
+        if (account != null) AppResult.Success(Unit) else AppResult.Error(DataError.Network.Unauthorized)
 
     override suspend fun signOut(reason: SignOutReason?) {
         account = null

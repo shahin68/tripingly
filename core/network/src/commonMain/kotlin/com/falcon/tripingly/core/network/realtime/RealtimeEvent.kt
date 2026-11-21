@@ -5,6 +5,7 @@ import com.falcon.tripingly.core.network.model.CommentDto
 import com.falcon.tripingly.core.network.model.MarkerDto
 import com.falcon.tripingly.core.network.model.PhotoDto
 import com.falcon.tripingly.core.network.push.NotificationEntryDto
+import kotlin.time.Instant
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.JsonElement
@@ -94,6 +95,12 @@ sealed interface RealtimeEvent {
     data class FollowsChanged(val followerId: String, val followeeId: String, val following: Boolean) : RealtimeEvent
 
     /**
+     * `pro.changed`: my Pro as the server has it now, sent on every (re)connect and whenever a purchase, renewal,
+     * cancellation or refund changes it. [proExpiresAt] null: it never ends, or there's none.
+     */
+    data class ProChanged(val entitlements: Set<String>, val proExpiresAt: Instant?) : RealtimeEvent
+
+    /**
      * `notification.created`, new or back on top: [entry] for the notification center (null when it can't be
      * read). About a stop ([markerId] in [tripId]) it gets a "new" mark on my map; [newsKind]: where it is seen
      * (`comments`, `photos`, `hot`, `other`).
@@ -173,6 +180,9 @@ private data class NotificationsChangedData(
 )
 
 @Serializable
+private data class ProData(val entitlements: List<String> = emptyList(), val proExpiresAt: Instant? = null)
+
+@Serializable
 private data class FollowData(val followerId: String, val followeeId: String, val following: Boolean)
 
 /** The event, or null when the app doesn't use it or it can't be read. */
@@ -247,6 +257,9 @@ internal fun parseRealtimeEvent(name: String, payload: JsonElement): RealtimeEve
         }
         "follows.changed" -> NetworkJson.decodeFromJsonElement<FollowData>(data).let {
             RealtimeEvent.FollowsChanged(it.followerId, it.followeeId, it.following)
+        }
+        "pro.changed" -> NetworkJson.decodeFromJsonElement<ProData>(data).let {
+            RealtimeEvent.ProChanged(it.entitlements.toSet(), it.proExpiresAt)
         }
         else -> null
     }

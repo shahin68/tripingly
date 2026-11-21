@@ -79,7 +79,7 @@ internal class DefaultMarkerRepository(
             position = day?.markers?.nextPosition() ?: 0,
             createdById = currentUserId(),
         )
-        submit(MarkerChange.Add(created, marker.osm, marker.category, marker.photo))
+        submit(MarkerChange.Add(created, marker.osm, marker.category, marker.photo, marker.brandId))
         return created
     }
 
@@ -226,6 +226,7 @@ internal class DefaultMarkerRepository(
                     },
                     osmId = change.osm?.id,
                     category = change.category?.toCreateDto(),
+                    brandId = change.brandId,
                 ),
                 // A retry after a lost answer gets the first answer back instead of a duplicate.
                 change.marker.id,

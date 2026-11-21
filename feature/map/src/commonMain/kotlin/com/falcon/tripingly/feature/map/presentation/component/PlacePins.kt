@@ -2,8 +2,10 @@ package com.falcon.tripingly.feature.map.presentation.component
 
 import androidx.compose.material.icons.filled.Place
 import androidx.compose.runtime.Immutable
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.geometry.RoundRect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Canvas
 import androidx.compose.ui.graphics.Color
@@ -54,6 +56,8 @@ data class PlacePin(
      * (Shahin, 2026-11-13).
      */
     val isKept: Boolean = false,
+    /** Found by the map searched by name: red, while everything else is see-through ([SearchDimAlpha]). */
+    val isSearchResult: Boolean = false,
 )
 
 /** Drawn as its dot: zoomed out ([isZoomedOut]) unless it's kept, or a dot anyway while a route shows. */
@@ -155,27 +159,40 @@ val PhotoPinSize: Dp = 40.dp
 /** The tapped place, the biggest pin. */
 val SelectedPinSize: Dp = 44.dp
 
-/** A pin while zoomed out below [AppConfig.pinDotBelowZoom]: a small dot, so route lines and stops stay readable. */
-val PlaceDotSize: Dp = 10.dp
-
-/** A pin while a route shows ([PlacePin.isDot]): a tiny bit smaller than a zoomed-out dot (Shahin, 2026-11-16). */
-val RouteDotSize: Dp = 8.dp
-
-/** How big [this] pin is as its dot. */
-internal val PlacePin.dotSize: Dp get() = if (isDot) RouteDotSize else PlaceDotSize
+/**
+ * A pin while zoomed out below [AppConfig.pinDotBelowZoom], or while a route shows: a small dot, so route lines and
+ * stops stay readable. One size for both, so a route never swaps a dot's bitmap (Shahin, 2026-11-21: 8 dp, as the
+ * route's dots were; zoomed-out dots were 10 dp).
+ */
+val PlaceDotSize: Dp = 8.dp
 
 /** Places along the shown route: violet, apart from the map's places and from the hot spots. */
 val AlongTheWayPinColor = Color(0xFF8A5AAB)
 
-/** The look of [this] pin as a dot: only its color matters, so every dot of a color shares one bitmap. */
-internal fun PlacePin.dotLook() =
-    PlacePinLook(PlaceCategory.Other, place.isTripinly, dotSize, isAlongTheWay = isAlongTheWay, isDot = true, isSeeThrough = isDot)
+/** The places the map was searched for by name: red, like Google Maps' results (Shahin, 2026-11-19). */
+val SearchResultPinColor = Color(0xFFE53935)
+
+/**
+ * The look of [this] pin as a dot: only its color matters, so every dot of a color shares one bitmap. The same while a
+ * route shows: its see-through is the marker's own opacity ([dotAlpha]), so a route turning on or off makes no new
+ * markers (Shahin's recording, 2026-11-21: swapping ~150 dots' bitmaps stopped the map for a frame).
+ */
+internal fun PlacePin.dotLook() = PlacePinLook(PlaceCategory.Other, place.isTripinly, PlaceDotSize, isAlongTheWay = isAlongTheWay, isDot = true)
+
+/** How much of [this] pin's dot shows: see-through while a route shows ([PlacePin.isDot]). */
+internal val PlacePin.dotAlpha: Float get() = if (isDot) RouteDotAlpha else 1f
 
 /**
  * How much of a place's dot shows while a route shows ([PlacePin.isDot]): see-through, so the line, its ends, the stops
  * and the places along it lead; every other pin stays as it is (Shahin, 2026-11-16, D1/D2).
  */
 const val RouteDotAlpha = 0.3f
+
+/**
+ * How much shows of everything that isn't a search result while the map is searched by name (stops, the line, other
+ * pins): as much as a place's dot while a route shows (Shahin, 2026-11-19).
+ */
+const val SearchDimAlpha = RouteDotAlpha
 
 /**
  * Draws a place pin into a bitmap: a round badge with the place's category icon. The map reuses one
@@ -204,17 +221,60 @@ fun drawPlacePin(
 }
 
 /**
+ * Draws a brand store's pin into a bitmap: a rounded square, the brand's [logo] on white inside one thin ring of the pin's
+ * [fill] colour, with a very small margin (Shahin, 2026-11-20: square pins behave like the others, only square; the logo
+ * fits inside with a very small spacing). The tile stays white in dark mode too: logos are made for white.
+ */
+fun drawPlaceLogoPin(
+    logo: ImageBitmap,
+    size: Dp,
+    fill: Color,
+    density: Density,
+    layoutDirection: LayoutDirection,
+): ImageBitmap {
+    val px = with(density) { size.roundToPx() }
+    val border = with(density) { PIN_STROKE.toPx() }
+    val margin = with(density) { LOGO_MARGIN.toPx() }
+    val bitmap = ImageBitmap(px, px)
+    CanvasDrawScope().draw(density, layoutDirection, Canvas(bitmap), Size(px.toFloat(), px.toFloat())) {
+        val corner = this.size.minDimension * LOGO_PIN_CORNER
+        drawRoundRect(fill, cornerRadius = CornerRadius(corner))
+        val tile = Rect(border, border, this.size.width - border, this.size.height - border)
+        val tileCorner = CornerRadius((corner - border).coerceAtLeast(0f))
+        drawRoundRect(Color.White, topLeft = tile.topLeft, size = tile.size, cornerRadius = tileCorner)
+        val inset = (border + margin).roundToInt()
+        val side = px - inset * 2
+        clipPath(Path().apply { addRoundRect(RoundRect(tile, tileCorner)) }) {
+            drawImage(
+                logo,
+                srcOffset = IntOffset.Zero,
+                srcSize = IntSize(logo.width, logo.height),
+                dstOffset = IntOffset(inset, inset),
+                dstSize = IntSize(side, side),
+            )
+        }
+    }
+    return bitmap
+}
+
+/** How round a brand pin's corners are, of its side: a rounded square like Google Maps' brand pins. */
+private const val LOGO_PIN_CORNER = 0.28f
+
+/** The white between a brand pin's ring and its logo: very small, so the logo fills the pin. */
+private val LOGO_MARGIN = 1.5.dp
+
+/**
  * Draws a dot pin into a bitmap: a small circle of the pin's [fill] color in the pins' thin ring, the whole dot [alpha]
  * strong (the ring is drawn round the fill, not under it, so a see-through dot is evenly see-through).
  */
-fun drawPlaceDot(size: Dp, fill: Color, density: Density, layoutDirection: LayoutDirection, alpha: Float = 1f): ImageBitmap {
+fun drawPlaceDot(size: Dp, fill: Color, density: Density, layoutDirection: LayoutDirection): ImageBitmap {
     val px = with(density) { size.roundToPx() }
     val border = with(density) { PIN_STROKE.toPx() }
     val bitmap = ImageBitmap(px, px)
     CanvasDrawScope().draw(density, layoutDirection, Canvas(bitmap), Size(px.toFloat(), px.toFloat())) {
         val radius = this.size.minDimension / 2
-        drawCircle(MapColors.PinStroke, radius = radius - border / 2, style = Stroke(border), alpha = alpha)
-        drawCircle(fill, radius = radius - border, alpha = alpha)
+        drawCircle(MapColors.PinStroke, radius = radius - border / 2, style = Stroke(border))
+        drawCircle(fill, radius = radius - border)
     }
     return bitmap
 }
@@ -253,8 +313,8 @@ fun drawPlacePhotoPin(
 }
 
 /**
- * What a pin looks like: its category icon, or the photo with [photoId] once its thumbnail has loaded; a dot
- * ([isDot]) while zoomed out.
+ * What a pin looks like: its category icon, the photo with [photoId] once its thumbnail has loaded, or its brand's logo
+ * ([logoUrl]) on a rounded square; a dot ([isDot]) while zoomed out.
  */
 internal data class PlacePinLook(
     val category: PlaceCategory,
@@ -263,8 +323,10 @@ internal data class PlacePinLook(
     val photoId: String? = null,
     val isAlongTheWay: Boolean = false,
     val isDot: Boolean = false,
-    /** A dot drawn see-through ([RouteDotAlpha]) while a route shows. */
-    val isSeeThrough: Boolean = false,
+    /** In [SearchResultPinColor]. */
+    val isSearchResult: Boolean = false,
+    /** A brand store's logo, by its URL once loaded: drawn as a rounded square ([drawPlaceLogoPin]) instead of icon or photo. */
+    val logoUrl: String? = null,
 )
 
 /**

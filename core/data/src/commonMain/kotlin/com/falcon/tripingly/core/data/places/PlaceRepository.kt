@@ -4,9 +4,13 @@ import com.falcon.tripingly.core.common.error.DataError
 import com.falcon.tripingly.core.common.result.AppResult
 import com.falcon.tripingly.core.model.Page
 import com.falcon.tripingly.core.model.config.AppConfig
+import com.falcon.tripingly.core.model.place.Brand
+import com.falcon.tripingly.core.model.place.PlaceCategory
 import com.falcon.tripingly.core.model.place.PlaceDetails
+import com.falcon.tripingly.core.model.place.PlaceSearch
 import com.falcon.tripingly.core.model.place.PlaceSearchResult
 import com.falcon.tripingly.core.model.place.PlaceSquare
+import com.falcon.tripingly.core.model.place.PlacesAround
 import com.falcon.tripingly.core.model.place.PlacesInView
 import com.falcon.tripingly.core.model.social.NearbyPlace
 import com.falcon.tripingly.core.model.trip.GeoPoint
@@ -16,9 +20,12 @@ import kotlinx.coroutines.flow.Flow
 interface PlaceRepository {
     /**
      * From the first letter; a blank query returns nothing without asking the server. Results [near] a
-     * point (the map's center) rank first; the point isn't stored.
+     * point (the map's center) rank first, and places come from its city only; the point isn't stored.
      */
-    suspend fun search(query: String, near: GeoPoint? = null): AppResult<List<PlaceSearchResult>, DataError.Network>
+    suspend fun search(query: String, near: GeoPoint? = null): AppResult<PlaceSearch, DataError.Network>
+
+    /** Brands from our list for "This is a brand store", by the start of a word of their name, most places first. */
+    suspend fun brands(query: String): AppResult<List<Brand>, DataError.Network>
 
     /** Where a trip can head: countries, regions, cities and districts, cities first; no addresses or places. */
     suspend fun searchDestinations(query: String): AppResult<List<PlaceSearchResult>, DataError.Network>
@@ -46,4 +53,11 @@ interface PlaceRepository {
      * sights where Tripinly has few. The point is used for the request only.
      */
     suspend fun nearby(point: GeoPoint, cursor: String?): AppResult<Page<NearbyPlace>, DataError.Network>
+
+    /**
+     * Tripinly Pro: every place within [radiusMeters] of [point] (a stop), hot first, Tripinly spots before OpenStreetMap,
+     * then nearest; only of [categories] (empty: every kind), with how many of each kind the circle holds. The pin itself
+     * ([excludePlaceId]) is neither listed nor counted. The point is used for the request only.
+     */
+    suspend fun around(point: GeoPoint, radiusMeters: Int, categories: Set<PlaceCategory> = emptySet(), excludePlaceId: String? = null): AppResult<PlacesAround, DataError.Network>
 }

@@ -55,6 +55,8 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.Duration.Companion.seconds
 import kotlinx.coroutines.delay
 import com.falcon.tripingly.core.designsystem.component.bottomSystemBar
 import com.falcon.tripingly.core.designsystem.component.floatingBottom
@@ -106,12 +108,16 @@ internal fun BottomCards(
     bearing: () -> Float,
     dayTabs: DayTabsState,
     plan: PlanCardState?,
+    /** The Route button's on/off, ahead of [plan]. */
+    isDayRouteOn: Boolean,
     editorMenu: EditorMenu?,
     planSheet: AnchoredDraggableState<PlanSheetValue>,
     isWide: Boolean,
     onAction: (MapAction) -> Unit,
     onTabsHeight: (Int) -> Unit,
     onCreditsHeight: (Int) -> Unit,
+    /** In portrait, the height of the row of credits and map buttons riding on the card. */
+    onButtonsHeight: (Int) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val dayNumber = dayTabs.days.getOrNull(dayTabs.activeIndex)?.number ?: 1
@@ -122,6 +128,7 @@ internal fun BottomCards(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .onSizeChanged { onButtonsHeight(it.height) }
                     .padding(horizontal = MaterialTheme.spacing.medium),
                 verticalAlignment = Alignment.Bottom,
             ) {
@@ -172,7 +179,7 @@ internal fun BottomCards(
                         // A route from A to B takes the stops' place until it's closed.
                         when (shown) {
                             is PointRouteCardState -> PointRouteCard(card = shown, onAction = onAction)
-                            is StopsCardState -> StopsCard(card = shown, dayNumber = dayNumber, editorMenu = editorMenu, onAction = onAction)
+                            is StopsCardState -> StopsCard(card = shown, dayNumber = dayNumber, editorMenu = editorMenu, onAction = onAction, isRouteOn = isDayRouteOn)
                         }
                     }
                     // The day tabs stay at the bottom; the sheet opens above them.
@@ -212,7 +219,7 @@ internal fun MapCredits(
     val accessibility = LocalAccessibilityManager.current
     LaunchedEffect(isOpen, routeAttribution) {
         if (!isOpen) return@LaunchedEffect
-        delay(accessibility?.calculateRecommendedTimeoutMillis(CreditsShownMillis, containsText = true, containsControls = true) ?: CreditsShownMillis)
+        delay(accessibility?.calculateRecommendedTimeoutMillis(CreditsShown.inWholeMilliseconds, containsText = true, containsControls = true)?.milliseconds ?: CreditsShown)
         isOpen = false
     }
     GlassSurface(modifier = modifier, shape = MaterialTheme.shapes.extraSmall, shadowElevation = 0.dp, blur = false) {
@@ -244,7 +251,7 @@ internal fun MapCredits(
 }
 
 /** How long the credits show before they fold into their ⓘ, before the system's accessibility timeout adjusts it. */
-private const val CreditsShownMillis = 5_000L
+private val CreditsShown = 5.seconds
 private val CreditsIconSize = 16.dp
 private val CreditsIconPadding = 4.dp
 
@@ -256,10 +263,17 @@ internal val SmallCreditsStyle: TextStyle
  * Hides or shows the places (crossed out while hidden), over the button that fits the camera to the open day (its
  * stops, else the whole trip's, else the destination), over the location button, which follows me while lit (filled,
  * in the accent colour). Following without a signal, a quiet note beside it says it waits for one. Our compass rides on
- * top while the map is turned ([MapCompass]).
+ * top while the map is turned ([MapCompass]). Someone else's trip's heart and Ask to join sit under the header
+ * ([ViewerJoinPill]), so the credits beside these keep their room (Shahin, 2026-11-21).
  */
 @Composable
-internal fun MapButtons(location: LocationState, arePlacesHidden: Boolean, bearing: () -> Float, onAction: (MapAction) -> Unit, modifier: Modifier = Modifier) {
+internal fun MapButtons(
+    location: LocationState,
+    arePlacesHidden: Boolean,
+    bearing: () -> Float,
+    onAction: (MapAction) -> Unit,
+    modifier: Modifier = Modifier,
+) {
     Row(modifier, horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small), verticalAlignment = Alignment.Bottom) {
         AnimatedVisibility(location.isSignalLost, enter = fadeIn(), exit = fadeOut()) { GpsLostNote() }
         AnimatedVisibility(location.isSwitchedOff, enter = fadeIn(), exit = fadeOut()) {

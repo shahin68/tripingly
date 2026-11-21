@@ -79,24 +79,35 @@
     <string name="leave_trip_button">Kilépés</string>
 
     <!-- Members -->
+    <string name="members_on_trip_title">Ezen az úton</string>
+    <string name="members_friends_title">Barátaid</string>
+    <string name="members_friends_none">Nincs több hozzáadható barát. A keresés bárkit megtalál név vagy @felhasználónév alapján.</string>
+    <string name="members_more">Továbbiak: %1$s</string>
+    <string name="members_add_friend">%1$s hozzáadása</string>
+    <string name="members_added">%1$s csatlakozott az úthoz</string>
+    <string name="members_undo">Visszavonás</string>
+    <string name="members_search">Emberek hozzáadása</string>
+    <string name="members_invite_title">Meghívás linkkel</string>
+    <string name="members_invite_subtitle">Aki megkapja a linket, szerkesztőként csatlakozik</string>
+    <string name="members_search_hint">Név vagy @felhasználónév</string>
+    <string name="members_search_everyone">Mindenki a Tripinlyn</string>
+    <string name="members_search_none">Nincs találat</string>
+    <string name="members_status_on_trip">Ezen az úton</string>
+    <string name="members_status_asking">Csatlakozna</string>
+    <string name="members_error_search">Nem sikerült embereket keresni.</string>
+    <plurals name="members_count">
+        <item quantity="one">%1$d ember</item>
+        <item quantity="other">%1$d ember</item>
+    </plurals>
     <string name="members_title">Tagok</string>
     <string name="members_role_owner">Tulajdonos</string>
     <string name="members_role_editor">Szerkesztő</string>
     <string name="members_remove">Eltávolítás</string>
-    <string name="members_add_label">Hozzáadás felhasználónévvel</string>
     <string name="members_add_button">Hozzáadás</string>
-    <string name="members_error_user_not_found">Nincs ilyen felhasználónév.</string>
-    <string name="members_error_some_not_added">Néhány embert nem lehet hozzáadni. Vedd ki őket, és próbáld újra.</string>
-    <string name="members_add_friends">%1$d hozzáadása</string>
     <string name="members_join_requests_title">Csatlakozni szeretnének</string>
     <string name="members_join_accept">Elfogadás</string>
     <string name="members_join_decline">Elutasítás</string>
-    <string name="members_invites_title">Meghívólinkek</string>
-    <string name="members_invite_hint">Aki megkapja a linket, a lejáratig szerkesztőként csatlakozhat.</string>
-    <string name="members_invite_create">Meghívólink létrehozása</string>
-    <string name="members_invite_expires">Lejár: %1$s</string>
     <string name="members_invite_share">Megosztás</string>
-    <string name="members_invite_revoke">Visszavonás</string>
     <string name="members_invite_share_text">Csatlakozz a(z) „%1$s” utazásomhoz a Tripinlyn: %2$s</string>
 
     <!-- Errors: what failed -->
@@ -107,10 +118,8 @@
     <string name="members_error_load">Nem sikerült betölteni a tagokat.</string>
     <string name="members_error_load_requests">Nem sikerült betölteni a csatlakozási kéréseket.</string>
     <string name="members_error_answer_request">Nem sikerült válaszolni a csatlakozási kérésre.</string>
-    <string name="members_error_load_invites">Nem sikerült betölteni a meghívólinkeket.</string>
     <string name="members_error_add">Nem sikerült hozzáadni őket az utazáshoz.</string>
     <string name="members_error_create_invite">Nem sikerült meghívólinket létrehozni.</string>
-    <string name="members_error_revoke_invite">Nem sikerült kikapcsolni a meghívólinket.</string>
     <string name="members_error_remove">Nem sikerült eltávolítani őket az utazásból.</string>
     <string name="trip_created">Létrehozva %1$s</string>
 

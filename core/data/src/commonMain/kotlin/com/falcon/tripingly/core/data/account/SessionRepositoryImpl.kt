@@ -17,10 +17,12 @@ import com.falcon.tripingly.core.network.model.AuthTokensDto
 import com.falcon.tripingly.core.network.model.DevSignInDto
 import com.falcon.tripingly.core.network.model.GoogleSignInDto
 import com.falcon.tripingly.core.network.model.LogoutDto
+import kotlin.time.Instant
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 internal class SessionRepositoryImpl(
@@ -54,6 +56,8 @@ internal class SessionRepositoryImpl(
                 )
             }
         }
+        // The server refused a Pro feature: Pro has ended there, so it ends here too, without asking again.
+        scope.launch { sessionEvents.proEnded.collect { updatePro(emptySet(), proExpiresAt = null) } }
     }
 
     override suspend fun restore(): AppResult<Unit, DataError.Network> {
@@ -105,6 +109,19 @@ internal class SessionRepositoryImpl(
         accountApi.me().map { it.toAccount() }.also { result ->
             if (result is AppResult.Success) onAccountChanged(result.data)
         }
+
+    override fun updatePro(entitlements: Set<String>, proExpiresAt: Instant?) {
+        state.update { current ->
+            when (current) {
+                is SessionState.SignedIn -> current.copy(account = current.account.copy(entitlements = entitlements, proExpiresAt = proExpiresAt))
+                is SessionState.Onboarding -> current.copy(account = current.account.copy(entitlements = entitlements, proExpiresAt = proExpiresAt))
+                else -> current
+            }
+        }
+    }
+
+    override suspend fun syncPro(): AppResult<Unit, DataError.Network> =
+        accountApi.syncPro().map { updatePro(it.entitlements.toSet(), it.proExpiresAt) }
 
     override suspend fun signOut(reason: SignOutReason?) {
         tokenStore.get()?.let { tokens ->

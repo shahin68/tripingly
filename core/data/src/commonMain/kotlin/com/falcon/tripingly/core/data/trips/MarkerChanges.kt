@@ -22,6 +22,8 @@ sealed interface MarkerChange {
         val osm: OsmRef? = null,
         val category: PlaceCategory? = null,
         val photo: PickedImage? = null,
+        /** A new spot's brand ("This is a brand store"). */
+        val brandId: String? = null,
     ) : MarkerChange {
         override val tripId get() = marker.tripId
         override val markerId get() = marker.id

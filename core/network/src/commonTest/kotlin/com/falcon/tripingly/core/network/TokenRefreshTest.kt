@@ -7,6 +7,7 @@ import com.falcon.tripingly.core.network.auth.SessionEndReason
 import io.ktor.client.request.get
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.content.TextContent
+import kotlin.time.Duration.Companion.seconds
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
@@ -95,7 +96,7 @@ class TokenRefreshTest {
         // The server rotated the token, so the new one is kept.
         // The refresh runs on the network's threads, so wait in real time.
         withContext(Dispatchers.Default) {
-            withTimeout(5_000) {
+            withTimeout(5.seconds) {
                 while (api.tokenStore.get() != AuthTokens("access-2", "refresh-2")) delay(10)
             }
         }

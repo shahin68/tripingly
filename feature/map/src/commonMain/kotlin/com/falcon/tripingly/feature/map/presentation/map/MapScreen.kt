@@ -4,9 +4,18 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.ui.zIndex
 import androidx.compose.ui.unit.IntOffset
+import androidx.compose.foundation.gestures.animateTo
 import androidx.compose.foundation.layout.offset
+import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.MutableTransitionState
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.core.rememberTransition
+import androidx.compose.animation.expandHorizontally
+import androidx.compose.animation.shrinkHorizontally
+import androidx.compose.animation.EnterExitState
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -14,6 +23,7 @@ import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.gestures.AnchoredDraggableState
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
@@ -41,9 +51,10 @@ import androidx.compose.runtime.withFrameNanos
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.backhandler.BackHandler
+import androidx.navigationevent.NavigationEventInfo
+import androidx.navigationevent.compose.NavigationBackHandler
+import androidx.navigationevent.compose.rememberNavigationEventState
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.input.pointer.PointerEventPass
@@ -75,6 +86,8 @@ import com.falcon.tripingly.feature.map.presentation.component.fittedCamera
 import com.falcon.tripingly.feature.map.presentation.map.preview.MapScreenPreviewStates
 import com.falcon.tripingly.feature.map.presentation.map.ui.BottomCards
 import com.falcon.tripingly.feature.map.presentation.map.ui.JoinRequestsPill
+import com.falcon.tripingly.feature.map.presentation.map.ui.PlaceFilterPill
+import com.falcon.tripingly.feature.map.presentation.map.ui.ViewerJoinPill
 import com.falcon.tripingly.feature.map.presentation.component.isSplitScreen
 import com.falcon.tripingly.feature.map.presentation.map.ui.MapButtons
 import com.falcon.tripingly.feature.map.presentation.map.ui.MapCredits
@@ -92,6 +105,8 @@ import com.falcon.tripingly.feature.map.presentation.map.ui.TripTitleContent
 import com.falcon.tripingly.feature.map.presentation.map.ui.animatePillGrowth
 import com.falcon.tripingly.feature.map.presentation.map.ui.pulledUp
 import com.falcon.tripingly.feature.map.presentation.map.ui.rememberPlanSheetState
+import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.persistentListOf
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.map
@@ -110,6 +125,8 @@ internal fun MapScreen(
     cameraCommands: Flow<CameraCommand>,
     onAction: (MapAction) -> Unit,
     planSheet: AnchoredDraggableState<PlanSheetValue> = rememberPlanSheetState(),
+    /** The Route button's on/off, ahead of [state] (see MapViewModel.isDayRouteOn). */
+    isDayRouteOn: Boolean = (state.plan as? StopsCardState)?.isRouteOn == true,
 ) {
     state.loadError?.let { error -> return MapLoadError(error.asString(), onAction) }
     val haptics = rememberHaptics()
@@ -122,6 +139,8 @@ internal fun MapScreen(
     // The tabs' height with whether there were days to show, so the map doesn't open on the height without tabs.
     var tabsHeight by remember { mutableStateOf<Pair<Boolean, Dp>?>(null) }
     var creditsHeight by remember { mutableStateOf<Dp?>(null) }
+    // In portrait, the credits and map buttons riding on the card: the search results end above them.
+    var buttonsHeight by remember { mutableStateOf(0.dp) }
     // Which way the map is turned, every frame it turns: read only by the compass while it draws.
     var bearing by remember { mutableFloatStateOf(0f) }
     // Where the open cards are, so a touch on them doesn't close them.
@@ -149,9 +168,13 @@ internal fun MapScreen(
     var shownRouteBar by remember { mutableStateOf(state.routeBar) }
     state.routeBar?.let { shownRouteBar = it }
     val isRouteBarShown = routeBarState.currentState || routeBarState.targetState
-    @OptIn(ExperimentalComposeUiApi::class)
-    // Not while another screen covers the map: back closes that screen.
-    BackHandler(enabled = isTripCardOpen && LocalScreenOnTop.current) { isTripCardOpen = false }
+    // Back closes the trip card, else the search (it has no back button: back does what its ✕ does). Not while
+    // another screen covers the map: back closes that screen.
+    NavigationBackHandler(
+        state = rememberNavigationEventState(NavigationEventInfo.None),
+        isBackEnabled = (isTripCardOpen || state.search != null) && LocalScreenOnTop.current,
+        onBackCompleted = { if (isTripCardOpen) isTripCardOpen = false else onAction(MapAction.Search.Close) },
+    )
 
     BoxWithConstraints(
         modifier = Modifier
@@ -261,6 +284,7 @@ internal fun MapScreen(
                 onMapLongClick = { coords -> onAction(MapAction.MapView.LongClick(coords)) },
                 onMarkerClick = { marker -> onAction(MapAction.MapView.MarkerClick(marker)) },
                 onPinDrop = { from, to -> onAction(MapAction.MapView.PinDrop(from, to)) },
+                onAroundRadius = { meters, isFinal -> onAction(MapAction.Around.SetRadius(meters, isFinal)) },
             )
         }
 
@@ -277,7 +301,6 @@ internal fun MapScreen(
                     header = state.header,
                     // While routing, the search is the route bar's "to".
                     search = state.search.takeUnless { isRouteBarShown },
-                    showDayActions = plan == null,
                     onAction = onAction,
                     isTitleHidden = isTripCardShown || isRouteBarShown,
                     onTitleClick = {
@@ -301,30 +324,70 @@ internal fun MapScreen(
                     )
                 }
             }
-            // The join pill and the search results share the space under the header, the results over the pill, so
-            // neither moves the other. The pill stays under the header's own part, under the route bar coming over it
+            // The join pill under the header (the search results go over it, further down, so neither moves the
+            // other). The pill stays under the header's own part, under the route bar coming over it
             // (not pushed down by it), and scales and fades away under the route bar or the search (Shahin, 2026-11-16);
             // while it goes it keeps the people it had.
-            Box {
+            Box(Modifier.fillMaxWidth()) {
                 var shownJoinRequests by remember { mutableStateOf(state.joinRequests) }
                 state.joinRequests?.let { shownJoinRequests = it }
-                androidx.compose.animation.AnimatedVisibility(
-                    visible = state.joinRequests != null && !isRouteBarShown,
-                    enter = scaleIn() + fadeIn(),
-                    exit = scaleOut() + fadeOut(),
-                    modifier = Modifier.offset { IntOffset(0, titleHeight - with(density) { (headerHeight ?: 0.dp).roundToPx() }) },
+                // The filter circle mirrors the join pill at the end, at the same height, and opens up to the join pill
+                // with a small gap (Shahin, 2026-11-17); it scales away while a route, Around or the route bar shows,
+                // keeping its last look while it goes.
+                // The join pill's space glides open and shut with it, the gap too, so the filter beside it glides along.
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .offset { IntOffset(0, titleHeight - with(density) { (headerHeight ?: 0.dp).roundToPx() }) }
+                        .padding(horizontal = MaterialTheme.spacing.medium),
                 ) {
-                    shownJoinRequests?.let { requests ->
-                        JoinRequestsPill(
-                            requests = requests,
-                            onClick = { onAction(MapAction.Header.OpenJoinRequests) },
-                            onSeen = { onAction(MapAction.Header.JoinRequestsSeen) },
-                            modifier = Modifier.padding(horizontal = MaterialTheme.spacing.medium),
-                        )
+                    androidx.compose.animation.AnimatedVisibility(
+                        visible = state.joinRequests != null && !isRouteBarShown,
+                        enter = expandHorizontally(expandFrom = Alignment.Start, clip = false) + scaleIn() + fadeIn(),
+                        exit = shrinkHorizontally(shrinkTowards = Alignment.Start, clip = false) + scaleOut() + fadeOut(),
+                    ) {
+                        shownJoinRequests?.let { requests ->
+                            JoinRequestsPill(
+                                requests = requests,
+                                onClick = { onAction(MapAction.Header.OpenJoinRequests) },
+                                onLongClick = { onAction(MapAction.Header.ShowJoinRequests) },
+                                onSeen = { onAction(MapAction.Header.JoinRequestsSeen) },
+                                modifier = Modifier.padding(end = MaterialTheme.spacing.small),
+                            )
+                        }
                     }
-                }
-                state.search?.results?.takeIf { it.isNotEmpty() }?.let { results ->
-                    SearchResults(results = results, onAction = onAction, modifier = Modifier.padding(horizontal = MaterialTheme.spacing.medium))
+                    // Someone else's trip: the heart and Ask to join in the same place, coming and going the same way,
+                    // keeping its last look while it goes (accepted or declined); away while searching, as the filter
+                    // and the owner's join pill (Shahin, 2026-11-21).
+                    val joinButton = state.header.viewerMenu?.joinButton
+                    var shownViewerMenu by remember { mutableStateOf(state.header.viewerMenu) }
+                    if (joinButton != null) shownViewerMenu = state.header.viewerMenu
+                    androidx.compose.animation.AnimatedVisibility(
+                        visible = joinButton != null && !isRouteBarShown && state.search == null,
+                        enter = expandHorizontally(expandFrom = Alignment.Start, clip = false) + scaleIn() + fadeIn(),
+                        exit = shrinkHorizontally(shrinkTowards = Alignment.Start, clip = false) + scaleOut() + fadeOut(),
+                    ) {
+                        shownViewerMenu?.let { menu ->
+                            menu.joinButton?.let {
+                                ViewerJoinPill(
+                                    joinButton = it,
+                                    isLikedByMe = menu.isLikedByMe,
+                                    onAction = onAction,
+                                    modifier = Modifier.padding(end = MaterialTheme.spacing.small),
+                                )
+                            }
+                        }
+                    }
+                    // The row's weight is the most it may grow; closed it is only its circle, at the end. It scales away and
+                    // back where it stands, never gliding in from the side (Shahin, 2026-11-19).
+                    val filter = state.placeFilter.takeUnless { isRouteBarShown }
+                    var shownFilter by remember { mutableStateOf(filter) }
+                    filter?.let { shownFilter = it }
+                    Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.TopEnd) {
+                        androidx.compose.animation.AnimatedVisibility(visible = filter != null, enter = scaleIn() + fadeIn(), exit = scaleOut() + fadeOut()) {
+                            shownFilter?.let { PlaceFilterPill(filter = it, onAction = onAction) }
+                        }
+                    }
                 }
             }
         }
@@ -347,12 +410,14 @@ internal fun MapScreen(
             bearing = { bearing },
             dayTabs = state.dayTabs,
             plan = plan,
+            isDayRouteOn = isDayRouteOn,
             editorMenu = state.header.editorMenu,
             planSheet = planSheet,
             isWide = isWide,
             onAction = onAction,
             onTabsHeight = { tabsHeight = hasDays to with(density) { it.toDp() } },
             onCreditsHeight = { creditsHeight = with(density) { it.toDp() } },
+            onButtonsHeight = { buttonsHeight = with(density) { it.toDp() } },
             // Only the header limits the sheet: opened, it goes over the join pill and anything else under the header.
             modifier = Modifier.align(Alignment.BottomStart).then(panel).padding(top = coveredTop),
         )
@@ -390,6 +455,39 @@ internal fun MapScreen(
             onNewSpotCardBounds = { newSpotCardBounds = it },
             modifier = Modifier.fillMaxSize().padding(covered),
         )
+
+        // The search results over every other part of the map screen (only the trip card goes over them), under the
+        // header. The plan sheet folds down while they show, and they reach down to just above it: in portrait above
+        // the map buttons riding on it too, in landscape (the buttons on the map half) to the sheet itself (Shahin,
+        // 2026-11-20).
+        val results = state.search?.results?.takeIf { it.isNotEmpty() }
+        val hasResults = results != null
+        LaunchedEffect(hasResults) { if (hasResults) planSheet.animateTo(PlanSheetValue.Collapsed) }
+        // Opens growing down out of its top edge and closes folding back up, like the trip card but only vertically
+        // (Shahin, 2026-11-21): the glass itself grows ([SearchResults]' reveal), nothing fades or scales. While it
+        // folds up the results are gone from the state, so it keeps showing the last ones.
+        val lastResults = remember { mutableStateOf<ImmutableList<SearchResultItem>>(persistentListOf()) }
+        if (results != null) lastResults.value = results
+        AnimatedVisibility(
+            visible = results != null,
+            modifier = Modifier.align(Alignment.TopStart).padding(top = coveredTop).then(panel),
+            // No motion of their own: they only keep the card for as long as its growth runs.
+            enter = slideInVertically(SearchResultsHold) { 0 },
+            exit = slideOutVertically(SearchResultsHold) { 0 },
+        ) {
+            val reveal = transition.animateFloat(transitionSpec = { tween(SEARCH_RESULTS_MILLIS, easing = SearchResultsEasing) }, label = "search results") { state ->
+                if (state == EnterExitState.Visible) 1f else 0f
+            }
+            val belowResults = (tabsHeight?.second ?: 0.dp) + (if (plan != null) PlanSheetPeek else 0.dp) +
+                (if (isWide) 0.dp else buttonsHeight) + MaterialTheme.spacing.small
+            SearchResults(
+                results = lastResults.value,
+                onAction = onAction,
+                maxHeight = (maxHeight - coveredTop - belowResults).coerceAtLeast(SearchResultsMinHeight),
+                modifier = Modifier.padding(horizontal = MaterialTheme.spacing.medium),
+                reveal = { reveal.value },
+            )
+        }
 
         // Over everything: the dimmed map and the trip card grown out of the title, in the header's place.
         if (isTripCardShown) {
@@ -452,6 +550,14 @@ private fun MapScreenLoadErrorPreview() {
  * bottom, so the stop card above it has more room (Shahin, 2026-11-14; 64 dp before).
  */
 private val LandscapePinArea = 96.dp
+
+/** The search results card growing open and folding shut: the trip card's decelerate, fast at first, easing into place. */
+private const val SEARCH_RESULTS_MILLIS = 300
+private val SearchResultsEasing = CubicBezierEasing(0.05f, 0.7f, 0.1f, 1f)
+private val SearchResultsHold = tween<IntOffset>(SEARCH_RESULTS_MILLIS)
+
+/** The least the search results get, however little room the screen leaves them. */
+private val SearchResultsMinHeight = 120.dp
 
 /** In portrait, how far below the middle of the free map a tapped pin goes. */
 private val PortraitPinDrop = 24.dp

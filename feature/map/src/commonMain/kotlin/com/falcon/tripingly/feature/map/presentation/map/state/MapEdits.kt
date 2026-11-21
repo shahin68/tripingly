@@ -2,12 +2,15 @@ package com.falcon.tripingly.feature.map.presentation.map.state
 
 import com.falcon.tripingly.core.common.error.DataError
 import com.falcon.tripingly.core.common.result.AppResult
+import com.falcon.tripingly.core.data.places.PlaceRepository
+import com.falcon.tripingly.core.data.trips.MarkerChange
 import com.falcon.tripingly.core.data.trips.MarkerRepository
 import com.falcon.tripingly.core.data.trips.TripErrorCodes
 import com.falcon.tripingly.core.data.trips.TripRepository
 import com.falcon.tripingly.core.data.trips.hasCode
 import com.falcon.tripingly.core.location.model.Coordinates
 import com.falcon.tripingly.core.model.photo.PickedImage
+import com.falcon.tripingly.core.model.place.Brand
 import com.falcon.tripingly.core.model.place.PlaceCategory
 import com.falcon.tripingly.core.model.trip.GeoPoint
 import com.falcon.tripingly.core.model.trip.NewMarker
@@ -18,7 +21,11 @@ import com.falcon.tripingly.feature.map.generated.resources.map_change_not_saved
 import com.falcon.tripingly.feature.map.generated.resources.map_error_add_day
 import com.falcon.tripingly.feature.map.generated.resources.map_error_delete_day
 import com.falcon.tripingly.feature.map.generated.resources.map_error_stop_change
+import kotlin.time.Duration.Companion.milliseconds
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlin.time.Duration.Companion.seconds
 import org.jetbrains.compose.resources.StringResource
 
 /**
@@ -31,6 +38,7 @@ internal class MapEdits(
     private val selection: MapSelection,
     private val tripRepository: TripRepository,
     private val markerRepository: MarkerRepository,
+    private val placeRepository: PlaceRepository,
     private val myUserId: String?,
     private val onStopAdded: () -> Unit,
 ) {
@@ -38,6 +46,7 @@ internal class MapEdits(
         context.scope.launch {
             markerRepository.failures.collect { failure ->
                 if (failure.tripId != context.tripId) return@collect
+                stopNaming(failure.change.markerId)
                 context.update {
                     if (failure.needsConfirm) {
                         it.copy(dialog = Dialog.OthersContent.Change(failure.error.serverMessage(), failure))
@@ -50,11 +59,37 @@ internal class MapEdits(
                 }
             }
         }
+        // A name the server gave ends the wait; so does the stop going (deleted here or by someone else).
+        context.scope.launch {
+            context.trip.collect { details ->
+                val markers = details?.days?.flatMap { it.markers }?.associateBy { it.id } ?: return@collect
+                context.model.value.namingStopIds.filter { markers[it]?.name?.isNotBlank() == true }.forEach(::stopNaming)
+            }
+        }
+    }
+
+    /** The stops being named, each with its wait: a stop the server can't name stops spinning after [NAMING_TIMEOUT]. */
+    private val namingJobs = mutableMapOf<String, Job>()
+
+    private fun startNaming(markerId: String) {
+        namingJobs.remove(markerId)?.cancel()
+        context.update { it.copy(namingStopIds = it.namingStopIds + markerId) }
+        namingJobs[markerId] = context.scope.launch {
+            delay(NAMING_TIMEOUT)
+            stopNaming(markerId)
+        }
+    }
+
+    private fun stopNaming(markerId: String) {
+        namingJobs.remove(markerId)?.cancel()
+        if (markerId in context.model.value.namingStopIds) context.update { it.copy(namingStopIds = it.namingStopIds - markerId) }
     }
 
     fun retryFailedChanges() {
         val failed = context.model.value.failedChanges
         context.update { it.copy(message = null, failedChanges = emptyList()) }
+        // A nameless stop sent again waits for its name again.
+        failed.filter { it.change is MarkerChange.Add && it.markerName.isBlank() }.forEach { startNaming(it.change.markerId) }
         context.scope.launch { failed.forEach { markerRepository.retry(it) } }
     }
 
@@ -74,13 +109,41 @@ internal class MapEdits(
 
     fun setSpotPhoto(photo: PickedImage?) = selection.updateNewSpot { it.copy(photo = photo) }
 
+    private var brandsJob: Job? = null
+
+    /**
+     * Once typing pauses, the brands named like the spot (from [MIN_BRAND_QUERY] letters) are offered for "This is a
+     * brand store"; a picked brand stays picked while it's still offered or the name still says it.
+     */
+    fun onSpotNameChanged(name: String) {
+        brandsJob?.cancel()
+        val query = name.trim()
+        if (query.length < MIN_BRAND_QUERY) {
+            selection.updateNewSpot { it.copy(brands = emptyList(), brand = null) }
+            return
+        }
+        brandsJob = context.scope.launch {
+            delay(BRAND_SEARCH_DEBOUNCE)
+            val found = (placeRepository.brands(query) as? AppResult.Success)?.data ?: return@launch
+            selection.updateNewSpot { spot ->
+                // The picked one first, so it doesn't jump away while the name is still being typed.
+                val picked = spot.brand?.takeIf { brand -> brand in found || query.contains(brand.name, ignoreCase = true) }
+                spot.copy(brands = listOfNotNull(picked) + found.filter { it != picked }, brand = picked)
+            }
+        }
+    }
+
+    /** Ties the spot to [brand] (one of ours, never a new one), or unties it. */
+    fun pickSpotBrand(brand: Brand?) = selection.updateNewSpot { it.copy(brand = brand) }
+
     /** Create: the place with its kind and the stop on the open day at once, its photo once the server has the stop. */
     fun createSpot() {
         val spot = context.model.value.selection as? Selection.NewSpot ?: return
         val name = spot.name.text.toString().trim()
         if (name.isEmpty()) return
         selection.closeNewSpot()
-        add(NewMarker(name, GeoPoint(spot.location.latitude, spot.location.longitude), category = spot.category, photo = spot.photo))
+        brandsJob?.cancel()
+        add(NewMarker(name, GeoPoint(spot.location.latitude, spot.location.longitude), category = spot.category, photo = spot.photo, brandId = spot.brand?.id))
     }
 
     /** A stop at the open place or address, named after it. */
@@ -103,6 +166,7 @@ internal class MapEdits(
     }
 
     private fun deleteMarker(markerId: String, confirm: Boolean) {
+        stopNaming(markerId)
         selection.closeStop(markerId)
         context.scope.launch { markerRepository.deleteMarker(markerId, confirm) }
     }
@@ -150,7 +214,13 @@ internal class MapEdits(
     private fun add(marker: NewMarker) {
         val day = context.activeDay() ?: return
         if (!context.canEdit()) return
-        context.scope.launch { markerRepository.addMarker(context.tripId, day.id, marker) }
+        context.scope.launch {
+            val added = markerRepository.addMarker(context.tripId, day.id, marker)
+            // A tap sends no name: the server names the stop; the trip may already carry the name by now.
+            if (marker.name.isBlank() && context.trip.value?.days?.flatMap { it.markers }?.firstOrNull { it.id == added.id }?.name?.isNotBlank() != true) {
+                startNaming(added.id)
+            }
+        }
         onStopAdded()
     }
 
@@ -187,3 +257,12 @@ internal class MapEdits(
 internal fun Selection.Place.toNewMarker(): NewMarker = address
     ?.let { NewMarker(it.name, it.location, osm = it.osm) }
     ?: NewMarker(place.name, place.location, placeId = place.id)
+
+/** How long a nameless stop's title spins at most, when the server gives it no name. */
+private val NAMING_TIMEOUT = 20.seconds
+
+/** Typing has paused; see the search rule in 07-architecture. */
+private val BRAND_SEARCH_DEBOUNCE = 300.milliseconds
+
+/** Brands are looked for from two letters. */
+private const val MIN_BRAND_QUERY = 2

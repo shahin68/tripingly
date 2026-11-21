@@ -15,6 +15,7 @@ import org.jetbrains.skia.FontMgr
 import org.jetbrains.skia.FontStyle
 import org.jetbrains.skia.Image
 import org.jetbrains.skia.Paint
+import org.jetbrains.skia.Point
 import org.jetbrains.skia.RRect
 import org.jetbrains.skia.Rect
 import org.jetbrains.skia.SamplingMode
@@ -126,14 +127,21 @@ private fun fill(color: Int) = Paint().apply {
 }
 
 /**
- * [orderNumber] in [color], its ink centered on ([x], [y]): the digits' own bounds, not the font's line box (whose
- * descender room set them low) or their advance (whose side bearings set them off to one side), as Android's trimmed
+ * [orderNumber] in [color], its ink centered on ([x], [y]): the union of the digits' own glyph bounds, each where it
+ * sits in the line, not the font's line box (whose descender room set them low) or the text's measured box (which keeps
+ * the advance, so a "1" with its wide side bearing set "14" off to one side, Shahin 2026-11-17), as Android's trimmed
  * line centers them.
  */
 private fun org.jetbrains.skia.Canvas.drawNumber(orderNumber: Int, x: Float, y: Float, font: Font, color: Int) {
     val label = orderNumber.toString()
-    val ink = font.measureText(label)
-    drawString(label, x - (ink.left + ink.right) / 2, y - (ink.top + ink.bottom) / 2, font, fill(color))
+    val glyphs = font.getStringGlyphs(label)
+    val positions = font.getPositions(glyphs, Point(0f, 0f))
+    val bounds = font.getBounds(glyphs)
+    val left = bounds.indices.minOf { positions[it].x + bounds[it].left }
+    val right = bounds.indices.maxOf { positions[it].x + bounds[it].right }
+    val top = bounds.minOf { it.top }
+    val bottom = bounds.maxOf { it.bottom }
+    drawString(label, x - (left + right) / 2, y - (top + bottom) / 2, font, fill(color))
 }
 
 private val NEW_ACTIVITY = MapColors.NewActivity.toArgb()

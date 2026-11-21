@@ -17,6 +17,7 @@ import com.falcon.tripingly.feature.settings.presentation.SettingsViewModel.Expo
 import com.falcon.tripingly.feature.settings.presentation.SettingsViewModel.NotificationsState
 import com.falcon.tripingly.feature.settings.presentation.SettingsViewModel.State
 import kotlinx.collections.immutable.persistentListOf
+import kotlinx.collections.immutable.persistentSetOf
 import kotlin.time.Instant
 
 internal val previewLegalDocuments = persistentListOf(
@@ -42,9 +43,14 @@ internal class SettingsPreviewStates : PreviewParameterProvider<State> {
     )
 }
 
-/** Loaded, loading, and failed to load. */
+/** Loaded, likes turned off in the phone's settings, loading, and failed to load. */
 internal class NotificationsPreviewStates : PreviewParameterProvider<NotificationsState> {
-    override val values = sequenceOf(loaded.notifications, NotificationsState(), NotificationsState(hasFailed = true))
+    override val values = sequenceOf(
+        loaded.notifications,
+        loaded.notifications.copy(blockedInPhone = persistentSetOf(NotificationType.LIKES)),
+        NotificationsState(),
+        NotificationsState(hasFailed = true),
+    )
 }
 
 /** None yet, requesting, being made, ready to download, and failed. */

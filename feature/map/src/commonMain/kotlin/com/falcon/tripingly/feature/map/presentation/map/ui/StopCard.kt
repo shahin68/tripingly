@@ -96,6 +96,7 @@ internal fun PinCardScope.StopCard(
     onAdd: () -> Unit,
     onGoHere: () -> Unit,
     onRoute: () -> Unit,
+    onAround: () -> Unit,
     modifier: Modifier = Modifier,
     initiallyExpanded: Boolean = false,
 ) {
@@ -117,6 +118,7 @@ internal fun PinCardScope.StopCard(
                     PhotoBanner(
                         title = stop.title.asString(),
                         subtitle = stopSubtitle(card, position = imagePosition(images.size, pagerState.currentPage)),
+                        isTitleLoading = stop.isNaming,
                         afterSubtitle = { card.addedBy?.let { AddedByInline(it, it.text()) } },
                         image = if (images.isEmpty()) null else pagerImages(images, pagerState, description, onOpen = { onOpenPhotos() }),
                         onClick = onOpenPhotos,
@@ -135,7 +137,7 @@ internal fun PinCardScope.StopCard(
                     )
                 },
                 credit = { StopCredit(card, page = pagerState.currentPage, modifier = Modifier.padding(top = MaterialTheme.spacing.small)) },
-                buttons = { PinCardButtons(listOf(photoButton(card.news, onOpenPhotos)) + routeButtons(card.routes, onGoHere, onRoute), onOpenDetails, onDeleteShown, onAddShown, addLabel = addLabel) },
+                buttons = { PinCardButtons(listOf(photoButton(card.news, onOpenPhotos)) + routeButtons(card.routes, onGoHere, onRoute, onAround), onOpenDetails, onDeleteShown, onAddShown, addLabel = addLabel) },
             )
         } else {
             StopPill(card, onDeleteShown, onAddShown, addLabel, onExpand = { isExpanded = true }, modifier = Modifier.bloomRow(fromPin = 0))
@@ -185,12 +187,16 @@ internal fun imagePosition(count: Int, page: Int): String? =
  * banner the line's own colour).
  */
 @Composable
-internal fun stopSubtitle(card: StopCardState, numberColor: Color = Color.Unspecified, position: String? = null): AnnotatedString {
+internal fun stopSubtitle(card: StopCardState, numberColor: Color = Color.Unspecified, position: String? = null, withIcon: Boolean = false): AnnotatedString {
     val number = stringResource(Res.string.map_stop_number, card.stop.orderNumber)
     val type = card.category?.let { stringResource(it.label()) }
     return buildAnnotatedString {
         withStyle(SpanStyle(fontWeight = FontWeight.ExtraBold, color = numberColor)) { append(number) }
-        type?.let { append(" · $it") }
+        type?.let {
+            append(" · ")
+            if (withIcon) appendCategoryIcon()
+            append(it)
+        }
         position?.let { append(" · $it") }
     }
 }
@@ -226,7 +232,7 @@ private fun StopPill(card: StopCardState, onDelete: (() -> Unit)?, onAdd: (() ->
     ) {
         StopImage(card, Modifier.size(PillImageSize).clip(CircleShape))
         Column(Modifier.weight(1f, fill = false).padding(end = MaterialTheme.spacing.extraSmall)) {
-            Text(stop.title.asString(), style = MaterialTheme.typography.titleSmall, maxLines = 2)
+            LoadingTitle(stop.title.asString(), stop.isNaming, MaterialTheme.typography.titleSmall, maxLines = 2)
             Text(stopSubtitle(card, MaterialTheme.colorScheme.onSurface), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
         }
         // Delete is for whoever added the stop or owns the trip; a viewer's + puts it on one of their trips.
@@ -297,6 +303,7 @@ private fun StopCardPreviewContent(preview: StopCardPreview) {
                 onAdd = {},
                 onGoHere = {},
                 onRoute = {},
+                onAround = {},
                 initiallyExpanded = shown.expanded,
             )
         }

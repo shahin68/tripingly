@@ -98,8 +98,8 @@ val dataModule = module {
         )
     }
     single<PhotoRepository> { get<DefaultPhotoRepository>() }
-    single<PlaceRepository> { DefaultPlaceRepository(get(), get(), get(ApplicationScope)) }
-    single { DefaultRouteRepository(get(), get()) }
+    single<PlaceRepository> { DefaultPlaceRepository(get(), get(), get(), get(ApplicationScope)) }
+    single { DefaultRouteRepository(get(), get(), get()) }
     single<RouteRepository> { get<DefaultRouteRepository>() }
 
     single {
@@ -154,6 +154,7 @@ val dataModule = module {
             // The app binds the store where a RevenueCat key is set.
             store = getOrNull<StorePurchases>(),
             session = get(),
+            realtime = get(),
             scope = get(ApplicationScope),
         )
     }

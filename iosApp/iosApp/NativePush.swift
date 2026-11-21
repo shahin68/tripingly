@@ -74,14 +74,22 @@ final class AppNativePush: NSObject, NativePush, UNUserNotificationCenterDelegat
     ) {
         let data = response.notification.request.content.userInfo
         if let deepLink = data["deepLink"] as? String {
-            let notificationId = data["notificationId"] as? String
-            if let listener {
-                listener.onOpened(deepLink: deepLink, notificationId: notificationId)
-            } else {
-                pendingTap = (deepLink, notificationId)
-            }
+            open(deepLink: deepLink, notificationId: data["notificationId"] as? String)
         }
         completionHandler()
+    }
+
+    /// "Tripinly notification settings" on the phone's notification page for the app opens the app's own switches.
+    func userNotificationCenter(_ center: UNUserNotificationCenter, openSettingsFor notification: UNNotification?) {
+        open(deepLink: "tripinly://settings", notificationId: nil)
+    }
+
+    private func open(deepLink: String, notificationId: String?) {
+        if let listener {
+            listener.onOpened(deepLink: deepLink, notificationId: notificationId)
+        } else {
+            pendingTap = (deepLink, notificationId)
+        }
     }
 }
 

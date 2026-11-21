@@ -3,6 +3,7 @@ package com.falcon.tripingly.core.designsystem.component
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.heightIn
@@ -25,11 +26,14 @@ import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.falcon.tripingly.core.designsystem.generated.resources.Res
 import com.falcon.tripingly.core.designsystem.generated.resources.chip_remove
 import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
 import com.falcon.tripingly.core.designsystem.theme.spacing
+import com.falcon.tripingly.core.designsystem.theme.extendedColors
 import org.jetbrains.compose.resources.stringResource
 
 /**
@@ -51,12 +55,12 @@ fun PillChip(
     val isError = error != null
     val container = when {
         isError -> MaterialTheme.colorScheme.errorContainer
-        selected -> MaterialTheme.colorScheme.primaryContainer
+        selected -> MaterialTheme.extendedColors.highlight
         else -> MaterialTheme.colorScheme.surfaceVariant
     }
     val content = when {
         isError -> MaterialTheme.colorScheme.onErrorContainer
-        selected -> MaterialTheme.colorScheme.onPrimaryContainer
+        selected -> MaterialTheme.extendedColors.onHighlight
         else -> MaterialTheme.colorScheme.onSurfaceVariant
     }
     val border = if (isError) BorderStroke(1.dp, MaterialTheme.colorScheme.error) else null
@@ -118,6 +122,35 @@ fun PillChip(
     }
 }
 
+/**
+ * A round, icon-only chip that sits with [PillChip]s (a filter row's clear button): the colours of an unpicked chip, never
+ * shown as picked, dimmed while [enabled] is false. [size] is the chips' height.
+ */
+@Composable
+fun PillIconChip(
+    icon: ImageVector,
+    contentDescription: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    size: Dp = ChipHeight,
+) {
+    val content = MaterialTheme.colorScheme.onSurfaceVariant
+    Surface(
+        onClick = onClick,
+        enabled = enabled,
+        shape = CircleShape,
+        color = MaterialTheme.colorScheme.surfaceVariant,
+        contentColor = if (enabled) content else content.copy(alpha = DISABLED_ALPHA),
+        modifier = modifier.size(size),
+    ) {
+        Box(contentAlignment = Alignment.Center) {
+            Icon(icon, contentDescription = contentDescription, modifier = Modifier.size(RemoveIconSize))
+        }
+    }
+}
+
+private const val DISABLED_ALPHA = 0.38f
 private val ChipHeight = 40.dp
 private val ChipMaxWidth = 280.dp
 private val RemoveIconSize = 18.dp
@@ -132,6 +165,10 @@ private fun PillChipPreviewContent() {
         PillChip(label = "@anna", onRemove = {}, leading = { AvatarCircle("Anna", photo = null, size = AvatarSize.Small) })
         PillChip(label = "@nobody", onRemove = {}, error = "No one has that username.")
         PillChip(label = "This month", onClick = {}, selected = true)
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            PillIconChip(Icons.Default.Close, contentDescription = "Clear", onClick = {})
+            PillIconChip(Icons.Default.Close, contentDescription = "Clear", onClick = {}, enabled = false)
+        }
     }
 }
 

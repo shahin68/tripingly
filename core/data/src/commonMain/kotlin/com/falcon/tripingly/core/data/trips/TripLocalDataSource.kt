@@ -51,6 +51,9 @@ internal interface TripLocalDataSource {
     /** Sets the hot count of every cached stop at the place, and whether I marked it hot unless [hotByMe] is null. */
     suspend fun savePlaceHot(placeId: String, hotCount: Int, hotByMe: Boolean?)
 
+    /** Whether I like a cached trip and its like count, as the server confirmed them. */
+    suspend fun saveTripLike(tripId: String, liked: Boolean, likeCount: Int)
+
     /** Counts comments added to (positive [delta]) or deleted from a cached marker. */
     suspend fun addToCommentCount(markerId: String, delta: Int)
 

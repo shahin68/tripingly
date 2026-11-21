@@ -22,6 +22,7 @@ import com.falcon.tripingly.feature.trips.presentation.screen.HomeViewModel.Acti
 import com.falcon.tripingly.feature.trips.presentation.screen.HomeViewModel.Dialog
 import com.falcon.tripingly.feature.trips.presentation.screen.HomeViewModel.DialogState
 import com.falcon.tripingly.feature.trips.presentation.screen.HomeViewModel.State
+import kotlin.time.Duration.Companion.milliseconds
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.CoroutineScope
@@ -97,7 +98,7 @@ internal class HomeCreateTrip(
             return
         }
         destinationSearch = scope.launch {
-            delay(SEARCH_DEBOUNCE_MILLIS)
+            delay(SEARCH_DEBOUNCE)
             update { it.copy(isSearchingDestination = true) }
             val results = (placeRepository.searchDestinations(query) as? AppResult.Success)?.data.orEmpty()
             update { it.copy(destinationResults = results.toImmutableList(), isSearchingDestination = false) }
@@ -159,6 +160,6 @@ internal class HomeCreateTrip(
     }
 
     private companion object {
-        const val SEARCH_DEBOUNCE_MILLIS = 300L
+        val SEARCH_DEBOUNCE = 300.milliseconds
     }
 }

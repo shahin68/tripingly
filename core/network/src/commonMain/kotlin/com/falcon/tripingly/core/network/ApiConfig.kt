@@ -14,6 +14,9 @@ data class ApiConfig(
     /** The backend's Google Web client ID, the audience of Google ID tokens; null until it exists. */
     val googleWebClientId: String? = null,
 ) {
+    /** [path] from the API (`/v1/brands/…`) as a full URL, on [baseUrl]'s host. */
+    fun urlOf(path: String): String = baseUrl.removeSuffix("/v1") + path
+
     /** `android` or `ios`, the first part of [client]. */
     val platform: String get() = client.substringBefore('/')
 

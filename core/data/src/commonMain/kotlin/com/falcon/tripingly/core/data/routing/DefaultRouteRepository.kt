@@ -3,8 +3,11 @@ package com.falcon.tripingly.core.data.routing
 import com.falcon.tripingly.core.common.error.DataError
 import com.falcon.tripingly.core.common.result.AppResult
 import com.falcon.tripingly.core.common.result.map
+import com.falcon.tripingly.core.data.places.query
+import com.falcon.tripingly.core.data.places.toCategoryCounts
 import com.falcon.tripingly.core.data.places.toMapPlace
 import com.falcon.tripingly.core.data.trips.PendingTripWrites
+import com.falcon.tripingly.core.model.place.PlaceCategory
 import com.falcon.tripingly.core.model.route.AlongTheWayPlace
 import com.falcon.tripingly.core.model.route.BestOrder
 import com.falcon.tripingly.core.model.route.Route
@@ -18,6 +21,7 @@ import com.falcon.tripingly.core.model.route.TransitVehicle
 import com.falcon.tripingly.core.model.route.TravelMode
 import com.falcon.tripingly.core.model.trip.GeoPoint
 import com.falcon.tripingly.core.model.trip.TripDay
+import com.falcon.tripingly.core.network.ApiConfig
 import com.falcon.tripingly.core.network.model.OptimizeResultDto
 import com.falcon.tripingly.core.network.model.RouteResponseDto
 import com.falcon.tripingly.core.network.model.TransitPlaceDto
@@ -31,6 +35,7 @@ import kotlin.time.Instant
 internal class DefaultRouteRepository(
     private val api: RoutingApi,
     private val pending: PendingTripWrites,
+    private val apiConfig: ApiConfig,
 ) : RouteRepository {
 
     private val lock = Mutex()
@@ -38,12 +43,12 @@ internal class DefaultRouteRepository(
     /** Answered routes by what was asked, least recently used first. */
     private val routes = LinkedHashMap<RouteKey, RoutePlan>()
 
-    override suspend fun dayRoute(tripId: String, day: TripDay, mode: TravelMode, departAt: Instant?): AppResult<RoutePlan, DataError.Network> {
+    override suspend fun dayRoute(tripId: String, day: TripDay, mode: TravelMode, departAt: Instant?, categories: Set<PlaceCategory>): AppResult<RoutePlan, DataError.Network> {
         val time = departAt?.let { TransitTime(it) }.takeIf { mode == TravelMode.Transit }
-        val key = RouteKey(day.id, mode, day.markers.map { it.id to it.location })
+        val key = RouteKey(day.id, mode, day.markers.map { it.id to it.location }, categories)
         return cached(key) {
             pending.awaitSent(tripId)
-            api.dayRoute(day.id, mode.value, time?.at?.toString()).map { it.toRoutePlan() }
+            api.dayRoute(day.id, mode.value, time?.at?.toString(), categories.query()).map { it.toRoutePlan() }
         }
     }
 
@@ -55,10 +60,11 @@ internal class DefaultRouteRepository(
         fromPlaceId: String?,
         toPlaceId: String?,
         time: TransitTime?,
+        categories: Set<PlaceCategory>,
     ): AppResult<RoutePlan, DataError.Network> {
         val transitTime = time.takeIf { mode == TravelMode.Transit }
         // The ends' places change the places along the way, so they're part of what was asked.
-        val key = RouteKey(tripId, mode, listOf("from:$fromPlaceId" to from, "to:$toPlaceId" to to))
+        val key = RouteKey(tripId, mode, listOf("from:$fromPlaceId" to from, "to:$toPlaceId" to to), categories)
         return cached(key) {
             api.route(
                 from = from.query(),
@@ -69,6 +75,7 @@ internal class DefaultRouteRepository(
                 toPlaceId = toPlaceId,
                 departAt = transitTime?.takeUnless { it.isArriveBy }?.at?.toString(),
                 arriveBy = transitTime?.takeIf { it.isArriveBy }?.at?.toString(),
+                categories = categories.query(),
             ).map { it.toRoutePlan() }
         }
     }
@@ -104,7 +111,7 @@ internal class DefaultRouteRepository(
     /** Forgets the routes, whose places along the way were for the account signed in. */
     suspend fun clear() = lock.withLock { routes.clear() }
 
-    private data class RouteKey(val owner: String?, val mode: TravelMode, val points: List<Pair<String, GeoPoint>>)
+    private data class RouteKey(val owner: String?, val mode: TravelMode, val points: List<Pair<String, GeoPoint>>, val categories: Set<PlaceCategory>)
 
     private fun GeoPoint.query() = "$lat,$lng"
 
@@ -132,8 +139,9 @@ internal class DefaultRouteRepository(
             )
         },
         alongTheWay = alongTheWay.map {
-            AlongTheWayPlace(it.place.toMapPlace(), it.distanceFromRouteMeters.roundToInt(), it.etaFromStartSeconds.roundToInt())
+            AlongTheWayPlace(it.place.toMapPlace(apiConfig), it.distanceFromRouteMeters.roundToInt(), it.etaFromStartSeconds.roundToInt())
         },
+        alongTheWayCounts = alongTheWayCounts.toCategoryCounts(),
         isEstimated = degraded,
         attribution = attribution,
     )

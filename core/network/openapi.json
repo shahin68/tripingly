@@ -1848,6 +1848,18 @@
               "example": "13/4469/2840,13/4470/2840",
               "type": "string"
             }
+          },
+          {
+            "name": "q",
+            "required": false,
+            "in": "query",
+            "description": "The map searched by name: only places whose name matches as in search, at any zoom (no clusters), hot first, then the best known. Ignores `categories`",
+            "schema": {
+              "minLength": 2,
+              "maxLength": 100,
+              "example": "kfc",
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -2020,6 +2032,95 @@
           }
         ],
         "summary": "Popular places around a point",
+        "tags": [
+          "places"
+        ]
+      }
+    },
+    "/v1/places/around": {
+      "get": {
+        "description": "Every place within radiusMeters of the point: hot spots first, Tripinly spots before OSM places, then nearest; categoryCounts says how many of each kind the circle holds (for filter chips). 403 PREMIUM_REQUIRED without Tripinly Pro. The point is used for this query only.",
+        "operationId": "Places_around",
+        "parameters": [
+          {
+            "name": "lat",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "example": 48.2082,
+              "type": "number"
+            }
+          },
+          {
+            "name": "lng",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "example": 16.3738,
+              "type": "number"
+            }
+          },
+          {
+            "name": "radiusMeters",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 50,
+              "maximum": 5000,
+              "default": 500,
+              "type": "number"
+            }
+          },
+          {
+            "name": "categories",
+            "required": false,
+            "in": "query",
+            "description": "Comma-separated: cafe, restaurant, bar, attraction, museum, historic, park, nature, landmark, other, bakery, fast_food, viewpoint, beach, entertainment, shopping, stay, transport, cinema, nightlife, health, pharmacy, groceries, market, sports, spa, zoo, kids, library, camping, winery, parking, fuel, money, toilets, rental, photo_spot, romantic. All when omitted; categoryCounts always counts every kind",
+            "schema": {
+              "example": "cafe,museum",
+              "type": "string"
+            }
+          },
+          {
+            "name": "excludePlaceId",
+            "required": false,
+            "in": "query",
+            "description": "The place the ring is around (the pin itself): left out of the items and the counts",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 50,
+              "default": 30,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AroundResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Places around a point, by kind (Tripinly Pro)",
         "tags": [
           "places"
         ]
@@ -4401,6 +4502,78 @@
           "moderation"
         ]
       }
+    },
+    "/v1/brands": {
+      "get": {
+        "description": "Brands whose name has a word starting with `q`. People pick from this list; they cannot add brands. Empty while brands are off (BRAND_LOGOS_ENABLED), so the apps offer no \"This is a brand store\".",
+        "operationId": "Brands_search",
+        "parameters": [
+          {
+            "name": "q",
+            "required": true,
+            "in": "query",
+            "description": "Start of any word of the brand name, any case",
+            "schema": {
+              "minLength": 1,
+              "maxLength": 60,
+              "example": "zar",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BrandsResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Find a brand for \"This is a brand store\"",
+        "tags": [
+          "brands"
+        ]
+      }
+    },
+    "/v1/me/pro/sync": {
+      "post": {
+        "description": "Called once by the app right after the store says a purchase or restore went through, so Pro turns on without waiting for the webhook (which later writes the same). Answers my Pro as it now is; every device of mine also hears pro.changed. 503 SERVICE_UNAVAILABLE while RevenueCat is unset or unreachable: the webhook still brings it.",
+        "operationId": "Pro_sync",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProStatusDto"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "SERVICE_UNAVAILABLE: RevenueCat unset or unreachable"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Read my Pro from RevenueCat now (after a purchase or restore)",
+        "tags": [
+          "me"
+        ]
+      }
     }
   },
   "info": {
@@ -4514,6 +4687,8 @@
               "REAUTH_REQUIRED",
               "REAUTH_FAILED",
               "ROUTING_UNAVAILABLE",
+              "TRANSIT_NO_COVERAGE",
+              "TRANSIT_NO_CONNECTION",
               "BBOX_TOO_LARGE",
               "IDEMPOTENCY_KEY_REUSED",
               "IDEMPOTENCY_KEY_IN_PROGRESS",
@@ -4548,6 +4723,43 @@
         },
         "required": [
           "error"
+        ]
+      },
+      "TransitAreaDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "vienna"
+          },
+          "name": {
+            "type": "string",
+            "example": "Vienna"
+          },
+          "south": {
+            "type": "number",
+            "example": 48.11
+          },
+          "west": {
+            "type": "number",
+            "example": 16.18
+          },
+          "north": {
+            "type": "number",
+            "example": 48.33
+          },
+          "east": {
+            "type": "number",
+            "example": 16.58
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "south",
+          "west",
+          "north",
+          "east"
         ]
       },
       "AppConfigDto": {
@@ -4912,6 +5124,13 @@
             "items": {
               "type": "string"
             }
+          },
+          "proExpiresAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true,
+            "example": "2027-10-20T08:00:00.000Z",
+            "description": "When the entitlements end (UTC); null when they never end (lifetime) or there are none. The app ends Pro locally at this time; changes before it arrive as the pro.changed socket event."
           }
         },
         "required": [
@@ -6033,6 +6252,16 @@
           "hotByMe": {
             "type": "boolean",
             "description": "I marked the place hot"
+          },
+          "brand": {
+            "nullable": true,
+            "description": "The brand this place is a store of; with a logoUrl the pin is a rounded square showing the logo, otherwise round as usual",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PlaceBrandDto"
+              }
+            ]
           }
         },
         "required": [
@@ -6220,6 +6449,12 @@
           "hotCount": {
             "type": "number"
           },
+          "prominence": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 100,
+            "description": "How well known the place is (OSM/Wikipedia page views, as on map pins); 0 for photon"
+          },
           "type": {
             "type": "string",
             "nullable": true,
@@ -6230,7 +6465,7 @@
             "type": "string",
             "nullable": true,
             "example": "Stephansplatz 1, Wien, Austria",
-            "description": "Photon: street, city and country for telling results apart"
+            "description": "Telling results with the same name apart. Photon: street, city and country. Our places: street and house number, city, from OpenStreetMap (null when it has none)"
           },
           "osmType": {
             "type": "string",
@@ -6245,6 +6480,16 @@
             "type": "string",
             "nullable": true,
             "example": "240109189"
+          },
+          "brand": {
+            "nullable": true,
+            "description": "Our place's brand (as on in-view places); null for Photon results",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PlaceBrandDto"
+              }
+            ]
           }
         },
         "required": [
@@ -6255,6 +6500,7 @@
           "location",
           "isTripinly",
           "hotCount",
+          "prominence",
           "type",
           "address",
           "osmType",
@@ -6271,6 +6517,16 @@
               "$ref": "#/components/schemas/SearchResultDto"
             }
           },
+          "city": {
+            "nullable": true,
+            "description": "Bounds of the city the map centre (lat/lng) is in; places, streets and addresses come from it only, cities and countries from anywhere. The app frames search results inside it and leaves the camera alone when there are none. Null without lat/lng or when the city is unknown.",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/SearchCityDto"
+              }
+            ]
+          },
           "attribution": {
             "type": "string",
             "example": "© OpenStreetMap contributors"
@@ -6278,6 +6534,7 @@
         },
         "required": [
           "items",
+          "city",
           "attribution"
         ]
       },
@@ -6385,6 +6642,16 @@
           "distanceMeters": {
             "type": "number",
             "description": "From the query point, in metres"
+          },
+          "brand": {
+            "nullable": true,
+            "description": "The brand this place is a store of; with a logoUrl the pin is a rounded square showing the logo, otherwise round as usual",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PlaceBrandDto"
+              }
+            ]
           }
         },
         "required": [
@@ -6425,6 +6692,90 @@
         "required": [
           "items",
           "nextCursor",
+          "attribution"
+        ]
+      },
+      "CategoryCountDto": {
+        "type": "object",
+        "properties": {
+          "category": {
+            "type": "string",
+            "enum": [
+              "cafe",
+              "restaurant",
+              "bar",
+              "attraction",
+              "museum",
+              "historic",
+              "park",
+              "nature",
+              "landmark",
+              "other",
+              "bakery",
+              "fast_food",
+              "viewpoint",
+              "beach",
+              "entertainment",
+              "shopping",
+              "stay",
+              "transport",
+              "cinema",
+              "nightlife",
+              "health",
+              "pharmacy",
+              "groceries",
+              "market",
+              "sports",
+              "spa",
+              "zoo",
+              "kids",
+              "library",
+              "camping",
+              "winery",
+              "parking",
+              "fuel",
+              "money",
+              "toilets",
+              "rental",
+              "photo_spot",
+              "romantic"
+            ]
+          },
+          "count": {
+            "type": "number",
+            "minimum": 1
+          }
+        },
+        "required": [
+          "category",
+          "count"
+        ]
+      },
+      "AroundResponseDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "description": "Hot spots first (from APP_PLACE_RANK_MIN_HOT_COUNT, most hot first), Tripinly spots before OSM places, then nearest first",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/NearbyPlaceDto"
+            }
+          },
+          "categoryCounts": {
+            "description": "Places in the circle per kind, ignoring `categories`; most first. Kinds with none are left out",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CategoryCountDto"
+            }
+          },
+          "attribution": {
+            "type": "string",
+            "example": "© OpenStreetMap contributors"
+          }
+        },
+        "required": [
+          "items",
+          "categoryCounts",
           "attribution"
         ]
       },
@@ -6737,6 +7088,16 @@
             "nullable": true,
             "example": "© OpenStreetMap contributors",
             "description": "Set for OSM-derived places"
+          },
+          "brand": {
+            "nullable": true,
+            "description": "The brand this place is a store of; with a logoUrl the pin is a rounded square showing the logo, otherwise round as usual",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PlaceBrandDto"
+              }
+            ]
           }
         },
         "required": [
@@ -6857,6 +7218,11 @@
             "type": "number",
             "minimum": 0,
             "description": "Insert position in the day; appended when omitted"
+          },
+          "brandId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "\"This is a brand store\": a brand from GET /brands for a new place (people cannot add brands; 400 `fields.brandId` when it does not exist). Ignored when the stop joins an existing place or while brands are off (BRAND_LOGOS_ENABLED). Omit when sending placeId."
           }
         }
       },
@@ -7408,6 +7774,130 @@
           "hotCount"
         ]
       },
+      "TransitLineDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "example": "U2"
+          },
+          "color": {
+            "type": "string",
+            "nullable": true,
+            "example": "#A862A4",
+            "description": "The line's own colour, #RRGGBB; null when the feed has none"
+          },
+          "textColor": {
+            "type": "string",
+            "nullable": true,
+            "example": "#FFFFFF"
+          }
+        },
+        "required": [
+          "name",
+          "color",
+          "textColor"
+        ]
+      },
+      "TransitPlaceDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "nullable": true,
+            "example": "Museumsquartier",
+            "description": "The stop's name; null at the route's own start and end"
+          },
+          "lat": {
+            "type": "number"
+          },
+          "lng": {
+            "type": "number"
+          },
+          "time": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "name",
+          "lat",
+          "lng",
+          "time"
+        ]
+      },
+      "TransitStepDto": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "walk",
+              "ride"
+            ]
+          },
+          "vehicle": {
+            "type": "string",
+            "enum": [
+              "tram",
+              "subway",
+              "bus",
+              "train",
+              "ferry",
+              "cable_car",
+              "other"
+            ],
+            "nullable": true
+          },
+          "line": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/TransitLineDto"
+              }
+            ]
+          },
+          "headsign": {
+            "type": "string",
+            "nullable": true,
+            "example": "Karlsplatz",
+            "description": "Where the ride is heading"
+          },
+          "from": {
+            "$ref": "#/components/schemas/TransitPlaceDto"
+          },
+          "to": {
+            "$ref": "#/components/schemas/TransitPlaceDto"
+          },
+          "stops": {
+            "type": "number",
+            "description": "Stops passed between getting on and off"
+          },
+          "distanceMeters": {
+            "type": "number"
+          },
+          "durationSeconds": {
+            "type": "number"
+          },
+          "polyline": {
+            "type": "string",
+            "description": "Encoded polyline, precision 5"
+          }
+        },
+        "required": [
+          "kind",
+          "vehicle",
+          "line",
+          "headsign",
+          "from",
+          "to",
+          "stops",
+          "distanceMeters",
+          "durationSeconds",
+          "polyline"
+        ]
+      },
       "RouteLegDto": {
         "type": "object",
         "properties": {
@@ -7546,6 +8036,13 @@
               "$ref": "#/components/schemas/AlongTheWayDto"
             }
           },
+          "alongTheWayCounts": {
+            "description": "Places along the route per kind, ignoring `categories` and the APP_ALONG_THE_WAY_MAX_PLACES cap (for filter chips); most first. Kinds with none are left out",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CategoryCountDto"
+            }
+          },
           "degraded": {
             "type": "boolean",
             "description": "True when routing is unavailable (quota used up, not configured): the route is straight lines with estimated times"
@@ -7558,6 +8055,7 @@
         "required": [
           "route",
           "alongTheWay",
+          "alongTheWayCounts",
           "degraded",
           "attribution"
         ]
@@ -8304,165 +8802,96 @@
           "action"
         ]
       },
-      "TransitStepDto": {
+      "SearchCityDto": {
         "type": "object",
         "properties": {
-          "kind": {
-            "type": "string",
-            "enum": [
-              "walk",
-              "ride"
-            ]
-          },
-          "vehicle": {
-            "type": "string",
-            "enum": [
-              "tram",
-              "subway",
-              "bus",
-              "train",
-              "ferry",
-              "cable_car",
-              "other"
-            ],
-            "nullable": true
-          },
-          "line": {
-            "nullable": true,
-            "type": "object",
-            "allOf": [
-              {
-                "$ref": "#/components/schemas/TransitLineDto"
-              }
-            ]
-          },
-          "headsign": {
-            "type": "string",
-            "nullable": true,
-            "example": "Karlsplatz",
-            "description": "Where the ride is heading"
-          },
-          "from": {
-            "$ref": "#/components/schemas/TransitPlaceDto"
-          },
-          "to": {
-            "$ref": "#/components/schemas/TransitPlaceDto"
-          },
-          "stops": {
-            "type": "number",
-            "description": "Stops passed between getting on and off"
-          },
-          "distanceMeters": {
-            "type": "number"
-          },
-          "durationSeconds": {
-            "type": "number"
-          },
-          "polyline": {
-            "type": "string",
-            "description": "Encoded polyline, precision 5"
-          }
-        },
-        "required": [
-          "kind",
-          "vehicle",
-          "line",
-          "headsign",
-          "from",
-          "to",
-          "stops",
-          "distanceMeters",
-          "durationSeconds",
-          "polyline"
-        ]
-      },
-      "TransitLineDto": {
-        "type": "object",
-        "properties": {
-          "name": {
-            "type": "string",
-            "example": "U2"
-          },
-          "color": {
-            "type": "string",
-            "nullable": true,
-            "example": "#A862A4",
-            "description": "The line's own colour, #RRGGBB; null when the feed has none"
-          },
-          "textColor": {
-            "type": "string",
-            "nullable": true,
-            "example": "#FFFFFF"
-          }
-        },
-        "required": [
-          "name",
-          "color",
-          "textColor"
-        ]
-      },
-      "TransitPlaceDto": {
-        "type": "object",
-        "properties": {
-          "name": {
-            "type": "string",
-            "nullable": true,
-            "example": "Museumsquartier",
-            "description": "The stop's name; null at the route's own start and end"
-          },
-          "lat": {
-            "type": "number"
-          },
-          "lng": {
-            "type": "number"
-          },
-          "time": {
-            "type": "string",
-            "format": "date-time"
-          }
-        },
-        "required": [
-          "name",
-          "lat",
-          "lng",
-          "time"
-        ]
-      },
-      "TransitAreaDto": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string",
-            "example": "vienna"
-          },
-          "name": {
-            "type": "string",
-            "example": "Vienna"
-          },
-          "south": {
-            "type": "number",
-            "example": 48.11
-          },
           "west": {
             "type": "number",
             "example": 16.18
           },
-          "north": {
+          "south": {
             "type": "number",
-            "example": 48.33
+            "example": 48.12
           },
           "east": {
             "type": "number",
             "example": 16.58
+          },
+          "north": {
+            "type": "number",
+            "example": 48.32
+          }
+        },
+        "required": [
+          "west",
+          "south",
+          "east",
+          "north"
+        ]
+      },
+      "PlaceBrandDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string",
+            "example": "Zara"
+          },
+          "logoUrl": {
+            "type": "string",
+            "nullable": true,
+            "example": "/v1/brands/0b5e…/logo/3f2a9c01d4e5b6a7",
+            "description": "Path of the brand's logo on this API (prepend the API's base URL): a square WebP of 96 px, a few KB, public, never changing at this path, so cache it forever. Null when there's no logo, logos are off (BRAND_LOGOS_ENABLED) or this brand isn't listed in BRAND_LOGOS_SHOWN: draw the round pin then"
           }
         },
         "required": [
           "id",
           "name",
-          "south",
-          "west",
-          "north",
-          "east"
+          "logoUrl"
+        ]
+      },
+      "BrandsResponseDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "description": "At most 20, the brands with the most places first",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PlaceBrandDto"
+            }
+          }
+        },
+        "required": [
+          "items"
+        ]
+      },
+      "ProStatusDto": {
+        "type": "object",
+        "properties": {
+          "entitlements": {
+            "example": [
+              "routes"
+            ],
+            "description": "Active premium features, as in GET /me. Show paid UI from this, never from a local flag.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "proExpiresAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true,
+            "example": "2027-10-20T08:00:00.000Z",
+            "description": "When the active features end (UTC). Null when they never end (lifetime) or there is no Pro. The apps end Pro locally at this time; a renewal arrives earlier as pro.changed."
+          }
+        },
+        "required": [
+          "entitlements",
+          "proExpiresAt"
         ]
       }
     }

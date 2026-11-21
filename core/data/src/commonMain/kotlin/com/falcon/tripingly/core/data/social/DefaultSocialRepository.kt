@@ -83,7 +83,13 @@ internal class DefaultSocialRepository(
         setLatest("${target.wireName}:$targetId", liked) { on ->
             (if (on) api.like(target.wireName, targetId) else api.unlike(target.wireName, targetId)).map { Toggle(it.liked, it.likeCount.toInt()) }
         }.map { LikeState(it.on, it.count) }
-            .also { if (it is AppResult.Success) _myLikes.emit(LikeChange(target, targetId, it.data)) }
+            .also {
+                if (it is AppResult.Success) {
+                    // A cached trip keeps it, so its map shows the heart next time too.
+                    if (target == LikeTarget.Trip) local.saveTripLike(targetId, it.data.liked, it.data.likeCount)
+                    _myLikes.emit(LikeChange(target, targetId, it.data))
+                }
+            }
 
     /** Per place, while taps on its flame are on their way: its stops' flame and count before the first tap. */
     private val hotBeforeTaps = mutableMapOf<String, HotState>()

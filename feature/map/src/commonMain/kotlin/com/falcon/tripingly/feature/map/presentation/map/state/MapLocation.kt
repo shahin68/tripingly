@@ -15,6 +15,7 @@ import com.falcon.tripingly.feature.map.generated.resources.error_location_unkno
 import com.falcon.tripingly.feature.map.presentation.map.LocationPrompt
 import com.falcon.tripingly.feature.map.presentation.map.MapEvent
 import kotlin.coroutines.cancellation.CancellationException
+import kotlin.time.Duration.Companion.seconds
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -24,7 +25,7 @@ import kotlinx.coroutines.launch
  * once granted, the dot shows without moving the camera, and only the button moves the camera to the user.
  * The button switches following on and off (Shahin, 2026-11-13): on, the camera goes to me and moves with every new
  * location, until a finger moves the map, the screen shows something else ([MapCamera.moveTo]) or the button is tapped
- * again. When no location comes for [SIGNAL_LOST_MILLIS] (a tunnel, underground) a quiet note says it's waiting, and
+ * again. When no location comes for [SIGNAL_LOST] (a tunnel, underground) a quiet note says it's waiting, and
  * the first location after that carries on following. With the device's location switched off, the button still
  * switches on and a note says location is off, with "Turn on" (Shahin, 2026-11-13); its errors say nothing more, and
  * the first location once it's on starts following.
@@ -173,11 +174,11 @@ internal class MapLocation(
         }
     }
 
-    /** While following, no new location within [SIGNAL_LOST_MILLIS] says the signal is lost; each location starts it again. */
+    /** While following, no new location within [SIGNAL_LOST] says the signal is lost; each location starts it again. */
     private fun watchSignal() {
         signalWatch?.cancel()
         signalWatch = context.scope.launch {
-            delay(SIGNAL_LOST_MILLIS)
+            delay(SIGNAL_LOST)
             if (context.model.value.location.isFollowing) update { it.copy(isSignalLost = true) }
         }
     }
@@ -191,6 +192,6 @@ internal class MapLocation(
         /** Streets around the user. */
         const val USER_ZOOM = 15f
         /** Locations come every 2 to 3 s while the signal is there; this long without one, it's gone. */
-        const val SIGNAL_LOST_MILLIS = 12_000L
+        val SIGNAL_LOST = 12.seconds
     }
 }

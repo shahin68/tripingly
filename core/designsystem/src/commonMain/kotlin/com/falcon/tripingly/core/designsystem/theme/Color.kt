@@ -47,6 +47,8 @@ internal val SurfaceContainerLowDark = Color(0xFF161917)
 internal val SurfaceContainerDark = Color(0xFF1B1E1C)
 internal val SurfaceContainerHighDark = Color(0xFF232725)
 internal val SurfaceContainerHighestDark = Color(0xFF2C302E)
+internal val AvatarDark = Color(0xFF6B726D)
+internal val OnAvatarDark = Color(0xFFF5F7F5)
 internal val OutlineDark = Color(0xFF6F7570)
 internal val OutlineVariantDark = Color(0xFF353A37)
 internal val ErrorDark = Color(0xFFFFB4AB)
@@ -54,6 +56,13 @@ internal val ErrorContainerDark = Color(0xFF5C1A14)
 internal val AttentionDark = Color(0xFFF2A65E)
 internal val OnAttentionDark = Color(0xFF3A1E00)
 internal val OnErrorContainerDark = Color(0xFFFFDAD5)
+
+// What is picked (a selected chip, the open stop in the plan, a lit filter): a lighter ivy that stands out of a chip's
+// grey in both themes (Shahin, 2026-11-17: the container green was too hard to see).
+internal val HighlightLight = Color(0xFFB9DCC4)
+internal val OnHighlightLight = Color(0xFF0F2A18)
+internal val HighlightDark = Color(0xFF3E7A53)
+internal val OnHighlightDark = Color(0xFFE6F5EA)
 
 // A control's fill on a card in the dark theme (a toggle's track, a pill button): lighter than the card, so it reads as
 // something to tap (Shahin, 2026-11-16). The light theme keeps its surfaceVariant.
@@ -91,3 +100,19 @@ object MapColors {
      */
     val Transit = Color(0xFF55606E)
 }
+
+// The invite button: black in light, white in dark, no gradient (Shahin, 2026-11-19); its hairline edge catches light on
+// top as glass does.
+internal val InviteLight = Color(0xFF000000)
+internal val OnInviteLight = Color(0xFFFFFFFF)
+internal val InviteEdgeLight = Color(0x59FFFFFF)
+internal val InviteDark = Color(0xFFFFFFFF)
+internal val OnInviteDark = Color(0xFF000000)
+internal val InviteEdgeDark = Color(0x33000000)
+
+// The heart in the invite pill (Shahin, 2026-11-19): a line between it and the invitation that shows on black and on
+// white, and a red that stands out on each.
+internal val InviteDividerLight = Color(0x66FFFFFF)
+internal val InviteDividerDark = Color(0x4D000000)
+internal val InviteLikedLight = Color(0xFFFF5A5F)
+internal val InviteLikedDark = Color(0xFFC22A1E)

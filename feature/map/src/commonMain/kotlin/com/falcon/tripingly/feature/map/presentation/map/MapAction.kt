@@ -4,6 +4,7 @@ import com.falcon.tripingly.core.location.model.Coordinates
 import com.falcon.tripingly.core.location.permission.LocationPermission
 import com.falcon.tripingly.core.model.photo.Photo
 import com.falcon.tripingly.core.model.photo.PickedImage
+import com.falcon.tripingly.core.model.place.Brand
 import com.falcon.tripingly.core.model.place.GeoBounds
 import com.falcon.tripingly.core.model.place.MapPlace
 import com.falcon.tripingly.core.model.place.PlaceCategory
@@ -51,6 +52,8 @@ sealed interface MapAction {
         data object DeleteDay : Header
         /** Saves someone else's trip to My Trips, or removes it. */
         data object ToggleSave : Header
+        /** The heart in the Ask to join pill: like someone else's trip, or not any more. */
+        data object ToggleLike : Header
         /** Asks the owner to let me edit their trip with them. */
         data object RequestToJoin : Header
         data object CancelJoinRequest : Header
@@ -60,14 +63,23 @@ sealed interface MapAction {
         data object OpenJoinRequests : Header
         /** The "wants to join" pill has shown its people in full for a while: it shrinks to their faces for good. */
         data object JoinRequestsSeen : Header
+        /** A long press on the join pill: it shows its people in full again for a while (Shahin, 2026-11-17). */
+        data object ShowJoinRequests : Header
         data object OpenOwnerProfile : Header
         data object ReportTrip : Header
+        /** Shares the trip's name and dates through the system's share sheet. */
+        data object ShareTrip : Header
+        /** An editor leaves the trip, once they agree. */
+        data object LeaveTrip : Header
     }
 
     sealed interface Search : MapAction {
         data object Open : Search
         data class QueryChanged(val query: String) : Search
         data class ResultClick(val result: PlaceSearchResult) : Search
+
+        /** The keyboard's search key, no result picked: the map shows only the places named so. */
+        data object Submit : Search
         data object Close : Search
     }
 
@@ -106,11 +118,35 @@ sealed interface MapAction {
         data class AlongTheWayClick(val place: MapPlace) : Plan
         /** Adds a place along the way to the open day. */
         data class AddAlongTheWay(val place: MapPlace) : Plan
+        /** A chip over the places along the way: the only kind picked (tapped again, none), or the clear button ([category] null). */
+        data class ToggleAlongCategory(val category: PlaceCategory?) : Plan
         data object ClosePointRoute : Plan
         /** By public transport, "Leave at": the time picker opens. */
         data object OpenLeaveAt : Plan
         /** By public transport, the walks and rides open step by step in a sheet. */
         data object OpenTransitSteps : Plan
+    }
+
+    /** The filter circle at the map's top end, which opens into chips of kinds of places. */
+    sealed interface PlaceFilter : MapAction {
+        /** The circle: the chips open, or close again (the kinds picked stay). */
+        data object Toggle : PlaceFilter
+        /** A chip: the only kind picked (tapped again, none), or the clear button ([category] null). */
+        data class ToggleCategory(val category: PlaceCategory?) : PlaceFilter
+    }
+
+    /** Around a pin (Tripinly Pro): its button on a card or details, the ring on the map and the box in the plan sheet. */
+    sealed interface Around : MapAction {
+        data object Open : Around
+        /** The box's ✕. */
+        data object Close : Around
+        /** A chip: the only kind picked (tapped again, none), or the clear button ([category] null). */
+        data class ToggleCategory(val category: PlaceCategory?) : Around
+        /** The ring's handle dragged to [meters] from the pin; [isFinal] once the finger lets go, which asks for its places. */
+        data class SetRadius(val meters: Int, val isFinal: Boolean = true) : Around
+        data class PlaceClick(val place: MapPlace) : Around
+        /** Adds a place around the pin to the open day. */
+        data class Add(val place: MapPlace) : Around
     }
 
     /** The route buttons of a stop's or a place's card and details, and the header's from/to bar. */
@@ -161,6 +197,10 @@ sealed interface MapAction {
     /** The card over a long-pressed point that makes a new spot there. */
     sealed interface NewSpot : MapAction {
         data class PickCategory(val category: PlaceCategory) : NewSpot
+        /** The name typed so far: brands named so are offered for "This is a brand store". */
+        data class NameChanged(val name: String) : NewSpot
+        /** "This is a brand store" of [brand], or null to untie it again. */
+        data class PickBrand(val brand: Brand?) : NewSpot
         /** A photo picked for the spot, or null when it was taken off again. */
         data class SetPhoto(val photo: PickedImage?) : NewSpot
         /** Create: the place and its stop on the open day. */
