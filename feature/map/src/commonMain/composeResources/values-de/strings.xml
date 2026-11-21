@@ -83,6 +83,7 @@
     <string name="map_place_category_photo_spot">Fotospot</string>
     <string name="map_place_category_romantic">Romantischer Ort</string>
     <string name="map_search">Orte suchen</string>
+    <string name="map_close_search">Suche schließen</string>
     <string name="map_search_placeholder">Orte, Adressen, Städte</string>
     <string name="map_new_spot_name">Spot benennen</string>
     <string name="map_new_spot_create">Erstellen</string>

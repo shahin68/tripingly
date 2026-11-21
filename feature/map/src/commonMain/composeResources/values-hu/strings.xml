@@ -83,6 +83,7 @@
     <string name="map_place_category_photo_spot">Fotós hely</string>
     <string name="map_place_category_romantic">Romantikus hely</string>
     <string name="map_search">Helyek keresése</string>
+    <string name="map_close_search">Keresés bezárása</string>
     <string name="map_search_placeholder">Helyek, címek, városok</string>
     <string name="map_new_spot_name">Nevezd el a helyet</string>
     <string name="map_new_spot_create">Létrehozás</string>

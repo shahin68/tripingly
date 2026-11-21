@@ -7,6 +7,12 @@ import com.falcon.tripingly.core.designsystem.component.verticalFadingEdge
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.shrinkHorizontally
+import androidx.compose.animation.expandHorizontally
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.Crossfade
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -85,6 +91,7 @@ import com.falcon.tripingly.feature.map.generated.resources.map_leave_trip
 import androidx.compose.material.icons.automirrored.outlined.Logout
 import androidx.compose.material.icons.outlined.Share
 import com.falcon.tripingly.feature.map.generated.resources.map_save_trip
+import com.falcon.tripingly.feature.map.generated.resources.map_close_search
 import com.falcon.tripingly.feature.map.generated.resources.map_search
 import com.falcon.tripingly.feature.map.generated.resources.map_search_placeholder
 import com.falcon.tripingly.feature.map.generated.resources.map_trip_members
@@ -169,9 +176,24 @@ internal fun MapHeader(
                         }
                     }
                 }
+                // While searching, the end button closes the search: ⋮ turns into ✕ in its place and back (Shahin,
+                // 2026-11-21). Without a ⋮, the ✕ comes and goes with the search.
                 if (actions.isNotEmpty()) {
                     GlassButtonDivider()
-                    TripMenuButton(actions)
+                    Crossfade(targetState = search != null, animationSpec = tween(SEARCH_MOTION_MILLIS)) { isSearching ->
+                        if (isSearching) CloseSearchButton(onAction) else TripMenuButton(actions)
+                    }
+                } else {
+                    AnimatedVisibility(
+                        visible = search != null,
+                        enter = expandHorizontally(tween(SEARCH_MOTION_MILLIS), expandFrom = Alignment.Start) + fadeIn(tween(SEARCH_MOTION_MILLIS)),
+                        exit = shrinkHorizontally(tween(SEARCH_MOTION_MILLIS), shrinkTowards = Alignment.Start) + fadeOut(tween(SEARCH_MOTION_MILLIS)),
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            GlassButtonDivider()
+                            CloseSearchButton(onAction)
+                        }
+                    }
                 }
             }
         },
@@ -250,7 +272,15 @@ private fun TripMenuButton(actions: List<DropdownAction>) {
     }
 }
 
-/** Replaces the back button and the trip's name while searching; its ✕ (or the system back) closes the search. */
+/** Closes the search: its results, the places named so and the keyboard go, the map is as before. */
+@Composable
+private fun CloseSearchButton(onAction: (MapAction) -> Unit) {
+    IconButton(onClick = { onAction(MapAction.Search.Close) }) {
+        Icon(Icons.Default.Close, contentDescription = stringResource(Res.string.map_close_search))
+    }
+}
+
+/** Replaces the back button and the trip's name while searching; the ✕ at the header's end (or the system back) closes the search. */
 @Composable
 private fun SearchField(search: SearchState, onAction: (MapAction) -> Unit, modifier: Modifier = Modifier) {
     val focusRequester = rememberOpeningFocus()
@@ -259,8 +289,8 @@ private fun SearchField(search: SearchState, onAction: (MapAction) -> Unit, modi
             state = search.query,
             placeholder = stringResource(Res.string.map_search_placeholder),
             onTextChange = { onAction(MapAction.Search.QueryChanged(it)) },
-            // ✕ closes the search: its results, the places named so and the keyboard go, the map is as before.
-            onClose = { onAction(MapAction.Search.Close) },
+            // No ✕ of its own: the header's end button closes the search.
+            clearable = false,
             // The keyboard's search key, no result picked: the map shows only the places named so.
             onImeAction = { onAction(MapAction.Search.Submit) },
             modifier = Modifier.weight(1f).focusRequester(focusRequester),
