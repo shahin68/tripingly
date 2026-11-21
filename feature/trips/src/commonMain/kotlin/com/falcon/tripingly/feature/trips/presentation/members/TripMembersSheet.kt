@@ -144,7 +144,7 @@ private fun TripMembersRoute(
         onAction(Action.Search.Close)
         onDismiss()
     }
-    AppBottomSheet(value = tripId.takeIf { isOpen && state.search == null }, onDismiss = closeAll, followsKeyboard = false) { _, close ->
+    AppBottomSheet(value = tripId.takeIf { isOpen && state.isReady && state.search == null }, onDismiss = closeAll, followsKeyboard = false) { _, close ->
         Box {
             TripMembersScreen(state = state, onAction = onAction, onClose = close)
             MessageBannerHost(Modifier.align(Alignment.TopCenter))

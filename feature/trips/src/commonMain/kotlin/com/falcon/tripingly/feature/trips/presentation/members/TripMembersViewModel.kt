@@ -75,6 +75,7 @@ class TripMembersViewModel(
         val onTrip = members.mapTo(HashSet()) { it.user.username }
         val asking = ui.requests.requests.mapTo(HashSet()) { it.user.username }
         State(
+            isReady = true,
             tripName = details?.trip?.name.orEmpty(),
             canManage = details?.trip?.role?.canManage == true,
             isLoading = ui.isLoading,
@@ -302,6 +303,12 @@ class TripMembersViewModel(
 
     @Immutable
     data class State(
+        /**
+         * False until the cached trip has been read. The sheet opens only then, already as high as the trip makes it
+         * (its role, counts, members): opened before, it slid up as a short sheet and grew taller mid-slide, so it
+         * seemed to start from above the navigation bar (Shahin, 2026-11-21).
+         */
+        val isReady: Boolean = false,
         val tripName: String = "",
         val canManage: Boolean = false,
         val isLoading: Boolean = true,
