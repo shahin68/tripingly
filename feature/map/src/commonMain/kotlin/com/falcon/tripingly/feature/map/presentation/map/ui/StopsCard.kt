@@ -114,6 +114,8 @@ internal fun StopsCard(
     editorMenu: EditorMenu?,
     onAction: (MapAction) -> Unit,
     modifier: Modifier = Modifier,
+    /** The Route button's on/off, straight from the model so a tap shows at once (see MapViewModel.isDayRouteOn). */
+    isRouteOn: Boolean = card.isRouteOn == true,
 ) {
     PlanCardColumn(modifier) {
         val title = if (card.isFindingBestOrder) {
@@ -136,7 +138,7 @@ internal fun StopsCard(
                         card.isRouteFailed -> stringResource(Res.string.map_route_retry)
                         else -> stringResource(Res.string.map_route)
                     },
-                    checked = !isAround && card.isRouteOn == true,
+                    checked = !isAround && isRouteOn && card.isRouteOn != null,
                     onClick = {
                         onAction(
                             when {

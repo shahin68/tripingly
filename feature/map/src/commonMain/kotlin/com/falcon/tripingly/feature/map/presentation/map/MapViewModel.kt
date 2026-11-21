@@ -52,6 +52,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.conflate
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.receiveAsFlow
@@ -138,6 +139,15 @@ class MapViewModel(
         .conflate()
         .flowOn(computation)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), toUiState(null, model))
+
+    /**
+     * The Route button's on/off, straight from the model: a tap shows at once however big the trip is, while [uiState]
+     * is still being built off the main thread (Shahin, 2026-11-21).
+     */
+    val isDayRouteOn: StateFlow<Boolean> = context.model
+        .map { it.route.isDayRouteShown }
+        .distinctUntilChanged()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), model.route.isDayRouteShown)
 
     init {
         opening.start()

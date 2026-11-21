@@ -61,6 +61,7 @@ fun MapRoute(
     shareManager: ShareManager = koinInject(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val isDayRouteOn by viewModel.isDayRouteOn.collectAsStateWithLifecycle()
     val onAction = viewModel::onAction
 
     val scope = rememberCoroutineScope()
@@ -108,6 +109,7 @@ fun MapRoute(
 
     MapScreen(
         state = state,
+        isDayRouteOn = isDayRouteOn,
         cameraCommands = viewModel.cameraCommands,
         planSheet = planSheet,
         onAction = onAction,

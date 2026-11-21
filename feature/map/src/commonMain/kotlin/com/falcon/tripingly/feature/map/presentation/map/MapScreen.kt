@@ -124,6 +124,8 @@ internal fun MapScreen(
     cameraCommands: Flow<CameraCommand>,
     onAction: (MapAction) -> Unit,
     planSheet: AnchoredDraggableState<PlanSheetValue> = rememberPlanSheetState(),
+    /** The Route button's on/off, ahead of [state] (see MapViewModel.isDayRouteOn). */
+    isDayRouteOn: Boolean = (state.plan as? StopsCardState)?.isRouteOn == true,
 ) {
     state.loadError?.let { error -> return MapLoadError(error.asString(), onAction) }
     val haptics = rememberHaptics()
@@ -389,6 +391,7 @@ internal fun MapScreen(
             viewerMenu = viewerMenu,
             dayTabs = state.dayTabs,
             plan = plan,
+            isDayRouteOn = isDayRouteOn,
             editorMenu = state.header.editorMenu,
             planSheet = planSheet,
             isWide = isWide,

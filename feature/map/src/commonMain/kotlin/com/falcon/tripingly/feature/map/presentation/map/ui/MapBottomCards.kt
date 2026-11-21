@@ -117,6 +117,8 @@ internal fun BottomCards(
     viewerMenu: ViewerMenu?,
     dayTabs: DayTabsState,
     plan: PlanCardState?,
+    /** The Route button's on/off, ahead of [plan]. */
+    isDayRouteOn: Boolean,
     editorMenu: EditorMenu?,
     planSheet: AnchoredDraggableState<PlanSheetValue>,
     isWide: Boolean,
@@ -186,7 +188,7 @@ internal fun BottomCards(
                         // A route from A to B takes the stops' place until it's closed.
                         when (shown) {
                             is PointRouteCardState -> PointRouteCard(card = shown, onAction = onAction)
-                            is StopsCardState -> StopsCard(card = shown, dayNumber = dayNumber, editorMenu = editorMenu, onAction = onAction)
+                            is StopsCardState -> StopsCard(card = shown, dayNumber = dayNumber, editorMenu = editorMenu, onAction = onAction, isRouteOn = isDayRouteOn)
                         }
                     }
                     // The day tabs stay at the bottom; the sheet opens above them.
