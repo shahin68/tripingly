@@ -154,6 +154,7 @@ val dataModule = module {
             // The app binds the store where a RevenueCat key is set.
             store = getOrNull<StorePurchases>(),
             session = get(),
+            realtime = get(),
             scope = get(ApplicationScope),
         )
     }

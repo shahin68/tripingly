@@ -58,7 +58,7 @@ internal class MapRouting(
     private val hasRoutes: () -> Boolean,
     /** Go here without my location: asks for the permission where it can, without moving the camera. */
     private val askForLocation: () -> Unit,
-    /** Without Pro, a tap on a route opens the paywall. */
+    /** Without Pro, a tap on a route opens the paywall (also when the server refuses what the tap asked for). */
     private val showRoutesArePro: () -> Unit,
     /** A stop was added or a route asked for: the plan sheet opens all the way. */
     private val showWholePlan: () -> Unit,
@@ -70,6 +70,11 @@ internal class MapRouting(
     private var request: RouteRequest? = null
     /** The public transport time [request] was asked with: a request for other kinds of place only asks with it again. */
     private var requestTime: TransitTime? = null
+    /**
+     * What the person's last tap on a route asked for. Refused for lack of Pro, that ask opens the paywall; any other
+     * (stops changed, the map reopened) shows the server's message instead: no paywall out of place (Shahin, 2026-11-21).
+     */
+    private var tapped: RouteRequest? = null
 
     init {
         context.scope.launch {
@@ -104,10 +109,14 @@ internal class MapRouting(
         }
         // Only a route coming on opens the plan; switching it off leaves the sheet as it is (Shahin, 2026-11-10).
         if (!isShown) showWholePlan()
+        tapped()
     }
 
     /** The Route button's Retry after the route failed: asks for it again at once, the route stays on. */
-    fun retryRoute() = update { it.copy(attempt = it.attempt + 1) }
+    fun retryRoute() {
+        update { it.copy(attempt = it.attempt + 1) }
+        tapped()
+    }
 
     /**
      * Another way to travel. Public transport only routes inside one covered city (Vienna for now): elsewhere its dimmed
@@ -116,6 +125,7 @@ internal class MapRouting(
     fun selectTravelMode(mode: TravelMode) {
         if (mode == TravelMode.Transit && !isTransitCovered(context.model.value)) return update { it.copy(transitNote = TransitNote.NotHere) }
         update { it.copy(travelMode = mode, transitNote = null) }
+        tapped()
     }
 
     /** Public transport goes between the ends of the route that shows, or would show. */
@@ -126,8 +136,10 @@ internal class MapRouting(
      * A chip over the places along the way: All ([category] null) shows every kind again; a kind is added or taken off.
      * The route is asked for again with them: its line stays, only the places change.
      */
-    fun toggleAlongCategory(category: PlaceCategory?) =
+    fun toggleAlongCategory(category: PlaceCategory?) {
         update { it.copy(alongCategories = if (category == null) emptySet() else it.alongCategories.toggled(category)) }
+        tapped()
+    }
 
     /** "Leave at": the time picker opens on the time the route was asked for. */
     fun openLeaveAt() {
@@ -135,8 +147,10 @@ internal class MapRouting(
     }
 
     /** The time picked: the route is asked for again, leaving then (or arriving by then) on the open day. */
-    fun pickTransitTime(time: LocalTime, isArriveBy: Boolean) =
+    fun pickTransitTime(time: LocalTime, isArriveBy: Boolean) {
         context.update { it.copy(dialog = null, route = it.route.copy(transitPick = TransitPick(time, isArriveBy && it.route.between != null))) }
+        tapped()
+    }
 
     /**
      * Go here on a pin's card: the route from where I am to the pin (on again: off). Without my location yet, the
@@ -289,6 +303,11 @@ internal class MapRouting(
         context.update { it.copy(route = it.route.copy(start = null, startLabel = null, between = route, editing = null), search = null) }
         showWholePlan()
         camera.frame(routePoints(route, plan = null))
+        tapped()
+    }
+
+    private fun tapped() {
+        tapped = requestOf(context.trip.value, context.model.value, transitAreas.value)
     }
 
     /**
@@ -433,6 +452,9 @@ internal class MapRouting(
             is RouteRequest.Between -> routeRepository.route(request.from, request.to, request.mode, context.tripId, request.fromPlaceId, request.toPlaceId, time, request.categories)
         }
         if (result is AppResult.Success && time != null && !result.data.isEstimated) transitRoutes[request] = result.data to time
+        val isNotPro = result is AppResult.Error && result.error.hasCode(RouteErrorCodes.PREMIUM_REQUIRED)
+        val showsPaywall = isNotPro && request == tapped
+        if (isNotPro) tapped = null
         val transitNote = (result as? AppResult.Error)?.error?.let { error ->
             when {
                 error.hasCode(RouteErrorCodes.TRANSIT_NO_COVERAGE) -> TransitNote.NotHere
@@ -454,10 +476,13 @@ internal class MapRouting(
                 )
                 // No public transport here or at this time: a note in the card, never a banner (Shahin, 2026-11-15).
                 transitNote != null -> it.copy(route = it.route.copy(plan = null, isUnavailable = false, isLoading = false, transitAt = time, transitNote = transitNote))
-                // Not Pro after all (Pro ended): the route closes; the app shows the paywall instead of a message
-                // (Shahin, 2026-11-21).
-                result is AppResult.Error -> if (result.error.hasCode(RouteErrorCodes.PREMIUM_REQUIRED)) {
-                    it.copy(route = it.route.copy(plan = null, isDayRouteShown = false, between = null, isLoading = false))
+                // Not Pro after all (Pro ended): the route closes. Asked by a tap, the paywall opens; otherwise the
+                // server's message shows (Shahin, 2026-11-21).
+                result is AppResult.Error -> if (isNotPro) {
+                    it.copy(
+                        route = it.route.copy(plan = null, isDayRouteShown = false, between = null, isLoading = false),
+                        message = if (showsPaywall) it.message else result.error.toUiText(Res.string.map_error_route),
+                    )
                 } else {
                     it.copy(
                         route = it.route.copy(plan = null, isUnavailable = true, isLoading = false),
@@ -469,6 +494,7 @@ internal class MapRouting(
             }
         }
         if (result is AppResult.Success && request is RouteRequest.Between) reframe(result.data)
+        if (showsPaywall) showRoutesArePro()
     }
 
     /**

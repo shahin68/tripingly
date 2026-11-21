@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.falcon.tripingly.core.common.result.AppResult
 import com.falcon.tripingly.core.data.account.SessionRepository
+import com.falcon.tripingly.core.data.billing.ProRepository
 import com.falcon.tripingly.core.data.config.AppConfigRepository
 import com.falcon.tripingly.core.data.photos.PhotoRepository
 import com.falcon.tripingly.core.data.places.PlaceRepository
@@ -16,7 +17,6 @@ import com.falcon.tripingly.core.data.trips.TripRepository
 import com.falcon.tripingly.core.location.GetCurrentLocationUseCase
 import com.falcon.tripingly.core.location.model.Coordinates
 import com.falcon.tripingly.core.model.account.SessionState
-import com.falcon.tripingly.core.model.route.ROUTES_ENTITLEMENT
 import com.falcon.tripingly.core.model.social.ReportTarget
 import com.falcon.tripingly.core.model.trip.TripDetails
 import com.falcon.tripingly.core.ui.toUiText
@@ -84,6 +84,8 @@ class MapViewModel(
     /** How this trip's map was left: restored when it opens, saved as it changes. */
     mapViews: TripMapViewRepository,
     sessionRepository: SessionRepository,
+    /** Whether street routes are unlocked: Pro, as the whole app has it. */
+    private val proRepository: ProRepository,
     getCurrentLocationUseCase: GetCurrentLocationUseCase,
     newActivityRepository: NewActivityRepository,
     photoRepository: PhotoRepository,
@@ -410,9 +412,8 @@ class MapViewModel(
         }
     }
 
-    /** Routes along streets are Tripinly Pro; the server decides, `GET /me` tells the app. */
-    private fun hasRoutes(): Boolean =
-        (session.value as? SessionState.SignedIn)?.account?.entitlements?.contains(ROUTES_ENTITLEMENT) == true
+    /** Routes along streets are Tripinly Pro; the server decides, [ProRepository.isPro] tells the app. */
+    private fun hasRoutes(): Boolean = proRepository.isPro.value
 
     private fun sendEvent(event: MapEvent) {
         _events.trySend(event)

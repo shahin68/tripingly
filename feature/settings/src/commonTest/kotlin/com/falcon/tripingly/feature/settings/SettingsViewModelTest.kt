@@ -6,6 +6,7 @@ import com.falcon.tripingly.core.data.account.AccountRepository
 import com.falcon.tripingly.core.data.account.FakeAccountBackend
 import com.falcon.tripingly.core.data.account.SocialSignIn
 import com.falcon.tripingly.core.data.account.SocialSignInResult
+import com.falcon.tripingly.core.data.billing.FakeProRepository
 import com.falcon.tripingly.core.data.push.SystemNotificationChannels
 import com.falcon.tripingly.core.model.account.DataExportStatus
 import com.falcon.tripingly.core.model.account.IdentityProof
@@ -25,10 +26,12 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import kotlinx.datetime.LocalDate
@@ -73,13 +76,14 @@ class SettingsViewModelTest {
         }
     }
 
-    private fun viewModel(
+    private fun TestScope.viewModel(
         account: FakeAccountBackend,
         repository: AccountRepository = account,
         socialSignIn: SocialSignIn = FakeSocialSignIn(),
         systemChannels: SystemNotificationChannels? = null,
     ) = SettingsViewModel(
         sessionRepository = account,
+        proRepository = FakeProRepository(account, backgroundScope),
         accountRepository = repository,
         socialSignIn = socialSignIn,
         appVersion = "1.0",
@@ -131,6 +135,11 @@ class SettingsViewModelTest {
         advanceUntilIdle()
 
         assertTrue(viewModel.uiState.value.hasPro)
+
+        // Pro ended (a refused Pro call, or pro.changed): Settings says so at once.
+        account.updatePro(emptySet(), proExpiresAt = null)
+        runCurrent()
+        assertFalse(viewModel.uiState.value.hasPro)
     }
 
     @Test

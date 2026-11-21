@@ -4,6 +4,7 @@ import com.falcon.tripingly.core.common.error.DataError
 import com.falcon.tripingly.core.common.result.AppResult
 import com.falcon.tripingly.core.data.account.AccountRepository
 import com.falcon.tripingly.core.data.account.FakeAccountBackend
+import com.falcon.tripingly.core.data.billing.FakeProRepository
 import com.falcon.tripingly.core.data.billing.ProRepository
 import com.falcon.tripingly.core.data.billing.PurchaseOutcome
 import com.falcon.tripingly.core.model.account.LegalDocument
@@ -16,8 +17,11 @@ import com.falcon.tripingly.feature.paywall.presentation.PaywallViewModel.Action
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.TestScope
+import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import kotlinx.datetime.LocalDate
@@ -29,6 +33,12 @@ import kotlin.test.assertFalse
 import kotlin.test.assertIs
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
+import kotlin.time.Clock
+import kotlin.time.Duration.Companion.days
+import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.Duration.Companion.minutes
+import kotlin.time.Duration.Companion.seconds
+import kotlin.time.Instant
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class PaywallViewModelTest {
@@ -43,25 +53,13 @@ class PaywallViewModelTest {
     private val yearly = ProOffer("\$rc_annual", ProPeriod.Yearly, "€24.99")
     private val lifetime = ProOffer("\$rc_lifetime", ProPeriod.Lifetime, "€59.99")
 
-    private class FakePro(
-        override val isAvailable: Boolean = true,
-        var offers: AppResult<List<ProOffer>, DataError.Purchase> = AppResult.Success(emptyList()),
-        var outcome: AppResult<PurchaseOutcome, DataError.Purchase> = AppResult.Success(PurchaseOutcome.Active),
-    ) : ProRepository {
-        val bought = mutableListOf<ProOffer>()
-        var restores = 0
-        override fun start() = Unit
-        override suspend fun offers() = offers
-        override suspend fun buy(offer: ProOffer): AppResult<PurchaseOutcome, DataError.Purchase> {
-            bought += offer
-            return outcome
-        }
-        override suspend fun restore(): AppResult<PurchaseOutcome, DataError.Purchase> {
-            restores++
-            return outcome
-        }
-        override suspend fun managementUrl() = "https://play.google.com/store/account/subscriptions"
-    }
+    /** The store; its Pro follows its own signed-in account with [entitlements]. */
+    private suspend fun TestScope.fakePro(
+        isAvailable: Boolean = true,
+        offers: AppResult<List<ProOffer>, DataError.Purchase> = AppResult.Success(emptyList()),
+        outcome: AppResult<PurchaseOutcome, DataError.Purchase> = AppResult.Success(PurchaseOutcome.Active),
+        entitlements: Set<String> = emptySet(),
+    ) = FakeProRepository(signedIn(entitlements), backgroundScope, isAvailable = isAvailable, offers = offers, outcome = outcome)
 
     /** Onboarded, so the session is SignedIn; [entitlements] are its Pro features. */
     private suspend fun signedIn(entitlements: Set<String> = emptySet()) =
@@ -72,11 +70,11 @@ class PaywallViewModelTest {
         }
 
     private suspend fun viewModel(pro: ProRepository, account: FakeAccountBackend? = null) =
-        (account ?: signedIn()).let { PaywallViewModel(sessionRepository = it, proRepository = pro, accountRepository = it, languageTag = { "en" }) }
+        PaywallViewModel(proRepository = pro, accountRepository = account ?: signedIn(), languageTag = { "en" })
 
     @Test
     fun opening_showsTheOffers_withYearlyPicked() = runTest {
-        val viewModel = viewModel(FakePro(offers = AppResult.Success(listOf(lifetime, yearly, monthly))))
+        val viewModel = viewModel(fakePro(offers = AppResult.Success(listOf(lifetime, yearly, monthly))))
         advanceUntilIdle()
 
         val state = viewModel.uiState.value
@@ -88,7 +86,7 @@ class PaywallViewModelTest {
 
     @Test
     fun buying_theChosenOffer_welcomesToPro() = runTest {
-        val pro = FakePro(offers = AppResult.Success(listOf(monthly, yearly)))
+        val pro = fakePro(offers = AppResult.Success(listOf(monthly, yearly)))
         val viewModel = viewModel(pro)
         advanceUntilIdle()
 
@@ -104,7 +102,7 @@ class PaywallViewModelTest {
 
     @Test
     fun aSecondTapWhileBuying_buysOnce() = runTest {
-        val pro = FakePro(offers = AppResult.Success(listOf(yearly)))
+        val pro = fakePro(offers = AppResult.Success(listOf(yearly)))
         val viewModel = viewModel(pro)
         advanceUntilIdle()
 
@@ -119,7 +117,7 @@ class PaywallViewModelTest {
 
     @Test
     fun closingTheStoreSheet_saysNothing() = runTest {
-        val pro = FakePro(offers = AppResult.Success(listOf(yearly)), outcome = AppResult.Success(PurchaseOutcome.Cancelled))
+        val pro = fakePro(offers = AppResult.Success(listOf(yearly)), outcome = AppResult.Success(PurchaseOutcome.Cancelled))
         val viewModel = viewModel(pro)
         advanceUntilIdle()
 
@@ -131,7 +129,7 @@ class PaywallViewModelTest {
 
     @Test
     fun aPendingPayment_isANote_andARefusalAnError() = runTest {
-        val pro = FakePro(offers = AppResult.Success(listOf(yearly)), outcome = AppResult.Error(DataError.Purchase.Pending))
+        val pro = fakePro(offers = AppResult.Success(listOf(yearly)), outcome = AppResult.Error(DataError.Purchase.Pending))
         val viewModel = viewModel(pro)
         advanceUntilIdle()
 
@@ -148,7 +146,7 @@ class PaywallViewModelTest {
 
     @Test
     fun pricesThatFailToLoad_canBeRetried() = runTest {
-        val pro = FakePro(offers = AppResult.Error(DataError.Purchase.NoInternet))
+        val pro = fakePro(offers = AppResult.Error(DataError.Purchase.NoInternet))
         val viewModel = viewModel(pro)
         advanceUntilIdle()
         assertTrue(viewModel.uiState.value.hasOffersFailed)
@@ -169,7 +167,7 @@ class PaywallViewModelTest {
             override suspend fun legalDocuments(locale: String): AppResult<List<LegalDocument>, DataError.Network> =
                 if (legalFails) AppResult.Error(DataError.Network.NoInternet) else account.legalDocuments(locale)
         }
-        val viewModel = PaywallViewModel(account, FakePro(offers = AppResult.Success(listOf(yearly))), legal, languageTag = { "en" })
+        val viewModel = PaywallViewModel(fakePro(offers = AppResult.Success(listOf(yearly))), legal, languageTag = { "en" })
         advanceUntilIdle()
         assertTrue(viewModel.uiState.value.hasOffersFailed)
         assertTrue(viewModel.uiState.value.offers.isEmpty())
@@ -185,7 +183,7 @@ class PaywallViewModelTest {
 
     @Test
     fun aProAccount_seesItActive_withTheStoresManagePage() = runTest {
-        val viewModel = viewModel(FakePro(), account = signedIn(entitlements = setOf("routes")))
+        val viewModel = viewModel(fakePro(entitlements = setOf("routes")))
         advanceUntilIdle()
 
         assertTrue(viewModel.uiState.value.hasPro)
@@ -193,8 +191,30 @@ class PaywallViewModelTest {
     }
 
     @Test
+    fun proEndingWhileOpen_showsTheOffersAgain_atOnce() = runTest {
+        val account = signedIn(entitlements = setOf("routes"))
+        val start = Instant.parse("2026-11-21T10:00:00Z")
+        val clock = object : Clock {
+            override fun now() = start + testScheduler.currentTime.milliseconds
+        }
+        account.updatePro(setOf("routes"), proExpiresAt = start + 1.minutes)
+        val viewModel = viewModel(FakeProRepository(account, backgroundScope, clock))
+        advanceTimeBy(59.seconds)
+        assertTrue(viewModel.uiState.value.hasPro)
+
+        // Ends on time, with nothing asked.
+        advanceTimeBy(2.seconds)
+        assertFalse(viewModel.uiState.value.hasPro)
+
+        // Renewed (pro.changed): active again.
+        account.updatePro(setOf("routes"), proExpiresAt = start + 31.days)
+        runCurrent()
+        assertTrue(viewModel.uiState.value.hasPro)
+    }
+
+    @Test
     fun aBuildWithoutPurchases_loadsNoOffers() = runTest {
-        val viewModel = viewModel(FakePro(isAvailable = false))
+        val viewModel = viewModel(fakePro(isAvailable = false))
         advanceUntilIdle()
 
         assertFalse(viewModel.uiState.value.isAvailable)

@@ -6,14 +6,11 @@ import androidx.lifecycle.viewModelScope
 import com.falcon.tripingly.core.common.error.DataError
 import com.falcon.tripingly.core.common.result.AppResult
 import com.falcon.tripingly.core.data.account.AccountRepository
-import com.falcon.tripingly.core.data.account.SessionRepository
 import com.falcon.tripingly.core.data.billing.ProRepository
 import com.falcon.tripingly.core.data.billing.PurchaseOutcome
 import com.falcon.tripingly.core.model.account.LegalDocument
 import com.falcon.tripingly.core.model.account.ProOffer
 import com.falcon.tripingly.core.model.account.ProPeriod
-import com.falcon.tripingly.core.model.account.SessionState
-import com.falcon.tripingly.core.model.account.hasPro
 import com.falcon.tripingly.core.ui.UiText
 import com.falcon.tripingly.feature.paywall.generated.resources.Res
 import com.falcon.tripingly.feature.paywall.generated.resources.paywall_confirming
@@ -36,11 +33,10 @@ import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.StringResource
 
 /**
- * Tripinly Pro: what it unlocks, the store's offers, buying and restoring. Pro is on only once the
- * server's `GET /me` says so; the screen then shows it as active.
+ * Tripinly Pro: what it unlocks, the store's offers, buying and restoring. Pro shows as active exactly while
+ * [ProRepository.isPro] says so, the app's one answer.
  */
 class PaywallViewModel(
-    private val sessionRepository: SessionRepository,
     private val proRepository: ProRepository,
     private val accountRepository: AccountRepository,
     private val languageTag: () -> String,
@@ -51,8 +47,7 @@ class PaywallViewModel(
 
     init {
         viewModelScope.launch {
-            sessionRepository.session.collect { session ->
-                val hasPro = (session as? SessionState.SignedIn)?.account?.hasPro == true
+            proRepository.isPro.collect { hasPro ->
                 _uiState.update { it.copy(hasPro = hasPro) }
                 if (hasPro) loadManagementUrl()
             }

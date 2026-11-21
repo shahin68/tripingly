@@ -17,14 +17,12 @@ import com.falcon.tripingly.core.network.model.AuthTokensDto
 import com.falcon.tripingly.core.network.model.DevSignInDto
 import com.falcon.tripingly.core.network.model.GoogleSignInDto
 import com.falcon.tripingly.core.network.model.LogoutDto
+import kotlin.time.Instant
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.channels.BufferOverflow
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 internal class SessionRepositoryImpl(
@@ -46,9 +44,6 @@ internal class SessionRepositoryImpl(
 
     override val developerSignInAvailable: Boolean = developerSignIn != null
 
-    private val pro = MutableSharedFlow<Unit>(extraBufferCapacity = 1, onBufferOverflow = BufferOverflow.DROP_OLDEST)
-    override val proEnded: Flow<Unit> = pro.asSharedFlow()
-
     init {
         scope.launch {
             // The refresh already cleared the tokens; the rest of the local data and the screen follow.
@@ -61,14 +56,8 @@ internal class SessionRepositoryImpl(
                 )
             }
         }
-        // Pro ended: the account is read again first, so every Pro button opens the paywall from now on without asking
-        // the server, then the app shows it (even offline, where the account stays as it was).
-        scope.launch {
-            sessionEvents.proEnded.collect {
-                refreshAccount()
-                pro.tryEmit(Unit)
-            }
-        }
+        // The server refused a Pro feature: Pro has ended there, so it ends here too, without asking again.
+        scope.launch { sessionEvents.proEnded.collect { updatePro(emptySet(), proExpiresAt = null) } }
     }
 
     override suspend fun restore(): AppResult<Unit, DataError.Network> {
@@ -120,6 +109,19 @@ internal class SessionRepositoryImpl(
         accountApi.me().map { it.toAccount() }.also { result ->
             if (result is AppResult.Success) onAccountChanged(result.data)
         }
+
+    override fun updatePro(entitlements: Set<String>, proExpiresAt: Instant?) {
+        state.update { current ->
+            when (current) {
+                is SessionState.SignedIn -> current.copy(account = current.account.copy(entitlements = entitlements, proExpiresAt = proExpiresAt))
+                is SessionState.Onboarding -> current.copy(account = current.account.copy(entitlements = entitlements, proExpiresAt = proExpiresAt))
+                else -> current
+            }
+        }
+    }
+
+    override suspend fun syncPro(): AppResult<Unit, DataError.Network> =
+        accountApi.syncPro().map { updatePro(it.entitlements.toSet(), it.proExpiresAt) }
 
     override suspend fun signOut(reason: SignOutReason?) {
         tokenStore.get()?.let { tokens ->

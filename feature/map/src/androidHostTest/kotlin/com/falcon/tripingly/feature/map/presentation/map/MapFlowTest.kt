@@ -17,6 +17,7 @@ import androidx.compose.ui.test.swipeUp
 import com.falcon.tripingly.core.common.result.AppResult
 import com.falcon.tripingly.core.common.result.asSuccess
 import com.falcon.tripingly.core.data.account.FakeAccountBackend
+import com.falcon.tripingly.core.data.billing.FakeProRepository
 import com.falcon.tripingly.core.data.config.FakeAppConfigRepository
 import com.falcon.tripingly.core.data.photos.FakePhotoRepository
 import com.falcon.tripingly.core.data.places.FakePlaceRepository
@@ -39,6 +40,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
 import kotlinx.datetime.LocalDate
@@ -85,6 +87,7 @@ class MapFlowTest {
         appConfigRepository = FakeAppConfigRepository(),
         mapViews = FakeTripMapViewRepository(),
         sessionRepository = session,
+        proRepository = FakeProRepository(session, CoroutineScope(Dispatchers.Unconfined)),
         getCurrentLocationUseCase = GetCurrentLocationUseCase(
             object : LocationRepository {
                 override fun getLocationStream() = flowOf(Coordinates.Paris.asSuccess())

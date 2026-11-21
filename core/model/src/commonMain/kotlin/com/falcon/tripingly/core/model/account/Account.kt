@@ -1,6 +1,7 @@
 package com.falcon.tripingly.core.model.account
 
 import com.falcon.tripingly.core.model.trip.ProfilePhoto
+import kotlin.time.Instant
 import kotlinx.datetime.LocalDate
 
 /** The signed-in user as `GET /me` describes them. */
@@ -18,6 +19,8 @@ data class Account(
     val onboarding: OnboardingState,
     /** Premium features; paid UI follows this, never a local flag. */
     val entitlements: Set<String>,
+    /** When [entitlements] end; null when they never do (lifetime) or there are none. Pro ends locally at this time. */
+    val proExpiresAt: Instant? = null,
 )
 
 enum class TripVisibility { PUBLIC, PRIVATE }

@@ -2,6 +2,8 @@ package com.falcon.tripingly.feature.map.presentation.map
 
 import androidx.compose.foundation.text.input.clearText
 import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
+import app.cash.turbine.Event
+import app.cash.turbine.ReceiveTurbine
 import app.cash.turbine.test
 import com.falcon.tripingly.core.common.error.DataError
 import com.falcon.tripingly.core.common.result.AppResult
@@ -10,6 +12,7 @@ import com.falcon.tripingly.core.common.result.asSuccess
 import com.falcon.tripingly.core.common.result.map
 import com.falcon.tripingly.core.common.util.DateUtils
 import com.falcon.tripingly.core.data.account.FakeAccountBackend
+import com.falcon.tripingly.core.data.billing.FakeProRepository
 import com.falcon.tripingly.core.data.config.FakeAppConfigRepository
 import com.falcon.tripingly.core.data.photos.FakePhotoRepository
 import com.falcon.tripingly.core.data.places.FakePlaceRepository
@@ -166,6 +169,8 @@ class MapViewModelTest {
         val detailRequests = mutableListOf<String>()
         /** The rings Around asked for, by radius. */
         val aroundRequests = mutableListOf<Int>()
+        /** Answers every ring with this error when set. */
+        var aroundError: DataError.Network? = null
         /** How long the squares take to come, as from the server. */
         var squaresDelayMillis = 0L
         /** What the search answers when set; the fake's otherwise. */
@@ -178,7 +183,7 @@ class MapViewModelTest {
 
         override suspend fun around(point: GeoPoint, radiusMeters: Int, categories: Set<PlaceCategory>, excludePlaceId: String?): AppResult<PlacesAround, DataError.Network> {
             aroundRequests += radiusMeters
-            return fake.around(point, radiusMeters, categories, excludePlaceId)
+            return aroundError?.asError() ?: fake.around(point, radiusMeters, categories, excludePlaceId)
         }
 
         override suspend fun place(id: String): AppResult<PlaceDetails, DataError.Network> {
@@ -336,6 +341,7 @@ class MapViewModelTest {
         appConfigRepository = configRepository,
         mapViews = mapViews,
         sessionRepository = session,
+        proRepository = FakeProRepository(session, backgroundScope),
         getCurrentLocationUseCase = GetCurrentLocationUseCase(fakeLocationRepository),
         newActivityRepository = newActivity,
         photoRepository = photos,
@@ -3216,6 +3222,79 @@ class MapViewModelTest {
             assertEquals(MapEvent.OpenPaywall, awaitItem())
         }
         assertNull(viewModel.uiState.value.layers.aroundRing)
+    }
+
+    /** Pro ended on the server before the app knew: what the server says to Pro features. */
+    private val notPro = DataError.Network.Api(403, RouteErrorCodes.PREMIUM_REQUIRED, "Routes are part of Tripinly Pro")
+
+    private fun ReceiveTurbine<MapEvent>.openedPaywall() =
+        MapEvent.OpenPaywall in cancelAndConsumeRemainingEvents().mapNotNull { (it as? Event.Item)?.value }
+
+    @Test
+    fun `a route tapped that the server refuses for lack of Pro closes and opens the paywall, without a banner`() = runTest(testDispatcher) {
+        addStops(GeoPoint(48.2085, 16.3731), GeoPoint(48.2104, 16.3655))
+        val viewModel = viewModel()
+        testScheduler.advanceUntilIdle()
+        routes.error = notPro
+
+        viewModel.events.test {
+            viewModel.onAction(MapAction.Plan.ToggleRoute)
+            testScheduler.advanceUntilIdle()
+            assertTrue(openedPaywall())
+        }
+        assertEquals(false, viewModel.uiState.value.stopsCard?.isRouteOn)
+        assertNull(viewModel.uiState.value.message)
+    }
+
+    @Test
+    fun `a route asked again without a tap that the server refuses for lack of Pro closes with a banner, no paywall`() = runTest(testDispatcher) {
+        addStops(GeoPoint(48.2085, 16.3731), GeoPoint(48.2104, 16.3655))
+        val viewModel = viewModel()
+        testScheduler.advanceUntilIdle()
+        viewModel.onAction(MapAction.Plan.ToggleRoute)
+        testScheduler.advanceUntilIdle()
+        assertEquals(true, viewModel.uiState.value.stopsCard?.isRouteOn)
+        routes.error = notPro
+
+        viewModel.events.test {
+            // Someone adds a stop: the route is asked for again.
+            backend.addMarker(trip.trip.id, trip.days[0].id, NewMarker("Stop #3", GeoPoint(48.2000, 16.3700)))
+            testScheduler.advanceUntilIdle()
+            assertFalse(openedPaywall())
+        }
+        assertEquals(false, viewModel.uiState.value.stopsCard?.isRouteOn)
+        assertNotNull(viewModel.uiState.value.message)
+    }
+
+    @Test
+    fun `Around that the server refuses for lack of Pro closes the ring and opens the paywall`() = runTest(testDispatcher) {
+        val viewModel = openFirstStopCard()
+        places.aroundError = notPro
+
+        viewModel.events.test {
+            viewModel.onAction(MapAction.Around.Open)
+            testScheduler.advanceUntilIdle()
+            assertTrue(openedPaywall())
+        }
+        assertNull(viewModel.uiState.value.layers.aroundRing)
+        assertNull(viewModel.uiState.value.message)
+    }
+
+    @Test
+    fun `Pro ending while the map is open makes the next route tap open the paywall, asking nothing`() = runTest(testDispatcher) {
+        addStops(GeoPoint(48.2085, 16.3731), GeoPoint(48.2104, 16.3655))
+        val viewModel = viewModel()
+        testScheduler.advanceUntilIdle()
+
+        session.updatePro(emptySet(), proExpiresAt = null)
+        // The Pro flag follows in the background.
+        testScheduler.runCurrent()
+        viewModel.events.test {
+            viewModel.onAction(MapAction.Plan.ToggleRoute)
+            testScheduler.advanceUntilIdle()
+            assertTrue(openedPaywall())
+        }
+        assertTrue(routes.dayRoutes.isEmpty())
     }
 
     @Test

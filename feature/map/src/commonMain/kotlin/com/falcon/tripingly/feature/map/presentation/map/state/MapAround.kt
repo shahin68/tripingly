@@ -121,15 +121,16 @@ internal class MapAround(
         update { it.copy(isLoading = true) }
         loadJob = context.scope.launch {
             val result = placeRepository.around(ask.center, ask.radiusMeters, ask.categories, ask.pinPlaceId)
+            val isNotPro = result is AppResult.Error && result.error.hasCode(RouteErrorCodes.PREMIUM_REQUIRED)
             context.update { model ->
                 val current = model.around ?: return@update model
                 when (result) {
                     is AppResult.Success -> model.copy(around = current.copy(result = result.data, isLoading = false))
                     is AppResult.Error -> {
                         asked = null
-                        if (result.error.hasCode(RouteErrorCodes.PREMIUM_REQUIRED)) {
-                            // Not Pro after all (Pro ended): the ring closes without a route coming back; the app shows
-                            // the paywall instead of a message or an empty card (Shahin, 2026-11-21).
+                        if (isNotPro) {
+                            // Not Pro after all (Pro ended): the ring closes without a route coming back, and as every
+                            // ask here follows a tap, the paywall opens (Shahin, 2026-11-21).
                             model.copy(
                                 around = null,
                                 route = current.routeBefore.copy(isDayRouteShown = false, between = null),
@@ -142,6 +143,7 @@ internal class MapAround(
                     }
                 }
             }
+            if (isNotPro) showAroundIsPro()
         }
     }
 

@@ -7,6 +7,7 @@ import com.falcon.tripingly.core.common.error.DataError
 import com.falcon.tripingly.core.common.result.AppResult
 import com.falcon.tripingly.core.data.account.AccountRepository
 import com.falcon.tripingly.core.data.account.SessionRepository
+import com.falcon.tripingly.core.data.billing.ProRepository
 import com.falcon.tripingly.core.data.account.SocialSignIn
 import com.falcon.tripingly.core.data.account.SocialSignInResult
 import com.falcon.tripingly.core.data.push.SystemNotificationChannels
@@ -17,7 +18,6 @@ import com.falcon.tripingly.core.model.account.NotificationSettings
 import com.falcon.tripingly.core.model.account.NotificationType
 import com.falcon.tripingly.core.model.account.SessionState
 import com.falcon.tripingly.core.model.account.TripVisibility
-import com.falcon.tripingly.core.model.account.hasPro
 import com.falcon.tripingly.core.ui.UiText
 import com.falcon.tripingly.core.ui.toUiText
 import com.falcon.tripingly.feature.settings.generated.resources.Res
@@ -45,6 +45,8 @@ import kotlinx.coroutines.launch
  */
 class SettingsViewModel(
     private val sessionRepository: SessionRepository,
+    /** Pro as the whole app has it. */
+    private val proRepository: ProRepository,
     private val accountRepository: AccountRepository,
     /** Confirms who is deleting the account when the last sign-in is too old. */
     private val socialSignIn: SocialSignIn,
@@ -73,9 +75,10 @@ class SettingsViewModel(
                 savedVisibility = account.defaultTripVisibility
                 // While a change is on its way the toggle keeps showing the person's latest choice.
                 val visibility = if (visibilityJob?.isActive == true) _uiState.value.defaultVisibility else savedVisibility
-                _uiState.update { it.copy(username = account.username, hasPro = account.hasPro, defaultVisibility = visibility) }
+                _uiState.update { it.copy(username = account.username, defaultVisibility = visibility) }
             }
         }
+        viewModelScope.launch { proRepository.isPro.collect { hasPro -> _uiState.update { it.copy(hasPro = hasPro) } } }
         loadNotifications()
         viewModelScope.launch {
             when (val result = accountRepository.dataExport()) {

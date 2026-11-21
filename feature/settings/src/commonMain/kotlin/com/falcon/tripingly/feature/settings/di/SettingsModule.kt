@@ -13,6 +13,7 @@ val settingsModule = module {
     viewModel {
         SettingsViewModel(
             sessionRepository = get(),
+            proRepository = get(),
             accountRepository = get(),
             socialSignIn = get(),
             // The client header carries it: `android/1.0`.

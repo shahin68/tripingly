@@ -9,7 +9,7 @@ enum class SessionEndReason { REFRESH_REFUSED, ACCOUNT_SUSPENDED }
 
 /**
  * Emits when the server ends the session, so the app can sign out and show sign-in, and when it says a Pro
- * feature needs Pro the account no longer has ([proEnded]), so the app reads the account again and shows the paywall.
+ * feature needs Pro the account no longer has ([proEnded]), so Pro ends in the app too, without asking again.
  */
 class SessionEvents {
     private val ended = MutableSharedFlow<SessionEndReason>(

@@ -67,7 +67,7 @@ fun createHttpClient(
                 sendWithoutRequest { request -> "auth" !in request.url.pathSegments }
             }
         }
-        // Whatever asked for it, a Pro feature refused for lack of Pro opens the paywall app-wide (Shahin, 2026-11-21).
+        // Whatever asked for it, a Pro feature refused for lack of Pro ends Pro app-wide (Shahin, 2026-11-21).
         install(
             createClientPlugin("ProEnded") {
                 onResponse { response ->

@@ -9,6 +9,7 @@ import com.falcon.tripingly.core.network.model.DataExportDto
 import com.falcon.tripingly.core.network.model.LegalDocumentsDto
 import com.falcon.tripingly.core.network.model.MeDto
 import com.falcon.tripingly.core.network.model.NotificationSettingsDto
+import com.falcon.tripingly.core.network.model.ProStatusDto
 import com.falcon.tripingly.core.network.model.RecordConsentDto
 import com.falcon.tripingly.core.network.model.UpdateMeDto
 import com.falcon.tripingly.core.network.model.UpdateNotificationSettingsDto
@@ -25,6 +26,10 @@ import de.jensklingenberg.ktorfit.http.Query
 interface AccountApi {
     @GET("me")
     suspend fun me(): AppResult<MeDto, DataError.Network>
+
+    /** Right after a purchase or restore: the server reads my Pro from RevenueCat now and answers it. */
+    @POST("me/pro/sync")
+    suspend fun syncPro(): AppResult<ProStatusDto, DataError.Network>
 
     @PATCH("me")
     @Headers("Content-Type: application/json")
