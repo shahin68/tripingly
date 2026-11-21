@@ -3227,7 +3227,7 @@ class MapViewModelTest {
     /** Pro ended on the server before the app knew: what the server says to Pro features. */
     private val notPro = DataError.Network.Api(403, RouteErrorCodes.PREMIUM_REQUIRED, "Routes are part of Tripinly Pro")
 
-    private fun ReceiveTurbine<MapEvent>.openedPaywall() =
+    private suspend fun ReceiveTurbine<MapEvent>.openedPaywall() =
         MapEvent.OpenPaywall in cancelAndConsumeRemainingEvents().mapNotNull { (it as? Event.Item)?.value }
 
     @Test
