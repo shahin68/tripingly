@@ -116,8 +116,6 @@ private final class AppGoogleMap: NSObject, GoogleMap, GMSMapViewDelegate {
         for item in items {
             let marker = markers[item.key] ?? GMSMarker()
             let isNew = marker.map == nil
-            // Our own fade below: Google's .fadeIn ends fully opaque, so a dimmed pin came in clear.
-            marker.appearAnimation = .none
             // Only what changed is set, so an unchanged pin is never redrawn and never blinks.
             let position = CLLocationCoordinate2D(latitude: item.latitude, longitude: item.longitude)
             if isNew || marker.position.latitude != position.latitude || marker.position.longitude != position.longitude {
@@ -132,15 +130,10 @@ private final class AppGoogleMap: NSObject, GoogleMap, GMSMapViewDelegate {
             if marker.opacity != item.opacity { marker.opacity = item.opacity }
             marker.userData = item
             if isNew {
+                // Google's own fade, drawn once (a Core Animation fade on the layer drew the pin in full for a frame first:
+                // a blink). It ends fully opaque, so a pin that comes in dimmed shows at once, dimmed.
+                marker.appearAnimation = item.fadesIn && item.opacity == 1 ? .fadeIn : .none
                 marker.map = mapView
-                if item.fadesIn {
-                    // Up to the pin's own opacity, dimmed or clear, as on Android (PIN_FADE_MILLIS).
-                    let fade = CABasicAnimation(keyPath: "opacity")
-                    fade.fromValue = 0
-                    fade.toValue = item.opacity
-                    fade.duration = 0.25
-                    marker.layer.add(fade, forKey: "fadeIn")
-                }
             }
             kept[item.key] = marker
         }
