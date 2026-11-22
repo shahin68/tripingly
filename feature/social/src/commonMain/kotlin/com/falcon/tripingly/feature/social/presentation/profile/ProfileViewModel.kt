@@ -116,6 +116,8 @@ class ProfileViewModel(
 
     private fun load() {
         val username = username ?: return
+        // A retry from the error screen: failing again also says why in the banner (Shahin, 2026-11-22).
+        val isRetry = _uiState.value.loadError != null
         _uiState.update { it.copy(isLoading = true, isNotFound = false, loadError = null) }
         viewModelScope.launch {
             when (val result = userRepository.profile(username)) {
@@ -131,7 +133,7 @@ class ProfileViewModel(
                     } else {
                         // Nothing shown yet: the error screen; a profile already shown stays, with a banner.
                         val message = result.error.toUiText(Res.string.social_error_load_profile)
-                        if (it.profile == null) it.copy(isLoading = false, loadError = message) else it.copy(isLoading = false, message = message)
+                        if (it.profile == null) it.copy(isLoading = false, loadError = message, message = message.takeIf { isRetry }) else it.copy(isLoading = false, message = message)
                     }
                 }
             }

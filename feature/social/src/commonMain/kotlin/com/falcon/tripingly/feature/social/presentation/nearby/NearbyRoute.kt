@@ -131,7 +131,7 @@ internal fun NearbyScreen(
         when (state.status) {
             Status.NeedsPermission, Status.Blocked, Status.Unavailable -> LocationAsk(state.status, onAction, contentPadding)
             else -> LoadStateContent(
-                isLoading = state.status == Status.Unknown || state.status == Status.Locating,
+                isLoading = state.status == Status.Unknown || state.status == Status.Locating || (state.isLoading && state.places.isEmpty()),
                 errorMessage = state.loadError?.asString(),
                 onRetry = { onAction(Action.Refresh) },
                 contentPadding = contentPadding,

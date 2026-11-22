@@ -93,7 +93,6 @@ import com.falcon.tripingly.feature.map.presentation.map.ui.MapButtons
 import com.falcon.tripingly.feature.map.presentation.map.ui.MapCredits
 import com.falcon.tripingly.feature.map.presentation.map.ui.SmallCreditsStyle
 import com.falcon.tripingly.feature.map.presentation.map.ui.MapHeader
-import com.falcon.tripingly.feature.map.presentation.map.ui.MapLoadError
 import com.falcon.tripingly.feature.map.presentation.map.ui.MapPinCards
 import com.falcon.tripingly.feature.map.presentation.map.ui.PlanSheetPeek
 import com.falcon.tripingly.feature.map.presentation.map.ui.PlanSheetValue
@@ -128,7 +127,6 @@ internal fun MapScreen(
     /** The Route button's on/off, ahead of [state] (see MapViewModel.isDayRouteOn). */
     isDayRouteOn: Boolean = (state.plan as? StopsCardState)?.isRouteOn == true,
 ) {
-    state.loadError?.let { error -> return MapLoadError(error.asString(), onAction) }
     val haptics = rememberHaptics()
     val density = LocalDensity.current
     // Layout only: what the header, the day tabs and the credits cover of the map, handed to it as its padding. Each is
@@ -536,15 +534,6 @@ private fun MapScreenPreview(@PreviewParameter(MapScreenPreviewStates::class) st
 private fun MapScreenDarkPreview() {
     TripinglyTheme(darkTheme = true) {
         MapScreen(state = MapScreenPreviewStates().values.first(), cameraCommands = emptyFlow(), onAction = {})
-    }
-}
-
-/** The trip couldn't load and there's none on the device. */
-@Preview
-@Composable
-private fun MapScreenLoadErrorPreview() {
-    TripinglyTheme(darkTheme = true) {
-        MapScreen(state = MapUiState(loadError = UiText.Server("No internet connection.")), cameraCommands = emptyFlow(), onAction = {})
     }
 }
 

@@ -395,28 +395,15 @@ class MapViewModelTest {
     }
 
     @Test
-    fun `a trip that is gone shows the error screen saying it isn't available`() = runTest(testDispatcher) {
+    fun `a trip that is gone still opens its map and says it isn't available in the banner`() = runTest(testDispatcher) {
         val viewModel = viewModel(tripId = "missing")
         testScheduler.advanceUntilIdle()
 
-        val error = assertIs<UiText.Joined>(viewModel.uiState.value.loadError)
-        assertNull(viewModel.uiState.value.message)
+        val error = assertIs<UiText.Joined>(viewModel.uiState.value.message?.text)
         assertTrue(viewModel.uiState.value.dayTabs.days.isEmpty())
         assertNull(viewModel.uiState.value.header.editorMenu)
         assertEquals(Res.string.map_error_load_trip, assertIs<UiText.Resource>(error.first).resource)
         assertTrue(assertIs<UiText.Resource>(error.second).resource.key.contains("not_available"))
-    }
-
-    @Test
-    fun `retry on the error screen loads the trip again`() = runTest(testDispatcher) {
-        val viewModel = viewModel(tripId = "missing")
-        testScheduler.advanceUntilIdle()
-
-        viewModel.onAction(MapAction.Header.Retry)
-        testScheduler.advanceUntilIdle()
-
-        assertNotNull(viewModel.uiState.value.loadError)
-        assertFalse(viewModel.uiState.value.header.isBusy)
     }
 
     @Test

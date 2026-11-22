@@ -32,8 +32,6 @@ import kotlinx.collections.immutable.persistentMapOf
  */
 @Immutable
 data class MapUiState(
-    /** The trip couldn't load and there's nothing to show: an error screen with Retry instead of the map. */
-    val loadError: UiText? = null,
     val header: HeaderState = HeaderState(),
     /** The owner's pill under the header while people they haven't seen here ask to join; closed while searching. */
     val joinRequests: JoinRequestsState? = null,

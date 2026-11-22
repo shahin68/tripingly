@@ -54,6 +54,8 @@ class BlockedPeopleViewModel(private val userRepository: UserRepository) : ViewM
 
     private fun load(next: Boolean) {
         if (!next) cursor = null
+        // A retry from the error screen: failing again also says why in the banner (Shahin, 2026-11-22).
+        val isRetry = _uiState.value.loadError != null
         _uiState.update { it.copy(loadError = null) }
         loading = viewModelScope.launch {
             when (val result = userRepository.blocked(cursor)) {
@@ -68,7 +70,7 @@ class BlockedPeopleViewModel(private val userRepository: UserRepository) : ViewM
                 }
                 is AppResult.Error -> _uiState.update { state ->
                     val message = result.error.toUiText(Res.string.settings_error_blocked)
-                    if (state.people == null) state.copy(loadError = message) else state.copy(message = message)
+                    if (state.people == null) state.copy(loadError = message, message = message.takeIf { isRetry }) else state.copy(message = message)
                 }
             }
         }

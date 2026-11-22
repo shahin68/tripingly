@@ -15,6 +15,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.tooling.preview.PreviewParameter
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.falcon.tripingly.core.designsystem.component.ErrorScreen
+import com.falcon.tripingly.core.designsystem.component.ShowMessage
 import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
 import com.falcon.tripingly.core.model.account.SessionState
 import com.falcon.tripingly.feature.auth.presentation.onboarding.OnboardingRoute
@@ -61,6 +62,7 @@ internal fun LaunchScreen(
 ) {
     Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
         val error = state.restoreError
+        ShowMessage(message = state.message?.asString(), onShown = { onAction(AuthGateViewModel.Action.OnMessageShown) })
         // A retry keeps the error on screen until it is answered, so nothing flashes.
         if (error != null) {
             ErrorScreen(

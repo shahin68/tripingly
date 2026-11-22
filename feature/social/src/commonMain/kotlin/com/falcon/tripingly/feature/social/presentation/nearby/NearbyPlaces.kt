@@ -109,8 +109,11 @@ internal class NearbyPlaces(
 
     private fun load(point: GeoPoint) {
         loadingMore?.cancel()
+        // A retry from the error screen: its placeholders show while it loads, and failing again also says why in the
+        // banner (Shahin, 2026-11-22).
+        val isRetry = state.value.loadError != null
         scope.launch {
-            update { it.copy(isLoading = true) }
+            update { it.copy(isLoading = true, loadError = null) }
             when (val result = placeRepository.nearby(point, cursor = null)) {
                 is AppResult.Success -> {
                     cursor = result.data.nextCursor
@@ -121,7 +124,7 @@ internal class NearbyPlaces(
                     val message = result.error.toUiText(Res.string.social_error_load_nearby)
                     val isEmpty = state.value.places.isEmpty()
                     update { it.copy(isLoading = false, status = Status.Ready, loadError = message.takeIf { isEmpty }) }
-                    if (!isEmpty) showMessage(message)
+                    if (!isEmpty || isRetry) showMessage(message)
                 }
             }
         }

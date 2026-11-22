@@ -103,7 +103,6 @@ internal class MapStateMapper(
 
     /** [layers] can be ones built before from the same trip and model; see [MapViewModel]. */
     fun map(layers: MapLayersState = layers()): MapUiState = MapUiState(
-        loadError = model.loadError,
         header = header(),
         joinRequests = joinRequests(),
         // The field's spinner also turns while the places named so load on the map.
