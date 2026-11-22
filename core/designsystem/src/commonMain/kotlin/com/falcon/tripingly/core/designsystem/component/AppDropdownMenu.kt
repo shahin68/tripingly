@@ -30,9 +30,11 @@ import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.Group
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
@@ -133,58 +135,63 @@ fun AppDropdownMenu(
     }
     val tint = MaterialTheme.extendedColors.glass.copy(alpha = MENU_TINT_ALPHA)
     val edge = MaterialTheme.extendedColors.menuEdge
+    val contentColor = MaterialTheme.colorScheme.onSurface
     Popup(popupPositionProvider = positionProvider, onDismissRequest = onDismissRequest, properties = MenuPopupProperties) {
-        Box(Modifier.padding(MenuShadowRoom)) {
-            Column(
-                modifier = modifier
-                    .graphicsLayer {
-                        val card = ease(CardEasing, phase(progress.value, 0f, CARD_END))
-                        shape = bloomShape(card, placement.value)
-                        clip = true
-                        // A quick fade at the very start, so the small corner doesn't pop in.
-                        alpha = (card * 4f).coerceAtMost(1f)
-                        shadowElevation = MenuElevation.toPx()
-                        ambientShadowColor = GlassDefaults.Shadow
-                        spotShadowColor = GlassDefaults.Shadow
+        // Its own content colour, which the ripples take: the popup would inherit the opener's (white on a lit-up
+        // trip card on My Trips, where the ripple then vanished on the light card).
+        CompositionLocalProvider(LocalContentColor provides contentColor) {
+            Box(Modifier.padding(MenuShadowRoom)) {
+                Column(
+                    modifier = modifier
+                        .graphicsLayer {
+                            val card = ease(CardEasing, phase(progress.value, 0f, CARD_END))
+                            shape = bloomShape(card, placement.value)
+                            clip = true
+                            // A quick fade at the very start, so the small corner doesn't pop in.
+                            alpha = (card * 4f).coerceAtMost(1f)
+                            shadowElevation = MenuElevation.toPx()
+                            ambientShadowColor = GlassDefaults.Shadow
+                            spotShadowColor = GlassDefaults.Shadow
+                        }
+                        .drawBehind { drawRect(tint) }
+                        .drawWithContent {
+                            drawContent()
+                            val card = ease(CardEasing, phase(progress.value, 0f, CARD_END))
+                            // Twice the edge: the clip keeps its inner half.
+                            drawOutline(bloomShape(card, placement.value).createOutline(size, layoutDirection, this), edge, style = Stroke(GlassDefaults.Edge.toPx()))
+                        }
+                        .width(IntrinsicSize.Max)
+                        .widthIn(min = MenuMinWidth)
+                        // A height limit of its own: on iOS a popup is now and then measured with no height limit, and a
+                        // scrolling column then throws ("measured with an infinity maximum height").
+                        .heightIn(max = MenuMaxHeight)
+                        .verticalScroll(rememberScrollState()),
+                ) {
+                    actions.forEachIndexed { index, action ->
+                        MenuRow(
+                            action = action,
+                            // The first and last rows reach the card's edge, so their ripple fills its corners; inside, they
+                            // keep their icon as far from that edge as from the side.
+                            edgeInset = PaddingValues(top = if (index == 0) RowEdgeInset else 0.dp, bottom = if (index == actions.lastIndex) RowEdgeInset else 0.dp),
+                            // Not disabled while it closes: that would cut the ripple of the tap that closed it.
+                            onClick = {
+                                if (isOpen) {
+                                    action.onClick()
+                                    onDismissRequest()
+                                }
+                            },
+                            modifier = Modifier.graphicsLayer {
+                                val place = placement.value
+                                // Nearest the button first: the top row below it, the bottom row above it.
+                                val order = if (place.isAbove) actions.lastIndex - index else index
+                                val stagger = if (actions.size > 1) min(MAX_ROW_STAGGER, ROWS_SPREAD / actions.lastIndex) else 0f
+                                val start = ROWS_START + order * stagger
+                                val row = ease(RowEasing, phase(progress.value, start, start + ROW_LENGTH))
+                                alpha = row
+                                translationX = (1f - row) * RowSlide.toPx() * if (place.isRight) 1f else -1f
+                            },
+                        )
                     }
-                    .drawBehind { drawRect(tint) }
-                    .drawWithContent {
-                        drawContent()
-                        val card = ease(CardEasing, phase(progress.value, 0f, CARD_END))
-                        // Twice the edge: the clip keeps its inner half.
-                        drawOutline(bloomShape(card, placement.value).createOutline(size, layoutDirection, this), edge, style = Stroke(GlassDefaults.Edge.toPx()))
-                    }
-                    .width(IntrinsicSize.Max)
-                    .widthIn(min = MenuMinWidth)
-                    // A height limit of its own: on iOS a popup is now and then measured with no height limit, and a
-                    // scrolling column then throws ("measured with an infinity maximum height").
-                    .heightIn(max = MenuMaxHeight)
-                    .verticalScroll(rememberScrollState()),
-            ) {
-                actions.forEachIndexed { index, action ->
-                    MenuRow(
-                        action = action,
-                        // The first and last rows reach the card's edge, so their ripple fills its corners; inside, they
-                        // keep their icon as far from that edge as from the side.
-                        edgeInset = PaddingValues(top = if (index == 0) RowEdgeInset else 0.dp, bottom = if (index == actions.lastIndex) RowEdgeInset else 0.dp),
-                        // Not disabled while it closes: that would cut the ripple of the tap that closed it.
-                        onClick = {
-                            if (isOpen) {
-                                action.onClick()
-                                onDismissRequest()
-                            }
-                        },
-                        modifier = Modifier.graphicsLayer {
-                            val place = placement.value
-                            // Nearest the button first: the top row below it, the bottom row above it.
-                            val order = if (place.isAbove) actions.lastIndex - index else index
-                            val stagger = if (actions.size > 1) min(MAX_ROW_STAGGER, ROWS_SPREAD / actions.lastIndex) else 0f
-                            val start = ROWS_START + order * stagger
-                            val row = ease(RowEasing, phase(progress.value, start, start + ROW_LENGTH))
-                            alpha = row
-                            translationX = (1f - row) * RowSlide.toPx() * if (place.isRight) 1f else -1f
-                        },
-                    )
                 }
             }
         }
