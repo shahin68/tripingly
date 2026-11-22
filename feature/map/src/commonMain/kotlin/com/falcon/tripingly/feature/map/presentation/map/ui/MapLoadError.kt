@@ -3,9 +3,10 @@ package com.falcon.tripingly.feature.map.presentation.map.ui
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -26,7 +27,7 @@ import org.jetbrains.compose.resources.stringResource
 @Composable
 internal fun MapLoadError(message: String, onAction: (MapAction) -> Unit) {
     Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
-        ErrorScreen(onRetry = { onAction(MapAction.Header.Retry) }, message = message, modifier = Modifier.safeDrawingPadding())
+        ErrorScreen(onRetry = { onAction(MapAction.Header.Retry) }, message = message, contentPadding = WindowInsets.safeDrawing.asPaddingValues())
         GlassIconButton(
             onClick = { onAction(MapAction.Header.Back) },
             modifier = Modifier.windowInsetsPadding(WindowInsets.safeTopAndSides).padding(MaterialTheme.spacing.medium),

@@ -18,8 +18,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
@@ -65,7 +65,8 @@ internal fun AroundRingLayer(ring: AroundRing, project: (Coordinates) -> Offset?
     fun geometry(): Pair<Offset, Float>? {
         val center = currentProject(currentRing.center) ?: return null
         val edge = currentProject(currentRing.edge()) ?: return null
-        val shown = edge.x - center.x
+        // The whole distance, not only across: the map may be turned (Shahin, 2026-11-22: north-up only was right).
+        val shown = (edge - center).getDistance()
         val dragged = finger?.let { currentRing.radiusAt(center, shown, it) } ?: return center to shown
         return center to shown * dragged.coerceIn(MIN_RADIUS_METERS, MAX_RADIUS_METERS) / currentRing.radiusMeters
     }
@@ -121,7 +122,7 @@ internal fun AroundRingLayer(ring: AroundRing, project: (Coordinates) -> Offset?
                             val edge = currentProject(currentRing.edge()) ?: return@detectDragGestures
                             val toFinger = moved - center
                             if (toFinger.getDistance() > 0f) angle = atan2(toFinger.y, toFinger.x)
-                            currentRing.radiusAt(center, edge.x - center.x, moved)?.let { meters ->
+                            currentRing.radiusAt(center, (edge - center).getDistance(), moved)?.let { meters ->
                                 val clamped = meters.coerceIn(MIN_RADIUS_METERS, MAX_RADIUS_METERS)
                                 val step = feelStep(clamped)
                                 if (step != feltStep) {

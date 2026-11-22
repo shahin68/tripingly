@@ -4,11 +4,13 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
@@ -51,27 +53,33 @@ fun ErrorScreen(
     contentPadding: PaddingValues = PaddingValues(),
     illustration: @Composable () -> Unit = { ErrorIllustration() },
 ) {
-    Box(
-        modifier = modifier.fillMaxSize().padding(contentPadding).verticalScroll(rememberScrollState()),
-        contentAlignment = Alignment.Center,
-    ) {
-        Column(
-            modifier = Modifier.padding(horizontal = MaterialTheme.spacing.extraLarge, vertical = MaterialTheme.spacing.large),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
+    // Edge to edge (Shahin, 2026-11-22): the scroll fills the screen under the bars, [contentPadding] is inside it, and the
+    // message is centred in the room between the bars.
+    // In a sheet that gives it no height limit it just wraps its content.
+    BoxWithConstraints(modifier.fillMaxSize()) {
+        val screenHeight = if (constraints.hasBoundedHeight) maxHeight else 0.dp
+        Box(
+            modifier = Modifier.verticalScroll(rememberScrollState()).heightIn(min = screenHeight).padding(contentPadding),
+            contentAlignment = Alignment.Center,
         ) {
-            illustration()
-            Spacer(Modifier.height(MaterialTheme.spacing.small))
-            Text(text = title, style = MaterialTheme.typography.titleLarge, textAlign = TextAlign.Center)
-            Text(
-                text = message,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                textAlign = TextAlign.Center,
-            )
-            if (onRetry != null) {
+            Column(
+                modifier = Modifier.padding(horizontal = MaterialTheme.spacing.extraLarge, vertical = MaterialTheme.spacing.large),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
+            ) {
+                illustration()
                 Spacer(Modifier.height(MaterialTheme.spacing.small))
-                PrimaryButton(text = retryLabel, onClick = onRetry, size = ButtonSize.Medium)
+                Text(text = title, style = MaterialTheme.typography.titleLarge, textAlign = TextAlign.Center)
+                Text(
+                    text = message,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.Center,
+                )
+                if (onRetry != null) {
+                    Spacer(Modifier.height(MaterialTheme.spacing.small))
+                    PrimaryButton(text = retryLabel, onClick = onRetry, size = ButtonSize.Medium)
+                }
             }
         }
     }

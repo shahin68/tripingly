@@ -5,8 +5,10 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import com.falcon.tripingly.core.designsystem.component.Skeleton
@@ -15,16 +17,17 @@ import com.falcon.tripingly.core.model.account.TripVisibility
 import com.falcon.tripingly.core.model.trip.Trip
 import com.falcon.tripingly.core.model.trip.TripRole
 import com.falcon.tripingly.core.model.trip.UserSummary
+import kotlin.time.Instant
+import kotlinx.datetime.DatePeriod
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.plus
-import kotlinx.datetime.DatePeriod
-import kotlin.time.Instant
 
 /** My Trips while it loads: the timeline's own rows filled with placeholder trips, shown as a [Skeleton]. */
 @Composable
 internal fun TimelineSkeleton(contentPadding: PaddingValues, modifier: Modifier = Modifier) {
     Skeleton(modifier.fillMaxSize()) {
-        Column(Modifier.padding(contentPadding)) {
+        // Runs on under the bottom bar like the real list (edge to edge), instead of stopping at it.
+        Column(Modifier.wrapContentHeight(Alignment.Top, unbounded = true).padding(contentPadding)) {
             PlaceholderTrips.forEach { TimelineTripItem(it, PlaceholderToday, past = false, onAction = {}) }
         }
     }

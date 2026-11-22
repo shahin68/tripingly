@@ -1,7 +1,9 @@
 package com.falcon.tripingly.feature.auth.presentation.gate
 
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
@@ -64,7 +66,7 @@ internal fun LaunchScreen(
             ErrorScreen(
                 onRetry = { onAction(AuthGateViewModel.Action.OnRetryClick) },
                 message = error.asString(),
-                modifier = Modifier.safeDrawingPadding(),
+                contentPadding = WindowInsets.safeDrawing.asPaddingValues(),
             )
         }
     }
