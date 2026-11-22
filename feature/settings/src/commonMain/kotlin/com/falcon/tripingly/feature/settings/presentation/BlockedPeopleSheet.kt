@@ -24,7 +24,6 @@ import androidx.compose.ui.unit.dp
 import com.falcon.tripingly.core.designsystem.component.AvatarCircle
 import com.falcon.tripingly.core.designsystem.component.AvatarSize
 import com.falcon.tripingly.core.designsystem.component.ButtonSize
-import com.falcon.tripingly.core.designsystem.component.ErrorScreen
 import com.falcon.tripingly.core.designsystem.component.SecondaryButton
 import com.falcon.tripingly.core.designsystem.component.SheetHeader
 import com.falcon.tripingly.core.designsystem.component.Skeleton
@@ -49,14 +48,10 @@ internal fun BlockedPeopleSheet(state: State, onAction: (Action) -> Unit, onClos
         SheetHeader(title = stringResource(Res.string.settings_blocked), subtitle = stringResource(Res.string.settings_blocked_hint), onClose = onClose)
         val people = state.people
         when {
-            state.loadError != null -> ErrorScreen(onRetry = { onAction(Action.Retry) }, message = state.loadError.asString())
+            // Only a line, no error screen: opening the sheet again loads it again (Shahin, 2026-11-22).
+            state.loadError != null -> SheetNote(state.loadError.asString())
             people == null -> Skeleton { Column { PlaceholderPeople.forEach { BlockedPersonRow(it, onUnblock = {}) } } }
-            people.isEmpty() -> Text(
-                stringResource(Res.string.settings_blocked_empty),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(MaterialTheme.spacing.large),
-            )
+            people.isEmpty() -> SheetNote(stringResource(Res.string.settings_blocked_empty))
             else -> LazyColumn(contentPadding = PaddingValues(bottom = MaterialTheme.spacing.large)) {
                 items(people, key = { it.id }) { user ->
                     BlockedPersonRow(user, onUnblock = { onAction(Action.Unblock(user)) }, Modifier.animateItem())
@@ -65,6 +60,17 @@ internal fun BlockedPeopleSheet(state: State, onAction: (Action) -> Unit, onClos
             }
         }
     }
+}
+
+/** A line of text in the sheet instead of the list: nobody blocked, or why the list couldn't load. */
+@Composable
+private fun SheetNote(text: String) {
+    Text(
+        text,
+        style = MaterialTheme.typography.bodyMedium,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier.padding(MaterialTheme.spacing.large),
+    )
 }
 
 @Composable
