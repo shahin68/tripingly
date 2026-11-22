@@ -20,7 +20,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -47,6 +46,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.Role
@@ -67,9 +67,9 @@ import org.jetbrains.compose.resources.stringResource
  * A new [text] and [icon] (asked: "Request sent") play in: the icon pops in with a little spin, the label rises, and the
  * pill's width glides to fit. Without [onClick] it only shows its state. [isLoading]: a small spinner takes the icon's
  * place while the server answers; the icon that comes after pops in as above.
- * [liked] not null: a heart leads the pill, split off by a hairline (Shahin, 2026-11-19), with no count: outlined, or
- * filled red once liked; tapping it plays the like button's pop and dots and calls [onToggleLike]. It comes and goes
- * with the pill.
+ * [liked] not null: a heart leads it as a piece of its own, joined to it the way [JoinedButtons] are (a few px apart,
+ * the outer ends round, small corners between; Shahin, 2026-11-22), with no count: outlined, or filled red once liked;
+ * tapping it plays the like button's pop and dots and calls [onToggleLike]. It comes and goes with the pill.
  */
 @Composable
 fun InviteButton(
@@ -85,26 +85,16 @@ fun InviteButton(
     val colors = MaterialTheme.extendedColors
     val inset = (height - IconSize) / 2
     val edge = colors.inviteEdge
-    Row(
-        modifier = modifier
-            .height(height)
-            .clip(CircleShape)
-            .background(colors.invite)
-            .border(EdgeWidth, Brush.verticalGradient(listOf(edge, edge.copy(alpha = edge.alpha * EDGE_FADE))), CircleShape)
-            .animateContentSize(spring(stiffness = Spring.StiffnessMediumLow)),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        CompositionLocalProvider(LocalContentColor provides colors.onInvite) {
-            if (liked != null) {
-                InviteHeart(liked, onToggleLike, height)
-                Box(Modifier.size(width = DividerWidth, height = DividerHeight).background(colors.inviteDivider))
-            }
+    val edgeBrush = Brush.verticalGradient(listOf(edge, edge.copy(alpha = edge.alpha * EDGE_FADE)))
+    val piece = { shape: Shape -> Modifier.height(height).clip(shape).background(colors.invite).border(EdgeWidth, edgeBrush, shape) }
+    CompositionLocalProvider(LocalContentColor provides colors.onInvite) {
+        Row(modifier = modifier, horizontalArrangement = Arrangement.spacedBy(JoinedButtonDefaults.Gap), verticalAlignment = Alignment.CenterVertically) {
+            if (liked != null) InviteHeart(liked, onToggleLike, height, piece(joinedShape(0, 2)))
             Row(
-                modifier = Modifier
-                    .fillMaxHeight()
+                modifier = piece(if (liked != null) joinedShape(1, 2) else CircleShape)
+                    .animateContentSize(spring(stiffness = Spring.StiffnessMediumLow))
                     .then(if (onClick != null) Modifier.clickable(role = Role.Button, onClick = onClick) else Modifier)
-                    // After the heart, as far from the line as the heart is.
-                    .padding(start = if (liked != null) (height - HeartSize) / 2 else inset, end = inset + MaterialTheme.spacing.extraSmall),
+                    .padding(start = inset, end = inset + MaterialTheme.spacing.extraSmall),
                 horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
@@ -138,13 +128,13 @@ fun InviteButton(
     }
 }
 
-/** The pill's heart: a square as high as the pill ([size]), the heart in its middle, as far from every side. */
+/** The heart's piece: a square as high as the pill ([size]), the heart in its middle, as far from every side. */
 @Composable
-private fun InviteHeart(liked: Boolean, onToggle: () -> Unit, size: Dp) {
+private fun InviteHeart(liked: Boolean, onToggle: () -> Unit, size: Dp, modifier: Modifier) {
     var burst by remember { mutableIntStateOf(0) }
     val haptics = rememberHaptics()
     Box(
-        modifier = Modifier
+        modifier = modifier
             .size(size)
             .toggleable(
                 value = liked,
@@ -168,10 +158,6 @@ private fun InviteHeart(liked: Boolean, onToggle: () -> Unit, size: Dp) {
 }
 
 private val HeartSize = 24.dp
-
-/** The line between the heart and the invitation. */
-private val DividerWidth = 1.dp
-private val DividerHeight = 24.dp
 
 private val IconSize = 20.dp
 

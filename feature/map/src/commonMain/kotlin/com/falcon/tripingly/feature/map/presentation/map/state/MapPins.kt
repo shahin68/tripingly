@@ -8,6 +8,7 @@ import com.falcon.tripingly.core.model.place.PlaceCategory
 import com.falcon.tripingly.core.model.place.PlaceSquare
 import com.falcon.tripingly.core.model.place.PlacesInView
 import com.falcon.tripingly.core.model.trip.TripDay
+import com.falcon.tripingly.core.model.trip.TripRole
 import com.falcon.tripingly.feature.map.presentation.component.placeClusters
 import com.falcon.tripingly.feature.map.presentation.component.placePins
 import kotlin.math.floor
@@ -62,6 +63,13 @@ internal class MapPins(
             combine(context.trip, context.model.map { it.activeDayIndex }) { trip, _ -> trip }
                 .map { trip -> context.activeDay().let { day -> stopPlaceIds(day) to tripStopPlaces(trip?.days.orEmpty(), day) } }
                 .distinctUntilChanged().drop(1).collect { show() }
+        }
+        // A visitor joined (the trip reloads once the owner accepts): the places of the camera's last rest load, as when
+        // hidden places show again.
+        context.scope.launch {
+            context.trip.map { it?.trip?.role == TripRole.VIEWER }.distinctUntilChanged().drop(1).collect { isVisitor ->
+                if (!isVisitor) lastRest?.let { (view, zoom) -> onCameraRest(view, zoom) }
+            }
         }
     }
 
@@ -119,8 +127,11 @@ internal class MapPins(
     private val categories get() = context.model.value.placeFilter.categories
     private val name get() = context.model.value.placeFilter.name
 
-    /** Places are hidden and nothing loads, unless the map was searched by name. */
-    private val isHidden get() = context.model.value.let { it.arePlacesHidden && it.placeFilter.name == null }
+    /** Places are hidden, or it's a visitor's map, which shows only the trip's stops (Shahin, 2026-11-22). */
+    private val arePlacesOff get() = context.model.value.arePlacesHidden || context.isVisitor()
+
+    /** Places are off and nothing loads, unless the map was searched by name. */
+    private val isHidden get() = arePlacesOff && context.model.value.placeFilter.name == null
 
     fun onCameraRest(view: GeoBounds, zoom: Float) {
         lastRest = view to zoom
@@ -174,7 +185,7 @@ internal class MapPins(
      */
     private fun squaresFor(bounds: GeoBounds, zoom: Float, ring: Int = 0): List<PlaceSquare> {
         val level = floor(zoom).toInt()
-        val all = if (context.model.value.arePlacesHidden) emptyList() else PlaceSquare.covering(bounds, level, ring = ring, categories = categories)
+        val all = if (arePlacesOff) emptyList() else PlaceSquare.covering(bounds, level, ring = ring, categories = categories)
         return all + name?.let { PlaceSquare.covering(bounds, level, ring = ring, categories = categories, name = it) }.orEmpty()
     }
 
@@ -189,7 +200,7 @@ internal class MapPins(
         val otherStops = tripStopPlaces(context.days(), day).filter { picked.isEmpty() || it.category in picked }
         val loaded = placeRepository.loadedPlacesIn(area.squares)
         val all = loaded.filterKeys { it.name == null }.values +
-            PlacesInView(otherStops.takeUnless { context.model.value.arePlacesHidden }.orEmpty(), emptyList())
+            PlacesInView(otherStops.takeUnless { arePlacesOff }.orEmpty(), emptyList())
         val results = loaded.filterKeys { it.name != null }.values +
             PlacesInView(otherStops.filter { named != null && it.name.contains(named, ignoreCase = true) }, emptyList())
         val hidden = stopPlaceIds(day)

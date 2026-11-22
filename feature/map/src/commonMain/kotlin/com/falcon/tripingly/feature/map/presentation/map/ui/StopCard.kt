@@ -1,6 +1,10 @@
 package com.falcon.tripingly.feature.map.presentation.map.ui
 
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.togetherWith
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.SizeTransform
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -137,7 +141,13 @@ internal fun PinCardScope.StopCard(
                     )
                 },
                 credit = { StopCredit(card, page = pagerState.currentPage, modifier = Modifier.padding(top = MaterialTheme.spacing.small)) },
-                buttons = { PinCardButtons(listOf(photoButton(card.news, onOpenPhotos)) + routeButtons(card.routes, onGoHere, onRoute, onAround), onOpenDetails, onDeleteShown, onAddShown, addLabel = addLabel) },
+                buttons = {
+                    // A visitor's map has no routes or Around from a stop (Shahin, 2026-11-22); when a join is accepted
+                    // they fade in and the row glides to fit.
+                    AnimatedContent(targetState = card.canRoute, transitionSpec = { fadeIn() togetherWith fadeOut() using SizeTransform() }, label = "stop card route buttons") { canRoute ->
+                        PinCardButtons(listOf(photoButton(card.news, onOpenPhotos)) + (if (canRoute) routeButtons(card.routes, onGoHere, onRoute, onAround) else emptyList()), onOpenDetails, onDeleteShown, onAddShown, addLabel = addLabel)
+                    }
+                },
             )
         } else {
             StopPill(card, onDeleteShown, onAddShown, addLabel, onExpand = { isExpanded = true }, modifier = Modifier.bloomRow(fromPin = 0))

@@ -354,36 +354,29 @@ internal fun MapScreen(
                             )
                         }
                     }
-                    // Someone else's trip: the heart and Ask to join in the same place, coming and going the same way,
-                    // keeping its last look while it goes (accepted or declined); away while searching, as the filter
-                    // and the owner's join pill (Shahin, 2026-11-21).
-                    val joinButton = state.header.viewerMenu?.joinButton
-                    var shownViewerMenu by remember { mutableStateOf(state.header.viewerMenu) }
-                    if (joinButton != null) shownViewerMenu = state.header.viewerMenu
-                    androidx.compose.animation.AnimatedVisibility(
-                        visible = joinButton != null && !isRouteBarShown && state.search == null,
-                        enter = expandHorizontally(expandFrom = Alignment.Start, clip = false) + scaleIn() + fadeIn(),
-                        exit = shrinkHorizontally(shrinkTowards = Alignment.Start, clip = false) + scaleOut() + fadeOut(),
-                    ) {
-                        shownViewerMenu?.let { menu ->
-                            menu.joinButton?.let {
-                                ViewerJoinPill(
-                                    joinButton = it,
-                                    isLikedByMe = menu.isLikedByMe,
-                                    onAction = onAction,
-                                    modifier = Modifier.padding(end = MaterialTheme.spacing.small),
-                                )
-                            }
-                        }
-                    }
                     // The row's weight is the most it may grow; closed it is only its circle, at the end. It scales away and
                     // back where it stands, never gliding in from the side (Shahin, 2026-11-19).
                     val filter = state.placeFilter.takeUnless { isRouteBarShown }
                     var shownFilter by remember { mutableStateOf(filter) }
                     filter?.let { shownFilter = it }
+                    // Someone else's trip: the heart and Ask to join at the end, where members have the filter, as high as
+                    // the header (Shahin, 2026-11-22), scaling in and away where it stands as the filter does, keeping
+                    // its last look while it goes (accepted or declined); away while searching or routing.
+                    val joinButton = state.header.viewerMenu?.joinButton
+                    var shownViewerMenu by remember { mutableStateOf(state.header.viewerMenu) }
+                    if (joinButton != null) shownViewerMenu = state.header.viewerMenu
                     Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.TopEnd) {
                         androidx.compose.animation.AnimatedVisibility(visible = filter != null, enter = scaleIn() + fadeIn(), exit = scaleOut() + fadeOut()) {
                             shownFilter?.let { PlaceFilterPill(filter = it, onAction = onAction) }
+                        }
+                        androidx.compose.animation.AnimatedVisibility(
+                            visible = joinButton != null && !isRouteBarShown && state.search == null,
+                            enter = scaleIn() + fadeIn(),
+                            exit = scaleOut() + fadeOut(),
+                        ) {
+                            shownViewerMenu?.let { menu ->
+                                menu.joinButton?.let { ViewerJoinPill(joinButton = it, isLikedByMe = menu.isLikedByMe, onAction = onAction) }
+                            }
                         }
                     }
                 }
@@ -406,6 +399,7 @@ internal fun MapScreen(
             isOsmCreditShown = state.isOsmCreditShown,
             location = state.location,
             arePlacesHidden = state.arePlacesHidden,
+            canHidePlaces = state.canHidePlaces,
             bearing = { bearing },
             dayTabs = state.dayTabs,
             plan = plan,
@@ -440,7 +434,7 @@ internal fun MapScreen(
                     onOpenHeight = { creditsHeight = with(density) { it.toDp() } },
                     modifier = Modifier.align(Alignment.TopEnd),
                 )
-                MapButtons(state.location, state.arePlacesHidden, { bearing }, onAction, Modifier.align(Alignment.BottomEnd))
+                MapButtons(state.location, state.arePlacesHidden, state.canHidePlaces, { bearing }, onAction, Modifier.align(Alignment.BottomEnd))
             }
         }
 

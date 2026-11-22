@@ -168,3 +168,7 @@ Free for everyone, by real travel times (product owner, 2026-10-18).
 ## Hiding places
 
 The top map button (above fit day) hides every place pin and cluster; the trip's stops, the places along a route and the two ends of an A→B route stay, and the Route button still turns what is left into dots. While hidden, no place squares load (moving the map asks the server nothing); showing them again loads the view the camera rests on. Every map opens with places shown (Shahin, 2026-11-02).
+
+## A visitor's map
+
+On someone else's trip I'm not on (role `VIEWER`, saved or just opened) the map is about their trip (Shahin, 2026-11-22). One live check, `MapContext.isVisitor()` (and `isVisitor` in `MapStateMapper`), turns off: the header's search, the place filter, the places button and every place pin and cluster (only the trip's stops show; no place squares load), along the way and its filter in the day route's card (the day Route itself still turns on, Pro as always), and a stop's Go here, Route from/to here and Around, on its card and in its details. `MapViewModel` drops any action that would start those. Flames, comments, photos, Add to my trip, share, report and the trip card stay. The heart + Ask to join sits under the header at the end, as high as the header, its two parts joined like the details' buttons. The check is read live: once the owner accepts, the trip reloads and every feature is back at once, and the view's places load.

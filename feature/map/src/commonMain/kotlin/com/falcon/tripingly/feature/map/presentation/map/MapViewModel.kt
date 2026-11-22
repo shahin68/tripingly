@@ -159,6 +159,9 @@ class MapViewModel(
     }
 
     fun onAction(action: MapAction) {
+        // A visitor's map is about the trip: what finds, filters or routes places doesn't start there, even from a button
+        // still on screen for a frame (Shahin, 2026-11-22). Closing them still works.
+        if (action.startsPlaceTools() && context.isVisitor()) return
         when (action) {
             is MapAction.MapView -> onMapView(action)
             is MapAction.Header -> onHeader(action)
@@ -422,4 +425,11 @@ class MapViewModel(
         /** A tapped cluster opens up into its places. */
         const val CLUSTER_ZOOM_STEP = 2f
     }
+}
+
+/** Finding, filtering or routing places: off on a visitor's map ([MapContext.isVisitor]). */
+private fun MapAction.startsPlaceTools(): Boolean = when (this) {
+    MapAction.Search.Open, MapAction.Days.TogglePlaces, MapAction.Around.Open, MapAction.PinRoute.GoHere, MapAction.PinRoute.Route -> true
+    is MapAction.PlaceFilter, is MapAction.Plan.AlongTheWayClick, is MapAction.Plan.AddAlongTheWay, is MapAction.Plan.ToggleAlongCategory -> true
+    else -> false
 }
