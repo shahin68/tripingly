@@ -84,6 +84,14 @@ fun <T : Any> AppBottomSheet(
         skipPartiallyExpanded = !halfHigh,
         confirmValueChange = { it != SheetValue.Hidden || canDismiss },
     )
+    // TEMPORARY: why a sheet doesn't open after a rotation (removed with the fix).
+    val isOnTop = LocalScreenOnTop.current
+    LaunchedEffect(value != null, isOnTop) { sheetLog("value=${value != null} onTop=$isOnTop visible=${visible != null}") }
+    LaunchedEffect(sheetState) {
+        snapshotFlow { Triple(sheetState.currentValue, sheetState.targetValue, sheetState.isAnimationRunning) }.collect { (now, target, moving) ->
+            sheetLog("now=$now target=$target moving=$moving offset=${runCatching { sheetState.requireOffset() }.getOrNull()}")
+        }
+    }
     // The last value stays on screen while the sheet slides away.
     var shown by remember { mutableStateOf(visible) }
     // The value whose close the view model was already told of (see below).
