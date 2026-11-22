@@ -16,6 +16,7 @@ Lives in `core/designsystem/src/commonMain/kotlin/com/falcon/tripingly/core/desi
 
 - **Stateless.** Values in, events out: `TripCard(title: String, dateRange: String, coverUrl: String?, onClick: () -> Unit, modifier: Modifier = Modifier)`. No ViewModels, no feature `XAction`, no repositories, no domain models from a single feature.
 - `modifier: Modifier = Modifier` is the first optional parameter and is applied to the root, first in its chain.
+- Nothing jumps while waiting (Shahin, 2026-11-22): a tap never empties or swaps what's shown while it waits; only the answer changes it, and changed text animates (`AnimatedContent` + `SizeTransform`). No reserved space as a fix. See `07-architecture.md`.
 - Modifiers by the book (Shahin, 2026-11-22): whatever must be centred fills the direction it is centred in (never a child that only wraps its content inside a `contentAlignment`); size, then scroll, then padding; centred scrollable content gets `sizeIn(min = viewport)`. See `07-architecture.md`, "Modifiers by the book".
 - Prefer **slots** for variable content: `leading: (@Composable () -> Unit)? = null`, `content: @Composable RowScope.() -> Unit`.
 - Symmetry: paddings, equal heights and aligned actions follow the `layout-symmetry` skill.

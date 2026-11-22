@@ -1,5 +1,10 @@
 package com.falcon.tripingly.core.designsystem.component
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.SizeTransform
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -96,12 +101,19 @@ private fun ErrorWords(title: String, message: String, retryLabel: String, onRet
         verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
     ) {
         Text(text = title, style = MaterialTheme.typography.titleLarge, textAlign = TextAlign.Center)
-        Text(
-            text = message,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            textAlign = TextAlign.Center,
-        )
+        // Changes only with an answer (a retry leaves the screen as it is), and then animates (Shahin, 2026-11-22).
+        AnimatedContent(
+            targetState = message,
+            transitionSpec = { fadeIn() togetherWith fadeOut() using SizeTransform() },
+            label = "error message",
+        ) { text ->
+            Text(
+                text = text,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center,
+            )
+        }
         if (onRetry != null) {
             Spacer(Modifier.height(MaterialTheme.spacing.small))
             PrimaryButton(text = retryLabel, onClick = onRetry, size = ButtonSize.Medium)

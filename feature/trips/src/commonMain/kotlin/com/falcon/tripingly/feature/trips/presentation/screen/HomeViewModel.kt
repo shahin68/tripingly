@@ -133,10 +133,10 @@ class HomeViewModel(
 
     private fun refresh() {
         if (ui.value.isRefreshing) return
-        // A retry from the error screen: its placeholders show while it loads, and failing again also says why in the
-        // banner (Shahin, 2026-11-22).
+        // A retry from the error screen leaves it as it is until the answer; failing again also says why in the banner
+        // (Shahin, 2026-11-22).
         val isRetry = ui.value.loadError != null
-        ui.update { it.copy(isRefreshing = true, hasLoaded = it.hasLoaded && !isRetry, loadError = null) }
+        ui.update { it.copy(isRefreshing = true) }
         viewModelScope.launch {
             val error = (tripRepository.refreshMyTrips() as? AppResult.Error)?.error
             // With trips on screen a failed refresh is a banner; with nothing to show it's the error screen.
