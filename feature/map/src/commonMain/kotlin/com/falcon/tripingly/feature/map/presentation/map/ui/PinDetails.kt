@@ -1,5 +1,10 @@
 package com.falcon.tripingly.feature.map.presentation.map.ui
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.SizeTransform
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.text.InlineTextContent
@@ -92,17 +97,20 @@ internal fun StopDetailsContent(card: StopCardState, onAction: (MapAction) -> Un
         ),
         onClose = onClose,
         buttons = {
-            val group = stopButtons(
-                stop,
-                card.news,
-                { onAction(MapAction.StopCard.ToggleHot(stop.id)) },
-                { onAction(MapAction.StopCard.HotSeen(stop.id)) },
-                { onAction(MapAction.StopCard.OpenComments) },
-                showPhotos,
-            ) +
-                // A visitor's map has no routes or Around from a stop (Shahin, 2026-11-22).
-                if (card.canRoute) routeButtons(card.routes, { onAction(MapAction.PinRoute.GoHere) }, { onAction(MapAction.PinRoute.Route) }, { onAction(MapAction.Around.Open) }) else emptyList()
-            JoinedButtons(group, Modifier.horizontalScroll(rememberScrollState()))
+            // A visitor's map has no routes or Around from a stop (Shahin, 2026-11-22); when a join is accepted they
+            // fade in and the row glides to fit.
+            AnimatedContent(targetState = card.canRoute, transitionSpec = { fadeIn() togetherWith fadeOut() using SizeTransform() }, label = "stop details route buttons") { canRoute ->
+                val group = stopButtons(
+                    stop,
+                    card.news,
+                    { onAction(MapAction.StopCard.ToggleHot(stop.id)) },
+                    { onAction(MapAction.StopCard.HotSeen(stop.id)) },
+                    { onAction(MapAction.StopCard.OpenComments) },
+                    showPhotos,
+                ) +
+                    if (canRoute) routeButtons(card.routes, { onAction(MapAction.PinRoute.GoHere) }, { onAction(MapAction.PinRoute.Route) }, { onAction(MapAction.Around.Open) }) else emptyList()
+                JoinedButtons(group, Modifier.horizontalScroll(rememberScrollState()))
+            }
         },
         photoStrip = photoStrip,
     ) {

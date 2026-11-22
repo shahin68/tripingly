@@ -172,19 +172,31 @@ internal fun MapHeader(
             GlassButtonRow(blur = false, height = GlassButtonDefaults.HeaderSize) {
                 if (search != null) {
                     SearchField(search, onAction, Modifier.weight(1f))
-                } else if (header.canSearch) {
-                    // At the end while the pill shrinks back, so search and ⋮ stay put and don't glide.
+                } else {
+                    // At the end while the pill shrinks back, so search and ⋮ stay put and don't glide. A visitor's map
+                    // has no search (Shahin, 2026-11-22): the pill is just ⋮, and search glides in once a join is accepted.
                     Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.CenterEnd) {
-                        IconButton(onClick = { onAction(MapAction.Search.Open) }) {
-                            Icon(Icons.Outlined.Search, contentDescription = stringResource(Res.string.map_search))
+                        androidx.compose.animation.AnimatedVisibility(
+                            visible = header.canSearch,
+                            enter = expandHorizontally(expandFrom = Alignment.End) + fadeIn(),
+                            exit = shrinkHorizontally(shrinkTowards = Alignment.End) + fadeOut(),
+                        ) {
+                            IconButton(onClick = { onAction(MapAction.Search.Open) }) {
+                                Icon(Icons.Outlined.Search, contentDescription = stringResource(Res.string.map_search))
+                            }
                         }
                     }
                 }
                 // While searching, the end button closes the search: ⋮ turns into ✕ in its place and back (Shahin,
-                // 2026-11-21). Without a ⋮, the ✕ comes and goes with the search. A visitor's map has no search
-                // (Shahin, 2026-11-22): the pill is just ⋮.
+                // 2026-11-21). Without a ⋮, the ✕ comes and goes with the search.
                 if (actions.isNotEmpty()) {
-                    if (header.canSearch) GlassButtonDivider()
+                    AnimatedVisibility(
+                        visible = header.canSearch,
+                        enter = expandHorizontally(expandFrom = Alignment.End) + fadeIn(),
+                        exit = shrinkHorizontally(shrinkTowards = Alignment.End) + fadeOut(),
+                    ) {
+                        GlassButtonDivider()
+                    }
                     AnimatedContent(
                         targetState = search != null,
                         transitionSpec = {
