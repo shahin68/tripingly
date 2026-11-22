@@ -14,6 +14,8 @@ data class ExtendedColors(
     val glass: Color,
     /** The thin light edge that sets glass apart from what's behind it. */
     val glassEdge: Color,
+    /** The drop-down menu's thin edge: darker than glass's in light mode, so the card's edge shows over light screens. */
+    val menuEdge: Color,
     /**
      * A stop's pin and the plan line joining a day's stops: the brand green, light on the dark map (Shahin's "Ivy
      * stops" on the graphite map, 2026-11-08).
@@ -54,6 +56,7 @@ data class ExtendedColors(
 internal val LightExtendedColors = ExtendedColors(
     glass = GlassLight,
     glassEdge = GlassEdgeLight,
+    menuEdge = MenuEdgeLight,
     stop = IvyLight,
     onStop = OnIvyLight,
     onStopIcon = OnIvyLight,
@@ -74,6 +77,7 @@ internal val LightExtendedColors = ExtendedColors(
 internal val DarkExtendedColors = ExtendedColors(
     glass = GlassDark,
     glassEdge = GlassEdgeDark,
+    menuEdge = GlassEdgeDark,
     stop = IvyDark,
     onStop = OnIvyDark,
     onStopIcon = IvyDeepDark,

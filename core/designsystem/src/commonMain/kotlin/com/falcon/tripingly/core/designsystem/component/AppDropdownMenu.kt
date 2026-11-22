@@ -2,6 +2,7 @@ package com.falcon.tripingly.core.designsystem.component
 
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.CubicBezierEasing
+import androidx.compose.animation.core.Easing
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
@@ -10,6 +11,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
@@ -37,6 +39,7 @@ import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -105,15 +108,22 @@ fun AppDropdownMenu(
 ) {
     val progress = remember { Animatable(if (expanded) 1f else 0f) }
     var isShown by remember { mutableStateOf(expanded) }
+    // Opening eases out as each part arrives; closing from open starts fast and eases out as each part leaves
+    // (Shahin, 2026-11-22). A turn back halfway keeps the curve it's on, so nothing jumps.
+    var isClosingCurve by remember { mutableStateOf(false) }
+    val isOpen by rememberUpdatedState(expanded)
     LaunchedEffect(expanded) {
         if (expanded) {
+            if (progress.value == 0f) isClosingCurve = false
             isShown = true
             progress.animateTo(1f, tween(OPEN_MILLIS, easing = LinearEasing))
         } else {
+            if (progress.value == 1f) isClosingCurve = true
             progress.animateTo(0f, tween(CLOSE_MILLIS, easing = LinearEasing))
             isShown = false
         }
     }
+    val ease = { easing: Easing, fraction: Float -> if (isClosingCurve) 1f - easing.transform(1f - fraction) else easing.transform(fraction) }
     if (!isShown) return
     // Where the card went: which corner it blooms from. Written while placing the popup, read only while drawing.
     val placement = remember { mutableStateOf(MenuPlacement()) }
@@ -121,14 +131,14 @@ fun AppDropdownMenu(
     val positionProvider = remember(density) {
         with(density) { MenuPositionProvider(MenuGap.roundToPx(), MenuShadowRoom.roundToPx(), MenuScreenMargin.roundToPx(), placement) }
     }
-    val tint = GlassDefaults.opaqueTint
-    val edge = MaterialTheme.extendedColors.glassEdge
+    val tint = MaterialTheme.extendedColors.glass.copy(alpha = MENU_TINT_ALPHA)
+    val edge = MaterialTheme.extendedColors.menuEdge
     Popup(popupPositionProvider = positionProvider, onDismissRequest = onDismissRequest, properties = MenuPopupProperties) {
         Box(Modifier.padding(MenuShadowRoom)) {
             Column(
                 modifier = modifier
                     .graphicsLayer {
-                        val card = CardEasing.transform(phase(progress.value, 0f, CARD_END))
+                        val card = ease(CardEasing, phase(progress.value, 0f, CARD_END))
                         shape = bloomShape(card, placement.value)
                         clip = true
                         // A quick fade at the very start, so the small corner doesn't pop in.
@@ -140,7 +150,7 @@ fun AppDropdownMenu(
                     .drawBehind { drawRect(tint) }
                     .drawWithContent {
                         drawContent()
-                        val card = CardEasing.transform(phase(progress.value, 0f, CARD_END))
+                        val card = ease(CardEasing, phase(progress.value, 0f, CARD_END))
                         // Twice the edge: the clip keeps its inner half.
                         drawOutline(bloomShape(card, placement.value).createOutline(size, layoutDirection, this), edge, style = Stroke(GlassDefaults.Edge.toPx() * 2))
                     }
@@ -154,10 +164,15 @@ fun AppDropdownMenu(
                 actions.forEachIndexed { index, action ->
                     MenuRow(
                         action = action,
-                        enabled = expanded,
+                        // The first and last rows reach the card's edge, so their ripple fills its corners; inside, they
+                        // keep their icon as far from that edge as from the side.
+                        edgeInset = PaddingValues(top = if (index == 0) RowEdgeInset else 0.dp, bottom = if (index == actions.lastIndex) RowEdgeInset else 0.dp),
+                        // Not disabled while it closes: that would cut the ripple of the tap that closed it.
                         onClick = {
-                            action.onClick()
-                            onDismissRequest()
+                            if (isOpen) {
+                                action.onClick()
+                                onDismissRequest()
+                            }
                         },
                         modifier = Modifier.graphicsLayer {
                             val place = placement.value
@@ -165,7 +180,7 @@ fun AppDropdownMenu(
                             val order = if (place.isAbove) actions.lastIndex - index else index
                             val stagger = if (actions.size > 1) min(MAX_ROW_STAGGER, ROWS_SPREAD / actions.lastIndex) else 0f
                             val start = ROWS_START + order * stagger
-                            val row = RowEasing.transform(phase(progress.value, start, start + ROW_LENGTH))
+                            val row = ease(RowEasing, phase(progress.value, start, start + ROW_LENGTH))
                             alpha = row
                             translationX = (1f - row) * RowSlide.toPx() * if (place.isRight) 1f else -1f
                         },
@@ -178,15 +193,16 @@ fun AppDropdownMenu(
 
 /** One entry: edge to edge, so its ripple fills the card's width and, first or last, its rounded corners. */
 @Composable
-private fun MenuRow(action: DropdownAction, enabled: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier) {
+private fun MenuRow(action: DropdownAction, edgeInset: PaddingValues, onClick: () -> Unit, modifier: Modifier = Modifier) {
     val color = if (action.isDestructive) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface
     val accent = if (action.isDestructive) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary
     Row(
         modifier = modifier
             .fillMaxWidth()
+            .clickable(role = Role.Button, onClick = onClick)
+            .padding(edgeInset)
             .heightIn(min = MenuRowHeight)
-            .clickable(enabled = enabled, role = Role.Button, onClick = onClick)
-            .padding(horizontal = MaterialTheme.spacing.medium),
+            .padding(horizontal = RowSidePadding),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(MenuRowGap),
     ) {
@@ -280,12 +296,17 @@ private const val ICON_TILE_ALPHA = 0.12f
 private val MenuCorner = 20.dp
 /** The card's size as it starts to bloom out of its corner: about the button's. */
 private val MenuBloomStart = 40.dp
-private val MenuElevation = 4.dp
+private val MenuElevation = 6.dp
 /** Room around the card inside the popup, so its shadow is never cut by the popup's window. */
 private val MenuShadowRoom = 16.dp
-private val MenuGap = 4.dp
-private val MenuScreenMargin = 8.dp
+private val MenuGap = 10.dp
+private val MenuScreenMargin = 16.dp
 private val RowSlide = 14.dp
+private val RowSidePadding = 16.dp
+/** Extra room above the first row and below the last, so their icon tile sits as far from the card's edge as from its side. */
+private val RowEdgeInset = RowSidePadding - (MenuRowHeight - IconTileSize) / 2
+/** Nearly opaque, a little more than the map's glass (Shahin, 2026-11-22). */
+private const val MENU_TINT_ALPHA = 0.98f
 
 // The position provider keeps the card inside the window; the shadow's room may reach past its edge, so the window
 // isn't pushed back in (that would move the card off its anchor).

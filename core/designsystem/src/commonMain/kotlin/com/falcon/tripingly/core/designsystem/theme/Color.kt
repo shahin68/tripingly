@@ -76,6 +76,7 @@ internal val GlassLight = Color(0x9EFFFFFF)
 internal val GlassDark = Color(0x99181A19)
 internal val GlassEdgeLight = Color(0x99FFFFFF)
 internal val GlassEdgeDark = Color(0x14FFFFFF)
+internal val MenuEdgeLight = Color(0x1F15171C)
 
 /**
  * What the map draws the same in light and dark: the new dot and the routes. Stops, the plan line and places
