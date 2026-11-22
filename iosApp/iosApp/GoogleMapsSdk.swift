@@ -115,7 +115,9 @@ private final class AppGoogleMap: NSObject, GoogleMap, GMSMapViewDelegate {
         var kept: [String: GMSMarker] = [:]
         for item in items {
             let marker = markers[item.key] ?? GMSMarker()
-            if marker.map == nil { marker.appearAnimation = item.fadesIn ? .fadeIn : .none }
+            let isNew = marker.map == nil
+            // Our own fade below: Google's .fadeIn ends fully opaque, so a dimmed pin came in clear.
+            marker.appearAnimation = .none
             marker.position = CLLocationCoordinate2D(latitude: item.latitude, longitude: item.longitude)
             marker.title = item.title
             if marker.icon !== item.icon { marker.icon = item.icon }
@@ -124,7 +126,17 @@ private final class AppGoogleMap: NSObject, GoogleMap, GMSMapViewDelegate {
             // See-through while the map is searched by name, unless it's a result.
             marker.opacity = item.opacity
             marker.userData = item
-            if marker.map == nil { marker.map = mapView }
+            if isNew {
+                marker.map = mapView
+                if item.fadesIn {
+                    // Up to the pin's own opacity, dimmed or clear, as on Android (PIN_FADE_MILLIS).
+                    let fade = CABasicAnimation(keyPath: "opacity")
+                    fade.fromValue = 0
+                    fade.toValue = item.opacity
+                    fade.duration = 0.25
+                    marker.layer.add(fade, forKey: "fadeIn")
+                }
+            }
             kept[item.key] = marker
         }
         for (key, marker) in markers where kept[key] == nil {

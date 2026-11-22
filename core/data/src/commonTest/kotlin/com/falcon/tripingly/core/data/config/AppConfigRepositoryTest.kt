@@ -90,7 +90,7 @@ class AppConfigRepositoryTest {
     }
 
     @Test
-    fun `the values saved last time come first, also when the server can't answer`() = runTest {
+    fun theSavedValuesComeFirst_alsoWhenTheServerCantAnswer() = runTest {
         val online = DefaultAppConfigRepository(api(HttpStatusCode.OK), store, backgroundScope)
         withContext(Dispatchers.Default) { withTimeout(5.seconds) { online.config.first { it != AppConfig() } } }
 
