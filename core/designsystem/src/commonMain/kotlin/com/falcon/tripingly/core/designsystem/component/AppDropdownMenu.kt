@@ -152,7 +152,7 @@ fun AppDropdownMenu(
                         drawContent()
                         val card = ease(CardEasing, phase(progress.value, 0f, CARD_END))
                         // Twice the edge: the clip keeps its inner half.
-                        drawOutline(bloomShape(card, placement.value).createOutline(size, layoutDirection, this), edge, style = Stroke(GlassDefaults.Edge.toPx() * 2))
+                        drawOutline(bloomShape(card, placement.value).createOutline(size, layoutDirection, this), edge, style = Stroke(GlassDefaults.Edge.toPx()))
                     }
                     .width(IntrinsicSize.Max)
                     .widthIn(min = MenuMinWidth)
