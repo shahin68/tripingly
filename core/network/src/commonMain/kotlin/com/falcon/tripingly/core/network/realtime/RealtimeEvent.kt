@@ -100,6 +100,9 @@ sealed interface RealtimeEvent {
      */
     data class ProChanged(val entitlements: Set<String>, val proExpiresAt: Instant?) : RealtimeEvent
 
+    /** `me.changed`: my account (`GET /me`) changed, e.g. on another device; nothing in it, the account is asked again. */
+    data object MeChanged : RealtimeEvent
+
     /**
      * `notification.created`, new or back on top: [entry] for the notification center (null when it can't be
      * read). About a stop ([markerId] in [tripId]) it gets a "new" mark on my map; [newsKind]: where it is seen
@@ -261,6 +264,7 @@ internal fun parseRealtimeEvent(name: String, payload: JsonElement): RealtimeEve
         "pro.changed" -> NetworkJson.decodeFromJsonElement<ProData>(data).let {
             RealtimeEvent.ProChanged(it.entitlements.toSet(), it.proExpiresAt)
         }
+        "me.changed" -> RealtimeEvent.MeChanged
         else -> null
     }
 } catch (_: SerializationException) {

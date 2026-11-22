@@ -48,6 +48,11 @@ class RealtimeEventTest {
     }
 
     @Test
+    fun myAccountChanged() {
+        assertEquals(RealtimeEvent.MeChanged, parse("me.changed", envelope("me.changed", "{}", tripId = null, actorId = null)))
+    }
+
+    @Test
     fun commentAndLikeEvents() {
         val comment = """
             {"id":"c1","markerId":"m1","body":"Lovely","author":{"id":"u2","username":"anna","displayName":"Anna"},

@@ -11,6 +11,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.runningFold
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -25,6 +26,12 @@ internal class AuthGateViewModel(
         /** Set when restoring failed for a reason other than a refused session (offline). */
         val restoreError: UiMessage? = null,
         val isRetrying: Boolean = false,
+        /**
+         * The server asks to accept new terms while the app is open: the app stays and a sheet asks over it, instead of
+         * the onboarding page taking its place (Shahin, 2026-11-22). Only for someone already in the app with a complete
+         * profile; a start that is still onboarding shows the onboarding page.
+         */
+        val isReconsent: Boolean = false,
     )
 
     sealed interface Action {
@@ -33,9 +40,16 @@ internal class AuthGateViewModel(
 
     private val restore = MutableStateFlow(RestoreStatus())
 
-    val uiState: StateFlow<State> = combine(sessionRepository.session, restore) { session, status ->
-        State(session = session, restoreError = status.error, isRetrying = status.running)
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), State())
+    /** Each session with whether it is a re-consent: onboarding that came while signed in, profile complete. */
+    private val sessions = sessionRepository.session.runningFold(SessionState.Restoring as SessionState to false) { (before, wasReconsent), now ->
+        val stillInApp = before is SessionState.SignedIn || wasReconsent
+        now to (now is SessionState.Onboarding && now.account.onboarding.missingProfileFields.isEmpty() && stillInApp)
+    }
+
+    // Eagerly: the gate is always on screen, and a re-consent depends on what came before, which a restart would lose.
+    val uiState: StateFlow<State> = combine(sessions, restore) { (session, isReconsent), status ->
+        State(session = session, restoreError = status.error, isRetrying = status.running, isReconsent = isReconsent)
+    }.stateIn(viewModelScope, SharingStarted.Eagerly, State())
 
     init {
         restore()

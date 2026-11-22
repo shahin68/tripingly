@@ -4,10 +4,12 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.text.input.InputTransformation
@@ -41,19 +43,23 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.falcon.tripingly.core.common.util.DateUtils
 import com.falcon.tripingly.core.designsystem.component.AppTextField
+import com.falcon.tripingly.core.designsystem.component.EditableAvatar
 import com.falcon.tripingly.core.designsystem.component.ErrorScreen
 import com.falcon.tripingly.core.designsystem.component.FieldButton
 import com.falcon.tripingly.core.designsystem.component.FloatingTopBar
 import com.falcon.tripingly.core.designsystem.component.FormField
 import com.falcon.tripingly.core.designsystem.component.PrimaryButton
 import com.falcon.tripingly.core.designsystem.component.ShowMessage
+import com.falcon.tripingly.core.designsystem.component.bottomSystemBar
 import com.falcon.tripingly.core.designsystem.component.screenContentPadding
 import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
 import com.falcon.tripingly.core.designsystem.theme.spacing
+import com.falcon.tripingly.core.ui.photos.rememberPhotoPicker
 import com.falcon.tripingly.feature.auth.generated.resources.Res
 import com.falcon.tripingly.feature.auth.generated.resources.common_cancel
 import com.falcon.tripingly.feature.auth.generated.resources.common_continue
 import com.falcon.tripingly.feature.auth.generated.resources.common_ok
+import com.falcon.tripingly.feature.auth.generated.resources.onboarding_add_photo
 import com.falcon.tripingly.feature.auth.generated.resources.onboarding_birth_date
 import com.falcon.tripingly.feature.auth.generated.resources.onboarding_birth_date_placeholder
 import com.falcon.tripingly.feature.auth.generated.resources.onboarding_birth_date_private
@@ -79,9 +85,6 @@ import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.atStartOfDayIn
 import kotlinx.datetime.toLocalDateTime
-import com.falcon.tripingly.core.designsystem.component.EditableAvatar
-import com.falcon.tripingly.core.ui.photos.rememberPhotoPicker
-import com.falcon.tripingly.feature.auth.generated.resources.onboarding_add_photo
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel
 
@@ -125,7 +128,7 @@ internal fun OnboardingScreen(
         bottomBar = {
             // The consent choice and its button stay anchored at the bottom; the documents scroll above.
             if (state.step == Step.CONSENT && !state.isLoadingDocuments && state.documents.isNotEmpty()) {
-                ConsentFooter(state, onAction)
+                ConsentFooter(state, onAction, Modifier.windowInsetsPadding(WindowInsets.bottomSystemBar))
             }
         },
     ) { padding ->

@@ -13,9 +13,10 @@ interface SessionRepository {
     val session: StateFlow<SessionState>
 
     /**
-     * At app start: stored tokens → `GET /me`. Without tokens, or when the server
-     * refuses them, the session is signed out. Any other failure (offline) leaves
-     * it [SessionState.Restoring] and returns the error, so the app can offer a retry.
+     * At app start: stored tokens and the account saved last time open the app at once, offline too, and the server's
+     * answer follows in the background (Shahin, 2026-11-22). Without a saved account (a fresh sign-in, an older app):
+     * `GET /me`. Without tokens, or when the server refuses them, the session is signed out. Any other failure
+     * (offline) leaves it [SessionState.Restoring] and returns the error, so the app can offer a retry.
      */
     suspend fun restore(): AppResult<Unit, DataError.Network>
 

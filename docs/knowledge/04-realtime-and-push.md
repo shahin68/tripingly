@@ -35,6 +35,7 @@
 | `trips.changed` | Refresh My Trips |
 | `follows.changed` | `{ followerId, followeeId, following }`, to both people (backend#34): an open profile it concerns reloads its header (counts, "Follows you", Follow button), skipping my own tap on that profile; open Friends/Following/Followers lists reload |
 | `pro.changed` | `{ entitlements, proExpiresAt }`, to me on every device (backend#96): sent once on every (re)connect and whenever a purchase, renewal, cancellation, refund or expiry changes Pro. `DefaultProRepository` puts it on the account (`SessionRepository.updatePro`), so `ProRepository.isPro` follows everywhere; nothing is asked |
+| `me.changed` | `{}`, to me on every device (backend#98): my account changed (profile, username, birth date, consents, onboarding finished, avatar adopted or removed), maybe on another device. `AccountSync` asks `GET /me` once, as on every (re)connect, and the saved account and session follow; new terms open the re-consent sheet over the app |
 | `account.suspended` | Sign out with a message |
 
 ### In the app

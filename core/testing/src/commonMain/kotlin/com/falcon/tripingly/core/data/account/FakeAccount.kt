@@ -139,6 +139,12 @@ class FakeAccountBackend(
         return AppResult.Success(publish(current))
     }
 
+    /** New versions of the terms and privacy policy: the account has to accept them again. */
+    fun newTerms() {
+        accepted.clear()
+        account?.let { publish(it) }
+    }
+
     override suspend fun setDefaultTripVisibility(visibility: TripVisibility): AppResult<Account, DataError.Network> {
         val current = account ?: return AppResult.Error(DataError.Network.Unauthorized)
         return AppResult.Success(publish(current.copy(defaultTripVisibility = visibility)))

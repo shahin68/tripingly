@@ -1,5 +1,8 @@
 package com.falcon.tripingly.core.data.config
 
+import androidx.datastore.core.DataStore
+import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.core.emptyPreferences
 import com.falcon.tripingly.core.model.config.AppConfig
 import com.falcon.tripingly.core.model.config.TransitArea
 import com.falcon.tripingly.core.network.ApiConfig
@@ -13,20 +16,23 @@ import io.ktor.client.engine.mock.respond
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.headersOf
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.time.Duration.Companion.seconds
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
-import kotlin.test.Test
-import kotlin.test.assertEquals
-import kotlin.time.Duration.Companion.seconds
 
 class AppConfigRepositoryTest {
 
     private val config = ApiConfig(baseUrl = "https://api.test/v1", environment = "test", client = "android/1.0")
     private var requests = 0
+    private val store = MemoryStore()
 
     private fun api(status: HttpStatusCode) = createKtorfit(
         createHttpClient(
@@ -48,7 +54,7 @@ class AppConfigRepositoryTest {
 
     @Test
     fun `the server's values replace the defaults`() = runTest {
-        val repository = DefaultAppConfigRepository(api(HttpStatusCode.OK), backgroundScope)
+        val repository = DefaultAppConfigRepository(api(HttpStatusCode.OK), store, backgroundScope)
 
         // The network runs on its own threads, so wait in real time.
         val loaded = withContext(Dispatchers.Default) {
@@ -74,12 +80,32 @@ class AppConfigRepositoryTest {
 
     @Test
     fun `the defaults stay when the server can't answer`() = runTest {
-        val repository = DefaultAppConfigRepository(api(HttpStatusCode.ServiceUnavailable), backgroundScope)
+        val repository = DefaultAppConfigRepository(api(HttpStatusCode.ServiceUnavailable), store, backgroundScope)
 
         withContext(Dispatchers.Default) {
             withTimeout(5.seconds) { while (requests == 0) delay(10) }
             delay(100)
         }
         assertEquals(AppConfig(), repository.config.value)
+    }
+
+    @Test
+    fun `the values saved last time come first, also when the server can't answer`() = runTest {
+        val online = DefaultAppConfigRepository(api(HttpStatusCode.OK), store, backgroundScope)
+        withContext(Dispatchers.Default) { withTimeout(5.seconds) { online.config.first { it != AppConfig() } } }
+
+        val offline = DefaultAppConfigRepository(api(HttpStatusCode.ServiceUnavailable), store, backgroundScope)
+
+        val loaded = withContext(Dispatchers.Default) { withTimeout(5.seconds) { offline.config.first { it != AppConfig() } } }
+        assertEquals(200, loaded.mapMaxPins)
+        assertEquals(false, loaded.osmPinsEnabled)
+    }
+
+    /** DataStore in memory: what `edit` writes, `data` reads back. */
+    private class MemoryStore : DataStore<Preferences> {
+        private val state = MutableStateFlow(emptyPreferences())
+        override val data: Flow<Preferences> = state
+        override suspend fun updateData(transform: suspend (t: Preferences) -> Preferences): Preferences =
+            transform(state.value).also { state.value = it }
     }
 }

@@ -113,13 +113,16 @@ internal class OnboardingViewModel(
 
     init {
         viewModelScope.launch {
+            var before: SessionState? = null
             sessionRepository.session.collect { session ->
                 when (session) {
-                    is SessionState.Onboarding -> onAccount(session.account)
+                    // Back in onboarding after being out of it (new terms while signed in): asked anew.
+                    is SessionState.Onboarding -> onAccount(session.account, isNewAsk = before !is SessionState.Onboarding)
                     // Sign-in screens aren't on the back stack: the half-filled form is forgotten here.
                     is SessionState.SignedOut -> forgetAccount()
                     SessionState.Restoring, is SessionState.SignedIn -> Unit
                 }
+                before = session
             }
         }
     }
@@ -169,7 +172,7 @@ internal class OnboardingViewModel(
         _uiState.value = State()
     }
 
-    private fun onAccount(account: Account) {
+    private fun onAccount(account: Account, isNewAsk: Boolean) {
         // This view model outlives sign-out, so another account starts from a clean form.
         val isNewAccount = this.account?.id != account.id
         this.account = account
@@ -189,7 +192,8 @@ internal class OnboardingViewModel(
         } else {
             _uiState.update { it.copy(step = step, photo = account.photo) }
         }
-        if (step == Step.CONSENT && _uiState.value.documents.isEmpty()) loadDocuments()
+        // This view model outlives onboarding: documents loaded for an earlier ask may be older versions.
+        if (step == Step.CONSENT && (_uiState.value.documents.isEmpty() || isNewAsk)) loadDocuments()
     }
 
     private fun onUsernameChange(value: String) {

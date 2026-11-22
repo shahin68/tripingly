@@ -22,6 +22,7 @@ import com.falcon.tripingly.core.network.createHttpClient
 import com.falcon.tripingly.core.network.createKtorfit
 import com.falcon.tripingly.core.network.photos.StorageClient
 import com.falcon.tripingly.core.network.photos.createPhotosApi
+import com.falcon.tripingly.core.storage.SecureStore
 import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.MockRequestHandleScope
 import io.ktor.client.engine.mock.respond
@@ -32,19 +33,25 @@ import io.ktor.http.HttpMethod
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.content.TextContent
 import io.ktor.http.headersOf
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertIs
+import kotlin.test.assertNotNull
+import kotlin.test.assertNull
+import kotlin.test.assertTrue
+import kotlin.time.Duration.Companion.seconds
+import kotlin.time.Instant
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeout
 import kotlinx.datetime.LocalDate
 import kotlinx.io.IOException
-import kotlin.test.Test
-import kotlin.test.assertEquals
-import kotlin.test.assertIs
-import kotlin.test.assertNull
-import kotlin.test.assertTrue
-import kotlin.time.Instant
 
 class SessionRepositoryTest {
 
@@ -81,9 +88,11 @@ class SessionRepositoryTest {
 
     private inner class Harness(
         scope: TestScope,
+        /** Shared by two harnesses: the same phone started twice. */
+        val secureStore: MapSecureStore = MapSecureStore(),
+        val tokenStore: InMemoryTokenStore = InMemoryTokenStore(),
         private val handler: suspend MockRequestHandleScope.(HttpRequestData) -> HttpResponseData,
     ) {
-        val tokenStore = InMemoryTokenStore()
         var cleared = 0
         private val lock = Mutex()
         private val recorded = mutableListOf<HttpRequestData>()
@@ -107,6 +116,7 @@ class SessionRepositoryTest {
             authApi = ktorfit.createAuthApi(),
             accountApi = ktorfit.createAccountApi(),
             tokenStore = tokenStore,
+            secureStore = secureStore,
             sessionEvents = sessionEvents,
             developerSignIn = DeveloperSignIn(config.devAuthSecret),
             cleaners = {
@@ -163,6 +173,8 @@ class SessionRepositoryTest {
                 else -> error("unexpected ${request.url}")
             }
         }
+
+        harness.tokenStore.save(AuthTokens("access-1", "refresh-1"))
 
         val result = harness.account.setProfilePhoto { byteArrayOf(1, 2, 3) }
 
@@ -327,6 +339,51 @@ class SessionRepositoryTest {
     }
 
     @Test
+    fun theSavedAccount_opensTheAppOffline_withoutWaitingForTheServer() = runTest {
+        val online = Harness(this) { json(meJson(completed = true)) }
+        online.tokenStore.save(AuthTokens("access-1", "refresh-1"))
+        online.session.restore()
+
+        val offline = Harness(this, online.secureStore, online.tokenStore) { throw IOException("offline") }
+        val result = offline.session.restore()
+
+        assertEquals(AppResult.Success(Unit), result)
+        val state = assertIs<SessionState.SignedIn>(offline.session.session.value)
+        assertEquals("jonas.k", state.account.username)
+        // Signed in, the live connection asks for the account; restore itself asks nothing.
+        assertEquals(emptyList(), offline.requests.map { it.url.encodedPath })
+    }
+
+    @Test
+    fun aSavedAccountStillOnboarding_opensOnboarding_andAsksTheServerBehindIt() = runTest {
+        val first = Harness(this) { json(meJson(completed = false, missingFields = """["username"]""")) }
+        first.tokenStore.save(AuthTokens("access-1", "refresh-1"))
+        first.session.restore()
+
+        // Finished on another device meanwhile.
+        val next = Harness(this, first.secureStore, first.tokenStore) { json(meJson(completed = true)) }
+        next.session.restore()
+        assertIs<SessionState.Onboarding>(next.session.session.value)
+
+        // The network runs on its own threads, so wait in real time.
+        withContext(Dispatchers.Default) { withTimeout(5.seconds) { next.session.session.first { it is SessionState.SignedIn } } }
+    }
+
+    @Test
+    fun signingOut_forgetsTheSavedAccount() = runTest {
+        val harness = Harness(this) { request ->
+            if (request.url.encodedPath.endsWith("/me")) json(meJson(completed = true)) else respond("", HttpStatusCode.NoContent)
+        }
+        harness.tokenStore.save(AuthTokens("access-1", "refresh-1"))
+        harness.session.restore()
+        assertNotNull(harness.secureStore.get("account.me"))
+
+        harness.session.signOut()
+
+        assertNull(harness.secureStore.get("account.me"))
+    }
+
+    @Test
     fun restore_offline_keepsTokensAndStaysRestoring() = runTest {
         val harness = Harness(this) { throw IOException("offline") }
         harness.tokenStore.save(AuthTokens("access-1", "refresh-1"))
@@ -443,5 +500,16 @@ class SessionRepositoryTest {
         harness.session.restore()
 
         assertEquals(1, harness.cleared)
+    }
+
+    private class MapSecureStore : SecureStore {
+        private val values = mutableMapOf<String, String>()
+        override suspend fun get(key: String) = values[key]
+        override suspend fun put(key: String, value: String) {
+            values[key] = value
+        }
+        override suspend fun remove(key: String) {
+            values.remove(key)
+        }
     }
 }

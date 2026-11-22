@@ -60,7 +60,7 @@ internal class RealtimeSync(
                 if (event.entry?.type in TRIP_RELOADING_NOTIFICATIONS && local.trip(tripId) != null) tripRefreshes.request(tripId)
             }
             // Pro is the Pro repository's.
-            is RealtimeEvent.FollowsChanged, is RealtimeEvent.NotificationsChanged, is RealtimeEvent.ProChanged -> Unit
+            is RealtimeEvent.FollowsChanged, is RealtimeEvent.NotificationsChanged, is RealtimeEvent.ProChanged, RealtimeEvent.MeChanged -> Unit
         }
     }
 
