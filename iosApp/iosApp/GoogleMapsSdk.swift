@@ -118,13 +118,18 @@ private final class AppGoogleMap: NSObject, GoogleMap, GMSMapViewDelegate {
             let isNew = marker.map == nil
             // Our own fade below: Google's .fadeIn ends fully opaque, so a dimmed pin came in clear.
             marker.appearAnimation = .none
-            marker.position = CLLocationCoordinate2D(latitude: item.latitude, longitude: item.longitude)
-            marker.title = item.title
+            // Only what changed is set, so an unchanged pin is never redrawn and never blinks.
+            let position = CLLocationCoordinate2D(latitude: item.latitude, longitude: item.longitude)
+            if isNew || marker.position.latitude != position.latitude || marker.position.longitude != position.longitude {
+                marker.position = position
+            }
+            if marker.title != item.title { marker.title = item.title }
             if marker.icon !== item.icon { marker.icon = item.icon }
-            marker.groundAnchor = CGPoint(x: item.anchorX, y: item.anchorY)
-            marker.zIndex = item.zIndex
-            // See-through while the map is searched by name, unless it's a result.
-            marker.opacity = item.opacity
+            let anchor = CGPoint(x: item.anchorX, y: item.anchorY)
+            if marker.groundAnchor != anchor { marker.groundAnchor = anchor }
+            if marker.zIndex != item.zIndex { marker.zIndex = item.zIndex }
+            // See-through while the map is searched by name, unless it's a result. A dim change applies once.
+            if marker.opacity != item.opacity { marker.opacity = item.opacity }
             marker.userData = item
             if isNew {
                 marker.map = mapView
