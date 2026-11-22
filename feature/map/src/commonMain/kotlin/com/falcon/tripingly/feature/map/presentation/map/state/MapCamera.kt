@@ -65,12 +65,12 @@ internal class MapCamera(private val context: MapContext) {
      * trip has no stops at all; else the map stays where it is. Opening a trip and tapping a day tab both show a day
      * this way, so they frame alike.
      */
-    fun showOpenDay() {
+    fun showOpenDay(also: List<Coordinates> = emptyList()) {
         val details = context.trip.value ?: return showAsItIs()
         val stops = context.activeDay()?.markers.orEmpty().ifEmpty { details.days.flatMap { it.markers } }
         val destination = details.destination
         when {
-            stops.isNotEmpty() -> frame(stops.map { Coordinates(it.location.lat, it.location.lng) })
+            stops.isNotEmpty() -> frame(stops.map { Coordinates(it.location.lat, it.location.lng) } + also)
             destination != null -> moveTo(Coordinates(destination.location.lat, destination.location.lng), DESTINATION_ZOOM)
             else -> showAsItIs()
         }

@@ -3053,6 +3053,35 @@ class MapViewModelTest {
         }
     }
 
+    @Test
+    fun `the fit button frames the map searched by name while it shows, else the open day`() = runTest(testDispatcher) {
+        addStops(GeoPoint(48.85, 2.30))
+        val viewModel = viewModel()
+        restOnTarget(viewModel)
+        val orsay = MapPlace("orsay", "Musée d'Orsay", PlaceCategory.Museum, GeoPoint(48.8600, 2.3266), isTripinly = false, hotCount = 0, prominence = 95)
+        places.searchResults = listOf(PlaceSearchResult(orsay.name, null, orsay.location, SearchResultType.Place, place = orsay))
+        places.searchCity = GeoBounds(48.81, 2.22, 48.91, 2.47)
+        viewModel.onAction(MapAction.Search.Open)
+        testScheduler.runCurrent()
+        viewModel.uiState.value.search!!.query.setTextAndPlaceCursorAtEnd("musee")
+        viewModel.onAction(MapAction.Search.Submit)
+        testScheduler.advanceUntilIdle()
+
+        viewModel.cameraCommands.test {
+            viewModel.onAction(MapAction.MapView.UserMove)
+            viewModel.onAction(MapAction.Days.FitDay)
+            testScheduler.advanceUntilIdle()
+            val named = assertIs<CameraCommand.Fit>(expectMostRecentItem()).bounds
+            assertTrue(orsay.location.lat in named.south..named.north && orsay.location.lng in named.west..named.east, "the named place")
+
+            viewModel.onAction(MapAction.Search.Close)
+            testScheduler.runCurrent()
+            viewModel.onAction(MapAction.Days.FitDay)
+            testScheduler.advanceUntilIdle()
+            assertEquals(CameraCommand.fit(listOf(Coordinates(48.85, 2.30))), expectMostRecentItem())
+        }
+    }
+
     /** Stops next to the Eiffel Tower and a walk from the Louvre; the first one's card open. */
     private suspend fun TestScope.openFirstStopCard(): MapViewModel {
         addStops(GeoPoint(48.8580, 2.2950), GeoPoint(48.8600, 2.3300))
@@ -3076,6 +3105,28 @@ class MapViewModelTest {
         assertEquals(500, state.layers.aroundRing?.radiusMeters, "ring")
         assertNull(state.placeFilter, "filter")
         assertNull(state.stopCard, "the card closes, so the ring can be reached")
+    }
+
+    @Test
+    fun `the fit button frames Around's whole ring while it shows, else the open day`() = runTest(testDispatcher) {
+        val viewModel = openFirstStopCard()
+        viewModel.onAction(MapAction.Around.Open)
+        testScheduler.advanceUntilIdle()
+
+        viewModel.cameraCommands.test {
+            viewModel.onAction(MapAction.MapView.UserMove)
+            viewModel.onAction(MapAction.Days.FitDay)
+            testScheduler.advanceUntilIdle()
+            val ring = assertIs<CameraCommand.Fit>(expectMostRecentItem()).bounds
+            assertEquals(500.0 / 111_320 * 2, ring.north - ring.south, 1e-9, "the ring's height")
+            assertEquals(48.8580, (ring.north + ring.south) / 2, 1e-9, "around the stop")
+            assertTrue(ring.east - ring.west > ring.north - ring.south, "wider in degrees away from the equator")
+
+            viewModel.onAction(MapAction.Around.Close)
+            viewModel.onAction(MapAction.Days.FitDay)
+            testScheduler.advanceUntilIdle()
+            assertEquals(CameraCommand.fit(listOf(Coordinates(48.8580, 2.2950), Coordinates(48.8600, 2.3300))), expectMostRecentItem())
+        }
     }
 
     @Test

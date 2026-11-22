@@ -321,6 +321,10 @@ internal class MapRouting(
         return true
     }
 
+    /** The day route's line while it shows, so the fit button keeps a line bending out past the stops in view. */
+    fun dayRouteLine(): List<Coordinates> =
+        context.model.value.route.takeIf { it.isDayRouteShown }?.plan?.route?.points.orEmpty().map { Coordinates(it.lat, it.lng) }
+
     /** A route's ends and, once it has come, its line, so a route bending out past its ends still fits. */
     private fun routePoints(route: PointRoute, plan: RoutePlan?): List<Coordinates> =
         (listOf(route.from.location, route.to.location) + plan?.route?.points.orEmpty()).map { Coordinates(it.lat, it.lng) }

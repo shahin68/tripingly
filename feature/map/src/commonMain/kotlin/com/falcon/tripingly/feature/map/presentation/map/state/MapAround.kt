@@ -4,6 +4,7 @@ import com.falcon.tripingly.core.common.result.AppResult
 import com.falcon.tripingly.core.data.places.PlaceRepository
 import com.falcon.tripingly.core.data.routing.RouteErrorCodes
 import com.falcon.tripingly.core.data.trips.hasCode
+import com.falcon.tripingly.core.location.model.Coordinates
 import com.falcon.tripingly.core.model.place.MapPlace
 import com.falcon.tripingly.core.model.place.PlaceCategory
 import com.falcon.tripingly.core.model.trip.GeoPoint
@@ -27,6 +28,7 @@ import kotlinx.coroutines.launch
  */
 internal class MapAround(
     private val context: MapContext,
+    private val camera: MapCamera,
     private val placeRepository: PlaceRepository,
     private val hasRoutes: () -> Boolean,
     private val showAroundIsPro: () -> Unit,
@@ -81,6 +83,19 @@ internal class MapAround(
             val around = model.around ?: return@update model
             model.copy(around = null, placeFilter = model.placeFilter.copy(isOpen = around.wasFilterOpen))
         }
+    }
+
+    /**
+     * The fit button while Around is open: the camera fits the whole ring (its north, south, east and west edges), as
+     * the latest thing done on the map (Shahin, 2026-11-22). False when Around isn't open.
+     */
+    fun frameRing(): Boolean {
+        val around = context.model.value.around ?: return false
+        val (lat, lng) = around.center
+        val dLat = around.radiusMeters / METERS_PER_DEGREE
+        val dLng = dLat / cos(lat * PI / 180)
+        camera.frame(listOf(Coordinates(lat + dLat, lng), Coordinates(lat - dLat, lng), Coordinates(lat, lng + dLng), Coordinates(lat, lng - dLng)))
+        return true
     }
 
     /** A route came on: Around goes, the route stays. */
@@ -164,9 +179,8 @@ internal class MapAround(
      */
     private fun MapModel.fittingRadius(): Int {
         val view = pins.area?.bounds ?: return DEFAULT_RADIUS_METERS
-        val metersPerDegree = 111_320.0
-        val height = (view.north - view.south) * metersPerDegree
-        val width = (view.east - view.west) * metersPerDegree * cos((view.north + view.south) / 2 * PI / 180)
+        val height = (view.north - view.south) * METERS_PER_DEGREE
+        val width = (view.east - view.west) * METERS_PER_DEGREE * cos((view.north + view.south) / 2 * PI / 180)
         val fits = (minOf(width, height) * FIT_SHARE).roundToInt() / ROUND_TO_METERS * ROUND_TO_METERS
         return fits.coerceIn(MIN_RADIUS_METERS, DEFAULT_RADIUS_METERS)
     }
@@ -182,5 +196,7 @@ internal class MapAround(
         /** The share of the view's shorter side the ring first spans as its radius, with room for its handle and tag. */
         const val FIT_SHARE = 0.25
         const val ROUND_TO_METERS = 10
+        /** About how many meters one degree of latitude spans. */
+        const val METERS_PER_DEGREE = 111_320.0
     }
 }

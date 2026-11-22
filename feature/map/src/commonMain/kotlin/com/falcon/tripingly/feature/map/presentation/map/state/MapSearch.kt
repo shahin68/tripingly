@@ -36,6 +36,9 @@ internal class MapSearch(
     private var searchJob: Job? = null
     private var fitJob: Job? = null
 
+    /** Where the map searched by name was fitted to, for the fit button while it shows. */
+    private var namedTargets: List<Coordinates> = emptyList()
+
     init {
         // However the search goes (back, a result picked, a route taking the field over), the map shows all places again.
         context.scope.launch {
@@ -96,6 +99,7 @@ internal class MapSearch(
         val listed = PlaceSearch(search.results, search.city).takeIf { search.results.isNotEmpty() }
         update { it.copy(results = emptyList(), isSearching = false) }
         pins.setName(name)
+        namedTargets = emptyList()
         fitJob = context.scope.launch {
             val found = listed ?: (placeRepository.search(name, center) as? AppResult.Success)?.data
             context.model.first { !isNamed(name) || !it.placeFilter.isLoading }
@@ -108,8 +112,20 @@ internal class MapSearch(
                 val nearest = all.minByOrNull { it.metersTo(center) } ?: return@ifEmpty emptyList()
                 all.filter { it.metersTo(nearest) <= CITY_RADIUS_METERS }
             }
-            camera.frame(targets.map { Coordinates(it.lat, it.lng) })
+            namedTargets = targets.map { Coordinates(it.lat, it.lng) }
+            camera.frame(namedTargets)
         }
+    }
+
+    /**
+     * The fit button while the map is searched by name: the camera fits the named places again, as the latest thing
+     * done on the map (Shahin, 2026-11-22). False when no named search shows or its places haven't come yet.
+     */
+    fun frameNamed(): Boolean {
+        val name = context.model.value.placeFilter.name ?: return false
+        if (!isNamed(name) || namedTargets.isEmpty()) return false
+        camera.frame(namedTargets)
+        return true
     }
 
     /** The search is still open on the map searched by [name]. */

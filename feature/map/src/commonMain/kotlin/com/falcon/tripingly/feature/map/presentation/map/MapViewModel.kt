@@ -120,7 +120,7 @@ class MapViewModel(
         showWholePlan = { sendEvent(MapEvent.ShowWholePlan) },
         transitAreas = appConfigRepository.config.map { it.transitAreas }.stateIn(viewModelScope, SharingStarted.Eagerly, appConfigRepository.config.value.transitAreas),
     )
-    private val around = MapAround(context, placeRepository, ::hasRoutes, showAroundIsPro = { sendEvent(MapEvent.OpenPaywall) }, showWholePlan = { sendEvent(MapEvent.ShowWholePlan) })
+    private val around = MapAround(context, camera, placeRepository, ::hasRoutes, showAroundIsPro = { sendEvent(MapEvent.OpenPaywall) }, showWholePlan = { sendEvent(MapEvent.ShowWholePlan) })
     private val search = MapSearch(context, camera, selection, pins, placeRepository, routeTo = routes::routeToResult)
     private val sharing = MapSharing(context, tripRepository, socialRepository) { sendEvent(MapEvent.NavigateBack) }
     private val opening = MapOpening(context, camera, tripRepository, mapViews, ::hasRoutes, stopId, showMembers, showComments)
@@ -268,7 +268,7 @@ class MapViewModel(
     private fun onDays(action: MapAction.Days) {
         when (action) {
             is MapAction.Days.Select -> selectDay(action.dayIndex)
-            is MapAction.Days.FitDay -> if (!routes.frameShownRoute()) camera.showOpenDay()
+            is MapAction.Days.FitDay -> if (!around.frameRing() && !search.frameNamed() && !routes.frameShownRoute()) camera.showOpenDay(also = routes.dayRouteLine())
             is MapAction.Days.TogglePlaces -> pins.setHidden(!model.arePlacesHidden)
         }
     }
