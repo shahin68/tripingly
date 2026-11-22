@@ -45,7 +45,14 @@ import org.jetbrains.compose.resources.stringResource
 @Composable
 internal fun BlockedPeopleSheet(state: State, onAction: (Action) -> Unit, onClose: () -> Unit) {
     Column(Modifier.fillMaxWidth()) {
-        SheetHeader(title = stringResource(Res.string.settings_blocked), subtitle = stringResource(Res.string.settings_blocked_hint), onClose = onClose)
+        SheetHeader(title = stringResource(Res.string.settings_blocked), onClose = onClose)
+        // In full, never cut: an explanation that ends in "…" says nothing (Shahin, 2026-11-22).
+        Text(
+            stringResource(Res.string.settings_blocked_hint),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(horizontal = MaterialTheme.spacing.large),
+        )
         val people = state.people
         when {
             // Only a line, no error screen: opening the sheet again loads it again (Shahin, 2026-11-22).
