@@ -55,6 +55,8 @@ data class MapUiState(
     val placeFilter: PlaceFilterState? = null,
     /** The places button is off: only the trip's stops and its route's places show. */
     val arePlacesHidden: Boolean = false,
+    /** The places button shows: not on a visitor's map, which only ever shows the trip's stops (Shahin, 2026-11-22). */
+    val canHidePlaces: Boolean = true,
     /** Shown over the map with a route, instead of the OpenStreetMap credit. */
     val routeAttribution: String? = null,
     /** The server lists OpenStreetMap places (OSM_PINS_ENABLED): their credit shows. Off, credits show only with a route. */
@@ -90,6 +92,8 @@ data class HeaderState(
     val canShare: Boolean = false,
     /** ⋮'s Leave trip: I'm an editor (the owner deletes the trip in My Trips instead). */
     val canLeave: Boolean = false,
+    /** The search button: not on a visitor's map (Shahin, 2026-11-22). */
+    val canSearch: Boolean = true,
     /** Someone else's public trip: save it, ask to join, see its owner, report it. */
     val viewerMenu: ViewerMenu? = null,
     /**
@@ -421,6 +425,8 @@ data class StopCardState(
     /** Someone else's public trip: the stop can be reported (in its details). */
     val canReport: Boolean,
     val routes: PinRoutesState = PinRoutesState(),
+    /** Go here, Route from or to here and Around show: not on a visitor's map (Shahin, 2026-11-22). */
+    val canRoute: Boolean = true,
     /** [PinAdd.ToMyTrip] on a trip I only view; null otherwise. */
     val add: PinAdd? = null,
     /** Who put it on the trip; null on a trip only its owner edits, after a deleted account or with a block. */

@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CornerSize
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.Comment
@@ -58,10 +59,13 @@ fun JoinedButtons(buttons: List<JoinedButtonSlot>, modifier: Modifier = Modifier
     }
 }
 
-/** The shape of the [index]th of [count] joined buttons: round outer ends, small inner corners. */
+/**
+ * The shape of the [index]th of [count] joined buttons: round outer ends (half the height, at any height: the map's
+ * Ask to join is taller, Shahin 2026-11-22), small inner corners.
+ */
 fun joinedShape(index: Int, count: Int): Shape {
-    val outer = JoinedButtonDefaults.Height / 2
-    val inner = JoinedButtonDefaults.InnerCorner
+    val outer = CornerSize(50)
+    val inner = CornerSize(JoinedButtonDefaults.InnerCorner)
     return RoundedCornerShape(
         topStart = if (index == 0) outer else inner,
         bottomStart = if (index == 0) outer else inner,

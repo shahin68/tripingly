@@ -105,6 +105,7 @@ internal fun BottomCards(
     isOsmCreditShown: Boolean,
     location: LocationState,
     arePlacesHidden: Boolean,
+    canHidePlaces: Boolean,
     /** Which way the map is turned, for the compass; read only while drawing. */
     bearing: () -> Float,
     dayTabs: DayTabsState,
@@ -149,7 +150,7 @@ internal fun BottomCards(
                     )
                     Spacer(modifier = Modifier.weight(1f))
                 }
-                MapButtons(location, arePlacesHidden, bearing, onAction, Modifier.padding(bottom = MaterialTheme.spacing.small))
+                MapButtons(location, arePlacesHidden, canHidePlaces, bearing, onAction, Modifier.padding(bottom = MaterialTheme.spacing.small))
             }
         }
         // What always covers the map: the tabs (none without days) and the gap under the card, each measured.
@@ -272,12 +273,14 @@ internal val SmallCreditsStyle: TextStyle
  * stops, else the whole trip's, else the destination), over the location button, which follows me while lit (filled,
  * in the accent colour). Following without a signal, a quiet note beside it says it waits for one. Our compass rides on
  * top while the map is turned ([MapCompass]). Someone else's trip's heart and Ask to join sit under the header
- * ([ViewerJoinPill]), so the credits beside these keep their room (Shahin, 2026-11-21).
+ * ([ViewerJoinPill]), so the credits beside these keep their room (Shahin, 2026-11-21). Without [canHidePlaces] (a
+ * visitor's map, which shows only the trip's stops; Shahin 2026-11-22) the places button isn't there.
  */
 @Composable
 internal fun MapButtons(
     location: LocationState,
     arePlacesHidden: Boolean,
+    canHidePlaces: Boolean,
     bearing: () -> Float,
     onAction: (MapAction) -> Unit,
     modifier: Modifier = Modifier,
@@ -289,22 +292,27 @@ internal fun MapButtons(
         }
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             MapCompass(bearing, onNorthUp = { onAction(MapAction.MapView.NorthUp) })
-            MapButtonColumn(location, arePlacesHidden, onAction)
+            MapButtonColumn(location, arePlacesHidden, canHidePlaces, onAction)
         }
     }
 }
 
 @Composable
-private fun MapButtonColumn(location: LocationState, arePlacesHidden: Boolean, onAction: (MapAction) -> Unit) {
+private fun MapButtonColumn(location: LocationState, arePlacesHidden: Boolean, canHidePlaces: Boolean, onAction: (MapAction) -> Unit) {
     GlassButtonColumn(blur = false) {
-        IconButton(onClick = { onAction(MapAction.Days.TogglePlaces) }) {
-            if (arePlacesHidden) {
-                Icon(Icons.Outlined.LayersClear, contentDescription = stringResource(Res.string.map_show_places))
-            } else {
-                Icon(Icons.Outlined.Layers, contentDescription = stringResource(Res.string.map_hide_places))
+        // Comes and goes when a visitor joins or leaves: the column grows down from its top and shrinks back.
+        AnimatedVisibility(canHidePlaces, enter = expandVertically(expandFrom = Alignment.Top) + fadeIn(), exit = shrinkVertically(shrinkTowards = Alignment.Top) + fadeOut()) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                IconButton(onClick = { onAction(MapAction.Days.TogglePlaces) }) {
+                    if (arePlacesHidden) {
+                        Icon(Icons.Outlined.LayersClear, contentDescription = stringResource(Res.string.map_show_places))
+                    } else {
+                        Icon(Icons.Outlined.Layers, contentDescription = stringResource(Res.string.map_hide_places))
+                    }
+                }
+                GlassButtonColumnDivider()
             }
         }
-        GlassButtonColumnDivider()
         IconButton(onClick = { onAction(MapAction.Days.FitDay) }) {
             Icon(Icons.Outlined.CenterFocusStrong, contentDescription = stringResource(Res.string.map_fit_day))
         }
@@ -363,11 +371,11 @@ private fun MapControlsPreviewContent() {
             verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
         ) {
             Row(horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small)) {
-                MapButtons(location = LocationState(), arePlacesHidden = false, bearing = { 30f }, onAction = {})
-                MapButtons(location = LocationState(isLoading = true), arePlacesHidden = true, bearing = { 0f }, onAction = {})
+                MapButtons(location = LocationState(), arePlacesHidden = false, canHidePlaces = true, bearing = { 30f }, onAction = {})
+                MapButtons(location = LocationState(isLoading = true), arePlacesHidden = true, canHidePlaces = false, bearing = { 0f }, onAction = {})
             }
-            MapButtons(location = LocationState(isFollowing = true, isSignalLost = true), arePlacesHidden = false, bearing = { 0f }, onAction = {})
-            MapButtons(location = LocationState(isFollowing = true, isSwitchedOff = true), arePlacesHidden = false, bearing = { 0f }, onAction = {})
+            MapButtons(location = LocationState(isFollowing = true, isSignalLost = true), arePlacesHidden = false, canHidePlaces = true, bearing = { 0f }, onAction = {})
+            MapButtons(location = LocationState(isFollowing = true, isSwitchedOff = true), arePlacesHidden = false, canHidePlaces = true, bearing = { 0f }, onAction = {})
         }
     }
 }

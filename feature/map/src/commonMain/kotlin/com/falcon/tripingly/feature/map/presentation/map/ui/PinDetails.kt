@@ -100,7 +100,8 @@ internal fun StopDetailsContent(card: StopCardState, onAction: (MapAction) -> Un
                 { onAction(MapAction.StopCard.OpenComments) },
                 showPhotos,
             ) +
-                routeButtons(card.routes, { onAction(MapAction.PinRoute.GoHere) }, { onAction(MapAction.PinRoute.Route) }, { onAction(MapAction.Around.Open) })
+                // A visitor's map has no routes or Around from a stop (Shahin, 2026-11-22).
+                if (card.canRoute) routeButtons(card.routes, { onAction(MapAction.PinRoute.GoHere) }, { onAction(MapAction.PinRoute.Route) }, { onAction(MapAction.Around.Open) }) else emptyList()
             JoinedButtons(group, Modifier.horizontalScroll(rememberScrollState()))
         },
         photoStrip = photoStrip,

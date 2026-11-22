@@ -56,6 +56,7 @@ import kotlin.math.cos
 import kotlin.math.sin
 import kotlin.math.sqrt
 import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.persistentSetOf
 import kotlinx.collections.immutable.toImmutableList
 import kotlinx.collections.immutable.toImmutableMap
@@ -72,6 +73,13 @@ internal class MapStateMapper(
     private val activeIndex = activeDayIndex(days.size, model.activeDayIndex)
     private val role = details?.trip?.role
     private val canEdit = role?.canEdit == true
+    /**
+     * Someone else's trip I'm not on: the map is about their trip, so the search, the place filter and places button, the
+     * map's places, along the way and a pin's routes and Around are off (Shahin, 2026-11-22). Back once a join is accepted.
+     */
+    private val isVisitor = role == TripRole.VIEWER
+    /** The places button is off, or it's a visitor's map: only the trip's stops and its route's ends show. */
+    private val arePlacesOff = model.arePlacesHidden || isVisitor
     /** Someone else's trip: the header says whose. */
     private val otherOwnerId = details?.trip?.owner?.id?.takeIf { role != TripRole.OWNER }
     /**
@@ -89,7 +97,7 @@ internal class MapStateMapper(
     private val isDayRoute = route.between == null && route.isDayRouteShown
     private val routePoints = plan?.route?.points.orEmpty().map { Coordinates(it.lat, it.lng) }
         .takeIf { isDayRoute || route.between != null }.orEmpty()
-    private val alongTheWay = stopPlaceIds(days.getOrNull(activeIndex)).let { stopIds ->
+    private val alongTheWay = if (isVisitor) emptyList() else stopPlaceIds(days.getOrNull(activeIndex)).let { stopIds ->
         // A place added from the list is a stop now, until the route reloads without it; the route's own ends never are
         // (an older server lists them).
         val endIds = route.endPlaces().mapTo(HashSet()) { (place, _) -> place.id }
@@ -121,8 +129,9 @@ internal class MapStateMapper(
             val isSwitchedOff = it.isSwitchedOff && (it.isFollowing || it.isWaitingForFirst)
             LocationState(isLoading = it.isLoading && !it.isSwitchedOff, isFollowing = it.isFollowing, isSignalLost = it.isSignalLost && !isSwitchedOff, isSwitchedOff = isSwitchedOff)
         },
-        placeFilter = model.placeFilterState(),
-        arePlacesHidden = model.arePlacesHidden,
+        placeFilter = model.placeFilterState().takeUnless { isVisitor },
+        arePlacesHidden = arePlacesOff,
+        canHidePlaces = !isVisitor,
         routeAttribution = plan?.attribution?.takeIf { routePoints.isNotEmpty() },
         isOsmCreditShown = config.osmPinsEnabled,
         sheet = sheet(),
@@ -154,6 +163,7 @@ internal class MapStateMapper(
             members = details?.members?.takeIf { it.isNotEmpty() }?.let { MembersEntry(it.size, details.pendingJoinRequestCount) },
             canShare = trip != null,
             canLeave = role == TripRole.EDITOR,
+            canSearch = !isVisitor,
             isLoading = days.isEmpty() && model.isLoadingTrip,
             isBusy = model.isSaving || model.isUpdatingSharing,
             viewerMenu = trip?.takeIf { role == TripRole.VIEWER }?.let {
@@ -241,6 +251,7 @@ internal class MapStateMapper(
             canEdit = canEdit,
             canReport = role == TripRole.VIEWER,
             routes = pinRoutes(GeoPoint(stop.position.latitude, stop.position.longitude)),
+            canRoute = !isVisitor,
             add = copyAdd,
             addedBy = addedBy(creatorId, marker?.createdBy),
             spotBy = place?.addedBy?.takeIf { it.id != creatorId }?.let { AddedBy(it, isMe = it.id == myUserId) },
@@ -274,7 +285,7 @@ internal class MapStateMapper(
         selectedPlaceId = (model.selection as? Selection.Place)?.place?.id,
         addToDayNumber = dayNumber?.takeIf { canEdit },
         isTransitCovered = isTransitCovered(),
-    )
+    ).let { if (isVisitor) it.copy(alongChips = persistentListOf()) else it }
 
     /** Public transport goes between the route's ends: both ends, or all the open day's stops, in one covered city. */
     private fun isTransitCovered(): Boolean {
@@ -308,7 +319,7 @@ internal class MapStateMapper(
         // a route or Around makes the rest dots: they are what was asked for (Shahin, 2026-11-17). The other pins stay
         // as they were, dimmed (Shahin, 2026-11-21).
         val isNamed = model.placeFilter.name != null
-        val visible = if (model.arePlacesHidden) pins.filter { isRoutes(it.place.id) || (isNamed && it.isSearchResult) } else pins
+        val visible = if (arePlacesOff) pins.filter { isRoutes(it.place.id) || (isNamed && it.isSearchResult) } else pins
         val shown = visible.mapTo(HashSet()) { it.place.id }
         val pinsShown = visible.map {
             when {
@@ -346,7 +357,7 @@ internal class MapStateMapper(
             stops = stops.toImmutableList(),
             placePins = placePins.toImmutableList(),
             pinDotBelowZoom = config.pinDotBelowZoom,
-            placeClusters = model.pins.clusters.takeUnless { model.arePlacesHidden }.orEmpty().toImmutableList(),
+            placeClusters = model.pins.clusters.takeUnless { arePlacesOff }.orEmpty().toImmutableList(),
             // A place from search knows no cover image, so its pin's place draws it, photo included.
             selectedPlace = when (val selection = model.selection) {
                 is Selection.Place -> selection.place.let { place -> placePins.firstOrNull { it.place.id == place.id }?.place ?: place }

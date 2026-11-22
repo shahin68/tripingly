@@ -172,7 +172,7 @@ internal fun MapHeader(
             GlassButtonRow(blur = false, height = GlassButtonDefaults.HeaderSize) {
                 if (search != null) {
                     SearchField(search, onAction, Modifier.weight(1f))
-                } else {
+                } else if (header.canSearch) {
                     // At the end while the pill shrinks back, so search and ⋮ stay put and don't glide.
                     Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.CenterEnd) {
                         IconButton(onClick = { onAction(MapAction.Search.Open) }) {
@@ -181,9 +181,10 @@ internal fun MapHeader(
                     }
                 }
                 // While searching, the end button closes the search: ⋮ turns into ✕ in its place and back (Shahin,
-                // 2026-11-21). Without a ⋮, the ✕ comes and goes with the search.
+                // 2026-11-21). Without a ⋮, the ✕ comes and goes with the search. A visitor's map has no search
+                // (Shahin, 2026-11-22): the pill is just ⋮.
                 if (actions.isNotEmpty()) {
-                    GlassButtonDivider()
+                    if (header.canSearch) GlassButtonDivider()
                     AnimatedContent(
                         targetState = search != null,
                         transitionSpec = {

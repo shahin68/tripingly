@@ -2065,35 +2065,49 @@ class MapViewModelTest {
     }
 
     @Test
-    fun `a viewer's + puts a place on a day of one of my trips, and the map stays`() = runTest(testDispatcher) {
-        backend.seed(trip.copy(trip = trip.trip.copy(role = TripRole.VIEWER)))
-        val mine = (backend.createTrip(NewTrip("Mine", LocalDate(2024, 2, 1), LocalDate(2024, 2, 2))) as AppResult.Success).data
+    fun `a visitor's map shows only the trip's stops, without search, filter, places button, routes or Around, and all of it is back once the owner accepts`() = runTest(testDispatcher) {
+        backend.addMarker(trip.trip.id, trip.days[0].id, NewMarker("Stephansdom", GeoPoint(48.2085, 16.3721)))
+        val withStop = (backend.refreshTrip(trip.trip.id) as AppResult.Success).data
+        backend.seed(withStop.copy(trip = withStop.trip.copy(role = TripRole.VIEWER)))
         val viewModel = viewModel()
         testScheduler.advanceUntilIdle()
         viewModel.onAction(MapAction.MapView.CameraRest(Coordinates(48.86, 2.32), 15f, PARIS_CENTER))
         testScheduler.advanceUntilIdle()
-        viewModel.onAction(MapAction.MapView.PlacePinClick(viewModel.pin("Louvre")))
+
+        // Nothing of the map's places loads or shows; only the stop.
+        var state = viewModel.uiState.value
+        assertTrue(places.requests.isEmpty())
+        assertTrue(state.layers.placePins.isEmpty())
+        assertEquals(1, state.layers.stops.size)
+        assertFalse(state.header.canSearch)
+        assertNull(state.placeFilter)
+        assertFalse(state.canHidePlaces)
+        assertTrue(state.arePlacesHidden)
+        viewModel.onAction(MapAction.MapView.MarkerClick(state.layers.stops.single()))
         restOnTarget(viewModel)
-        assertEquals(PinAdd.ToMyTrip, viewModel.uiState.value.placeCard?.add)
+        assertEquals(false, viewModel.uiState.value.stopCard?.canRoute)
 
-        viewModel.onAction(MapAction.PlaceCard.Add)
+        // Even an action that slipped through starts nothing.
+        viewModel.onAction(MapAction.Search.Open)
+        viewModel.onAction(MapAction.Days.TogglePlaces)
+        viewModel.onAction(MapAction.Around.Open)
         testScheduler.advanceUntilIdle()
-        // Only my trips I can edit: not the one I'm viewing.
-        val picker = assertIs<MapSheet.AddToTrip>(viewModel.uiState.value.sheet).picker
-        assertEquals(listOf(mine.trip.id), picker.trips.map { it.id })
-        viewModel.onAction(MapAction.Sheet.PickTrip(mine.trip.id))
-        testScheduler.advanceUntilIdle()
-        val days = assertNotNull(assertIs<MapSheet.AddToTrip>(viewModel.uiState.value.sheet).picker.days)
-        viewModel.onAction(MapAction.Sheet.PickDay(days[1].id))
-        testScheduler.advanceUntilIdle()
+        state = viewModel.uiState.value
+        assertNull(state.search)
+        assertTrue(state.arePlacesHidden)
+        assertTrue(places.aroundRequests.isEmpty())
 
-        val state = viewModel.uiState.value
-        assertNull(state.sheet)
-        assertNull(state.placeCard)
-        assertEquals(UiText.Note(UiText.Resource(Res.string.map_add_to_trip_added, "Mine", 2)), state.message?.text)
-        val stop = (backend.refreshTrip(mine.trip.id) as AppResult.Success).data.days[1].markers.single()
-        assertEquals("Louvre", stop.name)
-        assertTrue((backend.refreshTrip(trip.trip.id) as AppResult.Success).data.days[0].markers.isEmpty())
+        // Accepted: an editor now, everything is back at once and the places of the view load.
+        backend.seed(withStop.copy(trip = withStop.trip.copy(role = TripRole.EDITOR)))
+        testScheduler.advanceUntilIdle()
+        state = viewModel.uiState.value
+        assertTrue(state.header.canSearch)
+        assertNotNull(state.placeFilter)
+        assertTrue(state.canHidePlaces)
+        assertFalse(state.arePlacesHidden)
+        assertEquals(true, state.stopCard?.canRoute)
+        assertTrue(places.requests.isNotEmpty())
+        assertTrue(state.layers.placePins.isNotEmpty())
     }
 
     @Test
@@ -2168,15 +2182,15 @@ class MapViewModelTest {
 
     @Test
     fun `the days sheet goes back to the trips`() = runTest(testDispatcher) {
-        backend.seed(trip.copy(trip = trip.trip.copy(role = TripRole.VIEWER)))
+        backend.addMarker(trip.trip.id, trip.days[0].id, NewMarker("Stephansdom", GeoPoint(48.2085, 16.3721)))
+        val withStop = (backend.refreshTrip(trip.trip.id) as AppResult.Success).data
+        backend.seed(withStop.copy(trip = withStop.trip.copy(role = TripRole.VIEWER)))
         val mine = (backend.createTrip(NewTrip("Mine", LocalDate(2024, 2, 1), LocalDate(2024, 2, 2))) as AppResult.Success).data
         val viewModel = viewModel()
         testScheduler.advanceUntilIdle()
-        viewModel.onAction(MapAction.MapView.CameraRest(Coordinates(48.86, 2.32), 15f, PARIS_CENTER))
-        testScheduler.advanceUntilIdle()
-        viewModel.onAction(MapAction.MapView.PlacePinClick(viewModel.pin("Louvre")))
+        viewModel.onAction(MapAction.MapView.MarkerClick(viewModel.uiState.value.layers.stops.single()))
         restOnTarget(viewModel)
-        viewModel.onAction(MapAction.PlaceCard.Add)
+        viewModel.onAction(MapAction.StopCard.Add)
         testScheduler.advanceUntilIdle()
         viewModel.onAction(MapAction.Sheet.PickTrip(mine.trip.id))
         testScheduler.advanceUntilIdle()
@@ -2191,20 +2205,20 @@ class MapViewModelTest {
 
     @Test
     fun `a viewer without trips of their own is told to create one`() = runTest(testDispatcher) {
-        backend.seed(trip.copy(trip = trip.trip.copy(role = TripRole.VIEWER)))
+        backend.addMarker(trip.trip.id, trip.days[0].id, NewMarker("Stephansdom", GeoPoint(48.2085, 16.3721)))
+        val withStop = (backend.refreshTrip(trip.trip.id) as AppResult.Success).data
+        backend.seed(withStop.copy(trip = withStop.trip.copy(role = TripRole.VIEWER)))
         val viewModel = viewModel()
         testScheduler.advanceUntilIdle()
-        viewModel.onAction(MapAction.MapView.CameraRest(Coordinates(48.86, 2.32), 15f, PARIS_CENTER))
-        testScheduler.advanceUntilIdle()
-        viewModel.onAction(MapAction.MapView.PlacePinClick(viewModel.pin("Louvre")))
+        viewModel.onAction(MapAction.MapView.MarkerClick(viewModel.uiState.value.layers.stops.single()))
         testScheduler.advanceUntilIdle()
 
-        viewModel.onAction(MapAction.PlaceCard.Add)
+        viewModel.onAction(MapAction.StopCard.Add)
         testScheduler.advanceUntilIdle()
 
         assertNull(viewModel.uiState.value.sheet)
         assertEquals(UiText.Resource(Res.string.map_add_to_trip_no_trips), viewModel.uiState.value.message?.text)
-        assertTrue((backend.refreshTrip(trip.trip.id) as AppResult.Success).data.days[0].markers.isEmpty())
+        assertEquals(1, (backend.refreshTrip(trip.trip.id) as AppResult.Success).data.days[0].markers.size)
     }
 
     @Test
