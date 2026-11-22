@@ -32,6 +32,7 @@ dependencies {
     implementation(project(":core:data"))
 
     implementation(libs.androidx.activity.compose)
+    implementation(libs.androidx.core.splashscreen)
     implementation(libs.koin.android)
     implementation(project.dependencies.platform(libs.firebase.bom))
     implementation(libs.firebase.messaging)

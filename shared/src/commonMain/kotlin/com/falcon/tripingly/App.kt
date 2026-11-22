@@ -64,8 +64,9 @@ import kotlinx.coroutines.launch
 import org.koin.compose.getKoin
 import org.koin.compose.koinInject
 
+/** [onStarted]: the first real screen is on (Android lets its splash go then). */
 @Composable
-fun App() {
+fun App(onStarted: () -> Unit = {}) {
     val imageLoader = koinInject<ImageLoader>()
     setSingletonImageLoaderFactory { imageLoader }
     TripinglyTheme {
@@ -79,7 +80,7 @@ fun App() {
             // Every screen's errors and notes show in one floating banner (see MessageBanner).
             // The window behind is the theme's background too: a screen shrinking back under another shows no edge.
             Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
-                AuthGate { MainNavigation() }
+                AuthGate(onStarted = onStarted) { MainNavigation() }
                 MessageBannerHost(
                     Modifier
                         .align(Alignment.TopCenter)

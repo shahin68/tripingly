@@ -5,7 +5,9 @@ import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.tooling.preview.PreviewParameter
@@ -24,10 +26,15 @@ import org.koin.compose.viewmodel.koinViewModel
  * is (the same place in the composition, so nothing restarts) with a sheet over it.
  */
 @Composable
-fun AuthGate(content: @Composable () -> Unit) {
+fun AuthGate(onStarted: () -> Unit = {}, content: @Composable () -> Unit) {
     val viewModel: AuthGateViewModel = koinViewModel()
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val session = state.session
+    // Started once a screen is known: signed in, sign-in, onboarding, or the start's error with Retry.
+    if (session !is SessionState.Restoring || state.restoreError != null) {
+        val started by rememberUpdatedState(onStarted)
+        LaunchedEffect(Unit) { started() }
+    }
     if (session is SessionState.SignedIn || state.isReconsent) {
         content()
         ReconsentSheet(isShown = state.isReconsent)
