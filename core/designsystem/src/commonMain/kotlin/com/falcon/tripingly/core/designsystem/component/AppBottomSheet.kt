@@ -23,6 +23,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -80,16 +82,29 @@ fun <T : Any> AppBottomSheet(
     // A sheet is a window over everything: shown under another screen (e.g. the screen a back swipe goes back to), it
     // would cover that screen and take its back gesture.
     val visible = value.takeIf { LocalScreenOnTop.current }
-    val sheetState = rememberModalBottomSheetState(
-        skipPartiallyExpanded = !halfHigh,
-        confirmValueChange = { it != SheetValue.Hidden || canDismiss },
-    )
-    // TEMPORARY: why a sheet doesn't open after a rotation (removed with the fix).
-    val isOnTop = LocalScreenOnTop.current
-    LaunchedEffect(value != null, isOnTop) { sheetLog("value=${value != null} onTop=$isOnTop visible=${visible != null}") }
+    // A new sheet window, once, when the one opening never got its size (see below).
+    var window by remember { mutableIntStateOf(0) }
+    var reopened by remember { mutableStateOf(false) }
+    val sheetState = key(window) {
+        rememberModalBottomSheetState(
+            skipPartiallyExpanded = !halfHigh,
+            confirmValueChange = { it != SheetValue.Hidden || canDismiss },
+        )
+    }
+    // iOS (Compose 1.12 and 1.13): the first sheet opened after a rotation, once a sheet had been opened and closed
+    // before, never gets its window's size. Compose takes the holder of the sheet windows off the screen while none is
+    // open, so it misses the rotation; the next sheet's window is then told to wait for a size animation that never
+    // runs, lays out with no height limit and opens about two billion pixels below the screen (Shahin's logs,
+    // 2026-11-22). A second window opens normally, so the sheet opens once more in a new one. Android never gets here.
+    val windowHeightPx = LocalWindowInfo.current.containerSize.height
     LaunchedEffect(sheetState) {
-        snapshotFlow { Triple(sheetState.currentValue, sheetState.targetValue, sheetState.isAnimationRunning) }.collect { (now, target, moving) ->
-            sheetLog("now=$now target=$target moving=$moving offset=${runCatching { sheetState.requireOffset() }.getOrNull()}")
+        snapshotFlow {
+            sheetState.targetValue != SheetValue.Hidden &&
+                (runCatching { sheetState.requireOffset() }.getOrNull() ?: 0f) > windowHeightPx * 2f
+        }.first { it }
+        if (!reopened) {
+            reopened = true
+            window++
         }
     }
     // The last value stays on screen while the sheet slides away.
@@ -110,6 +125,7 @@ fun <T : Any> AppBottomSheet(
             // Caught and held up on the way, it still goes: the view model closed it.
             if (sheetState.isVisible) sheetState.hide()
             shown = null
+            reopened = false
         }
     }
     // The view model hears of a close once per value, as soon as the sheet heads down (a swipe, back, a tap outside,
@@ -143,48 +159,52 @@ fun <T : Any> AppBottomSheet(
     val sheetMotion = remember(motion) { FastSheetMotion(motion) }
     // Only the sheet's own slide is faster; its content gets the app's motion back.
     MaterialTheme(colorScheme = MaterialTheme.colorScheme, motionScheme = sheetMotion, shapes = MaterialTheme.shapes, typography = MaterialTheme.typography) {
-        ModalBottomSheet(
-            onDismissRequest = dismiss,
-            sheetState = sheetState,
-            // A tall sheet stops under the status bar instead of padding its content under it. Material pads the content
-            // by the status bar minus how far the sheet has moved down, so a sheet near full height changed height on every
-            // frame of a drag: its anchors moved, the drag snapped back up, and ✕'s slide restarted for seconds
-            // (Shahin, 2026-11-19). Padded outside the sheet, the status bar is already taken and the height stays put.
-            modifier = Modifier.windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top)).then(modifier),
-            contentWindowInsets = {
-                if (followsKeyboard) BottomSheetDefaults.windowInsets else BottomSheetDefaults.windowInsets.exclude(WindowInsets.ime)
-            },
-            dragHandle = {
-                BottomSheetDefaults.DragHandle(
-                    modifier = if (halfHigh) {
-                        Modifier.clickable(interactionSource = null, indication = null) {
-                            scope.launch { if (sheetState.currentValue == SheetValue.Expanded) sheetState.partialExpand() else sheetState.expand() }
+        // A new window when the opening one never got its size (see the sheet state above).
+        key(window) {
+            ModalBottomSheet(
+                onDismissRequest = dismiss,
+                sheetState = sheetState,
+                // A tall sheet stops under the status bar instead of padding its content under it. Material pads the content
+                // by the status bar minus how far the sheet has moved down, so a sheet near full height changed height on every
+                // frame of a drag: its anchors moved, the drag snapped back up, and ✕'s slide restarted for seconds
+                // (Shahin, 2026-11-19). Padded outside the sheet, the status bar is already taken and the height stays put.
+                modifier = Modifier.windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top)).then(modifier),
+                contentWindowInsets = {
+                    if (followsKeyboard) BottomSheetDefaults.windowInsets else BottomSheetDefaults.windowInsets.exclude(WindowInsets.ime)
+                },
+                dragHandle = {
+                    BottomSheetDefaults.DragHandle(
+                        modifier = if (halfHigh) {
+                            Modifier.clickable(interactionSource = null, indication = null) {
+                                scope.launch { if (sheetState.currentValue == SheetValue.Expanded) sheetState.partialExpand() else sheetState.expand() }
+                            }
+                        } else {
+                            Modifier
+                        },
+                    )
+                },
+            ) {
+                MaterialTheme(colorScheme = MaterialTheme.colorScheme, motionScheme = motion, shapes = MaterialTheme.shapes, typography = MaterialTheme.typography) {
+                    // Back goes to the sheet before, not out of the chain.
+                    if (goBack != null) NavigationBackHandler(rememberNavigationEventState(NavigationEventInfo.None), onBackCompleted = goBack)
+                    // No overscroll inside a sheet: pulled down at the top, a list moves the sheet itself. iOS's bounce kept
+                    // the pull in the list, so a full-height sheet sprang back up however hard it was pulled (Shahin, 2026-11-19).
+                    // Opened, the sheet says so once its slide has ended, until it goes ([LocalSheetArrived]).
+                    var arrived by remember { mutableStateOf(false) }
+                    LaunchedEffect(Unit) {
+                        snapshotFlow { sheetState.isVisible && !sheetState.isAnimationRunning }.first { it }
+                        arrived = true
+                    }
+                    // Never taller than the window: the iOS sheet window that missed a rotation (see the sheet state above)
+                    // lays out with no height limit until it opens again, and a scroll inside would throw ("measured with an
+                    // infinity maximum height"; Shahin's Xcode log, 2026-11-22). A normal measure already passes the window's
+                    // height or less, so this changes nothing else.
+                    // A Column, so content with several parts stacks as it did in the sheet's own column.
+                    val windowHeight = with(LocalDensity.current) { LocalWindowInfo.current.containerSize.height.toDp() }
+                    Column(Modifier.heightIn(max = windowHeight)) {
+                        CompositionLocalProvider(LocalSheetBack provides goBack, LocalOverscrollFactory provides null, LocalSheetArrived provides arrived) {
+                            content(current, close)
                         }
-                    } else {
-                        Modifier
-                    },
-                )
-            },
-        ) {
-            MaterialTheme(colorScheme = MaterialTheme.colorScheme, motionScheme = motion, shapes = MaterialTheme.shapes, typography = MaterialTheme.typography) {
-                // Back goes to the sheet before, not out of the chain.
-                if (goBack != null) NavigationBackHandler(rememberNavigationEventState(NavigationEventInfo.None), onBackCompleted = goBack)
-                // No overscroll inside a sheet: pulled down at the top, a list moves the sheet itself. iOS's bounce kept
-                // the pull in the list, so a full-height sheet sprang back up however hard it was pulled (Shahin, 2026-11-19).
-                // Opened, the sheet says so once its slide has ended, until it goes ([LocalSheetArrived]).
-                var arrived by remember { mutableStateOf(false) }
-                LaunchedEffect(Unit) {
-                    snapshotFlow { sheetState.isVisible && !sheetState.isAnimationRunning }.first { it }
-                    arrived = true
-                }
-                // Never taller than the window: right after a rotation iOS measures a sheet's window once with no height
-                // limit, and a scroll inside would throw ("measured with an infinity maximum height"; Shahin's Xcode log,
-                // 2026-11-22). A normal measure already passes the window's height or less, so this changes nothing else.
-                // A Column, so content with several parts stacks as it did in the sheet's own column.
-                val windowHeight = with(LocalDensity.current) { LocalWindowInfo.current.containerSize.height.toDp() }
-                Column(Modifier.heightIn(max = windowHeight)) {
-                    CompositionLocalProvider(LocalSheetBack provides goBack, LocalOverscrollFactory provides null, LocalSheetArrived provides arrived) {
-                        content(current, close)
                     }
                 }
             }
