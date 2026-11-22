@@ -414,8 +414,8 @@ internal fun GoogleSdkMapView(
         // The first pins (the most liked, then the best known) on top. A photo pin waits for its photo. The tapped
         // place's pin stays as it is and a bigger copy is drawn over it below, as on Android. Zoomed out below
         // pinDotBelowZoom, or while a route shows ([PlacePin.isDot]), a pin is its dot; the map fades a pin into its new look.
-        val pins = placePins.mapIndexedNotNull { index, pin ->
-            if (!pin.isReady(pinPhotos, brandLogos)) return@mapIndexedNotNull null
+        val pins = placePins.mapNotNull { pin ->
+            if (!pin.isReady(pinPhotos, brandLogos)) return@mapNotNull null
             GoogleMapMarker(
                 key = PLACE_KEY + pin.place.id,
                 latitude = pin.place.location.lat,
@@ -431,7 +431,9 @@ internal fun GoogleSdkMapView(
                 zIndex = when {
                     pin.isSearchResult -> SEARCH_RESULT_Z
                     pin.isKept -> KEPT_PIN_Z
-                    else -> -1 - index
+                    // The place's own order, not its place in the list: an answer that re-sorts the list changes no pin's
+                    // zIndex, and iOS redraws a marker whose zIndex changes (Shahin, 2026-11-22: pins blinked).
+                    else -> pin.place.stackZ()
                 },
                 showsInfoWindow = false,
                 // Places along the way show at once with their route (Shahin, 2026-11-10).
@@ -576,6 +578,13 @@ private fun PlaceCluster.key() = "$CLUSTER_KEY${location.lat},${location.lng}"
 private const val SELECTED_PLACE_KEY = "selected-place"
 private const val ROUTE_END_KEY = "route-end:"
 private const val LINE_MARK_KEY = "line-mark:"
+
+/**
+ * A place's own stacking order, the same in every answer: liked places first, then the most liked, then the best known.
+ * Always under 0, so under the clusters, stops and route ends.
+ */
+private fun MapPlace.stackZ(): Int =
+    (if (isTripinly) 100_000 else 0) + hotCount.coerceIn(0, 999) * 100 + prominence.coerceIn(0, 99) - 200_000
 
 /** A route end's halo: under its own pin (kept places and stops at 1), over the other places. */
 private const val ROUTE_END_Z = 0
