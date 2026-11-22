@@ -1,6 +1,9 @@
 package com.falcon.tripingly.feature.map.presentation.map.ui
 
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.height
@@ -11,6 +14,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.FilterAltOff
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
@@ -41,7 +45,7 @@ import org.jetbrains.compose.resources.stringResource
  * there are ("Café 4"). A tap picks only that kind; tapping it again shows every kind. A round clear button stays at the
  * end while the kinds scroll, clearing the pick; it is never picked itself and dims while nothing is picked (Shahin,
  * 2026-11-21: one kind at a time, no All chip). Used by the route card, the map filter and Around. [chipHeight] makes the
- * chips smaller where the row sits in a slim pill.
+ * chips smaller where the row sits in a slim pill; [isLoading] rings the clear button while places load.
  */
 @Composable
 internal fun CategoryChipRow(
@@ -50,6 +54,7 @@ internal fun CategoryChipRow(
     modifier: Modifier = Modifier,
     edgePadding: Dp = MaterialTheme.spacing.small,
     chipHeight: Dp = Dp.Unspecified,
+    isLoading: Boolean = false,
 ) {
     val listState = rememberLazyListState()
     val haptics = rememberHaptics()
@@ -65,17 +70,24 @@ internal fun CategoryChipRow(
                 CategoryChipItem(chip, onToggle, chipHeight, Modifier.animateItem())
             }
         }
-        PillIconChip(
-            icon = Icons.Outlined.FilterAltOff,
-            contentDescription = stringResource(Res.string.map_category_clear),
-            onClick = {
-                haptics.tick()
-                onToggle(null)
-            },
-            enabled = chips.any { it.isSelected },
-            size = chipHeight.takeOrElse { ClearButtonSize },
-            modifier = Modifier.padding(end = edgePadding),
-        )
+        val buttonSize = chipHeight.takeOrElse { ClearButtonSize }
+        Box(Modifier.padding(end = edgePadding), contentAlignment = Alignment.Center) {
+            PillIconChip(
+                icon = Icons.Outlined.FilterAltOff,
+                contentDescription = stringResource(Res.string.map_category_clear),
+                onClick = {
+                    haptics.tick()
+                    onToggle(null)
+                },
+                enabled = chips.any { it.isSelected },
+                size = buttonSize,
+            )
+            // While places load, a ring on the button's edge (Shahin 2026-11-22): it takes no room, so nothing beside it
+            // moves, and it is only drawn, so a tap goes through to the button.
+            androidx.compose.animation.AnimatedVisibility(visible = isLoading, enter = fadeIn(), exit = fadeOut()) {
+                CircularProgressIndicator(strokeWidth = LoadingStroke, modifier = Modifier.size(buttonSize))
+            }
+        }
     }
 }
 
@@ -99,6 +111,7 @@ private fun CategoryChipItem(chip: CategoryChip, onToggle: (PlaceCategory?) -> U
 /** The chips' own height where the row doesn't set one. */
 private val ClearButtonSize = 40.dp
 private val ChipIconSize = 18.dp
+private val LoadingStroke = 2.dp
 
 @Composable
 private fun CategoryChipsPreviewContent() {
