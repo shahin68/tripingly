@@ -3,9 +3,11 @@ package com.falcon.tripingly.core.designsystem.component
 import androidx.compose.animation.core.FiniteAnimationSpec
 import androidx.compose.foundation.LocalOverscrollFactory
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.exclude
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.safeDrawing
@@ -29,6 +31,8 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.navigationevent.NavigationEventInfo
 import androidx.navigationevent.compose.NavigationBackHandler
 import androidx.navigationevent.compose.rememberNavigationEventState
@@ -165,8 +169,15 @@ fun <T : Any> AppBottomSheet(
                     snapshotFlow { sheetState.isVisible && !sheetState.isAnimationRunning }.first { it }
                     arrived = true
                 }
-                CompositionLocalProvider(LocalSheetBack provides goBack, LocalOverscrollFactory provides null, LocalSheetArrived provides arrived) {
-                    content(current, close)
+                // Never taller than the window: right after a rotation iOS measures a sheet's window once with no height
+                // limit, and a scroll inside would throw ("measured with an infinity maximum height"; Shahin's Xcode log,
+                // 2026-11-22). A normal measure already passes the window's height or less, so this changes nothing else.
+                // A Column, so content with several parts stacks as it did in the sheet's own column.
+                val windowHeight = with(LocalDensity.current) { LocalWindowInfo.current.containerSize.height.toDp() }
+                Column(Modifier.heightIn(max = windowHeight)) {
+                    CompositionLocalProvider(LocalSheetBack provides goBack, LocalOverscrollFactory provides null, LocalSheetArrived provides arrived) {
+                        content(current, close)
+                    }
                 }
             }
         }
