@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
@@ -28,10 +29,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.falcon.tripingly.core.designsystem.component.DropdownAction
 import com.falcon.tripingly.core.designsystem.component.AppTextField
 import com.falcon.tripingly.core.designsystem.component.AppTextFieldStyle
 import com.falcon.tripingly.core.designsystem.component.ButtonSize
+import com.falcon.tripingly.core.designsystem.component.DropdownAction
 import com.falcon.tripingly.core.designsystem.component.LoadStateContent
 import com.falcon.tripingly.core.designsystem.component.NewIndicator
 import com.falcon.tripingly.core.designsystem.component.SecondaryButton
@@ -53,9 +54,9 @@ import com.falcon.tripingly.feature.social.generated.resources.social_followers
 import com.falcon.tripingly.feature.social.generated.resources.social_followers_empty
 import com.falcon.tripingly.feature.social.generated.resources.social_following
 import com.falcon.tripingly.feature.social.generated.resources.social_following_empty
-import com.falcon.tripingly.feature.social.generated.resources.social_notifications
 import com.falcon.tripingly.feature.social.generated.resources.social_friends
 import com.falcon.tripingly.feature.social.generated.resources.social_friends_empty
+import com.falcon.tripingly.feature.social.generated.resources.social_notifications
 import com.falcon.tripingly.feature.social.generated.resources.social_people_none
 import com.falcon.tripingly.feature.social.generated.resources.social_profile_no_trips
 import com.falcon.tripingly.feature.social.generated.resources.social_retry
@@ -64,13 +65,13 @@ import com.falcon.tripingly.feature.social.generated.resources.social_trips
 import com.falcon.tripingly.feature.social.presentation.component.EmptyText
 import com.falcon.tripingly.feature.social.presentation.component.LoadMoreAtEnd
 import com.falcon.tripingly.feature.social.presentation.component.PersonRow
-import com.falcon.tripingly.feature.social.presentation.component.unfollowAction
 import com.falcon.tripingly.feature.social.presentation.component.PublicTripCard
 import com.falcon.tripingly.feature.social.presentation.component.placeholderPeople
 import com.falcon.tripingly.feature.social.presentation.component.placeholderProfile
 import com.falcon.tripingly.feature.social.presentation.component.placeholderTrips
 import com.falcon.tripingly.feature.social.presentation.component.previewPeople
 import com.falcon.tripingly.feature.social.presentation.component.previewTrip
+import com.falcon.tripingly.feature.social.presentation.component.unfollowAction
 import com.falcon.tripingly.feature.social.presentation.people.PeopleSearchViewModel
 import com.falcon.tripingly.feature.social.presentation.people.PeopleViewModel
 import com.falcon.tripingly.feature.social.presentation.profile.ProfileViewModel.Action
@@ -273,7 +274,8 @@ private fun NotificationsButton(hasBadge: Boolean, onClick: () -> Unit) {
 @Composable
 private fun MyProfileSkeleton(segment: ProfileSegment, contentPadding: PaddingValues) {
     Skeleton(Modifier.fillMaxSize()) {
-        Column(Modifier.padding(contentPadding), verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small)) {
+        // Runs on under the bottom bar like the real list (edge to edge), instead of stopping at it.
+        Column(Modifier.wrapContentHeight(Alignment.Top, unbounded = true).padding(contentPadding), verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small)) {
             MyProfileHeader(placeholderProfile, MyProfilePhotoViewModel.State(), onChoosePhoto = {}, onRemovePhoto = {}) {
                 NotificationsButton(hasBadge = false, onClick = {})
             }

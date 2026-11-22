@@ -83,9 +83,11 @@
     <string name="map_place_category_photo_spot">Fotós hely</string>
     <string name="map_place_category_romantic">Romantikus hely</string>
     <string name="map_search">Helyek keresése</string>
+    <string name="map_close_search">Keresés bezárása</string>
     <string name="map_search_placeholder">Helyek, címek, városok</string>
     <string name="map_new_spot_name">Nevezd el a helyet</string>
     <string name="map_new_spot_create">Létrehozás</string>
+    <string name="map_new_spot_brand_store">Márkabolt</string>
     <string name="map_new_spot_add_photo">Fotó hozzáadása</string>
     <string name="map_new_spot_remove_photo">Fotó eltávolítása</string>
     <string name="map_new_spot_categories">Kategória</string>
@@ -117,6 +119,7 @@
     <string name="map_save_trip">Mentés az utazásaimba</string>
     <string name="map_unsave_trip">Eltávolítás az utazásaimból</string>
     <string name="map_join_trip">Csatlakozás kérése</string>
+    <string name="map_join_sent">Kérés elküldve</string>
     <string name="map_cancel_join">Kérés visszavonása</string>
     <string name="map_trip_saved">Elmentve az utazásaid közé.</string>
     <string name="map_trip_unsaved">Eltávolítva az utazásaid közül.</string>
@@ -215,7 +218,6 @@
     <string name="map_route_meters">%1$d m</string>
     <string name="map_route_km">%1$s km</string>
     <string name="map_route_estimated">Az útvonalak most nem érhetők el.</string>
-    <string name="map_along_the_way">Útközben</string>
     <string name="map_along_the_way_item">%1$s múlva · %2$s-re az útvonaltól</string>
     <string name="map_along_add">Hozzáadás a(z) %1$d. naphoz</string>
     <string name="map_route_from_here">Útvonal innen</string>
@@ -285,4 +287,21 @@
     <string name="map_add_to_trip_added">Hozzáadva: %1$s, %2$d. nap.</string>
     <string name="map_error_add_to_trip">Nem sikerült hozzáadni az utazásodhoz.</string>
     <string name="map_error_load_days">Nem sikerült betölteni az utazás napjait.</string>
+    <string name="map_category_clear">Szűrő törlése</string>
+    <string name="map_category_count">%1$s %2$d</string>
+    <string name="map_filter_open">Helyek szűrése</string>
+    <string name="map_filter_close">Szűrő bezárása</string>
+    <string name="map_around">A környéken</string>
+    <string name="map_around_named">%1$s környékén</string>
+    <string name="map_around_close">Környék bezárása</string>
+    <string name="map_around_none">Ebben a körben nincs hely.</string>
+    <string name="map_error_around">Nem sikerült betölteni a környék helyeit.</string>
+    <string name="map_share_trip">Utazás megosztása</string>
+    <string name="map_leave_trip">Kilépés az utazásból</string>
+    <string name="map_leave_trip_title">Kilépsz az utazásból?</string>
+    <string name="map_leave_trip_message">Ezután nem látod és nem szerkesztheted a(z) „%1$s” utazást. A tulajdonos újra hozzáadhat.</string>
+    <string name="map_leave_trip_button">Kilépés</string>
+    <string name="map_share_trip_text">Nézd meg ezt az utazást: %1$s (%2$s)!</string>
+    <string name="map_share_trip_text_no_dates">Nézd meg ezt az utazást: %1$s!</string>
+    <string name="map_error_leave">Nem sikerült kilépni az utazásból.</string>
 </resources>

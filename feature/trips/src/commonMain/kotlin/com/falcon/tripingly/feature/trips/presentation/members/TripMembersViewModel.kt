@@ -1,7 +1,6 @@
 package com.falcon.tripingly.feature.trips.presentation.members
 
 import androidx.compose.foundation.text.input.TextFieldState
-import androidx.compose.foundation.text.input.clearText
 import androidx.compose.runtime.Immutable
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -15,6 +14,7 @@ import com.falcon.tripingly.core.data.users.UserRepository
 import com.falcon.tripingly.core.model.trip.JoinRequest
 import com.falcon.tripingly.core.model.trip.TripInvite
 import com.falcon.tripingly.core.model.trip.TripMember
+import com.falcon.tripingly.core.model.trip.TripRole
 import com.falcon.tripingly.core.model.trip.UserSummary
 import com.falcon.tripingly.core.ui.UiText
 import com.falcon.tripingly.core.ui.toUiText
@@ -23,19 +23,22 @@ import com.falcon.tripingly.feature.trips.generated.resources.members_error_add
 import com.falcon.tripingly.feature.trips.generated.resources.members_error_answer_request
 import com.falcon.tripingly.feature.trips.generated.resources.members_error_create_invite
 import com.falcon.tripingly.feature.trips.generated.resources.members_error_load
-import com.falcon.tripingly.feature.trips.generated.resources.members_error_load_invites
 import com.falcon.tripingly.feature.trips.generated.resources.members_error_load_requests
 import com.falcon.tripingly.feature.trips.generated.resources.members_error_remove
-import com.falcon.tripingly.feature.trips.generated.resources.members_error_revoke_invite
-import com.falcon.tripingly.feature.trips.generated.resources.members_error_some_not_added
-import com.falcon.tripingly.feature.trips.generated.resources.members_error_user_not_found
+import com.falcon.tripingly.feature.trips.generated.resources.members_error_search
+import kotlin.time.Duration.Companion.milliseconds
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.ImmutableSet
+import kotlinx.collections.immutable.PersistentMap
 import kotlinx.collections.immutable.persistentListOf
+import kotlinx.collections.immutable.persistentMapOf
 import kotlinx.collections.immutable.persistentSetOf
 import kotlinx.collections.immutable.toImmutableList
 import kotlinx.collections.immutable.toImmutableSet
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.async
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -45,11 +48,13 @@ import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import org.jetbrains.compose.resources.StringResource
+import kotlin.time.Clock
 
 /**
- * Who is in a trip; the owner adds editors (several friends at once, or anyone by username) and removes
- * them, answers requests to join, and manages invite links.
+ * Who is in a trip (design: the members sheet canvas, board "Search icon in the header", Shahin 2026-11-18). The owner
+ * answers requests to join, adds a friend with one tap (at once, with Undo), finds anyone by name or @username on the
+ * Add people page, removes editors and shares an invite link. Everything loads together behind one skeleton, so the
+ * sheet doesn't jump; someone asking to join is never offered as a friend to add.
  */
 class TripMembersViewModel(
     private val tripId: String,
@@ -59,101 +64,185 @@ class TripMembersViewModel(
 ) : ViewModel() {
 
     /** Everything but the trip itself, which comes from the cache and is filled in below. */
-    private val ui = MutableStateFlow(State())
+    private val ui = MutableStateFlow(Ui())
 
     val uiState: StateFlow<State> = combine(tripRepository.observeTrip(tripId), ui) { details, ui ->
-        val members = details?.members.orEmpty().map { it.user.username }.toSet()
-        ui.copy(
+        // As the latest tap wants them while the server catches up: one row per person however fast the taps come.
+        val saved = details?.members.orEmpty().filter { ui.wanted[it.user.username]?.isOnTrip != false }
+        val savedNames = saved.mapTo(HashSet()) { it.user.username }
+        val members = saved + ui.wanted.values.filter { it.isOnTrip && it.user.username !in savedNames }.map { TripMember(it.user, TripRole.EDITOR) }
+        val onTrip = members.mapTo(HashSet()) { it.user.username }
+        val asking = ui.requests.requests.mapTo(HashSet()) { it.user.username }
+        State(
+            isReady = true,
             tripName = details?.trip?.name.orEmpty(),
             canManage = details?.trip?.role?.canManage == true,
-            members = details?.members.orEmpty().toImmutableList(),
-            add = ui.add.copy(
-                friends = ui.add.friends?.filterNot { it.username in members }?.toImmutableList(),
-                pickedFriends = (ui.add.pickedFriends - members).toImmutableSet(),
-            ),
-            isLoading = ui.isLoading && (details == null || details.days.isEmpty()),
+            isLoading = ui.isLoading,
+            waitingCount = details?.pendingJoinRequestCount ?: 0,
+            members = members.toImmutableList(),
+            joinRequests = ui.requests,
+            friends = ui.friends?.filterNot { it.username in onTrip || it.username in asking }?.toImmutableList(),
+            onTrip = onTrip.toImmutableSet(),
+            asking = asking.toImmutableSet(),
+            search = ui.search,
+            invites = ui.invites,
+            isCreatingInvite = ui.isCreatingInvite,
+            message = ui.message,
+            added = ui.added,
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), State())
 
     private val _events = Channel<Event>(capacity = Channel.BUFFERED)
     val events = _events.receiveAsFlow()
 
+    private var searchJob: Job? = null
+
     fun onAction(action: Action) {
         when (action) {
             // The sheet's view model outlives the sheet, so each opening starts fresh.
             Action.Opened -> {
-                ui.value = State()
+                searchJob?.cancel()
+                ui.value = Ui()
                 load()
             }
-            is Action.RemoveMember -> run(Res.string.members_error_remove) { tripRepository.removeMember(tripId, action.userId) }
+            is Action.RemoveMember -> {
+                // The banner can't keep offering Undo for someone who is gone.
+                ui.update { it.copy(added = it.added?.takeUnless { added -> added.username == action.user.username }) }
+                want(action.user, isOnTrip = false)
+            }
             Action.DismissMessage -> ui.update { it.copy(message = null) }
-            is Action.Add -> onAddAction(action)
+            Action.DismissAdded -> ui.update { it.copy(added = null) }
+            is Action.AddPerson -> add(action.user)
+            is Action.Undo -> {
+                ui.update { it.copy(added = null) }
+                want(action.user, isOnTrip = false)
+            }
             is Action.JoinRequests -> when (action) {
                 is Action.JoinRequests.Accept -> answerJoinRequest(action.request.id, isAccept = true) { tripRepository.acceptJoinRequest(tripId, it) }
                 is Action.JoinRequests.Decline -> answerJoinRequest(action.request.id, isAccept = false) { tripRepository.declineJoinRequest(tripId, it) }
             }
-            is Action.Invites -> when (action) {
-                Action.Invites.Create -> createInvite()
-                is Action.Invites.Share -> sendEvent(Event.ShareInvite(uiState.value.tripName, action.invite.url))
-                is Action.Invites.Revoke -> revokeInvite(action.inviteId)
+            Action.ShareInvite -> shareInvite()
+            Action.Search.Open -> {
+                searchJob?.cancel()
+                ui.update { it.copy(search = SearchState()) }
+            }
+            is Action.Search.QueryChanged -> search(action.query)
+            Action.Search.Close -> {
+                searchJob?.cancel()
+                ui.update { it.copy(search = null) }
             }
         }
     }
 
-    private fun onAddAction(action: Action.Add) {
-        when (action) {
-            Action.Add.ByUsername -> addMember()
-            is Action.Add.FriendToggled -> ui.update {
-                val username = action.friend.username
-                val picked = it.add.pickedFriends.let { picked -> if (username in picked) picked - username else picked + username }
-                it.copy(add = it.add.copy(pickedFriends = picked.toImmutableSet()), message = null)
-            }
-            Action.Add.PickedFriends -> addPickedFriends()
-        }
-    }
-
-    private fun updateAdd(change: (AddState) -> AddState) = ui.update { it.copy(add = change(it.add)) }
-
-    private fun updateRequests(change: (JoinRequestsState) -> JoinRequestsState) = ui.update { it.copy(joinRequests = change(it.joinRequests)) }
-
-    private fun updateInvites(change: (InvitesState) -> InvitesState) = ui.update { it.copy(invites = change(it.invites)) }
-
+    /** The trip first, then (for its owner) the requests, friends and invite links together: one skeleton, no jumps. */
     private fun load() {
         viewModelScope.launch {
             val result = tripRepository.refreshTrip(tripId)
-            ui.update { it.copy(isLoading = false, message = (result as? AppResult.Error)?.error?.toUiText(Res.string.members_error_load)) }
             if (result is AppResult.Success && result.data.trip.role.canManage) {
-                if (result.data.pendingJoinRequestCount > 0) loadJoinRequests()
-                loadFriends()
-                loadInvites()
+                val requests = async { if (result.data.pendingJoinRequestCount > 0) tripRepository.joinRequests(tripId) else null }
+                val friends = async { userRepository.friends() }
+                val invites = async { inviteRepository.invites(tripId) }
+                val requestsResult = requests.await()
+                val friendsResult = friends.await()
+                val invitesResult = invites.await()
+                ui.update { state ->
+                    state.copy(
+                        requests = (requestsResult as? AppResult.Success)?.data?.items?.toImmutableList()?.let { JoinRequestsState(it) } ?: state.requests,
+                        friends = (friendsResult as? AppResult.Success)?.data?.toImmutableList() ?: persistentListOf(),
+                        invites = (invitesResult as? AppResult.Success)?.data?.toImmutableList() ?: persistentListOf(),
+                        message = (requestsResult as? AppResult.Error)?.error?.toUiText(Res.string.members_error_load_requests),
+                    )
+                }
+            }
+            ui.update {
+                it.copy(
+                    isLoading = false,
+                    message = (result as? AppResult.Error)?.error?.toUiText(Res.string.members_error_load) ?: it.message,
+                )
             }
         }
     }
 
-    private suspend fun loadFriends() {
-        val result = userRepository.friends()
-        if (result is AppResult.Success) updateAdd { it.copy(friends = result.data.toImmutableList()) }
+    /** A friend tapped or a person found: on the trip at once, with Undo in the banner (the optimistic rule). */
+    private fun add(user: UserSummary) {
+        val state = uiState.value
+        if (user.username in state.onTrip || user.username in state.asking) return
+        ui.update { it.copy(added = user, message = null) }
+        want(user, isOnTrip = true)
     }
 
-    private suspend fun loadJoinRequests() {
-        when (val result = tripRepository.joinRequests(tripId)) {
-            is AppResult.Success -> updateRequests { it.copy(requests = result.data.items.toImmutableList()) }
-            is AppResult.Error -> ui.update { it.copy(message = result.error.toUiText(Res.string.members_error_load_requests)) }
+    /** Running [sync]s, by username. */
+    private val syncing = mutableMapOf<String, Job>()
+
+    /**
+     * Shows [user] on or off the trip at once and brings the server along. The latest tap wins: one [sync] per person
+     * calls the server one step at a time, so quick add, Undo and remove taps never cross on the way (Shahin's recording,
+     * 2026-11-21: a remove crossed an earlier one and failed).
+     */
+    private fun want(user: UserSummary, isOnTrip: Boolean) {
+        ui.update { it.copy(wanted = it.wanted.put(user.username, Wanted(user, isOnTrip))) }
+        if (syncing[user.username]?.isActive == true) return
+        syncing[user.username] = viewModelScope.launch { sync(user.username) }
+    }
+
+    /**
+     * Calls the server until the cached trip has [username] as the latest tap wants, then hands the list back to the
+     * cache. A call the server refuses shows the person as saved again, with the banner saying why.
+     */
+    private suspend fun sync(username: String) {
+        while (true) {
+            val wanted = ui.value.wanted[username] ?: return
+            val saved = tripRepository.observeTrip(tripId).first()?.members.orEmpty().firstOrNull { it.user.username == username }
+            if ((saved != null) == wanted.isOnTrip) {
+                // Done, unless a newer tap came in meanwhile.
+                if (ui.value.wanted[username] == wanted) return ui.update { it.copy(wanted = it.wanted.remove(username)) }
+                continue
+            }
+            val result = if (saved == null) tripRepository.addMember(tripId, username) else tripRepository.removeMember(tripId, saved.user.id)
+            when (result) {
+                is AppResult.Success -> {
+                    val isOnTrip = result.data.members.any { it.user.username == username }
+                    awaitCache(username, isOnTrip)
+                    // The server keeps them otherwise than asked: its answer stands, never asked again in a loop.
+                    if (isOnTrip != wanted.isOnTrip && ui.value.wanted[username] == wanted) return ui.update { it.copy(wanted = it.wanted.remove(username)) }
+                }
+                is AppResult.Error -> {
+                    // Removed already, elsewhere: the trip is read again and shows them as the server has them.
+                    val isGone = saved != null && result.error.hasCode(TripErrorCodes.NOT_FOUND)
+                    if (isGone) tripRepository.refreshTrip(tripId)
+                    return ui.update {
+                        it.copy(
+                            wanted = it.wanted.remove(username),
+                            added = if (saved == null) it.added?.takeUnless { added -> added.username == username } else it.added,
+                            message = if (isGone) it.message else result.error.toUiText(if (saved == null) Res.string.members_error_add else Res.string.members_error_remove),
+                        )
+                    }
+                }
+            }
         }
+    }
+
+    /**
+     * Waits until the cached trip shows [username] as the server answered (it is written before the answer comes, so
+     * this is a moment). The cache emits a moment after it is written, so handing the list back before that would show
+     * the old list for a frame (Shahin's recording: the sheet blinked on add and remove).
+     */
+    private suspend fun awaitCache(username: String, isOnTrip: Boolean) {
+        tripRepository.observeTrip(tripId).first { details -> details?.members.orEmpty().any { it.user.username == username } == isOnTrip }
     }
 
     /** Accepting or declining; the request leaves the list once the server agreed (or it was gone already). */
     private fun answerJoinRequest(requestId: String, isAccept: Boolean, answer: suspend (String) -> AppResult<*, DataError.Network>) {
-        if (requestId in ui.value.joinRequests.answeringIds) return
-        ui.update { it.copy(joinRequests = it.joinRequests.copy(answeringIds = (it.joinRequests.answeringIds + requestId).toImmutableSet()), message = null) }
+        if (requestId in ui.value.requests.answeringIds) return
+        ui.update { it.copy(requests = it.requests.copy(answeringIds = (it.requests.answeringIds + requestId).toImmutableSet()), message = null) }
         viewModelScope.launch {
             val result = answer(requestId)
             val isGone = result is AppResult.Success || (result is AppResult.Error && result.error.hasCode(TripErrorCodes.NOT_FOUND))
             if (isAccept && result is AppResult.Success) sendEvent(Event.Accepted)
             ui.update { state ->
-                val requests = state.joinRequests
+                val requests = state.requests
                 state.copy(
-                    joinRequests = JoinRequestsState(
+                    requests = JoinRequestsState(
                         requests = if (isGone) requests.requests.filterNot { it.id == requestId }.toImmutableList() else requests.requests,
                         answeringIds = (requests.answeringIds - requestId).toImmutableSet(),
                     ),
@@ -164,115 +253,93 @@ class TripMembersViewModel(
         }
     }
 
-    private suspend fun loadInvites() {
-        when (val result = inviteRepository.invites(tripId)) {
-            is AppResult.Success -> updateInvites { it.copy(invites = result.data.toImmutableList()) }
-            is AppResult.Error -> ui.update { it.copy(message = result.error.toUiText(Res.string.members_error_load_invites)) }
-        }
-    }
-
-    private fun addMember() {
-        val field = ui.value.add.username
-        val username = field.text.trim().toString()
-        if (username.isEmpty() || ui.value.add.isAdding) return
-        ui.update { it.copy(add = it.add.copy(isAdding = true), message = null) }
+    /** Shares the newest link that hasn't expired, or makes one first. */
+    private fun shareInvite() {
+        val current = ui.value.invites.filter { it.expiresAt > Clock.System.now() }.maxByOrNull { it.expiresAt }
+        if (current != null) return sendEvent(Event.ShareInvite(uiState.value.tripName, current.url))
+        if (ui.value.isCreatingInvite) return
+        ui.update { it.copy(isCreatingInvite = true, message = null) }
         viewModelScope.launch {
-            when (val result = tripRepository.addMember(tripId, username)) {
-                is AppResult.Success -> {
-                    field.clearText()
-                    updateAdd { it.copy(isAdding = false) }
-                }
-                is AppResult.Error -> ui.update { it.copy(add = it.add.copy(isAdding = false), message = addMemberError(result.error)) }
+            val result = inviteRepository.createInvite(tripId)
+            ui.update {
+                it.copy(
+                    isCreatingInvite = false,
+                    invites = if (result is AppResult.Success) (it.invites + result.data).toImmutableList() else it.invites,
+                    message = (result as? AppResult.Error)?.error?.toUiText(Res.string.members_error_create_invite),
+                )
             }
+            if (result is AppResult.Success) sendEvent(Event.ShareInvite(uiState.value.tripName, result.data.url))
         }
     }
 
-    /** Friends who became members another way meanwhile aren't sent again. */
-    private fun addPickedFriends() {
-        if (ui.value.add.pickedFriends.isEmpty() || ui.value.add.isAdding) return
-        ui.update { it.copy(add = it.add.copy(isAdding = true), message = null) }
-        viewModelScope.launch {
-            val members = tripRepository.observeTrip(tripId).first()?.members.orEmpty().map { it.user.username }.toSet()
-            val usernames = (ui.value.add.pickedFriends - members).toList()
-            val result = if (usernames.isEmpty()) null else tripRepository.addMembers(tripId, usernames)
-            if (result is AppResult.Error) {
-                ui.update { it.copy(add = it.add.copy(isAdding = false), message = addFriendsError(result.error)) }
-            } else {
-                updateAdd { it.copy(isAdding = false, pickedFriends = persistentSetOf()) }
-            }
+    /** The Add people page: friends match as you type; anyone else is asked for once typing pauses. */
+    private fun search(text: String) {
+        val query = text.trim().removePrefix("@")
+        searchJob?.cancel()
+        if (query.length < UserRepository.MIN_SEARCH_LENGTH) {
+            updateSearch { it.copy(results = persistentListOf(), isLoading = false) }
+            return
+        }
+        searchJob = viewModelScope.launch {
+            delay(SEARCH_DEBOUNCE)
+            updateSearch { it.copy(isLoading = true) }
+            val result = userRepository.search(query)
+            updateSearch { it.copy(results = (result as? AppResult.Success)?.data?.toImmutableList() ?: it.results, isLoading = false) }
+            if (result is AppResult.Error) ui.update { it.copy(message = result.error.toUiText(Res.string.members_error_search)) }
         }
     }
 
-    private fun addFriendsError(error: DataError.Network): UiText =
-        if (error.hasCode(TripErrorCodes.VALIDATION_FAILED)) {
-            UiText.Resource(Res.string.members_error_some_not_added)
-        } else {
-            error.toUiText(Res.string.members_error_add)
-        }
-
-    private fun addMemberError(error: DataError.Network): UiText =
-        if (error.hasCode(TripErrorCodes.NOT_FOUND)) UiText.Resource(Res.string.members_error_user_not_found) else error.toUiText(Res.string.members_error_add)
-
-    private fun createInvite() {
-        if (ui.value.invites.isCreating) return
-        ui.update { it.copy(invites = it.invites.copy(isCreating = true), message = null) }
-        viewModelScope.launch {
-            when (val result = inviteRepository.createInvite(tripId)) {
-                is AppResult.Success -> {
-                    updateInvites { it.copy(invites = (it.invites + result.data).toImmutableList(), isCreating = false) }
-                    sendEvent(Event.ShareInvite(uiState.value.tripName, result.data.url))
-                }
-                is AppResult.Error -> ui.update {
-                    it.copy(invites = it.invites.copy(isCreating = false), message = result.error.toUiText(Res.string.members_error_create_invite))
-                }
-            }
-        }
-    }
-
-    private fun revokeInvite(inviteId: String) {
-        viewModelScope.launch {
-            val result = inviteRepository.revokeInvite(tripId, inviteId)
-            if (result is AppResult.Success || (result is AppResult.Error && result.error.hasCode(TripErrorCodes.NOT_FOUND))) {
-                updateInvites { state -> state.copy(invites = state.invites.filterNot { it.id == inviteId }.toImmutableList()) }
-            } else if (result is AppResult.Error) {
-                ui.update { it.copy(message = result.error.toUiText(Res.string.members_error_revoke_invite)) }
-            }
-        }
-    }
-
-    private fun run(failed: StringResource, change: suspend () -> AppResult<*, DataError.Network>) {
-        viewModelScope.launch {
-            val result = change()
-            if (result is AppResult.Error) ui.update { it.copy(message = result.error.toUiText(failed)) }
-        }
-    }
+    private fun updateSearch(change: (SearchState) -> SearchState) = ui.update { state -> state.copy(search = state.search?.let(change)) }
 
     private fun sendEvent(event: Event) {
         viewModelScope.launch { _events.send(event) }
     }
 
-    @Immutable
-    data class State(
-        val tripName: String = "",
-        val canManage: Boolean = false,
-        val members: ImmutableList<TripMember> = persistentListOf(),
+    /** What the view model keeps beside the cached trip. */
+    private data class Ui(
+        /** Until this opening's load is done: a cached trip waits for its requests and friends, so nothing jumps in. */
         val isLoading: Boolean = true,
-        val add: AddState = AddState(),
-        val joinRequests: JoinRequestsState = JoinRequestsState(),
-        val invites: InvitesState = InvitesState(),
+        val requests: JoinRequestsState = JoinRequestsState(),
+        val friends: ImmutableList<UserSummary>? = null,
+        /** People added or removed on the device, by username, as the latest tap wants them, while the server catches up. */
+        val wanted: PersistentMap<String, Wanted> = persistentMapOf(),
+        val invites: ImmutableList<TripInvite> = persistentListOf(),
+        val isCreatingInvite: Boolean = false,
+        val search: SearchState? = null,
         val message: UiText? = null,
+        val added: UserSummary? = null,
     )
 
-    /** Adding editors: friends picked from the avatar row, or one username. */
+    /** [user] on the trip or off it, as the latest tap wants. */
+    private data class Wanted(val user: UserSummary, val isOnTrip: Boolean)
+
     @Immutable
-    data class AddState(
-        /** The owner's friends who aren't in the trip yet; null until they've loaded. */
+    data class State(
+        /**
+         * False until the cached trip has been read. The sheet opens only then, already as high as the trip makes it
+         * (its role, counts, members): opened before, it slid up as a short sheet and grew taller mid-slide, so it
+         * seemed to start from above the navigation bar (Shahin, 2026-11-21).
+         */
+        val isReady: Boolean = false,
+        val tripName: String = "",
+        val canManage: Boolean = false,
+        val isLoading: Boolean = true,
+        /** How many wait to join by the cached trip: the skeleton draws as many request rows. */
+        val waitingCount: Int = 0,
+        val members: ImmutableList<TripMember> = persistentListOf(),
+        val joinRequests: JoinRequestsState = JoinRequestsState(),
+        /** The owner's friends who aren't on the trip and aren't asking to join; null until they've loaded. */
         val friends: ImmutableList<UserSummary>? = null,
-        /** Usernames of the friends picked to add together. */
-        val pickedFriends: ImmutableSet<String> = persistentSetOf(),
-        /** Anyone else, by username (the members sheet only; the New trip sheet adds friends only). */
-        val username: TextFieldState = TextFieldState(),
-        val isAdding: Boolean = false,
+        /** Usernames on the trip (saved or being added) and asking to join, for the Add people page. */
+        val onTrip: ImmutableSet<String> = persistentSetOf(),
+        val asking: ImmutableSet<String> = persistentSetOf(),
+        /** The Add people page, while it's open. */
+        val search: SearchState? = null,
+        val invites: ImmutableList<TripInvite> = persistentListOf(),
+        val isCreatingInvite: Boolean = false,
+        val message: UiText? = null,
+        /** Who was just added: the banner offers Undo. */
+        val added: UserSummary? = null,
     )
 
     /** The owner's: people asking to join, newest first, and those whose answer is waiting for the server. */
@@ -282,8 +349,13 @@ class TripMembersViewModel(
         val answeringIds: ImmutableSet<String> = persistentSetOf(),
     )
 
+    /** The Add people page: what's typed (each change comes back as [Action.Search.QueryChanged]), and the people the server found for it. */
     @Immutable
-    data class InvitesState(val invites: ImmutableList<TripInvite> = persistentListOf(), val isCreating: Boolean = false)
+    data class SearchState(
+        val query: TextFieldState = TextFieldState(),
+        val results: ImmutableList<UserSummary> = persistentListOf(),
+        val isLoading: Boolean = false,
+    )
 
     sealed interface Event {
         data class ShareInvite(val tripName: String, val url: String) : Event
@@ -295,24 +367,34 @@ class TripMembersViewModel(
     sealed interface Action {
         /** The sheet was opened (not on rotation). */
         data object Opened : Action
-        data class RemoveMember(val userId: String) : Action
+        data class RemoveMember(val user: UserSummary) : Action
         data object DismissMessage : Action
 
-        sealed interface Add : Action {
-            data object ByUsername : Add
-            data class FriendToggled(val friend: UserSummary) : Add
-            data object PickedFriends : Add
-        }
+        /** The "added" banner with Undo was handed to the banner. */
+        data object DismissAdded : Action
+
+        /** A friend's face tapped, or Add on the Add people page. */
+        data class AddPerson(val user: UserSummary) : Action
+
+        /** Undo in the banner after [AddPerson]. */
+        data class Undo(val user: UserSummary) : Action
+        data object ShareInvite : Action
 
         sealed interface JoinRequests : Action {
             data class Accept(val request: JoinRequest) : JoinRequests
             data class Decline(val request: JoinRequest) : JoinRequests
         }
 
-        sealed interface Invites : Action {
-            data object Create : Invites
-            data class Share(val invite: TripInvite) : Invites
-            data class Revoke(val inviteId: String) : Invites
+        sealed interface Search : Action {
+            data object Open : Search
+            data object Close : Search
+
+            /** The Add people field changed. */
+            data class QueryChanged(val query: String) : Search
         }
+    }
+
+    private companion object {
+        val SEARCH_DEBOUNCE = 300.milliseconds
     }
 }

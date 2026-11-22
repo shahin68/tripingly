@@ -10,9 +10,10 @@ Shahin checks every screen for symmetry. These are all the rules he has given (2
 ## 1. Both ends equal
 
 - The left and right ends of every row, card, sheet and bar sit the **same distance in**. Check start padding = end padding on every container, not just the outer one.
-- **Icon button at an end:** its 48 dp touch area is not what the eye sees. Pad the end less so the visible circle or glyph lines up with the content at the start (`SheetHeader`, plan sheet title row, the day tabs' round +). A plain `padding(end = …)` is enough; no `touchInset` helpers or extra measuring ("we don't need to be this meticulous").
+- **Icon button at an end:** its 48 dp touch area is not what the eye sees. A filled (round) one drops the touch margin, as above (`SheetHeader`: start = end = 24 dp); a bare glyph `IconButton` pads the end less so the glyph lines up with the content at the start (plan sheet title row, the day tabs' round +). A plain `padding(end = …)` is enough; no `touchInset` helpers or extra measuring ("we don't need to be this meticulous").
 - **Nested containers:** each level is symmetric on its own. A card sits the same distance in from both sheet edges, and its own content sits the same distance in on every side (e.g. plan sheet card 16 dp in, Route card content 10 dp in on all four sides).
 - **Sideways-scrolling rows** (`LazyRow`) don't pad the row; they use that inset as `contentPadding`, so items line up with the rows above at rest and scroll out to the container's edge. Add `Modifier.horizontalFadingEdge(state)`.
+- **Button inside a pill or card edge:** a button (or round control) at a container's end sits the **same distance from the top, end and bottom** edges. Get there with one padding around the content, never a fixed height: the button keeps **no 48 dp touch margin** (`LocalMinimumInteractiveComponentSize provides Dp.Unspecified`, built into `PrimaryButton`, `SecondaryButton`, `ToggleButton` and `SheetHeader`'s buttons; taps still reach it over 48 dp), so it sits exactly where it's placed and a 0 dp padding works too (Shahin, 2026-11-19, invite pill: padding 8 dp, Share 8 dp from three edges). Keep the text beside it to lines that fit.
 - **Bottom vs. sides:** a floating bar's bottom gap matches its side gap so it looks centred in its corner (Home bottom bar, day tabs: `floatingBottom` + 8 dp). Window insets come only from Compose `WindowInsets` (`safeSides`, `bottomSystemBar`); in landscape only the side with the cutout pads, which is accepted.
 
 ## 2. Image at the start of a card
@@ -39,9 +40,9 @@ Shahin checks every screen for symmetry. These are all the rules he has given (2
 - Red "new" dots: one component (`NewIndicator`), one size (8 dp) and the same stroke on every pin; on a round photo it sits on the circle's edge at 45°, never over a number or icon; same colour selected or not, light and dark.
 - Drop-down menus open anchored to the element that opened them.
 
-## Checklist (run on every UI change and canvas board)
+## Checklist (run on every UI change, every app component and canvas board)
 
-1. For each container: start = end? top/bottom matched where it's a card with a start image?
+1. For each container: start = end? top/bottom matched where it's a card with a start image? A button at an end: top = end = bottom gap?
 2. End icon buttons: does the visible glyph line up with the start content (not the touch area)?
 3. Sideways lists: inset as `contentPadding`, scrolling to the edge, fading edge on?
 4. Everything in one row the same height; every card in one list the same height?

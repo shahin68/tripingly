@@ -115,14 +115,26 @@ private final class AppGoogleMap: NSObject, GoogleMap, GMSMapViewDelegate {
         var kept: [String: GMSMarker] = [:]
         for item in items {
             let marker = markers[item.key] ?? GMSMarker()
-            if marker.map == nil { marker.appearAnimation = item.fadesIn ? .fadeIn : .none }
-            marker.position = CLLocationCoordinate2D(latitude: item.latitude, longitude: item.longitude)
-            marker.title = item.title
+            let isNew = marker.map == nil
+            // Only what changed is set, so an unchanged pin is never redrawn and never blinks.
+            let position = CLLocationCoordinate2D(latitude: item.latitude, longitude: item.longitude)
+            if isNew || marker.position.latitude != position.latitude || marker.position.longitude != position.longitude {
+                marker.position = position
+            }
+            if marker.title != item.title { marker.title = item.title }
             if marker.icon !== item.icon { marker.icon = item.icon }
-            marker.groundAnchor = CGPoint(x: item.anchorX, y: item.anchorY)
-            marker.zIndex = item.zIndex
+            let anchor = CGPoint(x: item.anchorX, y: item.anchorY)
+            if marker.groundAnchor != anchor { marker.groundAnchor = anchor }
+            if marker.zIndex != item.zIndex { marker.zIndex = item.zIndex }
+            // See-through while the map is searched by name, unless it's a result. A dim change applies once.
+            if marker.opacity != item.opacity { marker.opacity = item.opacity }
             marker.userData = item
-            if marker.map == nil { marker.map = mapView }
+            if isNew {
+                // Google's own fade, drawn once (a Core Animation fade on the layer drew the pin in full for a frame first:
+                // a blink). It ends fully opaque, so a pin that comes in dimmed shows at once, dimmed.
+                marker.appearAnimation = item.fadesIn && item.opacity == 1 ? .fadeIn : .none
+                marker.map = mapView
+            }
             kept[item.key] = marker
         }
         for (key, marker) in markers where kept[key] == nil {
@@ -174,7 +186,10 @@ private final class AppGoogleMap: NSObject, GoogleMap, GMSMapViewDelegate {
             polyline.strokeWidth = CGFloat(width)
             if part.isDotted {
                 // A walk: round dots as wide as the line, a dot and a half apart, stamped along it the same on screen
-                // at every zoom (Shahin, 2026-11-15: dots, not dashes), as Android's Dot and Gap draw them.
+                // at every zoom (Shahin, 2026-11-15: dots, not dashes), as Android's Dot and Gap draw them. The SDK
+                // squeezes a stamp into a square as wide as the stroke and lays the squares end to end, so the stroke
+                // is as wide as a dot and its gap, and each square holds one line-wide dot in its middle.
+                polyline.strokeWidth = CGFloat(width) * (1 + Self.dotGapWidths)
                 let stamp = GMSSpriteStyle(image: Self.dotImage(color: part.color, width: CGFloat(width)))
                 polyline.spans = [GMSStyleSpan(style: GMSStrokeStyle.transparentStroke(withStamp: stamp))]
             } else {
@@ -185,12 +200,13 @@ private final class AppGoogleMap: NSObject, GoogleMap, GMSMapViewDelegate {
         }
     }
 
-    /// One dot of a walk and the gap after it: the sprite repeats along the line, scaled to the line's width.
+    /// One dot of a walk with its gap around it: a square (the SDK squeezes any stamp into one), the dot in its middle.
     private static func dotImage(color: UIColor, width: CGFloat) -> UIImage {
-        let size = CGSize(width: width, height: width * (1 + dotGapWidths))
-        return UIGraphicsImageRenderer(size: size).image { _ in
+        let side = width * (1 + dotGapWidths)
+        let inset = (side - width) / 2
+        return UIGraphicsImageRenderer(size: CGSize(width: side, height: side)).image { _ in
             color.setFill()
-            UIBezierPath(ovalIn: CGRect(x: 0, y: 0, width: width, height: width)).fill()
+            UIBezierPath(ovalIn: CGRect(x: inset, y: inset, width: width, height: width)).fill()
         }
     }
 

@@ -79,24 +79,35 @@
     <string name="leave_trip_button">Leave</string>
 
     <!-- Members -->
+    <string name="members_on_trip_title">On this trip</string>
+    <string name="members_friends_title">Your friends</string>
+    <string name="members_friends_none">No friends left to add. Search finds anyone by name or @username.</string>
+    <string name="members_more">More for %1$s</string>
+    <string name="members_add_friend">Add %1$s</string>
+    <string name="members_added">%1$s is on the trip</string>
+    <string name="members_undo">Undo</string>
+    <string name="members_search">Add people</string>
+    <string name="members_invite_title">Invite with a link</string>
+    <string name="members_invite_subtitle">Anyone with the link joins as an editor</string>
+    <string name="members_search_hint">Name or @username</string>
+    <string name="members_search_everyone">Everyone on Tripinly</string>
+    <string name="members_search_none">No one found</string>
+    <string name="members_status_on_trip">On this trip</string>
+    <string name="members_status_asking">Asking to join</string>
+    <string name="members_error_search">Couldn’t search for people.</string>
+    <plurals name="members_count">
+        <item quantity="one">%1$d person</item>
+        <item quantity="other">%1$d people</item>
+    </plurals>
     <string name="members_title">Members</string>
     <string name="members_role_owner">Owner</string>
     <string name="members_role_editor">Editor</string>
     <string name="members_remove">Remove</string>
-    <string name="members_add_label">Add by username</string>
     <string name="members_add_button">Add</string>
-    <string name="members_error_user_not_found">No one has that username.</string>
-    <string name="members_error_some_not_added">Some of these people can’t be added. Unpick them and try again.</string>
-    <string name="members_add_friends">Add %1$d</string>
     <string name="members_join_requests_title">Asking to join</string>
     <string name="members_join_accept">Accept</string>
     <string name="members_join_decline">Decline</string>
-    <string name="members_invites_title">Invite links</string>
-    <string name="members_invite_hint">Anyone with a link can join as an editor until it expires.</string>
-    <string name="members_invite_create">Create invite link</string>
-    <string name="members_invite_expires">Expires %1$s</string>
     <string name="members_invite_share">Share</string>
-    <string name="members_invite_revoke">Revoke</string>
     <string name="members_invite_share_text">Join my trip “%1$s” on Tripinly: %2$s</string>
 
     <!-- Errors: what failed -->
@@ -107,10 +118,8 @@
     <string name="members_error_load">Couldn’t load the members.</string>
     <string name="members_error_load_requests">Couldn’t load the requests to join.</string>
     <string name="members_error_answer_request">Couldn’t answer the request to join.</string>
-    <string name="members_error_load_invites">Couldn’t load the invite links.</string>
     <string name="members_error_add">Couldn’t add them to the trip.</string>
     <string name="members_error_create_invite">Couldn’t create an invite link.</string>
-    <string name="members_error_revoke_invite">Couldn’t turn off the invite link.</string>
     <string name="members_error_remove">Couldn’t remove them from the trip.</string>
     <string name="trip_created">Created %1$s</string>
 

@@ -28,6 +28,7 @@ import com.falcon.tripingly.feature.auth.generated.resources.onboarding_error_ph
 import com.falcon.tripingly.feature.auth.generated.resources.onboarding_error_save_profile
 import com.falcon.tripingly.feature.auth.presentation.common.UiMessage
 import com.falcon.tripingly.feature.auth.presentation.common.toUiMessage
+import kotlin.time.Duration.Companion.milliseconds
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.toImmutableList
@@ -112,13 +113,16 @@ internal class OnboardingViewModel(
 
     init {
         viewModelScope.launch {
+            var before: SessionState? = null
             sessionRepository.session.collect { session ->
                 when (session) {
-                    is SessionState.Onboarding -> onAccount(session.account)
+                    // Back in onboarding after being out of it (new terms while signed in): asked anew.
+                    is SessionState.Onboarding -> onAccount(session.account, isNewAsk = before !is SessionState.Onboarding)
                     // Sign-in screens aren't on the back stack: the half-filled form is forgotten here.
                     is SessionState.SignedOut -> forgetAccount()
                     SessionState.Restoring, is SessionState.SignedIn -> Unit
                 }
+                before = session
             }
         }
     }
@@ -168,7 +172,7 @@ internal class OnboardingViewModel(
         _uiState.value = State()
     }
 
-    private fun onAccount(account: Account) {
+    private fun onAccount(account: Account, isNewAsk: Boolean) {
         // This view model outlives sign-out, so another account starts from a clean form.
         val isNewAccount = this.account?.id != account.id
         this.account = account
@@ -188,7 +192,8 @@ internal class OnboardingViewModel(
         } else {
             _uiState.update { it.copy(step = step, photo = account.photo) }
         }
-        if (step == Step.CONSENT && _uiState.value.documents.isEmpty()) loadDocuments()
+        // This view model outlives onboarding: documents loaded for an earlier ask may be older versions.
+        if (step == Step.CONSENT && (_uiState.value.documents.isEmpty() || isNewAsk)) loadDocuments()
     }
 
     private fun onUsernameChange(value: String) {
@@ -202,7 +207,7 @@ internal class OnboardingViewModel(
             else -> {
                 _uiState.update { it.copy(usernameStatus = UsernameStatus.CHECKING) }
                 usernameCheck = viewModelScope.launch {
-                    delay(USERNAME_CHECK_DEBOUNCE_MILLIS)
+                    delay(USERNAME_CHECK_DEBOUNCE)
                     val status = when (val result = accountRepository.checkUsername(username)) {
                         is AppResult.Success -> when (result.data) {
                             UsernameAvailability.AVAILABLE -> UsernameStatus.AVAILABLE
@@ -294,7 +299,7 @@ internal class OnboardingViewModel(
     }
 
     private companion object {
-        const val USERNAME_CHECK_DEBOUNCE_MILLIS = 400L
+        val USERNAME_CHECK_DEBOUNCE = 400.milliseconds
         const val USERNAME_TAKEN = "USERNAME_TAKEN"
         const val USERNAME_INVALID = "USERNAME_INVALID"
         const val AGE_REQUIREMENT_NOT_MET = "AGE_REQUIREMENT_NOT_MET"

@@ -34,6 +34,8 @@
 | `notification.created` | Update the badge and Activity list |
 | `trips.changed` | Refresh My Trips |
 | `follows.changed` | `{ followerId, followeeId, following }`, to both people (backend#34): an open profile it concerns reloads its header (counts, "Follows you", Follow button), skipping my own tap on that profile; open Friends/Following/Followers lists reload |
+| `pro.changed` | `{ entitlements, proExpiresAt }`, to me on every device (backend#96): sent once on every (re)connect and whenever a purchase, renewal, cancellation, refund or expiry changes Pro. `DefaultProRepository` puts it on the account (`SessionRepository.updatePro`), so `ProRepository.isPro` follows everywhere; nothing is asked |
+| `me.changed` | `{}`, to me on every device (backend#98): my account changed (profile, username, birth date, consents, onboarding finished, avatar adopted or removed), maybe on another device. `AccountSync` asks `GET /me` once, as on every (re)connect, and the saved account and session follow; new terms open the re-consent sheet over the app |
 | `account.suspended` | Sign out with a message |
 
 ### In the app
@@ -74,7 +76,8 @@
 - Firebase starts from four values in `local.properties` (`firebase.projectId`, `firebase.senderId`, `firebase.appId`, `firebase.apiKey`, copied from `google-services.json`, which stays out of the repo). Without them there's no push.
 - iOS uses the same project and sender plus its own `firebase.ios.appId` and `firebase.ios.apiKey` (`GOOGLE_APP_ID` and `API_KEY` from `GoogleService-Info.plist`, which stays out of the repo too). It also needs a paid Apple Developer account, the APNs key uploaded to Firebase and the Push Notifications capability on the app; without them the app runs, only without a token.
 - `PushRegistration` registers the device when the signed-in app starts and when FCM issues a new token, but asks the server only when the account, token or language changed since the last registration. Sign-out unregisters before `POST /auth/logout`.
-- The permission (Android 13+, and iOS) is asked as Home opens. Pushes that arrive while the app is open are shown too: on Android by the app, in the same channel the system uses for the others; on iOS as a banner.
+- The permission (Android 13+, and iOS) is asked as Home opens. Pushes that arrive while the app is open are shown too: on Android by the app, in the push's channel and tag like the system does for the others; on iOS as a banner.
+- **Channels and grouping (Shahin, 2026-11-19).** Android has one channel per Settings switch (`NotificationType.channelId`: `comments`, `likes`, `trip_changes`, `added_to_trips`, `join_requests`, `followers`, named like the switches) under one channel group "Activity" (`AndroidNotificationChannels`); the first builds' `updates` channel is deleted and the manifest default is `trip_changes`. The backend names each push's channel (`android.notification.channelId`, iOS `thread-id`) and a tag (`tag`, `apns-collapse-id`), so the phone stacks pushes per kind and a newer push of a grouped row replaces the older one; the app adds no summary of its own (the system bundles). Apps can't turn a channel on, so the two switches stay apart: the app's switch decides whether the server pushes, the phone's channel whether it shows. When a channel (or the whole app) is off in the phone, its row in Settings shows off with "Off in phone settings, tap to change" and a tap opens that channel's page (`SystemNotificationChannels`, read again on every resume). iOS has no channels: it asks with `providesAppNotificationSettings`, so its notification page for Tripinly links to the app's Settings (`openSettingsFor` → `tripinly://settings`).
 - A tap opens the `deepLink` (see Deep links; `tripinly://notifications` just opens the app until there's an Activity screen) and marks the notification read. The same trip already on top opens again on what the push is about.
 
 ## Deep links
@@ -87,6 +90,7 @@
 | `tripinly://markers/{id}/comments` | The same, with the stop's comments sheet open (comments, replies, mentions, comment likes; 2026-11-07) |
 | `tripinly://me/followers` | Several new followers: from the center, my Followers segment; a push just opens the app for now (2026-11-07) |
 | `tripinly://users/{username}` | That person's profile (follows, new friends) |
+| `tripinly://settings` | Settings (iOS's "Tripinly notification settings" link; 2026-11-19) |
 | `https://<APP_LINK_BASE_URL>/invite/{token}` | Invite preview → accept (sign in first if needed) |
 | `https://<APP_LINK_BASE_URL>/trips/{id}` and `/markers/{id}` | Shared links (same as above) |
 

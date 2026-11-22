@@ -1,5 +1,8 @@
 package com.falcon.tripingly.feature.social.presentation.component
 
+import androidx.compose.ui.unit.Dp
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.material3.LocalMinimumInteractiveComponentSize
 import com.falcon.tripingly.core.designsystem.component.skeletonText
 import androidx.compose.foundation.background
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -56,12 +59,12 @@ internal fun PersonRow(user: UserSummary, onClick: () -> Unit, modifier: Modifie
         shape = MaterialTheme.shapes.large,
         color = MaterialTheme.colorScheme.surfaceContainerLowest,
     ) {
-        // As tall with ⋮ as without, and symmetric: the avatar sits 12 dp from the top, bottom and start either way. A row
-        // with ⋮ (48 dp touch area) pads less above and below to stay as tall, and its glyph sits 12 dp from the end.
+        // As tall with ⋮ as without, and symmetric: the avatar sits 12 dp from the top, bottom and start either way. ⋮ keeps
+        // no 48 dp touch margin (taps still reach it over 48 dp), so it is as tall as the avatar and only its end pads
+        // less, for its glyph to sit 12 dp from the end (Shahin, 2026-11-19: padding, not sizes worked out by hand).
         val inset = MaterialTheme.spacing.small + MaterialTheme.spacing.extraSmall
-        val vertical = if (actions.isEmpty()) inset else inset - (MenuTouchSize - AvatarSize.Row) / 2
         Row(
-            modifier = Modifier.padding(start = inset, top = vertical, bottom = vertical, end = if (actions.isEmpty()) inset else 0.dp),
+            modifier = Modifier.padding(start = inset, top = inset, bottom = inset, end = if (actions.isEmpty()) inset else MaterialTheme.spacing.extraSmall),
             horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small + MaterialTheme.spacing.extraSmall),
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -79,8 +82,10 @@ internal fun PersonRow(user: UserSummary, onClick: () -> Unit, modifier: Modifie
             }
             if (actions.isNotEmpty()) {
                 Box {
-                    IconButton(onClick = { menuOpen = true }) {
-                        Icon(Icons.Default.MoreVert, contentDescription = stringResource(Res.string.social_more), modifier = Modifier.skeleton(CircleShape))
+                    CompositionLocalProvider(LocalMinimumInteractiveComponentSize provides Dp.Unspecified) {
+                        IconButton(onClick = { menuOpen = true }) {
+                            Icon(Icons.Default.MoreVert, contentDescription = stringResource(Res.string.social_more), modifier = Modifier.skeleton(CircleShape))
+                        }
                     }
                     AppDropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }, actions = actions)
                 }
@@ -88,9 +93,6 @@ internal fun PersonRow(user: UserSummary, onClick: () -> Unit, modifier: Modifie
         }
     }
 }
-
-/** An icon button's touch area. */
-private val MenuTouchSize = 48.dp
 
 /** One of my people lists' ⋮: unfollow (friends and people I follow). */
 @Composable

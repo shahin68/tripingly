@@ -91,6 +91,18 @@ class SocialRepositoryTest {
     }
 
     @Test
+    fun likingATrip_keepsItWithTheCachedTrip_soItsMapShowsTheHeartNextTime() = runTest {
+        cacheTrip()
+        val repository = repository("""{"targetType":"trip","targetId":"t1","liked":true,"likeCount":7}""")
+
+        repository.setLiked(LikeTarget.Trip, "t1", liked = true)
+
+        val cached = local.trips.value.getValue("t1")
+        assertTrue(cached.likedByMe)
+        assertEquals(7, cached.likeCount)
+    }
+
+    @Test
     fun likingACommonsImage_usesThePlaceImageTarget() = runTest {
         val repository = repository("""{"targetType":"place_image","targetId":"i1","liked":true,"likeCount":1}""")
 

@@ -238,4 +238,19 @@ class ExploreViewModelTest : SocialTestBase() {
         assertEquals(null, viewModel.uiState.value.loadError)
         assertEquals(1, viewModel.uiState.value.trips.size)
     }
+
+    @Test
+    fun aRetryThatFailsAgain_keepsTheErrorScreen_andSaysWhyInTheBanner() = runTest {
+        val failing = object : com.falcon.tripingly.core.data.social.SocialRepository by social {
+            override suspend fun explore(filter: ExploreFilter, cursor: String?) =
+                com.falcon.tripingly.core.common.result.AppResult.Error(com.falcon.tripingly.core.common.error.DataError.Network.NoInternet)
+        }
+        val viewModel = ExploreViewModel(failing, users, backend, location)
+        advanceUntilIdle()
+
+        viewModel.onAction(Action.Refresh)
+        advanceUntilIdle()
+        assertTrue(viewModel.uiState.value.loadError != null, "still nothing to show: the error screen")
+        assertEquals(viewModel.uiState.value.loadError, viewModel.uiState.value.message, "and the reason in the banner")
+    }
 }

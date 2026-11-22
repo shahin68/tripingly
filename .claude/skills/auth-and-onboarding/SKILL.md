@@ -29,7 +29,7 @@ Rules: `docs/knowledge/02-client-rules.md` → Sign-in and onboarding.
 3. **Consent:** load `/legal/documents` in the app language; show Terms and Privacy links; one clear checkbox or button per required document; `POST /me/consents` with document type + version.
 4. `PATCH /me` with the profile → `GET /me` → home.
 
-On app start: tokens present → `GET /me` → if not onboarded, resume the step; if `CONSENT_REQUIRED`, show only the updated documents.
+On app start (local-first, Shahin 2026-11-22): no spinner. Tokens present → the last `/me`, saved in `SecureStore` (`account.me`), opens the app at once, also offline; signed-in starts then ask `GET /me` in the background through `AccountSync` (each live connection connect, and the `me.changed` socket event when the account changed on another device), saved onboarding starts ask it once from `restore`. Only a first start with tokens but no saved account waits for `GET /me` (an empty screen, an error with Retry when offline). Not onboarded → the onboarding page resumes the step. New terms while in the app (a profile complete, signed in before) → `ReconsentSheet`, a sheet over the app that can't be swiped away, with the consent step and Sign out; the app stays under it and accepting slides it down. `AuthGateViewModel.isReconsent` decides it. `/app-config` is saved too (preferences DataStore), so an offline start has the server's last values.
 
 ## Sign-out
 

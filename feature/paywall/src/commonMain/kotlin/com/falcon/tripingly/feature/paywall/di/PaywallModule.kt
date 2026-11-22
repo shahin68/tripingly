@@ -8,7 +8,6 @@ import org.koin.dsl.module
 val paywallModule = module {
     viewModel {
         PaywallViewModel(
-            sessionRepository = get(),
             proRepository = get(),
             accountRepository = get(),
             languageTag = { Locale.current.toLanguageTag() },

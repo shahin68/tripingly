@@ -10,6 +10,7 @@ import com.falcon.tripingly.core.model.account.LegalDocumentType
 import com.falcon.tripingly.core.model.account.ProfileUpdate
 import com.falcon.tripingly.core.model.account.SessionState
 import com.falcon.tripingly.core.model.account.SignOutReason
+import com.falcon.tripingly.core.model.account.TripVisibility
 import com.falcon.tripingly.core.model.trip.ProfilePhoto
 import com.falcon.tripingly.core.network.ApiConfig
 import com.falcon.tripingly.core.network.account.createAccountApi
@@ -21,6 +22,7 @@ import com.falcon.tripingly.core.network.createHttpClient
 import com.falcon.tripingly.core.network.createKtorfit
 import com.falcon.tripingly.core.network.photos.StorageClient
 import com.falcon.tripingly.core.network.photos.createPhotosApi
+import com.falcon.tripingly.core.storage.SecureStore
 import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.MockRequestHandleScope
 import io.ktor.client.engine.mock.respond
@@ -31,18 +33,25 @@ import io.ktor.http.HttpMethod
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.content.TextContent
 import io.ktor.http.headersOf
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertIs
+import kotlin.test.assertNotNull
+import kotlin.test.assertNull
+import kotlin.test.assertTrue
+import kotlin.time.Duration.Companion.seconds
+import kotlin.time.Instant
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeout
 import kotlinx.datetime.LocalDate
 import kotlinx.io.IOException
-import kotlin.test.Test
-import kotlin.test.assertEquals
-import kotlin.test.assertIs
-import kotlin.test.assertNull
-import kotlin.test.assertTrue
 
 class SessionRepositoryTest {
 
@@ -60,21 +69,30 @@ class SessionRepositoryTest {
          "onboardingRequired":true}
     """.trimIndent()
 
-    private fun meJson(completed: Boolean, missingFields: String = "[]", missingConsents: String = "[]", avatar: String? = null) = """
+    private fun meJson(
+        completed: Boolean,
+        missingFields: String = "[]",
+        missingConsents: String = "[]",
+        avatar: String? = null,
+        entitlements: String = "[]",
+        proExpiresAt: String? = null,
+    ) = """
         {"id":"u1","username":${if (completed) "\"jonas.k\"" else "null"},"displayName":"Jonas",
          "avatarPhotoId":${avatar?.let { "\"$it\"" } ?: "null"},
          "avatarThumbUrl":${avatar?.let { "\"https://cdn.test/$it/thumb.webp\"" } ?: "null"},
          "birthDate":${if (completed) "\"1995-04-12\"" else "null"},"locale":"de-AT",
          "defaultTripVisibility":"public","role":"user",
          "onboarding":{"completed":$completed,"missingProfileFields":$missingFields,"missingConsents":$missingConsents},
-         "entitlements":[]}
+         "entitlements":$entitlements,"proExpiresAt":${proExpiresAt?.let { "\"$it\"" } ?: "null"}}
     """.trimIndent()
 
     private inner class Harness(
         scope: TestScope,
+        /** Shared by two harnesses: the same phone started twice. */
+        val secureStore: MapSecureStore = MapSecureStore(),
+        val tokenStore: InMemoryTokenStore = InMemoryTokenStore(),
         private val handler: suspend MockRequestHandleScope.(HttpRequestData) -> HttpResponseData,
     ) {
-        val tokenStore = InMemoryTokenStore()
         var cleared = 0
         private val lock = Mutex()
         private val recorded = mutableListOf<HttpRequestData>()
@@ -98,6 +116,7 @@ class SessionRepositoryTest {
             authApi = ktorfit.createAuthApi(),
             accountApi = ktorfit.createAccountApi(),
             tokenStore = tokenStore,
+            secureStore = secureStore,
             sessionEvents = sessionEvents,
             developerSignIn = DeveloperSignIn(config.devAuthSecret),
             cleaners = {
@@ -154,6 +173,8 @@ class SessionRepositoryTest {
                 else -> error("unexpected ${request.url}")
             }
         }
+
+        harness.tokenStore.save(AuthTokens("access-1", "refresh-1"))
 
         val result = harness.account.setProfilePhoto { byteArrayOf(1, 2, 3) }
 
@@ -248,6 +269,118 @@ class SessionRepositoryTest {
 
         val state = assertIs<SessionState.SignedIn>(harness.session.session.value)
         assertEquals(LocalDate(1995, 4, 12), state.account.birthDate)
+    }
+
+    @Test
+    fun proFromMe_carriesItsEnd() = runTest {
+        val harness = Harness(this) { json(meJson(completed = true, entitlements = """["routes"]""", proExpiresAt = "2026-12-01T10:00:00.000Z")) }
+        harness.tokenStore.save(AuthTokens("access-1", "refresh-1"))
+
+        harness.session.restore()
+
+        val account = assertIs<SessionState.SignedIn>(harness.session.session.value).account
+        assertEquals(setOf("routes"), account.entitlements)
+        assertEquals(Instant.parse("2026-12-01T10:00:00Z"), account.proExpiresAt)
+    }
+
+    @Test
+    fun aRefusedProCall_endsPro_withoutReadingMeAgain() = runTest {
+        val harness = Harness(this) { request ->
+            when (request.method) {
+                HttpMethod.Get -> json(meJson(completed = true, entitlements = """["routes"]"""))
+                else -> apiError(HttpStatusCode.Forbidden, "PREMIUM_REQUIRED")
+            }
+        }
+        harness.tokenStore.save(AuthTokens("access-1", "refresh-1"))
+        harness.session.restore()
+        runCurrent()
+
+        // Any call the server refuses for lack of Pro.
+        harness.account.setDefaultTripVisibility(TripVisibility.PRIVATE)
+        runCurrent()
+
+        assertEquals(emptySet(), assertIs<SessionState.SignedIn>(harness.session.session.value).account.entitlements)
+        assertEquals(listOf("/v1/me"), harness.paths(HttpMethod.Get))
+    }
+
+    @Test
+    fun syncingPro_asksTheServerOnce_andTheAccountFollows() = runTest {
+        val harness = Harness(this) { request ->
+            when (request.url.encodedPath) {
+                "/v1/me/pro/sync" -> json("""{"entitlements":["routes"],"proExpiresAt":"2027-11-21T10:00:00.000Z"}""")
+                else -> json(meJson(completed = true))
+            }
+        }
+        harness.tokenStore.save(AuthTokens("access-1", "refresh-1"))
+        harness.session.restore()
+
+        assertEquals(AppResult.Success(Unit), harness.session.syncPro())
+
+        val account = assertIs<SessionState.SignedIn>(harness.session.session.value).account
+        assertEquals(setOf("routes"), account.entitlements)
+        assertEquals(Instant.parse("2027-11-21T10:00:00Z"), account.proExpiresAt)
+        assertEquals(listOf("/v1/me/pro/sync"), harness.paths(HttpMethod.Post))
+        assertEquals(listOf("/v1/me"), harness.paths(HttpMethod.Get))
+    }
+
+    @Test
+    fun aSyncThatFails_leavesProAsItWas() = runTest {
+        val harness = Harness(this) { request ->
+            when (request.url.encodedPath) {
+                "/v1/me/pro/sync" -> apiError(HttpStatusCode.ServiceUnavailable, "SERVICE_UNAVAILABLE")
+                else -> json(meJson(completed = true))
+            }
+        }
+        harness.tokenStore.save(AuthTokens("access-1", "refresh-1"))
+        harness.session.restore()
+
+        assertIs<AppResult.Error<*>>(harness.session.syncPro())
+        assertEquals(emptySet(), assertIs<SessionState.SignedIn>(harness.session.session.value).account.entitlements)
+    }
+
+    @Test
+    fun theSavedAccount_opensTheAppOffline_withoutWaitingForTheServer() = runTest {
+        val online = Harness(this) { json(meJson(completed = true)) }
+        online.tokenStore.save(AuthTokens("access-1", "refresh-1"))
+        online.session.restore()
+
+        val offline = Harness(this, online.secureStore, online.tokenStore) { throw IOException("offline") }
+        val result = offline.session.restore()
+
+        assertEquals(AppResult.Success(Unit), result)
+        val state = assertIs<SessionState.SignedIn>(offline.session.session.value)
+        assertEquals("jonas.k", state.account.username)
+        // Signed in, the live connection asks for the account; restore itself asks nothing.
+        assertEquals(emptyList(), offline.requests.map { it.url.encodedPath })
+    }
+
+    @Test
+    fun aSavedAccountStillOnboarding_opensOnboarding_andAsksTheServerBehindIt() = runTest {
+        val first = Harness(this) { json(meJson(completed = false, missingFields = """["username"]""")) }
+        first.tokenStore.save(AuthTokens("access-1", "refresh-1"))
+        first.session.restore()
+
+        // Finished on another device meanwhile.
+        val next = Harness(this, first.secureStore, first.tokenStore) { json(meJson(completed = true)) }
+        next.session.restore()
+        assertIs<SessionState.Onboarding>(next.session.session.value)
+
+        // The network runs on its own threads, so wait in real time.
+        withContext(Dispatchers.Default) { withTimeout(5.seconds) { next.session.session.first { it is SessionState.SignedIn } } }
+    }
+
+    @Test
+    fun signingOut_forgetsTheSavedAccount() = runTest {
+        val harness = Harness(this) { request ->
+            if (request.url.encodedPath.endsWith("/me")) json(meJson(completed = true)) else respond("", HttpStatusCode.NoContent)
+        }
+        harness.tokenStore.save(AuthTokens("access-1", "refresh-1"))
+        harness.session.restore()
+        assertNotNull(harness.secureStore.get("account.me"))
+
+        harness.session.signOut()
+
+        assertNull(harness.secureStore.get("account.me"))
     }
 
     @Test
@@ -367,5 +500,16 @@ class SessionRepositoryTest {
         harness.session.restore()
 
         assertEquals(1, harness.cleared)
+    }
+
+    private class MapSecureStore : SecureStore {
+        private val values = mutableMapOf<String, String>()
+        override suspend fun get(key: String) = values[key]
+        override suspend fun put(key: String, value: String) {
+            values[key] = value
+        }
+        override suspend fun remove(key: String) {
+            values.remove(key)
+        }
     }
 }

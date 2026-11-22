@@ -5,6 +5,7 @@ import com.falcon.tripingly.core.common.result.AppResult
 import com.falcon.tripingly.core.model.account.Account
 import com.falcon.tripingly.core.model.account.SessionState
 import com.falcon.tripingly.core.model.account.SignOutReason
+import kotlin.time.Instant
 import kotlinx.coroutines.flow.StateFlow
 
 /** Sign-in, sign-out and who is signed in. The app shows a screen per [session] state. */
@@ -12,9 +13,10 @@ interface SessionRepository {
     val session: StateFlow<SessionState>
 
     /**
-     * At app start: stored tokens → `GET /me`. Without tokens, or when the server
-     * refuses them, the session is signed out. Any other failure (offline) leaves
-     * it [SessionState.Restoring] and returns the error, so the app can offer a retry.
+     * At app start: stored tokens and the account saved last time open the app at once, offline too, and the server's
+     * answer follows in the background (Shahin, 2026-11-22). Without a saved account (a fresh sign-in, an older app):
+     * `GET /me`. Without tokens, or when the server refuses them, the session is signed out. Any other failure
+     * (offline) leaves it [SessionState.Restoring] and returns the error, so the app can offer a retry.
      */
     suspend fun restore(): AppResult<Unit, DataError.Network>
 
@@ -32,6 +34,12 @@ interface SessionRepository {
 
     /** Whether this build can use [signInForDevelopment]. */
     val developerSignInAvailable: Boolean
+
+    /** Pro as the server has it now (`pro.changed`, a refused Pro call): the account changes, nothing is asked. */
+    fun updatePro(entitlements: Set<String>, proExpiresAt: Instant?)
+
+    /** Right after a purchase or restore: the server reads the store once (`POST /me/pro/sync`) and the account follows. */
+    suspend fun syncPro(): AppResult<Unit, DataError.Network>
 
     /** Re-reads `GET /me`, e.g. after an onboarding step. */
     suspend fun refreshAccount(): AppResult<Account, DataError.Network>

@@ -56,6 +56,7 @@ internal fun MapPinCards(
                 routes = card.routes,
                 onGoHere = { onAction(MapAction.PinRoute.GoHere) },
                 onRoute = { onAction(MapAction.PinRoute.Route) },
+                onAround = { onAction(MapAction.Around.Open) },
             )
         }
         PinCard(
@@ -76,6 +77,7 @@ internal fun MapPinCards(
                 onAdd = { onAction(MapAction.StopCard.Add) },
                 onGoHere = { onAction(MapAction.PinRoute.GoHere) },
                 onRoute = { onAction(MapAction.PinRoute.Route) },
+                onAround = { onAction(MapAction.Around.Open) },
             )
         }
         PinCard(
@@ -90,6 +92,8 @@ internal fun MapPinCards(
                 onPickCategory = { onAction(MapAction.NewSpot.PickCategory(it)) },
                 onPhoto = { onAction(MapAction.NewSpot.SetPhoto(it)) },
                 onCreate = { onAction(MapAction.NewSpot.Create) },
+                onNameChange = { onAction(MapAction.NewSpot.NameChanged(it)) },
+                onPickBrand = { onAction(MapAction.NewSpot.PickBrand(it)) },
             )
         }
     }

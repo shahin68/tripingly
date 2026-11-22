@@ -116,7 +116,8 @@ fun PhotoViewer(
 /** A photo's like on a small pill so it reads on any photo; the same in a gallery grid and in [PhotoViewer]. */
 @Composable
 fun PhotoLike(photo: Photo, onToggle: () -> Unit, modifier: Modifier = Modifier) {
-    Surface(shape = CircleShape, color = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f), modifier = modifier) {
+    // A see-through colour isn't one of the theme's, so Surface can't tell its content colour by itself: the count was black in dark mode.
+    Surface(shape = CircleShape, color = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f), contentColor = MaterialTheme.colorScheme.onSurface, modifier = modifier) {
         LikeButton(liked = photo.likedByMe, count = photo.likeCount, onToggle = onToggle, modifier = Modifier.padding(horizontal = MaterialTheme.spacing.small))
     }
 }

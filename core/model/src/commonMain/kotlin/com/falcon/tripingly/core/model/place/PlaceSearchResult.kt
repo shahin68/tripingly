@@ -2,6 +2,15 @@ package com.falcon.tripingly.core.model.place
 
 import com.falcon.tripingly.core.model.trip.GeoPoint
 
+/**
+ * A search's results, best first, and the box of the city the map's centre is in when the server knows it: places,
+ * streets and addresses come from there only, cities and countries from anywhere (Shahin, 2026-11-20).
+ */
+data class PlaceSearch(
+    val results: List<PlaceSearchResult>,
+    val city: GeoBounds? = null,
+)
+
 /** A place search hit: one of our places, or an address or city from OpenStreetMap. */
 data class PlaceSearchResult(
     val name: String,

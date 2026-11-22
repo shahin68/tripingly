@@ -49,7 +49,7 @@ internal class AccountRepositoryImpl(
                 username = update.username,
                 birthDate = update.birthDate?.toString(),
             ),
-        ).map { it.toAccount() }
+        )
         when (result) {
             is AppResult.Success -> session.onAccountChanged(result.data)
             is AppResult.Error -> {
@@ -60,7 +60,7 @@ internal class AccountRepositoryImpl(
                 }
             }
         }
-        return result
+        return result.map { it.toAccount() }
     }
 
     override suspend fun setProfilePhoto(image: PickedImage): AppResult<Account, DataError.Network> {
@@ -118,9 +118,9 @@ internal class AccountRepositoryImpl(
                     TripVisibility.PRIVATE -> UpdateMeDto.DefaultTripVisibility.PRIVATE
                 },
             ),
-        ).map { it.toAccount() }.also { result ->
+        ).also { result ->
             if (result is AppResult.Success) session.onAccountChanged(result.data)
-        }
+        }.map { it.toAccount() }
 
     override suspend fun notificationSettings(): AppResult<NotificationSettings, DataError.Network> =
         api.notificationSettings().map { it.toNotificationSettings() }

@@ -238,6 +238,11 @@ class RealtimeSyncTest {
         sync.apply(RealtimeEvent.NotificationCreated("t1", markerId = null, entry = entry("join_requested")))
         realTime { sent.first { it.isNotEmpty() } }
         assertEquals(listOf("/v1/trips/t1"), paths)
+
+        // The owner's answer to my request: the trip says so at once (Ask to join goes).
+        sync.apply(RealtimeEvent.NotificationCreated("t1", markerId = null, entry = entry("join_declined")))
+        realTime { sent.first { it.size > 1 } }
+        assertEquals(listOf("/v1/trips/t1", "/v1/trips/t1"), paths)
     }
 
     private fun entry(type: String) =

@@ -14,6 +14,7 @@ import com.falcon.tripingly.core.model.photo.PhotoStatus
 import com.falcon.tripingly.core.model.place.MapPlace
 import com.falcon.tripingly.core.model.place.PlaceImage
 import com.falcon.tripingly.core.model.place.PlaceImageSource
+import com.falcon.tripingly.core.model.place.PlaceSearchResult
 import com.falcon.tripingly.core.model.route.AlongTheWayPlace
 import com.falcon.tripingly.core.model.route.TravelMode
 import com.falcon.tripingly.core.model.trip.GeoPoint
@@ -25,6 +26,7 @@ import com.falcon.tripingly.core.ui.UiText
 import com.falcon.tripingly.feature.map.generated.resources.Res
 import com.falcon.tripingly.feature.map.generated.resources.map_trip_card_more
 import com.falcon.tripingly.feature.map.generated.resources.map_trip_card_only
+import com.falcon.tripingly.feature.map.presentation.component.AroundRing
 import com.falcon.tripingly.feature.map.presentation.component.COVER_PIN_SIZE
 import com.falcon.tripingly.feature.map.presentation.component.MapLayersState
 import com.falcon.tripingly.feature.map.presentation.component.MapMarker
@@ -35,21 +37,29 @@ import com.falcon.tripingly.feature.map.presentation.component.SelectedPinSize
 import com.falcon.tripingly.feature.map.presentation.component.lineColor
 import com.falcon.tripingly.feature.map.presentation.component.placePinSize
 import com.falcon.tripingly.feature.map.presentation.component.routeLine
-import com.falcon.tripingly.feature.map.presentation.component.transitLine
 import com.falcon.tripingly.feature.map.presentation.component.stopPathShape
+import com.falcon.tripingly.feature.map.presentation.component.transitLine
 import com.falcon.tripingly.feature.map.presentation.map.state.Dialog
-import com.falcon.tripingly.feature.map.presentation.map.state.MapModel
 import com.falcon.tripingly.feature.map.presentation.map.state.MY_LOCATION_ID
+import com.falcon.tripingly.feature.map.presentation.map.state.MapModel
 import com.falcon.tripingly.feature.map.presentation.map.state.Selection
 import com.falcon.tripingly.feature.map.presentation.map.state.Sheet
 import com.falcon.tripingly.feature.map.presentation.map.state.activeDayIndex
 import com.falcon.tripingly.feature.map.presentation.map.state.isActive
 import com.falcon.tripingly.feature.map.presentation.map.state.stopPlaceIds
 import com.falcon.tripingly.feature.map.presentation.map.state.toState
+import com.falcon.tripingly.feature.map.presentation.map.ui.distanceText
 import com.falcon.tripingly.feature.map.presentation.map.ui.durationText
+import kotlin.math.PI
+import kotlin.math.asin
+import kotlin.math.cos
+import kotlin.math.sin
+import kotlin.math.sqrt
 import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.persistentSetOf
 import kotlinx.collections.immutable.toImmutableList
 import kotlinx.collections.immutable.toImmutableMap
+import kotlinx.collections.immutable.toImmutableSet
 
 /** Builds [MapUiState] from the trip and the screen's [MapModel], one part per thing on screen. */
 internal class MapStateMapper(
@@ -86,27 +96,35 @@ internal class MapStateMapper(
         plan?.alongTheWay.orEmpty().filter { it.place.id !in stopIds && it.place.id !in endIds }
     }
 
+    private fun searchResultItem(result: PlaceSearchResult) = SearchResultItem(
+        result,
+        distanceMeters = if (result.address.isNullOrBlank()) model.camera.target.let { GeoPoint(it.latitude, it.longitude) }.metersTo(result.location) else null,
+    )
+
     /** [layers] can be ones built before from the same trip and model; see [MapViewModel]. */
     fun map(layers: MapLayersState = layers()): MapUiState = MapUiState(
-        loadError = model.loadError,
         header = header(),
         joinRequests = joinRequests(),
-        search = model.search?.let { SearchState(it.query, it.results.toImmutableList(), it.isSearching) },
+        // The field's spinner also turns while the places named so load on the map.
+        search = model.search?.let { SearchState(it.query, it.results.map(::searchResultItem).distinctBy(SearchResultItem::key).toImmutableList(), it.isSearching || (model.placeFilter.name != null && model.placeFilter.isLoading)) },
         dayTabs = DayTabsState(days.map { day -> DayTab(day.id, day.position + 1, day.date?.let(DateUtils::formatAbbreviated), hasNew = day.markers.any { it.id in markedStopIds }, canDelete = canEdit && days.size > 1 && canDeleteDay(day.markers)) }.toImmutableList(), activeIndex),
-        plan = route.between?.let { PointRouteCardState(it.from, it.to, routeSummary(), it.fromLabel, it.toLabel) } ?: stopsCard(),
+        // While Around shows, its box is in the plan sheet; an A to B route's card comes back with ✕.
+        plan = route.between?.takeIf { model.around == null }?.let { PointRouteCardState(it.from, it.to, routeSummary(), it.fromLabel, it.toLabel) } ?: stopsCard(),
         routeBar = route.routeBar(),
         // The card stays open under a sheet, so closing the sheet comes back to it.
         placeCard = placeCard(),
         stopCard = stopCard(),
-        newSpotCard = (model.selection as? Selection.NewSpot)?.takeIf { it.isCardShown }?.let { NewSpotCardState(it.location, it.name, it.category, it.photo) },
+        newSpotCard = (model.selection as? Selection.NewSpot)?.takeIf { it.isCardShown }?.let { NewSpotCardState(it.location, it.name, it.category, it.photo, it.brands, it.brand) },
         layers = layers,
         camera = CameraState(model.camera.isReady, model.camera.target, model.camera.zoom, model.camera.openingBounds),
         location = model.location.let {
             val isSwitchedOff = it.isSwitchedOff && (it.isFollowing || it.isWaitingForFirst)
             LocationState(isLoading = it.isLoading && !it.isSwitchedOff, isFollowing = it.isFollowing, isSignalLost = it.isSignalLost && !isSwitchedOff, isSwitchedOff = isSwitchedOff)
         },
+        placeFilter = model.placeFilterState(),
         arePlacesHidden = model.arePlacesHidden,
         routeAttribution = plan?.attribution?.takeIf { routePoints.isNotEmpty() },
+        isOsmCreditShown = config.osmPinsEnabled,
         sheet = sheet(),
         dialog = dialog(),
         message = model.message?.let { MessageState(it, canRetry = model.failedChanges.isNotEmpty()) },
@@ -121,7 +139,7 @@ internal class MapStateMapper(
             owner = trip?.owner,
             card = TripCardState(
                 dates = trip?.let { DateUtils.formatShortRange(it.startDate, it.endDate) },
-                likeCount = details?.likeCount ?: 0,
+                likeCount = model.tripLike?.likeCount ?: details?.likeCount ?: 0,
                 saveCount = details?.saveCount ?: 0,
                 isPublic = trip?.visibility != TripVisibility.PRIVATE,
                 faces = faces,
@@ -134,10 +152,17 @@ internal class MapStateMapper(
                 hasNewJoinRequests = model.joinRequesters.any { it.id !in model.dismissedJoinRequesterIds },
             ),
             members = details?.members?.takeIf { it.isNotEmpty() }?.let { MembersEntry(it.size, details.pendingJoinRequestCount) },
+            canShare = trip != null,
+            canLeave = role == TripRole.EDITOR,
             isLoading = days.isEmpty() && model.isLoadingTrip,
             isBusy = model.isSaving || model.isUpdatingSharing,
             viewerMenu = trip?.takeIf { role == TripRole.VIEWER }?.let {
-                ViewerMenu(isSavedByMe = it.savedByMe, myJoinRequest = details.myJoinRequest, ownerUsername = it.owner.username)
+                ViewerMenu(
+                    isSavedByMe = it.savedByMe,
+                    myJoinRequest = details.myJoinRequest,
+                    isAsking = model.isAskingToJoin,
+                    isLikedByMe = model.tripLike?.liked ?: details.likedByMe,
+                )
             },
             editorMenu = EditorMenu(canDeleteDay = days.size > 1 && canDeleteDay()).takeIf { canEdit },
         )
@@ -148,7 +173,7 @@ internal class MapStateMapper(
         val seen = model.seenJoinRequesterIds ?: return null
         if (model.search != null || people.all { it.id in model.dismissedJoinRequesterIds }) return null
         val count = maxOf(details?.pendingJoinRequestCount ?: 0, people.size)
-        return JoinRequestsState(people.toImmutableList(), othersCount = count - 1, isCompact = people.all { it.id in seen })
+        return JoinRequestsState(people.toImmutableList(), othersCount = count - 1, isCompact = !model.isJoinRequestsShownAgain && people.all { it.id in seen })
     }
 
     /** Like the server: an editor only when every stop on the day is theirs. */
@@ -156,7 +181,10 @@ internal class MapStateMapper(
         role == TripRole.OWNER || (canEdit && myUserId != null && markers.all { it.createdById == myUserId })
 
     private fun stopsCard(): StopsCardState? {
-        if (stops.isEmpty() || route.between != null) return null
+        val around = model.aroundState(addToDayNumber = dayNumber?.takeIf { canEdit })
+        if (route.between != null && around == null) return null
+        // A day without stops has no plan, except while Around shows: then the sheet holds just Around.
+        if (stops.isEmpty() && around == null) return null
         val isRouteShown = route.isDayRouteShown && stops.size >= 2
         return StopsCardState(
             stops = stops.toImmutableList(),
@@ -165,7 +193,8 @@ internal class MapStateMapper(
             // A route needs two stops.
             isRouteOn = route.isDayRouteShown.takeIf { stops.size >= 2 },
             isRouteFailed = isRouteShown && route.isUnavailable && !route.isLoading,
-            route = routeSummary().takeIf { isRouteShown },
+            // Around's box takes the route card's place while it shows; the route itself stays on (Shahin, 2026-11-21).
+            route = routeSummary().takeIf { isRouteShown && around == null },
             legLabels = if (isRouteShown && isDayRoute) {
                 plan?.route?.legs.orEmpty().mapNotNull { leg -> leg.toMarkerId?.let { it to durationText(leg.durationSeconds) } }.toMap().toImmutableMap()
             } else {
@@ -174,6 +203,7 @@ internal class MapStateMapper(
             isRouteAnimated = route.isAnimated,
             canFindBestOrder = canEdit && stops.size in MIN_BEST_ORDER_STOPS..MAX_BEST_ORDER_STOPS,
             isFindingBestOrder = route.isFindingBestOrder,
+            around = around,
         )
     }
 
@@ -252,7 +282,7 @@ internal class MapStateMapper(
         return config.transitAreas.covers(ends)
     }
 
-    private fun pinRoutes(at: GeoPoint) = route.pinRoutes(at, hasLocation = model.location.current != null)
+    private fun pinRoutes(at: GeoPoint) = route.pinRoutes(at, hasLocation = model.location.current != null).copy(isAroundOn = model.around?.center == at)
 
     fun layers(): MapLayersState {
         val pins = model.pins.pins
@@ -266,22 +296,50 @@ internal class MapStateMapper(
         // The places along the way show on the map too, also where the map's own pins leave them out, in their own color.
         // While a route shows, the other pins are dots, so the route, its two ends, the stops and the places along it stand out.
         val routeShows = routePoints.size > 1
-        // Hidden places come first: only the route's places stay, then the route makes the rest dots as always.
-        val isRoutes = { id: String -> id in alongIds || id in endPlaces || id in kept }
-        val visible = if (model.arePlacesHidden) pins.filter { isRoutes(it.place.id) } else pins
+        // Around a pin: its places in purple, clear while the rest dims, the map otherwise as it was (Shahin, 2026-11-21). The map's filter only leaves the places of the
+        // kinds picked, in their own colours: they are the map's pins, not found ones (Shahin, 2026-11-17).
+        val aroundPlaces = model.around?.result?.places.orEmpty().map { it.place }
+        val highlighted = alongIds + aroundPlaces.map { it.id }
+        val othersAreDots = routeShows
+        // Hidden places come first: only the route's places stay, and the pin Around is around, then the route makes the
+        // rest dots as always.
+        val isRoutes = { id: String -> id in highlighted || id in endPlaces || id in kept || id == model.around?.pinPlaceId }
+        // The map searched by name shows the places named so as full pins at every zoom, also while places are hidden or
+        // a route or Around makes the rest dots: they are what was asked for (Shahin, 2026-11-17). The other pins stay
+        // as they were, dimmed (Shahin, 2026-11-21).
+        val isNamed = model.placeFilter.name != null
+        val visible = if (model.arePlacesHidden) pins.filter { isRoutes(it.place.id) || (isNamed && it.isSearchResult) } else pins
         val shown = visible.mapTo(HashSet()) { it.place.id }
-        val placePins = visible.map {
+        val pinsShown = visible.map {
             when {
                 it.place.id in endPlaces -> it.copy(size = SelectedPinSize, isAlongTheWay = false, isKept = true)
-                it.place.id in kept -> it.copy(isAlongTheWay = it.place.id in alongIds, isKept = true)
-                it.place.id in alongIds -> it.copy(isAlongTheWay = true)
-                routeShows -> it.copy(isDot = true)
+                // A tapped place stays purple when it is the route's or Around's (Around now shows over a route, Shahin 2026-11-21).
+                it.place.id in kept -> it.copy(isAlongTheWay = it.place.id in highlighted, isKept = true)
+                it.place.id in highlighted -> it.copy(isAlongTheWay = true)
+                // The pin Around is around stays itself, kept on top of the places it found (Shahin 2026-11-17).
+                it.place.id == model.around?.pinPlaceId -> it.copy(isKept = true)
+                // A result: never a dot, red below.
+                isNamed && it.isSearchResult -> it
+                othersAreDots -> it.copy(isDot = true)
                 else -> it
             }
         } +
             endPlaces.values.filter { it.place.id !in shown }.map { PlacePin(it.place, SelectedPinSize, isKept = true) } +
-            kept.values.filter { it.id !in shown && it.id !in endPlaces }.map { PlacePin(it, placePinSize(it, config), isAlongTheWay = it.id in alongIds, isKept = true) } +
-            alongTheWay.filter { it.place.id !in shown && it.place.id !in endPlaces && it.place.id !in kept }.map { it.toPin() }
+            kept.values.filter { it.id !in shown && it.id !in endPlaces }.map { PlacePin(it, placePinSize(it, config), isAlongTheWay = it.id in highlighted, isKept = true) } +
+            alongTheWay.filter { it.place.id !in shown && it.place.id !in endPlaces && it.place.id !in kept }.map { it.toPin() } +
+            aroundPlaces.filter { it.id !in shown && it.id !in alongIds && it.id !in kept }.map { PlacePin(it, placePinSize(it, config), isAlongTheWay = true) } +
+            // The place Around is around, as itself, where the map's pins don't list it.
+            listOfNotNull(model.around?.pinPlace?.takeIf { it.id !in shown && it.id !in alongIds && it.id !in endPlaces && it.id !in kept }?.let { PlacePin(it, placePinSize(it, config), isKept = true) })
+        // A place picked from the along-the-way or Around list keeps its photo on the map, as it shows in the list, also
+        // where its pin there is a plain one (Shahin, 2026-11-17).
+        val selectedId = (model.selection as? Selection.Place)?.place?.id
+        // A result stays a red full pin whatever else it is now, a route's end, kept or along the way (Shahin,
+        // 2026-11-19).
+        val resultIds = if (isNamed) pins.filter { it.isSearchResult }.mapTo(HashSet()) { it.place.id } else emptySet()
+        val placePins = pinsShown.map { pin ->
+            val isResult = pin.place.id in resultIds
+            pin.copy(photo = pin.photo || (pin.place.id == selectedId && pin.place.hasCover), isKept = pin.isKept || isResult, isSearchResult = isResult)
+        }
         val stopPath = stops.map { it.position }.takeIf { routePoints.isEmpty() && route.between == null }.orEmpty()
         val endColor = route.travelMode.lineColor
         return MapLayersState(
@@ -318,6 +376,14 @@ internal class MapStateMapper(
                 RouteEndMark(end.place.location, size, endColor)
             }.toImmutableList(),
             stopHalo = route.planMode.lineColor.takeIf { routeShows && route.isDayRouteShown && route.between == null },
+            aroundRing = model.around?.let { AroundRing(Coordinates(it.center.lat, it.center.lng), it.radiusMeters, distanceText(it.radiusMeters)) },
+            // Its results stand out, like Google Maps': everything else goes see-through (Shahin, 2026-11-19).
+            isSearchShown = isNamed,
+            selectedStopId = (model.selection as? Selection.Stop)?.markerId,
+            aroundIds = model.around?.let { around ->
+                val center = Coordinates(around.center.lat, around.center.lng)
+                (aroundPlaces.map { it.id } + listOfNotNull(around.pinPlaceId) + stops.filter { it.position == center }.map { it.id }).toImmutableSet()
+            } ?: persistentSetOf(),
         )
     }
 
@@ -326,6 +392,8 @@ internal class MapStateMapper(
 
     /** The open day's stop a route's [end] stands for: a stop is an end as its place, or as itself. */
     private fun stopAt(end: MapPlace): MapMarker? = stops.firstOrNull { (it.placeId ?: it.id) == end.id }
+
+    private val MapPlace.hasCover get() = coverImageId != null && coverThumbUrl != null
 
     private fun AlongTheWayPlace.toPin() = PlacePin(place, placePinSize(place, config), isAlongTheWay = true)
 
@@ -384,6 +452,7 @@ internal class MapStateMapper(
     }
 
     private fun dialog(): MapDialog? = when (val dialog = model.dialog) {
+        Dialog.LeaveTrip -> MapDialog.LeaveTrip(details?.trip?.name.orEmpty())
         Dialog.ClearDay -> MapDialog.ClearDay(dayNumber ?: 1, stops.size)
         Dialog.DeleteDay -> MapDialog.DeleteDay(dayNumber ?: 1, stops.size)
         is Dialog.DeleteOthersStop -> stops.firstOrNull { it.id == dialog.markerId }?.let { MapDialog.DeleteOthersStop(it.title) }
@@ -459,6 +528,7 @@ internal class MapStateMapper(
         placeId = placeId,
         canDelete = role == TripRole.OWNER || (canEdit && myUserId != null && createdById == myUserId),
         isNew = id in markedStopIds,
+        isNaming = name.isBlank() && id in model.namingStopIds,
     )
 
     private companion object {
@@ -470,3 +540,14 @@ internal class MapStateMapper(
 
 /** The trip card shows at most this many members' faces; the rest as "and 2 more". */
 private const val TRIP_CARD_FACES = 3
+
+/** Metres along the earth's surface (haversine), for "2.3 km" on a search result. */
+internal fun GeoPoint.metersTo(other: GeoPoint): Int {
+    fun rad(degrees: Double) = degrees * PI / 180
+    val dLat = rad(other.lat - lat)
+    val dLng = rad(other.lng - lng)
+    val h = sin(dLat / 2).let { it * it } + cos(rad(lat)) * cos(rad(other.lat)) * sin(dLng / 2).let { it * it }
+    return (2 * EARTH_RADIUS_METERS * asin(sqrt(h))).toInt()
+}
+
+private const val EARTH_RADIUS_METERS = 6_371_000.0

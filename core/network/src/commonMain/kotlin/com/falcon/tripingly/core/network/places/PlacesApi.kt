@@ -2,6 +2,8 @@ package com.falcon.tripingly.core.network.places
 
 import com.falcon.tripingly.core.common.error.DataError
 import com.falcon.tripingly.core.common.result.AppResult
+import com.falcon.tripingly.core.network.model.AroundResponseDto
+import com.falcon.tripingly.core.network.model.BrandsResponseDto
 import com.falcon.tripingly.core.network.model.NearbyPageDto
 import com.falcon.tripingly.core.network.model.PlaceDetailDto
 import com.falcon.tripingly.core.network.model.SearchResponseDto
@@ -29,14 +31,22 @@ interface PlacesApi {
      * Places to draw for up to 16 map squares at once, each answered on its own. [tiles] is a comma-separated
      * list of `level/x/y` squares (side `360 / 2^level` degrees); [limit] (10–200) caps each square. Below
      * zoom 14 only Tripinly places (clustered when there are many) and notable OpenStreetMap places; from 14
-     * OpenStreetMap places too.
+     * OpenStreetMap places too. [categories] (comma-separated, null: all) keeps only places of those kinds. [name]
+     * (2–100 characters) keeps only places whose name matches as in search, at any zoom and without clusters, and
+     * ignores [categories].
      */
     @GET("places/tiles")
     suspend fun tiles(
         @Query("tiles") tiles: String,
         @Query("zoom") zoom: Int,
         @Query("limit") limit: Int,
+        @Query("categories") categories: String? = null,
+        @Query("q") name: String? = null,
     ): AppResult<TilesResponseDto, DataError.Network>
+
+    /** Brands with a word of their name starting with [query] (1–60 characters), at most 20, most places first. */
+    @GET("brands")
+    suspend fun brands(@Query("q") query: String): AppResult<BrandsResponseDto, DataError.Network>
 
     /** One place, with its OpenStreetMap details. */
     @GET("places/{id}")
@@ -53,4 +63,19 @@ interface PlacesApi {
         @Query("cursor") cursor: String?,
         @Query("limit") limit: Int,
     ): AppResult<NearbyPageDto, DataError.Network>
+
+    /**
+     * Tripinly Pro (`403 PREMIUM_REQUIRED` otherwise): every place within [radiusMeters] (50–5000) of [lat], [lng],
+     * hot first, Tripinly spots before OpenStreetMap, then nearest, at most the server's `APP_AROUND_MAX_PINS` (default 150), spread over the ring; [categories] (comma-separated,
+     * null: all) keeps only those kinds, while `categoryCounts` always counts every kind; [excludePlaceId], the pin the
+     * ring is around, is left out of both. The point isn't stored.
+     */
+    @GET("places/around")
+    suspend fun around(
+        @Query("lat") lat: Double,
+        @Query("lng") lng: Double,
+        @Query("radiusMeters") radiusMeters: Int,
+        @Query("categories") categories: String?,
+        @Query("excludePlaceId") excludePlaceId: String?,
+    ): AppResult<AroundResponseDto, DataError.Network>
 }

@@ -21,6 +21,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.falcon.tripingly.core.designsystem.component.AvatarStack
 import com.falcon.tripingly.core.designsystem.component.GlassSurface
+import com.falcon.tripingly.core.designsystem.component.rememberHaptics
 import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
 import com.falcon.tripingly.core.designsystem.theme.spacing
 import com.falcon.tripingly.core.model.trip.UserSummary
@@ -28,6 +29,7 @@ import com.falcon.tripingly.feature.map.generated.resources.Res
 import com.falcon.tripingly.feature.map.generated.resources.map_join_request
 import com.falcon.tripingly.feature.map.generated.resources.map_join_requests
 import com.falcon.tripingly.feature.map.presentation.map.JoinRequestsState
+import kotlin.time.Duration.Companion.seconds
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.coroutines.delay
 import org.jetbrains.compose.resources.pluralStringResource
@@ -35,18 +37,32 @@ import org.jetbrains.compose.resources.stringResource
 
 /**
  * "@anna and 2 others want to join" under the map's header at the start, in line with the back button, their faces
- * stacked; a tap opens the members sheet. Shown in full a while ([ShrinkDelayMillis]), it shrinks sideways to its faces
- * ([onSeen]), and for people seen before it is only that small circle (Shahin, 2026-11-16).
+ * stacked; a tap opens the members sheet. Shown in full a while ([ShrinkDelay]), it shrinks sideways to its faces
+ * ([onSeen]), and for people seen before it is only that small circle (Shahin, 2026-11-16); a long press ([onLongClick])
+ * shows them in full again for as long (Shahin, 2026-11-17).
  */
 @Composable
-internal fun JoinRequestsPill(requests: JoinRequestsState, onClick: () -> Unit, onSeen: () -> Unit, modifier: Modifier = Modifier) {
+internal fun JoinRequestsPill(requests: JoinRequestsState, onClick: () -> Unit, onLongClick: () -> Unit, onSeen: () -> Unit, modifier: Modifier = Modifier) {
+    val haptics = rememberHaptics()
     if (!requests.isCompact) {
         LaunchedEffect(requests.people) {
-            delay(ShrinkDelayMillis)
+            delay(ShrinkDelay)
             onSeen()
         }
     }
-    GlassSurface(modifier = modifier, shape = CircleShape, onClick = onClick, blur = false) {
+    GlassSurface(
+        modifier = modifier,
+        shape = CircleShape,
+        onClick = onClick,
+        // Seen people show in full again; already in full, a long press does nothing.
+        onLongClick = {
+            if (requests.isCompact) {
+                haptics.longPress()
+                onLongClick()
+            }
+        },
+        blur = false,
+    ) {
         Row(modifier = Modifier.padding(MaterialTheme.spacing.extraSmall), verticalAlignment = Alignment.CenterVertically) {
             AvatarStack(requests.people, size = FacesSize)
             AnimatedVisibility(
@@ -72,7 +88,7 @@ internal fun JoinRequestsPill(requests: JoinRequestsState, onClick: () -> Unit, 
 }
 
 /** How long the pill shows its people in full before it shrinks to their faces. */
-private const val ShrinkDelayMillis = 4_000L
+private val ShrinkDelay = 4.seconds
 
 private val FacesSize = 32.dp
 
@@ -86,9 +102,9 @@ private fun JoinRequestsPillPreview() {
     )
     TripinglyTheme {
         Column(verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small)) {
-            JoinRequestsPill(JoinRequestsState(persistentListOf(people.first()), othersCount = 0), onClick = {}, onSeen = {})
-            JoinRequestsPill(JoinRequestsState(people, othersCount = 4), onClick = {}, onSeen = {})
-            JoinRequestsPill(JoinRequestsState(people, othersCount = 4, isCompact = true), onClick = {}, onSeen = {})
+            JoinRequestsPill(JoinRequestsState(persistentListOf(people.first()), othersCount = 0), onClick = {}, onLongClick = {}, onSeen = {})
+            JoinRequestsPill(JoinRequestsState(people, othersCount = 4), onClick = {}, onLongClick = {}, onSeen = {})
+            JoinRequestsPill(JoinRequestsState(people, othersCount = 4, isCompact = true), onClick = {}, onLongClick = {}, onSeen = {})
         }
     }
 }

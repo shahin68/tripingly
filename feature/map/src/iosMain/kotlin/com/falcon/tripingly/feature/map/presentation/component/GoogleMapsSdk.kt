@@ -98,6 +98,8 @@ class GoogleMapMarker(
     val showsInfoWindow: Boolean,
     /** Fades in when it first shows, as Google's own pins do. */
     val fadesIn: Boolean,
+    /** How much of it shows: see-through while the map is searched by name, unless it's a result. */
+    val opacity: Float = 1f,
 )
 
 @ObjCName("GoogleMapListener", exact = true)

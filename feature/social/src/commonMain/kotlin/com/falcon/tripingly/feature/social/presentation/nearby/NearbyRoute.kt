@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -167,8 +168,10 @@ private fun NearbyList(state: State, onAction: (Action) -> Unit, contentPadding:
                     modifier = Modifier.animateItem(),
                 )
             }
-            // Nearby lists OpenStreetMap places.
-            item(key = "osm") { OsmAttribution(Modifier.padding(vertical = MaterialTheme.spacing.small).animateItem()) }
+            // Nearby lists OpenStreetMap places, unless the server leaves them out.
+            if (state.isOsmCreditShown) {
+                item(key = "osm") { OsmAttribution(Modifier.padding(vertical = MaterialTheme.spacing.small).animateItem()) }
+            }
         }
     }
 }
@@ -177,7 +180,8 @@ private fun NearbyList(state: State, onAction: (Action) -> Unit, contentPadding:
 @Composable
 private fun NearbySkeleton(contentPadding: PaddingValues) {
     Skeleton(Modifier.fillMaxSize()) {
-        Column(Modifier.padding(contentPadding), verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small)) {
+        // Runs on under the bottom bar like the real list (edge to edge), instead of stopping at it.
+        Column(Modifier.wrapContentHeight(Alignment.Top, unbounded = true).padding(contentPadding), verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small)) {
             LocationNote()
             placeholderNearbyPlaces.forEach { NearbyPlaceCard(place = it, onOpenImage = {}, onMarkHot = {}, onAdd = {}) }
         }

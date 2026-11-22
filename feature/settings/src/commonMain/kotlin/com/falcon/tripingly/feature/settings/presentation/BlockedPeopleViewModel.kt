@@ -45,7 +45,6 @@ class BlockedPeopleViewModel(private val userRepository: UserRepository) : ViewM
                 loading?.cancel()
                 _uiState.update { it.copy(isOpen = false) }
             }
-            Action.Retry -> load(next = false)
             Action.LoadMore -> if (cursor != null && loading?.isActive != true) load(next = true)
             is Action.Unblock -> unblock(action.user)
             Action.DismissMessage -> _uiState.update { it.copy(message = null) }
@@ -104,7 +103,6 @@ class BlockedPeopleViewModel(private val userRepository: UserRepository) : ViewM
     sealed interface Action {
         data object Open : Action
         data object Close : Action
-        data object Retry : Action
         data object LoadMore : Action
         data class Unblock(val user: UserSummary) : Action
         data object DismissMessage : Action

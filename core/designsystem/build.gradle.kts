@@ -12,7 +12,7 @@ kotlin {
             api(libs.coil.compose)
             implementation(libs.haze)
             // The sheet's back goes to the sheet it was opened from (AppBottomSheet).
-            implementation(libs.compose.uiBackhandler)
+            implementation(libs.navigationevent.compose)
             implementation(libs.kotlinx.coroutines.core)
         }
         androidMain.dependencies {

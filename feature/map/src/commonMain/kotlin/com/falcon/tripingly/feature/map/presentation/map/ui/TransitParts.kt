@@ -56,6 +56,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.PathEffect
@@ -76,6 +77,7 @@ import com.falcon.tripingly.core.designsystem.component.SegmentedToggle
 import com.falcon.tripingly.core.designsystem.component.SegmentedToggleOption
 import com.falcon.tripingly.core.designsystem.component.SheetHeader
 import com.falcon.tripingly.core.designsystem.component.horizontalFadingEdge
+import com.falcon.tripingly.core.designsystem.component.verticalFadingEdge
 import com.falcon.tripingly.core.designsystem.theme.MapColors
 import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
 import com.falcon.tripingly.core.designsystem.theme.spacing
@@ -174,20 +176,23 @@ private fun TransitChipItem(chip: TransitChip, isFirst: Boolean) {
 /** "Leave at 14:05 ⌄" (never "Leave now"; Shahin, 2026-11-15), or "Arrive by 14:05 ⌄": opens the time picker. */
 @Composable
 internal fun LeaveAtButton(leaveAt: LeaveAtState, onAction: (MapAction) -> Unit, modifier: Modifier = Modifier) {
+    // Compact beside the steps (the canvas, Shahin 2026-11-17): a clock for leaving, a flag for arriving, then the time;
+    // the full words are what screen readers say.
+    val label = stringResource(if (leaveAt.isArriveBy) Res.string.map_transit_arrive_by else Res.string.map_transit_leave_at, leaveAt.time)
     Surface(
         onClick = { onAction(MapAction.Plan.OpenLeaveAt) },
-        shape = RoundedCornerShape(LeaveAtHeight / 2),
+        shape = RoundedCornerShape(LegsHeight / 2),
         color = MaterialTheme.extendedColors.controlFill,
         contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
-        modifier = modifier.height(LeaveAtHeight),
+        modifier = modifier.height(LegsHeight),
     ) {
         Row(
             modifier = Modifier.padding(horizontal = MaterialTheme.spacing.small + MaterialTheme.spacing.extraSmall),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(LegGap),
         ) {
-            Icon(Icons.Default.Schedule, contentDescription = null, modifier = Modifier.size(16.dp))
-            Text(stringResource(if (leaveAt.isArriveBy) Res.string.map_transit_arrive_by else Res.string.map_transit_leave_at, leaveAt.time), style = BoldLabel, maxLines = 1)
+            Icon(if (leaveAt.isArriveBy) Icons.Default.Flag else Icons.Default.Schedule, contentDescription = label, modifier = Modifier.size(16.dp))
+            Text(leaveAt.time, style = BoldLabel, maxLines = 1, modifier = Modifier.clearAndSetSemantics {})
             Icon(Icons.Default.ExpandMore, contentDescription = null, modifier = Modifier.size(16.dp))
         }
     }
@@ -231,7 +236,13 @@ internal fun TransitNoteText(note: TransitNote, modifier: Modifier = Modifier) {
 internal fun TransitStepsSheet(sheet: MapSheet.TransitSteps, onClose: () -> Unit, modifier: Modifier = Modifier) {
     Column(modifier.padding(bottom = MaterialTheme.spacing.large)) {
         SheetHeader(title = sheet.title.asString(), subtitle = sheet.subtitle?.asString(), onClose = onClose)
-        LazyColumn(contentPadding = PaddingValues(horizontal = MaterialTheme.spacing.large, vertical = MaterialTheme.spacing.small)) {
+        val listState = rememberLazyListState()
+        LazyColumn(
+            state = listState,
+            // Fades out under the header and at the foot while more of the timeline is hidden there.
+            modifier = Modifier.verticalFadingEdge(listState),
+            contentPadding = PaddingValues(horizontal = MaterialTheme.spacing.large, vertical = MaterialTheme.spacing.small),
+        ) {
             items(sheet.rows, key = { it.key }) { row -> TransitTimelineRow(row, Modifier.animateItem()) }
             item(key = "foot") {
                 Column(Modifier.padding(top = MaterialTheme.spacing.medium), verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraSmall)) {
@@ -410,7 +421,6 @@ private val BoldLabel @Composable get() = MaterialTheme.typography.labelLarge.co
 private val BoldTitle @Composable get() = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.ExtraBold)
 
 private val LegsHeight = 40.dp
-private val LeaveAtHeight = 36.dp
 private val LegGap = 4.dp
 private val BadgeShape = RoundedCornerShape(6.dp)
 private val TimeWidth = 44.dp

@@ -46,6 +46,18 @@ data class MapPlace(
     val coverImageId: String? = null,
     /** Its thumbnail (signed, valid about an hour), drawn inside a photo pin. */
     val coverThumbUrl: String? = null,
+    /** The brand it is a store of (Zara, KFC…); with a [Brand.logoUrl] its pin is a rounded square showing the logo. */
+    val brand: Brand? = null,
+)
+
+/**
+ * A brand from our own brands list. [logoUrl] is its logo, a 96 px square WebP of a few KB that never changes at this
+ * URL (so cache it for good); null when it has none or the server doesn't show it, and then the pin stays round.
+ */
+data class Brand(
+    val id: String,
+    val name: String,
+    val logoUrl: String?,
 )
 
 /** Several Tripinly places drawn as one bubble while zoomed out. */
@@ -118,9 +130,11 @@ data class ImageCredit(
  * A fixed square of the map that places load by, the same grid as the server's: `360 / 2^level` degrees a
  * side, square [x] spans longitudes `x·side … (x+1)·side` and [y] latitudes `y·side … (y+1)·side`. Places
  * for map zoom [zoom] load in squares of level `zoom − 2` (about four map tiles a side), so a phone screen
- * shows one to four of them.
+ * shows one to four of them. With [categories] only places of those kinds load (the map's filter); with [name] only
+ * places named so, at any zoom (the map searched by name, which ignores [categories]). A filtered square is kept apart
+ * from the unfiltered one.
  */
-data class PlaceSquare(val zoom: Int, val x: Int, val y: Int) {
+data class PlaceSquare(val zoom: Int, val x: Int, val y: Int, val categories: Set<PlaceCategory> = emptySet(), val name: String? = null) {
     val level: Int get() = levelAt(zoom)
 
     /** How the server names it: `level/x/y`. */
@@ -137,7 +151,7 @@ data class PlaceSquare(val zoom: Int, val x: Int, val y: Int) {
          * The squares under [bounds] at map zoom [zoom], plus [ring] more squares on each side. A box across
          * the antimeridian (west east of east) takes squares on both sides of it.
          */
-        fun covering(bounds: GeoBounds, zoom: Int, ring: Int = 0): List<PlaceSquare> {
+        fun covering(bounds: GeoBounds, zoom: Int, ring: Int = 0, categories: Set<PlaceCategory> = emptySet(), name: String? = null): List<PlaceSquare> {
             // The server's zoom range.
             val zoom = zoom.coerceIn(0, 22)
             val level = levelAt(zoom)
@@ -148,7 +162,7 @@ data class PlaceSquare(val zoom: Int, val x: Int, val y: Int) {
             val firstX = floor(bounds.west / side).toInt() - ring
             val lastX = ceil(bounds.east / side).toInt() - 1 + ring
             val xs = if (bounds.west <= bounds.east) (firstX..lastX).toList() else (firstX until half) + (-half..lastX)
-            return xs.filter { it in -half until half }.distinct().flatMap { x -> ys.map { y -> PlaceSquare(zoom, x, y) } }
+            return xs.filter { it in -half until half }.distinct().flatMap { x -> ys.map { y -> PlaceSquare(zoom, x, y, categories.takeIf { name == null }.orEmpty(), name) } }
         }
 
         private fun levelAt(zoom: Int) = (zoom - 2).coerceAtLeast(1)

@@ -3,6 +3,7 @@ package com.falcon.tripingly.core.data.di
 import com.falcon.tripingly.core.common.di.ApplicationScope
 import com.falcon.tripingly.core.data.account.AccountRepository
 import com.falcon.tripingly.core.data.account.AccountRepositoryImpl
+import com.falcon.tripingly.core.data.account.AccountSync
 import com.falcon.tripingly.core.data.account.DeveloperSignIn
 import com.falcon.tripingly.core.data.account.LocalDataCleaner
 import com.falcon.tripingly.core.data.account.SignedInStart
@@ -84,7 +85,7 @@ val dataModule = module {
             currentUserId = { get<SessionRepository>().currentUserId() },
         )
     }
-    single<AppConfigRepository> { DefaultAppConfigRepository(get(), get(ApplicationScope)) }
+    single<AppConfigRepository> { DefaultAppConfigRepository(api = get(), store = get(), scope = get(ApplicationScope)) }
     single {
         DefaultPhotoRepository(
             api = get(),
@@ -98,8 +99,8 @@ val dataModule = module {
         )
     }
     single<PhotoRepository> { get<DefaultPhotoRepository>() }
-    single<PlaceRepository> { DefaultPlaceRepository(get(), get(), get(ApplicationScope)) }
-    single { DefaultRouteRepository(get(), get()) }
+    single<PlaceRepository> { DefaultPlaceRepository(get(), get(), get(), get(ApplicationScope)) }
+    single { DefaultRouteRepository(get(), get(), get()) }
     single<RouteRepository> { get<DefaultRouteRepository>() }
 
     single {
@@ -125,6 +126,7 @@ val dataModule = module {
             authApi = get(),
             accountApi = get(),
             tokenStore = get(),
+            secureStore = get(),
             sessionEvents = get(),
             developerSignIn = if (config.developerSignIn) DeveloperSignIn(config.devAuthSecret) else null,
             cleaners = { getAll<LocalDataCleaner>() },
@@ -154,12 +156,13 @@ val dataModule = module {
             // The app binds the store where a RevenueCat key is set.
             store = getOrNull<StorePurchases>(),
             session = get(),
+            realtime = get(),
             scope = get(ApplicationScope),
         )
     }
     single<ProRepository> { get<DefaultProRepository>() }
-    // Once signed in: this device registers for push, purchases belong to this account, and the notification
-    // center's indicator follows the server.
+    // Once signed in: this device registers for push, purchases belong to this account, the notification
+    // center's indicator and the account follow the server.
     single(named("push")) {
         val push = get<PushNotifications>()
         SignedInStart { push.start() }
@@ -171,6 +174,10 @@ val dataModule = module {
     single(named("notificationCenter")) {
         val center = get<NotificationCenterRepository>()
         SignedInStart { center.start() }
+    }
+    single(named("account")) {
+        val sync = AccountSync(session = get(), realtime = get(), scope = get(ApplicationScope))
+        SignedInStart { sync.start() }
     }
 
     // Galleries and uploads in progress belong to whoever was signed in.

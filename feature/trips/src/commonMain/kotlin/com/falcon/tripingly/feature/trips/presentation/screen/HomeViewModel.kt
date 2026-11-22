@@ -133,6 +133,9 @@ class HomeViewModel(
 
     private fun refresh() {
         if (ui.value.isRefreshing) return
+        // A retry from the error screen leaves it as it is until the answer; failing again also says why in the banner
+        // (Shahin, 2026-11-22).
+        val isRetry = ui.value.loadError != null
         ui.update { it.copy(isRefreshing = true) }
         viewModelScope.launch {
             val error = (tripRepository.refreshMyTrips() as? AppResult.Error)?.error
@@ -143,7 +146,7 @@ class HomeViewModel(
                     isRefreshing = false,
                     hasLoaded = true,
                     loadError = error?.takeUnless { hasTrips }?.toUiText(Res.string.home_error_load_trips),
-                    message = error?.takeIf { hasTrips }?.let(::refreshMessage),
+                    message = error?.let { if (hasTrips) refreshMessage(it) else it.toUiText(Res.string.home_error_load_trips).takeIf { isRetry } },
                 )
             }
         }

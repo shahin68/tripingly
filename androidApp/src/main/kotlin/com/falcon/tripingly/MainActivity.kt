@@ -7,6 +7,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import com.falcon.tripingly.deeplink.DeepLink
 import com.falcon.tripingly.deeplink.DeepLinks
 import com.falcon.tripingly.push.TripinglyMessagingService
@@ -15,14 +16,18 @@ import org.koin.android.ext.android.inject
 class MainActivity : ComponentActivity() {
     private val deepLinks: DeepLinks by inject()
 
+    /** The splash stays only until the app has its first screen: no wait of its own (Shahin, 2026-11-22). */
+    private var isStarting = true
+
     override fun onCreate(savedInstanceState: Bundle?) {
+        installSplashScreen().setKeepOnScreenCondition { isStarting }
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
         // Not again after a rotation or process restore.
         if (savedInstanceState == null) openDeepLink(intent)
 
         setContent {
-            App()
+            App(onStarted = { isStarting = false })
         }
     }
 

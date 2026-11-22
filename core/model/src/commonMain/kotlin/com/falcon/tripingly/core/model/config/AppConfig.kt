@@ -31,6 +31,8 @@ data class AppConfig(
     val mapMaxPhotoPins: Int = 100,
     /** Below this camera zoom, place pins are drawn as small dots; they grow back to pins when zoomed in. */
     val pinDotBelowZoom: Float = 14f,
+    /** Whether the server lists OpenStreetMap places; off, the OSM credit shows only with a route. */
+    val osmPinsEnabled: Boolean = true,
     /** Cities with public transport routes; none until the server says so (switched off). */
     val transitAreas: List<TransitArea> = emptyList(),
 )

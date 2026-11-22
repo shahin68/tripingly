@@ -49,6 +49,9 @@ internal class ExploreFeed(
     fun load() {
         loading?.cancel()
         loadingMore?.cancel()
+        // A retry from the error screen leaves it as it is until the answer; failing again also says why in the banner
+        // (Shahin, 2026-11-22).
+        val isRetry = state.value.loadError != null
         loading = scope.launch {
             update { it.copy(isLoading = true) }
             when (val result = socialRepository.explore(filter(), cursor = null)) {
@@ -61,7 +64,7 @@ internal class ExploreFeed(
                     val message = result.error.toUiText(Res.string.social_error_load_explore)
                     val isEmpty = state.value.trips.isEmpty()
                     update { it.copy(isLoading = false, hasLoaded = true, loadError = message.takeIf { isEmpty }) }
-                    if (!isEmpty) showMessage(message)
+                    if (!isEmpty || isRetry) showMessage(message)
                 }
             }
         }

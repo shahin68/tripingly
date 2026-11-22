@@ -78,9 +78,7 @@ fun PhotoStripRoute(
 internal fun PhotoStrip(state: State, onShowAll: () -> Unit, onAction: (Action) -> Unit, modifier: Modifier = Modifier, onAddFirst: (() -> Unit)? = null) {
     val photos = state.viewable
     when {
-        state.isLoading && photos.isEmpty() -> Row(modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(TileGap)) {
-            repeat(STRIP_TILES) { SkeletonBox(Modifier.weight(1f).height(TileHeight)) }
-        }
+        state.isLoading && photos.isEmpty() -> PhotoStripSkeleton(modifier)
         photos.isEmpty() -> Row(modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Text(
                 stringResource(Res.string.map_stop_no_photos),
@@ -113,6 +111,14 @@ internal fun PhotoStrip(state: State, onShowAll: () -> Unit, onAction: (Action) 
             // A short row keeps its tiles the same size as a full one's.
             repeat(STRIP_TILES - shown.size) { Box(Modifier.weight(1f)) }
         }
+    }
+}
+
+/** The strip's tiles while its photos aren't there yet, as high as the photos. */
+@Composable
+fun PhotoStripSkeleton(modifier: Modifier = Modifier) {
+    Row(modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(TileGap)) {
+        repeat(STRIP_TILES) { SkeletonBox(Modifier.weight(1f).height(TileHeight)) }
     }
 }
 

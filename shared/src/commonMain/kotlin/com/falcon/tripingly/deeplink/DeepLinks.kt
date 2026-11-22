@@ -27,6 +27,9 @@ sealed interface DeepLink {
     /** The notification center (`tripinly://notifications`). */
     data class Notifications(override val notificationId: String? = null) : DeepLink
 
+    /** Settings (`tripinly://settings`), from iOS's link to the app's own notification switches. */
+    data class Settings(override val notificationId: String? = null) : DeepLink
+
     /** The app itself (an unknown link). */
     data class Home(override val notificationId: String? = null) : DeepLink
 
@@ -34,13 +37,14 @@ sealed interface DeepLink {
         /**
          * `tripinly://trips/{id}`, `tripinly://trips/{id}/members`, `tripinly://markers/{id}`,
          * `tripinly://markers/{id}/comments`, `tripinly://me/followers`, `tripinly://users/{username}`,
-         * `tripinly://notifications`; anything else opens the app.
+         * `tripinly://notifications`, `tripinly://settings`; anything else opens the app.
          */
         fun parse(url: String, notificationId: String? = null): DeepLink {
             val path = url.takeIf { it.startsWith(PREFIX) }?.removePrefix(PREFIX)?.trimEnd('/')?.split('/')
             val id = path?.getOrNull(1)?.ifBlank { null }
             return when {
                 path == listOf("notifications") -> Notifications(notificationId)
+                path == listOf("settings") -> Settings(notificationId)
                 id == null -> Home(notificationId)
                 path.size == 2 && path[0] == "trips" -> Trip(id, notificationId)
                 path.size == 3 && path[0] == "trips" && path[2] == "members" -> Members(id, notificationId)

@@ -2,6 +2,7 @@ package com.falcon.tripingly.core.data.routing
 
 import com.falcon.tripingly.core.common.error.DataError
 import com.falcon.tripingly.core.common.result.AppResult
+import com.falcon.tripingly.core.model.place.PlaceCategory
 import com.falcon.tripingly.core.model.route.BestOrder
 import com.falcon.tripingly.core.model.route.RoutePlan
 import com.falcon.tripingly.core.model.route.TransitTime
@@ -18,13 +19,15 @@ import kotlin.time.Instant
 interface RouteRepository {
     /**
      * Through [day]'s stops in their order. Waits until the trip's own stop changes have reached the server,
-     * which routes the stops it has. By public transport the first leg leaves at [departAt] (null: now).
+     * which routes the stops it has. By public transport the first leg leaves at [departAt] (null: now). The places along
+     * the way are only of [categories] (empty: every kind); [RoutePlan.alongTheWayCounts] always counts every kind.
      */
-    suspend fun dayRoute(tripId: String, day: TripDay, mode: TravelMode, departAt: Instant? = null): AppResult<RoutePlan, DataError.Network>
+    suspend fun dayRoute(tripId: String, day: TripDay, mode: TravelMode, departAt: Instant? = null, categories: Set<PlaceCategory> = emptySet()): AppResult<RoutePlan, DataError.Network>
 
     /**
      * From [from] to [to]; the places along the way leave out [tripId]'s own and the places at the ends ([fromPlaceId],
      * [toPlaceId]: null for where I am, an address or a stop). By public transport it leaves or arrives at [time] (null: now).
+     * The places along the way are only of [categories] (empty: every kind).
      */
     suspend fun route(
         from: GeoPoint,
@@ -34,6 +37,7 @@ interface RouteRepository {
         fromPlaceId: String?,
         toPlaceId: String?,
         time: TransitTime? = null,
+        categories: Set<PlaceCategory> = emptySet(),
     ): AppResult<RoutePlan, DataError.Network>
 
     /** The best order for [day]'s stops, the first one staying first; only proposed, not saved. */

@@ -30,4 +30,6 @@ data class MapMarker(
     val canDelete: Boolean = false,
     /** Something happened here I haven't seen (a comment, a like, a change): the pin carries a dot. */
     val isNew: Boolean = false,
+    /** Added without a name, which the server is still finding: the title shows a small spinner meanwhile. */
+    val isNaming: Boolean = false,
 )

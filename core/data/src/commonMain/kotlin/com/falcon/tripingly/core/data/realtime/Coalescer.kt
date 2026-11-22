@@ -21,13 +21,15 @@ internal class Coalescer(private val scope: CoroutineScope, private val load: su
                 running.add(key)
             }
             if (!first) return@launch
+            var done = false
             try {
+                // Deciding to stop and leaving [running] happen under one lock, so an ask that comes in between isn't lost.
                 do {
                     load(key)
-                    val repeat = lock.withLock { again.remove(key) }
-                } while (repeat)
+                    done = lock.withLock { (!again.remove(key)).also { stop -> if (stop) running -= key } }
+                } while (!done)
             } finally {
-                lock.withLock {
+                if (!done) lock.withLock {
                     running -= key
                     again -= key
                 }

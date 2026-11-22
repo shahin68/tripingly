@@ -6,17 +6,22 @@ import com.falcon.tripingly.core.common.result.map
 import com.falcon.tripingly.core.data.config.AppConfigRepository
 import com.falcon.tripingly.core.data.trips.toUser
 import com.falcon.tripingly.core.model.Page
+import com.falcon.tripingly.core.model.place.Brand
 import com.falcon.tripingly.core.model.place.MapPlace
 import com.falcon.tripingly.core.model.place.OsmRef
 import com.falcon.tripingly.core.model.place.OsmType
 import com.falcon.tripingly.core.model.place.PlaceCategory
+import com.falcon.tripingly.core.model.place.PlaceAround
 import com.falcon.tripingly.core.model.place.PlaceCluster
+import com.falcon.tripingly.core.model.place.GeoBounds
 import com.falcon.tripingly.core.model.place.ImageCredit
 import com.falcon.tripingly.core.model.place.PlaceDetails
 import com.falcon.tripingly.core.model.place.PlaceImage
 import com.falcon.tripingly.core.model.place.PlaceImageSource
+import com.falcon.tripingly.core.model.place.PlaceSearch
 import com.falcon.tripingly.core.model.place.PlaceSearchResult
 import com.falcon.tripingly.core.model.place.PlaceSquare
+import com.falcon.tripingly.core.model.place.PlacesAround
 import com.falcon.tripingly.core.model.place.PlacesInView
 import com.falcon.tripingly.core.model.place.SearchResultType
 import com.falcon.tripingly.core.model.social.NearbyPlace
@@ -27,6 +32,7 @@ import com.falcon.tripingly.core.network.model.PlaceDetailDto
 import com.falcon.tripingly.core.network.model.PlaceImageDto
 import com.falcon.tripingly.core.network.model.PlaceItemDto
 import com.falcon.tripingly.core.network.model.SearchResultDto
+import com.falcon.tripingly.core.network.ApiConfig
 import com.falcon.tripingly.core.network.places.PlacesApi
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
@@ -44,6 +50,7 @@ import kotlin.time.TimeSource
 internal class DefaultPlaceRepository(
     private val api: PlacesApi,
     private val appConfig: AppConfigRepository,
+    private val apiConfig: ApiConfig,
     /** Requests outlive the caller that started them, so an answer nobody waits for anymore is still kept. */
     private val scope: CoroutineScope,
 ) : PlaceRepository {
@@ -60,39 +67,48 @@ internal class DefaultPlaceRepository(
     private val _changedSquares = MutableSharedFlow<PlaceSquare>(extraBufferCapacity = MAX_SQUARES)
     override val changedSquares: Flow<PlaceSquare> = _changedSquares.asSharedFlow()
 
-    override suspend fun search(query: String, near: GeoPoint?): AppResult<List<PlaceSearchResult>, DataError.Network> =
+    override suspend fun search(query: String, near: GeoPoint?): AppResult<PlaceSearch, DataError.Network> =
         search(query, near, scope = null)
 
     override suspend fun searchDestinations(query: String): AppResult<List<PlaceSearchResult>, DataError.Network> =
-        search(query, near = null, scope = DESTINATION_SCOPE)
+        search(query, near = null, scope = DESTINATION_SCOPE).map { it.results }
 
-    private suspend fun search(query: String, near: GeoPoint?, scope: String?): AppResult<List<PlaceSearchResult>, DataError.Network> {
+    private suspend fun search(query: String, near: GeoPoint?, scope: String?): AppResult<PlaceSearch, DataError.Network> {
         val trimmed = query.trim().take(MAX_QUERY_LENGTH)
-        if (trimmed.isEmpty()) return AppResult.Success(emptyList())
+        if (trimmed.isEmpty()) return AppResult.Success(PlaceSearch(emptyList()))
         return api.search(trimmed, near?.lat, near?.lng, scope).map { response ->
-            response.items.map { item ->
-                val location = GeoPoint(item.location.lat, item.location.lng)
-                PlaceSearchResult(
-                    name = item.name,
-                    address = item.address,
-                    location = location,
-                    type = item.toType(),
-                    place = item.id?.let { id ->
-                        MapPlace(
-                            id = id,
-                            name = item.name,
-                            category = item.category?.let { PlaceItemDto.Category.valueOf(it.name).toCategory() } ?: PlaceCategory.Other,
-                            location = location,
-                            isTripinly = item.isTripinly,
-                            hotCount = item.hotCount.toInt(),
-                            // GET /places/search doesn't send prominence. It only sizes pins, and a picked place is drawn as the selected pin.
-                            prominence = 0,
-                        )
-                    },
-                    osm = item.osmId?.let { osmId -> item.osmType?.let { OsmRef(it.toOsmType(), osmId) } },
-                )
-            }
+            PlaceSearch(
+                city = response.city?.let { GeoBounds(south = it.south, west = it.west, north = it.north, east = it.east) },
+                results = response.items.map { item ->
+                    val location = GeoPoint(item.location.lat, item.location.lng)
+                    PlaceSearchResult(
+                        name = item.name,
+                        address = item.address,
+                        location = location,
+                        type = item.toType(),
+                        place = item.id?.let { id ->
+                            MapPlace(
+                                id = id,
+                                name = item.name,
+                                category = item.category?.let { PlaceItemDto.Category.valueOf(it.name).toCategory() } ?: PlaceCategory.Other,
+                                location = location,
+                                isTripinly = item.isTripinly,
+                                hotCount = item.hotCount.toInt(),
+                                prominence = item.prominence.toInt(),
+                                brand = item.brand?.toBrand(apiConfig),
+                            )
+                        },
+                        osm = item.osmId?.let { osmId -> item.osmType?.let { OsmRef(it.toOsmType(), osmId) } },
+                    )
+                },
+            )
         }
+    }
+
+    override suspend fun brands(query: String): AppResult<List<Brand>, DataError.Network> {
+        val trimmed = query.trim()
+        if (trimmed.isEmpty()) return AppResult.Success(emptyList())
+        return api.brands(trimmed.take(MAX_BRAND_QUERY)).map { response -> response.items.map { it.toBrand(apiConfig) } }
     }
 
     override suspend fun placesIn(squares: Collection<PlaceSquare>): AppResult<Map<PlaceSquare, PlacesInView>, DataError.Network> {
@@ -130,18 +146,19 @@ internal class DefaultPlaceRepository(
         }.toMap()
     }
 
-    /** Sends the waiting squares, one request per zoom and per 16 squares, once callers stop adding for a moment. */
+    /** Sends the waiting squares, one request per zoom, filter (kinds or name) and 16 squares, once callers stop adding for a moment. */
     private suspend fun send() {
         delay(GATHER_FOR)
         val batch = lock.withLock {
             sending = null
             waiting.toList().also { waiting.clear() }
         }
-        batch.groupBy { (square, _) -> square.zoom }.forEach { (zoom, group) ->
+        batch.groupBy { (square, _) -> Triple(square.zoom, square.categories, square.name) }.forEach { (key, group) ->
+            val (zoom, categories, name) = key
             group.chunked(MAX_SQUARES_PER_REQUEST).forEach { chunk ->
                 scope.launch {
-                    val result = api.tiles(chunk.joinToString(",") { (square, _) -> square.id }, zoom, PLACES_PER_SQUARE)
-                        .map { response -> response.tiles.associate { it.tile to PlacesInView(it.places.map { place -> place.toMapPlace() }, it.clusters.map { cluster -> cluster.toPlaceCluster() }) } }
+                    val result = api.tiles(chunk.joinToString(",") { (square, _) -> square.id }, zoom, PLACES_PER_SQUARE, categories.query(), name)
+                        .map { response -> response.tiles.associate { it.tile to PlacesInView(it.places.map { place -> place.toMapPlace(apiConfig) }, it.clusters.map { cluster -> cluster.toPlaceCluster() }) } }
                     val changed = lock.withLock {
                         chunk.mapNotNull { (square, loaded) ->
                             loaded.isRefreshing = false
@@ -240,6 +257,30 @@ internal class DefaultPlaceRepository(
             )
         }
 
+    override suspend fun around(point: GeoPoint, radiusMeters: Int, categories: Set<PlaceCategory>, excludePlaceId: String?): AppResult<PlacesAround, DataError.Network> =
+        api.around(point.lat, point.lng, radiusMeters, categories.query(), excludePlaceId).map { response ->
+            PlacesAround(
+                places = response.items.map { item ->
+                    PlaceAround(
+                        MapPlace(
+                            id = item.id,
+                            name = item.name,
+                            category = PlaceItemDto.Category.valueOf(item.category.name).toCategory(),
+                            location = GeoPoint(item.location.lat, item.location.lng),
+                            isTripinly = item.isTripinly,
+                            hotCount = item.hotCount.toInt(),
+                            prominence = item.prominence.toInt(),
+                            coverImageId = item.coverImageId,
+                            coverThumbUrl = item.coverThumbUrl,
+                            brand = item.brand?.toBrand(apiConfig),
+                        ),
+                        item.distanceMeters.toInt(),
+                    )
+                },
+                counts = response.categoryCounts.toCategoryCounts(),
+            )
+        }
+
     private fun PlaceDetailDto.toPlaceDetails() = PlaceDetails(
         id = id,
         name = name,
@@ -277,6 +318,8 @@ internal class DefaultPlaceRepository(
     private companion object {
         // The server's limit for `q`.
         const val MAX_QUERY_LENGTH = 100
+        // The server's limit for a brand search.
+        const val MAX_BRAND_QUERY = 60
         const val DESTINATION_SCOPE = "destination"
         const val NEARBY_PAGE_SIZE = 20
         // The server's limit of squares per request.

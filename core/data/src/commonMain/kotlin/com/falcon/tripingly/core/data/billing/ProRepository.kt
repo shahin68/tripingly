@@ -5,19 +5,29 @@ import com.falcon.tripingly.core.common.result.AppResult
 import com.falcon.tripingly.core.data.account.SessionRepository
 import com.falcon.tripingly.core.model.account.ProOffer
 import com.falcon.tripingly.core.model.account.SessionState
-import com.falcon.tripingly.core.model.account.hasPro
+import com.falcon.tripingly.core.network.realtime.RealtimeClient
+import com.falcon.tripingly.core.network.realtime.RealtimeEvent
+import kotlin.time.Clock
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.filterIsInstance
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
 /**
- * Buying Tripinly Pro. The store takes the payment, RevenueCat tells the server (webhook), and the
- * server's `GET /me` turns Pro on: the app never unlocks anything itself.
+ * Tripinly Pro: whether it's on ([isPro], the one answer the whole app reads) and buying it. The store takes the
+ * payment and the server decides: the app never unlocks anything itself.
  */
 interface ProRepository {
+    /**
+     * Pro right now, live: from the account the server last sent (`GET /me`, `pro.changed` on every connect and
+     * change, a refused Pro call), off by itself when it ends. Asks the server nothing.
+     */
+    val isPro: StateFlow<Boolean>
+
     /** False where this build has no purchases (no RevenueCat key, or the fake API). */
     val isAvailable: Boolean
 
@@ -34,10 +44,10 @@ interface ProRepository {
 }
 
 enum class PurchaseOutcome {
-    /** The server has Pro on: `GET /me` says so. */
+    /** The server has Pro on. */
     Active,
 
-    /** Paid, but the server hasn't heard from the store yet; checked again in the background until Pro turns on. */
+    /** Paid, but the server couldn't confirm it yet; Pro turns on by itself once it does (`pro.changed`). */
     Confirming,
 
     /** The person closed the store's sheet. */
@@ -51,14 +61,25 @@ internal class DefaultProRepository(
     /** Null where the build has no purchases. */
     private val store: StorePurchases?,
     private val session: SessionRepository,
+    realtime: RealtimeClient,
     private val scope: CoroutineScope,
+    private val clock: Clock = Clock.System,
 ) : ProRepository {
 
     private val lock = Mutex()
     private var linkedUserId: String? = null
-    private var laterChecks: Job? = null
+
+    override val isPro: StateFlow<Boolean> =
+        session.session.proNow(clock).stateIn(scope, SharingStarted.Eagerly, session.session.value.hasProNow(clock))
 
     override val isAvailable: Boolean get() = store != null
+
+    init {
+        // Sent on every (re)connect, so time offline or in the background is covered too.
+        scope.launch {
+            realtime.events.filterIsInstance<RealtimeEvent.ProChanged>().collect { session.updatePro(it.entitlements, it.proExpiresAt) }
+        }
+    }
 
     override fun start() {
         val store = store ?: return
@@ -73,7 +94,7 @@ internal class DefaultProRepository(
         // A purchase must belong to this user, never to the store's anonymous customer.
         link(store)
         return when (val result = store.buy(offer.id)) {
-            is AppResult.Success -> AppResult.Success(if (result.data) awaitPro() else PurchaseOutcome.Cancelled)
+            is AppResult.Success -> AppResult.Success(if (result.data) confirm() else PurchaseOutcome.Cancelled)
             is AppResult.Error -> result
         }
     }
@@ -82,7 +103,7 @@ internal class DefaultProRepository(
         val store = store ?: return AppResult.Error(DataError.Purchase.Unavailable)
         link(store)
         return when (val result = store.restore()) {
-            is AppResult.Success -> AppResult.Success(if (result.data) awaitPro() else PurchaseOutcome.NothingToRestore)
+            is AppResult.Success -> AppResult.Success(if (result.data) confirm() else PurchaseOutcome.NothingToRestore)
             is AppResult.Error -> result
         }
     }
@@ -91,7 +112,6 @@ internal class DefaultProRepository(
 
     /** The next account starts as the store's anonymous customer. */
     suspend fun clear() = lock.withLock {
-        laterChecks?.cancel()
         if (linkedUserId == null) return@withLock
         store?.logOut()
         linkedUserId = null
@@ -105,39 +125,17 @@ internal class DefaultProRepository(
     }
 
     /**
-     * The webhook usually reaches the server within seconds; `GET /me` is asked a few times until it says Pro.
-     * When it's late (RevenueCat retries a failed delivery), `GET /me` is asked less and less often in the
-     * background, and the session turns Pro on wherever it's shown.
+     * One ask: the server reads the store now instead of waiting for its webhook. If it can't yet (offline, store
+     * slow), the webhook still reaches the server and `pro.changed` turns Pro on here: no polling.
      */
-    private suspend fun awaitPro(): PurchaseOutcome {
-        repeat(PRO_CHECKS) { check ->
-            if (check > 0) delay(PRO_CHECK_INTERVAL_MILLIS)
-            if (hasPro()) return PurchaseOutcome.Active
-        }
-        if (laterChecks?.isActive != true) {
-            laterChecks = scope.launch {
-                for (wait in LATER_CHECK_WAITS_MILLIS) {
-                    delay(wait)
-                    if (hasPro()) return@launch
-                }
-            }
-        }
-        return PurchaseOutcome.Confirming
+    private suspend fun confirm(): PurchaseOutcome {
+        session.syncPro()
+        return if (session.session.value.hasProNow(clock)) PurchaseOutcome.Active else PurchaseOutcome.Confirming
     }
-
-    private suspend fun hasPro(): Boolean = (session.refreshAccount() as? AppResult.Success)?.data?.hasPro == true
 
     private fun currentUserId(): String? = when (val state = session.session.value) {
         is SessionState.SignedIn -> state.account.id
         is SessionState.Onboarding -> state.account.id
         else -> null
-    }
-
-    private companion object {
-        const val PRO_CHECKS = 5
-        const val PRO_CHECK_INTERVAL_MILLIS = 2_000L
-
-        /** About 10 minutes in all, which covers RevenueCat's first retries. */
-        val LATER_CHECK_WAITS_MILLIS = listOf(10_000L, 20_000L, 30_000L, 60_000L, 120_000L, 360_000L)
     }
 }

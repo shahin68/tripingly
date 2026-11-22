@@ -1,4 +1,10 @@
 <resources>
     <string name="app_name">Tripinly</string>
-    <string name="notification_channel_updates">Trip updates</string>
+    <string name="notification_group_activity">Activity</string>
+    <string name="notification_channel_comments">Comments on my stops</string>
+    <string name="notification_channel_added">Being added to a trip</string>
+    <string name="notification_channel_changes">Changes to my trips by others</string>
+    <string name="notification_channel_likes">Likes</string>
+    <string name="notification_channel_join">Requests to join my trips</string>
+    <string name="notification_channel_followers">New followers</string>
 </resources>

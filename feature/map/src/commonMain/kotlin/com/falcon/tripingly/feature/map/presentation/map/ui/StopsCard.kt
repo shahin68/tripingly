@@ -1,5 +1,7 @@
 package com.falcon.tripingly.feature.map.presentation.map.ui
 
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.material3.LocalMinimumInteractiveComponentSize
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
@@ -30,7 +32,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.MoreHoriz
-import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.AutoAwesome
 import androidx.compose.material.icons.outlined.CleaningServices
 import androidx.compose.material.icons.outlined.Delete
@@ -73,7 +74,6 @@ import com.falcon.tripingly.core.designsystem.theme.extendedColors
 import com.falcon.tripingly.core.designsystem.theme.spacing
 import com.falcon.tripingly.core.ui.UiText
 import com.falcon.tripingly.feature.map.generated.resources.Res
-import com.falcon.tripingly.feature.map.generated.resources.map_add_day
 import com.falcon.tripingly.feature.map.generated.resources.map_best_order
 import com.falcon.tripingly.feature.map.generated.resources.map_clear_day
 import com.falcon.tripingly.feature.map.generated.resources.map_day_menu
@@ -95,6 +95,12 @@ import com.falcon.tripingly.feature.map.presentation.map.preview.PointRouteCardP
 import com.falcon.tripingly.feature.map.presentation.map.preview.StopsCardPreviewStates
 import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
+import com.falcon.tripingly.feature.map.presentation.component.AlongTheWayPinColor
+import com.falcon.tripingly.feature.map.generated.resources.map_around
+import com.falcon.tripingly.feature.map.generated.resources.map_around_close
+import com.falcon.tripingly.feature.map.generated.resources.map_around_named
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.contentDescription
 
 /**
  * The open day's plan: "6 stops" (scrambling to "Ordering…" while the best order is found) with Route and the day's
@@ -108,30 +114,60 @@ internal fun StopsCard(
     editorMenu: EditorMenu?,
     onAction: (MapAction) -> Unit,
     modifier: Modifier = Modifier,
+    /** The Route button's on/off, straight from the model so a tap shows at once (see MapViewModel.isDayRouteOn). */
+    isRouteOn: Boolean = card.isRouteOn == true,
 ) {
     PlanCardColumn(modifier) {
         val title = if (card.isFindingBestOrder) {
             stringResource(Res.string.map_ordering)
+        } else if (card.stops.isEmpty()) {
+            // A day without stops: the sheet holds just Around, named after its pin ("Around Schönbrunn").
+            card.around?.pinName?.takeIf { it.isNotBlank() }?.let { stringResource(Res.string.map_around_named, it) } ?: stringResource(Res.string.map_around)
         } else {
             pluralStringResource(Res.plurals.map_stop_count, card.stops.size, card.stops.size)
         }
         PlanTitleRow(title = { ScrambleText(title, it, style = MaterialTheme.typography.titleMedium) }) {
-            card.isRouteOn?.let { isOn ->
-                // Neutral like ⋯ while off; green once on; orange Retry when the route failed (a tap asks again, it stays on).
+            // ONE button for Route, Retry and Around's ✕, so it morphs from one to the next (Shahin 2026-11-17): while
+            // Around shows, Route turns into its purple glass circle ✕.
+            val isAround = card.around != null
+            if (isAround || card.isRouteOn != null) {
+                val closeLabel = stringResource(Res.string.map_around_close)
                 ToggleButton(
-                    text = stringResource(if (card.isRouteFailed) Res.string.map_route_retry else Res.string.map_route),
-                    checked = isOn,
-                    onClick = { onAction(if (card.isRouteFailed) MapAction.Plan.RetryRoute else MapAction.Plan.ToggleRoute) },
-                    icon = if (card.isRouteFailed) Icons.Outlined.Refresh else Icons.Outlined.Directions,
-                    isFailed = card.isRouteFailed,
+                    text = when {
+                        isAround -> null
+                        card.isRouteFailed -> stringResource(Res.string.map_route_retry)
+                        else -> stringResource(Res.string.map_route)
+                    },
+                    checked = !isAround && isRouteOn && card.isRouteOn != null,
+                    onClick = {
+                        onAction(
+                            when {
+                                isAround -> MapAction.Around.Close
+                                card.isRouteFailed -> MapAction.Plan.RetryRoute
+                                else -> MapAction.Plan.ToggleRoute
+                            },
+                        )
+                    },
+                    icon = when {
+                        isAround -> Icons.Default.Close
+                        card.isRouteFailed -> Icons.Outlined.Refresh
+                        else -> Icons.Outlined.Directions
+                    },
+                    // Only the route's own failure makes it Retry; Around's shows in its banner and its ✕ stays.
+                    isFailed = !isAround && card.isRouteFailed,
+                    tint = AlongTheWayPinColor.takeIf { isAround },
+                    modifier = if (isAround) Modifier.semantics { contentDescription = closeLabel } else Modifier,
                 )
             }
-            DayMenuButton(dayNumber, card, editorMenu = editorMenu, onAction = onAction)
+            // No stops: the day's actions stay in the header's ⋮.
+            if (card.stops.isNotEmpty()) DayMenuButton(dayNumber, card, editorMenu = editorMenu, onAction = onAction)
         }
-        StopChips(card, onAction)
+        if (card.stops.isNotEmpty()) StopChips(card, onAction)
         val gap = animateDpAsState(if (card.route != null) RowGap else 0.dp, if (card.isRouteAnimated) tween(ROUTE_GROW_MILLIS, easing = RouteGrowEasing) else snap(), label = "route gap")
         // The gap is read while laying out, so its animation moves the card without recomposing the plan every frame.
-        RouteCardSlot(card.route, onAction, Modifier.topGap { gap.value }.padding(horizontal = MaterialTheme.spacing.medium), isAnimated = card.isRouteAnimated)
+        RouteCardSlot(card.route, onAction, Modifier.topGap { gap.value }.padding(horizontal = MaterialTheme.spacing.medium), isAnimated = card.isRouteAnimated, listKey = dayNumber)
+        // Around and a route never show together: one of the two is under the stops.
+        AroundCardSlot(card.around, onAction, Modifier.padding(horizontal = MaterialTheme.spacing.medium), gap = RowGap)
     }
 }
 
@@ -226,7 +262,7 @@ internal fun PointRouteCard(
                 Icon(Icons.Default.Close, contentDescription = stringResource(Res.string.map_route_close))
             }
         }
-        RouteCardSlot(card.route, onAction, Modifier.padding(top = RowGap).padding(horizontal = MaterialTheme.spacing.medium))
+        RouteCardSlot(card.route, onAction, Modifier.padding(top = RowGap).padding(horizontal = MaterialTheme.spacing.medium), listKey = card.from to card.to)
     }
 }
 
@@ -238,8 +274,8 @@ private fun PlanCardColumn(modifier: Modifier, content: @Composable ColumnScope.
 
 /**
  * The plan's [title] (given the modifier that lets it take the room left) with its buttons at the end, all one
- * height. The end button's 48 dp touch area makes up the rest of the end padding, so its circle sits as far in as
- * the title.
+ * height. The buttons keep no 48 dp touch margin (taps still reach them over 48 dp), so the end pads as much as the
+ * start and the last circle sits as far in as the title (Shahin, 2026-11-19).
  */
 @Composable
 private fun PlanTitleRow(title: @Composable (Modifier) -> Unit, buttons: @Composable RowScope.() -> Unit) {
@@ -247,25 +283,27 @@ private fun PlanTitleRow(title: @Composable (Modifier) -> Unit, buttons: @Compos
         modifier = Modifier
             .fillMaxWidth()
             .heightIn(min = TitleRowHeight)
-            .padding(start = MaterialTheme.spacing.medium, end = MaterialTheme.spacing.small + MaterialTheme.spacing.extraSmall),
+            .padding(horizontal = MaterialTheme.spacing.medium),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
+        horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraSmall),
     ) {
         title(Modifier.weight(1f))
-        buttons()
+        CompositionLocalProvider(LocalMinimumInteractiveComponentSize provides Dp.Unspecified) {
+            // The buttons a little closer together (Shahin, 2026-11-17).
+            Row(horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small), verticalAlignment = Alignment.CenterVertically, content = buttons)
+        }
     }
 }
 
 /**
- * The day's ⋯: Best order (anyone who can reorder, 3 to 25 stops), add a day, clear the open one, delete it. Hidden
- * when none of them is open to this user.
+ * The day's ⋯, about the open day's plan: Best order (anyone who can reorder, 3 to 25 stops), clear the day, delete it
+ * (a new day comes with + by the day tabs). Hidden when none of them is open to this user.
  */
 @Composable
 private fun DayMenuButton(dayNumber: Int, card: StopsCardState, editorMenu: EditorMenu?, onAction: (MapAction) -> Unit) {
     val actions = listOfNotNull(
         DropdownAction(stringResource(Res.string.map_best_order), icon = Icons.Outlined.AutoAwesome) { onAction(MapAction.Plan.FindBestOrder) }
             .takeIf { card.canFindBestOrder && !card.isFindingBestOrder },
-        editorMenu?.let { DropdownAction(stringResource(Res.string.map_add_day), icon = Icons.Outlined.Add) { onAction(MapAction.Header.AddDay) } },
         DropdownAction(stringResource(Res.string.map_clear_day, dayNumber), icon = Icons.Outlined.CleaningServices) { onAction(MapAction.Plan.ClearAll) }
             .takeIf { card.canClear },
         DropdownAction(stringResource(Res.string.map_delete_day), isDestructive = true, icon = Icons.Outlined.Delete) { onAction(MapAction.Header.DeleteDay) }
@@ -291,8 +329,8 @@ private fun StopChip(stop: MapMarker, isSelected: Boolean, onAction: (MapAction)
         onClick = { onAction(MapAction.MapView.MarkerClick(stop)) },
         shape = CircleShape,
         // The ⋯ button's colour, the same token in light and dark.
-        color = if (isSelected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant,
-        contentColor = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface,
+        color = if (isSelected) MaterialTheme.extendedColors.highlight else MaterialTheme.colorScheme.surfaceVariant,
+        contentColor = if (isSelected) MaterialTheme.extendedColors.onHighlight else MaterialTheme.colorScheme.onSurface,
     ) {
         Row(
             // The number sits as far from the chip's start as from its top and bottom.
@@ -303,7 +341,7 @@ private fun StopChip(stop: MapMarker, isSelected: Boolean, onAction: (MapAction)
             Box(Modifier.size(StopNumberSize).background(MaterialTheme.extendedColors.stop, CircleShape), contentAlignment = Alignment.Center) {
                 Text(stop.orderNumber.toString(), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.extendedColors.onStop)
             }
-            Text(stop.title.asString(), style = MaterialTheme.typography.labelLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            LoadingTitle(stop.title.asString(), stop.isNaming, MaterialTheme.typography.labelLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)
             if (stop.canDelete) {
                 IconButton(onClick = { onAction(MapAction.Plan.RemoveStop(stop.id)) }, modifier = Modifier.size(ChipHeight)) {
                     Icon(Icons.Default.Close, contentDescription = stringResource(Res.string.map_remove_stop), modifier = Modifier.size(16.dp))

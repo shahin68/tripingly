@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.falcon.tripingly.core.common.result.AppResult
 import com.falcon.tripingly.core.data.account.SessionRepository
+import com.falcon.tripingly.core.data.billing.ProRepository
 import com.falcon.tripingly.core.data.config.AppConfigRepository
 import com.falcon.tripingly.core.data.photos.PhotoRepository
 import com.falcon.tripingly.core.data.places.PlaceRepository
@@ -16,7 +17,6 @@ import com.falcon.tripingly.core.data.trips.TripRepository
 import com.falcon.tripingly.core.location.GetCurrentLocationUseCase
 import com.falcon.tripingly.core.location.model.Coordinates
 import com.falcon.tripingly.core.model.account.SessionState
-import com.falcon.tripingly.core.model.route.ROUTES_ENTITLEMENT
 import com.falcon.tripingly.core.model.social.ReportTarget
 import com.falcon.tripingly.core.model.trip.TripDetails
 import com.falcon.tripingly.core.ui.toUiText
@@ -26,12 +26,14 @@ import com.falcon.tripingly.feature.map.presentation.component.CameraCommand
 import com.falcon.tripingly.feature.map.presentation.component.MapLayersState
 import com.falcon.tripingly.feature.map.presentation.map.state.Dialog
 import com.falcon.tripingly.feature.map.presentation.map.state.MapAddToTrip
+import com.falcon.tripingly.feature.map.presentation.map.state.MapAround
 import com.falcon.tripingly.feature.map.presentation.map.state.MapCamera
+import com.falcon.tripingly.feature.map.presentation.map.state.MapCardPhotos
 import com.falcon.tripingly.feature.map.presentation.map.state.MapContext
 import com.falcon.tripingly.feature.map.presentation.map.state.MapEdits
+import com.falcon.tripingly.feature.map.presentation.map.state.MapJoinRequests
 import com.falcon.tripingly.feature.map.presentation.map.state.MapLocation
 import com.falcon.tripingly.feature.map.presentation.map.state.MapModel
-import com.falcon.tripingly.feature.map.presentation.map.state.MapJoinRequests
 import com.falcon.tripingly.feature.map.presentation.map.state.MapNewActivity
 import com.falcon.tripingly.feature.map.presentation.map.state.MapOpening
 import com.falcon.tripingly.feature.map.presentation.map.state.MapPins
@@ -39,15 +41,19 @@ import com.falcon.tripingly.feature.map.presentation.map.state.MapRouting
 import com.falcon.tripingly.feature.map.presentation.map.state.MapSearch
 import com.falcon.tripingly.feature.map.presentation.map.state.MapSelection
 import com.falcon.tripingly.feature.map.presentation.map.state.MapSharing
-import com.falcon.tripingly.feature.map.presentation.map.state.MapCardPhotos
 import com.falcon.tripingly.feature.map.presentation.map.state.Sheet
 import com.falcon.tripingly.feature.map.presentation.map.state.activeDayIndex
+import com.falcon.tripingly.feature.map.presentation.map.state.isPicking
+import com.falcon.tripingly.feature.map.presentation.map.state.pickedAlone
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.conflate
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
@@ -78,6 +84,8 @@ class MapViewModel(
     /** How this trip's map was left: restored when it opens, saved as it changes. */
     mapViews: TripMapViewRepository,
     sessionRepository: SessionRepository,
+    /** Whether street routes are unlocked: Pro, as the whole app has it. */
+    private val proRepository: ProRepository,
     getCurrentLocationUseCase: GetCurrentLocationUseCase,
     newActivityRepository: NewActivityRepository,
     photoRepository: PhotoRepository,
@@ -102,7 +110,7 @@ class MapViewModel(
     val cameraCommands: Flow<CameraCommand> = camera.commands
 
     private val selection = MapSelection(context, camera, placeRepository)
-    private val edits = MapEdits(context, selection, tripRepository, markerRepository, myUserId) { sendEvent(MapEvent.StopAdded) }
+    private val edits = MapEdits(context, selection, tripRepository, markerRepository, placeRepository, myUserId) { sendEvent(MapEvent.StopAdded) }
     private val pins = MapPins(context, placeRepository, appConfigRepository, computation)
     private val location = MapLocation(context, camera, getCurrentLocationUseCase, ::sendEvent)
     private val routes = MapRouting(
@@ -112,8 +120,9 @@ class MapViewModel(
         showWholePlan = { sendEvent(MapEvent.ShowWholePlan) },
         transitAreas = appConfigRepository.config.map { it.transitAreas }.stateIn(viewModelScope, SharingStarted.Eagerly, appConfigRepository.config.value.transitAreas),
     )
-    private val search = MapSearch(context, camera, selection, placeRepository, routeTo = routes::routeToResult)
-    private val sharing = MapSharing(context, tripRepository, socialRepository)
+    private val around = MapAround(context, camera, placeRepository, ::hasRoutes, showAroundIsPro = { sendEvent(MapEvent.OpenPaywall) }, showWholePlan = { sendEvent(MapEvent.ShowWholePlan) })
+    private val search = MapSearch(context, camera, selection, pins, placeRepository, routeTo = routes::routeToResult)
+    private val sharing = MapSharing(context, tripRepository, socialRepository) { sendEvent(MapEvent.NavigateBack) }
     private val opening = MapOpening(context, camera, tripRepository, mapViews, ::hasRoutes, stopId, showMembers, showComments)
     private val joinRequests = MapJoinRequests(context, tripRepository, mapViews)
     private val addToTrip = MapAddToTrip(context, selection, tripRepository, markerRepository) { sendEvent(MapEvent.AddedToMyTrip) }
@@ -123,8 +132,24 @@ class MapViewModel(
     /** The map's layers and what they were built from, kept until one of those changes. */
     private var layers: Pair<List<Any?>, MapLayersState>? = null
 
+    /**
+     * Built off the main thread (pins, route, cards: a few hundred items on every change, up to every frame while Around's
+     * ring is dragged), only the newest state when several changes come at once (Shahin 2026-11-17: the map lagged on
+     * the main thread after a while).
+     */
     val uiState: StateFlow<MapUiState> = combine(trip, context.model, ::toUiState)
+        .conflate()
+        .flowOn(computation)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), toUiState(null, model))
+
+    /**
+     * The Route button's on/off, straight from the model: a tap shows at once however big the trip is, while [uiState]
+     * is still being built off the main thread (Shahin, 2026-11-21).
+     */
+    val isDayRouteOn: StateFlow<Boolean> = context.model
+        .map { it.route.isDayRouteShown }
+        .distinctUntilChanged()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), model.route.isDayRouteShown)
 
     init {
         opening.start()
@@ -145,10 +170,14 @@ class MapViewModel(
             is MapAction.PlaceCard -> onPlaceCard(action)
             is MapAction.NewSpot.PickCategory -> edits.pickSpotCategory(action.category)
             is MapAction.NewSpot.SetPhoto -> edits.setSpotPhoto(action.photo)
+            is MapAction.NewSpot.NameChanged -> edits.onSpotNameChanged(action.name)
+            is MapAction.NewSpot.PickBrand -> edits.pickSpotBrand(action.brand)
             is MapAction.NewSpot.Create -> edits.createSpot()
             is MapAction.Sheet -> onSheet(action)
             is MapAction.Dialog -> onDialog(action)
             is MapAction.Message -> onMessage(action)
+            is MapAction.PlaceFilter -> onPlaceFilter(action)
+            is MapAction.Around -> onAround(action)
             is MapAction.PinRoute.GoHere -> routes.goHere()
             is MapAction.PinRoute.Route -> routes.onRouteButton()
             is MapAction.PinRoute.Close -> routes.closeRouteBar()
@@ -172,7 +201,10 @@ class MapViewModel(
             is MapAction.MapView.CameraRest -> onCameraRest(action)
             is MapAction.MapView.CameraMoving -> pins.onCameraMoving(action.bounds, action.zoom)
             is MapAction.MapView.ScreenTouch -> selection.onScreenTouch()
-            is MapAction.MapView.UserMove -> camera.onUserMove()
+            is MapAction.MapView.UserMove -> {
+                camera.onUserMove()
+                search.onUserMove()
+            }
             is MapAction.MapView.NorthUp -> camera.northUp()
             is MapAction.MapView.LayoutChange -> camera.onLayoutChange()
         }
@@ -181,20 +213,23 @@ class MapViewModel(
     private fun onHeader(action: MapAction.Header) {
         when (action) {
             is MapAction.Header.Back -> sendEvent(MapEvent.NavigateBack)
-            is MapAction.Header.Retry -> opening.retry()
             is MapAction.Header.AddDay -> edits.addDay()
             is MapAction.Header.DeleteDay -> openDialog(Dialog.DeleteDay)
             is MapAction.Header.ToggleSave -> sharing.toggleSave()
+            is MapAction.Header.ToggleLike -> sharing.toggleLike()
             is MapAction.Header.RequestToJoin -> sharing.requestToJoin()
             is MapAction.Header.CancelJoinRequest -> sharing.cancelJoinRequest()
             is MapAction.Header.OpenMembers -> openSheet(Sheet.Members)
             is MapAction.Header.JoinRequestsSeen -> joinRequests.markSeen()
+            is MapAction.Header.ShowJoinRequests -> joinRequests.showAgain()
             is MapAction.Header.OpenJoinRequests -> {
                 joinRequests.dismiss()
                 openSheet(Sheet.Members)
             }
             is MapAction.Header.OpenOwnerProfile -> trip.value?.trip?.owner?.let { sendEvent(MapEvent.OpenProfile(it.username)) }
             is MapAction.Header.ReportTrip -> sharing.report(ReportTarget.Trip, context.tripId)
+            is MapAction.Header.ShareTrip -> trip.value?.trip?.let { sendEvent(MapEvent.ShareTrip(it.name, it.startDate, it.endDate)) }
+            is MapAction.Header.LeaveTrip -> sharing.askToLeave()
         }
     }
 
@@ -202,7 +237,17 @@ class MapViewModel(
         when (action) {
             is MapAction.Search.Open -> search.open()
             is MapAction.Search.QueryChanged -> search.onQueryChanged(action.query)
-            is MapAction.Search.ResultClick -> search.onResultClick(action.result)
+            is MapAction.Search.ResultClick -> {
+                // A place that's already a stop of the open day opens that stop, not a second pin on top of it.
+                val stop = action.result.place?.let { place -> uiState.value.layers.stops.firstOrNull { it.placeId == place.id } }
+                if (stop != null && !context.model.value.route.isPicking) {
+                    search.close()
+                    selection.selectMarker(stop)
+                } else {
+                    search.onResultClick(action.result)
+                }
+            }
+            is MapAction.Search.Submit -> search.submit()
             is MapAction.Search.Close -> search.close()
         }
     }
@@ -222,8 +267,29 @@ class MapViewModel(
     private fun onDays(action: MapAction.Days) {
         when (action) {
             is MapAction.Days.Select -> selectDay(action.dayIndex)
-            is MapAction.Days.FitDay -> if (!routes.frameShownRoute()) camera.showOpenDay()
+            is MapAction.Days.FitDay -> if (!around.frameRing() && !search.frameNamed() && !routes.frameShownRoute()) camera.showOpenDay(also = routes.dayRouteLine())
             is MapAction.Days.TogglePlaces -> pins.setHidden(!model.arePlacesHidden)
+        }
+    }
+
+    private fun onPlaceFilter(action: MapAction.PlaceFilter) {
+        when (action) {
+            is MapAction.PlaceFilter.Toggle -> context.update { it.copy(placeFilter = it.placeFilter.copy(isOpen = !it.placeFilter.isOpen)) }
+            is MapAction.PlaceFilter.ToggleCategory -> pins.setFilter(
+                action.category?.let { model.placeFilter.categories.pickedAlone(it) }.orEmpty(),
+            )
+        }
+    }
+
+    private fun onAround(action: MapAction.Around) {
+        when (action) {
+            is MapAction.Around.Open -> around.open()
+            is MapAction.Around.Close -> around.close()
+            is MapAction.Around.ToggleCategory -> around.toggleCategory(action.category)
+            is MapAction.Around.SetRadius -> around.setRadius(action.meters, action.isFinal)
+            is MapAction.Around.PlaceClick -> selection.openPlace(action.place)
+            // Adding works as from along the way: to the open day, the whole plan shows.
+            is MapAction.Around.Add -> routes.addAlongTheWay(action.place)
         }
     }
 
@@ -237,6 +303,7 @@ class MapViewModel(
             is MapAction.Plan.FindBestOrder -> routes.findBestOrder()
             is MapAction.Plan.AlongTheWayClick -> selection.openPlace(action.place)
             is MapAction.Plan.AddAlongTheWay -> routes.addAlongTheWay(action.place)
+            is MapAction.Plan.ToggleAlongCategory -> routes.toggleAlongCategory(action.category)
             is MapAction.Plan.ClosePointRoute -> routes.closePointRoute()
             is MapAction.Plan.OpenLeaveAt -> routes.openLeaveAt()
             is MapAction.Plan.OpenTransitSteps -> if (model.route.plan?.route?.legs.orEmpty().any { it.steps.isNotEmpty() }) openSheet(Sheet.TransitSteps)
@@ -280,7 +347,7 @@ class MapViewModel(
 
     private fun onDialog(action: MapAction.Dialog) {
         when (action) {
-            is MapAction.Dialog.Confirm -> edits.confirm()
+            is MapAction.Dialog.Confirm -> if (model.dialog == Dialog.LeaveTrip) sharing.leave() else edits.confirm()
             is MapAction.Dialog.DeleteAnyway -> edits.deleteAnyway()
             is MapAction.Dialog.SendReport -> sharing.sendReport(action.reason)
             is MapAction.Dialog.ApplyBestOrder -> routes.applyBestOrder()
@@ -304,7 +371,7 @@ class MapViewModel(
         val config = appConfigRepository.config.value
         val mapper = MapStateMapper(details, model, config, myUserId)
         // Most changes (a search keystroke, a message, a sheet) don't touch the map: its ~150 pins aren't built again.
-        val inputs = listOf(details, model.activeDayIndex, model.route, model.pins, model.selection, model.location.permission, model.news, model.arePlacesHidden, config)
+        val inputs = listOf(details, model.activeDayIndex, model.route, model.pins, model.selection, model.location.permission, model.news, model.arePlacesHidden, model.around, model.placeFilter.categories, model.placeFilter.name, config)
         val layers = layers?.takeIf { it.first == inputs }?.second ?: mapper.layers().also { layers = inputs to it }
         return mapper.map(layers)
     }
@@ -344,9 +411,8 @@ class MapViewModel(
         }
     }
 
-    /** Routes along streets are Tripinly Pro; the server decides, `GET /me` tells the app. */
-    private fun hasRoutes(): Boolean =
-        (session.value as? SessionState.SignedIn)?.account?.entitlements?.contains(ROUTES_ENTITLEMENT) == true
+    /** Routes along streets are Tripinly Pro; the server decides, [ProRepository.isPro] tells the app. */
+    private fun hasRoutes(): Boolean = proRepository.isPro.value
 
     private fun sendEvent(event: MapEvent) {
         _events.trySend(event)

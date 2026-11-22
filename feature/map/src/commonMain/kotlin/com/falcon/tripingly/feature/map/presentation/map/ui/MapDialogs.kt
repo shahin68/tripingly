@@ -34,6 +34,9 @@ import com.falcon.tripingly.feature.map.generated.resources.map_delete_others_co
 import com.falcon.tripingly.feature.map.generated.resources.map_delete_others_stop_message
 import com.falcon.tripingly.feature.map.generated.resources.map_delete_others_stop_title
 import com.falcon.tripingly.feature.map.generated.resources.map_location_continue
+import com.falcon.tripingly.feature.map.generated.resources.map_leave_trip_button
+import com.falcon.tripingly.feature.map.generated.resources.map_leave_trip_message
+import com.falcon.tripingly.feature.map.generated.resources.map_leave_trip_title
 import com.falcon.tripingly.feature.map.generated.resources.map_location_explain_message
 import com.falcon.tripingly.feature.map.generated.resources.map_location_explain_title
 import com.falcon.tripingly.feature.map.generated.resources.map_location_open_settings
@@ -51,6 +54,12 @@ import org.jetbrains.compose.resources.stringResource
 @Composable
 internal fun MapDialogs(dialog: MapDialog, onAction: (MapAction) -> Unit) {
     when (dialog) {
+        is MapDialog.LeaveTrip -> ConfirmDialog(
+            title = stringResource(Res.string.map_leave_trip_title),
+            text = stringResource(Res.string.map_leave_trip_message, dialog.tripName),
+            confirm = Res.string.map_leave_trip_button,
+            onAction = onAction,
+        )
         is MapDialog.ClearDay -> ConfirmDialog(
             title = stringResource(Res.string.map_clear_day_title, dialog.dayNumber),
             text = stringResource(Res.string.map_clear_day_message, dialog.stopCount),

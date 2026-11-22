@@ -18,4 +18,7 @@ sealed interface MapEvent {
 
     /** A stop or place went to one of my trips: felt; a note says where. */
     data object AddedToMyTrip : MapEvent
+
+    /** The system's share sheet with the trip's [name] and dates. */
+    data class ShareTrip(val name: String, val startDate: kotlinx.datetime.LocalDate?, val endDate: kotlinx.datetime.LocalDate?) : MapEvent
 }

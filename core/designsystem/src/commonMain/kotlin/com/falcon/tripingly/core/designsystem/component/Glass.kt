@@ -2,7 +2,7 @@ package com.falcon.tripingly.core.designsystem.component
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -49,13 +49,14 @@ fun Modifier.glassSource(): Modifier = LocalGlass.current?.let { then(Modifier.h
  * Frosted glass: the content behind it blurred and tinted, with a thin light edge and a soft shadow. Used for
  * everything that floats: the top and bottom bars, map cards and sheets. Where blur isn't available (Android
  * before 12), or with [blur] off for glass over the native map, which can't be blurred, the tint is nearly
- * opaque instead, so text stays readable.
+ * opaque instead, so text stays readable. [onLongClick] works only with [onClick].
  */
 @Composable
 fun GlassSurface(
     modifier: Modifier = Modifier,
     shape: Shape = MaterialTheme.shapes.extraLarge,
     onClick: (() -> Unit)? = null,
+    onLongClick: (() -> Unit)? = null,
     contentColor: Color = MaterialTheme.colorScheme.onSurface,
     shadowElevation: Dp = GlassDefaults.ShadowElevation,
     blur: Boolean = true,
@@ -71,7 +72,7 @@ fun GlassSurface(
             .then(if (glass != null) Modifier.hazeEffect(glass, HazeStyle(backgroundColor = MaterialTheme.colorScheme.background, tints = emptyList(), blurRadius = GlassDefaults.BlurRadius, noiseFactor = 0f)) else Modifier)
             .background(tint)
             .border(GlassDefaults.Edge, colors.glassEdge, shape)
-            .then(if (onClick != null) Modifier.clickable(role = Role.Button, onClick = onClick) else Modifier),
+            .then(if (onClick != null) Modifier.combinedClickable(role = Role.Button, onLongClick = onLongClick, onClick = onClick) else Modifier),
     ) {
         CompositionLocalProvider(LocalContentColor provides contentColor, content = content)
     }

@@ -20,7 +20,9 @@ import kotlin.math.pow
 import kotlin.math.sinh
 import kotlin.math.tan
 import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.ImmutableSet
 import kotlinx.collections.immutable.persistentListOf
+import kotlinx.collections.immutable.persistentSetOf
 import kotlinx.coroutines.flow.Flow
 
 @Composable
@@ -64,6 +66,8 @@ expect fun GoogleMapView(
     onMarkerClick: (MapMarker) -> Unit,
     /** A stop's or a place's pin was held, pulled onto another pin and let go there: a route from one to the other. */
     onPinDrop: (from: PinEnd, to: PinEnd) -> Unit,
+    /** The Around ring's handle was dragged to this many metres from its pin. */
+    onAroundRadius: (meters: Int, isFinal: Boolean) -> Unit,
 )
 
 /** What the map draws. */
@@ -89,7 +93,27 @@ data class MapLayersState(
     val routeEnds: ImmutableList<RouteEndMark> = persistentListOf(),
     /** The day's route shows: each stop stands in a soft halo of the route's colour; null for none. */
     val stopHalo: Color? = null,
+    /** Around a pin (Tripinly Pro): its ring with a handle; null while Around is closed. */
+    val aroundRing: AroundRing? = null,
+    /**
+     * The map searched by name: its results ([PlacePin.isSearchResult]) red and clear, everything else (stops, the line,
+     * other pins) see-through at [SearchDimAlpha] until the search closes (Shahin, 2026-11-19). Around dims the same way.
+     */
+    val isSearchShown: Boolean = false,
+    /** The stop whose card is open: clear while the rest is see-through, so the card never stands over a faded pin. */
+    val selectedStopId: String? = null,
+    /** While Around shows: its places and the stop or place it is around, clear while the rest dims (Shahin, 2026-11-21). */
+    val aroundIds: ImmutableSet<String> = persistentSetOf(),
 )
+
+/** How much of [stop] shows: clear while its card is open or Around is around it, else as everything that isn't a search result. */
+internal fun MapLayersState.stopAlpha(stop: MapMarker): Float = if (stop.id == selectedStopId || stop.id in aroundIds) 1f else dimAlpha
+
+/** Whether [this] pin stays clear while the map dims: a search result, or one of Around's ([aroundIds]). */
+internal fun PlacePin.isClearWhileDimmed(aroundIds: Set<String>): Boolean = isSearchResult || place.id in aroundIds
+
+/** How much of what isn't a search result or Around's shows: see-through while the map is searched by name or Around shows. */
+internal val MapLayersState.dimAlpha: Float get() = if (isSearchShown || aroundRing != null) SearchDimAlpha else 1f
 
 /** Room kept free around the points of a fit, inside the content padding. */
 internal val FitMargin = 48.dp

@@ -28,6 +28,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -43,6 +44,7 @@ import com.falcon.tripingly.core.designsystem.component.FloatingTopBar
 import com.falcon.tripingly.core.designsystem.component.PrimaryButton
 import com.falcon.tripingly.core.designsystem.component.SecondaryButton
 import com.falcon.tripingly.core.designsystem.component.ShowMessage
+import com.falcon.tripingly.core.designsystem.component.LocalScreenArrived
 import com.falcon.tripingly.core.designsystem.component.Skeleton
 import com.falcon.tripingly.core.designsystem.component.screenContentPadding
 import com.falcon.tripingly.core.designsystem.component.skeleton
@@ -89,6 +91,9 @@ fun PaywallRoute(
     viewModel: PaywallViewModel = koinViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    // The plans load only once the screen has slid in, so nothing lays out again mid-slide (Shahin, 2026-11-21).
+    val arrived = LocalScreenArrived.current
+    LaunchedEffect(arrived) { if (arrived) viewModel.onAction(Action.OnArrived) }
     PaywallScreen(state = state, onAction = viewModel::onAction, onBack = onBack)
 }
 

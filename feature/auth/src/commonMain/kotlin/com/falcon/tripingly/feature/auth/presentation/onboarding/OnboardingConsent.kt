@@ -6,11 +6,9 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
@@ -29,7 +27,6 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.falcon.tripingly.core.designsystem.component.PrimaryButton
 import com.falcon.tripingly.core.designsystem.component.Skeleton
-import com.falcon.tripingly.core.designsystem.component.bottomSystemBar
 import com.falcon.tripingly.core.designsystem.component.skeleton
 import com.falcon.tripingly.core.designsystem.component.skeletonText
 import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
@@ -89,12 +86,11 @@ private fun DocumentRow(title: String, onClick: () -> Unit) {
 }
 
 @Composable
-internal fun ConsentFooter(state: OnboardingViewModel.State, onAction: (Action) -> Unit) {
+internal fun ConsentFooter(state: OnboardingViewModel.State, onAction: (Action) -> Unit, modifier: Modifier = Modifier) {
     val (required, optional) = state.documents.partition { it.document.required }
     Column(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
-            .windowInsetsPadding(WindowInsets.bottomSystemBar)
             .padding(MaterialTheme.spacing.medium),
         verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
     ) {

@@ -83,9 +83,11 @@
     <string name="map_place_category_photo_spot">Fotospot</string>
     <string name="map_place_category_romantic">Romantischer Ort</string>
     <string name="map_search">Orte suchen</string>
+    <string name="map_close_search">Suche schließen</string>
     <string name="map_search_placeholder">Orte, Adressen, Städte</string>
     <string name="map_new_spot_name">Spot benennen</string>
     <string name="map_new_spot_create">Erstellen</string>
+    <string name="map_new_spot_brand_store">Markengeschäft</string>
     <string name="map_new_spot_add_photo">Foto hinzufügen</string>
     <string name="map_new_spot_remove_photo">Foto entfernen</string>
     <string name="map_new_spot_categories">Kategorie</string>
@@ -117,6 +119,7 @@
     <string name="map_save_trip">In meinen Reisen speichern</string>
     <string name="map_unsave_trip">Aus meinen Reisen entfernen</string>
     <string name="map_join_trip">Mitmachen anfragen</string>
+    <string name="map_join_sent">Anfrage gesendet</string>
     <string name="map_cancel_join">Anfrage zurückziehen</string>
     <string name="map_trip_saved">In meinen Reisen gespeichert.</string>
     <string name="map_trip_unsaved">Aus meinen Reisen entfernt.</string>
@@ -215,7 +218,6 @@
     <string name="map_route_meters">%1$d m</string>
     <string name="map_route_km">%1$s km</string>
     <string name="map_route_estimated">Routen sind gerade nicht verfügbar.</string>
-    <string name="map_along_the_way">Auf dem Weg</string>
     <string name="map_along_the_way_item">in %1$s · %2$s abseits der Route</string>
     <string name="map_along_add">Zu Tag %1$d hinzufügen</string>
     <string name="map_route_from_here">Route von hier</string>
@@ -285,4 +287,21 @@
     <string name="map_add_to_trip_added">Zu %1$s hinzugefügt, Tag %2$d.</string>
     <string name="map_error_add_to_trip">Konnte nicht zu deiner Reise hinzugefügt werden.</string>
     <string name="map_error_load_days">Die Tage der Reise konnten nicht geladen werden.</string>
+    <string name="map_category_clear">Filter löschen</string>
+    <string name="map_category_count">%1$s %2$d</string>
+    <string name="map_filter_open">Orte filtern</string>
+    <string name="map_filter_close">Filter schließen</string>
+    <string name="map_around">In der Nähe</string>
+    <string name="map_around_named">Rund um %1$s</string>
+    <string name="map_around_close">In der Nähe schließen</string>
+    <string name="map_around_none">Keine Orte in diesem Kreis.</string>
+    <string name="map_error_around">Die Orte in der Nähe konnten nicht geladen werden.</string>
+    <string name="map_share_trip">Reise teilen</string>
+    <string name="map_leave_trip">Reise verlassen</string>
+    <string name="map_leave_trip_title">Reise verlassen?</string>
+    <string name="map_leave_trip_message">Du kannst „%1$s“ dann nicht mehr sehen oder bearbeiten. Die Besitzerin oder der Besitzer kann dich wieder hinzufügen.</string>
+    <string name="map_leave_trip_button">Verlassen</string>
+    <string name="map_share_trip_text">Schau dir diese Reise an: %1$s (%2$s)!</string>
+    <string name="map_share_trip_text_no_dates">Schau dir diese Reise an: %1$s!</string>
+    <string name="map_error_leave">Die Reise konnte nicht verlassen werden.</string>
 </resources>

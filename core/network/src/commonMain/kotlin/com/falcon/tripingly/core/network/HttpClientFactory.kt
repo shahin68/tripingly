@@ -8,6 +8,7 @@ import com.falcon.tripingly.core.network.auth.toBearer
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.HttpClientEngine
 import io.ktor.client.plugins.HttpTimeout
+import io.ktor.client.plugins.api.createClientPlugin
 import io.ktor.client.plugins.auth.Auth
 import io.ktor.client.plugins.auth.providers.bearer
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
@@ -19,6 +20,7 @@ import io.ktor.client.plugins.logging.LoggingFormat
 import io.ktor.client.plugins.logging.SIMPLE
 import io.ktor.client.request.header
 import io.ktor.http.HttpHeaders
+import io.ktor.http.HttpStatusCode
 import io.ktor.serialization.kotlinx.json.json
 import io.ktor.util.AttributeKey
 
@@ -28,7 +30,8 @@ private const val TIMEOUT_MILLIS = 15_000L
  * The app's one HTTP client for the Tripinly API. Paths are relative to
  * [ApiConfig.baseUrl] (`client.get("trips")`). Adds the bearer token (except on
  * the auth routes), `Accept-Language` and `X-Client`, refreshes expired tokens once,
- * and, when [logHttp] is on (debug builds), logs every call in full.
+ * tells [sessionEvents] when a Pro feature is refused for lack of Pro (the app shows the paywall), and, when
+ * [logHttp] is on (debug builds), logs every call in full.
  */
 fun createHttpClient(
     engine: HttpClientEngine,
@@ -64,6 +67,14 @@ fun createHttpClient(
                 sendWithoutRequest { request -> "auth" !in request.url.pathSegments }
             }
         }
+        // Whatever asked for it, a Pro feature refused for lack of Pro ends Pro app-wide (Shahin, 2026-11-21).
+        install(
+            createClientPlugin("ProEnded") {
+                onResponse { response ->
+                    if (response.status == HttpStatusCode.Forbidden && response.apiErrorCode() == PREMIUM_REQUIRED) sessionEvents.proEnded()
+                }
+            },
+        )
         if (logHttp) {
             // Everything, tokens included: debug builds only.
             install(Logging) {
@@ -88,3 +99,6 @@ internal suspend fun HttpClient.refreshExpiredToken(expiredAccessToken: String):
     attributes[RefresherKey].refreshExpired(this, expiredAccessToken)
 
 internal const val CLIENT_HEADER = "X-Client"
+
+/** The API's error code for a Tripinly Pro feature asked for without Pro. */
+private const val PREMIUM_REQUIRED = "PREMIUM_REQUIRED"

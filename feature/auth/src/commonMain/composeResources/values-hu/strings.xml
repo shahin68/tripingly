@@ -24,6 +24,7 @@
     <string name="onboarding_profile_title">A profilod</string>
     <string name="onboarding_consent_title">Feltételek és adatvédelem</string>
     <string name="onboarding_sign_out">Kijelentkezés</string>
+    <string name="reconsent_message">Frissítettük a feltételeinket. Kérjük, fogadd el őket, hogy tovább használhasd a Tripinlyt.</string>
     <string name="onboarding_display_name">Név</string>
     <string name="onboarding_username">Felhasználónév</string>
     <string name="onboarding_username_checking">Ellenőrzés…</string>

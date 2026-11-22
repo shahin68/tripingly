@@ -116,22 +116,25 @@ class ProfileViewModel(
 
     private fun load() {
         val username = username ?: return
-        _uiState.update { it.copy(isLoading = true, isNotFound = false, loadError = null) }
+        // A retry from the error screen leaves it as it is until the answer; failing again also says why in the banner
+        // (Shahin, 2026-11-22).
+        val isRetry = _uiState.value.loadError != null
+        _uiState.update { it.copy(isLoading = true, isNotFound = false) }
         viewModelScope.launch {
             when (val result = userRepository.profile(username)) {
                 is AppResult.Success -> {
                     tripsCursor = result.data.nextCursor
                     _uiState.update {
-                        it.copy(profile = result.data, trips = result.data.trips.toImmutableList(), isLoading = false)
+                        it.copy(profile = result.data, trips = result.data.trips.toImmutableList(), isLoading = false, loadError = null)
                     }
                 }
                 is AppResult.Error -> _uiState.update {
                     if (result.error.hasCode(TripErrorCodes.NOT_FOUND)) {
-                        it.copy(isLoading = false, isNotFound = true)
+                        it.copy(isLoading = false, isNotFound = true, loadError = null)
                     } else {
                         // Nothing shown yet: the error screen; a profile already shown stays, with a banner.
                         val message = result.error.toUiText(Res.string.social_error_load_profile)
-                        if (it.profile == null) it.copy(isLoading = false, loadError = message) else it.copy(isLoading = false, message = message)
+                        if (it.profile == null) it.copy(isLoading = false, loadError = message, message = message.takeIf { isRetry }) else it.copy(isLoading = false, message = message)
                     }
                 }
             }

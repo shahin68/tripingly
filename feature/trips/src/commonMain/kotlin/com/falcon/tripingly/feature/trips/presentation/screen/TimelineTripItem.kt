@@ -20,6 +20,13 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.Logout
+import androidx.compose.material.icons.outlined.BookmarkRemove
+import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material.icons.outlined.Edit
+import androidx.compose.material.icons.outlined.EditCalendar
+import androidx.compose.material.icons.outlined.Group
+import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.Public
@@ -305,23 +312,23 @@ private fun tripActions(trip: Trip, onAction: (Action) -> Unit): List<DropdownAc
 @Composable
 private fun tripAction(item: TripMenuItem, trip: Trip, haptics: Haptics, onAction: (Action) -> Unit): DropdownAction =
     when (item) {
-        TripMenuItem.Rename -> DropdownAction(stringResource(Res.string.trip_action_rename)) { onAction(Action.Trips.Rename(trip.id)) }
-        TripMenuItem.Reschedule -> DropdownAction(stringResource(Res.string.trip_action_reschedule)) { onAction(Action.Trips.Reschedule(trip.id)) }
-        TripMenuItem.MakePrivate -> DropdownAction(stringResource(Res.string.trip_action_make_private)) {
+        TripMenuItem.Rename -> DropdownAction(stringResource(Res.string.trip_action_rename), icon = Icons.Outlined.Edit) { onAction(Action.Trips.Rename(trip.id)) }
+        TripMenuItem.Reschedule -> DropdownAction(stringResource(Res.string.trip_action_reschedule), icon = Icons.Outlined.EditCalendar) { onAction(Action.Trips.Reschedule(trip.id)) }
+        TripMenuItem.MakePrivate -> DropdownAction(stringResource(Res.string.trip_action_make_private), icon = Icons.Outlined.Lock) {
             haptics.toggle(on = false)
             onAction(Action.Trips.ToggleVisibility(trip.id))
         }
-        TripMenuItem.MakePublic -> DropdownAction(stringResource(Res.string.trip_action_make_public)) {
+        TripMenuItem.MakePublic -> DropdownAction(stringResource(Res.string.trip_action_make_public), icon = Icons.Outlined.Public) {
             haptics.toggle(on = true)
             onAction(Action.Trips.ToggleVisibility(trip.id))
         }
-        TripMenuItem.Members -> DropdownAction(stringResource(Res.string.trip_action_members)) { onAction(Action.Trips.ManageMembers(trip.id)) }
-        TripMenuItem.Share -> DropdownAction(stringResource(Res.string.trip_action_share)) { onAction(Action.Trips.Share(trip.id)) }
-        TripMenuItem.RemoveSaved -> DropdownAction(stringResource(Res.string.trip_action_remove_saved), isDestructive = true) {
+        TripMenuItem.Members -> DropdownAction(stringResource(Res.string.trip_action_members), icon = Icons.Outlined.Group) { onAction(Action.Trips.ManageMembers(trip.id)) }
+        TripMenuItem.Share -> DropdownAction(stringResource(Res.string.trip_action_share), icon = Icons.Outlined.Share) { onAction(Action.Trips.Share(trip.id)) }
+        TripMenuItem.RemoveSaved -> DropdownAction(stringResource(Res.string.trip_action_remove_saved), isDestructive = true, icon = Icons.Outlined.BookmarkRemove) {
             onAction(Action.Trips.RemoveSaved(trip.id))
         }
-        TripMenuItem.Delete -> DropdownAction(stringResource(Res.string.trip_action_delete), isDestructive = true) { onAction(Action.Trips.Delete(trip.id)) }
-        TripMenuItem.Leave -> DropdownAction(stringResource(Res.string.trip_action_leave), isDestructive = true) { onAction(Action.Trips.Leave(trip.id)) }
+        TripMenuItem.Delete -> DropdownAction(stringResource(Res.string.trip_action_delete), isDestructive = true, icon = Icons.Outlined.Delete) { onAction(Action.Trips.Delete(trip.id)) }
+        TripMenuItem.Leave -> DropdownAction(stringResource(Res.string.trip_action_leave), isDestructive = true, icon = Icons.AutoMirrored.Outlined.Logout) { onAction(Action.Trips.Leave(trip.id)) }
     }
 
 private object TimelineDefaults {

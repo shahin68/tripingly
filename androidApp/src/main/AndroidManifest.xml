@@ -6,6 +6,8 @@
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- Haptics: a drag's fine ticks and its end on the vibrator (no prompt; a normal permission). -->
+    <uses-permission android:name="android.permission.VIBRATE" />
 
     <!-- The in-app camera for stop photos; phones without one still install the app. -->
     <uses-feature android:name="android.hardware.camera.any" android:required="false" />
@@ -30,6 +32,7 @@
             android:name=".MainActivity"
             android:exported="true"
             android:launchMode="singleTop"
+            android:theme="@style/Theme.Tripinly.Starting"
             android:windowSoftInputMode="adjustResize">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -46,10 +49,10 @@
                 <action android:name="com.google.firebase.MESSAGING_EVENT" />
             </intent-filter>
         </service>
-        <!-- Pushes the system shows (app in the background) use our channel and icon. -->
+        <!-- Pushes the system shows (app in the background) use the channel the backend names, else this one, and our icon. -->
         <meta-data
             android:name="com.google.firebase.messaging.default_notification_channel_id"
-            android:value="updates" />
+            android:value="trip_changes" />
         <meta-data
             android:name="com.google.firebase.messaging.default_notification_icon"
             android:resource="@drawable/ic_notification" />

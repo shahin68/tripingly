@@ -24,6 +24,8 @@ import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.foundation.text.input.maxLength
 import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material.icons.outlined.Flag
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.MoreVert
@@ -357,9 +359,9 @@ private fun CommentRow(
                 // Mine, or on my trip: deleted rather than reported.
                 actions = listOf(
                     if (comment.canDelete) {
-                        DropdownAction(stringResource(Res.string.map_comment_delete), isDestructive = true) { onAction(Action.OnDelete(comment)) }
+                        DropdownAction(stringResource(Res.string.map_comment_delete), isDestructive = true, icon = Icons.Outlined.Delete) { onAction(Action.OnDelete(comment)) }
                     } else {
-                        DropdownAction(stringResource(Res.string.map_comment_report)) { onAction(Action.OnReport(comment)) }
+                        DropdownAction(stringResource(Res.string.map_comment_report), icon = Icons.Outlined.Flag) { onAction(Action.OnReport(comment)) }
                     },
                 ),
             )

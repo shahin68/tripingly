@@ -2,12 +2,18 @@ package com.falcon.tripingly.core.data.places
 
 import com.falcon.tripingly.core.common.error.DataError
 import com.falcon.tripingly.core.common.result.AppResult
+import com.falcon.tripingly.core.common.result.map
 import com.falcon.tripingly.core.model.Page
+import com.falcon.tripingly.core.model.place.Brand
+import com.falcon.tripingly.core.model.place.CategoryCount
 import com.falcon.tripingly.core.model.place.MapPlace
+import com.falcon.tripingly.core.model.place.PlaceAround
 import com.falcon.tripingly.core.model.place.PlaceCategory
 import com.falcon.tripingly.core.model.place.PlaceDetails
+import com.falcon.tripingly.core.model.place.PlaceSearch
 import com.falcon.tripingly.core.model.place.PlaceSearchResult
 import com.falcon.tripingly.core.model.place.PlaceSquare
+import com.falcon.tripingly.core.model.place.PlacesAround
 import com.falcon.tripingly.core.model.place.PlacesInView
 import com.falcon.tripingly.core.model.place.SearchResultType
 import com.falcon.tripingly.core.model.social.NearbyPlace
@@ -20,12 +26,16 @@ import kotlin.math.sqrt
 
 /** A few cities and sights, for building and demoing without the server. */
 class FakePlaceRepository : PlaceRepository {
+    /** The brands [brands] finds. */
+    val brandList = listOf(Brand("fake-zara", "Zara", null), Brand("fake-kfc", "KFC", null), Brand("fake-saint-laurent", "Saint Laurent", null))
 
     private val places = listOf(
         PlaceSearchResult("Paris", "France", GeoPoint(48.8566, 2.3522), SearchResultType.City),
         PlaceSearchResult("Vienna", "Austria", GeoPoint(48.2082, 16.3738), SearchResultType.City),
         PlaceSearchResult("Budapest", "Hungary", GeoPoint(47.4979, 19.0402), SearchResultType.City),
         PlaceSearchResult("Berlin", "Germany", GeoPoint(52.52, 13.405), SearchResultType.City),
+        // OpenStreetMap has no address for it: the app shows how far it is instead.
+        PlaceSearchResult("KFC", null, GeoPoint(48.2000, 16.3738), SearchResultType.Place),
     )
 
     private val sights = listOf(
@@ -35,14 +45,14 @@ class FakePlaceRepository : PlaceRepository {
         MapPlace("fake-cafe-central", "Café Central", PlaceCategory.Cafe, GeoPoint(48.2104, 16.3655), isTripinly = false, hotCount = 0, prominence = 40),
     )
 
-    override suspend fun search(query: String, near: GeoPoint?): AppResult<List<PlaceSearchResult>, DataError.Network> {
+    override suspend fun search(query: String, near: GeoPoint?): AppResult<PlaceSearch, DataError.Network> {
         val trimmed = query.trim()
-        if (trimmed.isEmpty()) return AppResult.Success(emptyList())
-        return AppResult.Success(places.filter { it.name.startsWith(trimmed, ignoreCase = true) })
+        if (trimmed.isEmpty()) return AppResult.Success(PlaceSearch(emptyList()))
+        return AppResult.Success(PlaceSearch(places.filter { it.name.startsWith(trimmed, ignoreCase = true) }))
     }
 
     override suspend fun searchDestinations(query: String): AppResult<List<PlaceSearchResult>, DataError.Network> =
-        search(query, near = null)
+        search(query, near = null).map { it.results }
 
     override suspend fun placesIn(squares: Collection<PlaceSquare>): AppResult<Map<PlaceSquare, PlacesInView>, DataError.Network> =
         AppResult.Success(loadedPlacesIn(squares))
@@ -52,12 +62,32 @@ class FakePlaceRepository : PlaceRepository {
     override suspend fun loadedPlacesIn(squares: Collection<PlaceSquare>): Map<PlaceSquare, PlacesInView> =
         squares.associateWith { square ->
             val bounds = square.bounds
-            PlacesInView(sights.filter { it.location.lat >= bounds.south && it.location.lat < bounds.north && it.location.lng >= bounds.west && it.location.lng < bounds.east }, emptyList())
+            // A square of some kinds, or of a name, lists only places of those kinds or named so, as the server's tiles do.
+            PlacesInView(
+                sights.filter {
+                    it.location.lat >= bounds.south && it.location.lat < bounds.north && it.location.lng >= bounds.west && it.location.lng < bounds.east &&
+                        (square.categories.isEmpty() || it.category in square.categories) &&
+                        (square.name == null || it.name.contains(square.name!!, ignoreCase = true))
+                },
+                emptyList(),
+            )
         }
 
     override suspend fun place(id: String): AppResult<PlaceDetails, DataError.Network> {
         val place = sights.firstOrNull { it.id == id } ?: return AppResult.Error(DataError.Network.Api(404, "NOT_FOUND", "This place isn't available."))
         return AppResult.Success(PlaceDetails(place.id, place.name, place.category, place.hotCount, "Mo-Su 09:00-18:00", null, images = emptyList()))
+    }
+
+    /** A few brands, found by the start of a word of their name. */
+    override suspend fun brands(query: String): AppResult<List<Brand>, DataError.Network> =
+        AppResult.Success(brandList.filter { brand -> brand.name.split(' ').any { it.startsWith(query.trim(), ignoreCase = true) } })
+
+    /** The sights within [radiusMeters] of [point] but [excludePlaceId], of [categories], nearest first, with every kind counted. */
+    override suspend fun around(point: GeoPoint, radiusMeters: Int, categories: Set<PlaceCategory>, excludePlaceId: String?): AppResult<PlacesAround, DataError.Network> {
+        val inCircle = sights.filter { it.id != excludePlaceId }.map { PlaceAround(it, distanceMeters(point, it.location)) }.filter { it.distanceMeters <= radiusMeters }
+        val counts = inCircle.groupingBy { it.place.category }.eachCount().map { (category, count) -> CategoryCount(category, count) }.sortedByDescending { it.count }
+        val shown = inCircle.filter { categories.isEmpty() || it.place.category in categories }.sortedBy { it.distanceMeters }
+        return AppResult.Success(PlacesAround(shown, counts))
     }
 
     /** The sights by distance, as the crow flies. */

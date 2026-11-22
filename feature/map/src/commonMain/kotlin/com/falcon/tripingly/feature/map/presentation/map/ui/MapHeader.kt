@@ -1,8 +1,22 @@
 package com.falcon.tripingly.feature.map.presentation.map.ui
 
-import com.falcon.tripingly.core.designsystem.component.rememberHaptics
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.LazyColumn
+import com.falcon.tripingly.core.designsystem.component.verticalFadingEdge
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.scaleOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.togetherWith
+import androidx.compose.animation.SizeTransform
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.shrinkHorizontally
+import androidx.compose.animation.expandHorizontally
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -13,19 +27,14 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.Bookmark
 import androidx.compose.material.icons.outlined.BookmarkBorder
-import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Flag
 import androidx.compose.material.icons.outlined.Group
-import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.PersonAdd
 import androidx.compose.material.icons.outlined.PersonRemove
 import androidx.compose.material.icons.outlined.Search
@@ -34,7 +43,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -44,19 +52,22 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.draw.drawWithContent
-import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.Layout
+import kotlin.math.roundToInt
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.layout.boundsInParent
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.tooling.preview.PreviewParameter
 import androidx.compose.ui.unit.Constraints
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.util.lerp
+import com.falcon.tripingly.core.designsystem.component.icon
 import com.falcon.tripingly.core.designsystem.component.AppDropdownMenu
 import com.falcon.tripingly.core.designsystem.component.AppTextField
 import com.falcon.tripingly.core.designsystem.component.AppTextFieldStyle
@@ -69,19 +80,22 @@ import com.falcon.tripingly.core.designsystem.component.GlassSurface
 import com.falcon.tripingly.core.designsystem.component.OsmAttribution
 import com.falcon.tripingly.core.designsystem.component.SearchKeyboard
 import com.falcon.tripingly.core.designsystem.component.SuggestionItem
+import com.falcon.tripingly.core.designsystem.component.rememberHaptics
 import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
 import com.falcon.tripingly.core.designsystem.theme.spacing
-import com.falcon.tripingly.core.model.place.PlaceSearchResult
 import com.falcon.tripingly.core.model.trip.JoinRequestStatus
+import com.falcon.tripingly.core.ui.rememberOpeningFocus
 import com.falcon.tripingly.feature.map.generated.resources.Res
-import com.falcon.tripingly.feature.map.generated.resources.map_add_day
 import com.falcon.tripingly.feature.map.generated.resources.map_back
 import com.falcon.tripingly.feature.map.generated.resources.map_cancel_join
-import com.falcon.tripingly.feature.map.generated.resources.map_delete_day
 import com.falcon.tripingly.feature.map.generated.resources.map_join_trip
-import com.falcon.tripingly.feature.map.generated.resources.map_owner_profile
 import com.falcon.tripingly.feature.map.generated.resources.map_report_trip
+import com.falcon.tripingly.feature.map.generated.resources.map_share_trip
+import com.falcon.tripingly.feature.map.generated.resources.map_leave_trip
+import androidx.compose.material.icons.automirrored.outlined.Logout
+import androidx.compose.material.icons.outlined.Share
 import com.falcon.tripingly.feature.map.generated.resources.map_save_trip
+import com.falcon.tripingly.feature.map.generated.resources.map_close_search
 import com.falcon.tripingly.feature.map.generated.resources.map_search
 import com.falcon.tripingly.feature.map.generated.resources.map_search_placeholder
 import com.falcon.tripingly.feature.map.generated.resources.map_trip_members
@@ -89,6 +103,7 @@ import com.falcon.tripingly.feature.map.generated.resources.map_trip_menu
 import com.falcon.tripingly.feature.map.generated.resources.map_unsave_trip
 import com.falcon.tripingly.feature.map.presentation.map.HeaderState
 import com.falcon.tripingly.feature.map.presentation.map.MapAction
+import com.falcon.tripingly.feature.map.presentation.map.SearchResultItem
 import com.falcon.tripingly.feature.map.presentation.map.SearchState
 import com.falcon.tripingly.feature.map.presentation.map.preview.MapHeaderPreview
 import com.falcon.tripingly.feature.map.presentation.map.preview.MapHeaderPreviewStates
@@ -103,13 +118,11 @@ import org.jetbrains.compose.resources.stringResource
  * header's padding, where the card grows out of it; the pill hides meanwhile, [isTitleHidden]). As the card grows
  * ([cardProgress], 0 to 1) it pushes the back button out to the start and search and ⋮ out to the end, cut at the
  * header's sides (the left half in landscape). Over the native map, so no blur.
- * [showDayActions]: the day has no plan sheet, so its day actions are in ⋮.
  */
 @Composable
 internal fun MapHeader(
     header: HeaderState,
     search: SearchState?,
-    showDayActions: Boolean,
     onAction: (MapAction) -> Unit,
     modifier: Modifier = Modifier,
     isTitleHidden: Boolean = false,
@@ -118,7 +131,7 @@ internal fun MapHeader(
     cardProgress: () -> Float = { 0f },
 ) {
     val progress by animateFloatAsState(if (search != null) 1f else 0f, tween(SEARCH_MOTION_MILLIS))
-    val actions = tripMenuActions(header, showDayActions, onAction)
+    val actions = tripMenuActions(header, onAction)
     val gap = MaterialTheme.spacing.small
     // How far past the header's padding the trip card pushes the buttons: off the screen, or out of the left half.
     val pushedOut = MaterialTheme.spacing.medium
@@ -160,13 +173,40 @@ internal fun MapHeader(
                 if (search != null) {
                     SearchField(search, onAction, Modifier.weight(1f))
                 } else {
-                    IconButton(onClick = { onAction(MapAction.Search.Open) }) {
-                        Icon(Icons.Outlined.Search, contentDescription = stringResource(Res.string.map_search))
+                    // At the end while the pill shrinks back, so search and ⋮ stay put and don't glide.
+                    Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.CenterEnd) {
+                        IconButton(onClick = { onAction(MapAction.Search.Open) }) {
+                            Icon(Icons.Outlined.Search, contentDescription = stringResource(Res.string.map_search))
+                        }
                     }
                 }
+                // While searching, the end button closes the search: ⋮ turns into ✕ in its place and back (Shahin,
+                // 2026-11-21). Without a ⋮, the ✕ comes and goes with the search.
                 if (actions.isNotEmpty()) {
                     GlassButtonDivider()
-                    TripMenuButton(actions)
+                    AnimatedContent(
+                        targetState = search != null,
+                        transitionSpec = {
+                            (scaleIn(tween(ICON_SWAP_MILLIS), initialScale = 0.6f) + fadeIn(tween(ICON_SWAP_MILLIS))) togetherWith
+                                (scaleOut(tween(ICON_SWAP_MILLIS), targetScale = 0.6f) + fadeOut(tween(ICON_SWAP_MILLIS))) using
+                                SizeTransform(clip = false)
+                        },
+                        contentAlignment = Alignment.Center,
+                        label = "menu or close",
+                    ) { isSearching ->
+                        if (isSearching) CloseSearchButton(onAction) else TripMenuButton(actions)
+                    }
+                } else {
+                    AnimatedVisibility(
+                        visible = search != null,
+                        enter = expandHorizontally(tween(SEARCH_MOTION_MILLIS), expandFrom = Alignment.Start) + fadeIn(tween(SEARCH_MOTION_MILLIS)),
+                        exit = shrinkHorizontally(tween(SEARCH_MOTION_MILLIS), shrinkTowards = Alignment.Start) + fadeOut(tween(SEARCH_MOTION_MILLIS)),
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            GlassButtonDivider()
+                            CloseSearchButton(onAction)
+                        }
+                    }
                 }
             }
         },
@@ -188,12 +228,18 @@ internal fun MapHeader(
 /** How long the search pill takes to grow over the header or shrink back. */
 private const val SEARCH_MOTION_MILLIS = 300
 
+/** ⋮ and ✕ swapping: a quick scale, once per open or close. */
+private const val ICON_SWAP_MILLIS = 150
+
 /**
  * The trip's ⋮ menu: the members first (with the requests to join as a badge), then a viewer's save, join, owner and
  * report, or an editor's day actions while the day has no plan sheet.
  */
 @Composable
-private fun tripMenuActions(header: HeaderState, showDayActions: Boolean, onAction: (MapAction) -> Unit): List<DropdownAction> {
+private fun tripMenuActions(header: HeaderState, onAction: (MapAction) -> Unit): List<DropdownAction> {
+    // ⋮ is about the whole trip: who is on it, saving it, asking to join, reporting it. The open day's plan has its own ⋯
+    // in the plan sheet, a day comes with + by the day tabs and goes with a long press on its tab (Shahin, 2026-11-19).
+    // The owner's profile opens from their face in the title. Share trip for everyone, Leave trip for editors.
     val haptics = rememberHaptics()
     val members = header.members?.let {
         DropdownAction(
@@ -202,6 +248,12 @@ private fun tripMenuActions(header: HeaderState, showDayActions: Boolean, onActi
             badge = it.requestCount.takeIf { count -> count > 0 }?.toString(),
         ) { onAction(MapAction.Header.OpenMembers) }
     }
+    val share = DropdownAction(stringResource(Res.string.map_share_trip), icon = Icons.Outlined.Share) { onAction(MapAction.Header.ShareTrip) }
+        .takeIf { header.canShare }
+    // An editor's way out; the owner deletes the trip from My Trips.
+    val leave = DropdownAction(stringResource(Res.string.map_leave_trip), isDestructive = true, icon = Icons.AutoMirrored.Outlined.Logout) {
+        onAction(MapAction.Header.LeaveTrip)
+    }.takeIf { header.canLeave }
     val viewer = header.viewerMenu?.let { menu ->
         listOfNotNull(
             DropdownAction(
@@ -219,20 +271,10 @@ private fun tripMenuActions(header: HeaderState, showDayActions: Boolean, onActi
                 }
                 JoinRequestStatus.DECLINED -> null
             },
-            menu.ownerUsername?.let { owner ->
-                DropdownAction(stringResource(Res.string.map_owner_profile, owner), icon = Icons.Outlined.Person) { onAction(MapAction.Header.OpenOwnerProfile) }
-            },
             DropdownAction(stringResource(Res.string.map_report_trip), isDestructive = true, icon = Icons.Outlined.Flag) { onAction(MapAction.Header.ReportTrip) },
         )
     }.orEmpty()
-    val days = header.editorMenu?.takeIf { showDayActions }?.let { menu ->
-        listOfNotNull(
-            DropdownAction(stringResource(Res.string.map_add_day), icon = Icons.Outlined.Add) { onAction(MapAction.Header.AddDay) },
-            DropdownAction(stringResource(Res.string.map_delete_day), isDestructive = true, icon = Icons.Outlined.Delete) { onAction(MapAction.Header.DeleteDay) }
-                .takeIf { menu.canDeleteDay },
-        )
-    }.orEmpty()
-    return listOfNotNull(members) + viewer + days
+    return listOfNotNull(members, share) + viewer + listOfNotNull(leave)
 }
 
 @Composable
@@ -246,19 +288,27 @@ private fun TripMenuButton(actions: List<DropdownAction>) {
     }
 }
 
-/** Replaces the back button and the trip's name while searching; back closes the search. */
+/** Closes the search: its results, the places named so and the keyboard go, the map is as before. */
+@Composable
+private fun CloseSearchButton(onAction: (MapAction) -> Unit) {
+    IconButton(onClick = { onAction(MapAction.Search.Close) }) {
+        Icon(Icons.Default.Close, contentDescription = stringResource(Res.string.map_close_search))
+    }
+}
+
+/** Replaces the back button and the trip's name while searching; the ✕ at the header's end (or the system back) closes the search. */
 @Composable
 private fun SearchField(search: SearchState, onAction: (MapAction) -> Unit, modifier: Modifier = Modifier) {
-    val focusRequester = remember { FocusRequester() }
-    LaunchedEffect(Unit) { focusRequester.requestFocus() }
+    val focusRequester = rememberOpeningFocus()
     Row(modifier = modifier, verticalAlignment = Alignment.CenterVertically) {
-        IconButton(onClick = { onAction(MapAction.Search.Close) }) {
-            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(Res.string.map_back))
-        }
         AppTextField(
             state = search.query,
             placeholder = stringResource(Res.string.map_search_placeholder),
             onTextChange = { onAction(MapAction.Search.QueryChanged(it)) },
+            // No ✕ of its own: the header's end button closes the search.
+            clearable = false,
+            // The keyboard's search key, no result picked: the map shows only the places named so.
+            onImeAction = { onAction(MapAction.Search.Submit) },
             modifier = Modifier.weight(1f).focusRequester(focusRequester),
             style = AppTextFieldStyle.Inline,
             trailing = if (search.isSearching) {
@@ -271,27 +321,54 @@ private fun SearchField(search: SearchState, onAction: (MapAction) -> Unit, modi
     }
 }
 
-/** The search's results under the header, with the credits for OpenStreetMap and Photon. */
+/**
+ * The search's results under the header: as tall as they are, at most [maxHeight], then they scroll; the credits for
+ * OpenStreetMap and Photon stay under the list (none while [isOsmCreditShown] is off: only users' places come). While typing, results fade in and out and the list's height follows
+ * (Shahin, 2026-11-21: simple, no animation on the card itself). Shown only while there are results.
+ */
 @Composable
 internal fun SearchResults(
-    results: ImmutableList<PlaceSearchResult>,
+    results: ImmutableList<SearchResultItem>,
+    isOsmCreditShown: Boolean,
     onAction: (MapAction) -> Unit,
     modifier: Modifier = Modifier,
+    maxHeight: Dp = SearchResultsMaxHeight,
+    reveal: () -> Float = { 1f },
 ) {
     GlassSurface(modifier = modifier.fillMaxWidth(), shape = MaterialTheme.shapes.large, blur = false) {
-        Column(modifier = Modifier.heightIn(max = SearchResultsMaxHeight).verticalScroll(rememberScrollState()).padding(vertical = MaterialTheme.spacing.small)) {
-            results.forEach { result ->
-                SuggestionItem(
-                    title = result.name,
-                    subtitle = result.address,
-                    onClick = { onAction(MapAction.Search.ResultClick(result)) },
-                )
+        val listState = rememberLazyListState()
+        // [reveal] of its height shows, the rest is cut by the glass: the card grows down out of its top edge with its
+        // corners, edge and shadow whole, like the trip card (only vertically). Read while laying out, so only the
+        // card's size changes each frame.
+        Column(
+            modifier = Modifier
+                .layout { measurable, constraints ->
+                    val placeable = measurable.measure(constraints)
+                    layout(placeable.width, (placeable.height * reveal()).roundToInt()) { placeable.place(0, 0) }
+                }
+                .heightIn(max = maxHeight),
+        ) {
+            // Faded at the top or bottom while more results are hidden there.
+            LazyColumn(state = listState, modifier = Modifier.animateContentSize().weight(1f, fill = false).verticalFadingEdge(listState)) {
+                items(results, key = { it.key }) { (result, distanceMeters) ->
+                    SuggestionItem(
+                        title = result.name,
+                        // No address (OpenStreetMap has none): how far it is from the map's centre.
+                        subtitle = result.address?.takeIf { it.isNotBlank() } ?: distanceMeters?.let { distanceText(it).asString() },
+                        onClick = { onAction(MapAction.Search.ResultClick(result)) },
+                        icon = result.icon,
+                        modifier = Modifier.animateItem(),
+                    )
+                }
             }
-            OsmAttribution(modifier = Modifier.padding(horizontal = MaterialTheme.spacing.medium, vertical = MaterialTheme.spacing.small))
+            if (isOsmCreditShown) {
+                OsmAttribution(modifier = Modifier.padding(horizontal = MaterialTheme.spacing.medium, vertical = MaterialTheme.spacing.small))
+            }
         }
     }
 }
 
+/** Previews only: on the map the room down to the plan sheet decides. */
 private val SearchResultsMaxHeight = 360.dp
 
 @Preview
@@ -299,7 +376,7 @@ private val SearchResultsMaxHeight = 360.dp
 private fun MapHeaderPreview(@PreviewParameter(MapHeaderPreviewStates::class) preview: MapHeaderPreview) {
     TripinglyTheme {
         Box(Modifier.background(MaterialTheme.colorScheme.surfaceContainerHigh)) {
-            MapHeader(header = preview.header, search = preview.search, showDayActions = false, onAction = {})
+            MapHeader(header = preview.header, search = preview.search, onAction = {})
         }
     }
 }
@@ -310,8 +387,8 @@ private fun MapHeaderDarkPreview() {
     TripinglyTheme(darkTheme = true) {
         val preview = MapHeaderPreviewStates().values.last()
         Column(Modifier.background(MaterialTheme.colorScheme.surfaceContainerHigh)) {
-            MapHeader(header = preview.header, search = null, showDayActions = false, onAction = {})
-            SearchResults(results = preview.search!!.results, onAction = {}, modifier = Modifier.padding(horizontal = MaterialTheme.spacing.medium))
+            MapHeader(header = preview.header, search = null, onAction = {})
+            SearchResults(results = preview.search!!.results, isOsmCreditShown = true, onAction = {}, modifier = Modifier.padding(horizontal = MaterialTheme.spacing.medium))
         }
     }
 }
@@ -321,7 +398,7 @@ private fun MapHeaderDarkPreview() {
 private fun SearchResultsPreview() {
     TripinglyTheme {
         Box(Modifier.background(MaterialTheme.colorScheme.surfaceContainerHigh).padding(MaterialTheme.spacing.medium)) {
-            SearchResults(results = MapHeaderPreviewStates().values.last().search!!.results, onAction = {})
+            SearchResults(results = MapHeaderPreviewStates().values.last().search!!.results, isOsmCreditShown = true, onAction = {})
         }
     }
 }

@@ -24,6 +24,7 @@
     <string name="onboarding_profile_title">Dein Profil</string>
     <string name="onboarding_consent_title">Bedingungen und Datenschutz</string>
     <string name="onboarding_sign_out">Abmelden</string>
+    <string name="reconsent_message">Wir haben unsere Bedingungen aktualisiert. Bitte akzeptiere sie, um Tripinly weiter zu nutzen.</string>
     <string name="onboarding_display_name">Name</string>
     <string name="onboarding_username">Benutzername</string>
     <string name="onboarding_username_checking">Wird geprüft…</string>

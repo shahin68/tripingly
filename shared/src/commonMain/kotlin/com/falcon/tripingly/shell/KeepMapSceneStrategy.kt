@@ -123,7 +123,10 @@ private fun <T : Any> MapWithCovers(map: NavEntry<T>, cover: Cover<T>, below: Co
         }
     }
 
-    val isSettled = transition.currentState == transition.targetState
+    // Settled on the screen asked for. Right after a screen is opened, before its slide starts, the transition still
+    // rests on the old state; counting that as settled stopped the map for a frame or two, and iOS hid its view: the
+    // map blinked black (white in light mode) as the paywall opened (Shahin, 2026-11-20).
+    val isSettled = transition.currentState == transition.targetState && transition.targetState == cover
     val mapLifecycle = when {
         cover.entry == null && isSettled -> Lifecycle.State.RESUMED
         cover.entry != null && isSettled -> Lifecycle.State.CREATED

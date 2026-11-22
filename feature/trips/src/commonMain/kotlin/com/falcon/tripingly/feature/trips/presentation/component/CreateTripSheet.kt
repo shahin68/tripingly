@@ -33,6 +33,7 @@ import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.falcon.tripingly.core.common.util.DateUtils
+import com.falcon.tripingly.core.designsystem.component.icon
 import com.falcon.tripingly.core.designsystem.component.AppTextField
 import com.falcon.tripingly.core.designsystem.component.FieldButton
 import com.falcon.tripingly.core.designsystem.component.FormField
@@ -203,6 +204,7 @@ private fun DestinationField(form: CreateTripForm, isSaving: Boolean, onAction: 
                     title = result.name,
                     subtitle = result.address,
                     onClick = { onAction(Action.CreateTrip.DestinationSelected(result)) },
+                    icon = result.icon,
                 )
             }
             OsmAttribution()

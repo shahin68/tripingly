@@ -6,8 +6,10 @@ import com.falcon.tripingly.core.data.trips.MarkerChangeFailure
 import com.falcon.tripingly.core.location.model.Coordinates
 import com.falcon.tripingly.core.location.permission.LocationPermission
 import com.falcon.tripingly.core.model.photo.Photo
+import com.falcon.tripingly.core.model.social.LikeState
 import com.falcon.tripingly.core.model.photo.PhotoOwner
 import com.falcon.tripingly.core.model.photo.PickedImage
+import com.falcon.tripingly.core.model.place.Brand
 import com.falcon.tripingly.core.model.place.GeoBounds
 import com.falcon.tripingly.core.model.place.MapPlace
 import com.falcon.tripingly.core.model.place.PlaceCategory
@@ -15,6 +17,7 @@ import com.falcon.tripingly.core.model.place.PlaceCluster
 import com.falcon.tripingly.core.model.place.PlaceDetails
 import com.falcon.tripingly.core.model.place.PlaceSearchResult
 import com.falcon.tripingly.core.model.place.PlaceSquare
+import com.falcon.tripingly.core.model.place.PlacesAround
 import com.falcon.tripingly.core.model.route.RoutePlan
 import com.falcon.tripingly.core.model.route.TransitTime
 import com.falcon.tripingly.core.model.route.TravelMode
@@ -36,12 +39,14 @@ import kotlinx.datetime.LocalTime
  */
 internal data class MapModel(
     val isLoadingTrip: Boolean = true,
-    /** The trip couldn't load and there's none on the device: the screen shows the error instead of the map. */
-    val loadError: UiText? = null,
     /** A day change is waiting for the server. Stop changes don't wait. */
     val isSaving: Boolean = false,
     /** Saving or joining the trip is waiting for the server. */
     val isUpdatingSharing: Boolean = false,
+    /** My request to join is on its way: Ask to join shows it sent at once. */
+    val isAskingToJoin: Boolean = false,
+    /** My like of someone else's trip as shown: a tap shows at once; null until a tap or a like from elsewhere. */
+    val tripLike: LikeState? = null,
     val activeDayIndex: Int = 0,
     val camera: CameraModel = CameraModel(),
     val selection: Selection? = null,
@@ -66,6 +71,11 @@ internal data class MapModel(
      * any but flames; the comments and photos buttons a dot for theirs; flames pop the open stop's flame.
      */
     val news: Set<StopNews> = emptySet(),
+    /**
+     * Stops added without a name, while the server is naming them after their place or address ([MapEdits]): their
+     * title shows a small spinner until the name comes, the add fails or is removed, or [MapEdits] stops waiting.
+     */
+    val namingStopIds: Set<String> = emptySet(),
     /** The places button: only the trip's stops and its route's places show, nothing loads ([MapPins]). Every map opens with them shown. */
     val arePlacesHidden: Boolean = false,
     /** The trip's newest people asking to join, for its owner ([MapJoinRequests]); the pill shows while one isn't [dismissedJoinRequesterIds]. */
@@ -73,6 +83,47 @@ internal data class MapModel(
     val dismissedJoinRequesterIds: Set<String> = emptySet(),
     /** The requesters the pill has shown in full, on this device (null until read): for them it stays a small circle. */
     val seenJoinRequesterIds: Set<String>? = null,
+    /** The join pill shows its seen people in full again, after a long press, until it shrinks once more. */
+    val isJoinRequestsShownAgain: Boolean = false,
+    /** The map's filter by kind of place ([MapPlaceFilter]). */
+    val placeFilter: PlaceFilterModel = PlaceFilterModel(),
+    /** The places around a pin, while its ring shows ([MapAround]). */
+    val around: AroundModel? = null,
+)
+
+/**
+ * The map's filter: its pill is [isOpen]; only places of [categories] show (none picked: every kind). The trip's stops
+ * always show (Shahin, 2026-11-17). While the keyboard's search key searched the map for [name], only places named so
+ * show instead, as full pins also during a route, until the search's ✕ or back puts the map back (Shahin, 2026-11-17).
+ */
+internal data class PlaceFilterModel(
+    val isOpen: Boolean = false,
+    val categories: Set<PlaceCategory> = emptySet(),
+    val isLoading: Boolean = false,
+    val name: String? = null,
+)
+
+/**
+ * The places around a pin (Tripinly Pro): the ring around [center] has [radiusMeters], dragged by its handle; only places
+ * of [categories] list (none picked: every kind). [result] is the last answer, kept while the next one loads.
+ */
+internal data class AroundModel(
+    val center: GeoPoint,
+    /** The pin's own place, left out of what is around it and never a dot (Shahin, 2026-11-17). */
+    val pinPlaceId: String?,
+    /**
+     * The pin when it is a place (a stop draws itself): drawn as a plain pin while Around shows, also when the map's own
+     * pins don't list it (a place along the way, found around another pin, from search).
+     */
+    val pinPlace: MapPlace? = null,
+    /** The pin's name, for the sheet's title ("Around Schönbrunn"); blank for a stop still waiting for its name. */
+    val pinName: String = "",
+    val radiusMeters: Int,
+    val categories: Set<PlaceCategory> = emptySet(),
+    val result: PlacesAround? = null,
+    val isLoading: Boolean = false,
+    /** Whether the map's filter was open when Around opened: ✕ opens it again. */
+    val wasFilterOpen: Boolean = false,
 )
 
 /** Where the camera rests, as the map last reported it, or where it was last sent. */
@@ -109,6 +160,10 @@ internal sealed interface Selection {
         val name: TextFieldState = TextFieldState(),
         val category: PlaceCategory = PlaceCategory.Other,
         val photo: PickedImage? = null,
+        /** Brands named like [name], offered for "This is a brand store". */
+        val brands: List<Brand> = emptyList(),
+        /** The brand picked: the spot is one of its stores. */
+        val brand: Brand? = null,
         override val isCardShown: Boolean,
     ) : Selection
 }
@@ -117,6 +172,8 @@ internal data class SearchModel(
     /** The search field; a new search starts empty. */
     val query: TextFieldState = TextFieldState(),
     val results: List<PlaceSearchResult> = emptyList(),
+    /** The box of the city the map was in for [results], when the server knows it: the camera stays inside it. */
+    val city: GeoBounds? = null,
     val isSearching: Boolean = false,
 )
 
@@ -166,6 +223,8 @@ internal data class RouteModel(
     val transitAt: TransitTime? = null,
     /** By public transport, why there is no route: a note in the card, never a banner. */
     val transitNote: TransitNote? = null,
+    /** The kinds of place along the way picked with the card's chips (none: every kind); kept until the route closes. */
+    val alongCategories: Set<PlaceCategory> = emptySet(),
 )
 
 /** A time picked for public transport: it leaves then, or arrives by then ([isArriveBy], only from A to B). */
@@ -273,6 +332,8 @@ internal sealed interface CopyItem {
 }
 
 internal sealed interface Dialog {
+    /** An editor leaves the trip once they agree. */
+    data object LeaveTrip : Dialog
     data object ClearDay : Dialog
     data object DeleteDay : Dialog
     /** The owner deletes a stop someone else added, with everything on it, once they agree. */

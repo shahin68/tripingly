@@ -21,7 +21,7 @@ import com.falcon.tripingly.feature.trips.presentation.component.CreateTripSheet
 import com.falcon.tripingly.feature.trips.presentation.component.RenameTripDialog
 import com.falcon.tripingly.feature.trips.presentation.component.RescheduleTripDialog
 import com.falcon.tripingly.feature.trips.presentation.component.TripDialogKind
-import com.falcon.tripingly.feature.trips.presentation.members.TripMembersRoute
+import com.falcon.tripingly.feature.trips.presentation.members.TripMembersSheets
 import com.falcon.tripingly.feature.trips.presentation.permission.rememberNotificationPermissionRequest
 import com.falcon.tripingly.feature.trips.presentation.screen.HomeViewModel.Action
 import com.falcon.tripingly.feature.trips.presentation.screen.HomeViewModel.Dialog
@@ -82,9 +82,7 @@ fun HomeRoute(
         CreateTripSheet(form = form, isSaving = dialog.isSaving, error = dialog.error, onAction = viewModel::onAction, onClose = close)
     }
 
-    AppBottomSheet(value = state.membersTripId, onDismiss = { viewModel.onAction(Action.Trips.DismissMembers) }) { tripId, close ->
-        TripMembersRoute(tripId = tripId, onDismiss = close)
-    }
+    TripMembersSheets(tripId = state.membersTripId, onDismiss = { viewModel.onAction(Action.Trips.DismissMembers) })
 }
 
 @Composable
