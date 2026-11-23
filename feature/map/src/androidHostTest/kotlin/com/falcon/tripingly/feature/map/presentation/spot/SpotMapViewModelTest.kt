@@ -81,12 +81,12 @@ class SpotMapViewModelTest {
         }
     }
 
-    /** Refuses flames while [hotError] is set. */
-    private class RefusingSocialRepository(private val fake: FakeSocialRepository = FakeSocialRepository()) : SocialRepository by fake {
+    /** Answers flames as the server would for the Eiffel Tower's 12; refuses them while [hotError] is set. */
+    private class RefusingSocialRepository(fake: FakeSocialRepository = FakeSocialRepository()) : SocialRepository by fake {
         var hotError: DataError.Network? = null
 
         override suspend fun setHot(placeId: String, hot: Boolean): AppResult<HotState, DataError.Network> =
-            hotError?.let { AppResult.Error(it) } ?: fake.setHot(placeId, hot)
+            hotError?.let { AppResult.Error(it) } ?: AppResult.Success(HotState(hot, if (hot) 13 else 12))
     }
 
     /** The fake's straight lines, keeping the trip each route between two points was asked for. */
