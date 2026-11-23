@@ -296,7 +296,7 @@ class SpotMapViewModelTest {
         // Without trips of mine there is nowhere to add it to.
         viewModel.onAction(SpotMapAction.Add)
         testScheduler.advanceUntilIdle()
-        assertEquals(UiText.Resource(Res.string.map_add_to_trip_no_trips), viewModel.uiState.value.map.message)
+        assertEquals<UiText?>(UiText.Resource(Res.string.map_add_to_trip_no_trips), viewModel.uiState.value.map.message)
         assertNull(viewModel.uiState.value.map.placeCard)
         assertFalse(viewModel.uiState.value.map.layers.selectedPlace?.id == EIFFEL)
     }
