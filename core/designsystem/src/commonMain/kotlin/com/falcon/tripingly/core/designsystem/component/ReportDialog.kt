@@ -88,6 +88,7 @@ fun ReportDialog(
                     keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),
                     lineLimits = TextFieldLineLimits.MultiLine(minHeightInLines = 2, maxHeightInLines = 4),
                     inputTransformation = InputTransformation.maxLength(MAX_DETAILS_LENGTH),
+                    style = AppTextFieldStyle.Dialog,
                 )
             }
         },

@@ -1,6 +1,9 @@
 package com.falcon.tripingly.core.designsystem.component
 
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.layout.Arrangement
@@ -69,6 +72,12 @@ enum class AppTextFieldStyle(internal val minHeight: Dp) {
 
     /** A 48 dp field without a background of its own, inside a bar that already draws one. */
     Inline(48.dp),
+
+    /**
+     * A 56 dp field in a dialog, whose background is the plain field's own colour (Shahin, 2026-11-23): the lightest
+     * surface inside a rounded stroke, green while typing, red on an error.
+     */
+    Dialog(56.dp),
 }
 
 /**
@@ -112,12 +121,13 @@ fun AppTextField(
         snapshotFlow { state.text.toString() }.drop(1).collect { currentOnTextChange?.invoke(it) }
     }
     val showClear = clearable && enabled && (onClose != null || isFocused || state.text.isNotEmpty())
-    val shape: Shape = if (style == AppTextFieldStyle.Field) MaterialTheme.shapes.extraLarge else CircleShape
-    val container = if (style == AppTextFieldStyle.Inline) Color.Transparent else MaterialTheme.colorScheme.surfaceVariant
+    val shape: Shape = if (style == AppTextFieldStyle.Field || style == AppTextFieldStyle.Dialog) MaterialTheme.shapes.extraLarge else CircleShape
+    val container = fieldContainer(style)
     val vertical = (style.minHeight - LineHeight) / 2
+    val stroke = if (style == AppTextFieldStyle.Dialog) fieldStroke(isFocused = isFocused, isError = isError) else null
     TextField(
         state = state,
-        modifier = modifier.heightIn(min = style.minHeight),
+        modifier = modifier.heightIn(min = style.minHeight).then(if (stroke != null) Modifier.border(stroke, shape) else Modifier),
         enabled = enabled,
         textStyle = textStyle,
         placeholder = { Text(placeholder, style = textStyle, maxLines = 1, overflow = TextOverflow.Ellipsis) },
@@ -157,7 +167,8 @@ fun AppTextField(
             focusedContainerColor = container,
             unfocusedContainerColor = container,
             disabledContainerColor = container,
-            errorContainerColor = if (style == AppTextFieldStyle.Inline) container else MaterialTheme.colorScheme.errorContainer,
+            // The dialog field says it with its stroke.
+            errorContainerColor = if (style == AppTextFieldStyle.Field || style == AppTextFieldStyle.Search) MaterialTheme.colorScheme.errorContainer else container,
             focusedIndicatorColor = Color.Transparent,
             unfocusedIndicatorColor = Color.Transparent,
             disabledIndicatorColor = Color.Transparent,
@@ -168,12 +179,34 @@ fun AppTextField(
     )
 }
 
+/** A field's own fill: none inside a bar, the lightest surface in a dialog (whose colour the plain fill is). */
+@Composable
+private fun fieldContainer(style: AppTextFieldStyle): Color = when (style) {
+    AppTextFieldStyle.Inline -> Color.Transparent
+    AppTextFieldStyle.Dialog -> MaterialTheme.colorScheme.surfaceContainerLowest
+    AppTextFieldStyle.Field, AppTextFieldStyle.Search -> MaterialTheme.colorScheme.surfaceVariant
+}
+
+/** A dialog field's rounded stroke: quiet at rest, thicker and green while typing, red on an error. */
+@Composable
+private fun fieldStroke(isFocused: Boolean, isError: Boolean): BorderStroke {
+    val color by animateColorAsState(
+        when {
+            isError -> MaterialTheme.colorScheme.error
+            isFocused -> MaterialTheme.colorScheme.primary
+            else -> MaterialTheme.colorScheme.outlineVariant
+        },
+    )
+    return BorderStroke(if (isFocused) FocusedStrokeWidth else StrokeWidth, color)
+}
+
 /** Search as you type: no capitals or corrections, and the search key closes the keyboard. */
 val SearchKeyboard = KeyboardOptions(capitalization = KeyboardCapitalization.None, autoCorrectEnabled = false, imeAction = ImeAction.Search)
 
 /**
- * A field that opens a picker instead of the keyboard (dates, a birth date): it looks like an [AppTextField],
- * showing [text] or, while that's null, [placeholder], with an optional [trailing] note ("5 days").
+ * A field that opens a picker instead of the keyboard (dates, a birth date): it looks like an [AppTextField] of the
+ * same [style] ([AppTextFieldStyle.Field], or [AppTextFieldStyle.Dialog] in a dialog), showing [text] or, while that's
+ * null, [placeholder], with an optional [trailing] note ("5 days").
  */
 @Composable
 fun FieldButton(
@@ -184,13 +217,15 @@ fun FieldButton(
     leadingIcon: (@Composable () -> Unit)? = null,
     trailing: (@Composable () -> Unit)? = null,
     enabled: Boolean = true,
+    style: AppTextFieldStyle = AppTextFieldStyle.Field,
 ) {
     Surface(
         onClick = onClick,
         enabled = enabled,
-        modifier = modifier.fillMaxWidth().heightIn(min = AppTextFieldStyle.Field.minHeight),
+        modifier = modifier.fillMaxWidth().heightIn(min = style.minHeight),
         shape = MaterialTheme.shapes.extraLarge,
-        color = MaterialTheme.colorScheme.surfaceVariant,
+        color = fieldContainer(style),
+        border = if (style == AppTextFieldStyle.Dialog) fieldStroke(isFocused = false, isError = false) else null,
     ) {
         Row(
             modifier = Modifier.padding(horizontal = MaterialTheme.spacing.medium),
@@ -211,6 +246,8 @@ fun FieldButton(
 
 /** One line of body text, which the padding centres in the field's height. */
 private val LineHeight = 24.dp
+private val StrokeWidth = 1.dp
+private val FocusedStrokeWidth = 2.dp
 private val IconSize = 20.dp
 
 @Composable
@@ -232,6 +269,15 @@ private fun AppTextFieldPreviewContent() {
         )
         FieldButton("19 – 23 Oct 2026", "Add dates", {}, leadingIcon = { Icon(Icons.Default.DateRange, null) }, trailing = { Text("5 days", style = MaterialTheme.typography.labelMedium) })
         FieldButton(null, "Add dates", {}, leadingIcon = { Icon(Icons.Default.DateRange, null) })
+        // In a dialog, on the dialog's own colour.
+        Column(
+            Modifier.background(MaterialTheme.colorScheme.surfaceContainerHigh, MaterialTheme.shapes.extraLarge).padding(MaterialTheme.spacing.medium),
+            verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
+        ) {
+            AppTextField(rememberTextFieldState("Meidling"), "Trip name", Modifier.fillMaxWidth(), style = AppTextFieldStyle.Dialog)
+            AppTextField(rememberTextFieldState(), "Details (optional)", Modifier.fillMaxWidth(), style = AppTextFieldStyle.Dialog, isError = true)
+            FieldButton("19 – 23 Oct 2026", "Dates", {}, leadingIcon = { Icon(Icons.Default.DateRange, null) }, style = AppTextFieldStyle.Dialog)
+        }
     }
 }
 

@@ -86,7 +86,7 @@ private fun AppDialogPreview() {
 private fun AppDialogDarkPreview() {
     TripinglyTheme(darkTheme = true) {
         AppDialog(title = "Rename trip", confirmLabel = "Save", isBusy = true, onConfirm = {}, onDismiss = {}) {
-            AppTextField(rememberTextFieldState("Summer in Vienna"), "Trip name")
+            AppTextField(rememberTextFieldState("Summer in Vienna"), "Trip name", style = AppTextFieldStyle.Dialog)
         }
     }
 }
