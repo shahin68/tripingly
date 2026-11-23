@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
@@ -39,11 +40,14 @@ fun CountButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     isNew: Boolean = false,
+    /** Inside the tap area, e.g. a pill's sides when [modifier] gives it a container. */
+    contentPadding: PaddingValues = PaddingValues(),
 ) {
     Row(
         modifier = modifier
             .clickable(interactionSource = null, indication = ripple(bounded = false), role = Role.Button, onClick = onClick)
-            .height(LikeButtonHeight),
+            .height(LikeButtonHeight)
+            .padding(contentPadding),
         horizontalArrangement = Arrangement.spacedBy(4.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {

@@ -1,6 +1,10 @@
 package com.falcon.tripingly.feature.map.presentation.map.ui
 
 import androidx.compose.animation.animateContentSize
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.runtime.getValue
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
@@ -223,21 +227,20 @@ internal fun PhotoBanner(
         }
         CompositionLocalProvider(LocalContentColor provides textColor) {
             Box(Modifier.align(Alignment.TopEnd).padding(BannerButtonInset)) { topEnd() }
-            // The same inset on every side the text has: start, end and bottom.
-            Row(
-                Modifier.align(Alignment.BottomStart).fillMaxWidth().padding(BannerInset),
-                horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
-                verticalAlignment = Alignment.Bottom,
-            ) {
-                Column(Modifier.weight(1f)) {
-                    LoadingTitle(title, isTitleLoading, MaterialTheme.typography.titleLarge)
+            // The title on its own line, then the details with the pills at their end (Shahin, 2026-11-23). The text keeps
+            // its inset from the start; the pills sit as far from the end and the bottom as ⌄ from its corner, as far
+            // apart as that, with nothing before them, so the details get all the room left.
+            Column(Modifier.align(Alignment.BottomStart).fillMaxWidth().padding(start = BannerInset, end = BannerButtonInset, bottom = BannerButtonInset)) {
+                LoadingTitle(title, isTitleLoading, MaterialTheme.typography.titleLarge, Modifier.padding(end = BannerInset - BannerButtonInset))
+                // As high as a pill with or without them, so the details sit at the same place on every card.
+                Row(Modifier.heightIn(min = JoinedButtonDefaults.Height), verticalAlignment = Alignment.CenterVertically) {
                     // Who added it goes on as long as there's room, then whole onto the next line (Shahin, 2026-11-14).
-                    FlowRow(horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraSmall)) {
+                    FlowRow(Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraSmall)) {
                         Text(subtitle, style = MaterialTheme.typography.bodySmall, modifier = Modifier.align(Alignment.CenterVertically))
                         afterSubtitle()
                     }
+                    Row(horizontalArrangement = Arrangement.spacedBy(BannerButtonInset), verticalAlignment = Alignment.CenterVertically, content = trailing)
                 }
-                Row(horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium), verticalAlignment = Alignment.CenterVertically, content = trailing)
             }
         }
     }
@@ -289,22 +292,49 @@ internal fun PinMark(category: PlaceCategory?, isStop: Boolean, modifier: Modifi
     }
 }
 
-/** A count on a banner that only shows (a place's flames before it's on a trip): quiet, not a button. */
+/** A count on a banner that only shows (a place's flames before it's on a trip): a pill like the buttons', not a button. */
 @Composable
 internal fun BannerCount(icon: ImageVector, count: Int) {
-    CountLabel(icon, count, color = LocalContentColor.current.copy(alpha = 0.85f))
+    CountLabel(icon, count, Modifier.bannerPill(bannerGlass()).padding(BannerPillPadding), size = CountLabelSize.Large)
 }
 
 /**
- * A round button on a photo banner (⌄ collapse), in the banner's text colour on a see-through tint of it: white glass on a
- * photo, a dark tint on the panel without one, so it shows on both (Shahin, 2026-11-13).
+ * The see-through glass of a banner's buttons, a tint of the banner's text colour: white on a photo, a dark tint on the
+ * panel without one, so it shows on both (Shahin, 2026-11-13).
  */
 @Composable
-internal fun BannerButton(onClick: () -> Unit, icon: ImageVector, contentDescription: String, modifier: Modifier = Modifier) {
+internal fun bannerGlass(): Color {
     val content = LocalContentColor.current
     // White on a busy photo needs a stronger glass than a dark tint on the plain panel.
-    val tint = content.copy(alpha = if (content.luminance() > 0.5f) ON_PHOTO_TINT else ON_PANEL_TINT)
-    Surface(onClick = onClick, modifier = modifier.size(JoinedButtonDefaults.Height), shape = CircleShape, color = tint, contentColor = content) {
+    return content.copy(alpha = if (content.luminance() > 0.5f) ON_PHOTO_TINT else ON_PANEL_TINT)
+}
+
+/** A banner's count or count button as a pill of [fill], as high as ⌄; its content padded by [BannerPillPadding]. */
+internal fun Modifier.bannerPill(fill: Color): Modifier = clip(CircleShape).background(fill).height(JoinedButtonDefaults.Height)
+
+/** A banner pill's sides: an icon at its start sits as far in as in a round button. */
+internal val BannerPillPadding = PaddingValues(horizontal = JoinedButtonDefaults.Padding)
+
+/** The flame as a pill on a banner: glass, or filled with the flame's own colour once I marked it hot. */
+@Composable
+internal fun BannerHotButton(hot: Boolean, count: Int, onToggle: () -> Unit) {
+    val fill by animateColorAsState(if (hot) MaterialTheme.extendedColors.attention else bannerGlass())
+    val content by animateColorAsState(if (hot) MaterialTheme.extendedColors.onAttention else LocalContentColor.current)
+    CompositionLocalProvider(LocalContentColor provides content) {
+        HotButton(hot, count, onToggle, Modifier.bannerPill(fill), tint = content, contentPadding = BannerPillPadding)
+    }
+}
+
+/** A count to tap (a stop's comments) as a glass pill on a banner. */
+@Composable
+internal fun BannerCountButton(icon: ImageVector, contentDescription: String, count: Int, onClick: () -> Unit, isNew: Boolean = false) {
+    CountButton(icon, contentDescription, count, onClick, Modifier.bannerPill(bannerGlass()), isNew = isNew, contentPadding = BannerPillPadding)
+}
+
+/** A round button on a photo banner (⌄ collapse), in the banner's text colour on its [bannerGlass]. */
+@Composable
+internal fun BannerButton(onClick: () -> Unit, icon: ImageVector, contentDescription: String, modifier: Modifier = Modifier) {
+    Surface(onClick = onClick, modifier = modifier.size(JoinedButtonDefaults.Height), shape = CircleShape, color = bannerGlass(), contentColor = LocalContentColor.current) {
         Box(contentAlignment = Alignment.Center) { Icon(icon, contentDescription = contentDescription, modifier = Modifier.size(JoinedButtonDefaults.IconSize)) }
     }
 }
@@ -330,8 +360,8 @@ private fun MapCardPartsPreviewContent() {
             mark = { PinMark(PlaceCategory("restaurant"), isStop = true) },
             topEnd = { BannerButton({}, Icons.Outlined.ExpandMore, "Collapse") },
             trailing = {
-                HotButton(hot = true, count = 12, onToggle = {}, modifier = Modifier.height(CountLabelSize.Large.iconSize), tint = MaterialTheme.extendedColors.attention)
-                CountButton(Icons.AutoMirrored.Outlined.Comment, "Comments", 3, onClick = {}, modifier = Modifier.height(CountLabelSize.Large.iconSize), isNew = true)
+                BannerHotButton(hot = true, count = 12, onToggle = {})
+                BannerCountButton(Icons.AutoMirrored.Outlined.Comment, "Comments", 3, onClick = {}, isNew = true)
             },
         )
         PinCardButtons(
