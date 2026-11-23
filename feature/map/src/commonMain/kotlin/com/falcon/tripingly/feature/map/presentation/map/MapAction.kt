@@ -4,7 +4,6 @@ import com.falcon.tripingly.core.location.model.Coordinates
 import com.falcon.tripingly.core.location.permission.LocationPermission
 import com.falcon.tripingly.core.model.photo.Photo
 import com.falcon.tripingly.core.model.photo.PickedImage
-import com.falcon.tripingly.core.model.place.Brand
 import com.falcon.tripingly.core.model.place.GeoBounds
 import com.falcon.tripingly.core.model.place.MapPlace
 import com.falcon.tripingly.core.model.place.PlaceCategory
@@ -195,10 +194,6 @@ sealed interface MapAction {
     /** The card over a long-pressed point that makes a new spot there. */
     sealed interface NewSpot : MapAction {
         data class PickCategory(val category: PlaceCategory) : NewSpot
-        /** The name typed so far: brands named so are offered for "This is a brand store". */
-        data class NameChanged(val name: String) : NewSpot
-        /** "This is a brand store" of [brand], or null to untie it again. */
-        data class PickBrand(val brand: Brand?) : NewSpot
         /** A photo picked for the spot, or null when it was taken off again. */
         data class SetPhoto(val photo: PickedImage?) : NewSpot
         /** Create: the place and its stop on the open day. */

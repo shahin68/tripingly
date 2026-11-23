@@ -6,7 +6,6 @@ import com.falcon.tripingly.core.common.result.map
 import com.falcon.tripingly.core.data.config.AppConfigRepository
 import com.falcon.tripingly.core.data.trips.toUser
 import com.falcon.tripingly.core.model.Page
-import com.falcon.tripingly.core.model.place.Brand
 import com.falcon.tripingly.core.model.place.MapPlace
 import com.falcon.tripingly.core.model.place.OsmRef
 import com.falcon.tripingly.core.model.place.OsmType
@@ -103,12 +102,6 @@ internal class DefaultPlaceRepository(
                 },
             )
         }
-    }
-
-    override suspend fun brands(query: String): AppResult<List<Brand>, DataError.Network> {
-        val trimmed = query.trim()
-        if (trimmed.isEmpty()) return AppResult.Success(emptyList())
-        return api.brands(trimmed.take(MAX_BRAND_QUERY)).map { response -> response.items.map { it.toBrand(apiConfig) } }
     }
 
     override suspend fun placesIn(squares: Collection<PlaceSquare>): AppResult<Map<PlaceSquare, PlacesInView>, DataError.Network> {
@@ -318,8 +311,6 @@ internal class DefaultPlaceRepository(
     private companion object {
         // The server's limit for `q`.
         const val MAX_QUERY_LENGTH = 100
-        // The server's limit for a brand search.
-        const val MAX_BRAND_QUERY = 60
         const val DESTINATION_SCOPE = "destination"
         const val NEARBY_PAGE_SIZE = 20
         // The server's limit of squares per request.

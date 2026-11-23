@@ -484,12 +484,12 @@ class TripRepositoryTest {
         val created = harness.markers().addMarker(
             "t1",
             "d0",
-            NewMarker("Rooftop view", GeoPoint(48.1915, 16.3809), category = PlaceCategory.Viewpoint, photo = photo, brandId = "b-zara"),
+            NewMarker("Rooftop view", GeoPoint(48.1915, 16.3809), category = PlaceCategory.Viewpoint, photo = photo),
         )
 
         harness.awaitQueueEmpty()
         assertEquals(
-            """{"id":"${created.id}","name":"Rooftop view","location":{"lat":48.1915,"lng":16.3809},"category":"viewpoint","brandId":"b-zara"}""",
+            """{"id":"${created.id}","name":"Rooftop view","location":{"lat":48.1915,"lng":16.3809},"category":"viewpoint"}""",
             harness.requests[0].bodyText(),
         )
         assertEquals(1, harness.photos.photos(PhotoOwner.Stop(created.id)).first()?.size)

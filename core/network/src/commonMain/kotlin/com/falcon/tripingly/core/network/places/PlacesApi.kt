@@ -3,7 +3,6 @@ package com.falcon.tripingly.core.network.places
 import com.falcon.tripingly.core.common.error.DataError
 import com.falcon.tripingly.core.common.result.AppResult
 import com.falcon.tripingly.core.network.model.AroundResponseDto
-import com.falcon.tripingly.core.network.model.BrandsResponseDto
 import com.falcon.tripingly.core.network.model.NearbyPageDto
 import com.falcon.tripingly.core.network.model.PlaceDetailDto
 import com.falcon.tripingly.core.network.model.SearchResponseDto
@@ -43,10 +42,6 @@ interface PlacesApi {
         @Query("categories") categories: String? = null,
         @Query("q") name: String? = null,
     ): AppResult<TilesResponseDto, DataError.Network>
-
-    /** Brands with a word of their name starting with [query] (1–60 characters), at most 20, most places first. */
-    @GET("brands")
-    suspend fun brands(@Query("q") query: String): AppResult<BrandsResponseDto, DataError.Network>
 
     /** One place, with its OpenStreetMap details. */
     @GET("places/{id}")

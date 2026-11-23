@@ -3,7 +3,6 @@ package com.falcon.tripingly.feature.map.presentation.map
 import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.runtime.Immutable
 import com.falcon.tripingly.core.location.model.Coordinates
-import com.falcon.tripingly.core.model.place.Brand
 import com.falcon.tripingly.core.model.place.GeoBounds
 import com.falcon.tripingly.core.model.photo.PickedImage
 import com.falcon.tripingly.core.model.place.MapPlace
@@ -375,8 +374,6 @@ data class NewSpotCardState(
     val name: TextFieldState,
     val category: PlaceCategory,
     val photo: PickedImage?,
-    val brands: List<Brand> = emptyList(),
-    val brand: Brand? = null,
 )
 
 /**

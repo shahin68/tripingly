@@ -1,13 +1,10 @@
 package com.falcon.tripingly.feature.map.presentation.map.ui
 
 import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
-import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -25,19 +22,18 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.text.input.InputTransformation
 import androidx.compose.foundation.text.input.maxLength
 import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Storefront
-import androidx.compose.material.icons.outlined.AddAPhoto
+import androidx.compose.material.icons.outlined.AddPhotoAlternate
+import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -54,7 +50,6 @@ import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import com.falcon.tripingly.core.designsystem.component.AppTextField
 import com.falcon.tripingly.core.designsystem.component.PillChip
-import com.falcon.tripingly.core.designsystem.component.PrimaryButton
 import com.falcon.tripingly.core.designsystem.component.horizontalFadingEdge
 import com.falcon.tripingly.core.designsystem.component.icon
 import com.falcon.tripingly.core.designsystem.component.rememberHaptics
@@ -62,12 +57,10 @@ import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
 import com.falcon.tripingly.core.designsystem.theme.spacing
 import com.falcon.tripingly.core.location.model.Coordinates
 import com.falcon.tripingly.core.model.photo.PickedImage
-import com.falcon.tripingly.core.model.place.Brand
 import com.falcon.tripingly.core.model.place.PlaceCategory
 import com.falcon.tripingly.core.ui.photos.rememberPhotoPicker
 import com.falcon.tripingly.feature.map.generated.resources.Res
 import com.falcon.tripingly.feature.map.generated.resources.map_new_spot_add_photo
-import com.falcon.tripingly.feature.map.generated.resources.map_new_spot_brand_store
 import com.falcon.tripingly.feature.map.generated.resources.map_new_spot_create
 import com.falcon.tripingly.feature.map.generated.resources.map_new_spot_name
 import com.falcon.tripingly.feature.map.generated.resources.map_new_spot_remove_photo
@@ -76,10 +69,11 @@ import com.falcon.tripingly.feature.map.presentation.map.NewSpotCardState
 import org.jetbrains.compose.resources.stringResource
 
 /**
- * The card over a long-pressed point (design: layout C of the place categories canvas, Shahin 2026-11-14): the spot's
- * name with a photo button beside it, one sideways row of every kind of place (Spot first, picked until another is),
- * and Create, which makes the place and adds it as a stop on the open day. Rows are counted from the pin for
- * [PinCardScope.bloomRow]: the button is nearest.
+ * The card over a long-pressed point (Shahin, 2026-11-23, layout D): the photo, the spot's name and a round Create in
+ * one row, then one sideways row of every kind of place (Spot first, picked until another is). Create makes the place
+ * and adds it as a stop on the open day; it stays dimmed until the spot has a name. People can't tie a spot to a brand:
+ * brand stores come only from OpenStreetMap. Rows are counted from the pin for [PinCardScope.bloomRow]: the kinds are
+ * nearest.
  */
 @Composable
 internal fun PinCardScope.NewSpotCard(
@@ -88,8 +82,6 @@ internal fun PinCardScope.NewSpotCard(
     onPhoto: (PickedImage?) -> Unit,
     onCreate: () -> Unit,
     modifier: Modifier = Modifier,
-    onNameChange: (String) -> Unit = {},
-    onPickBrand: (Brand?) -> Unit = {},
 ) {
     val haptics = rememberHaptics()
     // The long press that dropped the pin is felt as its card opens.
@@ -107,35 +99,27 @@ internal fun PinCardScope.NewSpotCard(
         verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
     ) {
         Row(
-            Modifier.padding(horizontal = MaterialTheme.spacing.small).bloomRow(fromPin = 2),
+            Modifier.padding(horizontal = MaterialTheme.spacing.small).bloomRow(fromPin = 1),
             horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
             verticalAlignment = Alignment.CenterVertically,
         ) {
+            SpotPhotoButton(card.photo, onAdd = pickPhoto, onRemove = { onPhoto(null) })
             AppTextField(
                 state = card.name,
                 placeholder = stringResource(Res.string.map_new_spot_name),
                 modifier = Modifier.weight(1f),
-                onTextChange = onNameChange,
                 onImeAction = create,
                 keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Words, imeAction = ImeAction.Done),
                 inputTransformation = InputTransformation.maxLength(MAX_SPOT_NAME_LENGTH),
             )
-            SpotPhotoButton(card.photo, onAdd = pickPhoto, onRemove = { onPhoto(null) })
-        }
-        // Brands named like the spot, once there are any: one picked makes the spot its store (Shahin, 2026-11-20).
-        AnimatedVisibility(
-            visible = card.brands.isNotEmpty(),
-            enter = fadeIn() + expandVertically(),
-            exit = fadeOut() + shrinkVertically(),
-        ) {
-            BrandRow(
-                brands = card.brands,
-                selected = card.brand,
-                onPick = { brand ->
-                    haptics.toggle(on = brand != card.brand)
-                    onPickBrand(brand.takeIf { it != card.brand })
-                },
-            )
+            FilledIconButton(
+                onClick = create,
+                enabled = canCreate,
+                shape = CircleShape,
+                modifier = Modifier.size(RoundButtonSize),
+            ) {
+                Icon(Icons.Default.Check, contentDescription = stringResource(Res.string.map_new_spot_create))
+            }
         }
         CategoryRow(
             selected = card.category,
@@ -143,21 +127,18 @@ internal fun PinCardScope.NewSpotCard(
                 haptics.tick()
                 onPickCategory(category)
             },
-            modifier = Modifier.bloomRow(fromPin = 1),
-        )
-        PrimaryButton(
-            text = stringResource(Res.string.map_new_spot_create),
-            onClick = create,
-            enabled = canCreate,
-            modifier = Modifier.fillMaxWidth().padding(horizontal = MaterialTheme.spacing.small).bloomRow(fromPin = 0),
+            modifier = Modifier.bloomRow(fromPin = 0),
         )
     }
 }
 
-/** Every kind of place in one sideways row; it scrolls out to the card's edges and starts in line with the rows above. */
+/**
+ * Every kind of place in one sideways row; it scrolls out to the card's edges and starts in line with the row above,
+ * scrolled so the picked kind is in sight when the card opens again (e.g. after rotation).
+ */
 @Composable
 private fun CategoryRow(selected: PlaceCategory, onPick: (PlaceCategory) -> Unit, modifier: Modifier = Modifier) {
-    val state = rememberLazyListState()
+    val state = rememberLazyListState(initialFirstVisibleItemIndex = SpotCategories.indexOf(selected).coerceAtLeast(0))
     LazyRow(
         state = state,
         modifier = modifier.fillMaxWidth().horizontalFadingEdge(state),
@@ -177,57 +158,8 @@ private fun CategoryRow(selected: PlaceCategory, onPick: (PlaceCategory) -> Unit
 }
 
 /**
- * "Brand store" and the brands named like the spot, each with its logo when it has one, in one sideways row; a tap picks
- * one (the spot becomes its store), a tap on the picked one unpicks it. People can only pick brands from our list.
- */
-@Composable
-private fun BrandRow(brands: List<Brand>, selected: Brand?, onPick: (Brand) -> Unit, modifier: Modifier = Modifier) {
-    val state = rememberLazyListState()
-    LazyRow(
-        state = state,
-        modifier = modifier.fillMaxWidth().horizontalFadingEdge(state),
-        contentPadding = PaddingValues(horizontal = MaterialTheme.spacing.small),
-        horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        item(key = "label") {
-            Text(
-                stringResource(Res.string.map_new_spot_brand_store),
-                style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.animateItem(),
-            )
-        }
-        items(brands, key = { it.id }) { brand ->
-            PillChip(
-                label = brand.name,
-                onClick = { onPick(brand) },
-                selected = brand == selected,
-                leading = { BrandLogo(brand) },
-                modifier = Modifier.animateItem(),
-            )
-        }
-    }
-}
-
-/** A brand's logo on white, rounded like its pin, or a shop icon when it has none. */
-@Composable
-private fun BrandLogo(brand: Brand) {
-    val logoUrl = brand.logoUrl
-    if (logoUrl == null) {
-        Icon(Icons.Default.Storefront, contentDescription = null, modifier = Modifier.size(ChipIconSize))
-        return
-    }
-    AsyncImage(
-        model = logoUrl,
-        contentDescription = null,
-        modifier = Modifier.size(ChipIconSize).clip(RoundedCornerShape(BrandLogoCorner)).background(Color.White),
-    )
-}
-
-/**
- * The photo beside the name, as high as the field: a camera to pick one, or the picked photo, which a tap takes off
- * again. One glides into the other.
+ * The photo before the name, as high as the field: the photos sheet's add-photo icon to pick one (only picking, no
+ * camera), or the picked photo, which a tap takes off again. One glides into the other.
  */
 @Composable
 private fun SpotPhotoButton(photo: PickedImage?, onAdd: () -> Unit, onRemove: () -> Unit) {
@@ -237,9 +169,9 @@ private fun SpotPhotoButton(photo: PickedImage?, onAdd: () -> Unit, onRemove: ()
         contentAlignment = Alignment.Center,
     ) { shown ->
         if (shown == null) {
-            Surface(onClick = onAdd, shape = CircleShape, color = MaterialTheme.colorScheme.surfaceContainerHigh, modifier = Modifier.size(PhotoButtonSize)) {
+            Surface(onClick = onAdd, shape = CircleShape, color = MaterialTheme.colorScheme.surfaceContainerHigh, modifier = Modifier.size(RoundButtonSize)) {
                 Box(contentAlignment = Alignment.Center) {
-                    Icon(Icons.Outlined.AddAPhoto, contentDescription = stringResource(Res.string.map_new_spot_add_photo))
+                    Icon(Icons.Outlined.AddPhotoAlternate, contentDescription = stringResource(Res.string.map_new_spot_add_photo))
                 }
             }
         } else {
@@ -247,7 +179,7 @@ private fun SpotPhotoButton(photo: PickedImage?, onAdd: () -> Unit, onRemove: ()
             val bytes by produceState<ByteArray?>(null, shown) { value = shown.bytes() }
             Box(
                 Modifier
-                    .size(PhotoButtonSize)
+                    .size(RoundButtonSize)
                     .clip(CircleShape)
                     .background(MaterialTheme.colorScheme.surfaceContainerHigh)
                     .clickable(onClick = onRemove),
@@ -314,10 +246,10 @@ private val SpotCategories = listOf(
 
 /** The server's limit for a stop's name. */
 private const val MAX_SPOT_NAME_LENGTH = 120
-private val PhotoButtonSize = 56.dp
+/** The photo and Create buttons, as high as the name field. */
+private val RoundButtonSize = 56.dp
 private val RemoveBadgeSize = 28.dp
 private val ChipIconSize = 18.dp
-private val BrandLogoCorner = 5.dp
 private val PhotoScrim = Color.Black.copy(alpha = 0.45f)
 
 @Preview(widthDp = 360, heightDp = 640)
@@ -340,15 +272,7 @@ private fun NewSpotCardLandscapePreview() {
 
 @Composable
 private fun NewSpotCardPreviewContent() {
-    val zara = Brand("zara", "Zara", null)
-    val card = NewSpotCardState(
-        Coordinates(48.1915, 16.3809),
-        rememberTextFieldState("Zara"),
-        PlaceCategory.Shopping,
-        photo = null,
-        brands = listOf(zara, Brand("zara-home", "Zara Home", null)),
-        brand = zara,
-    )
+    val card = NewSpotCardState(Coordinates(48.1915, 16.3809), rememberTextFieldState("KFC"), PlaceCategory.FastFood, photo = null)
     PinCard(card = card, key = { it.location }, pinClearance = SelectedPinSize / 2) { shown ->
         NewSpotCard(shown, onPickCategory = {}, onPhoto = {}, onCreate = {})
     }

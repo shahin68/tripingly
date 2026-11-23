@@ -2385,37 +2385,6 @@ class MapViewModelTest {
     }
 
     @Test
-    fun `a new spot named like a brand offers it, and a tap makes the spot its store or unties it`() = runTest(testDispatcher) {
-        val viewModel = viewModel()
-        testScheduler.advanceUntilIdle()
-        viewModel.onAction(MapAction.MapView.LongClick(Coordinates(48.85, 2.35)))
-        viewModel.onAction(MapAction.MapView.CameraRest(Coordinates(48.85, 2.35), 15f))
-        testScheduler.runCurrent()
-
-        // One letter offers nothing; from two, once typing pauses, the brands named so.
-        viewModel.onAction(MapAction.NewSpot.NameChanged("Z"))
-        testScheduler.advanceUntilIdle()
-        assertEquals(emptyList(), viewModel.uiState.value.newSpotCard!!.brands)
-        viewModel.onAction(MapAction.NewSpot.NameChanged("Zar"))
-        testScheduler.advanceUntilIdle()
-        val zara = viewModel.uiState.value.newSpotCard!!.brands.single()
-        assertEquals("Zara", zara.name)
-
-        viewModel.onAction(MapAction.NewSpot.PickBrand(zara))
-        testScheduler.runCurrent()
-        assertEquals(zara, viewModel.uiState.value.newSpotCard!!.brand)
-        // Still the brand while the name goes on to say it.
-        viewModel.onAction(MapAction.NewSpot.NameChanged("Zara Mariahilfer"))
-        testScheduler.advanceUntilIdle()
-        assertEquals(zara, viewModel.uiState.value.newSpotCard!!.brand)
-        assertEquals(listOf(zara), viewModel.uiState.value.newSpotCard!!.brands)
-
-        viewModel.onAction(MapAction.NewSpot.PickBrand(null))
-        testScheduler.runCurrent()
-        assertNull(viewModel.uiState.value.newSpotCard!!.brand)
-    }
-
-    @Test
     fun `a touch on the map closes a new spot card without adding a stop`() = runTest(testDispatcher) {
         val viewModel = viewModel()
         testScheduler.advanceUntilIdle()

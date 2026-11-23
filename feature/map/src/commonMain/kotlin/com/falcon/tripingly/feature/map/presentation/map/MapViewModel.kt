@@ -110,7 +110,7 @@ class MapViewModel(
     val cameraCommands: Flow<CameraCommand> = camera.commands
 
     private val selection = MapSelection(context, camera, placeRepository)
-    private val edits = MapEdits(context, selection, tripRepository, markerRepository, placeRepository, myUserId) { sendEvent(MapEvent.StopAdded) }
+    private val edits = MapEdits(context, selection, tripRepository, markerRepository, myUserId) { sendEvent(MapEvent.StopAdded) }
     private val pins = MapPins(context, placeRepository, appConfigRepository, computation)
     private val location = MapLocation(context, camera, getCurrentLocationUseCase, ::sendEvent)
     private val routes = MapRouting(
@@ -173,8 +173,6 @@ class MapViewModel(
             is MapAction.PlaceCard -> onPlaceCard(action)
             is MapAction.NewSpot.PickCategory -> edits.pickSpotCategory(action.category)
             is MapAction.NewSpot.SetPhoto -> edits.setSpotPhoto(action.photo)
-            is MapAction.NewSpot.NameChanged -> edits.onSpotNameChanged(action.name)
-            is MapAction.NewSpot.PickBrand -> edits.pickSpotBrand(action.brand)
             is MapAction.NewSpot.Create -> edits.createSpot()
             is MapAction.Sheet -> onSheet(action)
             is MapAction.Dialog -> onDialog(action)
