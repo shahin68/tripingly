@@ -2877,7 +2877,7 @@ class MapViewModelTest {
         testScheduler.runCurrent()
         viewModel.onAction(MapAction.MapView.CameraRest(Coordinates(48.86, 2.33), 15f))
         testScheduler.runCurrent()
-        assertEquals(listOf(PlaceCategory.Other, PlaceCategory("viewpoint"), PlaceCategory("landmark")), viewModel.uiState.value.newSpotCard?.categories)
+        assertEquals(listOf(PlaceCategory.Other, PlaceCategory("viewpoint"), PlaceCategory("landmark")), viewModel.uiState.value.newSpotCard?.categories?.toList())
     }
 
     @Test
