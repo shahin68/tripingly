@@ -2,6 +2,7 @@ package com.falcon.tripingly.core.designsystem.component
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -43,6 +44,8 @@ fun HotButton(
     onToggle: () -> Unit,
     modifier: Modifier = Modifier,
     tint: Color = if (hot) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant,
+    /** Inside the tap area, e.g. a pill's sides when [modifier] gives it a container. */
+    contentPadding: PaddingValues = PaddingValues(),
 ) {
     var burst by remember { mutableIntStateOf(0) }
     val haptics = rememberHaptics()
@@ -59,7 +62,8 @@ fun HotButton(
                     onToggle()
                 },
             )
-            .height(LikeButtonHeight),
+            .height(LikeButtonHeight)
+            .padding(contentPadding),
         horizontalArrangement = Arrangement.spacedBy(4.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {

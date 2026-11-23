@@ -1,6 +1,10 @@
 package com.falcon.tripingly.feature.map.presentation.map.ui
 
 import androidx.compose.animation.animateContentSize
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.runtime.getValue
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
@@ -44,6 +48,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.AnnotatedString
@@ -223,21 +228,20 @@ internal fun PhotoBanner(
         }
         CompositionLocalProvider(LocalContentColor provides textColor) {
             Box(Modifier.align(Alignment.TopEnd).padding(BannerButtonInset)) { topEnd() }
-            // The same inset on every side the text has: start, end and bottom.
-            Row(
-                Modifier.align(Alignment.BottomStart).fillMaxWidth().padding(BannerInset),
-                horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
-                verticalAlignment = Alignment.Bottom,
-            ) {
-                Column(Modifier.weight(1f)) {
-                    LoadingTitle(title, isTitleLoading, MaterialTheme.typography.titleLarge)
+            // The title on its own line, then the details with the pills at their end (Shahin, 2026-11-23). The text keeps
+            // its inset from the start; the pills, one joined group, sit as far from the end and the bottom as ⌄ from its
+            // corner, with nothing before them, so the details get all the room left.
+            Column(Modifier.align(Alignment.BottomStart).fillMaxWidth().padding(start = BannerInset, end = BannerButtonInset, bottom = BannerButtonInset)) {
+                LoadingTitle(title, isTitleLoading, MaterialTheme.typography.titleLarge, Modifier.padding(end = BannerInset - BannerButtonInset))
+                // A pill high with or without them, so the details sit at the same place on every card.
+                Row(Modifier.heightIn(min = BannerPillHeight), verticalAlignment = Alignment.CenterVertically) {
                     // Who added it goes on as long as there's room, then whole onto the next line (Shahin, 2026-11-14).
-                    FlowRow(horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraSmall)) {
+                    FlowRow(Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraSmall)) {
                         Text(subtitle, style = MaterialTheme.typography.bodySmall, modifier = Modifier.align(Alignment.CenterVertically))
                         afterSubtitle()
                     }
+                    Row(verticalAlignment = Alignment.CenterVertically, content = trailing)
                 }
-                Row(horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium), verticalAlignment = Alignment.CenterVertically, content = trailing)
             }
         }
     }
@@ -285,26 +289,59 @@ private val TitleSpinnerStroke = 1.5.dp
 internal fun PinMark(category: PlaceCategory?, isStop: Boolean, modifier: Modifier = Modifier.size(JoinedButtonDefaults.Height)) {
     val fill = if (isStop) MaterialTheme.extendedColors.stop else MaterialTheme.extendedColors.place
     Box(modifier.background(fill, CircleShape), contentAlignment = Alignment.Center) {
-        Icon((category ?: PlaceCategory.Other).icon, contentDescription = null, tint = if (isStop) MaterialTheme.extendedColors.onStop else MaterialTheme.colorScheme.onSecondary, modifier = Modifier.size(JoinedButtonDefaults.IconSize))
+        Icon((category ?: PlaceCategory.Other).icon(), contentDescription = null, tint = if (isStop) MaterialTheme.extendedColors.onStop else MaterialTheme.colorScheme.onSecondary, modifier = Modifier.size(JoinedButtonDefaults.IconSize))
     }
 }
 
-/** A count on a banner that only shows (a place's flames before it's on a trip): quiet, not a button. */
+/**
+ * A count on a banner that only shows (a place's flames before it's on a trip): no pill, only buttons get one (Shahin,
+ * 2026-11-23); a pill's height and inset, so it sits where the pill would.
+ */
 @Composable
 internal fun BannerCount(icon: ImageVector, count: Int) {
-    CountLabel(icon, count, color = LocalContentColor.current.copy(alpha = 0.85f))
+    CountLabel(icon, count, Modifier.height(BannerPillHeight).padding(BannerPillPadding), size = CountLabelSize.Large)
 }
 
 /**
- * A round button on a photo banner (⌄ collapse), in the banner's text colour on a see-through tint of it: white glass on a
- * photo, a dark tint on the panel without one, so it shows on both (Shahin, 2026-11-13).
+ * The see-through glass of a banner's buttons, a tint of the banner's text colour: white on a photo, a dark tint on the
+ * panel without one, so it shows on both (Shahin, 2026-11-13).
  */
 @Composable
-internal fun BannerButton(onClick: () -> Unit, icon: ImageVector, contentDescription: String, modifier: Modifier = Modifier) {
+internal fun bannerGlass(): Color {
     val content = LocalContentColor.current
     // White on a busy photo needs a stronger glass than a dark tint on the plain panel.
-    val tint = content.copy(alpha = if (content.luminance() > 0.5f) ON_PHOTO_TINT else ON_PANEL_TINT)
-    Surface(onClick = onClick, modifier = modifier.size(JoinedButtonDefaults.Height), shape = CircleShape, color = tint, contentColor = content) {
+    return content.copy(alpha = if (content.luminance() > 0.5f) ON_PHOTO_TINT else ON_PANEL_TINT)
+}
+
+/** A banner's count button as a pill of [fill] in [shape] (its place in a joined group), [BannerPillHeight] high. */
+internal fun Modifier.bannerPill(fill: Color, shape: Shape): Modifier = clip(shape).background(fill).height(BannerPillHeight)
+
+/** 12 dp lower than ⌄ (Shahin, 2026-11-23): the pills shouldn't outweigh the text beside them. */
+private val BannerPillHeight = 36.dp
+
+/** A banner pill's sides: the icon as far in from the start as from the top and bottom. */
+internal val BannerPillPadding = PaddingValues(horizontal = (BannerPillHeight - JoinedButtonDefaults.IconSize) / 2)
+
+/** The flame as a pill on a banner, in [shape] (its place in the joined group): glass, or filled with the flame's own colour once I marked it hot. */
+@Composable
+internal fun BannerHotButton(hot: Boolean, count: Int, onToggle: () -> Unit, shape: Shape) {
+    val fill by animateColorAsState(if (hot) MaterialTheme.extendedColors.attention else bannerGlass())
+    val content by animateColorAsState(if (hot) MaterialTheme.extendedColors.onAttention else LocalContentColor.current)
+    CompositionLocalProvider(LocalContentColor provides content) {
+        HotButton(hot, count, onToggle, Modifier.bannerPill(fill, shape), tint = content, contentPadding = BannerPillPadding)
+    }
+}
+
+/** A count to tap (a stop's comments) as a glass pill on a banner, in [shape] (its place in the joined group). */
+@Composable
+internal fun BannerCountButton(icon: ImageVector, contentDescription: String, count: Int, onClick: () -> Unit, isNew: Boolean = false, shape: Shape) {
+    CountButton(icon, contentDescription, count, onClick, Modifier.bannerPill(bannerGlass(), shape), isNew = isNew, contentPadding = BannerPillPadding)
+}
+
+/** A round button on a photo banner (⌄ collapse), in the banner's text colour on its [bannerGlass]. */
+@Composable
+internal fun BannerButton(onClick: () -> Unit, icon: ImageVector, contentDescription: String, modifier: Modifier = Modifier) {
+    Surface(onClick = onClick, modifier = modifier.size(JoinedButtonDefaults.Height), shape = CircleShape, color = bannerGlass(), contentColor = LocalContentColor.current) {
         Box(contentAlignment = Alignment.Center) { Icon(icon, contentDescription = contentDescription, modifier = Modifier.size(JoinedButtonDefaults.IconSize)) }
     }
 }
@@ -322,16 +359,20 @@ private const val DIMMED_ALPHA = 0.38f
 @Composable
 private fun MapCardPartsPreviewContent() {
     Column(Modifier.background(MaterialTheme.colorScheme.surface).padding(MaterialTheme.spacing.medium).width(340.dp), verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small)) {
-        PhotoBanner(title = "Hofburg", subtitle = AnnotatedString("Historic site"), image = null, mark = { PinMark(PlaceCategory.Historic, isStop = false) }, trailing = { BannerCount(Icons.Outlined.LocalFireDepartment, 40) })
+        PhotoBanner(title = "Hofburg", subtitle = AnnotatedString("Historic site"), image = null, mark = { PinMark(PlaceCategory("historic"), isStop = false) }, trailing = { BannerCount(Icons.Outlined.LocalFireDepartment, 40) })
         PhotoBanner(
             title = "Lunch at Anna's, a long name that wraps",
             subtitle = AnnotatedString("Custom spot"),
             image = null,
-            mark = { PinMark(PlaceCategory.Restaurant, isStop = true) },
+            mark = { PinMark(PlaceCategory("restaurant"), isStop = true) },
             topEnd = { BannerButton({}, Icons.Outlined.ExpandMore, "Collapse") },
             trailing = {
-                HotButton(hot = true, count = 12, onToggle = {}, modifier = Modifier.height(CountLabelSize.Large.iconSize), tint = MaterialTheme.extendedColors.attention)
-                CountButton(Icons.AutoMirrored.Outlined.Comment, "Comments", 3, onClick = {}, modifier = Modifier.height(CountLabelSize.Large.iconSize), isNew = true)
+                JoinedButtons(
+                    listOf<JoinedButtonSlot>(
+                        { BannerHotButton(hot = true, count = 12, onToggle = {}, shape = it) },
+                        { BannerCountButton(Icons.AutoMirrored.Outlined.Comment, "Comments", 3, onClick = {}, isNew = true, shape = it) },
+                    ),
+                )
             },
         )
         PinCardButtons(

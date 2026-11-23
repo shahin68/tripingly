@@ -23,7 +23,7 @@ class PinDragTest {
     private val density = Density(1f)
     private val stephansdom = PinEnd.Stop(MapMarker("s1", Coordinates(48.2085, 16.3731), UiText.Server("Stephansdom"), 1, placeId = "p-dom"))
     private val opera = PinEnd.Stop(MapMarker("s2", Coordinates(48.2031, 16.3691), UiText.Server("Oper"), 2))
-    private val dom = PinEnd.Place(MapPlace("p-dom", "Stephansdom", PlaceCategory.Attraction, GeoPoint(48.2085, 16.3731), isTripinly = false, hotCount = 0, prominence = 90))
+    private val dom = PinEnd.Place(MapPlace("p-dom", "Stephansdom", PlaceCategory("attraction"), GeoPoint(48.2085, 16.3731), isTripinly = false, hotCount = 0, prominence = 90))
 
     // At 1 px per dp: Stephansdom at (100, 400), the opera at (300, 400).
     private val pins = listOf(ShownPin(stephansdom, Offset(100f, 400f), 22f), ShownPin(opera, Offset(300f, 400f), 22f))
@@ -53,7 +53,7 @@ class PinDragTest {
 
     @Test
     fun `the target holds on until another pin is clearly nearer`() {
-        val graben = PinEnd.Place(MapPlace("p-graben", "Graben", PlaceCategory.Attraction, GeoPoint(48.2087, 16.3699), isTripinly = false, hotCount = 0, prominence = 70))
+        val graben = PinEnd.Place(MapPlace("p-graben", "Graben", PlaceCategory("attraction"), GeoPoint(48.2087, 16.3699), isTripinly = false, hotCount = 0, prominence = 70))
         val near = listOf(ShownPin(opera, Offset(200f, 400f), 22f), ShownPin(graben, Offset(215f, 400f), 22f))
         val holder = PinHolder()
         holder.start(stephansdom, Offset(100f, 400f))

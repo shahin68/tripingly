@@ -6,8 +6,10 @@
     <!-- Home -->
     <string name="home_search_placeholder_trips">Reisen suchen…</string>
     <string name="home_fab_add_trip">Reise hinzufügen</string>
-    <string name="home_list_empty">Noch keine Reisen. Tippe auf +, um eine zu erstellen!</string>
-    <string name="home_list_no_matches">Keine Reise passt zu deiner Suche.</string>
+    <string name="home_list_empty">Noch keine Reisen</string>
+    <string name="home_list_empty_hint">Tippe auf +, um deine erste zu planen.</string>
+    <string name="home_list_no_matches">Keine passende Reise</string>
+    <string name="home_list_no_matches_hint">Versuche ein anderes Wort.</string>
     <string name="home_offline_cached">Du bist offline. Das sind deine gespeicherten Reisen; Änderungen brauchen eine Verbindung.</string>
 
     <!-- Trip list item -->

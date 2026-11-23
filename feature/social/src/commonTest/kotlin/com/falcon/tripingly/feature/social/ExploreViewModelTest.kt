@@ -1,10 +1,11 @@
 package com.falcon.tripingly.feature.social
 
+import com.falcon.tripingly.core.data.config.FakeAppConfigRepository
 import com.falcon.tripingly.core.location.model.Coordinates
 import com.falcon.tripingly.core.location.permission.LocationPermission
+import com.falcon.tripingly.core.model.config.AppConfig
+import com.falcon.tripingly.core.model.config.ConfigItem
 import com.falcon.tripingly.core.model.social.ExploreFilter
-import com.falcon.tripingly.core.model.social.ExplorePeriod
-import com.falcon.tripingly.core.model.social.ReportReason
 import com.falcon.tripingly.core.model.social.ReportTarget
 import com.falcon.tripingly.core.model.trip.GeoPoint
 import com.falcon.tripingly.feature.social.presentation.explore.ExploreViewModel
@@ -22,7 +23,15 @@ import kotlinx.coroutines.test.runTest
 @OptIn(ExperimentalCoroutinesApi::class)
 class ExploreViewModelTest : SocialTestBase() {
 
-    private fun viewModel() = ExploreViewModel(social, users, backend, location)
+    private val periods = listOf(
+        ConfigItem("week", "This week", 60),
+        ConfigItem("month", "This month", 60, isDefault = true),
+        ConfigItem("year", "This year", 60),
+        ConfigItem("all", "All time", 61),
+    )
+    private val appConfig = FakeAppConfigRepository(AppConfig(explorePeriods = periods))
+
+    private fun viewModel() = ExploreViewModel(social, users, backend, location, appConfig)
 
     @Test
     fun likingATrip_showsAtOnce_andKeepsIt() = runTest {
@@ -103,12 +112,12 @@ class ExploreViewModelTest : SocialTestBase() {
         val viewModel = viewModel()
         advanceUntilIdle()
 
-        viewModel.onAction(Action.PeriodSelected(ExplorePeriod.Week))
-        viewModel.onAction(Action.PeriodSelected(ExplorePeriod.Week))
+        viewModel.onAction(Action.PeriodSelected("week"))
+        viewModel.onAction(Action.PeriodSelected("week"))
         advanceUntilIdle()
 
-        assertEquals(listOf(ExploreFilter(ExplorePeriod.Month), ExploreFilter(ExplorePeriod.Week)), filters)
-        assertEquals(ExplorePeriod.Week, viewModel.uiState.value.period)
+        assertEquals(listOf(ExploreFilter("month"), ExploreFilter("week")), filters)
+        assertEquals("week", viewModel.uiState.value.period)
     }
 
     @Test
@@ -128,12 +137,12 @@ class ExploreViewModelTest : SocialTestBase() {
         advanceUntilIdle()
         assertTrue(viewModel.uiState.value.isNearbyFilter, "Nearby is on once allowed")
         val paris = GeoPoint(Coordinates.Paris.latitude, Coordinates.Paris.longitude)
-        assertEquals(ExploreFilter(ExplorePeriod.Month, near = paris), filters.last(), "loads the trips near the user")
+        assertEquals(ExploreFilter("month", near = paris), filters.last(), "loads the trips near the user")
 
         viewModel.onAction(Action.ToggleNearby)
         advanceUntilIdle()
         assertFalse(viewModel.uiState.value.isNearbyFilter, "Nearby switches off")
-        assertEquals(ExploreFilter(ExplorePeriod.Month), filters.last(), "reloads without the location")
+        assertEquals(ExploreFilter("month"), filters.last(), "reloads without the location")
     }
 
     @Test
@@ -196,13 +205,13 @@ class ExploreViewModelTest : SocialTestBase() {
 
         reportRefused = true
         viewModel.onAction(Action.ReportTrip(trip))
-        viewModel.onAction(Action.SendReport(ReportReason.Spam))
+        viewModel.onAction(Action.SendReport("spam"))
         advanceUntilIdle()
         assertEquals(ReportTarget.Trip to trip.trip.id, viewModel.uiState.value.report?.let { it.target to it.id }, "open again for another try")
         assertTrue(viewModel.uiState.value.message != null)
 
         reportRefused = false
-        viewModel.onAction(Action.SendReport(ReportReason.Spam))
+        viewModel.onAction(Action.SendReport("spam"))
         advanceUntilIdle()
         assertEquals(null, viewModel.uiState.value.report)
     }
@@ -227,7 +236,7 @@ class ExploreViewModelTest : SocialTestBase() {
                 if (refused) com.falcon.tripingly.core.common.result.AppResult.Error(com.falcon.tripingly.core.common.error.DataError.Network.NoInternet) else social.explore(filter, cursor)
         }
         explore = listOf(publicTrip())
-        val viewModel = ExploreViewModel(failing, users, backend, location)
+        val viewModel = ExploreViewModel(failing, users, backend, location, appConfig)
         advanceUntilIdle()
         assertTrue(viewModel.uiState.value.loadError != null, "nothing to show: the error screen")
         assertEquals(null, viewModel.uiState.value.message, "no banner on top of it")
@@ -245,12 +254,34 @@ class ExploreViewModelTest : SocialTestBase() {
             override suspend fun explore(filter: ExploreFilter, cursor: String?) =
                 com.falcon.tripingly.core.common.result.AppResult.Error(com.falcon.tripingly.core.common.error.DataError.Network.NoInternet)
         }
-        val viewModel = ExploreViewModel(failing, users, backend, location)
+        val viewModel = ExploreViewModel(failing, users, backend, location, appConfig)
         advanceUntilIdle()
 
         viewModel.onAction(Action.Refresh)
         advanceUntilIdle()
         assertTrue(viewModel.uiState.value.loadError != null, "still nothing to show: the error screen")
         assertEquals(viewModel.uiState.value.loadError, viewModel.uiState.value.message, "and the reason in the banner")
+    }
+
+    @Test
+    fun periodsComeFromTheServer_withItsDefaultPicked() = runTest {
+        val viewModel = viewModel()
+        advanceUntilIdle()
+
+        assertEquals(listOf("week", "month", "year", "all"), viewModel.uiState.value.periods.map { it.key })
+        assertEquals("This month", viewModel.uiState.value.pickedPeriod?.label)
+    }
+
+    @Test
+    fun aNewLanguageRelabelsThePeriods_andKeepsThePickedOne() = runTest {
+        val viewModel = viewModel()
+        advanceUntilIdle()
+        viewModel.onAction(Action.PeriodSelected("year"))
+        advanceUntilIdle()
+
+        appConfig.config.value = AppConfig(explorePeriods = periods.map { it.copy(label = it.label.uppercase()) })
+        advanceUntilIdle()
+
+        assertEquals("THIS YEAR", viewModel.uiState.value.pickedPeriod?.label)
     }
 }

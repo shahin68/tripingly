@@ -3,20 +3,22 @@ package com.falcon.tripingly.feature.social.presentation.explore
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.tooling.preview.PreviewParameter
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.falcon.tripingly.core.designsystem.component.AppPullToRefresh
+import com.falcon.tripingly.core.designsystem.component.EmptyState
+import com.falcon.tripingly.core.designsystem.component.Illustration
 import com.falcon.tripingly.core.designsystem.component.LoadStateContent
 import com.falcon.tripingly.core.designsystem.component.ReportDialog
 import com.falcon.tripingly.core.designsystem.component.ShowMessage
@@ -29,8 +31,7 @@ import com.falcon.tripingly.core.ui.ObserveAsEvents
 import com.falcon.tripingly.core.ui.UiText
 import com.falcon.tripingly.feature.social.generated.resources.Res
 import com.falcon.tripingly.feature.social.generated.resources.social_explore_empty
-import com.falcon.tripingly.feature.social.generated.resources.social_explore_empty_filtered
-import com.falcon.tripingly.feature.social.presentation.component.EmptyText
+import com.falcon.tripingly.feature.social.generated.resources.social_explore_empty_hint
 import com.falcon.tripingly.feature.social.presentation.component.ExplorePreviewStates
 import com.falcon.tripingly.feature.social.presentation.component.LoadMoreAtEnd
 import com.falcon.tripingly.feature.social.presentation.component.placeholderTrips
@@ -82,15 +83,17 @@ internal fun ExploreScreen(
 ) {
     val contentPadding = screenContentPadding(barsPadding)
     ShowMessage(message = state.message?.asString(), onShown = { onAction(Action.DismissMessage) }, isError = state.message !is UiText.Note)
-    LoadStateContent(
-        isLoading = !state.hasLoaded,
-        errorMessage = state.loadError?.asString(),
-        onRetry = { onAction(Action.Refresh) },
-        modifier = modifier,
-        contentPadding = contentPadding,
-        loading = { ExploreSkeleton(contentPadding) },
-    ) {
-        ExploreGrid(state, onAction, contentPadding)
+    // Around everything, so the error and empty screens pull too, like Try again (Shahin, 2026-11-23).
+    AppPullToRefresh(isRefreshing = state.isLoading && state.hasLoaded, onRefresh = { onAction(Action.Refresh) }, contentPadding = contentPadding, modifier = modifier) {
+        LoadStateContent(
+            isLoading = !state.hasLoaded,
+            errorMessage = state.loadError?.asString(),
+            onRetry = { onAction(Action.Refresh) },
+            contentPadding = contentPadding,
+            loading = { ExploreSkeleton(contentPadding) },
+        ) {
+            ExploreGrid(state, onAction, contentPadding)
+        }
     }
 }
 
@@ -98,43 +101,56 @@ internal fun ExploreScreen(
 @Composable
 fun ExplorePeriodAction(viewModel: ExploreViewModel = koinViewModel()) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
-    ExplorePeriodMenu(state.period, state.isNearbyFilter, viewModel::onAction)
+    ExplorePeriodMenu(state.periods, state.pickedPeriod, state.isNearbyFilter, viewModel::onAction)
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun ExploreGrid(state: State, onAction: (Action) -> Unit, contentPadding: PaddingValues) {
     val gridState = rememberLazyGridState()
     LoadMoreAtEnd(gridState) { onAction(Action.LoadMore) }
-    PullToRefreshBox(isRefreshing = state.isLoading && state.hasLoaded, onRefresh = { onAction(Action.Refresh) }, modifier = Modifier.fillMaxSize()) {
-        LazyVerticalGrid(
-            state = gridState,
-            columns = GridCells.Adaptive(GridCellMinWidth),
-            modifier = Modifier.fillMaxSize().glassSource(),
-            contentPadding = contentPadding,
-            horizontalArrangement = Arrangement.spacedBy(GridGap),
-            verticalArrangement = Arrangement.spacedBy(GridGap),
-        ) {
-            if (state.trips.isEmpty()) {
-                item(key = "empty", span = { GridItemSpan(maxLineSpan) }) {
-                    EmptyText(
-                        stringResource(if (state.isFiltered) Res.string.social_explore_empty_filtered else Res.string.social_explore_empty),
-                        Modifier.animateItem(),
-                    )
-                }
-            }
-            items(state.trips, key = { it.trip.id }) { trip ->
-                ExploreTripCard(
-                    trip = trip,
-                    onOpen = { onAction(Action.TripClick(trip)) },
-                    onOpenOwner = { onAction(Action.OwnerClick(trip.trip.owner)) },
-                    onLike = { onAction(Action.LikeTrip(trip)) },
-                    onToggleSave = { onAction(Action.ToggleSaveTrip(trip)) },
-                    onAskToJoin = { onAction(Action.AskToJoin(trip)) },
-                    onReport = { onAction(Action.ReportTrip(trip)) },
-                    modifier = Modifier.animateItem(),
-                )
-            }
+    if (state.trips.isEmpty()) {
+        EmptyExplore(contentPadding)
+        return
+    }
+    LazyVerticalGrid(
+        state = gridState,
+        columns = GridCells.Adaptive(GridCellMinWidth),
+        modifier = Modifier.fillMaxSize().glassSource(),
+        contentPadding = contentPadding,
+        horizontalArrangement = Arrangement.spacedBy(GridGap),
+        verticalArrangement = Arrangement.spacedBy(GridGap),
+    ) {
+        items(state.trips, key = { it.trip.id }) { trip ->
+            ExploreTripCard(
+                trip = trip,
+                onOpen = { onAction(Action.TripClick(trip)) },
+                onOpenOwner = { onAction(Action.OwnerClick(trip.trip.owner)) },
+                onLike = { onAction(Action.LikeTrip(trip)) },
+                onToggleSave = { onAction(Action.ToggleSaveTrip(trip)) },
+                onAskToJoin = { onAction(Action.AskToJoin(trip)) },
+                onReport = { onAction(Action.ReportTrip(trip)) },
+                modifier = Modifier.animateItem(),
+            )
+        }
+    }
+}
+
+/** No trips for these filters: the picture and a hint in the middle (Shahin, 2026-11-23); a list, so pull-to-refresh still works. */
+@Composable
+private fun EmptyExplore(contentPadding: PaddingValues) {
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = contentPadding,
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        item {
+            EmptyState(
+                illustration = Illustration.ExploreEmpty,
+                title = stringResource(Res.string.social_explore_empty),
+                message = stringResource(Res.string.social_explore_empty_hint),
+                modifier = Modifier.fillParentMaxSize(),
+            )
         }
     }
 }

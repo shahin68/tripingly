@@ -7,7 +7,8 @@
 
     <!-- Social tab -->
     <string name="social_nearby">In der Nähe</string>
-    <string name="social_explore_empty">Noch keine öffentlichen Reisen zum Entdecken.</string>
+    <string name="social_explore_empty">Noch keine Reisen hier</string>
+    <string name="social_explore_empty_hint">Probiere einen anderen Zeitraum oder schau etwas später wieder vorbei.</string>
     <string name="social_people_none">Niemand mit diesem Namen gefunden.</string>
     <string name="social_save_trip">Speichern</string>
     <string name="social_saved_trip">Gespeichert</string>
@@ -26,7 +27,8 @@
     <string name="social_nearby_allow">Standort erlauben</string>
     <string name="social_nearby_open_settings">Einstellungen öffnen</string>
     <string name="social_nearby_location_unavailable">Dein Standort ist gerade nicht verfügbar.</string>
-    <string name="social_nearby_empty">Noch keine beliebten Orte in deiner Nähe.</string>
+    <string name="social_nearby_empty">Noch keine beliebten Orte in deiner Nähe</string>
+    <string name="social_nearby_empty_hint">Orte, die Leute hier mögen, erscheinen hier.</string>
     <string name="social_nearby_distance_m">%1$d m entfernt</string>
     <string name="social_nearby_distance_km">%1$s km entfernt</string>
     <string name="social_nearby_open_images">Fotos anzeigen</string>
@@ -45,7 +47,8 @@
     <string name="social_follows_you">Folgt dir</string>
     <string name="social_public_trips">Öffentliche Reisen (%1$d)</string>
     <string name="social_profile_no_trips">Noch keine öffentlichen Reisen.</string>
-    <string name="social_profile_not_found">Dieses Profil ist nicht verfügbar.</string>
+    <string name="social_profile_not_found">Das Konto wurde vielleicht gelöscht.</string>
+    <string name="social_profile_not_found_title">Profil nicht verfügbar</string>
     <string name="social_report_user">Melden</string>
     <string name="social_block">Blockieren</string>
     <string name="social_unfollow">Entfolgen</string>
@@ -73,15 +76,6 @@
     <string name="social_error_load_people">Die Liste konnte nicht geladen werden.</string>
 
     <!-- Explore filters -->
-    <string name="social_explore_week">Diese Woche</string>
-    <string name="social_explore_month">Diesen Monat</string>
-    <string name="social_explore_year">Dieses Jahr</string>
-    <string name="social_explore_spring">Diesen Frühling</string>
-    <string name="social_explore_summer">Diesen Sommer</string>
-    <string name="social_explore_fall">Diesen Herbst</string>
-    <string name="social_explore_winter">Diesen Winter</string>
-    <string name="social_explore_all">Alle Zeiten</string>
-    <string name="social_explore_empty_filtered">Noch keine Reisen für diese Filter.</string>
     <string name="social_explore_nearby_blocked">Der Standort ist für Tripinly aus. Schalte ihn in den Einstellungen ein, um Reisen in deiner Nähe zu sehen.</string>
     <string name="social_trip_created">Erstellt %1$s</string>
 

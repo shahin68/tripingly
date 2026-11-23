@@ -78,10 +78,10 @@ class RouteRepositoryTest {
         assertEquals("m1", route.legs.single().fromMarkerId)
         val along = plan.alongTheWay.single()
         assertEquals("Café Central", along.place.name)
-        assertEquals(PlaceCategory.Cafe, along.place.category)
+        assertEquals(PlaceCategory("cafe"), along.place.category)
         assertEquals(80, along.distanceFromRouteMeters)
         assertEquals(720, along.etaFromStartSeconds)
-        assertEquals(listOf(CategoryCount(PlaceCategory.Cafe, 3), CategoryCount(PlaceCategory.Museum, 1)), plan.alongTheWayCounts)
+        assertEquals(listOf(CategoryCount(PlaceCategory("cafe"), 3), CategoryCount(PlaceCategory("museum"), 1)), plan.alongTheWayCounts)
         assertNull(requests.single().url.parameters["categories"])
         assertFalse(plan.isEstimated)
     }
@@ -89,8 +89,8 @@ class RouteRepositoryTest {
     @Test
     fun placesAlongTheWayOfSomeKindsAreAnotherQuestion() = runTest {
         repository.dayRoute(TRIP_ID, day(), TravelMode.Walking)
-        repository.dayRoute(TRIP_ID, day(), TravelMode.Walking, categories = setOf(PlaceCategory.Cafe, PlaceCategory.FastFood))
-        repository.dayRoute(TRIP_ID, day(), TravelMode.Walking, categories = setOf(PlaceCategory.Cafe, PlaceCategory.FastFood))
+        repository.dayRoute(TRIP_ID, day(), TravelMode.Walking, categories = setOf(PlaceCategory("cafe"), PlaceCategory("fast_food")))
+        repository.dayRoute(TRIP_ID, day(), TravelMode.Walking, categories = setOf(PlaceCategory("cafe"), PlaceCategory("fast_food")))
 
         assertEquals(2, requests.size)
         assertEquals("cafe,fast_food", requests.last().url.parameters["categories"])

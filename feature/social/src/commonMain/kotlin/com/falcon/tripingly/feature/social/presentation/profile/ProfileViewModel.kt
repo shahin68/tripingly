@@ -13,7 +13,6 @@ import com.falcon.tripingly.core.data.users.UserRepository
 import com.falcon.tripingly.core.model.account.SessionState
 import com.falcon.tripingly.core.model.social.Profile
 import com.falcon.tripingly.core.model.social.PublicTrip
-import com.falcon.tripingly.core.model.social.ReportReason
 import com.falcon.tripingly.core.model.social.ReportTarget
 import com.falcon.tripingly.core.ui.UiText
 import com.falcon.tripingly.core.ui.toUiText
@@ -238,7 +237,7 @@ class ProfileViewModel(
         }
     }
 
-    private fun sendReport(reason: ReportReason) {
+    private fun sendReport(reason: String) {
         val report = _uiState.value.report?.takeUnless { it.isSending } ?: return
         _uiState.update { it.copy(report = report.copy(isSending = true)) }
         viewModelScope.launch {
@@ -292,7 +291,7 @@ class ProfileViewModel(
         }
 
         sealed interface Report : Action {
-            data class Send(val reason: ReportReason) : Report
+            data class Send(val reason: String) : Report
             data object Dismiss : Report
         }
     }

@@ -3,8 +3,6 @@ package com.falcon.tripingly.feature.social
 import com.falcon.tripingly.core.location.model.Coordinates
 import com.falcon.tripingly.core.location.permission.LocationPermission
 import com.falcon.tripingly.core.model.social.ExploreFilter
-import com.falcon.tripingly.core.model.social.ExplorePeriod
-import com.falcon.tripingly.core.model.social.ReportReason
 import com.falcon.tripingly.core.model.social.ReportTarget
 import com.falcon.tripingly.core.model.trip.GeoPoint
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -103,9 +101,9 @@ class NearbyViewModelTest : SocialTestBase() {
 
         val commons = commonsImage("commons-1")
         viewModel.onAction(Action.ReportImage(commons))
-        viewModel.onAction(Action.SendReport(ReportReason.Other))
+        viewModel.onAction(Action.SendReport("other"))
         viewModel.onAction(Action.ReportImage(commons.copy(id = "photo-1", credit = null)))
-        viewModel.onAction(Action.SendReport(ReportReason.Other))
+        viewModel.onAction(Action.SendReport("other"))
         advanceUntilIdle()
         assertEquals(listOf(ReportTarget.PlaceImage to "commons-1", ReportTarget.Photo to "photo-1"), reported)
 

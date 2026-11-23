@@ -36,14 +36,16 @@ import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
-import com.falcon.tripingly.core.designsystem.component.icon
+import com.falcon.tripingly.core.designsystem.component.AppIconIds
+import com.falcon.tripingly.core.designsystem.component.LocalPlaceKinds
+import com.falcon.tripingly.core.designsystem.component.appIcon
 import com.falcon.tripingly.core.designsystem.component.rememberHaptics
 import com.falcon.tripingly.core.designsystem.theme.extendedColors
 import com.falcon.tripingly.core.location.model.Coordinates
 import com.falcon.tripingly.core.model.place.GeoBounds
 import com.falcon.tripingly.core.model.place.MapPlace
-import com.falcon.tripingly.core.model.place.PlaceCategory
 import com.falcon.tripingly.core.model.place.PlaceCluster
+import com.falcon.tripingly.core.model.place.PlaceKind
 import com.google.android.gms.maps.CameraUpdate
 import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.model.BitmapDescriptor
@@ -303,7 +305,9 @@ actual fun GoogleMapView(
             },
         ) {
             // Every pin look is drawn once, here where the map can take icons, and shared by every pin that looks the same.
-            val categoryIcons = PlaceCategory.entries.associateWith { rememberVectorPainter(it.icon) }
+            // One painter per icon in the app's table; a kind's icon ID comes with the server's kinds, Spot when unknown.
+            val kinds = LocalPlaceKinds.current
+            val iconPainters = AppIconIds.associateWith { rememberVectorPainter(appIcon(it)) }
             val placeColor = MaterialTheme.extendedColors.place
             val onPlaceColor = MaterialTheme.colorScheme.onSecondary
             val hotSpotColor = MaterialTheme.extendedColors.place
@@ -330,7 +334,7 @@ actual fun GoogleMapView(
                     drawPlacePhotoPin(photo, look.size, fill, density, layoutDirection)
                 } else {
                     drawPlacePin(
-                        icon = categoryIcons.getValue(look.category),
+                        icon = iconPainters[kinds.of(look.category).icon] ?: iconPainters.getValue(PlaceKind.SPOT_ICON),
                         size = look.size,
                         fill = fill,
                         iconColor = when {

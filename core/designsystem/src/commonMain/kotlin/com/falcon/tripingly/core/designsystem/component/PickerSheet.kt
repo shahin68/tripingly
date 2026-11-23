@@ -1,5 +1,6 @@
 package com.falcon.tripingly.core.designsystem.component
 
+import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -9,6 +10,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -37,14 +39,19 @@ fun PickerSheet(title: String, rows: List<PickerRow>?, onPick: (PickerRow) -> Un
     Box(modifier) {
         Column(Modifier.padding(bottom = MaterialTheme.spacing.large)) {
             SheetHeader(title = title, onClose = onClose)
-            if (rows == null) {
-                // Placeholder rows only: drawn as the rows' shimmering bars, never as text.
-                Skeleton(Modifier.padding(vertical = MaterialTheme.spacing.small)) {
-                    Column { repeat(SKELETON_ROWS) { PickerRowItem(PickerRow("", "Day 1", "Mon, 1 Jan"), onClick = {}) } }
-                }
-            } else {
-                LazyColumn {
-                    items(rows, key = { it.id }) { row -> PickerRowItem(row, onClick = { onPick(row) }, Modifier.animateItem()) }
+            // The sheet glides to the rows' height when they replace the skeleton, instead of jumping (Shahin, 2026-11-23).
+            Box(Modifier.animateContentSize()) {
+                if (rows == null) {
+                    // Placeholder rows only: drawn as the rows' shimmering bars, never as text.
+                    Skeleton(Modifier.padding(vertical = MaterialTheme.spacing.small)) {
+                        Column { repeat(SKELETON_ROWS) { PickerRowItem(PickerRow("", "Day 1", "Mon, 1 Jan"), onClick = {}) } }
+                    }
+                } else {
+                    // Too many to fit, the list scrolls: its edges fade where more rows wait.
+                    val listState = rememberLazyListState()
+                    LazyColumn(state = listState, modifier = Modifier.verticalFadingEdge(listState)) {
+                        items(rows, key = { it.id }) { row -> PickerRowItem(row, onClick = { onPick(row) }, Modifier.animateItem()) }
+                    }
                 }
             }
         }

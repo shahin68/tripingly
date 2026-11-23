@@ -16,7 +16,7 @@ import kotlinx.collections.immutable.persistentListOf
 internal val previewPlace = MapPlace(
     id = "p1",
     name = "Eiffel Tower",
-    category = PlaceCategory.Landmark,
+    category = PlaceCategory("landmark"),
     location = GeoPoint(48.8584, 2.2945),
     isTripinly = true,
     hotCount = 24,
@@ -26,7 +26,7 @@ internal val previewPlace = MapPlace(
 internal val previewCafe = MapPlace(
     id = "p2",
     name = "Café de Flore",
-    category = PlaceCategory.Cafe,
+    category = PlaceCategory("cafe"),
     location = GeoPoint(48.8541, 2.3326),
     isTripinly = false,
     hotCount = 0,
@@ -65,7 +65,7 @@ internal val previewPlaceDetails = PlaceDetails(
 internal val previewAlongTheWay = persistentListOf(
     AlongTheWayPlace(previewCafe, distanceFromRouteMeters = 120, etaFromStartSeconds = 900),
     AlongTheWayPlace(
-        place = previewCafe.copy(id = "p3", name = "Jardin du Luxembourg", category = PlaceCategory.Park),
+        place = previewCafe.copy(id = "p3", name = "Jardin du Luxembourg", category = PlaceCategory("park")),
         distanceFromRouteMeters = 1_400,
         etaFromStartSeconds = 4_800,
     ),

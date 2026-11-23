@@ -369,7 +369,7 @@ internal fun SearchResults(
                         // No address (OpenStreetMap has none): how far it is from the map's centre.
                         subtitle = result.address?.takeIf { it.isNotBlank() } ?: distanceMeters?.let { distanceText(it).asString() },
                         onClick = { onAction(MapAction.Search.ResultClick(result)) },
-                        icon = result.icon,
+                        icon = result.icon(),
                         modifier = Modifier.animateItem(),
                     )
                 }

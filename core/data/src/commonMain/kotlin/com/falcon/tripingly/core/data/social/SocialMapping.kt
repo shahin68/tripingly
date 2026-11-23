@@ -6,7 +6,6 @@ import com.falcon.tripingly.core.model.social.Comment
 import com.falcon.tripingly.core.model.social.LikeTarget
 import com.falcon.tripingly.core.model.social.Profile
 import com.falcon.tripingly.core.model.social.PublicTrip
-import com.falcon.tripingly.core.model.social.ReportReason
 import com.falcon.tripingly.core.model.social.ReportTarget
 import com.falcon.tripingly.core.network.model.CommentDto
 import com.falcon.tripingly.core.network.model.CreateReportDto
@@ -62,14 +61,4 @@ internal fun ReportTarget.toDto() = when (this) {
     ReportTarget.Photo -> CreateReportDto.TargetType.PHOTO
     ReportTarget.Comment -> CreateReportDto.TargetType.COMMENT
     ReportTarget.PlaceImage -> CreateReportDto.TargetType.PLACE_IMAGE
-}
-
-internal fun ReportReason.toDto() = when (this) {
-    ReportReason.Spam -> CreateReportDto.Reason.SPAM
-    ReportReason.Harassment -> CreateReportDto.Reason.HARASSMENT
-    ReportReason.Nudity -> CreateReportDto.Reason.NUDITY
-    ReportReason.Violence -> CreateReportDto.Reason.VIOLENCE
-    ReportReason.Hate -> CreateReportDto.Reason.HATE
-    ReportReason.Copyright -> CreateReportDto.Reason.COPYRIGHT
-    ReportReason.Other -> CreateReportDto.Reason.OTHER
 }

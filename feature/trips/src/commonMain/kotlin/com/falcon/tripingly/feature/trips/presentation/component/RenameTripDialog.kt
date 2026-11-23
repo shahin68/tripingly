@@ -10,6 +10,7 @@ import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.tooling.preview.Preview
 import com.falcon.tripingly.core.designsystem.component.AppDialog
 import com.falcon.tripingly.core.designsystem.component.AppTextField
+import com.falcon.tripingly.core.designsystem.component.AppTextFieldStyle
 import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
 import com.falcon.tripingly.feature.trips.generated.resources.*
 import com.falcon.tripingly.feature.trips.generated.resources.Res
@@ -42,6 +43,7 @@ fun RenameTripDialog(
             enabled = !isSaving,
             keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),
             modifier = Modifier.fillMaxWidth(),
+            style = AppTextFieldStyle.Dialog,
         )
     }
 }

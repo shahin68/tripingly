@@ -96,6 +96,7 @@ kotlinx-collections-immutable = { module = "org.jetbrains.kotlinx:kotlinx-collec
 haze = { module = "dev.chrisbanes.haze:haze", version.ref = "haze" }
 coil-compose = { module = "io.coil-kt.coil3:coil-compose", version.ref = "coil" }
 coil-network-ktor3 = { module = "io.coil-kt.coil3:coil-network-ktor3", version.ref = "coil" }
+coil-svg = { module = "io.coil-kt.coil3:coil-svg", version.ref = "coil" }
 firebase-bom = { module = "com.google.firebase:firebase-bom", version.ref = "firebase-bom" }
 firebase-messaging = { module = "com.google.firebase:firebase-messaging" }
 revenuecat-purchases = { module = "com.revenuecat.purchases:purchases", version.ref = "revenuecat" }

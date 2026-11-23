@@ -2,7 +2,6 @@ package com.falcon.tripingly.feature.map.presentation.map.state
 
 import com.falcon.tripingly.core.common.error.DataError
 import com.falcon.tripingly.core.common.result.AppResult
-import com.falcon.tripingly.core.data.places.PlaceRepository
 import com.falcon.tripingly.core.data.trips.MarkerChange
 import com.falcon.tripingly.core.data.trips.MarkerRepository
 import com.falcon.tripingly.core.data.trips.TripErrorCodes
@@ -10,7 +9,6 @@ import com.falcon.tripingly.core.data.trips.TripRepository
 import com.falcon.tripingly.core.data.trips.hasCode
 import com.falcon.tripingly.core.location.model.Coordinates
 import com.falcon.tripingly.core.model.photo.PickedImage
-import com.falcon.tripingly.core.model.place.Brand
 import com.falcon.tripingly.core.model.place.PlaceCategory
 import com.falcon.tripingly.core.model.trip.GeoPoint
 import com.falcon.tripingly.core.model.trip.NewMarker
@@ -21,7 +19,6 @@ import com.falcon.tripingly.feature.map.generated.resources.map_change_not_saved
 import com.falcon.tripingly.feature.map.generated.resources.map_error_add_day
 import com.falcon.tripingly.feature.map.generated.resources.map_error_delete_day
 import com.falcon.tripingly.feature.map.generated.resources.map_error_stop_change
-import kotlin.time.Duration.Companion.milliseconds
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -38,7 +35,6 @@ internal class MapEdits(
     private val selection: MapSelection,
     private val tripRepository: TripRepository,
     private val markerRepository: MarkerRepository,
-    private val placeRepository: PlaceRepository,
     private val myUserId: String?,
     private val onStopAdded: () -> Unit,
 ) {
@@ -109,41 +105,13 @@ internal class MapEdits(
 
     fun setSpotPhoto(photo: PickedImage?) = selection.updateNewSpot { it.copy(photo = photo) }
 
-    private var brandsJob: Job? = null
-
-    /**
-     * Once typing pauses, the brands named like the spot (from [MIN_BRAND_QUERY] letters) are offered for "This is a
-     * brand store"; a picked brand stays picked while it's still offered or the name still says it.
-     */
-    fun onSpotNameChanged(name: String) {
-        brandsJob?.cancel()
-        val query = name.trim()
-        if (query.length < MIN_BRAND_QUERY) {
-            selection.updateNewSpot { it.copy(brands = emptyList(), brand = null) }
-            return
-        }
-        brandsJob = context.scope.launch {
-            delay(BRAND_SEARCH_DEBOUNCE)
-            val found = (placeRepository.brands(query) as? AppResult.Success)?.data ?: return@launch
-            selection.updateNewSpot { spot ->
-                // The picked one first, so it doesn't jump away while the name is still being typed.
-                val picked = spot.brand?.takeIf { brand -> brand in found || query.contains(brand.name, ignoreCase = true) }
-                spot.copy(brands = listOfNotNull(picked) + found.filter { it != picked }, brand = picked)
-            }
-        }
-    }
-
-    /** Ties the spot to [brand] (one of ours, never a new one), or unties it. */
-    fun pickSpotBrand(brand: Brand?) = selection.updateNewSpot { it.copy(brand = brand) }
-
     /** Create: the place with its kind and the stop on the open day at once, its photo once the server has the stop. */
     fun createSpot() {
         val spot = context.model.value.selection as? Selection.NewSpot ?: return
         val name = spot.name.text.toString().trim()
         if (name.isEmpty()) return
         selection.closeNewSpot()
-        brandsJob?.cancel()
-        add(NewMarker(name, GeoPoint(spot.location.latitude, spot.location.longitude), category = spot.category, photo = spot.photo, brandId = spot.brand?.id))
+        add(NewMarker(name, GeoPoint(spot.location.latitude, spot.location.longitude), category = spot.category, photo = spot.photo))
     }
 
     /** A stop at the open place or address, named after it. */
@@ -260,9 +228,3 @@ internal fun Selection.Place.toNewMarker(): NewMarker = address
 
 /** How long a nameless stop's title spins at most, when the server gives it no name. */
 private val NAMING_TIMEOUT = 20.seconds
-
-/** Typing has paused; see the search rule in 07-architecture. */
-private val BRAND_SEARCH_DEBOUNCE = 300.milliseconds
-
-/** Brands are looked for from two letters. */
-private const val MIN_BRAND_QUERY = 2

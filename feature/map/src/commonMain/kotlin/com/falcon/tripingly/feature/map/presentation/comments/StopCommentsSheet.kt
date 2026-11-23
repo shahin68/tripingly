@@ -80,6 +80,7 @@ import com.falcon.tripingly.core.designsystem.component.Skeleton
 import com.falcon.tripingly.core.designsystem.component.bottomSystemBar
 import com.falcon.tripingly.core.designsystem.component.skeleton
 import com.falcon.tripingly.core.designsystem.component.skeletonText
+import com.falcon.tripingly.core.designsystem.component.verticalFadingEdge
 import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
 import com.falcon.tripingly.core.designsystem.theme.spacing
 import com.falcon.tripingly.core.model.social.Comment
@@ -219,7 +220,7 @@ fun StopCommentsScreen(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.align(Alignment.Center).padding(MaterialTheme.spacing.large),
                 )
-                else -> LazyColumn(state = listState, modifier = Modifier.fillMaxWidth()) {
+                else -> LazyColumn(state = listState, modifier = Modifier.fillMaxWidth().verticalFadingEdge(listState)) {
                     items(rows, key = { it.key }) { row ->
                         when (row) {
                             is CommentListRow.Item -> CommentRow(

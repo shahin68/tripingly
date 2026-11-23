@@ -4,32 +4,30 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
-import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.tooling.preview.PreviewParameter
 import androidx.compose.ui.unit.dp
+import com.falcon.tripingly.core.designsystem.component.AppPullToRefresh
+import com.falcon.tripingly.core.designsystem.component.EmptyState
+import com.falcon.tripingly.core.designsystem.component.Illustration
 import com.falcon.tripingly.core.designsystem.component.LoadStateContent
 import com.falcon.tripingly.core.designsystem.component.ShowMessage
 import com.falcon.tripingly.core.designsystem.component.glassSource
 import com.falcon.tripingly.core.designsystem.component.screenContentPadding
 import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
-import com.falcon.tripingly.core.designsystem.theme.spacing
 import com.falcon.tripingly.core.ui.UiText
 import com.falcon.tripingly.feature.trips.generated.resources.Res
 import com.falcon.tripingly.feature.trips.generated.resources.home_list_empty
+import com.falcon.tripingly.feature.trips.generated.resources.home_list_empty_hint
 import com.falcon.tripingly.feature.trips.generated.resources.home_list_no_matches
+import com.falcon.tripingly.feature.trips.generated.resources.home_list_no_matches_hint
 import com.falcon.tripingly.feature.trips.presentation.screen.HomeViewModel.Action
 import com.falcon.tripingly.feature.trips.presentation.screen.HomeViewModel.State
 import org.jetbrains.compose.resources.stringResource
@@ -38,7 +36,6 @@ import org.jetbrains.compose.resources.stringResource
  * The Trips tab: the trips as a timeline. The tab shell draws the shared top bar (with [TripsSearchField]), the
  * bottom bar and the [AddTripButton] over it; [barsPadding] is their room, which the list scrolls behind.
  */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
     state: State,
@@ -53,10 +50,12 @@ fun HomeScreen(
         onShown = { onAction(Action.DismissMessage) },
         isError = state.message !is UiText.Note,
     )
-    PullToRefreshBox(
+    // Around everything, so the error and empty screens pull too, like Try again (Shahin, 2026-11-23).
+    AppPullToRefresh(
         isRefreshing = state.isRefreshing && state.hasLoaded,
         onRefresh = { onAction(Action.Trips.Refresh) },
-        modifier = modifier.fillMaxSize(),
+        contentPadding = contentPadding,
+        modifier = modifier,
     ) {
         LoadStateContent(
             isLoading = !state.hasLoaded,
@@ -115,12 +114,11 @@ private fun EmptyTrips(hasTrips: Boolean, contentPadding: PaddingValues) {
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         item {
-            Text(
-                text = stringResource(if (hasTrips) Res.string.home_list_no_matches else Res.string.home_list_empty),
-                style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                textAlign = TextAlign.Center,
-                modifier = Modifier.padding(MaterialTheme.spacing.extraLarge),
+            EmptyState(
+                illustration = if (hasTrips) Illustration.SearchEmpty else Illustration.TripsEmpty,
+                title = stringResource(if (hasTrips) Res.string.home_list_no_matches else Res.string.home_list_empty),
+                message = stringResource(if (hasTrips) Res.string.home_list_no_matches_hint else Res.string.home_list_empty_hint),
+                modifier = Modifier.fillParentMaxSize(),
             )
         }
     }

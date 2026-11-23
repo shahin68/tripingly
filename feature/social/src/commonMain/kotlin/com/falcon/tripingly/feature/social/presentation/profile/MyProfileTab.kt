@@ -29,6 +29,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.falcon.tripingly.core.designsystem.component.AppPullToRefresh
 import com.falcon.tripingly.core.designsystem.component.AppTextField
 import com.falcon.tripingly.core.designsystem.component.AppTextFieldStyle
 import com.falcon.tripingly.core.designsystem.component.ButtonSize
@@ -178,54 +179,65 @@ internal fun MyProfileScreen(
         },
         isError = message !is UiText.Note,
     )
-    LoadStateContent(
-        isLoading = state.profile == null && state.isLoading,
-        errorMessage = state.loadError?.asString(),
-        onRetry = { onAction(Action.Retry) },
+    // Around everything, so the error screen pulls too, like Try again (Shahin, 2026-11-23); its spinner shows for a
+    // reload of a profile or an error already on screen, not the first load's skeleton.
+    AppPullToRefresh(
+        isRefreshing = state.isLoading && (state.profile != null || state.loadError != null),
+        onRefresh = {
+            onAction(Action.Retry)
+            if (segment.list != null) onPeopleAction(PeopleViewModel.Action.OnRetry)
+        },
         contentPadding = contentPadding,
-        loading = { MyProfileSkeleton(segment, contentPadding) },
     ) {
-        val header: LazyListScope.() -> Unit = {
-            state.profile?.let {
-                item(key = "header") {
-                    MyProfileHeader(
-                        profile = it,
-                        photo = photo,
-                        onChoosePhoto = onChoosePhoto,
-                        onRemovePhoto = { onPhotoAction(MyProfilePhotoViewModel.Action.Remove) },
-                        modifier = Modifier.animateItem(),
-                    ) {
-                        NotificationsButton(hasBadge = hasUnseenNotifications, onClick = onOpenNotifications)
+        LoadStateContent(
+            isLoading = state.profile == null && state.isLoading,
+            errorMessage = state.loadError?.asString(),
+            onRetry = { onAction(Action.Retry) },
+            contentPadding = contentPadding,
+            loading = { MyProfileSkeleton(segment, contentPadding) },
+        ) {
+            val header: LazyListScope.() -> Unit = {
+                state.profile?.let {
+                    item(key = "header") {
+                        MyProfileHeader(
+                            profile = it,
+                            photo = photo,
+                            onChoosePhoto = onChoosePhoto,
+                            onRemovePhoto = { onPhotoAction(MyProfilePhotoViewModel.Action.Remove) },
+                            modifier = Modifier.animateItem(),
+                        ) {
+                            NotificationsButton(hasBadge = hasUnseenNotifications, onClick = onOpenNotifications)
+                        }
                     }
                 }
+                item(key = "segments") { Segments(segment, onSegment, Modifier.animateItem()) }
             }
-            item(key = "segments") { Segments(segment, onSegment, Modifier.animateItem()) }
-        }
-        val listState = rememberLazyListState()
-        LoadMoreAtEnd(listState) { if (segment.list == null) onAction(Action.Trips.LoadMore) else onPeopleAction(PeopleViewModel.Action.OnLoadMore) }
-        LazyColumn(
-            state = listState,
-            modifier = Modifier.fillMaxSize().glassSource(),
-            contentPadding = contentPadding,
-            verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
-        ) {
-            if (search.isSearching) {
-                peopleItems(search.results, isLoading = search.isLoading, loadError = null, empty = Res.string.social_people_none, onRetry = {}, onOpenProfile)
-                return@LazyColumn
-            }
-            header()
-            when (val list = segment.list) {
-                null -> tripItems(state, onAction)
-                else -> peopleItems(
-                    people = people?.people.orEmpty(),
-                    isLoading = people?.hasLoaded != true,
-                    loadError = people?.loadError,
-                    empty = list.empty,
-                    onRetry = { onPeopleAction(PeopleViewModel.Action.OnRetry) },
-                    onOpenProfile = onOpenProfile,
-                    // Followers may be people I don't follow; reporting and blocking stay on their profile.
-                    actions = { user -> if (list == PeopleList.Followers) emptyList() else listOf(unfollowAction { onPeopleAction(PeopleViewModel.Action.Unfollow(user)) }) },
-                )
+            val listState = rememberLazyListState()
+            LoadMoreAtEnd(listState) { if (segment.list == null) onAction(Action.Trips.LoadMore) else onPeopleAction(PeopleViewModel.Action.OnLoadMore) }
+            LazyColumn(
+                state = listState,
+                modifier = Modifier.fillMaxSize().glassSource(),
+                contentPadding = contentPadding,
+                verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
+            ) {
+                if (search.isSearching) {
+                    peopleItems(search.results, isLoading = search.isLoading, loadError = null, empty = Res.string.social_people_none, onRetry = {}, onOpenProfile)
+                    return@LazyColumn
+                }
+                header()
+                when (val list = segment.list) {
+                    null -> tripItems(state, onAction)
+                    else -> peopleItems(
+                        people = people?.people.orEmpty(),
+                        isLoading = people?.hasLoaded != true,
+                        loadError = people?.loadError,
+                        empty = list.empty,
+                        onRetry = { onPeopleAction(PeopleViewModel.Action.OnRetry) },
+                        onOpenProfile = onOpenProfile,
+                        // Followers may be people I don't follow; reporting and blocking stay on their profile.
+                        actions = { user -> if (list == PeopleList.Followers) emptyList() else listOf(unfollowAction { onPeopleAction(PeopleViewModel.Action.Unfollow(user)) }) },
+                    )
+                }
             }
         }
     }

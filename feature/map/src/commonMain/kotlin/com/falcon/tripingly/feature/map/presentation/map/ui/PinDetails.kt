@@ -13,6 +13,7 @@ import androidx.compose.ui.text.Placeholder
 import androidx.compose.ui.text.PlaceholderVerticalAlign
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.unit.em
+import com.falcon.tripingly.core.designsystem.component.label
 import com.falcon.tripingly.core.designsystem.component.icon
 import com.falcon.tripingly.core.model.place.PlaceCategory
 import androidx.compose.foundation.clickable
@@ -136,7 +137,7 @@ internal fun PlaceDetailsContent(card: PlaceCardState, onAction: (MapAction) -> 
         title = card.place.name,
         subtitle = card.address?.let(::AnnotatedString) ?: buildAnnotatedString {
             appendCategoryIcon()
-            append(stringResource(card.place.category.label()))
+            append(card.place.category.label())
         },
         category = card.place.category.takeIf { card.address == null },
         action = pinAction(
@@ -290,7 +291,7 @@ private fun categoryIconContent(category: PlaceCategory?): Map<String, InlineTex
     val tint = MaterialTheme.colorScheme.onSurface
     return mapOf(
         CATEGORY_ICON to InlineTextContent(Placeholder(1.2.em, 1.2.em, PlaceholderVerticalAlign.TextCenter)) {
-            Icon(category.icon, contentDescription = null, tint = tint, modifier = Modifier.fillMaxSize())
+            Icon(category.icon(), contentDescription = null, tint = tint, modifier = Modifier.fillMaxSize())
         },
     )
 }

@@ -6,8 +6,10 @@
     <!-- Home -->
     <string name="home_search_placeholder_trips">Search trips…</string>
     <string name="home_fab_add_trip">Add trip</string>
-    <string name="home_list_empty">No trips yet. Tap + to create one!</string>
-    <string name="home_list_no_matches">No trips match your search.</string>
+    <string name="home_list_empty">No trips yet</string>
+    <string name="home_list_empty_hint">Tap + to plan your first one.</string>
+    <string name="home_list_no_matches">No matching trips</string>
+    <string name="home_list_no_matches_hint">Try a different word.</string>
     <string name="home_offline_cached">You’re offline. These are your saved trips; changes need a connection.</string>
 
     <!-- Trip list item -->

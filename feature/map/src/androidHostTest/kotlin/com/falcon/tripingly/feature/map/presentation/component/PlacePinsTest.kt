@@ -17,7 +17,7 @@ class PlacePinsTest {
     private fun place(id: String, hotCount: Int = 0, prominence: Int = 0, photo: Boolean = true) = MapPlace(
         id = id,
         name = id,
-        category = PlaceCategory.Attraction,
+        category = PlaceCategory("attraction"),
         location = GeoPoint(48.2, 16.37),
         isTripinly = hotCount > 0,
         hotCount = hotCount,

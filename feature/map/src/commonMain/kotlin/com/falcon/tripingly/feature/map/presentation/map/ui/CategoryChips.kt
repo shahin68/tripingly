@@ -24,6 +24,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.takeOrElse
 import androidx.compose.ui.unit.dp
+import com.falcon.tripingly.core.designsystem.component.label
 import com.falcon.tripingly.core.designsystem.component.PillChip
 import com.falcon.tripingly.core.designsystem.component.PillIconChip
 import com.falcon.tripingly.core.designsystem.component.horizontalFadingEdge
@@ -66,7 +67,7 @@ internal fun CategoryChipRow(
             contentPadding = PaddingValues(start = edgePadding, end = MaterialTheme.spacing.small),
             horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
         ) {
-            items(chips, key = { it.category.name }) { chip ->
+            items(chips, key = { it.category.key }) { chip ->
                 CategoryChipItem(chip, onToggle, chipHeight, Modifier.animateItem())
             }
         }
@@ -94,7 +95,7 @@ internal fun CategoryChipRow(
 @Composable
 private fun CategoryChipItem(chip: CategoryChip, onToggle: (PlaceCategory?) -> Unit, chipHeight: Dp, modifier: Modifier = Modifier) {
     val haptics = rememberHaptics()
-    val name = stringResource(chip.category.label())
+    val name = chip.category.label()
     PillChip(
         label = chip.count?.let { stringResource(Res.string.map_category_count, name, it) } ?: name,
         selected = chip.isSelected,
@@ -103,7 +104,7 @@ private fun CategoryChipItem(chip: CategoryChip, onToggle: (PlaceCategory?) -> U
             onToggle(chip.category)
         },
         // The icon sits as far in from its edge as the label from the other, so the chip is even on both sides.
-        leading = { Icon(chip.category.icon, contentDescription = null, modifier = Modifier.padding(start = MaterialTheme.spacing.medium - MaterialTheme.spacing.extraSmall).size(ChipIconSize)) },
+        leading = { Icon(chip.category.icon(), contentDescription = null, modifier = Modifier.padding(start = MaterialTheme.spacing.medium - MaterialTheme.spacing.extraSmall).size(ChipIconSize)) },
         modifier = modifier.height(chipHeight),
     )
 }
@@ -117,9 +118,9 @@ private val LoadingStroke = 2.dp
 private fun CategoryChipsPreviewContent() {
     CategoryChipRow(
         chips = persistentListOf(
-            CategoryChip(PlaceCategory.Cafe, 5, isSelected = true),
-            CategoryChip(PlaceCategory.Museum, 4, isSelected = false),
-            CategoryChip(PlaceCategory.Park, 3, isSelected = false),
+            CategoryChip(PlaceCategory("cafe"), 5, isSelected = true),
+            CategoryChip(PlaceCategory("museum"), 4, isSelected = false),
+            CategoryChip(PlaceCategory("park"), 3, isSelected = false),
         ),
         onToggle = {},
     )

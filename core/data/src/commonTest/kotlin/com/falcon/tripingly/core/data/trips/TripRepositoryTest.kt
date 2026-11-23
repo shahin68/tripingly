@@ -188,7 +188,7 @@ class TripRepositoryTest {
         assertEquals(LocalDate(2026, 6, 1), details.days[0].date)
         assertEquals(listOf("m0", "m1"), details.days[0].markers.map { it.id })
         // A stop carries its place's kind; a server that sends none leaves it unknown.
-        assertEquals(listOf(null, PlaceCategory.Cafe), details.days[0].markers.map { it.category })
+        assertEquals(listOf(null, PlaceCategory("cafe")), details.days[0].markers.map { it.category })
         assertEquals(2, details.trip.markerCount)
         assertEquals(TripVisibility.PRIVATE, details.trip.visibility)
         assertEquals(listOf(TripRole.OWNER, TripRole.EDITOR), details.members.map { it.role })
@@ -484,12 +484,12 @@ class TripRepositoryTest {
         val created = harness.markers().addMarker(
             "t1",
             "d0",
-            NewMarker("Rooftop view", GeoPoint(48.1915, 16.3809), category = PlaceCategory.Viewpoint, photo = photo, brandId = "b-zara"),
+            NewMarker("Rooftop view", GeoPoint(48.1915, 16.3809), category = PlaceCategory("viewpoint"), photo = photo),
         )
 
         harness.awaitQueueEmpty()
         assertEquals(
-            """{"id":"${created.id}","name":"Rooftop view","location":{"lat":48.1915,"lng":16.3809},"category":"viewpoint","brandId":"b-zara"}""",
+            """{"id":"${created.id}","name":"Rooftop view","location":{"lat":48.1915,"lng":16.3809},"category":"viewpoint"}""",
             harness.requests[0].bodyText(),
         )
         assertEquals(1, harness.photos.photos(PhotoOwner.Stop(created.id)).first()?.size)

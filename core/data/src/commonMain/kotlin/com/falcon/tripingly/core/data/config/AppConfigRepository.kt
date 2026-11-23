@@ -10,4 +10,7 @@ import kotlinx.coroutines.flow.StateFlow
  */
 interface AppConfigRepository {
     val config: StateFlow<AppConfig>
+
+    /** Reads the settings again when the app's language changed since they were read: their lists are labelled in it. */
+    fun refreshIfLanguageChanged()
 }

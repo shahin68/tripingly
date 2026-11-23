@@ -47,6 +47,7 @@ private final class AppGoogleMap: NSObject, GoogleMap, GMSMapViewDelegate {
     private let touches = TouchRecorder()
     /// A pin is held (the shared code took the long press): the finger pulls its line, the map's gestures are off.
     private var isHoldingPin = false
+    private lazy var myLocation = MyLocationLayer(mapView: mapView)
 
     var view: UIView { mapView }
 
@@ -81,8 +82,9 @@ private final class AppGoogleMap: NSObject, GoogleMap, GMSMapViewDelegate {
         mapView.mapStyle = try? GMSMapStyle(jsonString: json)
     }
 
+    /// Our own dot and heading beam (MyLocationLayer); Google's dot stays off, as it draws under every pin.
     func setMyLocationEnabled(enabled: Bool) {
-        mapView.isMyLocationEnabled = enabled
+        myLocation.setEnabled(enabled)
     }
 
     func setPadding(top: Double, left: Double, bottom: Double, right: Double) {

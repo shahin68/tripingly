@@ -67,7 +67,11 @@ class NotificationCenterViewModel(
             }
             is Action.OnHidden -> isShown = false
             is Action.OnLoadMore -> _uiState.value.nextCursor?.takeUnless { _uiState.value.isLoading }?.let { load(it) }
-            is Action.OnRetry -> load(cursor = null)
+            // A pull to refresh or Try again; only these show the pull's spinner, not a page loading at the end.
+            is Action.OnRetry -> {
+                _uiState.update { it.copy(isRefreshing = true) }
+                load(cursor = null)
+            }
             // The link it opens marks it read on the server.
             is Action.OnOpen -> update { entries -> entries.map { if (it.id == action.entry.id) it.copy(isRead = true) else it } }
             is Action.OnRemove -> remove(action.entry)
@@ -119,12 +123,13 @@ class NotificationCenterViewModel(
                         entries = (if (cursor == null) loaded else state.entries + loaded.filter { new -> state.entries.none { it.id == new.id } }).toImmutableList(),
                         nextCursor = result.data.nextCursor,
                         isLoading = false,
+                        isRefreshing = false,
                         hasLoaded = true,
                         loadError = null,
                     )
                 }
                 is AppResult.Error -> _uiState.update {
-                    it.copy(isLoading = false, loadError = result.error.toUiText(Res.string.notifications_error_load))
+                    it.copy(isLoading = false, isRefreshing = false, loadError = result.error.toUiText(Res.string.notifications_error_load))
                 }
             }
         }
@@ -136,6 +141,8 @@ class NotificationCenterViewModel(
         /** More (older) entries wait on the server. */
         val nextCursor: String? = null,
         val isLoading: Boolean = true,
+        /** A pull to refresh (or Try again) reloading the first page. */
+        val isRefreshing: Boolean = false,
         val hasLoaded: Boolean = false,
         /** Why the entries couldn't load; shown with a retry while there are none. */
         val loadError: UiText? = null,

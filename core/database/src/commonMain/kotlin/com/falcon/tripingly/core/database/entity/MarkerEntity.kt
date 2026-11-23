@@ -19,7 +19,7 @@ data class MarkerEntity(
     val dayId: String,
     val placeId: String,
     val name: String,
-    /** Its place's `PlaceCategory` name, or null when the server sent none. */
+    /** Its place's kind key (`cafe`), or null when the server sent none. */
     val category: String? = null,
     val lat: Double,
     val lng: Double,

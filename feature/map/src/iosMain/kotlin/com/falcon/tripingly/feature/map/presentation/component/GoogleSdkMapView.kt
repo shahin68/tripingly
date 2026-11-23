@@ -35,21 +35,23 @@ import androidx.compose.ui.viewinterop.UIKitInteropInteractionMode
 import androidx.compose.ui.viewinterop.UIKitInteropProperties
 import androidx.compose.ui.viewinterop.UIKitView
 import androidx.lifecycle.compose.LifecycleStartEffect
-import com.falcon.tripingly.core.designsystem.component.icon
+import com.falcon.tripingly.core.designsystem.component.AppIconIds
+import com.falcon.tripingly.core.designsystem.component.LocalPlaceKinds
+import com.falcon.tripingly.core.designsystem.component.appIcon
 import com.falcon.tripingly.core.designsystem.component.rememberHaptics
 import com.falcon.tripingly.core.designsystem.theme.extendedColors
 import com.falcon.tripingly.core.location.model.Coordinates
 import com.falcon.tripingly.core.model.place.GeoBounds
 import com.falcon.tripingly.core.model.place.MapPlace
-import com.falcon.tripingly.core.model.place.PlaceCategory
 import com.falcon.tripingly.core.model.place.PlaceCluster
-import platform.UIKit.UIColor
-import platform.UIKit.UIImage
+import com.falcon.tripingly.core.model.place.PlaceKind
 import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.sin
 import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.flow.Flow
+import platform.UIKit.UIColor
+import platform.UIKit.UIImage
 
 /**
  * Google's map on iOS, driven like the Android one: place pins as markers that keep their size on
@@ -288,7 +290,9 @@ internal fun GoogleSdkMapView(
     }
 
     // Every pin look is drawn once and shared by every pin that looks the same.
-    val categoryIcons = PlaceCategory.entries.associateWith { rememberVectorPainter(it.icon) }
+    // One painter per icon in the app's table; a kind's icon ID comes with the server's kinds, Spot when unknown.
+    val kinds = LocalPlaceKinds.current
+    val iconPainters = AppIconIds.associateWith { rememberVectorPainter(appIcon(it)) }
     val placeColor = MaterialTheme.extendedColors.place
     val onPlaceColor = MaterialTheme.colorScheme.onSecondary
     val hotSpotColor = MaterialTheme.extendedColors.place
@@ -356,7 +360,7 @@ internal fun GoogleSdkMapView(
             drawPlacePhotoPin(photo, look.size, fill, density, layoutDirection)
         } else {
             drawPlacePin(
-                icon = categoryIcons.getValue(look.category),
+                icon = iconPainters[kinds.of(look.category).icon] ?: iconPainters.getValue(PlaceKind.SPOT_ICON),
                 size = look.size,
                 fill = fill,
                 iconColor = when {

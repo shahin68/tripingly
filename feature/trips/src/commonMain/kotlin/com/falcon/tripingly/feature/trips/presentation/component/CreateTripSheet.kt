@@ -204,7 +204,7 @@ private fun DestinationField(form: CreateTripForm, isSaving: Boolean, onAction: 
                     title = result.name,
                     subtitle = result.address,
                     onClick = { onAction(Action.CreateTrip.DestinationSelected(result)) },
-                    icon = result.icon,
+                    icon = result.icon(),
                 )
             }
             OsmAttribution()

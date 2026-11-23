@@ -74,7 +74,7 @@ internal class RoomTripLocalDataSource(
     override suspend fun saveMarkers(markers: List<TripMarker>) = dao.saveMarkers(markers.map { it.toEntity() })
 
     override suspend fun savePlaceOfMarker(marker: TripMarker) = with(marker) {
-        dao.updateMarkerPlace(id, placeId, name, category?.name, coverPhotoId, coverThumbUrl, hotCount, hotByMe, canMarkHot)
+        dao.updateMarkerPlace(id, placeId, name, category?.key, coverPhotoId, coverThumbUrl, hotCount, hotByMe, canMarkHot)
     }
 
     override suspend fun tripIdOfMarker(markerId: String): String? = dao.marker(markerId)?.tripId
@@ -180,7 +180,8 @@ private fun MarkerEntity.toMarker() = TripMarker(
     dayId = dayId,
     placeId = placeId,
     name = name,
-    category = category?.let { name -> PlaceCategory.entries.firstOrNull { it.name == name } },
+    // Rows cached before 2026-11-23 hold the old enum name (`FastFood`): the same key in camel case.
+    category = category?.let { PlaceCategory(it.replace(CamelHump, "_").lowercase()) },
     location = GeoPoint(lat, lng),
     time = time,
     position = position,
@@ -203,7 +204,7 @@ private fun TripMarker.toEntity() = MarkerEntity(
     dayId = dayId,
     placeId = placeId,
     name = name,
-    category = category?.name,
+    category = category?.key,
     lat = location.lat,
     lng = location.lng,
     time = time,
@@ -230,3 +231,5 @@ internal fun tripRoleOf(wireName: String): TripRole = when (wireName) {
     "editor" -> TripRole.EDITOR
     else -> TripRole.VIEWER
 }
+
+private val CamelHump = Regex("(?<=[a-z])(?=[A-Z])")

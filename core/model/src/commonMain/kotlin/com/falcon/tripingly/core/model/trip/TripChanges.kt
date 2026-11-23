@@ -47,8 +47,6 @@ data class NewMarker(
     val category: PlaceCategory? = null,
     /** A photo for the new stop, uploaded once the server has the stop. */
     val photo: PickedImage? = null,
-    /** "This is a brand store": a brand from our list for a new spot (people can't add brands). */
-    val brandId: String? = null,
 )
 
 /** Changes to a marker; null fields stay unchanged. [dayId] moves it to another day of the same trip. */

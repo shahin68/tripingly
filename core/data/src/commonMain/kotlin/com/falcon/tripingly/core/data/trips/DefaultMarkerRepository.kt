@@ -3,7 +3,6 @@ package com.falcon.tripingly.core.data.trips
 import com.falcon.tripingly.core.common.error.DataError
 import com.falcon.tripingly.core.common.result.AppResult
 import com.falcon.tripingly.core.data.photos.PhotoRepository
-import com.falcon.tripingly.core.data.places.toCreateDto
 import com.falcon.tripingly.core.model.photo.PhotoOwner
 import com.falcon.tripingly.core.model.place.OsmType
 import com.falcon.tripingly.core.model.trip.MarkerUpdate
@@ -79,7 +78,7 @@ internal class DefaultMarkerRepository(
             position = day?.markers?.nextPosition() ?: 0,
             createdById = currentUserId(),
         )
-        submit(MarkerChange.Add(created, marker.osm, marker.category, marker.photo, marker.brandId))
+        submit(MarkerChange.Add(created, marker.osm, marker.category, marker.photo))
         return created
     }
 
@@ -225,8 +224,7 @@ internal class DefaultMarkerRepository(
                         null -> null
                     },
                     osmId = change.osm?.id,
-                    category = change.category?.toCreateDto(),
-                    brandId = change.brandId,
+                    category = change.category?.key,
                 ),
                 // A retry after a lost answer gets the first answer back instead of a duplicate.
                 change.marker.id,

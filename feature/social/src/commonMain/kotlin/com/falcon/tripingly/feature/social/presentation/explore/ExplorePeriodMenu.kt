@@ -11,10 +11,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.KeyboardArrowDown
-import androidx.compose.material.icons.outlined.CalendarMonth
-import androidx.compose.material.icons.outlined.History
 import androidx.compose.material.icons.outlined.NearMe
-import androidx.compose.material.icons.outlined.WbSunny
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -26,43 +23,38 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.falcon.tripingly.core.designsystem.component.AppDropdownMenu
 import com.falcon.tripingly.core.designsystem.component.DropdownAction
+import com.falcon.tripingly.core.designsystem.component.appIcon
 import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
 import com.falcon.tripingly.core.designsystem.theme.spacing
-import com.falcon.tripingly.core.model.social.ExplorePeriod
+import com.falcon.tripingly.core.model.config.ConfigItem
 import com.falcon.tripingly.feature.social.generated.resources.Res
-import com.falcon.tripingly.feature.social.generated.resources.social_explore_all
-import com.falcon.tripingly.feature.social.generated.resources.social_explore_fall
-import com.falcon.tripingly.feature.social.generated.resources.social_explore_month
 import com.falcon.tripingly.feature.social.generated.resources.social_explore_period
-import com.falcon.tripingly.feature.social.generated.resources.social_explore_spring
-import com.falcon.tripingly.feature.social.generated.resources.social_explore_summer
-import com.falcon.tripingly.feature.social.generated.resources.social_explore_week
-import com.falcon.tripingly.feature.social.generated.resources.social_explore_winter
-import com.falcon.tripingly.feature.social.generated.resources.social_explore_year
 import com.falcon.tripingly.feature.social.generated.resources.social_near_me
 import com.falcon.tripingly.feature.social.presentation.explore.ExploreViewModel.Action
-import kotlinx.datetime.Month
-import kotlinx.datetime.TimeZone
-import kotlinx.datetime.todayIn
-import org.jetbrains.compose.resources.StringResource
+import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.persistentListOf
 import org.jetbrains.compose.resources.stringResource
-import kotlin.time.Clock
 
 /**
- * Explore's filters in the top bar: a pill naming the period ("This month", with a pin while Near me is on) that
- * opens a menu with Near me (on and off) and one period to pick.
+ * Explore's filters in the top bar: a pill naming the [picked] period ("This month", with a pin while Near me is on)
+ * that opens a menu with Near me (on and off, the app's own) and one of the server's [periods] to pick.
  */
 @Composable
-internal fun ExplorePeriodMenu(period: ExplorePeriod, isNearbyFilter: Boolean, onAction: (Action) -> Unit, modifier: Modifier = Modifier) {
+internal fun ExplorePeriodMenu(
+    periods: ImmutableList<ConfigItem>,
+    picked: ConfigItem?,
+    isNearbyFilter: Boolean,
+    onAction: (Action) -> Unit,
+    modifier: Modifier = Modifier,
+) {
     var expanded by rememberSaveable { mutableStateOf(false) }
-    val label = stringResource(period.label())
+    val label = picked?.label ?: stringResource(Res.string.social_near_me)
     val description = stringResource(Res.string.social_explore_period, label)
     Box(modifier) {
         Surface(
@@ -86,39 +78,23 @@ internal fun ExplorePeriodMenu(period: ExplorePeriod, isNearbyFilter: Boolean, o
             onDismissRequest = { expanded = false },
             actions = buildList {
                 add(DropdownAction(stringResource(Res.string.social_near_me), icon = Icons.Outlined.NearMe, selected = isNearbyFilter) { onAction(Action.ToggleNearby) })
-                ExplorePeriod.entries.forEach { entry ->
-                    add(DropdownAction(stringResource(entry.label()), icon = entry.icon, selected = entry == period) { onAction(Action.PeriodSelected(entry)) })
+                periods.forEach { entry ->
+                    add(DropdownAction(entry.label, icon = appIcon(entry.icon), selected = entry.key == picked?.key) { onAction(Action.PeriodSelected(entry.key)) })
                 }
             },
         )
     }
 }
 
-private val ExplorePeriod.icon: ImageVector
-    get() = when (this) {
-        ExplorePeriod.Week, ExplorePeriod.Month, ExplorePeriod.Year -> Icons.Outlined.CalendarMonth
-        ExplorePeriod.Season -> Icons.Outlined.WbSunny
-        ExplorePeriod.All -> Icons.Outlined.History
-    }
-
-private fun ExplorePeriod.label(): StringResource = when (this) {
-    ExplorePeriod.Week -> Res.string.social_explore_week
-    ExplorePeriod.Month -> Res.string.social_explore_month
-    ExplorePeriod.Year -> Res.string.social_explore_year
-    ExplorePeriod.Season -> currentSeasonLabel()
-    ExplorePeriod.All -> Res.string.social_explore_all
-}
-
-/** The season the server filters by: meteorological, so fall is September to November. */
-private fun currentSeasonLabel(): StringResource = when (Clock.System.todayIn(TimeZone.UTC).month) {
-    Month.MARCH, Month.APRIL, Month.MAY -> Res.string.social_explore_spring
-    Month.JUNE, Month.JULY, Month.AUGUST -> Res.string.social_explore_summer
-    Month.SEPTEMBER, Month.OCTOBER, Month.NOVEMBER -> Res.string.social_explore_fall
-    Month.DECEMBER, Month.JANUARY, Month.FEBRUARY -> Res.string.social_explore_winter
-}
-
 private val PillHeight = 40.dp
 private val IconSize = 18.dp
+
+private val PreviewPeriods = persistentListOf(
+    ConfigItem("week", "This week", 60),
+    ConfigItem("month", "This month", 60, isDefault = true),
+    ConfigItem("year", "This year", 60),
+    ConfigItem("all", "All time", 61),
+)
 
 @Composable
 private fun ExplorePeriodMenuPreviewContent() {
@@ -126,8 +102,8 @@ private fun ExplorePeriodMenuPreviewContent() {
         Modifier.background(MaterialTheme.colorScheme.surfaceContainerLowest).padding(MaterialTheme.spacing.medium),
         verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
     ) {
-        ExplorePeriodMenu(ExplorePeriod.Month, isNearbyFilter = false, onAction = {})
-        ExplorePeriodMenu(ExplorePeriod.Week, isNearbyFilter = true, onAction = {})
+        ExplorePeriodMenu(PreviewPeriods, PreviewPeriods[1], isNearbyFilter = false, onAction = {})
+        ExplorePeriodMenu(PreviewPeriods, PreviewPeriods[0], isNearbyFilter = true, onAction = {})
     }
 }
 

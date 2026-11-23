@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -104,7 +105,8 @@ fun SkeletonBox(
     shape: Shape = MaterialTheme.shapes.small,
     base: Color = MaterialTheme.colorScheme.surfaceVariant,
 ) {
-    Skeleton(base = base) { Box(modifier.skeleton(shape)) }
+    // The size goes on the skeleton itself, so a row's weight or a parent's minimum size reaches it; the block fills it.
+    Skeleton(modifier, base = base) { Box(Modifier.fillMaxSize().skeleton(shape)) }
 }
 
 /** How a [Skeleton]'s blocks are painted: their colour, the light's colour and where the light is (null: still). */

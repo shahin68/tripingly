@@ -16,6 +16,7 @@ import platform.CoreLocation.CLLocationManager
 import platform.CoreLocation.CLLocationManagerDelegateProtocol
 import platform.CoreLocation.kCLAuthorizationStatusDenied
 import platform.CoreLocation.kCLAuthorizationStatusRestricted
+import platform.CoreLocation.kCLErrorDomain
 import platform.Foundation.NSError
 import platform.darwin.NSObject
 
@@ -44,6 +45,9 @@ class IosLocationDataSource : LocationDataSource {
             }
 
             override fun locationManager(manager: CLLocationManager, didFailWithError: NSError) {
+                // "Unknown" only means no fix yet, e.g. right after coming back from the background: Core Location
+                // keeps trying and the next location follows, so it's no error for the user (Apple's docs say to ignore it).
+                if (didFailWithError.domain == kCLErrorDomain && didFailWithError.code == LOCATION_UNKNOWN) return
                 trySend(AppResult.Error(DataError.Location.Unavailable))
             }
         }
@@ -58,3 +62,6 @@ class IosLocationDataSource : LocationDataSource {
         }
     }.flowOn(Dispatchers.Main)
 }
+
+/** `kCLErrorLocationUnknown`: Core Location has no location yet and keeps trying. */
+private const val LOCATION_UNKNOWN = 0L

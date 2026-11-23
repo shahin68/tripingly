@@ -60,7 +60,7 @@ internal val placeholderNearbyPlaces = listOf("Café on the corner", "City museu
     NearbyPlace(
         id = "placeholder$index",
         name = name,
-        category = PlaceCategory.Museum,
+        category = PlaceCategory("museum"),
         location = GeoPoint(0.0, 0.0),
         isTripinly = false,
         hotCount = 12,

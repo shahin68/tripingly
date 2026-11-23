@@ -277,7 +277,7 @@ private fun NameTagMark(end: PinEnd) {
                 color = MaterialTheme.extendedColors.onStop,
             )
             is PinEnd.Place -> Icon(
-                imageVector = end.place.category.icon,
+                imageVector = end.place.category.icon(),
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.onSecondary,
                 modifier = Modifier.size(NAME_TAG_MARK_ICON),

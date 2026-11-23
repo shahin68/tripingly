@@ -6,7 +6,6 @@ import com.falcon.tripingly.core.data.trips.TripJson
 import com.falcon.tripingly.core.data.trips.toDetails
 import com.falcon.tripingly.core.model.social.CommentChange
 import com.falcon.tripingly.core.model.social.LikeTarget
-import com.falcon.tripingly.core.model.social.ReportReason
 import com.falcon.tripingly.core.model.social.ReportTarget
 import com.falcon.tripingly.core.network.ApiConfig
 import com.falcon.tripingly.core.network.NetworkJson
@@ -212,7 +211,7 @@ class SocialRepositoryTest {
             HttpStatusCode.Created,
         )
 
-        val result = repository.report(ReportTarget.Comment, "c1", ReportReason.Spam, details = "  ")
+        val result = repository.report(ReportTarget.Comment, "c1", "spam", details = "  ")
 
         assertTrue(result is AppResult.Success)
         assertEquals("""{"targetType":"comment","targetId":"c1","reason":"spam"}""", requests.single().bodyText())

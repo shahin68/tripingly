@@ -13,6 +13,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import com.falcon.tripingly.core.common.util.DateUtils
 import com.falcon.tripingly.core.designsystem.component.AppDialog
+import com.falcon.tripingly.core.designsystem.component.AppTextFieldStyle
 import com.falcon.tripingly.core.designsystem.component.FieldButton
 import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
 import com.falcon.tripingly.feature.trips.generated.resources.Res
@@ -71,6 +72,7 @@ fun RescheduleTripDialog(
             leadingIcon = { Icon(Icons.Default.CalendarMonth, contentDescription = null) },
             enabled = !isSaving,
             modifier = Modifier.fillMaxWidth(),
+            style = AppTextFieldStyle.Dialog,
         )
     }
 }
