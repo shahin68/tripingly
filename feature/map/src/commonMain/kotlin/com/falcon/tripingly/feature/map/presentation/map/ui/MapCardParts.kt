@@ -48,6 +48,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.AnnotatedString
@@ -228,8 +229,8 @@ internal fun PhotoBanner(
         CompositionLocalProvider(LocalContentColor provides textColor) {
             Box(Modifier.align(Alignment.TopEnd).padding(BannerButtonInset)) { topEnd() }
             // The title on its own line, then the details with the pills at their end (Shahin, 2026-11-23). The text keeps
-            // its inset from the start; the pills sit as far from the end and the bottom as ⌄ from its corner, as far
-            // apart as that, with nothing before them, so the details get all the room left.
+            // its inset from the start; the pills, one joined group, sit as far from the end and the bottom as ⌄ from its
+            // corner, with nothing before them, so the details get all the room left.
             Column(Modifier.align(Alignment.BottomStart).fillMaxWidth().padding(start = BannerInset, end = BannerButtonInset, bottom = BannerButtonInset)) {
                 LoadingTitle(title, isTitleLoading, MaterialTheme.typography.titleLarge, Modifier.padding(end = BannerInset - BannerButtonInset))
                 // A pill high with or without them, so the details sit at the same place on every card.
@@ -239,7 +240,7 @@ internal fun PhotoBanner(
                         Text(subtitle, style = MaterialTheme.typography.bodySmall, modifier = Modifier.align(Alignment.CenterVertically))
                         afterSubtitle()
                     }
-                    Row(horizontalArrangement = Arrangement.spacedBy(BannerButtonInset), verticalAlignment = Alignment.CenterVertically, content = trailing)
+                    Row(verticalAlignment = Alignment.CenterVertically, content = trailing)
                 }
             }
         }
@@ -292,10 +293,13 @@ internal fun PinMark(category: PlaceCategory?, isStop: Boolean, modifier: Modifi
     }
 }
 
-/** A count on a banner that only shows (a place's flames before it's on a trip): a pill like the buttons', not a button. */
+/**
+ * A count on a banner that only shows (a place's flames before it's on a trip): no pill, only buttons get one (Shahin,
+ * 2026-11-23); a pill's height and inset, so it sits where the pill would.
+ */
 @Composable
 internal fun BannerCount(icon: ImageVector, count: Int) {
-    CountLabel(icon, count, Modifier.bannerPill(bannerGlass()).padding(BannerPillPadding), size = CountLabelSize.Large)
+    CountLabel(icon, count, Modifier.height(BannerPillHeight).padding(BannerPillPadding), size = CountLabelSize.Large)
 }
 
 /**
@@ -309,8 +313,8 @@ internal fun bannerGlass(): Color {
     return content.copy(alpha = if (content.luminance() > 0.5f) ON_PHOTO_TINT else ON_PANEL_TINT)
 }
 
-/** A banner's count or count button as a pill of [fill], [BannerPillHeight] high; its content padded by [BannerPillPadding]. */
-internal fun Modifier.bannerPill(fill: Color): Modifier = clip(CircleShape).background(fill).height(BannerPillHeight)
+/** A banner's count button as a pill of [fill] in [shape] (its place in a joined group), [BannerPillHeight] high. */
+internal fun Modifier.bannerPill(fill: Color, shape: Shape): Modifier = clip(shape).background(fill).height(BannerPillHeight)
 
 /** 12 dp lower than ⌄ (Shahin, 2026-11-23): the pills shouldn't outweigh the text beside them. */
 private val BannerPillHeight = 36.dp
@@ -318,20 +322,20 @@ private val BannerPillHeight = 36.dp
 /** A banner pill's sides: the icon as far in from the start as from the top and bottom. */
 internal val BannerPillPadding = PaddingValues(horizontal = (BannerPillHeight - JoinedButtonDefaults.IconSize) / 2)
 
-/** The flame as a pill on a banner: glass, or filled with the flame's own colour once I marked it hot. */
+/** The flame as a pill on a banner, in [shape] (its place in the joined group): glass, or filled with the flame's own colour once I marked it hot. */
 @Composable
-internal fun BannerHotButton(hot: Boolean, count: Int, onToggle: () -> Unit) {
+internal fun BannerHotButton(hot: Boolean, count: Int, onToggle: () -> Unit, shape: Shape) {
     val fill by animateColorAsState(if (hot) MaterialTheme.extendedColors.attention else bannerGlass())
     val content by animateColorAsState(if (hot) MaterialTheme.extendedColors.onAttention else LocalContentColor.current)
     CompositionLocalProvider(LocalContentColor provides content) {
-        HotButton(hot, count, onToggle, Modifier.bannerPill(fill), tint = content, contentPadding = BannerPillPadding)
+        HotButton(hot, count, onToggle, Modifier.bannerPill(fill, shape), tint = content, contentPadding = BannerPillPadding)
     }
 }
 
-/** A count to tap (a stop's comments) as a glass pill on a banner. */
+/** A count to tap (a stop's comments) as a glass pill on a banner, in [shape] (its place in the joined group). */
 @Composable
-internal fun BannerCountButton(icon: ImageVector, contentDescription: String, count: Int, onClick: () -> Unit, isNew: Boolean = false) {
-    CountButton(icon, contentDescription, count, onClick, Modifier.bannerPill(bannerGlass()), isNew = isNew, contentPadding = BannerPillPadding)
+internal fun BannerCountButton(icon: ImageVector, contentDescription: String, count: Int, onClick: () -> Unit, isNew: Boolean = false, shape: Shape) {
+    CountButton(icon, contentDescription, count, onClick, Modifier.bannerPill(bannerGlass(), shape), isNew = isNew, contentPadding = BannerPillPadding)
 }
 
 /** A round button on a photo banner (⌄ collapse), in the banner's text colour on its [bannerGlass]. */
@@ -363,8 +367,12 @@ private fun MapCardPartsPreviewContent() {
             mark = { PinMark(PlaceCategory("restaurant"), isStop = true) },
             topEnd = { BannerButton({}, Icons.Outlined.ExpandMore, "Collapse") },
             trailing = {
-                BannerHotButton(hot = true, count = 12, onToggle = {})
-                BannerCountButton(Icons.AutoMirrored.Outlined.Comment, "Comments", 3, onClick = {}, isNew = true)
+                JoinedButtons(
+                    listOf<JoinedButtonSlot>(
+                        { BannerHotButton(hot = true, count = 12, onToggle = {}, shape = it) },
+                        { BannerCountButton(Icons.AutoMirrored.Outlined.Comment, "Comments", 3, onClick = {}, isNew = true, shape = it) },
+                    ),
+                )
             },
         )
         PinCardButtons(
