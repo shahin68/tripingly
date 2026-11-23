@@ -1,9 +1,7 @@
 package com.falcon.tripingly.core.designsystem.component
 
-import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.layout.Arrangement
@@ -30,10 +28,10 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextField
-import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
@@ -74,8 +72,8 @@ enum class AppTextFieldStyle(internal val minHeight: Dp) {
     Inline(48.dp),
 
     /**
-     * A 56 dp field in a dialog, whose background is the plain field's own colour (Shahin, 2026-11-23): the lightest
-     * surface inside a rounded stroke, green while typing, red on an error.
+     * A 56 dp field in a dialog, whose background is the plain field's own colour (Shahin, 2026-11-23): no fill, only
+     * Material's outline with 8 dp corners, thicker and green while typing, red on an error.
      */
     Dialog(56.dp),
 }
@@ -121,13 +119,14 @@ fun AppTextField(
         snapshotFlow { state.text.toString() }.drop(1).collect { currentOnTextChange?.invoke(it) }
     }
     val showClear = clearable && enabled && (onClose != null || isFocused || state.text.isNotEmpty())
-    val shape: Shape = if (style == AppTextFieldStyle.Field || style == AppTextFieldStyle.Dialog) MaterialTheme.shapes.extraLarge else CircleShape
+    val shape = fieldShape(style)
     val container = fieldContainer(style)
     val vertical = (style.minHeight - LineHeight) / 2
-    val stroke = if (style == AppTextFieldStyle.Dialog) fieldStroke(isFocused = isFocused, isError = isError) else null
-    TextField(
+    // One OutlinedTextField for every style: only the dialog's shows its outline, the rest keep their fill.
+    val outlined = style == AppTextFieldStyle.Dialog
+    OutlinedTextField(
         state = state,
-        modifier = modifier.heightIn(min = style.minHeight).then(if (stroke != null) Modifier.border(stroke, shape) else Modifier),
+        modifier = modifier.heightIn(min = style.minHeight),
         enabled = enabled,
         textStyle = textStyle,
         placeholder = { Text(placeholder, style = textStyle, maxLines = 1, overflow = TextOverflow.Ellipsis) },
@@ -163,41 +162,35 @@ fun AppTextField(
         },
         lineLimits = lineLimits,
         shape = shape,
-        colors = TextFieldDefaults.colors(
+        colors = OutlinedTextFieldDefaults.colors(
             focusedContainerColor = container,
             unfocusedContainerColor = container,
             disabledContainerColor = container,
-            // The dialog field says it with its stroke.
+            // The dialog field says it with its outline.
             errorContainerColor = if (style == AppTextFieldStyle.Field || style == AppTextFieldStyle.Search) MaterialTheme.colorScheme.errorContainer else container,
-            focusedIndicatorColor = Color.Transparent,
-            unfocusedIndicatorColor = Color.Transparent,
-            disabledIndicatorColor = Color.Transparent,
-            errorIndicatorColor = Color.Transparent,
+            focusedBorderColor = if (outlined) MaterialTheme.colorScheme.primary else Color.Transparent,
+            unfocusedBorderColor = if (outlined) MaterialTheme.colorScheme.outline else Color.Transparent,
+            disabledBorderColor = if (outlined) MaterialTheme.colorScheme.outline.copy(alpha = DISABLED_OUTLINE_ALPHA) else Color.Transparent,
+            errorBorderColor = if (outlined) MaterialTheme.colorScheme.error else Color.Transparent,
         ),
         contentPadding = PaddingValues(horizontal = MaterialTheme.spacing.medium, vertical = vertical),
         interactionSource = interactionSource,
     )
 }
 
-/** A field's own fill: none inside a bar, the lightest surface in a dialog (whose colour the plain fill is). */
+/** A field's own fill: none inside a bar or a dialog (whose colour the plain fill is). */
 @Composable
 private fun fieldContainer(style: AppTextFieldStyle): Color = when (style) {
-    AppTextFieldStyle.Inline -> Color.Transparent
-    AppTextFieldStyle.Dialog -> MaterialTheme.colorScheme.surfaceContainerLowest
+    AppTextFieldStyle.Inline, AppTextFieldStyle.Dialog -> Color.Transparent
     AppTextFieldStyle.Field, AppTextFieldStyle.Search -> MaterialTheme.colorScheme.surfaceVariant
 }
 
-/** A dialog field's rounded stroke: quiet at rest, thicker and green while typing, red on an error. */
+/** A field's shape: 8 dp corners in a dialog (Shahin, 2026-11-23), round elsewhere. */
 @Composable
-private fun fieldStroke(isFocused: Boolean, isError: Boolean): BorderStroke {
-    val color by animateColorAsState(
-        when {
-            isError -> MaterialTheme.colorScheme.error
-            isFocused -> MaterialTheme.colorScheme.primary
-            else -> MaterialTheme.colorScheme.outlineVariant
-        },
-    )
-    return BorderStroke(if (isFocused) FocusedStrokeWidth else StrokeWidth, color)
+private fun fieldShape(style: AppTextFieldStyle): Shape = when (style) {
+    AppTextFieldStyle.Dialog -> MaterialTheme.shapes.extraSmall
+    AppTextFieldStyle.Field -> MaterialTheme.shapes.extraLarge
+    AppTextFieldStyle.Search, AppTextFieldStyle.Inline -> CircleShape
 }
 
 /** Search as you type: no capitals or corrections, and the search key closes the keyboard. */
@@ -223,9 +216,10 @@ fun FieldButton(
         onClick = onClick,
         enabled = enabled,
         modifier = modifier.fillMaxWidth().heightIn(min = style.minHeight),
-        shape = MaterialTheme.shapes.extraLarge,
+        shape = fieldShape(style),
         color = fieldContainer(style),
-        border = if (style == AppTextFieldStyle.Dialog) fieldStroke(isFocused = false, isError = false) else null,
+        // The dialog's look: the resting outline of an AppTextField.
+        border = if (style == AppTextFieldStyle.Dialog) BorderStroke(OutlinedTextFieldDefaults.UnfocusedBorderThickness, MaterialTheme.colorScheme.outline) else null,
     ) {
         Row(
             modifier = Modifier.padding(horizontal = MaterialTheme.spacing.medium),
@@ -246,8 +240,7 @@ fun FieldButton(
 
 /** One line of body text, which the padding centres in the field's height. */
 private val LineHeight = 24.dp
-private val StrokeWidth = 1.dp
-private val FocusedStrokeWidth = 2.dp
+private const val DISABLED_OUTLINE_ALPHA = 0.38f
 private val IconSize = 20.dp
 
 @Composable
