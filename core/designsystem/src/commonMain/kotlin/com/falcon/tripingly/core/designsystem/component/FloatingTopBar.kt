@@ -43,7 +43,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.IntOffset
@@ -106,13 +105,14 @@ fun <T> AnimatedTopBar(
             ) {
                 if (navigationIcon != null) navigationIcon() else Spacer(Modifier.width(MaterialTheme.spacing.small))
                 // Always the full width the row leaves it, so its size never animates: an animated width larger than
-                // that space got centred and pushed the title's first letter out of the bar. The titles roll inside
-                // this box, so the old and the new one never show on top of each other.
+                // that space got centred and pushed the title's first letter out of the bar. No clip of its own: the
+                // titles roll out to the pill's edge and the pill's shape cuts them (Shahin's B, 2026-11-23); on a bar
+                // with search, the field below is drawn later, so a title coming up passes under it.
                 AnimatedContent(
                     targetState = page,
                     transitionSpec = { TitleIn togetherWith TitleOut using null },
                     contentAlignment = Alignment.CenterStart,
-                    modifier = Modifier.weight(1f).clipToBounds(),
+                    modifier = Modifier.weight(1f),
                 ) { shown ->
                     Text(
                         text = title(shown),
@@ -185,10 +185,14 @@ private object TopBarDefaults {
     val Fade = tween<Float>(durationMillis = 220)
 }
 
-/** The new title rolls up from below while the old one rolls out upwards, together, as one strip. */
+/**
+ * The new title rolls up from below while the old one rolls out upwards, together, as one strip. They travel one and a
+ * half title heights: from the middle of the row past the pill's edge (half the pill plus half the title), so the pill
+ * cuts them, not a line inside it.
+ */
 private val TitleRoll = tween<IntOffset>(durationMillis = 300, easing = CubicBezierEasing(0.2f, 0f, 0f, 1f))
-private val TitleIn = slideInVertically(TitleRoll) { it } + fadeIn(tween(300))
-private val TitleOut = slideOutVertically(TitleRoll) { -it } + fadeOut(tween(200))
+private val TitleIn = slideInVertically(TitleRoll) { it * 3 / 2 } + fadeIn(tween(300))
+private val TitleOut = slideOutVertically(TitleRoll) { -it * 3 / 2 } + fadeOut(tween(200))
 
 /** The search row, as the trip card's content: in, it slides down a quarter of its height and fades; out, it only fades. */
 private val Emphasized = CubicBezierEasing(0.2f, 0f, 0f, 1f)
