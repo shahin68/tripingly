@@ -105,7 +105,7 @@ class AppConfigRepositoryTest {
     }
 
     @Test
-    fun `a new language reads the lists again, labelled in it`() = runTest {
+    fun `a new language reads the lists again in it`() = runTest {
         val repository = DefaultAppConfigRepository(api(HttpStatusCode.OK), store, { language }, backgroundScope)
         withContext(Dispatchers.Default) { withTimeout(5.seconds) { repository.config.first { it != AppConfig() } } }
 
