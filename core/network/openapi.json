@@ -5165,7 +5165,6 @@
           "mapMaxPhotoPins",
           "pinDotBelowZoom",
           "transitAreas",
-          "osmPinsEnabled",
           "placeKinds",
           "explorePeriods",
           "reportReasons"
@@ -6113,7 +6112,6 @@
           "dayId",
           "placeId",
           "name",
-          "category",
           "location",
           "time",
           "position",
@@ -6578,8 +6576,7 @@
           "coverImageId",
           "coverSource",
           "coverThumbUrl",
-          "hotByMe",
-          "brand"
+          "hotByMe"
         ]
       },
       "PlaceClusterDto": {
@@ -6768,8 +6765,7 @@
           "type",
           "address",
           "osmType",
-          "osmId",
-          "brand"
+          "osmId"
         ]
       },
       "SearchCityDto": {
@@ -6921,7 +6917,6 @@
           "coverSource",
           "coverThumbUrl",
           "hotByMe",
-          "brand",
           "distanceMeters"
         ]
       },
@@ -7292,7 +7287,6 @@
           "coverSource",
           "coverThumbUrl",
           "hotByMe",
-          "brand",
           "source",
           "isActive",
           "osmType",
