@@ -21,6 +21,11 @@ final class MyLocationLayer: NSObject, CLLocationManagerDelegate {
     private var isEnabled = false
     private var isRunning = false
     private var hasHeading = false
+    /// The halo keeps the stage until the dot has popped in and the halo has shown for a moment, as on the canvas.
+    private var haloHeldUntil = Date.distantPast
+    private var headingChange: DispatchWorkItem?
+    /// The dot's view is drawn into the map until the last running animation ends.
+    private var drawViewUntil = Date.distantPast
     /// The beam's rotation so far, not wrapped to 0–360, so each turn takes the short way.
     private var beamRotation: CLLocationDegrees = 0
     private var beamWidth: BeamWidth?
@@ -78,14 +83,18 @@ final class MyLocationLayer: NSObject, CLLocationManagerDelegate {
         } else {
             locations.stopUpdatingLocation()
             locations.stopUpdatingHeading()
-            if !isEnabled {
-                dot.map = nil
-                beam.map = nil
-                hasHeading = false
-                beam.opacity = 0
-                dotView.showHalo(true, animated: false)
-            }
+            if !isEnabled { removeDot() }
         }
+    }
+
+    /// Off the map, ready to appear again with its halo.
+    private func removeDot() {
+        dot.map = nil
+        beam.map = nil
+        hasHeading = false
+        headingChange?.cancel()
+        beam.opacity = 0
+        dotView.showHalo(true, animated: false)
     }
 
     /// The compass measures from the top of the phone as it's held; the beam must point where the screen's top points.
@@ -109,6 +118,9 @@ final class MyLocationLayer: NSObject, CLLocationManagerDelegate {
             dot.map = mapView
             beam.map = mapView
             animateView { self.dotView.playAppear() }
+            haloHeldUntil = Date().addingTimeInterval(Self.haloHold)
+            // The compass may have answered before the first location: the beam takes over once the halo had its moment.
+            if hasHeading { swapHaloAndBeam() }
         } else {
             // Glides to the new place instead of jumping.
             CATransaction.begin()
@@ -148,30 +160,50 @@ final class MyLocationLayer: NSObject, CLLocationManagerDelegate {
 
     func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
         let status = manager.authorizationStatus
-        if status == .denied || status == .restricted {
-            dot.map = nil
-            beam.map = nil
-        }
+        if status == .denied || status == .restricted { removeDot() }
     }
 
+    /// The halo and the beam swap slowly, one fading out as the other fades in; never while the dot is still appearing.
     private func showHeading(_ show: Bool) {
         guard show != hasHeading else { return }
         hasHeading = show
-        CATransaction.begin()
-        CATransaction.setAnimationDuration(0.35)
-        beam.opacity = show ? 1 : 0
-        CATransaction.commit()
-        animateView { self.dotView.showHalo(!show, animated: true) }
+        swapHaloAndBeam()
     }
 
-    /// The dot's view is drawn into the map only while it animates, then left as a still image.
+    private func swapHaloAndBeam() {
+        headingChange?.cancel()
+        // Nothing to swap until the dot is on the map: it appears with its halo first.
+        guard dot.map != nil else { return }
+        let show = hasHeading
+        let change = DispatchWorkItem { [weak self] in
+            guard let self else { return }
+            CATransaction.begin()
+            CATransaction.setAnimationDuration(Self.swap)
+            self.beam.opacity = show ? 1 : 0
+            CATransaction.commit()
+            self.animateView { self.dotView.showHalo(!show, animated: true) }
+        }
+        headingChange = change
+        DispatchQueue.main.asyncAfter(deadline: .now() + max(0, haloHeldUntil.timeIntervalSinceNow), execute: change)
+    }
+
+    /// The dot's view is drawn into the map only while it animates, then left as a still image. Animations can overlap
+    /// (the halo leaving while the dot still pops in), so it stops only after the last one has ended, never halfway.
     private func animateView(_ animation: () -> TimeInterval) {
         dot.tracksViewChanges = true
-        let duration = animation()
-        DispatchQueue.main.asyncAfter(deadline: .now() + duration + 0.05) { [weak self] in
-            self?.dot.tracksViewChanges = false
+        let end = Date().addingTimeInterval(animation() + 0.05)
+        drawViewUntil = max(drawViewUntil, end)
+        DispatchQueue.main.asyncAfter(deadline: .now() + end.timeIntervalSinceNow) { [weak self] in
+            // Only the timer of the animation that ends last stops it.
+            guard let self, end >= self.drawViewUntil else { return }
+            self.dot.tracksViewChanges = false
         }
     }
+
+    /// From the dot's first appearance: pop and ripple (1.3 s), then the full halo for a moment.
+    private static let haloHold: TimeInterval = 2.6
+    /// How long the halo and the beam take to swap.
+    static let swap: TimeInterval = 0.8
 }
 
 /// How wide the beam is drawn: a few steps of iOS's heading accuracy, so its image is redrawn only when the step changes.
@@ -292,8 +324,8 @@ private final class MyLocationDotView: UIView {
             change()
             return 0
         }
-        UIView.animate(withDuration: 0.35, delay: 0, options: .curveEaseInOut, animations: change)
-        return 0.35
+        UIView.animate(withDuration: MyLocationLayer.swap, delay: 0, options: [.curveEaseInOut, .beginFromCurrentState], animations: change)
+        return MyLocationLayer.swap
     }
 }
 #endif
