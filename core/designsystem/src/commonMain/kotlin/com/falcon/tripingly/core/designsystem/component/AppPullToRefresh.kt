@@ -14,7 +14,6 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.graphicsLayer
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.filter
@@ -24,9 +23,7 @@ import kotlinx.coroutines.flow.filter
  * whole [LoadStateContent] in it, so its error and empty screens can be pulled too and a pull does what Try again does
  * (Shahin, 2026-11-23); nothing pulls while the skeleton shows (it doesn't scroll).
  *
- * The indicator comes down from the screen's top edge as before, but travels further, by the top of [contentPadding]
- * (the bar's bottom), so it settles below the bar instead of behind it; how far to pull stays Compose's default. A
- * click when the pull is far enough to let go ([Haptics.threshold]), a strong one when it's let go ([Haptics.refresh]).
+ * A click when the pull is far enough to let go ([Haptics.threshold]), a strong one when it's let go ([Haptics.refresh]).
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -39,7 +36,6 @@ fun AppPullToRefresh(
 ) {
     val state = rememberPullToRefreshState()
     val haptics = rememberHaptics()
-    val barBottom = contentPadding.calculateTopPadding()
     // Only the finger's pull clicks: while refreshing, the indicator also slides to the line on its own.
     val refreshing by rememberUpdatedState(isRefreshing)
     LaunchedEffect(state, haptics) {
@@ -54,12 +50,7 @@ fun AppPullToRefresh(
         modifier = modifier.fillMaxSize(),
         state = state,
         indicator = {
-            PullToRefreshDefaults.Indicator(
-                state = state,
-                isRefreshing = isRefreshing,
-                // Read while drawing, so pulling never recomposes.
-                modifier = Modifier.align(Alignment.TopCenter).graphicsLayer { translationY = state.distanceFraction * barBottom.toPx() },
-            )
+            PullToRefreshDefaults.Indicator(state = state, isRefreshing = isRefreshing, modifier = Modifier.align(Alignment.TopCenter))
         },
         content = content,
     )
