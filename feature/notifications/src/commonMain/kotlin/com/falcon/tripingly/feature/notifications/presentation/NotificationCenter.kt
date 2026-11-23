@@ -46,6 +46,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.falcon.tripingly.core.designsystem.component.AppDialog
+import com.falcon.tripingly.core.designsystem.component.AppPullToRefresh
 import com.falcon.tripingly.core.designsystem.component.AvatarSize
 import com.falcon.tripingly.core.designsystem.component.AvatarStack
 import com.falcon.tripingly.core.designsystem.component.BackAction
@@ -146,33 +147,36 @@ private fun NotificationList(state: State, onAction: (Action) -> Unit, contentPa
             info.totalItemsCount > 0 && last >= info.totalItemsCount - LOAD_MORE_THRESHOLD
         }.distinctUntilChanged().filter { it }.collect { onAction(Action.OnLoadMore) }
     }
-    LazyColumn(
-        state = listState,
-        modifier = Modifier.fillMaxSize().glassSource(),
-        contentPadding = contentPadding,
-        verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
-    ) {
-        when {
-            state.entries.isEmpty() && state.loadError != null -> item(key = "notifications-error") {
-                Column(Modifier.fillMaxWidth().animateItem(), horizontalAlignment = Alignment.CenterHorizontally) {
-                    QuietText(state.loadError.asString())
-                    SecondaryButton(stringResource(Res.string.notifications_retry), { onAction(Action.OnRetry) }, size = ButtonSize.Medium)
+    // Pulls on the error and empty screens too, like Try again (Shahin, 2026-11-23).
+    AppPullToRefresh(isRefreshing = state.isRefreshing, onRefresh = { onAction(Action.OnRetry) }, contentPadding = contentPadding) {
+        LazyColumn(
+            state = listState,
+            modifier = Modifier.fillMaxSize().glassSource(),
+            contentPadding = contentPadding,
+            verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
+        ) {
+            when {
+                state.entries.isEmpty() && state.loadError != null -> item(key = "notifications-error") {
+                    Column(Modifier.fillMaxWidth().animateItem(), horizontalAlignment = Alignment.CenterHorizontally) {
+                        QuietText(state.loadError.asString())
+                        SecondaryButton(stringResource(Res.string.notifications_retry), { onAction(Action.OnRetry) }, size = ButtonSize.Medium)
+                    }
                 }
-            }
-            state.entries.isEmpty() && !state.hasLoaded -> items(PlaceholderEntries, key = { "skeleton-${it.id}" }) {
-                Skeleton { NotificationRow(entry = it, onClick = {}) }
-            }
-            state.entries.isEmpty() -> item(key = "notifications-empty") {
-                EmptyState(
-                    illustration = Illustration.NotificationsEmpty,
-                    title = stringResource(Res.string.notifications_empty),
-                    message = stringResource(Res.string.notifications_empty_hint),
-                    modifier = Modifier.fillParentMaxSize().animateItem(),
-                )
-            }
-            else -> items(state.entries, key = { it.id }) { entry ->
-                SwipeToDelete(onDelete = { onAction(Action.OnRemove(entry)) }, modifier = Modifier.animateItem()) {
-                    NotificationRow(entry = entry, onClick = { onAction(Action.OnOpen(entry)) })
+                state.entries.isEmpty() && !state.hasLoaded -> items(PlaceholderEntries, key = { "skeleton-${it.id}" }) {
+                    Skeleton { NotificationRow(entry = it, onClick = {}) }
+                }
+                state.entries.isEmpty() -> item(key = "notifications-empty") {
+                    EmptyState(
+                        illustration = Illustration.NotificationsEmpty,
+                        title = stringResource(Res.string.notifications_empty),
+                        message = stringResource(Res.string.notifications_empty_hint),
+                        modifier = Modifier.fillParentMaxSize().animateItem(),
+                    )
+                }
+                else -> items(state.entries, key = { it.id }) { entry ->
+                    SwipeToDelete(onDelete = { onAction(Action.OnRemove(entry)) }, modifier = Modifier.animateItem()) {
+                        NotificationRow(entry = entry, onClick = { onAction(Action.OnOpen(entry)) })
+                    }
                 }
             }
         }

@@ -60,6 +60,9 @@ class Haptics(private val feedback: HapticFeedback) {
 
     /** A long press opening a menu or picking something up. */
     fun longPress() = feedback.performHapticFeedback(HapticFeedbackType.LongPress)
+
+    /** A pull let go to refresh: a strong click that says it's loading now (Android: the long-press click; iOS: a heavy impact). */
+    fun refresh() = feedback.performHapticFeedback(HapticFeedbackType.LongPress)
 }
 
 @Composable

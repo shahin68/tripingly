@@ -122,6 +122,29 @@ class NotificationCenterViewModelTest {
     }
 
     @Test
+    fun `only a refresh shows the pull spinner, until its answer`() = runTest(dispatcher) {
+        val center = FakeNotificationCenterRepository(
+            mapOf(
+                null to Page(listOf(entry("n2")), nextCursor = "c1"),
+                "c1" to Page(listOf(entry("n1")), nextCursor = null),
+            ),
+        )
+        val viewModel = NotificationCenterViewModel(center)
+        advanceUntilIdle()
+        assertFalse(viewModel.uiState.value.isRefreshing)
+
+        viewModel.onAction(Action.OnLoadMore)
+        assertFalse(viewModel.uiState.value.isRefreshing)
+        advanceUntilIdle()
+
+        viewModel.onAction(Action.OnRetry)
+        assertTrue(viewModel.uiState.value.isRefreshing)
+        advanceUntilIdle()
+        assertFalse(viewModel.uiState.value.isRefreshing)
+        assertEquals(listOf("n2"), viewModel.uiState.value.entries.map { it.id })
+    }
+
+    @Test
     fun `entries read or removed elsewhere change here too`() = runTest(dispatcher) {
         val center = FakeNotificationCenterRepository(mapOf(null to Page(listOf(entry("n3"), entry("n2"), entry("n1")), nextCursor = null)))
         val viewModel = NotificationCenterViewModel(center)

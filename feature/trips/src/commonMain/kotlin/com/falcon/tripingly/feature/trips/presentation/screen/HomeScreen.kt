@@ -8,14 +8,13 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.tooling.preview.PreviewParameter
 import androidx.compose.ui.unit.dp
+import com.falcon.tripingly.core.designsystem.component.AppPullToRefresh
 import com.falcon.tripingly.core.designsystem.component.EmptyState
 import com.falcon.tripingly.core.designsystem.component.Illustration
 import com.falcon.tripingly.core.designsystem.component.LoadStateContent
@@ -37,7 +36,6 @@ import org.jetbrains.compose.resources.stringResource
  * The Trips tab: the trips as a timeline. The tab shell draws the shared top bar (with [TripsSearchField]), the
  * bottom bar and the [AddTripButton] over it; [barsPadding] is their room, which the list scrolls behind.
  */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
     state: State,
@@ -52,10 +50,12 @@ fun HomeScreen(
         onShown = { onAction(Action.DismissMessage) },
         isError = state.message !is UiText.Note,
     )
-    PullToRefreshBox(
+    // Around everything, so the error and empty screens pull too, like Try again (Shahin, 2026-11-23).
+    AppPullToRefresh(
         isRefreshing = state.isRefreshing && state.hasLoaded,
         onRefresh = { onAction(Action.Trips.Refresh) },
-        modifier = modifier.fillMaxSize(),
+        contentPadding = contentPadding,
+        modifier = modifier,
     ) {
         LoadStateContent(
             isLoading = !state.hasLoaded,

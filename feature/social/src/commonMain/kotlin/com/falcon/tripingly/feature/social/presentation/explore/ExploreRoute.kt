@@ -8,8 +8,6 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -18,6 +16,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.tooling.preview.PreviewParameter
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.falcon.tripingly.core.designsystem.component.AppPullToRefresh
 import com.falcon.tripingly.core.designsystem.component.EmptyState
 import com.falcon.tripingly.core.designsystem.component.Illustration
 import com.falcon.tripingly.core.designsystem.component.LoadStateContent
@@ -84,15 +83,17 @@ internal fun ExploreScreen(
 ) {
     val contentPadding = screenContentPadding(barsPadding)
     ShowMessage(message = state.message?.asString(), onShown = { onAction(Action.DismissMessage) }, isError = state.message !is UiText.Note)
-    LoadStateContent(
-        isLoading = !state.hasLoaded,
-        errorMessage = state.loadError?.asString(),
-        onRetry = { onAction(Action.Refresh) },
-        modifier = modifier,
-        contentPadding = contentPadding,
-        loading = { ExploreSkeleton(contentPadding) },
-    ) {
-        ExploreGrid(state, onAction, contentPadding)
+    // Around everything, so the error and empty screens pull too, like Try again (Shahin, 2026-11-23).
+    AppPullToRefresh(isRefreshing = state.isLoading && state.hasLoaded, onRefresh = { onAction(Action.Refresh) }, contentPadding = contentPadding, modifier = modifier) {
+        LoadStateContent(
+            isLoading = !state.hasLoaded,
+            errorMessage = state.loadError?.asString(),
+            onRetry = { onAction(Action.Refresh) },
+            contentPadding = contentPadding,
+            loading = { ExploreSkeleton(contentPadding) },
+        ) {
+            ExploreGrid(state, onAction, contentPadding)
+        }
     }
 }
 
@@ -103,36 +104,33 @@ fun ExplorePeriodAction(viewModel: ExploreViewModel = koinViewModel()) {
     ExplorePeriodMenu(state.periods, state.pickedPeriod, state.isNearbyFilter, viewModel::onAction)
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun ExploreGrid(state: State, onAction: (Action) -> Unit, contentPadding: PaddingValues) {
     val gridState = rememberLazyGridState()
     LoadMoreAtEnd(gridState) { onAction(Action.LoadMore) }
-    PullToRefreshBox(isRefreshing = state.isLoading && state.hasLoaded, onRefresh = { onAction(Action.Refresh) }, modifier = Modifier.fillMaxSize()) {
-        if (state.trips.isEmpty()) {
-            EmptyExplore(contentPadding)
-            return@PullToRefreshBox
-        }
-        LazyVerticalGrid(
-            state = gridState,
-            columns = GridCells.Adaptive(GridCellMinWidth),
-            modifier = Modifier.fillMaxSize().glassSource(),
-            contentPadding = contentPadding,
-            horizontalArrangement = Arrangement.spacedBy(GridGap),
-            verticalArrangement = Arrangement.spacedBy(GridGap),
-        ) {
-            items(state.trips, key = { it.trip.id }) { trip ->
-                ExploreTripCard(
-                    trip = trip,
-                    onOpen = { onAction(Action.TripClick(trip)) },
-                    onOpenOwner = { onAction(Action.OwnerClick(trip.trip.owner)) },
-                    onLike = { onAction(Action.LikeTrip(trip)) },
-                    onToggleSave = { onAction(Action.ToggleSaveTrip(trip)) },
-                    onAskToJoin = { onAction(Action.AskToJoin(trip)) },
-                    onReport = { onAction(Action.ReportTrip(trip)) },
-                    modifier = Modifier.animateItem(),
-                )
-            }
+    if (state.trips.isEmpty()) {
+        EmptyExplore(contentPadding)
+        return
+    }
+    LazyVerticalGrid(
+        state = gridState,
+        columns = GridCells.Adaptive(GridCellMinWidth),
+        modifier = Modifier.fillMaxSize().glassSource(),
+        contentPadding = contentPadding,
+        horizontalArrangement = Arrangement.spacedBy(GridGap),
+        verticalArrangement = Arrangement.spacedBy(GridGap),
+    ) {
+        items(state.trips, key = { it.trip.id }) { trip ->
+            ExploreTripCard(
+                trip = trip,
+                onOpen = { onAction(Action.TripClick(trip)) },
+                onOpenOwner = { onAction(Action.OwnerClick(trip.trip.owner)) },
+                onLike = { onAction(Action.LikeTrip(trip)) },
+                onToggleSave = { onAction(Action.ToggleSaveTrip(trip)) },
+                onAskToJoin = { onAction(Action.AskToJoin(trip)) },
+                onReport = { onAction(Action.ReportTrip(trip)) },
+                modifier = Modifier.animateItem(),
+            )
         }
     }
 }

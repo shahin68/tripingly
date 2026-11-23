@@ -14,11 +14,9 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Lock
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -29,6 +27,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.falcon.tripingly.core.designsystem.component.AppBottomSheet
+import com.falcon.tripingly.core.designsystem.component.AppPullToRefresh
 import com.falcon.tripingly.core.designsystem.component.EmptyState
 import com.falcon.tripingly.core.designsystem.component.ErrorScreen
 import com.falcon.tripingly.core.designsystem.component.Illustration
@@ -129,55 +128,56 @@ internal fun NearbyScreen(
     Box(modifier.fillMaxSize()) {
         when (state.status) {
             Status.NeedsPermission, Status.Blocked, Status.Unavailable -> LocationAsk(state.status, onAction, contentPadding)
-            else -> LoadStateContent(
-                isLoading = state.status == Status.Unknown || state.status == Status.Locating,
-                errorMessage = state.loadError?.asString(),
-                onRetry = { onAction(Action.Refresh) },
-                contentPadding = contentPadding,
-                loading = { NearbySkeleton(contentPadding) },
-            ) {
-                NearbyList(state, onAction, contentPadding)
+            // Around everything, so the error and empty screens pull too, like Try again (Shahin, 2026-11-23). Not the
+            // location asks: their button asks for the location rather than reloading.
+            else -> AppPullToRefresh(isRefreshing = state.isLoading && state.places.isNotEmpty(), onRefresh = { onAction(Action.Refresh) }, contentPadding = contentPadding) {
+                LoadStateContent(
+                    isLoading = state.status == Status.Unknown || state.status == Status.Locating,
+                    errorMessage = state.loadError?.asString(),
+                    onRetry = { onAction(Action.Refresh) },
+                    contentPadding = contentPadding,
+                    loading = { NearbySkeleton(contentPadding) },
+                ) {
+                    NearbyList(state, onAction, contentPadding)
+                }
             }
         }
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun NearbyList(state: State, onAction: (Action) -> Unit, contentPadding: PaddingValues) {
     val listState = rememberLazyListState()
     LoadMoreAtEnd(listState) { onAction(Action.LoadMore) }
-    PullToRefreshBox(isRefreshing = state.isLoading && state.places.isNotEmpty(), onRefresh = { onAction(Action.Refresh) }, modifier = Modifier.fillMaxSize()) {
-        LazyColumn(
-            state = listState,
-            modifier = Modifier.fillMaxSize().glassSource(),
-            contentPadding = contentPadding,
-            verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
-        ) {
-            item(key = "note") { LocationNote(Modifier.animateItem()) }
-            if (state.places.isEmpty()) {
-                item(key = "empty") {
-                    EmptyState(
-                        illustration = Illustration.NearbyEmpty,
-                        title = stringResource(Res.string.social_nearby_empty),
-                        message = stringResource(Res.string.social_nearby_empty_hint),
-                        modifier = Modifier.fillParentMaxWidth().animateItem(),
-                    )
-                }
-            }
-            items(state.places, key = { it.id }) { place ->
-                NearbyPlaceCard(
-                    place = place,
-                    onOpenImage = { onAction(Action.OpenImage(place)) },
-                    onMarkHot = { onAction(Action.MarkHot(place)) },
-                    onAdd = { onAction(Action.AddPlace(place)) },
-                    modifier = Modifier.animateItem(),
+    LazyColumn(
+        state = listState,
+        modifier = Modifier.fillMaxSize().glassSource(),
+        contentPadding = contentPadding,
+        verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
+    ) {
+        item(key = "note") { LocationNote(Modifier.animateItem()) }
+        if (state.places.isEmpty()) {
+            item(key = "empty") {
+                EmptyState(
+                    illustration = Illustration.NearbyEmpty,
+                    title = stringResource(Res.string.social_nearby_empty),
+                    message = stringResource(Res.string.social_nearby_empty_hint),
+                    modifier = Modifier.fillParentMaxWidth().animateItem(),
                 )
             }
-            // Nearby lists OpenStreetMap places, unless the server leaves them out.
-            if (state.isOsmCreditShown) {
-                item(key = "osm") { OsmAttribution(Modifier.padding(vertical = MaterialTheme.spacing.small).animateItem()) }
-            }
+        }
+        items(state.places, key = { it.id }) { place ->
+            NearbyPlaceCard(
+                place = place,
+                onOpenImage = { onAction(Action.OpenImage(place)) },
+                onMarkHot = { onAction(Action.MarkHot(place)) },
+                onAdd = { onAction(Action.AddPlace(place)) },
+                modifier = Modifier.animateItem(),
+            )
+        }
+        // Nearby lists OpenStreetMap places, unless the server leaves them out.
+        if (state.isOsmCreditShown) {
+            item(key = "osm") { OsmAttribution(Modifier.padding(vertical = MaterialTheme.spacing.small).animateItem()) }
         }
     }
 }
