@@ -1,63 +1,31 @@
 package com.falcon.tripingly.feature.map.presentation.map.ui
 
 import androidx.compose.animation.animateContentSize
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.heightIn
-import androidx.compose.runtime.getValue
-import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.FlowRow
-import androidx.compose.foundation.layout.FlowRowScope
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.RowScope
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.outlined.Comment
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Directions
-import androidx.compose.material.icons.outlined.ExpandMore
 import androidx.compose.material.icons.outlined.Flag
 import androidx.compose.material.icons.outlined.Info
-import androidx.compose.material.icons.outlined.LocalFireDepartment
 import androidx.compose.material.icons.outlined.NearMe
 import androidx.compose.material.icons.outlined.TravelExplore
 import androidx.compose.material.icons.outlined.PhotoLibrary
-import androidx.compose.material3.Icon
-import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Shape
-import androidx.compose.ui.graphics.luminance
-import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import com.falcon.tripingly.core.designsystem.component.CountButton
-import com.falcon.tripingly.core.designsystem.component.CountLabel
-import com.falcon.tripingly.core.designsystem.component.CountLabelSize
-import com.falcon.tripingly.core.designsystem.component.HotButton
 import com.falcon.tripingly.core.designsystem.component.JoinedButton
 import com.falcon.tripingly.core.designsystem.component.JoinedButtonColors
 import com.falcon.tripingly.core.designsystem.component.JoinedButtonDefaults
@@ -65,9 +33,7 @@ import com.falcon.tripingly.core.designsystem.component.JoinedButtonSlot
 import com.falcon.tripingly.core.designsystem.component.JoinedButtons
 import com.falcon.tripingly.core.designsystem.component.icon
 import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
-import com.falcon.tripingly.core.designsystem.theme.extendedColors
 import com.falcon.tripingly.core.designsystem.theme.spacing
-import com.falcon.tripingly.core.model.place.PlaceCategory
 import com.falcon.tripingly.feature.map.generated.resources.Res
 import com.falcon.tripingly.feature.map.generated.resources.map_add_to_my_trip
 import com.falcon.tripingly.feature.map.generated.resources.map_card_delete
@@ -82,15 +48,6 @@ import com.falcon.tripingly.feature.map.presentation.component.lineColor
 import com.falcon.tripingly.feature.map.presentation.map.PinAdd
 import com.falcon.tripingly.feature.map.presentation.map.PinRoutesState
 import org.jetbrains.compose.resources.stringResource
-import androidx.compose.ui.unit.isSpecified
-import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.animation.togetherWith
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.AnimatedContent
 
 /*
  * What the stop and place cards share (design: the "Final" board of the pin card canvas, Shahin, 2026-11-12): the photo
@@ -100,20 +57,21 @@ import androidx.compose.animation.AnimatedContent
 
 /**
  * The big card: the [banner], the [credit] line gliding in under it when it comes late, and the [buttons] row. Rows are
- * counted from the pin for [PinCardScope.bloomRow]: the buttons are nearest.
+ * counted from the pin for [PinCardScope.bloomRow]: the buttons are nearest, else the credit.
  */
 @Composable
 internal fun PinCardScope.BigPinCard(
     banner: @Composable () -> Unit,
     credit: @Composable () -> Unit,
-    buttons: @Composable () -> Unit,
+    /** None on the spot map, whose buttons are in its bottom bar. */
+    buttons: (@Composable () -> Unit)?,
     modifier: Modifier = Modifier,
 ) {
     Column(modifier.padding(MaterialTheme.spacing.small)) {
-        Box(Modifier.bloomRow(fromPin = 2)) { banner() }
+        Box(Modifier.bloomRow(fromPin = if (buttons != null) 2 else 1)) { banner() }
         // A place's credit arrives with its details: the buttons glide down to make room.
-        Box(Modifier.animateContentSize().bloomRow(fromPin = 1)) { credit() }
-        Box(Modifier.padding(top = MaterialTheme.spacing.small).bloomRow(fromPin = 0)) { buttons() }
+        Box(Modifier.animateContentSize().bloomRow(fromPin = if (buttons != null) 1 else 0)) { credit() }
+        if (buttons != null) Box(Modifier.padding(top = MaterialTheme.spacing.small).bloomRow(fromPin = 0)) { buttons() }
     }
 }
 
@@ -160,11 +118,11 @@ internal fun pinAction(onDelete: (() -> Unit)?, onAdd: (() -> Unit)?, addLabel: 
 
 /**
  * Go here (dimmed until where I am is known; a tap then asks for it) and Route from, or Route to here while another pin
- * is the start. Each takes the way of travelling's colour, the route's, while its route shows (Tripinly Pro; the
- * paywall otherwise).
+ * is the start ([onRoute]; none on the spot map, which has one pin). Each takes the way of travelling's colour, the
+ * route's, while its route shows (Tripinly Pro; the paywall otherwise).
  */
 @Composable
-internal fun routeButtons(routes: PinRoutesState, onGoHere: () -> Unit, onRoute: () -> Unit, onAround: (() -> Unit)? = null): List<JoinedButtonSlot> {
+internal fun routeButtons(routes: PinRoutesState, onGoHere: () -> Unit, onRoute: (() -> Unit)?, onAround: (() -> Unit)? = null): List<JoinedButtonSlot> {
     val goHere = stringResource(Res.string.map_route_go_here)
     val route = stringResource(if (routes.isRouteTo) Res.string.map_route_to_here else Res.string.map_route_from_here)
     val neutral = JoinedButtonDefaults.neutral()
@@ -175,10 +133,14 @@ internal fun routeButtons(routes: PinRoutesState, onGoHere: () -> Unit, onRoute:
         routes.hasLocation -> neutral
         else -> neutral.copy(content = neutral.content.copy(alpha = DIMMED_ALPHA))
     }
-    return listOf<JoinedButtonSlot>(
-        { shape -> JoinedButton(Icons.Outlined.NearMe, goHere, shape, onClick = onGoHere, colors = goHereColors) },
-        { shape -> JoinedButton(if (routes.isRouteTo) Icons.Outlined.Flag else Icons.Outlined.Directions, route, shape, onClick = onRoute, colors = if (routes.isRouteOn) on else neutral) },
-    ) + listOfNotNull(onAround?.let { aroundButton(routes.isAroundOn, it) })
+    val goHereButton: JoinedButtonSlot = { shape -> JoinedButton(Icons.Outlined.NearMe, goHere, shape, onClick = onGoHere, colors = goHereColors) }
+    val buttons = mutableListOf(goHereButton)
+    if (onRoute != null) {
+        val routeButton: JoinedButtonSlot = { shape -> JoinedButton(if (routes.isRouteTo) Icons.Outlined.Flag else Icons.Outlined.Directions, route, shape, onClick = onRoute, colors = if (routes.isRouteOn) on else neutral) }
+        buttons += routeButton
+    }
+    onAround?.let { buttons += aroundButton(routes.isAroundOn, it) }
+    return buttons
 }
 
 /** Around (Tripinly Pro; the paywall otherwise): the places in a ring around the pin, its icon only (E1, Shahin 2026-11-17). */
@@ -189,192 +151,14 @@ private fun aroundButton(isOn: Boolean, onClick: () -> Unit): JoinedButtonSlot {
     return { shape -> JoinedButton(Icons.Outlined.TravelExplore, label, shape, onClick = onClick, colors = colors) }
 }
 
-/**
- * A photo [image] filling a rounded banner (tapped: [onClick]) with the [title] (wrapping) and [subtitle] in white over
- * a dark fade at the bottom, [afterSubtitle] on its line (e.g. who added it), [trailing] on their right at the bottom
- * (a stop's flame and comments to tap, or a place's flames only counted; Shahin 2026-11-14), and a [topEnd] button.
- * Without an image ([image] null) it is a tinted panel with the pin icon at the top start and the text dark.
- */
-@Composable
-internal fun PhotoBanner(
-    title: String,
-    subtitle: AnnotatedString,
-    image: (@Composable BoxScope.() -> Unit)?,
-    modifier: Modifier = Modifier,
-    /** The name is still coming: a small spinner in its place ([LoadingTitle]). */
-    isTitleLoading: Boolean = false,
-    onClick: (() -> Unit)? = null,
-    afterSubtitle: @Composable FlowRowScope.() -> Unit = {},
-    trailing: @Composable RowScope.() -> Unit = {},
-    topEnd: @Composable () -> Unit = {},
-    /** Without an image: the pin's own mark ([PinMark]), mirroring [topEnd]. */
-    mark: @Composable () -> Unit = {},
-) {
-    val textColor = if (image != null) Color.White else MaterialTheme.colorScheme.onSecondaryContainer
-    Box(
-        modifier
-            .fillMaxWidth()
-            .height(BannerHeight)
-            .clip(MaterialTheme.shapes.large)
-            .background(if (image != null) MaterialTheme.colorScheme.surfaceVariant else MaterialTheme.colorScheme.secondaryContainer)
-            .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier),
-    ) {
-        if (image != null) {
-            image()
-            Box(Modifier.fillMaxSize().background(Brush.verticalGradient(0.35f to Color.Transparent, 1f to Color.Black.copy(alpha = 0.6f))))
-        } else {
-            // The pin's mark, mirroring the top end button: the same size and inset.
-            Box(Modifier.padding(BannerButtonInset)) { mark() }
-        }
-        CompositionLocalProvider(LocalContentColor provides textColor) {
-            Box(Modifier.align(Alignment.TopEnd).padding(BannerButtonInset)) { topEnd() }
-            // The title on its own line, then the details with the pills at their end (Shahin, 2026-11-23). The text keeps
-            // its inset from the start; the pills, one joined group, sit as far from the end and the bottom as ⌄ from its
-            // corner, with nothing before them, so the details get all the room left.
-            Column(Modifier.align(Alignment.BottomStart).fillMaxWidth().padding(start = BannerInset, end = BannerButtonInset, bottom = BannerButtonInset)) {
-                LoadingTitle(title, isTitleLoading, MaterialTheme.typography.titleLarge, Modifier.padding(end = BannerInset - BannerButtonInset))
-                // A pill high with or without them, so the details sit at the same place on every card.
-                Row(Modifier.heightIn(min = BannerPillHeight), verticalAlignment = Alignment.CenterVertically) {
-                    // Who added it goes on as long as there's room, then whole onto the next line (Shahin, 2026-11-14).
-                    FlowRow(Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraSmall)) {
-                        Text(subtitle, style = MaterialTheme.typography.bodySmall, modifier = Modifier.align(Alignment.CenterVertically))
-                        afterSubtitle()
-                    }
-                    Row(verticalAlignment = Alignment.CenterVertically, content = trailing)
-                }
-            }
-        }
-    }
-}
-
-/**
- * A pin's title, or while its name is still coming ([isLoading]) a small spinner a line high in its place, fading
- * into the name when it comes (Shahin, 2026-11-17). Only drawn state: nothing keeps running once the card goes.
- */
-@Composable
-internal fun LoadingTitle(
-    text: String,
-    isLoading: Boolean,
-    style: TextStyle,
-    modifier: Modifier = Modifier,
-    maxLines: Int = Int.MAX_VALUE,
-    overflow: TextOverflow = TextOverflow.Clip,
-) {
-    AnimatedContent(
-        targetState = isLoading,
-        transitionSpec = { fadeIn() togetherWith fadeOut() },
-        contentAlignment = Alignment.CenterStart,
-        modifier = modifier,
-        label = "title loading",
-    ) { loading ->
-        if (loading) {
-            val lineHeight = with(LocalDensity.current) { style.lineHeight.takeIf { it.isSpecified }?.toDp() ?: TitleSpinnerSize }
-            Box(Modifier.height(lineHeight), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator(modifier = Modifier.size(TitleSpinnerSize), strokeWidth = TitleSpinnerStroke, color = LocalContentColor.current)
-            }
-        } else {
-            Text(text, style = style, maxLines = maxLines, overflow = overflow)
-        }
-    }
-}
-
-private val TitleSpinnerSize = 12.dp
-private val TitleSpinnerStroke = 1.5.dp
-
-/**
- * The mark of a card without an image: its place's category icon, on the place colour or on stop green for a stop
- * ([isStop]; its number is in the bold "Stop 2" under the title, Shahin 2026-11-13).
- */
-@Composable
-internal fun PinMark(category: PlaceCategory?, isStop: Boolean, modifier: Modifier = Modifier.size(JoinedButtonDefaults.Height)) {
-    val fill = if (isStop) MaterialTheme.extendedColors.stop else MaterialTheme.extendedColors.place
-    Box(modifier.background(fill, CircleShape), contentAlignment = Alignment.Center) {
-        Icon((category ?: PlaceCategory.Other).icon(), contentDescription = null, tint = if (isStop) MaterialTheme.extendedColors.onStop else MaterialTheme.colorScheme.onSecondary, modifier = Modifier.size(JoinedButtonDefaults.IconSize))
-    }
-}
-
-/**
- * A count on a banner that only shows (a place's flames before it's on a trip): no pill, only buttons get one (Shahin,
- * 2026-11-23); a pill's height and inset, so it sits where the pill would.
- */
-@Composable
-internal fun BannerCount(icon: ImageVector, count: Int) {
-    CountLabel(icon, count, Modifier.height(BannerPillHeight).padding(BannerPillPadding), size = CountLabelSize.Large)
-}
-
-/**
- * The see-through glass of a banner's buttons, a tint of the banner's text colour: white on a photo, a dark tint on the
- * panel without one, so it shows on both (Shahin, 2026-11-13).
- */
-@Composable
-internal fun bannerGlass(): Color {
-    val content = LocalContentColor.current
-    // White on a busy photo needs a stronger glass than a dark tint on the plain panel.
-    return content.copy(alpha = if (content.luminance() > 0.5f) ON_PHOTO_TINT else ON_PANEL_TINT)
-}
-
-/** A banner's count button as a pill of [fill] in [shape] (its place in a joined group), [BannerPillHeight] high. */
-internal fun Modifier.bannerPill(fill: Color, shape: Shape): Modifier = clip(shape).background(fill).height(BannerPillHeight)
-
-/** 12 dp lower than ⌄ (Shahin, 2026-11-23): the pills shouldn't outweigh the text beside them. */
-private val BannerPillHeight = 36.dp
-
-/** A banner pill's sides: the icon as far in from the start as from the top and bottom. */
-internal val BannerPillPadding = PaddingValues(horizontal = (BannerPillHeight - JoinedButtonDefaults.IconSize) / 2)
-
-/** The flame as a pill on a banner, in [shape] (its place in the joined group): glass, or filled with the flame's own colour once I marked it hot. */
-@Composable
-internal fun BannerHotButton(hot: Boolean, count: Int, onToggle: () -> Unit, shape: Shape) {
-    val fill by animateColorAsState(if (hot) MaterialTheme.extendedColors.attention else bannerGlass())
-    val content by animateColorAsState(if (hot) MaterialTheme.extendedColors.onAttention else LocalContentColor.current)
-    CompositionLocalProvider(LocalContentColor provides content) {
-        HotButton(hot, count, onToggle, Modifier.bannerPill(fill, shape), tint = content, contentPadding = BannerPillPadding)
-    }
-}
-
-/** A count to tap (a stop's comments) as a glass pill on a banner, in [shape] (its place in the joined group). */
-@Composable
-internal fun BannerCountButton(icon: ImageVector, contentDescription: String, count: Int, onClick: () -> Unit, isNew: Boolean = false, shape: Shape) {
-    CountButton(icon, contentDescription, count, onClick, Modifier.bannerPill(bannerGlass(), shape), isNew = isNew, contentPadding = BannerPillPadding)
-}
-
-/** A round button on a photo banner (⌄ collapse), in the banner's text colour on its [bannerGlass]. */
-@Composable
-internal fun BannerButton(onClick: () -> Unit, icon: ImageVector, contentDescription: String, modifier: Modifier = Modifier) {
-    Surface(onClick = onClick, modifier = modifier.size(JoinedButtonDefaults.Height), shape = CircleShape, color = bannerGlass(), contentColor = LocalContentColor.current) {
-        Box(contentAlignment = Alignment.Center) { Icon(icon, contentDescription = contentDescription, modifier = Modifier.size(JoinedButtonDefaults.IconSize)) }
-    }
-}
-
 /** The cards' widest, so they don't stretch across a tablet or a landscape phone. */
 internal val MapCardMaxWidth = 360.dp
-private val BannerHeight = 180.dp
-private val BannerInset = 14.dp
-private val BannerButtonInset = 8.dp
-private const val ON_PHOTO_TINT = 0.26f
-private const val ON_PANEL_TINT = 0.12f
 private const val ROUTE_TINT = 0.18f
 private const val DIMMED_ALPHA = 0.38f
 
 @Composable
 private fun MapCardPartsPreviewContent() {
     Column(Modifier.background(MaterialTheme.colorScheme.surface).padding(MaterialTheme.spacing.medium).width(340.dp), verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small)) {
-        PhotoBanner(title = "Hofburg", subtitle = AnnotatedString("Historic site"), image = null, mark = { PinMark(PlaceCategory("historic"), isStop = false) }, trailing = { BannerCount(Icons.Outlined.LocalFireDepartment, 40) })
-        PhotoBanner(
-            title = "Lunch at Anna's, a long name that wraps",
-            subtitle = AnnotatedString("Custom spot"),
-            image = null,
-            mark = { PinMark(PlaceCategory("restaurant"), isStop = true) },
-            topEnd = { BannerButton({}, Icons.Outlined.ExpandMore, "Collapse") },
-            trailing = {
-                JoinedButtons(
-                    listOf<JoinedButtonSlot>(
-                        { BannerHotButton(hot = true, count = 12, onToggle = {}, shape = it) },
-                        { BannerCountButton(Icons.AutoMirrored.Outlined.Comment, "Comments", 3, onClick = {}, isNew = true, shape = it) },
-                    ),
-                )
-            },
-        )
         PinCardButtons(
             group = listOf<JoinedButtonSlot>(
                 { JoinedButton(Icons.Outlined.PhotoLibrary, "Photos", it, onClick = {}) },

@@ -90,6 +90,7 @@
 | `tripinly://markers/{id}/comments` | The same, with the stop's comments sheet open (comments, replies, mentions, comment likes; 2026-11-07) |
 | `tripinly://me/followers` | Several new followers: from the center, my Followers segment; a push just opens the app for now (2026-11-07) |
 | `tripinly://users/{username}` | That person's profile (follows, new friends) |
+| `tripinly://places/{id}` | The spot map of that spot (flame milestones on a spot I made; 2026-11-23) |
 | `tripinly://settings` | Settings (iOS's "Tripinly notification settings" link; 2026-11-19) |
 | `https://<APP_LINK_BASE_URL>/invite/{token}` | Invite preview → accept (sign in first if needed) |
 | `https://<APP_LINK_BASE_URL>/trips/{id}` and `/markers/{id}` | Shared links (same as above) |

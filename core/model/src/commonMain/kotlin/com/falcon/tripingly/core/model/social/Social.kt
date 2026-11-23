@@ -74,7 +74,7 @@ data class HotState(val hot: Boolean, val hotCount: Int)
 
 enum class ReportTarget { User, Trip, Marker, Photo, Comment, PlaceImage }
 
-/** A popular place around the user (`GET /places/nearby`). */
+/** A popular place around the user (`GET /places/nearby`), or a spot found by name (`GET /places/spots`). */
 data class NearbyPlace(
     val id: String,
     val name: String,
@@ -88,8 +88,21 @@ data class NearbyPlace(
     val coverImageId: String?,
     val coverSource: PlaceImageSource?,
     val coverThumbUrl: String?,
-    val distanceMeters: Int,
+    /** From the user; null for a spot found by name without the location. */
+    val distanceMeters: Int?,
+    /** From OpenStreetMap's address, shown instead of a distance without the location; null when OSM has none. */
+    val city: String? = null,
 )
+
+/** Someone in people search or Nearby's people row, with what they are to me. */
+data class Person(val user: UserSummary, val isFriend: Boolean, val isFollowing: Boolean)
+
+/** A page of people, with how many match in all, counted up to [PeoplePage.TOTAL_CAP] ("999+"). */
+data class PeoplePage(val people: List<Person>, val total: Int, val nextCursor: String?) {
+    companion object {
+        const val TOTAL_CAP = 999
+    }
+}
 
 /** A change to a stop's comments by someone else, live from the trip. */
 sealed interface CommentChange {

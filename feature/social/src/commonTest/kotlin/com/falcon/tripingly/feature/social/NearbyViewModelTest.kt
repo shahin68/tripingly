@@ -1,32 +1,49 @@
 package com.falcon.tripingly.feature.social
 
-import com.falcon.tripingly.core.location.model.Coordinates
-import com.falcon.tripingly.core.location.permission.LocationPermission
-import com.falcon.tripingly.core.model.social.ExploreFilter
-import com.falcon.tripingly.core.model.social.ReportTarget
-import com.falcon.tripingly.core.model.trip.GeoPoint
-import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.test.advanceTimeBy
-import kotlinx.coroutines.test.advanceUntilIdle
-import kotlinx.coroutines.test.runTest
-import kotlin.test.Test
-import kotlin.test.assertEquals
-import kotlin.test.assertFalse
-import kotlin.test.assertTrue
+import com.falcon.tripingly.core.common.error.DataError
+import com.falcon.tripingly.core.common.result.AppResult
 import com.falcon.tripingly.core.data.config.FakeAppConfigRepository
 import com.falcon.tripingly.core.data.places.FakePlaceRepository
+import com.falcon.tripingly.core.data.users.FakeUserRepository
+import com.falcon.tripingly.core.data.users.UserRepository
+import com.falcon.tripingly.core.location.permission.LocationPermission
 import com.falcon.tripingly.core.model.config.AppConfig
 import com.falcon.tripingly.feature.social.presentation.nearby.NearbyViewModel
 import com.falcon.tripingly.feature.social.presentation.nearby.NearbyViewModel.Action
 import com.falcon.tripingly.feature.social.presentation.nearby.NearbyViewModel.Event
 import com.falcon.tripingly.feature.social.presentation.nearby.NearbyViewModel.Status
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertFalse
+import kotlin.test.assertNotNull
+import kotlin.test.assertTrue
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.test.TestScope
+import kotlinx.coroutines.test.advanceTimeBy
+import kotlinx.coroutines.test.advanceUntilIdle
+import kotlinx.coroutines.test.runTest
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class NearbyViewModelTest : SocialTestBase() {
 
+    /** The fake's people; follows are refused while [followRefused] is set. */
+    private class RefusingUsers(private val fake: FakeUserRepository = FakeUserRepository()) : UserRepository by fake {
+        var followRefused = false
+
+        override suspend fun setFollowing(userId: String, following: Boolean): AppResult<Unit, DataError.Network> =
+            if (followRefused) AppResult.Error(DataError.Network.NoInternet) else fake.setFollowing(userId, following)
+    }
+
+    private val people = RefusingUsers()
+
     private fun viewModel(config: AppConfig = AppConfig()) =
-        NearbyViewModel(social, FakePlaceRepository(), backend, backend, location, FakeAppConfigRepository(config))
+        NearbyViewModel(social, FakePlaceRepository(), people, location, FakeAppConfigRepository(config))
+
+    private fun TestScope.located(): NearbyViewModel = viewModel().also {
+        it.onAction(Action.PermissionChecked(LocationPermission.Granted))
+        advanceUntilIdle()
+    }
 
     @Test
     fun `the OpenStreetMap credit shows unless the server leaves OpenStreetMap places out`() {
@@ -90,76 +107,91 @@ class NearbyViewModelTest : SocialTestBase() {
     }
 
     @Test
-    fun aNearbyPlacesImages_openFromItsCover_andACommonsImageIsReportedAsAPlaceImage() = runTest {
-        val viewModel = viewModel()
-        viewModel.onAction(Action.PermissionChecked(LocationPermission.Granted))
-        advanceUntilIdle()
-        val place = viewModel.uiState.value.places.first()
+    fun `the people around come once I'm located, friends first, with how many there are`() = runTest {
+        val viewModel = located()
 
-        viewModel.onAction(Action.OpenImage(place))
-        assertEquals(place, viewModel.uiState.value.openImage)
-
-        val commons = commonsImage("commons-1")
-        viewModel.onAction(Action.ReportImage(commons))
-        viewModel.onAction(Action.SendReport("other"))
-        viewModel.onAction(Action.ReportImage(commons.copy(id = "photo-1", credit = null)))
-        viewModel.onAction(Action.SendReport("other"))
-        advanceUntilIdle()
-        assertEquals(listOf(ReportTarget.PlaceImage to "commons-1", ReportTarget.Photo to "photo-1"), reported)
-
-        viewModel.onAction(Action.CloseImage)
-        assertEquals(null, viewModel.uiState.value.openImage)
+        val around = viewModel.uiState.value.people
+        assertTrue(around.hasLoaded)
+        assertEquals(5, around.total)
+        assertTrue(around.people.first().isFriend)
+        assertEquals(around, viewModel.uiState.value.shownPeople)
     }
 
     @Test
-    fun addingAPlace_withoutTripsOfMine_says_so() = runTest {
-        val viewModel = viewModel()
-        viewModel.onAction(Action.PermissionChecked(LocationPermission.Granted))
+    fun `the search asks once typing pauses, from two characters, and finds people and spots`() = runTest {
+        val viewModel = located()
+
+        // One character is not a search: the grid stays.
+        viewModel.onAction(Action.QueryChanged("L"))
+        advanceUntilIdle()
+        assertFalse(viewModel.uiState.value.search.isSearching)
+        assertFalse(viewModel.uiState.value.search.hasLoaded)
+
+        viewModel.onAction(Action.QueryChanged("Lo"))
+        advanceTimeBy(100)
+        viewModel.onAction(Action.QueryChanged("Le"))
+        advanceTimeBy(299)
+        assertFalse(viewModel.uiState.value.search.hasLoaded, "nothing asked before the pause")
         advanceUntilIdle()
 
-        viewModel.onAction(Action.AddPlace(viewModel.uiState.value.places.first()))
-        advanceUntilIdle()
+        val search = viewModel.uiState.value.search
+        assertTrue(search.hasLoaded)
+        // The latest query won: Lena, and no Louvre.
+        assertEquals(listOf("lena"), search.people.people.map { it.user.username })
+        assertEquals(search.people, viewModel.uiState.value.shownPeople)
+        assertTrue(search.spots.none { it.name == "Louvre" })
 
-        assertEquals(null, viewModel.uiState.value.addPlace)
-        assertTrue(viewModel.uiState.value.message != null)
+        viewModel.onAction(Action.QueryChanged("Louv"))
+        advanceUntilIdle()
+        assertEquals(listOf("Louvre"), viewModel.uiState.value.search.spots.map { it.name })
+        // Located: each spot with its distance.
+        assertNotNull(viewModel.uiState.value.search.spots.single().distanceMeters)
+
+        // Cleared: the grid and the people around come back at once.
+        viewModel.onAction(Action.QueryChanged(""))
+        assertFalse(viewModel.uiState.value.search.isSearching)
+        assertEquals(viewModel.uiState.value.people, viewModel.uiState.value.shownPeople)
     }
 
     @Test
-    fun addingAPlace_pickTripThenDay_addsTheStop_andOpensTheTrip() = runTest {
-        val vienna = publicTrip().trip.id
-        val viewModel = viewModel()
-        viewModel.onAction(Action.PermissionChecked(LocationPermission.Granted))
-        advanceUntilIdle()
-        val place = viewModel.uiState.value.places.first()
+    fun `Follow switches at once and stays, a refusal puts it back`() = runTest {
+        val viewModel = located()
+        val julia = viewModel.uiState.value.people.people.first { it.user.username == "julia_t" }
+        assertFalse(julia.isFollowing)
 
-        viewModel.onAction(Action.AddPlace(place))
+        viewModel.onAction(Action.ToggleFollow(julia))
+        assertTrue(viewModel.uiState.value.people.people.first { it.user.id == julia.user.id }.isFollowing)
         advanceUntilIdle()
-        val trip = viewModel.uiState.value.addPlace!!.trips.single()
-        viewModel.onAction(Action.AddToTrip.PickTrip(trip))
-        advanceUntilIdle()
-        viewModel.onAction(Action.AddToTrip.PickDay(viewModel.uiState.value.addPlace!!.days.first()))
-        advanceUntilIdle()
+        val followed = viewModel.uiState.value.people.people.first { it.user.id == julia.user.id }
+        assertTrue(followed.isFollowing)
 
-        assertEquals(Event.OpenTrip(vienna), viewModel.events.first())
-        assertEquals(listOf(place.name), backend.observeTrip(vienna).first()!!.days.first().markers.map { it.name })
+        people.followRefused = true
+        viewModel.onAction(Action.ToggleFollow(followed))
+        assertFalse(viewModel.uiState.value.people.people.first { it.user.id == julia.user.id }.isFollowing)
+        advanceUntilIdle()
+        assertTrue(viewModel.uiState.value.people.people.first { it.user.id == julia.user.id }.isFollowing)
+        assertNotNull(viewModel.uiState.value.message)
     }
 
     @Test
-    fun addingAPlace_closingTheDays_goesBackToTheTrips() = runTest {
-        // One trip of mine to add to.
-        publicTrip()
-        val viewModel = viewModel()
-        viewModel.onAction(Action.PermissionChecked(LocationPermission.Granted))
-        advanceUntilIdle()
-        viewModel.onAction(Action.AddPlace(viewModel.uiState.value.places.first()))
-        advanceUntilIdle()
-        viewModel.onAction(Action.AddToTrip.PickTrip(viewModel.uiState.value.addPlace!!.trips.single()))
+    fun `someone I block leaves the faces and the count at once`() = runTest {
+        val viewModel = located()
+        val anna = viewModel.uiState.value.people.people.first()
+
+        people.setBlocked(anna.user.id, blocked = true)
         advanceUntilIdle()
 
-        viewModel.onAction(Action.AddToTrip.BackToTrips)
+        val shown = viewModel.uiState.value.people
+        assertTrue(shown.people.none { it.user.id == anna.user.id })
+        assertEquals(4, shown.total)
+    }
 
-        val addPlace = viewModel.uiState.value.addPlace!!
-        assertEquals(null, addPlace.trip)
-        assertEquals(1, addPlace.trips.size)
+    @Test
+    fun `the people sheet opens from the faces and closes`() = runTest {
+        val viewModel = located()
+        viewModel.onAction(Action.OpenPeople)
+        assertTrue(viewModel.uiState.value.isPeopleSheetOpen)
+        viewModel.onAction(Action.ClosePeople)
+        assertFalse(viewModel.uiState.value.isPeopleSheetOpen)
     }
 }

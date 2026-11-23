@@ -30,8 +30,6 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.falcon.tripingly.core.designsystem.component.AppPullToRefresh
-import com.falcon.tripingly.core.designsystem.component.AppTextField
-import com.falcon.tripingly.core.designsystem.component.AppTextFieldStyle
 import com.falcon.tripingly.core.designsystem.component.ButtonSize
 import com.falcon.tripingly.core.designsystem.component.DropdownAction
 import com.falcon.tripingly.core.designsystem.component.LoadStateContent
@@ -58,10 +56,8 @@ import com.falcon.tripingly.feature.social.generated.resources.social_following_
 import com.falcon.tripingly.feature.social.generated.resources.social_friends
 import com.falcon.tripingly.feature.social.generated.resources.social_friends_empty
 import com.falcon.tripingly.feature.social.generated.resources.social_notifications
-import com.falcon.tripingly.feature.social.generated.resources.social_people_none
 import com.falcon.tripingly.feature.social.generated.resources.social_profile_no_trips
 import com.falcon.tripingly.feature.social.generated.resources.social_retry
-import com.falcon.tripingly.feature.social.generated.resources.social_search_people
 import com.falcon.tripingly.feature.social.generated.resources.social_trips
 import com.falcon.tripingly.feature.social.presentation.component.EmptyText
 import com.falcon.tripingly.feature.social.presentation.component.LoadMoreAtEnd
@@ -73,7 +69,6 @@ import com.falcon.tripingly.feature.social.presentation.component.placeholderTri
 import com.falcon.tripingly.feature.social.presentation.component.previewPeople
 import com.falcon.tripingly.feature.social.presentation.component.previewTrip
 import com.falcon.tripingly.feature.social.presentation.component.unfollowAction
-import com.falcon.tripingly.feature.social.presentation.people.PeopleSearchViewModel
 import com.falcon.tripingly.feature.social.presentation.people.PeopleViewModel
 import com.falcon.tripingly.feature.social.presentation.profile.ProfileViewModel.Action
 import com.falcon.tripingly.feature.social.presentation.profile.ProfileViewModel.State
@@ -95,8 +90,8 @@ internal enum class ProfileSegment(val label: StringResource, val list: PeopleLi
 /**
  * The Profile tab: my header and counts, then my public trips, my friends, the people I follow, my followers or my
  * followers. The bell in my header opens the notification center ([onOpenNotifications]), with a red dot while
- * [hasUnseenNotifications]; [showFollowers] switches to my Followers (a tap on several new followers). While a name is
- * typed in the shell's top bar ([PeopleSearchField]), the people found replace it all.
+ * [hasUnseenNotifications]; [showFollowers] switches to my Followers (a tap on several new followers). Finding people
+ * is on Nearby now (Shahin, 2026-11-23).
  */
 @Composable
 internal fun MyProfileTab(
@@ -108,10 +103,8 @@ internal fun MyProfileTab(
     hasUnseenNotifications: Boolean,
     showFollowers: Boolean,
     onFollowersShown: () -> Unit,
-    searchViewModel: PeopleSearchViewModel = koinViewModel(),
     photoViewModel: MyProfilePhotoViewModel = koinViewModel(),
 ) {
-    val search by searchViewModel.uiState.collectAsStateWithLifecycle()
     val photo by photoViewModel.uiState.collectAsStateWithLifecycle()
     val choosePhoto = rememberPhotoPicker(single = true) { images -> photoViewModel.onAction(MyProfilePhotoViewModel.Action.Choose(images.first())) }
     var segment by rememberSaveable { mutableStateOf(ProfileSegment.Trips) }
@@ -130,14 +123,12 @@ internal fun MyProfileTab(
     }
     MyProfileScreen(
         state = state,
-        search = search,
         segment = segment,
         people = people?.first,
         photo = photo,
         onAction = onAction,
         onChoosePhoto = choosePhoto,
         onPhotoAction = photoViewModel::onAction,
-        onDismissSearchMessage = { searchViewModel.onAction(PeopleSearchViewModel.Action.DismissMessage) },
         onSegment = { segment = it },
         onPeopleAction = { action -> people?.second?.invoke(action) },
         onOpenProfile = onOpenProfile,
@@ -150,14 +141,12 @@ internal fun MyProfileTab(
 @Composable
 internal fun MyProfileScreen(
     state: State,
-    search: PeopleSearchViewModel.State,
     segment: ProfileSegment,
     people: PeopleViewModel.State?,
     photo: MyProfilePhotoViewModel.State,
     onAction: (Action) -> Unit,
     onChoosePhoto: () -> Unit,
     onPhotoAction: (MyProfilePhotoViewModel.Action) -> Unit,
-    onDismissSearchMessage: () -> Unit,
     onSegment: (ProfileSegment) -> Unit,
     onPeopleAction: (PeopleViewModel.Action) -> Unit,
     onOpenProfile: (username: String) -> Unit,
@@ -166,13 +155,12 @@ internal fun MyProfileScreen(
     hasUnseenNotifications: Boolean = false,
 ) {
     val contentPadding = screenContentPadding(barsPadding)
-    val message = state.message ?: search.message ?: people?.message ?: photo.message
+    val message = state.message ?: people?.message ?: photo.message
     ShowMessage(
         message = message?.asString(),
         onShown = {
             when (message) {
                 state.message -> onAction(Action.DismissMessage)
-                search.message -> onDismissSearchMessage()
                 photo.message -> onPhotoAction(MyProfilePhotoViewModel.Action.DismissMessage)
                 else -> onPeopleAction(PeopleViewModel.Action.OnDismissMessage)
             }
@@ -220,10 +208,6 @@ internal fun MyProfileScreen(
                 contentPadding = contentPadding,
                 verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
             ) {
-                if (search.isSearching) {
-                    peopleItems(search.results, isLoading = search.isLoading, loadError = null, empty = Res.string.social_people_none, onRetry = {}, onOpenProfile)
-                    return@LazyColumn
-                }
                 header()
                 when (val list = segment.list) {
                     null -> tripItems(state, onAction)
@@ -241,19 +225,6 @@ internal fun MyProfileScreen(
             }
         }
     }
-}
-
-/** The Profile tab's part of the shell's top bar: people search, on the tab's own [PeopleSearchViewModel]. */
-@Composable
-fun PeopleSearchField(onClose: () -> Unit, modifier: Modifier = Modifier, viewModel: PeopleSearchViewModel = koinViewModel()) {
-    AppTextField(
-        state = viewModel.queryField,
-        placeholder = stringResource(Res.string.social_search_people),
-        onTextChange = { viewModel.onAction(PeopleSearchViewModel.Action.QueryChanged(it)) },
-        onClose = onClose,
-        modifier = modifier.fillMaxWidth(),
-        style = AppTextFieldStyle.Search,
-    )
 }
 
 @Composable
@@ -352,15 +323,14 @@ private val PeopleList.empty: StringResource
     }
 
 @Composable
-private fun MyProfilePreview(segment: ProfileSegment, darkTheme: Boolean = false, query: String = "", hasUnseenNotifications: Boolean = false) {
+private fun MyProfilePreview(segment: ProfileSegment, darkTheme: Boolean = false, hasUnseenNotifications: Boolean = false) {
     TripinglyTheme(darkTheme = darkTheme) {
         MyProfileScreen(
             state = State(isMe = true, profile = previewProfile, trips = persistentListOf(previewTrip), isLoading = false),
-            search = PeopleSearchViewModel.State(query = query, results = previewPeople.toImmutableList()),
             segment = segment,
             people = PeopleViewModel.State(people = previewPeople.toImmutableList(), hasLoaded = true),
             photo = MyProfilePhotoViewModel.State(),
-            onAction = {}, onChoosePhoto = {}, onPhotoAction = {}, onDismissSearchMessage = {}, onSegment = {}, onPeopleAction = {}, onOpenProfile = {},
+            onAction = {}, onChoosePhoto = {}, onPhotoAction = {}, onSegment = {}, onPeopleAction = {}, onOpenProfile = {},
             hasUnseenNotifications = hasUnseenNotifications,
         )
     }
@@ -373,10 +343,6 @@ private fun MyProfileTripsPreview() = MyProfilePreview(ProfileSegment.Trips, has
 @Preview
 @Composable
 private fun MyProfileFriendsDarkPreview() = MyProfilePreview(ProfileSegment.Friends, darkTheme = true)
-
-@Preview
-@Composable
-private fun MyProfileSearchPreview() = MyProfilePreview(ProfileSegment.Trips, query = "ann")
 
 /** The bell's circle (Material's icon button) and its touch box. */
 private val BellSize = 40.dp

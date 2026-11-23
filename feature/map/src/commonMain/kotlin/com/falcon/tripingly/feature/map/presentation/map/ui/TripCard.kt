@@ -127,7 +127,12 @@ internal fun TripCardScrim(progress: () -> Float, onClose: () -> Unit, modifier:
 @Composable
 private fun OwnerRow(header: HeaderState, onOwnerClick: () -> Unit, onClose: () -> Unit, modifier: Modifier = Modifier) {
     val owner = header.owner
-    Row(modifier = modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(TitleGap)) {
+    CardTitleRow(
+        title = header.tripName,
+        byline = owner?.let { stringResource(Res.string.map_trip_card_by, it.displayName) },
+        onClose = onClose,
+        modifier = modifier,
+    ) {
         if (owner != null) {
             val profile = stringResource(Res.string.map_owner_profile, owner.username)
             AvatarCircle(
@@ -136,11 +141,20 @@ private fun OwnerRow(header: HeaderState, onOwnerClick: () -> Unit, onClose: () 
                 modifier = Modifier.clip(CircleShape).clickable(onClick = onOwnerClick).semantics { contentDescription = profile },
             )
         }
+    }
+}
+
+/**
+ * A card's first row, grown out of a title pill: the [face] (an avatar, or a place's kind) beside the whole [title]
+ * and its [byline], their tops in line, and the close button at the end. The trip card's and the spot card's.
+ */
+@Composable
+internal fun CardTitleRow(title: String, byline: String?, onClose: () -> Unit, modifier: Modifier = Modifier, face: @Composable () -> Unit = {}) {
+    Row(modifier = modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(TitleGap)) {
+        face()
         Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Text(header.tripName, style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.ExtraBold))
-            owner?.let {
-                Text(stringResource(Res.string.map_trip_card_by, it.displayName), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
+            Text(title, style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.ExtraBold))
+            byline?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
         }
         Box(
             modifier = Modifier
@@ -174,8 +188,9 @@ private fun DetailTiles(card: TripCardState, modifier: Modifier = Modifier) {
     }
 }
 
+/** A small tile of a card grown out of a title pill: its [label] over its [value]. */
 @Composable
-private fun DetailTile(label: String, modifier: Modifier = Modifier, value: @Composable () -> Unit) {
+internal fun DetailTile(label: String, modifier: Modifier = Modifier, value: @Composable () -> Unit) {
     Column(
         modifier = modifier
             .clip(TileShape)
@@ -189,8 +204,9 @@ private fun DetailTile(label: String, modifier: Modifier = Modifier, value: @Com
     }
 }
 
+/** A tile's value, bold, after an [icon] when it has one. */
 @Composable
-private fun TileValue(text: String, icon: ImageVector? = null, color: Color = MaterialTheme.colorScheme.onSurface) {
+internal fun TileValue(text: String, icon: ImageVector? = null, color: Color = MaterialTheme.colorScheme.onSurface) {
     Row(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
         icon?.let { Icon(it, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(14.dp)) }
         Text(text, style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.ExtraBold), color = color, maxLines = 1, overflow = TextOverflow.Ellipsis)
@@ -248,11 +264,11 @@ private fun MembersStrip(card: TripCardState, onClick: () -> Unit, modifier: Mod
 private const val SCRIM_ALPHA = 0.24f
 
 /** The same inset for the owner's face and the close button, and every row. */
-private val CardInset = 10.dp
-private val RowGap = 12.dp
+internal val CardInset = 10.dp
+internal val RowGap = 12.dp
 private val TitleGap = 12.dp
 private val CloseSize = 36.dp
-private val TileGap = 6.dp
+internal val TileGap = 6.dp
 private val TileShape = RoundedCornerShape(16.dp)
 private val StripRadius = 22.dp
 private val StripShape = RoundedCornerShape(StripRadius)

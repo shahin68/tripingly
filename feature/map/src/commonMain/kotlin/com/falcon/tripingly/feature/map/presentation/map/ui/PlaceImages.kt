@@ -26,6 +26,9 @@ import com.falcon.tripingly.feature.map.generated.resources.Res
 import com.falcon.tripingly.feature.map.generated.resources.map_place_images
 import com.falcon.tripingly.feature.map.presentation.map.preview.previewPlaceImages
 import org.jetbrains.compose.resources.stringResource
+import com.falcon.tripingly.core.designsystem.component.PhotoBanner
+import com.falcon.tripingly.core.designsystem.component.PinMark
+import com.falcon.tripingly.core.designsystem.component.BannerCount
 
 /**
  * The top of the place card: its images swiped through in a photo banner ([pagerState]), with its name, its [subtitle]

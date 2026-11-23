@@ -10,6 +10,7 @@ import com.falcon.tripingly.core.model.place.ImageCredit
 import com.falcon.tripingly.core.model.place.PlaceDetails
 import com.falcon.tripingly.core.model.place.PlaceImage
 import com.falcon.tripingly.core.model.place.PlaceImageSource
+import com.falcon.tripingly.core.model.place.MapPlace
 import com.falcon.tripingly.core.model.place.PlaceCategory
 import com.falcon.tripingly.core.model.place.PlaceSquare
 import com.falcon.tripingly.core.model.place.PlacesAround
@@ -303,6 +304,14 @@ class PlaceRepositoryTest {
         )
         assertNull(details.addedBy)
         assertTrue(details.isFromOsm)
+        assertEquals("Stephansplatz 1, Wien", details.address)
+        assertEquals(4, details.tripCount)
+        assertTrue(details.hotByMe)
+        // Its own pin, for a map that shows only this spot.
+        assertEquals(
+            MapPlace("p1", "Stephansdom", PlaceCategory("attraction"), GeoPoint(48.2085, 16.3731), isTripinly = true, hotCount = 3, prominence = 90, coverImageId = "ph1", coverThumbUrl = "https://r2/ph1/thumb"),
+            details.pin,
+        )
     }
 
     @Test
@@ -332,7 +341,7 @@ class PlaceRepositoryTest {
               "location": {"lat": 48.2085, "lng": 16.3731},
               "isTripinly": true, "hotCount": 3, "prominence": 90,
               "coverPhotoId": "ph1", "coverImageId": "ph1", "coverSource": "trip", "coverThumbUrl": "https://r2/ph1/thumb",
-              "hotByMe": false, "source": "osm", "isActive": true, "osmType": "way", "osmId": "1",
+              "hotByMe": true, "brand": null, "source": "osm", "isActive": true, "osmType": "way", "osmId": "1",
               "tags": {"openingHours": null, "website": null, "cuisine": null, "wikidata": null},
               "photoThumbUrls": ["https://r2/ph1/thumb"],
               "images": [
@@ -345,6 +354,7 @@ class PlaceRepositoryTest {
                             "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
                             "sourceUrl": "https://commons.wikimedia.org/wiki/File:Stephansdom_Wien.jpg"}}
               ],
+              "address": "Stephansplatz 1, Wien", "tripCount": 4,
               "addedBy": null,
               "attribution": "© OpenStreetMap contributors"
             }

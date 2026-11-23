@@ -71,7 +71,7 @@ class FakePlaceRepository : PlaceRepository {
 
     override suspend fun place(id: String): AppResult<PlaceDetails, DataError.Network> {
         val place = sights.firstOrNull { it.id == id } ?: return AppResult.Error(DataError.Network.Api(404, "NOT_FOUND", "This place isn't available."))
-        return AppResult.Success(PlaceDetails(place.id, place.name, place.category, place.hotCount, "Mo-Su 09:00-18:00", null, images = emptyList()))
+        return AppResult.Success(PlaceDetails(place.id, place.name, place.category, place.hotCount, "Mo-Su 09:00-18:00", null, images = emptyList(), pin = place))
     }
 
     /** The sights within [radiusMeters] of [point] but [excludePlaceId], of [categories], nearest first, with every kind counted. */
@@ -104,6 +104,32 @@ class FakePlaceRepository : PlaceRepository {
                 nextCursor = null,
             ),
         )
+
+    /** The sights named like [query], hot ones first; with [near], each with its distance. */
+    override suspend fun spots(query: String, near: GeoPoint?, cursor: String?): AppResult<Page<NearbyPlace>, DataError.Network> {
+        val trimmed = query.trim()
+        if (trimmed.length < 2) return AppResult.Success(Page(emptyList(), nextCursor = null))
+        return AppResult.Success(
+            Page(
+                sights.filter { it.name.contains(trimmed, ignoreCase = true) }.sortedByDescending { it.hotCount }.map { place ->
+                    NearbyPlace(
+                        id = place.id,
+                        name = place.name,
+                        category = place.category,
+                        location = place.location,
+                        isTripinly = place.isTripinly,
+                        hotCount = place.hotCount,
+                        hotByMe = false,
+                        coverImageId = null,
+                        coverSource = null,
+                        coverThumbUrl = null,
+                        distanceMeters = near?.let { distanceMeters(it, place.location) },
+                    )
+                },
+                nextCursor = null,
+            ),
+        )
+    }
 
     private fun distanceMeters(a: GeoPoint, b: GeoPoint): Int {
         val lat = (b.lat - a.lat) * METERS_PER_DEGREE

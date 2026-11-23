@@ -130,9 +130,9 @@ internal fun StopDetailsContent(card: StopCardState, onAction: (MapAction) -> Un
     }
 }
 
-/** A place's details. [photoStrip]: its first photos (an address from search has none). */
+/** A place's details. [photoStrip]: its first photos (an address from search has none). [canRoute]: Route from shows. */
 @Composable
-internal fun PlaceDetailsContent(card: PlaceCardState, onAction: (MapAction) -> Unit, onClose: () -> Unit, photoStrip: @Composable () -> Unit) {
+internal fun PlaceDetailsContent(card: PlaceCardState, onAction: (MapAction) -> Unit, onClose: () -> Unit, canRoute: Boolean = true, photoStrip: @Composable () -> Unit) {
     PinDetails(
         title = card.place.name,
         subtitle = card.address?.let(::AnnotatedString) ?: buildAnnotatedString {
@@ -153,7 +153,7 @@ internal fun PlaceDetailsContent(card: PlaceCardState, onAction: (MapAction) -> 
                     onOpenPhotos = { onAction(MapAction.PlaceCard.OpenPhotos) },
                     routes = card.routes,
                     onGoHere = { onAction(MapAction.PinRoute.GoHere) },
-                    onRoute = { onAction(MapAction.PinRoute.Route) },
+                    onRoute = { onAction(MapAction.PinRoute.Route) }.takeIf { canRoute },
                     onAround = { onAction(MapAction.Around.Open) },
                 ),
                 Modifier.horizontalScroll(rememberScrollState()),

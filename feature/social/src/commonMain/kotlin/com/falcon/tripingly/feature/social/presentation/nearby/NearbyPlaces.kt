@@ -3,29 +3,19 @@ package com.falcon.tripingly.feature.social.presentation.nearby
 import com.falcon.tripingly.core.common.result.AppResult
 import com.falcon.tripingly.core.data.places.PlaceRepository
 import com.falcon.tripingly.core.data.social.SocialRepository
-import com.falcon.tripingly.core.data.trips.MarkerRepository
-import com.falcon.tripingly.core.data.trips.TripRepository
 import com.falcon.tripingly.core.location.GetCurrentLocationUseCase
 import com.falcon.tripingly.core.location.permission.LocationPermission
 import com.falcon.tripingly.core.model.social.HotState
 import com.falcon.tripingly.core.model.social.NearbyPlace
 import com.falcon.tripingly.core.model.trip.GeoPoint
-import com.falcon.tripingly.core.model.trip.NewMarker
-import com.falcon.tripingly.core.model.trip.Trip
-import com.falcon.tripingly.core.model.trip.TripDay
 import com.falcon.tripingly.core.ui.UiText
 import com.falcon.tripingly.core.ui.toUiText
 import com.falcon.tripingly.feature.social.generated.resources.Res
-import com.falcon.tripingly.feature.social.generated.resources.social_add_place_no_trips
 import com.falcon.tripingly.feature.social.generated.resources.social_error_hot
-import com.falcon.tripingly.feature.social.generated.resources.social_error_load_days
 import com.falcon.tripingly.feature.social.generated.resources.social_error_load_nearby
 import com.falcon.tripingly.feature.social.generated.resources.social_nearby_location_unavailable
-import com.falcon.tripingly.feature.social.presentation.nearby.NearbyViewModel.AddPlaceState
-import com.falcon.tripingly.feature.social.presentation.nearby.NearbyViewModel.Event
 import com.falcon.tripingly.feature.social.presentation.nearby.NearbyViewModel.State
 import com.falcon.tripingly.feature.social.presentation.nearby.NearbyViewModel.Status
-import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
@@ -35,22 +25,24 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 /**
- * Nearby's places: popular places around me, marked hot and added to a day of one of my trips. It asks for the
- * location only once the tab is open; where it looked stays in memory only, for the next pages.
+ * Nearby's places: our users' hot spots around me first, then OpenStreetMap sights where we have few (the server's
+ * order), marked hot here. It asks for the location only once the tab is open; where it looked stays in memory only,
+ * for the next pages, the search and the people around ([onLocated]).
  */
 internal class NearbyPlaces(
     private val scope: CoroutineScope,
     private val state: MutableStateFlow<State>,
     private val placeRepository: PlaceRepository,
     private val socialRepository: SocialRepository,
-    private val tripRepository: TripRepository,
-    private val markerRepository: MarkerRepository,
     private val getCurrentLocation: GetCurrentLocationUseCase,
-    private val sendEvent: (Event) -> Unit,
+    private val onLocated: (GeoPoint) -> Unit,
     private val showMessage: (UiText) -> Unit,
 ) {
     private var cursor: String? = null
-    private var point: GeoPoint? = null
+
+    /** Where I was when Nearby looked; in memory only. */
+    var point: GeoPoint? = null
+        private set
     private var loadingMore: Job? = null
     private val hotJobs = mutableMapOf<String, Job>()
 
@@ -107,7 +99,9 @@ internal class NearbyPlaces(
         point?.let(::load)
     }
 
+    /** The places and the people around [point]. */
     private fun load(point: GeoPoint) {
+        onLocated(point)
         loadingMore?.cancel()
         // A retry from the error screen leaves it as it is until the answer; failing again also says why in the banner
         // (Shahin, 2026-11-22).
@@ -147,9 +141,9 @@ internal class NearbyPlaces(
         }
     }
 
-    /** A place's flame: shown at once and kept; a newer tap wins, and only a refusal puts it back. */
+    /** A place's flame, in the grid or the search: shown at once and kept; a newer tap wins, and only a refusal puts it back. */
     fun toggleHot(placeId: String) {
-        val shown = state.value.places.firstOrNull { it.id == placeId } ?: return
+        val shown = state.value.let { it.places + it.search.spots }.firstOrNull { it.id == placeId } ?: return
         if (hotJobs[placeId]?.isActive != true) confirmedHot[placeId] = HotState(shown.hotByMe, shown.hotCount)
         hotJobs[placeId]?.cancel()
         val hot = !shown.hotByMe
@@ -164,51 +158,8 @@ internal class NearbyPlaces(
         }
     }
 
-    private fun updatePlace(placeId: String, change: (NearbyPlace) -> NearbyPlace) =
-        update { nearby -> nearby.copy(places = nearby.places.map { if (it.id == placeId) change(it) else it }.toImmutableList()) }
-
-    /** The trips I can add stops to, from the device; the picked trip's days come from the server. */
-    fun openAddPlace(place: NearbyPlace) {
-        scope.launch {
-            val trips = tripRepository.observeMyTrips().first().filter { it.role.canEdit }
-            if (trips.isEmpty()) {
-                showMessage(UiText.Resource(Res.string.social_add_place_no_trips))
-                return@launch
-            }
-            state.update { it.copy(addPlace = AddPlaceState(place, trips.toImmutableList())) }
-        }
-    }
-
-    fun pickTrip(trip: Trip) {
-        state.update { it.copy(addPlace = it.addPlace?.copy(trip = trip, days = persistentListOf(), isLoadingDays = true)) }
-        scope.launch {
-            val result = tripRepository.refreshTrip(trip.id)
-            state.update { state ->
-                val addPlace = state.addPlace?.takeIf { it.trip?.id == trip.id } ?: return@update state
-                when (result) {
-                    is AppResult.Success -> state.copy(addPlace = addPlace.copy(days = result.data.days.toImmutableList(), isLoadingDays = false))
-                    // Back to the trips, so another can be picked or the same one tried again.
-                    is AppResult.Error -> state.copy(
-                        addPlace = addPlace.copy(trip = null, isLoadingDays = false),
-                        message = result.error.toUiText(Res.string.social_error_load_days),
-                    )
-                }
-            }
-        }
-    }
-
-    /** The days sheet closed: the trips show again. */
-    fun backToTrips() = state.update { it.copy(addPlace = it.addPlace?.copy(trip = null, days = persistentListOf(), isLoadingDays = false)) }
-
-    /** Added at once, like a stop added on the map, and the trip opens to show it. */
-    fun addPlace(day: TripDay) {
-        val addPlace = state.value.addPlace ?: return
-        val trip = addPlace.trip ?: return
-        val place = addPlace.place
-        state.update { it.copy(addPlace = null) }
-        scope.launch {
-            markerRepository.addMarker(trip.id, day.id, NewMarker(name = place.name, location = place.location, placeId = place.id))
-            sendEvent(Event.OpenTrip(trip.id))
-        }
+    private fun updatePlace(placeId: String, change: (NearbyPlace) -> NearbyPlace) = update { nearby ->
+        val changed: (List<NearbyPlace>) -> List<NearbyPlace> = { list -> list.map { if (it.id == placeId) change(it) else it } }
+        nearby.copy(places = changed(nearby.places).toImmutableList(), search = nearby.search.copy(spots = changed(nearby.search.spots).toImmutableList()))
     }
 }

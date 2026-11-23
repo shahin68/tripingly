@@ -4,7 +4,9 @@ import com.falcon.tripingly.core.common.error.DataError
 import com.falcon.tripingly.core.common.result.AppResult
 import com.falcon.tripingly.core.model.Page
 import com.falcon.tripingly.core.model.social.PeopleList
+import com.falcon.tripingly.core.model.social.PeoplePage
 import com.falcon.tripingly.core.model.social.Profile
+import com.falcon.tripingly.core.model.trip.GeoPoint
 import com.falcon.tripingly.core.model.trip.UserSummary
 import kotlinx.coroutines.flow.Flow
 
@@ -15,6 +17,13 @@ interface UserRepository {
      * The server needs two characters; a shorter query returns nothing without asking it.
      */
     suspend fun search(query: String): AppResult<List<UserSummary>, DataError.Network>
+
+    /**
+     * People for Nearby: whose username or display name starts with [query] (null or blank: everyone), friends first,
+     * then follows either way, then people with public trips around [near], then the most followed; a page at a time,
+     * with how many match. A one-letter query returns nothing without asking the server. [near] isn't stored.
+     */
+    suspend fun findPeople(query: String?, near: GeoPoint?, cursor: String? = null): AppResult<PeoplePage, DataError.Network>
 
     /** The user's friends (`GET /me/friends`), the first [FRIENDS_PAGE_SIZE]. */
     suspend fun friends(): AppResult<List<UserSummary>, DataError.Network>

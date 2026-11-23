@@ -121,6 +121,8 @@ internal fun BottomCards(
     /** In portrait, the height of the row of credits and map buttons riding on the card. */
     onButtonsHeight: (Int) -> Unit = {},
     modifier: Modifier = Modifier,
+    /** At the bottom of the card in the day tabs' place: the spot map's buttons. */
+    bottomBar: (@Composable () -> Unit)? = null,
 ) {
     val dayNumber = dayTabs.days.getOrNull(dayTabs.activeIndex)?.number ?: 1
     Column(modifier = modifier.fillMaxWidth()) {
@@ -156,7 +158,7 @@ internal fun BottomCards(
         // What always covers the map: the tabs (none without days) and the gap under the card, each measured.
         val covered = remember { IntArray(2) }
         val reportCovered = { onTabsHeight(covered.sum()) }
-        val hasCard = dayTabs.days.isNotEmpty() || plan != null
+        val hasCard = dayTabs.days.isNotEmpty() || plan != null || bottomBar != null
         // Without the card nothing of it covers the map; the gap below changes then and reports this.
         if (!hasCard) covered[0] = 0
         // Once the trip has loaded, the card (the plan and the day tabs) glides up from the bottom instead of popping
@@ -187,7 +189,7 @@ internal fun BottomCards(
                     }
                     // The day tabs stay at the bottom; the sheet opens above them.
                     Box(Modifier.onSizeChanged { covered[0] = it.height; reportCovered() }) {
-                        if (dayTabs.days.isNotEmpty()) DayTabs(tabs = dayTabs, canAddDay = editorMenu != null, onAction = onAction)
+                        if (bottomBar != null) bottomBar() else if (dayTabs.days.isNotEmpty()) DayTabs(tabs = dayTabs, canAddDay = editorMenu != null, onAction = onAction)
                     }
                 }
             }

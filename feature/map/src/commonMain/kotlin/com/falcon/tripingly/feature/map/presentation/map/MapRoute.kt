@@ -115,12 +115,29 @@ fun MapRoute(
         onAction = onAction,
     )
 
+    MapSheets(state.sheet, onAction, onOpenProfile) { isOpen, onDismiss -> membersContent(tripId.takeIf { isOpen }, onDismiss) }
+
+    state.dialog?.let { dialog -> MapDialogs(dialog, onAction) }
+}
+
+/**
+ * A map's sheets and its full screen image viewer, one at a time: the trip map's and the spot map's. [members]: the
+ * trip's members sheets, open while its first value is true. [canRoute]: a place's details offer Route from (not on the
+ * spot map, which has one pin).
+ */
+@Composable
+internal fun MapSheets(
+    sheet: MapSheet?,
+    onAction: (MapAction) -> Unit,
+    onOpenProfile: (String) -> Unit,
+    canRoute: Boolean = true,
+    members: @Composable (isOpen: Boolean, onDismiss: () -> Unit) -> Unit = { _, _ -> },
+) {
     // Photos, comments and members slide up as sheets; the image viewer is full screen. ✕, a swipe or a tap outside
     // closes every sheet; one opened from another (the details, the trips) has a back arrow instead of ✕ that goes back
     // to it, as the system back does (Shahin, 2026-11-13).
     val closeAll = { onAction(MapAction.Sheet.CloseAll) }
     val back = { onAction(MapAction.Sheet.Back) }
-    val sheet = state.sheet
     val onReportPhoto: (Photo) -> Unit = { photo -> onAction(MapAction.Sheet.ReportPhoto(photo)) }
     AppBottomSheet(value = sheet?.takeUnless { it is MapSheet.PlaceImage || it is MapSheet.Members || it.isDetails || it.isPickingDay }, onDismiss = closeAll, onBack = back.takeIf { sheet?.hasBack == true }) { shown, close ->
         when (shown) {
@@ -157,7 +174,7 @@ fun MapRoute(
                     coverPhotoId = shown.card.stop.coverPhotoId,
                 )
             }
-            is MapSheet.PlaceDetails -> PlaceDetailsContent(shown.card, onAction, onClose = close) {
+            is MapSheet.PlaceDetails -> PlaceDetailsContent(shown.card, onAction, onClose = close, canRoute = canRoute) {
                 // An address from search isn't one of our places: it has no photos.
                 if (shown.card.address == null) {
                     if (!LocalSheetArrived.current) PhotoStripSkeleton() else PhotoStripRoute(PhotoOwner.Place(shown.card.place.id), canAdd = true, onShowAll = { onAction(MapAction.PlaceCard.OpenPhotos) }, onReport = onReportPhoto)
@@ -167,7 +184,7 @@ fun MapRoute(
         }
     }
     // The members and their Add people page, each a sheet of its own, one at a time; kept composed so they slide away.
-    membersContent(tripId.takeIf { sheet is MapSheet.Members }, closeAll)
+    members(sheet is MapSheet.Members, closeAll)
     // The picked trip's days, in a sheet of their own in the trips' place; its back arrow goes back to the trips.
     AppBottomSheet(value = (sheet as? MapSheet.AddToTrip)?.takeIf { it.isPickingDay }, onDismiss = closeAll, onBack = back) { shown, close ->
         AddToTripSheet(shown.picker, onAction, onClose = close)
@@ -180,8 +197,6 @@ fun MapRoute(
             onDismiss = { onAction(MapAction.Sheet.ClosePlaceImage) },
         )
     }
-
-    state.dialog?.let { dialog -> MapDialogs(dialog, onAction) }
 }
 
 /** A place's photos, which anyone can add to. */

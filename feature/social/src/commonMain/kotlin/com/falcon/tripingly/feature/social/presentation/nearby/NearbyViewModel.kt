@@ -1,23 +1,18 @@
 package com.falcon.tripingly.feature.social.presentation.nearby
 
+import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.runtime.Immutable
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.falcon.tripingly.core.data.config.AppConfigRepository
 import com.falcon.tripingly.core.data.places.PlaceRepository
 import com.falcon.tripingly.core.data.social.SocialRepository
-import com.falcon.tripingly.core.data.trips.MarkerRepository
-import com.falcon.tripingly.core.data.trips.TripRepository
+import com.falcon.tripingly.core.data.users.UserRepository
 import com.falcon.tripingly.core.location.GetCurrentLocationUseCase
 import com.falcon.tripingly.core.location.permission.LocationPermission
-import com.falcon.tripingly.core.model.photo.Photo
 import com.falcon.tripingly.core.model.social.NearbyPlace
-import com.falcon.tripingly.core.model.social.ReportTarget
-import com.falcon.tripingly.core.model.trip.Trip
-import com.falcon.tripingly.core.model.trip.TripDay
+import com.falcon.tripingly.core.model.social.Person
 import com.falcon.tripingly.core.ui.UiText
-import com.falcon.tripingly.feature.social.presentation.component.ReportState
-import com.falcon.tripingly.feature.social.presentation.component.sendReport
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.coroutines.channels.Channel
@@ -29,17 +24,19 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 /**
- * The Nearby tab: popular places around me, marked hot, their images opened and reported, and added to a day of
- * one of my trips. The places and adding them are [NearbyPlaces].
+ * The Nearby tab (Shahin, 2026-11-23): spots around me in a grid ([NearbyPlaces]), people as a row of faces and a
+ * sheet ([NearbyPeople]), and the search for both from the shell's top bar ([NearbySearch]). A spot opens its own map.
  */
 class NearbyViewModel(
-    private val socialRepository: SocialRepository,
+    socialRepository: SocialRepository,
     placeRepository: PlaceRepository,
-    tripRepository: TripRepository,
-    markerRepository: MarkerRepository,
+    userRepository: UserRepository,
     getCurrentLocation: GetCurrentLocationUseCase,
     appConfigRepository: AppConfigRepository,
 ) : ViewModel() {
+
+    /** The search field in the shell's top bar; each change comes back as [Action.QueryChanged]. */
+    val queryField = TextFieldState()
 
     private val _uiState = MutableStateFlow(State(isOsmCreditShown = appConfigRepository.config.value.osmPinsEnabled))
     val uiState: StateFlow<State> = _uiState.asStateFlow()
@@ -47,9 +44,11 @@ class NearbyViewModel(
     private val _events = Channel<Event>(capacity = Channel.BUFFERED)
     val events = _events.receiveAsFlow()
 
-    private val places = NearbyPlaces(
-        viewModelScope, _uiState, placeRepository, socialRepository, tripRepository, markerRepository, getCurrentLocation, ::sendEvent, ::showMessage,
-    )
+    private val people = NearbyPeople(viewModelScope, _uiState, userRepository, ::showMessage)
+
+    private val places = NearbyPlaces(viewModelScope, _uiState, placeRepository, socialRepository, getCurrentLocation, people::load, ::showMessage)
+
+    private val search = NearbySearch(viewModelScope, _uiState, userRepository, placeRepository, { places.point }, people, ::showMessage)
 
     fun onAction(action: Action) {
         when (action) {
@@ -57,37 +56,14 @@ class NearbyViewModel(
             is Action.PermissionResult -> places.onPermission(action.permission, isAnswer = true)
             Action.AllowLocation -> sendEvent(if (_uiState.value.status == Status.Blocked) Event.OpenAppSettings else Event.RequestPermission)
             Action.Refresh -> places.refresh()
-            Action.LoadMore -> places.loadMore()
+            Action.LoadMore -> if (_uiState.value.search.isSearching) search.loadMore() else places.loadMore()
             is Action.MarkHot -> places.toggleHot(action.place.id)
-            is Action.AddPlace -> places.openAddPlace(action.place)
-            is Action.OpenImage -> _uiState.update { it.copy(openImage = action.place) }
-            Action.CloseImage -> _uiState.update { it.copy(openImage = null) }
-            // A Wikimedia Commons image has a credit; a trip photo doesn't.
-            is Action.ReportImage -> _uiState.update {
-                it.copy(report = ReportState(if (action.photo.credit != null) ReportTarget.PlaceImage else ReportTarget.Photo, action.photo.id))
-            }
-            is Action.SendReport -> sendReport(action.reason)
-            Action.DismissReport -> _uiState.update { it.copy(report = null) }
-            is Action.AddToTrip -> onAddToTrip(action)
+            is Action.QueryChanged -> search.onQuery(action.query)
+            Action.OpenPeople -> _uiState.update { it.copy(isPeopleSheetOpen = true) }
+            Action.ClosePeople -> _uiState.update { it.copy(isPeopleSheetOpen = false) }
+            Action.LoadMorePeople -> people.loadMore()
+            is Action.ToggleFollow -> people.toggleFollow(action.person)
             Action.DismissMessage -> _uiState.update { it.copy(message = null) }
-        }
-    }
-
-    private fun onAddToTrip(action: Action.AddToTrip) {
-        when (action) {
-            is Action.AddToTrip.PickTrip -> places.pickTrip(action.trip)
-            is Action.AddToTrip.PickDay -> places.addPlace(action.day)
-            Action.AddToTrip.Dismiss -> _uiState.update { it.copy(addPlace = null) }
-            Action.AddToTrip.BackToTrips -> places.backToTrips()
-        }
-    }
-
-    private fun sendReport(reason: String) {
-        val report = _uiState.value.report?.takeUnless { it.isSending } ?: return
-        _uiState.update { it.copy(report = report.copy(isSending = true)) }
-        viewModelScope.launch {
-            val sent = socialRepository.sendReport(report, reason, ::showMessage)
-            _uiState.update { it.copy(report = if (sent) null else it.report?.copy(isSending = false)) }
         }
     }
 
@@ -109,15 +85,27 @@ class NearbyViewModel(
         Ready,
     }
 
-    /** Adding a place to a day: first the trip, then its day. */
+    /** People in the row and the sheet, with how many there are in all (up to 999, "999+"). */
     @Immutable
-    data class AddPlaceState(
-        val place: NearbyPlace,
-        val trips: ImmutableList<Trip>,
-        val trip: Trip? = null,
-        val days: ImmutableList<TripDay> = persistentListOf(),
-        val isLoadingDays: Boolean = false,
+    data class PeopleState(
+        val people: ImmutableList<Person> = persistentListOf(),
+        val total: Int = 0,
+        val hasLoaded: Boolean = false,
     )
+
+    /** What the search found for [query]; it replaces the grid while [isSearching]. */
+    @Immutable
+    data class SearchState(
+        val query: String = "",
+        val people: PeopleState = PeopleState(),
+        val spots: ImmutableList<NearbyPlace> = persistentListOf(),
+        val isLoading: Boolean = false,
+        /** The first answer for a query came; until then the last results stay (no flash of an empty screen). */
+        val hasLoaded: Boolean = false,
+    ) {
+        /** Long enough to search: the results replace the grid. */
+        val isSearching: Boolean get() = query.trim().removePrefix("@").length >= UserRepository.MIN_SEARCH_LENGTH
+    }
 
     @Immutable
     data class State(
@@ -126,14 +114,20 @@ class NearbyViewModel(
         val isLoading: Boolean = false,
         /** Why the places couldn't load when there are none to show: the error screen with a retry. */
         val loadError: UiText? = null,
-        /** The place whose images are open full screen, from its cover. */
-        val openImage: NearbyPlace? = null,
-        val report: ReportState? = null,
-        val addPlace: AddPlaceState? = null,
+        val people: PeopleState = PeopleState(),
+        val search: SearchState = SearchState(),
+        /**
+         * The people sheet, of the people around or those the search found. It stays open while a profile opened from
+         * it covers Nearby: the sheet slides away and comes back on the way back.
+         */
+        val isPeopleSheetOpen: Boolean = false,
         val message: UiText? = null,
         /** The server lists OpenStreetMap places (OSM_PINS_ENABLED); off, Nearby has only users' places and no OSM credit. */
         val isOsmCreditShown: Boolean = true,
-    )
+    ) {
+        /** The people the row and the sheet show: those the search found while it's in use, else the people around. */
+        val shownPeople: PeopleState get() = if (search.isSearching) search.people else people
+    }
 
     sealed interface Action {
         /** The permission as Nearby opens or the app comes back, e.g. from Settings. */
@@ -145,26 +139,15 @@ class NearbyViewModel(
         data object Refresh : Action
         data object LoadMore : Action
         data class MarkHot(val place: NearbyPlace) : Action
-        data class AddPlace(val place: NearbyPlace) : Action
-        data class OpenImage(val place: NearbyPlace) : Action
-        data object CloseImage : Action
-        data class ReportImage(val photo: Photo) : Action
-        data class SendReport(val reason: String) : Action
-        data object DismissReport : Action
+        data class QueryChanged(val query: String) : Action
+        data object OpenPeople : Action
+        data object ClosePeople : Action
+        data object LoadMorePeople : Action
+        data class ToggleFollow(val person: Person) : Action
         data object DismissMessage : Action
-
-        /** The sheet that adds a place to a day of one of my trips. */
-        sealed interface AddToTrip : Action {
-            data class PickTrip(val trip: Trip) : AddToTrip
-            data class PickDay(val day: TripDay) : AddToTrip
-            data object Dismiss : AddToTrip
-            /** The days sheet closed: back to the trips. */
-            data object BackToTrips : AddToTrip
-        }
     }
 
     sealed interface Event {
-        data class OpenTrip(val tripId: String) : Event
         data object RequestPermission : Event
         data object OpenAppSettings : Event
     }

@@ -265,4 +265,9 @@
     <string name="map_share_trip_text">Schau dir diese Reise an: %1$s (%2$s)!</string>
     <string name="map_share_trip_text_no_dates">Schau dir diese Reise an: %1$s!</string>
     <string name="map_error_leave">Die Reise konnte nicht verlassen werden.</string>
+    <string name="map_spot_from_osm">Aus OpenStreetMap</string>
+    <string name="map_spot_card_type">Art</string>
+    <string name="map_spot_card_flames">Flammen</string>
+    <string name="map_spot_card_in_trips">In Reisen</string>
+    <string name="map_error_load_spot">Der Ort konnte nicht geladen werden.</string>
 </resources>

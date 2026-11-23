@@ -6,6 +6,7 @@ import com.falcon.tripingly.core.network.model.AroundResponseDto
 import com.falcon.tripingly.core.network.model.NearbyPageDto
 import com.falcon.tripingly.core.network.model.PlaceDetailDto
 import com.falcon.tripingly.core.network.model.SearchResponseDto
+import com.falcon.tripingly.core.network.model.SpotPageDto
 import com.falcon.tripingly.core.network.model.TilesResponseDto
 import de.jensklingenberg.ktorfit.http.GET
 import de.jensklingenberg.ktorfit.http.Path
@@ -58,6 +59,19 @@ interface PlacesApi {
         @Query("cursor") cursor: String?,
         @Query("limit") limit: Int,
     ): AppResult<NearbyPageDto, DataError.Network>
+
+    /**
+     * Our spots whose name matches [query] (2–100 characters), from anywhere: hot spots first, then OpenStreetMap
+     * places; no Photon. With [lat], [lng] nearer spots rank higher and carry their distance. The point isn't stored.
+     */
+    @GET("places/spots")
+    suspend fun spots(
+        @Query("q") query: String,
+        @Query("lat") lat: Double?,
+        @Query("lng") lng: Double?,
+        @Query("cursor") cursor: String?,
+        @Query("limit") limit: Int,
+    ): AppResult<SpotPageDto, DataError.Network>
 
     /**
      * Tripinly Pro (`403 PREMIUM_REQUIRED` otherwise): every place within [radiusMeters] (50–5000) of [lat], [lng],

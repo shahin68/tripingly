@@ -5,7 +5,7 @@ import com.falcon.tripingly.core.common.result.AppResult
 import com.falcon.tripingly.core.network.model.BlockedUsersDto
 import com.falcon.tripingly.core.network.model.ProfileDto
 import com.falcon.tripingly.core.network.model.UserPageDto
-import com.falcon.tripingly.core.network.model.UserSearchResultDto
+import com.falcon.tripingly.core.network.model.UserSearchPageDto
 import de.jensklingenberg.ktorfit.http.DELETE
 import de.jensklingenberg.ktorfit.http.GET
 import de.jensklingenberg.ktorfit.http.POST
@@ -15,9 +15,19 @@ import de.jensklingenberg.ktorfit.http.Query
 
 /** Other people: search, profiles, follows and blocks. */
 interface UsersApi {
-    /** Up to 20 people whose username or display name starts with [query] (2–50 characters). */
+    /**
+     * People whose username or display name starts with [query] (2–50 characters; null: everyone), friends first, then
+     * follows either way, then (with [lat], [lng]) people with public trips around that point, then the most followed.
+     * `total` counts up to 999. The point isn't stored.
+     */
     @GET("users/search")
-    suspend fun search(@Query("q") query: String): AppResult<UserSearchResultDto, DataError.Network>
+    suspend fun search(
+        @Query("q") query: String?,
+        @Query("lat") lat: Double? = null,
+        @Query("lng") lng: Double? = null,
+        @Query("cursor") cursor: String? = null,
+        @Query("limit") limit: Int? = null,
+    ): AppResult<UserSearchPageDto, DataError.Network>
 
     /** A profile with a page of the person's public trips. Unknown, or a block either way: 404. */
     @GET("users/{username}")

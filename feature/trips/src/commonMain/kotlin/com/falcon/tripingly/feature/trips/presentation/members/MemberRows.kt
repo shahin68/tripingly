@@ -5,7 +5,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
@@ -39,22 +38,13 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.semantics.clearAndSetSemantics
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.material3.LocalMinimumInteractiveComponentSize
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import androidx.compose.foundation.clickable
 import com.falcon.tripingly.core.designsystem.component.AppDropdownMenu
-import com.falcon.tripingly.core.designsystem.component.AvatarCircle
-import com.falcon.tripingly.core.designsystem.component.AvatarSize
 import com.falcon.tripingly.core.designsystem.component.ButtonSize
 import com.falcon.tripingly.core.designsystem.component.DropdownAction
 import com.falcon.tripingly.core.designsystem.component.GlassSurface
@@ -82,6 +72,9 @@ import com.falcon.tripingly.feature.trips.generated.resources.members_remove
 import com.falcon.tripingly.feature.trips.generated.resources.members_role_editor
 import com.falcon.tripingly.feature.trips.generated.resources.members_role_owner
 import org.jetbrains.compose.resources.stringResource
+import com.falcon.tripingly.core.designsystem.component.PersonRow
+import com.falcon.tripingly.core.designsystem.component.PersonFace
+import com.falcon.tripingly.core.designsystem.component.Tag
 
 /*
  * The members sheet's parts (design: the members sheet canvas, board "Search icon in the header", Shahin 2026-11-18):
@@ -169,42 +162,6 @@ internal fun CardTitle(text: String, hasNews: Boolean = false) {
     }
 }
 
-/** A person in a card: their avatar, name and [detail] ("@lena · yesterday"), and [actions] at the end. */
-@Composable
-internal fun PersonRow(
-    user: UserSummary,
-    detail: String,
-    modifier: Modifier = Modifier,
-    actions: @Composable RowScope.() -> Unit = {},
-) {
-    Row(
-        modifier = modifier.fillMaxWidth().heightIn(min = PersonRowHeight)
-            .padding(horizontal = MaterialTheme.spacing.extraSmall),
-        horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small + MaterialTheme.spacing.extraSmall),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        AvatarCircle(user, size = AvatarSize.Row)
-        Column(Modifier.weight(1f)) {
-            Text(
-                user.displayName,
-                style = MaterialTheme.typography.bodyLarge,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.skeletonText()
-            )
-            Text(
-                detail,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.skeletonText()
-            )
-        }
-        actions()
-    }
-}
-
 /** Someone on the trip: their role as a tag, and for an editor the owner can remove, ⋮ with Remove. */
 @Composable
 internal fun MemberRow(
@@ -228,33 +185,9 @@ internal fun MemberRow(
 /** Owner or Editor; both labels are laid out in every tag, so the two pills are the same size in every language. */
 @Composable
 private fun RoleTag(isOwner: Boolean) {
-    Box(
-        contentAlignment = Alignment.Center,
-        modifier = Modifier
-            .skeleton(CircleShape)
-            .clip(CircleShape)
-            .background(if (isOwner) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainerHigh)
-            .padding(
-                horizontal = MaterialTheme.spacing.small + MaterialTheme.spacing.extraSmall,
-                vertical = MaterialTheme.spacing.extraSmall
-            ),
-    ) {
-        val color =
-            if (isOwner) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant
-        RoleLabel(stringResource(Res.string.members_role_owner), color, isShown = isOwner)
-        RoleLabel(stringResource(Res.string.members_role_editor), color, isShown = !isOwner)
-    }
-}
-
-/** A hidden label still takes its room (and isn't read out), so it only sets the tag's width. */
-@Composable
-private fun RoleLabel(text: String, color: Color, isShown: Boolean) {
-    Text(
-        text = text,
-        style = MaterialTheme.typography.labelMedium,
-        color = color,
-        modifier = if (isShown) Modifier else Modifier.alpha(0f).clearAndSetSemantics {},
-    )
+    val owner = stringResource(Res.string.members_role_owner)
+    val editor = stringResource(Res.string.members_role_editor)
+    Tag(if (isOwner) owner else editor, isHighlighted = isOwner, sizedFor = listOf(owner, editor))
 }
 
 @Composable
@@ -346,39 +279,24 @@ internal fun FriendFaces(
 
 @Composable
 internal fun FriendFace(friend: UserSummary, onAdd: () -> Unit, modifier: Modifier = Modifier) {
-    val label = stringResource(Res.string.members_add_friend, friend.displayName)
-    Column(
-        modifier = modifier
-            .width(FaceWidth)
-            .clip(MaterialTheme.shapes.medium)
-            .clickable(role = Role.Button, onClickLabel = label, onClick = onAdd)
-            .padding(vertical = MaterialTheme.spacing.extraSmall),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraSmall),
+    PersonFace(
+        friend,
+        onClick = onAdd,
+        modifier = modifier,
+        onClickLabel = stringResource(Res.string.members_add_friend, friend.displayName),
     ) {
-        Box {
-            AvatarCircle(friend, size = AvatarSize.Medium)
-            Icon(
-                imageVector = Icons.Default.Add,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onPrimary,
-                modifier = Modifier
-                    .align(Alignment.BottomEnd)
-                    .size(FaceBadge)
-                    .skeleton(CircleShape)
-                    .background(MaterialTheme.colorScheme.surfaceContainerLowest, CircleShape)
-                    .padding(FaceBadgeRing)
-                    .background(MaterialTheme.colorScheme.primary, CircleShape)
-                    .padding(FaceBadgeRing),
-            )
-        }
-        Text(
-            text = friend.displayName,
-            style = MaterialTheme.typography.labelMedium,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            textAlign = TextAlign.Center,
-            modifier = Modifier.skeletonText(),
+        Icon(
+            imageVector = Icons.Default.Add,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.onPrimary,
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .size(FaceBadge)
+                .skeleton(CircleShape)
+                .background(MaterialTheme.colorScheme.surfaceContainerLowest, CircleShape)
+                .padding(FaceBadgeRing)
+                .background(MaterialTheme.colorScheme.primary, CircleShape)
+                .padding(FaceBadgeRing),
         )
     }
 }
@@ -457,9 +375,7 @@ private val InviteIconSize = 24.dp
 private val CardRadius = 20.dp
 private val CardPadding = 12.dp
 private val CardTitleHeight = 32.dp
-private val PersonRowHeight = 56.dp
 private val MenuButtonWidth = 48.dp
-private val FaceWidth = 72.dp
 private val FaceBadge = 24.dp
 private val FaceBadgeRing = 2.dp
 

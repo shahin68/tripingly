@@ -9,7 +9,6 @@
     <string name="social_nearby">A közelben</string>
     <string name="social_explore_empty">Még nincsenek itt utazások</string>
     <string name="social_explore_empty_hint">Próbálj másik időszakot, vagy nézz vissza kicsit később.</string>
-    <string name="social_people_none">Nincs ilyen nevű felhasználó.</string>
     <string name="social_save_trip">Mentés</string>
     <string name="social_saved_trip">Mentve</string>
     <plurals name="social_trip_stop_count">
@@ -29,13 +28,8 @@
     <string name="social_nearby_location_unavailable">A helyzeted most nem érhető el.</string>
     <string name="social_nearby_empty">Még nincs népszerű hely a közeledben</string>
     <string name="social_nearby_empty_hint">A környék kedvelt helyei itt jelennek meg.</string>
-    <string name="social_nearby_distance_m">%1$d m-re</string>
-    <string name="social_nearby_distance_km">%1$s km-re</string>
-    <string name="social_nearby_open_images">Fotók megtekintése</string>
-    <string name="social_add_place">Utazáshoz adás</string>
-    <string name="social_add_place_no_trips">Előbb hozz létre egy utazást, aztán adj hozzá helyeket.</string>
-    <string name="social_add_place_pick_trip">Melyik utazáshoz add hozzá: %1$s?</string>
-    <string name="social_add_place_pick_day">%1$s melyik napjára?</string>
+    <string name="social_nearby_distance_m">%1$d m</string>
+    <string name="social_nearby_distance_km">%1$s km</string>
     <string name="social_day_number">%1$d. nap</string>
 
     <!-- Profile -->
@@ -61,14 +55,12 @@
 
     <!-- Errors: what failed -->
     <string name="social_error_load_explore">Nem sikerült betölteni a Felfedezést.</string>
-    <string name="social_error_search_people">Nem sikerült embereket keresni.</string>
     <string name="social_error_like">Nem sikerült menteni a kedvelést.</string>
     <string name="social_error_hot">Nem sikerült hotspotként megjelölni a helyet.</string>
     <string name="social_error_save_trip">Nem sikerült elmenteni az utazást.</string>
     <string name="social_error_unsave_trip">Nem sikerült eltávolítani az utazást az utazásaid közül.</string>
     <string name="social_error_report">Nem sikerült elküldeni a bejelentést.</string>
     <string name="social_error_load_nearby">Nem sikerült betölteni a közeli helyeket.</string>
-    <string name="social_error_load_days">Nem sikerült betölteni az utazás napjait.</string>
     <string name="social_error_load_profile">Nem sikerült betölteni a profilt.</string>
     <string name="social_error_follow">Nem sikerült követni.</string>
     <string name="social_error_unfollow">Nem sikerült leállítani a követést.</string>
@@ -80,9 +72,7 @@
     <string name="social_trip_created">Létrehozva %1$s</string>
 
     <!-- Tabs (redesign) -->
-    <string name="social_search_people">Emberek keresése…</string>
     <string name="social_near_me">A közelemben</string>
-    <string name="social_location_note">A helyzetedet csak helyek kereséséhez használjuk, és soha nem mentjük.</string>
     <string name="social_trips">Utazások</string>
     <string name="social_public_trips_label">Nyilvános utazások</string>
     <string name="social_explore_period">Időszak: %1$s</string>
@@ -96,4 +86,10 @@
     <string name="social_trip_member">Benne vagy</string>
     <string name="social_trip_own">A te utazásod</string>
     <string name="social_notifications">Értesítések</string>
+    <string name="social_search_nearby">Emberek és helyek keresése…</string>
+    <string name="social_search_none">Nincs ilyen nevű találat.</string>
+    <string name="social_error_search">Most nem sikerült keresni.</string>
+    <string name="social_people">Emberek</string>
+    <string name="social_people_more">további %1$s ember</string>
+    <string name="social_friend_tag">Barát</string>
 </resources>

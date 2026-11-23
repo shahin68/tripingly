@@ -19,6 +19,9 @@ sealed interface DeepLink {
     data class Members(val tripId: String, override val notificationId: String? = null) : DeepLink
 
     /** My Followers, when several people followed me. */
+    /** A spot on its own map (a flame milestone). */
+    data class Place(val placeId: String, override val notificationId: String? = null) : DeepLink
+
     data class Followers(override val notificationId: String? = null) : DeepLink
 
     /** Someone's profile, by username. */
@@ -36,7 +39,7 @@ sealed interface DeepLink {
     companion object {
         /**
          * `tripinly://trips/{id}`, `tripinly://trips/{id}/members`, `tripinly://markers/{id}`,
-         * `tripinly://markers/{id}/comments`, `tripinly://me/followers`, `tripinly://users/{username}`,
+         * `tripinly://markers/{id}/comments`, `tripinly://places/{id}`, `tripinly://me/followers`, `tripinly://users/{username}`,
          * `tripinly://notifications`, `tripinly://settings`; anything else opens the app.
          */
         fun parse(url: String, notificationId: String? = null): DeepLink {
@@ -51,6 +54,7 @@ sealed interface DeepLink {
                 path.size == 2 && path[0] == "markers" -> Marker(id, notificationId)
                 path.size == 3 && path[0] == "markers" && path[2] == "comments" -> Marker(id, notificationId, showComments = true)
                 path == listOf("me", "followers") -> Followers(notificationId)
+                path.size == 2 && path[0] == "places" -> Place(id, notificationId)
                 path.size == 2 && path[0] == "users" -> User(id, notificationId)
                 else -> Home(notificationId)
             }

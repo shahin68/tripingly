@@ -34,13 +34,11 @@ import com.falcon.tripingly.core.designsystem.component.NavBarItem
 import com.falcon.tripingly.core.designsystem.component.SearchSettingsPill
 import com.falcon.tripingly.core.designsystem.component.safeSides
 import com.falcon.tripingly.core.designsystem.theme.spacing
-import com.falcon.tripingly.core.model.photo.PhotoOwner
 import com.falcon.tripingly.deeplink.DeepLinks
-import com.falcon.tripingly.feature.map.presentation.photos.PhotoViewerRoute
 import com.falcon.tripingly.feature.social.presentation.explore.ExplorePeriodAction
 import com.falcon.tripingly.feature.social.presentation.explore.ExploreRoute
 import com.falcon.tripingly.feature.social.presentation.nearby.NearbyRoute
-import com.falcon.tripingly.feature.social.presentation.profile.PeopleSearchField
+import com.falcon.tripingly.feature.social.presentation.nearby.NearbySearchField
 import com.falcon.tripingly.feature.social.presentation.profile.ProfileRoute
 import com.falcon.tripingly.feature.trips.presentation.screen.AddTripButton
 import com.falcon.tripingly.feature.trips.presentation.screen.HomeRoute
@@ -59,14 +57,14 @@ import org.koin.compose.koinInject
 internal enum class MainTab(val label: StringResource, val icon: ImageVector, val title: StringResource = label, val hasSearch: Boolean = false) {
     Trips(Res.string.tab_trips, Icons.Outlined.Luggage, Res.string.tab_trips_title, hasSearch = true),
     Explore(Res.string.tab_explore, Icons.Outlined.Explore),
-    Nearby(Res.string.tab_nearby, Icons.Outlined.NearMe),
-    Profile(Res.string.tab_profile, Icons.Outlined.Person, hasSearch = true),
+    Nearby(Res.string.tab_nearby, Icons.Outlined.NearMe, hasSearch = true),
+    Profile(Res.string.tab_profile, Icons.Outlined.Person),
 }
 
 /**
  * The tab shell: one floating top bar and one floating bottom bar over the tabs, which the user swipes between
  * like pages or picks in the bottom bar (tap, or drag its selection; a tap on a far tab jumps there without passing the tabs in between). The top bar animates to the page shown: its
- * title, the page's own action (Explore's period) and the search button in the Settings pill (Trips, Profile).
+ * title, the page's own action (Explore's period) and the search button in the Settings pill (Trips, Nearby).
  * The button opens the tab's search field with the keyboard; the field's ✕ closes both. A tab keeps its search open
  * while another is shown, like its scroll position. The Add Trip button
  * shrinks away off the Trips tab. Every tab keeps its scroll position and view models while another is shown
@@ -77,6 +75,7 @@ internal enum class MainTab(val label: StringResource, val icon: ImageVector, va
 internal fun MainTabs(
     onOpenTrip: (tripId: String) -> Unit,
     onOpenProfile: (username: String) -> Unit,
+    onOpenSpot: (placeId: String) -> Unit,
     onOpenSettings: () -> Unit,
     onOpenNotifications: () -> Unit,
     modifier: Modifier = Modifier,
@@ -118,7 +117,7 @@ internal fun MainTabs(
                     val onClose = { searching -= tab }
                     when (tab) {
                         MainTab.Trips -> { { TripsSearchField(onClose, Modifier.focusRequester(searchFocus)) } }
-                        MainTab.Profile -> { { PeopleSearchField(onClose, Modifier.focusRequester(searchFocus)) } }
+                        MainTab.Nearby -> { { NearbySearchField(onClose, Modifier.focusRequester(searchFocus)) } }
                         else -> null
                     }
                 },
@@ -139,13 +138,7 @@ internal fun MainTabs(
                 when (tab) {
                     MainTab.Trips -> HomeRoute(onNavigateToMap = onOpenTrip, barsPadding = barsPadding)
                     MainTab.Explore -> ExploreRoute(onOpenTrip = onOpenTrip, onOpenProfile = onOpenProfile, barsPadding = barsPadding)
-                    MainTab.Nearby -> NearbyRoute(
-                        onOpenTrip = onOpenTrip,
-                        placeImageContent = { placeId, imageId, onReport, onDismiss ->
-                            PhotoViewerRoute(owner = PhotoOwner.Place(placeId), photoId = imageId, onReport = onReport, onDismiss = onDismiss)
-                        },
-                        barsPadding = barsPadding,
-                    )
+                    MainTab.Nearby -> NearbyRoute(onOpenSpot = onOpenSpot, onOpenProfile = onOpenProfile, barsPadding = barsPadding)
                     MainTab.Profile -> ProfileRoute(
                         username = null,
                         onBack = {},

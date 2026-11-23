@@ -20,6 +20,10 @@ data object Home : Route
 @Serializable
 data class TripMap(val tripId: String, val stopId: String? = null, val showMembers: Boolean = false, val showComments: Boolean = false) : Route
 
+/** One spot on its own map (from Nearby, or a flame milestone push): the map is its card. */
+@Serializable
+data class SpotMap(val placeId: String) : Route
+
 /** Someone else's profile (my own is the Profile tab). */
 @Serializable
 data class Profile(val username: String) : Route
@@ -40,6 +44,7 @@ val NavConfig = SavedStateConfiguration {
         polymorphic(NavKey::class) {
             subclass(Home::class, Home.serializer())
             subclass(TripMap::class, TripMap.serializer())
+            subclass(SpotMap::class, SpotMap.serializer())
             subclass(Profile::class, Profile.serializer())
             subclass(Settings::class, Settings.serializer())
             subclass(Notifications::class, Notifications.serializer())

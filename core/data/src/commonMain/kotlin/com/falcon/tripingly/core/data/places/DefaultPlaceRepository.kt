@@ -28,6 +28,7 @@ import com.falcon.tripingly.core.model.trip.GeoPoint
 import com.falcon.tripingly.core.network.model.PlaceClusterDto
 import com.falcon.tripingly.core.network.model.NearbyPlaceDto
 import com.falcon.tripingly.core.network.model.PlaceDetailDto
+import com.falcon.tripingly.core.network.model.SpotDto
 import com.falcon.tripingly.core.network.model.PlaceImageDto
 import com.falcon.tripingly.core.network.model.SearchResultDto
 import com.falcon.tripingly.core.network.ApiConfig
@@ -249,6 +250,36 @@ internal class DefaultPlaceRepository(
             )
         }
 
+    override suspend fun spots(query: String, near: GeoPoint?, cursor: String?): AppResult<Page<NearbyPlace>, DataError.Network> {
+        val trimmed = query.trim()
+        if (trimmed.length < MIN_SPOT_QUERY) return AppResult.Success(Page(emptyList(), nextCursor = null))
+        return api.spots(trimmed, near?.lat, near?.lng, cursor, NEARBY_PAGE_SIZE).map { page ->
+            Page(
+                page.items.map { item ->
+                    NearbyPlace(
+                        id = item.id,
+                        name = item.name,
+                        category = PlaceCategory(item.category),
+                        location = GeoPoint(item.location.lat, item.location.lng),
+                        isTripinly = item.isTripinly,
+                        hotCount = item.hotCount.toInt(),
+                        hotByMe = item.hotByMe,
+                        coverImageId = item.coverImageId,
+                        coverSource = when (item.coverSource) {
+                            SpotDto.CoverSource.TRIP -> PlaceImageSource.Trip
+                            SpotDto.CoverSource.COMMONS -> PlaceImageSource.Commons
+                            null -> null
+                        },
+                        coverThumbUrl = item.coverThumbUrl,
+                        distanceMeters = item.distanceMeters?.toInt(),
+                        city = item.city,
+                    )
+                },
+                page.nextCursor,
+            )
+        }
+    }
+
     override suspend fun around(point: GeoPoint, radiusMeters: Int, categories: Set<PlaceCategory>, excludePlaceId: String?): AppResult<PlacesAround, DataError.Network> =
         api.around(point.lat, point.lng, radiusMeters, categories.query(), excludePlaceId).map { response ->
             PlacesAround(
@@ -297,6 +328,21 @@ internal class DefaultPlaceRepository(
         },
         addedBy = addedBy?.toUser(),
         isFromOsm = source == PlaceDetailDto.Source.OSM,
+        address = address,
+        tripCount = tripCount.toInt(),
+        pin = MapPlace(
+            id = id,
+            name = name,
+            category = PlaceCategory(category),
+            location = GeoPoint(location.lat, location.lng),
+            isTripinly = isTripinly,
+            hotCount = hotCount.toInt(),
+            prominence = prominence.toInt(),
+            coverImageId = coverImageId,
+            coverThumbUrl = coverThumbUrl,
+            brand = brand?.toBrand(apiConfig),
+        ),
+        hotByMe = hotByMe,
     )
 
     private class LoadedSquare {
@@ -312,6 +358,8 @@ internal class DefaultPlaceRepository(
         const val MAX_QUERY_LENGTH = 100
         const val DESTINATION_SCOPE = "destination"
         const val NEARBY_PAGE_SIZE = 20
+        // The server's shortest spot search.
+        const val MIN_SPOT_QUERY = 2
         // The server's limit of squares per request.
         const val MAX_SQUARES_PER_REQUEST = 16
         // A square is about four map tiles a side; 200 (the server's most) draws them about as densely as

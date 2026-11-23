@@ -4,6 +4,7 @@ import com.falcon.tripingly.core.common.coroutines.CoroutineDispatchers
 import com.falcon.tripingly.feature.map.presentation.comments.StopCommentsViewModel
 import com.falcon.tripingly.feature.map.presentation.map.MapViewModel
 import com.falcon.tripingly.feature.map.presentation.photos.PhotosViewModel
+import com.falcon.tripingly.feature.map.presentation.spot.SpotMapViewModel
 import org.koin.core.module.Module
 import org.koin.core.module.dsl.viewModel
 import org.koin.dsl.module
@@ -27,6 +28,22 @@ val mapModule = module {
             proRepository = get(),
             getCurrentLocationUseCase = get(),
             newActivityRepository = get(),
+            photoRepository = get(),
+            computation = get<CoroutineDispatchers>().default,
+        )
+    }
+    viewModel { params ->
+        SpotMapViewModel(
+            placeId = params.get(),
+            placeRepository = get(),
+            socialRepository = get(),
+            tripRepository = get(),
+            markerRepository = get(),
+            routeRepository = get(),
+            appConfigRepository = get(),
+            sessionRepository = get(),
+            proRepository = get(),
+            getCurrentLocationUseCase = get(),
             photoRepository = get(),
             computation = get<CoroutineDispatchers>().default,
         )

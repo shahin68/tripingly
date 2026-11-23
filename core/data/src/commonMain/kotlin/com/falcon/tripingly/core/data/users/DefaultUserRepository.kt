@@ -5,13 +5,18 @@ import com.falcon.tripingly.core.common.result.AppResult
 import com.falcon.tripingly.core.common.result.map
 import com.falcon.tripingly.core.common.result.onSuccess
 import com.falcon.tripingly.core.data.social.toProfile
+import com.falcon.tripingly.core.data.trips.profilePhotoOf
 import com.falcon.tripingly.core.data.trips.toUser
 import com.falcon.tripingly.core.data.users.UserRepository.Companion.FRIENDS_PAGE_SIZE
 import com.falcon.tripingly.core.data.users.UserRepository.Companion.MIN_SEARCH_LENGTH
 import com.falcon.tripingly.core.model.Page
 import com.falcon.tripingly.core.model.social.PeopleList
+import com.falcon.tripingly.core.model.social.PeoplePage
+import com.falcon.tripingly.core.model.social.Person
 import com.falcon.tripingly.core.model.social.Profile
+import com.falcon.tripingly.core.model.trip.GeoPoint
 import com.falcon.tripingly.core.model.trip.UserSummary
+import com.falcon.tripingly.core.network.model.PersonDto
 import com.falcon.tripingly.core.network.realtime.RealtimeClient
 import com.falcon.tripingly.core.network.realtime.RealtimeEvent
 import com.falcon.tripingly.core.network.users.UsersApi
@@ -29,8 +34,22 @@ class DefaultUserRepository(private val api: UsersApi, realtime: RealtimeClient)
     override suspend fun search(query: String): AppResult<List<UserSummary>, DataError.Network> {
         val trimmed = query.toUserQuery()
         if (trimmed.length < MIN_SEARCH_LENGTH) return AppResult.Success(emptyList())
-        return api.search(trimmed).map { page -> page.items.map { it.toUser() } }
+        return api.search(trimmed).map { page -> page.items.map { it.toPerson().user } }
     }
+
+    override suspend fun findPeople(query: String?, near: GeoPoint?, cursor: String?): AppResult<PeoplePage, DataError.Network> {
+        val trimmed = query?.toUserQuery()?.takeIf { it.isNotEmpty() }
+        if (trimmed != null && trimmed.length < MIN_SEARCH_LENGTH) return AppResult.Success(PeoplePage(emptyList(), 0, null))
+        return api.search(trimmed, near?.lat, near?.lng, cursor, PEOPLE_PAGE_SIZE).map { page ->
+            PeoplePage(page.items.map { it.toPerson() }, page.total.toInt(), page.nextCursor)
+        }
+    }
+
+    private fun PersonDto.toPerson() = Person(
+        user = UserSummary(id = id, username = username, displayName = displayName, photo = profilePhotoOf(avatarPhotoId, avatarThumbUrl)),
+        isFriend = isFriend,
+        isFollowing = isFollowing,
+    )
 
     override suspend fun friends(): AppResult<List<UserSummary>, DataError.Network> =
         api.friends(cursor = null, limit = FRIENDS_PAGE_SIZE).map { page -> page.items.map { it.toUser() } }

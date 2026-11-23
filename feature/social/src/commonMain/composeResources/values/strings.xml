@@ -9,7 +9,6 @@
     <string name="social_nearby">Nearby</string>
     <string name="social_explore_empty">No trips here yet</string>
     <string name="social_explore_empty_hint">Try another period, or come back a little later.</string>
-    <string name="social_people_none">No one found with that name.</string>
     <string name="social_save_trip">Save</string>
     <string name="social_saved_trip">Saved</string>
     <plurals name="social_trip_stop_count">
@@ -29,13 +28,8 @@
     <string name="social_nearby_location_unavailable">Your location isn’t available right now.</string>
     <string name="social_nearby_empty">No popular places around you yet</string>
     <string name="social_nearby_empty_hint">Places people love nearby show up here.</string>
-    <string name="social_nearby_distance_m">%1$d m away</string>
-    <string name="social_nearby_distance_km">%1$s km away</string>
-    <string name="social_nearby_open_images">Show photos</string>
-    <string name="social_add_place">Add to trip</string>
-    <string name="social_add_place_no_trips">Create a trip first, then add places to it.</string>
-    <string name="social_add_place_pick_trip">Add %1$s to which trip?</string>
-    <string name="social_add_place_pick_day">Which day of %1$s?</string>
+    <string name="social_nearby_distance_m">%1$d m</string>
+    <string name="social_nearby_distance_km">%1$s km</string>
     <string name="social_day_number">Day %1$d</string>
 
     <!-- Profile -->
@@ -61,14 +55,12 @@
 
     <!-- Errors: what failed -->
     <string name="social_error_load_explore">Couldn’t load Explore.</string>
-    <string name="social_error_search_people">Couldn’t search for people.</string>
     <string name="social_error_like">Couldn’t save your like.</string>
     <string name="social_error_hot">Couldn’t mark this place as hot.</string>
     <string name="social_error_save_trip">Couldn’t save the trip.</string>
     <string name="social_error_unsave_trip">Couldn’t remove the trip from your trips.</string>
     <string name="social_error_report">Couldn’t send your report.</string>
     <string name="social_error_load_nearby">Couldn’t load places near you.</string>
-    <string name="social_error_load_days">Couldn’t load the trip’s days.</string>
     <string name="social_error_load_profile">Couldn’t load the profile.</string>
     <string name="social_error_follow">Couldn’t follow them.</string>
     <string name="social_error_unfollow">Couldn’t unfollow them.</string>
@@ -80,9 +72,7 @@
     <string name="social_trip_created">Created %1$s</string>
 
     <!-- Tabs (redesign) -->
-    <string name="social_search_people">Search people…</string>
     <string name="social_near_me">Near me</string>
-    <string name="social_location_note">Your location is only used to find places and is never saved.</string>
     <string name="social_trips">Trips</string>
     <string name="social_public_trips_label">Public trips</string>
     <string name="social_explore_period">Explore period: %1$s</string>
@@ -96,4 +86,10 @@
     <string name="social_trip_member">You’re in it</string>
     <string name="social_trip_own">Your trip</string>
     <string name="social_notifications">Notifications</string>
+    <string name="social_search_nearby">Search people and spots…</string>
+    <string name="social_search_none">Nothing found with that name.</string>
+    <string name="social_error_search">Couldn’t search right now.</string>
+    <string name="social_people">People</string>
+    <string name="social_people_more">%1$s more people</string>
+    <string name="social_friend_tag">Friend</string>
 </resources>

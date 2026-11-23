@@ -101,6 +101,7 @@ import com.falcon.tripingly.feature.map.generated.resources.map_around_close
 import com.falcon.tripingly.feature.map.generated.resources.map_around_named
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.contentDescription
+import com.falcon.tripingly.core.designsystem.component.LoadingTitle
 
 /**
  * The open day's plan: "6 stops" (scrambling to "Ordering…" while the best order is found) with Route and the day's

@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.PhotoLibrary
@@ -29,6 +30,7 @@ import com.falcon.tripingly.feature.map.generated.resources.*
 import com.falcon.tripingly.feature.map.generated.resources.Res
 import com.falcon.tripingly.feature.map.presentation.map.AddedBy
 import com.falcon.tripingly.feature.map.presentation.map.PinAdd
+import com.falcon.tripingly.feature.map.presentation.map.PlaceCardState
 import com.falcon.tripingly.feature.map.presentation.map.PinRoutesState
 import com.falcon.tripingly.feature.map.presentation.map.preview.previewCafe
 import com.falcon.tripingly.feature.map.presentation.map.preview.previewPlace
@@ -79,17 +81,7 @@ internal fun PinCardScope.PlaceCard(
                 afterSubtitle = { addedBy?.let { AddedByInline(it, it.spotText()) } },
             )
         },
-        credit = {
-            CreditLine(
-                // Our places come from OpenStreetMap or from people; an address from search comes from OpenStreetMap too.
-                osm = address != null || details?.isFromOsm == true,
-                credit = images?.getOrNull(pagerState.currentPage)?.credit,
-                photoBy = images?.getOrNull(pagerState.currentPage)?.uploader?.username,
-                cropped = true,
-                maxLines = 2,
-                modifier = Modifier.padding(top = MaterialTheme.spacing.small).padding(horizontal = MaterialTheme.spacing.extraSmall),
-            )
-        },
+        credit = { PlaceCredit(osm = address != null || details?.isFromOsm == true, images, pagerState) },
         buttons = {
             PinCardButtons(
                 group = placeButtons(hasPhotos = address == null, onOpenPhotos, routes, onGoHere, onRoute, onAround),
@@ -102,9 +94,50 @@ internal fun PinCardScope.PlaceCard(
     )
 }
 
+/**
+ * A place's card that only shows it, its images and the credit, without buttons: the spot map's own spot (its buttons
+ * are in its bottom bar) and a place found around it.
+ */
+@Composable
+internal fun PinCardScope.PlaceViewCard(card: PlaceCardState, onOpenImage: (index: Int) -> Unit, onOpenPhotos: () -> Unit, modifier: Modifier = Modifier) {
+    val pagerState = rememberPagerState { card.images.orEmpty().size }
+    BigPinCard(
+        modifier = modifier.widthIn(max = MapCardMaxWidth),
+        banner = {
+            PlaceBanner(
+                name = card.place.name,
+                subtitle = card.place.category.label(),
+                category = card.place.category,
+                hotCount = card.details?.hotCount ?: card.place.hotCount,
+                images = card.images,
+                pagerState = pagerState,
+                onOpen = onOpenImage,
+                onOpenPhotos = onOpenPhotos,
+                afterSubtitle = { card.addedBy?.let { AddedByInline(it, it.spotText()) } },
+            )
+        },
+        credit = { PlaceCredit(osm = card.details?.isFromOsm == true, card.images, pagerState) },
+        buttons = null,
+    )
+}
+
+/** Where the place and the image showing come from: OpenStreetMap or people, a Commons image's author, a photo's uploader. */
+@Composable
+private fun PlaceCredit(osm: Boolean, images: List<PlaceImage>?, pagerState: PagerState) {
+    CreditLine(
+        // Our places come from OpenStreetMap or from people; an address from search comes from OpenStreetMap too.
+        osm = osm,
+        credit = images?.getOrNull(pagerState.currentPage)?.credit,
+        photoBy = images?.getOrNull(pagerState.currentPage)?.uploader?.username,
+        cropped = true,
+        maxLines = 2,
+        modifier = Modifier.padding(top = MaterialTheme.spacing.small).padding(horizontal = MaterialTheme.spacing.extraSmall),
+    )
+}
+
 /** A place's group: its photos (not for an address from search), then Go here, Route and Around. */
 @Composable
-internal fun placeButtons(hasPhotos: Boolean, onOpenPhotos: () -> Unit, routes: PinRoutesState, onGoHere: () -> Unit, onRoute: () -> Unit, onAround: (() -> Unit)? = null): List<JoinedButtonSlot> {
+internal fun placeButtons(hasPhotos: Boolean, onOpenPhotos: () -> Unit, routes: PinRoutesState, onGoHere: () -> Unit, onRoute: (() -> Unit)?, onAround: (() -> Unit)? = null): List<JoinedButtonSlot> {
     val photos = stringResource(Res.string.map_place_photos)
     val photo: JoinedButtonSlot = { shape -> JoinedButton(Icons.Outlined.PhotoLibrary, photos, shape, onClick = onOpenPhotos) }
     return listOfNotNull(photo.takeIf { hasPhotos }) + routeButtons(routes, onGoHere, onRoute, onAround)
