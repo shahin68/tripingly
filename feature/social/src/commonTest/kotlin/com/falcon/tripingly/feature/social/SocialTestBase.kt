@@ -18,12 +18,10 @@ import com.falcon.tripingly.core.location.permission.LocationPermission
 import com.falcon.tripingly.core.model.Page
 import com.falcon.tripingly.core.model.account.TripVisibility
 import com.falcon.tripingly.core.model.social.ExploreFilter
-import com.falcon.tripingly.core.model.social.ExplorePeriod
 import com.falcon.tripingly.core.model.social.HotState
 import com.falcon.tripingly.core.model.social.LikeState
 import com.falcon.tripingly.core.model.social.LikeTarget
 import com.falcon.tripingly.core.model.social.PublicTrip
-import com.falcon.tripingly.core.model.social.ReportReason
 import com.falcon.tripingly.core.model.social.ReportTarget
 import com.falcon.tripingly.core.model.trip.GeoPoint
 import com.falcon.tripingly.core.model.trip.NewTrip
@@ -76,7 +74,7 @@ abstract class SocialTestBase {
             return if (cursor == null) Page(explore, nextCursor = "page-2".takeIf { exploreMore.isNotEmpty() }).asSuccess() else Page(exploreMore, null).asSuccess()
         }
 
-        override suspend fun report(target: ReportTarget, targetId: String, reason: ReportReason, details: String?): AppResult<Unit, DataError.Network> {
+        override suspend fun report(target: ReportTarget, targetId: String, reason: String, details: String?): AppResult<Unit, DataError.Network> {
             reported += target to targetId
             return if (reportRefused) AppResult.Error(DataError.Network.NoInternet) else Unit.asSuccess()
         }

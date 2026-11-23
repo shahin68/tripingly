@@ -37,7 +37,7 @@ class TransitStepRowsTest {
 
     @Test
     fun aRouteFromAToBIsATimelineFromItsStartToAFlag() {
-        val rows = transitStepRows(listOf(leg), fromEnd = { TransitEnd(UiText.Server("Mariahilfer Kirche"), TransitPlaceIcon(category = PlaceCategory.Historic)) }, toEnd = { TransitEnd(UiText.Server("Wiener Riesenrad"), null) })
+        val rows = transitStepRows(listOf(leg), fromEnd = { TransitEnd(UiText.Server("Mariahilfer Kirche"), TransitPlaceIcon(category = PlaceCategory("historic"))) }, toEnd = { TransitEnd(UiText.Server("Wiener Riesenrad"), null) })
 
         assertEquals(
             listOf(TransitMark.Walk, TransitMark.Line(u3.color), TransitMark.Change, TransitMark.Line(u1.color), TransitMark.Line(u1.color), TransitMark.End),
@@ -56,7 +56,7 @@ class TransitStepRowsTest {
         assertEquals(Res.string.map_transit_change_walk, (rows[2].detail as UiText.Resource).resource)
         assertNull(rows.last().detail)
         // Only the route's own places carry their circle.
-        assertEquals(PlaceCategory.Historic, rows[0].icon?.category)
+        assertEquals(PlaceCategory("historic"), rows[0].icon?.category)
         assertEquals(listOf(true, false, false, false, false, false), rows.map { it.icon != null })
     }
 

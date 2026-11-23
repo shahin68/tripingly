@@ -15,7 +15,6 @@ import com.falcon.tripingly.core.model.account.SessionState
 import com.falcon.tripingly.core.model.social.Comment
 import com.falcon.tripingly.core.model.social.CommentChange
 import com.falcon.tripingly.core.model.social.LikeTarget
-import com.falcon.tripingly.core.model.social.ReportReason
 import com.falcon.tripingly.core.model.social.ReportTarget
 import com.falcon.tripingly.core.model.trip.UserSummary
 import com.falcon.tripingly.core.ui.UiText
@@ -286,7 +285,7 @@ class StopCommentsViewModel(
         }
     }
 
-    private fun sendReport(reason: ReportReason, details: String) {
+    private fun sendReport(reason: String, details: String) {
         val comment = _uiState.value.reporting ?: return
         if (_uiState.value.isReporting) return
         _uiState.update { it.copy(isReporting = true) }
@@ -376,7 +375,7 @@ class StopCommentsViewModel(
         data object OnConfirmDelete : Action
         data object OnDismissDelete : Action
         data class OnReport(val comment: Comment) : Action
-        data class OnSendReport(val reason: ReportReason) : Action
+        data class OnSendReport(val reason: String) : Action
         data object OnDismissReport : Action
         data object OnDismissMessage : Action
     }

@@ -328,7 +328,7 @@ private fun PlaceCircle(icon: TransitPlaceIcon) {
                 Icon(
                     imageVector = when {
                         icon.isMyLocation -> Icons.Default.MyLocation
-                        else -> icon.category?.icon ?: Icons.Default.Place
+                        else -> icon.category?.icon() ?: Icons.Default.Place
                     },
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -463,8 +463,8 @@ private fun TransitPreviewContent() {
             val (title, subtitle) = transitStepsHeader(previewRoute)
             val rows = transitStepRows(
                 previewRoute.legs,
-                fromEnd = { TransitEnd(UiText.Server("Mariahilfer Kirche"), TransitPlaceIcon(category = PlaceCategory.Historic)) },
-                toEnd = { TransitEnd(UiText.Server("Wiener Riesenrad"), TransitPlaceIcon(category = PlaceCategory.Attraction)) },
+                fromEnd = { TransitEnd(UiText.Server("Mariahilfer Kirche"), TransitPlaceIcon(category = PlaceCategory("historic"))) },
+                toEnd = { TransitEnd(UiText.Server("Wiener Riesenrad"), TransitPlaceIcon(category = PlaceCategory("attraction"))) },
             )
             TransitStepsSheet(MapSheet.TransitSteps(title, subtitle, rows.toImmutableList(), isTypicalTimes = true, attribution = "Timetables: Wiener Linien · © OpenStreetMap contributors"), onClose = {})
         }

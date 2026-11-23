@@ -89,7 +89,7 @@ internal class PlaceImageStripPreviewStates : PreviewParameterProvider<List<Plac
 @Composable
 private fun PlaceBannerPreview(@PreviewParameter(PlaceImageStripPreviewStates::class) images: List<PlaceImage>?) {
     TripinglyTheme {
-        PlaceBanner("Peterskirche", "Attraction · Innere Stadt", PlaceCategory.Attraction, 2_300, images, rememberPagerState { images.orEmpty().size }, onOpen = {}, onOpenPhotos = {}, modifier = Modifier.width(320.dp))
+        PlaceBanner("Peterskirche", "Attraction · Innere Stadt", PlaceCategory("attraction"), 2_300, images, rememberPagerState { images.orEmpty().size }, onOpen = {}, onOpenPhotos = {}, modifier = Modifier.width(320.dp))
     }
 }
 
@@ -97,6 +97,6 @@ private fun PlaceBannerPreview(@PreviewParameter(PlaceImageStripPreviewStates::c
 @Composable
 private fun PlaceBannerDarkPreview() {
     TripinglyTheme(darkTheme = true) {
-        PlaceBanner("Peterskirche", "Attraction", PlaceCategory.Attraction, 0, emptyList(), rememberPagerState { 0 }, onOpen = {}, onOpenPhotos = {}, modifier = Modifier.width(320.dp))
+        PlaceBanner("Peterskirche", "Attraction", PlaceCategory("attraction"), 0, emptyList(), rememberPagerState { 0 }, onOpen = {}, onOpenPhotos = {}, modifier = Modifier.width(320.dp))
     }
 }

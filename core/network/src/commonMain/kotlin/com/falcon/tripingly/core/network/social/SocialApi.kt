@@ -24,14 +24,14 @@ import de.jensklingenberg.ktorfit.http.Query
 /** Explore, comments, likes and reports. */
 interface SocialApi {
     /**
-     * Public trips, mine included, most liked first. [period]: `week`, `month`, `year`, `season` or `all`;
+     * Public trips, mine included, most liked first. [period]: a key from app-config `explorePeriods`, null for the server's default;
      * [lat] and [lng] together keep trips with a stop nearby.
      */
     @GET("explore/trips")
     suspend fun explore(
         @Query("cursor") cursor: String?,
         @Query("limit") limit: Int,
-        @Query("period") period: String,
+        @Query("period") period: String?,
         @Query("lat") lat: Double?,
         @Query("lng") lng: Double?,
     ): AppResult<TripSummaryPageDto, DataError.Network>

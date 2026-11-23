@@ -35,8 +35,8 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.produceState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -50,8 +50,10 @@ import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import com.falcon.tripingly.core.designsystem.component.AppTextField
 import com.falcon.tripingly.core.designsystem.component.PillChip
+import com.falcon.tripingly.core.designsystem.component.PreviewPlaceKinds
 import com.falcon.tripingly.core.designsystem.component.horizontalFadingEdge
 import com.falcon.tripingly.core.designsystem.component.icon
+import com.falcon.tripingly.core.designsystem.component.label
 import com.falcon.tripingly.core.designsystem.component.rememberHaptics
 import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
 import com.falcon.tripingly.core.designsystem.theme.spacing
@@ -66,6 +68,8 @@ import com.falcon.tripingly.feature.map.generated.resources.map_new_spot_name
 import com.falcon.tripingly.feature.map.generated.resources.map_new_spot_remove_photo
 import com.falcon.tripingly.feature.map.presentation.component.SelectedPinSize
 import com.falcon.tripingly.feature.map.presentation.map.NewSpotCardState
+import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.toImmutableList
 import org.jetbrains.compose.resources.stringResource
 
 /**
@@ -122,6 +126,7 @@ internal fun PinCardScope.NewSpotCard(
             }
         }
         CategoryRow(
+            categories = card.categories,
             selected = card.category,
             onPick = { category ->
                 haptics.tick()
@@ -133,24 +138,24 @@ internal fun PinCardScope.NewSpotCard(
 }
 
 /**
- * Every kind of place in one sideways row; it scrolls out to the card's edges and starts in line with the row above,
- * scrolled so the picked kind is in sight when the card opens again (e.g. after rotation).
+ * The kinds people can pick (the server's list, in its order) in one sideways row; it scrolls out to the card's edges and
+ * starts in line with the row above, scrolled so the picked kind is in sight when the card opens again (e.g. after rotation).
  */
 @Composable
-private fun CategoryRow(selected: PlaceCategory, onPick: (PlaceCategory) -> Unit, modifier: Modifier = Modifier) {
-    val state = rememberLazyListState(initialFirstVisibleItemIndex = SpotCategories.indexOf(selected).coerceAtLeast(0))
+private fun CategoryRow(categories: ImmutableList<PlaceCategory>, selected: PlaceCategory, onPick: (PlaceCategory) -> Unit, modifier: Modifier = Modifier) {
+    val state = rememberLazyListState(initialFirstVisibleItemIndex = categories.indexOf(selected).coerceAtLeast(0))
     LazyRow(
         state = state,
         modifier = modifier.fillMaxWidth().horizontalFadingEdge(state),
         contentPadding = PaddingValues(horizontal = MaterialTheme.spacing.small),
         horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
     ) {
-        items(SpotCategories, key = { it.name }) { category ->
+        items(categories, key = { it.key }) { category ->
             PillChip(
-                label = stringResource(category.label()),
+                label = category.label(),
                 onClick = { onPick(category) },
                 selected = category == selected,
-                leading = { Icon(category.icon, contentDescription = null, modifier = Modifier.padding(start = MaterialTheme.spacing.small).size(ChipIconSize)) },
+                leading = { Icon(category.icon(), contentDescription = null, modifier = Modifier.padding(start = MaterialTheme.spacing.small).size(ChipIconSize)) },
                 modifier = Modifier.animateItem(),
             )
         }
@@ -199,51 +204,6 @@ private fun SpotPhotoButton(photo: PickedImage?, onAdd: () -> Unit, onRemove: ()
     }
 }
 
-/**
- * Spot first, the default, then our own Photo spot and Romantic spot; then food and drink, sights, nature, things to do,
- * shopping, staying and getting around, and the practical ones last.
- */
-private val SpotCategories = listOf(
-    PlaceCategory.Other,
-    PlaceCategory.PhotoSpot,
-    PlaceCategory.Romantic,
-    PlaceCategory.Cafe,
-    PlaceCategory.Restaurant,
-    PlaceCategory.Bar,
-    PlaceCategory.Bakery,
-    PlaceCategory.FastFood,
-    PlaceCategory.Nightlife,
-    PlaceCategory.Winery,
-    PlaceCategory.Attraction,
-    PlaceCategory.Viewpoint,
-    PlaceCategory.Museum,
-    PlaceCategory.Historic,
-    PlaceCategory.Landmark,
-    PlaceCategory.Zoo,
-    PlaceCategory.Park,
-    PlaceCategory.Nature,
-    PlaceCategory.Beach,
-    PlaceCategory.Entertainment,
-    PlaceCategory.Cinema,
-    PlaceCategory.Sports,
-    PlaceCategory.Spa,
-    PlaceCategory.Kids,
-    PlaceCategory.Library,
-    PlaceCategory.Shopping,
-    PlaceCategory.Market,
-    PlaceCategory.Groceries,
-    PlaceCategory.Stay,
-    PlaceCategory.Camping,
-    PlaceCategory.Transport,
-    PlaceCategory.Rental,
-    PlaceCategory.Fuel,
-    PlaceCategory.Parking,
-    PlaceCategory.Money,
-    PlaceCategory.Health,
-    PlaceCategory.Pharmacy,
-    PlaceCategory.Toilets,
-)
-
 /** The server's limit for a stop's name. */
 private const val MAX_SPOT_NAME_LENGTH = 120
 /** The photo and Create buttons, as high as the name field. */
@@ -272,7 +232,13 @@ private fun NewSpotCardLandscapePreview() {
 
 @Composable
 private fun NewSpotCardPreviewContent() {
-    val card = NewSpotCardState(Coordinates(48.1915, 16.3809), rememberTextFieldState("KFC"), PlaceCategory.FastFood, photo = null)
+    val card = NewSpotCardState(
+        Coordinates(48.1915, 16.3809),
+        rememberTextFieldState("KFC"),
+        PreviewPlaceKinds.forSpots.map { it.category }.toImmutableList(),
+        PlaceCategory("fast_food"),
+        photo = null,
+    )
     PinCard(card = card, key = { it.location }, pinClearance = SelectedPinSize / 2) { shown ->
         NewSpotCard(shown, onPickCategory = {}, onPhoto = {}, onCreate = {})
     }

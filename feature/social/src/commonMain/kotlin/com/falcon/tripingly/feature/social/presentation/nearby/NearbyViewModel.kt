@@ -12,7 +12,6 @@ import com.falcon.tripingly.core.location.GetCurrentLocationUseCase
 import com.falcon.tripingly.core.location.permission.LocationPermission
 import com.falcon.tripingly.core.model.photo.Photo
 import com.falcon.tripingly.core.model.social.NearbyPlace
-import com.falcon.tripingly.core.model.social.ReportReason
 import com.falcon.tripingly.core.model.social.ReportTarget
 import com.falcon.tripingly.core.model.trip.Trip
 import com.falcon.tripingly.core.model.trip.TripDay
@@ -83,7 +82,7 @@ class NearbyViewModel(
         }
     }
 
-    private fun sendReport(reason: ReportReason) {
+    private fun sendReport(reason: String) {
         val report = _uiState.value.report?.takeUnless { it.isSending } ?: return
         _uiState.update { it.copy(report = report.copy(isSending = true)) }
         viewModelScope.launch {
@@ -150,7 +149,7 @@ class NearbyViewModel(
         data class OpenImage(val place: NearbyPlace) : Action
         data object CloseImage : Action
         data class ReportImage(val photo: Photo) : Action
-        data class SendReport(val reason: ReportReason) : Action
+        data class SendReport(val reason: String) : Action
         data object DismissReport : Action
         data object DismissMessage : Action
 

@@ -48,6 +48,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.tooling.preview.PreviewParameter
 import androidx.compose.ui.tooling.preview.PreviewParameterProvider
 import androidx.compose.ui.unit.dp
+import com.falcon.tripingly.core.designsystem.component.label
 import com.falcon.tripingly.core.designsystem.component.CountButton
 import com.falcon.tripingly.core.designsystem.component.CountLabelSize
 import com.falcon.tripingly.core.designsystem.component.CreditLine
@@ -199,7 +200,7 @@ internal fun imagePosition(count: Int, page: Int): String? =
 @Composable
 internal fun stopSubtitle(card: StopCardState, numberColor: Color = Color.Unspecified, position: String? = null, withIcon: Boolean = false): AnnotatedString {
     val number = stringResource(Res.string.map_stop_number, card.stop.orderNumber)
-    val type = card.category?.let { stringResource(it.label()) }
+    val type = card.category?.label()
     return buildAnnotatedString {
         withStyle(SpanStyle(fontWeight = FontWeight.ExtraBold, color = numberColor)) { append(number) }
         type?.let {

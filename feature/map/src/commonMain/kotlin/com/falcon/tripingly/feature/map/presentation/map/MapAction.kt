@@ -10,7 +10,6 @@ import com.falcon.tripingly.core.model.place.PlaceCategory
 import com.falcon.tripingly.core.model.place.PlaceCluster
 import com.falcon.tripingly.core.model.place.PlaceSearchResult
 import com.falcon.tripingly.core.model.route.TravelMode
-import com.falcon.tripingly.core.model.social.ReportReason
 import com.falcon.tripingly.feature.map.presentation.component.MapMarker
 import com.falcon.tripingly.feature.map.presentation.component.PinEnd
 
@@ -222,7 +221,7 @@ sealed interface MapAction {
         /** Deletes the stop or day although other people's content goes with it. */
         data object DeleteAnyway : Dialog
         data object DismissDeleteAnyway : Dialog
-        data class SendReport(val reason: ReportReason) : Dialog
+        data class SendReport(val reason: String) : Dialog
         data object DismissReport : Dialog
         data object ApplyBestOrder : Dialog
         data object DismissBestOrder : Dialog

@@ -7,7 +7,6 @@ import com.falcon.tripingly.core.data.trips.TripErrorCodes
 import com.falcon.tripingly.core.data.trips.TripRepository
 import com.falcon.tripingly.core.data.trips.hasCode
 import com.falcon.tripingly.core.model.photo.Photo
-import com.falcon.tripingly.core.model.social.ReportReason
 import com.falcon.tripingly.core.model.social.ReportTarget
 import com.falcon.tripingly.core.ui.UiText
 import com.falcon.tripingly.core.ui.toUiText
@@ -133,7 +132,7 @@ internal class MapSharing(
     /** A place's Commons image is reported as the place's image, every other photo as a photo. */
     fun reportPhoto(photo: Photo) = report(if (photo.credit != null) ReportTarget.PlaceImage else ReportTarget.Photo, photo.id)
 
-    fun sendReport(reason: ReportReason) {
+    fun sendReport(reason: String) {
         val report = context.model.value.dialog as? Dialog.Report ?: return
         if (report.isSending) return
         context.update { it.copy(dialog = report.copy(isSending = true)) }

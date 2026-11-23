@@ -10,6 +10,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
@@ -23,17 +24,20 @@ import androidx.navigation3.runtime.NavEntry
 import androidx.navigation3.runtime.NavKey
 import androidx.navigation3.runtime.rememberNavBackStack
 import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
-import androidx.navigation3.ui.LocalNavAnimatedContentScope
 import androidx.navigation3.scene.Scene
+import androidx.navigation3.ui.LocalNavAnimatedContentScope
 import androidx.navigation3.ui.NavDisplay
 import coil3.ImageLoader
 import coil3.compose.setSingletonImageLoaderFactory
 import com.falcon.tripingly.core.common.result.AppResult
 import com.falcon.tripingly.core.data.account.SignedInStart
+import com.falcon.tripingly.core.data.config.AppConfigRepository
 import com.falcon.tripingly.core.data.push.PushNotifications
 import com.falcon.tripingly.core.data.realtime.LiveUpdates
 import com.falcon.tripingly.core.data.trips.MarkerRepository
 import com.falcon.tripingly.core.designsystem.browser.rememberInAppUriHandler
+import com.falcon.tripingly.core.designsystem.component.LocalPlaceKinds
+import com.falcon.tripingly.core.designsystem.component.LocalReportReasons
 import com.falcon.tripingly.core.designsystem.component.LocalScreenArrived
 import com.falcon.tripingly.core.designsystem.component.LocalScreenOnTop
 import com.falcon.tripingly.core.designsystem.component.MessageBannerHost
@@ -69,13 +73,20 @@ import org.koin.compose.koinInject
 fun App(onStarted: () -> Unit = {}) {
     val imageLoader = koinInject<ImageLoader>()
     setSingletonImageLoaderFactory { imageLoader }
+    // The server's lists are labelled in the app's language: a new language (Android restarts the screen for it) reads them again.
+    val appConfig = koinInject<AppConfigRepository>()
+    LaunchedEffect(appConfig) { appConfig.refreshIfLanguageChanged() }
+    val config by appConfig.config.collectAsState()
     TripinglyTheme {
         // Links (legal documents and others) open in an in-app browser, not the external one.
         // Text and icons without a colour of their own take the background's "on" colour everywhere, also where no
         // Surface, Scaffold or sheet sets one, so nothing falls back to black in dark mode.
+        // Place kinds and report reasons are named (and kinds drawn) from the server's lists, like string resources.
         CompositionLocalProvider(
             LocalUriHandler provides rememberInAppUriHandler(),
             LocalContentColor provides MaterialTheme.colorScheme.onBackground,
+            LocalPlaceKinds provides config.placeKinds,
+            LocalReportReasons provides config.reportReasons,
         ) {
             // Every screen's errors and notes show in one floating banner (see MessageBanner).
             // The window behind is the theme's background too: a screen shrinking back under another shows no edge.

@@ -14,7 +14,6 @@ import com.falcon.tripingly.core.model.account.TripVisibility
 import com.falcon.tripingly.core.model.trip.NewTrip
 import com.falcon.tripingly.core.model.social.PeopleList
 import com.falcon.tripingly.core.model.social.Profile
-import com.falcon.tripingly.core.model.social.ReportReason
 import com.falcon.tripingly.core.model.trip.UserSummary
 import com.falcon.tripingly.core.ui.UiText
 import com.falcon.tripingly.feature.social.presentation.people.PeopleViewModel
@@ -201,7 +200,7 @@ class ProfileViewModelTest {
         advanceUntilIdle()
 
         viewModel.onAction(Action.Person.Report)
-        viewModel.onAction(Action.Report.Send(ReportReason.Spam))
+        viewModel.onAction(Action.Report.Send("spam"))
         advanceUntilIdle()
 
         assertEquals(null, viewModel.uiState.value.report)

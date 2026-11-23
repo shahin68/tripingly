@@ -5,7 +5,6 @@ import com.falcon.tripingly.core.data.social.SocialRepository
 import com.falcon.tripingly.core.location.GetCurrentLocationUseCase
 import com.falcon.tripingly.core.location.permission.LocationPermission
 import com.falcon.tripingly.core.model.social.ExploreFilter
-import com.falcon.tripingly.core.model.social.ExplorePeriod
 import com.falcon.tripingly.core.model.trip.GeoPoint
 import com.falcon.tripingly.core.ui.UiText
 import com.falcon.tripingly.core.ui.toUiText
@@ -88,7 +87,7 @@ internal class ExploreFeed(
 
     private fun filter() = ExploreFilter(period = state.value.period, near = point.takeIf { state.value.isNearbyFilter })
 
-    fun selectPeriod(period: ExplorePeriod) {
+    fun selectPeriod(period: String) {
         if (period == state.value.period) return
         update { it.copy(period = period) }
         load()

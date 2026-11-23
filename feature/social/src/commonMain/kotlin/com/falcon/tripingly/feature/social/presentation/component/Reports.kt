@@ -4,7 +4,6 @@ import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.runtime.Immutable
 import com.falcon.tripingly.core.common.result.AppResult
 import com.falcon.tripingly.core.data.social.SocialRepository
-import com.falcon.tripingly.core.model.social.ReportReason
 import com.falcon.tripingly.core.model.social.ReportTarget
 import com.falcon.tripingly.core.ui.UiText
 import com.falcon.tripingly.core.ui.toUiText
@@ -19,7 +18,7 @@ data class ReportState(val target: ReportTarget, val id: String, val isSending: 
 /** Sends [report]; either way the outcome is shown as a message. True once the server took it. */
 internal suspend fun SocialRepository.sendReport(
     report: ReportState,
-    reason: ReportReason,
+    reason: String,
     showMessage: (UiText) -> Unit,
 ): Boolean {
     val result = report(report.target, report.id, reason, report.details.text.toString().trim())

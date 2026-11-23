@@ -1,5 +1,6 @@
 package com.falcon.tripingly.core.model.config
 
+import com.falcon.tripingly.core.model.place.PlaceKinds
 import com.falcon.tripingly.core.model.trip.GeoPoint
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
@@ -35,7 +36,19 @@ data class AppConfig(
     val osmPinsEnabled: Boolean = true,
     /** Cities with public transport routes; none until the server says so (switched off). */
     val transitAreas: List<TransitArea> = emptyList(),
+    /**
+     * The lists the app shows, labelled in the app's language (Shahin, 2026-11-23: no lists hardcoded in the app).
+     * Empty until the server's first answer, which comes before sign-in.
+     */
+    val placeKinds: PlaceKinds = PlaceKinds(),
+    /** Explore's periods in menu order; Near me is the app's own toggle on top. */
+    val explorePeriods: List<ConfigItem> = emptyList(),
+    /** Why something can be reported, in order. */
+    val reportReasons: List<ConfigItem> = emptyList(),
 )
+
+/** An entry of a list the server sends: its [key] (sent back in requests), [label] and [icon], an ID in the app's icon table. */
+data class ConfigItem(val key: String, val label: String, val icon: Int? = null, val isDefault: Boolean = false)
 
 /** A city with public transport routes: a route goes by transit only when both its ends are inside one. */
 data class TransitArea(val id: String, val name: String, val south: Double, val west: Double, val north: Double, val east: Double) {

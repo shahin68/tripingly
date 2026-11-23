@@ -285,7 +285,7 @@ private val TitleSpinnerStroke = 1.5.dp
 internal fun PinMark(category: PlaceCategory?, isStop: Boolean, modifier: Modifier = Modifier.size(JoinedButtonDefaults.Height)) {
     val fill = if (isStop) MaterialTheme.extendedColors.stop else MaterialTheme.extendedColors.place
     Box(modifier.background(fill, CircleShape), contentAlignment = Alignment.Center) {
-        Icon((category ?: PlaceCategory.Other).icon, contentDescription = null, tint = if (isStop) MaterialTheme.extendedColors.onStop else MaterialTheme.colorScheme.onSecondary, modifier = Modifier.size(JoinedButtonDefaults.IconSize))
+        Icon((category ?: PlaceCategory.Other).icon(), contentDescription = null, tint = if (isStop) MaterialTheme.extendedColors.onStop else MaterialTheme.colorScheme.onSecondary, modifier = Modifier.size(JoinedButtonDefaults.IconSize))
     }
 }
 
@@ -322,12 +322,12 @@ private const val DIMMED_ALPHA = 0.38f
 @Composable
 private fun MapCardPartsPreviewContent() {
     Column(Modifier.background(MaterialTheme.colorScheme.surface).padding(MaterialTheme.spacing.medium).width(340.dp), verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small)) {
-        PhotoBanner(title = "Hofburg", subtitle = AnnotatedString("Historic site"), image = null, mark = { PinMark(PlaceCategory.Historic, isStop = false) }, trailing = { BannerCount(Icons.Outlined.LocalFireDepartment, 40) })
+        PhotoBanner(title = "Hofburg", subtitle = AnnotatedString("Historic site"), image = null, mark = { PinMark(PlaceCategory("historic"), isStop = false) }, trailing = { BannerCount(Icons.Outlined.LocalFireDepartment, 40) })
         PhotoBanner(
             title = "Lunch at Anna's, a long name that wraps",
             subtitle = AnnotatedString("Custom spot"),
             image = null,
-            mark = { PinMark(PlaceCategory.Restaurant, isStop = true) },
+            mark = { PinMark(PlaceCategory("restaurant"), isStop = true) },
             topEnd = { BannerButton({}, Icons.Outlined.ExpandMore, "Collapse") },
             trailing = {
                 HotButton(hot = true, count = 12, onToggle = {}, modifier = Modifier.height(CountLabelSize.Large.iconSize), tint = MaterialTheme.extendedColors.attention)

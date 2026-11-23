@@ -365,13 +365,14 @@ sealed interface TransitPath {
 }
 
 /**
- * A spot being made: its [name] (the card's text field), its kind of place, the photo picked for it, and the [brands]
- * named like it, of which the one picked ([brand]) makes it a brand store.
+ * A spot being made: its [name] (the card's text field), the kinds people can pick ([categories], the server's list),
+ * the one picked ([category]) and the photo picked for it.
  */
 @Immutable
 data class NewSpotCardState(
     val location: Coordinates,
     val name: TextFieldState,
+    val categories: ImmutableList<PlaceCategory>,
     val category: PlaceCategory,
     val photo: PickedImage?,
 )

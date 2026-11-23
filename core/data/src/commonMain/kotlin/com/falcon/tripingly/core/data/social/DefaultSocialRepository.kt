@@ -13,7 +13,6 @@ import com.falcon.tripingly.core.model.social.HotState
 import com.falcon.tripingly.core.model.social.LikeState
 import com.falcon.tripingly.core.model.social.LikeTarget
 import com.falcon.tripingly.core.model.social.PublicTrip
-import com.falcon.tripingly.core.model.social.ReportReason
 import com.falcon.tripingly.core.model.social.ReportTarget
 import com.falcon.tripingly.core.network.model.CreateCommentDto
 import com.falcon.tripingly.core.network.model.CreateReportDto
@@ -45,7 +44,7 @@ internal class DefaultSocialRepository(
 ) : SocialRepository {
 
     override suspend fun explore(filter: ExploreFilter, cursor: String?): AppResult<Page<PublicTrip>, DataError.Network> =
-        api.explore(cursor, EXPLORE_PAGE_SIZE, filter.period.name.lowercase(), filter.near?.lat, filter.near?.lng)
+        api.explore(cursor, EXPLORE_PAGE_SIZE, filter.period, filter.near?.lat, filter.near?.lng)
             .map { page -> Page(page.items.map { it.toPublicTrip() }, page.nextCursor) }
 
     override suspend fun comments(markerId: String, cursor: String?): AppResult<Page<Comment>, DataError.Network> =
@@ -164,14 +163,14 @@ internal class DefaultSocialRepository(
     override suspend fun report(
         target: ReportTarget,
         targetId: String,
-        reason: ReportReason,
+        reason: String,
         details: String?,
     ): AppResult<Unit, DataError.Network> =
         api.report(
             CreateReportDto(
                 targetType = target.toDto(),
                 targetId = targetId,
-                reason = reason.toDto(),
+                reason = reason,
                 details = details?.trim()?.takeIf { it.isNotEmpty() },
             ),
         ).map { }

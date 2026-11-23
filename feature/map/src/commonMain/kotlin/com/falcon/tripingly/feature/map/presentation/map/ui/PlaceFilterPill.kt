@@ -123,8 +123,8 @@ private val SpinnerStroke = 2.dp
 @Composable
 private fun PlaceFilterPreviewContent() {
     val chips = persistentListOf(
-        CategoryChip(PlaceCategory.Cafe, null, isSelected = true),
-        CategoryChip(PlaceCategory.Museum, null, isSelected = false),
+        CategoryChip(PlaceCategory("cafe"), null, isSelected = true),
+        CategoryChip(PlaceCategory("museum"), null, isSelected = false),
     )
     Column(Modifier.padding(MaterialTheme.spacing.medium), verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small), horizontalAlignment = Alignment.End) {
         PlaceFilterPill(PlaceFilterState(isOpen = false, isActive = false, chips), onAction = {})

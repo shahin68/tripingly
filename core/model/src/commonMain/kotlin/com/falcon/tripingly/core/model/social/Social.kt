@@ -16,11 +16,11 @@ data class PublicTrip(
     val saveCount: Int,
 )
 
-/** Which likes rank Explore: the last 7, 30 or 365 days, all of them, or trips travelled in the current season. */
-enum class ExplorePeriod { Week, Month, Year, Season, All }
-
-/** Explore's filters; [near] keeps trips with a stop around that point (used for the request only, never stored). */
-data class ExploreFilter(val period: ExplorePeriod = ExplorePeriod.Month, val near: GeoPoint? = null)
+/**
+ * Explore's filters: [period] is a key from the server's list (`GET /app-config` `explorePeriods`), null for the
+ * server's own default; [near] keeps trips with a stop around that point (used for the request only, never stored).
+ */
+data class ExploreFilter(val period: String? = null, val near: GeoPoint? = null)
 
 /** A person's profile (`GET /users/{username}`) with the first page of their public trips. */
 data class Profile(
@@ -73,8 +73,6 @@ data class LikeState(val liked: Boolean, val likeCount: Int)
 data class HotState(val hot: Boolean, val hotCount: Int)
 
 enum class ReportTarget { User, Trip, Marker, Photo, Comment, PlaceImage }
-
-enum class ReportReason { Spam, Harassment, Nudity, Violence, Hate, Copyright, Other }
 
 /** A popular place around the user (`GET /places/nearby`). */
 data class NearbyPlace(

@@ -3,14 +3,14 @@ package com.falcon.tripingly.feature.social.presentation.explore
 import androidx.compose.runtime.Immutable
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.falcon.tripingly.core.data.config.AppConfigRepository
 import com.falcon.tripingly.core.data.social.SocialRepository
 import com.falcon.tripingly.core.data.trips.TripRepository
 import com.falcon.tripingly.core.data.users.UserRepository
 import com.falcon.tripingly.core.location.GetCurrentLocationUseCase
 import com.falcon.tripingly.core.location.permission.LocationPermission
-import com.falcon.tripingly.core.model.social.ExplorePeriod
+import com.falcon.tripingly.core.model.config.ConfigItem
 import com.falcon.tripingly.core.model.social.PublicTrip
-import com.falcon.tripingly.core.model.social.ReportReason
 import com.falcon.tripingly.core.model.social.ReportTarget
 import com.falcon.tripingly.core.model.trip.UserSummary
 import com.falcon.tripingly.core.ui.UiText
@@ -24,6 +24,9 @@ import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.drop
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -37,9 +40,10 @@ class ExploreViewModel(
     userRepository: UserRepository,
     tripRepository: TripRepository,
     getCurrentLocation: GetCurrentLocationUseCase,
+    appConfigRepository: AppConfigRepository,
 ) : ViewModel() {
 
-    private val _uiState = MutableStateFlow(State())
+    private val _uiState = MutableStateFlow(State().withPeriods(appConfigRepository.config.value.explorePeriods))
     val uiState: StateFlow<State> = _uiState.asStateFlow()
 
     private val _events = Channel<Event>(capacity = Channel.BUFFERED)
@@ -57,6 +61,14 @@ class ExploreViewModel(
 
     init {
         feed.load()
+        // The periods come from the server, labelled in the app's language (Shahin, 2026-11-23): a new language relabels them.
+        viewModelScope.launch {
+            appConfigRepository.config.map { it.explorePeriods }.distinctUntilChanged().drop(1).collect { periods ->
+                val hadPeriod = _uiState.value.period != null
+                _uiState.update { it.withPeriods(periods) }
+                if (!hadPeriod && _uiState.value.period != null) feed.load()
+            }
+        }
         // Someone blocked here leaves the list at once.
         viewModelScope.launch {
             userRepository.blocks.collect { userId ->
@@ -85,7 +97,7 @@ class ExploreViewModel(
         }
     }
 
-    private fun sendReport(reason: ReportReason) {
+    private fun sendReport(reason: String) {
         val report = _uiState.value.report?.takeUnless { it.isSending } ?: return
         _uiState.update { it.copy(report = report.copy(isSending = true)) }
         viewModelScope.launch {
@@ -103,8 +115,10 @@ class ExploreViewModel(
     @Immutable
     data class State(
         val trips: ImmutableList<PublicTrip> = persistentListOf(),
-        /** Which likes rank Explore; This month when the tab opens. */
-        val period: ExplorePeriod = ExplorePeriod.Month,
+        /** The periods to pick from: the server's list, in its order. */
+        val periods: ImmutableList<ConfigItem> = persistentListOf(),
+        /** The picked period's key; the server's default one when the tab opens, null while there's no list. */
+        val period: String? = null,
         /** Only trips with a stop near me. */
         val isNearbyFilter: Boolean = false,
         val isLoading: Boolean = false,
@@ -114,15 +128,21 @@ class ExploreViewModel(
         val report: ReportState? = null,
         val message: UiText? = null,
     ) {
-        /** Less than everything: a period other than All time, or only trips near me. */
-        val isFiltered: Boolean get() = period != ExplorePeriod.All || isNearbyFilter
+        /** The picked period, as the top bar's pill names it. */
+        val pickedPeriod: ConfigItem? get() = periods.firstOrNull { it.key == period }
+
+        /** The server's [periods], keeping the picked one while it's still offered, else its default one. */
+        internal fun withPeriods(periods: List<ConfigItem>) = copy(
+            periods = periods.toImmutableList(),
+            period = period?.takeIf { key -> periods.any { it.key == key } } ?: (periods.firstOrNull { it.isDefault } ?: periods.firstOrNull())?.key,
+        )
 
         internal fun updateTrip(tripId: String, change: (PublicTrip) -> PublicTrip) =
             copy(trips = trips.map { if (it.trip.id == tripId) change(it) else it }.toImmutableList())
     }
 
     sealed interface Action {
-        data class PeriodSelected(val period: ExplorePeriod) : Action
+        data class PeriodSelected(val period: String) : Action
         data object ToggleNearby : Action
 
         /** The permission, read when [Event.CheckLocation] asked for it. */
@@ -138,7 +158,7 @@ class ExploreViewModel(
         data class ToggleSaveTrip(val trip: PublicTrip) : Action
         data class AskToJoin(val trip: PublicTrip) : Action
         data class ReportTrip(val trip: PublicTrip) : Action
-        data class SendReport(val reason: ReportReason) : Action
+        data class SendReport(val reason: String) : Action
         data object DismissReport : Action
         data object DismissMessage : Action
     }

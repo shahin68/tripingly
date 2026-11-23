@@ -3,16 +3,21 @@ package com.falcon.tripingly.feature.social.presentation.explore
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.tooling.preview.PreviewParameter
 import androidx.compose.ui.unit.dp
@@ -24,13 +29,12 @@ import com.falcon.tripingly.core.designsystem.component.Skeleton
 import com.falcon.tripingly.core.designsystem.component.glassSource
 import com.falcon.tripingly.core.designsystem.component.screenContentPadding
 import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
+import com.falcon.tripingly.core.designsystem.theme.spacing
 import com.falcon.tripingly.core.location.permission.rememberLocationPermissionController
 import com.falcon.tripingly.core.ui.ObserveAsEvents
 import com.falcon.tripingly.core.ui.UiText
 import com.falcon.tripingly.feature.social.generated.resources.Res
 import com.falcon.tripingly.feature.social.generated.resources.social_explore_empty
-import com.falcon.tripingly.feature.social.generated.resources.social_explore_empty_filtered
-import com.falcon.tripingly.feature.social.presentation.component.EmptyText
 import com.falcon.tripingly.feature.social.presentation.component.ExplorePreviewStates
 import com.falcon.tripingly.feature.social.presentation.component.LoadMoreAtEnd
 import com.falcon.tripingly.feature.social.presentation.component.placeholderTrips
@@ -98,7 +102,7 @@ internal fun ExploreScreen(
 @Composable
 fun ExplorePeriodAction(viewModel: ExploreViewModel = koinViewModel()) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
-    ExplorePeriodMenu(state.period, state.isNearbyFilter, viewModel::onAction)
+    ExplorePeriodMenu(state.periods, state.pickedPeriod, state.isNearbyFilter, viewModel::onAction)
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -107,6 +111,10 @@ private fun ExploreGrid(state: State, onAction: (Action) -> Unit, contentPadding
     val gridState = rememberLazyGridState()
     LoadMoreAtEnd(gridState) { onAction(Action.LoadMore) }
     PullToRefreshBox(isRefreshing = state.isLoading && state.hasLoaded, onRefresh = { onAction(Action.Refresh) }, modifier = Modifier.fillMaxSize()) {
+        if (state.trips.isEmpty()) {
+            EmptyExplore(contentPadding)
+            return@PullToRefreshBox
+        }
         LazyVerticalGrid(
             state = gridState,
             columns = GridCells.Adaptive(GridCellMinWidth),
@@ -115,14 +123,6 @@ private fun ExploreGrid(state: State, onAction: (Action) -> Unit, contentPadding
             horizontalArrangement = Arrangement.spacedBy(GridGap),
             verticalArrangement = Arrangement.spacedBy(GridGap),
         ) {
-            if (state.trips.isEmpty()) {
-                item(key = "empty", span = { GridItemSpan(maxLineSpan) }) {
-                    EmptyText(
-                        stringResource(if (state.isFiltered) Res.string.social_explore_empty_filtered else Res.string.social_explore_empty),
-                        Modifier.animateItem(),
-                    )
-                }
-            }
             items(state.trips, key = { it.trip.id }) { trip ->
                 ExploreTripCard(
                     trip = trip,
@@ -135,6 +135,30 @@ private fun ExploreGrid(state: State, onAction: (Action) -> Unit, contentPadding
                     modifier = Modifier.animateItem(),
                 )
             }
+        }
+    }
+}
+
+/**
+ * No trips for these filters, as on the trips screen: one line in the middle (Shahin, 2026-11-23); a list, so
+ * pull-to-refresh still works.
+ */
+@Composable
+private fun EmptyExplore(contentPadding: PaddingValues) {
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = contentPadding,
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        item {
+            Text(
+                text = stringResource(Res.string.social_explore_empty),
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.padding(MaterialTheme.spacing.extraLarge),
+            )
         }
     }
 }

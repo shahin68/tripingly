@@ -82,7 +82,7 @@ private fun AlongTheWayImage(place: MapPlace) {
             modifier = Modifier.size(AlongImageSize).clip(MaterialTheme.shapes.small),
         )
     } else {
-        Icon(place.category.icon, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(20.dp))
+        Icon(place.category.icon(), contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(20.dp))
     }
 }
 

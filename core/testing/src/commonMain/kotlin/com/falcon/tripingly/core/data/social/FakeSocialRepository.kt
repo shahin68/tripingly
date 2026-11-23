@@ -10,7 +10,6 @@ import com.falcon.tripingly.core.model.social.LikeState
 import com.falcon.tripingly.core.model.social.HotState
 import com.falcon.tripingly.core.model.social.LikeTarget
 import com.falcon.tripingly.core.model.social.PublicTrip
-import com.falcon.tripingly.core.model.social.ReportReason
 import com.falcon.tripingly.core.model.social.ReportTarget
 import com.falcon.tripingly.core.model.trip.UserSummary
 import kotlinx.coroutines.flow.Flow
@@ -78,7 +77,7 @@ class FakeSocialRepository(
     override suspend fun report(
         target: ReportTarget,
         targetId: String,
-        reason: ReportReason,
+        reason: String,
         details: String?,
     ): AppResult<Unit, DataError.Network> = AppResult.Success(Unit)
 

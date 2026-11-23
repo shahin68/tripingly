@@ -7,7 +7,7 @@
 
     <!-- Social tab -->
     <string name="social_nearby">A közelben</string>
-    <string name="social_explore_empty">Még nincs felfedezhető nyilvános utazás.</string>
+    <string name="social_explore_empty">Nincsenek utazások.</string>
     <string name="social_people_none">Nincs ilyen nevű felhasználó.</string>
     <string name="social_save_trip">Mentés</string>
     <string name="social_saved_trip">Mentve</string>
@@ -73,15 +73,6 @@
     <string name="social_error_load_people">Nem sikerült betölteni a listát.</string>
 
     <!-- Explore filters -->
-    <string name="social_explore_week">Ezen a héten</string>
-    <string name="social_explore_month">Ebben a hónapban</string>
-    <string name="social_explore_year">Idén</string>
-    <string name="social_explore_spring">Idén tavasszal</string>
-    <string name="social_explore_summer">Idén nyáron</string>
-    <string name="social_explore_fall">Idén ősszel</string>
-    <string name="social_explore_winter">Idén télen</string>
-    <string name="social_explore_all">Minden idők</string>
-    <string name="social_explore_empty_filtered">Még nincs utazás ezekkel a szűrőkkel.</string>
     <string name="social_explore_nearby_blocked">A Tripinly nem fér hozzá a helyadatokhoz. Kapcsold be a Beállításokban, hogy lásd a közeli utazásokat.</string>
     <string name="social_trip_created">Létrehozva %1$s</string>
 

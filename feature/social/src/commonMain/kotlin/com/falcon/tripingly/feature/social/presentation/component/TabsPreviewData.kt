@@ -2,7 +2,6 @@ package com.falcon.tripingly.feature.social.presentation.component
 
 import androidx.compose.ui.tooling.preview.PreviewParameterProvider
 import com.falcon.tripingly.core.model.place.PlaceCategory
-import com.falcon.tripingly.core.model.social.ExplorePeriod
 import com.falcon.tripingly.core.model.social.NearbyPlace
 import com.falcon.tripingly.core.model.trip.GeoPoint
 import com.falcon.tripingly.core.model.trip.TripDay
@@ -20,7 +19,7 @@ internal val previewNearbyPlaces = persistentListOf(
     NearbyPlace(
         id = "n1",
         name = "Café Central",
-        category = PlaceCategory.Cafe,
+        category = PlaceCategory("cafe"),
         location = GeoPoint(48.2104, 16.3655),
         isTripinly = true,
         hotCount = 12,
@@ -33,7 +32,7 @@ internal val previewNearbyPlaces = persistentListOf(
     NearbyPlace(
         id = "n2",
         name = "Kunsthistorisches Museum Wien, the museum of fine arts",
-        category = PlaceCategory.Museum,
+        category = PlaceCategory("museum"),
         location = GeoPoint(48.2038, 16.3616),
         isTripinly = false,
         hotCount = 0,
@@ -57,7 +56,7 @@ internal class ExplorePreviewStates : PreviewParameterProvider<ExploreViewModel.
             hasLoaded = true,
         ),
         ExploreViewModel.State(isLoading = true),
-        ExploreViewModel.State(period = ExplorePeriod.Week, isNearbyFilter = true, hasLoaded = true),
+        ExploreViewModel.State(period = "week", isNearbyFilter = true, hasLoaded = true),
         ExploreViewModel.State(hasLoaded = true, loadError = UiText.Resource(Res.string.social_error_load_explore)),
     )
 }

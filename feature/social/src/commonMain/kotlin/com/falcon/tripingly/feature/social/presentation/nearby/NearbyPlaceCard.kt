@@ -83,7 +83,7 @@ internal fun NearbyPlaceCard(
                 PhotoImage(photoId = cover, url = place.coverThumbUrl, size = PhotoSize.Thumb, contentDescription = null, modifier = thumb)
             } else {
                 Box(thumb.background(MaterialTheme.colorScheme.surfaceVariant), contentAlignment = Alignment.Center) {
-                    Icon(place.category.icon, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Icon(place.category.icon(), contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
             Column(Modifier.weight(1f)) {

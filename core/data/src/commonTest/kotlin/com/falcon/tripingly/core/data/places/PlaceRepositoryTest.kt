@@ -1,7 +1,7 @@
 package com.falcon.tripingly.core.data.places
 
 import com.falcon.tripingly.core.common.result.AppResult
-import com.falcon.tripingly.core.data.config.AppConfigRepository
+import com.falcon.tripingly.core.data.config.FakeAppConfigRepository
 import com.falcon.tripingly.core.model.config.AppConfig
 import com.falcon.tripingly.core.model.place.Brand
 import com.falcon.tripingly.core.model.place.CategoryCount
@@ -30,7 +30,6 @@ import io.ktor.http.HttpStatusCode
 import io.ktor.http.headersOf
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -91,9 +90,7 @@ class PlaceRepositoryTest {
 
     private fun TestScope.repository(placesRefresh: Duration = AppConfig().placesRefresh) = DefaultPlaceRepository(
         api = placesApi,
-        appConfig = object : AppConfigRepository {
-            override val config = MutableStateFlow(AppConfig(placesRefresh = placesRefresh))
-        },
+        appConfig = FakeAppConfigRepository(AppConfig(placesRefresh = placesRefresh)),
         apiConfig = config,
         scope = backgroundScope,
     )
@@ -122,7 +119,7 @@ class PlaceRepositoryTest {
 
         val places = assertIs<AppResult.Success<Map<PlaceSquare, PlacesInView>>>(first).data.getValue(square).places
         assertEquals("Stephansdom", places.single().name)
-        assertEquals(PlaceCategory.Attraction, places.single().category)
+        assertEquals(PlaceCategory("attraction"), places.single().category)
         assertEquals(90, places.single().prominence)
         // The logo's path on the API becomes a full URL.
         assertEquals(Brand("b-zara", "Zara", "https://api.test/v1/brands/b-zara/logo/3f2a9c01d4e5b6a7"), places.single().brand)
@@ -136,7 +133,7 @@ class PlaceRepositoryTest {
     @Test
     fun `squares of some kinds go in their own request and are kept apart from the squares of every kind`() = runTest {
         val repository = repository()
-        val cafes = PlaceSquare(15, 372, 1096, categories = setOf(PlaceCategory.Cafe, PlaceCategory.Museum))
+        val cafes = PlaceSquare(15, 372, 1096, categories = setOf(PlaceCategory("cafe"), PlaceCategory("museum")))
         repository.placesIn(listOf(PlaceSquare(15, 372, 1096), cafes))
 
         assertEquals(2, requests.size)
@@ -156,7 +153,7 @@ class PlaceRepositoryTest {
         val repository = repository()
 
         val around = assertIs<AppResult.Success<PlacesAround>>(
-            repository.around(GeoPoint(48.2085, 16.3731), radiusMeters = 800, categories = setOf(PlaceCategory.Cafe), excludePlaceId = "pin"),
+            repository.around(GeoPoint(48.2085, 16.3731), radiusMeters = 800, categories = setOf(PlaceCategory("cafe")), excludePlaceId = "pin"),
         ).data
 
         val url = requests.single().url
@@ -169,8 +166,8 @@ class PlaceRepositoryTest {
         // How many, spread over the ring, is the server's call (APP_AROUND_MAX_PINS).
         assertEquals(null, url.parameters["limit"])
         assertEquals(listOf("Café Central" to 120), around.places.map { it.place.name to it.distanceMeters })
-        assertEquals(PlaceCategory.Cafe, around.places.single().place.category)
-        assertEquals(listOf(CategoryCount(PlaceCategory.Cafe, 1), CategoryCount(PlaceCategory.Museum, 2)), around.counts)
+        assertEquals(PlaceCategory("cafe"), around.places.single().place.category)
+        assertEquals(listOf(CategoryCount(PlaceCategory("cafe"), 1), CategoryCount(PlaceCategory("museum"), 2)), around.counts)
     }
 
     @Test

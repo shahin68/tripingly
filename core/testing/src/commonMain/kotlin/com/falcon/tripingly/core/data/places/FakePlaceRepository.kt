@@ -35,10 +35,10 @@ class FakePlaceRepository : PlaceRepository {
     )
 
     private val sights = listOf(
-        MapPlace("fake-eiffel", "Eiffel Tower", PlaceCategory.Landmark, GeoPoint(48.8584, 2.2945), isTripinly = true, hotCount = 12, prominence = 100),
-        MapPlace("fake-louvre", "Louvre", PlaceCategory.Museum, GeoPoint(48.8606, 2.3376), isTripinly = true, hotCount = 8, prominence = 97),
-        MapPlace("fake-stephansdom", "Stephansdom", PlaceCategory.Attraction, GeoPoint(48.2085, 16.3731), isTripinly = true, hotCount = 5, prominence = 90),
-        MapPlace("fake-cafe-central", "Café Central", PlaceCategory.Cafe, GeoPoint(48.2104, 16.3655), isTripinly = false, hotCount = 0, prominence = 40),
+        MapPlace("fake-eiffel", "Eiffel Tower", PlaceCategory("landmark"), GeoPoint(48.8584, 2.2945), isTripinly = true, hotCount = 12, prominence = 100),
+        MapPlace("fake-louvre", "Louvre", PlaceCategory("museum"), GeoPoint(48.8606, 2.3376), isTripinly = true, hotCount = 8, prominence = 97),
+        MapPlace("fake-stephansdom", "Stephansdom", PlaceCategory("attraction"), GeoPoint(48.2085, 16.3731), isTripinly = true, hotCount = 5, prominence = 90),
+        MapPlace("fake-cafe-central", "Café Central", PlaceCategory("cafe"), GeoPoint(48.2104, 16.3655), isTripinly = false, hotCount = 0, prominence = 40),
     )
 
     override suspend fun search(query: String, near: GeoPoint?): AppResult<PlaceSearch, DataError.Network> {

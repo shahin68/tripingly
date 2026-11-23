@@ -85,7 +85,7 @@ val dataModule = module {
             currentUserId = { get<SessionRepository>().currentUserId() },
         )
     }
-    single<AppConfigRepository> { DefaultAppConfigRepository(api = get(), store = get(), scope = get(ApplicationScope)) }
+    single<AppConfigRepository> { DefaultAppConfigRepository(api = get(), store = get(), language = get(), scope = get(ApplicationScope)) }
     single {
         DefaultPhotoRepository(
             api = get(),

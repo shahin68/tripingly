@@ -1,6 +1,6 @@
 package com.falcon.tripingly.feature.map.presentation.map
 
-import com.falcon.tripingly.core.model.place.PlaceCategory
+import com.falcon.tripingly.core.model.place.PlaceKinds
 import com.falcon.tripingly.feature.map.presentation.map.state.MapModel
 import com.falcon.tripingly.feature.map.presentation.map.state.Selection
 import com.falcon.tripingly.feature.map.presentation.map.state.isActive
@@ -24,13 +24,10 @@ internal fun MapModel.aroundState(addToDayNumber: Int?): AroundState? {
     )
 }
 
-/** The filter circle, hidden while a route, Around or search shows (their own places are what counts then). */
-internal fun MapModel.placeFilterState(): PlaceFilterState? {
+/** The filter circle with the server's filter kinds ([kinds]), hidden while a route, Around or search shows (their own places are what counts then). */
+internal fun MapModel.placeFilterState(kinds: PlaceKinds): PlaceFilterState? {
     if (route.isActive || around != null || search != null) return null
     val picked = placeFilter.categories
-    val chips = FILTER_CATEGORIES.map { CategoryChip(it, null, isSelected = it in picked) }
+    val chips = kinds.forFilters.map { CategoryChip(it.category, null, isSelected = it.category in picked) }
     return PlaceFilterState(placeFilter.isOpen, isActive = picked.isNotEmpty(), chips.toImmutableList(), isLoading = placeFilter.isLoading)
 }
-
-/** The map filter's kinds, as the places' kinds are listed; Other is no kind to look for. */
-private val FILTER_CATEGORIES = PlaceCategory.entries - PlaceCategory.Other

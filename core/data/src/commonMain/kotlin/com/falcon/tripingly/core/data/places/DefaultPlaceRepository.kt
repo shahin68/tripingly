@@ -29,7 +29,6 @@ import com.falcon.tripingly.core.network.model.PlaceClusterDto
 import com.falcon.tripingly.core.network.model.NearbyPlaceDto
 import com.falcon.tripingly.core.network.model.PlaceDetailDto
 import com.falcon.tripingly.core.network.model.PlaceImageDto
-import com.falcon.tripingly.core.network.model.PlaceItemDto
 import com.falcon.tripingly.core.network.model.SearchResultDto
 import com.falcon.tripingly.core.network.ApiConfig
 import com.falcon.tripingly.core.network.places.PlacesApi
@@ -89,7 +88,7 @@ internal class DefaultPlaceRepository(
                             MapPlace(
                                 id = id,
                                 name = item.name,
-                                category = item.category?.let { PlaceItemDto.Category.valueOf(it.name).toCategory() } ?: PlaceCategory.Other,
+                                category = item.category?.let(::PlaceCategory) ?: PlaceCategory.Other,
                                 location = location,
                                 isTripinly = item.isTripinly,
                                 hotCount = item.hotCount.toInt(),
@@ -231,7 +230,7 @@ internal class DefaultPlaceRepository(
                     NearbyPlace(
                         id = item.id,
                         name = item.name,
-                        category = PlaceItemDto.Category.valueOf(item.category.name).toCategory(),
+                        category = PlaceCategory(item.category),
                         location = GeoPoint(item.location.lat, item.location.lng),
                         isTripinly = item.isTripinly,
                         hotCount = item.hotCount.toInt(),
@@ -258,7 +257,7 @@ internal class DefaultPlaceRepository(
                         MapPlace(
                             id = item.id,
                             name = item.name,
-                            category = PlaceItemDto.Category.valueOf(item.category.name).toCategory(),
+                            category = PlaceCategory(item.category),
                             location = GeoPoint(item.location.lat, item.location.lng),
                             isTripinly = item.isTripinly,
                             hotCount = item.hotCount.toInt(),
@@ -277,7 +276,7 @@ internal class DefaultPlaceRepository(
     private fun PlaceDetailDto.toPlaceDetails() = PlaceDetails(
         id = id,
         name = name,
-        category = PlaceItemDto.Category.valueOf(category.name).toCategory(),
+        category = PlaceCategory(category),
         hotCount = hotCount.toInt(),
         openingHours = tags.openingHours,
         website = tags.website,

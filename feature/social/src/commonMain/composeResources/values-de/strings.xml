@@ -7,7 +7,7 @@
 
     <!-- Social tab -->
     <string name="social_nearby">In der Nähe</string>
-    <string name="social_explore_empty">Noch keine öffentlichen Reisen zum Entdecken.</string>
+    <string name="social_explore_empty">Hier gibt es keine Reisen.</string>
     <string name="social_people_none">Niemand mit diesem Namen gefunden.</string>
     <string name="social_save_trip">Speichern</string>
     <string name="social_saved_trip">Gespeichert</string>
@@ -73,15 +73,6 @@
     <string name="social_error_load_people">Die Liste konnte nicht geladen werden.</string>
 
     <!-- Explore filters -->
-    <string name="social_explore_week">Diese Woche</string>
-    <string name="social_explore_month">Diesen Monat</string>
-    <string name="social_explore_year">Dieses Jahr</string>
-    <string name="social_explore_spring">Diesen Frühling</string>
-    <string name="social_explore_summer">Diesen Sommer</string>
-    <string name="social_explore_fall">Diesen Herbst</string>
-    <string name="social_explore_winter">Diesen Winter</string>
-    <string name="social_explore_all">Alle Zeiten</string>
-    <string name="social_explore_empty_filtered">Noch keine Reisen für diese Filter.</string>
     <string name="social_explore_nearby_blocked">Der Standort ist für Tripinly aus. Schalte ihn in den Einstellungen ein, um Reisen in deiner Nähe zu sehen.</string>
     <string name="social_trip_created">Erstellt %1$s</string>
 
