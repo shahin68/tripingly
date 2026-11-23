@@ -2,19 +2,21 @@ package com.falcon.tripingly.core.data.places
 
 import com.falcon.tripingly.core.common.result.AppResult
 import com.falcon.tripingly.core.data.config.FakeAppConfigRepository
+import com.falcon.tripingly.core.model.Page
 import com.falcon.tripingly.core.model.config.AppConfig
 import com.falcon.tripingly.core.model.place.Brand
 import com.falcon.tripingly.core.model.place.CategoryCount
 import com.falcon.tripingly.core.model.place.GeoBounds
 import com.falcon.tripingly.core.model.place.ImageCredit
+import com.falcon.tripingly.core.model.place.MapPlace
+import com.falcon.tripingly.core.model.place.PlaceCategory
 import com.falcon.tripingly.core.model.place.PlaceDetails
 import com.falcon.tripingly.core.model.place.PlaceImage
 import com.falcon.tripingly.core.model.place.PlaceImageSource
-import com.falcon.tripingly.core.model.place.MapPlace
-import com.falcon.tripingly.core.model.place.PlaceCategory
 import com.falcon.tripingly.core.model.place.PlaceSquare
 import com.falcon.tripingly.core.model.place.PlacesAround
 import com.falcon.tripingly.core.model.place.PlacesInView
+import com.falcon.tripingly.core.model.social.NearbyPlace
 import com.falcon.tripingly.core.model.trip.GeoPoint
 import com.falcon.tripingly.core.model.trip.UserSummary
 import com.falcon.tripingly.core.network.ApiConfig
@@ -69,6 +71,8 @@ class PlaceRepositoryTest {
                 val count = requestsLock.withLock { requests += request; requests.size }
                 val body = if (request.url.encodedPath.endsWith("places/search")) {
                     """{"items":[],"attribution":"© OpenStreetMap contributors"}"""
+                } else if (request.url.encodedPath.endsWith("places/spots")) {
+                    SPOTS_ANSWER
                 } else if (request.url.encodedPath.endsWith("places/around")) {
                     AROUND_ANSWER
                 } else if (request.url.encodedPath.endsWith("places/p1")) {
@@ -278,6 +282,33 @@ class PlaceRepositoryTest {
     }
 
     @Test
+    fun `a spot search asks from two characters, near me only with the location, and keeps the city`() = runTest {
+        val repository = repository()
+
+        // One character asks nothing.
+        assertTrue(assertIs<AppResult.Success<Page<NearbyPlace>>>(repository.spots(" S ", near = null)).data.items.isEmpty())
+        assertTrue(requests.isEmpty())
+
+        val page = assertIs<AppResult.Success<Page<NearbyPlace>>>(repository.spots(" St ", near = null)).data
+        val asked = requests.single().url.parameters
+        assertEquals("St", asked["q"])
+        assertNull(asked["lat"])
+        assertNull(asked["lng"])
+        assertEquals("page-2", page.nextCursor)
+        val spot = page.items.single()
+        assertEquals("Wien", spot.city)
+        assertNull(spot.distanceMeters)
+        assertEquals(PlaceImageSource.Commons, spot.coverSource)
+        assertTrue(spot.hotByMe)
+
+        repository.spots("St", near = GeoPoint(48.2, 16.37), cursor = "page-2")
+        val near = requests.last().url.parameters
+        assertEquals("48.2", near["lat"])
+        assertEquals("16.37", near["lng"])
+        assertEquals("page-2", near["cursor"])
+    }
+
+    @Test
     fun `a place's images keep their order and Commons credit and an OpenStreetMap place says so`() = runTest {
         val details = assertIs<AppResult.Success<PlaceDetails>>(repository().place("p1")).data
 
@@ -356,6 +387,21 @@ class PlaceRepositoryTest {
               ],
               "address": "Stephansplatz 1, Wien", "tripCount": 4,
               "addedBy": null,
+              "attribution": "© OpenStreetMap contributors"
+            }
+        """.trimIndent()
+
+        /** A hot spot with a Commons cover, found without the location: no distance, its city instead. */
+        val SPOTS_ANSWER = """
+            {
+              "items": [{
+                "id": "p1", "name": "Stephansdom", "category": "attraction",
+                "location": {"lat": 48.2085, "lng": 16.3731},
+                "isTripinly": true, "hotCount": 3, "prominence": 90, "hotByMe": true,
+                "coverPhotoId": null, "coverImageId": "pi1", "coverSource": "commons", "coverThumbUrl": "https://r2/pi1/thumb",
+                "brand": null, "distanceMeters": null, "city": "Wien"
+              }],
+              "nextCursor": "page-2",
               "attribution": "© OpenStreetMap contributors"
             }
         """.trimIndent()

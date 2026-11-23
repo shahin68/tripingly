@@ -53,6 +53,7 @@ import com.falcon.tripingly.feature.map.presentation.map.state.MapSelection
 import com.falcon.tripingly.feature.map.presentation.map.state.MapSharing
 import com.falcon.tripingly.feature.map.presentation.map.state.Selection
 import com.falcon.tripingly.feature.map.presentation.map.state.Sheet
+import com.falcon.tripingly.feature.map.presentation.map.state.isGoingTo
 import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Job
@@ -156,7 +157,12 @@ class SpotMapViewModel(
             SpotMapAction.ToggleHot -> toggleHot()
             SpotMapAction.OpenOwner -> spot.value.details?.addedBy?.let { sendEvent(MapEvent.OpenProfile(it.username)) }
             SpotMapAction.OpenPhotos -> spotPin()?.let { pin -> context.update { it.copy(sheet = Sheet.PlacePhotos(pin)) } }
-            SpotMapAction.GoHere -> forSpot { routes.goHere() }
+            SpotMapAction.GoHere -> {
+                // A second tap closes the route; the spot's card comes back, as when the route's card closes.
+                val wasOn = spotPin()?.let { model.route.isGoingTo(it.location) } == true
+                forSpot { routes.goHere() }
+                if (wasOn) openSpot()
+            }
             SpotMapAction.Around -> forSpot { around.open() }
             SpotMapAction.Add -> forSpot { addToTrip.open(fromDetails = false) }
             // Its details are about the spot: its card comes back under them.

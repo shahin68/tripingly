@@ -453,7 +453,7 @@ internal class MapRouting(
                 val day = context.days().firstOrNull { it.id == request.dayId } ?: return update { it.copy(isLoading = false) }
                 routeRepository.dayRoute(context.tripId, day, request.mode, time?.at, request.categories)
             }
-            is RouteRequest.Between -> routeRepository.route(request.from, request.to, request.mode, context.tripId, request.fromPlaceId, request.toPlaceId, time, request.categories)
+            is RouteRequest.Between -> routeRepository.route(request.from, request.to, request.mode, context.tripId.ifEmpty { null }, request.fromPlaceId, request.toPlaceId, time, request.categories)
         }
         if (result is AppResult.Success && time != null && !result.data.isEstimated) transitRoutes[request] = result.data to time
         val isNotPro = result is AppResult.Error && result.error.hasCode(RouteErrorCodes.PREMIUM_REQUIRED)

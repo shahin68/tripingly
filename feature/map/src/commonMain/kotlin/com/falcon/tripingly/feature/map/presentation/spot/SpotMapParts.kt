@@ -65,7 +65,7 @@ import com.falcon.tripingly.feature.map.presentation.map.ui.CardTitleRow
 import com.falcon.tripingly.feature.map.presentation.map.ui.DetailTile
 import com.falcon.tripingly.feature.map.presentation.map.ui.PillGrowthPanel
 import com.falcon.tripingly.feature.map.presentation.map.ui.PinCardButtons
-import com.falcon.tripingly.feature.map.presentation.map.ui.RowGap
+import com.falcon.tripingly.feature.map.presentation.map.ui.CardRowGap
 import com.falcon.tripingly.feature.map.presentation.map.ui.TileGap
 import com.falcon.tripingly.feature.map.presentation.map.ui.TileValue
 import com.falcon.tripingly.feature.map.presentation.map.ui.distanceText
@@ -230,7 +230,7 @@ internal fun SpotCard(
     ) {
         Column(
             modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(CardInset),
-            verticalArrangement = Arrangement.spacedBy(RowGap),
+            verticalArrangement = Arrangement.spacedBy(CardRowGap),
         ) {
             val owner = spot.owner
             CardTitleRow(

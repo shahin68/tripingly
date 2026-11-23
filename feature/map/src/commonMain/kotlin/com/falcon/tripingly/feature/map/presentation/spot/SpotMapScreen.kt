@@ -46,6 +46,7 @@ import com.falcon.tripingly.core.designsystem.component.rememberHaptics
 import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
 import com.falcon.tripingly.core.designsystem.theme.spacing
 import com.falcon.tripingly.core.model.place.GeoBounds
+import com.falcon.tripingly.core.model.place.PlaceCategory
 import com.falcon.tripingly.core.ui.UiText
 import com.falcon.tripingly.feature.map.presentation.component.CameraCommand
 import com.falcon.tripingly.feature.map.presentation.component.GoogleMapView
@@ -275,11 +276,27 @@ internal fun SpotMapScreen(
     }
 }
 
+private val PreviewSpot = SpotMapUiState(
+    spot = SpotState(
+        name = "Café Central",
+        category = PlaceCategory("cafe"),
+        owner = null,
+        isOwnerMe = false,
+        isFromOsm = true,
+        address = "Herrengasse 14, Wien",
+        distanceMeters = 650,
+        isHot = true,
+        hotCount = 42,
+        tripCount = 7,
+    ),
+    isLoading = false,
+)
+
 @Preview
 @Composable
 private fun SpotMapScreenPreview() {
     TripinglyTheme {
-        SpotMapScreen(state = SpotMapUiState(isLoading = false), cameraCommands = emptyFlow(), onAction = {}, onMapAction = {})
+        SpotMapScreen(state = PreviewSpot, cameraCommands = emptyFlow(), onAction = {}, onMapAction = {})
     }
 }
 
@@ -287,6 +304,14 @@ private fun SpotMapScreenPreview() {
 @Composable
 private fun SpotMapScreenDarkPreview() {
     TripinglyTheme(darkTheme = true) {
-        SpotMapScreen(state = SpotMapUiState(isLoading = false), cameraCommands = emptyFlow(), onAction = {}, onMapAction = {})
+        SpotMapScreen(state = PreviewSpot, cameraCommands = emptyFlow(), onAction = {}, onMapAction = {})
+    }
+}
+
+@Preview(widthDp = 800, heightDp = 360)
+@Composable
+private fun SpotMapScreenLandscapePreview() {
+    TripinglyTheme {
+        SpotMapScreen(state = PreviewSpot, cameraCommands = emptyFlow(), onAction = {}, onMapAction = {})
     }
 }

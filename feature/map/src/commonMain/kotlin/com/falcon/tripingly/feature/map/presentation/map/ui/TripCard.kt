@@ -102,7 +102,7 @@ internal fun TripCard(
     ) {
         Column(
             modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(CardInset),
-            verticalArrangement = Arrangement.spacedBy(RowGap),
+            verticalArrangement = Arrangement.spacedBy(CardRowGap),
         ) {
             OwnerRow(header, onOwnerClick, onClose, transition.rowMotion(0))
             DetailTiles(header.card, transition.rowMotion(1))
@@ -265,7 +265,7 @@ private const val SCRIM_ALPHA = 0.24f
 
 /** The same inset for the owner's face and the close button, and every row. */
 internal val CardInset = 10.dp
-internal val RowGap = 12.dp
+internal val CardRowGap = 12.dp
 private val TitleGap = 12.dp
 private val CloseSize = 36.dp
 internal val TileGap = 6.dp

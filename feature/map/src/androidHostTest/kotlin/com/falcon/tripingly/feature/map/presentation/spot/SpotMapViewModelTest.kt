@@ -11,18 +11,23 @@ import com.falcon.tripingly.core.data.photos.FakePhotoRepository
 import com.falcon.tripingly.core.data.places.FakePlaceRepository
 import com.falcon.tripingly.core.data.places.PlaceRepository
 import com.falcon.tripingly.core.data.routing.FakeRouteRepository
+import com.falcon.tripingly.core.data.routing.RouteRepository
 import com.falcon.tripingly.core.data.social.FakeSocialRepository
 import com.falcon.tripingly.core.data.social.SocialRepository
 import com.falcon.tripingly.core.data.trips.FakeTripBackend
 import com.falcon.tripingly.core.location.GetCurrentLocationUseCase
 import com.falcon.tripingly.core.location.LocationRepository
 import com.falcon.tripingly.core.location.model.Coordinates
+import com.falcon.tripingly.core.location.permission.LocationPermission
 import com.falcon.tripingly.core.model.account.ProfileUpdate
 import com.falcon.tripingly.core.model.config.AppConfig
 import com.falcon.tripingly.core.model.place.MapPlace
 import com.falcon.tripingly.core.model.place.PlaceCategory
 import com.falcon.tripingly.core.model.place.PlaceDetails
 import com.falcon.tripingly.core.model.route.ROUTES_ENTITLEMENT
+import com.falcon.tripingly.core.model.route.RoutePlan
+import com.falcon.tripingly.core.model.route.TransitTime
+import com.falcon.tripingly.core.model.route.TravelMode
 import com.falcon.tripingly.core.model.social.HotState
 import com.falcon.tripingly.core.model.trip.GeoPoint
 import com.falcon.tripingly.core.ui.UiText
@@ -63,6 +68,7 @@ class SpotMapViewModelTest {
     private lateinit var social: RefusingSocialRepository
     private lateinit var backend: FakeTripBackend
     private lateinit var session: FakeAccountBackend
+    private lateinit var routes: RecordingRouteRepository
 
     /** The fake's sights, counting the details asked for; [failing] answers with an error. */
     private class CountingPlaceRepository(private val fake: FakePlaceRepository = FakePlaceRepository()) : PlaceRepository by fake {
@@ -83,6 +89,25 @@ class SpotMapViewModelTest {
             hotError?.let { AppResult.Error(it) } ?: fake.setHot(placeId, hot)
     }
 
+    /** The fake's straight lines, keeping the trip each route between two points was asked for. */
+    private class RecordingRouteRepository(private val fake: FakeRouteRepository = FakeRouteRepository()) : RouteRepository by fake {
+        val pointRouteTrips = mutableListOf<String?>()
+
+        override suspend fun route(
+            from: GeoPoint,
+            to: GeoPoint,
+            mode: TravelMode,
+            tripId: String?,
+            fromPlaceId: String?,
+            toPlaceId: String?,
+            time: TransitTime?,
+            categories: Set<PlaceCategory>,
+        ): AppResult<RoutePlan, DataError.Network> {
+            pointRouteTrips += tripId
+            return fake.route(from, to, mode, tripId, fromPlaceId, toPlaceId, time, categories)
+        }
+    }
+
     private class FixedLocationRepository : LocationRepository {
         override fun getLocationStream(): Flow<AppResult<Coordinates, DataError.Location>> = flowOf(Coordinates(48.8566, 2.3522).asSuccess())
     }
@@ -94,6 +119,7 @@ class SpotMapViewModelTest {
         places = CountingPlaceRepository()
         social = RefusingSocialRepository()
         backend = FakeTripBackend()
+        routes = RecordingRouteRepository()
         session = signedIn(setOf(ROUTES_ENTITLEMENT))
     }
 
@@ -115,7 +141,7 @@ class SpotMapViewModelTest {
         socialRepository = social,
         tripRepository = backend,
         markerRepository = backend,
-        routeRepository = FakeRouteRepository(),
+        routeRepository = routes,
         appConfigRepository = FakeAppConfigRepository(AppConfig()),
         sessionRepository = session,
         proRepository = FakeProRepository(session, backgroundScope),
@@ -221,6 +247,24 @@ class SpotMapViewModelTest {
         viewModel.onMapAction(MapAction.Around.Close)
         restOnTarget(viewModel)
         assertNull(viewModel.uiState.value.map.layers.aroundRing)
+        assertEquals(EIFFEL, viewModel.uiState.value.map.placeCard?.place?.id)
+    }
+
+    @Test
+    fun `Go here routes from me to the spot without a trip, and a second tap closes it with the card back`() = runTest(testDispatcher) {
+        val viewModel = viewModel()
+        viewModel.onMapAction(MapAction.Location.PermissionChecked(LocationPermission.Granted))
+        restOnTarget(viewModel)
+
+        viewModel.onAction(SpotMapAction.GoHere)
+        testScheduler.advanceUntilIdle()
+        assertEquals(true, viewModel.uiState.value.spot?.routes?.isGoHereOn)
+        // The spot map has no trip to leave out of the places along the way.
+        assertEquals(listOf<String?>(null), routes.pointRouteTrips)
+
+        viewModel.onAction(SpotMapAction.GoHere)
+        restOnTarget(viewModel)
+        assertEquals(false, viewModel.uiState.value.spot?.routes?.isGoHereOn)
         assertEquals(EIFFEL, viewModel.uiState.value.map.placeCard?.place?.id)
     }
 

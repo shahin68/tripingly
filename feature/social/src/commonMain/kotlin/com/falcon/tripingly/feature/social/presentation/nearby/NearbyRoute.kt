@@ -199,6 +199,7 @@ private fun SearchResults(state: State, onAction: (Action) -> Unit, onOpenSpot: 
                 }
             }
         },
+        footer = { osmCredit(state.isOsmCreditShown && search.spots.isNotEmpty()) },
     )
 }
 
