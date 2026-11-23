@@ -282,7 +282,7 @@ class PlaceRepositoryTest {
     }
 
     @Test
-    fun `a spot search asks from two characters, near me only with the location, and keeps the city`() = runTest {
+    fun `a spot search asks from two characters and near me only with the location and keeps the city`() = runTest {
         val repository = repository()
 
         // One character asks nothing.

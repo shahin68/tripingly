@@ -8,6 +8,8 @@ import com.falcon.tripingly.core.data.users.FakeUserRepository
 import com.falcon.tripingly.core.data.users.UserRepository
 import com.falcon.tripingly.core.location.permission.LocationPermission
 import com.falcon.tripingly.core.model.config.AppConfig
+import com.falcon.tripingly.core.model.social.PeoplePage
+import com.falcon.tripingly.core.model.trip.GeoPoint
 import com.falcon.tripingly.feature.social.presentation.nearby.NearbyViewModel
 import com.falcon.tripingly.feature.social.presentation.nearby.NearbyViewModel.Action
 import com.falcon.tripingly.feature.social.presentation.nearby.NearbyViewModel.Event
@@ -30,6 +32,10 @@ class NearbyViewModelTest : SocialTestBase() {
     /** The fake's people; follows are refused while [followRefused] is set. */
     private class RefusingUsers(private val fake: FakeUserRepository = FakeUserRepository()) : UserRepository by fake {
         var followRefused = false
+        var peopleRefused = false
+
+        override suspend fun findPeople(query: String?, near: GeoPoint?, cursor: String?): AppResult<PeoplePage, DataError.Network> =
+            if (peopleRefused) AppResult.Error(DataError.Network.NoInternet) else fake.findPeople(query, near, cursor)
 
         override suspend fun setFollowing(userId: String, following: Boolean): AppResult<Unit, DataError.Network> =
             if (followRefused) AppResult.Error(DataError.Network.NoInternet) else fake.setFollowing(userId, following)
@@ -107,7 +113,7 @@ class NearbyViewModelTest : SocialTestBase() {
     }
 
     @Test
-    fun `the people around come once I'm located, friends first, with how many there are`() = runTest {
+    fun `the people around come once I'm located with friends first and how many there are`() = runTest {
         val viewModel = located()
 
         val around = viewModel.uiState.value.people
@@ -118,7 +124,7 @@ class NearbyViewModelTest : SocialTestBase() {
     }
 
     @Test
-    fun `the search asks once typing pauses, from two characters, and finds people and spots`() = runTest {
+    fun `the search asks once typing pauses from two characters and finds people and spots`() = runTest {
         val viewModel = located()
 
         // One character is not a search: the grid stays.
@@ -154,7 +160,7 @@ class NearbyViewModelTest : SocialTestBase() {
     }
 
     @Test
-    fun `Follow switches at once and stays, a refusal puts it back`() = runTest {
+    fun `Follow switches at once and stays and a refusal puts it back`() = runTest {
         val viewModel = located()
         val julia = viewModel.uiState.value.people.people.first { it.user.username == "julia_t" }
         assertFalse(julia.isFollowing)
@@ -193,5 +199,24 @@ class NearbyViewModelTest : SocialTestBase() {
         assertTrue(viewModel.uiState.value.isPeopleSheetOpen)
         viewModel.onAction(Action.ClosePeople)
         assertFalse(viewModel.uiState.value.isPeopleSheetOpen)
+    }
+
+    @Test
+    fun `people that don't load leave no waiting row and a failed search shows no people of the last query`() = runTest {
+        people.peopleRefused = true
+        val viewModel = located()
+        assertTrue(viewModel.uiState.value.people.hasLoaded)
+        assertTrue(viewModel.uiState.value.people.people.isEmpty())
+
+        people.peopleRefused = false
+        viewModel.onAction(Action.QueryChanged("Le"))
+        advanceUntilIdle()
+        assertEquals(listOf("lena"), viewModel.uiState.value.search.people.people.map { it.user.username })
+
+        people.peopleRefused = true
+        viewModel.onAction(Action.QueryChanged("Louv"))
+        advanceUntilIdle()
+        assertTrue(viewModel.uiState.value.search.people.people.isEmpty())
+        assertEquals(listOf("Louvre"), viewModel.uiState.value.search.spots.map { it.name })
     }
 }

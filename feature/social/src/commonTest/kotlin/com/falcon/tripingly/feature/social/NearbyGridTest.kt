@@ -24,7 +24,7 @@ class NearbyGridTest {
     )
 
     @Test
-    fun `rows go 2+1, 1+1+1, 1+2, a wide slot taking the next spot with a photo`() {
+    fun `rows repeat wide and small then three small then small and wide and a wide slot takes the next spot with a photo`() {
         val spots = listOf(spot("a"), spot("b", hasPhoto = true), spot("c"), spot("d", hasPhoto = true), spot("e"), spot("f"), spot("g", hasPhoto = true), spot("h"))
 
         // 2+1: b wide, then a. 1+1+1: c, d (its photo shown small), e. 1+2: f, then g wide. 2+1 without a photo: h.
@@ -35,7 +35,7 @@ class NearbyGridTest {
     }
 
     @Test
-    fun `every spot shows once, and without photos all are one column`() {
+    fun `every spot shows once and without photos all are one column`() {
         val spots = List(20) { spot("s$it", hasPhoto = it % 4 == 1) }
         val tiles = arrangeTiles(spots)
         assertEquals(spots.map { it.id }.sorted(), tiles.map { it.place.id }.sorted())

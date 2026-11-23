@@ -58,8 +58,11 @@ internal class NearbySearch(
             val found = async { userRepository.findPeople(query, near) }
             val spots = placeRepository.spots(query, near)
             val peopleResult = found.await()
+            // A failure clears the last query's people too, so they never show under this one.
             if (peopleResult is AppResult.Success) {
                 people.showFound(PeopleState(peopleResult.data.people.toImmutableList(), peopleResult.data.total, hasLoaded = true), peopleResult.data.nextCursor)
+            } else {
+                people.showFound(PeopleState(hasLoaded = true), nextCursor = null)
             }
             spotsCursor = (spots as? AppResult.Success)?.data?.nextCursor
             state.update {

@@ -63,6 +63,9 @@ internal class NearbyPeople(
             if (result is AppResult.Success) {
                 cursor = result.data.nextCursor
                 state.update { it.copy(people = PeopleState(result.data.people.toImmutableList(), result.data.total, hasLoaded = true)) }
+            } else {
+                // The row stops waiting: the people shown before stay, and with none it goes away.
+                state.update { it.copy(people = it.people.copy(hasLoaded = true)) }
             }
         }
     }
