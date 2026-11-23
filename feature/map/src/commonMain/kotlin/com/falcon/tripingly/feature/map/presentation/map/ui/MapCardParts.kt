@@ -232,8 +232,8 @@ internal fun PhotoBanner(
             // apart as that, with nothing before them, so the details get all the room left.
             Column(Modifier.align(Alignment.BottomStart).fillMaxWidth().padding(start = BannerInset, end = BannerButtonInset, bottom = BannerButtonInset)) {
                 LoadingTitle(title, isTitleLoading, MaterialTheme.typography.titleLarge, Modifier.padding(end = BannerInset - BannerButtonInset))
-                // As high as a pill with or without them, so the details sit at the same place on every card.
-                Row(Modifier.heightIn(min = JoinedButtonDefaults.Height), verticalAlignment = Alignment.CenterVertically) {
+                // A pill high with or without them, so the details sit at the same place on every card.
+                Row(Modifier.heightIn(min = BannerPillHeight), verticalAlignment = Alignment.CenterVertically) {
                     // Who added it goes on as long as there's room, then whole onto the next line (Shahin, 2026-11-14).
                     FlowRow(Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraSmall)) {
                         Text(subtitle, style = MaterialTheme.typography.bodySmall, modifier = Modifier.align(Alignment.CenterVertically))
@@ -309,11 +309,14 @@ internal fun bannerGlass(): Color {
     return content.copy(alpha = if (content.luminance() > 0.5f) ON_PHOTO_TINT else ON_PANEL_TINT)
 }
 
-/** A banner's count or count button as a pill of [fill], as high as ⌄; its content padded by [BannerPillPadding]. */
-internal fun Modifier.bannerPill(fill: Color): Modifier = clip(CircleShape).background(fill).height(JoinedButtonDefaults.Height)
+/** A banner's count or count button as a pill of [fill], [BannerPillHeight] high; its content padded by [BannerPillPadding]. */
+internal fun Modifier.bannerPill(fill: Color): Modifier = clip(CircleShape).background(fill).height(BannerPillHeight)
 
-/** A banner pill's sides: an icon at its start sits as far in as in a round button. */
-internal val BannerPillPadding = PaddingValues(horizontal = JoinedButtonDefaults.Padding)
+/** 12 dp lower than ⌄ (Shahin, 2026-11-23): the pills shouldn't outweigh the text beside them. */
+private val BannerPillHeight = 36.dp
+
+/** A banner pill's sides: the icon as far in from the start as from the top and bottom. */
+internal val BannerPillPadding = PaddingValues(horizontal = (BannerPillHeight - JoinedButtonDefaults.IconSize) / 2)
 
 /** The flame as a pill on a banner: glass, or filled with the flame's own colour once I marked it hot. */
 @Composable

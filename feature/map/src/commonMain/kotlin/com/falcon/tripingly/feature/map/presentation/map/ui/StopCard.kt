@@ -124,7 +124,7 @@ internal fun PinCardScope.StopCard(
                         mark = { PinMark(card.category, isStop = true) },
                         topEnd = { BannerButton({ isExpanded = false }, Icons.Outlined.ExpandMore, stringResource(Res.string.map_stop_collapse)) },
                         trailing = {
-                            // The two things that make a spot hot, as real buttons on the photo: glass pills as high as ⌄,
+                            // The two things that make a spot hot, as real buttons on the photo: glass pills 12 dp lower than ⌄,
                             // the flame filled with its own colour once marked (Shahin, 2026-11-23).
                             if (stop.canMarkHot) BannerHotButton(stop.hotByMe, stop.hotCount, onToggleHot)
                             BannerCountButton(Icons.AutoMirrored.Outlined.Comment, stringResource(Res.string.map_stop_comment), stop.commentCount, onClick = onOpenComments, isNew = card.news.comments)
