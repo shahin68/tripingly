@@ -50,6 +50,8 @@ data class ExtendedColors(
     val onInvite: Color,
     val inviteEdge: Color,
     val inviteLiked: Color,
+    /** Whether these are the dark theme's colours: picks the dark file of a picture that can't be tinted (`Illustration`). */
+    val isDark: Boolean,
 )
 
 internal val LightExtendedColors = ExtendedColors(
@@ -71,6 +73,7 @@ internal val LightExtendedColors = ExtendedColors(
     onInvite = OnInviteLight,
     inviteEdge = InviteEdgeLight,
     inviteLiked = InviteLikedLight,
+    isDark = false,
 )
 internal val DarkExtendedColors = ExtendedColors(
     glass = GlassDark,
@@ -91,6 +94,7 @@ internal val DarkExtendedColors = ExtendedColors(
     onInvite = OnInviteDark,
     inviteEdge = InviteEdgeDark,
     inviteLiked = InviteLikedDark,
+    isDark = true,
 )
 
 val LocalExtendedColors = staticCompositionLocalOf { LightExtendedColors }

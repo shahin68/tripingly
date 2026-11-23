@@ -7,7 +7,8 @@
 
     <!-- Social tab -->
     <string name="social_nearby">Nearby</string>
-    <string name="social_explore_empty">There are no trips.</string>
+    <string name="social_explore_empty">No trips here yet</string>
+    <string name="social_explore_empty_hint">Try another period, or come back a little later.</string>
     <string name="social_people_none">No one found with that name.</string>
     <string name="social_save_trip">Save</string>
     <string name="social_saved_trip">Saved</string>
@@ -26,7 +27,8 @@
     <string name="social_nearby_allow">Allow location</string>
     <string name="social_nearby_open_settings">Open settings</string>
     <string name="social_nearby_location_unavailable">Your location isn’t available right now.</string>
-    <string name="social_nearby_empty">No popular places around you yet.</string>
+    <string name="social_nearby_empty">No popular places around you yet</string>
+    <string name="social_nearby_empty_hint">Places people love nearby show up here.</string>
     <string name="social_nearby_distance_m">%1$d m away</string>
     <string name="social_nearby_distance_km">%1$s km away</string>
     <string name="social_nearby_open_images">Show photos</string>
@@ -45,7 +47,8 @@
     <string name="social_follows_you">Follows you</string>
     <string name="social_public_trips">Public trips (%1$d)</string>
     <string name="social_profile_no_trips">No public trips yet.</string>
-    <string name="social_profile_not_found">This profile isn’t available.</string>
+    <string name="social_profile_not_found">The account may have been deleted.</string>
+    <string name="social_profile_not_found_title">Profile not available</string>
     <string name="social_report_user">Report</string>
     <string name="social_block">Block</string>
     <string name="social_unfollow">Unfollow</string>

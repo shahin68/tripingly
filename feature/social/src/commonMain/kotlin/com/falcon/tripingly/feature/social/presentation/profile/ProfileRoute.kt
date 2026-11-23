@@ -1,10 +1,5 @@
 package com.falcon.tripingly.feature.social.presentation.profile
 
-import kotlinx.collections.immutable.toImmutableList
-import com.falcon.tripingly.feature.social.presentation.component.placeholderTrips
-import com.falcon.tripingly.feature.social.presentation.component.placeholderProfile
-import com.falcon.tripingly.core.designsystem.component.skeletonText
-import com.falcon.tripingly.core.designsystem.component.Skeleton
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
@@ -36,11 +31,14 @@ import com.falcon.tripingly.core.designsystem.component.BackAction
 import com.falcon.tripingly.core.designsystem.component.DropdownAction
 import com.falcon.tripingly.core.designsystem.component.ErrorScreen
 import com.falcon.tripingly.core.designsystem.component.FloatingTopBar
+import com.falcon.tripingly.core.designsystem.component.Illustration
 import com.falcon.tripingly.core.designsystem.component.LoadStateContent
 import com.falcon.tripingly.core.designsystem.component.ReportDialog
 import com.falcon.tripingly.core.designsystem.component.ShowMessage
+import com.falcon.tripingly.core.designsystem.component.Skeleton
 import com.falcon.tripingly.core.designsystem.component.glassSource
 import com.falcon.tripingly.core.designsystem.component.screenContentPadding
+import com.falcon.tripingly.core.designsystem.component.skeletonText
 import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
 import com.falcon.tripingly.core.designsystem.theme.spacing
 import com.falcon.tripingly.core.model.social.Profile
@@ -54,14 +52,18 @@ import com.falcon.tripingly.feature.social.generated.resources.social_block_titl
 import com.falcon.tripingly.feature.social.generated.resources.social_more
 import com.falcon.tripingly.feature.social.generated.resources.social_profile_no_trips
 import com.falcon.tripingly.feature.social.generated.resources.social_profile_not_found
+import com.falcon.tripingly.feature.social.generated.resources.social_profile_not_found_title
 import com.falcon.tripingly.feature.social.generated.resources.social_public_trips
 import com.falcon.tripingly.feature.social.generated.resources.social_report_user
 import com.falcon.tripingly.feature.social.presentation.component.EmptyText
 import com.falcon.tripingly.feature.social.presentation.component.LoadMoreAtEnd
 import com.falcon.tripingly.feature.social.presentation.component.PublicTripCard
+import com.falcon.tripingly.feature.social.presentation.component.placeholderProfile
+import com.falcon.tripingly.feature.social.presentation.component.placeholderTrips
 import com.falcon.tripingly.feature.social.presentation.profile.ProfileViewModel.Action
 import com.falcon.tripingly.feature.social.presentation.profile.ProfileViewModel.Event
 import com.falcon.tripingly.feature.social.presentation.profile.ProfileViewModel.State
+import kotlinx.collections.immutable.toImmutableList
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel
 import org.koin.core.parameter.parametersOf
@@ -137,7 +139,13 @@ internal fun PersonProfileScreen(state: State, onAction: (Action) -> Unit, onBac
         val contentPadding = screenContentPadding(padding)
         ShowMessage(message = state.message?.asString(), onShown = { onAction(Action.DismissMessage) }, isError = state.message !is UiText.Note)
         if (state.isNotFound) {
-            ErrorScreen(onRetry = null, message = stringResource(Res.string.social_profile_not_found), contentPadding = contentPadding)
+            ErrorScreen(
+                onRetry = null,
+                title = stringResource(Res.string.social_profile_not_found_title),
+                message = stringResource(Res.string.social_profile_not_found),
+                contentPadding = contentPadding,
+                illustration = Illustration.ProfileMissing,
+            )
             return@Scaffold
         }
         LoadStateContent(

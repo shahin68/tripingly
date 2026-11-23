@@ -1,8 +1,5 @@
 package com.falcon.tripingly.feature.notifications.presentation
 
-import com.falcon.tripingly.core.designsystem.component.NewIndicator
-import kotlinx.coroutines.flow.drop
-import com.falcon.tripingly.core.designsystem.component.rememberHaptics
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -49,15 +46,19 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.falcon.tripingly.core.designsystem.component.AppDialog
-import com.falcon.tripingly.core.designsystem.component.AvatarStack
 import com.falcon.tripingly.core.designsystem.component.AvatarSize
+import com.falcon.tripingly.core.designsystem.component.AvatarStack
 import com.falcon.tripingly.core.designsystem.component.BackAction
 import com.falcon.tripingly.core.designsystem.component.ButtonSize
+import com.falcon.tripingly.core.designsystem.component.EmptyState
 import com.falcon.tripingly.core.designsystem.component.FloatingTopBar
+import com.falcon.tripingly.core.designsystem.component.Illustration
+import com.falcon.tripingly.core.designsystem.component.NewIndicator
 import com.falcon.tripingly.core.designsystem.component.SecondaryButton
 import com.falcon.tripingly.core.designsystem.component.ShowMessage
 import com.falcon.tripingly.core.designsystem.component.Skeleton
 import com.falcon.tripingly.core.designsystem.component.glassSource
+import com.falcon.tripingly.core.designsystem.component.rememberHaptics
 import com.falcon.tripingly.core.designsystem.component.screenContentPadding
 import com.falcon.tripingly.core.designsystem.component.skeleton
 import com.falcon.tripingly.core.designsystem.component.skeletonText
@@ -73,12 +74,14 @@ import com.falcon.tripingly.feature.notifications.generated.resources.notificati
 import com.falcon.tripingly.feature.notifications.generated.resources.notifications_clear_title
 import com.falcon.tripingly.feature.notifications.generated.resources.notifications_delete
 import com.falcon.tripingly.feature.notifications.generated.resources.notifications_empty
+import com.falcon.tripingly.feature.notifications.generated.resources.notifications_empty_hint
 import com.falcon.tripingly.feature.notifications.generated.resources.notifications_retry
 import com.falcon.tripingly.feature.notifications.generated.resources.notifications_title
 import com.falcon.tripingly.feature.notifications.generated.resources.notifications_unread
 import com.falcon.tripingly.feature.notifications.presentation.NotificationCenterViewModel.Action
 import com.falcon.tripingly.feature.notifications.presentation.NotificationCenterViewModel.State
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.filter
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel
@@ -160,7 +163,12 @@ private fun NotificationList(state: State, onAction: (Action) -> Unit, contentPa
                 Skeleton { NotificationRow(entry = it, onClick = {}) }
             }
             state.entries.isEmpty() -> item(key = "notifications-empty") {
-                QuietText(stringResource(Res.string.notifications_empty), Modifier.animateItem())
+                EmptyState(
+                    illustration = Illustration.NotificationsEmpty,
+                    title = stringResource(Res.string.notifications_empty),
+                    message = stringResource(Res.string.notifications_empty_hint),
+                    modifier = Modifier.fillParentMaxSize().animateItem(),
+                )
             }
             else -> items(state.entries, key = { it.id }) { entry ->
                 SwipeToDelete(onDelete = { onAction(Action.OnRemove(entry)) }, modifier = Modifier.animateItem()) {

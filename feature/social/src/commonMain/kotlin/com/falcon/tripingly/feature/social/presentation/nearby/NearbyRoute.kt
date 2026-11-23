@@ -1,6 +1,5 @@
 package com.falcon.tripingly.feature.social.presentation.nearby
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -8,14 +7,11 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.LocationOn
 import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -28,11 +24,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.tooling.preview.PreviewParameter
-import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.falcon.tripingly.core.designsystem.component.AppBottomSheet
+import com.falcon.tripingly.core.designsystem.component.EmptyState
 import com.falcon.tripingly.core.designsystem.component.ErrorScreen
+import com.falcon.tripingly.core.designsystem.component.Illustration
 import com.falcon.tripingly.core.designsystem.component.LoadStateContent
 import com.falcon.tripingly.core.designsystem.component.OsmAttribution
 import com.falcon.tripingly.core.designsystem.component.ReportDialog
@@ -53,8 +50,8 @@ import com.falcon.tripingly.feature.social.generated.resources.social_nearby_all
 import com.falcon.tripingly.feature.social.generated.resources.social_nearby_ask
 import com.falcon.tripingly.feature.social.generated.resources.social_nearby_blocked
 import com.falcon.tripingly.feature.social.generated.resources.social_nearby_empty
+import com.falcon.tripingly.feature.social.generated.resources.social_nearby_empty_hint
 import com.falcon.tripingly.feature.social.generated.resources.social_nearby_open_settings
-import com.falcon.tripingly.feature.social.presentation.component.EmptyText
 import com.falcon.tripingly.feature.social.presentation.component.LoadMoreAtEnd
 import com.falcon.tripingly.feature.social.presentation.component.NearbyPreviewStates
 import com.falcon.tripingly.feature.social.presentation.component.placeholderNearbyPlaces
@@ -157,7 +154,14 @@ private fun NearbyList(state: State, onAction: (Action) -> Unit, contentPadding:
         ) {
             item(key = "note") { LocationNote(Modifier.animateItem()) }
             if (state.places.isEmpty()) {
-                item(key = "empty") { EmptyText(stringResource(Res.string.social_nearby_empty), Modifier.animateItem()) }
+                item(key = "empty") {
+                    EmptyState(
+                        illustration = Illustration.NearbyEmpty,
+                        title = stringResource(Res.string.social_nearby_empty),
+                        message = stringResource(Res.string.social_nearby_empty_hint),
+                        modifier = Modifier.fillParentMaxWidth().animateItem(),
+                    )
+                }
             }
             items(state.places, key = { it.id }) { place ->
                 NearbyPlaceCard(
@@ -211,18 +215,10 @@ private fun LocationAsk(status: Status, onAction: (Action) -> Unit, contentPaddi
         message = stringResource(if (blocked) Res.string.social_nearby_blocked else Res.string.social_nearby_ask),
         retryLabel = stringResource(if (blocked) Res.string.social_nearby_open_settings else Res.string.social_nearby_allow),
         contentPadding = contentPadding,
-        illustration = {
-            Box(
-                Modifier.size(IllustrationSize).background(MaterialTheme.colorScheme.primaryContainer, CircleShape),
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(Icons.Outlined.LocationOn, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(64.dp))
-            }
-        },
+        illustration = Illustration.LocationAsk,
     )
 }
 
-private val IllustrationSize = 168.dp
 private val NoteIconSize = 14.dp
 
 @Preview

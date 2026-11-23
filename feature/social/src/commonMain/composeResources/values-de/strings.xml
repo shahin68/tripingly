@@ -7,7 +7,8 @@
 
     <!-- Social tab -->
     <string name="social_nearby">In der Nähe</string>
-    <string name="social_explore_empty">Hier gibt es keine Reisen.</string>
+    <string name="social_explore_empty">Noch keine Reisen hier</string>
+    <string name="social_explore_empty_hint">Probiere einen anderen Zeitraum oder schau etwas später wieder vorbei.</string>
     <string name="social_people_none">Niemand mit diesem Namen gefunden.</string>
     <string name="social_save_trip">Speichern</string>
     <string name="social_saved_trip">Gespeichert</string>
@@ -26,7 +27,8 @@
     <string name="social_nearby_allow">Standort erlauben</string>
     <string name="social_nearby_open_settings">Einstellungen öffnen</string>
     <string name="social_nearby_location_unavailable">Dein Standort ist gerade nicht verfügbar.</string>
-    <string name="social_nearby_empty">Noch keine beliebten Orte in deiner Nähe.</string>
+    <string name="social_nearby_empty">Noch keine beliebten Orte in deiner Nähe</string>
+    <string name="social_nearby_empty_hint">Orte, die Leute hier mögen, erscheinen hier.</string>
     <string name="social_nearby_distance_m">%1$d m entfernt</string>
     <string name="social_nearby_distance_km">%1$s km entfernt</string>
     <string name="social_nearby_open_images">Fotos anzeigen</string>
@@ -45,7 +47,8 @@
     <string name="social_follows_you">Folgt dir</string>
     <string name="social_public_trips">Öffentliche Reisen (%1$d)</string>
     <string name="social_profile_no_trips">Noch keine öffentlichen Reisen.</string>
-    <string name="social_profile_not_found">Dieses Profil ist nicht verfügbar.</string>
+    <string name="social_profile_not_found">Das Konto wurde vielleicht gelöscht.</string>
+    <string name="social_profile_not_found_title">Profil nicht verfügbar</string>
     <string name="social_report_user">Melden</string>
     <string name="social_block">Blockieren</string>
     <string name="social_unfollow">Entfolgen</string>

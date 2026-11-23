@@ -4,6 +4,7 @@ import coil3.ImageLoader
 import coil3.PlatformContext
 import coil3.network.ktor3.KtorNetworkFetcherFactory
 import coil3.request.crossfade
+import coil3.svg.SvgDecoder
 import com.falcon.tripingly.core.common.di.commonModule
 import com.falcon.tripingly.core.data.account.LocalDataCleaner
 import com.falcon.tripingly.core.data.di.dataModule
@@ -54,10 +55,14 @@ private val appModule = module {
     single { DeepLinks() }
     // Photos come from storage through signed URLs, so they're fetched without the API's token and headers.
     // They're cached by photo ID, not URL (see PhotoImage), in Coil's default memory and disk caches.
+    // SVG: the design system's illustrations, files in the app (see Illustration).
     single {
         val storage = get<StorageClient>()
         ImageLoader.Builder(get<PlatformContext>())
-            .components { add(KtorNetworkFetcherFactory(httpClient = { storage.httpClient })) }
+            .components {
+                add(KtorNetworkFetcherFactory(httpClient = { storage.httpClient }))
+                add(SvgDecoder.Factory())
+            }
             .crossfade(true)
             .build()
     }

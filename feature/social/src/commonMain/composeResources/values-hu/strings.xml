@@ -7,7 +7,8 @@
 
     <!-- Social tab -->
     <string name="social_nearby">A közelben</string>
-    <string name="social_explore_empty">Nincsenek utazások.</string>
+    <string name="social_explore_empty">Még nincsenek itt utazások</string>
+    <string name="social_explore_empty_hint">Próbálj másik időszakot, vagy nézz vissza kicsit később.</string>
     <string name="social_people_none">Nincs ilyen nevű felhasználó.</string>
     <string name="social_save_trip">Mentés</string>
     <string name="social_saved_trip">Mentve</string>
@@ -26,7 +27,8 @@
     <string name="social_nearby_allow">Helyzet engedélyezése</string>
     <string name="social_nearby_open_settings">Beállítások megnyitása</string>
     <string name="social_nearby_location_unavailable">A helyzeted most nem érhető el.</string>
-    <string name="social_nearby_empty">Még nincs népszerű hely a közeledben.</string>
+    <string name="social_nearby_empty">Még nincs népszerű hely a közeledben</string>
+    <string name="social_nearby_empty_hint">A környék kedvelt helyei itt jelennek meg.</string>
     <string name="social_nearby_distance_m">%1$d m-re</string>
     <string name="social_nearby_distance_km">%1$s km-re</string>
     <string name="social_nearby_open_images">Fotók megtekintése</string>
@@ -45,7 +47,8 @@
     <string name="social_follows_you">Követ téged</string>
     <string name="social_public_trips">Nyilvános utazások (%1$d)</string>
     <string name="social_profile_no_trips">Még nincs nyilvános utazás.</string>
-    <string name="social_profile_not_found">Ez a profil nem érhető el.</string>
+    <string name="social_profile_not_found">Lehet, hogy a fiókot törölték.</string>
+    <string name="social_profile_not_found_title">A profil nem érhető el</string>
     <string name="social_report_user">Jelentés</string>
     <string name="social_block">Letiltás</string>
     <string name="social_unfollow">Követés leállítása</string>
