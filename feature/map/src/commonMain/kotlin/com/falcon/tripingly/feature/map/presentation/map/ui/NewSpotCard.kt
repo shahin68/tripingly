@@ -150,7 +150,7 @@ private fun CategoryRow(selected: PlaceCategory, onPick: (PlaceCategory) -> Unit
                 label = stringResource(category.label()),
                 onClick = { onPick(category) },
                 selected = category == selected,
-                leading = { Icon(category.icon, contentDescription = null, modifier = Modifier.size(ChipIconSize)) },
+                leading = { Icon(category.icon, contentDescription = null, modifier = Modifier.padding(start = MaterialTheme.spacing.small).size(ChipIconSize)) },
                 modifier = Modifier.animateItem(),
             )
         }
