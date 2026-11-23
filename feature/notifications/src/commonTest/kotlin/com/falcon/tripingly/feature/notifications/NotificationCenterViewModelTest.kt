@@ -122,7 +122,7 @@ class NotificationCenterViewModelTest {
     }
 
     @Test
-    fun `only a refresh shows the pull spinner, until its answer`() = runTest(dispatcher) {
+    fun `only a refresh shows the pull spinner until its answer`() = runTest(dispatcher) {
         val center = FakeNotificationCenterRepository(
             mapOf(
                 null to Page(listOf(entry("n2")), nextCursor = "c1"),
