@@ -5,13 +5,11 @@ import com.falcon.tripingly.core.data.places.PlaceRepository
 import com.falcon.tripingly.core.data.social.SocialRepository
 import com.falcon.tripingly.core.location.GetCurrentLocationUseCase
 import com.falcon.tripingly.core.location.permission.LocationPermission
-import com.falcon.tripingly.core.model.social.HotState
 import com.falcon.tripingly.core.model.social.NearbyPlace
 import com.falcon.tripingly.core.model.trip.GeoPoint
 import com.falcon.tripingly.core.ui.UiText
 import com.falcon.tripingly.core.ui.toUiText
 import com.falcon.tripingly.feature.social.generated.resources.Res
-import com.falcon.tripingly.feature.social.generated.resources.social_error_hot
 import com.falcon.tripingly.feature.social.generated.resources.social_error_load_nearby
 import com.falcon.tripingly.feature.social.generated.resources.social_nearby_location_unavailable
 import com.falcon.tripingly.feature.social.presentation.nearby.NearbyViewModel.State
@@ -43,18 +41,12 @@ internal class NearbyPlaces(
     var point: GeoPoint? = null
         private set
     private var loadingMore: Job? = null
-    private val hotJobs = mutableMapOf<String, Job>()
-
-    /** As the server last confirmed it: the flame before the first tap of a burst. */
-    private val confirmedHot = mutableMapOf<String, HotState>()
 
     init {
-        // A flame changed on another screen (a stop on the trip map), or a count the server sends live, shows here too; a tap still on its way here wins.
+        // A flame changed on another screen (a stop on the trip map), or a count the server sends live, shows here too.
         scope.launch {
             socialRepository.hotChanges.collect { change ->
-                if (hotJobs[change.placeId]?.isActive != true) {
-                    updatePlace(change.placeId) { it.copy(hotByMe = change.hotByMe ?: it.hotByMe, hotCount = change.hotCount) }
-                }
+                updatePlace(change.placeId) { it.copy(hotByMe = change.hotByMe ?: it.hotByMe, hotCount = change.hotCount) }
             }
         }
     }
@@ -135,23 +127,6 @@ internal class NearbyPlaces(
                     val known = nearby.places.map { it.id }.toSet()
                     nearby.copy(places = (nearby.places + result.data.items.filterNot { it.id in known }).toImmutableList())
                 }
-            }
-        }
-    }
-
-    /** A place's flame, in the grid or the search: shown at once and kept; a newer tap wins, and only a refusal puts it back. */
-    fun toggleHot(placeId: String) {
-        val shown = state.value.let { it.places + it.search.spots }.firstOrNull { it.id == placeId } ?: return
-        if (hotJobs[placeId]?.isActive != true) confirmedHot[placeId] = HotState(shown.hotByMe, shown.hotCount)
-        hotJobs[placeId]?.cancel()
-        val hot = !shown.hotByMe
-        updatePlace(placeId) { it.copy(hotByMe = hot, hotCount = (it.hotCount + if (hot) 1 else -1).coerceAtLeast(0)) }
-        hotJobs[placeId] = scope.launch {
-            val result = socialRepository.setHot(placeId, hot)
-            if (result is AppResult.Error) {
-                val before = confirmedHot.getValue(placeId)
-                updatePlace(placeId) { it.copy(hotByMe = before.hot, hotCount = before.hotCount) }
-                showMessage(result.error.toUiText(Res.string.social_error_hot))
             }
         }
     }

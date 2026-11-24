@@ -21,6 +21,8 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.LocalFireDepartment
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -35,10 +37,8 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.falcon.tripingly.core.common.util.NumberUtils
 import com.falcon.tripingly.core.designsystem.component.AvatarSize
-import com.falcon.tripingly.core.designsystem.component.BannerHotButton
+import com.falcon.tripingly.core.designsystem.component.BannerCount
 import com.falcon.tripingly.core.designsystem.component.FaceSlot
-import com.falcon.tripingly.core.designsystem.component.JoinedButtonSlot
-import com.falcon.tripingly.core.designsystem.component.JoinedButtons
 import com.falcon.tripingly.core.designsystem.component.OsmAttribution
 import com.falcon.tripingly.core.designsystem.component.PersonFace
 import com.falcon.tripingly.core.designsystem.component.PersonFaceDefaults
@@ -126,7 +126,7 @@ private const val TileHeightRatio = 1.4f
 
 /**
  * Nearby's grid: [header] items (the faces) on top across the whole width, then [places] as tiles, then
- * [footer] items (the OpenStreetMap credit). Tiles open their spot ([onOpen]) and mark it hot ([onMarkHot]).
+ * [footer] items (the OpenStreetMap credit). Tiles open their spot ([onOpen]); their flames only show (Shahin, 2026-11-24).
  */
 @Composable
 internal fun SpotGrid(
@@ -134,7 +134,6 @@ internal fun SpotGrid(
     gridState: LazyGridState,
     contentPadding: PaddingValues,
     onOpen: (NearbyPlace) -> Unit,
-    onMarkHot: (NearbyPlace) -> Unit,
     modifier: Modifier = Modifier,
     header: LazyGridScope.() -> Unit = {},
     footer: LazyGridScope.() -> Unit = {},
@@ -159,7 +158,7 @@ internal fun SpotGrid(
         ) {
             header()
             items(tiles, key = { it.place.id }, span = { GridItemSpan(it.span) }) { tile ->
-                NearbyTile(tile.place, onOpen = { onOpen(tile.place) }, onMarkHot = { onMarkHot(tile.place) }, Modifier.height(tileHeight).animateItem())
+                NearbyTile(tile.place, onOpen = { onOpen(tile.place) }, Modifier.height(tileHeight).animateItem())
             }
             footer()
         }
@@ -180,7 +179,7 @@ internal fun LazyGridScope.osmCredit(isShown: Boolean) {
  * start and its flame at the bottom end; without a photo, the tinted panel with its kind's mark.
  */
 @Composable
-internal fun NearbyTile(place: NearbyPlace, onOpen: () -> Unit, onMarkHot: () -> Unit, modifier: Modifier = Modifier) {
+internal fun NearbyTile(place: NearbyPlace, onOpen: () -> Unit, modifier: Modifier = Modifier) {
     PhotoBanner(
         title = place.name,
         subtitle = AnnotatedString(place.distanceMeters?.let { distanceText(it).asString() } ?: place.city ?: place.category.label()),
@@ -191,7 +190,7 @@ internal fun NearbyTile(place: NearbyPlace, onOpen: () -> Unit, onMarkHot: () ->
         titleMaxLines = 2,
         onClick = onOpen,
         mark = { PinMark(place.category, isStop = false) },
-        trailing = { JoinedButtons(listOf<JoinedButtonSlot>({ BannerHotButton(place.hotByMe, place.hotCount, onMarkHot, it) })) },
+        trailing = { if (place.hotCount > 0) BannerCount(Icons.Outlined.LocalFireDepartment, place.hotCount) },
     )
 }
 
@@ -252,7 +251,6 @@ private fun SpotGridPreviewContent() {
         gridState = rememberLazyGridState(),
         contentPadding = PaddingValues(MaterialTheme.spacing.medium),
         onOpen = {},
-        onMarkHot = {},
         modifier = Modifier.background(MaterialTheme.colorScheme.background),
         header = { fullWidthItem("people") { PeopleFaces(previewNearbyPeople, onOpenProfile = {}, onOpenSheet = {}) } },
         footer = { osmCredit(isShown = true) },
@@ -286,7 +284,7 @@ private fun NearbyPartsPreviewContent() {
     ) {
         Row(horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small)) {
             previewNearbyPlaces.take(3).forEach { place ->
-                NearbyTile(place, onOpen = {}, onMarkHot = {}, modifier = Modifier.size(width = 112.dp, height = 157.dp))
+                NearbyTile(place, onOpen = {}, modifier = Modifier.size(width = 112.dp, height = 157.dp))
             }
         }
         PeopleFaces(previewNearbyPeople.copy(total = previewNearbyPeople.people.size), onOpenProfile = {}, onOpenSheet = {})

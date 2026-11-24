@@ -58,7 +58,6 @@ class NearbyViewModel(
             Action.AllowLocation -> sendEvent(if (_uiState.value.status == Status.Blocked) Event.OpenAppSettings else Event.RequestPermission)
             Action.Refresh -> places.refresh()
             Action.LoadMore -> if (_uiState.value.search.isSearching) search.loadMore() else places.loadMore()
-            is Action.MarkHot -> places.toggleHot(action.place.id)
             is Action.QueryChanged -> search.onQuery(action.query)
             Action.OpenPeople -> _uiState.update { it.copy(isPeopleSheetOpen = true) }
             Action.ClosePeople -> _uiState.update { it.copy(isPeopleSheetOpen = false) }
@@ -135,7 +134,6 @@ class NearbyViewModel(
         data object AllowLocation : Action
         data object Refresh : Action
         data object LoadMore : Action
-        data class MarkHot(val place: NearbyPlace) : Action
         data class QueryChanged(val query: String) : Action
         data object OpenPeople : Action
         data object ClosePeople : Action

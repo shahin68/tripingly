@@ -158,7 +158,6 @@ private fun NearbyGrid(state: State, onAction: (Action) -> Unit, onOpenSpot: (St
         gridState = gridState,
         contentPadding = contentPadding,
         onOpen = { onOpenSpot(it.id) },
-        onMarkHot = { onAction(Action.MarkHot(it)) },
         header = {
             if (state.places.isEmpty()) {
                 fullWidthItem("empty") {
@@ -186,7 +185,6 @@ private fun SearchResults(state: State, onAction: (Action) -> Unit, onOpenSpot: 
         gridState = gridState,
         contentPadding = contentPadding,
         onOpen = { onOpenSpot(it.id) },
-        onMarkHot = { onAction(Action.MarkHot(it)) },
         header = {
             peopleRow(search.people, onAction, onOpenProfile)
             if (search.hasLoaded && !search.isLoading && search.people.people.isEmpty() && search.spots.isEmpty()) {
@@ -244,7 +242,6 @@ private fun NearbySkeleton(contentPadding: PaddingValues) {
             gridState = rememberLazyGridState(),
             contentPadding = contentPadding,
             onOpen = {},
-            onMarkHot = {},
         )
     }
 }

@@ -79,24 +79,6 @@ class NearbyViewModelTest : SocialTestBase() {
     }
 
     @Test
-    fun aNearbyPlacesFlame_showsAtOnce_andARefusalPutsItBack() = runTest {
-        val viewModel = viewModel()
-        viewModel.onAction(Action.PermissionChecked(LocationPermission.Granted))
-        advanceUntilIdle()
-        val place = viewModel.uiState.value.places.first()
-
-        likeRefused = true
-        viewModel.onAction(Action.MarkHot(place))
-        val shown = viewModel.uiState.value.places.first()
-        assertTrue(shown.hotByMe, "the flame lights at once")
-        assertEquals(place.hotCount + 1, shown.hotCount)
-        advanceUntilIdle()
-        val back = viewModel.uiState.value.places.first()
-        assertFalse(back.hotByMe, "a refusal puts the flame back")
-        assertEquals(place.hotCount, back.hotCount)
-    }
-
-    @Test
     fun aFlameMarkedElsewhere_showsInNearby_withoutAReload() = runTest {
         val viewModel = viewModel()
         viewModel.onAction(Action.PermissionChecked(LocationPermission.Granted))
