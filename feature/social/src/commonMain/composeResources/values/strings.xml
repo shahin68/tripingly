@@ -89,6 +89,10 @@
     <string name="social_search_none">Nothing found with that name.</string>
     <string name="social_error_search">Couldn’t search right now.</string>
     <string name="social_people">People</string>
-    <string name="social_people_more">%1$s more people</string>
+    <string name="social_people_see_all">See all %1$s people</string>
+    <string name="social_people_tip_title">Travel with friends</string>
+    <string name="social_people_tip_body">Search anyone by name or @username and follow their trips.</string>
+    <string name="social_people_tip_search">Search people</string>
+    <string name="social_people_tip_close">Close tip</string>
     <string name="social_friend_tag">Friend</string>
 </resources>

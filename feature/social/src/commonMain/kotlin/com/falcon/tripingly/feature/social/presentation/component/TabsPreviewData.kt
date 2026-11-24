@@ -57,9 +57,9 @@ internal val previewNearbyPlaces = persistentListOf(
     ),
 )
 
-/** People a search found: a friend, someone I follow and two I don't, of 42 in all. */
+/** People a search found: a friend, someone I follow, someone who follows me and one of neither, of 42 in all. */
 internal val previewFoundPeople = SearchViewModel.PeopleState(
-    people = previewPeople.mapIndexed { index, user -> Person(user, isFriend = index == 0, isFollowing = index < 2) }.toImmutableList(),
+    people = previewPeople.mapIndexed { index, user -> Person(user, isFollowing = index < 2, followsMe = index == 0 || index == 2) }.toImmutableList(),
     total = 42,
     hasLoaded = true,
 )
@@ -82,15 +82,15 @@ internal class ExplorePreviewStates : PreviewParameterProvider<ExploreViewModel.
 }
 
 /**
- * The Search tab while locating, asking for the location, after it was blocked, with places, with none around, failed, and
- * searching (the people found on top).
+ * The Search tab while locating, asking for the location, after it was blocked, with places (and the people tip), with none
+ * around, failed, and searching (the top people on top).
  */
 internal class SearchPreviewStates : PreviewParameterProvider<SearchViewModel.State> {
     override val values = sequenceOf(
         SearchViewModel.State(status = Status.Locating),
         SearchViewModel.State(status = Status.NeedsPermission),
         SearchViewModel.State(status = Status.Blocked),
-        SearchViewModel.State(status = Status.Ready, places = previewNearbyPlaces),
+        SearchViewModel.State(status = Status.Ready, places = previewNearbyPlaces, isPeopleTipShown = true),
         SearchViewModel.State(status = Status.Ready),
         SearchViewModel.State(status = Status.Ready, loadError = UiText.Resource(Res.string.social_error_load_explore)),
         SearchViewModel.State(

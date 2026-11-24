@@ -4,6 +4,8 @@ import com.falcon.tripingly.core.common.error.DataError
 import com.falcon.tripingly.core.common.result.AppResult
 import com.falcon.tripingly.core.data.config.FakeAppConfigRepository
 import com.falcon.tripingly.core.data.places.FakePlaceRepository
+import com.falcon.tripingly.core.data.tips.FakeTipRepository
+import com.falcon.tripingly.core.data.tips.Tip
 import com.falcon.tripingly.core.data.users.FakeUserRepository
 import com.falcon.tripingly.core.data.users.UserRepository
 import com.falcon.tripingly.core.location.permission.LocationPermission
@@ -42,9 +44,10 @@ class SearchViewModelTest : SocialTestBase() {
     }
 
     private val people = RefusingUsers()
+    private val tips = FakeTipRepository()
 
     private fun viewModel(config: AppConfig = AppConfig()) =
-        SearchViewModel(social, FakePlaceRepository(), people, location, FakeAppConfigRepository(config))
+        SearchViewModel(social, FakePlaceRepository(), people, location, FakeAppConfigRepository(config), tips)
 
     private fun TestScope.located(): SearchViewModel = viewModel().also {
         it.onAction(Action.PermissionChecked(LocationPermission.Granted))
@@ -146,9 +149,13 @@ class SearchViewModelTest : SocialTestBase() {
         val found = { viewModel.uiState.value.search.people.people }
         val julia = found().first { it.user.username == "julia_t" }
         assertFalse(julia.isFollowing)
+        assertTrue(julia.followsMe)
+        assertFalse(julia.isFriend)
 
         viewModel.onAction(Action.ToggleFollow(julia))
         assertTrue(found().first { it.user.id == julia.user.id }.isFollowing)
+        // She follows me, so following her back makes us friends at once.
+        assertTrue(found().first { it.user.id == julia.user.id }.isFriend)
         advanceUntilIdle()
         val followed = found().first { it.user.id == julia.user.id }
         assertTrue(followed.isFollowing)
@@ -156,13 +163,14 @@ class SearchViewModelTest : SocialTestBase() {
         people.followRefused = true
         viewModel.onAction(Action.ToggleFollow(followed))
         assertFalse(found().first { it.user.id == julia.user.id }.isFollowing)
+        assertFalse(found().first { it.user.id == julia.user.id }.isFriend)
         advanceUntilIdle()
         assertTrue(found().first { it.user.id == julia.user.id }.isFollowing)
         assertNotNull(viewModel.uiState.value.message)
     }
 
     @Test
-    fun `someone I block leaves the faces and the count at once`() = runTest {
+    fun `someone I block leaves the top people and the count at once`() = runTest {
         val viewModel = located()
         viewModel.onAction(Action.QueryChanged("an"))
         advanceUntilIdle()
@@ -177,7 +185,33 @@ class SearchViewModelTest : SocialTestBase() {
     }
 
     @Test
-    fun `the people sheet opens from the faces and closes`() = runTest {
+    fun `the people tip shows until its close and stays dismissed`() = runTest {
+        val viewModel = located()
+        assertTrue(viewModel.uiState.value.isPeopleTipShown)
+
+        viewModel.onAction(Action.DismissPeopleTip)
+        assertFalse(viewModel.uiState.value.isPeopleTipShown)
+        advanceUntilIdle()
+        assertEquals(setOf(Tip.SearchPeople), tips.dismissed.value)
+
+        val next = located()
+        assertFalse(next.uiState.value.isPeopleTipShown)
+    }
+
+    @Test
+    fun `Search people on the tip dismisses it and opens the search field`() = runTest {
+        val viewModel = located()
+
+        viewModel.onAction(Action.SearchPeople)
+
+        assertFalse(viewModel.uiState.value.isPeopleTipShown)
+        assertEquals(Event.OpenSearch, viewModel.events.first())
+        advanceUntilIdle()
+        assertEquals(setOf(Tip.SearchPeople), tips.dismissed.value)
+    }
+
+    @Test
+    fun `the people sheet opens from See all and closes`() = runTest {
         val viewModel = located()
         viewModel.onAction(Action.OpenPeople)
         assertTrue(viewModel.uiState.value.isPeopleSheetOpen)

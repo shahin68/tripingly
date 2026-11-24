@@ -7,6 +7,8 @@ import androidx.lifecycle.viewModelScope
 import com.falcon.tripingly.core.data.config.AppConfigRepository
 import com.falcon.tripingly.core.data.places.PlaceRepository
 import com.falcon.tripingly.core.data.social.SocialRepository
+import com.falcon.tripingly.core.data.tips.Tip
+import com.falcon.tripingly.core.data.tips.TipRepository
 import com.falcon.tripingly.core.data.users.UserRepository
 import com.falcon.tripingly.core.location.GetCurrentLocationUseCase
 import com.falcon.tripingly.core.location.permission.LocationPermission
@@ -19,14 +21,17 @@ import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 /**
  * The Search tab (Shahin, 2026-11-23): spots around me in a grid ([NearbyPlaces]), and the search for people and spots
- * from the shell's top bar ([TypedSearch]); the people it finds show as a row of faces and a sheet ([FoundPeople],
- * only while searching, Shahin 2026-11-24). A spot opens its own map.
+ * from the shell's top bar ([TypedSearch]); the people it finds show as their top three rows and a sheet of all ([FoundPeople],
+ * only while searching, Shahin 2026-11-24). A tip card on top of the spots says people can be searched too, until it is
+ * dismissed. A spot opens its own map.
  */
 class SearchViewModel(
     socialRepository: SocialRepository,
@@ -34,6 +39,7 @@ class SearchViewModel(
     userRepository: UserRepository,
     getCurrentLocation: GetCurrentLocationUseCase,
     appConfigRepository: AppConfigRepository,
+    private val tipRepository: TipRepository,
 ) : ViewModel() {
 
     /** The search field in the shell's top bar; each change comes back as [Action.QueryChanged]. */
@@ -51,6 +57,12 @@ class SearchViewModel(
 
     private val search = TypedSearch(viewModelScope, _uiState, userRepository, placeRepository, { places.point }, people, ::showMessage)
 
+    init {
+        tipRepository.isDismissed(Tip.SearchPeople)
+            .onEach { dismissed -> _uiState.update { it.copy(isPeopleTipShown = !dismissed) } }
+            .launchIn(viewModelScope)
+    }
+
     fun onAction(action: Action) {
         when (action) {
             is Action.PermissionChecked -> places.onPermission(action.permission, isAnswer = false)
@@ -63,8 +75,19 @@ class SearchViewModel(
             Action.ClosePeople -> _uiState.update { it.copy(isPeopleSheetOpen = false) }
             Action.LoadMorePeople -> people.loadMore()
             is Action.ToggleFollow -> people.toggleFollow(action.person)
+            Action.DismissPeopleTip -> dismissPeopleTip()
+            Action.SearchPeople -> {
+                dismissPeopleTip()
+                sendEvent(Event.OpenSearch)
+            }
             Action.DismissMessage -> _uiState.update { it.copy(message = null) }
         }
+    }
+
+    /** Hidden at once; the store's answer only confirms it. */
+    private fun dismissPeopleTip() {
+        _uiState.update { it.copy(isPeopleTipShown = false) }
+        viewModelScope.launch { tipRepository.dismiss(Tip.SearchPeople) }
     }
 
     private fun showMessage(message: UiText) = _uiState.update { it.copy(message = message) }
@@ -121,6 +144,8 @@ class SearchViewModel(
          */
         val isPeopleSheetOpen: Boolean = false,
         val message: UiText? = null,
+        /** The "Travel with friends" tip on top of the spots; false until the device says it wasn't dismissed, so it never flashes. */
+        val isPeopleTipShown: Boolean = false,
         /** The server lists OpenStreetMap places (OSM_PINS_ENABLED); off, the Search tab has only users' places and no OSM credit. */
         val isOsmCreditShown: Boolean = true,
     )
@@ -139,11 +164,20 @@ class SearchViewModel(
         data object ClosePeople : Action
         data object LoadMorePeople : Action
         data class ToggleFollow(val person: Person) : Action
+
+        /** The tip's ✕. */
+        data object DismissPeopleTip : Action
+
+        /** The tip's Search people: it goes away and the search field opens. */
+        data object SearchPeople : Action
         data object DismissMessage : Action
     }
 
     sealed interface Event {
         data object RequestPermission : Event
         data object OpenAppSettings : Event
+
+        /** Open the tab's search field in the shell's top bar, with the keyboard. */
+        data object OpenSearch : Event
     }
 }

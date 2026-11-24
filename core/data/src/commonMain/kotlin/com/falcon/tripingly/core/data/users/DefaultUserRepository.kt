@@ -47,8 +47,9 @@ class DefaultUserRepository(private val api: UsersApi, realtime: RealtimeClient)
 
     private fun PersonDto.toPerson() = Person(
         user = UserSummary(id = id, username = username, displayName = displayName, photo = profilePhotoOf(avatarPhotoId, avatarThumbUrl)),
-        isFriend = isFriend,
         isFollowing = isFollowing,
+        // A server from before followsMe still says isFriend, which means they follow me.
+        followsMe = followsMe ?: isFriend,
     )
 
     override suspend fun friends(): AppResult<List<UserSummary>, DataError.Network> =

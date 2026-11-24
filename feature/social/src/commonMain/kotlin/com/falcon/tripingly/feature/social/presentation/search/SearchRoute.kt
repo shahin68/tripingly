@@ -5,7 +5,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
@@ -23,16 +22,13 @@ import com.falcon.tripingly.core.designsystem.component.AppBottomSheet
 import com.falcon.tripingly.core.designsystem.component.AppPullToRefresh
 import com.falcon.tripingly.core.designsystem.component.AppTextField
 import com.falcon.tripingly.core.designsystem.component.AppTextFieldStyle
-import com.falcon.tripingly.core.designsystem.component.ButtonSize
 import com.falcon.tripingly.core.designsystem.component.EmptyState
 import com.falcon.tripingly.core.designsystem.component.ErrorScreen
 import com.falcon.tripingly.core.designsystem.component.Illustration
 import com.falcon.tripingly.core.designsystem.component.LoadStateContent
-import com.falcon.tripingly.core.designsystem.component.PersonRow
 import com.falcon.tripingly.core.designsystem.component.SheetHeader
 import com.falcon.tripingly.core.designsystem.component.ShowMessage
 import com.falcon.tripingly.core.designsystem.component.Skeleton
-import com.falcon.tripingly.core.designsystem.component.Tag
 import com.falcon.tripingly.core.designsystem.component.screenContentPadding
 import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
 import com.falcon.tripingly.core.designsystem.theme.spacing
@@ -40,7 +36,6 @@ import com.falcon.tripingly.core.location.permission.rememberLocationPermissionC
 import com.falcon.tripingly.core.ui.ObserveAsEvents
 import com.falcon.tripingly.core.ui.UiText
 import com.falcon.tripingly.feature.social.generated.resources.Res
-import com.falcon.tripingly.feature.social.generated.resources.social_friend_tag
 import com.falcon.tripingly.feature.social.generated.resources.social_nearby
 import com.falcon.tripingly.feature.social.generated.resources.social_nearby_allow
 import com.falcon.tripingly.feature.social.generated.resources.social_nearby_ask
@@ -51,7 +46,6 @@ import com.falcon.tripingly.feature.social.generated.resources.social_nearby_ope
 import com.falcon.tripingly.feature.social.generated.resources.social_people
 import com.falcon.tripingly.feature.social.generated.resources.social_search_hint
 import com.falcon.tripingly.feature.social.generated.resources.social_search_none
-import com.falcon.tripingly.feature.social.presentation.component.FollowButton
 import com.falcon.tripingly.feature.social.presentation.component.LoadMoreAtEnd
 import com.falcon.tripingly.feature.social.presentation.component.SearchPreviewStates
 import com.falcon.tripingly.feature.social.presentation.component.placeholderNearbyPlaces
@@ -62,17 +56,17 @@ import com.falcon.tripingly.feature.social.presentation.search.SearchViewModel.S
 import com.falcon.tripingly.feature.social.presentation.search.SearchViewModel.Status
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel
-import androidx.compose.foundation.lazy.grid.LazyGridScope
-import androidx.compose.foundation.clickable
 
 /**
- * The Search tab. A spot opens its own map ([onOpenSpot]), a person their profile ([onOpenProfile]). [barsPadding] is
- * the tab shell's floating top and bottom bars, which the grid scrolls behind.
+ * The Search tab. A spot opens its own map ([onOpenSpot]), a person their profile ([onOpenProfile]); the people tip's
+ * Search people opens the tab's search field in the shell's top bar ([onOpenSearch]). [barsPadding] is the tab shell's
+ * floating top and bottom bars, which the grid scrolls behind.
  */
 @Composable
 fun SearchRoute(
     onOpenSpot: (placeId: String) -> Unit,
     onOpenProfile: (username: String) -> Unit,
+    onOpenSearch: () -> Unit,
     barsPadding: PaddingValues = PaddingValues(),
     viewModel: SearchViewModel = koinViewModel(),
 ) {
@@ -87,6 +81,7 @@ fun SearchRoute(
         when (event) {
             Event.RequestPermission -> locationPermission.request()
             Event.OpenAppSettings -> locationPermission.openSettings()
+            Event.OpenSearch -> onOpenSearch()
         }
     }
 
@@ -148,7 +143,10 @@ internal fun SearchScreen(
     }
 }
 
-/** The spots around me, then the OpenStreetMap credit. People show only while searching (Shahin, 2026-11-24). */
+/**
+ * The people tip until it is dismissed, the spots around me, then the OpenStreetMap credit. People show only while
+ * searching (Shahin, 2026-11-24).
+ */
 @Composable
 private fun NearbyGrid(state: State, onAction: (Action) -> Unit, onOpenSpot: (String) -> Unit, contentPadding: PaddingValues) {
     val gridState = rememberLazyGridState()
@@ -159,6 +157,7 @@ private fun NearbyGrid(state: State, onAction: (Action) -> Unit, onOpenSpot: (St
         contentPadding = contentPadding,
         onOpen = { onOpenSpot(it.id) },
         header = {
+            peopleTip(state.isPeopleTipShown, onAction)
             if (state.places.isEmpty()) {
                 fullWidthItem("empty") {
                     EmptyState(
@@ -186,7 +185,7 @@ private fun SearchResults(state: State, onAction: (Action) -> Unit, onOpenSpot: 
         contentPadding = contentPadding,
         onOpen = { onOpenSpot(it.id) },
         header = {
-            peopleRow(search.people, onAction, onOpenProfile)
+            topPeople(search.people, onAction, onOpenProfile)
             if (search.hasLoaded && !search.isLoading && search.people.people.isEmpty() && search.spots.isEmpty()) {
                 fullWidthItem("none") {
                     EmptyState(illustration = Illustration.NearbyEmpty, title = stringResource(Res.string.social_search_none), modifier = Modifier.fillMaxWidth())
@@ -197,37 +196,18 @@ private fun SearchResults(state: State, onAction: (Action) -> Unit, onOpenSpot: 
     )
 }
 
-/** The faces of the people the search found, on top of the grid; none found, no row. */
-private fun LazyGridScope.peopleRow(people: PeopleState, onAction: (Action) -> Unit, onOpenProfile: (String) -> Unit) {
-    if (people.people.isEmpty()) return
-    fullWidthItem("people") {
-        PeopleFaces(people, onOpenProfile = { onOpenProfile(it.user.username) }, onOpenSheet = { onAction(Action.OpenPeople) })
-    }
-}
-
 /**
- * Everyone the row stands for, a page at a time: name, @handle, a Friend tag and Follow / Following. A tap opens
- * their profile; the sheet slides away under it and comes back on the way back ([listState] keeps where it was).
+ * Everyone the search found, a page at a time, in the same rows as the top people. A tap opens their profile; the sheet
+ * slides away under it and comes back on the way back ([listState] keeps where it was).
  */
 @Composable
 private fun PeopleSheet(people: PeopleState, listState: LazyListState, onAction: (Action) -> Unit, onOpenProfile: (String) -> Unit, onClose: () -> Unit) {
     Column(Modifier.fillMaxWidth()) {
         SheetHeader(title = stringResource(Res.string.social_people), onClose = onClose)
         LoadMoreAtEnd(listState) { onAction(Action.LoadMorePeople) }
-        val friend = stringResource(Res.string.social_friend_tag)
         LazyColumn(state = listState, contentPadding = PaddingValues(bottom = MaterialTheme.spacing.large)) {
             items(people.people, key = { it.user.id }) { person ->
-                PersonRow(
-                    user = person.user,
-                    detail = "@${person.user.username}",
-                    modifier = Modifier
-                        .animateItem()
-                        .clickable { onOpenProfile(person.user.username) }
-                        .padding(horizontal = MaterialTheme.spacing.large - MaterialTheme.spacing.extraSmall),
-                ) {
-                    if (person.isFriend) Tag(friend)
-                    FollowButton(person.isFollowing, onToggle = { onAction(Action.ToggleFollow(person)) }, size = ButtonSize.Small)
-                }
+                FoundPersonRow(person, onAction, onOpenProfile, inset = MaterialTheme.spacing.large, modifier = Modifier.animateItem())
             }
         }
     }

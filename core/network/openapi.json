@@ -5826,6 +5826,10 @@
           "isFollowing": {
             "type": "boolean",
             "description": "You follow them"
+          },
+          "followsMe": {
+            "type": "boolean",
+            "description": "They follow you: with isFollowing, the app knows at once whether a follow or unfollow tap makes you friends or ends it"
           }
         },
         "required": [

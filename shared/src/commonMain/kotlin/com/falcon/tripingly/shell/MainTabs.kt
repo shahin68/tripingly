@@ -65,7 +65,7 @@ internal enum class MainTab(val label: StringResource, val icon: ImageVector, va
  * The tab shell: one floating top bar and one floating bottom bar over the tabs, which the user swipes between
  * like pages or picks in the bottom bar (tap, or drag its selection; a tap on a far tab jumps there without passing the tabs in between). The top bar animates to the page shown: its
  * title, the page's own action (Explore's period) and the search button in the Settings pill (Trips, Search).
- * The button opens the tab's search field with the keyboard; the field's ✕ closes both. A tab keeps its search open
+ * The button (and the Search tab's people tip) opens the tab's search field with the keyboard; the field's ✕ closes both. A tab keeps its search open
  * while another is shown, like its scroll position. The Add Trip button
  * shrinks away off the Trips tab. Every tab keeps its scroll position and view models while another is shown
  * (they live as long as this screen); content scrolls behind both bars. Profile has a red dot while something new
@@ -101,6 +101,11 @@ internal fun MainTabs(
         searchFocus.requestFocus()
         focusSearch = false
     }
+    // The search button, and the Search tab's people tip.
+    val openSearch = { tab: MainTab ->
+        searching += tab
+        focusSearch = true
+    }
     Scaffold(
         modifier = modifier.fillMaxSize(),
         contentWindowInsets = WindowInsets(0),
@@ -111,7 +116,7 @@ internal fun MainTabs(
                 pageActions = { if (it == MainTab.Explore) ExplorePeriodAction() },
                 actions = {
                     val canSearch = shown.hasSearch && shown !in searching
-                    SearchSettingsPill(onSearch = if (canSearch) ({ searching += shown; focusSearch = true }) else null, onSettings = onOpenSettings)
+                    SearchSettingsPill(onSearch = if (canSearch) ({ openSearch(shown) }) else null, onSettings = onOpenSettings)
                 },
                 search = { tab ->
                     val onClose = { searching -= tab }
@@ -138,7 +143,12 @@ internal fun MainTabs(
                 when (tab) {
                     MainTab.Trips -> HomeRoute(onNavigateToMap = onOpenTrip, barsPadding = barsPadding)
                     MainTab.Explore -> ExploreRoute(onOpenTrip = onOpenTrip, onOpenProfile = onOpenProfile, barsPadding = barsPadding)
-                    MainTab.Search -> SearchRoute(onOpenSpot = onOpenSpot, onOpenProfile = onOpenProfile, barsPadding = barsPadding)
+                    MainTab.Search -> SearchRoute(
+                        onOpenSpot = onOpenSpot,
+                        onOpenProfile = onOpenProfile,
+                        onOpenSearch = { openSearch(MainTab.Search) },
+                        barsPadding = barsPadding,
+                    )
                     MainTab.Profile -> ProfileRoute(
                         username = null,
                         onBack = {},

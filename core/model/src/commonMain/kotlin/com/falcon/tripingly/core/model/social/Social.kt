@@ -94,8 +94,13 @@ data class NearbyPlace(
     val city: String? = null,
 )
 
-/** Someone in people search or the Search tab's people row, with what they are to me. */
-data class Person(val user: UserSummary, val isFriend: Boolean, val isFollowing: Boolean)
+/**
+ * Someone in people search or the Search tab's people rows, with what they are to me.
+ * Friends is worked out from both follows, so a follow or unfollow tap switches Friend and Follows you at once.
+ */
+data class Person(val user: UserSummary, val isFollowing: Boolean, val followsMe: Boolean) {
+    val isFriend: Boolean get() = isFollowing && followsMe
+}
 
 /** A page of people, with how many match in all, counted up to [PeoplePage.TOTAL_CAP] ("999+"). */
 data class PeoplePage(val people: List<Person>, val total: Int, val nextCursor: String?) {

@@ -89,6 +89,10 @@
     <string name="social_search_none">Nichts mit diesem Namen gefunden.</string>
     <string name="social_error_search">Die Suche ist gerade fehlgeschlagen.</string>
     <string name="social_people">Personen</string>
-    <string name="social_people_more">%1$s weitere Personen</string>
+    <string name="social_people_see_all">Alle %1$s Personen ansehen</string>
+    <string name="social_people_tip_title">Reise mit Freunden</string>
+    <string name="social_people_tip_body">Suche jeden nach Namen oder @Benutzernamen und folge ihren Reisen.</string>
+    <string name="social_people_tip_search">Personen suchen</string>
+    <string name="social_people_tip_close">Hinweis schließen</string>
     <string name="social_friend_tag">Befreundet</string>
 </resources>

@@ -54,8 +54,8 @@ class FakeUserRepository : UserRepository {
         if (trimmed.isNotEmpty() && trimmed.length < MIN_SEARCH_LENGTH) return AppResult.Success(PeoplePage(emptyList(), 0, null))
         val found = visible()
             .filter { trimmed.isEmpty() || it.username.startsWith(trimmed, ignoreCase = true) || it.displayName.startsWith(trimmed, ignoreCase = true) }
-            .map { Person(it, isFriend = it.id in following && it.id in followers, isFollowing = it.id in following) }
-            .sortedBy { if (it.isFriend) 0 else if (it.isFollowing || it.user.id in followers) 1 else 2 }
+            .map { Person(it, isFollowing = it.id in following, followsMe = it.id in followers) }
+            .sortedBy { if (it.isFriend) 0 else if (it.isFollowing || it.followsMe) 1 else 2 }
         return AppResult.Success(PeoplePage(found, found.size, nextCursor = null))
     }
 

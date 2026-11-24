@@ -19,7 +19,7 @@ import kotlinx.coroutines.launch
 
 /**
  * The Search tab's people, only those a search finds (Shahin, 2026-11-24: no people around by default): friends, then follows,
- * then the rest (the server's order), as faces in a row and all of them in a sheet, a page at a time. Follow and
+ * then the rest (the server's order), as their top three rows above the spots and all of them in a sheet, a page at a time. Follow and
  * Following switch at once and stay; only a refusal puts them back.
  */
 internal class FoundPeople(
@@ -103,7 +103,7 @@ internal class FoundPeople(
     private fun updatePeople(change: (List<Person>) -> List<Person>) = state.update { nearby ->
         val found = nearby.search.people
         val people = change(found.people)
-        // A blocked person also leaves the count beside the faces.
+        // A blocked person also leaves the count in See all.
         val changed = found.copy(people = people.toImmutableList(), total = (found.total - (found.people.size - people.size)).coerceAtLeast(people.size))
         nearby.copy(search = nearby.search.copy(people = changed))
     }

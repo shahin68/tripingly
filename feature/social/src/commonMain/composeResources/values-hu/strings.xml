@@ -89,6 +89,10 @@
     <string name="social_search_none">Nincs ilyen nevű találat.</string>
     <string name="social_error_search">Most nem sikerült keresni.</string>
     <string name="social_people">Emberek</string>
-    <string name="social_people_more">további %1$s ember</string>
+    <string name="social_people_see_all">Mind a %1$s ember megtekintése</string>
+    <string name="social_people_tip_title">Utazz a barátaiddal</string>
+    <string name="social_people_tip_body">Keress bárkit név vagy @felhasználónév alapján, és kövesd az utazásait.</string>
+    <string name="social_people_tip_search">Emberek keresése</string>
+    <string name="social_people_tip_close">Tipp bezárása</string>
     <string name="social_friend_tag">Barát</string>
 </resources>
