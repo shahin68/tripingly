@@ -46,6 +46,7 @@ import com.falcon.tripingly.feature.social.presentation.component.FollowButton
 import com.falcon.tripingly.feature.social.presentation.component.previewFoundPeople
 import com.falcon.tripingly.feature.social.presentation.search.SearchViewModel.Action
 import com.falcon.tripingly.feature.social.presentation.search.SearchViewModel.PeopleState
+import kotlinx.collections.immutable.toImmutableList
 import org.jetbrains.compose.resources.stringResource
 
 /*
@@ -175,7 +176,7 @@ private fun PeoplePartsPreviewContent() {
     ) {
         PeopleTipCard(onSearch = {}, onDismiss = {})
         TopPeople(previewFoundPeople, onAction = {}, onOpenProfile = {})
-        TopPeople(previewFoundPeople.copy(people = previewFoundPeople.people.take(2), total = 2), onAction = {}, onOpenProfile = {})
+        TopPeople(previewFoundPeople.copy(people = previewFoundPeople.people.take(2).toImmutableList(), total = 2), onAction = {}, onOpenProfile = {})
     }
 }
 
