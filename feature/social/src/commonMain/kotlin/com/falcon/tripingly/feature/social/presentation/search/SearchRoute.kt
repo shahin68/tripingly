@@ -105,7 +105,11 @@ fun SearchRoute(
 /** The Search tab's part of the shell's top bar: people and spots search, on the tab's own [SearchViewModel]. */
 @Composable
 fun SearchTabField(onClose: () -> Unit, modifier: Modifier = Modifier, viewModel: SearchViewModel = koinViewModel()) {
+    val state by viewModel.uiState.collectAsStateWithLifecycle()
+    // Only this flag recomposes the field: its icon spins from the first key until the people and spots are in.
+    val isLoading by remember { derivedStateOf { state.search.isSearching && state.search.isLoading } }
     AppTextField(
+        isLoading = isLoading,
         state = viewModel.queryField,
         placeholder = stringResource(Res.string.social_search_hint),
         onTextChange = { viewModel.onAction(Action.QueryChanged(it)) },

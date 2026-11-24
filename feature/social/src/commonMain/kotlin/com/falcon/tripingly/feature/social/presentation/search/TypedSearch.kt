@@ -52,6 +52,8 @@ internal class TypedSearch(
             state.update { it.copy(search = SearchState(query = query)) }
             return
         }
+        // Loading from the key, not only once the request goes out: the field's icon spins while it waits for the pause.
+        state.update { it.copy(search = it.search.copy(isLoading = true)) }
         search = scope.launch {
             delay(SEARCH_DEBOUNCE)
             find(query)

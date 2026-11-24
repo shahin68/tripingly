@@ -4,6 +4,7 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsFocusedAsState
+import androidx.compose.animation.Crossfade
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -24,6 +25,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LocalContentColor
@@ -88,7 +90,8 @@ enum class AppTextFieldStyle(internal val minHeight: Dp) {
  * keyboard, after running [onImeAction] (submit, add) when there is one. A ✕ shows while the field is focused or has
  * text: it closes the keyboard and clears the field, which [onTextChange] reports as "" so the view model puts what
  * depends on it back to the start. [clearable] false hides it. A field that closes (the tabs' search) passes
- * [onClose]: its ✕ then always shows and also closes the field, keyboard and text together.
+ * [onClose]: its ✕ then always shows and also closes the field, keyboard and text together. [isLoading]: the leading
+ * icon turns into a small spinner while a search waits for the server (Shahin, 2026-11-24).
  */
 @Composable
 fun AppTextField(
@@ -108,6 +111,7 @@ fun AppTextField(
     lineLimits: TextFieldLineLimits = TextFieldLineLimits.SingleLine,
     inputTransformation: InputTransformation? = null,
     textStyle: TextStyle = MaterialTheme.typography.bodyLarge,
+    isLoading: Boolean = false,
 ) {
     val focusManager = LocalFocusManager.current
     val interactionSource = remember { MutableInteractionSource() }
@@ -130,7 +134,18 @@ fun AppTextField(
         enabled = enabled,
         textStyle = textStyle,
         placeholder = { Text(placeholder, style = textStyle, maxLines = 1, overflow = TextOverflow.Ellipsis) },
-        leadingIcon = leadingIcon?.let { { Icon(it, contentDescription = null, modifier = Modifier.size(IconSize)) } },
+        leadingIcon = leadingIcon?.let { icon ->
+            {
+                // While a search waits for its answer the icon turns into a small spinner of its size, and back.
+                Crossfade(isLoading, label = "field icon") { loading ->
+                    if (loading) {
+                        CircularProgressIndicator(Modifier.size(IconSize).padding(SpinnerInset), strokeWidth = SpinnerWidth, color = LocalContentColor.current)
+                    } else {
+                        Icon(icon, contentDescription = null, modifier = Modifier.size(IconSize))
+                    }
+                }
+            }
+        },
         trailingIcon = if (trailing != null || showClear) {
             {
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -243,6 +258,10 @@ private val LineHeight = 24.dp
 private const val DISABLED_OUTLINE_ALPHA = 0.38f
 private val IconSize = 20.dp
 
+/** The spinner in the icon's place: a little inside it, with a thin ring. */
+private val SpinnerInset = 2.dp
+private val SpinnerWidth = 2.dp
+
 @Composable
 private fun AppTextFieldPreviewContent() {
     Column(
@@ -250,7 +269,7 @@ private fun AppTextFieldPreviewContent() {
         verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
     ) {
         AppTextField(rememberTextFieldState(), "Search trips…", Modifier.fillMaxWidth(), style = AppTextFieldStyle.Search)
-        AppTextField(rememberTextFieldState("Lisbon"), "Search people…", Modifier.fillMaxWidth(), style = AppTextFieldStyle.Search)
+        AppTextField(rememberTextFieldState("Lisbon"), "Search people…", Modifier.fillMaxWidth(), style = AppTextFieldStyle.Search, isLoading = true)
         AppTextField(rememberTextFieldState(), "Give it a name", Modifier.fillMaxWidth())
         AppTextField(rememberTextFieldState("Summer in Vienna"), "Trip name", Modifier.fillMaxWidth())
         AppTextField(rememberTextFieldState("taken.name"), "yourname", Modifier.fillMaxWidth(), isError = true)
