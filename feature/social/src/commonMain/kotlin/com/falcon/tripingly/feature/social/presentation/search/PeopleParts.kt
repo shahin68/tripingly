@@ -85,16 +85,15 @@ internal fun LazyGridScope.topPeople(people: PeopleState?, columns: Int, onActio
     if (people.total > TOP_PEOPLE && top.isNotEmpty()) {
         item(key = "people:seeAll", span = { peopleSpan() }) {
             PeopleCard(onClick = { onAction(Action.OpenPeople) }, Modifier.animateItem(), padded = false) {
-                val seeAll = { modifier: Modifier -> SeeAllPeople(people.total, PeopleInset, modifier) }
                 if (columns * UNITS_PER_COLUMN < 2 * PEOPLE_SPAN) {
-                    seeAll(Modifier)
+                    SeeAllPeople(people.total, PeopleInset)
                 } else {
                     Box {
                         // Only the room of a person's card: a row laid out, never drawn, read out or tapped.
                         Box(Modifier.alpha(0f).clearAndSetSemantics {}.padding(vertical = MaterialTheme.spacing.extraSmall)) {
                             PersonRow(top.first().user, detail = "@${top.first().user.username}")
                         }
-                        seeAll(Modifier.matchParentSize())
+                        SeeAllPeople(people.total, PeopleInset, Modifier.matchParentSize())
                     }
                 }
             }
