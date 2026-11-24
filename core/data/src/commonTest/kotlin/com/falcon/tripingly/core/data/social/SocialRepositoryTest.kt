@@ -190,6 +190,27 @@ class SocialRepositoryTest {
     }
 
     @Test
+    fun aFlameWhoseScreenClosesOnTheWay_stillReachesTheServerAndEveryOtherScreen() = runTest {
+        val sent = CompletableDeferred<Unit>()
+        val release = CompletableDeferred<Unit>()
+        val repository = repository {
+            sent.complete(Unit)
+            release.await()
+            respond("""{"placeId":"$PLACE","hot":true,"hotCount":4}""", HttpStatusCode.OK, headersOf(HttpHeaders.ContentType, "application/json"))
+        }
+        val changes = mutableListOf<HotChange>()
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { repository.hotChanges.collect { changes += it } }
+
+        val tap = launch { repository.setHot(PLACE, hot = true) }
+        sent.await()
+        tap.cancel()
+        release.complete(Unit)
+        tap.join()
+
+        assertEquals(listOf(HotChange(PLACE, hotByMe = true, hotCount = 4)), changes)
+    }
+
+    @Test
     fun addingAComment_countsItOnTheStop_andSendsAnIdempotencyKey() = runTest {
         cacheTrip()
         val repository = repository(comment(author = ME, canDelete = true))
