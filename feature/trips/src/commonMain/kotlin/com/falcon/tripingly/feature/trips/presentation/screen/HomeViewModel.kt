@@ -31,6 +31,7 @@ import com.falcon.tripingly.feature.trips.generated.resources.reschedule_error_d
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.toImmutableList
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -80,10 +81,13 @@ class HomeViewModel(
     private val _events = Channel<Event>(capacity = Channel.BUFFERED)
     val events = _events.receiveAsFlow()
 
+    /** The refresh from the server on its way, the quiet one or a pull's. */
+    private var refreshing: Job? = null
+
     private val createTrip = HomeCreateTrip(viewModelScope, ui, tripRepository, placeRepository, userRepository, sessionRepository, ::save)
 
     init {
-        refresh()
+        refresh(isPull = false)
     }
 
     fun onAction(action: Action) {
@@ -98,7 +102,7 @@ class HomeViewModel(
 
     private fun onTrips(action: Action.Trips) {
         when (action) {
-            Action.Trips.Refresh -> refresh()
+            Action.Trips.Refresh -> refresh(isPull = true)
             is Action.Trips.Click -> sendEvent(Event.NavigateToMap(action.tripId))
             Action.Trips.Add -> createTrip.open()
             is Action.Trips.Rename -> withTrip(action.tripId) { openDialog(Dialog.Rename(it)) }
@@ -131,13 +135,17 @@ class HomeViewModel(
     private fun renameName(): String? =
         (ui.value.dialog?.dialog as? Dialog.Rename)?.name?.text?.toString()?.trim()?.takeIf { it.isNotEmpty() }
 
-    private fun refresh() {
-        if (ui.value.isRefreshing) return
+    /**
+     * The trips from the server. Only a pull (or Try again, [isPull]) shows the spinner; the one as the tab opens runs
+     * quietly behind the cached trips (Shahin, 2026-11-24). A pull while it runs shows the spinner until it ends.
+     */
+    private fun refresh(isPull: Boolean) {
+        if (isPull) ui.update { it.copy(isRefreshing = true) }
+        if (refreshing?.isActive == true) return
         // A retry from the error screen leaves it as it is until the answer; failing again also says why in the banner
         // (Shahin, 2026-11-22).
         val isRetry = ui.value.loadError != null
-        ui.update { it.copy(isRefreshing = true) }
-        viewModelScope.launch {
+        refreshing = viewModelScope.launch {
             val error = (tripRepository.refreshMyTrips() as? AppResult.Error)?.error
             // With trips on screen a failed refresh is a banner; with nothing to show it's the error screen.
             val hasTrips = tripRepository.observeMyTrips().first().isNotEmpty()
@@ -213,6 +221,7 @@ class HomeViewModel(
         val timeline: TripTimeline = TripTimeline(),
         /** False only when the user has no trips at all (not just none matching the search). */
         val hasTrips: Boolean = false,
+        /** The user pulled (or tapped Try again): the pull's spinner, until the server answers. Never for the opening refresh. */
         val isRefreshing: Boolean = false,
         /** False until the first load answered or cached trips exist; shows the loading skeleton instead of "no trips". */
         val hasLoaded: Boolean = false,

@@ -12,6 +12,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -178,6 +179,11 @@ private fun SearchGrid(
     if (found != null) lastFound = found
     val peopleBloom = rememberBloomState(found != null)
     val tipBloom = rememberBloomState(results == null && state.isPeopleTipShown)
+    // A lazy grid holds on to the first item it shows, so a box coming above the first spot was put under the bar, out of
+    // sight. At the top, the grid stays at the top as the box or the tip comes or goes, so both bloom in view; scrolled
+    // down, nothing moves.
+    val isAtTop by remember(gridState) { derivedStateOf { gridState.firstVisibleItemIndex == 0 && gridState.firstVisibleItemScrollOffset == 0 } }
+    remember(peopleBloom.isShown, tipBloom.isShown) { if (isAtTop) gridState.requestScrollToItem(0) }
     SpotGrid(
         places = spots,
         gridState = gridState,

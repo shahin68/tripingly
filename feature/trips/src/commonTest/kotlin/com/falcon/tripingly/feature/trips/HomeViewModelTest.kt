@@ -132,6 +132,21 @@ class HomeViewModelTest {
     }
 
     @Test
+    fun theOpeningRefresh_isQuiet_andOnlyAPullShowsTheSpinner() = runTest {
+        seedTrip("Paris")
+        val viewModel = viewModel()
+        val spinner = mutableListOf<Boolean>()
+        backgroundScope.launch { viewModel.uiState.collect { spinner += it.isRefreshing } }
+        advanceUntilIdle()
+        assertFalse(true in spinner, "the refresh as the tab opens shows no spinner")
+
+        viewModel.onAction(Action.Trips.Refresh)
+        advanceUntilIdle()
+        assertTrue(true in spinner, "a pull shows it")
+        assertFalse(viewModel.uiState.value.isRefreshing)
+    }
+
+    @Test
     fun refreshOffline_showsTheOfflineBanner_andKeepsTheTrips() = runTest {
         seedTrip("Paris")
         backend.nextError = DataError.Network.NoInternet
