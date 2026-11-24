@@ -28,6 +28,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.falcon.tripingly.core.designsystem.component.Bloom
+import com.falcon.tripingly.core.designsystem.component.BloomState
 import com.falcon.tripingly.core.designsystem.component.ButtonSize
 import com.falcon.tripingly.core.designsystem.component.PersonRow
 import com.falcon.tripingly.core.designsystem.component.PrimaryButton
@@ -60,19 +62,30 @@ import org.jetbrains.compose.resources.stringResource
 /** How many of the people a search found show above its spots. */
 internal const val TOP_PEOPLE = 3
 
-/** The search's best people in a box above the spots, and See all when there are more; none found, no box. */
-internal fun LazyGridScope.topPeople(people: PeopleState, onAction: (Action) -> Unit, onOpenProfile: (String) -> Unit) {
-    if (people.people.isEmpty()) return
-    fullWidthItem("people") { TopPeople(people, onAction, onOpenProfile, Modifier.animateItem()) }
-}
-
-/** The "Travel with friends" tip on top of the spots, while [isShown]; dismissed, the grid glides up into its place. */
-internal fun LazyGridScope.peopleTip(isShown: Boolean, onAction: (Action) -> Unit) {
-    if (!isShown) return
-    fullWidthItem("peopleTip") {
-        PeopleTipCard(onSearch = { onAction(Action.SearchPeople) }, onDismiss = { onAction(Action.DismissPeopleTip) }, Modifier.animateItem())
+/**
+ * The search's best [people] in a box above the spots, and See all when there are more. It blooms out of its top end
+ * when people are found and goes back into it when none are ([bloom], Shahin 2026-11-24), the spots gliding with its
+ * height; [people] are the last found, so it keeps them while it goes.
+ */
+internal fun LazyGridScope.topPeople(bloom: BloomState, people: PeopleState, onAction: (Action) -> Unit, onOpenProfile: (String) -> Unit) {
+    if (!bloom.isShown) return
+    fullWidthItem("people") {
+        Bloom(bloom, CardRadius, Modifier.animateItem(fadeInSpec = null, fadeOutSpec = null)) { TopPeople(people, onAction, onOpenProfile) }
     }
 }
+
+/** The "Travel with friends" tip on top of the spots: it blooms out of its top end and, dismissed, goes back into its ✕. */
+internal fun LazyGridScope.peopleTip(bloom: BloomState, onAction: (Action) -> Unit) {
+    if (!bloom.isShown) return
+    fullWidthItem("peopleTip") {
+        Bloom(bloom, CardRadius, Modifier.animateItem(fadeInSpec = null, fadeOutSpec = null)) {
+            PeopleTipCard(onSearch = { onAction(Action.SearchPeople) }, onDismiss = { onAction(Action.DismissPeopleTip) })
+        }
+    }
+}
+
+/** The corners of both cards, [MaterialTheme.shapes] large: the bloom keeps them while it grows. */
+private val CardRadius = 20.dp
 
 /**
  * The search's best people in a box. The rows sit 12 dp in from the box's sides, as far as the first avatar is from its

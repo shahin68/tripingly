@@ -47,7 +47,7 @@ internal class TypedSearch(
         if (query == state.value.search.query) return
         search?.cancel()
         loadingMore?.cancel()
-        state.update { it.copy(search = it.search.copy(query = query)) }
+        state.update { it.copy(search = it.search.copy(query = query), isRefreshing = false) }
         if (!state.value.search.isSearching) {
             state.update { it.copy(search = SearchState(query = query)) }
             return
@@ -64,6 +64,7 @@ internal class TypedSearch(
         if (!state.value.search.isSearching) return
         search?.cancel()
         loadingMore?.cancel()
+        state.update { it.copy(isRefreshing = true) }
         search = scope.launch { find(query) }
     }
 
@@ -87,6 +88,7 @@ internal class TypedSearch(
                     isLoading = false,
                     hasLoaded = true,
                 ),
+                isRefreshing = false,
             )
         }
         val error = (spots as? AppResult.Error)?.error ?: (peopleResult as? AppResult.Error)?.error

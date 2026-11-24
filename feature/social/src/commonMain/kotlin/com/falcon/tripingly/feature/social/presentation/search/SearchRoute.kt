@@ -13,6 +13,9 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.tooling.preview.PreviewParameter
@@ -27,6 +30,7 @@ import com.falcon.tripingly.core.designsystem.component.ErrorScreen
 import com.falcon.tripingly.core.designsystem.component.Illustration
 import com.falcon.tripingly.core.designsystem.component.LoadStateContent
 import com.falcon.tripingly.core.designsystem.component.SheetHeader
+import com.falcon.tripingly.core.designsystem.component.rememberBloomState
 import com.falcon.tripingly.core.designsystem.component.ShowMessage
 import com.falcon.tripingly.core.designsystem.component.Skeleton
 import com.falcon.tripingly.core.designsystem.component.screenContentPadding
@@ -133,7 +137,7 @@ internal fun SearchScreen(
             // Around everything, so the error and empty screens pull too, like Try again (Shahin, 2026-11-23). Not the
             // location asks: their button asks for the location rather than reloading. While searching, a pull asks again.
             else -> AppPullToRefresh(
-                isRefreshing = if (results != null) results.isLoading else state.isLoading && state.places.isNotEmpty(),
+                isRefreshing = state.isRefreshing,
                 onRefresh = { onAction(Action.Refresh) },
                 contentPadding = contentPadding,
             ) {
@@ -168,14 +172,21 @@ private fun SearchGrid(
     val gridState = rememberLazyGridState()
     LoadMoreAtEnd(gridState) { onAction(Action.LoadMore) }
     val spots = results?.spots ?: state.places
+    // The people box and the tip bloom in and out (Shahin, 2026-11-24); the box keeps the last people found while it goes.
+    val found = results?.people?.takeIf { it.people.isNotEmpty() }
+    var lastFound by remember { mutableStateOf(found ?: PeopleState()) }
+    if (found != null) lastFound = found
+    val peopleBloom = rememberBloomState(found != null)
+    val tipBloom = rememberBloomState(results == null && state.isPeopleTipShown)
     SpotGrid(
         places = spots,
         gridState = gridState,
         contentPadding = contentPadding,
         onOpen = { onOpenSpot(it.id) },
         header = {
+            topPeople(peopleBloom, lastFound, onAction, onOpenProfile)
+            peopleTip(tipBloom, onAction)
             if (results == null) {
-                peopleTip(state.isPeopleTipShown, onAction)
                 if (state.places.isEmpty()) {
                     fullWidthItem("empty") {
                         EmptyState(
@@ -187,7 +198,6 @@ private fun SearchGrid(
                     }
                 }
             } else {
-                topPeople(results.people, onAction, onOpenProfile)
                 if (!results.isLoading && results.people.people.isEmpty() && results.spots.isEmpty()) {
                     fullWidthItem("none") {
                         EmptyState(

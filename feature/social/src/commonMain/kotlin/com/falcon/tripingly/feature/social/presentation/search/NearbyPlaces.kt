@@ -86,8 +86,11 @@ internal class NearbyPlaces(
         }
     }
 
+    /** A pull to refresh: its spinner shows until the answer. */
     fun refresh() {
-        point?.let(::load)
+        val point = point ?: return
+        update { it.copy(isRefreshing = true) }
+        load(point)
     }
 
     /** The places around [point]. */
@@ -101,13 +104,13 @@ internal class NearbyPlaces(
             when (val result = placeRepository.nearby(point, cursor = null)) {
                 is AppResult.Success -> {
                     cursor = result.data.nextCursor
-                    update { it.copy(places = result.data.items.toImmutableList(), isLoading = false, status = Status.Ready, loadError = null) }
+                    update { it.copy(places = result.data.items.toImmutableList(), isLoading = false, isRefreshing = false, status = Status.Ready, loadError = null) }
                 }
                 is AppResult.Error -> {
                     // Nothing to show yet: the error screen; places already shown stay, with a banner.
                     val message = result.error.toUiText(Res.string.social_error_load_nearby)
                     val isEmpty = state.value.places.isEmpty()
-                    update { it.copy(isLoading = false, status = Status.Ready, loadError = message.takeIf { isEmpty }) }
+                    update { it.copy(isLoading = false, isRefreshing = false, status = Status.Ready, loadError = message.takeIf { isEmpty }) }
                     if (!isEmpty || isRetry) showMessage(message)
                 }
             }

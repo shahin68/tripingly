@@ -148,6 +148,11 @@ class SearchViewModel(
          */
         val isPeopleSheetOpen: Boolean = false,
         val message: UiText? = null,
+        /**
+         * The user pulled to refresh (the spots around me, or the search): its spinner shows until the answer. Only a pull
+         * shows it, never a load of its own such as typing (Shahin, 2026-11-24).
+         */
+        val isRefreshing: Boolean = false,
         /** The "Travel with friends" tip on top of the spots; false until the device says it wasn't dismissed, so it never flashes. */
         val isPeopleTipShown: Boolean = false,
         /** The server lists OpenStreetMap places (OSM_PINS_ENABLED); off, the Search tab has only users' places and no OSM credit. */

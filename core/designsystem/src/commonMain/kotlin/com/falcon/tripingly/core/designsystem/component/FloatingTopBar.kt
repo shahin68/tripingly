@@ -19,6 +19,7 @@ import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
@@ -41,13 +42,16 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.IntOffset
-import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import com.falcon.tripingly.core.designsystem.generated.resources.Res
 import com.falcon.tripingly.core.designsystem.generated.resources.common_back
@@ -78,8 +82,8 @@ fun FloatingTopBar(
  * The floating glass header shared by several pages (the tabs), showing what [page] asks for. When the page
  * changes it animates as on the design canvas: the old [title] slides up and fades while the new one comes in from
  * below, the page's own [pageActions] cross-fade (the shared [actions] stay put), and the [search] row (shown while
- * [isSearchOpen] says so, so a page can open and close it) grows, shrinks, or cross-fades to the new page's field. Like the trip card's content, a field coming in slides down a
- * little while it fades in, and one going away only fades, while the row grows or shrinks with one easing.
+ * [isSearchOpen] says so, so a page can open and close it) blooms out of the search button at the top end and back
+ * into it ([Bloom]), or cross-fades to the new page's field.
  */
 @Composable
 fun <T> AnimatedTopBar(
@@ -130,12 +134,17 @@ fun <T> AnimatedTopBar(
                 ) { shown -> Row(verticalAlignment = Alignment.CenterVertically) { pageActions(shown) } }
                 actions()
             }
-            // The page whose field shows, or null for no row at all; a field going away keeps drawing while it fades.
-            AnimatedContent(
-                targetState = page.takeIf { search(it) != null && isSearchOpen(it) },
-                transitionSpec = { SearchIn togetherWith SearchOut using SizeTransform(clip = true) { _, _ -> SearchResize } },
-            ) { shown ->
-                shown?.let(search)?.let { field -> Box(Modifier.padding(top = MaterialTheme.spacing.small)) { field() } }
+            // The page whose field shows. The row blooms out of the search button and back into it (Shahin, 2026-11-24),
+            // the bar's height gliding with it; while it shows, another page's field cross-fades in. The last field stays
+            // while the row goes back into the button.
+            val open = page.takeIf { search(it) != null && isSearchOpen(it) }
+            var lastOpen by remember { mutableStateOf(open) }
+            if (open != null) lastOpen = open
+            Bloom(visible = open != null, cornerRadius = SearchRowRadius, padding = PaddingValues(top = MaterialTheme.spacing.small)) {
+                AnimatedContent(
+                    targetState = lastOpen,
+                    transitionSpec = { fadeIn(TopBarDefaults.Fade) togetherWith fadeOut(TopBarDefaults.Fade) using null },
+                ) { shown -> shown?.let(search)?.invoke() }
             }
         }
     }
@@ -195,11 +204,10 @@ private val TitleRoll = tween<IntOffset>(durationMillis = 300, easing = CubicBez
 private val TitleIn = slideInVertically(TitleRoll) { it * 3 / 2 } + fadeIn(tween(300))
 private val TitleOut = slideOutVertically(TitleRoll) { -it * 3 / 2 } + fadeOut(tween(200))
 
-/** The search row, as the trip card's content: in, it slides down a quarter of its height and fades; out, it only fades. */
 private val Emphasized = CubicBezierEasing(0.2f, 0f, 0f, 1f)
-private val SearchResize = tween<IntSize>(durationMillis = 300, easing = Emphasized)
-private val SearchIn = slideInVertically(tween(300, easing = Emphasized)) { -it / 4 } + fadeIn(tween(220))
-private val SearchOut = fadeOut(tween(90))
+
+/** The search row's corners while it blooms: the field's own, a pill as high as the row. */
+private val SearchRowRadius = 24.dp
 
 /**
  * The pill's search half folds into its right edge (towards Settings) and unfolds from it. Tapped, the icon shrinks

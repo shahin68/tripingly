@@ -48,11 +48,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.drawWithContent
-import androidx.compose.ui.geometry.CornerRadius
-import androidx.compose.ui.geometry.RoundRect
-import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Outline
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.drawOutline
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -67,7 +63,6 @@ import androidx.compose.ui.unit.IntRect
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.util.lerp
 import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupPositionProvider
 import androidx.compose.ui.window.PopupProperties
@@ -262,20 +257,9 @@ private class MenuPositionProvider(
     }
 }
 
-/** The card at [progress] of its bloom: a rounded rectangle growing out of the corner [placement] names. */
+/** The card at [progress] of its bloom ([BloomShape]): a rounded rectangle growing out of the corner [placement] names. */
 private fun Density.bloomShape(progress: Float, placement: MenuPlacement): Shape =
-    BloomShape(progress, placement, MenuBloomStart.toPx(), MenuCorner.toPx())
-
-private data class BloomShape(val progress: Float, val placement: MenuPlacement, val startPx: Float, val radiusPx: Float) : Shape {
-    override fun createOutline(size: Size, layoutDirection: LayoutDirection, density: Density): Outline {
-        val width = lerp(min(startPx, size.width), size.width, progress)
-        val height = lerp(min(startPx, size.height), size.height, progress)
-        val left = if (placement.isRight) size.width - width else 0f
-        val top = if (placement.isAbove) size.height - height else 0f
-        val radius = min(radiusPx, min(width, height) / 2f)
-        return Outline.Rounded(RoundRect(left, top, left + width, top + height, CornerRadius(radius)))
-    }
-}
+    BloomShape(progress, MenuBloomStart.toPx(), MenuBloomStart.toPx(), MenuCorner.toPx(), fromRight = placement.isRight, fromBottom = placement.isAbove)
 
 /** How far [progress] is through the part of the motion from [start] to [end], 0 before it and 1 after. */
 private fun phase(progress: Float, start: Float, end: Float) = ((progress - start) / (end - start)).coerceIn(0f, 1f)

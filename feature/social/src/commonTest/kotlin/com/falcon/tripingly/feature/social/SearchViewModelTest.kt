@@ -142,6 +142,27 @@ class SearchViewModelTest : SocialTestBase() {
     }
 
     @Test
+    fun `only a pull shows the refresh spinner and never typing`() = runTest {
+        val viewModel = located()
+
+        viewModel.onAction(Action.QueryChanged("Lo"))
+        advanceTimeBy(301)
+        assertFalse(viewModel.uiState.value.isRefreshing, "a search of its own while typing")
+        advanceUntilIdle()
+
+        viewModel.onAction(Action.Refresh)
+        assertTrue(viewModel.uiState.value.isRefreshing)
+        advanceUntilIdle()
+        assertFalse(viewModel.uiState.value.isRefreshing)
+
+        viewModel.onAction(Action.QueryChanged(""))
+        viewModel.onAction(Action.Refresh)
+        assertTrue(viewModel.uiState.value.isRefreshing)
+        advanceUntilIdle()
+        assertFalse(viewModel.uiState.value.isRefreshing)
+    }
+
+    @Test
     fun `Follow spins until the server took it and a refusal leaves it as it was`() = runTest {
         val viewModel = located()
         viewModel.onAction(Action.QueryChanged("ju"))

@@ -1,6 +1,5 @@
 package com.falcon.tripingly.feature.social.presentation.component
 
-import androidx.compose.animation.Crossfade
 import androidx.compose.foundation.layout.Box
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
@@ -13,7 +12,7 @@ import androidx.compose.foundation.layout.Row
 import com.falcon.tripingly.core.designsystem.component.ButtonSize
 import com.falcon.tripingly.core.designsystem.component.PrimaryButton
 import com.falcon.tripingly.core.designsystem.component.SecondaryButton
-import com.falcon.tripingly.core.designsystem.component.rememberHaptics
+import com.falcon.tripingly.core.designsystem.component.ToggleButton
 import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
 import com.falcon.tripingly.feature.social.generated.resources.Res
 import com.falcon.tripingly.feature.social.generated.resources.social_follow
@@ -22,10 +21,12 @@ import org.jetbrains.compose.resources.stringResource
 import androidx.compose.foundation.background
 
 /**
- * Follow, or Following once I follow them. A tap ([onToggle]) waits for the server (Shahin, 2026-11-24): while [isPending]
- * the button keeps its look with a small spinner for a label, and once the server took it the parent's [isFollowing]
- * switches it with a soft crossfade; a refusal leaves it as it was. Its room is as wide as the wider of the two in every
- * language, so nothing beside it moves when it switches; the button sits at that room's end by default, so Follow buttons line up down a list ([alignment]).
+ * Follow, or Following once I follow them: ONE [ToggleButton] that changes its look, as Route and Ask to join do
+ * (Shahin, 2026-11-24): brand-filled Follow, neutral Following. A tap ([onToggle]) waits for the server: while
+ * [isPending] the pill shrinks into a circle with a spinner, and once the server took it the parent's [isFollowing]
+ * grows it into the new label while the colour glides; a refusal grows it back as it was. Its room is as wide as the
+ * wider of the two in every language, so nothing beside it moves; the button sits at that room's end by default, so
+ * Follow buttons line up down a list ([alignment]).
  */
 @Composable
 internal fun FollowButton(
@@ -36,11 +37,6 @@ internal fun FollowButton(
     isPending: Boolean = false,
     alignment: Alignment = Alignment.CenterEnd,
 ) {
-    val haptics = rememberHaptics()
-    val toggle = {
-        haptics.toggle(!isFollowing)
-        onToggle()
-    }
     val follow = stringResource(Res.string.social_follow)
     val following = stringResource(Res.string.social_following_button)
     Box(modifier, contentAlignment = alignment) {
@@ -49,11 +45,14 @@ internal fun FollowButton(
             PrimaryButton(follow, {}, enabled = false, size = size)
             SecondaryButton(following, {}, enabled = false, size = size)
         }
-        Crossfade(isFollowing, label = "follow") { isOn ->
-            Box(contentAlignment = alignment) {
-                if (isOn) SecondaryButton(following, toggle, isLoading = isPending, size = size) else PrimaryButton(follow, toggle, isLoading = isPending, size = size)
-            }
-        }
+        ToggleButton(
+            text = if (isFollowing) following else follow,
+            checked = isFollowing,
+            onClick = onToggle,
+            size = size,
+            isLoading = isPending,
+            quietWhenChecked = true,
+        )
     }
 }
 
