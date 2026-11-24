@@ -185,18 +185,17 @@ class ProfileViewModelTest {
     }
 
     @Test
-    fun fastFollowTaps_theLatestWins_andARefusalPutsBackWhatTheServerConfirmed() = runTest {
+    fun fastFollowTaps_whileOneWaits_doNothing() = runTest {
         val viewModel = viewModel("marton")
         advanceUntilIdle()
 
-        followRefused = true
         repeat(3) { viewModel.onAction(Action.Person.ToggleFollow) }
-        assertFalse(viewModel.uiState.value.profile!!.isFollowing, "the third tap shows at once")
+        assertTrue(viewModel.uiState.value.profile!!.isFollowing, "nothing switches before the server took it")
         advanceUntilIdle()
 
         val profile = viewModel.uiState.value.profile!!
-        assertTrue(profile.isFollowing)
-        assertEquals(1, profile.followerCount)
+        assertFalse(profile.isFollowing)
+        assertEquals(0, profile.followerCount)
     }
 
     @Test
