@@ -1,16 +1,27 @@
 package com.falcon.tripingly.feature.map.presentation.spot
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.Transition
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandHorizontally
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
+import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
@@ -22,12 +33,17 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.drawscope.clipRect
+import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.boundsInParent
 import androidx.compose.ui.layout.onGloballyPositioned
@@ -35,6 +51,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import com.falcon.tripingly.core.designsystem.component.AvatarCircle
 import com.falcon.tripingly.core.designsystem.component.AvatarSize
@@ -107,7 +124,6 @@ internal fun SpotHeader(
             .drawWithContent { clipRect(top = -size.height, bottom = size.height * 2) { this@drawWithContent.drawContent() } }
             .padding(horizontal = MaterialTheme.spacing.medium, vertical = MaterialTheme.spacing.small)
             .height(GlassButtonDefaults.HeaderSize),
-        horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         GlassIconButton(
@@ -118,6 +134,7 @@ internal fun SpotHeader(
         ) {
             Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(Res.string.map_back))
         }
+        Spacer(Modifier.width(MaterialTheme.spacing.small))
         GlassSurface(
             modifier = Modifier
                 .weight(1f)
@@ -131,20 +148,32 @@ internal fun SpotHeader(
         ) {
             SpotTitleContent(spot, onOwnerClick = { onAction(SpotMapAction.OpenOwner) })
         }
-        if (spot != null) {
+        // The flame comes once the spot is known, growing in place out of its right middle while the spot's pill gives it
+        // room, the gap too (Shahin, 2026-11-24); known as the map opens, it is just there.
+        var shownSpot by remember { mutableStateOf(spot) }
+        spot?.let { shownSpot = it }
+        AnimatedVisibility(
+            visible = spot != null,
+            enter = expandHorizontally(FlameMotion, expandFrom = Alignment.End, clip = false) +
+                scaleIn(FlameScale, transformOrigin = EndMiddle) + fadeIn(FlameScale),
+            exit = shrinkHorizontally(FlameMotion, shrinkTowards = Alignment.End, clip = false) +
+                scaleOut(FlameScale, transformOrigin = EndMiddle) + fadeOut(FlameScale),
+        ) {
+            val flameSpot = shownSpot ?: return@AnimatedVisibility
             GlassSurface(
                 modifier = Modifier
+                    .padding(start = MaterialTheme.spacing.small)
                     .height(GlassButtonDefaults.HeaderSize)
                     .graphicsLayer { translationX = cardProgress() * (size.width + pushedOut.toPx()) },
                 shape = CircleShape,
                 blur = false,
             ) {
                 HotButton(
-                    hot = spot.isHot,
-                    count = spot.hotCount,
+                    hot = flameSpot.isHot,
+                    count = flameSpot.hotCount,
                     onToggle = { onAction(SpotMapAction.ToggleHot) },
                     modifier = Modifier.fillMaxHeight(),
-                    tint = if (spot.isHot) MaterialTheme.extendedColors.attention else MaterialTheme.colorScheme.onSurface,
+                    tint = if (flameSpot.isHot) MaterialTheme.extendedColors.attention else MaterialTheme.colorScheme.onSurface,
                     contentPadding = PaddingValues(horizontal = HotPillInset),
                 )
             }
@@ -294,6 +323,11 @@ internal fun SpotBar(spot: SpotState, onAction: (SpotMapAction) -> Unit, modifie
         }
     }
 }
+
+/** The flame growing in: its room and itself together, the app's emphasized 300 ms. */
+private val FlameMotion = tween<IntSize>(300, easing = CubicBezierEasing(0.2f, 0f, 0f, 1f))
+private val FlameScale = tween<Float>(300, easing = CubicBezierEasing(0.2f, 0f, 0f, 1f))
+private val EndMiddle = TransformOrigin(1f, 0.5f)
 
 /** The flame pill's sides: its flame as far in as the back button's arrow. */
 private val HotPillInset = 18.dp
