@@ -37,6 +37,7 @@ import com.falcon.tripingly.core.designsystem.component.PhotoSize
 import com.falcon.tripingly.core.designsystem.component.PinMark
 import com.falcon.tripingly.core.designsystem.component.glassSource
 import com.falcon.tripingly.core.designsystem.component.label
+import com.falcon.tripingly.core.designsystem.component.rememberBloomState
 import com.falcon.tripingly.core.designsystem.component.skeleton
 import com.falcon.tripingly.core.designsystem.theme.spacing
 import com.falcon.tripingly.core.model.social.NearbyPlace
@@ -201,13 +202,14 @@ internal fun distanceText(meters: Int): UiText =
 /** The grid as a search shows it: the top people, the spots, the OpenStreetMap credit. */
 @Composable
 private fun SpotGridPreviewContent() {
+    val people = rememberBloomState(visible = true)
     SpotGrid(
         places = previewNearbyPlaces,
         gridState = rememberLazyGridState(),
         contentPadding = PaddingValues(MaterialTheme.spacing.medium),
         onOpen = {},
         modifier = Modifier.background(MaterialTheme.colorScheme.background),
-        header = { topPeople(previewFoundPeople, onAction = {}, onOpenProfile = {}) },
+        header = { topPeople(people, previewFoundPeople, onAction = {}, onOpenProfile = {}) },
         footer = { osmCredit(isShown = true) },
     )
 }
