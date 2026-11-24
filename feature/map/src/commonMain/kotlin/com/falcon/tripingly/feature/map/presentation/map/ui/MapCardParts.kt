@@ -83,7 +83,7 @@ internal fun PinCardScope.BigPinCard(
 @Composable
 internal fun PinCardButtons(
     group: List<JoinedButtonSlot>,
-    onDetails: () -> Unit,
+    onDetails: (() -> Unit)?,
     onDelete: (() -> Unit)?,
     onAdd: (() -> Unit)?,
     modifier: Modifier = Modifier,
@@ -94,7 +94,8 @@ internal fun PinCardButtons(
             JoinedButtons(group, Modifier.horizontalScroll(rememberScrollState()))
         }
         val details = stringResource(Res.string.map_card_details)
-        val info: JoinedButtonSlot = { shape -> JoinedButton(Icons.Outlined.Info, details, shape, onClick = onDetails) }
+        // None on the spot map, which shows the details under its buttons.
+        val info: JoinedButtonSlot? = if (onDetails == null) null else { shape -> JoinedButton(Icons.Outlined.Info, details, shape, onClick = onDetails) }
         JoinedButtons(listOfNotNull(info, pinAction(onDelete, onAdd, addLabel)))
     }
 }

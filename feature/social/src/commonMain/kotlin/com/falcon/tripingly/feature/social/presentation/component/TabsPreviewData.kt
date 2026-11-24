@@ -57,7 +57,7 @@ internal val previewNearbyPlaces = persistentListOf(
     ),
 )
 
-/** People around: a friend, someone I follow and two I don't, of 42 in all. */
+/** People a search found: a friend, someone I follow and two I don't, of 42 in all. */
 internal val previewNearbyPeople = NearbyViewModel.PeopleState(
     people = previewPeople.mapIndexed { index, user -> Person(user, isFriend = index == 0, isFollowing = index < 2) }.toImmutableList(),
     total = 42,
@@ -81,14 +81,22 @@ internal class ExplorePreviewStates : PreviewParameterProvider<ExploreViewModel.
     )
 }
 
-/** Nearby while locating, asking for the location, after it was blocked, with places, with none around, and failed. */
+/**
+ * Nearby while locating, asking for the location, after it was blocked, with places, with none around, failed, and
+ * searching (the people found on top).
+ */
 internal class NearbyPreviewStates : PreviewParameterProvider<NearbyViewModel.State> {
     override val values = sequenceOf(
         NearbyViewModel.State(status = Status.Locating),
         NearbyViewModel.State(status = Status.NeedsPermission),
         NearbyViewModel.State(status = Status.Blocked),
-        NearbyViewModel.State(status = Status.Ready, places = previewNearbyPlaces, people = previewNearbyPeople),
+        NearbyViewModel.State(status = Status.Ready, places = previewNearbyPlaces),
         NearbyViewModel.State(status = Status.Ready),
         NearbyViewModel.State(status = Status.Ready, loadError = UiText.Resource(Res.string.social_error_load_explore)),
+        NearbyViewModel.State(
+            status = Status.Ready,
+            places = previewNearbyPlaces,
+            search = NearbyViewModel.SearchState(query = "ma", people = previewNearbyPeople, spots = previewNearbyPlaces, hasLoaded = true),
+        ),
     )
 }

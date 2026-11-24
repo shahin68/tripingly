@@ -63,9 +63,10 @@ import org.jetbrains.compose.resources.stringResource
 import androidx.compose.foundation.layout.BoxScope
 
 /*
- * Nearby's grid (the Nearby canvas v18, Shahin 2026-11-23): the people's faces on top, then the spots in rows of
- * 2+1, 1+1+1 and 1+2, repeated. Every tile is one column's width high, so a row never changes height when a photo
- * comes, and a wide tile is as high as the one beside it.
+ * Nearby's grid (the Nearby canvas v18, Shahin 2026-11-23): the faces of the people a search found on top, then the
+ * spots in rows of 2+1, 1+1+1 and 1+2, repeated. Every tile is [TileHeightRatio] times one column's width high (so a
+ * name, its distance and the flame fit without covering each other, Shahin 2026-11-24): a row never changes height
+ * when a photo comes, and a wide tile is as high as the one beside it.
  */
 
 /** A spot in the grid, [span] columns wide (1, or 2 for a spot with a photo). */
@@ -103,6 +104,9 @@ private fun columnsFor(width: Dp): Int = 3 * (width / TileGroupWidth).toInt().co
 
 private val TileGroupWidth = 400.dp
 
+/** A tile's height to one column's width. */
+private const val TileHeightRatio = 1.4f
+
 /**
  * Nearby's grid: [header] items (the faces) on top across the whole width, then [places] as tiles, then
  * [footer] items (the OpenStreetMap credit). Tiles open their spot ([onOpen]) and mark it hot ([onMarkHot]).
@@ -124,7 +128,7 @@ internal fun SpotGrid(
         val direction = LocalLayoutDirection.current
         val width = maxWidth - contentPadding.calculateStartPadding(direction) - contentPadding.calculateEndPadding(direction)
         val columns = columnsFor(width)
-        val tileHeight = (width - gap * (columns - 1)) / columns
+        val tileHeight = (width - gap * (columns - 1)) / columns * TileHeightRatio
         LazyVerticalGrid(
             columns = GridCells.Fixed(columns),
             state = gridState,

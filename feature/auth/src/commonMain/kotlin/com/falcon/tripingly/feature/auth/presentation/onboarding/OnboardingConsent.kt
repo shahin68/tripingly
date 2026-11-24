@@ -3,9 +3,9 @@ package com.falcon.tripingly.feature.auth.presentation.onboarding
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
@@ -74,8 +74,9 @@ private fun DocumentRow(title: String, onClick: () -> Unit) {
             .padding(horizontal = MaterialTheme.spacing.medium),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(title, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f, fill = false).skeletonText())
-        Spacer(Modifier.weight(1f))
+        // The title takes the rest of the row, so every arrow sits at its end (Shahin, 2026-11-24); its skeleton bar
+        // stays as wide as the words.
+        Box(Modifier.weight(1f)) { Text(title, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.skeletonText()) }
         Icon(
             Icons.AutoMirrored.Filled.KeyboardArrowRight,
             contentDescription = null,

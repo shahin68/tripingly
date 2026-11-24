@@ -27,7 +27,7 @@ import kotlinx.coroutines.launch
 /**
  * Nearby's places: our users' hot spots around me first, then OpenStreetMap sights where we have few (the server's
  * order), marked hot here. It asks for the location only once the tab is open; where it looked stays in memory only,
- * for the next pages, the search and the people around ([onLocated]).
+ * for the next pages and the search ([point]).
  */
 internal class NearbyPlaces(
     private val scope: CoroutineScope,
@@ -35,7 +35,6 @@ internal class NearbyPlaces(
     private val placeRepository: PlaceRepository,
     private val socialRepository: SocialRepository,
     private val getCurrentLocation: GetCurrentLocationUseCase,
-    private val onLocated: (GeoPoint) -> Unit,
     private val showMessage: (UiText) -> Unit,
 ) {
     private var cursor: String? = null
@@ -99,9 +98,8 @@ internal class NearbyPlaces(
         point?.let(::load)
     }
 
-    /** The places and the people around [point]. */
+    /** The places around [point]. */
     private fun load(point: GeoPoint) {
-        onLocated(point)
         loadingMore?.cancel()
         // A retry from the error screen leaves it as it is until the answer; failing again also says why in the banner
         // (Shahin, 2026-11-22).

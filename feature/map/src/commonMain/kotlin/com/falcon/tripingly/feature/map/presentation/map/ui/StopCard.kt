@@ -124,7 +124,7 @@ internal fun PinCardScope.StopCard(
                         title = stop.title.asString(),
                         subtitle = stopSubtitle(card, position = imagePosition(images.size, pagerState.currentPage)),
                         isTitleLoading = stop.isNaming,
-                        afterSubtitle = { card.addedBy?.let { AddedByInline(it, it.text()) } },
+                        afterSubtitle = { AddedByInline(card.addedBy) { it.text() } },
                         image = if (images.isEmpty()) null else pagerImages(images, pagerState, description, onOpen = { onOpenPhotos() }),
                         onClick = onOpenPhotos,
                         mark = { PinMark(card.category, isStop = true) },

@@ -163,7 +163,8 @@ internal class MapStateMapper(
             members = details?.members?.takeIf { it.isNotEmpty() }?.let { MembersEntry(it.size, details.pendingJoinRequestCount) },
             canShare = trip != null,
             canLeave = role == TripRole.EDITOR,
-            canSearch = !isVisitor,
+            // Once the trip is known, so search never shows and then goes while a visitor's map loads (Shahin, 2026-11-24).
+            canSearch = trip != null && !isVisitor,
             isLoading = days.isEmpty() && model.isLoadingTrip,
             isBusy = model.isSaving || model.isUpdatingSharing,
             viewerMenu = trip?.takeIf { role == TripRole.VIEWER }?.let {

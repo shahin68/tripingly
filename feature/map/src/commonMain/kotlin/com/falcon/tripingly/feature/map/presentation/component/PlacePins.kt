@@ -115,6 +115,23 @@ fun placePins(
 private fun pin(place: MapPlace, photo: Boolean, config: AppConfig) =
     PlacePin(place, if (photo) PhotoPinSize else placePinSize(place, config), photo)
 
+/**
+ * Pins put together without the map's own squares (the spot map shows none): each one that passes the trip map's photo
+ * rule ([showsPhoto]) shows its photo there too, up to [AppConfig.mapMaxPhotoPins], so a place looks the same on both
+ * maps (Shahin, 2026-11-24).
+ */
+fun List<PlacePin>.withPhotos(config: AppConfig): List<PlacePin> {
+    var photos = count { it.photo }
+    return map { pin ->
+        if (pin.photo || photos >= config.mapMaxPhotoPins || !pin.place.showsPhoto(config)) {
+            pin
+        } else {
+            photos++
+            pin.copy(photo = true, size = maxOf(pin.size, PhotoPinSize))
+        }
+    }
+}
+
 /** A place with a photo shows it on its pin once it's well known or liked enough (server values). */
 private fun MapPlace.showsPhoto(config: AppConfig): Boolean =
     coverImageId != null && coverThumbUrl != null &&

@@ -113,14 +113,13 @@ class NearbyViewModelTest : SocialTestBase() {
     }
 
     @Test
-    fun `the people around come once I'm located with friends first and how many there are`() = runTest {
+    fun `no people show until a search finds some`() = runTest {
         val viewModel = located()
+        assertTrue(viewModel.uiState.value.search.people.people.isEmpty())
 
-        val around = viewModel.uiState.value.people
-        assertTrue(around.hasLoaded)
-        assertEquals(5, around.total)
-        assertTrue(around.people.first().isFriend)
-        assertEquals(around, viewModel.uiState.value.shownPeople)
+        viewModel.onAction(Action.QueryChanged("an"))
+        advanceUntilIdle()
+        assertEquals(listOf("anna"), viewModel.uiState.value.search.people.people.map { it.user.username })
     }
 
     @Test
@@ -144,7 +143,6 @@ class NearbyViewModelTest : SocialTestBase() {
         assertTrue(search.hasLoaded)
         // The latest query won: Lena, and no Louvre.
         assertEquals(listOf("lena"), search.people.people.map { it.user.username })
-        assertEquals(search.people, viewModel.uiState.value.shownPeople)
         assertTrue(search.spots.none { it.name == "Louvre" })
 
         viewModel.onAction(Action.QueryChanged("Louv"))
@@ -153,43 +151,47 @@ class NearbyViewModelTest : SocialTestBase() {
         // Located: each spot with its distance.
         assertNotNull(viewModel.uiState.value.search.spots.single().distanceMeters)
 
-        // Cleared: the grid and the people around come back at once.
+        // Cleared: the grid comes back at once.
         viewModel.onAction(Action.QueryChanged(""))
         assertFalse(viewModel.uiState.value.search.isSearching)
-        assertEquals(viewModel.uiState.value.people, viewModel.uiState.value.shownPeople)
     }
 
     @Test
     fun `Follow switches at once and stays and a refusal puts it back`() = runTest {
         val viewModel = located()
-        val julia = viewModel.uiState.value.people.people.first { it.user.username == "julia_t" }
+        viewModel.onAction(Action.QueryChanged("ju"))
+        advanceUntilIdle()
+        val found = { viewModel.uiState.value.search.people.people }
+        val julia = found().first { it.user.username == "julia_t" }
         assertFalse(julia.isFollowing)
 
         viewModel.onAction(Action.ToggleFollow(julia))
-        assertTrue(viewModel.uiState.value.people.people.first { it.user.id == julia.user.id }.isFollowing)
+        assertTrue(found().first { it.user.id == julia.user.id }.isFollowing)
         advanceUntilIdle()
-        val followed = viewModel.uiState.value.people.people.first { it.user.id == julia.user.id }
+        val followed = found().first { it.user.id == julia.user.id }
         assertTrue(followed.isFollowing)
 
         people.followRefused = true
         viewModel.onAction(Action.ToggleFollow(followed))
-        assertFalse(viewModel.uiState.value.people.people.first { it.user.id == julia.user.id }.isFollowing)
+        assertFalse(found().first { it.user.id == julia.user.id }.isFollowing)
         advanceUntilIdle()
-        assertTrue(viewModel.uiState.value.people.people.first { it.user.id == julia.user.id }.isFollowing)
+        assertTrue(found().first { it.user.id == julia.user.id }.isFollowing)
         assertNotNull(viewModel.uiState.value.message)
     }
 
     @Test
     fun `someone I block leaves the faces and the count at once`() = runTest {
         val viewModel = located()
-        val anna = viewModel.uiState.value.people.people.first()
+        viewModel.onAction(Action.QueryChanged("an"))
+        advanceUntilIdle()
+        val anna = viewModel.uiState.value.search.people.people.single()
 
         people.setBlocked(anna.user.id, blocked = true)
         advanceUntilIdle()
 
-        val shown = viewModel.uiState.value.people
-        assertTrue(shown.people.none { it.user.id == anna.user.id })
-        assertEquals(4, shown.total)
+        val shown = viewModel.uiState.value.search.people
+        assertTrue(shown.people.isEmpty())
+        assertEquals(0, shown.total)
     }
 
     @Test
@@ -202,13 +204,8 @@ class NearbyViewModelTest : SocialTestBase() {
     }
 
     @Test
-    fun `people that don't load leave no waiting row and a failed search shows no people of the last query`() = runTest {
-        people.peopleRefused = true
+    fun `a failed search shows no people of the last query`() = runTest {
         val viewModel = located()
-        assertTrue(viewModel.uiState.value.people.hasLoaded)
-        assertTrue(viewModel.uiState.value.people.people.isEmpty())
-
-        people.peopleRefused = false
         viewModel.onAction(Action.QueryChanged("Le"))
         advanceUntilIdle()
         assertEquals(listOf("lena"), viewModel.uiState.value.search.people.people.map { it.user.username })

@@ -1,7 +1,6 @@
 package com.falcon.tripingly.feature.map.presentation.spot
 
 import androidx.compose.runtime.Immutable
-import androidx.compose.ui.unit.Dp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.falcon.tripingly.core.common.result.AppResult
@@ -17,6 +16,7 @@ import com.falcon.tripingly.core.data.trips.TripRepository
 import com.falcon.tripingly.core.location.GetCurrentLocationUseCase
 import com.falcon.tripingly.core.location.model.Coordinates
 import com.falcon.tripingly.core.model.account.SessionState
+import com.falcon.tripingly.core.model.config.AppConfig
 import com.falcon.tripingly.core.model.place.MapPlace
 import com.falcon.tripingly.core.model.place.PlaceCategory
 import com.falcon.tripingly.core.model.place.PlaceDetails
@@ -32,6 +32,7 @@ import com.falcon.tripingly.feature.map.generated.resources.map_error_load_spot
 import com.falcon.tripingly.feature.map.presentation.component.CameraCommand
 import com.falcon.tripingly.feature.map.presentation.component.PlacePin
 import com.falcon.tripingly.feature.map.presentation.component.placePinSize
+import com.falcon.tripingly.feature.map.presentation.component.withPhotos
 import com.falcon.tripingly.feature.map.presentation.map.MapAction
 import com.falcon.tripingly.feature.map.presentation.map.MapEvent
 import com.falcon.tripingly.feature.map.presentation.map.MapSheet
@@ -161,15 +162,10 @@ class SpotMapViewModel(
                 // A second tap closes the route; the spot's card comes back, as when the route's card closes.
                 val wasOn = spotPin()?.let { model.route.isGoingTo(it.location) } == true
                 forSpot { routes.goHere() }
-                if (wasOn) openSpot()
+                if (wasOn) openSpot(afterLayout = true)
             }
             SpotMapAction.Around -> forSpot { around.open() }
             SpotMapAction.Add -> forSpot { addToTrip.open(fromDetails = false) }
-            // Its details are about the spot: its card comes back under them.
-            SpotMapAction.OpenDetails -> if (spotPin() != null) {
-                openSpot()
-                context.update { it.copy(sheet = Sheet.Details) }
-            }
         }
     }
 
@@ -231,7 +227,7 @@ class SpotMapViewModel(
             is MapAction.Around.Close -> {
                 around.close()
                 // Its card comes back once the ring has gone.
-                openSpot()
+                openSpot(afterLayout = true)
             }
             is MapAction.Around.ToggleCategory -> around.toggleCategory(action.category)
             is MapAction.Around.SetRadius -> around.setRadius(action.meters, action.isFinal)
@@ -248,7 +244,7 @@ class SpotMapViewModel(
             is MapAction.Plan.ToggleAlongCategory -> routes.toggleAlongCategory(action.category)
             is MapAction.Plan.ClosePointRoute -> {
                 routes.closePointRoute()
-                openSpot()
+                openSpot(afterLayout = true)
             }
             is MapAction.Plan.OpenLeaveAt -> routes.openLeaveAt()
             is MapAction.Plan.OpenTransitSteps -> if (model.route.plan?.route?.legs.orEmpty().any { it.steps.isNotEmpty() }) context.update { it.copy(sheet = Sheet.TransitSteps) }
@@ -299,12 +295,16 @@ class SpotMapViewModel(
         }
     }
 
-    /** The spot's pin and card: the camera brings it to the middle (at the zoom it has), its card opens there. */
-    private fun openSpot(zoom: Float = camera.zoom) {
+    /**
+     * The spot's pin and card: the camera brings it to the middle (at the zoom it has), its card opens there. After a
+     * route's or Around's card closed ([afterLayout]), the camera waits for the map's new padding, so the pin lands
+     * under where its card opens, not under the card (Shahin, 2026-11-24).
+     */
+    private fun openSpot(zoom: Float = camera.zoom, afterLayout: Boolean = false) {
         val pin = spotPin() ?: return
         val isThere = model.camera.isReady && camera.isAt(pin.location, zoom)
         context.update { it.copy(selection = spotSelection(isCardShown = isThere)) }
-        camera.moveTo(Coordinates(pin.location.lat, pin.location.lng), zoom)
+        camera.moveTo(Coordinates(pin.location.lat, pin.location.lng), zoom, afterLayout)
     }
 
     /**
@@ -322,9 +322,15 @@ class SpotMapViewModel(
         if (quiet !== before) context.update { if (it.selection === quiet) it.copy(selection = before) else it }
     }
 
-    /** The fit button: the ring while Around shows, else Go here's route, else the spot with its card. */
+    /**
+     * The fit button: the ring while Around shows, else Go here's route, else the spot with its card. An open card stays
+     * open (Shahin, 2026-11-24): its pin is already in the middle, so the camera only zooms in on it.
+     */
     private fun fit() {
-        if (!around.frameRing() && !routes.frameShownRoute()) openSpot(zoom = SPOT_ZOOM)
+        if (around.frameRing() || routes.frameShownRoute()) return
+        val pin = spotPin() ?: return
+        val isCardOpen = (model.selection as? Selection.Place)?.let { it.place.id == placeId && it.isCardShown } == true
+        if (isCardOpen) camera.moveTo(Coordinates(pin.location.lat, pin.location.lng), SPOT_ZOOM) else openSpot(zoom = SPOT_ZOOM)
     }
 
     /** The flame: shows at once and stays; a newer tap cancels the one on its way, and only a refusal puts back the last confirmed one. */
@@ -365,8 +371,9 @@ class SpotMapViewModel(
         val pin = details?.pin
         val hot = spot.hot
         return SpotMapUiState(
-            map = if (pin == null) map else map.forSpot(pin, details, hot, placePinSize(pin, config)),
+            map = if (pin == null) map else map.forSpot(pin, details, hot, config),
             spot = if (details == null || pin == null) null else SpotState(
+                id = pin.id,
                 name = details.name,
                 category = details.category,
                 owner = details.addedBy,
@@ -377,6 +384,8 @@ class SpotMapViewModel(
                 isHot = hot?.hot ?: details.hotByMe,
                 hotCount = hot?.hotCount ?: details.hotCount,
                 tripCount = details.tripCount,
+                openingHours = details.openingHours,
+                website = details.website,
                 routes = model.route.pinRoutes(pin.location, hasLocation = model.location.current != null).copy(isAroundOn = model.around?.center == pin.location),
             ),
             isLoading = spot.isLoading,
@@ -385,15 +394,17 @@ class SpotMapViewModel(
     }
 
     /**
-     * The trip map's state as the spot map shows it: the spot's pin always on the map (a plain pin while another card
-     * is open or Around shows), its card and details with its flame as shown and the + onto one of my trips; a place
-     * around it as a view-only card.
+     * The trip map's state as the spot map shows it: the spot's pin always on the map, its card and details with its
+     * flame as shown and the + onto one of my trips; a place around it as a view-only card. Its pins look as on the trip
+     * map: a photo pin where the trip map shows one ([withPhotos]), the tapped place's photo too, else its icon.
      */
-    private fun MapUiState.forSpot(pin: MapPlace, details: PlaceDetails, hot: HotState?, pinSize: Dp): MapUiState {
+    private fun MapUiState.forSpot(pin: MapPlace, details: PlaceDetails, hot: HotState?, config: AppConfig): MapUiState {
         val shownDetails = hot?.let { details.copy(hotCount = it.hotCount, hotByMe = it.hot) } ?: details
-        val isSpotDrawn = layers.selectedPlace?.id == pin.id || layers.placePins.any { it.place.id == pin.id }
+        val isSelected = layers.selectedPlace?.id == pin.id
+        val spotPin = PlacePin(pin, placePinSize(pin, config), photo = isSelected && pin.coverImageId != null && pin.coverThumbUrl != null, isKept = true)
+        val pins = if (layers.placePins.any { it.place.id == pin.id }) layers.placePins else layers.placePins + spotPin
         return copy(
-            layers = if (isSpotDrawn) layers else layers.copy(placePins = (layers.placePins + PlacePin(pin, pinSize, photo = pin.coverImageId != null, isKept = true)).toImmutableList()),
+            layers = layers.copy(placePins = pins.withPhotos(config).toImmutableList()),
             placeCard = placeCard?.let { card -> if (card.place.id == pin.id) card.copy(details = shownDetails, add = PinAdd.ToMyTrip) else card.copy(add = null) },
             sheet = (sheet as? MapSheet.PlaceDetails)?.takeIf { it.card.place.id == pin.id }?.let { MapSheet.PlaceDetails(it.card.copy(details = shownDetails, add = PinAdd.ToMyTrip)) } ?: sheet,
         )
@@ -428,6 +439,7 @@ data class SpotMapUiState(
 /** The spot as the header's pill and the card grown out of it show it. */
 @Immutable
 data class SpotState(
+    val id: String,
     val name: String,
     val category: PlaceCategory,
     /** Who made this custom spot; null for one from OpenStreetMap or when the server keeps it hidden. */
@@ -441,6 +453,9 @@ data class SpotState(
     val hotCount: Int,
     /** Public trips with a stop here. */
     val tripCount: Int,
+    /** Its details, shown under the bar's buttons, so the spot map needs no details sheet (Shahin, 2026-11-24). */
+    val openingHours: String? = null,
+    val website: String? = null,
     /** The bar's Go here and Around, on while they show for the spot. */
     val routes: PinRoutesState = PinRoutesState(),
 )
@@ -454,6 +469,5 @@ sealed interface SpotMapAction {
     data object OpenPhotos : SpotMapAction
     data object GoHere : SpotMapAction
     data object Around : SpotMapAction
-    data object OpenDetails : SpotMapAction
     data object Add : SpotMapAction
 }

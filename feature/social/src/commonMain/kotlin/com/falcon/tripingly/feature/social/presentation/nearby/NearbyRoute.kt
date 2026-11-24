@@ -55,14 +55,11 @@ import com.falcon.tripingly.feature.social.presentation.component.FollowButton
 import com.falcon.tripingly.feature.social.presentation.component.LoadMoreAtEnd
 import com.falcon.tripingly.feature.social.presentation.component.NearbyPreviewStates
 import com.falcon.tripingly.feature.social.presentation.component.placeholderNearbyPlaces
-import com.falcon.tripingly.feature.social.presentation.component.placeholderPeople
 import com.falcon.tripingly.feature.social.presentation.nearby.NearbyViewModel.Action
 import com.falcon.tripingly.feature.social.presentation.nearby.NearbyViewModel.Event
 import com.falcon.tripingly.feature.social.presentation.nearby.NearbyViewModel.PeopleState
 import com.falcon.tripingly.feature.social.presentation.nearby.NearbyViewModel.State
 import com.falcon.tripingly.feature.social.presentation.nearby.NearbyViewModel.Status
-import com.falcon.tripingly.core.model.social.Person
-import kotlinx.collections.immutable.toImmutableList
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel
 import androidx.compose.foundation.lazy.grid.LazyGridScope
@@ -98,7 +95,7 @@ fun NearbyRoute(
     // The people sheet keeps its scroll here: a profile opened from it covers Nearby, the sheet slides away, and on the
     // way back it comes up again where it was (AppBottomSheet hides while its screen isn't on top).
     val sheetList = rememberLazyListState()
-    AppBottomSheet(value = state.shownPeople.takeIf { state.isPeopleSheetOpen }, onDismiss = { viewModel.onAction(Action.ClosePeople) }) { people, close ->
+    AppBottomSheet(value = state.search.people.takeIf { state.isPeopleSheetOpen }, onDismiss = { viewModel.onAction(Action.ClosePeople) }) { people, close ->
         PeopleSheet(people, sheetList, onAction = viewModel::onAction, onOpenProfile = onOpenProfile, onClose = close)
     }
 }
@@ -144,16 +141,16 @@ internal fun NearbyScreen(
                     contentPadding = contentPadding,
                     loading = { NearbySkeleton(contentPadding) },
                 ) {
-                    NearbyGrid(state, onAction, onOpenSpot, onOpenProfile, contentPadding)
+                    NearbyGrid(state, onAction, onOpenSpot, contentPadding)
                 }
             }
         }
     }
 }
 
-/** The faces, then the spots around me, then the OpenStreetMap credit. */
+/** The spots around me, then the OpenStreetMap credit. People show only while searching (Shahin, 2026-11-24). */
 @Composable
-private fun NearbyGrid(state: State, onAction: (Action) -> Unit, onOpenSpot: (String) -> Unit, onOpenProfile: (String) -> Unit, contentPadding: PaddingValues) {
+private fun NearbyGrid(state: State, onAction: (Action) -> Unit, onOpenSpot: (String) -> Unit, contentPadding: PaddingValues) {
     val gridState = rememberLazyGridState()
     LoadMoreAtEnd(gridState) { onAction(Action.LoadMore) }
     SpotGrid(
@@ -163,7 +160,6 @@ private fun NearbyGrid(state: State, onAction: (Action) -> Unit, onOpenSpot: (St
         onOpen = { onOpenSpot(it.id) },
         onMarkHot = { onAction(Action.MarkHot(it)) },
         header = {
-            peopleRow(state.people, onAction, onOpenProfile)
             if (state.places.isEmpty()) {
                 fullWidthItem("empty") {
                     EmptyState(
@@ -192,7 +188,7 @@ private fun SearchResults(state: State, onAction: (Action) -> Unit, onOpenSpot: 
         onOpen = { onOpenSpot(it.id) },
         onMarkHot = { onAction(Action.MarkHot(it)) },
         header = {
-            if (search.people.people.isNotEmpty()) peopleRow(search.people, onAction, onOpenProfile)
+            peopleRow(search.people, onAction, onOpenProfile)
             if (search.hasLoaded && !search.isLoading && search.people.people.isEmpty() && search.spots.isEmpty()) {
                 fullWidthItem("none") {
                     EmptyState(illustration = Illustration.NearbyEmpty, title = stringResource(Res.string.social_search_none), modifier = Modifier.fillMaxWidth())
@@ -203,18 +199,11 @@ private fun SearchResults(state: State, onAction: (Action) -> Unit, onOpenSpot: 
     )
 }
 
-/**
- * The faces row on top of the grid. Its place is kept while the people load (their placeholder faces), so the
- * tiles don't move down when they come; nobody at all takes it away.
- */
+/** The faces of the people the search found, on top of the grid; none found, no row. */
 private fun LazyGridScope.peopleRow(people: PeopleState, onAction: (Action) -> Unit, onOpenProfile: (String) -> Unit) {
-    if (people.hasLoaded && people.people.isEmpty()) return
+    if (people.people.isEmpty()) return
     fullWidthItem("people") {
-        if (people.hasLoaded) {
-            PeopleFaces(people, onOpenProfile = { onOpenProfile(it.user.username) }, onOpenSheet = { onAction(Action.OpenPeople) })
-        } else {
-            Skeleton { PeopleFaces(PlaceholderPeople, onOpenProfile = {}, onOpenSheet = {}) }
-        }
+        PeopleFaces(people, onOpenProfile = { onOpenProfile(it.user.username) }, onOpenSheet = { onAction(Action.OpenPeople) })
     }
 }
 
@@ -246,7 +235,7 @@ private fun PeopleSheet(people: PeopleState, listState: LazyListState, onAction:
     }
 }
 
-/** The grid's own faces and tiles, drawn from placeholders as a [Skeleton], while the location and the spots load. */
+/** The grid's own tiles, drawn from placeholders as a [Skeleton], while the location and the spots load. */
 @Composable
 private fun NearbySkeleton(contentPadding: PaddingValues) {
     Skeleton(Modifier.fillMaxSize()) {
@@ -256,19 +245,9 @@ private fun NearbySkeleton(contentPadding: PaddingValues) {
             contentPadding = contentPadding,
             onOpen = {},
             onMarkHot = {},
-            header = { fullWidthItem("people") { PeopleFaces(PlaceholderPeople, onOpenProfile = {}, onOpenSheet = {}) } },
         )
     }
 }
-
-/** Enough placeholder faces for a full row on any phone. */
-private val PlaceholderPeople = PeopleState(
-    List(PLACEHOLDER_FACES) { index -> placeholderPeople[index % placeholderPeople.size].let { Person(it.copy(id = "${it.id}-$index"), isFriend = false, isFollowing = false) } }.toImmutableList(),
-    total = 0,
-    hasLoaded = true,
-)
-
-private const val PLACEHOLDER_FACES = 8
 
 /** Why Nearby needs the location and the way to allow it: the full-screen state with a location picture. */
 @Composable

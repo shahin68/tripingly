@@ -116,7 +116,7 @@ internal fun BoxWithConstraintsScope.rememberMapPanelLayout(headerHeight: Dp, co
 /**
  * The camera's commands for the map view, a fit worked out by [fit] once what changed with it (the route bar, the
  * route's card coming or growing) is laid out, so the fit keeps out of them as they are now, not as they were
- * (Shahin, 2026-11-15).
+ * (Shahin, 2026-11-15). A [CameraCommand.MoveAfterLayout] waits the same way.
  */
 @Composable
 internal fun rememberCameraMoves(cameraCommands: Flow<CameraCommand>, fit: () -> (GeoBounds) -> Pair<Coordinates, Float>): Flow<CameraCommand.Move> =
@@ -127,6 +127,10 @@ internal fun rememberCameraMoves(cameraCommands: Flow<CameraCommand>, fit: () ->
                 is CameraCommand.Fit -> {
                     repeat(FIT_LAYOUT_FRAMES) { withFrameNanos { } }
                     fit()(command.bounds).let { (target, zoom) -> CameraCommand.MoveTo(target, zoom, upright = true) }
+                }
+                is CameraCommand.MoveAfterLayout -> {
+                    repeat(FIT_LAYOUT_FRAMES) { withFrameNanos { } }
+                    CameraCommand.MoveTo(command.target, command.zoom)
                 }
             }
         }

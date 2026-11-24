@@ -58,7 +58,6 @@ import com.falcon.tripingly.core.designsystem.component.SheetHeader
 import com.falcon.tripingly.core.designsystem.component.bottomSystemBar
 import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
 import com.falcon.tripingly.core.designsystem.theme.spacing
-import com.falcon.tripingly.core.model.place.PlaceDetails
 import com.falcon.tripingly.core.model.trip.UserSummary
 import com.falcon.tripingly.feature.map.generated.resources.Res
 import com.falcon.tripingly.feature.map.generated.resources.map_details_comments
@@ -115,9 +114,10 @@ internal fun StopDetailsContent(card: StopCardState, onAction: (MapAction) -> Un
         },
         photoStrip = photoStrip,
     ) {
-        card.addedBy?.let { AddedByFact(it, it.text(), onAction) }
-        PlaceFacts(card.place)
-        card.spotBy?.let { AddedByFact(it, it.spotText(), onAction) }
+        val openProfile = { username: String -> onAction(MapAction.Sheet.OpenProfile(username)) }
+        card.addedBy?.let { AddedByFact(it, it.text(), openProfile) }
+        PlaceFacts(addedBy = null, card.place?.openingHours, card.place?.website, openProfile)
+        card.spotBy?.let { AddedByFact(it, it.spotText(), openProfile) }
         Fact(
             icon = Icons.AutoMirrored.Outlined.Comment,
             text = stringResource(Res.string.map_details_comments, stop.commentCount),
@@ -161,9 +161,7 @@ internal fun PlaceDetailsContent(card: PlaceCardState, onAction: (MapAction) -> 
         },
         photoStrip = photoStrip,
     ) {
-        // A place off the trip: who made the spot, in the same words as on a stop at it.
-        card.addedBy?.let { AddedByFact(it, it.spotText(), onAction) }
-        PlaceFacts(card.details)
+        PlaceFacts(card.addedBy, card.details?.openingHours, card.details?.website) { onAction(MapAction.Sheet.OpenProfile(it)) }
         CreditLine(
             osm = card.address != null || card.details?.isFromOsm == true,
             credit = null,
@@ -197,14 +195,18 @@ private fun PinDetails(
     }
 }
 
-/** What a place's details say: opening hours and website (opens it). */
+/**
+ * What a place's details say: who made the spot (in the same words as on a stop at it; [onOpenProfile] opens theirs),
+ * its opening hours and its website (opens it). Also under the spot map's buttons, which has no details sheet.
+ */
 @Composable
-private fun PlaceFacts(details: PlaceDetails?) {
+internal fun PlaceFacts(addedBy: AddedBy?, openingHours: String?, website: String?, onOpenProfile: (username: String) -> Unit) {
     val uriHandler = LocalUriHandler.current
-    details?.openingHours?.let { Fact(Icons.Outlined.Schedule, "${stringResource(Res.string.map_place_opening_hours)}: $it") }
-    details?.website?.let { website ->
-        Fact(Icons.Outlined.Language, website, onClick = {
-            val url = if ("://" in website) website else "https://$website"
+    addedBy?.let { AddedByFact(it, it.spotText(), onOpenProfile) }
+    openingHours?.let { Fact(Icons.Outlined.Schedule, "${stringResource(Res.string.map_place_opening_hours)}: $it") }
+    website?.let { site ->
+        Fact(Icons.Outlined.Language, site, onClick = {
+            val url = if ("://" in site) site else "https://$site"
             // OpenStreetMap's value may not be a link a browser takes.
             runCatching { uriHandler.openUri(url) }
         })
@@ -213,9 +215,9 @@ private fun PlaceFacts(details: PlaceDetails?) {
 
 /** Who added a stop or made a spot (Shahin's D1, 2026-11-13): their face first; a tap opens their profile, not for me. */
 @Composable
-private fun AddedByFact(addedBy: AddedBy, text: String, onAction: (MapAction) -> Unit) {
+private fun AddedByFact(addedBy: AddedBy, text: String, onOpenProfile: (username: String) -> Unit) {
     val user = addedBy.user
-    Fact(Icons.Outlined.Person, text, avatar = user, onClick = user?.takeUnless { addedBy.isMe }?.let { { onAction(MapAction.Sheet.OpenProfile(it.username)) } })
+    Fact(Icons.Outlined.Person, text, avatar = user, onClick = user?.takeUnless { addedBy.isMe }?.let { { onOpenProfile(it.username) } })
 }
 
 /** One line of the details with a line above it, led by [icon] or a person's face ([avatar]); a tappable one ends with ›. */

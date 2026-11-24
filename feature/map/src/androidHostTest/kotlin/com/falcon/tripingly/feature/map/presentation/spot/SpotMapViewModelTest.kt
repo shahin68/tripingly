@@ -33,6 +33,7 @@ import com.falcon.tripingly.core.model.trip.GeoPoint
 import com.falcon.tripingly.core.ui.UiText
 import com.falcon.tripingly.feature.map.generated.resources.Res
 import com.falcon.tripingly.feature.map.generated.resources.map_add_to_trip_no_trips
+import com.falcon.tripingly.feature.map.presentation.component.CameraCommand
 import com.falcon.tripingly.feature.map.presentation.map.MapAction
 import com.falcon.tripingly.feature.map.presentation.map.MapEvent
 import com.falcon.tripingly.feature.map.presentation.map.PinAdd
@@ -244,10 +245,32 @@ class SpotMapViewModelTest {
         assertEquals("fake-louvre", viewModel.uiState.value.map.placeCard?.place?.id)
         assertNull(viewModel.uiState.value.map.placeCard?.add)
 
+        val moves = mutableListOf<CameraCommand>()
+        backgroundScope.launch { viewModel.cameraCommands.collect { moves += it } }
         viewModel.onMapAction(MapAction.Around.Close)
         restOnTarget(viewModel)
         assertNull(viewModel.uiState.value.map.layers.aroundRing)
         assertEquals(EIFFEL, viewModel.uiState.value.map.placeCard?.place?.id)
+        // The camera waits for the map without Around's card, so the pin lands under where its card opens.
+        assertTrue(moves.last() is CameraCommand.MoveAfterLayout)
+    }
+
+    @Test
+    fun `the fit button keeps an open card open and only zooms in on the spot`() = runTest(testDispatcher) {
+        val viewModel = viewModel()
+        restOnTarget(viewModel)
+        // Zoomed out, then the pin tapped: its card opens where the map is.
+        val spot = assertNotNull(viewModel.uiState.value.map.layers.selectedPlace)
+        viewModel.onMapAction(MapAction.MapView.CameraRest(Coordinates(48.8584, 2.2945), 14f, null))
+        viewModel.onMapAction(MapAction.MapView.PlacePinClick(spot))
+        testScheduler.advanceUntilIdle()
+        assertEquals(EIFFEL, viewModel.uiState.value.map.placeCard?.place?.id)
+
+        viewModel.onMapAction(MapAction.Days.FitDay)
+        testScheduler.advanceUntilIdle()
+        // Open all along, no waiting for the camera to rest.
+        assertEquals(EIFFEL, viewModel.uiState.value.map.placeCard?.place?.id)
+        assertEquals(16f, viewModel.uiState.value.map.camera.zoom)
     }
 
     @Test

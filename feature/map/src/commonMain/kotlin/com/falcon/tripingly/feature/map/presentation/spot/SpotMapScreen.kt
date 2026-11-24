@@ -249,6 +249,8 @@ internal fun SpotMapScreen(
                     card = card,
                     onOpenImage = { index -> onMapAction(MapAction.PlaceCard.OpenImage(index)) },
                     onOpenPhotos = { onMapAction(MapAction.PlaceCard.OpenPhotos) },
+                    // The spot's flame is in the header.
+                    showsHot = card.place.id != spot?.id,
                 )
             }
         }
@@ -278,6 +280,7 @@ internal fun SpotMapScreen(
 
 private val PreviewSpot = SpotMapUiState(
     spot = SpotState(
+        id = "p-1",
         name = "Café Central",
         category = PlaceCategory("cafe"),
         owner = null,
@@ -288,6 +291,8 @@ private val PreviewSpot = SpotMapUiState(
         isHot = true,
         hotCount = 42,
         tripCount = 7,
+        openingHours = "Mo-Sa 08:00-21:00",
+        website = "cafecentral.wien",
     ),
     isLoading = false,
 )

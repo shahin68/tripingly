@@ -55,6 +55,23 @@ class PlacePinsTest {
     }
 
     @Test
+    fun `pins made without the map's squares follow the same photo rule and cap`() {
+        val config = AppConfig(mapMaxPhotoPins = 2)
+        val pins = listOf(
+            PlacePin(place("shown", hotCount = 5), PhotoPinSize, photo = true),
+            PlacePin(place("route end", prominence = 95), SelectedPinSize, isKept = true),
+            PlacePin(place("quiet", hotCount = 2), PinSizes[0], isAlongTheWay = true),
+            PlacePin(place("one too many", hotCount = 9), PinSizes[1], isAlongTheWay = true),
+        ).withPhotos(config)
+
+        assertEquals(listOf(true, true, false, false), pins.map { it.photo })
+        // A bigger pin keeps its size; the rest of its look stays.
+        assertEquals(SelectedPinSize, pins[1].size)
+        assertEquals(true, pins[1].isKept)
+        assertEquals(PinSizes[0], pins[2].size)
+    }
+
+    @Test
     fun `a pin still in view stays, with its look, and new places take the free places best first`() {
         val config = AppConfig(mapMaxPins = 2, mapMaxPhotoPins = 1)
         val low = place("low", prominence = 10, photo = false)

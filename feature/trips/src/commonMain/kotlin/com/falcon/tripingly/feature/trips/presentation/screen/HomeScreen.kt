@@ -65,7 +65,8 @@ fun HomeScreen(
             loading = { TimelineSkeleton(contentPadding) },
         ) {
             if (state.timeline.isEmpty) {
-                EmptyTrips(hasTrips = state.hasTrips, contentPadding = contentPadding)
+                // No last trip to keep clear of the Add Trip button: the picture gets that room (Shahin, 2026-11-24).
+                EmptyTrips(hasTrips = state.hasTrips, contentPadding = screenContentPadding(barsPadding))
             } else {
                 TripTimelineList(state.timeline, onAction, contentPadding, listState)
             }

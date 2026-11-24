@@ -24,8 +24,9 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 /**
- * The Nearby tab (Shahin, 2026-11-23): spots around me in a grid ([NearbyPlaces]), people as a row of faces and a
- * sheet ([NearbyPeople]), and the search for both from the shell's top bar ([NearbySearch]). A spot opens its own map.
+ * The Nearby tab (Shahin, 2026-11-23): spots around me in a grid ([NearbyPlaces]), and the search for people and spots
+ * from the shell's top bar ([NearbySearch]); the people it finds show as a row of faces and a sheet ([NearbyPeople],
+ * only while searching, Shahin 2026-11-24). A spot opens its own map.
  */
 class NearbyViewModel(
     socialRepository: SocialRepository,
@@ -44,9 +45,9 @@ class NearbyViewModel(
     private val _events = Channel<Event>(capacity = Channel.BUFFERED)
     val events = _events.receiveAsFlow()
 
-    private val people = NearbyPeople(viewModelScope, _uiState, userRepository, ::showMessage)
+    private val places = NearbyPlaces(viewModelScope, _uiState, placeRepository, socialRepository, getCurrentLocation, ::showMessage)
 
-    private val places = NearbyPlaces(viewModelScope, _uiState, placeRepository, socialRepository, getCurrentLocation, people::load, ::showMessage)
+    private val people = NearbyPeople(viewModelScope, _uiState, userRepository, { places.point }, ::showMessage)
 
     private val search = NearbySearch(viewModelScope, _uiState, userRepository, placeRepository, { places.point }, people, ::showMessage)
 
@@ -85,7 +86,7 @@ class NearbyViewModel(
         Ready,
     }
 
-    /** People in the row and the sheet, with how many there are in all (up to 999, "999+"). */
+    /** The people a search found, in the row and the sheet, with how many there are in all (up to 999, "999+"). */
     @Immutable
     data class PeopleState(
         val people: ImmutableList<Person> = persistentListOf(),
@@ -114,20 +115,16 @@ class NearbyViewModel(
         val isLoading: Boolean = false,
         /** Why the places couldn't load when there are none to show: the error screen with a retry. */
         val loadError: UiText? = null,
-        val people: PeopleState = PeopleState(),
         val search: SearchState = SearchState(),
         /**
-         * The people sheet, of the people around or those the search found. It stays open while a profile opened from
-         * it covers Nearby: the sheet slides away and comes back on the way back.
+         * The people sheet, of those the search found. It stays open while a profile opened from it covers Nearby: the
+         * sheet slides away and comes back on the way back.
          */
         val isPeopleSheetOpen: Boolean = false,
         val message: UiText? = null,
         /** The server lists OpenStreetMap places (OSM_PINS_ENABLED); off, Nearby has only users' places and no OSM credit. */
         val isOsmCreditShown: Boolean = true,
-    ) {
-        /** The people the row and the sheet show: those the search found while it's in use, else the people around. */
-        val shownPeople: PeopleState get() = if (search.isSearching) search.people else people
-    }
+    )
 
     sealed interface Action {
         /** The permission as Nearby opens or the app comes back, e.g. from Settings. */

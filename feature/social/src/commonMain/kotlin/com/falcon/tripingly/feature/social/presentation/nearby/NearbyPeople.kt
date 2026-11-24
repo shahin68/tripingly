@@ -18,20 +18,20 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 /**
- * Nearby's people: friends, then follows, then people with trips around me, then the most followed (the server's
- * order), as faces in a row and all of them in a sheet, a page at a time. Follow and Following switch at once and
- * stay; only a refusal puts them back. The same goes for the people a search finds ([State.search]).
+ * Nearby's people, only those a search finds (Shahin, 2026-11-24: no people around by default): friends, then follows,
+ * then the rest (the server's order), as faces in a row and all of them in a sheet, a page at a time. Follow and
+ * Following switch at once and stay; only a refusal puts them back.
  */
 internal class NearbyPeople(
     private val scope: CoroutineScope,
     private val state: MutableStateFlow<State>,
     private val userRepository: UserRepository,
+    /** Where Nearby looked, for the next pages; in memory only. */
+    private val point: () -> GeoPoint?,
     private val showMessage: (UiText) -> Unit,
 ) {
-    /** The next page of the people shown in the sheet: around me, or found by the search. */
+    /** The next page of the people the search found. */
     private var cursor: String? = null
-    private var searchCursor: String? = null
-    private var point: GeoPoint? = null
     private var loadingMore: Job? = null
     private val followJobs = mutableMapOf<String, Job>()
 
@@ -40,7 +40,7 @@ internal class NearbyPeople(
 
     init {
         scope.launch {
-            // Someone blocked here leaves the row, the sheet and the search at once.
+            // Someone blocked here leaves the row and the sheet at once.
             userRepository.blocks.collect { userId -> updatePeople { list -> list.filterNot { it.user.id == userId } } }
         }
         scope.launch {
@@ -54,46 +54,28 @@ internal class NearbyPeople(
         }
     }
 
-    /** The people around [point]; kept in memory only, for the next pages. */
-    fun load(point: GeoPoint) {
-        this.point = point
-        loadingMore?.cancel()
-        scope.launch {
-            val result = userRepository.findPeople(query = null, near = point)
-            if (result is AppResult.Success) {
-                cursor = result.data.nextCursor
-                state.update { it.copy(people = PeopleState(result.data.people.toImmutableList(), result.data.total, hasLoaded = true)) }
-            } else {
-                // The row stops waiting: the people shown before stay, and with none it goes away.
-                state.update { it.copy(people = it.people.copy(hasLoaded = true)) }
-            }
-        }
-    }
-
     /** A search's people, its first page (from [NearbySearch]). */
     fun showFound(people: PeopleState, nextCursor: String?) {
-        searchCursor = nextCursor
+        loadingMore?.cancel()
+        cursor = nextCursor
         state.update { it.copy(search = it.search.copy(people = people)) }
     }
 
-    /** The sheet's next page, of the people it shows. */
+    /** The sheet's next page. */
     fun loadMore() {
         if (loadingMore?.isActive == true) return
         val search = state.value.search
-        val isSearch = search.isSearching
-        val next = (if (isSearch) searchCursor else cursor) ?: return
+        val next = cursor?.takeIf { search.isSearching } ?: return
         loadingMore = scope.launch {
-            val result = userRepository.findPeople(if (isSearch) search.query else null, point, next)
-            if (result !is AppResult.Success) return@launch
+            val result = userRepository.findPeople(search.query, point(), next)
             // A new query meanwhile has its own first page.
-            if (isSearch && state.value.search.query != search.query) return@launch
-            if (isSearch) searchCursor = result.data.nextCursor else cursor = result.data.nextCursor
+            if (result !is AppResult.Success || state.value.search.query != search.query) return@launch
+            cursor = result.data.nextCursor
             state.update { nearby ->
-                val add: (PeopleState) -> PeopleState = { people ->
-                    val known = people.people.map { it.user.id }.toSet()
-                    people.copy(people = (people.people + result.data.people.filterNot { it.user.id in known }).toImmutableList())
-                }
-                if (isSearch) nearby.copy(search = nearby.search.copy(people = add(nearby.search.people))) else nearby.copy(people = add(nearby.people))
+                val people = nearby.search.people
+                val known = people.people.map { it.user.id }.toSet()
+                val more = people.copy(people = (people.people + result.data.people.filterNot { it.user.id in known }).toImmutableList())
+                nearby.copy(search = nearby.search.copy(people = more))
             }
         }
     }
@@ -119,11 +101,10 @@ internal class NearbyPeople(
         updatePeople { list -> list.map { if (it.user.id == userId) change(it) else it } }
 
     private fun updatePeople(change: (List<Person>) -> List<Person>) = state.update { nearby ->
-        fun PeopleState.changed(): PeopleState {
-            val people = change(people)
-            // A blocked person also leaves the count beside the faces.
-            return copy(people = people.toImmutableList(), total = (total - (this.people.size - people.size)).coerceAtLeast(people.size))
-        }
-        nearby.copy(people = nearby.people.changed(), search = nearby.search.copy(people = nearby.search.people.changed()))
+        val found = nearby.search.people
+        val people = change(found.people)
+        // A blocked person also leaves the count beside the faces.
+        val changed = found.copy(people = people.toImmutableList(), total = (found.total - (found.people.size - people.size)).coerceAtLeast(people.size))
+        nearby.copy(search = nearby.search.copy(people = changed))
     }
 }

@@ -59,12 +59,14 @@ import com.falcon.tripingly.feature.map.generated.resources.map_spot_card_flames
 import com.falcon.tripingly.feature.map.generated.resources.map_spot_card_in_trips
 import com.falcon.tripingly.feature.map.generated.resources.map_spot_card_type
 import com.falcon.tripingly.feature.map.generated.resources.map_spot_from_osm
+import com.falcon.tripingly.feature.map.presentation.map.AddedBy
 import com.falcon.tripingly.feature.map.presentation.map.PinAdd
 import com.falcon.tripingly.feature.map.presentation.map.ui.CardInset
 import com.falcon.tripingly.feature.map.presentation.map.ui.CardTitleRow
 import com.falcon.tripingly.feature.map.presentation.map.ui.DetailTile
 import com.falcon.tripingly.feature.map.presentation.map.ui.PillGrowthPanel
 import com.falcon.tripingly.feature.map.presentation.map.ui.PinCardButtons
+import com.falcon.tripingly.feature.map.presentation.map.ui.PlaceFacts
 import com.falcon.tripingly.feature.map.presentation.map.ui.CardRowGap
 import com.falcon.tripingly.feature.map.presentation.map.ui.TileGap
 import com.falcon.tripingly.feature.map.presentation.map.ui.TileValue
@@ -260,26 +262,37 @@ internal fun SpotCard(
 }
 
 /**
- * The bottom bar, in the day tabs' place: the spot's buttons as on a pin card. Its photos, Go here and Around on the
- * left; ⓘ for its details and the green + onto one of my trips on the right.
+ * The bottom bar, in the day tabs' place: the spot's buttons as on a pin card, its photos, Go here and Around on the
+ * left and the green + onto one of my trips on the right; under them what its details sheet would say (who made it,
+ * its opening hours, its website), so there is no ⓘ (Shahin, 2026-11-24).
  */
 @Composable
 internal fun SpotBar(spot: SpotState, onAction: (SpotMapAction) -> Unit, modifier: Modifier = Modifier) {
-    PinCardButtons(
-        group = placeButtons(
-            hasPhotos = true,
-            onOpenPhotos = { onAction(SpotMapAction.OpenPhotos) },
-            routes = spot.routes,
-            onGoHere = { onAction(SpotMapAction.GoHere) },
-            onRoute = null,
-            onAround = { onAction(SpotMapAction.Around) },
-        ),
-        onDetails = { onAction(SpotMapAction.OpenDetails) },
-        onDelete = null,
-        onAdd = { onAction(SpotMapAction.Add) },
-        addLabel = PinAdd.ToMyTrip.label(),
-        modifier = modifier.padding(MaterialTheme.spacing.small),
-    )
+    Column(modifier) {
+        PinCardButtons(
+            group = placeButtons(
+                hasPhotos = true,
+                onOpenPhotos = { onAction(SpotMapAction.OpenPhotos) },
+                routes = spot.routes,
+                onGoHere = { onAction(SpotMapAction.GoHere) },
+                onRoute = null,
+                onAround = { onAction(SpotMapAction.Around) },
+            ),
+            onDetails = null,
+            onDelete = null,
+            onAdd = { onAction(SpotMapAction.Add) },
+            addLabel = PinAdd.ToMyTrip.label(),
+            modifier = Modifier.padding(MaterialTheme.spacing.small),
+        )
+        Column(Modifier.padding(horizontal = MaterialTheme.spacing.medium)) {
+            PlaceFacts(
+                addedBy = spot.owner?.let { AddedBy(it, isMe = spot.isOwnerMe) },
+                openingHours = spot.openingHours,
+                website = spot.website,
+                onOpenProfile = { onAction(SpotMapAction.OpenOwner) },
+            )
+        }
+    }
 }
 
 /** The flame pill's sides: its flame as far in as the back button's arrow. */

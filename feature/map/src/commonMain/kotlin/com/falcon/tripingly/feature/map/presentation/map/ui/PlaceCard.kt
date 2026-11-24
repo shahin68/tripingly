@@ -78,7 +78,7 @@ internal fun PinCardScope.PlaceCard(
                 pagerState = pagerState,
                 onOpen = onOpenImage,
                 onOpenPhotos = onOpenPhotos.takeIf { address == null },
-                afterSubtitle = { addedBy?.let { AddedByInline(it, it.spotText()) } },
+                afterSubtitle = { AddedByInline(addedBy) { it.spotText() } },
             )
         },
         credit = { PlaceCredit(osm = address != null || details?.isFromOsm == true, images, pagerState) },
@@ -96,10 +96,17 @@ internal fun PinCardScope.PlaceCard(
 
 /**
  * A place's card that only shows it, its images and the credit, without buttons: the spot map's own spot (its buttons
- * are in its bottom bar) and a place found around it.
+ * are in its bottom bar, its flame in the header: no flame on its card, [showsHot] false, Shahin 2026-11-24) and a
+ * place found around it.
  */
 @Composable
-internal fun PinCardScope.PlaceViewCard(card: PlaceCardState, onOpenImage: (index: Int) -> Unit, onOpenPhotos: () -> Unit, modifier: Modifier = Modifier) {
+internal fun PinCardScope.PlaceViewCard(
+    card: PlaceCardState,
+    onOpenImage: (index: Int) -> Unit,
+    onOpenPhotos: () -> Unit,
+    modifier: Modifier = Modifier,
+    showsHot: Boolean = true,
+) {
     val pagerState = rememberPagerState { card.images.orEmpty().size }
     BigPinCard(
         modifier = modifier.widthIn(max = MapCardMaxWidth),
@@ -108,12 +115,12 @@ internal fun PinCardScope.PlaceViewCard(card: PlaceCardState, onOpenImage: (inde
                 name = card.place.name,
                 subtitle = card.place.category.label(),
                 category = card.place.category,
-                hotCount = card.details?.hotCount ?: card.place.hotCount,
+                hotCount = if (showsHot) card.details?.hotCount ?: card.place.hotCount else 0,
                 images = card.images,
                 pagerState = pagerState,
                 onOpen = onOpenImage,
                 onOpenPhotos = onOpenPhotos,
-                afterSubtitle = { card.addedBy?.let { AddedByInline(it, it.spotText()) } },
+                afterSubtitle = { AddedByInline(card.addedBy) { it.spotText() } },
             )
         },
         credit = { PlaceCredit(osm = card.details?.isFromOsm == true, card.images, pagerState) },

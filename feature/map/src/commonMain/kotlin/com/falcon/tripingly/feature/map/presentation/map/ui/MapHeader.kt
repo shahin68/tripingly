@@ -169,55 +169,54 @@ internal fun MapHeader(
                         .onGloballyPositioned { onTitlePlaced(it.boundsInParent()) },
                 )
             }
-            GlassButtonRow(blur = false, height = GlassButtonDefaults.HeaderSize) {
-                if (search != null) {
-                    SearchField(search, onAction, Modifier.weight(1f))
-                } else {
-                    // At the end while the pill shrinks back, so search and ⋮ stay put and don't glide. A visitor's map
-                    // has no search (Shahin, 2026-11-22): the pill is just ⋮, and search glides in once a join is accepted.
-                    Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.CenterEnd) {
-                        androidx.compose.animation.AnimatedVisibility(
+            // Search and ⋮ come once the trip is known, gliding in once, so the header never snaps left and right while
+            // it loads (Shahin, 2026-11-24). Search needs the trip, so it never shows without ⋮.
+            // In a box, so the layout always has the pill to measure (none while hidden: no width), at the width it gives.
+            Box(propagateMinConstraints = true) {
+                AnimatedVisibility(
+                    visible = actions.isNotEmpty(),
+                    enter = expandHorizontally(expandFrom = Alignment.End) + fadeIn(),
+                    exit = shrinkHorizontally(shrinkTowards = Alignment.End) + fadeOut(),
+                ) {
+                    GlassButtonRow(blur = false, height = GlassButtonDefaults.HeaderSize) {
+                        if (search != null) {
+                            SearchField(search, onAction, Modifier.weight(1f))
+                        } else {
+                            // At the end while the pill shrinks back, so search and ⋮ stay put and don't glide. A visitor's
+                            // map has no search (Shahin, 2026-11-22): the pill is just ⋮, and search glides in once a join is
+                            // accepted.
+                            Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.CenterEnd) {
+                                androidx.compose.animation.AnimatedVisibility(
+                                    visible = header.canSearch,
+                                    enter = expandHorizontally(expandFrom = Alignment.End) + fadeIn(),
+                                    exit = shrinkHorizontally(shrinkTowards = Alignment.End) + fadeOut(),
+                                ) {
+                                    IconButton(onClick = { onAction(MapAction.Search.Open) }) {
+                                        Icon(Icons.Outlined.Search, contentDescription = stringResource(Res.string.map_search))
+                                    }
+                                }
+                            }
+                        }
+                        // While searching, the end button closes the search: ⋮ turns into ✕ in its place and back (Shahin,
+                        // 2026-11-21).
+                        AnimatedVisibility(
                             visible = header.canSearch,
                             enter = expandHorizontally(expandFrom = Alignment.End) + fadeIn(),
                             exit = shrinkHorizontally(shrinkTowards = Alignment.End) + fadeOut(),
                         ) {
-                            IconButton(onClick = { onAction(MapAction.Search.Open) }) {
-                                Icon(Icons.Outlined.Search, contentDescription = stringResource(Res.string.map_search))
-                            }
-                        }
-                    }
-                }
-                // While searching, the end button closes the search: ⋮ turns into ✕ in its place and back (Shahin,
-                // 2026-11-21). Without a ⋮, the ✕ comes and goes with the search.
-                if (actions.isNotEmpty()) {
-                    AnimatedVisibility(
-                        visible = header.canSearch,
-                        enter = expandHorizontally(expandFrom = Alignment.End) + fadeIn(),
-                        exit = shrinkHorizontally(shrinkTowards = Alignment.End) + fadeOut(),
-                    ) {
-                        GlassButtonDivider()
-                    }
-                    AnimatedContent(
-                        targetState = search != null,
-                        transitionSpec = {
-                            (scaleIn(tween(ICON_SWAP_MILLIS), initialScale = 0.6f) + fadeIn(tween(ICON_SWAP_MILLIS))) togetherWith
-                                (scaleOut(tween(ICON_SWAP_MILLIS), targetScale = 0.6f) + fadeOut(tween(ICON_SWAP_MILLIS))) using
-                                SizeTransform(clip = false)
-                        },
-                        contentAlignment = Alignment.Center,
-                        label = "menu or close",
-                    ) { isSearching ->
-                        if (isSearching) CloseSearchButton(onAction) else TripMenuButton(actions)
-                    }
-                } else {
-                    AnimatedVisibility(
-                        visible = search != null,
-                        enter = expandHorizontally(tween(SEARCH_MOTION_MILLIS), expandFrom = Alignment.Start) + fadeIn(tween(SEARCH_MOTION_MILLIS)),
-                        exit = shrinkHorizontally(tween(SEARCH_MOTION_MILLIS), shrinkTowards = Alignment.Start) + fadeOut(tween(SEARCH_MOTION_MILLIS)),
-                    ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
                             GlassButtonDivider()
-                            CloseSearchButton(onAction)
+                        }
+                        AnimatedContent(
+                            targetState = search != null,
+                            transitionSpec = {
+                                (scaleIn(tween(ICON_SWAP_MILLIS), initialScale = 0.6f) + fadeIn(tween(ICON_SWAP_MILLIS))) togetherWith
+                                    (scaleOut(tween(ICON_SWAP_MILLIS), targetScale = 0.6f) + fadeOut(tween(ICON_SWAP_MILLIS))) using
+                                    SizeTransform(clip = false)
+                            },
+                            contentAlignment = Alignment.Center,
+                            label = "menu or close",
+                        ) { isSearching ->
+                            if (isSearching) CloseSearchButton(onAction) else TripMenuButton(actions)
                         }
                     }
                 }
@@ -228,7 +227,8 @@ internal fun MapHeader(
         val height = GlassButtonDefaults.HeaderSize.roundToPx()
         if (search == null) collapsedWidth[0] = pill.maxIntrinsicWidth(height)
         val pillWidth = lerp(collapsedWidth[0], width, progress)
-        val titleWidth = (width - pillWidth - gap.roundToPx()).coerceAtLeast(0)
+        // No gap without a pill (while the trip loads); it opens with the pill.
+        val titleWidth = (width - pillWidth - minOf(gap.roundToPx(), pillWidth)).coerceAtLeast(0)
         val titlePlaceable = title.measure(Constraints.fixed(titleWidth, height))
         val pillPlaceable = pill.measure(Constraints.fixed(pillWidth, height))
         layout(width, height) {
