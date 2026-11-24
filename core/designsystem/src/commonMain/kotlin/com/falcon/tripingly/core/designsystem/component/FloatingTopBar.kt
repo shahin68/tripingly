@@ -43,6 +43,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.IntOffset
@@ -200,11 +201,18 @@ private val SearchResize = tween<IntSize>(durationMillis = 300, easing = Emphasi
 private val SearchIn = slideInVertically(tween(300, easing = Emphasized)) { -it / 4 } + fadeIn(tween(220))
 private val SearchOut = fadeOut(tween(90))
 
-/** The pill's search half folds into its right edge (towards Settings) and unfolds from it. */
-private val SearchButtonIn = expandHorizontally(tween(300, easing = Emphasized), expandFrom = Alignment.End) +
-    scaleIn(tween(300, easing = Emphasized)) + fadeIn(tween(220))
-private val SearchButtonOut = shrinkHorizontally(tween(300, easing = Emphasized), shrinkTowards = Alignment.End) +
-    scaleOut(tween(300, easing = Emphasized)) + fadeOut(tween(150))
+/**
+ * The pill's search half folds into its right edge (towards Settings) and unfolds from it. Tapped, the icon shrinks
+ * down out of its bottom, into the search row opening below; when the search closes it comes back up out of the
+ * bottom, as if from the search row (Shahin, 2026-11-24). Not clipped, so it can go below the pill.
+ */
+private val BottomMiddle = TransformOrigin(0.5f, 1f)
+private val SearchButtonIn = expandHorizontally(tween(300, easing = Emphasized), expandFrom = Alignment.End, clip = false) +
+    scaleIn(tween(300, easing = Emphasized), transformOrigin = BottomMiddle) +
+    slideInVertically(tween(300, easing = Emphasized)) { it / 3 } + fadeIn(tween(220))
+private val SearchButtonOut = shrinkHorizontally(tween(300, easing = Emphasized), shrinkTowards = Alignment.End, clip = false) +
+    scaleOut(tween(300, easing = Emphasized), transformOrigin = BottomMiddle) +
+    slideOutVertically(tween(300, easing = Emphasized)) { it / 3 } + fadeOut(tween(150))
 
 @Composable
 private fun FloatingTopBarPreviewContent() {
