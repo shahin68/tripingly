@@ -72,6 +72,19 @@ class PlacePinsTest {
     }
 
     @Test
+    fun `a tapped place that passes the photo rule looks the same tapped or not`() {
+        val config = AppConfig()
+        val spot = place("spot", hotCount = 6)
+        val size = placePinSize(spot, config)
+
+        val tapped = listOf(PlacePin(spot, size, photo = true)).withPhotos(config).single()
+        val left = listOf(PlacePin(spot, size)).withPhotos(config).single()
+
+        assertEquals(left, tapped)
+        assertEquals(PhotoPinSize, tapped.size)
+    }
+
+    @Test
     fun `a pin still in view stays, with its look, and new places take the free places best first`() {
         val config = AppConfig(mapMaxPins = 2, mapMaxPhotoPins = 1)
         val low = place("low", prominence = 10, photo = false)

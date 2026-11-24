@@ -118,16 +118,20 @@ private fun pin(place: MapPlace, photo: Boolean, config: AppConfig) =
 /**
  * Pins put together without the map's own squares (the spot map shows none): each one that passes the trip map's photo
  * rule ([showsPhoto]) shows its photo there too, up to [AppConfig.mapMaxPhotoPins], so a place looks the same on both
- * maps (Shahin, 2026-11-24).
+ * maps (Shahin, 2026-11-24). Such a pin is photo-sized whether or not it already shows its photo (the tapped place
+ * does), so tapping or leaving it doesn't change its look, which would make its marker come back as a new one, a blink.
  */
 fun List<PlacePin>.withPhotos(config: AppConfig): List<PlacePin> {
     var photos = count { it.photo }
     return map { pin ->
-        if (pin.photo || photos >= config.mapMaxPhotoPins || !pin.place.showsPhoto(config)) {
-            pin
-        } else {
-            photos++
-            pin.copy(photo = true, size = maxOf(pin.size, PhotoPinSize))
+        when {
+            !pin.place.showsPhoto(config) -> pin
+            pin.photo -> pin.copy(size = maxOf(pin.size, PhotoPinSize))
+            photos >= config.mapMaxPhotoPins -> pin
+            else -> {
+                photos++
+                pin.copy(photo = true, size = maxOf(pin.size, PhotoPinSize))
+            }
         }
     }
 }
