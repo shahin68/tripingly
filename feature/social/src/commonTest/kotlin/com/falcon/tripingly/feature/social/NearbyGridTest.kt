@@ -39,7 +39,7 @@ class NearbyGridTest {
     }
 
     @Test
-    fun `every row fills the same width, three columns`() {
+    fun `every row fills the width of three columns`() {
         val tiles = arrangeTiles(List(30) { spot("s$it", hasPhoto = it % 3 == 0) })
         var row = 0
         for (tile in tiles) {

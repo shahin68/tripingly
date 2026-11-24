@@ -406,7 +406,7 @@ class MapViewModelTest {
     }
 
     @Test
-    fun `the header knows once the device has looked for the trip, kept here or not`() = runTest(testDispatcher) {
+    fun `the header knows once the device has looked for the trip whether it keeps it or not`() = runTest(testDispatcher) {
         // Kept here: the menu comes with the trip, so the header is whole at once.
         val kept = viewModel()
         testScheduler.advanceUntilIdle()
