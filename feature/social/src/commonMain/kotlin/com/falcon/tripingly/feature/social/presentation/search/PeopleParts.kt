@@ -190,3 +190,9 @@ private fun PeoplePartsPreview() {
 private fun PeoplePartsDarkPreview() {
     TripinglyTheme(darkTheme = true) { PeoplePartsPreviewContent() }
 }
+
+@Preview(widthDp = 800, heightDp = 360)
+@Composable
+private fun PeoplePartsLandscapePreview() {
+    TripinglyTheme { PeoplePartsPreviewContent() }
+}
