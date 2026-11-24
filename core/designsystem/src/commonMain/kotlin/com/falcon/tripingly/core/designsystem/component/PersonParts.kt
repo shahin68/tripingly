@@ -32,7 +32,7 @@ import com.falcon.tripingly.core.designsystem.theme.spacing
 import com.falcon.tripingly.core.model.trip.UserSummary
 
 /*
- * People as the members sheet shows them (the members sheet canvas, Shahin 2026-11-18), shared with Nearby's faces row
+ * People as the members sheet shows them (the members sheet canvas, Shahin 2026-11-18), shared with the Search tab's faces row
  * and people sheet (Shahin, 2026-11-23): a row with the avatar, name and a detail line, a face with the name under it,
  * and a small tag.
  */

@@ -94,7 +94,7 @@ data class NearbyPlace(
     val city: String? = null,
 )
 
-/** Someone in people search or Nearby's people row, with what they are to me. */
+/** Someone in people search or the Search tab's people row, with what they are to me. */
 data class Person(val user: UserSummary, val isFriend: Boolean, val isFollowing: Boolean)
 
 /** A page of people, with how many match in all, counted up to [PeoplePage.TOTAL_CAP] ("999+"). */

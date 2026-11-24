@@ -81,7 +81,7 @@ internal class DefaultSocialRepository(
     override val myLikes: Flow<LikeChange> = _myLikes.asSharedFlow()
 
     // A like or flame is sent to its end even when the screen that tapped it closes on the way (a flame on the spot
-    // map, then straight back to Nearby): the server gets it and every other screen hears of it; only the closed
+    // map, then straight back to the Search tab): the server gets it and every other screen hears of it; only the closed
     // screen misses the answer.
     override suspend fun setLiked(target: LikeTarget, targetId: String, liked: Boolean): AppResult<LikeState, DataError.Network> = withContext(NonCancellable) {
         setLatest("${target.wireName}:$targetId", liked) { on ->

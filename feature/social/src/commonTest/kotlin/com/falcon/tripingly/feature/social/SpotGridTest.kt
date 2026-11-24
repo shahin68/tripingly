@@ -3,15 +3,15 @@ package com.falcon.tripingly.feature.social
 import com.falcon.tripingly.core.model.place.PlaceCategory
 import com.falcon.tripingly.core.model.social.NearbyPlace
 import com.falcon.tripingly.core.model.trip.GeoPoint
-import com.falcon.tripingly.feature.social.presentation.nearby.HALF
-import com.falcon.tripingly.feature.social.presentation.nearby.NARROW
-import com.falcon.tripingly.feature.social.presentation.nearby.WIDE
-import com.falcon.tripingly.feature.social.presentation.nearby.arrangeTiles
+import com.falcon.tripingly.feature.social.presentation.search.HALF
+import com.falcon.tripingly.feature.social.presentation.search.NARROW
+import com.falcon.tripingly.feature.social.presentation.search.WIDE
+import com.falcon.tripingly.feature.social.presentation.search.arrangeTiles
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
-class NearbyGridTest {
+class SpotGridTest {
 
     private fun spot(id: String, hasPhoto: Boolean = false) = NearbyPlace(
         id = id,

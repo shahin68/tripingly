@@ -60,7 +60,7 @@ import com.falcon.tripingly.core.model.place.PlaceCategory
 
 /*
  * The photo banner of the map's pin cards (the "Final" board of the pin card canvas, Shahin, 2026-11-12), shared with
- * Nearby's spot tiles (Shahin, 2026-11-23) so a spot looks the same in the grid and on its map.
+ * The Search tab's spot tiles (Shahin, 2026-11-23) so a spot looks the same in the grid and on its map.
  */
 
 /**

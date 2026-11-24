@@ -32,7 +32,7 @@ data class PickerRow(val id: String, val title: String, val subtitle: String? = 
 
 /**
  * A sheet's content that picks one of its [rows], e.g. one of my trips and then one of its days when a place or stop is
- * added to a trip (Nearby, the trip map). [rows] null: they're loading, shown as shimmering rows.
+ * added to a trip (the Search tab, the trip map). [rows] null: they're loading, shown as shimmering rows.
  */
 @Composable
 fun PickerSheet(title: String, rows: List<PickerRow>?, onPick: (PickerRow) -> Unit, onClose: () -> Unit, modifier: Modifier = Modifier) {

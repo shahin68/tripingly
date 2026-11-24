@@ -8,8 +8,8 @@ import com.falcon.tripingly.core.ui.UiText
 import com.falcon.tripingly.feature.social.generated.resources.Res
 import com.falcon.tripingly.feature.social.generated.resources.social_error_load_explore
 import com.falcon.tripingly.feature.social.presentation.explore.ExploreViewModel
-import com.falcon.tripingly.feature.social.presentation.nearby.NearbyViewModel
-import com.falcon.tripingly.feature.social.presentation.nearby.NearbyViewModel.Status
+import com.falcon.tripingly.feature.social.presentation.search.SearchViewModel
+import com.falcon.tripingly.feature.social.presentation.search.SearchViewModel.Status
 import kotlinx.collections.immutable.persistentListOf
 import com.falcon.tripingly.core.model.social.Person
 import kotlinx.collections.immutable.toImmutableList
@@ -58,7 +58,7 @@ internal val previewNearbyPlaces = persistentListOf(
 )
 
 /** People a search found: a friend, someone I follow and two I don't, of 42 in all. */
-internal val previewNearbyPeople = NearbyViewModel.PeopleState(
+internal val previewFoundPeople = SearchViewModel.PeopleState(
     people = previewPeople.mapIndexed { index, user -> Person(user, isFriend = index == 0, isFollowing = index < 2) }.toImmutableList(),
     total = 42,
     hasLoaded = true,
@@ -82,21 +82,21 @@ internal class ExplorePreviewStates : PreviewParameterProvider<ExploreViewModel.
 }
 
 /**
- * Nearby while locating, asking for the location, after it was blocked, with places, with none around, failed, and
+ * The Search tab while locating, asking for the location, after it was blocked, with places, with none around, failed, and
  * searching (the people found on top).
  */
-internal class NearbyPreviewStates : PreviewParameterProvider<NearbyViewModel.State> {
+internal class SearchPreviewStates : PreviewParameterProvider<SearchViewModel.State> {
     override val values = sequenceOf(
-        NearbyViewModel.State(status = Status.Locating),
-        NearbyViewModel.State(status = Status.NeedsPermission),
-        NearbyViewModel.State(status = Status.Blocked),
-        NearbyViewModel.State(status = Status.Ready, places = previewNearbyPlaces),
-        NearbyViewModel.State(status = Status.Ready),
-        NearbyViewModel.State(status = Status.Ready, loadError = UiText.Resource(Res.string.social_error_load_explore)),
-        NearbyViewModel.State(
+        SearchViewModel.State(status = Status.Locating),
+        SearchViewModel.State(status = Status.NeedsPermission),
+        SearchViewModel.State(status = Status.Blocked),
+        SearchViewModel.State(status = Status.Ready, places = previewNearbyPlaces),
+        SearchViewModel.State(status = Status.Ready),
+        SearchViewModel.State(status = Status.Ready, loadError = UiText.Resource(Res.string.social_error_load_explore)),
+        SearchViewModel.State(
             status = Status.Ready,
             places = previewNearbyPlaces,
-            search = NearbyViewModel.SearchState(query = "ma", people = previewNearbyPeople, spots = previewNearbyPlaces, hasLoaded = true),
+            search = SearchViewModel.SearchState(query = "ma", people = previewFoundPeople, spots = previewNearbyPlaces, hasLoaded = true),
         ),
     )
 }

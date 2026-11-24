@@ -51,7 +51,7 @@ interface PlaceRepository {
     suspend fun nearby(point: GeoPoint, cursor: String?): AppResult<Page<NearbyPlace>, DataError.Network>
 
     /**
-     * Nearby's spot search: our spots named like [query] (two characters at least; shorter returns nothing without
+     * The Search tab's spot search: our spots named like [query] (two characters at least; shorter returns nothing without
      * asking), from anywhere, hot spots first. With [near] nearer ones rank higher and carry their distance; without
      * it they carry their city. The point is used for the request only.
      */

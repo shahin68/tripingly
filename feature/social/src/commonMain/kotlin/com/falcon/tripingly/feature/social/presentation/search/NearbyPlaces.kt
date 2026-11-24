@@ -1,4 +1,4 @@
-package com.falcon.tripingly.feature.social.presentation.nearby
+package com.falcon.tripingly.feature.social.presentation.search
 
 import com.falcon.tripingly.core.common.result.AppResult
 import com.falcon.tripingly.core.data.places.PlaceRepository
@@ -12,8 +12,8 @@ import com.falcon.tripingly.core.ui.toUiText
 import com.falcon.tripingly.feature.social.generated.resources.Res
 import com.falcon.tripingly.feature.social.generated.resources.social_error_load_nearby
 import com.falcon.tripingly.feature.social.generated.resources.social_nearby_location_unavailable
-import com.falcon.tripingly.feature.social.presentation.nearby.NearbyViewModel.State
-import com.falcon.tripingly.feature.social.presentation.nearby.NearbyViewModel.Status
+import com.falcon.tripingly.feature.social.presentation.search.SearchViewModel.State
+import com.falcon.tripingly.feature.social.presentation.search.SearchViewModel.Status
 import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
@@ -23,7 +23,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 /**
- * Nearby's places: our users' hot spots around me first, then OpenStreetMap sights where we have few (the server's
+ * The Search tab's places: our users' hot spots around me first, then OpenStreetMap sights where we have few (the server's
  * order), marked hot here. It asks for the location only once the tab is open; where it looked stays in memory only,
  * for the next pages and the search ([point]).
  */
@@ -37,7 +37,7 @@ internal class NearbyPlaces(
 ) {
     private var cursor: String? = null
 
-    /** Where I was when Nearby looked; in memory only. */
+    /** Where I was when the Search tab looked; in memory only. */
     var point: GeoPoint? = null
         private set
     private var loadingMore: Job? = null

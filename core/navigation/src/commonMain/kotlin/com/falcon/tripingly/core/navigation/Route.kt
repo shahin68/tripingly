@@ -9,7 +9,7 @@ import kotlinx.serialization.modules.polymorphic
 @Serializable
 sealed interface Route : NavKey
 
-/** The tab shell: Trips, Explore, Nearby and Profile. */
+/** The tab shell: Trips, Explore, Search and Profile. */
 @Serializable
 data object Home : Route
 
@@ -20,7 +20,7 @@ data object Home : Route
 @Serializable
 data class TripMap(val tripId: String, val stopId: String? = null, val showMembers: Boolean = false, val showComments: Boolean = false) : Route
 
-/** One spot on its own map (from Nearby, or a flame milestone push): the map is its card. */
+/** One spot on its own map (from the Search tab, or a flame milestone push): the map is its card. */
 @Serializable
 data class SpotMap(val placeId: String) : Route
 

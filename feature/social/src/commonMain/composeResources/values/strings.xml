@@ -20,7 +20,7 @@
         <item quantity="other">saved %1$d times</item>
     </plurals>
 
-    <!-- Nearby -->
+    <!-- Search tab -->
     <string name="social_nearby_ask">See popular places around you. Your location is only used to find them and is never saved.</string>
     <string name="social_nearby_blocked">Location is turned off for Tripinly. Allow it in Settings to see popular places around you.</string>
     <string name="social_nearby_allow">Allow location</string>
@@ -85,7 +85,7 @@
     <string name="social_trip_member">You’re in it</string>
     <string name="social_trip_own">Your trip</string>
     <string name="social_notifications">Notifications</string>
-    <string name="social_search_nearby">Search people and spots…</string>
+    <string name="social_search_hint">Search people and spots…</string>
     <string name="social_search_none">Nothing found with that name.</string>
     <string name="social_error_search">Couldn’t search right now.</string>
     <string name="social_people">People</string>

@@ -91,7 +91,7 @@ internal enum class ProfileSegment(val label: StringResource, val list: PeopleLi
  * The Profile tab: my header and counts, then my public trips, my friends, the people I follow, my followers or my
  * followers. The bell in my header opens the notification center ([onOpenNotifications]), with a red dot while
  * [hasUnseenNotifications]; [showFollowers] switches to my Followers (a tap on several new followers). Finding people
- * is on Nearby now (Shahin, 2026-11-23).
+ * is on the Search tab now (Shahin, 2026-11-23).
  */
 @Composable
 internal fun MyProfileTab(

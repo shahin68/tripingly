@@ -1,4 +1,4 @@
-package com.falcon.tripingly.feature.social.presentation.nearby
+package com.falcon.tripingly.feature.social.presentation.search
 
 import com.falcon.tripingly.core.common.result.AppResult
 import com.falcon.tripingly.core.data.users.UserRepository
@@ -8,8 +8,8 @@ import com.falcon.tripingly.core.ui.UiText
 import com.falcon.tripingly.core.ui.toUiText
 import com.falcon.tripingly.feature.social.generated.resources.Res
 import com.falcon.tripingly.feature.social.generated.resources.social_error_follow
-import com.falcon.tripingly.feature.social.presentation.nearby.NearbyViewModel.PeopleState
-import com.falcon.tripingly.feature.social.presentation.nearby.NearbyViewModel.State
+import com.falcon.tripingly.feature.social.presentation.search.SearchViewModel.PeopleState
+import com.falcon.tripingly.feature.social.presentation.search.SearchViewModel.State
 import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
@@ -18,15 +18,15 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 /**
- * Nearby's people, only those a search finds (Shahin, 2026-11-24: no people around by default): friends, then follows,
+ * The Search tab's people, only those a search finds (Shahin, 2026-11-24: no people around by default): friends, then follows,
  * then the rest (the server's order), as faces in a row and all of them in a sheet, a page at a time. Follow and
  * Following switch at once and stay; only a refusal puts them back.
  */
-internal class NearbyPeople(
+internal class FoundPeople(
     private val scope: CoroutineScope,
     private val state: MutableStateFlow<State>,
     private val userRepository: UserRepository,
-    /** Where Nearby looked, for the next pages; in memory only. */
+    /** Where the Search tab looked, for the next pages; in memory only. */
     private val point: () -> GeoPoint?,
     private val showMessage: (UiText) -> Unit,
 ) {
@@ -54,7 +54,7 @@ internal class NearbyPeople(
         }
     }
 
-    /** A search's people, its first page (from [NearbySearch]). */
+    /** A search's people, its first page (from [TypedSearch]). */
     fun showFound(people: PeopleState, nextCursor: String?) {
         loadingMore?.cancel()
         cursor = nextCursor

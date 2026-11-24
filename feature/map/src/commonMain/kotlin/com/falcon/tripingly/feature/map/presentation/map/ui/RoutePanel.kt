@@ -391,7 +391,7 @@ internal fun durationText(seconds: Int): UiText {
     }
 }
 
-/** "350 m" up to a kilometre, then "2.4 km" ("2,4 km" in German and Hungarian), as on Nearby. */
+/** "350 m" up to a kilometre, then "2.4 km" ("2,4 km" in German and Hungarian), as on the Search tab. */
 internal fun distanceText(meters: Int): UiText =
     if (meters < 1000) {
         UiText.Resource(Res.string.map_route_meters, meters)

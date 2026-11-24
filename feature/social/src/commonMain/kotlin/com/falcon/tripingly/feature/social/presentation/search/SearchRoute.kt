@@ -1,4 +1,4 @@
-package com.falcon.tripingly.feature.social.presentation.nearby
+package com.falcon.tripingly.feature.social.presentation.search
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -49,36 +49,36 @@ import com.falcon.tripingly.feature.social.generated.resources.social_nearby_emp
 import com.falcon.tripingly.feature.social.generated.resources.social_nearby_empty_hint
 import com.falcon.tripingly.feature.social.generated.resources.social_nearby_open_settings
 import com.falcon.tripingly.feature.social.generated.resources.social_people
-import com.falcon.tripingly.feature.social.generated.resources.social_search_nearby
+import com.falcon.tripingly.feature.social.generated.resources.social_search_hint
 import com.falcon.tripingly.feature.social.generated.resources.social_search_none
 import com.falcon.tripingly.feature.social.presentation.component.FollowButton
 import com.falcon.tripingly.feature.social.presentation.component.LoadMoreAtEnd
-import com.falcon.tripingly.feature.social.presentation.component.NearbyPreviewStates
+import com.falcon.tripingly.feature.social.presentation.component.SearchPreviewStates
 import com.falcon.tripingly.feature.social.presentation.component.placeholderNearbyPlaces
-import com.falcon.tripingly.feature.social.presentation.nearby.NearbyViewModel.Action
-import com.falcon.tripingly.feature.social.presentation.nearby.NearbyViewModel.Event
-import com.falcon.tripingly.feature.social.presentation.nearby.NearbyViewModel.PeopleState
-import com.falcon.tripingly.feature.social.presentation.nearby.NearbyViewModel.State
-import com.falcon.tripingly.feature.social.presentation.nearby.NearbyViewModel.Status
+import com.falcon.tripingly.feature.social.presentation.search.SearchViewModel.Action
+import com.falcon.tripingly.feature.social.presentation.search.SearchViewModel.Event
+import com.falcon.tripingly.feature.social.presentation.search.SearchViewModel.PeopleState
+import com.falcon.tripingly.feature.social.presentation.search.SearchViewModel.State
+import com.falcon.tripingly.feature.social.presentation.search.SearchViewModel.Status
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel
 import androidx.compose.foundation.lazy.grid.LazyGridScope
 import androidx.compose.foundation.clickable
 
 /**
- * The Nearby tab. A spot opens its own map ([onOpenSpot]), a person their profile ([onOpenProfile]). [barsPadding] is
+ * The Search tab. A spot opens its own map ([onOpenSpot]), a person their profile ([onOpenProfile]). [barsPadding] is
  * the tab shell's floating top and bottom bars, which the grid scrolls behind.
  */
 @Composable
-fun NearbyRoute(
+fun SearchRoute(
     onOpenSpot: (placeId: String) -> Unit,
     onOpenProfile: (username: String) -> Unit,
     barsPadding: PaddingValues = PaddingValues(),
-    viewModel: NearbyViewModel = koinViewModel(),
+    viewModel: SearchViewModel = koinViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val locationPermission = rememberLocationPermissionController(onResult = { viewModel.onAction(Action.PermissionResult(it)) })
-    // When Nearby opens and on every return to the app, e.g. from Settings.
+    // When the Search tab opens and on every return to the app, e.g. from Settings.
     LifecycleResumeEffect(locationPermission) {
         viewModel.onAction(Action.PermissionChecked(locationPermission.status()))
         onPauseOrDispose {}
@@ -90,9 +90,9 @@ fun NearbyRoute(
         }
     }
 
-    NearbyScreen(state = state, onAction = viewModel::onAction, onOpenSpot = onOpenSpot, onOpenProfile = onOpenProfile, barsPadding = barsPadding)
+    SearchScreen(state = state, onAction = viewModel::onAction, onOpenSpot = onOpenSpot, onOpenProfile = onOpenProfile, barsPadding = barsPadding)
 
-    // The people sheet keeps its scroll here: a profile opened from it covers Nearby, the sheet slides away, and on the
+    // The people sheet keeps its scroll here: a profile opened from it covers the Search tab, the sheet slides away, and on the
     // way back it comes up again where it was (AppBottomSheet hides while its screen isn't on top).
     val sheetList = rememberLazyListState()
     AppBottomSheet(value = state.search.people.takeIf { state.isPeopleSheetOpen }, onDismiss = { viewModel.onAction(Action.ClosePeople) }) { people, close ->
@@ -100,12 +100,12 @@ fun NearbyRoute(
     }
 }
 
-/** The Nearby tab's part of the shell's top bar: people and spots search, on the tab's own [NearbyViewModel]. */
+/** The Search tab's part of the shell's top bar: people and spots search, on the tab's own [SearchViewModel]. */
 @Composable
-fun NearbySearchField(onClose: () -> Unit, modifier: Modifier = Modifier, viewModel: NearbyViewModel = koinViewModel()) {
+fun SearchTabField(onClose: () -> Unit, modifier: Modifier = Modifier, viewModel: SearchViewModel = koinViewModel()) {
     AppTextField(
         state = viewModel.queryField,
-        placeholder = stringResource(Res.string.social_search_nearby),
+        placeholder = stringResource(Res.string.social_search_hint),
         onTextChange = { viewModel.onAction(Action.QueryChanged(it)) },
         onClose = onClose,
         modifier = modifier.fillMaxWidth(),
@@ -114,7 +114,7 @@ fun NearbySearchField(onClose: () -> Unit, modifier: Modifier = Modifier, viewMo
 }
 
 @Composable
-internal fun NearbyScreen(
+internal fun SearchScreen(
     state: State,
     onAction: (Action) -> Unit,
     onOpenSpot: (placeId: String) -> Unit,
@@ -127,7 +127,7 @@ internal fun NearbyScreen(
     Box(modifier.fillMaxSize()) {
         when {
             // Typed: the people and spots found, with or without the location (spots then show their city).
-            state.search.isSearching && !state.search.hasLoaded -> NearbySkeleton(contentPadding)
+            state.search.isSearching && !state.search.hasLoaded -> SearchSkeleton(contentPadding)
             state.search.isSearching -> SearchResults(state, onAction, onOpenSpot, onOpenProfile, contentPadding)
             state.status == Status.NeedsPermission || state.status == Status.Blocked || state.status == Status.Unavailable ->
                 LocationAsk(state.status, onAction, contentPadding)
@@ -139,7 +139,7 @@ internal fun NearbyScreen(
                     errorMessage = state.loadError?.asString(),
                     onRetry = { onAction(Action.Refresh) },
                     contentPadding = contentPadding,
-                    loading = { NearbySkeleton(contentPadding) },
+                    loading = { SearchSkeleton(contentPadding) },
                 ) {
                     NearbyGrid(state, onAction, onOpenSpot, contentPadding)
                 }
@@ -235,7 +235,7 @@ private fun PeopleSheet(people: PeopleState, listState: LazyListState, onAction:
 
 /** The grid's own tiles, drawn from placeholders as a [Skeleton], while the location and the spots load. */
 @Composable
-private fun NearbySkeleton(contentPadding: PaddingValues) {
+private fun SearchSkeleton(contentPadding: PaddingValues) {
     Skeleton(Modifier.fillMaxSize()) {
         SpotGrid(
             places = placeholderNearbyPlaces,
@@ -246,7 +246,7 @@ private fun NearbySkeleton(contentPadding: PaddingValues) {
     }
 }
 
-/** Why Nearby needs the location and the way to allow it: the full-screen state with a location picture. */
+/** Why the Search tab needs the location and the way to allow it: the full-screen state with a location picture. */
 @Composable
 private fun LocationAsk(status: Status, onAction: (Action) -> Unit, contentPadding: PaddingValues) {
     val blocked = status == Status.Blocked
@@ -262,18 +262,18 @@ private fun LocationAsk(status: Status, onAction: (Action) -> Unit, contentPaddi
 
 @Preview
 @Composable
-private fun NearbyScreenPreview(@PreviewParameter(NearbyPreviewStates::class) state: State) {
-    TripinglyTheme { NearbyScreen(state = state, onAction = {}, onOpenSpot = {}, onOpenProfile = {}) }
+private fun SearchScreenPreview(@PreviewParameter(SearchPreviewStates::class) state: State) {
+    TripinglyTheme { SearchScreen(state = state, onAction = {}, onOpenSpot = {}, onOpenProfile = {}) }
 }
 
 @Preview
 @Composable
-private fun NearbyScreenDarkPreview() {
-    TripinglyTheme(darkTheme = true) { NearbyScreen(state = NearbyPreviewStates().values.elementAt(3), onAction = {}, onOpenSpot = {}, onOpenProfile = {}) }
+private fun SearchScreenDarkPreview() {
+    TripinglyTheme(darkTheme = true) { SearchScreen(state = SearchPreviewStates().values.elementAt(3), onAction = {}, onOpenSpot = {}, onOpenProfile = {}) }
 }
 
 @Preview(widthDp = 800, heightDp = 360)
 @Composable
-private fun NearbyScreenLandscapePreview() {
-    TripinglyTheme { NearbyScreen(state = NearbyPreviewStates().values.elementAt(3), onAction = {}, onOpenSpot = {}, onOpenProfile = {}) }
+private fun SearchScreenLandscapePreview() {
+    TripinglyTheme { SearchScreen(state = SearchPreviewStates().values.elementAt(3), onAction = {}, onOpenSpot = {}, onOpenProfile = {}) }
 }

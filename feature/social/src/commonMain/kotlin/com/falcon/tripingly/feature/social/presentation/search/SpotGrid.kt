@@ -1,4 +1,4 @@
-package com.falcon.tripingly.feature.social.presentation.nearby
+package com.falcon.tripingly.feature.social.presentation.search
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -59,17 +59,17 @@ import com.falcon.tripingly.feature.social.generated.resources.social_nearby_dis
 import com.falcon.tripingly.feature.social.generated.resources.social_nearby_distance_m
 import com.falcon.tripingly.feature.social.generated.resources.social_people
 import com.falcon.tripingly.feature.social.generated.resources.social_people_more
-import com.falcon.tripingly.feature.social.presentation.nearby.NearbyViewModel.PeopleState
+import com.falcon.tripingly.feature.social.presentation.search.SearchViewModel.PeopleState
 import org.jetbrains.compose.resources.stringResource
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.ui.tooling.preview.Preview
 import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
-import com.falcon.tripingly.feature.social.presentation.component.previewNearbyPeople
+import com.falcon.tripingly.feature.social.presentation.component.previewFoundPeople
 import com.falcon.tripingly.feature.social.presentation.component.previewNearbyPlaces
 
 /*
- * Nearby's grid (the Nearby canvas v18, Shahin 2026-11-23): the faces of the people a search found on top, then the
+ * The Search tab's grid (the Nearby canvas v18, Shahin 2026-11-23): the faces of the people a search found on top, then the
  * spots in rows of 2+1, 1.5+1.5 and 1+2 (Shahin, 2026-11-24), repeated. The grid counts in half columns
  * ([UNITS_PER_COLUMN]), so a 1.5 tile is whole: a group of three columns is six units. Every tile is [TileHeightRatio]
  * times one column's width high (so a name, its distance and the flame fit without covering each other, Shahin
@@ -125,7 +125,7 @@ private val TileGroupWidth = 400.dp
 private const val TileHeightRatio = 1.4f
 
 /**
- * Nearby's grid: [header] items (the faces) on top across the whole width, then [places] as tiles, then
+ * The Search tab's grid: [header] items (the faces) on top across the whole width, then [places] as tiles, then
  * [footer] items (the OpenStreetMap credit). Tiles open their spot ([onOpen]); their flames only show (Shahin, 2026-11-24).
  */
 @Composable
@@ -158,7 +158,7 @@ internal fun SpotGrid(
         ) {
             header()
             items(tiles, key = { it.place.id }, span = { GridItemSpan(it.span) }) { tile ->
-                NearbyTile(tile.place, onOpen = { onOpen(tile.place) }, Modifier.height(tileHeight).animateItem())
+                SpotTile(tile.place, onOpen = { onOpen(tile.place) }, Modifier.height(tileHeight).animateItem())
             }
             footer()
         }
@@ -179,7 +179,7 @@ internal fun LazyGridScope.osmCredit(isShown: Boolean) {
  * start and its flame at the bottom end; without a photo, the tinted panel with its kind's mark.
  */
 @Composable
-internal fun NearbyTile(place: NearbyPlace, onOpen: () -> Unit, modifier: Modifier = Modifier) {
+internal fun SpotTile(place: NearbyPlace, onOpen: () -> Unit, modifier: Modifier = Modifier) {
     PhotoBanner(
         title = place.name,
         subtitle = AnnotatedString(place.distanceMeters?.let { distanceText(it).asString() } ?: place.city ?: place.category.label()),
@@ -252,7 +252,7 @@ private fun SpotGridPreviewContent() {
         contentPadding = PaddingValues(MaterialTheme.spacing.medium),
         onOpen = {},
         modifier = Modifier.background(MaterialTheme.colorScheme.background),
-        header = { fullWidthItem("people") { PeopleFaces(previewNearbyPeople, onOpenProfile = {}, onOpenSheet = {}) } },
+        header = { fullWidthItem("people") { PeopleFaces(previewFoundPeople, onOpenProfile = {}, onOpenSheet = {}) } },
         footer = { osmCredit(isShown = true) },
     )
 }
@@ -277,29 +277,29 @@ private fun SpotGridLandscapePreview() {
 
 /** A tile with a photo's place, one without, and the faces with a few people and with more than fit. */
 @Composable
-private fun NearbyPartsPreviewContent() {
+private fun SpotGridPartsPreviewContent() {
     Column(
         modifier = Modifier.background(MaterialTheme.colorScheme.background).padding(MaterialTheme.spacing.medium),
         verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium),
     ) {
         Row(horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small)) {
             previewNearbyPlaces.take(3).forEach { place ->
-                NearbyTile(place, onOpen = {}, modifier = Modifier.size(width = 112.dp, height = 157.dp))
+                SpotTile(place, onOpen = {}, modifier = Modifier.size(width = 112.dp, height = 157.dp))
             }
         }
-        PeopleFaces(previewNearbyPeople.copy(total = previewNearbyPeople.people.size), onOpenProfile = {}, onOpenSheet = {})
-        PeopleFaces(previewNearbyPeople, onOpenProfile = {}, onOpenSheet = {})
+        PeopleFaces(previewFoundPeople.copy(total = previewFoundPeople.people.size), onOpenProfile = {}, onOpenSheet = {})
+        PeopleFaces(previewFoundPeople, onOpenProfile = {}, onOpenSheet = {})
     }
 }
 
 @Preview
 @Composable
-private fun NearbyPartsPreview() {
-    TripinglyTheme { NearbyPartsPreviewContent() }
+private fun SpotGridPartsPreview() {
+    TripinglyTheme { SpotGridPartsPreviewContent() }
 }
 
 @Preview
 @Composable
-private fun NearbyPartsDarkPreview() {
-    TripinglyTheme(darkTheme = true) { NearbyPartsPreviewContent() }
+private fun SpotGridPartsDarkPreview() {
+    TripinglyTheme(darkTheme = true) { SpotGridPartsPreviewContent() }
 }

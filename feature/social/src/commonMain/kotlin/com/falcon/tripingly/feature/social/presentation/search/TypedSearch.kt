@@ -1,4 +1,4 @@
-package com.falcon.tripingly.feature.social.presentation.nearby
+package com.falcon.tripingly.feature.social.presentation.search
 
 import com.falcon.tripingly.core.common.result.AppResult
 import com.falcon.tripingly.core.data.places.PlaceRepository
@@ -8,9 +8,9 @@ import com.falcon.tripingly.core.ui.UiText
 import com.falcon.tripingly.core.ui.toUiText
 import com.falcon.tripingly.feature.social.generated.resources.Res
 import com.falcon.tripingly.feature.social.generated.resources.social_error_search
-import com.falcon.tripingly.feature.social.presentation.nearby.NearbyViewModel.PeopleState
-import com.falcon.tripingly.feature.social.presentation.nearby.NearbyViewModel.SearchState
-import com.falcon.tripingly.feature.social.presentation.nearby.NearbyViewModel.State
+import com.falcon.tripingly.feature.social.presentation.search.SearchViewModel.PeopleState
+import com.falcon.tripingly.feature.social.presentation.search.SearchViewModel.SearchState
+import com.falcon.tripingly.feature.social.presentation.search.SearchViewModel.State
 import kotlin.time.Duration.Companion.milliseconds
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.toImmutableList
@@ -23,18 +23,18 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 /**
- * Nearby's search, from the shell's top bar: people and our spots named like the query, on one screen (Shahin,
- * 2026-11-23). It asks once typing pauses, from two characters, the latest query winning; near [point] when Nearby
+ * The Search tab's search, from the shell's top bar: people and our spots named like the query, on one screen (Shahin,
+ * 2026-11-23). It asks once typing pauses, from two characters, the latest query winning; near [point] when the Search tab
  * knows where I am (nearer first, with distances), else from anywhere (spots with their city). The point is used for
  * the request only.
  */
-internal class NearbySearch(
+internal class TypedSearch(
     private val scope: CoroutineScope,
     private val state: MutableStateFlow<State>,
     private val userRepository: UserRepository,
     private val placeRepository: PlaceRepository,
     private val point: () -> GeoPoint?,
-    private val people: NearbyPeople,
+    private val people: FoundPeople,
     private val showMessage: (UiText) -> Unit,
 ) {
     private var search: Job? = null

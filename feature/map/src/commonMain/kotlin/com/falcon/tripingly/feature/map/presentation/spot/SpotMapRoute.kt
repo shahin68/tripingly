@@ -22,7 +22,7 @@ import kotlinx.coroutines.launch
 import org.koin.compose.viewmodel.koinViewModel
 import org.koin.core.parameter.parametersOf
 
-/** One spot on its own map, from Nearby or a push about its flames ([SpotMapViewModel]). */
+/** One spot on its own map, from the Search tab or a push about its flames ([SpotMapViewModel]). */
 @Composable
 fun SpotMapRoute(
     placeId: String,

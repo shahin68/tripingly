@@ -20,7 +20,7 @@
         <item quantity="other">%1$d alkalommal mentették</item>
     </plurals>
 
-    <!-- Nearby -->
+    <!-- Search tab -->
     <string name="social_nearby_ask">Nézd meg a népszerű helyeket a közeledben. A helyzetedet csak ehhez használjuk, és soha nem mentjük.</string>
     <string name="social_nearby_blocked">A helymeghatározás ki van kapcsolva a Tripinly számára. Engedélyezd a Beállításokban, hogy lásd a közeli népszerű helyeket.</string>
     <string name="social_nearby_allow">Helyzet engedélyezése</string>
@@ -85,7 +85,7 @@
     <string name="social_trip_member">Benne vagy</string>
     <string name="social_trip_own">A te utazásod</string>
     <string name="social_notifications">Értesítések</string>
-    <string name="social_search_nearby">Emberek és helyek keresése…</string>
+    <string name="social_search_hint">Emberek és helyek keresése…</string>
     <string name="social_search_none">Nincs ilyen nevű találat.</string>
     <string name="social_error_search">Most nem sikerült keresni.</string>
     <string name="social_people">Emberek</string>

@@ -1,4 +1,4 @@
-package com.falcon.tripingly.feature.social.presentation.nearby
+package com.falcon.tripingly.feature.social.presentation.search
 
 import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.runtime.Immutable
@@ -24,11 +24,11 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 /**
- * The Nearby tab (Shahin, 2026-11-23): spots around me in a grid ([NearbyPlaces]), and the search for people and spots
- * from the shell's top bar ([NearbySearch]); the people it finds show as a row of faces and a sheet ([NearbyPeople],
+ * The Search tab (Shahin, 2026-11-23): spots around me in a grid ([NearbyPlaces]), and the search for people and spots
+ * from the shell's top bar ([TypedSearch]); the people it finds show as a row of faces and a sheet ([FoundPeople],
  * only while searching, Shahin 2026-11-24). A spot opens its own map.
  */
-class NearbyViewModel(
+class SearchViewModel(
     socialRepository: SocialRepository,
     placeRepository: PlaceRepository,
     userRepository: UserRepository,
@@ -47,9 +47,9 @@ class NearbyViewModel(
 
     private val places = NearbyPlaces(viewModelScope, _uiState, placeRepository, socialRepository, getCurrentLocation, ::showMessage)
 
-    private val people = NearbyPeople(viewModelScope, _uiState, userRepository, { places.point }, ::showMessage)
+    private val people = FoundPeople(viewModelScope, _uiState, userRepository, { places.point }, ::showMessage)
 
-    private val search = NearbySearch(viewModelScope, _uiState, userRepository, placeRepository, { places.point }, people, ::showMessage)
+    private val search = TypedSearch(viewModelScope, _uiState, userRepository, placeRepository, { places.point }, people, ::showMessage)
 
     fun onAction(action: Action) {
         when (action) {
@@ -116,17 +116,17 @@ class NearbyViewModel(
         val loadError: UiText? = null,
         val search: SearchState = SearchState(),
         /**
-         * The people sheet, of those the search found. It stays open while a profile opened from it covers Nearby: the
+         * The people sheet, of those the search found. It stays open while a profile opened from it covers the Search tab: the
          * sheet slides away and comes back on the way back.
          */
         val isPeopleSheetOpen: Boolean = false,
         val message: UiText? = null,
-        /** The server lists OpenStreetMap places (OSM_PINS_ENABLED); off, Nearby has only users' places and no OSM credit. */
+        /** The server lists OpenStreetMap places (OSM_PINS_ENABLED); off, the Search tab has only users' places and no OSM credit. */
         val isOsmCreditShown: Boolean = true,
     )
 
     sealed interface Action {
-        /** The permission as Nearby opens or the app comes back, e.g. from Settings. */
+        /** The permission as the Search tab opens or the app comes back, e.g. from Settings. */
         data class PermissionChecked(val permission: LocationPermission) : Action
 
         /** The answer to the location prompt. */

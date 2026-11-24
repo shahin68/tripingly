@@ -52,7 +52,7 @@
 
 - **Live (socket, as it happens):** an open trip's stops, days, members, trip details, trip deletion; photos ready/failed/deleted and covers; comments; My Trips list changes; follows; my own place photos finishing.
 - **Live too (2026-11-01):** like and flame counts in an open trip (stops' places, comments, trip photos), every change at once. **Near live:** in-app notifications and their pushes come at once (the same one again within a few seconds is dropped); map places in view refresh every `placesRefreshSeconds` (default 300 s).
-- **Not live (loaded when the screen opens, pulled to refresh, or scrolled):** Explore, Nearby, profiles and Friends lists, search, place details and place pins, likes on place photos and Wikimedia images (no trip room), trip likes on Explore cards. Wikimedia images sync once a day.
+- **Not live (loaded when the screen opens, pulled to refresh, or scrolled):** Explore, Search, profiles and Friends lists, search, place details and place pins, likes on place photos and Wikimedia images (no trip room), trip likes on Explore cards. Wikimedia images sync once a day.
 
 ## Push (Firebase Cloud Messaging)
 

@@ -19,7 +19,7 @@ interface UserRepository {
     suspend fun search(query: String): AppResult<List<UserSummary>, DataError.Network>
 
     /**
-     * People for Nearby: whose username or display name starts with [query] (null or blank: everyone), friends first,
+     * People for the Search tab: whose username or display name starts with [query] (null or blank: everyone), friends first,
      * then follows either way, then people with public trips around [near], then the most followed; a page at a time,
      * with how many match. A one-letter query returns nothing without asking the server. [near] isn't stored.
      */

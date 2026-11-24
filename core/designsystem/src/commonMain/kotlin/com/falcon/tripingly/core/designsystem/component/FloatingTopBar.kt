@@ -222,7 +222,7 @@ private fun FloatingTopBarPreviewContent() {
                 AppTextField(rememberTextFieldState(), "Search trips…", Modifier.fillMaxWidth(), style = AppTextFieldStyle.Search)
             })
             FloatingTopBar(title = "Profile", actions = { SearchSettingsPill(onSearch = {}, onSettings = {}) })
-            FloatingTopBar(title = "Nearby", actions = { SearchSettingsPill(onSearch = null, onSettings = {}) })
+            FloatingTopBar(title = "Search", actions = { SearchSettingsPill(onSearch = null, onSettings = {}) })
             FloatingTopBar(title = "@anna", navigationIcon = { BackAction({}) })
             Spacer(Modifier.height(MaterialTheme.spacing.medium))
         }

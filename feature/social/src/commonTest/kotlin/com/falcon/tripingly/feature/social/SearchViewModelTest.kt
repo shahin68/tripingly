@@ -10,10 +10,10 @@ import com.falcon.tripingly.core.location.permission.LocationPermission
 import com.falcon.tripingly.core.model.config.AppConfig
 import com.falcon.tripingly.core.model.social.PeoplePage
 import com.falcon.tripingly.core.model.trip.GeoPoint
-import com.falcon.tripingly.feature.social.presentation.nearby.NearbyViewModel
-import com.falcon.tripingly.feature.social.presentation.nearby.NearbyViewModel.Action
-import com.falcon.tripingly.feature.social.presentation.nearby.NearbyViewModel.Event
-import com.falcon.tripingly.feature.social.presentation.nearby.NearbyViewModel.Status
+import com.falcon.tripingly.feature.social.presentation.search.SearchViewModel
+import com.falcon.tripingly.feature.social.presentation.search.SearchViewModel.Action
+import com.falcon.tripingly.feature.social.presentation.search.SearchViewModel.Event
+import com.falcon.tripingly.feature.social.presentation.search.SearchViewModel.Status
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -27,7 +27,7 @@ import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 
 @OptIn(ExperimentalCoroutinesApi::class)
-class NearbyViewModelTest : SocialTestBase() {
+class SearchViewModelTest : SocialTestBase() {
 
     /** The fake's people; follows are refused while [followRefused] is set. */
     private class RefusingUsers(private val fake: FakeUserRepository = FakeUserRepository()) : UserRepository by fake {
@@ -44,9 +44,9 @@ class NearbyViewModelTest : SocialTestBase() {
     private val people = RefusingUsers()
 
     private fun viewModel(config: AppConfig = AppConfig()) =
-        NearbyViewModel(social, FakePlaceRepository(), people, location, FakeAppConfigRepository(config))
+        SearchViewModel(social, FakePlaceRepository(), people, location, FakeAppConfigRepository(config))
 
-    private fun TestScope.located(): NearbyViewModel = viewModel().also {
+    private fun TestScope.located(): SearchViewModel = viewModel().also {
         it.onAction(Action.PermissionChecked(LocationPermission.Granted))
         advanceUntilIdle()
     }
@@ -79,7 +79,7 @@ class NearbyViewModelTest : SocialTestBase() {
     }
 
     @Test
-    fun aFlameMarkedElsewhere_showsInNearby_withoutAReload() = runTest {
+    fun aFlameMarkedElsewhere_showsInSearch_withoutAReload() = runTest {
         val viewModel = viewModel()
         viewModel.onAction(Action.PermissionChecked(LocationPermission.Granted))
         advanceUntilIdle()

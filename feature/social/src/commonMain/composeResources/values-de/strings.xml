@@ -20,7 +20,7 @@
         <item quantity="other">%1$d-mal gespeichert</item>
     </plurals>
 
-    <!-- Nearby -->
+    <!-- Search tab -->
     <string name="social_nearby_ask">Sieh beliebte Orte in deiner Nähe. Dein Standort wird nur dafür verwendet und nie gespeichert.</string>
     <string name="social_nearby_blocked">Der Standort ist für Tripinly ausgeschaltet. Erlaube ihn in den Einstellungen, um beliebte Orte in deiner Nähe zu sehen.</string>
     <string name="social_nearby_allow">Standort erlauben</string>
@@ -85,7 +85,7 @@
     <string name="social_trip_member">Du bist dabei</string>
     <string name="social_trip_own">Deine Reise</string>
     <string name="social_notifications">Benachrichtigungen</string>
-    <string name="social_search_nearby">Personen und Orte suchen…</string>
+    <string name="social_search_hint">Personen und Orte suchen…</string>
     <string name="social_search_none">Nichts mit diesem Namen gefunden.</string>
     <string name="social_error_search">Die Suche ist gerade fehlgeschlagen.</string>
     <string name="social_people">Personen</string>
