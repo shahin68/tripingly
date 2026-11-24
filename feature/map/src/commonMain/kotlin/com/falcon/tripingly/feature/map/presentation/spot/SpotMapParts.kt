@@ -47,6 +47,8 @@ import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.boundsInParent
 import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInRoot
+import androidx.compose.ui.unit.toSize
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
@@ -111,6 +113,7 @@ import com.falcon.tripingly.core.model.trip.UserSummary
  * "Attraction · 350 m"), which opens its card ([onTitleClick]; [onTitlePlaced] gives the pill's bounds inside the
  * header's padding, where the card grows out of it; the pill hides meanwhile, [isTitleHidden]), and its flame. As the
  * card grows ([cardProgress], 0 to 1) it pushes back out to the start and the flame out to the end, as on the trip map.
+ * [onBackPlaced] gives the back button's bounds on the screen: a touch there leaves the map with any card as it is.
  */
 @Composable
 internal fun SpotHeader(
@@ -120,6 +123,7 @@ internal fun SpotHeader(
     isTitleHidden: Boolean = false,
     onTitleClick: () -> Unit = {},
     onTitlePlaced: (Rect) -> Unit = {},
+    onBackPlaced: (Rect) -> Unit = {},
     cardProgress: () -> Float = { 0f },
 ) {
     // How far past the header's padding the card pushes the buttons: off the screen, or out of the left half.
@@ -137,7 +141,9 @@ internal fun SpotHeader(
             onClick = { onAction(SpotMapAction.Back) },
             blur = false,
             size = GlassButtonDefaults.HeaderSize,
-            modifier = Modifier.graphicsLayer { translationX = -cardProgress() * (size.width + pushedOut.toPx()) },
+            modifier = Modifier
+                .graphicsLayer { translationX = -cardProgress() * (size.width + pushedOut.toPx()) }
+                .onGloballyPositioned { onBackPlaced(Rect(it.positionInRoot(), it.size.toSize())) },
         ) {
             Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(Res.string.map_back))
         }

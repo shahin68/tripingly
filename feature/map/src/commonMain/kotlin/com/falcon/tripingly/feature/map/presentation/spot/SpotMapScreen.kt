@@ -102,6 +102,8 @@ internal fun SpotMapScreen(
     // The spot's card that grows out of its pill, as the trip card does out of the trip's.
     var isSpotCardOpen by rememberSaveable { mutableStateOf(false) }
     var titleBounds by remember { mutableStateOf(Rect.Zero) }
+    // Where the back button is: tapping it leaves the map, so it closes no card (no close animation on a leaving screen).
+    var backBounds by remember { mutableStateOf(Rect.Zero) }
     val spotCardState = remember { MutableTransitionState(isSpotCardOpen) }
     spotCardState.targetState = isSpotCardOpen && spot != null
     val spotCard = rememberTransition(spotCardState, label = "spot card")
@@ -121,7 +123,8 @@ internal fun SpotMapScreen(
             .pointerInput(Unit) {
                 awaitEachGesture {
                     val down = awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
-                    if (!(isCardOpen && cardBounds.contains(down.position))) onMapAction(MapAction.MapView.ScreenTouch)
+                    val isOnCard = isCardOpen && cardBounds.contains(down.position)
+                    if (!isOnCard && !backBounds.contains(down.position)) onMapAction(MapAction.MapView.ScreenTouch)
                 }
             },
     ) {
@@ -179,6 +182,7 @@ internal fun SpotMapScreen(
                 isSpotCardOpen = true
             },
             onTitlePlaced = { titleBounds = it },
+            onBackPlaced = { backBounds = it },
             cardProgress = { spotCardProgress },
             modifier = Modifier
                 .align(Alignment.TopStart)

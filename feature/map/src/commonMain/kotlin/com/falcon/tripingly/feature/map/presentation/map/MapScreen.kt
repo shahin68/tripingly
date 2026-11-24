@@ -137,6 +137,8 @@ internal fun MapScreen(
     // Where the pill is inside the header's padding, which is where the card starts too.
     var isTripCardOpen by rememberSaveable { mutableStateOf(false) }
     var titleBounds by remember { mutableStateOf(Rect.Zero) }
+    // Where the back button is: tapping it leaves the map, so it closes no card (no close animation on a leaving screen).
+    var backBounds by remember { mutableStateOf(Rect.Zero) }
     val tripCardState = remember { MutableTransitionState(isTripCardOpen) }
     tripCardState.targetState = isTripCardOpen
     val tripCard = rememberTransition(tripCardState, label = "trip card")
@@ -169,7 +171,7 @@ internal fun MapScreen(
                     val isOnCard = (isPlaceCardOpen && placeCardBounds.contains(down.position)) ||
                         (isStopCardOpen && stopCardBounds.contains(down.position)) ||
                         (isNewSpotCardOpen && newSpotCardBounds.contains(down.position))
-                    if (!isOnCard) onAction(MapAction.MapView.ScreenTouch)
+                    if (!isOnCard && !backBounds.contains(down.position)) onAction(MapAction.MapView.ScreenTouch)
                 }
             }
     ) {
@@ -243,6 +245,7 @@ internal fun MapScreen(
                         isTripCardOpen = true
                     },
                     onTitlePlaced = { titleBounds = it },
+                    onBackPlaced = { backBounds = it },
                     cardProgress = { maxOf(tripCardProgress, routeBarProgress) },
                 )
                 val routeBar = shownRouteBar
