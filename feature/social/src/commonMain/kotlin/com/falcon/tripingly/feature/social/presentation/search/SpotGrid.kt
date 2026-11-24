@@ -114,7 +114,7 @@ private val TileGroupWidth = 400.dp
 private const val TileHeightRatio = 1.4f
 
 /**
- * The Search tab's grid: [header] items (the tip or the top people) on top across the whole width, then [places] as tiles, then
+ * The Search tab's grid: [header] items (the tip or the top people, given the grid's columns) on top, then [places] as tiles, then
  * [footer] items (the OpenStreetMap credit). Tiles open their spot ([onOpen]); their flames only show (Shahin, 2026-11-24).
  * [arrange] lays the spots out in rows ([arrangeTiles]; the skeleton's [skeletonTiles]).
  */
@@ -125,7 +125,7 @@ internal fun SpotGrid(
     contentPadding: PaddingValues,
     onOpen: (NearbyPlace) -> Unit,
     modifier: Modifier = Modifier,
-    header: LazyGridScope.() -> Unit = {},
+    header: LazyGridScope.(columns: Int) -> Unit = {},
     footer: LazyGridScope.() -> Unit = {},
     arrange: (List<NearbyPlace>) -> List<Tile> = ::arrangeTiles,
 ) {
@@ -147,7 +147,7 @@ internal fun SpotGrid(
             verticalArrangement = Arrangement.spacedBy(gap),
             modifier = Modifier.fillMaxSize().glassSource(),
         ) {
-            header()
+            header(columns)
             items(tiles, key = { it.place.id }, span = { GridItemSpan(it.span) }) { tile ->
                 SpotTile(tile.place, onOpen = { onOpen(tile.place) }, Modifier.height(tileHeight).animateItem())
             }
@@ -207,7 +207,7 @@ private fun SpotGridPreviewContent() {
         contentPadding = PaddingValues(MaterialTheme.spacing.medium),
         onOpen = {},
         modifier = Modifier.background(MaterialTheme.colorScheme.background),
-        header = { topPeople(previewFoundPeople, onAction = {}, onOpenProfile = {}) },
+        header = { columns -> topPeople(previewFoundPeople, columns, onAction = {}, onOpenProfile = {}) },
         footer = { osmCredit(isShown = true) },
     )
 }

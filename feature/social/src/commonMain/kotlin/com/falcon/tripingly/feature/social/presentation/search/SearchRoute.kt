@@ -189,8 +189,8 @@ private fun SearchGrid(
         gridState = gridState,
         contentPadding = contentPadding,
         onOpen = { onOpenSpot(it.id) },
-        header = {
-            topPeople(people, onAction, onOpenProfile)
+        header = { columns ->
+            topPeople(people, columns, onAction, onOpenProfile)
             peopleTip(tipBloom, onAction)
             if (results == null) {
                 if (state.places.isEmpty()) {

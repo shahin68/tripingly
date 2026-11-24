@@ -1,5 +1,6 @@
 package com.falcon.tripingly.feature.social.presentation.search
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -26,6 +27,8 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
@@ -33,10 +36,12 @@ import androidx.compose.ui.unit.dp
 import com.falcon.tripingly.core.designsystem.component.Bloom
 import com.falcon.tripingly.core.designsystem.component.BloomState
 import com.falcon.tripingly.core.designsystem.component.ButtonSize
+import com.falcon.tripingly.core.designsystem.component.GlassDefaults
 import com.falcon.tripingly.core.designsystem.component.PersonRow
 import com.falcon.tripingly.core.designsystem.component.PrimaryButton
 import com.falcon.tripingly.core.designsystem.component.Tag
 import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
+import com.falcon.tripingly.core.designsystem.theme.extendedColors
 import com.falcon.tripingly.core.designsystem.theme.spacing
 import com.falcon.tripingly.core.model.social.PeoplePage
 import com.falcon.tripingly.core.model.social.Person
@@ -68,9 +73,9 @@ internal const val TOP_PEOPLE = 3
  * The search's best [people] (null while not searching) as the grid's first items, each in a card of its own, and a See
  * all card when there are more (Shahin, 2026-11-24): grid items like the tiles, so they fade in and out and the spots
  * glide along, scrolled or not. Each card spans three columns ([PEOPLE_SPAN]): the whole width on a phone, two side by
- * side in landscape; it is as high as its row.
+ * side in landscape ([columns] of the grid), where See all is as high as a person's card beside it (Shahin, 2026-11-24).
  */
-internal fun LazyGridScope.topPeople(people: PeopleState?, onAction: (Action) -> Unit, onOpenProfile: (String) -> Unit) {
+internal fun LazyGridScope.topPeople(people: PeopleState?, columns: Int, onAction: (Action) -> Unit, onOpenProfile: (String) -> Unit) {
     if (people == null) return
     val top = people.people.take(TOP_PEOPLE)
     items(top, key = { "person:${it.user.id}" }, span = { peopleSpan() }) { person ->
@@ -80,7 +85,20 @@ internal fun LazyGridScope.topPeople(people: PeopleState?, onAction: (Action) ->
     }
     if (people.total > TOP_PEOPLE && top.isNotEmpty()) {
         item(key = "people:seeAll", span = { peopleSpan() }) {
-            PeopleCard(Modifier.animateItem(), padded = false) { SeeAllPeople(people.total, PeopleInset, onClick = { onAction(Action.OpenPeople) }) }
+            PeopleCard(Modifier.animateItem(), padded = false) {
+                val seeAll = { modifier: Modifier -> SeeAllPeople(people.total, PeopleInset, modifier, onClick = { onAction(Action.OpenPeople) }) }
+                if (columns * UNITS_PER_COLUMN < 2 * PEOPLE_SPAN) {
+                    seeAll(Modifier)
+                } else {
+                    Box {
+                        // Only the room of a person's card: a row laid out, never drawn, read out or tapped.
+                        Box(Modifier.alpha(0f).clearAndSetSemantics {}.padding(vertical = MaterialTheme.spacing.extraSmall)) {
+                            PersonRow(top.first().user, detail = "@${top.first().user.username}")
+                        }
+                        seeAll(Modifier.matchParentSize())
+                    }
+                }
+            }
         }
     }
 }
@@ -110,12 +128,18 @@ private const val PEOPLE_SPAN = 3 * UNITS_PER_COLUMN
 private val PeopleInset = 12.dp
 
 /**
- * A card of the people: the box colour and corners, 4 dp above and under a person's row ([padded]; none around See all,
+ * A card of the people: the box colour and corners with the glass's edge, 4 dp above and under a person's row ([padded]; none around See all,
  * whose own height centres it and whose ripple fills the card). Ripples stay inside its corners.
  */
 @Composable
 private fun PeopleCard(modifier: Modifier = Modifier, padded: Boolean = true, content: @Composable () -> Unit) {
-    Surface(shape = MaterialTheme.shapes.large, color = MaterialTheme.colorScheme.surfaceContainerLow, modifier = modifier.fillMaxWidth()) {
+    Surface(
+        shape = MaterialTheme.shapes.large,
+        color = MaterialTheme.colorScheme.surfaceContainerLow,
+        // The glass's thin light edge, as the bars have (Shahin, 2026-11-24).
+        border = BorderStroke(GlassDefaults.Edge, MaterialTheme.extendedColors.glassEdge),
+        modifier = modifier.fillMaxWidth(),
+    ) {
         Box(Modifier.padding(vertical = if (padded) MaterialTheme.spacing.extraSmall else 0.dp)) { content() }
     }
 }
@@ -150,10 +174,10 @@ internal fun FoundPersonRow(
 
 /** "See all 42 people ›" (up to "999+"), opening the people sheet; the text starts under the avatars, the arrow ends under Follow. */
 @Composable
-private fun SeeAllPeople(total: Int, inset: Dp, onClick: () -> Unit) {
+private fun SeeAllPeople(total: Int, inset: Dp, modifier: Modifier = Modifier, onClick: () -> Unit) {
     val count = if (total >= PeoplePage.TOTAL_CAP) "${PeoplePage.TOTAL_CAP}+" else total.toString()
     Row(
-        modifier = Modifier.fillMaxWidth().heightIn(min = MaterialTheme.spacing.extraLarge + MaterialTheme.spacing.medium)
+        modifier = modifier.fillMaxWidth().heightIn(min = MaterialTheme.spacing.extraLarge + MaterialTheme.spacing.medium)
             .clickable(onClick = onClick).padding(horizontal = inset),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
@@ -211,9 +235,9 @@ private fun PeoplePartsPreviewContent() {
     ) {
         PeopleTipCard(onSearch = {}, onDismiss = {})
         // The cards as the grid lays them out: with See all, and two people without.
-        LazyVerticalGrid(GridCells.Fixed(1), userScrollEnabled = false, verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small)) { topPeople(previewFoundPeople, onAction = {}, onOpenProfile = {}) }
+        LazyVerticalGrid(GridCells.Fixed(1), userScrollEnabled = false, verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small)) { topPeople(previewFoundPeople, columns = 3, onAction = {}, onOpenProfile = {}) }
         LazyVerticalGrid(GridCells.Fixed(1), userScrollEnabled = false, verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small)) {
-            topPeople(previewFoundPeople.copy(people = previewFoundPeople.people.take(2).toImmutableList(), total = 2), onAction = {}, onOpenProfile = {})
+            topPeople(previewFoundPeople.copy(people = previewFoundPeople.people.take(2).toImmutableList(), total = 2), columns = 3, onAction = {}, onOpenProfile = {})
         }
     }
 }
