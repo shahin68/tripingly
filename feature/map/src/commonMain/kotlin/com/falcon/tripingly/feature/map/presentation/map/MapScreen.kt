@@ -48,6 +48,7 @@ import androidx.navigationevent.compose.NavigationBackHandler
 import androidx.navigationevent.compose.rememberNavigationEventState
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.RectangleShape
+import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
@@ -277,8 +278,9 @@ internal fun MapScreen(
                 ) {
                     androidx.compose.animation.AnimatedVisibility(
                         visible = state.joinRequests != null && !isRouteBarShown,
-                        enter = expandHorizontally(expandFrom = Alignment.Start, clip = false) + scaleIn() + fadeIn(),
-                        exit = shrinkHorizontally(shrinkTowards = Alignment.Start, clip = false) + scaleOut() + fadeOut(),
+                        // Grows out of and back into its left middle, by the back button (Shahin, 2026-11-24).
+                        enter = expandHorizontally(expandFrom = Alignment.Start, clip = false) + scaleIn(transformOrigin = StartMiddle) + fadeIn(),
+                        exit = shrinkHorizontally(shrinkTowards = Alignment.Start, clip = false) + scaleOut(transformOrigin = StartMiddle) + fadeOut(),
                     ) {
                         shownJoinRequests?.let { requests ->
                             JoinRequestsPill(
@@ -301,14 +303,19 @@ internal fun MapScreen(
                     val joinButton = state.header.viewerMenu?.joinButton
                     var shownViewerMenu by remember { mutableStateOf(state.header.viewerMenu) }
                     if (joinButton != null) shownViewerMenu = state.header.viewerMenu
+                    // Both grow out of and back into their right middle, under the header's end (Shahin, 2026-11-24).
                     Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.TopEnd) {
-                        androidx.compose.animation.AnimatedVisibility(visible = filter != null, enter = scaleIn() + fadeIn(), exit = scaleOut() + fadeOut()) {
+                        androidx.compose.animation.AnimatedVisibility(
+                            visible = filter != null,
+                            enter = scaleIn(transformOrigin = EndMiddle) + fadeIn(),
+                            exit = scaleOut(transformOrigin = EndMiddle) + fadeOut(),
+                        ) {
                             shownFilter?.let { PlaceFilterPill(filter = it, onAction = onAction) }
                         }
                         androidx.compose.animation.AnimatedVisibility(
                             visible = joinButton != null && !isRouteBarShown && state.search == null,
-                            enter = scaleIn() + fadeIn(),
-                            exit = scaleOut() + fadeOut(),
+                            enter = scaleIn(transformOrigin = EndMiddle) + fadeIn(),
+                            exit = scaleOut(transformOrigin = EndMiddle) + fadeOut(),
                         ) {
                             shownViewerMenu?.let { menu ->
                                 menu.joinButton?.let { ViewerJoinPill(joinButton = it, isLikedByMe = menu.isLikedByMe, onAction = onAction) }
@@ -474,3 +481,7 @@ private val SearchResultsHold = tween<IntOffset>(SEARCH_RESULTS_MILLIS)
 
 /** The least the search results get, however little room the screen leaves them. */
 private val SearchResultsMinHeight = 120.dp
+
+/** Where the pills under the header grow from: the side of the header they sit at. */
+private val StartMiddle = TransformOrigin(0f, 0.5f)
+private val EndMiddle = TransformOrigin(1f, 0.5f)

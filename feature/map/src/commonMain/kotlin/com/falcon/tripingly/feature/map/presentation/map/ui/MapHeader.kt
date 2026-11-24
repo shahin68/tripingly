@@ -44,6 +44,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -57,6 +58,7 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.layout.Layout
 import kotlin.math.roundToInt
 import androidx.compose.ui.layout.layout
@@ -133,8 +135,11 @@ internal fun MapHeader(
 ) {
     val progress by animateFloatAsState(if (search != null) 1f else 0f, tween(SEARCH_MOTION_MILLIS))
     val actions = tripMenuActions(header, onAction)
-    // 0 while the trip loads, 1 once its menu is there: how much of the pill has slid in.
+    // 0 while the trip loads, 1 once its menu is there: how far the pill has grown. Starts where it is, so a trip known
+    // as the map opens plays nothing.
     val shown by animateFloatAsState(if (actions.isNotEmpty()) 1f else 0f, tween(SEARCH_MOTION_MILLIS, easing = Emphasized))
+    // Read each frame only by the layout; the pill itself comes and goes once.
+    val isPillShown by remember { derivedStateOf { shown > 0f } }
     val gap = MaterialTheme.spacing.small
     // How far past the header's padding the trip card pushes the buttons: off the screen, or out of the left half.
     val pushedOut = MaterialTheme.spacing.medium
@@ -172,10 +177,10 @@ internal fun MapHeader(
                         .onGloballyPositioned { onTitlePlaced(it.boundsInParent()) },
                 )
             }
-            // Search and ⋮ come once the trip is known: the pill slides in from the end while the title shrinks to make
-            // room, so neither snaps (Shahin, 2026-11-24). Search needs the trip, so it never shows without ⋮. Always
-            // composed, so the layout can measure it before it shows; placed only while [shown] is above 0.
-            GlassButtonRow(blur = false, height = GlassButtonDefaults.HeaderSize) {
+            // Search and ⋮ come once the trip is known: the pill grows in place out of its end while the title shrinks to
+            // make room, once (Shahin, 2026-11-24); known as the map opens, it is just there. Search needs the trip, so it
+            // never shows without ⋮.
+            if (actions.isNotEmpty() || isPillShown) GlassButtonRow(blur = false, height = GlassButtonDefaults.HeaderSize) {
                 if (search != null) {
                     SearchField(search, onAction, Modifier.weight(1f))
                 } else {
@@ -217,23 +222,26 @@ internal fun MapHeader(
                 }
             }
         },
-    ) { (title, pill), constraints ->
+    ) { measurables, constraints ->
         val width = constraints.maxWidth
         val height = GlassButtonDefaults.HeaderSize.roundToPx()
-        if (search == null) collapsedWidth[0] = pill.maxIntrinsicWidth(height)
-        val pillWidth = lerp(collapsedWidth[0], width, progress)
-        // The part of the pill slid in so far, and the gap opening with it: the title gives up just that room.
+        val pill = measurables.getOrNull(1)
+        if (search == null) collapsedWidth[0] = pill?.maxIntrinsicWidth(height) ?: 0
+        val pillWidth = if (pill == null) 0 else lerp(collapsedWidth[0], width, progress)
+        // The pill's room grows with it, the gap too: the title gives up just that room.
         val shownWidth = (pillWidth * shown).roundToInt()
         val titleWidth = (width - shownWidth - (gap.toPx() * shown).roundToInt()).coerceAtLeast(0)
-        val titlePlaceable = title.measure(Constraints.fixed(titleWidth, height))
-        val pillPlaceable = pill.measure(Constraints.fixed(pillWidth, height))
+        val titlePlaceable = measurables[0].measure(Constraints.fixed(titleWidth, height))
+        val pillPlaceable = pill?.measure(Constraints.fixed(pillWidth, height))
         layout(width, height) {
             titlePlaceable.place(0, 0)
-            if (shown > 0f) {
-                pillPlaceable.placeWithLayer(width - shownWidth, 0) {
-                    alpha = shown
-                    translationX = cardProgress() * (pillWidth + pushedOut.toPx())
-                }
+            pillPlaceable?.placeWithLayer(width - pillWidth, 0) {
+                // Grows out of its end, in place.
+                transformOrigin = TransformOrigin(1f, 0.5f)
+                scaleX = shown
+                scaleY = shown
+                alpha = shown
+                translationX = cardProgress() * (pillWidth + pushedOut.toPx())
             }
         }
     }
