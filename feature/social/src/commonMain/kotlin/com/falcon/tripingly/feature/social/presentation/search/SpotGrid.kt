@@ -108,7 +108,11 @@ internal fun skeletonTiles(places: List<NearbyPlace>): List<Tile> {
 /** The grid's columns: three, or three more for each [TileGroupWidth] a wide screen (landscape) has room for. */
 private fun columnsFor(width: Dp): Int = 3 * (width / TileGroupWidth).toInt().coerceAtLeast(1)
 
-private val TileGroupWidth = 400.dp
+/**
+ * Three columns' width. Every phone is one group upright (at most about 400 dp, less its padding) and two on its side, also
+ * an iPhone, whose landscape safe areas leave about 720 dp (Shahin, 2026-11-24: iOS had three huge columns, Android six).
+ */
+private val TileGroupWidth = 300.dp
 
 /** A tile's height to one column's width. */
 private const val TileHeightRatio = 1.4f
