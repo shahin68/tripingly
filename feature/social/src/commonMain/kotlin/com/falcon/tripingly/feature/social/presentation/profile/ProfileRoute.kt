@@ -173,7 +173,14 @@ private fun PersonProfileContent(profile: Profile, state: State, onAction: (Acti
         contentPadding = contentPadding,
         verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
     ) {
-        item(key = "header") { PersonProfileHeader(profile, onToggleFollow = { onAction(Action.Person.ToggleFollow) }.takeUnless { state.isMe }, modifier = Modifier.animateItem()) }
+        item(key = "header") {
+            PersonProfileHeader(
+                profile,
+                onToggleFollow = { onAction(Action.Person.ToggleFollow) }.takeUnless { state.isMe },
+                modifier = Modifier.animateItem(),
+                isFollowPending = state.isFollowPending,
+            )
+        }
         item(key = "title") {
             Text(
                 text = stringResource(Res.string.social_public_trips, profile.publicTripCount),

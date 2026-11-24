@@ -35,9 +35,6 @@ internal class FoundPeople(
     private var loadingMore: Job? = null
     private val followJobs = mutableMapOf<String, Job>()
 
-    /** As the server last confirmed it: the button before the first tap of a burst. */
-    private val confirmedFollowing = mutableMapOf<String, Boolean>()
-
     init {
         scope.launch {
             // Someone blocked here leaves the row and the sheet at once.
@@ -45,7 +42,7 @@ internal class FoundPeople(
         }
         scope.launch {
             // Followed or unfollowed on their profile (or another device): the button shows it here too. A follow I
-            // make has them as the one followed; a tap still on its way here wins.
+            // make has them as the one followed; a tap still waiting for the server here wins.
             userRepository.followChanges.collect { change ->
                 if (followJobs[change.followeeId]?.isActive != true) {
                     updatePerson(change.followeeId) { it.copy(isFollowing = change.following) }
@@ -58,7 +55,8 @@ internal class FoundPeople(
     fun showFound(people: PeopleState, nextCursor: String?) {
         loadingMore?.cancel()
         cursor = nextCursor
-        state.update { it.copy(search = it.search.copy(people = people)) }
+        // Follows still on their way keep their spinners in the new results.
+        state.update { it.copy(search = it.search.copy(people = people.copy(pendingFollows = it.search.people.pendingFollows))) }
     }
 
     /** The sheet's next page. */
@@ -80,21 +78,29 @@ internal class FoundPeople(
         }
     }
 
-    /** Follow or Following: shown at once and kept; a newer tap wins, and only a refusal puts it back. */
+    /**
+     * Follow or Following waits for the server (Shahin, 2026-11-24): the button spins meanwhile ([PeopleState.pendingFollows])
+     * and switches once the server took it, so Friend and Follows you switch with it; a refusal leaves it as it was, with the
+     * error banner. Taps while it waits do nothing.
+     */
     fun toggleFollow(person: Person) {
         val userId = person.user.id
-        if (followJobs[userId]?.isActive != true) confirmedFollowing[userId] = person.isFollowing
-        followJobs[userId]?.cancel()
+        if (followJobs[userId]?.isActive == true) return
         val following = !person.isFollowing
-        updatePerson(userId) { it.copy(isFollowing = following) }
+        setPending(userId, isPending = true)
         followJobs[userId] = scope.launch {
-            val result = userRepository.setFollowing(userId, following)
-            if (result is AppResult.Error) {
-                val before = confirmedFollowing.getValue(userId)
-                updatePerson(userId) { it.copy(isFollowing = before) }
-                showMessage(result.error.toUiText(Res.string.social_error_follow))
+            when (val result = userRepository.setFollowing(userId, following)) {
+                is AppResult.Success -> updatePerson(userId) { it.copy(isFollowing = following) }
+                is AppResult.Error -> showMessage(result.error.toUiText(Res.string.social_error_follow))
             }
+            setPending(userId, isPending = false)
         }
+    }
+
+    private fun setPending(userId: String, isPending: Boolean) = state.update { nearby ->
+        val found = nearby.search.people
+        val pending = if (isPending) found.pendingFollows.add(userId) else found.pendingFollows.remove(userId)
+        nearby.copy(search = nearby.search.copy(people = found.copy(pendingFollows = pending)))
     }
 
     private fun updatePerson(userId: String, change: (Person) -> Person) =

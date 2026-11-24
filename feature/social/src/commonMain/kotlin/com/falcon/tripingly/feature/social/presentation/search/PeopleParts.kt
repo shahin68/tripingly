@@ -1,5 +1,6 @@
 package com.falcon.tripingly.feature.social.presentation.search
 
+import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -26,6 +27,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
 import com.falcon.tripingly.core.designsystem.component.ButtonSize
 import com.falcon.tripingly.core.designsystem.component.PersonRow
 import com.falcon.tripingly.core.designsystem.component.PrimaryButton
@@ -75,18 +77,27 @@ internal fun LazyGridScope.peopleTip(isShown: Boolean, onAction: (Action) -> Uni
 /**
  * The search's best people in a box. The rows sit 12 dp in from the box's sides, as far as the first avatar is from its
  * top (the box's 4 dp and the row's own 8 dp), so the avatars and Follow buttons are as far in from the sides as from the
- * top and bottom.
+ * top and bottom. See all ends the box with no padding under it, so its ripple fills the bottom corners, and the divider
+ * above it stops as far from the sides as the rows. The box glides to its new height as the rows change while typing.
  */
 @Composable
 internal fun TopPeople(people: PeopleState, onAction: (Action) -> Unit, onOpenProfile: (String) -> Unit, modifier: Modifier = Modifier) {
     val inset = MaterialTheme.spacing.small + MaterialTheme.spacing.extraSmall
     Surface(shape = MaterialTheme.shapes.large, color = MaterialTheme.colorScheme.surfaceContainerLow, modifier = modifier.fillMaxWidth()) {
-        Column(Modifier.padding(vertical = MaterialTheme.spacing.extraSmall)) {
+        val hasMore = people.total > TOP_PEOPLE
+        Column(
+            Modifier
+                .animateContentSize()
+                .padding(top = MaterialTheme.spacing.extraSmall, bottom = if (hasMore) 0.dp else MaterialTheme.spacing.extraSmall),
+        ) {
             people.people.take(TOP_PEOPLE).forEach { person ->
-                key(person.user.id) { FoundPersonRow(person, onAction, onOpenProfile, inset) }
+                key(person.user.id) { FoundPersonRow(person, person.user.id in people.pendingFollows, onAction, onOpenProfile, inset) }
             }
-            if (people.total > TOP_PEOPLE) {
-                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+            if (hasMore) {
+                HorizontalDivider(
+                    modifier = Modifier.padding(start = inset, end = inset, top = MaterialTheme.spacing.small),
+                    color = MaterialTheme.colorScheme.outlineVariant,
+                )
                 SeeAllPeople(people.total, inset, onClick = { onAction(Action.OpenPeople) })
             }
         }
@@ -95,10 +106,18 @@ internal fun TopPeople(people: PeopleState, onAction: (Action) -> Unit, onOpenPr
 
 /**
  * Someone a search found, [inset] in from both sides: name, @handle, Friend (we follow each other) or Follows you, and
- * Follow / Following. Friend and Follows you switch with the Follow tap at once. A tap elsewhere opens their profile.
+ * Follow / Following, spinning while a tap waits for the server ([isFollowPending]); Friend and Follows you switch with it
+ * once the server took it. A tap elsewhere opens their profile.
  */
 @Composable
-internal fun FoundPersonRow(person: Person, onAction: (Action) -> Unit, onOpenProfile: (String) -> Unit, inset: Dp, modifier: Modifier = Modifier) {
+internal fun FoundPersonRow(
+    person: Person,
+    isFollowPending: Boolean,
+    onAction: (Action) -> Unit,
+    onOpenProfile: (String) -> Unit,
+    inset: Dp,
+    modifier: Modifier = Modifier,
+) {
     PersonRow(
         user = person.user,
         detail = "@${person.user.username}",
@@ -109,7 +128,7 @@ internal fun FoundPersonRow(person: Person, onAction: (Action) -> Unit, onOpenPr
             person.isFriend -> Tag(stringResource(Res.string.social_friend_tag))
             person.followsMe -> Tag(stringResource(Res.string.social_follows_you))
         }
-        FollowButton(person.isFollowing, onToggle = { onAction(Action.ToggleFollow(person)) }, size = ButtonSize.Small)
+        FollowButton(person.isFollowing, onToggle = { onAction(Action.ToggleFollow(person)) }, size = ButtonSize.Small, isPending = isFollowPending)
     }
 }
 

@@ -30,6 +30,7 @@ import com.falcon.tripingly.core.designsystem.component.SheetHeader
 import com.falcon.tripingly.core.designsystem.component.ShowMessage
 import com.falcon.tripingly.core.designsystem.component.Skeleton
 import com.falcon.tripingly.core.designsystem.component.screenContentPadding
+import com.falcon.tripingly.core.designsystem.component.verticalFadingEdge
 import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
 import com.falcon.tripingly.core.designsystem.theme.spacing
 import com.falcon.tripingly.core.location.permission.rememberLocationPermissionController
@@ -52,6 +53,7 @@ import com.falcon.tripingly.feature.social.presentation.component.placeholderNea
 import com.falcon.tripingly.feature.social.presentation.search.SearchViewModel.Action
 import com.falcon.tripingly.feature.social.presentation.search.SearchViewModel.Event
 import com.falcon.tripingly.feature.social.presentation.search.SearchViewModel.PeopleState
+import com.falcon.tripingly.feature.social.presentation.search.SearchViewModel.SearchState
 import com.falcon.tripingly.feature.social.presentation.search.SearchViewModel.State
 import com.falcon.tripingly.feature.social.presentation.search.SearchViewModel.Status
 import org.jetbrains.compose.resources.stringResource
@@ -119,24 +121,30 @@ internal fun SearchScreen(
 ) {
     val contentPadding = screenContentPadding(barsPadding)
     ShowMessage(message = state.message?.asString(), onShown = { onAction(Action.DismissMessage) }, isError = state.message !is UiText.Note)
+    // One grid for the spots around me and for what a search found, so typing never swaps screens: its keyed items glide
+    // into their new places. The last results stay while the next query loads, and until a search's first results the spots
+    // around me stay (Shahin, 2026-11-24: nothing jumps; a skeleton only while there is nothing to show yet).
+    val results = state.search.takeIf { it.isSearching && it.hasLoaded }
     Box(modifier.fillMaxSize()) {
         when {
-            // Typed: the people and spots found, with or without the location (spots then show their city).
-            state.search.isSearching && !state.search.hasLoaded -> SearchSkeleton(contentPadding)
-            state.search.isSearching -> SearchResults(state, onAction, onOpenSpot, onOpenProfile, contentPadding)
-            state.status == Status.NeedsPermission || state.status == Status.Blocked || state.status == Status.Unavailable ->
+            results == null && state.search.isSearching && state.places.isEmpty() -> SearchSkeleton(contentPadding)
+            results == null && (state.status == Status.NeedsPermission || state.status == Status.Blocked || state.status == Status.Unavailable) ->
                 LocationAsk(state.status, onAction, contentPadding)
             // Around everything, so the error and empty screens pull too, like Try again (Shahin, 2026-11-23). Not the
-            // location asks: their button asks for the location rather than reloading.
-            else -> AppPullToRefresh(isRefreshing = state.isLoading && state.places.isNotEmpty(), onRefresh = { onAction(Action.Refresh) }, contentPadding = contentPadding) {
+            // location asks: their button asks for the location rather than reloading. While searching, a pull asks again.
+            else -> AppPullToRefresh(
+                isRefreshing = if (results != null) results.isLoading else state.isLoading && state.places.isNotEmpty(),
+                onRefresh = { onAction(Action.Refresh) },
+                contentPadding = contentPadding,
+            ) {
                 LoadStateContent(
-                    isLoading = state.status == Status.Unknown || state.status == Status.Locating,
-                    errorMessage = state.loadError?.asString(),
+                    isLoading = results == null && (state.status == Status.Unknown || state.status == Status.Locating),
+                    errorMessage = state.loadError?.takeIf { results == null }?.asString(),
                     onRetry = { onAction(Action.Refresh) },
                     contentPadding = contentPadding,
                     loading = { SearchSkeleton(contentPadding) },
                 ) {
-                    NearbyGrid(state, onAction, onOpenSpot, contentPadding)
+                    SearchGrid(state, results, onAction, onOpenSpot, onOpenProfile, contentPadding)
                 }
             }
         }
@@ -144,55 +152,54 @@ internal fun SearchScreen(
 }
 
 /**
- * The people tip until it is dismissed, the spots around me, then the OpenStreetMap credit. People show only while
- * searching (Shahin, 2026-11-24).
+ * The spots around me with the people tip on top until it is dismissed, or what a search found ([results]): its top
+ * people, then its spots, with or without the location (spots then show their city). Then the OpenStreetMap credit.
+ * People show only while searching (Shahin, 2026-11-24). Every item animates in, out and to its new place.
  */
 @Composable
-private fun NearbyGrid(state: State, onAction: (Action) -> Unit, onOpenSpot: (String) -> Unit, contentPadding: PaddingValues) {
+private fun SearchGrid(
+    state: State,
+    results: SearchState?,
+    onAction: (Action) -> Unit,
+    onOpenSpot: (String) -> Unit,
+    onOpenProfile: (String) -> Unit,
+    contentPadding: PaddingValues,
+) {
     val gridState = rememberLazyGridState()
     LoadMoreAtEnd(gridState) { onAction(Action.LoadMore) }
+    val spots = results?.spots ?: state.places
     SpotGrid(
-        places = state.places,
+        places = spots,
         gridState = gridState,
         contentPadding = contentPadding,
         onOpen = { onOpenSpot(it.id) },
         header = {
-            peopleTip(state.isPeopleTipShown, onAction)
-            if (state.places.isEmpty()) {
-                fullWidthItem("empty") {
-                    EmptyState(
-                        illustration = Illustration.NearbyEmpty,
-                        title = stringResource(Res.string.social_nearby_empty),
-                        message = stringResource(Res.string.social_nearby_empty_hint),
-                        modifier = Modifier.fillMaxWidth(),
-                    )
+            if (results == null) {
+                peopleTip(state.isPeopleTipShown, onAction)
+                if (state.places.isEmpty()) {
+                    fullWidthItem("empty") {
+                        EmptyState(
+                            illustration = Illustration.NearbyEmpty,
+                            title = stringResource(Res.string.social_nearby_empty),
+                            message = stringResource(Res.string.social_nearby_empty_hint),
+                            modifier = Modifier.fillMaxWidth().animateItem(),
+                        )
+                    }
+                }
+            } else {
+                topPeople(results.people, onAction, onOpenProfile)
+                if (!results.isLoading && results.people.people.isEmpty() && results.spots.isEmpty()) {
+                    fullWidthItem("none") {
+                        EmptyState(
+                            illustration = Illustration.NearbyEmpty,
+                            title = stringResource(Res.string.social_search_none),
+                            modifier = Modifier.fillMaxWidth().animateItem(),
+                        )
+                    }
                 }
             }
         },
-        footer = { osmCredit(state.isOsmCreditShown && state.places.isNotEmpty()) },
-    )
-}
-
-/** The people and spots a search found, in the same grid; nothing found says so. */
-@Composable
-private fun SearchResults(state: State, onAction: (Action) -> Unit, onOpenSpot: (String) -> Unit, onOpenProfile: (String) -> Unit, contentPadding: PaddingValues) {
-    val search = state.search
-    val gridState = rememberLazyGridState()
-    LoadMoreAtEnd(gridState) { onAction(Action.LoadMore) }
-    SpotGrid(
-        places = search.spots,
-        gridState = gridState,
-        contentPadding = contentPadding,
-        onOpen = { onOpenSpot(it.id) },
-        header = {
-            topPeople(search.people, onAction, onOpenProfile)
-            if (search.hasLoaded && !search.isLoading && search.people.people.isEmpty() && search.spots.isEmpty()) {
-                fullWidthItem("none") {
-                    EmptyState(illustration = Illustration.NearbyEmpty, title = stringResource(Res.string.social_search_none), modifier = Modifier.fillMaxWidth())
-                }
-            }
-        },
-        footer = { osmCredit(state.isOsmCreditShown && search.spots.isNotEmpty()) },
+        footer = { osmCredit(state.isOsmCreditShown && spots.isNotEmpty()) },
     )
 }
 
@@ -205,15 +212,25 @@ private fun PeopleSheet(people: PeopleState, listState: LazyListState, onAction:
     Column(Modifier.fillMaxWidth()) {
         SheetHeader(title = stringResource(Res.string.social_people), onClose = onClose)
         LoadMoreAtEnd(listState) { onAction(Action.LoadMorePeople) }
-        LazyColumn(state = listState, contentPadding = PaddingValues(bottom = MaterialTheme.spacing.large)) {
+        LazyColumn(state = listState, modifier = Modifier.verticalFadingEdge(listState), contentPadding = PaddingValues(bottom = MaterialTheme.spacing.large)) {
             items(people.people, key = { it.user.id }) { person ->
-                FoundPersonRow(person, onAction, onOpenProfile, inset = MaterialTheme.spacing.large, modifier = Modifier.animateItem())
+                FoundPersonRow(
+                    person,
+                    isFollowPending = person.user.id in people.pendingFollows,
+                    onAction = onAction,
+                    onOpenProfile = onOpenProfile,
+                    inset = MaterialTheme.spacing.large,
+                    modifier = Modifier.animateItem(),
+                )
             }
         }
     }
 }
 
-/** The grid's own tiles, drawn from placeholders as a [Skeleton], while the location and the spots load. */
+/**
+ * The grid's own tiles as a [Skeleton], laid out in its real rows (2+1, 1.5+1.5, 1+2, [skeletonTiles]), while there is
+ * nothing to show yet: the location and the first spots load, or a search's first results without spots around me.
+ */
 @Composable
 private fun SearchSkeleton(contentPadding: PaddingValues) {
     Skeleton(Modifier.fillMaxSize()) {
@@ -222,6 +239,7 @@ private fun SearchSkeleton(contentPadding: PaddingValues) {
             gridState = rememberLazyGridState(),
             contentPadding = contentPadding,
             onOpen = {},
+            arrange = ::skeletonTiles,
         )
     }
 }

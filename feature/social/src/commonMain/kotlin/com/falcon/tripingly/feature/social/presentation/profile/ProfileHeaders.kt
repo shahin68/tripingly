@@ -72,10 +72,10 @@ internal fun MyProfileHeader(
 
 /**
  * A profile opened from elsewhere: a large avatar, the name, "Follows you", the counts and Follow / Following
- * ([onToggleFollow] null on my own, opened e.g. from a trip of mine).
+ * ([onToggleFollow] null on my own, opened e.g. from a trip of mine), spinning while a tap waits for the server ([isFollowPending]).
  */
 @Composable
-internal fun PersonProfileHeader(profile: Profile, onToggleFollow: (() -> Unit)?, modifier: Modifier = Modifier) {
+internal fun PersonProfileHeader(profile: Profile, onToggleFollow: (() -> Unit)?, modifier: Modifier = Modifier, isFollowPending: Boolean = false) {
     Column(
         modifier = modifier.fillMaxWidth().padding(vertical = MaterialTheme.spacing.small),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -90,7 +90,7 @@ internal fun PersonProfileHeader(profile: Profile, onToggleFollow: (() -> Unit)?
             Count(profile.followerCount, stringResource(Res.string.social_followers))
             Count(profile.followingCount, stringResource(Res.string.social_following))
         }
-        if (onToggleFollow != null) FollowButton(profile.isFollowing, onToggleFollow)
+        if (onToggleFollow != null) FollowButton(profile.isFollowing, onToggleFollow, isPending = isFollowPending, alignment = Alignment.Center)
     }
 }
 

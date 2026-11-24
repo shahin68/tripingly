@@ -16,7 +16,9 @@ import com.falcon.tripingly.core.model.social.NearbyPlace
 import com.falcon.tripingly.core.model.social.Person
 import com.falcon.tripingly.core.ui.UiText
 import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.PersistentSet
 import kotlinx.collections.immutable.persistentListOf
+import kotlinx.collections.immutable.persistentSetOf
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -68,7 +70,7 @@ class SearchViewModel(
             is Action.PermissionChecked -> places.onPermission(action.permission, isAnswer = false)
             is Action.PermissionResult -> places.onPermission(action.permission, isAnswer = true)
             Action.AllowLocation -> sendEvent(if (_uiState.value.status == Status.Blocked) Event.OpenAppSettings else Event.RequestPermission)
-            Action.Refresh -> places.refresh()
+            Action.Refresh -> if (_uiState.value.search.isSearching) search.refresh() else places.refresh()
             Action.LoadMore -> if (_uiState.value.search.isSearching) search.loadMore() else places.loadMore()
             is Action.QueryChanged -> search.onQuery(action.query)
             Action.OpenPeople -> _uiState.update { it.copy(isPeopleSheetOpen = true) }
@@ -114,6 +116,8 @@ class SearchViewModel(
         val people: ImmutableList<Person> = persistentListOf(),
         val total: Int = 0,
         val hasLoaded: Boolean = false,
+        /** The people whose Follow or Unfollow tap waits for the server: their button spins. */
+        val pendingFollows: PersistentSet<String> = persistentSetOf(),
     )
 
     /** What the search found for [query]; it replaces the grid while [isSearching]. */

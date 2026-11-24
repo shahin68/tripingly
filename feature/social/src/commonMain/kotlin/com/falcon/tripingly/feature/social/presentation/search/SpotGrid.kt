@@ -99,6 +99,12 @@ internal fun arrangeTiles(places: List<NearbyPlace>): List<Tile> {
 
 private const val WIDE_LOOKAHEAD = 6
 
+/** The skeleton's tiles: the rows' patterns in turn whatever the photos, so it shows the grid's real layout. */
+internal fun skeletonTiles(places: List<NearbyPlace>): List<Tile> {
+    val spans = RowPatterns.flatten()
+    return places.mapIndexed { index, place -> Tile(place, spans[index % spans.size]) }
+}
+
 /** The grid's columns: three, or three more for each [TileGroupWidth] a wide screen (landscape) has room for. */
 private fun columnsFor(width: Dp): Int = 3 * (width / TileGroupWidth).toInt().coerceAtLeast(1)
 
@@ -110,6 +116,7 @@ private const val TileHeightRatio = 1.4f
 /**
  * The Search tab's grid: [header] items (the tip or the top people) on top across the whole width, then [places] as tiles, then
  * [footer] items (the OpenStreetMap credit). Tiles open their spot ([onOpen]); their flames only show (Shahin, 2026-11-24).
+ * [arrange] lays the spots out in rows ([arrangeTiles]; the skeleton's [skeletonTiles]).
  */
 @Composable
 internal fun SpotGrid(
@@ -120,8 +127,9 @@ internal fun SpotGrid(
     modifier: Modifier = Modifier,
     header: LazyGridScope.() -> Unit = {},
     footer: LazyGridScope.() -> Unit = {},
+    arrange: (List<NearbyPlace>) -> List<Tile> = ::arrangeTiles,
 ) {
-    val tiles = remember(places) { arrangeTiles(places) }
+    val tiles = remember(places, arrange) { arrange(places) }
     val gap = MaterialTheme.spacing.small
     BoxWithConstraints(modifier.fillMaxSize()) {
         val direction = LocalLayoutDirection.current
@@ -154,7 +162,7 @@ internal fun LazyGridScope.fullWidthItem(key: String, content: @Composable LazyG
 
 /** The OpenStreetMap credit under the spots, when the server lists OpenStreetMap places. */
 internal fun LazyGridScope.osmCredit(isShown: Boolean) {
-    if (isShown) fullWidthItem("osm") { OsmAttribution(Modifier.padding(vertical = MaterialTheme.spacing.small)) }
+    if (isShown) fullWidthItem("osm") { OsmAttribution(Modifier.animateItem().padding(vertical = MaterialTheme.spacing.small)) }
 }
 
 /**

@@ -17,6 +17,7 @@ import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.update
@@ -53,30 +54,43 @@ internal class TypedSearch(
         }
         search = scope.launch {
             delay(SEARCH_DEBOUNCE)
-            state.update { it.copy(search = it.search.copy(isLoading = true)) }
-            val near = point()
-            val found = async { userRepository.findPeople(query, near) }
-            val spots = placeRepository.spots(query, near)
-            val peopleResult = found.await()
-            // A failure clears the last query's people too, so they never show under this one.
-            if (peopleResult is AppResult.Success) {
-                people.showFound(PeopleState(peopleResult.data.people.toImmutableList(), peopleResult.data.total, hasLoaded = true), peopleResult.data.nextCursor)
-            } else {
-                people.showFound(PeopleState(hasLoaded = true), nextCursor = null)
-            }
-            spotsCursor = (spots as? AppResult.Success)?.data?.nextCursor
-            state.update {
-                it.copy(
-                    search = it.search.copy(
-                        spots = (spots as? AppResult.Success)?.data?.items?.toImmutableList() ?: persistentListOf(),
-                        isLoading = false,
-                        hasLoaded = true,
-                    ),
-                )
-            }
-            val error = (spots as? AppResult.Error)?.error ?: (peopleResult as? AppResult.Error)?.error
-            if (error != null) showMessage(error.toUiText(Res.string.social_error_search))
+            find(query)
         }
+    }
+
+    /** A pull to refresh while searching: the same query again, at once. */
+    fun refresh() {
+        val query = state.value.search.query
+        if (!state.value.search.isSearching) return
+        search?.cancel()
+        loadingMore?.cancel()
+        search = scope.launch { find(query) }
+    }
+
+    private suspend fun find(query: String) = coroutineScope {
+        state.update { it.copy(search = it.search.copy(isLoading = true)) }
+        val near = point()
+        val found = async { userRepository.findPeople(query, near) }
+        val spots = placeRepository.spots(query, near)
+        val peopleResult = found.await()
+        // A failure clears the last query's people too, so they never show under this one.
+        if (peopleResult is AppResult.Success) {
+            people.showFound(PeopleState(peopleResult.data.people.toImmutableList(), peopleResult.data.total, hasLoaded = true), peopleResult.data.nextCursor)
+        } else {
+            people.showFound(PeopleState(hasLoaded = true), nextCursor = null)
+        }
+        spotsCursor = (spots as? AppResult.Success)?.data?.nextCursor
+        state.update {
+            it.copy(
+                search = it.search.copy(
+                    spots = (spots as? AppResult.Success)?.data?.items?.toImmutableList() ?: persistentListOf(),
+                    isLoading = false,
+                    hasLoaded = true,
+                ),
+            )
+        }
+        val error = (spots as? AppResult.Error)?.error ?: (peopleResult as? AppResult.Error)?.error
+        if (error != null) showMessage(error.toUiText(Res.string.social_error_search))
     }
 
     /** The next page of spots; one request at a time. */

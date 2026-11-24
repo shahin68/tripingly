@@ -56,7 +56,8 @@ internal val placeholderProfile = Profile(
     nextCursor = null,
 )
 
-internal val placeholderNearbyPlaces = listOf("Café on the corner", "City museum of art", "Old town square", "Park by the river").mapIndexed { index, name ->
+/** Twelve spots, two of the grid's row patterns, enough to fill a phone screen. */
+internal val placeholderNearbyPlaces = List(12) { listOf("Café on the corner", "City museum of art", "Old town square", "Park by the river")[it % 4] }.mapIndexed { index, name ->
     NearbyPlace(
         id = "placeholder$index",
         name = name,

@@ -142,30 +142,32 @@ class SearchViewModelTest : SocialTestBase() {
     }
 
     @Test
-    fun `Follow switches at once and stays and a refusal puts it back`() = runTest {
+    fun `Follow spins until the server took it and a refusal leaves it as it was`() = runTest {
         val viewModel = located()
         viewModel.onAction(Action.QueryChanged("ju"))
         advanceUntilIdle()
-        val found = { viewModel.uiState.value.search.people.people }
-        val julia = found().first { it.user.username == "julia_t" }
+        val found = { viewModel.uiState.value.search.people }
+        val julia = found().people.first { it.user.username == "julia_t" }
         assertFalse(julia.isFollowing)
         assertTrue(julia.followsMe)
         assertFalse(julia.isFriend)
 
         viewModel.onAction(Action.ToggleFollow(julia))
-        assertTrue(found().first { it.user.id == julia.user.id }.isFollowing)
-        // She follows me, so following her back makes us friends at once.
-        assertTrue(found().first { it.user.id == julia.user.id }.isFriend)
+        assertTrue(julia.user.id in found().pendingFollows)
+        assertFalse(found().people.first { it.user.id == julia.user.id }.isFollowing)
         advanceUntilIdle()
-        val followed = found().first { it.user.id == julia.user.id }
+        val followed = found().people.first { it.user.id == julia.user.id }
+        assertTrue(julia.user.id !in found().pendingFollows)
         assertTrue(followed.isFollowing)
+        // She follows me, so following her back makes us friends.
+        assertTrue(followed.isFriend)
 
         people.followRefused = true
         viewModel.onAction(Action.ToggleFollow(followed))
-        assertFalse(found().first { it.user.id == julia.user.id }.isFollowing)
-        assertFalse(found().first { it.user.id == julia.user.id }.isFriend)
+        assertTrue(julia.user.id in found().pendingFollows)
         advanceUntilIdle()
-        assertTrue(found().first { it.user.id == julia.user.id }.isFollowing)
+        assertTrue(found().people.first { it.user.id == julia.user.id }.isFollowing)
+        assertTrue(julia.user.id !in found().pendingFollows)
         assertNotNull(viewModel.uiState.value.message)
     }
 
