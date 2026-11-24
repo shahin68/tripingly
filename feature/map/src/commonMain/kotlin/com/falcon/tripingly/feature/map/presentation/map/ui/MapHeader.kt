@@ -135,11 +135,15 @@ internal fun MapHeader(
 ) {
     val progress by animateFloatAsState(if (search != null) 1f else 0f, tween(SEARCH_MOTION_MILLIS))
     val actions = tripMenuActions(header, onAction)
-    // 0 while the trip loads, 1 once its menu is there: how far the pill has grown. Starts where it is, so a trip known
-    // as the map opens plays nothing.
-    val shown by animateFloatAsState(if (actions.isNotEmpty()) 1f else 0f, tween(SEARCH_MOTION_MILLIS, easing = Emphasized))
-    // Read each frame only by the layout; the pill itself comes and goes once.
-    val isPillShown by remember { derivedStateOf { shown > 0f } }
+    val hasMenu = actions.isNotEmpty()
+    // The pill grows in only when its menu comes after the device read the trip without it: someone else's trip, from
+    // the server. Read with it (my own trips, ones opened before), the header is whole at once (Shahin, 2026-11-24).
+    val grows = remember { booleanArrayOf(false) }
+    if (header.isTripRead && !hasMenu) grows[0] = true
+    val growth by animateFloatAsState(if (hasMenu) 1f else 0f, tween(SEARCH_MOTION_MILLIS, easing = Emphasized))
+    val isGrowing by remember { derivedStateOf { growth > 0f } }
+    // How far the pill has grown, 0 to 1; read each frame only by the layout.
+    val pillGrowth = { if (grows[0]) growth else if (hasMenu) 1f else 0f }
     val gap = MaterialTheme.spacing.small
     // How far past the header's padding the trip card pushes the buttons: off the screen, or out of the left half.
     val pushedOut = MaterialTheme.spacing.medium
@@ -180,7 +184,7 @@ internal fun MapHeader(
             // Search and ⋮ come once the trip is known: the pill grows in place out of its end while the title shrinks to
             // make room, once (Shahin, 2026-11-24); known as the map opens, it is just there. Search needs the trip, so it
             // never shows without ⋮.
-            if (actions.isNotEmpty() || isPillShown) GlassButtonRow(blur = false, height = GlassButtonDefaults.HeaderSize) {
+            if (hasMenu || (grows[0] && isGrowing)) GlassButtonRow(blur = false, height = GlassButtonDefaults.HeaderSize) {
                 if (search != null) {
                     SearchField(search, onAction, Modifier.weight(1f))
                 } else {
@@ -229,6 +233,7 @@ internal fun MapHeader(
         if (search == null) collapsedWidth[0] = pill?.maxIntrinsicWidth(height) ?: 0
         val pillWidth = if (pill == null) 0 else lerp(collapsedWidth[0], width, progress)
         // The pill's room grows with it, the gap too: the title gives up just that room.
+        val shown = pillGrowth()
         val shownWidth = (pillWidth * shown).roundToInt()
         val titleWidth = (width - shownWidth - (gap.toPx() * shown).roundToInt()).coerceAtLeast(0)
         val titlePlaceable = measurables[0].measure(Constraints.fixed(titleWidth, height))
