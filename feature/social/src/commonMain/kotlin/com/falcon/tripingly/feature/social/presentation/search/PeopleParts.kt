@@ -1,16 +1,19 @@
 package com.falcon.tripingly.feature.social.presentation.search
 
-import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyGridScope
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.shape.CornerSize
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Close
@@ -21,7 +24,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.key
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
@@ -63,14 +65,34 @@ import org.jetbrains.compose.resources.stringResource
 internal const val TOP_PEOPLE = 3
 
 /**
- * The search's best [people] in a box above the spots, and See all when there are more. It blooms out of its top end
- * when people are found and goes back into it when none are ([bloom], Shahin 2026-11-24), the spots gliding with its
- * height; [people] are the last found, so it keeps them while it goes.
+ * The search's best [people] (null while not searching) above the spots, and See all when there are more: each row is
+ * its own grid item (the people card canvas, B, Shahin 2026-11-24), so the grid's own item motion fades rows in and out
+ * and slides the spots along, as with the tiles, scrolled or not. Together the rows look like one box: the first has its
+ * top corners, the last its bottom corners, and no gap between them ([PeopleBoxPart]).
  */
-internal fun LazyGridScope.topPeople(bloom: BloomState, people: PeopleState, onAction: (Action) -> Unit, onOpenProfile: (String) -> Unit) {
-    if (!bloom.isShown) return
-    fullWidthItem("people") {
-        Bloom(bloom, CardRadius, Modifier.animateItem(fadeInSpec = null, fadeOutSpec = null)) { TopPeople(people, onAction, onOpenProfile) }
+internal fun LazyGridScope.topPeople(people: PeopleState?, onAction: (Action) -> Unit, onOpenProfile: (String) -> Unit) {
+    if (people == null) return
+    val top = people.people.take(TOP_PEOPLE)
+    val hasMore = people.total > TOP_PEOPLE
+    top.forEachIndexed { index, person ->
+        fullWidthItem("person:${person.user.id}") {
+            PeopleBoxPart(isFirst = index == 0, isLast = !hasMore && index == top.lastIndex, Modifier.animateItem()) {
+                FoundPersonRow(person, person.user.id in people.pendingFollows, onAction, onOpenProfile, PeopleInset)
+            }
+        }
+    }
+    if (hasMore && top.isNotEmpty()) {
+        fullWidthItem("people:seeAll") {
+            PeopleBoxPart(isFirst = false, isLast = true, Modifier.animateItem(), isSeeAll = true) {
+                Column {
+                    HorizontalDivider(
+                        modifier = Modifier.padding(start = PeopleInset, end = PeopleInset, top = MaterialTheme.spacing.small),
+                        color = MaterialTheme.colorScheme.outlineVariant,
+                    )
+                    SeeAllPeople(people.total, PeopleInset, onClick = { onAction(Action.OpenPeople) })
+                }
+            }
+        }
     }
 }
 
@@ -78,42 +100,48 @@ internal fun LazyGridScope.topPeople(bloom: BloomState, people: PeopleState, onA
 internal fun LazyGridScope.peopleTip(bloom: BloomState, onAction: (Action) -> Unit) {
     if (!bloom.isShown) return
     fullWidthItem("peopleTip") {
-        Bloom(bloom, CardRadius, Modifier.animateItem(fadeInSpec = null, fadeOutSpec = null)) {
+        // The grid has no gap between rows of its own: the tip keeps the one under it, and takes it along as it goes.
+        Bloom(bloom, CardRadius, Modifier.animateItem(fadeInSpec = null, fadeOutSpec = null), padding = PaddingValues(bottom = MaterialTheme.spacing.small)) {
             PeopleTipCard(onSearch = { onAction(Action.SearchPeople) }, onDismiss = { onAction(Action.DismissPeopleTip) })
         }
     }
 }
 
-/** The corners of both cards, [MaterialTheme.shapes] large: the bloom keeps them while it grows. */
+/** The tip's corners, [MaterialTheme.shapes] large: the bloom keeps them while it grows. */
 private val CardRadius = 20.dp
 
 /**
- * The search's best people in a box. The rows sit 12 dp in from the box's sides, as far as the first avatar is from its
- * top (the box's 4 dp and the row's own 8 dp), so the avatars and Follow buttons are as far in from the sides as from the
- * top and bottom. See all ends the box with no padding under it, so its ripple fills the bottom corners, and the divider
- * above it stops as far from the sides as the rows. The box glides to its new height as the rows change while typing.
+ * How far the people rows sit in from the box's sides: as far as the first avatar is from its top (the box's 4 dp and
+ * the row's own 8 dp), so the avatars and Follow buttons are as far in from the sides as from the top and bottom.
+ */
+private val PeopleInset = 12.dp
+
+/**
+ * One part of the people box: the box's colour, its top corners on the [isFirst] part with 4 dp above the row, its bottom
+ * corners on the [isLast] with 4 dp under the row (none under See all, [isSeeAll], so its ripple fills the bottom
+ * corners), and the grid's gap after the box. The rows' ripples stay inside the box's corners.
  */
 @Composable
-internal fun TopPeople(people: PeopleState, onAction: (Action) -> Unit, onOpenProfile: (String) -> Unit, modifier: Modifier = Modifier) {
-    val inset = MaterialTheme.spacing.small + MaterialTheme.spacing.extraSmall
-    Surface(shape = MaterialTheme.shapes.large, color = MaterialTheme.colorScheme.surfaceContainerLow, modifier = modifier.fillMaxWidth()) {
-        val hasMore = people.total > TOP_PEOPLE
-        Column(
-            Modifier
-                .animateContentSize()
-                .padding(top = MaterialTheme.spacing.extraSmall, bottom = if (hasMore) 0.dp else MaterialTheme.spacing.extraSmall),
-        ) {
-            people.people.take(TOP_PEOPLE).forEach { person ->
-                key(person.user.id) { FoundPersonRow(person, person.user.id in people.pendingFollows, onAction, onOpenProfile, inset) }
-            }
-            if (hasMore) {
-                HorizontalDivider(
-                    modifier = Modifier.padding(start = inset, end = inset, top = MaterialTheme.spacing.small),
-                    color = MaterialTheme.colorScheme.outlineVariant,
-                )
-                SeeAllPeople(people.total, inset, onClick = { onAction(Action.OpenPeople) })
-            }
-        }
+private fun PeopleBoxPart(isFirst: Boolean, isLast: Boolean, modifier: Modifier = Modifier, isSeeAll: Boolean = false, content: @Composable () -> Unit) {
+    val box = MaterialTheme.shapes.large
+    val square = CornerSize(0.dp)
+    val shape = box.copy(
+        topStart = if (isFirst) box.topStart else square,
+        topEnd = if (isFirst) box.topEnd else square,
+        bottomEnd = if (isLast) box.bottomEnd else square,
+        bottomStart = if (isLast) box.bottomStart else square,
+    )
+    Surface(
+        shape = shape,
+        color = MaterialTheme.colorScheme.surfaceContainerLow,
+        modifier = modifier.fillMaxWidth().padding(bottom = if (isLast) MaterialTheme.spacing.small else 0.dp),
+    ) {
+        Box(
+            Modifier.padding(
+                top = if (isFirst) MaterialTheme.spacing.extraSmall else 0.dp,
+                bottom = if (isLast && !isSeeAll) MaterialTheme.spacing.extraSmall else 0.dp,
+            ),
+        ) { content() }
     }
 }
 
@@ -207,8 +235,11 @@ private fun PeoplePartsPreviewContent() {
         verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium),
     ) {
         PeopleTipCard(onSearch = {}, onDismiss = {})
-        TopPeople(previewFoundPeople, onAction = {}, onOpenProfile = {})
-        TopPeople(previewFoundPeople.copy(people = previewFoundPeople.people.take(2).toImmutableList(), total = 2), onAction = {}, onOpenProfile = {})
+        // The rows as the grid lays them out: with See all, and two people without.
+        LazyVerticalGrid(GridCells.Fixed(1), userScrollEnabled = false) { topPeople(previewFoundPeople, onAction = {}, onOpenProfile = {}) }
+        LazyVerticalGrid(GridCells.Fixed(1), userScrollEnabled = false) {
+            topPeople(previewFoundPeople.copy(people = previewFoundPeople.people.take(2).toImmutableList(), total = 2), onAction = {}, onOpenProfile = {})
+        }
     }
 }
 

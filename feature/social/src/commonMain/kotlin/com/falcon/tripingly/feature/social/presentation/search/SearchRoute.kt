@@ -14,9 +14,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.tooling.preview.PreviewParameter
@@ -177,24 +175,22 @@ private fun SearchGrid(
     val gridState = rememberLazyGridState()
     LoadMoreAtEnd(gridState) { onAction(Action.LoadMore) }
     val spots = results?.spots ?: state.places
-    // The people box and the tip bloom in and out (Shahin, 2026-11-24); the box keeps the last people found while it goes.
-    val found = results?.people?.takeIf { it.people.isNotEmpty() }
-    var lastFound by remember { mutableStateOf(found ?: PeopleState()) }
-    if (found != null) lastFound = found
-    val peopleBloom = rememberBloomState(found != null)
+    // The people rows come and go as grid items; the tip blooms in and out (Shahin, 2026-11-24).
+    val people = results?.people
+    val topIds = people?.people?.take(TOP_PEOPLE)?.map { it.user.id }
     val tipBloom = rememberBloomState(results == null && state.isPeopleTipShown)
-    // A lazy grid holds on to the first item it shows, so a box coming above the first spot was put under the bar, out of
-    // sight. At the top, the grid stays at the top as the box or the tip comes or goes, so both bloom in view; scrolled
-    // down, nothing moves.
+    // A lazy grid holds on to the first item it shows, so rows coming above it would be put under the bar, out of sight.
+    // At the top, the grid stays at the top as people or the tip come or go, so they come in view; scrolled down, the spots
+    // in view stay where they are.
     val isAtTop by remember(gridState) { derivedStateOf { gridState.firstVisibleItemIndex == 0 && gridState.firstVisibleItemScrollOffset == 0 } }
-    remember(peopleBloom.isShown, tipBloom.isShown) { if (isAtTop) gridState.requestScrollToItem(0) }
+    remember(topIds, tipBloom.isShown) { if (isAtTop) gridState.requestScrollToItem(0) }
     SpotGrid(
         places = spots,
         gridState = gridState,
         contentPadding = contentPadding,
         onOpen = { onOpenSpot(it.id) },
         header = {
-            topPeople(peopleBloom, lastFound, onAction, onOpenProfile)
+            topPeople(people, onAction, onOpenProfile)
             peopleTip(tipBloom, onAction)
             if (results == null) {
                 if (state.places.isEmpty()) {
