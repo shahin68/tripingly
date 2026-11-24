@@ -20,6 +20,19 @@ import kotlinx.coroutines.launch
 import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.sin
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.LocalFireDepartment
+import androidx.compose.material.icons.outlined.FavoriteBorder
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.ui.tooling.preview.Preview
+import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
+import com.falcon.tripingly.core.designsystem.theme.extendedColors
+import com.falcon.tripingly.core.designsystem.theme.spacing
 
 /**
  * An icon that pops once with a ring of dots flying out (Instagram-style) each time [burst] goes up: the like and
@@ -77,3 +90,28 @@ internal fun BurstIcon(
 
 private const val DotCount = 8
 private const val BurstMillis = 450
+
+/** At rest: a heart not liked, a liked one and a flame on. The burst itself plays only on a tap. */
+@Composable
+private fun BurstIconPreviewContent() {
+    Row(
+        modifier = Modifier.background(MaterialTheme.colorScheme.surface).padding(MaterialTheme.spacing.medium),
+        horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium),
+    ) {
+        BurstIcon(Icons.Outlined.FavoriteBorder, contentDescription = null, tint = MaterialTheme.colorScheme.onSurface, burst = 0)
+        BurstIcon(Icons.Filled.Favorite, contentDescription = null, tint = MaterialTheme.extendedColors.attention, burst = 0)
+        BurstIcon(Icons.Filled.LocalFireDepartment, contentDescription = null, tint = MaterialTheme.extendedColors.attention, burst = 0)
+    }
+}
+
+@Preview
+@Composable
+private fun BurstIconPreview() {
+    TripinglyTheme { BurstIconPreviewContent() }
+}
+
+@Preview
+@Composable
+private fun BurstIconDarkPreview() {
+    TripinglyTheme(darkTheme = true) { BurstIconPreviewContent() }
+}

@@ -31,6 +31,17 @@ import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.filter
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.ui.tooling.preview.Preview
+import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
+import com.falcon.tripingly.core.designsystem.theme.spacing
 
 /**
  * Pull to refresh for a screen under the floating top bar, on Compose's own [PullToRefreshBox] and its state. Wrap
@@ -121,3 +132,33 @@ private val SpinnerMargin = 8.dp
 private const val BOUNCE_SCALE = 1.2f
 private const val BOUNCE_UP_MILLIS = 90
 private const val BOUNCE_DAMPING = 0.45f
+
+/** A page of cards while it refreshes: pulled down, the spinner in the gap above it. */
+@Composable
+private fun AppPullToRefreshPreviewContent() {
+    AppPullToRefresh(
+        isRefreshing = true,
+        onRefresh = {},
+        contentPadding = PaddingValues(top = MaterialTheme.spacing.medium),
+        modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background),
+    ) {
+        Column(
+            modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(MaterialTheme.spacing.medium),
+            verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
+        ) {
+            repeat(6) { Box(Modifier.fillMaxWidth().height(72.dp).background(MaterialTheme.colorScheme.surfaceContainerHigh, MaterialTheme.shapes.large)) }
+        }
+    }
+}
+
+@Preview(heightDp = 480)
+@Composable
+private fun AppPullToRefreshPreview() {
+    TripinglyTheme { AppPullToRefreshPreviewContent() }
+}
+
+@Preview(heightDp = 480)
+@Composable
+private fun AppPullToRefreshDarkPreview() {
+    TripinglyTheme(darkTheme = true) { AppPullToRefreshPreviewContent() }
+}

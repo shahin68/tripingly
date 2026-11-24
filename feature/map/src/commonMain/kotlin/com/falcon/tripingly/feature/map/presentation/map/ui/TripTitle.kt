@@ -30,6 +30,13 @@ import com.falcon.tripingly.feature.map.generated.resources.Res
 import com.falcon.tripingly.feature.map.generated.resources.map_owner_profile
 import com.falcon.tripingly.feature.map.presentation.map.HeaderState
 import org.jetbrains.compose.resources.stringResource
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.width
+import androidx.compose.ui.tooling.preview.Preview
+import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
+import com.falcon.tripingly.feature.map.presentation.map.preview.MapHeaderPreviewStates
 
 /**
  * The trip's owner as an avatar, which opens their profile ([onOwnerClick]), and the trip's name on one line,
@@ -93,4 +100,28 @@ internal fun TripTitleContent(header: HeaderState, modifier: Modifier = Modifier
 @Composable
 private fun TitleLine(name: String, modifier: Modifier = Modifier) {
     Text(name, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = modifier.skeletonText())
+}
+
+/** An editor's title, a viewer's long one, one while busy, and one while the trip loads. */
+@Composable
+private fun TripTitlePreviewContent() {
+    Column(
+        modifier = Modifier.background(MaterialTheme.colorScheme.surfaceContainerHigh).width(360.dp).padding(MaterialTheme.spacing.medium),
+        verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
+    ) {
+        MapHeaderPreviewStates().values.take(3).forEach { TripTitle(it.header, Modifier.fillMaxWidth()) }
+        TripTitle(HeaderState(isLoading = true), Modifier.fillMaxWidth())
+    }
+}
+
+@Preview
+@Composable
+private fun TripTitlePreview() {
+    TripinglyTheme { TripTitlePreviewContent() }
+}
+
+@Preview
+@Composable
+private fun TripTitleDarkPreview() {
+    TripinglyTheme(darkTheme = true) { TripTitlePreviewContent() }
 }

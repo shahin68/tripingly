@@ -13,6 +13,15 @@ import com.falcon.tripingly.feature.map.generated.resources.map_join_trip
 import com.falcon.tripingly.feature.map.presentation.map.JoinButton
 import com.falcon.tripingly.feature.map.presentation.map.MapAction
 import org.jetbrains.compose.resources.stringResource
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.tooling.preview.Preview
+import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
+import com.falcon.tripingly.core.designsystem.theme.spacing
 
 /**
  * Someone else's trip: the trip's heart and Ask to join, joined like the details' buttons, under the map's header at
@@ -32,4 +41,30 @@ internal fun ViewerJoinPill(joinButton: JoinButton, isLikedByMe: Boolean, onActi
         height = GlassButtonDefaults.HeaderSize,
         modifier = modifier,
     )
+}
+
+/** Ask to join not liked yet, sending while liked, and sent. */
+@Composable
+private fun ViewerJoinPillPreviewContent() {
+    Column(
+        modifier = Modifier.background(MaterialTheme.colorScheme.surfaceContainerHigh).padding(MaterialTheme.spacing.medium),
+        verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
+        horizontalAlignment = Alignment.End,
+    ) {
+        ViewerJoinPill(JoinButton.Ask, isLikedByMe = false, onAction = {})
+        ViewerJoinPill(JoinButton.Sending, isLikedByMe = true, onAction = {})
+        ViewerJoinPill(JoinButton.Sent, isLikedByMe = true, onAction = {})
+    }
+}
+
+@Preview
+@Composable
+private fun ViewerJoinPillPreview() {
+    TripinglyTheme { ViewerJoinPillPreviewContent() }
+}
+
+@Preview
+@Composable
+private fun ViewerJoinPillDarkPreview() {
+    TripinglyTheme(darkTheme = true) { ViewerJoinPillPreviewContent() }
 }

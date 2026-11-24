@@ -3,6 +3,7 @@ package com.falcon.tripingly.feature.social.presentation.nearby
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -61,6 +62,11 @@ import com.falcon.tripingly.feature.social.generated.resources.social_people_mor
 import com.falcon.tripingly.feature.social.presentation.nearby.NearbyViewModel.PeopleState
 import org.jetbrains.compose.resources.stringResource
 import androidx.compose.foundation.layout.BoxScope
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
+import androidx.compose.ui.tooling.preview.Preview
+import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
+import com.falcon.tripingly.feature.social.presentation.component.previewNearbyPeople
+import com.falcon.tripingly.feature.social.presentation.component.previewNearbyPlaces
 
 /*
  * Nearby's grid (the Nearby canvas v18, Shahin 2026-11-23): the faces of the people a search found on top, then the
@@ -222,4 +228,66 @@ private fun MoreFace(total: Int, shown: Int, onClick: () -> Unit) {
             Text(count, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
+}
+
+/** The grid as a search shows it: the people's faces on top, the spots, the OpenStreetMap credit. */
+@Composable
+private fun SpotGridPreviewContent() {
+    SpotGrid(
+        places = previewNearbyPlaces,
+        gridState = rememberLazyGridState(),
+        contentPadding = PaddingValues(MaterialTheme.spacing.medium),
+        onOpen = {},
+        onMarkHot = {},
+        modifier = Modifier.background(MaterialTheme.colorScheme.background),
+        header = { fullWidthItem("people") { PeopleFaces(previewNearbyPeople, onOpenProfile = {}, onOpenSheet = {}) } },
+        footer = { osmCredit(isShown = true) },
+    )
+}
+
+@Preview(heightDp = 720)
+@Composable
+private fun SpotGridPreview() {
+    TripinglyTheme { SpotGridPreviewContent() }
+}
+
+@Preview(heightDp = 720)
+@Composable
+private fun SpotGridDarkPreview() {
+    TripinglyTheme(darkTheme = true) { SpotGridPreviewContent() }
+}
+
+@Preview(widthDp = 800, heightDp = 360)
+@Composable
+private fun SpotGridLandscapePreview() {
+    TripinglyTheme { SpotGridPreviewContent() }
+}
+
+/** A tile with a photo's place, one without, and the faces with a few people and with more than fit. */
+@Composable
+private fun NearbyPartsPreviewContent() {
+    Column(
+        modifier = Modifier.background(MaterialTheme.colorScheme.background).padding(MaterialTheme.spacing.medium),
+        verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium),
+    ) {
+        Row(horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small)) {
+            previewNearbyPlaces.take(3).forEach { place ->
+                NearbyTile(place, onOpen = {}, onMarkHot = {}, modifier = Modifier.size(width = 112.dp, height = 157.dp))
+            }
+        }
+        PeopleFaces(previewNearbyPeople.copy(total = previewNearbyPeople.people.size), onOpenProfile = {}, onOpenSheet = {})
+        PeopleFaces(previewNearbyPeople, onOpenProfile = {}, onOpenSheet = {})
+    }
+}
+
+@Preview
+@Composable
+private fun NearbyPartsPreview() {
+    TripinglyTheme { NearbyPartsPreviewContent() }
+}
+
+@Preview
+@Composable
+private fun NearbyPartsDarkPreview() {
+    TripinglyTheme(darkTheme = true) { NearbyPartsPreviewContent() }
 }

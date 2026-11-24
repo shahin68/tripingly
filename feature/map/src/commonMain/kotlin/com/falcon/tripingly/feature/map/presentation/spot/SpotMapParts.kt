@@ -92,6 +92,13 @@ import com.falcon.tripingly.feature.map.presentation.map.ui.label
 import com.falcon.tripingly.feature.map.presentation.map.ui.placeButtons
 import com.falcon.tripingly.feature.map.presentation.map.ui.rowMotion
 import org.jetbrains.compose.resources.stringResource
+import androidx.compose.animation.core.MutableTransitionState
+import androidx.compose.animation.core.rememberTransition
+import androidx.compose.foundation.background
+import androidx.compose.ui.tooling.preview.Preview
+import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
+import com.falcon.tripingly.core.model.place.PlaceCategory
+import com.falcon.tripingly.core.model.trip.UserSummary
 
 /*
  * The spot map's own parts (Shahin, 2026-11-23), made of the trip map's: its header (the trip map's back button and
@@ -331,3 +338,70 @@ private val EndMiddle = TransformOrigin(1f, 0.5f)
 
 /** The flame pill's sides: its flame as far in as the back button's arrow. */
 private val HotPillInset = 18.dp
+
+private val PreviewOsmSpot = SpotState(
+    id = "p-1",
+    name = "Café Central",
+    category = PlaceCategory("cafe"),
+    owner = null,
+    isOwnerMe = false,
+    isFromOsm = true,
+    address = "Herrengasse 14, Wien",
+    distanceMeters = 650,
+    isHot = true,
+    hotCount = 42,
+    tripCount = 7,
+    openingHours = "Mo-Sa 08:00-21:00",
+    website = "cafecentral.wien",
+)
+
+private val PreviewUserSpot = PreviewOsmSpot.copy(
+    id = "p-2",
+    name = "Our picnic corner on the Danube Island",
+    category = PlaceCategory("park"),
+    owner = UserSummary(id = "u2", username = "anna", displayName = "Anna Kovács"),
+    isFromOsm = false,
+    address = null,
+    distanceMeters = null,
+    isHot = false,
+    hotCount = 3,
+    tripCount = 1,
+    openingHours = null,
+    website = null,
+)
+
+/** The header for a place from OpenStreetMap, someone's own spot and while loading; the card; the bottom bar. */
+@Composable
+private fun SpotPartsPreviewContent() {
+    val transition = rememberTransition(remember { MutableTransitionState(true) })
+    Column(
+        modifier = Modifier.background(MaterialTheme.colorScheme.surfaceContainerHigh).padding(vertical = MaterialTheme.spacing.small),
+        verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
+    ) {
+        SpotHeader(spot = PreviewOsmSpot, onAction = {})
+        SpotHeader(spot = PreviewUserSpot, onAction = {})
+        SpotHeader(spot = null, onAction = {})
+        SpotCard(
+            spot = PreviewUserSpot,
+            transition = transition,
+            progress = { 1f },
+            pill = Rect.Zero,
+            onClose = {},
+            onOwnerClick = {},
+            modifier = Modifier.padding(horizontal = MaterialTheme.spacing.medium),
+        )
+        SpotBar(PreviewOsmSpot, onAction = {})
+    }
+}
+
+@Preview(widthDp = 390)
+@Composable
+private fun SpotPartsPreview() {
+    TripinglyTheme { SpotPartsPreviewContent() }
+}
+
+@Preview(widthDp = 390)
+@Composable
+private fun SpotPartsDarkPreview() {
+    TripinglyTheme(darkTheme = true) { SpotPartsPreviewContent() }
+}

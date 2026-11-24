@@ -30,6 +30,11 @@ import com.falcon.tripingly.core.model.place.MapPlace
 import com.falcon.tripingly.feature.map.generated.resources.Res
 import com.falcon.tripingly.feature.map.generated.resources.map_along_add
 import org.jetbrains.compose.resources.stringResource
+import androidx.compose.foundation.background
+import androidx.compose.ui.tooling.preview.Preview
+import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
+import com.falcon.tripingly.feature.map.presentation.map.preview.previewAlongTheWay
+import com.falcon.tripingly.feature.map.presentation.map.preview.previewPlace
 
 /**
  * A place in a row of places (along the way, or around a pin): its photo or kind, its name over [subtitle]; + adds it
@@ -90,3 +95,28 @@ private val AlongCardMaxWidth = 240.dp
 private val AddButtonSize = 36.dp
 private val SelectedEdge = 2.dp
 private val AlongImageSize = 32.dp
+
+/** A row of places as along the way shows them: one open on the map, one a viewer sees (no +), one with a long name. */
+@Composable
+private fun NearPlaceCardPreviewContent() {
+    Row(
+        modifier = Modifier.background(MaterialTheme.colorScheme.surfaceContainerHigh).padding(MaterialTheme.spacing.medium),
+        horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
+    ) {
+        NearPlaceCard(previewPlace, subtitle = "120 m off · 15 min", dayNumber = 2, isSelected = true, onOpen = {}, onAdd = {})
+        NearPlaceCard(previewAlongTheWay[0].place, subtitle = "350 m", dayNumber = null, isSelected = false, onOpen = {}, onAdd = {})
+        NearPlaceCard(previewAlongTheWay[1].place, subtitle = "1.4 km off · 1 h 20 min", dayNumber = 2, isSelected = false, onOpen = {}, onAdd = {})
+    }
+}
+
+@Preview(widthDp = 720)
+@Composable
+private fun NearPlaceCardPreview() {
+    TripinglyTheme { NearPlaceCardPreviewContent() }
+}
+
+@Preview(widthDp = 720)
+@Composable
+private fun NearPlaceCardDarkPreview() {
+    TripinglyTheme(darkTheme = true) { NearPlaceCardPreviewContent() }
+}

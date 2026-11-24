@@ -17,6 +17,15 @@ import com.falcon.tripingly.feature.map.presentation.map.MapAction
 import com.falcon.tripingly.feature.map.presentation.map.NewSpotCardState
 import com.falcon.tripingly.feature.map.presentation.map.PlaceCardState
 import com.falcon.tripingly.feature.map.presentation.map.StopCardState
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
+import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
+import com.falcon.tripingly.feature.map.presentation.map.PinAdd
+import com.falcon.tripingly.feature.map.presentation.map.PinRoutesState
+import com.falcon.tripingly.feature.map.presentation.map.preview.previewPlace
+import com.falcon.tripingly.feature.map.presentation.map.preview.previewPlaceDetails
 
 /**
  * The tapped place's and stop's cards over the part of the map nothing covers (its middle is where the camera puts a
@@ -102,3 +111,37 @@ internal fun MapPinCards(
  * above the pin, out of its own layout, so touches on its top half counted as touches on the map and closed it.
  */
 private fun LayoutCoordinates.unclippedBounds() = Rect(positionInRoot(), size.toSize())
+
+/** A tapped place's card over the map's free middle, where the camera puts its pin. */
+@Composable
+private fun MapPinCardsPreviewContent() {
+    MapPinCards(
+        placeCard = PlaceCardState(previewPlace, previewPlaceDetails, address = null, add = PinAdd.ToDay(2), routes = PinRoutesState()),
+        stopCard = null,
+        newSpotCard = null,
+        pinBelowMiddle = 0.dp,
+        onAction = {},
+        onPlaceCardBounds = {},
+        onStopCardBounds = {},
+        onNewSpotCardBounds = {},
+        modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surfaceContainerHigh),
+    )
+}
+
+@Preview(widthDp = 390, heightDp = 640)
+@Composable
+private fun MapPinCardsPreview() {
+    TripinglyTheme { MapPinCardsPreviewContent() }
+}
+
+@Preview(widthDp = 390, heightDp = 640)
+@Composable
+private fun MapPinCardsDarkPreview() {
+    TripinglyTheme(darkTheme = true) { MapPinCardsPreviewContent() }
+}
+
+@Preview(widthDp = 800, heightDp = 360)
+@Composable
+private fun MapPinCardsLandscapePreview() {
+    TripinglyTheme { MapPinCardsPreviewContent() }
+}

@@ -28,6 +28,12 @@ import com.falcon.tripingly.feature.auth.presentation.onboarding.OnboardingViewM
 import com.falcon.tripingly.feature.auth.presentation.onboarding.OnboardingViewModel.Action
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel
+import androidx.compose.foundation.background
+import androidx.compose.ui.tooling.preview.Preview
+import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
+import com.falcon.tripingly.feature.auth.presentation.onboarding.OnboardingViewModel.State
+import com.falcon.tripingly.feature.auth.presentation.onboarding.OnboardingViewModel.Step
+import com.falcon.tripingly.feature.auth.presentation.onboarding.previewDocuments
 
 /**
  * New terms to accept while the app is open (Shahin, 2026-11-22): the onboarding's consent step in a sheet over the app,
@@ -42,21 +48,57 @@ internal fun ReconsentSheet(isShown: Boolean) {
         val state by viewModel.uiState.collectAsStateWithLifecycle()
         val onAction = viewModel::onAction
         ShowMessage(message = state.error?.asString(), onShown = { onAction(Action.OnDismissError) })
-        Column {
-            SheetHeader(
-                title = stringResource(Res.string.onboarding_consent_title),
-                subtitle = stringResource(Res.string.reconsent_message),
-                onClose = null,
-                actions = { TextButton(onClick = { onAction(Action.OnSignOutClick) }) { Text(stringResource(Res.string.onboarding_sign_out)) } },
-            )
-            if (!state.isLoadingDocuments && state.documents.isEmpty()) {
-                ErrorScreen(onRetry = { onAction(Action.OnRetryDocumentsClick) }, message = stringResource(Res.string.onboarding_error_load_documents))
-            } else {
-                Column(Modifier.weight(1f, fill = false).verticalScroll(rememberScrollState()).padding(horizontal = MaterialTheme.spacing.medium)) {
-                    ConsentStep(state)
-                }
-                if (!state.isLoadingDocuments) ConsentFooter(state, onAction)
+        ReconsentContent(state, onAction)
+    }
+}
+
+/** The sheet's content: the terms to accept with Sign out at the top, or an error to try again from. */
+@Composable
+private fun ReconsentContent(state: OnboardingViewModel.State, onAction: (Action) -> Unit, modifier: Modifier = Modifier) {
+    Column(modifier) {
+        SheetHeader(
+            title = stringResource(Res.string.onboarding_consent_title),
+            subtitle = stringResource(Res.string.reconsent_message),
+            onClose = null,
+            actions = { TextButton(onClick = { onAction(Action.OnSignOutClick) }) { Text(stringResource(Res.string.onboarding_sign_out)) } },
+        )
+        if (!state.isLoadingDocuments && state.documents.isEmpty()) {
+            ErrorScreen(onRetry = { onAction(Action.OnRetryDocumentsClick) }, message = stringResource(Res.string.onboarding_error_load_documents))
+        } else {
+            Column(Modifier.weight(1f, fill = false).verticalScroll(rememberScrollState()).padding(horizontal = MaterialTheme.spacing.medium)) {
+                ConsentStep(state)
             }
+            if (!state.isLoadingDocuments) ConsentFooter(state, onAction)
         }
+    }
+}
+
+@Preview
+@Composable
+private fun ReconsentContentPreview() {
+    TripinglyTheme {
+        ReconsentContent(State(step = Step.CONSENT, documents = previewDocuments), onAction = {}, Modifier.background(MaterialTheme.colorScheme.surfaceContainerLow))
+    }
+}
+
+@Preview
+@Composable
+private fun ReconsentContentDarkPreview() {
+    TripinglyTheme(darkTheme = true) {
+        ReconsentContent(State(step = Step.CONSENT, documents = previewDocuments), onAction = {}, Modifier.background(MaterialTheme.colorScheme.surfaceContainerLow))
+    }
+}
+
+@Preview
+@Composable
+private fun ReconsentContentErrorPreview() {
+    TripinglyTheme { ReconsentContent(State(step = Step.CONSENT), onAction = {}, Modifier.background(MaterialTheme.colorScheme.surfaceContainerLow)) }
+}
+
+@Preview(widthDp = 800, heightDp = 360)
+@Composable
+private fun ReconsentContentLandscapePreview() {
+    TripinglyTheme {
+        ReconsentContent(State(step = Step.CONSENT, documents = previewDocuments), onAction = {}, Modifier.background(MaterialTheme.colorScheme.surfaceContainerLow))
     }
 }
