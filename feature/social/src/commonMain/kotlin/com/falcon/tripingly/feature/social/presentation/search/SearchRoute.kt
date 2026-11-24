@@ -1,5 +1,6 @@
 package com.falcon.tripingly.feature.social.presentation.search
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -29,9 +30,9 @@ import com.falcon.tripingly.core.designsystem.component.ErrorScreen
 import com.falcon.tripingly.core.designsystem.component.Illustration
 import com.falcon.tripingly.core.designsystem.component.LoadStateContent
 import com.falcon.tripingly.core.designsystem.component.SheetHeader
-import com.falcon.tripingly.core.designsystem.component.rememberBloomState
 import com.falcon.tripingly.core.designsystem.component.ShowMessage
 import com.falcon.tripingly.core.designsystem.component.Skeleton
+import com.falcon.tripingly.core.designsystem.component.rememberBloomState
 import com.falcon.tripingly.core.designsystem.component.screenContentPadding
 import com.falcon.tripingly.core.designsystem.component.verticalFadingEdge
 import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
@@ -234,9 +235,8 @@ private fun PeopleSheet(people: PeopleState, listState: LazyListState, onAction:
                     person,
                     isFollowPending = person.user.id in people.pendingFollows,
                     onAction = onAction,
-                    onOpenProfile = onOpenProfile,
                     inset = MaterialTheme.spacing.large,
-                    modifier = Modifier.animateItem(),
+                    modifier = Modifier.animateItem().clickable { onOpenProfile(person.user.username) },
                 )
             }
         }

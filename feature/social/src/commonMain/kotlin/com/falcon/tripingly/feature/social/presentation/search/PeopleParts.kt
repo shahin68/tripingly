@@ -2,7 +2,6 @@ package com.falcon.tripingly.feature.social.presentation.search
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -79,14 +78,14 @@ internal fun LazyGridScope.topPeople(people: PeopleState?, columns: Int, onActio
     if (people == null) return
     val top = people.people.take(TOP_PEOPLE)
     items(top, key = { "person:${it.user.id}" }, span = { peopleSpan() }) { person ->
-        PeopleCard(Modifier.animateItem()) {
-            FoundPersonRow(person, person.user.id in people.pendingFollows, onAction, onOpenProfile, PeopleInset)
+        PeopleCard(onClick = { onOpenProfile(person.user.username) }, Modifier.animateItem()) {
+            FoundPersonRow(person, person.user.id in people.pendingFollows, onAction, PeopleInset)
         }
     }
     if (people.total > TOP_PEOPLE && top.isNotEmpty()) {
         item(key = "people:seeAll", span = { peopleSpan() }) {
-            PeopleCard(Modifier.animateItem(), padded = false) {
-                val seeAll = { modifier: Modifier -> SeeAllPeople(people.total, PeopleInset, modifier, onClick = { onAction(Action.OpenPeople) }) }
+            PeopleCard(onClick = { onAction(Action.OpenPeople) }, Modifier.animateItem(), padded = false) {
+                val seeAll = { modifier: Modifier -> SeeAllPeople(people.total, PeopleInset, modifier) }
                 if (columns * UNITS_PER_COLUMN < 2 * PEOPLE_SPAN) {
                     seeAll(Modifier)
                 } else {
@@ -129,11 +128,12 @@ private val PeopleInset = 12.dp
 
 /**
  * A card of the people: the box colour and corners with the glass's edge, 4 dp above and under a person's row ([padded]; none around See all,
- * whose own height centres it and whose ripple fills the card). Ripples stay inside its corners.
+ * whose own height centres it). The whole card is the tap ([onClick]): its ripple fills it edge to edge, inside its corners.
  */
 @Composable
-private fun PeopleCard(modifier: Modifier = Modifier, padded: Boolean = true, content: @Composable () -> Unit) {
+private fun PeopleCard(onClick: () -> Unit, modifier: Modifier = Modifier, padded: Boolean = true, content: @Composable () -> Unit) {
     Surface(
+        onClick = onClick,
         shape = MaterialTheme.shapes.large,
         color = MaterialTheme.colorScheme.surfaceContainerLow,
         // The glass's thin light edge, as the bars have (Shahin, 2026-11-24).
@@ -147,14 +147,14 @@ private fun PeopleCard(modifier: Modifier = Modifier, padded: Boolean = true, co
 /**
  * Someone a search found, [inset] in from both sides: name, @handle, Friend (we follow each other) or Follows you, and
  * Follow / Following, spinning while a tap waits for the server ([isFollowPending]); Friend and Follows you switch with it
- * once the server took it. A tap elsewhere opens their profile.
+ * once the server took it. Whatever holds it opens their profile on a tap elsewhere (a card, the sheet's row), so the
+ * ripple fills that.
  */
 @Composable
 internal fun FoundPersonRow(
     person: Person,
     isFollowPending: Boolean,
     onAction: (Action) -> Unit,
-    onOpenProfile: (String) -> Unit,
     inset: Dp,
     modifier: Modifier = Modifier,
 ) {
@@ -162,7 +162,7 @@ internal fun FoundPersonRow(
         user = person.user,
         detail = "@${person.user.username}",
         // PersonRow pads its own 4 dp.
-        modifier = modifier.clickable { onOpenProfile(person.user.username) }.padding(horizontal = inset - MaterialTheme.spacing.extraSmall),
+        modifier = modifier.padding(horizontal = inset - MaterialTheme.spacing.extraSmall),
     ) {
         when {
             person.isFriend -> Tag(stringResource(Res.string.social_friend_tag))
@@ -174,11 +174,11 @@ internal fun FoundPersonRow(
 
 /** "See all 42 people ›" (up to "999+"), opening the people sheet; the text starts under the avatars, the arrow ends under Follow. */
 @Composable
-private fun SeeAllPeople(total: Int, inset: Dp, modifier: Modifier = Modifier, onClick: () -> Unit) {
+private fun SeeAllPeople(total: Int, inset: Dp, modifier: Modifier = Modifier) {
     val count = if (total >= PeoplePage.TOTAL_CAP) "${PeoplePage.TOTAL_CAP}+" else total.toString()
     Row(
         modifier = modifier.fillMaxWidth().heightIn(min = MaterialTheme.spacing.extraLarge + MaterialTheme.spacing.medium)
-            .clickable(onClick = onClick).padding(horizontal = inset),
+            .padding(horizontal = inset),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
     ) {
