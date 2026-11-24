@@ -70,21 +70,29 @@ import com.falcon.tripingly.feature.social.presentation.component.previewNearbyP
 
 /*
  * Nearby's grid (the Nearby canvas v18, Shahin 2026-11-23): the faces of the people a search found on top, then the
- * spots in rows of 2+1, 1+1+1 and 1+2, repeated. Every tile is [TileHeightRatio] times one column's width high (so a
- * name, its distance and the flame fit without covering each other, Shahin 2026-11-24): a row never changes height
- * when a photo comes, and a wide tile is as high as the one beside it.
+ * spots in rows of 2+1, 1.5+1.5 and 1+2 (Shahin, 2026-11-24), repeated. The grid counts in half columns
+ * ([UNITS_PER_COLUMN]), so a 1.5 tile is whole: a group of three columns is six units. Every tile is [TileHeightRatio]
+ * times one column's width high (so a name, its distance and the flame fit without covering each other, Shahin
+ * 2026-11-24): a row never changes height when a photo comes, and wider tiles are as high as the ones beside them.
  */
 
-/** A spot in the grid, [span] columns wide (1, or 2 for a spot with a photo). */
+/** A spot in the grid, [span] half columns wide: [NARROW], [HALF] or [WIDE]. */
 internal data class Tile(val place: NearbyPlace, val span: Int)
 
-/** The rows' patterns, repeated. */
-private val RowPatterns = listOf(listOf(2, 1), listOf(1, 1, 1), listOf(1, 2))
+/** How many grid units one column is: halves, so a tile can be one and a half columns wide. */
+private const val UNITS_PER_COLUMN = 2
+internal const val NARROW = UNITS_PER_COLUMN
+internal const val HALF = UNITS_PER_COLUMN * 3 / 2
+internal const val WIDE = UNITS_PER_COLUMN * 2
+
+/** The rows' patterns, repeated: 2+1, 1.5+1.5, 1+2. */
+private val RowPatterns = listOf(listOf(WIDE, NARROW), listOf(HALF, HALF), listOf(NARROW, WIDE))
 
 /**
- * The spots as tiles in rows of 2+1, 1+1+1, 1+2, repeated. A wide slot takes the next spot with a photo among the
+ * The spots as tiles in rows of 2+1, 1.5+1.5, 1+2, repeated. A wide slot takes the next spot with a photo among the
  * next few ([WIDE_LOOKAHEAD], so a row only depends on spots near it and a new page only adds rows below); without
- * one in reach the row is 1+1+1. Spots without a photo are always one column wide.
+ * one in reach the row is 1+1+1. The 1.5+1.5 row takes the next two spots, photo or not. Spots without a photo are
+ * never wide.
  */
 internal fun arrangeTiles(places: List<NearbyPlace>): List<Tile> {
     val left = places.toMutableList()
@@ -92,13 +100,16 @@ internal fun arrangeTiles(places: List<NearbyPlace>): List<Tile> {
     var row = 0
     while (left.isNotEmpty()) {
         val pattern = RowPatterns[row++ % RowPatterns.size]
-        val photo = if (2 in pattern) left.take(WIDE_LOOKAHEAD).indexOfFirst { it.coverImageId != null } else -1
-        if (photo < 0 || left.size < pattern.size) {
-            repeat(minOf(3, left.size)) { tiles += Tile(left.removeAt(0), span = 1) }
-            continue
+        val photo = if (WIDE in pattern) left.take(WIDE_LOOKAHEAD).indexOfFirst { it.coverImageId != null } else -1
+        when {
+            left.size < pattern.size || (WIDE in pattern && photo < 0) ->
+                repeat(minOf(3, left.size)) { tiles += Tile(left.removeAt(0), span = NARROW) }
+            WIDE in pattern -> {
+                val wide = left.removeAt(photo)
+                for (span in pattern) tiles += if (span == WIDE) Tile(wide, span) else Tile(left.removeAt(0), span)
+            }
+            else -> for (span in pattern) tiles += Tile(left.removeAt(0), span)
         }
-        val wide = left.removeAt(photo)
-        for (span in pattern) tiles += if (span == 2) Tile(wide, span = 2) else Tile(left.removeAt(0), span = 1)
     }
     return tiles
 }
@@ -134,9 +145,12 @@ internal fun SpotGrid(
         val direction = LocalLayoutDirection.current
         val width = maxWidth - contentPadding.calculateStartPadding(direction) - contentPadding.calculateEndPadding(direction)
         val columns = columnsFor(width)
-        val tileHeight = (width - gap * (columns - 1)) / columns * TileHeightRatio
+        // In half columns: a column is two units and the gap between them.
+        val units = columns * UNITS_PER_COLUMN
+        val unit = (width - gap * (units - 1)) / units
+        val tileHeight = (unit * UNITS_PER_COLUMN + gap * (UNITS_PER_COLUMN - 1)) * TileHeightRatio
         LazyVerticalGrid(
-            columns = GridCells.Fixed(columns),
+            columns = GridCells.Fixed(units),
             state = gridState,
             contentPadding = contentPadding,
             horizontalArrangement = Arrangement.spacedBy(gap),
