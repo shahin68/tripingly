@@ -63,7 +63,7 @@ import com.falcon.tripingly.feature.social.presentation.component.previewNearbyP
 internal data class Tile(val place: NearbyPlace, val span: Int)
 
 /** How many grid units one column is: halves, so a tile can be one and a half columns wide. */
-private const val UNITS_PER_COLUMN = 2
+internal const val UNITS_PER_COLUMN = 2
 internal const val NARROW = UNITS_PER_COLUMN
 internal const val HALF = UNITS_PER_COLUMN * 3 / 2
 internal const val WIDE = UNITS_PER_COLUMN * 2
@@ -144,13 +144,12 @@ internal fun SpotGrid(
             state = gridState,
             contentPadding = contentPadding,
             horizontalArrangement = Arrangement.spacedBy(gap),
-            // No gap between rows of its own: each tile keeps the one under it, and the items above keep theirs, so the
-            // people rows can join into one box.
+            verticalArrangement = Arrangement.spacedBy(gap),
             modifier = Modifier.fillMaxSize().glassSource(),
         ) {
             header()
             items(tiles, key = { it.place.id }, span = { GridItemSpan(it.span) }) { tile ->
-                SpotTile(tile.place, onOpen = { onOpen(tile.place) }, Modifier.animateItem().padding(bottom = gap).height(tileHeight))
+                SpotTile(tile.place, onOpen = { onOpen(tile.place) }, Modifier.height(tileHeight).animateItem())
             }
             footer()
         }
