@@ -506,7 +506,7 @@ actual fun GoogleMapView(
                         layers.stopHalo ?: Color.Unspecified,
                         state = markerState,
                         title = marker.title.asString(),
-                        // The pin is a circle centered on the stop.
+                        // The stop is at the pin image's center: it reaches as far each way (see stopMarkerHalfSize).
                         anchor = Offset(0.5f, 0.5f),
                         alpha = layers.stopAlpha(marker),
                         // Above the places.

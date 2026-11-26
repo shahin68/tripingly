@@ -271,4 +271,12 @@
     <string name="map_spot_card_flames">Flames</string>
     <string name="map_spot_card_in_trips">In trips</string>
     <string name="map_error_load_spot">Couldn’t load this spot.</string>
+    <plurals name="map_stop_comments_count">
+        <item quantity="one">%1$d comment</item>
+        <item quantity="other">%1$d comments</item>
+    </plurals>
+    <plurals name="map_stop_flames_count">
+        <item quantity="one">%1$d flame</item>
+        <item quantity="other">%1$d flames</item>
+    </plurals>
 </resources>

@@ -270,4 +270,12 @@
     <string name="map_spot_card_flames">Flammen</string>
     <string name="map_spot_card_in_trips">In Reisen</string>
     <string name="map_error_load_spot">Der Ort konnte nicht geladen werden.</string>
+    <plurals name="map_stop_comments_count">
+        <item quantity="one">%1$d Kommentar</item>
+        <item quantity="other">%1$d Kommentare</item>
+    </plurals>
+    <plurals name="map_stop_flames_count">
+        <item quantity="one">%1$d Flamme</item>
+        <item quantity="other">%1$d Flammen</item>
+    </plurals>
 </resources>

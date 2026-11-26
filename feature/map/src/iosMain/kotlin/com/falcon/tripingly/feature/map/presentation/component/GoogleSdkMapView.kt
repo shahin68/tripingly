@@ -404,7 +404,7 @@ internal fun GoogleSdkMapView(
                         }
                     }
                 },
-                // The pin is a circle centered on the stop.
+                // The stop is at the pin image's center: it reaches as far each way (see stopMarkerHalfSize).
                 anchorX = 0.5,
                 anchorY = 0.5,
                 // Above the places.
