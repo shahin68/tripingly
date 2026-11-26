@@ -330,7 +330,6 @@ private fun DayMenuButton(dayNumber: Int, card: StopsCardState, editorMenu: Edit
     }
 }
 
-/** A stop: its number in a pin-coloured circle and its name; selected while its card is open; × removes it (owners, and editors on their own stops). */
 /**
  * The stop's comments and flames between its name and the ×, compact, only those above 0 (Shahin, 2026-11-26). Live like
  * the pins: the counts come from the same stops, kept up to date over the socket.
@@ -354,6 +353,7 @@ private fun StopChipCounts(stop: MapMarker, color: Color) {
 /** Between a plan chip's comment and flame counts. */
 private val ChipCountsGap = 6.dp
 
+/** A stop: its number in a pin-coloured circle and its name, then its comment and flame counts; selected while its card is open; × removes it (owners, and editors on their own stops). */
 @Composable
 private fun StopChip(stop: MapMarker, isSelected: Boolean, onAction: (MapAction) -> Unit) {
     Surface(
