@@ -11,6 +11,7 @@ import kotlinx.coroutines.flow.update
 
 /** What [MapViewModel] and its helpers share: the trip, the screen's [model] and the scope their work runs in. */
 internal class MapContext(
+    /** The trip; empty on the spot map, which has none. */
     val tripId: String,
     val scope: CoroutineScope,
     val trip: StateFlow<TripDetails?>,

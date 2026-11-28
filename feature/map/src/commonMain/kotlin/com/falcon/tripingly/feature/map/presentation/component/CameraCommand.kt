@@ -24,6 +24,12 @@ sealed interface CameraCommand {
     /** Shows all of [bounds], with a margin, in the part of the map nothing covers, north up. */
     data class Fit(val bounds: GeoBounds) : CameraCommand
 
+    /**
+     * A [MoveTo] once what closed with it (a route's or Around's card) is laid out, so the map's padding is the new one
+     * and the pin lands where its card will open (Shahin, 2026-11-24).
+     */
+    data class MoveAfterLayout(val target: Coordinates, val zoom: Float) : CameraCommand
+
     companion object {
         /**
          * Fits [points], and at least a few streets around them, so one stop, or stops next door to each other,

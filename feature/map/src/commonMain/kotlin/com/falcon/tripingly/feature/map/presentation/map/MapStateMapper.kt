@@ -68,6 +68,8 @@ internal class MapStateMapper(
     private val model: MapModel,
     private val config: AppConfig,
     private val myUserId: String?,
+    /** The device has looked for the trip, kept or not; see [HeaderState.isTripRead]. */
+    private val isTripRead: Boolean = details != null,
 ) {
     private val days = details?.days.orEmpty()
     private val activeIndex = activeDayIndex(days.size, model.activeDayIndex)
@@ -163,8 +165,10 @@ internal class MapStateMapper(
             members = details?.members?.takeIf { it.isNotEmpty() }?.let { MembersEntry(it.size, details.pendingJoinRequestCount) },
             canShare = trip != null,
             canLeave = role == TripRole.EDITOR,
-            canSearch = !isVisitor,
+            // Once the trip is known, so search never shows and then goes while a visitor's map loads (Shahin, 2026-11-24).
+            canSearch = trip != null && !isVisitor,
             isLoading = days.isEmpty() && model.isLoadingTrip,
+            isTripRead = isTripRead,
             isBusy = model.isSaving || model.isUpdatingSharing,
             viewerMenu = trip?.takeIf { role == TripRole.VIEWER }?.let {
                 ViewerMenu(

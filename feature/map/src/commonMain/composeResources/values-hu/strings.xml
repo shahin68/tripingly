@@ -265,4 +265,17 @@
     <string name="map_share_trip_text">Nézd meg ezt az utazást: %1$s (%2$s)!</string>
     <string name="map_share_trip_text_no_dates">Nézd meg ezt az utazást: %1$s!</string>
     <string name="map_error_leave">Nem sikerült kilépni az utazásból.</string>
+    <string name="map_spot_from_osm">OpenStreetMapből</string>
+    <string name="map_spot_card_type">Típus</string>
+    <string name="map_spot_card_flames">Lángok</string>
+    <string name="map_spot_card_in_trips">Utakban</string>
+    <string name="map_error_load_spot">Nem sikerült betölteni a helyet.</string>
+    <plurals name="map_stop_comments_count">
+        <item quantity="one">%1$d hozzászólás</item>
+        <item quantity="other">%1$d hozzászólás</item>
+    </plurals>
+    <plurals name="map_stop_flames_count">
+        <item quantity="one">%1$d láng</item>
+        <item quantity="other">%1$d láng</item>
+    </plurals>
 </resources>

@@ -86,6 +86,13 @@ import com.falcon.tripingly.feature.map.generated.resources.map_route_close
 import com.falcon.tripingly.feature.map.generated.resources.map_route_retry
 import com.falcon.tripingly.feature.map.generated.resources.map_stop_count
 import com.falcon.tripingly.feature.map.presentation.component.MapMarker
+import com.falcon.tripingly.feature.map.generated.resources.map_stop_flames_count
+import com.falcon.tripingly.feature.map.generated.resources.map_stop_comments_count
+import com.falcon.tripingly.core.designsystem.component.CountLabelSize
+import com.falcon.tripingly.core.designsystem.component.CountLabel
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.material.icons.outlined.LocalFireDepartment
+import androidx.compose.material.icons.automirrored.outlined.Comment
 import com.falcon.tripingly.feature.map.presentation.component.lineColor
 import com.falcon.tripingly.feature.map.presentation.map.EditorMenu
 import com.falcon.tripingly.feature.map.presentation.map.MapAction
@@ -101,6 +108,7 @@ import com.falcon.tripingly.feature.map.generated.resources.map_around_close
 import com.falcon.tripingly.feature.map.generated.resources.map_around_named
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.contentDescription
+import com.falcon.tripingly.core.designsystem.component.LoadingTitle
 
 /**
  * The open day's plan: "6 stops" (scrambling to "Ordering…" while the best order is found) with Route and the day's
@@ -322,7 +330,30 @@ private fun DayMenuButton(dayNumber: Int, card: StopsCardState, editorMenu: Edit
     }
 }
 
-/** A stop: its number in a pin-coloured circle and its name; selected while its card is open; × removes it (owners, and editors on their own stops). */
+/**
+ * The stop's comments and flames between its name and the ×, compact, only those above 0 (Shahin, 2026-11-26). Live like
+ * the pins: the counts come from the same stops, kept up to date over the socket.
+ */
+@Composable
+private fun StopChipCounts(stop: MapMarker, color: Color) {
+    if (stop.commentCount <= 0 && stop.hotCount <= 0) return
+    val comments = pluralStringResource(Res.plurals.map_stop_comments_count, stop.commentCount, stop.commentCount)
+    val flames = pluralStringResource(Res.plurals.map_stop_flames_count, stop.hotCount, stop.hotCount)
+    val spoken = listOfNotNull(comments.takeIf { stop.commentCount > 0 }, flames.takeIf { stop.hotCount > 0 }).joinToString()
+    Row(
+        modifier = Modifier.clearAndSetSemantics { contentDescription = spoken },
+        horizontalArrangement = Arrangement.spacedBy(ChipCountsGap),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        if (stop.commentCount > 0) CountLabel(Icons.AutoMirrored.Outlined.Comment, stop.commentCount, color = color, size = CountLabelSize.Compact)
+        if (stop.hotCount > 0) CountLabel(Icons.Outlined.LocalFireDepartment, stop.hotCount, color = color, size = CountLabelSize.Compact)
+    }
+}
+
+/** Between a plan chip's comment and flame counts. */
+private val ChipCountsGap = 6.dp
+
+/** A stop: its number in a pin-coloured circle and its name, then its comment and flame counts; selected while its card is open; × removes it (owners, and editors on their own stops). */
 @Composable
 private fun StopChip(stop: MapMarker, isSelected: Boolean, onAction: (MapAction) -> Unit) {
     Surface(
@@ -342,6 +373,7 @@ private fun StopChip(stop: MapMarker, isSelected: Boolean, onAction: (MapAction)
                 Text(stop.orderNumber.toString(), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.extendedColors.onStop)
             }
             LoadingTitle(stop.title.asString(), stop.isNaming, MaterialTheme.typography.labelLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            StopChipCounts(stop, color = if (isSelected) MaterialTheme.extendedColors.onHighlight else MaterialTheme.colorScheme.onSurfaceVariant)
             if (stop.canDelete) {
                 IconButton(onClick = { onAction(MapAction.Plan.RemoveStop(stop.id)) }, modifier = Modifier.size(ChipHeight)) {
                     Icon(Icons.Default.Close, contentDescription = stringResource(Res.string.map_remove_stop), modifier = Modifier.size(16.dp))

@@ -29,7 +29,7 @@ import kotlinx.datetime.LocalDate
 import org.jetbrains.compose.resources.stringResource
 import kotlin.time.Instant
 
-/** The + on a trip I only view: which of my trips, then which day (the same picker as Nearby's). */
+/** The + on a trip I only view: which of my trips, then which day (the same picker as the Search tab's). */
 @Composable
 internal fun AddToTripSheet(picker: AddToTripState, onAction: (MapAction) -> Unit, onClose: () -> Unit) {
     val trip = picker.trip

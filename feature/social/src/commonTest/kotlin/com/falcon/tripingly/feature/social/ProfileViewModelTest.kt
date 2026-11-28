@@ -98,21 +98,25 @@ class ProfileViewModelTest {
     }
 
     @Test
-    fun unfollowing_showsAtOnce() = runTest {
+    fun unfollowing_spinsUntilTheServerTookIt_thenSwitches() = runTest {
         // The fake user "marton" is followed but doesn't follow back.
         val viewModel = viewModel("marton")
         advanceUntilIdle()
         assertTrue(viewModel.uiState.value.profile!!.isFollowing)
 
         viewModel.onAction(Action.Person.ToggleFollow)
+        assertTrue(viewModel.uiState.value.isFollowPending)
+        assertTrue(viewModel.uiState.value.profile!!.isFollowing)
+        advanceUntilIdle()
 
         val profile = viewModel.uiState.value.profile!!
+        assertFalse(viewModel.uiState.value.isFollowPending)
         assertFalse(profile.isFollowing)
         assertEquals(0, profile.followerCount)
     }
 
     @Test
-    fun following_refused_putsItBack() = runTest {
+    fun following_refused_leavesItAsItWas() = runTest {
         followRefused = true
         val viewModel = viewModel("julia_t")
         advanceUntilIdle()
@@ -121,6 +125,7 @@ class ProfileViewModelTest {
         advanceUntilIdle()
 
         assertFalse(viewModel.uiState.value.profile!!.isFollowing)
+        assertFalse(viewModel.uiState.value.isFollowPending)
         assertTrue(viewModel.uiState.value.message != null)
     }
 
@@ -180,18 +185,17 @@ class ProfileViewModelTest {
     }
 
     @Test
-    fun fastFollowTaps_theLatestWins_andARefusalPutsBackWhatTheServerConfirmed() = runTest {
+    fun fastFollowTaps_whileOneWaits_doNothing() = runTest {
         val viewModel = viewModel("marton")
         advanceUntilIdle()
 
-        followRefused = true
         repeat(3) { viewModel.onAction(Action.Person.ToggleFollow) }
-        assertFalse(viewModel.uiState.value.profile!!.isFollowing, "the third tap shows at once")
+        assertTrue(viewModel.uiState.value.profile!!.isFollowing, "nothing switches before the server took it")
         advanceUntilIdle()
 
         val profile = viewModel.uiState.value.profile!!
-        assertTrue(profile.isFollowing)
-        assertEquals(1, profile.followerCount)
+        assertFalse(profile.isFollowing)
+        assertEquals(0, profile.followerCount)
     }
 
     @Test

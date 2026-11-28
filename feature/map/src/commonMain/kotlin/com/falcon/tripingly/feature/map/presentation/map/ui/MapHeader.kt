@@ -7,6 +7,7 @@ import com.falcon.tripingly.core.designsystem.component.verticalFadingEdge
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.scaleOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.togetherWith
@@ -43,6 +44,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -56,11 +58,14 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.layout.Layout
 import kotlin.math.roundToInt
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.layout.boundsInParent
 import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInRoot
+import androidx.compose.ui.unit.toSize
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.tooling.preview.PreviewParameter
 import androidx.compose.ui.unit.Constraints
@@ -117,7 +122,8 @@ import org.jetbrains.compose.resources.stringResource
  * back. Tapping the title opens the trip card ([onTitleClick]; [onTitlePlaced] gives the pill's bounds inside the
  * header's padding, where the card grows out of it; the pill hides meanwhile, [isTitleHidden]). As the card grows
  * ([cardProgress], 0 to 1) it pushes the back button out to the start and search and ⋮ out to the end, cut at the
- * header's sides (the left half in landscape). Over the native map, so no blur.
+ * header's sides (the left half in landscape). [onBackPlaced] gives the back button's bounds on the screen: a touch there
+ * leaves the map with any card as it is. Over the native map, so no blur.
  */
 @Composable
 internal fun MapHeader(
@@ -128,10 +134,20 @@ internal fun MapHeader(
     isTitleHidden: Boolean = false,
     onTitleClick: () -> Unit = {},
     onTitlePlaced: (Rect) -> Unit = {},
+    onBackPlaced: (Rect) -> Unit = {},
     cardProgress: () -> Float = { 0f },
 ) {
     val progress by animateFloatAsState(if (search != null) 1f else 0f, tween(SEARCH_MOTION_MILLIS))
     val actions = tripMenuActions(header, onAction)
+    val hasMenu = actions.isNotEmpty()
+    // The pill grows in only when its menu comes after the device read the trip without it: someone else's trip, from
+    // the server. Read with it (my own trips, ones opened before), the header is whole at once (Shahin, 2026-11-24).
+    val grows = remember { booleanArrayOf(false) }
+    if (header.isTripRead && !hasMenu) grows[0] = true
+    val growth by animateFloatAsState(if (hasMenu) 1f else 0f, tween(SEARCH_MOTION_MILLIS, easing = Emphasized))
+    val isGrowing by remember { derivedStateOf { growth > 0f } }
+    // How far the pill has grown, 0 to 1; read each frame only by the layout.
+    val pillGrowth = { if (grows[0]) growth else if (hasMenu) 1f else 0f }
     val gap = MaterialTheme.spacing.small
     // How far past the header's padding the trip card pushes the buttons: off the screen, or out of the left half.
     val pushedOut = MaterialTheme.spacing.medium
@@ -155,7 +171,9 @@ internal fun MapHeader(
                     onClick = { onAction(MapAction.Header.Back) },
                     blur = false,
                     size = GlassButtonDefaults.HeaderSize,
-                    modifier = Modifier.graphicsLayer { translationX = -cardProgress() * (size.width + pushedOut.toPx()) },
+                    modifier = Modifier
+                        .graphicsLayer { translationX = -cardProgress() * (size.width + pushedOut.toPx()) }
+                        .onGloballyPositioned { onBackPlaced(Rect(it.positionInRoot(), it.size.toSize())) },
                 ) {
                     Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(Res.string.map_back))
                 }
@@ -169,12 +187,16 @@ internal fun MapHeader(
                         .onGloballyPositioned { onTitlePlaced(it.boundsInParent()) },
                 )
             }
-            GlassButtonRow(blur = false, height = GlassButtonDefaults.HeaderSize) {
+            // Search and ⋮ come once the trip is known: the pill grows in place out of its end while the title shrinks to
+            // make room, once (Shahin, 2026-11-24); known as the map opens, it is just there. Search needs the trip, so it
+            // never shows without ⋮.
+            if (hasMenu || (grows[0] && isGrowing)) GlassButtonRow(blur = false, height = GlassButtonDefaults.HeaderSize) {
                 if (search != null) {
                     SearchField(search, onAction, Modifier.weight(1f))
                 } else {
-                    // At the end while the pill shrinks back, so search and ⋮ stay put and don't glide. A visitor's map
-                    // has no search (Shahin, 2026-11-22): the pill is just ⋮, and search glides in once a join is accepted.
+                    // At the end while the pill shrinks back, so search and ⋮ stay put and don't glide. A visitor's
+                    // map has no search (Shahin, 2026-11-22): the pill is just ⋮, and search glides in once a join is
+                    // accepted.
                     Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.CenterEnd) {
                         androidx.compose.animation.AnimatedVisibility(
                             visible = header.canSearch,
@@ -188,58 +210,59 @@ internal fun MapHeader(
                     }
                 }
                 // While searching, the end button closes the search: ⋮ turns into ✕ in its place and back (Shahin,
-                // 2026-11-21). Without a ⋮, the ✕ comes and goes with the search.
-                if (actions.isNotEmpty()) {
-                    AnimatedVisibility(
-                        visible = header.canSearch,
-                        enter = expandHorizontally(expandFrom = Alignment.End) + fadeIn(),
-                        exit = shrinkHorizontally(shrinkTowards = Alignment.End) + fadeOut(),
-                    ) {
-                        GlassButtonDivider()
-                    }
-                    AnimatedContent(
-                        targetState = search != null,
-                        transitionSpec = {
-                            (scaleIn(tween(ICON_SWAP_MILLIS), initialScale = 0.6f) + fadeIn(tween(ICON_SWAP_MILLIS))) togetherWith
-                                (scaleOut(tween(ICON_SWAP_MILLIS), targetScale = 0.6f) + fadeOut(tween(ICON_SWAP_MILLIS))) using
-                                SizeTransform(clip = false)
-                        },
-                        contentAlignment = Alignment.Center,
-                        label = "menu or close",
-                    ) { isSearching ->
-                        if (isSearching) CloseSearchButton(onAction) else TripMenuButton(actions)
-                    }
-                } else {
-                    AnimatedVisibility(
-                        visible = search != null,
-                        enter = expandHorizontally(tween(SEARCH_MOTION_MILLIS), expandFrom = Alignment.Start) + fadeIn(tween(SEARCH_MOTION_MILLIS)),
-                        exit = shrinkHorizontally(tween(SEARCH_MOTION_MILLIS), shrinkTowards = Alignment.Start) + fadeOut(tween(SEARCH_MOTION_MILLIS)),
-                    ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            GlassButtonDivider()
-                            CloseSearchButton(onAction)
-                        }
-                    }
+                // 2026-11-21).
+                AnimatedVisibility(
+                    visible = header.canSearch,
+                    enter = expandHorizontally(expandFrom = Alignment.End) + fadeIn(),
+                    exit = shrinkHorizontally(shrinkTowards = Alignment.End) + fadeOut(),
+                ) {
+                    GlassButtonDivider()
+                }
+                AnimatedContent(
+                    targetState = search != null,
+                    transitionSpec = {
+                        (scaleIn(tween(ICON_SWAP_MILLIS), initialScale = 0.6f) + fadeIn(tween(ICON_SWAP_MILLIS))) togetherWith
+                            (scaleOut(tween(ICON_SWAP_MILLIS), targetScale = 0.6f) + fadeOut(tween(ICON_SWAP_MILLIS))) using
+                            SizeTransform(clip = false)
+                    },
+                    contentAlignment = Alignment.Center,
+                    label = "menu or close",
+                ) { isSearching ->
+                    if (isSearching) CloseSearchButton(onAction) else TripMenuButton(actions)
                 }
             }
         },
-    ) { (title, pill), constraints ->
+    ) { measurables, constraints ->
         val width = constraints.maxWidth
         val height = GlassButtonDefaults.HeaderSize.roundToPx()
-        if (search == null) collapsedWidth[0] = pill.maxIntrinsicWidth(height)
-        val pillWidth = lerp(collapsedWidth[0], width, progress)
-        val titleWidth = (width - pillWidth - gap.roundToPx()).coerceAtLeast(0)
-        val titlePlaceable = title.measure(Constraints.fixed(titleWidth, height))
-        val pillPlaceable = pill.measure(Constraints.fixed(pillWidth, height))
+        val pill = measurables.getOrNull(1)
+        if (search == null) collapsedWidth[0] = pill?.maxIntrinsicWidth(height) ?: 0
+        val pillWidth = if (pill == null) 0 else lerp(collapsedWidth[0], width, progress)
+        // The pill's room grows with it, the gap too: the title gives up just that room.
+        val shown = pillGrowth()
+        val shownWidth = (pillWidth * shown).roundToInt()
+        val titleWidth = (width - shownWidth - (gap.toPx() * shown).roundToInt()).coerceAtLeast(0)
+        val titlePlaceable = measurables[0].measure(Constraints.fixed(titleWidth, height))
+        val pillPlaceable = pill?.measure(Constraints.fixed(pillWidth, height))
         layout(width, height) {
             titlePlaceable.place(0, 0)
-            pillPlaceable.placeWithLayer(width - pillWidth, 0) { translationX = cardProgress() * (pillWidth + pushedOut.toPx()) }
+            pillPlaceable?.placeWithLayer(width - pillWidth, 0) {
+                // Grows out of its end, in place.
+                transformOrigin = TransformOrigin(1f, 0.5f)
+                scaleX = shown
+                scaleY = shown
+                alpha = shown
+                translationX = cardProgress() * (pillWidth + pushedOut.toPx())
+            }
         }
     }
 }
 
 /** How long the search pill takes to grow over the header or shrink back. */
 private const val SEARCH_MOTION_MILLIS = 300
+
+/** Material's emphasized easing: quick out of the start, a long soft settle. */
+private val Emphasized = CubicBezierEasing(0.2f, 0f, 0f, 1f)
 
 /** ⋮ and ✕ swapping: a quick scale, once per open or close. */
 private const val ICON_SWAP_MILLIS = 150

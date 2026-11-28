@@ -41,10 +41,14 @@ fun CountLabel(
 ) {
     Row(
         modifier = modifier,
-        horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraSmall),
+        horizontalArrangement = Arrangement.spacedBy(size.gap),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        val style = if (size == CountLabelSize.Large) MaterialTheme.typography.labelLarge else MaterialTheme.typography.labelMedium
+        val style = when (size) {
+            CountLabelSize.Compact -> MaterialTheme.typography.labelSmall
+            CountLabelSize.Small -> MaterialTheme.typography.labelMedium
+            CountLabelSize.Large -> MaterialTheme.typography.labelLarge
+        }
         val label = @Composable { Text(text = compactCount(count), color = color, style = style) }
         if (countFirst) label()
         Icon(icon, contentDescription = null, tint = color, modifier = Modifier.size(size.iconSize))
@@ -67,8 +71,11 @@ fun compactCount(count: Int): String {
     }
 }
 
-/** Small for counts among other details; Large as big as a [LikeButton] or [HotButton], where it stands for one (e.g. my own trip's likes). */
-enum class CountLabelSize(val iconSize: Dp) { Small(16.dp), Large(20.dp) }
+/**
+ * Compact where the counts share a tight row with a name (a plan chip, Shahin 2026-11-26); Small for counts among other
+ * details; Large as big as a [LikeButton] or [HotButton], where it stands for one (e.g. my own trip's likes).
+ */
+enum class CountLabelSize(val iconSize: Dp, val gap: Dp) { Compact(14.dp, 2.dp), Small(16.dp, 4.dp), Large(20.dp, 4.dp) }
 
 @Composable
 private fun CountLabelPreviewContent() {
@@ -82,6 +89,7 @@ private fun CountLabelPreviewContent() {
         CountLabel(Icons.Outlined.ChatBubbleOutline, 12_480, color = muted)
         CountLabel(Icons.Outlined.PhotoCamera, 1_250_000, color = muted)
         CountLabel(Icons.Outlined.FavoriteBorder, 3, color = muted, size = CountLabelSize.Large)
+        CountLabel(Icons.Outlined.ChatBubbleOutline, 1_204, color = muted, size = CountLabelSize.Compact)
     }
 }
 

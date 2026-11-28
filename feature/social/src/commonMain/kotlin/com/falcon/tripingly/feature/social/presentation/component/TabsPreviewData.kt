@@ -4,16 +4,15 @@ import androidx.compose.ui.tooling.preview.PreviewParameterProvider
 import com.falcon.tripingly.core.model.place.PlaceCategory
 import com.falcon.tripingly.core.model.social.NearbyPlace
 import com.falcon.tripingly.core.model.trip.GeoPoint
-import com.falcon.tripingly.core.model.trip.TripDay
 import com.falcon.tripingly.core.ui.UiText
 import com.falcon.tripingly.feature.social.generated.resources.Res
 import com.falcon.tripingly.feature.social.generated.resources.social_error_load_explore
 import com.falcon.tripingly.feature.social.presentation.explore.ExploreViewModel
-import com.falcon.tripingly.feature.social.presentation.nearby.NearbyViewModel
-import com.falcon.tripingly.feature.social.presentation.nearby.NearbyViewModel.AddPlaceState
-import com.falcon.tripingly.feature.social.presentation.nearby.NearbyViewModel.Status
+import com.falcon.tripingly.feature.social.presentation.search.SearchViewModel
+import com.falcon.tripingly.feature.social.presentation.search.SearchViewModel.Status
 import kotlinx.collections.immutable.persistentListOf
-import kotlinx.datetime.LocalDate
+import com.falcon.tripingly.core.model.social.Person
+import kotlinx.collections.immutable.toImmutableList
 
 internal val previewNearbyPlaces = persistentListOf(
     NearbyPlace(
@@ -42,6 +41,27 @@ internal val previewNearbyPlaces = persistentListOf(
         coverThumbUrl = null,
         distanceMeters = 2_400,
     ),
+    NearbyPlace(
+        id = "n3",
+        name = "Stadtpark",
+        category = PlaceCategory("park"),
+        location = GeoPoint(48.2049, 16.3796),
+        isTripinly = true,
+        hotCount = 3,
+        hotByMe = false,
+        coverImageId = null,
+        coverSource = null,
+        coverThumbUrl = null,
+        distanceMeters = null,
+        city = "Wien",
+    ),
+)
+
+/** People a search found: a friend, someone I follow, someone who follows me and one of neither, of 42 in all. */
+internal val previewFoundPeople = SearchViewModel.PeopleState(
+    people = previewPeople.mapIndexed { index, user -> Person(user, isFollowing = index < 2, followsMe = index == 0 || index == 2) }.toImmutableList(),
+    total = 42,
+    hasLoaded = true,
 )
 
 /** Explore with trips, the first load, filtered to nothing, and a first load that failed. */
@@ -61,32 +81,22 @@ internal class ExplorePreviewStates : PreviewParameterProvider<ExploreViewModel.
     )
 }
 
-/** Nearby while locating, asking for the location, after it was blocked, with places, with none around, and failed. */
-internal class NearbyPreviewStates : PreviewParameterProvider<NearbyViewModel.State> {
+/**
+ * The Search tab while locating, asking for the location, after it was blocked, with places (and the people tip), with none
+ * around, failed, and searching (the top people on top).
+ */
+internal class SearchPreviewStates : PreviewParameterProvider<SearchViewModel.State> {
     override val values = sequenceOf(
-        NearbyViewModel.State(status = Status.Locating),
-        NearbyViewModel.State(status = Status.NeedsPermission),
-        NearbyViewModel.State(status = Status.Blocked),
-        NearbyViewModel.State(status = Status.Ready, places = previewNearbyPlaces),
-        NearbyViewModel.State(status = Status.Ready),
-        NearbyViewModel.State(status = Status.Ready, loadError = UiText.Resource(Res.string.social_error_load_explore)),
-    )
-}
-
-/** Picking a trip, the trip's days loading, and picking a day. */
-internal class AddPlacePreviewStates : PreviewParameterProvider<AddPlaceState> {
-    private val trips = persistentListOf(previewTrip.trip, previewTrip.trip.copy(id = "t2", name = "Lake Balaton", startDate = null, endDate = null))
-    override val values = sequenceOf(
-        AddPlaceState(previewNearbyPlaces[0], trips),
-        AddPlaceState(previewNearbyPlaces[0], trips, trip = trips[0], isLoadingDays = true),
-        AddPlaceState(
-            place = previewNearbyPlaces[0],
-            trips = trips,
-            trip = trips[0],
-            days = persistentListOf(
-                TripDay("d1", 0, LocalDate(2026, 6, 1), emptyList()),
-                TripDay("d2", 1, LocalDate(2026, 6, 2), emptyList()),
-            ),
+        SearchViewModel.State(status = Status.Locating),
+        SearchViewModel.State(status = Status.NeedsPermission),
+        SearchViewModel.State(status = Status.Blocked),
+        SearchViewModel.State(status = Status.Ready, places = previewNearbyPlaces, isPeopleTipShown = true),
+        SearchViewModel.State(status = Status.Ready),
+        SearchViewModel.State(status = Status.Ready, loadError = UiText.Resource(Res.string.social_error_load_explore)),
+        SearchViewModel.State(
+            status = Status.Ready,
+            places = previewNearbyPlaces,
+            search = SearchViewModel.SearchState(query = "ma", people = previewFoundPeople, spots = previewNearbyPlaces, hasLoaded = true),
         ),
     )
 }

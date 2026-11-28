@@ -69,9 +69,6 @@ class ProfileViewModel(
     private var loadingMore: Job? = null
     private var following: Job? = null
 
-    /** The follow as the server last confirmed it: the profile before the first tap of a burst. */
-    private lateinit var confirmedFollow: Profile
-
     private val tripActions = PublicTripActions(
         scope = viewModelScope,
         socialRepository = socialRepository,
@@ -195,30 +192,32 @@ class ProfileViewModel(
         }
     }
 
-    /** Like a heart: shown at once and kept; a newer tap wins, and only a refusal puts back what the server last confirmed. */
+    /**
+     * Waits for the server (Shahin, 2026-11-24): the button spins meanwhile and switches, with Friend and the follower
+     * count, once the server took it; a refusal leaves it as it was, with the error banner. Taps while it waits do nothing.
+     */
     private fun toggleFollow() {
         val shown = _uiState.value.profile ?: return
-        if (following?.isActive != true) confirmedFollow = shown
-        following?.cancel()
+        if (following?.isActive == true) return
         val follow = !shown.isFollowing
-        _uiState.update {
-            it.copy(
-                profile = shown.copy(
-                    isFollowing = follow,
-                    isFriend = follow && shown.followsMe,
-                    followerCount = (shown.followerCount + if (follow) 1 else -1).coerceAtLeast(0),
-                ),
-            )
-        }
+        _uiState.update { it.copy(isFollowPending = true) }
         following = viewModelScope.launch {
             val result = userRepository.setFollowing(shown.user.id, follow)
-            if (result is AppResult.Error) {
-                val failed = if (follow) Res.string.social_error_follow else Res.string.social_error_unfollow
-                _uiState.update { state ->
-                    val before = confirmedFollow
-                    state.copy(
-                        profile = state.profile?.copy(isFollowing = before.isFollowing, isFriend = before.isFriend, followerCount = before.followerCount),
-                        message = result.error.toUiText(failed),
+            _uiState.update { state ->
+                val profile = state.profile
+                when {
+                    result is AppResult.Error -> {
+                        val failed = if (follow) Res.string.social_error_follow else Res.string.social_error_unfollow
+                        state.copy(isFollowPending = false, message = result.error.toUiText(failed))
+                    }
+                    profile == null -> state.copy(isFollowPending = false)
+                    else -> state.copy(
+                        isFollowPending = false,
+                        profile = profile.copy(
+                            isFollowing = follow,
+                            isFriend = follow && profile.followsMe,
+                            followerCount = (profile.followerCount + if (follow) 1 else -1).coerceAtLeast(0),
+                        ),
                     )
                 }
             }
@@ -264,6 +263,8 @@ class ProfileViewModel(
         /** Why the profile couldn't load: the error screen with a retry. */
         val loadError: UiText? = null,
         val isConfirmingBlock: Boolean = false,
+        /** A Follow or Unfollow tap waits for the server: the button spins. */
+        val isFollowPending: Boolean = false,
         val report: ReportState? = null,
         val message: UiText? = null,
     )

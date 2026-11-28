@@ -280,9 +280,10 @@ class TripMembersViewModel(
             updateSearch { it.copy(results = persistentListOf(), isLoading = false) }
             return
         }
+        // Loading from the key, not only once the request goes out: the field's icon spins while it waits for the pause.
+        updateSearch { it.copy(isLoading = true) }
         searchJob = viewModelScope.launch {
             delay(SEARCH_DEBOUNCE)
-            updateSearch { it.copy(isLoading = true) }
             val result = userRepository.search(query)
             updateSearch { it.copy(results = (result as? AppResult.Success)?.data?.toImmutableList() ?: it.results, isLoading = false) }
             if (result is AppResult.Error) ui.update { it.copy(message = result.error.toUiText(Res.string.members_error_search)) }

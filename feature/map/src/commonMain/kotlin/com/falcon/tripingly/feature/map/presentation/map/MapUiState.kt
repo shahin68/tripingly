@@ -83,6 +83,11 @@ data class HeaderState(
     val card: TripCardState = TripCardState(),
     /** The trip is loading for the first time: the title shows as its skeleton. */
     val isLoading: Boolean = false,
+    /**
+     * The device has looked for the trip: with what it keeps (my own trips, ones opened before) the header is whole at
+     * once; without, its menu comes later from the server and glides in.
+     */
+    val isTripRead: Boolean = false,
     /** A day change, a save or a request to join waits for the server. */
     val isBusy: Boolean = false,
     /** "Trip members · 4" at the top of the ⋮ menu, which opens the members sheet. */

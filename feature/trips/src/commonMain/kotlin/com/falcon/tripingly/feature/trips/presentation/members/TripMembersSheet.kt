@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -20,7 +21,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -327,11 +327,10 @@ private fun AddPeoplePage(state: State, search: SearchState, onAction: (Action) 
             placeholder = stringResource(Res.string.members_search_hint),
             onTextChange = { onAction(Action.Search.QueryChanged(it)) },
             style = AppTextFieldStyle.Search,
+            isLoading = search.isLoading,
             modifier = Modifier.padding(horizontal = MaterialTheme.spacing.medium).fillMaxWidth().focusRequester(focus),
         )
-        Box(Modifier.fillMaxWidth().padding(horizontal = MaterialTheme.spacing.large).padding(vertical = MaterialTheme.spacing.extraSmall)) {
-            if (search.isLoading) LinearProgressIndicator(Modifier.fillMaxWidth())
-        }
+        Spacer(Modifier.height(MaterialTheme.spacing.small))
         LazyColumn(Modifier.weight(1f).fillMaxWidth(), contentPadding = PaddingValues(bottom = MaterialTheme.spacing.medium)) {
             if (friends.isNotEmpty()) {
                 card(key = "friends", title = { CardTitle(stringResource(Res.string.members_friends_title)) }, entries = friends, entryKey = UserSummary::id) { user ->

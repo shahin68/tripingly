@@ -266,4 +266,17 @@
     <string name="map_share_trip_text">Check out this trip: %1$s (%2$s)!</string>
     <string name="map_share_trip_text_no_dates">Check out this trip: %1$s!</string>
     <string name="map_error_leave">Couldn’t leave the trip.</string>
+    <string name="map_spot_from_osm">From OpenStreetMap</string>
+    <string name="map_spot_card_type">Type</string>
+    <string name="map_spot_card_flames">Flames</string>
+    <string name="map_spot_card_in_trips">In trips</string>
+    <string name="map_error_load_spot">Couldn’t load this spot.</string>
+    <plurals name="map_stop_comments_count">
+        <item quantity="one">%1$d comment</item>
+        <item quantity="other">%1$d comments</item>
+    </plurals>
+    <plurals name="map_stop_flames_count">
+        <item quantity="one">%1$d flame</item>
+        <item quantity="other">%1$d flames</item>
+    </plurals>
 </resources>

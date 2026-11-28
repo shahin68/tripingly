@@ -46,6 +46,8 @@ private val previewStops = persistentListOf(
         title = UiText.Server("Eiffel Tower"),
         orderNumber = 1,
         canDelete = true,
+        commentCount = 12,
+        hotCount = 1_240,
     ),
     MapMarker(
         id = "2",
@@ -53,6 +55,7 @@ private val previewStops = persistentListOf(
         title = UiText.Server("Louvre Museum"),
         orderNumber = 2,
         canDelete = true,
+        hotCount = 3,
     ),
 )
 

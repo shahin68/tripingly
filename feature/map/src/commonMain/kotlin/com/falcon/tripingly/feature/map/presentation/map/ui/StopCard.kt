@@ -75,6 +75,12 @@ import com.falcon.tripingly.feature.map.presentation.map.preview.previewPlaceDet
 import com.falcon.tripingly.feature.map.presentation.map.preview.previewPlaceImages
 import com.falcon.tripingly.feature.map.presentation.map.preview.previewStop
 import org.jetbrains.compose.resources.stringResource
+import com.falcon.tripingly.core.designsystem.component.PhotoBanner
+import com.falcon.tripingly.core.designsystem.component.PinMark
+import com.falcon.tripingly.core.designsystem.component.BannerButton
+import com.falcon.tripingly.core.designsystem.component.BannerHotButton
+import com.falcon.tripingly.core.designsystem.component.BannerCountButton
+import com.falcon.tripingly.core.designsystem.component.LoadingTitle
 
 /**
  * A stop tapped on the map, floating above its pin: a slim pill (its image, name, "Stop 2 · Attraction", Delete or +,
@@ -118,7 +124,7 @@ internal fun PinCardScope.StopCard(
                         title = stop.title.asString(),
                         subtitle = stopSubtitle(card, position = imagePosition(images.size, pagerState.currentPage)),
                         isTitleLoading = stop.isNaming,
-                        afterSubtitle = { card.addedBy?.let { AddedByInline(it, it.text()) } },
+                        afterSubtitle = { AddedByInline(card.addedBy) { it.text() } },
                         image = if (images.isEmpty()) null else pagerImages(images, pagerState, description, onOpen = { onOpenPhotos() }),
                         onClick = onOpenPhotos,
                         mark = { PinMark(card.category, isStop = true) },

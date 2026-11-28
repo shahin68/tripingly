@@ -26,17 +26,20 @@ internal class MapCamera(private val context: MapContext) {
     val target: Coordinates get() = context.model.value.camera.target
     val zoom: Float get() = context.model.value.camera.zoom
 
-    /** Moves the camera somewhere else than where I am: the map stops following me. */
-    fun moveTo(target: Coordinates, zoom: Float) {
+    /**
+     * Moves the camera somewhere else than where I am: the map stops following me. [afterLayout]: once what closes
+     * with it is laid out ([CameraCommand.MoveAfterLayout]).
+     */
+    fun moveTo(target: Coordinates, zoom: Float, afterLayout: Boolean = false) {
         stopFollowing()
-        follow(target, zoom)
+        follow(target, zoom, afterLayout)
     }
 
     /** Moves the camera to where I am, following me (see [MapLocation]). */
-    fun follow(target: Coordinates, zoom: Float) {
+    fun follow(target: Coordinates, zoom: Float, afterLayout: Boolean = false) {
         shownFit = null
         context.update { it.copy(camera = it.camera.copy(target = target, zoom = zoom, isReady = true)) }
-        _commands.trySend(CameraCommand.MoveTo(target, zoom))
+        _commands.trySend(if (afterLayout) CameraCommand.MoveAfterLayout(target, zoom) else CameraCommand.MoveTo(target, zoom))
     }
 
     /** A finger moved the map, or the screen showed something else: the camera no longer follows me. */

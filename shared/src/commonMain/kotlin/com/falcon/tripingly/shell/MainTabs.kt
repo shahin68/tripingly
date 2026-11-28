@@ -9,8 +9,8 @@ import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Explore
 import androidx.compose.material.icons.outlined.Luggage
-import androidx.compose.material.icons.outlined.NearMe
 import androidx.compose.material.icons.outlined.Person
+import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
@@ -34,20 +34,18 @@ import com.falcon.tripingly.core.designsystem.component.NavBarItem
 import com.falcon.tripingly.core.designsystem.component.SearchSettingsPill
 import com.falcon.tripingly.core.designsystem.component.safeSides
 import com.falcon.tripingly.core.designsystem.theme.spacing
-import com.falcon.tripingly.core.model.photo.PhotoOwner
 import com.falcon.tripingly.deeplink.DeepLinks
-import com.falcon.tripingly.feature.map.presentation.photos.PhotoViewerRoute
 import com.falcon.tripingly.feature.social.presentation.explore.ExplorePeriodAction
 import com.falcon.tripingly.feature.social.presentation.explore.ExploreRoute
-import com.falcon.tripingly.feature.social.presentation.nearby.NearbyRoute
-import com.falcon.tripingly.feature.social.presentation.profile.PeopleSearchField
+import com.falcon.tripingly.feature.social.presentation.search.SearchRoute
+import com.falcon.tripingly.feature.social.presentation.search.SearchTabField
 import com.falcon.tripingly.feature.social.presentation.profile.ProfileRoute
 import com.falcon.tripingly.feature.trips.presentation.screen.AddTripButton
 import com.falcon.tripingly.feature.trips.presentation.screen.HomeRoute
 import com.falcon.tripingly.feature.trips.presentation.screen.TripsSearchField
 import com.falcon.tripingly.shared.generated.resources.Res
 import com.falcon.tripingly.shared.generated.resources.tab_explore
-import com.falcon.tripingly.shared.generated.resources.tab_nearby
+import com.falcon.tripingly.shared.generated.resources.tab_search
 import com.falcon.tripingly.shared.generated.resources.tab_profile
 import com.falcon.tripingly.shared.generated.resources.tab_trips
 import com.falcon.tripingly.shared.generated.resources.tab_trips_title
@@ -59,15 +57,15 @@ import org.koin.compose.koinInject
 internal enum class MainTab(val label: StringResource, val icon: ImageVector, val title: StringResource = label, val hasSearch: Boolean = false) {
     Trips(Res.string.tab_trips, Icons.Outlined.Luggage, Res.string.tab_trips_title, hasSearch = true),
     Explore(Res.string.tab_explore, Icons.Outlined.Explore),
-    Nearby(Res.string.tab_nearby, Icons.Outlined.NearMe),
-    Profile(Res.string.tab_profile, Icons.Outlined.Person, hasSearch = true),
+    Search(Res.string.tab_search, Icons.Outlined.Search, hasSearch = true),
+    Profile(Res.string.tab_profile, Icons.Outlined.Person),
 }
 
 /**
  * The tab shell: one floating top bar and one floating bottom bar over the tabs, which the user swipes between
  * like pages or picks in the bottom bar (tap, or drag its selection; a tap on a far tab jumps there without passing the tabs in between). The top bar animates to the page shown: its
- * title, the page's own action (Explore's period) and the search button in the Settings pill (Trips, Profile).
- * The button opens the tab's search field with the keyboard; the field's ✕ closes both. A tab keeps its search open
+ * title, the page's own action (Explore's period) and the search button in the Settings pill (Trips, Search).
+ * The button (and the Search tab's people tip) opens the tab's search field with the keyboard; the field's ✕ closes both. A tab keeps its search open
  * while another is shown, like its scroll position. The Add Trip button
  * shrinks away off the Trips tab. Every tab keeps its scroll position and view models while another is shown
  * (they live as long as this screen); content scrolls behind both bars. Profile has a red dot while something new
@@ -77,6 +75,7 @@ internal enum class MainTab(val label: StringResource, val icon: ImageVector, va
 internal fun MainTabs(
     onOpenTrip: (tripId: String) -> Unit,
     onOpenProfile: (username: String) -> Unit,
+    onOpenSpot: (placeId: String) -> Unit,
     onOpenSettings: () -> Unit,
     onOpenNotifications: () -> Unit,
     modifier: Modifier = Modifier,
@@ -102,6 +101,11 @@ internal fun MainTabs(
         searchFocus.requestFocus()
         focusSearch = false
     }
+    // The search button, and the Search tab's people tip.
+    val openSearch = { tab: MainTab ->
+        searching += tab
+        focusSearch = true
+    }
     Scaffold(
         modifier = modifier.fillMaxSize(),
         contentWindowInsets = WindowInsets(0),
@@ -112,13 +116,13 @@ internal fun MainTabs(
                 pageActions = { if (it == MainTab.Explore) ExplorePeriodAction() },
                 actions = {
                     val canSearch = shown.hasSearch && shown !in searching
-                    SearchSettingsPill(onSearch = if (canSearch) ({ searching += shown; focusSearch = true }) else null, onSettings = onOpenSettings)
+                    SearchSettingsPill(onSearch = if (canSearch) ({ openSearch(shown) }) else null, onSettings = onOpenSettings)
                 },
                 search = { tab ->
                     val onClose = { searching -= tab }
                     when (tab) {
                         MainTab.Trips -> { { TripsSearchField(onClose, Modifier.focusRequester(searchFocus)) } }
-                        MainTab.Profile -> { { PeopleSearchField(onClose, Modifier.focusRequester(searchFocus)) } }
+                        MainTab.Search -> { { SearchTabField(onClose, Modifier.focusRequester(searchFocus)) } }
                         else -> null
                     }
                 },
@@ -139,11 +143,10 @@ internal fun MainTabs(
                 when (tab) {
                     MainTab.Trips -> HomeRoute(onNavigateToMap = onOpenTrip, barsPadding = barsPadding)
                     MainTab.Explore -> ExploreRoute(onOpenTrip = onOpenTrip, onOpenProfile = onOpenProfile, barsPadding = barsPadding)
-                    MainTab.Nearby -> NearbyRoute(
-                        onOpenTrip = onOpenTrip,
-                        placeImageContent = { placeId, imageId, onReport, onDismiss ->
-                            PhotoViewerRoute(owner = PhotoOwner.Place(placeId), photoId = imageId, onReport = onReport, onDismiss = onDismiss)
-                        },
+                    MainTab.Search -> SearchRoute(
+                        onOpenSpot = onOpenSpot,
+                        onOpenProfile = onOpenProfile,
+                        onOpenSearch = { openSearch(MainTab.Search) },
                         barsPadding = barsPadding,
                     )
                     MainTab.Profile -> ProfileRoute(

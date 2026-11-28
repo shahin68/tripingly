@@ -5,7 +5,10 @@ import com.falcon.tripingly.core.common.result.AppResult
 import com.falcon.tripingly.core.data.users.UserRepository.Companion.MIN_SEARCH_LENGTH
 import com.falcon.tripingly.core.model.Page
 import com.falcon.tripingly.core.model.social.PeopleList
+import com.falcon.tripingly.core.model.social.PeoplePage
+import com.falcon.tripingly.core.model.social.Person
 import com.falcon.tripingly.core.model.social.Profile
+import com.falcon.tripingly.core.model.trip.GeoPoint
 import com.falcon.tripingly.core.model.trip.UserSummary
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -43,6 +46,17 @@ class FakeUserRepository : UserRepository {
                 it.username.startsWith(trimmed, ignoreCase = true) || it.displayName.startsWith(trimmed, ignoreCase = true)
             },
         )
+    }
+
+    /** Everyone (or those matching [query]), friends first, then follows either way; one page. */
+    override suspend fun findPeople(query: String?, near: GeoPoint?, cursor: String?): AppResult<PeoplePage, DataError.Network> {
+        val trimmed = query?.trim()?.removePrefix("@").orEmpty()
+        if (trimmed.isNotEmpty() && trimmed.length < MIN_SEARCH_LENGTH) return AppResult.Success(PeoplePage(emptyList(), 0, null))
+        val found = visible()
+            .filter { trimmed.isEmpty() || it.username.startsWith(trimmed, ignoreCase = true) || it.displayName.startsWith(trimmed, ignoreCase = true) }
+            .map { Person(it, isFollowing = it.id in following, followsMe = it.id in followers) }
+            .sortedBy { if (it.isFriend) 0 else if (it.isFollowing || it.followsMe) 1 else 2 }
+        return AppResult.Success(PeoplePage(found, found.size, nextCursor = null))
     }
 
     override suspend fun friends(): AppResult<List<UserSummary>, DataError.Network> =

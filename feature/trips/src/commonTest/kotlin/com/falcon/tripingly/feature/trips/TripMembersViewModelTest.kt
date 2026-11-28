@@ -30,6 +30,7 @@ import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertIs
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
@@ -275,9 +276,11 @@ class TripMembersViewModelTest {
         runCurrent()
         advanceTimeBy(100)
         assertTrue(viewModel.uiState.value.search!!.results.isEmpty())
+        assertTrue(viewModel.uiState.value.search!!.isLoading, "the field spins from the key")
         advanceUntilIdle()
 
         assertEquals(listOf("marton"), viewModel.uiState.value.search!!.results.map { it.username })
+        assertFalse(viewModel.uiState.value.search!!.isLoading)
         viewModel.onAction(Action.Search.Close)
         runCurrent()
         assertNull(viewModel.uiState.value.search)

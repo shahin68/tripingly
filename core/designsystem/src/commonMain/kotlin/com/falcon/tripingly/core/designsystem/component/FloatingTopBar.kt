@@ -43,6 +43,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.IntOffset
@@ -77,8 +78,9 @@ fun FloatingTopBar(
  * The floating glass header shared by several pages (the tabs), showing what [page] asks for. When the page
  * changes it animates as on the design canvas: the old [title] slides up and fades while the new one comes in from
  * below, the page's own [pageActions] cross-fade (the shared [actions] stay put), and the [search] row (shown while
- * [isSearchOpen] says so, so a page can open and close it) grows, shrinks, or cross-fades to the new page's field. Like the trip card's content, a field coming in slides down a
- * little while it fades in, and one going away only fades, while the row grows or shrinks with one easing.
+ * [isSearchOpen] says so, so a page can open and close it) grows out of the top end, where the search button is, and
+ * shrinks back into it, or cross-fades to the new page's field. Like the trip card's content, a field coming in slides
+ * down a little while it fades in, and one going away only fades, while the row grows or shrinks with one easing.
  */
 @Composable
 fun <T> AnimatedTopBar(
@@ -129,9 +131,13 @@ fun <T> AnimatedTopBar(
                 ) { shown -> Row(verticalAlignment = Alignment.CenterVertically) { pageActions(shown) } }
                 actions()
             }
-            // The page whose field shows, or null for no row at all; a field going away keeps drawing while it fades.
+            // The page whose field shows, or null for no row at all; a field going away keeps drawing while it fades. The
+            // row grows out of the top end, where the search button is, and shrinks back into it (Shahin, 2026-11-24).
             AnimatedContent(
                 targetState = page.takeIf { search(it) != null && isSearchOpen(it) },
+                // At the bar's end, so its growing width opens from the right, not the left.
+                modifier = Modifier.align(Alignment.End),
+                contentAlignment = Alignment.TopEnd,
                 transitionSpec = { SearchIn togetherWith SearchOut using SizeTransform(clip = true) { _, _ -> SearchResize } },
             ) { shown ->
                 shown?.let(search)?.let { field -> Box(Modifier.padding(top = MaterialTheme.spacing.small)) { field() } }
@@ -200,11 +206,18 @@ private val SearchResize = tween<IntSize>(durationMillis = 300, easing = Emphasi
 private val SearchIn = slideInVertically(tween(300, easing = Emphasized)) { -it / 4 } + fadeIn(tween(220))
 private val SearchOut = fadeOut(tween(90))
 
-/** The pill's search half folds into its right edge (towards Settings) and unfolds from it. */
-private val SearchButtonIn = expandHorizontally(tween(300, easing = Emphasized), expandFrom = Alignment.End) +
-    scaleIn(tween(300, easing = Emphasized)) + fadeIn(tween(220))
-private val SearchButtonOut = shrinkHorizontally(tween(300, easing = Emphasized), shrinkTowards = Alignment.End) +
-    scaleOut(tween(300, easing = Emphasized)) + fadeOut(tween(150))
+/**
+ * The pill's search half folds into its right edge (towards Settings) and unfolds from it. Tapped, the icon shrinks
+ * down out of its bottom, into the search row opening below; when the search closes it comes back up out of the
+ * bottom, as if from the search row (Shahin, 2026-11-24). Not clipped, so it can go below the pill.
+ */
+private val BottomMiddle = TransformOrigin(0.5f, 1f)
+private val SearchButtonIn = expandHorizontally(tween(300, easing = Emphasized), expandFrom = Alignment.End, clip = false) +
+    scaleIn(tween(300, easing = Emphasized), transformOrigin = BottomMiddle) +
+    slideInVertically(tween(300, easing = Emphasized)) { it / 3 } + fadeIn(tween(220))
+private val SearchButtonOut = shrinkHorizontally(tween(300, easing = Emphasized), shrinkTowards = Alignment.End, clip = false) +
+    scaleOut(tween(300, easing = Emphasized), transformOrigin = BottomMiddle) +
+    slideOutVertically(tween(300, easing = Emphasized)) { it / 3 } + fadeOut(tween(150))
 
 @Composable
 private fun FloatingTopBarPreviewContent() {
@@ -214,7 +227,7 @@ private fun FloatingTopBarPreviewContent() {
                 AppTextField(rememberTextFieldState(), "Search trips…", Modifier.fillMaxWidth(), style = AppTextFieldStyle.Search)
             })
             FloatingTopBar(title = "Profile", actions = { SearchSettingsPill(onSearch = {}, onSettings = {}) })
-            FloatingTopBar(title = "Nearby", actions = { SearchSettingsPill(onSearch = null, onSettings = {}) })
+            FloatingTopBar(title = "Search", actions = { SearchSettingsPill(onSearch = null, onSettings = {}) })
             FloatingTopBar(title = "@anna", navigationIcon = { BackAction({}) })
             Spacer(Modifier.height(MaterialTheme.spacing.medium))
         }

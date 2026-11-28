@@ -406,6 +406,21 @@ class MapViewModelTest {
     }
 
     @Test
+    fun `the header knows once the device has looked for the trip whether it keeps it or not`() = runTest(testDispatcher) {
+        // Kept here: the menu comes with the trip, so the header is whole at once.
+        val kept = viewModel()
+        testScheduler.advanceUntilIdle()
+        assertTrue(kept.uiState.value.header.isTripRead)
+        assertNotNull(kept.uiState.value.header.members)
+
+        // Not kept here: read all the same, so a menu coming later from the server grows in.
+        val notKept = viewModel(tripId = "missing")
+        testScheduler.advanceUntilIdle()
+        assertTrue(notKept.uiState.value.header.isTripRead)
+        assertNull(notKept.uiState.value.header.members)
+    }
+
+    @Test
     fun `a trip that is gone still opens its map and says it isn't available in the banner`() = runTest(testDispatcher) {
         val viewModel = viewModel(tripId = "missing")
         testScheduler.advanceUntilIdle()

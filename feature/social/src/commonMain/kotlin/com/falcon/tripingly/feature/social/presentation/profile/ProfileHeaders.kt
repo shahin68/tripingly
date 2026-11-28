@@ -1,6 +1,5 @@
 package com.falcon.tripingly.feature.social.presentation.profile
 
-import com.falcon.tripingly.core.designsystem.component.rememberHaptics
 import com.falcon.tripingly.core.designsystem.component.skeletonText
 import com.falcon.tripingly.core.designsystem.component.skeleton
 import androidx.compose.foundation.background
@@ -20,23 +19,18 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.tooling.preview.PreviewParameter
 import androidx.compose.ui.unit.dp
 import com.falcon.tripingly.core.designsystem.component.AvatarCircle
-import com.falcon.tripingly.core.designsystem.component.AvatarSize
-import com.falcon.tripingly.core.designsystem.component.ButtonSize
-import com.falcon.tripingly.core.designsystem.component.PrimaryButton
-import com.falcon.tripingly.core.designsystem.component.SecondaryButton
 import com.falcon.tripingly.core.designsystem.component.EditableAvatar
 import com.falcon.tripingly.core.designsystem.component.compactCount
 import com.falcon.tripingly.core.designsystem.theme.TripinglyTheme
 import com.falcon.tripingly.core.designsystem.theme.spacing
 import com.falcon.tripingly.core.model.social.Profile
 import com.falcon.tripingly.feature.social.generated.resources.Res
-import com.falcon.tripingly.feature.social.generated.resources.social_follow
 import com.falcon.tripingly.feature.social.generated.resources.social_followers
 import com.falcon.tripingly.feature.social.generated.resources.social_following
-import com.falcon.tripingly.feature.social.generated.resources.social_following_button
 import com.falcon.tripingly.feature.social.generated.resources.social_follows_you
 import com.falcon.tripingly.feature.social.generated.resources.social_public_trips_label
 import org.jetbrains.compose.resources.stringResource
+import com.falcon.tripingly.feature.social.presentation.component.FollowButton
 
 /**
  * My profile at the top of the Profile tab: my avatar with the pen that changes my [photo], name and handle with
@@ -78,10 +72,10 @@ internal fun MyProfileHeader(
 
 /**
  * A profile opened from elsewhere: a large avatar, the name, "Follows you", the counts and Follow / Following
- * ([onToggleFollow] null on my own, opened e.g. from a trip of mine).
+ * ([onToggleFollow] null on my own, opened e.g. from a trip of mine), spinning while a tap waits for the server ([isFollowPending]).
  */
 @Composable
-internal fun PersonProfileHeader(profile: Profile, onToggleFollow: (() -> Unit)?, modifier: Modifier = Modifier) {
+internal fun PersonProfileHeader(profile: Profile, onToggleFollow: (() -> Unit)?, modifier: Modifier = Modifier, isFollowPending: Boolean = false) {
     Column(
         modifier = modifier.fillMaxWidth().padding(vertical = MaterialTheme.spacing.small),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -96,17 +90,7 @@ internal fun PersonProfileHeader(profile: Profile, onToggleFollow: (() -> Unit)?
             Count(profile.followerCount, stringResource(Res.string.social_followers))
             Count(profile.followingCount, stringResource(Res.string.social_following))
         }
-        if (onToggleFollow == null) return@Column
-        val haptics = rememberHaptics()
-        val toggle = {
-            haptics.toggle(!profile.isFollowing)
-            onToggleFollow()
-        }
-        if (profile.isFollowing) {
-            SecondaryButton(stringResource(Res.string.social_following_button), toggle, size = ButtonSize.Medium)
-        } else {
-            PrimaryButton(stringResource(Res.string.social_follow), toggle, size = ButtonSize.Medium)
-        }
+        if (onToggleFollow != null) FollowButton(profile.isFollowing, onToggleFollow, isPending = isFollowPending, alignment = Alignment.Center)
     }
 }
 

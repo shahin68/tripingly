@@ -9,7 +9,6 @@
     <string name="social_nearby">In der Nähe</string>
     <string name="social_explore_empty">Noch keine Reisen hier</string>
     <string name="social_explore_empty_hint">Probiere einen anderen Zeitraum oder schau etwas später wieder vorbei.</string>
-    <string name="social_people_none">Niemand mit diesem Namen gefunden.</string>
     <string name="social_save_trip">Speichern</string>
     <string name="social_saved_trip">Gespeichert</string>
     <plurals name="social_trip_stop_count">
@@ -21,7 +20,7 @@
         <item quantity="other">%1$d-mal gespeichert</item>
     </plurals>
 
-    <!-- Nearby -->
+    <!-- Search tab -->
     <string name="social_nearby_ask">Sieh beliebte Orte in deiner Nähe. Dein Standort wird nur dafür verwendet und nie gespeichert.</string>
     <string name="social_nearby_blocked">Der Standort ist für Tripinly ausgeschaltet. Erlaube ihn in den Einstellungen, um beliebte Orte in deiner Nähe zu sehen.</string>
     <string name="social_nearby_allow">Standort erlauben</string>
@@ -29,13 +28,8 @@
     <string name="social_nearby_location_unavailable">Dein Standort ist gerade nicht verfügbar.</string>
     <string name="social_nearby_empty">Noch keine beliebten Orte in deiner Nähe</string>
     <string name="social_nearby_empty_hint">Orte, die Leute hier mögen, erscheinen hier.</string>
-    <string name="social_nearby_distance_m">%1$d m entfernt</string>
-    <string name="social_nearby_distance_km">%1$s km entfernt</string>
-    <string name="social_nearby_open_images">Fotos anzeigen</string>
-    <string name="social_add_place">Zur Reise</string>
-    <string name="social_add_place_no_trips">Erstelle zuerst eine Reise und füge dann Orte hinzu.</string>
-    <string name="social_add_place_pick_trip">%1$s zu welcher Reise hinzufügen?</string>
-    <string name="social_add_place_pick_day">Welcher Tag von %1$s?</string>
+    <string name="social_nearby_distance_m">%1$d m</string>
+    <string name="social_nearby_distance_km">%1$s km</string>
     <string name="social_day_number">Tag %1$d</string>
 
     <!-- Profile -->
@@ -61,14 +55,11 @@
 
     <!-- Errors: what failed -->
     <string name="social_error_load_explore">Entdecken konnte nicht geladen werden.</string>
-    <string name="social_error_search_people">Die Personensuche ist fehlgeschlagen.</string>
     <string name="social_error_like">Dein Like konnte nicht gespeichert werden.</string>
-    <string name="social_error_hot">Der Ort konnte nicht als Hotspot markiert werden.</string>
     <string name="social_error_save_trip">Die Reise konnte nicht gespeichert werden.</string>
     <string name="social_error_unsave_trip">Die Reise konnte nicht aus deinen Reisen entfernt werden.</string>
     <string name="social_error_report">Deine Meldung konnte nicht gesendet werden.</string>
     <string name="social_error_load_nearby">Orte in deiner Nähe konnten nicht geladen werden.</string>
-    <string name="social_error_load_days">Die Tage der Reise konnten nicht geladen werden.</string>
     <string name="social_error_load_profile">Das Profil konnte nicht geladen werden.</string>
     <string name="social_error_follow">Folgen ist fehlgeschlagen.</string>
     <string name="social_error_unfollow">Entfolgen ist fehlgeschlagen.</string>
@@ -80,9 +71,7 @@
     <string name="social_trip_created">Erstellt %1$s</string>
 
     <!-- Tabs (redesign) -->
-    <string name="social_search_people">Personen suchen…</string>
     <string name="social_near_me">In meiner Nähe</string>
-    <string name="social_location_note">Dein Standort wird nur zum Finden von Orten genutzt und nie gespeichert.</string>
     <string name="social_trips">Reisen</string>
     <string name="social_public_trips_label">Öffentliche Reisen</string>
     <string name="social_explore_period">Zeitraum: %1$s</string>
@@ -96,4 +85,14 @@
     <string name="social_trip_member">Du bist dabei</string>
     <string name="social_trip_own">Deine Reise</string>
     <string name="social_notifications">Benachrichtigungen</string>
+    <string name="social_search_hint">Personen und Orte suchen…</string>
+    <string name="social_search_none">Nichts mit diesem Namen gefunden.</string>
+    <string name="social_error_search">Die Suche ist gerade fehlgeschlagen.</string>
+    <string name="social_people">Personen</string>
+    <string name="social_people_see_all">Alle %1$s Personen ansehen</string>
+    <string name="social_people_tip_title">Reise mit Freunden</string>
+    <string name="social_people_tip_body">Suche jeden nach Namen oder @Benutzernamen und folge ihren Reisen.</string>
+    <string name="social_people_tip_search">Personen suchen</string>
+    <string name="social_people_tip_close">Hinweis schließen</string>
+    <string name="social_friend_tag">Befreundet</string>
 </resources>

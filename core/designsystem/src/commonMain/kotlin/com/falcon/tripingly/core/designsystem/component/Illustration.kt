@@ -53,18 +53,23 @@ fun Illustration(illustration: Illustration, modifier: Modifier = Modifier) {
 /**
  * Nothing to show: an [illustration] over a [title] and an optional [message], centred in the room it's given (a list
  * places it with `fillParentMaxSize()`, so pull-to-refresh still works). With a bounded room wider than tall
- * (landscape) the picture stands beside the words, as in [ErrorScreen].
+ * (landscape) the picture stands beside the words, as in [ErrorScreen], and takes the whole height: landscape has
+ * little of it, and a margin above and below shrank the picture (Shahin, 2026-11-24).
  */
 @Composable
 fun EmptyState(illustration: Illustration, title: String, modifier: Modifier = Modifier, message: String? = null) {
-    BoxWithConstraints(modifier.padding(horizontal = MaterialTheme.spacing.extraLarge, vertical = MaterialTheme.spacing.large), contentAlignment = Alignment.Center) {
+    BoxWithConstraints(modifier.padding(horizontal = MaterialTheme.spacing.extraLarge), contentAlignment = Alignment.Center) {
         if (constraints.hasBoundedHeight && maxWidth > maxHeight) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.large)) {
                 Illustration(illustration)
                 EmptyWords(title, message, Modifier.weight(1f, fill = false))
             }
         } else {
-            Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium)) {
+            Column(
+                modifier = Modifier.padding(vertical = MaterialTheme.spacing.large),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium),
+            ) {
                 Illustration(illustration)
                 EmptyWords(title, message)
             }

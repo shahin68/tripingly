@@ -32,6 +32,8 @@ import com.falcon.tripingly.core.data.routing.DefaultRouteRepository
 import com.falcon.tripingly.core.data.routing.RouteRepository
 import com.falcon.tripingly.core.data.social.DefaultSocialRepository
 import com.falcon.tripingly.core.data.social.SocialRepository
+import com.falcon.tripingly.core.data.tips.DataStoreTipRepository
+import com.falcon.tripingly.core.data.tips.TipRepository
 import com.falcon.tripingly.core.data.trips.DataStoreTripMapViewRepository
 import com.falcon.tripingly.core.data.trips.DefaultMarkerRepository
 import com.falcon.tripingly.core.data.trips.DefaultTripInviteRepository
@@ -64,6 +66,7 @@ val dataModule = module {
         )
     }
     single<TripMapViewRepository> { DataStoreTripMapViewRepository(get()) }
+    single<TipRepository> { DataStoreTipRepository(get()) }
     single<MarkerRepository> {
         DefaultMarkerRepository(
             api = get(),

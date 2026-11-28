@@ -129,7 +129,9 @@ fun SecondaryButton(
  * [tint]: the button stands for something else for now (the plan's Route turning into Around's ✕): filled with that
  * colour, the icon white and a hairline white edge like the pins' ring, in light and dark alike (Shahin, 2026-11-17), no
  * on/off. Without [text] it is a circle with its
- * [icon] (the caller gives it a content description). Colours, stroke and content glide from one look to the next,
+ * [icon] (the caller gives it a content description). [isLoading]: the pill shrinks into a circle with a small spinner
+ * while the server answers, and taps wait; it grows into its new look after. [quietWhenChecked]: brand-filled while
+ * off and neutral while on (Follow / Following). Colours, stroke and content glide from one look to the next,
  * the width easing with them, so the button turns into the other one; callers keep ONE call site for all its looks,
  * since a second call is another button that can't morph.
  */
@@ -143,8 +145,11 @@ fun ToggleButton(
     icon: ImageVector? = null,
     isFailed: Boolean = false,
     tint: Color? = null,
+    isLoading: Boolean = false,
+    quietWhenChecked: Boolean = false,
 ) {
     val haptics = rememberHaptics()
+    val isFilled = checked != quietWhenChecked
     val colors = MaterialTheme.colorScheme
     val isRetry = checked && isFailed && tint == null
     val isToggle = !isRetry && tint == null
@@ -152,13 +157,13 @@ fun ToggleButton(
     val container = when {
         tint != null -> tint
         isRetry -> MaterialTheme.extendedColors.attention
-        checked -> primary.containerColor
+        isFilled -> primary.containerColor
         else -> colors.surfaceVariant
     }
     val content = when {
         tint != null -> Color.White
         isRetry -> MaterialTheme.extendedColors.onAttention
-        checked -> primary.contentColor
+        isFilled -> primary.contentColor
         else -> colors.onSurface
     }
     val look = tween<Color>(MORPH_MILLIS)
@@ -172,8 +177,10 @@ fun ToggleButton(
         // One button that only changes colour, so switching doesn't replace it (and its ripple) with another.
         Button(
             onClick = {
-                if (isToggle) haptics.toggle(!checked)
-                onClick()
+                if (!isLoading) {
+                    if (isToggle) haptics.toggle(!checked)
+                    onClick()
+                }
             },
             shape = CircleShape,
             // The padding is part of the content below, so it glides with the width.
@@ -187,14 +194,19 @@ fun ToggleButton(
                 .heightIn(min = size.height)
                 .skeleton(CircleShape),
         ) {
-            // Only a new text or icon swaps the content; the colour follows on its own above.
+            // Only a new text or icon, or the spinner (null), swaps the content; the colour follows on its own above.
             AnimatedContent(
-                targetState = text to icon,
+                targetState = (text to icon).takeUnless { isLoading },
                 transitionSpec = { fadeIn(tween(MORPH_MILLIS)) togetherWith fadeOut(tween(MORPH_MILLIS / 2)) using SizeTransform(clip = false) { _, _ -> tween(MORPH_MILLIS) } },
                 contentAlignment = Alignment.Center,
                 label = "toggle content",
-            ) { (shownText, shownIcon) ->
-                if (shownText != null) {
+            ) { shown ->
+                val (shownText, shownIcon) = shown ?: (null to null)
+                if (shown == null) {
+                    Box(Modifier.size(size.height), contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator(modifier = Modifier.size(SpinnerSize), strokeWidth = 2.dp, color = LocalContentColor.current)
+                    }
+                } else if (shownText != null) {
                     Row(Modifier.padding(size.padding), verticalAlignment = Alignment.CenterVertically) { ButtonContent(shownText, isLoading = false, size, shownIcon) }
                 } else {
                     Box(Modifier.size(size.height), contentAlignment = Alignment.Center) {
@@ -253,6 +265,8 @@ private fun ButtonsPreviewContent() {
         ToggleButton("Route", checked = true, onClick = {}, icon = Icons.Outlined.AutoAwesome)
         ToggleButton("Retry", checked = true, onClick = {}, icon = Icons.Outlined.Refresh, isFailed = true)
         ToggleButton(null, checked = false, onClick = {}, icon = Icons.Default.Close, tint = Color(0xFF8A5AAB))
+        ToggleButton("Follow", checked = false, onClick = {}, quietWhenChecked = true)
+        ToggleButton("Following", checked = true, onClick = {}, quietWhenChecked = true, isLoading = true)
     }
 }
 

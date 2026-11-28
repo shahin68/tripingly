@@ -13,7 +13,7 @@ import com.falcon.tripingly.feature.auth.presentation.onboarding.OnboardingViewM
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.datetime.LocalDate
 
-private val previewDocuments = persistentListOf(
+internal val previewDocuments = persistentListOf(
     DocumentItem(LegalDocument(LegalDocumentType.TERMS, "2026-09-01", "en", "https://example.com/terms", true), accepted = true),
     DocumentItem(LegalDocument(LegalDocumentType.PRIVACY, "2026-09-01", "en", "https://example.com/privacy", true), accepted = true),
     DocumentItem(LegalDocument(LegalDocumentType.MARKETING, "2026-09-01", "en", "https://example.com/marketing", false), accepted = false),

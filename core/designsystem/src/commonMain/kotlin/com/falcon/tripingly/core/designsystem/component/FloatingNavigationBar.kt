@@ -33,8 +33,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Explore
 import androidx.compose.material.icons.filled.Luggage
-import androidx.compose.material.icons.filled.NearMe
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -232,7 +232,7 @@ private object NavBarDefaults {
 private val PreviewTabs = listOf(
     NavBarItem("Trips", Icons.Default.Luggage),
     NavBarItem("Explore", Icons.Default.Explore),
-    NavBarItem("Nearby", Icons.Default.NearMe),
+    NavBarItem("Search", Icons.Default.Search),
     NavBarItem("Profile", Icons.Default.Person, hasBadge = true),
 )
 

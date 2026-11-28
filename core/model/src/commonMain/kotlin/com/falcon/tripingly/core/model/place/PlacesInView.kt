@@ -75,6 +75,14 @@ data class PlaceDetails(
     val addedBy: UserSummary? = null,
     /** From OpenStreetMap, credited as "© OpenStreetMap contributors"; false for a custom spot people made. */
     val isFromOsm: Boolean = false,
+    /** Street and house number, city, from OpenStreetMap; null when it has none (custom spots). */
+    val address: String? = null,
+    /** Public trips with a stop here. */
+    val tripCount: Int = 0,
+    /** Its pin, for a map of this place alone (the spot map); null where a caller didn't load it. */
+    val pin: MapPlace? = null,
+    /** I marked it hot. */
+    val hotByMe: Boolean = false,
 )
 
 enum class PlaceImageSource { Trip, Commons }

@@ -67,6 +67,8 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import org.koin.compose.getKoin
 import org.koin.compose.koinInject
+import com.falcon.tripingly.core.navigation.SpotMap
+import com.falcon.tripingly.feature.map.presentation.spot.SpotMapRoute
 
 /** [onStarted]: the first real screen is on (Android lets its splash go then). */
 @Composable
@@ -129,6 +131,7 @@ private fun MainNavigation() {
                 is DeepLink.Marker ->
                     (markers.tripIdOfMarker(link.markerId) as? AppResult.Success)?.data?.let { TripMap(it, stopId = link.markerId, showComments = link.showComments) }
                 is DeepLink.Members -> TripMap(link.tripId, showMembers = true)
+                is DeepLink.Place -> SpotMap(link.placeId)
                 is DeepLink.User -> Profile(link.username)
                 // My Followers are on the Profile tab: back to the tabs, which switch to it.
                 is DeepLink.Followers -> {
@@ -172,7 +175,7 @@ private fun MainNavigation() {
             }
         },
     ) { route ->
-        NavEntry(route, metadata = if (route is TripMap) KeepMapSceneStrategy.keepUnder else emptyMap()) { key ->
+        NavEntry(route, metadata = if (route is TripMap || route is SpotMap) KeepMapSceneStrategy.keepUnder else emptyMap()) { key ->
             // Once this screen's slide in has ended, and from then on.
             val transition = LocalNavAnimatedContentScope.current.transition
             val arrived by produceState(false, transition) {
@@ -185,6 +188,7 @@ private fun MainNavigation() {
                     is Home -> MainTabs(
                         onOpenTrip = { backStack.add(TripMap(it)) },
                         onOpenProfile = { backStack.add(Profile(it)) },
+                        onOpenSpot = { backStack.add(SpotMap(it)) },
                         onOpenSettings = { backStack.add(Settings) },
                         onOpenNotifications = { backStack.add(Notifications) },
                     )
@@ -200,6 +204,12 @@ private fun MainNavigation() {
                             membersContent = { tripId, onDismiss -> TripMembersSheets(tripId = tripId, onDismiss = onDismiss) },
                         )
                     }
+                    is SpotMap -> SpotMapRoute(
+                        placeId = key.placeId,
+                        onNavigateBack = { goBack() },
+                        onOpenProfile = { backStack.add(Profile(it)) },
+                        onOpenPaywall = { backStack.add(Paywall) },
+                    )
                     is Profile -> ProfileRoute(
                         username = key.username,
                         onBack = { goBack() },

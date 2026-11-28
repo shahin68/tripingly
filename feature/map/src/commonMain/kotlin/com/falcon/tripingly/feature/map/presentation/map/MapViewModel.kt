@@ -96,8 +96,10 @@ class MapViewModel(
     private val session = sessionRepository.session
     private val myUserId = (session.value as? SessionState.SignedIn)?.account?.id
 
-    private val trip: StateFlow<TripDetails?> =
-        tripRepository.observeTrip(tripId).stateIn(viewModelScope, SharingStarted.Eagerly, null)
+    /** The trip as this device has it; null until the device has answered (then [CachedTrip.details] null: not kept here). */
+    private val cachedTrip: StateFlow<CachedTrip?> =
+        tripRepository.observeTrip(tripId).map(::CachedTrip).stateIn(viewModelScope, SharingStarted.Eagerly, null)
+    private val trip: StateFlow<TripDetails?> = cachedTrip.map { it?.details }.stateIn(viewModelScope, SharingStarted.Eagerly, null)
 
     private val context = MapContext(tripId, viewModelScope, trip)
     private val model get() = context.model.value
@@ -137,7 +139,7 @@ class MapViewModel(
      * ring is dragged), only the newest state when several changes come at once (Shahin 2026-11-17: the map lagged on
      * the main thread after a while).
      */
-    val uiState: StateFlow<MapUiState> = combine(trip, context.model, ::toUiState)
+    val uiState: StateFlow<MapUiState> = combine(cachedTrip, context.model) { cached, model -> toUiState(cached?.details, model, isTripRead = cached != null) }
         .conflate()
         .flowOn(computation)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), toUiState(null, model))
@@ -368,9 +370,9 @@ class MapViewModel(
         }
     }
 
-    private fun toUiState(details: TripDetails?, model: MapModel): MapUiState {
+    private fun toUiState(details: TripDetails?, model: MapModel, isTripRead: Boolean = false): MapUiState {
         val config = appConfigRepository.config.value
-        val mapper = MapStateMapper(details, model, config, myUserId)
+        val mapper = MapStateMapper(details, model, config, myUserId, isTripRead)
         // Most changes (a search keystroke, a message, a sheet) don't touch the map: its ~150 pins aren't built again.
         val inputs = listOf(details, model.activeDayIndex, model.route, model.pins, model.selection, model.location.permission, model.news, model.arePlacesHidden, model.around, model.placeFilter.categories, model.placeFilter.name, config)
         val layers = layers?.takeIf { it.first == inputs }?.second ?: mapper.layers().also { layers = inputs to it }
@@ -431,3 +433,6 @@ private fun MapAction.startsPlaceTools(): Boolean = when (this) {
     is MapAction.PlaceFilter, is MapAction.Plan.AlongTheWayClick, is MapAction.Plan.AddAlongTheWay, is MapAction.Plan.ToggleAlongCategory -> true
     else -> false
 }
+
+/** What this device keeps of the trip, once it has looked: [details] null when it keeps nothing. */
+private class CachedTrip(val details: TripDetails?)

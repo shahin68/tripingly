@@ -1,8 +1,7 @@
 package com.falcon.tripingly.feature.social.di
 
 import com.falcon.tripingly.feature.social.presentation.explore.ExploreViewModel
-import com.falcon.tripingly.feature.social.presentation.nearby.NearbyViewModel
-import com.falcon.tripingly.feature.social.presentation.people.PeopleSearchViewModel
+import com.falcon.tripingly.feature.social.presentation.search.SearchViewModel
 import com.falcon.tripingly.feature.social.presentation.people.PeopleViewModel
 import com.falcon.tripingly.feature.social.presentation.profile.MyProfilePhotoViewModel
 import com.falcon.tripingly.feature.social.presentation.profile.ProfileViewModel
@@ -12,8 +11,7 @@ import org.koin.dsl.module
 
 val socialModule = module {
     viewModelOf(::ExploreViewModel)
-    viewModelOf(::NearbyViewModel)
-    viewModelOf(::PeopleSearchViewModel)
+    viewModelOf(::SearchViewModel)
     viewModelOf(::MyProfilePhotoViewModel)
     viewModel { params ->
         ProfileViewModel(

@@ -1,5 +1,6 @@
 package com.falcon.tripingly.feature.auth.presentation.onboarding
 
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -34,6 +35,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
@@ -141,8 +144,15 @@ internal fun OnboardingScreen(
             )
             return@Scaffold
         }
-        // One readable column, also on tablets and in landscape.
-        Box(Modifier.fillMaxSize().verticalScroll(rememberScrollState()), contentAlignment = Alignment.TopCenter) {
+        // One readable column, also on tablets and in landscape. The keyboard covers the bottom instead of pushing the
+        // form up, so a tap anywhere outside the fields (or the keyboard's Done) closes it.
+        val focusManager = LocalFocusManager.current
+        Box(
+            Modifier.fillMaxSize()
+                .pointerInput(focusManager) { detectTapGestures { focusManager.clearFocus() } }
+                .verticalScroll(rememberScrollState()),
+            contentAlignment = Alignment.TopCenter,
+        ) {
             Column(
                 modifier = Modifier.widthIn(max = ContentMaxWidth).fillMaxWidth().padding(screenContentPadding(padding)),
                 verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium),
@@ -198,7 +208,7 @@ private fun ColumnScope.ProfileStep(
             leadingIcon = Icons.Outlined.AlternateEmail,
             inputTransformation = UsernameInput,
             isError = isError,
-            keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.None, autoCorrectEnabled = false, keyboardType = KeyboardType.Ascii),
+            keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.None, autoCorrectEnabled = false, keyboardType = KeyboardType.Ascii, imeAction = ImeAction.Done),
             modifier = Modifier.fillMaxWidth(),
         )
         usernameHint(state.usernameStatus)?.let { FieldHint(stringResource(it), isError) }

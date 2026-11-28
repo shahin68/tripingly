@@ -20,6 +20,7 @@ import com.falcon.tripingly.core.network.newIdempotencyKey
 import com.falcon.tripingly.core.network.realtime.RealtimeClient
 import com.falcon.tripingly.core.network.realtime.RealtimeEvent
 import com.falcon.tripingly.core.network.social.SocialApi
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -34,6 +35,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.flow.updateAndGet
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
 
 internal class DefaultSocialRepository(
     private val api: SocialApi,
@@ -78,7 +80,10 @@ internal class DefaultSocialRepository(
     private val _myLikes = MutableSharedFlow<LikeChange>(extraBufferCapacity = LIKE_BUFFER)
     override val myLikes: Flow<LikeChange> = _myLikes.asSharedFlow()
 
-    override suspend fun setLiked(target: LikeTarget, targetId: String, liked: Boolean): AppResult<LikeState, DataError.Network> =
+    // A like or flame is sent to its end even when the screen that tapped it closes on the way (a flame on the spot
+    // map, then straight back to the Search tab): the server gets it and every other screen hears of it; only the closed
+    // screen misses the answer.
+    override suspend fun setLiked(target: LikeTarget, targetId: String, liked: Boolean): AppResult<LikeState, DataError.Network> = withContext(NonCancellable) {
         setLatest("${target.wireName}:$targetId", liked) { on ->
             (if (on) api.like(target.wireName, targetId) else api.unlike(target.wireName, targetId)).map { Toggle(it.liked, it.likeCount.toInt()) }
         }.map { LikeState(it.on, it.count) }
@@ -89,12 +94,14 @@ internal class DefaultSocialRepository(
                     _myLikes.emit(LikeChange(target, targetId, it.data))
                 }
             }
+    }
 
     /** Per place, while taps on its flame are on their way: its stops' flame and count before the first tap. */
     private val hotBeforeTaps = mutableMapOf<String, HotState>()
     private val hotLock = Mutex()
 
-    override suspend fun setHot(placeId: String, hot: Boolean): AppResult<HotState, DataError.Network> {
+    // Sent to its end like a like (see setLiked), so a refused stop flame is put back too.
+    override suspend fun setHot(placeId: String, hot: Boolean): AppResult<HotState, DataError.Network> = withContext(NonCancellable) {
         // A place's flame changes at once on its stops in the cached trips and stays; the server's answer doesn't
         // move it, and a refusal puts back what it was before the taps.
         hotLock.withLock {
@@ -110,7 +117,7 @@ internal class DefaultSocialRepository(
             val before = hotBeforeTaps.remove(placeId)
             if (before != null && result is AppResult.Error) local.savePlaceHot(placeId, before.hotCount, before.hot)
         }
-        return result.map { HotState(it.on, it.count) }
+        result.map { HotState(it.on, it.count) }
             .also { if (it is AppResult.Success) _myHot.emit(HotChange(placeId, it.data.hot, it.data.hotCount)) }
     }
 

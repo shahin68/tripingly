@@ -3,6 +3,9 @@ package com.falcon.tripingly.core.data.users
 import com.falcon.tripingly.core.common.error.DataError
 import com.falcon.tripingly.core.common.result.AppResult
 import com.falcon.tripingly.core.model.social.PeopleList
+import com.falcon.tripingly.core.model.social.PeoplePage
+import com.falcon.tripingly.core.model.social.Person
+import com.falcon.tripingly.core.model.trip.GeoPoint
 import com.falcon.tripingly.core.model.trip.UserSummary
 import com.falcon.tripingly.core.network.ApiConfig
 import com.falcon.tripingly.core.network.auth.InMemoryTokenStore
@@ -49,22 +52,59 @@ class UserRepositoryTest {
 
     @Test
     fun search_asksWithoutTheAt_andMapsThePeople() = runTest {
-        val repository = repository("""{"items":[$ANNA]}""")
+        val repository = repository(PEOPLE_PAGE)
 
         val result = repository.search(" @an")
 
-        assertEquals(listOf(UserSummary(ANNA_ID, "anna", "Anna")), (result as AppResult.Success).data)
+        assertEquals(listOf(UserSummary(ANNA_ID, "anna", "Anna"), UserSummary(BEN_ID, "ben", "Ben")), (result as AppResult.Success).data)
         assertEquals("/v1/users/search", requests.single().url.encodedPath)
         assertEquals("an", requests.single().url.parameters["q"])
     }
 
     @Test
     fun search_withOneLetter_returnsNothingWithoutAsking() = runTest {
-        val repository = repository("""{"items":[$ANNA]}""")
+        val repository = repository(PEOPLE_PAGE)
 
         val result = repository.search("a")
 
         assertEquals(emptyList(), (result as AppResult.Success).data)
+        assertTrue(requests.isEmpty())
+    }
+
+    // Anna comes without followsMe, as from a server before it: isFriend says she follows me.
+    @Test
+    fun findPeople_sendsThePointAndCursor_andMapsWhatTheyAreToMe() = runTest {
+        val repository = repository(PEOPLE_PAGE)
+
+        val result = repository.findPeople(query = null, near = GeoPoint(48.2, 16.37), cursor = "c1")
+
+        val page = (result as AppResult.Success).data
+        assertEquals(
+            PeoplePage(
+                listOf(
+                    Person(UserSummary(ANNA_ID, "anna", "Anna"), isFollowing = true, followsMe = true),
+                    Person(UserSummary(BEN_ID, "ben", "Ben"), isFollowing = false, followsMe = true),
+                ),
+                999,
+                "c2",
+            ),
+            page,
+        )
+        val request = requests.single()
+        assertEquals("/v1/users/search", request.url.encodedPath)
+        assertEquals(null, request.url.parameters["q"])
+        assertEquals("48.2", request.url.parameters["lat"])
+        assertEquals("16.37", request.url.parameters["lng"])
+        assertEquals("c1", request.url.parameters["cursor"])
+    }
+
+    @Test
+    fun findPeople_withOneLetter_returnsNothingWithoutAsking() = runTest {
+        val repository = repository(PEOPLE_PAGE)
+
+        val result = repository.findPeople(query = "a", near = null)
+
+        assertEquals(PeoplePage(emptyList(), 0, null), (result as AppResult.Success).data)
         assertTrue(requests.isEmpty())
     }
 
@@ -160,7 +200,11 @@ class UserRepositoryTest {
 
     private companion object {
         const val ANNA_ID = "22222222-2222-4222-8222-222222222222"
+        const val BEN_ID = "33333333-3333-4333-8333-333333333333"
         const val ANNA = """{"id":"$ANNA_ID","username":"anna","displayName":"Anna"}"""
+        const val PEOPLE_PAGE = """{"items":[{"id":"$ANNA_ID","username":"anna","displayName":"Anna","avatarPhotoId":null,"avatarThumbUrl":null,
+            "isFriend":true,"isFollowing":true},{"id":"$BEN_ID","username":"ben","displayName":"Ben","avatarPhotoId":null,
+            "avatarThumbUrl":null,"isFriend":false,"isFollowing":false,"followsMe":true}],"total":999,"nextCursor":"c2"}"""
         const val TRIP = """{"id":"t1","title":"Vienna","startDate":null,"endDate":null,"visibility":"public","owner":$ANNA,
             "role":"viewer","coverPhotoId":"ph1","coverThumbUrl":"https://r2.test/ph1/thumb?sig=1","dayCount":1,"markerCount":2,"editorCount":0,"likeCount":4,"likedByMe":false,
             "saveCount":1,"savedByMe":false,"createdAt":"2026-10-11T09:00:00Z","updatedAt":"2026-10-11T10:00:00Z"}"""

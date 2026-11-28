@@ -1,14 +1,18 @@
 package com.falcon.tripingly.feature.map.presentation.component
 
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asSkiaBitmap
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.unit.Density
 import com.falcon.tripingly.core.designsystem.theme.MapColors
 import kotlinx.cinterop.BetaInteropApi
 import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.cinterop.addressOf
 import kotlinx.cinterop.usePinned
+import org.jetbrains.skia.BlendMode
+import org.jetbrains.skia.Canvas
 import org.jetbrains.skia.EncodedImageFormat
 import org.jetbrains.skia.Font
 import org.jetbrains.skia.FontMgr
@@ -42,35 +46,32 @@ internal fun ByteArray.toNSData(): NSData =
 internal fun boldFont(points: Float): Font = Font(FontMgr.default.legacyMakeTypeface("", FontStyle.BOLD), points)
 
 /**
- * A stop's pin: its [onStop] number on the [stop] colour in the pins' thin ring, centered on the stop and stretched
- * into a pill when the number is wider than the circle, with the "new" dot when [isNew], as `TripMarkerIcon` draws it
- * on Android; in its [halo] while the day's route shows.
+ * A stop's pin: its [onStop] number on the [stop] colour in the pins' thin ring, a circle whatever the number, with the
+ * "new" dot when [isNew], as `TripMarkerIcon` draws it on Android; in its [halo] while the day's route shows.
  */
 internal fun drawTripPin(orderNumber: Int, isNew: Boolean, stop: Color, onStop: Color, halo: Color?, density: Float, fontScale: Float): UIImage {
     val pin = PIN_SIZE.value * density
     val font = boldFont(13 * density * fontScale)
-    val width = pillWidth(orderNumber, font, pin, PIN_NUMBER_PADDING.value * density)
-    val surface = haloSurface(ceil(width).toInt(), pin.toInt(), halo, density)
-    surface.canvas.apply {
+    val width = pillWidth(orderNumber, font, pin, padding = 0f)
+    return drawStopPin(width, pin, hasCover = false, isNew, badgeWidth = 0f, halo, density, fontScale) {
         drawNumberPill(orderNumber, Rect.makeXYWH(0f, 0f, width, pin), font, stop.toArgb(), onStop.toArgb(), density)
-        if (isNew) drawNewDot(density, hasCover = false)
     }
-    return UIImage(data = surface.makeImageSnapshot().png(), scale = density.toDouble())
 }
 
 /**
- * A stop's pin with its cover photo: the photo in an [onStop] ring with the number in a small badge on it, and the
- * "new" dot when [isNew], as `TripMarkerIcon` draws it on Android; in its [halo] while the day's route shows.
+ * A stop's pin with its cover photo: the photo in an [onStop] ring with the number in a small badge, its right
+ * half-circle on the ring at 315° and a wider badge reaching further left, and the "new" dot when [isNew], as
+ * `TripMarkerIcon` draws it on Android; in its [halo] while the day's route shows.
  */
 internal fun drawCoverPin(orderNumber: Int, cover: ImageBitmap, isNew: Boolean, stop: Color, onStop: Color, halo: Color?, density: Float, fontScale: Float): UIImage {
     val pin = COVER_PIN_SIZE.value * density
     val ring = PIN_STROKE.value * density
     val badge = COVER_BADGE_SIZE.value * density
+    val corner = ringCorner(hasCover = true).value * density
     val font = boldFont(10 * density * fontScale)
     val badgeWidth = pillWidth(orderNumber, font, badge, BADGE_NUMBER_PADDING.value * density)
-    val surface = haloSurface(pin.toInt(), pin.toInt(), halo, density)
     val photo = Image.makeFromBitmap(cover.asSkiaBitmap())
-    surface.canvas.apply {
+    return drawStopPin(pin, pin, hasCover = true, isNew, badgeWidth, halo, density, fontScale) {
         drawCircle(pin / 2, pin / 2, pin / 2, fill(PIN_STROKE_COLOR))
         save()
         val inner = Rect.makeXYWH(ring, ring, pin - 2 * ring, pin - 2 * ring)
@@ -80,32 +81,60 @@ internal fun drawCoverPin(orderNumber: Int, cover: ImageBitmap, isNew: Boolean, 
         val source = Rect.makeXYWH((photo.width - side) / 2, (photo.height - side) / 2, side, side)
         drawImageRect(photo, source, inner, SamplingMode.LINEAR, Paint().apply { isAntiAlias = true }, true)
         restore()
-        drawNumberPill(orderNumber, Rect.makeXYWH(pin - badgeWidth, 0f, badgeWidth, badge), font, stop.toArgb(), onStop.toArgb(), density)
-        if (isNew) drawNewDot(density, hasCover = true)
+        val badgeRight = pin / 2 - corner + badge / 2
+        drawNumberPill(orderNumber, Rect.makeXYWH(badgeRight - badgeWidth, pin / 2 - corner - badge / 2, badgeWidth, badge), font, stop.toArgb(), onStop.toArgb(), density)
+    }
+}
+
+/**
+ * A stop's marker image: the pin's body [width] by [height], drawn by [drawBody] from its own top left, in [halo] when
+ * there is one (see [STOP_HALO_WIDTH]), with the "new" dot when [isNew]. The image reaches as far on each side of the
+ * stop as on the opposite one (see [stopMarkerHalfSize]), so the stop is at its center and the 0.5 anchor holds.
+ */
+private fun drawStopPin(
+    width: Float,
+    height: Float,
+    hasCover: Boolean,
+    isNew: Boolean,
+    badgeWidth: Float,
+    halo: Color?,
+    density: Float,
+    fontScale: Float,
+    drawBody: Canvas.() -> Unit,
+): UIImage {
+    val pad = if (halo != null) STOP_HALO_WIDTH.value * density else 0f
+    val bodyWidth = width + 2 * pad
+    val bodyHeight = height + 2 * pad
+    val half = Density(density, fontScale).stopMarkerHalfSize(hasCover, isNew, Size(bodyWidth, bodyHeight), badgeWidth)
+    // Whole pixels on each side of the stop, so it sits exactly at the image's center.
+    val centerX = ceil(half.width)
+    val centerY = ceil(half.height)
+    val surface = Surface.makeRasterN32Premul(2 * centerX.toInt(), 2 * centerY.toInt())
+    surface.canvas.apply {
+        val left = centerX - bodyWidth / 2
+        val top = centerY - bodyHeight / 2
+        if (halo != null) {
+            drawRRect(RRect.makeLTRB(left, top, left + bodyWidth, top + bodyHeight, bodyHeight / 2), fill(halo.copy(alpha = STOP_HALO_ALPHA).toArgb()))
+        }
+        save()
+        translate(left + pad, top + pad)
+        drawBody()
+        restore()
+        if (isNew) drawNewDot(centerX, centerY, ringCorner(hasCover).value * density, density)
     }
     return UIImage(data = surface.makeImageSnapshot().png(), scale = density.toDouble())
 }
 
 /**
- * A surface for a stop's pin [width] by [height]: as it is, or with [halo] round it (see [STOP_HALO_WIDTH]) in the pin's
- * shape and the canvas moved in, so the pin draws as without it.
+ * The "new" dot on the pin's ring at 45° from its center ([centerX], [centerY]), [corner] along each axis: a gap round
+ * it cut out of what's drawn (pin, badge, halo), so the map shows through, then the red dot in the middle.
  */
-private fun haloSurface(width: Int, height: Int, halo: Color?, density: Float): Surface {
-    if (halo == null) return Surface.makeRasterN32Premul(width, height)
-    val pad = STOP_HALO_WIDTH.value * density
-    val surface = Surface.makeRasterN32Premul(ceil(width + 2 * pad).toInt(), ceil(height + 2 * pad).toInt())
-    val outer = height / 2f + pad
-    surface.canvas.drawRRect(RRect.makeLTRB(0f, 0f, width + 2 * pad, height + 2 * pad, outer), fill(halo.copy(alpha = STOP_HALO_ALPHA).toArgb()))
-    surface.canvas.translate(pad, pad)
-    return surface
-}
-
-/** The "new" dot at the pin's top left (see [newDotInset]): the accent red in the pins' ring colour. */
-private fun org.jetbrains.skia.Canvas.drawNewDot(density: Float, hasCover: Boolean) {
+private fun Canvas.drawNewDot(centerX: Float, centerY: Float, corner: Float, density: Float) {
     val radius = NEW_DOT_SIZE.value * density / 2
-    val center = radius + newDotInset(hasCover).value * density
-    drawCircle(center, center, radius, fill(PIN_STROKE_COLOR))
-    drawCircle(center, center, radius - NEW_DOT_RING.value * density, fill(NEW_ACTIVITY))
+    val x = centerX + corner
+    val y = centerY - corner
+    drawCircle(x, y, radius + NEW_DOT_GAP.value * density, Paint().apply { blendMode = BlendMode.CLEAR; isAntiAlias = true })
+    drawCircle(x, y, radius, fill(NEW_ACTIVITY))
 }
 
 /** A circle [height] round, or wider as a pill when [orderNumber] and [padding] on either side need more. */
@@ -113,7 +142,7 @@ private fun pillWidth(orderNumber: Int, font: Font, height: Float, padding: Floa
     maxOf(height, font.measureTextWidth(orderNumber.toString()) + 2 * padding)
 
 /** [orderNumber] in [on] in the middle of a [color] pill filling [bounds], in the pins' thin ring. */
-private fun org.jetbrains.skia.Canvas.drawNumberPill(orderNumber: Int, bounds: Rect, font: Font, color: Int, on: Int, density: Float) {
+private fun Canvas.drawNumberPill(orderNumber: Int, bounds: Rect, font: Font, color: Int, on: Int, density: Float) {
     val ring = PIN_STROKE.value * density
     val radius = bounds.height / 2
     drawRRect(RRect.makeLTRB(bounds.left, bounds.top, bounds.right, bounds.bottom, radius), fill(PIN_STROKE_COLOR))
@@ -132,7 +161,7 @@ private fun fill(color: Int) = Paint().apply {
  * the advance, so a "1" with its wide side bearing set "14" off to one side, Shahin 2026-11-17), as Android's trimmed
  * line centers them.
  */
-private fun org.jetbrains.skia.Canvas.drawNumber(orderNumber: Int, x: Float, y: Float, font: Font, color: Int) {
+private fun Canvas.drawNumber(orderNumber: Int, x: Float, y: Float, font: Font, color: Int) {
     val label = orderNumber.toString()
     val glyphs = font.getStringGlyphs(label)
     val positions = font.getPositions(glyphs, Point(0f, 0f))
